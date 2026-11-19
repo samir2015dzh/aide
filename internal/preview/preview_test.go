@@ -1,0 +1,245 @@
+package preview
+
+import (
+	"errors"
+	"os"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	"github.com/hermeshai/hermesh/pkg/identity"
+)
+
+func request(t *testing.T, m proto.Message) *localv1.SigningRequest {
+	t.Helper()
+	body, err := proto.MarshalOptions{Deterministic: true}.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typ := identity.MessageType(m)
+	return &localv1.SigningRequest{Type: typ, Body: body, Message: identity.SigningInput(typ, body)}
+}
+
+func spki(t *testing.T) []byte {
+	k, _ := identity.GenerateKey()
+	return identity.MarshalPublicKey(k.Public())
+}
+
+func TestRefusals(t *testing.T) {
+	g := request(t, &identityv1.Grant{OwnerId: "o_x", ClientLabel: "bot", ClientPublicKey: spki(t), ExpiresAt: timestamppb.Now(), Version: 1})
+	var refused *Refused
+
+	// What is signed must be what is shown.
+	bad := proto.Clone(g).(*localv1.SigningRequest)
+	bad.Message = identity.SigningInput(g.Type, []byte("other"))
+	if _, err := Cards([]*localv1.SigningRequest{bad}, Hints{}, "en"); !errors.As(err, &refused) {
+		t.Fatalf("a message that isn't the body: %v", err)
+	}
+	// A field this version doesn't know.
+	unknown := proto.Clone(g).(*localv1.SigningRequest)
+	unknown.Body = protowire.AppendVarint(protowire.AppendTag(unknown.Body, 999, protowire.VarintType), 1)
+	unknown.Message = identity.SigningInput(g.Type, unknown.Body)
+	if _, err := Cards([]*localv1.SigningRequest{unknown}, Hints{}, "en"); !errors.As(err, &refused) {
+		t.Fatalf("an unknown field: %v", err)
+	}
+	// A type it doesn't know.
+	other := request(t, &identityv1.RevocationList{OwnerId: "o_x"})
+	if _, err := Cards([]*localv1.SigningRequest{other}, Hints{}, "en"); !errors.As(err, &refused) {
+		t.Fatalf("an unknown type: %v", err)
+	}
+	// One refusal refuses the batch.
+	if _, err := Cards([]*localv1.SigningRequest{g, other}, Hints{}, "en"); err == nil {
+		t.Fatal("a batch with one it can't show")
+	}
+}
+
+// An erase order says what it does and that it can't be undone.
+func TestEraseCard(t *testing.T) {
+	cs, err := Cards([]*localv1.SigningRequest{request(t, &identityv1.EraseOrder{OwnerId: "o_x", EraseId: "e1"})}, Hints{}, "en")
+	if err != nil || cs[0].Title != "Erase everything in your Aide" || !strings.Contains(cs[0].Why, "can't be undone") || cs[0].Warning == "" ||
+		!strings.Contains(strings.Join(cs[0].Lines, "\n"), "Erase ID: e1") {
+		t.Fatalf("erase: %+v %v", cs, err)
+	}
+}
+
+func TestCards(t *testing.T) {
+	client := spki(t)
+	g := &identityv1.Grant{OwnerId: "o_x", ClientLabel: "bot", ClientPublicKey: client, ProjectIds: []string{"*"}, MachineIds: []string{"m_1"},
+		Agents: []string{"claude"}, ExpiresAt: timestamppb.New(time.Now().Add(30 * 24 * time.Hour)), Version: 1}
+	cs, err := Cards([]*localv1.SigningRequest{request(t, g)}, Hints{MachineNames: map[string]string{"m_1": "vps-1"}}, "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := cs[0]
+	if c.Title != "Approve “bot” to connect to your computers" || c.Code != identity.VerificationCode(identityv1.PairingKind_PAIRING_KIND_CLIENT, client, "o_x") ||
+		!strings.Contains(strings.Join(c.Lines, "\n"), "Machines: vps-1") || !strings.Contains(strings.Join(c.Lines, "\n"), "Projects: all") {
+		t.Fatalf("grant: %+v", c)
+	}
+	// A long-lived one says so, not a date in the year 9999.
+	long := proto.CloneOf(g)
+	long.ExpiresAt = timestamppb.New(identity.NoExpiry)
+	if cs, err := Cards([]*localv1.SigningRequest{request(t, long)}, Hints{}, "en"); err != nil || !slices.Contains(cs[0].Lines, "Doesn’t expire") ||
+		strings.Contains(strings.Join(cs[0].Lines, "\n"), "9999") {
+		t.Fatalf("long-lived grant: %+v %v", cs, err)
+	}
+	// One the person confirmed has nothing to compare.
+	r := request(t, g)
+	r.Confirmed = true
+	if cs, _ := Cards([]*localv1.SigningRequest{r}, Hints{}, "en"); cs[0].Code != "" {
+		t.Fatalf("a confirmed grant shows a code: %+v", cs[0])
+	}
+
+	// A new trusted device: by the devices before it.
+	old, added := spki(t), spki(t)
+	root := &identityv1.RootCert{OwnerId: "o_x", Version: 2, RootKeys: []*identityv1.RootKey{{PublicKey: old, Label: "phone"}, {PublicKey: added, Label: "vps-2"}}}
+	h := Hints{Devices: map[string]string{identity.Fingerprint(old): "phone"}}
+	cs, err = Cards([]*localv1.SigningRequest{request(t, root)}, h, "en")
+	if err != nil || cs[0].Title != "Add “vps-2” as a trusted device" || cs[0].Code == "" {
+		t.Fatalf("adding a device: %+v %v", cs, err)
+	}
+	r = request(t, root)
+	r.Confirmed = true // looked up by its code
+	if cs, _ := Cards([]*localv1.SigningRequest{r}, h, "en"); cs[0].Code != "" {
+		t.Fatalf("a device found by its code shows a code: %+v", cs[0])
+	}
+	// Removing one, with what it signed re-issued.
+	gone := &identityv1.RootCert{OwnerId: "o_x", Version: 3, RootKeys: []*identityv1.RootKey{{PublicKey: added, Label: "vps-2"}}}
+	h = Hints{Devices: map[string]string{identity.Fingerprint(old): "phone", identity.Fingerprint(added): "vps-2"}, MachineNames: map[string]string{"m_1": "vps-1"}}
+	cs, err = Cards([]*localv1.SigningRequest{request(t, gone), request(t, &identityv1.MachineCert{OwnerId: "o_x", MachineId: "m_1", MachinePublicKey: spki(t)})}, h, "en")
+	if err != nil || cs[0].Title != "Remove trusted device “phone”" || cs[1].Title != "Re-issue the certificate of machine “vps-1”" ||
+		!strings.Contains(cs[1].Why, "now signed by this computer") {
+		t.Fatalf("removing a device: %+v %v", cs, err)
+	}
+
+	// Joining: this computer's request, and its own machine, admitted by its key.
+	join := &identityv1.PairingRequest{Kind: identityv1.PairingKind_PAIRING_KIND_DEVICE, Label: "pc", OwnerId: "o_x", SubjectPublicKey: spki(t)}
+	own := &identityv1.MachineCert{OwnerId: "o_x", MachineId: "m_2", MachinePublicKey: spki(t), DeviceKeyId: "k_1"}
+	cs, err = Cards([]*localv1.SigningRequest{request(t, join), request(t, own)}, Hints{}, "en")
+	if err != nil || cs[0].Title != "Add this computer to your Aide" || cs[0].Code == "" ||
+		cs[1].Title != "Share the agents on this computer" || cs[1].Code != "" || cs[1].Warning != "" || !cs[0].Own || !cs[1].Own {
+		t.Fatalf("joining: %+v %v", cs, err)
+	}
+
+	// A project added from here.
+	add := &identityv1.AdminCommand{TargetMachineId: "m_1", Command: &identityv1.AdminCommand_AddProject{AddProject: &identityv1.AddProject{ProjectId: "app", Path: "~/app"}}}
+	if cs, err := Cards([]*localv1.SigningRequest{request(t, add)}, Hints{MachineNames: map[string]string{"m_1": "vps-1"}}, "en"); err != nil || cs[0].Title != "Add project “app” to machine vps-1" {
+		t.Fatalf("add project: %+v %v", cs, err)
+	}
+}
+
+// Her's commands say what they let Her do on the machine: run there, an
+// assistant act without asking (warned), a command start there, shown as it
+// will run; an approval mode this version doesn't know is refused.
+func TestHerCards(t *testing.T) {
+	h := Hints{MachineNames: map[string]string{"m_1": "vps-1"}}
+	admin := func(c *identityv1.AdminCommand) *localv1.SigningRequest {
+		c.TargetMachineId = "m_1"
+		return request(t, c)
+	}
+	on := admin(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHer{SetHer: &identityv1.SetHer{Enabled: true}}})
+	full := admin(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: "b1", PermissionMode: "bypass-permissions"}}})
+	asks := admin(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: "b1", PermissionMode: "manual"}}})
+	connector := admin(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerCommandConnector{SetHerCommandConnector: &identityv1.SetHerCommandConnector{
+		Name: "files", Command: "npx", Args: []string{"-y", "my server"}, Env: map[string]string{"B": "2", "A": "line\nbreak"}}}})
+	cs, err := Cards([]*localv1.SigningRequest{on, full, asks, connector}, h, "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cs[0].Title != "Turn Her on for machine vps-1" || !strings.Contains(cs[0].Why, "run commands") {
+		t.Fatalf("Her on: %+v", cs[0])
+	}
+	if cs[1].Title != "Give an assistant of Her full access on machine vps-1" || cs[1].Warning == "" || !slices.Contains(cs[1].Lines, "Assistant ID: b1") {
+		t.Fatalf("full access: %+v", cs[1])
+	}
+	if cs[2].Title != "Set how an assistant of Her acts on machine vps-1" || cs[2].Warning != "" || !slices.Contains(cs[2].Lines, "Approval mode: asks before each file change and command") {
+		t.Fatalf("asking first: %+v", cs[2])
+	}
+	if want := []string{`Command: npx -y "my server"`, `Environment: A="line\nbreak"`, "Environment: B=2"}; cs[3].Title != "Let Her start connector “files” on machine vps-1" ||
+		!slices.Equal(cs[3].Lines, want) || cs[3].Warning == "" {
+		t.Fatalf("a connector: %+v", cs[3])
+	}
+	unknown := admin(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: "b1", PermissionMode: "yolo"}}})
+	var refused *Refused
+	if _, err := Cards([]*localv1.SigningRequest{unknown}, h, "en"); !errors.As(err, &refused) {
+		t.Fatalf("an unknown mode: %v", err)
+	}
+	if cs, err := Cards([]*localv1.SigningRequest{connector}, h, "zh-CN"); err != nil || cs[0].Title != "允许 Her 在机器 vps-1上启动连接器“files”" {
+		t.Fatalf("in Chinese: %+v %v", cs, err)
+	}
+}
+
+// TestJoinMatch: the digits of a root cert that adds a device, named by the
+// devices before it; of a machine cert that asked for them; none for a
+// removal, a first setup or a machine that did not ask.
+func TestJoinMatch(t *testing.T) {
+	old, added := spki(t), spki(t)
+	root := request(t, &identityv1.RootCert{OwnerId: "o_x", Version: 2, RootKeys: []*identityv1.RootKey{{PublicKey: old, Label: "pc"}, {PublicKey: added, Label: "iPhone"}}})
+	before := Hints{Devices: map[string]string{identity.Fingerprint(old): "pc"}}
+	if m := JoinMatch([]*localv1.SigningRequest{root}, before); m == nil || *m != (Match{Label: "iPhone", Digits: identity.JoinMatchCode(root.Body)}) {
+		t.Fatalf("a device added: %+v", m)
+	}
+	if m := JoinMatch([]*localv1.SigningRequest{root}, Hints{}); m == nil || m.Label != "" || m.Digits != identity.JoinMatchCode(root.Body) {
+		t.Fatalf("devices not listed: %+v", m)
+	}
+	after := Hints{Devices: map[string]string{identity.Fingerprint(old): "pc", identity.Fingerprint(added): "iPhone"}}
+	if m := JoinMatch([]*localv1.SigningRequest{root}, after); m != nil {
+		t.Fatalf("nothing added: %+v", m)
+	}
+	first := request(t, &identityv1.RootCert{OwnerId: "o_x", Version: 1, RootKeys: []*identityv1.RootKey{{PublicKey: old, Label: "pc"}}})
+	if m := JoinMatch([]*localv1.SigningRequest{first}, Hints{}); m != nil {
+		t.Fatalf("first setup: %+v", m)
+	}
+	machine := request(t, &identityv1.MachineCert{OwnerId: "o_x", MachineId: "m_1", MachinePublicKey: spki(t)})
+	if m := JoinMatch([]*localv1.SigningRequest{machine}, before); m != nil {
+		t.Fatalf("a machine that did not ask: %+v", m)
+	}
+	machine.ShowMatch = true
+	if m := JoinMatch([]*localv1.SigningRequest{machine}, before); m == nil || *m != (Match{Digits: identity.JoinMatchCode(machine.Body), Machine: true}) {
+		t.Fatalf("a machine that asked: %+v", m)
+	}
+}
+
+// Every text a card shows has its Chinese, with the same verbs, and the
+// Chinese file holds nothing the cards don't use.
+func TestWords(t *testing.T) {
+	src, err := os.ReadFile("preview.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	used := map[string]bool{"2006-01-02": true}
+	for _, m := range regexp.MustCompile(`w\.f\(("(?:[^"\\]|\\.)*")`).FindAllSubmatch(src, -1) {
+		k, err := strconv.Unquote(string(m[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		used[k] = true
+	}
+	zh := wordsFor("zh-CN")
+	verbs := regexp.MustCompile(`%(\[\d+\])?[sd]`)
+	for k := range used {
+		v, ok := zh[k]
+		if !ok {
+			t.Errorf("no Chinese for %q", k)
+		} else if len(verbs.FindAllString(v, -1)) != len(verbs.FindAllString(k, -1)) {
+			t.Errorf("%q: %q has other verbs", k, v)
+		}
+	}
+	for k := range zh {
+		if !used[k] {
+			t.Errorf("unused: %q", k)
+		}
+	}
+	add := &identityv1.AdminCommand{TargetMachineId: "m_1", Command: &identityv1.AdminCommand_AddProject{AddProject: &identityv1.AddProject{ProjectId: "app", Path: "~/app"}}}
+	if cs, err := Cards([]*localv1.SigningRequest{request(t, add)}, Hints{MachineNames: map[string]string{"m_1": "vps-1"}}, "zh-CN"); err != nil || cs[0].Title != "给机器 vps-1添加项目“app”" {
+		t.Fatalf("in Chinese: %+v %v", cs, err)
+	}
+}

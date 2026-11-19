@@ -1,0 +1,57 @@
+{
+  "nav": {
+    "label": "页面",
+    "models": "模型",
+    "connectors": "连接器",
+    "skills": "技能",
+    "search": "联网搜索",
+    "browser": "浏览器",
+    "storage": "存储"
+  },
+  "conn": {
+    "connecting": "正在连接 Her…",
+    "unreachable": "连不上这台机器上的 Her，正在重试…"
+  },
+  "back": "返回{{page}}",
+  "failedRead": "读取失败：{{error}}",
+  "undo": "撤销",
+  "cancel": "取消",
+  "close": "关闭",
+  "error": {
+    "disconnected": "和 Her 的连接断开了",
+    "notConnected": "还没有连上 Her",
+    "signinTimedOut": "10 分钟内没有完成登录，请重新登录"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo_other": "{{count}} 分钟前",
+    "hoursAgo_other": "{{count}} 小时前",
+    "yesterday": "昨天"
+  },
+  "browser": {
+    "sites": "网站权限",
+    "allSites": "所有网站",
+    "allSitesDesc": {
+      "ask": "每个网站第一次用到时先问你",
+      "navigate": "网站直接打开，操作前先问你",
+      "act": "网站直接打开和操作，不再问你"
+    },
+    "siteLevel": "{{site}} 的权限",
+    "level": {
+      "act": "打开和操作",
+      "navigate": "只打开",
+      "ask": "先问我",
+      "deny": "禁止"
+    },
+    "removeSite": "移除 {{site}}",
+    "exceptions": "例外",
+    "exceptionsEmpty": "还没有例外。在对话里选“始终允许”会加到这里。",
+    "sitesNote": "两个浏览器共用。内网地址不跟随“所有网站”，每个第一次用到时都会先问你。",
+    "addLabel": "要添加的网站",
+    "addLevel": "要添加的网站的权限",
+    "addPlaceholder": "example.com",
+    "add": "添加",
+    "badSite": "填一个网站，比如 example.com 或 https://example.com。",
+    "added": "{{site}}：{{level}}"
+  }
+}

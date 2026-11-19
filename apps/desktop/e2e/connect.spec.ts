@@ -1,0 +1,100 @@
+import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fixture, launch, onWindows, snap } from "./app";
+
+// Settings › 连接: a guide for each coding agent, as the owner follows it alone.
+// This Mac has DeepSeek Harness (fakeacp), Codex not signed in (not on
+// Windows), no Claude Code; another ACP agent is added through the template.
+
+async function openSettings(app: ElectronApplication, page: Page, tab?: string): Promise<Page> {
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.hermesh?.openSettings(t), tab)]);
+  await win.waitForLoadState();
+  return win;
+}
+
+async function api<T>(page: Page, method: string, body: object = {}): Promise<T> {
+  return page.evaluate(
+    async ([m, b]) => {
+      const r = await fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+      return r.json();
+    },
+    [method, body] as const,
+  );
+}
+
+const fake = path.join(path.dirname(fixture.cli), onWindows ? "fakeacp.exe" : "fakeacp");
+
+test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude and Codex say what to do", async () => {
+  const { app, page } = await launch();
+  const settings = await openSettings(app, page, "connect");
+  const main = settings.getByRole("main", { name: "连接" });
+  await expect(main.getByRole("tab", { name: "DeepSeek（DSH）" })).toHaveAttribute("aria-selected", "true");
+  await expect(main.getByText("开始之前")).toBeVisible();
+  await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到 · 版本 1.2.3" })).toBeVisible({ timeout: 30_000 });
+  await main.getByRole("button", { name: "运行测试" }).click();
+  await expect(main.getByText(/^可以用：DeepSeek Harness 在 [\d.]+ 秒内回答了「ready」。$/)).toBeVisible({ timeout: 60_000 });
+  await snap(settings, "connect-deepseek");
+
+  await main.getByRole("button", { name: "开始测试任务" }).click();
+  await main.getByRole("button", { name: "在 Aide 中打开" }).click();
+  await expect
+    .poll(async () => (await api<{ sessions?: { agent: string; createdBy: string }[] }>(settings, "ListSessions")).sessions?.some((s) => s.agent === "deepseek" && s.createdBy === "owner"))
+    .toBe(true);
+  await main.getByRole("button", { name: "打开 DeepSeek 会话" }).click();
+  await expect(page.getByRole("navigation", { name: "DeepSeek 会话" })).toBeVisible();
+
+  await main.getByRole("tab", { name: "Claude" }).click();
+  await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上没有检测到" })).toBeVisible({ timeout: 30_000 });
+  await expect(main.getByText("从 claude.ai/download 装好 Claude 桌面应用并登录（或者单独装 Claude Code）。")).toBeVisible();
+  await expect(main.getByText(/Code 标签页里也会列出这些任务/)).toBeVisible();
+  if (!onWindows) {
+    await main.getByRole("tab", { name: "Codex" }).click();
+    await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上找到了，但还没登录" })).toBeVisible({ timeout: 30_000 });
+    await expect(main.locator("code").filter({ hasText: /codex" login$/ })).toBeVisible();
+    await expect(main.getByRole("button", { name: "运行测试" })).toBeDisabled();
+  }
+  await app.close();
+});
+
+test("another ACP agent: a wrong command says why; saved, it is listed, tested and removed", async () => {
+  const { app, page } = await launch();
+  const settings = await openSettings(app, page, "connect");
+  const main = settings.getByRole("main", { name: "连接" });
+  await main.getByRole("tab", { name: "其他 Agent" }).click();
+  await expect(main.getByText("还没有。")).toBeVisible();
+  await main.getByRole("button", { name: "添加 Agent" }).click();
+  await expect(main.getByText("示例：-y @zed-industries/claude-code-acp")).toBeVisible();
+  await main.getByLabel("名称", { exact: true }).fill("my-acp");
+  await main.getByLabel("命令", { exact: true }).fill("hermesh-no-such-agent");
+  await main.getByRole("button", { name: "测试连接" }).click();
+  await expect(main.getByText(/^连接失败：.*hermesh-no-such-agent not found/)).toBeVisible({ timeout: 60_000 });
+
+  await main.getByLabel("命令", { exact: true }).fill(fake);
+  await main.getByLabel("参数", { exact: true }).fill("acp");
+  for (const [name, value] of [["FAKE_ACP_STATE", fs.mkdtempSync(path.join(os.tmpdir(), "hmacp-"))], ["MY_API_KEY", "k-1"]]) {
+    await main.getByRole("button", { name: "添加变量" }).click();
+    await main.getByLabel("变量名").last().fill(name);
+    await main.getByLabel("值", { exact: true }).last().fill(value);
+  }
+  await expect(main.getByRole("checkbox", { name: "机密" }).last()).toBeChecked();
+  await main.getByRole("button", { name: "测试连接" }).click();
+  await expect(main.getByText("连接成功：它说自己是 Fake ACP 1.2.3，并开了一个会话。")).toBeVisible({ timeout: 60_000 });
+  await snap(settings, "connect-custom");
+  await main.getByRole("button", { name: "保存" }).click();
+
+  const row = main.getByRole("group", { name: "my-acp" });
+  await expect(row).toBeVisible();
+  await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到 · 版本 1.2.3" })).toBeVisible({ timeout: 30_000 });
+  await main.getByRole("button", { name: "运行测试" }).click();
+  await expect(main.getByText(/^可以用：my-acp 在 [\d.]+ 秒内回答了「ready」。$/)).toBeVisible({ timeout: 60_000 });
+  const st = await api<{ localMachineId: string }>(settings, "GetStatus");
+  const saved = await api<{ agents?: { name: string; env?: { name: string; value?: string; secret?: boolean }[] }[] }>(settings, "ListMachineCustomAgents", { machineId: st.localMachineId });
+  expect(saved.agents?.[0].env).toEqual([{ name: "FAKE_ACP_STATE", value: expect.any(String) }, { name: "MY_API_KEY", secret: true }]);
+
+  await row.getByRole("button", { name: "移除…" }).click();
+  await row.getByRole("button", { name: "移除", exact: true }).click();
+  await expect(main.getByText("还没有。")).toBeVisible();
+  await app.close();
+});

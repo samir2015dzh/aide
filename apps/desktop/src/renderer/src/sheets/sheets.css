@@ -1,0 +1,42 @@
+/* Sheets: what app.css (the prototype's CSS) has inline in the prototype's markup. */
+.sheet .sheet-q{margin:6px 0 10px;font-size:14px;font-weight:600}
+.sheet .sheet-note{font-size:12px;margin:10px 0 0;line-height:1.55}
+.sheet .sheet-err{color:var(--red);font-size:12.5px;margin:10px 0 0;line-height:1.5;user-select:text;-webkit-user-select:text}
+.sheet .btn.destructive{background:var(--red);box-shadow:none}
+.sheet .code-in{height:34px;font-size:16px;letter-spacing:.1em;text-align:center}
+.sheet .msgbox{user-select:text;-webkit-user-select:text;overflow-wrap:anywhere}
+.sheet .pc:disabled{cursor:default}
+.sheet .pc .av{color:#fff}
+/* Wake (sheets/Wake.tsx): one step per screen. */
+.sheet .wk-dots{display:flex;gap:6px;margin-bottom:14px}
+.sheet .wk-dots i{height:4px;flex:1;border-radius:2px;background:var(--fill2)}
+.sheet .wk-dots i.on{background:var(--accent)}
+.sheet .wk-kicker{font-size:11.5px;color:var(--l2);margin-bottom:2px}
+.sheet .wk-big{width:100%;height:34px;font-size:13.5px;border-radius:10px}
+.sheet .wk-msg{margin-top:10px;font-family:var(--font);font-size:12px;color:var(--l2)}
+.sheet .wk-how{margin-top:12px;font-size:12px;color:var(--l2);line-height:1.6}
+.sheet .wk-how summary{color:var(--accent);width:max-content}
+.sheet .wk-how p{margin:6px 0 8px}
+.sheet .wk-lab{display:block;font-size:12px;color:var(--l2);margin:10px 0 4px}
+.sheet .wk-spin{width:44px;height:44px;border-radius:50%;border:3px solid var(--fill2);border-top-color:var(--accent);animation:wk-spin .8s linear infinite}
+@keyframes wk-spin{to{transform:rotate(360deg)}}
+.sheet .big-ok .okc.bad{background:var(--red);font-weight:700;font-size:20px}
+.sheet .wk-kv{border-radius:12px;background:var(--win2);padding:2px 14px;margin:10px 0 4px}
+.sheet .wk-kv>div{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:.5px solid var(--sep);font-size:12.5px;color:var(--l2)}
+.sheet .wk-kv>div:first-child{border-top:0}
+.sheet .wk-kv b{font-weight:400;color:var(--l1);text-align:right;min-width:0;overflow-wrap:anywhere}
+.sheet .wk-how summary{cursor:pointer}
+/* Erase Everything (sheets/Erase.tsx). */
+.sheet .erase-what .frow{align-items:flex-start}
+.sheet .erase-what .frow>.ic{margin-top:2px;color:var(--l2)}
+.sheet .erase-names{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:5px;font-size:12px}
+.sheet .erase-name{display:inline-flex;align-items:center;gap:5px}
+.sheet .erase-stays{margin-top:14px}
+.sheet .erase-stay{margin:0;padding:8px 14px 8px 30px;background:var(--win2);border-radius:12px;font-size:12px;color:var(--l2);line-height:1.7}
+.sheet .erase-lab{display:block;font-size:12px;color:var(--l2);margin:14px 4px 5px}
+.sheet .erase-lab b{color:var(--l1);font-weight:500}
+.sheet .erase-st{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--l2);white-space:nowrap}
+.sheet .erase-st.ok{color:var(--green)}
+.sheet .erase-spin{width:11px;height:11px;border-radius:50%;border:2px solid var(--fill2);border-top-color:var(--l1);animation:wk-spin .8s linear infinite}
+/* New Session (sheets/NewSession.tsx). */
+.sheet .ns-prompt{height:auto;min-height:96px;padding:7px 9px;line-height:1.5;resize:vertical}

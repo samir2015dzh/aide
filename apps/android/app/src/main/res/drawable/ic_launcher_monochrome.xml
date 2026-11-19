@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主题图标（monochrome）：只用 alpha，系统自己上色。几何同前景。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#000000" android:pathData="M79.467,46.225A26.834,26.834 0 1,1 61.775,28.533A13.252,13.252 0 0,0 60.548,35.809A19.546,19.546 0 1,0 72.191,47.452A13.252,13.252 0 0,0 79.467,46.225zM46.546,54.166a7.288,7.288 0 1,0 14.577,0a7.288,7.288 0 1,0 -14.577,0zM66.423,34.288a7.288,7.288 0 1,0 14.577,0a7.288,7.288 0 1,0 -14.577,0z" />
+</vector>

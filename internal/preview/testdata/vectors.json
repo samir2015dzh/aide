@@ -1,0 +1,574 @@
+[
+  {
+    "name": "a personal agent asks to connect",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWI0V43ao4bpQULLJpmsHPiSUng/sVy58oQyECeTAWoXMi2E+1BHBzWm6L1Q/QLcU+8+OZl1oKk9XpOhGKFMwgzIDYm90OgNtXzFCA2FwcEoGY2xhdWRlcgYIwKH32gY="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "code": "S0Z7-43FC-5HT2",
+        "shows": [
+          "bot",
+          "vps-1",
+          "app",
+          "Claude Code"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a personal agent the owner confirmed by its code",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWI0V43ao4bpQULLJpmsHPiSUng/sVy58oQyECeTAWoXMi2E+1BHBzWm6L1Q/QLcU+8+OZl1oKk9XpOhGKFMwgzIDYm90OgNtXzFCA2FwcEoGY2xhdWRlcgYIwKH32gY=",
+        "confirmed": true
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "bot",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a long-lived personal agent that may run commands",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDLUAvjnIwSIJIssWDJ/Q8Ca2/Ql1DwyIrq3YNTaogDy+JTlTgLkQ+1w3wITQTcFRYWiNzxGME+sFS208ZfUqTzIDYm90OgNtXzFCA2FwcEoGY2xhdWRlcgcI/4LR/68HmAEB",
+        "confirmed": true
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "bot",
+          "vps-1",
+          "Doesn’t expire",
+          "Run commands"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a new machine",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.MachineCert",
+        "body": "CgNvX3gSA21fMxpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAELZ0mqgigRPwvGTELHgy4vxKBbQwUggipQMx+AmedkhbOKFij+mIHL6zUhdmmJIyUofSWtZWpu3pZOA2RZRK3lQ=="
+      }
+    ],
+    "hints": {},
+    "cards": [
+      {
+        "code": "4T7X-5FD1-JVQ5",
+        "shows": [
+          "m_3"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "another trusted device joins",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.RootCert",
+        "body": "CgNvX3gaZApbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGijE9RAA+EPZIzhFJsxG2PpEmf+6HDlhFLUQ5HVv5ETK7T5MzgZMShIxf7+mhmKb6/zHt75XeVBd3p+4kNiW3xIFcGhvbmUaZApbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0wn7Qkq4wA8Jq8/nwRq93HGFU/w+Lji8GL/p9zcelQce6ieQERkIhPf4rZZCbiEUpAHKS+rAEgfMoQngis5LnhIFdnBzLTIgAg=="
+      }
+    ],
+    "hints": {
+      "devices": {
+        "h6nueuacyogirqcxj4apmddqqr2daracvqv3fnbdvdp4lwufp7qq": "phone"
+      }
+    },
+    "cards": [
+      {
+        "code": "944N-62PX-F2V8",
+        "shows": [
+          "vps-2"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a trusted device found by its pairing code",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.RootCert",
+        "body": "CgNvX3gaZApbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGijE9RAA+EPZIzhFJsxG2PpEmf+6HDlhFLUQ5HVv5ETK7T5MzgZMShIxf7+mhmKb6/zHt75XeVBd3p+4kNiW3xIFcGhvbmUaZApbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0wn7Qkq4wA8Jq8/nwRq93HGFU/w+Lji8GL/p9zcelQce6ieQERkIhPf4rZZCbiEUpAHKS+rAEgfMoQngis5LnhIFdnBzLTIgAg==",
+        "confirmed": true
+      }
+    ],
+    "hints": {
+      "devices": {
+        "h6nueuacyogirqcxj4apmddqqr2daracvqv3fnbdvdp4lwufp7qq": "phone"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "vps-2"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a trusted device removed, what it signed re-issued",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.RootCert",
+        "body": "CgNvX3gaZApbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0wn7Qkq4wA8Jq8/nwRq93HGFU/w+Lji8GL/p9zcelQce6ieQERkIhPf4rZZCbiEUpAHKS+rAEgfMoQngis5LnhIFdnBzLTIgAw=="
+      },
+      {
+        "type": "hermesh.identity.v1.MachineCert",
+        "body": "CgNvX3gSA21fMRpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGhGNfh1qJdR9Se9ix54kTpbAG7gEddS7qEK2WGTwBzeqBZzRiBSXqt4dUw0e6a0ZnmE1mkLGNmrK9nuyZ8plZA=="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      },
+      "devices": {
+        "h6nueuacyogirqcxj4apmddqqr2daracvqv3fnbdvdp4lwufp7qq": "phone",
+        "kisnhhbxj77rzurzfxsoccabbzuxmn3clf2igtcqdxexhwdxq3ja": "vps-2"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "phone"
+        ]
+      },
+      {
+        "shows": [
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "this computer joins, with its own machine",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.PairingRequest",
+        "body": "CAMSWzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOc7f24wooy/zNry+SclkmBXAiOhb+Umys2x1CLVyexrYGnEFD5xkNgdy8YyKDKN+5zvEUmdpHukW9iFSnzJUmsaAnBjMgNvX3g="
+      },
+      {
+        "type": "hermesh.identity.v1.MachineCert",
+        "body": "CgNvX3gSA21fMhpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiqstXHJPe3uMSCWJh9Nv9zmI5Ka1bmMYqEmoA81yqlC2hGSoxQ1TKi4vseEZloQUfMBTDdvTU8UkCt4aF/khlzIDa18x"
+      }
+    ],
+    "hints": {},
+    "cards": [
+      {
+        "code": "V806-768D-N3HH",
+        "shows": [
+          "pc"
+        ]
+      },
+      {
+        "shows": [
+          "m_2"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a project added",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzFSEQoDYXBwEgp+L2NvZGUvYXBw"
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "app",
+          "vps-1",
+          "~/code/app"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a project removed",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzFaBQoDYXBw"
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "app",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a machine renamed",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzFyCwoJYnVpbGQtYm94"
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "vps-1",
+          "build-box"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a coding agent's model set",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzF6GgoFY29kZXgSC2dwdC01LWNvZGV4GgRoaWdo"
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "Codex",
+          "vps-1",
+          "gpt-5-codex",
+          "high"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "everything erased",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.EraseOrder",
+        "body": "CgNvX3gSAmUx"
+      }
+    ],
+    "hints": {},
+    "cards": [
+      {
+        "shows": [
+          "e1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Her turned on",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGCAQIIAQ=="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "Turn Her on",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Her turned on, with her grant",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGCAQIIAQ=="
+      },
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsIJfLUzZw2ST9Var2uiyfLRcdqM2uv5IXx83EsPEgc8fGWy89NEBO42VtGu+b08dWkN2u5uN9rDWLgicDm71BzIMSGVyIG9uIHZwcy0xOgEqQgEqSgEqWAJyBwj/gtH/rweSAQNtXzE="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "Turn Her on",
+          "vps-1"
+        ]
+      },
+      {
+        "shows": [
+          "Her",
+          "vps-1",
+          "7xpy tfkg"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Her turned off",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGCAQA="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "Turn Her off",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Her turned off, her data erased",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGCAQIQAQ=="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "Turn Her off",
+          "erase her data",
+          "vps-1",
+          "undone"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "refused: Her turned on with her data erased",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGCAQQIARAB"
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "refused": true
+  },
+  {
+    "name": "an assistant given full access",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGKARsKBWJvdC03EhJieXBhc3MtcGVybWlzc2lvbnM="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "full access",
+          "bot-7",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "an assistant asking first",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGKAQ8KBWJvdC03EgZtYW51YWw="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "bot-7",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a connector started as a command",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGSAVkKBmdpdGh1YhIDbnB4GgIteRojQG1vZGVsY29udGV4dHByb3RvY29sL3NlcnZlci1naXRodWIiCgoFREVCVUcSATEiFQoMR0lUSFVCX1RPS0VOEgV0MGtlbg=="
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "github",
+          "vps-1",
+          "npx -y @modelcontextprotocol/server-github",
+          "GITHUB_TOKEN=t0ken",
+          "DEBUG=1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "a connector removed",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGSAQoKBmdpdGh1YigB"
+      }
+    ],
+    "hints": {
+      "machineNames": {
+        "m_1": "vps-1"
+      }
+    },
+    "cards": [
+      {
+        "shows": [
+          "github",
+          "vps-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "refused: an approval mode it doesn't know",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.AdminCommand",
+        "body": "GgNtXzGKAQ0KBWJvdC03EgR5b2xv"
+      }
+    ],
+    "hints": {},
+    "refused": true
+  },
+  {
+    "name": "refused: what would be signed isn't what is shown",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWI0V43ao4bpQULLJpmsHPiSUng/sVy58oQyECeTAWoXMi2E+1BHBzWm6L1Q/QLcU+8+OZl1oKk9XpOhGKFMwgzIDYm90OgNtXzFCA2FwcEoGY2xhdWRlcgYIwKH32gY=",
+        "message": "aGVybWVzaC1zaWctdjEAaGVybWVzaC5pZGVudGl0eS52MS5HcmFudABvdGhlcg=="
+      }
+    ],
+    "hints": {},
+    "refused": true
+  },
+  {
+    "name": "refused: a field this version doesn't know",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWI0V43ao4bpQULLJpmsHPiSUng/sVy58oQyECeTAWoXMi2E+1BHBzWm6L1Q/QLcU+8+OZl1oKk9XpOhGKFMwgzIDYm90OgNtXzFCA2FwcEoGY2xhdWRlcgYIwKH32ga4PgE="
+      }
+    ],
+    "hints": {},
+    "refused": true
+  },
+  {
+    "name": "refused: a kind of request it doesn't know",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.RevocationList",
+        "body": "CgNvX3g="
+      }
+    ],
+    "hints": {},
+    "refused": true
+  },
+  {
+    "name": "refused: a batch with one it can't show",
+    "requests": [
+      {
+        "type": "hermesh.identity.v1.Grant",
+        "body": "CgNvX3gYASpbMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWI0V43ao4bpQULLJpmsHPiSUng/sVy58oQyECeTAWoXMi2E+1BHBzWm6L1Q/QLcU+8+OZl1oKk9XpOhGKFMwgzIDYm90OgNtXzFCA2FwcEoGY2xhdWRlcgYIwKH32gY="
+      },
+      {
+        "type": "hermesh.identity.v1.RevocationList",
+        "body": "CgNvX3g="
+      }
+    ],
+    "hints": {},
+    "refused": true
+  }
+]

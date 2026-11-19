@@ -1,0 +1,607 @@
+package machine
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+)
+
+func testRepo(t *testing.T, extraConfig ...string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "repo")
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	os.MkdirAll(filepath.Join(dir, "sub"), 0o755)
+	run("init", "-q")
+	for i := 0; i+1 < len(extraConfig); i += 2 {
+		run("config", extraConfig[i], extraConfig[i+1])
+	}
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "sub", "b.txt"), []byte("b\n"), 0o644)
+	run("add", ".")
+	run("commit", "-q", "-m", "init")
+	return dir
+}
+
+func gitOut(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v %s", args, err, out)
+	}
+	return string(out)
+}
+
+// TestWorktreeLifecycle: worktrees laid out by addWorktree are ordinary
+// worktrees to git, in both the direct and the git-worktree-add paths.
+func TestWorktreeLifecycle(t *testing.T) {
+	for name, cfg := range map[string][]string{
+		"direct":   nil,
+		"fallback": {"core.sparseCheckout", "true"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := testRepo(t, cfg...)
+			if direct := plainGitDir(repo) != ""; direct != (name == "direct") {
+				t.Fatalf("plainGitDir direct=%v", direct)
+			}
+			w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+			var wg sync.WaitGroup
+			ids := []string{"s_1", "s_2", "s_3", "s_4", "s_5", "s_6", "s_7", "s_8"}
+			for _, id := range ids {
+				wg.Add(1)
+				go func(id string) {
+					defer wg.Done()
+					base, branch, err := w.Create(ctx, repo, "", id)
+					if err != nil || len(base) != 40 || branch != "hermesh/"+id {
+						t.Errorf("create %s: %q %q %v", id, base, branch, err)
+					}
+				}(id)
+			}
+			wg.Wait()
+			list := gitOut(t, repo, "worktree", "list", "--porcelain")
+			for _, id := range ids {
+				if !strings.Contains(list, "branch refs/heads/hermesh/"+id+"\n") {
+					t.Fatalf("git does not list %s:\n%s", id, list)
+				}
+			}
+			wt := w.Path("s_1")
+			if st := gitOut(t, wt, "status", "--porcelain"); st != "" {
+				t.Fatalf("fresh worktree not clean: %q", st)
+			}
+			// Git for Windows checks text out with CRLF (core.autocrlf).
+			if b, _ := os.ReadFile(filepath.Join(wt, "sub", "b.txt")); strings.ReplaceAll(string(b), "\r", "") != "b\n" {
+				t.Fatalf("checkout missing files: %q", b)
+			}
+			os.WriteFile(filepath.Join(wt, "c.txt"), []byte("c\n"), 0o644)
+			head, stat, err := w.Snapshot(ctx, repo, "s_1", 1)
+			if err != nil || stat.FilesChanged != 1 || head == "" {
+				t.Fatalf("snapshot: %q %v %v", head, stat, err)
+			}
+			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "hermesh/s_1")); got != head {
+				t.Fatalf("branch at %s, snapshot %s", got, head)
+			}
+			// prune keeps live worktrees
+			gitOut(t, repo, "worktree", "prune")
+			if !strings.Contains(gitOut(t, repo, "worktree", "list", "--porcelain"), "branch refs/heads/hermesh/s_1\n") {
+				t.Fatal("prune dropped a live worktree")
+			}
+			for _, id := range ids {
+				if err := w.Remove(ctx, repo, id); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if list := gitOut(t, repo, "worktree", "list", "--porcelain"); strings.Contains(list, "hermesh/") {
+				t.Fatalf("removed worktrees still listed:\n%s", list)
+			}
+			if _, err := os.Stat(wt); !os.IsNotExist(err) {
+				t.Fatal("worktree directory left behind")
+			}
+			gitOut(t, repo, "rev-parse", "--verify", "hermesh/s_1") // branch kept
+			// other bases: a branch name, a commit id, a tag; bad refs fail cleanly
+			first := strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD"))
+			gitOut(t, repo, "tag", "v1")
+			def := strings.TrimSpace(gitOut(t, repo, "symbolic-ref", "--short", "HEAD"))
+			for i, ref := range []string{def, first, "v1", first[:10]} {
+				id := fmt.Sprintf("s_ref%d", i)
+				if base, _, err := w.Create(ctx, repo, ref, id); err != nil || base != first {
+					t.Fatalf("base %q: %q %v", ref, base, err)
+				}
+			}
+			for i, ref := range []string{"nope", "--output=/tmp/x"} {
+				id := fmt.Sprintf("s_bad%d", i)
+				if _, _, err := w.Create(ctx, repo, ref, id); err == nil {
+					t.Fatalf("base %q accepted", ref)
+				}
+				if _, err := os.Stat(w.Path(id)); !os.IsNotExist(err) {
+					t.Fatalf("failed create left %s behind", w.Path(id))
+				}
+			}
+			gitOut(t, repo, "worktree", "prune")
+			gitOut(t, repo, "fsck", "--no-progress")
+		})
+	}
+}
+
+// Missing refs and refs to non-commits are reported before any worktree
+// state is created; a broken repository is a different kind of failure.
+func TestWorktreeBaseValidation(t *testing.T) {
+	for _, fallback := range []bool{false, true} {
+		t.Run(fmt.Sprint(fallback), func(t *testing.T) {
+			repo := testRepo(t)
+			if fallback {
+				gitOut(t, repo, "config", "extensions.worktreeConfig", "true")
+			}
+			gitOut(t, repo, "tag", "blob-tag", strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD:a.txt")))
+			for _, ref := range []string{"missing", "blob-tag"} {
+				w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+				_, _, err := w.Create(context.Background(), repo, ref, "s_bad")
+				var baseErr *baseRefError
+				if !errors.As(err, &baseErr) || baseErr.ref != ref {
+					t.Fatalf("base %q: %v", ref, err)
+				}
+				if _, err := os.Stat(w.root); !os.IsNotExist(err) {
+					t.Fatalf("failed validation created the worktree root: %v", err)
+				}
+				if _, err := os.Stat(filepath.Join(repo, ".git", "refs", "heads", "hermesh", "s_bad")); !os.IsNotExist(err) {
+					t.Fatalf("failed validation left a branch: %v", err)
+				}
+			}
+			w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+			_, _, err := w.Create(context.Background(), t.TempDir(), "HEAD", "s_broken")
+			var baseErr *baseRefError
+			if err == nil || errors.As(err, &baseErr) {
+				t.Fatalf("a broken repository was reported as a missing base: %v", err)
+			}
+		})
+	}
+}
+
+// A base ref pushed after the project was cloned is fetched by itself: a
+// tag, a branch, a <remote>/<branch> or a commit id, from the first remote
+// that has it, and nothing else. One that no remote has, or that is no ref
+// name, changes nothing and says which remotes were asked and why one
+// could not be.
+func TestFetchRef(t *testing.T) {
+	ctx := context.Background()
+	seed := testRepo(t)
+	upstream := filepath.Join(t.TempDir(), "upstream.git")
+	gitOut(t, seed, "clone", "-q", "--bare", seed, upstream)
+	gitOut(t, upstream, "config", "uploadpack.allowReachableSHA1InWant", "true")
+	repo := filepath.Join(t.TempDir(), "repo")
+	gitOut(t, seed, "clone", "-q", upstream, repo)
+	head := strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD"))
+	branch := strings.TrimSpace(gitOut(t, repo, "symbolic-ref", "--short", "HEAD"))
+
+	other := filepath.Join(t.TempDir(), "other")
+	gitOut(t, seed, "clone", "-q", upstream, other)
+	commit := func(msg string) string {
+		gitOut(t, other, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", msg)
+		return strings.TrimSpace(gitOut(t, other, "rev-parse", "HEAD"))
+	}
+	release, feature, hidden, byID := commit("release"), commit("feature"), commit("hidden"), commit("by id")
+	gitOut(t, other, "tag", "v1", release)
+	gitOut(t, other, "tag", "unasked", release)
+	gitOut(t, other, "-c", "user.name=t", "-c", "user.email=t@t", "tag", "-a", "-m", "notes", "v1-notes", release)
+	gitOut(t, other, "push", "-q", "origin", "v1", "unasked", "v1-notes", feature+":refs/heads/feature", hidden+":refs/heads/hidden", byID+":refs/heads/by-id")
+
+	w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+	for _, c := range []struct{ ref, local, commit string }{
+		{byID, byID, byID},
+		{"v1", "refs/tags/v1", release},
+		{"v1-notes", "refs/tags/v1-notes", release},
+		{"feature", "refs/remotes/origin/feature", feature},
+		{"origin/hidden", "refs/remotes/origin/hidden", hidden},
+	} {
+		local, remote, err := w.FetchRef(ctx, repo, c.ref)
+		if err != nil || local != c.local || remote != "origin" {
+			t.Fatalf("%s: %q from %q, %v", c.ref, local, remote, err)
+		}
+		if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", local+"^{commit}")); got != c.commit {
+			t.Fatalf("%s: fetched %s, want %s", c.ref, got, c.commit)
+		}
+	}
+	if exec.Command("git", "-C", repo, "rev-parse", "--verify", "--quiet", "refs/tags/unasked").Run() == nil {
+		t.Fatal("a tag nobody asked for was fetched")
+	}
+	if local, _, err := w.FetchRef(ctx, repo, "v1"); err != nil || local != "v1" {
+		t.Fatalf("a ref fetched meanwhile: %q, %v", local, err)
+	}
+
+	missing := func(ref string) *baseRefError {
+		t.Helper()
+		_, _, err := w.FetchRef(ctx, repo, ref)
+		var be *baseRefError
+		if !errors.As(err, &be) {
+			t.Fatalf("%s: %v", ref, err)
+		}
+		return be
+	}
+	for _, ref := range []string{"nope", "x:refs/heads/" + branch, branch + "~1", "upstream/" + branch} {
+		if be := missing(ref); !be.looked || be.fetch != nil || len(be.remotes) != 1 || !strings.HasSuffix(be.Error(), "or on its remote origin") {
+			t.Fatalf("%s: %+v %v", ref, be, be)
+		}
+	}
+	if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "refs/heads/"+branch)); got != head || gitOut(t, repo, "status", "--porcelain") != "" {
+		t.Fatal("the project's branch or checkout changed")
+	}
+
+	// origin is gone: the next remote has it, and when none does the error
+	// says what origin's failure was.
+	gitOut(t, repo, "remote", "set-url", "origin", filepath.Join(t.TempDir(), "gone.git"))
+	gitOut(t, repo, "remote", "add", "mirror", upstream)
+	gitOut(t, other, "tag", "v2", release)
+	gitOut(t, other, "push", "-q", "origin", "v2")
+	if local, remote, err := w.FetchRef(ctx, repo, "v2"); err != nil || local != "refs/tags/v2" || remote != "mirror" {
+		t.Fatalf("v2 through the mirror: %q from %q, %v", local, remote, err)
+	}
+	if be := missing("nope"); be.fetch == nil || !strings.Contains(be.Error(), "fetching it failed: origin: ") || strings.Contains(be.Error(), "mirror:") {
+		t.Fatalf("an unreachable remote: %v", be)
+	}
+
+	// Nowhere to fetch from, or here but not a commit: nothing to fetch.
+	alone := testRepo(t)
+	if _, _, err := w.FetchRef(ctx, alone, "v1"); err == nil || !strings.HasSuffix(err.Error(), "which has no remote to fetch it from") {
+		t.Fatalf("no remote: %v", err)
+	}
+	gitOut(t, repo, "tag", "blob-tag", strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD:a.txt")))
+	if be := missing("blob-tag"); be.looked {
+		t.Fatalf("a local tag of a blob was looked for upstream: %v", be)
+	}
+}
+
+// Move the source branch immediately after Git resolves it, before the
+// worktree is created: both checkout paths must still use that commit.
+func TestWorktreePinsBaseCommit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell wrapper")
+	}
+	realGit := gitBin()
+	for _, fallback := range []bool{false, true} {
+		t.Run(fmt.Sprint(fallback), func(t *testing.T) {
+			repo := testRepo(t)
+			if fallback {
+				gitOut(t, repo, "config", "extensions.worktreeConfig", "true")
+			}
+			first := strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD"))
+			gitOut(t, repo, "branch", "moving", first)
+			gitOut(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--allow-empty", "-m", "next")
+			next := strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD"))
+			t.Setenv("HERMESH_TEST_GIT", realGit)
+			t.Setenv("HERMESH_TEST_NEXT_COMMIT", next)
+			wrapper := filepath.Join(t.TempDir(), "git")
+			if err := os.WriteFile(wrapper, []byte(`#!/bin/sh
+"$HERMESH_TEST_GIT" "$@"
+result=$?
+for arg in "$@"; do
+  if [ "$arg" = 'moving^{commit}' ] && [ "$result" = 0 ]; then
+    "$HERMESH_TEST_GIT" update-ref refs/heads/moving "$HERMESH_TEST_NEXT_COMMIT" || exit 1
+  fi
+done
+exit "$result"
+`), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			original := gitBin
+			gitBin = func() string { return wrapper }
+			t.Cleanup(func() { gitBin = original })
+			w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+			base, _, err := w.Create(context.Background(), repo, "moving", "s_pinned")
+			if err != nil || base != first || strings.TrimSpace(gitOut(t, w.Path("s_pinned"), "rev-parse", "HEAD")) != first {
+				t.Fatalf("checkout did not keep the resolved commit: %q, %v", base, err)
+			}
+			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "moving")); got != next {
+				t.Fatalf("source branch did not move: %s", got)
+			}
+		})
+	}
+}
+
+// A checkout stopped halfway (the session's start was stopped) leaves no
+// worktree and no branch behind, so the next start makes them afresh.
+func TestStoppedCheckoutLeavesNothing(t *testing.T) {
+	for name, cfg := range map[string][]string{
+		"direct":   nil,
+		"fallback": {"extensions.worktreeConfig", "true"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			repo := testRepo(t, cfg...)
+			os.WriteFile(filepath.Join(repo, ".gitattributes"), []byte("a.txt filter=slow\n"), 0o644)
+			gitOut(t, repo, "add", ".gitattributes")
+			gitOut(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "attrs")
+			gitOut(t, repo, "config", "filter.slow.smudge", "sleep 30; cat")
+			w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			defer cancel()
+			start := time.Now()
+			if _, _, err := w.Create(ctx, repo, "", "s_1"); err == nil {
+				t.Fatal("a stopped checkout succeeded")
+			}
+			if d := time.Since(start); d > 10*time.Second {
+				t.Fatalf("stopping took %s", d)
+			}
+			if w.Exists("s_1") {
+				t.Fatal("half checkout left behind")
+			}
+			if list := gitOut(t, repo, "worktree", "list", "--porcelain"); strings.Contains(list, "s_1") {
+				t.Fatalf("git still lists it:\n%s", list)
+			}
+			if out, err := exec.Command("git", "-C", repo, "rev-parse", "--verify", "-q", "hermesh/s_1").Output(); err == nil {
+				t.Fatalf("branch left behind at %s", out)
+			}
+			gitOut(t, repo, "config", "filter.slow.smudge", "cat")
+			if _, _, err := w.Create(context.Background(), repo, "", "s_1"); err != nil {
+				t.Fatalf("retry: %v", err)
+			}
+			if st := gitOut(t, w.Path("s_1"), "status", "--porcelain"); st != "" {
+				t.Fatalf("retried worktree not clean: %q", st)
+			}
+		})
+	}
+}
+
+// A git killed while it moves the session branch leaves the branch's lock
+// file; the failed start removes it, so the next start gets through.
+func TestKilledCheckoutLeavesNoLock(t *testing.T) {
+	repo := testRepo(t)
+	w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+	lock := filepath.Join(repo, ".git", "refs", "heads", "hermesh", "s_1.lock")
+	os.MkdirAll(filepath.Dir(lock), 0o755)
+	os.WriteFile(lock, nil, 0o644)
+	if _, _, err := w.Create(context.Background(), repo, "", "s_1"); err == nil || !strings.Contains(err.Error(), ".lock") {
+		t.Fatalf("create with a stale lock: %v", err)
+	}
+	if _, err := os.Stat(lock); !os.IsNotExist(err) {
+		t.Fatal("lock left behind")
+	}
+	if _, _, err := w.Create(context.Background(), repo, "", "s_1"); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+}
+
+func TestStoppedRestoreKeepsBranch(t *testing.T) {
+	for _, fallback := range []bool{false, true} {
+		t.Run(fmt.Sprint(fallback), func(t *testing.T) {
+			repo := testRepo(t)
+			if fallback {
+				gitOut(t, repo, "config", "extensions.worktreeConfig", "true")
+			}
+			w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+			ctx := context.Background()
+			if _, _, err := w.Create(ctx, repo, "", "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			os.WriteFile(filepath.Join(w.Path("s_1"), "previous.txt"), []byte("keep me\n"), 0o644)
+			head, _, err := w.Snapshot(ctx, repo, "s_1", 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Remove(ctx, repo, "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			os.WriteFile(filepath.Join(repo, ".git", "info", "attributes"), []byte("a.txt filter=slow\n"), 0o644)
+			gitOut(t, repo, "config", "filter.slow.smudge", "sleep 30; cat")
+			stop, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer cancel()
+			if err := w.Restore(stop, repo, "s_1"); err == nil {
+				t.Fatal("a stopped restore succeeded")
+			}
+			if w.Exists("s_1") {
+				t.Fatal("half checkout left behind")
+			}
+			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "hermesh/s_1")); got != head {
+				t.Fatalf("restore changed the branch: %s, want %s", got, head)
+			}
+			gitOut(t, repo, "config", "filter.slow.smudge", "cat")
+			if err := w.Restore(ctx, repo, "s_1"); err != nil {
+				t.Fatalf("retry restore: %v", err)
+			}
+			// As git checks it out: Windows' git (core.autocrlf) writes CRLF.
+			if b, err := os.ReadFile(filepath.Join(w.Path("s_1"), "previous.txt")); err != nil || strings.ReplaceAll(string(b), "\r\n", "\n") != "keep me\n" {
+				t.Fatalf("previous work: %q %v", b, err)
+			}
+		})
+	}
+}
+
+// An agent that switches branches (or detaches HEAD) in its worktree must
+// not take its work off the session branch, which is what is delivered.
+func TestSnapshotFollowsAgentBranchSwitch(t *testing.T) {
+	ctx := context.Background()
+	repo := testRepo(t)
+	w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+	if _, _, err := w.Create(ctx, repo, "", "s_1"); err != nil {
+		t.Fatal(err)
+	}
+	wt := w.Path("s_1")
+	gitOut(t, wt, "checkout", "-q", "-b", "feature")
+	os.WriteFile(filepath.Join(wt, "y.txt"), []byte("two\n"), 0o644)
+	head, stat, err := w.Snapshot(ctx, repo, "s_1", 1)
+	if err != nil || stat.FilesChanged != 1 {
+		t.Fatalf("snapshot: %v %v", stat, err)
+	}
+	if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "hermesh/s_1")); got != head {
+		t.Fatalf("branch at %s, snapshot %s", got, head)
+	}
+	if b := gitOut(t, repo, "show", head+":y.txt"); strings.TrimSpace(b) != "two" {
+		t.Fatalf("session branch lacks the agent's work: %q", b)
+	}
+	if st := gitOut(t, wt, "status", "--porcelain"); st != "" || strings.TrimSpace(gitOut(t, wt, "rev-parse", "--abbrev-ref", "HEAD")) != "feature" {
+		t.Fatalf("the agent's own checkout was disturbed: %q", st)
+	}
+	// Detached HEAD, then nothing new: the branch stays in step.
+	gitOut(t, wt, "checkout", "-q", "--detach")
+	os.WriteFile(filepath.Join(wt, "z.txt"), []byte("three\n"), 0o644)
+	head2, _, err := w.Snapshot(ctx, repo, "s_1", 2)
+	if err != nil || head2 == head || strings.TrimSpace(gitOut(t, repo, "show", head2+":z.txt")) != "three" {
+		t.Fatalf("detached snapshot: %s %v", head2, err)
+	}
+	head3, stat3, err := w.Snapshot(ctx, repo, "s_1", 3)
+	if err != nil || head3 != head2 || stat3.FilesChanged != 0 {
+		t.Fatalf("no-op snapshot: %s %v %v", head3, stat3, err)
+	}
+}
+
+func TestProjectBase(t *testing.T) {
+	repo := testRepo(t)
+	ctx := context.Background()
+	git := func(args ...string) string {
+		out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if b, want := projectBase(ctx, Project{Path: repo, DefaultBaseRef: "HEAD"}), git("symbolic-ref", "--short", "HEAD"); b != want {
+		t.Fatalf("HEAD resolves to %q, want the branch %q", b, want)
+	}
+	if b := projectBase(ctx, Project{Path: repo, DefaultBaseRef: "v1.2"}); b != "v1.2" {
+		t.Fatalf("a named ref is kept: %q", b)
+	}
+	git("checkout", "-q", "--detach")
+	if b, want := projectBase(ctx, Project{Path: repo, DefaultBaseRef: "HEAD"}), git("rev-parse", "--short", "HEAD"); b != want {
+		t.Fatalf("detached HEAD resolves to %q, want the commit %q", b, want)
+	}
+	if b := projectBase(ctx, Project{Path: repo, Workspace: identityv1.Workspace_WORKSPACE_IN_PLACE}); b != "" {
+		t.Fatalf("an in-place project has no base: %q", b)
+	}
+}
+
+// TestCopyIncluded: a new or restored worktree gets the ignored files
+// .worktreeinclude names, and only those.
+func TestCopyIncluded(t *testing.T) {
+	for name, include := range map[string]string{
+		"anywhere": "# local settings\nlocal.cfg\n.env\nsecrets/*\nnotignored.txt\n!secrets/skip\nlink\n",
+		"paths":    "/local.cfg\n/.env\nsub/.env\nsecrets/*\n/notignored.txt\n!secrets/skip\n/link\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := testRepo(t)
+			write := func(rel, s string, mode os.FileMode) {
+				p := filepath.Join(repo, filepath.FromSlash(rel))
+				os.MkdirAll(filepath.Dir(p), 0o755)
+				if err := os.WriteFile(p, []byte(s), mode); err != nil {
+					t.Fatal(err)
+				}
+			}
+			write(".gitignore", "*.cfg\n.env\nsecrets/\nbuild/\nlink\n", 0o644)
+			gitOut(t, repo, "add", ".gitignore")
+			gitOut(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "ignore")
+			write(".worktreeinclude", include, 0o644)
+			write("local.cfg", "team = X\n", 0o600)
+			write(".env", "A=1\n", 0o644)
+			write("sub/.env", "B=2\n", 0o644)
+			write("secrets/key", "k\n", 0o644)
+			write("secrets/nested/key2", "k2\n", 0o644)
+			write("secrets/skip", "s\n", 0o644)
+			write("build/out", "o\n", 0o644)      // ignored, not named
+			write("notignored.txt", "n\n", 0o644) // named, not ignored
+			symlinks := runtime.GOOS != "windows"
+			if symlinks {
+				os.Symlink("local.cfg", filepath.Join(repo, "link"))
+			}
+
+			w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+			if _, _, err := w.Create(ctx, repo, "", "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.CopyIncluded(ctx, repo, "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			wt := w.Path("s_1")
+			check := func() {
+				t.Helper()
+				for rel, want := range map[string]string{"local.cfg": "team = X\n", ".env": "A=1\n", "sub/.env": "B=2\n",
+					"secrets/key": "k\n", "secrets/nested/key2": "k2\n"} {
+					if b, err := os.ReadFile(filepath.Join(wt, filepath.FromSlash(rel))); err != nil || string(b) != want {
+						t.Errorf("%s: %q %v", rel, b, err)
+					}
+				}
+				for _, rel := range []string{"build/out", "notignored.txt", "secrets/skip", ".worktreeinclude"} {
+					if _, err := os.Lstat(filepath.Join(wt, filepath.FromSlash(rel))); !os.IsNotExist(err) {
+						t.Errorf("%s copied", rel)
+					}
+				}
+				if symlinks {
+					if to, err := os.Readlink(filepath.Join(wt, "link")); err != nil || to != "local.cfg" {
+						t.Errorf("link: %q %v", to, err)
+					}
+				}
+			}
+			check()
+			if st, _ := os.Stat(filepath.Join(wt, "local.cfg")); runtime.GOOS != "windows" && st.Mode().Perm() != 0o600 {
+				t.Errorf("mode %v", st.Mode())
+			}
+			// ignored, so the turn's snapshot leaves them out
+			if st := gitOut(t, wt, "status", "--porcelain"); st != "" {
+				t.Fatalf("copied files show in status: %q", st)
+			}
+			// the session's own edits stay
+			os.WriteFile(filepath.Join(wt, "local.cfg"), []byte("mine\n"), 0o600)
+			if err := w.CopyIncluded(ctx, repo, "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			if b, _ := os.ReadFile(filepath.Join(wt, "local.cfg")); string(b) != "mine\n" {
+				t.Fatalf("overwritten: %q", b)
+			}
+			// restored after archiving
+			if err := w.Remove(ctx, repo, "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Restore(ctx, repo, "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.CopyIncluded(ctx, repo, "s_1"); err != nil {
+				t.Fatal(err)
+			}
+			check()
+		})
+	}
+	// no .worktreeinclude: nothing to do
+	repo := testRepo(t)
+	os.WriteFile(filepath.Join(repo, ".env"), []byte("A=1\n"), 0o644)
+	w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
+	if _, _, err := w.Create(context.Background(), repo, "", "s_1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.CopyIncluded(context.Background(), repo, "s_1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(w.Path("s_1"), ".env")); !os.IsNotExist(err) {
+		t.Fatal("copied without .worktreeinclude")
+	}
+}
+
+func TestIncludePathspecs(t *testing.T) {
+	for in, want := range map[string]string{
+		"apps/a/Signing.local.xcconfig\n":     ":(literal)apps/a/Signing.local.xcconfig",
+		"/config/\n# note\n!config/x\n":       ":(literal)config",
+		"apps/*/local.json\nsecrets/**/key\n": ":(literal)apps :(literal)secrets",
+		".env\napps/a/x\n":                    "",
+		"config/\n":                           "",
+		"**/local.json\n":                     "",
+		"\n":                                  "",
+	} {
+		if got := strings.Join(includePathspecs(in), " "); got != want {
+			t.Errorf("%q: %q, want %q", in, got, want)
+		}
+	}
+}

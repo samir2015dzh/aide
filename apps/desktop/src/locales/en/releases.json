@@ -1,0 +1,211 @@
+{
+  "0.2.3": {
+    "improvements": [
+      "Take over DSH sessions: a session you opened in DSH Desktop can now be taken over right in Hermesh — send it messages, queue one for the next turn, or stop it. Takeover is a per-session switch, off by default.",
+      "Status, redone: a session's state and its connection are shown separately. When a machine drops for more than 30 seconds, its sessions are marked Lost, with the last known state and how long ago it was, instead of pretending to still run; a session that runs with nothing new for a while is marked too.",
+      "The interface as the design settled it: desktop and Android both get the new colours and layout, and on Android Needs you is now the second tab.",
+      "The relay's hosted mode is gone altogether: a server belongs to its owner alone, claimed with a code, and no client has a default server — the address is always typed in.",
+      "The tray's Needs-you badge on Windows is now orange, the same orange as Needs you in the app, so it reads as a state, not as part of the mark."
+    ],
+    "fixes": [
+      "Windows: the tray icon's translucent edge no longer glows light on a dark taskbar (pixels are now written premultiplied, in BGRA)."
+    ]
+  },
+  "0.2.2": {
+    "improvements": [
+      "A new sidebar: Her and the overview at the top, then every task, grouped by status by default, with grouping, sort and what to show in View Options; one row per task, with the agent’s logo, its title and one status mark. Collapsed, the rail shows the agents at work. Sessions are now called tasks, and Work is now Overview; machines and connected agents are managed in Settings (on iPhone, in Account and Devices).",
+      "Sign in with an account and password: a relay's owner can turn on password sign-in, so a new device no longer needs a separate approval each time. Devices signed in with the password stay signed in until the password changes or they are revoked.",
+      "Tasks you start in DSH itself now appear in Hermesh: sessions opened in DSH Desktop, not only the ones Hermesh dispatches, show in the task list with their status and latest activity.",
+      "Her can use your own model providers: add a custom OpenAI-compatible gateway in Settings and Her's sessions run through it.",
+      "A connection wizard in Settings walks through connecting each kind of agent — DSH, Claude Desktop, Codex and custom agents — checking each step as it goes.",
+      "Hermesh now connects only to a server you name: there is no built-in default server and no official sign-in. On first run, type your own relay's address. Machines already paired are unaffected."
+    ],
+    "fixes": [
+      "Windows: fixed a handle leak when Her starts Chrome."
+    ]
+  },
+  "0.2.1": {
+    "improvements": [
+      "Releases now come from this fork's own pipeline: the Windows x64 build is signed and published here, and the app updates itself from here."
+    ],
+    "fixes": [
+      "Windows: fixed a race that could leave Her running after shutdown."
+    ]
+  },
+  "0.2.0": {
+    "improvements": [
+      "Windows: Hermesh now works with Claude Desktop. Sessions started from Hermesh also appear in Claude Desktop's Code sidebar, and the Windows desktop CLI path is fully supported.",
+      "Session controls match Agents Anywhere: model and permission preset are per-session choices for both DSH and Claude sessions.",
+      "Android: notifications arrive over Hermesh's own persistent connection (a foreground service), with no third-party push service involved.",
+      "Client grants for your own machines no longer expire by default."
+    ],
+    "fixes": [
+      "Windows signer can unlock with your passphrase instead of a key-file prompt each time."
+    ]
+  },
+  "0.1.5": {
+    "improvements": [
+      "Her is now built into Hermesh on Mac and iPhone. Choose a Mac or Linux machine as her environment, connect a model, and keep talking even when that machine is temporarily offline.",
+      "Her can start and follow coding sessions on your computers, work with a team of agents, and show their work in Progress. The Mac and iPhone layouts keep Her, the team and their work together.",
+      "Connect services from Her’s conversation with sign-in cards, or manage them from her connectors page. Her can also work in your own Chrome through the bundled extension, with tab groups named for the task.",
+      "Her remembers what you tell her across conversations. Her settings show that memory and let you clear it; turning Her off or removing a machine can also erase her saved data.",
+      "iPhone: Remote Desktop lets you operate a Mac or Linux desktop, with direct touch or trackpad controls and clipboard sharing. Connections recover when the network changes and try to use a direct path.",
+      "iPhone: Her’s scheduled tasks have their own page. Conversations support math, Mermaid diagrams and opening PDF or Markdown files; important actions now have haptic feedback.",
+      "Mac: long conversations have a new reading layout, PDF and Markdown files open over the window, and narrower windows adapt the sidebar and details pane."
+    ],
+    "fixes": [
+      "Dead connections are detected sooner, including after sleep. Her reconnects interrupted conversation streams, and notifications wait for the connection to return instead of being lost.",
+      "Coding sessions interrupted by a rate limit retry automatically in the same conversation and explain when the retries are exhausted.",
+      "Removing an account disconnects its agents immediately. Renaming a machine closes connections made under its old name, and names without letters or digits are rejected.",
+      "Devices explain when a Mac’s background service is older than the app and recover once it is updated.",
+      "Erasing Her’s data checks that the data directory belongs to her, protecting personal files kept in a shared directory.",
+      "Windows: choosing a connection path no longer skips relay servers that respond faster than one clock tick."
+    ]
+  },
+  "0.1.4": {
+    "improvements": [
+      "The session list can be grouped by project, on the Mac and the iPhone: choose By Project from the view menu’s Group.",
+      "iPhone: Try It First on the welcome page opens a simulated workspace, so you can look around the app before signing in. Nothing in it reaches a real account or machine.",
+      "iPhone: All Sessions now looks like the menu’s lists and the Mac’s sidebar, with each session’s state, who started it, its coding agent, its project and when.",
+      "iPhone: choosing coding agents for an agent now works as on the Mac. It lists the ones ready on your machines and has a switch for all of them, including ones installed later.",
+      "A new grant now covers every coding agent, including ones installed later, on the iPhone, the Mac and Windows. You can still narrow it.",
+      "`agent list` shows the models each coding agent offers, the reasoning efforts each model takes and the defaults. `session start` takes `--effort`, and a model or effort the agent doesn’t offer is refused before the session starts, naming the ones it does.",
+      "Wake on New Messages now appears on an agent’s page once the bot has set it up and sent you its link, on the Mac, Windows and iPhone. On your own server the link opens in the desktop app.",
+      "Windows: the DSH desktop app’s own `dsh` now runs as a coding agent, and coding agents installed through Volta are found."
+    ],
+    "fixes": [
+      "Mac: when the Mac was busy, sessions could take minutes to start and then show as crashed, because the machine’s background service ran at a very low priority. It now runs at a normal program’s priority, and the app applies this by itself after updating.",
+      "New ChatGPT connections to the MCP gateway failed after a change on ChatGPT’s side. They work again.",
+      "A session interrupted while queued or starting no longer shows as failed. It now says it was interrupted and who stopped it.",
+      "iPhone: giving an agent all coding agents no longer narrows the grant to today’s list, and a choice made in Change What It Can Use is no longer undone when you come back from the picker."
+    ]
+  },
+  "0.1.3": {
+    "improvements": [
+      "When a coding agent stalls or a turn runs past its time limit, the failure now says what it was doing: which programs it had running, such as an MCP server that was starting (on macOS and Linux), and the last lines it printed. The machine’s log also records each agent start and each failed turn."
+    ],
+    "fixes": [
+      "A session whose base branch or tag isn’t on the machine yet, such as a tag your CI just pushed, now fetches it from the project’s remote instead of failing. If no remote has it, the failure says which remotes were checked or why fetching failed.",
+      "When a machine runs a newer version than the `hermesh` command or your own server’s MCP, a failure or status they don’t know yet shows as `unknown` instead of a bare number."
+    ]
+  },
+  "0.1.2": {
+    "improvements": [
+      "Use Google Antigravity through its official ACP server: sign in with `hermesh agent login antigravity`, select it for projects and grants, and run multi-turn sessions with tool approvals and resume.",
+      "Installing on Linux asks where Hermesh keeps its data (sessions, logs and worktrees) and shows the free space. On a Synology NAS it offers the storage volumes and recommends the one with the most room.",
+      "On the iPhone, the welcome page shows what Hermesh is for: agents in the cloud and on your computers handing work to each other. The two digits to type on a machine you just approved show in a card, like the other cards.",
+      "Clearer wording across the Mac app, the iPhone app and the commands, in English and Chinese."
+    ],
+    "fixes": [
+      "A PC that is a trusted device now shows the two digits to type on an iPhone or machine it approves, so the join can finish.",
+      "On older Linux systems such as Synology DSM 7 (systemd 219), a newly paired machine no longer stays offline. Coding agents get the variables from your `~/.profile` (such as `CLAUDE_CONFIG_DIR` or a proxy), and pairing says when Hermesh is not running.",
+      "A session whose base branch or tag isn’t in the project’s local repository stops at once and says how to fix it; send another message to retry."
+    ]
+  },
+  "0.1.1": {
+    "improvements": [
+      "Hermesh on Windows 11: install the app with its Setup file, approve with Windows Hello, and add a PC as a machine from the app or with one PowerShell command. The app and the PC’s machine update themselves.",
+      "Machines keep themselves up to date: a new release installs once no session is working. `hermeshd update` updates one now, `hermeshd update auto off` turns it off. Machines installed before this version need the install command once more.",
+      "On the iPhone, the overview covers today, 7 days or 30 days: sessions that ran, turns and tokens, which agent sent work to which coding agent, and each coding agent’s days. Usage on the Mac and the iPhone counts from the same numbers.",
+      "On the iPhone, the first run asks one thing: first time, or already using Hermesh on another device. The first time, it explains your management key, turns on notifications, then guides you through your computer, its coding agents, connecting an agent and its first task.",
+      "Sessions on the iPhone read as they do on the Mac: formatted replies, coloured code, tool calls folded into one line; a conversation opens at its last message and follows it as it grows. Session info on both shows the model and reasoning effort.",
+      "The Mac and the iPhone tell you when an agent starts a session: its title, who started it and where. Turn it off under New sessions in each one’s notification settings.",
+      "Add Machine asks for the system first (Mac, Windows or Linux), then the app or a terminal command. On the iPhone, Add a Project browses the machine’s folders. Requests on the Mac wait as cards at the bottom right instead of covering your work.",
+      "Give each agent a name and an icon: an app’s logo, its initial, or a picture of your own.",
+      "Run your own server with one `docker run` from Docker Hub (hermeshai/hermesh-relay), on ARM servers too; without a domain, by its IP address over plain HTTP. Its MCP address for Claude and ChatGPT has a key in it, so only you can connect apps.",
+      "A session’s worktree brings the files kept out of git that the repository’s .worktreeinclude names, such as .env. The Linux install command installs as root unless you name another user."
+    ],
+    "fixes": [
+      "The server’s Docker image starts: it stopped at once with “unable to open database file”.",
+      "On your own server, apps someone connected without your approval can’t keep yours out any more, and they end after a day unused.",
+      "A slow session start (a busy computer, a large repository) is no longer stopped halfway, and a failed one no longer leaves a worktree that blocks the session.",
+      "A session’s worktree that went missing is restored from its branch, and its changes since the start survive a restart.",
+      "A conversation whose machine is offline says why instead of a blank page, and shows what was read before.",
+      "On the iPhone, coming back to the app no longer leaves it “Connecting to Hermesh…”, and Get Started, once done, stays away after a reconnect.",
+      "A Mac that joins your Hermesh only sets itself up: its first run ends with its coding agents."
+    ]
+  },
+  "0.1.1-beta.5": {
+    "improvements": [
+      "Erase Everything: in Settings → Account & Devices on the Mac, or the account on the iPhone, erase Hermesh on all your devices at once, with one Touch ID or Face ID. It first lists what it erases and what stays; worktrees with uncommitted changes are kept. A device that was offline offers a reset when next opened. Without the app: `hermeshd device erase-everything`; `hermeshd erase` erases one server.",
+      "No Mac needed: set up Hermesh with the iPhone app alone. Get Started leads you through a machine, its coding agent, a project and your agent’s first task.",
+      "Add a Linux server with one command and scan the code it shows. As root it asks which user to install for, and Hermesh starts with the server; `hermeshd doctor` says what to fix.",
+      "On the iPhone, check a machine’s coding agents again, test one, pick a project from the repositories the machine found, and see on the overview which agent sent work to which coding agent today.",
+      "A Linux computer that runs no coding agents can approve too, with its key sealed by a passphrase: install it with `sh -s -- --device`.",
+      "Waking a bot on new messages takes three steps and no name: copy a message that has the bot make its routine, paste the routine’s URL and key, and the first wake reads what already waits. One setting wakes the bot for all its messages. An agent’s page shows when Hermesh last woke it, whether it read everything, and its last few wakes.",
+      "Grok Bot’s connection shows as Cursor, with its logo; Claude and ChatGPT show by name. The Access list says who used each agent last, and when.",
+      "Rename an agent from its page in Settings → Access (Mac and iPhone): what it may use and until when stay. Named after a known app, such as Grok Bot, it shows that app’s icon.",
+      "Bots tell you about the work in plain words, without session IDs.",
+      "In the Mac app, code in agents’ replies is coloured when it names its language, shell commands in a session read as code, and the sidebar is calmer."
+    ],
+    "fixes": [
+      "Right after an update, an agent’s page shows Wake on New Messages again once Hermesh has restarted in the background.",
+      "Archiving a session frees its temporary files (test runs’ leftovers could take gigabytes).",
+      "On a Linux server, `hermeshd doctor` and `hermeshd status` work while Hermesh runs in the background.",
+      "On the iPhone, “Connecting to Hermesh…” and “Updating from …” show in the title bar, not over the page.",
+      "Agents connected through hermesh.io answer faster: their connection to your machine is kept between calls."
+    ]
+  },
+  "0.1.1-beta.4": {
+    "improvements": [
+      "Agents hear back from the sessions they started: when a session finishes or asks something, a message waits for the agent until it reads it. Agents can also send each other messages.",
+      "Several bots on one agent connection (Grok bots, say) each get their own messages, by name.",
+      "An agent or one of its bots can be woken when messages wait for it: in Settings → Access, open the agent and choose Wake on New Messages to set up its webhook, such as a Grok routine. Hermesh checks it first, and keeps the key itself.",
+      "When a Mac can’t run a coding agent, its page says why (not installed, out of processes, low disk), and Copy Diagnostics gives the details as text.",
+      "On the session page, tool details are folded and the conversation reads more calmly; a running session’s title shimmers in the sidebar.",
+      "A long tool output opens at once."
+    ],
+    "fixes": [
+      "Codex and Claude Code installed with npm are found again.",
+      "The account menu is opaque."
+    ]
+  },
+  "0.1.1-beta.3": {
+    "improvements": [
+      "A Mac that joined as a machine only manages what is its own in Settings: its coding agents with their models and projects, its name, pausing, and its account.",
+      "Its overview shows which agents may start sessions on this Mac, including ones that haven’t come yet; click one to see what it may do here.",
+      "The overview no longer suggests a first message to send."
+    ],
+    "fixes": [
+      "Session clocks on the overview and in the sidebar tick together."
+    ]
+  },
+  "0.1.1-beta.2": {
+    "improvements": [
+      "Choose the model, reasoning effort and speed Claude Code and Codex use for Hermesh sessions, without changing their own settings.",
+      "Each coding agent has its own page, in Settings and during setup, with its model and its projects.",
+      "Watch an agent's reply as it is written.",
+      "Conversations read more easily: a calmer column, GitHub-style Markdown, quieter tool steps, and a card with the session's details.",
+      "Organize the session list from a view menu, collapse its groups, and rename or delete a session from its row.",
+      "Choose System, Light or Dark appearance in Settings.",
+      "Sign out and back in, with each account kept separately on this Mac.",
+      "Lists open faster: Hermesh answers from its own up-to-date copy."
+    ],
+    "fixes": [
+      "A question waiting for your answer notifies you again when Hermesh starts.",
+      "The menu bar shows an update only once it is ready to install.",
+      "The search palette takes the keyboard as soon as it opens.",
+      "The pointer behaves as on the rest of macOS: a hand only on links."
+    ]
+  },
+  "0.1.1-beta.1": {
+    "improvements": [
+      "Find updates in the Hermesh menu and a quiet sidebar reminder.",
+      "Read release highlights in the app, and choose when to download or restart.",
+      "Keep your selected session and unfinished answers when Hermesh restarts."
+    ],
+    "fixes": [
+      "Update checks recover after sleep or a lost connection without repeated prompts.",
+      "Restarting for an update waits while an approval is in progress."
+    ]
+  },
+  "0.1.0-rc7": {
+    "improvements": [
+      "Install Hermesh from a signed disk image with a shortcut to Applications.",
+      "The app helps move itself to Applications before setting up background services."
+    ],
+    "fixes": [
+      "Update failures explain how to recover, with technical details available on demand."
+    ]
+  }
+}

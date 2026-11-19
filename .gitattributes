@@ -1,0 +1,2 @@
+# Golden files compared byte for byte: as committed on every checkout (Windows runners convert to CRLF otherwise).
+internal/provider/claude/testdata/*.json -text

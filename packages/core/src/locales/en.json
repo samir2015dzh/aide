@@ -1,0 +1,193 @@
+{
+  "bucket": {
+    "attention": "Needs You",
+    "active": "In Progress",
+    "done": "Done",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "week": "Earlier This Week",
+    "earlier": "Older",
+    "archived": "Archived"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}} hr ago",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "minutesLeft": "{{count}} min left"
+  },
+  "status": {
+    "queued": "Queued",
+    "preparing": "Preparing",
+    "running": "Running",
+    "idle": "Idle",
+    "archived": "Archived",
+    "crashed": "Crashed (send a message to continue)",
+    "waitingInput": "Waiting for you",
+    "unknown": "State unknown"
+  },
+  "phase": {
+    "preparing": "Preparing worktree…",
+    "thinking": "Thinking",
+    "editing": "Editing {{target}}",
+    "running": "Running {{target}}"
+  },
+  "failure": {
+    "auth": "Not signed in",
+    "quota": "Out of quota",
+    "rateLimit": "Rate limited",
+    "providerError": "Model service failed",
+    "network": "Network error",
+    "contextOverflow": "Context full",
+    "modelUnavailable": "Model unavailable",
+    "invalidRequest": "Request rejected",
+    "refused": "Model refused",
+    "limitReached": "Step limit reached",
+    "resumeRejected": "Can’t resume task",
+    "agentCrashed": "Agent process quit unexpectedly",
+    "stalled": "No progress for a long time",
+    "timeout": "Time limit exceeded",
+    "startFailed": "Can’t start agent",
+    "baseRefUnavailable": "Base ref not found",
+    "other": "Failed"
+  },
+  "advice": {
+    "auth": "Run the matching CLI once on that machine as the same user to sign in.",
+    "quota": "Try again when the quota resets, or switch agents or models.",
+    "transient": "Temporary issue. Try sending the message again in a moment.",
+    "newContext": "Send another message to continue in a fresh context. Your worktree changes are preserved.",
+    "modelUnavailable": "Start a new task with another model.",
+    "limitReached": "Send “continue” to keep going.",
+    "resume": "Send another message to resume the task.",
+    "startFailed": "Open that machine’s page in Aide Settings to check why it can’t start agents.",
+    "baseRefUnavailable": "Check the base ref name, and that the branch or tag is on the project’s remote (the machine fetches it from there). Then send another message in this task to retry the original request."
+  },
+  "headline": {
+    "auth": "{{agent}} isn’t signed in",
+    "quota": "{{agent}} is out of quota",
+    "rateLimit": "{{agent}} was rate limited",
+    "providerError": "{{agent}}’s model service failed",
+    "network": "{{agent}} lost network connection",
+    "contextOverflow": "{{agent}}’s context is full",
+    "modelUnavailable": "This model isn’t available to {{agent}}",
+    "invalidRequest": "{{agent}}’s request was rejected",
+    "refused": "The model refused this task",
+    "limitReached": "{{agent}} reached its step limit",
+    "resumeRejected": "{{agent}} couldn’t resume the conversation",
+    "agentCrashed": "{{agent}} quit unexpectedly",
+    "stalled": "{{agent}} made no progress for a long time",
+    "timeout": "This turn ran past its time limit",
+    "startFailed": "{{agent}} couldn’t start",
+    "baseRefUnavailable": "The worktree’s base ref was not found",
+    "other": "{{agent}} ran into an error"
+  },
+  "notice": {
+    "startedBody": "Started by {{grant}} · {{project}} · {{agent}}",
+    "questionTitle": "{{grant}} is waiting for you",
+    "questionBody": "{{title}}: {{text}}",
+    "failedTitle": "“{{title}}” failed: {{failure}}",
+    "failedBody": "{{grant}} · {{agent}} · {{project}}. {{advice}}",
+    "turnDoneTitle": "“{{title}}” finished turn {{turn}}",
+    "noChanges": "No files changed",
+    "changes_one": "{{count}} file +{{insertions}} −{{deletions}}",
+    "changes_other": "{{count}} files +{{insertions}} −{{deletions}}",
+    "herName": "Her",
+    "herTitle": "{{name}} · {{environment}}",
+    "herApproval": "Waiting for your approval: {{text}}",
+    "herQuestion": "Waiting for your answer: {{text}}"
+  },
+  "pairing": {
+    "machine": "Machine “{{label}}” wants to join",
+    "device": "“{{label}}” wants to be your trusted device",
+    "client": "“{{label}}” wants to connect",
+    "body": "Verification code {{code}}. Click to verify and approve, or deny if you don’t recognize it."
+  },
+  "resolution": {
+    "answeredByYou": "You answered: {{answers}}",
+    "answeredBy": "{{name}} answered: {{answers}}",
+    "declinedByYou": "You skipped the question",
+    "declinedBy": "{{name}} skipped the question",
+    "timedOut": "No response received; the agent continued on its own",
+    "withdrawn": "Question withdrawn",
+    "separator": "; "
+  },
+  "steps": {
+    "read": {
+      "done": "Read",
+      "doing": "Reading",
+      "count_one": "Read {{count}} file",
+      "count_other": "Read {{count}} files"
+    },
+    "search": {
+      "done": "Searched",
+      "doing": "Searching",
+      "count_one": "Searched {{count}} time",
+      "count_other": "Searched {{count}} times"
+    },
+    "edit": {
+      "done": "Edited",
+      "doing": "Editing",
+      "count_one": "Edited {{count}} file",
+      "count_other": "Edited {{count}} files"
+    },
+    "shell": {
+      "done": "Ran",
+      "doing": "Running",
+      "count_one": "Ran {{count}} command",
+      "count_other": "Ran {{count}} commands"
+    },
+    "network": {
+      "done": "Visited",
+      "doing": "Visiting",
+      "count_one": "Visited {{count}} page",
+      "count_other": "Visited {{count}} pages"
+    },
+    "mcp": {
+      "done": "Called",
+      "doing": "Calling",
+      "count_one": "Called {{count}} tool",
+      "count_other": "Called {{count}} tools"
+    },
+    "other": {
+      "done": "Used",
+      "doing": "Using",
+      "count_one": "Used {{count}} tool",
+      "count_other": "Used {{count}} tools"
+    },
+    "deny": {
+      "done": "Denied",
+      "count_one": "Denied {{count}} action",
+      "count_other": "Denied {{count}} actions"
+    },
+    "separator": " · "
+  },
+  "state": {
+    "queued": "Queued",
+    "running": "Running",
+    "waitingInput": "Waiting for you",
+    "waitingApproval": "Waiting for approval",
+    "doneUnseen": "Done, not opened",
+    "done": "Done",
+    "failed": "Failed",
+    "interrupted": "Interrupted",
+    "archived": "Archived",
+    "unknown": "State unknown"
+  },
+  "link": {
+    "stalled": "{{state}} · quiet {{ago}}",
+    "checking": "{{state}}? · machine not answering",
+    "lost": "Lost · last known {{state}}",
+    "lostFor": "Lost · last known {{state}} · {{ago}} ago",
+    "syncing": "{{state}} · catching up",
+    "lostSpan": "Out of touch {{from}}–{{to}}",
+    "lostSpanOpen": "Out of touch since {{from}}",
+    "quiet": "quiet {{ago}}"
+  },
+  "ago": {
+    "seconds": "{{count}} s",
+    "minutes": "{{count}} min",
+    "hours": "{{count}} h",
+    "days": "{{count}} d"
+  }
+}

@@ -1,0 +1,498 @@
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { CustomAgent } from "@hermesh/proto/machine";
+import type { Machine } from "@hermesh/proto/local";
+import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@hermesh/core";
+import { AgentTile, Mark } from "@hermesh/ui";
+import { projectsFor, whyBroken } from "./AgentList";
+import { local } from "./api";
+import { agentOf, detect, fixes, formOf, formProblem, lines, looksSecret, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
+import { Icon } from "./icons";
+import { needsUpdate } from "./skew";
+import { errorText, useStore } from "./store";
+import "./connectGuide.css";
+
+// The Connect guide (the first run's Connect step, and Settings › Connect):
+// a separate line for each coding agent the owner connects (DeepSeek
+// Harness, Claude, Codex) and one for any other ACP agent, each with what
+// must be on the computer first, what to click here, whether the machine
+// detects it now (and what to check when it doesn't), a test that runs it,
+// and where its tasks show. Assistants (the agents that give tasks) connect
+// on their own tab, which the page holding the guide provides.
+
+export type Tab = Line | "assistants";
+
+/** The tabs: each line, then the assistants. */
+export function LinePicker({ tab, set }: { tab: Tab; set: (t: Tab) => void }) {
+  const { t } = useTranslation("connect");
+  return (
+    <div className="seg cg-tabs" role="tablist" aria-label={t("title")}>
+      {[...lines, "assistants" as const].map((x) => (
+        <button key={x} type="button" role="tab" className={x === tab ? "on" : ""} aria-selected={x === tab} onClick={() => set(x)}>
+          {x !== "custom" && x !== "assistants" && <AgentTile agent={x} size={16} />}
+          {t(`lines.${x}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Where the guide is: what its buttons that open things in the main window do. */
+export type Place = {
+  /** Opens a task the guide started. */
+  openSession: (id: string) => void;
+  /** Opens DeepSeek Harness's own sessions. */
+  openDSH: () => void;
+};
+
+/** One line's guide, on the computer chosen (this one first). */
+export function ConnectGuide({ line, place }: { line: Line; place: Place }) {
+  const { t } = useTranslation("connect");
+  const st = useStore();
+  const online = st.machines.filter((m) => m.online || m.local);
+  const [chosen, setChosen] = useState<string>();
+  const m = online.find((x) => x.machineId === chosen) ?? online.find((x) => x.local) ?? online[0];
+  if (!m) return <p className="cg-note">{t("noMachine")}</p>;
+  return (
+    <div className="cg" key={`${line}:${m.machineId}`}>
+      <p className="cg-intro">{t(`${line}.intro`)}</p>
+      {online.length > 1 && (
+        <div className="cg-machine">
+          <span>{t("machine")}</span>
+          <div className="seg" role="group" aria-label={t("machine")}>
+            {online.map((x) => (
+              <button type="button" key={x.machineId} className={x.machineId === m.machineId ? "on" : ""} aria-pressed={x.machineId === m.machineId} onClick={() => setChosen(x.machineId)}>
+                {x.machineName}
+              </button>
+            ))}
+          </div>
+          <span className="cg-note">{t("machineNote")}</span>
+        </div>
+      )}
+      <Steps title={t("before")} items={needs(line).map((k) => t(k as never))} />
+      <Steps title={t("steps")} items={[1, 2, 3, 4, 5].map((n) => t(`${line}.step${n}` as never))} ordered />
+      {line === "custom" ? <Customs m={m} place={place} /> : <Agent m={m} agent={line} line={line} place={place} />}
+    </div>
+  );
+}
+
+const needs = (line: Line) => (line === "codex" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`]);
+
+function Steps({ title, items, ordered }: { title: string; items: ReactNode[]; ordered?: boolean }) {
+  const List = ordered ? "ol" : "ul";
+  return (
+    <section className="cg-sec" aria-label={title}>
+      <div className="fhead">{title}</div>
+      <List className="cg-list">
+        {items.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+      </List>
+    </section>
+  );
+}
+
+/** Checks the machine's agents again: this computer's in the background, another's end to end. */
+const recheck = (m: Machine) => local.checkAgents(m.local ? {} : { machineId: m.machineId });
+
+/** An agent's status, what to try, the test, and where its tasks show. */
+function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Line; place: Place }) {
+  const { t } = useTranslation("connect");
+  const tf = useTranslation("firstrun").t;
+  const a = m.status?.agents.find((x) => x.name === agent);
+  const d = detect(a, m.online || m.local, !!m.status?.agents.length);
+  const [checking, setChecking] = useState(false);
+  const check = useCallback(async () => {
+    setChecking(true);
+    await recheck(m).catch(() => {}); // the next status shows what came of it
+    setChecking(false);
+  }, [m.machineId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Opening the line checks the machine's agents: what it says is now.
+  useEffect(() => void check(), [check]);
+  const v = { machine: m.machineName, agent: codingAgentTitle(agent), app: a?.detail.replace(/\.app$/, "") ?? "", version: a?.version ?? "" };
+  const windows = (m.status?.platform ?? "").startsWith("windows");
+  const login = agent === "claude" ? "" : agent === "codex" ? "login" : undefined;
+  const state = d === "ready" && a?.version ? t("state.readyVersion", v) : t(`state.${d}`, v);
+  return (
+    <>
+      <section className="cg-sec" aria-label={t("status")}>
+        <div className="fhead">{t("status")}</div>
+        <div className={`cg-status ${d}`} role="status">
+          {d === "checking" ? <Mark size={12} variant="seq" /> : <i />}
+          <span>{state}</span>
+          {d !== "offline" && (
+            <button className="btn sm" disabled={checking || d === "checking"} onClick={check}>
+              {checking ? t("checking") : t("checkAgain")}
+            </button>
+          )}
+        </div>
+        {fixes(line, d).length > 0 && (
+          <div className="cg-fix">
+            <span>{t("tryThis")}</span>
+            <ul className="cg-list">
+              {fixes(line, d).map((k) => (
+                <li key={k}>
+                  {t(k as never, { ...v, reason: a ? whyBroken(a, tf) : "" })}
+                  {d === "signIn" && login !== undefined && a?.binary && k.endsWith("fixSignIn") && <CopyLine text={terminalCommand(a.binary, login, windows)} />}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+      <Verify m={m} agent={agent} line={line} ready={d === "ready"} place={place} />
+      <Steps
+        title={t("where")}
+        items={[
+          ...(line === "custom" ? [] : [t(`${line}.where1`)]),
+          ...(line === "deepseek" ? [t("deepseek.where2"), t("deepseek.where3")] : []),
+          ...(line === "claude" ? [t("claude.where2"), t("claude.where3")] : []),
+        ]}
+      />
+      {line === "deepseek" && (
+        <div className="cg-acts">
+          <button className="btn" onClick={place.openDSH}>
+            <Icon name="terminal" />
+            {t("deepseek.openSessions")}
+          </button>
+        </div>
+      )}
+      {line === "claude" && <p className="cg-note">{t("claude.assistant")}</p>}
+    </>
+  );
+}
+
+/** A command to type, and a button that copies it. */
+function CopyLine({ text }: { text: string }) {
+  const { t } = useTranslation("firstrun");
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="cg-copy">
+      <code className="am-chip sel-text">{text}</code>
+      <button className="btn sm" onClick={() => navigator.clipboard.writeText(text).then(() => setCopied(true))}>
+        <Icon name={copied ? "check" : "copy"} />
+        {copied ? t("copied") : t("copy")}
+      </button>
+    </span>
+  );
+}
+
+/**
+ * The test: the agent answers one short question (TestMachineAgent), then a
+ * real task in one of its projects, opened like any task. Without a project
+ * the owner adds one first.
+ */
+function Verify({ m, agent, line, ready, place }: { m: Machine; agent: string; line: Line; ready: boolean; place: Place }) {
+  const { t } = useTranslation("connect");
+  const st = useStore();
+  const title = codingAgentTitle(agent);
+  const projects = projectsFor(
+    st.projects.filter((p) => p.machineId === m.machineId),
+    agent,
+  );
+  const [test, setTest] = useState<{ busy?: boolean; ok?: boolean; text?: string }>({});
+  const [started, setStarted] = useState<string>();
+  const [starting, setStarting] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [key] = useState(() => crypto.randomUUID());
+  const run = async () => {
+    setTest({ busy: true });
+    try {
+      const r = await local.testMachineAgent({ machineId: m.machineId, agent });
+      setTest({ ok: r.ok, text: r.ok ? t("test.ok", { agent: title, reply: r.reply, seconds: (r.millis / 1000).toFixed(1) }) : t("test.failed", { reason: r.reply }) });
+    } catch (e) {
+      setTest({ ok: false, text: t("test.failed", { reason: errorText(e) }) });
+    }
+  };
+  const start = async () => {
+    if (!projects.length) return;
+    setStarting(true);
+    try {
+      const r = await local.startSession({ machineId: m.machineId, session: { idempotencyKey: key, agent, projectId: projects[0].projectId, prompt: t("test.prompt") } });
+      setStarted(r.session!.sessionId);
+      st.show(t("test.started"));
+    } catch (e) {
+      st.show(errorText(e));
+    } finally {
+      setStarting(false);
+    }
+  };
+  // On this computer the folder is picked; another computer's is typed in.
+  const add = async () => {
+    if (!m.local) return st.set({ sheet: { kind: "addProject", machineId: m.machineId, agent } });
+    const path = await window.hermesh?.pickDirectory();
+    if (!path) return;
+    setAdding(true);
+    const projectId = projectIdFromFolder(path.split(/[\\/]/).filter(Boolean).pop() ?? "", new Set(st.projects.filter((p) => p.machineId === m.machineId).map((x) => x.projectId)));
+    await st.run(() => local.addProject({ machineId: m.machineId, projectId, path, agents: [agent] }));
+    setAdding(false);
+  };
+  const names = projects.map((p) => p.projectId).join(", ");
+  return (
+    <section className="cg-sec" aria-label={t("verify")}>
+      <div className="fhead">{t("verify")}</div>
+      <div className="cg-box">
+        <p>{projects.length ? t("project.some", { count: projects.length, agent: title, machine: m.machineName, names }) : t("project.none", { agent: title, machine: m.machineName })}</p>
+        <div className="cg-acts">
+          <button className="btn" onClick={add} disabled={adding}>
+            <Icon name="plus" />
+            {adding ? t("project.adding") : t("project.add")}
+          </button>
+        </div>
+        <p className="cg-note">{t("test.runNote")}</p>
+        <div className="cg-acts">
+          <button className="btn primary" onClick={run} disabled={!ready || test.busy}>
+            {test.busy ? t("test.running", { agent: title }) : t("test.run")}
+          </button>
+        </div>
+        {test.text && (
+          <p className={`cg-result ${test.ok ? "ok" : "bad"}`} role="status">
+            {test.text}
+            {!test.ok && line !== "custom" && <span className="cg-note"> {t(`${line}.testFailedHint`)}</span>}
+          </p>
+        )}
+        <p className="cg-note">{projects.length ? t("test.startNote", { project: projects[0].projectId }) : t("test.needsProject")}</p>
+        <div className="cg-acts">
+          <button className="btn" onClick={start} disabled={!ready || !projects.length || starting || !!started}>
+            {starting ? t("test.starting") : t("test.start")}
+          </button>
+          {started && (
+            <button className="btn primary" onClick={() => place.openSession(started)}>
+              {t("test.open")}
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const builtIn = codingAgentIds;
+
+/** The agents the owner added on a machine: each one's status and test, and the form to add or change one. */
+function Customs({ m, place }: { m: Machine; place: Place }) {
+  const { t } = useTranslation("connect");
+  const st = useStore();
+  const [agents, setAgents] = useState<CustomAgent[]>();
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState<CustomAgent | "new" | null>(null);
+  const [picked, setPicked] = useState<string>();
+  const [removing, setRemoving] = useState<string>();
+  const load = useCallback(() => {
+    local.listMachineCustomAgents({ machineId: m.machineId }).then(
+      (r) => (setAgents(r.agents), setError("")),
+      (e) => setError(needsUpdate(e) ? t("custom.update", { machine: m.machineName }) : errorText(e)),
+    );
+  }, [m.machineId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [load]);
+  const shown = agents?.find((a) => a.name === picked) ?? agents?.[0];
+  const remove = async (name: string) => {
+    const ok = await st.run(() => local.removeMachineCustomAgent({ machineId: m.machineId, name }), t("custom.removed", { name }));
+    setRemoving(undefined);
+    if (ok) load();
+  };
+  return (
+    <>
+      <section className="cg-sec" aria-label={t("custom.saved", { machine: m.machineName })}>
+        <div className="fhead">{t("custom.saved", { machine: m.machineName })}</div>
+        {error && <p className="sheet-err" role="alert">{error}</p>}
+        {agents && agents.length === 0 && !editing && <p className="cg-note">{t("custom.none")}</p>}
+        {agents && agents.length > 0 && (
+          <div className="fgroup">
+            {agents.map((a) => (
+              <div key={a.name} className={`frow cg-agent ${a.name === shown?.name ? "on" : ""}`} role="group" aria-label={a.name}>
+                <button className="cg-pick" onClick={() => setPicked(a.name)}>
+                  <AgentTile agent={a.name} size={24} />
+                  <span className="ft">
+                    <b>{a.name}</b>
+                    <span className="fdesc mono">{[a.command, ...a.args].join(" ")}</span>
+                  </span>
+                </button>
+                {removing === a.name ? (
+                  <>
+                    <button className="btn sm" onClick={() => setRemoving(undefined)}>{t("custom.cancel")}</button>
+                    <button className="btn sm danger" onClick={() => remove(a.name)}>{t("custom.removeConfirm")}</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn sm" onClick={() => setEditing(a)}>{t("custom.edit")}</button>
+                    <button className="btn sm" title={t("custom.removeMessage", { machine: m.machineName })} onClick={() => setRemoving(a.name)}>
+                      {t("custom.remove")}
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {removing && <p className="cg-note">{t("custom.removeMessage", { machine: m.machineName })}</p>}
+        {!editing && !error && (
+          <div className="cg-acts">
+            <button className="btn" onClick={() => setEditing("new")}>
+              <Icon name="plus" />
+              {t("custom.add")}
+            </button>
+          </div>
+        )}
+      </section>
+      {editing && (
+        <CustomFormView
+          m={m}
+          agent={editing === "new" ? undefined : editing}
+          close={(saved) => {
+            setEditing(null);
+            if (saved) {
+              setPicked(saved);
+              load();
+            }
+          }}
+        />
+      )}
+      {!editing && shown && <Agent key={shown.name} m={m} agent={shown.name} line="custom" place={place} />}
+    </>
+  );
+}
+
+/** One field of the form: its label, the control, what goes there, an example. */
+function Field({ id, label, help, example, children }: { id: string; label: string; help: string; example: string; children: ReactNode }) {
+  const { t } = useTranslation("connect");
+  return (
+    <div className="cg-field">
+      <label htmlFor={id}>{label}</label>
+      {children}
+      <p className="cg-note">
+        {help} <span className="cg-ex">{t("custom.example", { value: example })}</span>
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Adding or changing a custom agent: its name (fixed once saved), command,
+ * arguments, variables (secret ones kept on the machine, shown as saved) and
+ * working folder; Test Connection starts it once there as given; Save keeps
+ * it, in use at once.
+ */
+function CustomFormView({ m, agent, close }: { m: Machine; agent?: CustomAgent; close: (saved?: string) => void }) {
+  const { t } = useTranslation("connect");
+  const st = useStore();
+  const [f, setF] = useState<CustomForm>(() => formOf(agent));
+  const [test, setTest] = useState<{ busy?: boolean; ok?: boolean; text?: string }>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const problem = formProblem(f, builtIn);
+  const set = (p: Partial<CustomForm>) => (setF({ ...f, ...p }), setTest({}));
+  const setEnv = (i: number, p: Partial<CustomForm["env"][number]>) => set({ env: f.env.map((e, j) => (j === i ? { ...e, ...p } : e)) });
+  const def = agentOf(f);
+  const runTest = async () => {
+    setTest({ busy: true });
+    try {
+      const r = await local.testMachineCustomAgent({ machineId: m.machineId, agent: def });
+      setTest({
+        ok: r.ok,
+        text: r.ok
+          ? r.agentTitle
+            ? t("custom.testOkAs", { title: r.agentTitle, version: r.agentVersion })
+            : t("custom.testOk", { agent: def.name })
+          : [t("custom.testFailed", { reason: r.reason }), r.authMethods.length ? t("custom.testAuth", { methods: r.authMethods.join(", ") }) : ""].filter(Boolean).join(" "),
+      });
+    } catch (e) {
+      setTest({ ok: false, text: t("custom.testFailed", { reason: needsUpdate(e) ? t("custom.update", { machine: m.machineName }) : errorText(e) }) });
+    }
+  };
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await local.saveMachineCustomAgent({ machineId: m.machineId, agent: def });
+      st.show(t("custom.savedToast", { name: def.name, machine: m.machineName }));
+      close(def.name);
+    } catch (e) {
+      setError(needsUpdate(e) ? t("custom.update", { machine: m.machineName }) : errorText(e));
+      setSaving(false);
+    }
+  };
+  const pickDir = async () => {
+    const p = await window.hermesh?.pickDirectory();
+    if (p) set({ dir: p });
+  };
+  return (
+    <section className="cg-sec cg-form" aria-label={agent ? t("custom.editTitle", { name: agent.name }) : t("custom.newTitle")}>
+      <div className="fhead">{agent ? t("custom.editTitle", { name: agent.name }) : t("custom.newTitle")}</div>
+      <div className="cg-box">
+        <Field id="cg-name" label={t("custom.name")} help={t("custom.nameHelp")} example={t("custom.exampleName")}>
+          <input id="cg-name" className="field mono" value={f.name} disabled={!!agent} placeholder={t("custom.exampleName")} onChange={(e) => set({ name: e.target.value })} />
+        </Field>
+        <Field id="cg-command" label={t("custom.command")} help={t("custom.commandHelp")} example={t("custom.exampleCommand")}>
+          <input id="cg-command" className="field mono" value={f.command} placeholder={t("custom.exampleCommand")} onChange={(e) => set({ command: e.target.value })} />
+        </Field>
+        <Field id="cg-args" label={t("custom.args")} help={t("custom.argsHelp")} example={t("custom.exampleArgs")}>
+          <input id="cg-args" className="field mono" value={f.args} placeholder={t("custom.exampleArgs")} onChange={(e) => set({ args: e.target.value })} />
+        </Field>
+        <Field id="cg-env-0" label={t("custom.env")} help={t("custom.envHelp")} example={t("custom.exampleEnv")}>
+          {f.env.map((e, i) => (
+            <div className="cg-env" key={i}>
+              <input
+                id={`cg-env-${i}`}
+                className="field mono"
+                aria-label={t("custom.envName")}
+                placeholder={t("custom.envName")}
+                value={e.name}
+                disabled={e.saved}
+                onChange={(x) => setEnv(i, { name: x.target.value })}
+              />
+              <input
+                className="field mono"
+                aria-label={t("custom.envValue")}
+                type={e.secret || looksSecret(e.name) ? "password" : "text"}
+                placeholder={e.saved ? t("custom.envSaved") : t("custom.envValue")}
+                value={e.value}
+                onChange={(x) => setEnv(i, { value: x.target.value })}
+              />
+              <label className="cg-secret">
+                <input type="checkbox" checked={e.secret || looksSecret(e.name)} disabled={e.saved} onChange={(x) => setEnv(i, { secret: x.target.checked })} />
+                {t("custom.envSecret")}
+              </label>
+              <button className="tb" aria-label={t("custom.envRemove")} onClick={() => set({ env: f.env.filter((_, j) => j !== i) })}>
+                <Icon name="x" />
+              </button>
+            </div>
+          ))}
+          <div>
+            <button className="btn sm" onClick={() => set({ env: [...f.env, { name: "", value: "", secret: false }] })}>
+              <Icon name="plus" />
+              {t("custom.envAdd")}
+            </button>
+          </div>
+        </Field>
+        <Field id="cg-dir" label={t("custom.dir")} help={t("custom.dirHelp")} example={t("custom.exampleDir")}>
+          <div className="cg-env">
+            <input id="cg-dir" className="field mono" value={f.dir} onChange={(e) => set({ dir: e.target.value })} />
+            {m.local && (
+              <button className="btn sm" onClick={pickDir}>
+                {t("custom.choose")}
+              </button>
+            )}
+          </div>
+        </Field>
+        {def.command && <p className="cg-note mono sel-text">{t("custom.runs", { command: [def.command, ...def.args].join(" ") })}</p>}
+        {problem && (f.name || f.command) && <p className="cg-note warn">{t(`custom.problem.${problem}` as never)}</p>}
+        {test.text && (
+          <p className={`cg-result ${test.ok ? "ok" : "bad"}`} role="status">
+            {test.text}
+          </p>
+        )}
+        {error && <p className="sheet-err" role="alert">{error}</p>}
+        <div className="cg-acts">
+          <button className="btn" onClick={() => close()}>{t("custom.cancel")}</button>
+          <button className="btn" onClick={runTest} disabled={!!problem || test.busy}>
+            {test.busy ? t("custom.testing") : t("custom.testConnection")}
+          </button>
+          <button className="btn primary" onClick={save} disabled={!!problem || saving}>
+            {saving ? t("custom.saving") : t("custom.save")}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}

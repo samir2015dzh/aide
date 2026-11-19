@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "label": "Pages",
+    "models": "Models",
+    "connectors": "Connectors",
+    "skills": "Skills",
+    "search": "Web Search",
+    "browser": "Browser",
+    "storage": "Storage"
+  },
+  "conn": {
+    "connecting": "Connecting to Her…",
+    "unreachable": "Can't reach Her on this machine. Trying again…"
+  },
+  "back": "Back to {{page}}",
+  "failedRead": "Could not read: {{error}}",
+  "undo": "Undo",
+  "cancel": "Cancel",
+  "close": "Close",
+  "error": {
+    "disconnected": "The connection to Her was lost",
+    "notConnected": "Not connected to Her yet",
+    "signinTimedOut": "Nobody signed in within 10 minutes. Start the sign-in again."
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo_one": "{{count}} min ago",
+    "minutesAgo_other": "{{count}} min ago",
+    "hoursAgo_one": "{{count}} hr ago",
+    "hoursAgo_other": "{{count}} hr ago",
+    "yesterday": "yesterday"
+  },
+  "browser": {
+    "sites": "Site permissions",
+    "allSites": "All Sites",
+    "allSitesDesc": {
+      "ask": "Each site asks the first time it's used",
+      "navigate": "Sites open without asking; acting on them asks first",
+      "act": "Sites open and are acted on without asking"
+    },
+    "siteLevel": "Permission for {{site}}",
+    "level": {
+      "act": "Open and Act",
+      "navigate": "Open Only",
+      "ask": "Ask First",
+      "deny": "Deny"
+    },
+    "removeSite": "Remove {{site}}",
+    "exceptions": "Exceptions",
+    "exceptionsEmpty": "No exceptions yet. “Always allow” in a conversation adds a site here.",
+    "sitesNote": "Both browsers share these. Addresses on a private network don't follow All Sites: each asks the first time.",
+    "addLabel": "Site to add",
+    "addLevel": "Permission for the site to add",
+    "addPlaceholder": "example.com",
+    "add": "Add",
+    "badSite": "Enter a site such as example.com or https://example.com.",
+    "added": "{{site}}: {{level}}"
+  }
+}

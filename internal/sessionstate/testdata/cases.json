@@ -1,0 +1,744 @@
+{
+ "limits": {
+  "lost_after_seconds": 45,
+  "stall_after_seconds": 300
+ },
+ "cases": [
+  {
+   "name": "running, events coming",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 10,
+    "updated_ago": 10
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "live",
+    "quiet_seconds": 10,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running, quiet past the stall limit",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 400,
+    "updated_ago": 400
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "stalled",
+    "quiet_seconds": 400,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running, quiet exactly the stall limit",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 300,
+    "updated_ago": 300
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "stalled",
+    "quiet_seconds": 300,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running, quiet just under the stall limit",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 299,
+    "updated_ago": 299
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "live",
+    "quiet_seconds": 299,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running, last event time preferred over updated_at",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 10,
+    "updated_ago": 400
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "live",
+    "quiet_seconds": 10,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running, older machine: updated_at stands in",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": null,
+    "updated_ago": 400
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "stalled",
+    "quiet_seconds": 400,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running, no times at all",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": null,
+    "updated_ago": null
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "waiting for an answer never stalls",
+   "session": {
+    "status": "WAITING_INPUT",
+    "failure": "",
+    "last_event_ago": 1000,
+    "updated_ago": 1000
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "waiting_input",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "queued never stalls",
+   "session": {
+    "status": "QUEUED",
+    "failure": "",
+    "last_event_ago": 1000,
+    "updated_ago": 1000
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "queued",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "preparing reads queued",
+   "session": {
+    "status": "PREPARING",
+    "failure": "",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "queued",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, no failure: done",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, stopped on purpose: interrupted",
+   "session": {
+    "status": "IDLE",
+    "failure": "INTERRUPTED",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "interrupted",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, last turn failed",
+   "session": {
+    "status": "IDLE",
+    "failure": "QUOTA",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "failed",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "crashed reads failed",
+   "session": {
+    "status": "CRASHED",
+    "failure": "",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "failed",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "archived",
+   "session": {
+    "status": "ARCHIVED",
+    "failure": "",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "archived",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "no status: unknown",
+   "session": {
+    "status": "UNSPECIFIED",
+    "failure": "",
+    "last_event_ago": null,
+    "updated_ago": null
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "unknown",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "machine silent under the lost limit: checking",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 12,
+    "updated_ago": 12
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": 10,
+    "unreachable_since_ago": 2
+   },
+   "want": {
+    "state": "running",
+    "link": "checking",
+    "quiet_seconds": 12,
+    "silent_seconds": 10
+   }
+  },
+  {
+   "name": "machine silent exactly the lost limit: lost",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 50,
+    "updated_ago": 50
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": 45,
+    "unreachable_since_ago": 20
+   },
+   "want": {
+    "state": "running",
+    "link": "lost",
+    "quiet_seconds": 50,
+    "silent_seconds": 45
+   }
+  },
+  {
+   "name": "machine silent long: lost, never stalled",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 700,
+    "updated_ago": 700
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": 600,
+    "unreachable_since_ago": 580
+   },
+   "want": {
+    "state": "running",
+    "link": "lost",
+    "quiet_seconds": 700,
+    "silent_seconds": 600
+   }
+  },
+  {
+   "name": "no heartbeat known: since unreachable",
+   "session": {
+    "status": "WAITING_INPUT",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": 50
+   },
+   "want": {
+    "state": "waiting_input",
+    "link": "lost",
+    "quiet_seconds": 0,
+    "silent_seconds": 50
+   }
+  },
+  {
+   "name": "no heartbeat, no since: lost",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "lost",
+    "quiet_seconds": 5,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "a finished session of a lost machine",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 900,
+    "updated_ago": 900
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": 600,
+    "unreachable_since_ago": 580
+   },
+   "want": {
+    "state": "done",
+    "link": "lost",
+    "quiet_seconds": 0,
+    "silent_seconds": 600
+   }
+  },
+  {
+   "name": "a machine that cannot be followed (error) counts as unreachable",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 3,
+    "updated_ago": 3
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "deadline exceeded",
+    "syncing": false,
+    "heard_ago": 20,
+    "unreachable_since_ago": 5
+   },
+   "want": {
+    "state": "running",
+    "link": "checking",
+    "quiet_seconds": 3,
+    "silent_seconds": 20
+   }
+  },
+  {
+   "name": "machine back, being read",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 400,
+    "updated_ago": 400
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": true,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "syncing",
+    "quiet_seconds": 400,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "this device's own machine, quiet: stalled",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 400,
+    "updated_ago": 400
+   },
+   "machine": {
+    "known": true,
+    "local": true,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "stalled",
+    "quiet_seconds": 400,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "this device's own machine, fresh",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 1,
+    "updated_ago": 1
+   },
+   "machine": {
+    "known": true,
+    "local": true,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "live",
+    "quiet_seconds": 1,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "a machine not listed: lost",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 5,
+    "updated_ago": 5
+   },
+   "machine": {
+    "known": false,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "lost",
+    "quiet_seconds": 5,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "a machine not listed, heard from before",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 500,
+    "updated_ago": 500
+   },
+   "machine": {
+    "known": false,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": 300,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done",
+    "link": "lost",
+    "quiet_seconds": 0,
+    "silent_seconds": 300
+   }
+  },
+  {
+   "name": "being read, not heard for a while (this device lost the relay): lost",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 130,
+    "updated_ago": 130
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": true,
+    "heard_ago": 120,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "lost",
+    "quiet_seconds": 130,
+    "silent_seconds": 120
+   }
+  },
+  {
+   "name": "being read, not heard for a moment: syncing",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 25,
+    "updated_ago": 25
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": true,
+    "heard_ago": 20,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "syncing",
+    "quiet_seconds": 25,
+    "silent_seconds": 20
+   }
+  },
+  {
+   "name": "readable, but no heartbeat for long (this device lost the relay, unnoticed yet): lost",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 70,
+    "updated_ago": 70
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": 60,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "lost",
+    "quiet_seconds": 70,
+    "silent_seconds": 60
+   }
+  },
+  {
+   "name": "readable, but no heartbeat for a moment: checking",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 8,
+    "updated_ago": 8
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": 5,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "checking",
+    "quiet_seconds": 8,
+    "silent_seconds": 5
+   }
+  }
+ ]
+}

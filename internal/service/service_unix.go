@@ -1,0 +1,335 @@
+//go:build unix
+
+package service
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
+	"time"
+)
+
+func launchdPlist() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Library", "LaunchAgents", label+".plist")
+}
+
+func systemdUnit() string {
+	cfg := os.Getenv("XDG_CONFIG_HOME")
+	if cfg == "" {
+		home, _ := os.UserHomeDir()
+		cfg = filepath.Join(home, ".config")
+	}
+	return filepath.Join(cfg, "systemd", "user", "hermeshd.service")
+}
+
+// Install writes and loads the service definition running `bin run`, with
+// args before its data directory (a trusted device: --owner --no-machine).
+func Install(bin, dataDir, logDir string, args ...string) error {
+	switch runtime.GOOS {
+	case "darwin":
+		os.MkdirAll(logDir, 0o700)
+		plist := plistText(bin, dataDir, logDir, args)
+		path := launchdPlist()
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		if err := os.WriteFile(path, []byte(plist), 0o644); err != nil {
+			return err
+		}
+		domain := fmt.Sprintf("gui/%d", os.Getuid())
+		exec.Command("launchctl", "bootout", domain+"/"+label).Run()
+		if out, err := exec.Command("launchctl", "bootstrap", domain, path).CombinedOutput(); err != nil {
+			return fmt.Errorf("launchctl bootstrap: %v: %s", err, out)
+		}
+		return nil
+	case "linux":
+		unit := unitText(bin, dataDir, args)
+		// Lingering first: it starts the user's systemd, which a session
+		// opened with su lacks, and keeps it running after logout.
+		lingerErr := enableLinger()
+		if err := userBus(); err != nil {
+			if lingerErr != nil {
+				return fmt.Errorf("%w; turn lingering on with `sudo loginctl enable-linger %s` and try again", err, userName())
+			}
+			return err
+		}
+		path := systemdUnit()
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		if err := os.WriteFile(path, []byte(unit), 0o644); err != nil {
+			return err
+		}
+		// enable and start, not enable --now: that needs systemd 220, and
+		// Synology DSM 7 has 219.
+		for _, args := range [][]string{{"--user", "daemon-reload"}, {"--user", "enable", "hermeshd.service"}, {"--user", "start", "hermeshd.service"}} {
+			if out, err := exec.Command("systemctl", args...).CombinedOutput(); err != nil {
+				return fmt.Errorf("systemctl %s: %v: %s", strings.Join(args, " "), err, bytes.TrimSpace(out))
+			}
+		}
+		if lingerErr != nil {
+			fmt.Fprintln(os.Stderr, "note: could not enable lingering; run `sudo loginctl enable-linger "+userName()+"` so hermeshd keeps running after you log out")
+		}
+		return nil
+	}
+	return fmt.Errorf("unsupported platform %s", runtime.GOOS)
+}
+
+func Uninstall() error {
+	switch runtime.GOOS {
+	case "darwin":
+		exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run()
+		os.Remove(launchdPlist())
+		return nil
+	case "linux":
+		userBus()
+		exec.Command("systemctl", "--user", "stop", "hermeshd.service").Run()
+		exec.Command("systemctl", "--user", "disable", "hermeshd.service").Run()
+		os.Remove(systemdUnit())
+		exec.Command("systemctl", "--user", "daemon-reload").Run()
+		return nil
+	}
+	return fmt.Errorf("unsupported platform %s", runtime.GOOS)
+}
+
+// Restart restarts the installed service.
+func Restart() error {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run()
+	case "linux":
+		if err := userBus(); err != nil {
+			return err
+		}
+		if out, err := exec.Command("systemctl", "--user", "restart", "hermeshd.service").CombinedOutput(); err != nil {
+			return fmt.Errorf("systemctl --user restart hermeshd: %v: %s", err, out)
+		}
+		return nil
+	}
+	return fmt.Errorf("unsupported platform %s", runtime.GOOS)
+}
+
+// userName is this user's name: $USER, else the account's, as cron, docker
+// exec and cloud-init leave USER unset.
+func userName() string {
+	if name := os.Getenv("USER"); name != "" {
+		return name
+	}
+	if u, err := user.Current(); err == nil {
+		return u.Username
+	}
+	return ""
+}
+
+// enableLinger turns lingering on for this user, unless it is on already
+// (the installer, as root, turned it on).
+func enableLinger() error {
+	user := userName()
+	if user == "" {
+		return errors.New("USER is not set")
+	}
+	if out, err := exec.Command("loginctl", "show-user", user, "--property=Linger").Output(); err == nil && strings.TrimSpace(string(out)) == "Linger=yes" {
+		return nil
+	}
+	return exec.Command("loginctl", "enable-linger", user).Run()
+}
+
+// userBus makes sure systemctl --user can reach the user's manager: after
+// su the session has no XDG_RUNTIME_DIR, though lingering started it.
+func userBus() error {
+	if _, err := exec.LookPath("systemctl"); err != nil {
+		return ErrNoSystemd
+	}
+	if os.Getenv("XDG_RUNTIME_DIR") == "" {
+		os.Setenv("XDG_RUNTIME_DIR", fmt.Sprintf("/run/user/%d", os.Getuid()))
+	}
+	run := os.Getenv("XDG_RUNTIME_DIR")
+	for i := 0; i < 50; i++ { // the manager lingering just started
+		// systemctl reaches it by the manager's own socket, the only one
+		// on systemd 219 without a user D-Bus.
+		for _, sock := range []string{"bus", "systemd/private"} {
+			if _, err := os.Stat(filepath.Join(run, sock)); err == nil {
+				return nil
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if exec.Command("systemctl", "--user", "show-environment").Run() == nil {
+		return nil
+	}
+	return ErrNoSystemd
+}
+
+// Running reports whether the installed service is running now.
+func Running() bool {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run() == nil
+	case "linux":
+		if userBus() != nil {
+			return false
+		}
+		return exec.Command("systemctl", "--user", "is-active", "--quiet", "hermeshd.service").Run() == nil
+	}
+	return false
+}
+
+// AtBoot reports whether the installed service starts with the computer,
+// with nobody logged in (on Linux: enabled, with lingering on).
+func AtBoot() bool {
+	switch runtime.GOOS {
+	case "darwin":
+		return Installed() // a LaunchAgent: at login
+	case "linux":
+		if userBus() != nil || exec.Command("systemctl", "--user", "is-enabled", "--quiet", "hermeshd.service").Run() != nil {
+			return false
+		}
+		out, err := exec.Command("loginctl", "show-user", userName(), "--property=Linger").Output()
+		return err == nil && strings.TrimSpace(string(out)) == "Linger=yes"
+	}
+	return false
+}
+
+func Installed() bool {
+	p := launchdPlist()
+	if runtime.GOOS == "linux" {
+		p = systemdUnit()
+	}
+	_, err := os.Stat(p)
+	return err == nil
+}
+
+// plistText is the launchd job Install writes. It is Interactive, as the Mac
+// app's own job is, because git and the agents hermeshd starts inherit it and
+// do what the person asked for: launchd's other types hold them back
+// (docs/technical-design.md §6.1).
+func plistText(bin, dataDir, logDir string, args []string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>%s</string>
+  <key>ProgramArguments</key>
+  <array><string>%s</string><string>run</string>%s<string>--data-dir</string><string>%s</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Interactive</string>
+  <key>StandardOutPath</key><string>%s</string>
+  <key>StandardErrorPath</key><string>%s</string>
+</dict>
+</plist>
+`, label, xmlEscape(bin), plistArgs(args), xmlEscape(dataDir), xmlEscape(filepath.Join(logDir, "hermeshd.log")), xmlEscape(filepath.Join(logDir, "hermeshd.log")))
+}
+
+// unitText is the systemd unit Install writes.
+func unitText(bin, dataDir string, args []string) string {
+	return fmt.Sprintf(`[Unit]
+Description=Aide daemon
+After=network-online.target
+
+[Service]
+ExecStart=%s run %s--data-dir %s
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+`, bin, unitArgs(args), dataDir)
+}
+
+// ReloadOldJob updates the launchd job an older version installed, when this
+// process is that service for dataDir. An update replaces only the program and
+// launchd keeps the job as it loaded it, so this corrects the plist and has
+// launchd load it again, which stops this process: true means wait for that.
+func ReloadOldJob(dataDir string) (bool, error) {
+	if runtime.GOOS != "darwin" || !Supervised(dataDir) {
+		return false, nil
+	}
+	const background, interactive = "<key>ProcessType</key><string>Background</string>", "<key>ProcessType</key><string>Interactive</string>"
+	path := launchdPlist()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	if !bytes.Contains(b, []byte(background)) {
+		return false, nil
+	}
+	if err := os.WriteFile(path, bytes.Replace(b, []byte(background), []byte(interactive), 1), 0o644); err != nil {
+		return false, err
+	}
+	// In a session of its own, since launchd ends the job's process group.
+	// bootstrap fails while the old process is still exiting.
+	cmd := exec.Command("/bin/sh", "-c", `launchctl bootout "$1/$2"
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  launchctl bootstrap "$1" "$3" && exit 0
+  sleep 1
+done
+exit 1`, "sh", fmt.Sprintf("gui/%d", os.Getuid()), label, path)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return false, err
+	}
+	return true, cmd.Process.Release()
+}
+
+// Supervised reports whether this process is the installed service for
+// dataDir, which starts it again when it exits.
+func Supervised(dataDir string) bool {
+	switch runtime.GOOS {
+	case "darwin":
+		return os.Getenv("XPC_SERVICE_NAME") == label && InstalledFor(dataDir)
+	case "linux":
+		return os.Getenv("INVOCATION_ID") != "" && InstalledFor(dataDir)
+	}
+	return false
+}
+
+// InstalledFor reports whether the installed service runs the machine in
+// dataDir.
+func InstalledFor(dataDir string) bool {
+	if runtime.GOOS == "linux" {
+		b, err := os.ReadFile(systemdUnit())
+		return err == nil && strings.Contains(string(b), "--data-dir "+dataDir+"\n")
+	}
+	b, err := os.ReadFile(launchdPlist())
+	return err == nil && strings.Contains(string(b), "<string>--data-dir</string><string>"+xmlEscape(dataDir)+"</string>")
+}
+
+func plistArgs(args []string) string {
+	var b strings.Builder
+	for _, a := range args {
+		b.WriteString("<string>" + xmlEscape(a) + "</string>")
+	}
+	return b.String()
+}
+
+func unitArgs(args []string) string {
+	var b strings.Builder
+	for _, a := range args {
+		b.WriteString(a + " ")
+	}
+	return b.String()
+}
+
+// RunInBackground starts `bin run` for the machine in dataDir apart from
+// this terminal, for a computer where no service could be installed: it
+// runs until the computer restarts.
+func RunInBackground(bin, dataDir string) (int, error) {
+	cmd := exec.Command(bin, "run", "--data-dir", dataDir) // it writes its own log
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return 0, err
+	}
+	pid := cmd.Process.Pid
+	cmd.Process.Release()
+	return pid, nil
+}
+
+// Supervise is for Windows: launchd and systemd keep hermeshd running.
+func Supervise(dataDir, exe string, args []string) error {
+	return errors.New("--supervise is for Windows; launchd and systemd keep hermeshd running here")
+}

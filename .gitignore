@@ -1,0 +1,14 @@
+/bin/
+/dist/
+*.test
+.DS_Store
+scripts/release-signing.key
+/bench-results/
+node_modules/
+/apps/desktop/out/
+/apps/desktop/test-results/
+/apps/desktop/playwright-report/
+xcuserdata/
+
+# local secrets (HER_GITHUB_OAUTH_CLIENT_SECRET and API keys)
+.env

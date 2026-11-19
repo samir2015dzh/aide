@@ -1,0 +1,352 @@
+package e2e
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+
+	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	"github.com/hermeshai/hermesh/pkg/identity"
+)
+
+// TestEraseEverything: from one trusted device, with one approval, the
+// owner erases Hermesh everywhere (docs/erase-everything.md). The other
+// trusted device, a Mac that is only a machine, a machine on a server and
+// the agent each erase themselves when the relay refuses them; a machine
+// that was off does so when it next starts. A worktree with uncommitted
+// changes is kept, a clean one is not. The relay can be claimed again, and
+// the Mac set up from scratch.
+func TestEraseEverything(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	// Her's homes: the Mac's, where Her is turned on, and the servers', where
+	// she never is (docs/her-server.md §5.6).
+	herMac, herVPS := filepath.Join(t.TempDir(), "her"), filepath.Join(t.TempDir(), "her")
+	for _, d := range []string{herMac, herVPS} {
+		os.MkdirAll(filepath.Join(d, "bots"), 0o700)
+		os.WriteFile(filepath.Join(d, ".her-home"), nil, 0o600) // as her marks a home she makes
+	}
+	herEnv := func(home string) []string {
+		return append(slices.Clone(env), "HER_HOME="+home, "HER_CREDENTIAL_STORE=file")
+	}
+	w := newOwnerMac(t, herEnv(herMac), &localv1.GrantSpec{})
+	ctx := context.Background()
+	daemon := filepath.Join(w.bin, "hermeshd")
+
+	// Two sessions on the Mac's machine: one leaves its worktree with
+	// uncommitted changes, the other leaves it clean.
+	dirty, r := w.startSession(time.Minute, "--wait", "--prompt", "say working")
+	if dirty.Status != "idle" {
+		t.Fatalf("dirty session: %+v", r)
+	}
+	dirtyWT := w.worktree(dirty.SessionID)
+	if err := os.WriteFile(filepath.Join(dirtyWT, "unsaved.txt"), []byte("work in progress\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clean, r := w.startSession(time.Minute, "--wait", "--prompt", "say done")
+	if clean.Status != "idle" {
+		t.Fatalf("clean session: %+v", r)
+	}
+	cleanWT := w.worktree(clean.SessionID)
+	if _, err := os.Stat(cleanWT); err != nil {
+		t.Fatal(err)
+	}
+
+	// Two machines on servers: vps-on runs, vps-off is off when the owner
+	// erases everything.
+	pairVPS := func(name string) (data string) {
+		data = filepath.Join(w.tmp, name)
+		pair := start(t, "pair "+name, env, daemon, "pair", w.addr, "--name", name, "--no-service", "--data-dir", data)
+		if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: name}); err != nil {
+			t.Fatal(err)
+		}
+		if c := pair.wait(t, 30*time.Second); c != 0 {
+			t.Fatalf("pair %s: %s", name, pair.output())
+		}
+		return data
+	}
+	runVPS := func(name, data string) *proc {
+		p := start(t, name, herEnv(herVPS), daemon, "run", "--data-dir", data)
+		w.logs = append(w.logs, p)
+		return p
+	}
+	online := func(name string) bool {
+		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+		return err == nil && slices.ContainsFunc(res.Machines, func(m *localv1.Machine) bool { return m.MachineName == name && m.Online })
+	}
+	onData, offData := pairVPS("vps-on"), pairVPS("vps-off")
+	// Paired, and never used again until the owner is a new one: a machine
+	// and an agent the erase never reaches.
+	lateData := pairVPS("vps-late")
+	lateAgent := w.addAgent("late", &localv1.GrantSpec{})
+	// On a Mac the app's owner shares the data directory: it stays.
+	appFile := filepath.Join(onData, "owner", "profiles", "p1", "owner.db")
+	os.MkdirAll(filepath.Dir(appFile), 0o700)
+	os.WriteFile(appFile, []byte("another owner"), 0o600)
+	machineErased := func(data string) {
+		t.Helper()
+		if _, err := os.Stat(filepath.Join(data, "machine")); !os.IsNotExist(err) {
+			t.Fatalf("%s kept its machine: %v", data, err)
+		}
+	}
+	vpsOn, vpsOff, vpsLate := runVPS("vps-on", onData), runVPS("vps-off", offData), runVPS("vps-late", lateData)
+	eventually(t, 30*time.Second, "the servers online", func() bool { return online("vps-on") && online("vps-off") && online("vps-late") })
+	vpsOff.stop()
+	vpsLate.stop()
+
+	// A Mac that is only a machine, and a second trusted device.
+	mac3, _ := w.otherMac("mac3", env)
+	home, _ := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
+	w.joinTyped(mac3, home, "mac3")
+	_, mac2Sock := w.otherMac("mac2", env)
+	root2, _ := identity.GenerateKey()
+	app2 := newTestApp(t, mac2Sock, root2)
+	join, err := app2.client.RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: home.RelayUrl, OwnerId: home.OwnerId,
+		RootPublicKey: rootPub(root2), RootLabel: "mac2", RootPlatform: "macos"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var approval *localv1.ApproveDevicePairingResponse
+	eventually(t, 15*time.Second, "mac2's request on the Mac", func() bool {
+		approval, err = w.app.client.ApproveDevicePairing(ctx, &localv1.ApproveDevicePairingRequest{Code: join.Code})
+		return err == nil
+	})
+	eventually(t, time.Minute, "the approval reaches mac2", func() bool {
+		r, err := app2.client.WaitJoin(ctx, &localv1.WaitJoinRequest{Code: join.Code})
+		return err == nil && r.Done
+	})
+	if _, err := app2.client.ConfirmJoin(ctx, &localv1.ConfirmJoinRequest{Code: join.Code, Accept: true, MatchCode: approval.MatchCode}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 30*time.Second, "mac2 sees the machines", func() bool {
+		res, err := app2.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+		return err == nil && len(res.Machines) == 5
+	})
+
+	// What it would erase, shown before asking: each device, machine and
+	// agent once (the Mac's own machine is the Mac), with who is online.
+	preview, err := w.app.client.EraseStatus(ctx, &localv1.EraseStatusRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shown []string
+	for _, it := range preview.Items {
+		shown = append(shown, fmt.Sprintf("%s/%s this=%v online=%v done=%v", it.Kind, it.Name, it.ThisDevice, it.Online, it.Done))
+	}
+	if want := []string{"device/test-mac this=true online=false done=false", "device/mac2 this=false online=false done=false",
+		"machine/mac3 this=false online=true done=false", "machine/vps-late this=false online=false done=false",
+		"machine/vps-off this=false online=false done=false", "machine/vps-on this=false online=true done=false",
+		"agent/bot this=false online=false done=false", "agent/late this=false online=false done=false"}; !slices.Equal(shown, want) {
+		t.Fatalf("preview:\n%s", strings.Join(shown, "\n"))
+	}
+
+	// Her on the Mac's own machine.
+	if _, err := w.app.client.SetHer(ctx, &localv1.SetHerRequest{MachineId: localMachine(t, w.app.client), Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Erase everything, from the Mac: one approval.
+	before := len(w.app.signedTypes())
+	erase, err := w.app.client.EraseEverything(ctx, &localv1.EraseEverythingRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := w.app.signedTypes()[before:]; !slices.Equal(got, []string{"hermesh.identity.v1.EraseOrder"}) {
+		t.Fatalf("erasing signed %v", got)
+	}
+	// Asked again (a second click) while erasing: refused, nothing signed.
+	if _, err := w.app.client.EraseEverything(ctx, &localv1.EraseEverythingRequest{}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("erasing twice: %v", err)
+	}
+	if got := w.app.signedTypes()[before:]; len(got) != 1 {
+		t.Fatalf("erasing twice signed %v", got)
+	}
+
+	// The agent learns it at its next command, and forgets its pairing.
+	r = w.cli(30*time.Second, "project", "list")
+	if r.code != 3 || !strings.Contains(r.stderr, "the owner erased everything") {
+		t.Fatalf("the agent after the erase: %+v", r)
+	}
+	if _, err := os.Stat(filepath.Join(w.tmp, "agent", "state.json")); !os.IsNotExist(err) {
+		t.Fatalf("the agent kept its pairing: %v", err)
+	}
+
+	// The Mac shows each one erasing; vps-off stays to do.
+	status := func() map[string]*localv1.EraseItem {
+		res, err := w.app.client.EraseStatus(ctx, &localv1.EraseStatusRequest{EraseId: erase.EraseId})
+		if err != nil {
+			t.Fatal(err)
+		}
+		items := map[string]*localv1.EraseItem{}
+		for _, it := range res.Items {
+			items[it.Kind+"/"+it.Name] = it
+		}
+		return items
+	}
+	eventually(t, time.Minute, "the others erasing", func() bool {
+		items := status()
+		for _, k := range []string{"device/mac2", "machine/vps-on", "machine/mac3", "agent/bot"} {
+			if items[k] == nil || !items[k].Done {
+				return false
+			}
+		}
+		return true
+	})
+	items := status()
+	if len(items) != 8 || !items["device/test-mac"].ThisDevice || items["device/test-mac"].Done || items["machine/vps-off"].Done {
+		t.Fatalf("erase items: %v", items)
+	}
+	if c := vpsOn.wait(t, 30*time.Second); c != 0 {
+		t.Fatalf("vps-on exited %d: %s", c, vpsOn.output())
+	}
+	machineErased(onData)
+	if b, err := os.ReadFile(appFile); err != nil || string(b) != "another owner" {
+		t.Fatalf("erasing the machine erased the app's owner too: %q %v", b, err)
+	}
+
+	// The Mac erases itself last, and opens empty, saying what was done.
+	if _, err := w.app.client.FinishErase(ctx, &localv1.FinishEraseRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	st, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
+	if err != nil || st.Initialized || st.Erased == nil || st.Erased.EraseId != erase.EraseId || !slices.Equal(st.Erased.Pending, []string{"vps-late", "vps-off", "late"}) ||
+		len(st.Erased.KeptWorktrees) != 1 {
+		t.Fatalf("the Mac after erasing: %v %v", st, err)
+	}
+	if got := w.app.deletedKeys(); !slices.Equal(got, []string{identity.KeyID(w.root.Public())}) {
+		t.Fatalf("deleted root keys %v", got)
+	}
+	kept := st.Erased.KeptWorktrees[0]
+	if b, err := os.ReadFile(filepath.Join(kept, "unsaved.txt")); err != nil || string(b) != "work in progress\n" {
+		t.Fatalf("the kept worktree %s: %q %v", kept, b, err)
+	}
+	if _, err := os.Stat(cleanWT); !os.IsNotExist(err) {
+		t.Fatalf("the clean worktree is left: %v", err)
+	}
+	if _, err := os.Stat(dirtyWT); !os.IsNotExist(err) {
+		t.Fatalf("the dirty worktree was not moved out: %v", err)
+	}
+	if out := gitOut(t, kept, "status", "--porcelain"); !strings.Contains(out, "unsaved.txt") {
+		t.Fatalf("the kept worktree is no longer a worktree: %q", out)
+	}
+	if _, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("listing machines after erasing: %v", err)
+	}
+	if _, err := os.Stat(herMac); !os.IsNotExist(err) {
+		t.Fatalf("Her's data on the Mac after erasing: %v", err)
+	}
+	if _, err := os.Stat(herVPS); err != nil {
+		t.Fatalf("a her of the server's own, where Her was never on: %v", err)
+	}
+
+	// The other trusted device and the machine-only Mac erased themselves.
+	eventually(t, 30*time.Second, "mac2 erased", func() bool {
+		st, err := app2.client.GetStatus(ctx, &localv1.GetStatusRequest{})
+		return err == nil && !st.Initialized && st.Erased != nil && st.Erased.EraseId == erase.EraseId && st.Erased.By == "test-mac"
+	})
+	if got := app2.deletedKeys(); !slices.Equal(got, []string{identity.KeyID(root2.Public())}) {
+		t.Fatalf("mac2 deleted root keys %v", got)
+	}
+	eventually(t, 30*time.Second, "mac3 erased", func() bool {
+		st, err := mac3.GetStatus(ctx, &localv1.GetStatusRequest{})
+		return err == nil && !st.MachineOnly && !st.Initialized && st.Erased != nil
+	})
+
+	// vps-off, started again, learns it then.
+	vpsOff = runVPS("vps-off", offData)
+	if c := vpsOff.wait(t, time.Minute); c != 0 {
+		t.Fatalf("vps-off exited %d: %s", c, vpsOff.output())
+	}
+	if !strings.Contains(vpsOff.output(), "The owner erased everything") {
+		t.Fatalf("vps-off said: %s", vpsOff.output())
+	}
+	machineErased(offData)
+
+	// A cold start: the relay can be claimed again, and the Mac set up anew.
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(w.bin, "hermesh-relay"), "claim-code", "--data-dir", filepath.Join(w.tmp, "relay")).stdout)
+	setup, err := w.app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: home.RelayUrl, ClaimCode: claim, RootLabel: "test-mac"})
+	if err != nil {
+		t.Fatalf("setting up again: %v", err)
+	}
+	if setup.OwnerId == home.OwnerId {
+		t.Fatal("set up again as the erased owner")
+	}
+	if st, _ := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{}); !st.Initialized || st.Erased != nil {
+		t.Fatalf("status once set up again: %v", st)
+	}
+
+	// Those the erase never reached pair with the new owner as they are: their
+	// old owner is gone from the server, nothing to log out of first.
+	gone := "is gone from its server (it erased everything, or was reset)"
+	login := start(t, "login late again", lateAgent, filepath.Join(w.bin, "hermesh"), "auth", "login", setup.ConnectAddress, "--name", "late")
+	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: &localv1.GrantSpec{}}); err != nil {
+		t.Fatal(err)
+	}
+	if c := login.wait(t, 30*time.Second); c != 0 || !strings.Contains(login.output(), gone) {
+		t.Fatalf("the late agent pairing again: %d\n%s", c, login.output())
+	}
+	pair := start(t, "pair vps-late again", env, daemon, "pair", setup.ConnectAddress, "--name", "vps-late", "--no-service", "--data-dir", lateData)
+	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-late"}); err != nil {
+		t.Fatal(err)
+	}
+	if c := pair.wait(t, 30*time.Second); c != 0 || !strings.Contains(pair.output(), gone) {
+		t.Fatalf("vps-late pairing again: %d\n%s", c, pair.output())
+	}
+}
+
+// TestEraseThisMachine: `hermeshd erase` on a server erases its machine
+// only: not while it runs, then unpaired (its owner's devices stop listing
+// it) and its data gone. On a trusted device it says which command erases
+// everything instead.
+func TestEraseThisMachine(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	w := newOwnerMac(t, env, &localv1.GrantSpec{})
+	ctx := context.Background()
+	daemon := filepath.Join(w.bin, "hermeshd")
+	data := filepath.Join(w.tmp, "vps-1")
+	pair := start(t, "pair", env, daemon, "pair", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
+	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
+		t.Fatal(err)
+	}
+	if c := pair.wait(t, 30*time.Second); c != 0 {
+		t.Fatalf("pair: %s", pair.output())
+	}
+	vps := start(t, "vps-1", env, daemon, "run", "--data-dir", data)
+	w.logs = append(w.logs, vps)
+	listed := func() bool {
+		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+		return err == nil && slices.ContainsFunc(res.Machines, func(m *localv1.Machine) bool { return m.MachineName == "vps-1" })
+	}
+	eventually(t, 30*time.Second, "vps-1 online", listed)
+
+	if r := run(t, nil, 30*time.Second, daemon, "erase", "--yes", "--data-dir", data); r.code == 0 || !strings.Contains(r.stderr, "stop `aided run` here first") {
+		t.Fatalf("erasing a running machine: %+v", r)
+	}
+	vps.stop()
+	r := run(t, nil, 60*time.Second, daemon, "erase", "--yes", "--data-dir", data)
+	if r.code != 0 || !strings.Contains(r.stdout, "“vps-1”") || !strings.Contains(r.stdout, "✓ Aide on this computer is erased") {
+		t.Fatalf("erase: %+v", r)
+	}
+	if _, err := os.Stat(filepath.Join(data, "machine")); !os.IsNotExist(err) {
+		t.Fatalf("the machine kept: %v", err)
+	}
+	eventually(t, 30*time.Second, "vps-1 gone from the owner's machines", func() bool { return !listed() })
+
+	// A trusted device (this Mac's owner role) erases everything instead.
+	if r := run(t, nil, 30*time.Second, daemon, "erase", "--yes", "--data-dir", filepath.Join(w.tmp, "owner-mac")); r.code == 0 ||
+		!strings.Contains(r.stderr, "aided device erase-everything") {
+		t.Fatalf("erase on a trusted device: %+v", r)
+	}
+}

@@ -1,0 +1,306 @@
+name: release
+# A v* tag becomes a release in three steps (docs/development.md, Releasing):
+#   1. a draft, with its notes; the builds upload their files to it;
+#   2. once every file is there and right (scripts/release-check.sh), a
+#      prerelease: nothing installed takes it, only whoever asks for it;
+#   3. promoted by hand (promote.yml) once it has been tried: the latest
+#      release, which every machine, Windows app and install command then takes.
+# A failed run leaves a draft, and the latest release as it was.
+# This fork (Aide, developed in samir2015dzh/hermesh; its releases stay there,
+# where every installed version looks) releases what its owner uses: a tag builds
+# the programs (binaries), the Windows app for x64, the Android app and their
+# notes, signed with the fork's own release key (scripts/release-pubkey.pem).
+# It has no Mac app and no Windows app for arm64. The relay image is built only
+# when asked: run this workflow by hand on the tag ("Use workflow from" the
+# tag) with it on.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      relay_image:
+        description: also the relay image (ghcr.io and Docker Hub)
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  packages: write
+concurrency: release-${{ github.ref_name }}
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+  TAG: ${{ github.ref_name }}
+  # No build names a server (they are given to others; owner's ruling of
+  # 2026-11-19): every login and pairing asks for the server's address.
+  # The secret of her's GitHub OAuth app, built into her (her-mcp oauth/client.rs): public once
+  # shipped, as a native app's is. Without it, signing in to GitHub's MCP server needs the user's own client.
+  HER_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.HER_GITHUB_OAUTH_CLIENT_SECRET }}
+jobs:
+  # The version's highlights for users, in English and Chinese, from the app's
+  # catalogs (apps/desktop/src/locales/*/releases.json): nothing is built
+  # without them, and they become the release's text, with a link to every
+  # change since the last release.
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Before anything is built: the release key is there and is the one
+      # installed programs and apps check (scripts/release-pubkey.pem).
+      - name: the release key
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          case "$GITHUB_REF" in refs/tags/v*) ;; *) echo "::error::run it on a v* tag, not $GITHUB_REF"; exit 1 ;; esac
+          if [ -z "$RELEASE_SIGNING_KEY" ]; then
+            echo "::error::the repository secret RELEASE_SIGNING_KEY is not set (scripts/release-keygen.sh, docs/development.md)"
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$RELEASE_SIGNING_KEY" > "$RUNNER_TEMP/release.key"
+          if ! openssl ec -in "$RUNNER_TEMP/release.key" -pubout 2>/dev/null | cmp -s - scripts/release-pubkey.pem; then
+            rm -f "$RUNNER_TEMP/release.key"
+            echo "::error::RELEASE_SIGNING_KEY is not the private half of scripts/release-pubkey.pem"
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/release.key"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: the draft release, with its notes
+        run: |
+          node apps/desktop/scripts/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
+          prev="$(git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)"
+          if [ -n "$prev" ]; then
+            printf '\n**All changes**: https://github.com/%s/compare/%s...%s\n' "$GITHUB_REPOSITORY" "$prev" "$TAG" >> "$RUNNER_TEMP/notes.md"
+          fi
+          case "$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || true)" in
+            true) gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md" ;; # the workflow run again
+            false) echo "::error::$TAG is published already; tag a new version"; exit 1 ;;
+            *) gh release create "$TAG" --draft --prerelease --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" ;;
+          esac
+  # her for Linux (docs/her-server.md §6.4), static with musl and without
+  # local-accounts as the Mac app's, built on a runner of each architecture
+  # in rust:alpine with her's toolchain; the binaries job signs it.
+  her:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: build her
+        # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
+        env:
+          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
+        run: |
+          toolchain="$(sed -n 's/^channel = "\(.*\)"/\1/p' her/rust-toolchain.toml)"
+          docker run --rm -v "$PWD/her:/src" -w /src -e NIMBLEOFFICE_TOKEN -e HER_GITHUB_OAUTH_CLIENT_SECRET -e CARGO_NET_GIT_FETCH_WITH_CLI=true -e RUSTUP_TOOLCHAIN="$toolchain-$(uname -m)-unknown-linux-musl" "rust:$toolchain-alpine" \
+            sh -c 'apk add --no-cache build-base perl linux-headers git >/dev/null && { [ -z "$NIMBLEOFFICE_TOKEN" ] || git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf https://github.com/Eliseowzy/nimbleoffice; } && cargo build --profile dist --locked -p her-cli --bin her --no-default-features'
+          cp her/target/dist/her her-linux-${{ matrix.arch }}
+          ./her-linux-${{ matrix.arch }} --version
+      # her's PDF worker (docs/linux.md §4): the static her cannot load PDFium, so
+      # this second program does, linked against glibc 2.28 with cargo-zigbuild,
+      # as her's own release builds it (her/tools/release/release.mjs).
+      # RUSTUP_TOOLCHAIN, as for her above: the image's own toolchain. Without it
+      # rustup reads her/rust-toolchain.toml and adds its clippy and rustfmt on
+      # the first call, and cargo-zigbuild's first calls run at the same time,
+      # so two installs race ("detected conflict: 'bin/cargo-fmt'", v0.2.2).
+      - name: build her PDF worker
+        env:
+          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
+        run: |
+          toolchain="$(sed -n 's/^channel = "\(.*\)"/\1/p' her/rust-toolchain.toml)"
+          docker run --rm -v "$PWD/her:/src" -w /src -e NIMBLEOFFICE_TOKEN -e CARGO_NET_GIT_FETCH_WITH_CLI=true -e RUSTUP_TOOLCHAIN="$toolchain-$(uname -m)-unknown-linux-gnu" "rust:$toolchain-bookworm" \
+            sh -c 'apt-get update -qq >/dev/null && apt-get install -y -qq python3-pip >/dev/null && pip3 install --quiet --break-system-packages cargo-zigbuild && { [ -z "$NIMBLEOFFICE_TOKEN" ] || git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf https://github.com/Eliseowzy/nimbleoffice; } && cargo zigbuild --profile dist --locked -p her-docs --bin her-doc-worker --target "$(uname -m)-unknown-linux-gnu.2.28"'
+          cp "her/target/$(uname -m)-unknown-linux-gnu/dist/her-doc-worker" her-doc-worker-linux-${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: her-linux-${{ matrix.arch }}
+          path: her-linux-${{ matrix.arch }}
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: her-doc-worker-linux-${{ matrix.arch }}
+          path: her-doc-worker-linux-${{ matrix.arch }}
+          if-no-files-found: error
+  # her for Windows, which install.ps1 puts beside hermeshd on a PC that is
+  # only a machine (the app carries its own): built as her's releases are,
+  # with MSVC, for x64 alone (the fork has no Windows on Arm). The binaries job signs it.
+  her-windows:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            triple: x86_64-pc-windows-msvc
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read access to the NimbleOffice fork
+        env:
+          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
+        run: |
+          # The fork's CI builds her without it too: warn, and let cargo say what it can't fetch.
+          if [ -z "$NIMBLEOFFICE_TOKEN" ]; then
+            echo "::warning::NIMBLEOFFICE_TOKEN is not set: cargo cannot fetch github.com/Eliseowzy/nimbleoffice if it is private"
+            exit 0
+          fi
+          git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+      - name: build her
+        working-directory: her
+        run: |
+          rustup target add ${{ matrix.triple }}
+          cargo build --profile dist --locked -p her-cli --bin her --no-default-features --target ${{ matrix.triple }}
+          cp target/${{ matrix.triple }}/dist/her.exe ../her-windows-${{ matrix.arch }}.exe
+      - if: matrix.arch == 'amd64'
+        run: ./her-windows-amd64.exe --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: her-windows-${{ matrix.arch }}
+          path: her-windows-${{ matrix.arch }}.exe
+          if-no-files-found: error
+  binaries:
+    needs: [notes, her, her-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: her console
+        run: corepack enable && pnpm install --frozen-lockfile --filter "@hermesh/her-console..." && pnpm --dir her/apps/console build
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: her-*
+          path: ${{ runner.temp }}/her
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: her-doc-worker-linux-*
+          path: ${{ runner.temp }}/pdf-worker
+          merge-multiple: true
+      # Her's PDF component for Linux (docs/linux.md §4): the worker, and the
+      # PDFium the Mac app pins, checked by its digest.
+      - name: her PDF component for Linux
+        run: |
+          for pair in amd64:x64 arm64:arm64; do
+            node apps/desktop/scripts/pdfium.mjs linux "${pair#*:}" "$RUNNER_TEMP/pdf/${pair%:*}"
+            install -m 0755 "$RUNNER_TEMP/pdf-worker/her-doc-worker-linux-${pair%:*}" "$RUNNER_TEMP/pdf/${pair%:*}/her-doc-worker"
+          done
+      # agent-desktop for Linux, which Her's computer use runs (docs/linux.md §5):
+      # the pinned npm package, checked by its integrity, as the Mac app's.
+      - name: agent-desktop for Linux
+        run: |
+          node apps/desktop/scripts/agent-desktop.mjs linux x64 "$RUNNER_TEMP/computer/amd64"
+          node apps/desktop/scripts/agent-desktop.mjs linux arm64 "$RUNNER_TEMP/computer/arm64"
+      - name: build and sign
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$RELEASE_SIGNING_KEY" > /tmp/release.key
+          VERSION=${GITHUB_REF_NAME} RELEASE_SIGNING_KEY_FILE=/tmp/release.key \
+            HER_LINUX_AMD64="$RUNNER_TEMP/her/her-linux-amd64" HER_LINUX_ARM64="$RUNNER_TEMP/her/her-linux-arm64" HER_CONSOLE=her/apps/console/dist \
+            HER_WINDOWS_AMD64="$RUNNER_TEMP/her/her-windows-amd64.exe" \
+            HER_PDF_LINUX_AMD64="$RUNNER_TEMP/pdf/amd64" HER_PDF_LINUX_ARM64="$RUNNER_TEMP/pdf/arm64" \
+            HER_COMPUTER_LINUX_AMD64="$RUNNER_TEMP/computer/amd64" HER_COMPUTER_LINUX_ARM64="$RUNNER_TEMP/computer/arm64" ./scripts/release.sh
+          rm -f /tmp/release.key
+      - run: gh release upload "$TAG" dist/release/* --clobber
+  # This version's image, on ghcr.io; promoting the release copies it to
+  # Docker Hub, where the README sends people, and makes it latest.
+  relay-image:
+    needs: notes
+    if: inputs.relay_image
+    uses: ./.github/workflows/relay-image.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets: inherit
+  windows-app:
+    needs: notes
+    strategy:
+      matrix:
+        arch: [x64]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable && pnpm install --frozen-lockfile
+      # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
+      - name: Read access to the NimbleOffice fork
+        shell: bash
+        env:
+          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
+        run: |
+          if [ -z "$NIMBLEOFFICE_TOKEN" ]; then
+            echo "::warning::NIMBLEOFFICE_TOKEN is not set: cargo cannot fetch github.com/Eliseowzy/nimbleoffice"
+            exit 0
+          fi
+          git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+      - name: build, and sign the feed
+        shell: bash
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$RELEASE_SIGNING_KEY" > "$RUNNER_TEMP/release.key"
+          VERSION="${GITHUB_REF_NAME#v}" HERMESH_ARCH=${{ matrix.arch }} RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/release.key" node apps/desktop/scripts/package-win.mjs
+          rm -f "$RUNNER_TEMP/release.key"
+      - name: check the installer
+        if: matrix.arch == 'x64'
+        shell: pwsh
+        run: apps/desktop/scripts/check-windows-setup.ps1 dist/Aide-windows-x64-setup.exe
+      - shell: bash
+        run: gh release upload "$TAG" dist/Aide-windows-${{ matrix.arch }}-setup.exe dist/Aide-windows-${{ matrix.arch }}.nupkg dist/RELEASES-win32-${{ matrix.arch }}.json dist/RELEASES-win32-${{ matrix.arch }}.json.sig dist/Aide.ico --clobber
+  # The Android app: a debug-signed APK (apps/android/scripts/build.sh), its unit tests run first.
+  android:
+    needs: notes
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: the NDK, if the runner lacks it
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          ls "$SDK"/ndk >/dev/null 2>&1 || yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724"
+      - name: build and test
+        run: VERSION="$TAG" apps/android/scripts/build.sh
+      - run: gh release upload "$TAG" apps/android/build/Aide-${TAG#v}-debug.apk --clobber
+  # Every file there and right, then a prerelease.
+  publish:
+    needs: [binaries, relay-image, windows-app, android]
+    # The jobs not asked for are skipped, not failed.
+    if: ${{ !cancelled() && !failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check the draft's files
+        env:
+          RELEASE_APPS: win32-x64
+        run: |
+          gh release download "$TAG" --dir "$RUNNER_TEMP/release"
+          ./scripts/release-check.sh "$RUNNER_TEMP/release" "$TAG"
+      - run: gh release edit "$TAG" --draft=false --prerelease

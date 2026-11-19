@@ -1,0 +1,155 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # By hand, on any branch: Windows work is tried on Windows runners there
+  # before it reaches main (docs/windows.md).
+  workflow_dispatch:
+jobs:
+  go:
+    strategy:
+      # Linux alone (the owner's servers run Debian; there's no Mac app): kept by
+      # the owner's ruling, 2026-11-18, while Windows runs everything else.
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: lint
+        run: make lint
+      - name: contract compatibility
+        if: github.event_name == 'pull_request'
+        run: go tool buf breaking --against '.git#branch=origin/main'
+      - name: unit tests
+        run: make test
+      - name: installer terminal interaction
+        run: python3 scripts/test_install.py
+      - name: end-to-end (scripted agents)
+        run: make e2e
+        env:
+          # Race-detector binaries on one runner: a data race fails the test.
+          HERMESH_E2E_RACE: '1'
+      # The desktop app's and Her's TypeScript: types and unit tests (they ran on
+      # the macOS app job, gone with the Mac app). After the end-to-end tests:
+      # with pnpm here, TestDesktop would run, and Electron's sandbox can't on
+      # this runner (the desktop's end-to-end tests run on windows-app).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: types and unit tests (TypeScript)
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm -r typecheck
+          pnpm --filter @hermesh/core test
+          pnpm --filter @hermesh/her-protocol test
+          pnpm --filter @hermesh/her-client test
+          pnpm --filter @hermesh/desktop test
+          pnpm --filter @hermesh/dsh-bridge test
+  # Windows (docs/windows.md): what is ported so far.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: vet
+        run: go vet ./...
+      - name: unit tests
+        run: go test ./cmd/... ./internal/... ./pkg/... -count=1
+        env:
+          HERMESH_PANEL_SHOTS: ${{ runner.temp }}/panel
+      # The signer's panel as the tests drew it, to look at against its design.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: signer-panel
+          path: ${{ runner.temp }}/panel
+          if-no-files-found: ignore
+      - name: install.ps1 and the signer
+        run: go test ./e2e -run '^(TestWindowsInstall|TestWindowsSigner)$' -count=1 -v
+  # The end-to-end suite on Windows, being ported (docs/windows.md, W1): its
+  # failures do not fail the run yet.
+  windows-e2e:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build Her for its end-to-end tests
+        shell: bash
+        env:
+          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
+        run: |
+          if [ -n "$NIMBLEOFFICE_TOKEN" ]; then
+            git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
+            export CARGO_NET_GIT_FETCH_WITH_CLI=true
+          fi
+          cargo build --manifest-path her/Cargo.toml -p her-cli -p her-mock
+      - name: end-to-end (scripted agents)
+        run: go test ./e2e -count=1 -timeout 30m
+  # The desktop app (Electron) and the macOS signer: types, unit tests, and
+  # their end-to-end tests driving the real app against the real daemon.
+  # The desktop app on Windows (docs/windows.md, W2): its end-to-end spec
+  # against the real daemon, then the package, installed in Developer Mode
+  # with its aliases checked. Its failures do not fail the run yet.
+  windows-app:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: end-to-end (desktop app)
+        run: go test ./e2e -run '^TestDesktop$' -count=1 -v -timeout 30m
+      # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
+      - name: Read access to the NimbleOffice fork
+        shell: bash
+        env:
+          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
+        run: |
+          if [ -z "$NIMBLEOFFICE_TOKEN" ]; then
+            echo "::warning::NIMBLEOFFICE_TOKEN is not set: cargo cannot fetch github.com/Eliseowzy/nimbleoffice"
+            exit 0
+          fi
+          git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+      # her is built once, with the profile that takes the least of this job's time.
+      - name: package
+        run: node apps/desktop/scripts/package-win.mjs
+        env:
+          HERMESH_HER_PROFILE: release
+      - name: install it, open it, uninstall it
+        shell: pwsh
+        run: apps/desktop/scripts/check-windows-setup.ps1 dist/Aide-windows-x64-setup.exe
+      # Two builds, the older updating to the newer from a feed signed with a key of the test's.
+      - name: update between two builds
+        shell: bash
+        run: |
+          openssl ecparam -name prime256v1 -genkey -noout -out "$RUNNER_TEMP/test.key"
+          openssl ec -in "$RUNNER_TEMP/test.key" -pubout -out "$RUNNER_TEMP/test.pub"
+          export HERMESH_UPDATE_FEED=http://127.0.0.1:8765 HERMESH_RELEASE_URL=http://127.0.0.1:8765
+          export HERMESH_RELEASE_PUBKEY_FILE="$RUNNER_TEMP/test.pub" RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/test.key"
+          export HERMESH_HER_PROFILE=release
+          VERSION=0.0.1 HERMESH_DIST=dist/older node apps/desktop/scripts/package-win.mjs
+          VERSION=0.0.2 HERMESH_DIST=dist/newer node apps/desktop/scripts/package-win.mjs
+          pwsh -File apps/desktop/scripts/check-windows-update.ps1 dist/older/Aide-windows-x64-setup.exe dist/newer 0.0.2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Aide-windows-setup
+          path: dist/Aide-windows-*-setup.exe

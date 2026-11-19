@@ -1,0 +1,95 @@
+// Line icons drawn on a 16×16 grid (from the design prototype).
+
+const paths: Record<string, string> = {
+  arrowD: "<path d=\"M8 2v8M5 7l3 3 3-3M3 11v3h10v-3\"/>",
+  grid: "<rect x=\"2.8\" y=\"2.8\" width=\"3.9\" height=\"3.9\" rx=\"1.1\"/><rect x=\"9.3\" y=\"2.8\" width=\"3.9\" height=\"3.9\" rx=\"1.1\"/><rect x=\"2.8\" y=\"9.3\" width=\"3.9\" height=\"3.9\" rx=\"1.1\"/><rect x=\"9.3\" y=\"9.3\" width=\"3.9\" height=\"3.9\" rx=\"1.1\"/>",
+  search: "<circle cx=\"7\" cy=\"7\" r=\"4.4\"/><path d=\"M10.3 10.3l3.4 3.4\"/>",
+  menu: "<path d=\"M2.5 4.5h11M2.5 8h11M2.5 11.5h11\"/>",
+  sidebar: "<rect x=\"1.8\" y=\"2.8\" width=\"12.4\" height=\"10.4\" rx=\"2.4\"/><path d=\"M6.2 2.8v10.4\"/>",
+  power: "<path d=\"M8 2v5.5\"/><path d=\"M4.6 4.2a5 5 0 1 0 6.8 0\"/>",
+  gear: "<circle cx=\"8\" cy=\"8\" r=\"2.1\"/><path d=\"M6.86 3.44L7.11 1.66A6.4 6.4 0 0 1 8.89 1.66L9.14 3.44A4.7 4.7 0 0 1 10.42 3.97L11.85 2.89A6.4 6.4 0 0 1 13.11 4.15L12.03 5.58A4.7 4.7 0 0 1 12.56 6.86L14.34 7.11A6.4 6.4 0 0 1 14.34 8.89L12.56 9.14A4.7 4.7 0 0 1 12.03 10.42L13.11 11.85A6.4 6.4 0 0 1 11.85 13.11L10.42 12.03A4.7 4.7 0 0 1 9.14 12.56L8.89 14.34A6.4 6.4 0 0 1 7.11 14.34L6.86 12.56A4.7 4.7 0 0 1 5.58 12.03L4.15 13.11A6.4 6.4 0 0 1 2.89 11.85L3.97 10.42A4.7 4.7 0 0 1 3.44 9.14L1.66 8.89A6.4 6.4 0 0 1 1.66 7.11L3.44 6.86A4.7 4.7 0 0 1 3.97 5.58L2.89 4.15A6.4 6.4 0 0 1 4.15 2.89L5.58 3.97A4.7 4.7 0 0 1 6.86 3.44Z\"/>",
+  plus: "<path d=\"M8 3v10M3 8h10\"/>",
+  minus: "<path d=\"M3 8h10\"/>",
+  more: "<circle cx=\"3.6\" cy=\"8\" r=\"1.15\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"8\" cy=\"8\" r=\"1.15\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12.4\" cy=\"8\" r=\"1.15\" fill=\"currentColor\" stroke=\"none\"/>",
+  x: "<path d=\"M4.3 4.3l7.4 7.4M11.7 4.3l-7.4 7.4\"/>",
+  // Two corners pulled apart: to show something larger, over the window.
+  expand: "<path d=\"M9.8 2.6h3.6v3.6M6.2 13.4H2.6V9.8M13.4 2.6L9.2 6.8M2.6 13.4l4.2-4.2\"/>",
+  arrowDown: "<path d=\"M8 3v10M4.2 9.2L8 13l3.8-3.8\"/>",
+  check: "<path d=\"M3.4 8.4l3 3 6.2-6.8\"/>",
+  caret: "<path d=\"M4.8 6.4h6.4L8 10z\" fill=\"currentColor\" stroke=\"none\"/>",
+  chevD: "<path d=\"M4.5 6.3L8 9.8l3.5-3.5\"/>",
+  chevR: "<path d=\"M6.3 4.5L9.8 8l-3.5 3.5\"/>",
+  stop: "<rect x=\"4.3\" y=\"4.3\" width=\"7.4\" height=\"7.4\" rx=\"1.6\"/>",
+  archive: "<rect x=\"2\" y=\"2.8\" width=\"12\" height=\"3.4\" rx=\"1\"/><path d=\"M3.2 6.2v6c0 .7.5 1.2 1.2 1.2h7.2c.7 0 1.2-.5 1.2-1.2v-6M6.4 9h3.2\"/>",
+  unarchive: "<rect x=\"2\" y=\"2.8\" width=\"12\" height=\"3.4\" rx=\"1\"/><path d=\"M3.2 6.2v6c0 .7.5 1.2 1.2 1.2h7.2c.7 0 1.2-.5 1.2-1.2v-6M8 11.6V8.2M6.5 9.6L8 8.1l1.5 1.5\"/>",
+  // A window with a card floating at its right: the session's info card.
+  infoCard: "<rect x=\"1.8\" y=\"2.8\" width=\"12.4\" height=\"10.4\" rx=\"2.4\"/><rect x=\"8.3\" y=\"5.1\" width=\"3.8\" height=\"5.8\" rx=\"1\" fill=\"currentColor\" stroke=\"none\"/>",
+  info: "<circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M8 7.3v3.9M8 5v.1\"/>",
+  alert: "<circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M8 4.9v3.9M8 11v.1\"/>",
+  laptop: "<rect x=\"3\" y=\"3.3\" width=\"10\" height=\"7\" rx=\"1.2\"/><path d=\"M1.4 12.7h13.2\"/>",
+  server: "<rect x=\"2.5\" y=\"2.5\" width=\"11\" height=\"4.6\" rx=\"1.2\"/><rect x=\"2.5\" y=\"8.9\" width=\"11\" height=\"4.6\" rx=\"1.2\"/><path d=\"M5 4.8h.1M5 11.2h.1\"/>",
+  mini: "<rect x=\"1.8\" y=\"5.2\" width=\"12.4\" height=\"5.6\" rx=\"1.6\"/><path d=\"M4.4 8h.1\"/>",
+  folder: "<path d=\"M1.8 4.4c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2V12c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z\"/>",
+  key: "<circle cx=\"5.6\" cy=\"10.4\" r=\"2.8\"/><path d=\"M7.6 8.4L13 3M11 5l1.6 1.6M9.4 6.6l1.3 1.3\"/>",
+  person: "<circle cx=\"8\" cy=\"5.5\" r=\"2.6\"/><path d=\"M3 13.6c.6-2.5 2.6-3.8 5-3.8s4.4 1.3 5 3.8\"/>",
+  persons: "<circle cx=\"6\" cy=\"5.6\" r=\"2.3\"/><path d=\"M1.8 13.4c.5-2.2 2.2-3.4 4.2-3.4s3.7 1.2 4.2 3.4\"/><circle cx=\"11.2\" cy=\"6.2\" r=\"1.9\"/><path d=\"M11.4 10c1.6.1 2.6 1.1 3 3\"/>",
+  terminal: "<rect x=\"1.8\" y=\"2.8\" width=\"12.4\" height=\"10.4\" rx=\"2\"/><path d=\"M4.6 6.3l2 1.7-2 1.7M8.2 10h3.2\"/>",
+  mail: "<rect x=\"2\" y=\"3.4\" width=\"12\" height=\"9.2\" rx=\"1.6\"/><path d=\"M2.6 4.4L8 8.6l5.4-4.2\"/>",
+  bell: "<path d=\"M4 11V7.3a4 4 0 0 1 8 0V11l1.2 1.3H2.8z\"/><path d=\"M6.6 13.8a1.5 1.5 0 0 0 2.8 0\"/>",
+  branch: "<circle cx=\"4.8\" cy=\"3.8\" r=\"1.5\"/><circle cx=\"4.8\" cy=\"12.2\" r=\"1.5\"/><circle cx=\"11.2\" cy=\"5.4\" r=\"1.5\"/><path d=\"M4.8 5.3v5.4M11.2 6.9c0 2.4-2.2 3-6.4 3.7\"/>",
+  copy: "<rect x=\"5.2\" y=\"5.2\" width=\"8\" height=\"8\" rx=\"1.6\"/><path d=\"M10.8 5.2V3.8c0-.6-.5-1.1-1.1-1.1H3.9c-.6 0-1.1.5-1.1 1.1v5.8c0 .6.5 1.1 1.1 1.1h1.3\"/>",
+  ext: "<path d=\"M6.5 3.2H4c-.7 0-1.2.5-1.2 1.2V12c0 .7.5 1.2 1.2 1.2h7.6c.7 0 1.2-.5 1.2-1.2V9.5M9.3 2.8h3.9v3.9M13.2 2.8L7.5 8.5\"/>",
+  read: "<path d=\"M2 3.6c2-.8 4-.8 6 .6 2-1.4 4-1.4 6-.6v9c-2-.8-4-.8-6 .6-2-1.4-4-1.4-6-.6z\"/><path d=\"M8 4.2v9\"/>",
+  edit: "<path d=\"M10.6 2.7l2.7 2.7-7.6 7.6-3.2.5.5-3.2z\"/>",
+  web: "<circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M2 8h12M8 2c-2 2.2-2 9.8 0 12M8 2c2 2.2 2 9.8 0 12\"/>",
+  clock: "<circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M8 4.6V8l2.3 1.5\"/>",
+  shield: "<path d=\"M8 1.8l5 2v4c0 3-2.2 5.3-5 6.4-2.8-1.1-5-3.4-5-6.4v-4z\"/><path d=\"M5.8 8l1.6 1.6 2.9-3\"/>",
+  lock: "<rect x=\"3.2\" y=\"7\" width=\"9.6\" height=\"6.8\" rx=\"1.6\"/><path d=\"M5.3 7V5.2a2.7 2.7 0 0 1 5.4 0V7\"/>",
+  undo: "<path d=\"M5.5 4L2.8 6.7l2.7 2.7\"/><path d=\"M2.8 6.7h6.7a3.6 3.6 0 0 1 0 7.2H7\"/>",
+  // An arrow turning back to what was said: reply.
+  reply: "<path d=\"M6.3 4.1L2.8 7.6l3.5 3.5\"/><path d=\"M2.8 7.6h6.3a4.1 4.1 0 0 1 4.1 4.1v1.1\"/>",
+  devices: "<rect x=\"1.4\" y=\"3.4\" width=\"9\" height=\"6.4\" rx=\"1\"/><path d=\"M.8 12h10.4\"/><rect x=\"11.6\" y=\"5.8\" width=\"3.6\" height=\"7.2\" rx=\".9\"/>",
+  warn: "<path d=\"M8 2.2l6.2 11H1.8z\"/><path d=\"M8 6.4v3.2M8 11.4v.1\"/>",
+  q: "<circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M6.3 6.2a1.8 1.8 0 1 1 2.5 1.7c-.5.2-.8.6-.8 1.1v.3M8 11.3v.1\"/>",
+  bolt: "<path d=\"M9 1.8L3.6 9h4l-1 5.2L12.4 7h-4z\"/>",
+  sparkle: "<path d=\"M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M4 12l2-2M10 6l2-2\"/>",
+  user: "<circle cx=\"8\" cy=\"8\" r=\"6\"/><circle cx=\"8\" cy=\"6.8\" r=\"2\"/><path d=\"M4.4 12.2c.8-1.4 2-2.1 3.6-2.1s2.8.7 3.6 2.1\"/>",
+  wifi: "<path d=\"M1.8 6.2a9 9 0 0 1 12.4 0M4 8.6a5.8 5.8 0 0 1 8 0M6.2 11a2.6 2.6 0 0 1 3.6 0\"/><circle cx=\"8\" cy=\"13\" r=\".5\"/>",
+  filter: "<path d=\"M2.5 4.2h11M4.6 8h6.8M6.7 11.8h2.6\"/>",
+  chip: "<rect x=\"3.8\" y=\"3.8\" width=\"8.4\" height=\"8.4\" rx=\"1.8\"/><rect x=\"6.4\" y=\"6.4\" width=\"3.2\" height=\"3.2\" rx=\".6\"/><path d=\"M6.2 1.8v2M9.8 1.8v2M6.2 12.2v2M9.8 12.2v2M1.8 6.2h2M1.8 9.8h2M12.2 6.2h2M12.2 9.8h2\"/>",
+  gauge: "<path d=\"M2.4 11.6a5.9 5.9 0 1 1 11.2 0\"/><path d=\"M8 10.4l2.8-3.8\"/><circle cx=\"8\" cy=\"10.4\" r=\"1.1\"/>",
+  link: "<path d=\"M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.8.8M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.8-.8\"/>",
+  // A robot's head, with its antenna, ears and eyes: the Her entry.
+  her: "<path d=\"M8 2v2.6\"/><rect x=\"2.9\" y=\"4.6\" width=\"10.2\" height=\"8.2\" rx=\"2.3\"/><path d=\"M1.3 7.9v1.7M14.7 7.9v1.7M6.1 7.8v1.7M9.9 7.8v1.7\"/>",
+  arrowUp: "<path d=\"M8 13V3M4.2 6.8L8 3l3.8 3.8\"/>",
+  chevL: "<path d=\"M9.7 4.5L6.2 8l3.5 3.5\"/>",
+  code: "<path d=\"M5.4 4.6L2 8l3.4 3.4M10.6 4.6L14 8l-3.4 3.4\"/>",
+  eye: "<path d=\"M1.6 8s2.4-4.4 6.4-4.4S14.4 8 14.4 8 12 12.4 8 12.4 1.6 8 1.6 8z\"/><circle cx=\"8\" cy=\"8\" r=\"1.9\"/>",
+  eyeOff: "<path d=\"M6.3 3.8A6 6 0 0 1 8 3.6c4 0 6.4 4.4 6.4 4.4a11 11 0 0 1-1.6 2.1M4.3 4.9C2.6 6 1.6 8 1.6 8s2.4 4.4 6.4 4.4c1.3 0 2.5-.4 3.4-1M6.6 6.6a1.9 1.9 0 0 0 2.8 2.8M2.2 2.2l11.6 11.6\"/>",
+  arrowR: "<path d=\"M3 8h10M9.2 4.2L13 8l-3.8 3.8\"/>",
+  doc: "<path d=\"M4.2 1.9h5l2.6 2.6v8.6c0 .6-.4 1-1 1H4.2c-.6 0-1-.4-1-1V2.9c0-.6.4-1 1-1z\"/><path d=\"M9.2 1.9v2.6h2.6\"/>",
+  // A tray: the files Her sent (docs/her-deliverables.md §3.2).
+  tray: "<path d=\"M2 9.4l1.7-5.1c.2-.5.6-.8 1.2-.8h6.2c.5 0 1 .3 1.2.8L14 9.4\"/><path d=\"M2 9.4h3.4l.7 1.8h3.8l.7-1.8H14v2.8c0 .7-.6 1.3-1.3 1.3H3.3c-.7 0-1.3-.6-1.3-1.3z\"/>",
+  // A speech bubble with an arrow in it: go to a message in the conversation.
+  bubble: "<path d=\"M13.8 7.6a5.6 5.6 0 0 1-8 5L2.2 13.8l1.1-3.4a5.6 5.6 0 1 1 10.5-2.8z\"/><path d=\"M5.8 7.6h4.2M8.6 5.9l1.7 1.7-1.7 1.7\"/>",
+  pin: "<path d=\"M6 2.4h4l-.6 3.4 2 2v1H3.6v-1l2-2z\"/><path d=\"M8 8.8v4.8\"/>",
+  play: "<path d=\"M5 3.4v9.2L12.4 8z\"/>",
+  retry: "<path d=\"M12.8 7.6a4.8 4.8 0 1 1-1.4-3.4\"/><path d=\"M12 2.4v2.8H9.2\"/>",
+  // A list with checks: Her's page, its Work tab.
+  checklist: "<path d=\"M2.4 4.2l1 1 1.9-2M7.6 4.2h6M2.4 8.6l1 1 1.9-2M7.6 8.6h6M3 12.6h1.6M7.6 12.6h6\"/>",
+  // A puzzle piece: Her's page, its Abilities tab.
+  puzzle: "<path d=\"M6.4 3.4v-.6a1.6 1.6 0 0 1 3.2 0v.6h2.6c.4 0 .7.3.7.7v2.5h.5a1.6 1.6 0 0 1 0 3.2h-.5v2.5c0 .4-.3.7-.7.7H9.6v-.6a1.6 1.6 0 0 0-3.2 0v.6H3.8c-.4 0-.7-.3-.7-.7V9.8h.5a1.6 1.6 0 0 0 0-3.2h-.5V4.1c0-.4.3-.7.7-.7z\"/>",
+  // A brain in two halves: what Her remembers.
+  brain: "<path d=\"M8 3.6C7 2.4 4.8 2.7 4.4 4.5 2.9 4.8 2.3 6.5 3.3 7.6c-1 1.1-.4 3.1 1.2 3.3.3 1.9 2.6 2.3 3.5 1.1M8 3.6c1-1.2 3.2-.9 3.6.9 1.5.3 2.1 2 1.1 3.1 1 1.1.4 3.1-1.2 3.3-.3 1.9-2.6 2.3-3.5 1.1M8 3.6V12\"/>",
+  // A window with its bar: the browsers Her uses.
+  window: "<rect x=\"2\" y=\"3\" width=\"12\" height=\"10\" rx=\"1.6\"/><path d=\"M2 6h12M4 4.6h.1M5.6 4.6h.1\"/>",
+  // A pulse: the Progress entry.
+  pulse: "<path d=\"M1.8 8.4h2.8l1.9-4.8 3 8.8 1.9-4h2.8\"/>",
+  // A kitten's head: a sub-agent of Her's.
+};
+
+export type IconName = keyof typeof paths;
+
+export function Icon({ name, className = "" }: { name: string; className?: string }) {
+  return <svg className={`ic ${className}`} viewBox="0 0 16 16" aria-hidden="true" dangerouslySetInnerHTML={{ __html: paths[name] ?? "" }} />;
+}

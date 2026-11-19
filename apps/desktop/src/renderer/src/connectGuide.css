@@ -1,0 +1,38 @@
+/* The Connect guide (ConnectGuide.tsx), in the first run and in settings: one
+   line's sections stacked, each under a small heading (.fhead), as settings'
+   groups are. */
+.cg-tabs{align-self:center;flex-wrap:wrap;justify-content:center;margin:0 0 16px}
+.cg{display:flex;flex-direction:column;gap:18px;text-align:left;width:100%}
+.cg-intro{margin:0;color:var(--l2);line-height:1.55}
+.cg-note{margin:0;color:var(--l2);font-size:12px;line-height:1.5}
+.cg-note.warn{color:var(--orange)}
+.cg-machine{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--l2)}
+.cg-sec{display:flex;flex-direction:column}
+.cg-list{margin:0;padding:10px 14px 10px 32px;background:var(--win2);border-radius:var(--r-card);display:flex;flex-direction:column;gap:6px;line-height:1.5}
+.cg-fix .cg-list{background:none;padding:4px 0 0 18px}
+.cg-fix{margin-top:8px;font-size:12.5px;color:var(--l2)}
+.cg-status{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--win2);border-radius:var(--r-card)}
+.cg-status>span{flex:1;min-width:0}
+.cg-status>i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--l3)}
+.cg-status.ready>i{background:var(--green)}
+.cg-status.signIn>i,.cg-status.appOnly>i{background:var(--orange)}
+.cg-status.broken>i,.cg-status.missing>i{background:var(--red)}
+.cg-box{display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--win2);border-radius:var(--r-card)}
+.cg-box>p{margin:0}
+.cg-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cg-result{margin:0;line-height:1.5;user-select:text;-webkit-user-select:text}
+.cg-result.ok{color:var(--green)}
+.cg-result.bad{color:var(--red)}
+.cg-copy{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.cg-copy code{word-break:break-all}
+.cg-agent{gap:8px}
+.cg-agent.on{box-shadow:inset 3px 0 0 var(--accent)}
+.cg-pick{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit}
+.cg-pick .ft{display:flex;flex-direction:column;min-width:0}
+.cg-pick .fdesc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--l2)}
+.cg-field{display:flex;flex-direction:column;gap:5px}
+.cg-field>label{font-weight:600;font-size:12.5px}
+.cg-ex{color:var(--l3)}
+.cg-env{display:flex;gap:6px;align-items:center}
+.cg-env .field{flex:1;min-width:0}
+.cg-secret{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--l2);white-space:nowrap}

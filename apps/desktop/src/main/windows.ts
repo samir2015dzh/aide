@@ -1,0 +1,260 @@
+import { language } from "@hermesh/core";
+import { app, BrowserWindow, screen, session, shell, type WebContents } from "electron";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { consoleURL, inConsole, opensOutside } from "../shared/herConsole";
+import { i18n } from "../shared/i18n";
+import { platform } from "./platform";
+
+export const origin = "app://hermesh";
+export const devURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined;
+
+let main: BrowserWindow | undefined;
+let settings: BrowserWindow | undefined;
+const auxiliary = new Map<string, BrowserWindow>();
+// The window opens at the size it had last time (the main window's on a
+// first start, as most starts are), its page loading in the middle, so it
+// seldom changes size.
+let mode: "onboarding" | "main" | undefined;
+const modeFile = () => path.join(app.getPath("userData"), "window.json");
+
+function lastMode(): "onboarding" | "main" {
+  try {
+    return JSON.parse(fs.readFileSync(modeFile(), "utf8")).mode === "onboarding" ? "onboarding" : "main";
+  } catch {
+    return "main";
+  }
+}
+
+const sizes = {
+  onboarding: { width: 720, height: 660, minWidth: 720, minHeight: 600 },
+  // The conversation alone at the least; the info card and the sidebar give way before (renderer layout.ts).
+  main: { width: 1240, height: 800, minWidth: 480, minHeight: 620 },
+};
+
+/** Is url one of our own pages (the only pages that may call the main process)? */
+export function ours(url: string): boolean {
+  return url.startsWith(origin + "/") || (devURL !== undefined && url.startsWith(devURL));
+}
+
+function page(hash = ""): string {
+  return (devURL ?? `${origin}/index.html`) + hash;
+}
+
+function secure(win: BrowserWindow) {
+  const wc = win.webContents;
+  // Nothing but our own pages, ever; links open in the browser.
+  wc.on("will-navigate", (e, url) => {
+    if (!ours(url)) e.preventDefault();
+  });
+  wc.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https://")) shell.openExternal(url);
+    return { action: "deny" };
+  });
+  // Its titles go grey while another window has the focus, as macOS titles do.
+  const focus = () => wc.send("window-focus", win.isFocused());
+  win.on("focus", focus);
+  win.on("blur", focus);
+  wc.on("did-finish-load", focus);
+}
+
+function webPreferences() {
+  return {
+    preload: path.join(import.meta.dirname, "../preload/index.cjs"),
+    sandbox: true,
+    contextIsolation: true,
+    nodeIntegration: false,
+    spellcheck: false,
+    additionalArguments: [`--hermesh-user=${os.userInfo().username}`, `--hermesh-version=${app.getVersion()}`, `--hermesh-lang=${language()}`, `--hermesh-material=${platform.material ? 1 : 0}`],
+  };
+}
+
+export function mainWindow(): BrowserWindow | undefined {
+  return main;
+}
+
+export function showMain(): BrowserWindow {
+  if (main) {
+    main.show();
+    main.focus();
+    return main;
+  }
+  mode ??= lastMode();
+  main = new BrowserWindow({
+    ...sizes[mode],
+    show: false,
+    title: "Aide",
+    ...platform.frame(mode),
+    webPreferences: webPreferences(),
+  });
+  secure(main);
+  main.once("ready-to-show", () => main?.show());
+  main.on("closed", () => (main = undefined));
+  main.loadURL(page());
+  return main;
+}
+
+/** The compact first-run window, or the main window (grown in place, animated). */
+export function setMode(m: "onboarding" | "main") {
+  if (m === mode) return;
+  mode = m;
+  try {
+    fs.writeFileSync(modeFile(), JSON.stringify({ mode }));
+  } catch {} // it opens at the main window's size next time
+  if (!main) return;
+  const s = sizes[m];
+  platform.placeButtons(main, m);
+  const b = main.getBounds();
+  const area = screen.getDisplayMatching(b).workArea;
+  const width = Math.min(s.width, area.width);
+  const height = Math.min(s.height, area.height);
+  const x = Math.round(Math.min(Math.max(area.x, b.x + (b.width - width) / 2), area.x + area.width - width));
+  const y = Math.round(Math.min(Math.max(area.y, b.y + (b.height - height) / 2), area.y + area.height - height));
+  main.setMinimumSize(Math.min(s.minWidth, width), Math.min(s.minHeight, height));
+  platform.grow(main, { x, y, width, height });
+}
+
+/**
+ * The menu bar panel: a small borderless window of the menu material under
+ * the menu bar icon (main/tray.ts places, shows and hides it). It never
+ * takes the Dock icon or the app's activation.
+ */
+export function trayPanel(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 268,
+    height: 190,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    ...platform.frame("panel"),
+    webPreferences: webPreferences(),
+  });
+  secure(win);
+  win.loadURL(page("#tray"));
+  return win;
+}
+
+export const settingsVisible = () => !!settings && !settings.isDestroyed() && settings.isVisible();
+
+export function showSettings(tab?: string) {
+  if (settings) {
+    if (tab) settings.webContents.send("settings-tab", tab);
+    settings.show();
+    settings.focus();
+    return;
+  }
+  settings = new BrowserWindow({
+    width: 820,
+    height: 620,
+    minWidth: 720,
+    minHeight: 480,
+    show: false,
+    title: i18n.t("main:settingsWindow"),
+    // As the main window's frame.
+    ...platform.frame("settings"),
+    minimizable: false,
+    fullscreenable: false,
+    webPreferences: webPreferences(),
+  });
+  secure(settings);
+  settings.once("ready-to-show", () => settings?.show());
+  settings.on("closed", () => (settings = undefined));
+  settings.loadURL(page(`#settings${tab ? "/" + tab : ""}`));
+}
+
+function showAuxiliary(route: "updates" | "about" | "whats-new", title: string) {
+  const existing = auxiliary.get(route);
+  // One closing is no window to show: its page goes before its "closed", which takes it from the map.
+  if (existing && !existing.isDestroyed() && !existing.webContents.isDestroyed()) { existing.show(); existing.focus(); return; }
+  const win = new BrowserWindow({
+    width: 560, height: 360, minWidth: 440, minHeight: route === "about" ? 340 : 280,
+    show: false, title, minimizable: false, fullscreenable: false,
+    ...platform.frame("auxiliary"), webPreferences: webPreferences(),
+  });
+  auxiliary.set(route, win);
+  secure(win);
+  win.once("ready-to-show", () => win.show());
+  // A window opened meanwhile, in place of this one closing, keeps its place.
+  win.on("closed", () => auxiliary.get(route) === win && auxiliary.delete(route));
+  win.loadURL(page(`#${route}`));
+}
+export const showUpdates = () => showAuxiliary("updates", i18n.t("updates:title"));
+export const showAbout = () => showAuxiliary("about", i18n.t("main:menu.app.about"));
+export const showWhatsNew = () => showAuxiliary("whats-new", i18n.t("updates:whatsNew"));
+
+const consoles = new Map<string, BrowserWindow>();
+
+/**
+ * A machine's Her console (docs/her-server.md §5.3), in a window of its own: the page her ships,
+ * served by this computer's hermeshd on 127.0.0.1 (`address`, GetHerConsole). It is not one of the
+ * app's pages: no preload, sandboxed, in a session of its own that grants no permission. It stays on
+ * the console's origin; https links, and the sign-in pages it opens, go to the default browser.
+ */
+export async function showHerConsole(machineId: string, title: string, address: () => Promise<string>, page?: string) {
+  const url = consoleURL(await address());
+  if (!url) throw new Error(i18n.t("main:herConsoleBad"));
+  if (page) url.hash = page;
+  const open = consoles.get(machineId);
+  if (open && !open.isDestroyed()) {
+    // hermeshd started again meanwhile: the console is at another port and token. A page asked for goes there.
+    const now = open.webContents.getURL();
+    if (!now.startsWith(url.href.split("#")[0])) open.loadURL(url.href);
+    else if (page) open.webContents.executeJavaScript(`location.hash = ${JSON.stringify(page)}`).catch(() => {});
+    open.show();
+    open.focus();
+    return;
+  }
+  const partition = `her-console-${machineId}`;
+  const ses = session.fromPartition(partition);
+  ses.setPermissionRequestHandler((_wc, _permission, grant) => grant(false));
+  ses.setPermissionCheckHandler(() => false);
+  const win = new BrowserWindow({
+    width: 1040,
+    height: 720,
+    minWidth: 720,
+    minHeight: 480,
+    show: false,
+    title,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition, spellcheck: false },
+  });
+  consoles.set(machineId, win);
+  const wc = win.webContents;
+  win.on("page-title-updated", (e) => e.preventDefault());
+  wc.on("will-navigate", (e, to) => {
+    if (inConsole(url, to)) return;
+    e.preventDefault();
+    if (opensOutside(to)) shell.openExternal(to);
+  });
+  wc.on("will-redirect", (e, to) => {
+    if (!inConsole(url, to)) e.preventDefault();
+  });
+  wc.on("will-attach-webview", (e) => e.preventDefault());
+  wc.setWindowOpenHandler(({ url: to }) => {
+    if (opensOutside(to)) shell.openExternal(to);
+    return { action: "deny" };
+  });
+  win.once("ready-to-show", () => win.show());
+  win.on("closed", () => consoles.delete(machineId));
+  win.loadURL(url.href);
+}
+
+/** Only the update and release history windows can fit themselves; longer notes scroll. */
+export function sizeUpdates(sender: WebContents, height: unknown) {
+  const win = [auxiliary.get("updates"), auxiliary.get("whats-new")].find((w) => w && !w.isDestroyed() && w.webContents === sender);
+  if (!win || typeof height !== "number" || !Number.isFinite(height) || height <= 0) return;
+  const bounds = win.getBounds();
+  const area = screen.getDisplayMatching(bounds).workArea;
+  const frame = bounds.height - win.getContentBounds().height;
+  const maximum = area.height - 42;
+  const next = Math.min(maximum, Math.max(280, Math.ceil(height) + frame));
+  if (bounds.height === next) return;
+  const y = Math.max(area.y + 21, Math.min(bounds.y, area.y + area.height - next - 21));
+  win.setBounds({ height: next, y });
+}

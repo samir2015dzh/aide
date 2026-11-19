@@ -1,0 +1,367 @@
+package transport
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+	"github.com/hashicorp/yamux"
+
+	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
+	"github.com/hermeshai/hermesh/pkg/identity"
+)
+
+type grants struct {
+	relayv1connect.UnimplementedClientControlServiceHandler
+}
+
+func (grants) GetLatestGrant(context.Context, *relayv1.GetLatestGrantRequest) (*relayv1.GetLatestGrantResponse, error) {
+	return &relayv1.GetLatestGrantResponse{}, nil
+}
+
+type bufConn struct {
+	net.Conn
+	r *bufio.Reader
+}
+
+func (c bufConn) Read(p []byte) (int, error) { return c.r.Read(p) }
+
+// fakeRelay answers Hello with ok after checking whether the peer already
+// sent more (pipelined reports it), then serves the control stream.
+func fakeRelay(t *testing.T, ok bool, pipelined chan<- bool) string {
+	return fakeRelayWith(t, ok, pipelined, 0)
+}
+
+// fakeRelayWith is fakeRelay with a relay that, with chatter, keeps sending
+// to the peer that often (it opens streams), as one busy with tunnels does.
+func fakeRelayWith(t *testing.T, ok bool, pipelined chan<- bool, chatter time.Duration) string {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		if err != nil {
+			return
+		}
+		conn := NetConnFromWS(ws)
+		defer conn.Close()
+		WriteFrame(conn, &relayv1.Challenge{Nonce: make([]byte, 32), RelayId: "r"})
+		br := bufio.NewReader(conn)
+		var hello relayv1.Hello
+		if err := ReadFrame(br, &hello); err != nil {
+			return
+		}
+		more := make(chan bool, 1)
+		go func() { _, err := br.Peek(1); more <- err == nil }()
+		early := false
+		select {
+		case early = <-more:
+		case <-time.After(500 * time.Millisecond):
+		}
+		pipelined <- early
+		if !ok {
+			WriteFrame(conn, &relayv1.HelloResult{Error: "revoked"})
+			return
+		}
+		WriteFrame(conn, &relayv1.HelloResult{Ok: true})
+		if !early {
+			<-more // br is read by one goroutine at a time
+		}
+		sess, err := yamux.Server(bufConn{conn, br}, YamuxConfig())
+		if err != nil {
+			return
+		}
+		if chatter > 0 {
+			go func() {
+				for !sess.IsClosed() {
+					if st, err := sess.OpenStream(); err == nil {
+						st.Close()
+					}
+					time.Sleep(chatter)
+				}
+			}()
+		}
+		st, err := sess.AcceptStream()
+		if err != nil {
+			return
+		}
+		var h relayv1.StreamHeader
+		ReadFrame(st, &h)
+		mux := http.NewServeMux()
+		mux.Handle(relayv1connect.NewClientControlServiceHandler(grants{}))
+		ServeH2(context.Background(), st, mux)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+func dialer(t *testing.T, url string, pipeline bool) *Dialer {
+	key, err := identity.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &Dialer{RelayURL: url, Role: relayv1.Role_ROLE_CLIENT, Key: key, Pipeline: pipeline,
+		Credentials: func() *identityv1.Credentials { return &identityv1.Credentials{} }}
+}
+
+func latestGrant(c *RelayConn) error {
+	hc, err := c.Control()
+	if err != nil {
+		return err
+	}
+	_, err = relayv1connect.NewClientControlServiceClient(hc, "http://relay", ClientNoCompression).
+		GetLatestGrant(context.Background(), &relayv1.GetLatestGrantRequest{})
+	return err
+}
+
+// Ping answers on a connection that works, and fails at once on one that
+// is closed.
+func TestPing(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := dialer(t, fakeRelay(t, true, make(chan bool, 1)), false).Dial(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.Ping(ctx); err != nil {
+		t.Fatalf("ping: %v", err)
+	}
+	conn.Close()
+	if err := conn.Ping(ctx); err == nil || ctx.Err() != nil {
+		t.Fatalf("ping on a closed connection: %v (ctx %v)", err, ctx.Err())
+	}
+}
+
+func TestPipelinedDial(t *testing.T) {
+	ctx := context.Background()
+	for _, c := range []struct {
+		name          string
+		ok, pipeline  bool
+		wantPipelined bool
+	}{
+		{"pipelined, admitted", true, true, true},
+		{"pipelined, refused", false, true, true},
+		{"waits, admitted", true, false, false},
+		{"waits, refused", false, false, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			pipelined := make(chan bool, 1)
+			d := dialer(t, fakeRelay(t, c.ok, pipelined), c.pipeline)
+			conn, err := d.Dial(ctx)
+			if !c.pipeline && !c.ok {
+				// Without pipelining, Dial itself reports the refusal.
+				if !errors.Is(err, ErrAdmission) {
+					t.Fatalf("dial: %v, want ErrAdmission", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer conn.Close()
+			// The control call is what goes out ahead of the answer.
+			err = latestGrant(conn)
+			if got := <-pipelined; got != c.wantPipelined {
+				t.Fatalf("request sent before the relay answered Hello: %v, want %v", got, c.wantPipelined)
+			}
+			switch {
+			case c.ok && err != nil:
+				t.Fatalf("call: %v", err)
+			case !c.ok && !errors.Is(err, ErrAdmission):
+				t.Fatalf("call on a refused connection: %v, want ErrAdmission", err)
+			case !c.ok:
+				if aerr := conn.Admitted(ctx); !errors.Is(aerr, ErrAdmission) {
+					t.Fatalf("admitted: %v", aerr)
+				}
+			}
+		})
+	}
+}
+
+// quietLink is a TCP link to target whose directions can each go silent
+// without closing, as a dead network path does.
+type quietLink struct {
+	addr               string
+	toRelay, fromRelay atomic.Bool // silent
+}
+
+func newQuietLink(t *testing.T, target string) *quietLink {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { l.Close() })
+	q := &quietLink{addr: l.Addr().String()}
+	pump := func(dst, src net.Conn, silent *atomic.Bool) {
+		defer dst.Close()
+		b := make([]byte, 32<<10)
+		for {
+			n, err := src.Read(b)
+			if n > 0 && !silent.Load() {
+				if _, err := dst.Write(b[:n]); err != nil {
+					return
+				}
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			r, err := net.Dial("tcp", target)
+			if err != nil {
+				c.Close()
+				continue
+			}
+			go pump(r, c, &q.toRelay)
+			go pump(c, r, &q.fromRelay)
+		}
+	}()
+	return q
+}
+
+// A connection whose relay stopped answering closes itself: after a ping
+// went unanswered, or, when the clock shows the process did not run for a
+// while (the computer slept), at once. One whose relay answers stays, and
+// so does one whose pings get no answer while the relay is still heard (a
+// busy link).
+func TestWatch(t *testing.T) {
+	saved := []time.Duration{pingEvery, pingWithin, wakeTick, wakeGap, wakeWithin}
+	clock := wallNow
+	t.Cleanup(func() {
+		pingEvery, pingWithin, wakeTick, wakeGap, wakeWithin = saved[0], saved[1], saved[2], saved[3], saved[4]
+		wallNow = clock
+	})
+	var ahead atomic.Int64 // how far the wall clock jumped
+	wallNow = func() time.Time { return time.Now().Round(0).Add(time.Duration(ahead.Load())) }
+	wakeTick, wakeGap, wakeWithin = 20*time.Millisecond, time.Second, 200*time.Millisecond
+
+	connect := func(t *testing.T, chatter time.Duration) (*RelayConn, *quietLink) {
+		link := newQuietLink(t, strings.TrimPrefix(fakeRelayWith(t, true, make(chan bool, 1), chatter), "http://"))
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		conn, err := dialer(t, "http://"+link.addr, false).Dial(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { conn.Close() })
+		return conn, link
+	}
+	closedWithin := func(conn *RelayConn, d time.Duration) bool {
+		select {
+		case <-conn.Done():
+			return true
+		case <-time.After(d):
+			return false
+		}
+	}
+
+	t.Run("a relay that answers", func(t *testing.T) {
+		pingEvery, pingWithin = 100*time.Millisecond, 200*time.Millisecond
+		conn, _ := connect(t, 0)
+		if closedWithin(conn, time.Second) {
+			t.Fatal("closed a connection whose relay answers")
+		}
+		ahead.Add(int64(time.Minute)) // back from sleep, the relay still there
+		if closedWithin(conn, time.Second) {
+			t.Fatal("closed a connection whose relay answers after a sleep")
+		}
+	})
+	t.Run("a relay gone silent", func(t *testing.T) {
+		pingEvery, pingWithin = 300*time.Millisecond, 200*time.Millisecond
+		conn, link := connect(t, 0)
+		link.toRelay.Store(true)
+		link.fromRelay.Store(true)
+		if !closedWithin(conn, 3*time.Second) {
+			t.Fatal("still open: the silent relay went unnoticed")
+		}
+		// Due from when the relay was last heard, not from when it went
+		// silent: a slow dial (Windows) heard it last a while before that.
+		if quiet := wallNow().Sub(time.Unix(0, conn.admit.read.Load())); quiet < pingEvery {
+			t.Fatalf("closed %v after the relay was last heard, before it was due a ping (%v)", quiet, pingEvery)
+		}
+	})
+	t.Run("a relay gone while the computer slept", func(t *testing.T) {
+		pingEvery, pingWithin = time.Minute, time.Minute // no ping is due
+		conn, link := connect(t, 0)
+		link.toRelay.Store(true)
+		link.fromRelay.Store(true)
+		if closedWithin(conn, 500*time.Millisecond) {
+			t.Fatal("closed with no ping due and no sleep")
+		}
+		ahead.Add(int64(time.Minute))
+		if !closedWithin(conn, 2*time.Second) {
+			t.Fatal("still open after the sleep: the relay was not asked at once")
+		}
+	})
+	t.Run("a busy link", func(t *testing.T) {
+		pingEvery, pingWithin = 100*time.Millisecond, 100*time.Millisecond
+		// The relay keeps sending, but the answers to this end's pings do
+		// not come: they never reach it.
+		conn, link := connect(t, 20*time.Millisecond)
+		link.toRelay.Store(true)
+		if closedWithin(conn, 2*time.Second) {
+			t.Fatal("closed a connection that still hears the relay")
+		}
+		link.fromRelay.Store(true) // and now nothing at all
+		if !closedWithin(conn, 2*time.Second) {
+			t.Fatal("still open with nothing heard from the relay")
+		}
+	})
+}
+
+func TestDialRetriesTransientHandshakeDrop(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if attempts.Add(1) == 1 {
+			if hj, ok := w.(http.Hijacker); ok {
+				if conn, _, err := hj.Hijack(); err == nil {
+					conn.Close()
+					return
+				}
+			}
+		}
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		if err != nil {
+			return
+		}
+		conn := NetConnFromWS(ws)
+		defer conn.Close()
+		WriteFrame(conn, &relayv1.Challenge{Nonce: make([]byte, 32), RelayId: "r"})
+		var hello relayv1.Hello
+		if err := ReadFrame(conn, &hello); err != nil {
+			return
+		}
+		WriteFrame(conn, &relayv1.HelloResult{Ok: true})
+		sess, err := yamux.Server(conn, YamuxConfig())
+		if err != nil {
+			return
+		}
+		defer sess.Close()
+		<-sess.CloseChan()
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := dialer(t, srv.URL, false).Dial(ctx)
+	if err != nil {
+		t.Fatalf("Dial failed after transient drop: %v", err)
+	}
+	conn.Close()
+	if got := attempts.Load(); got != 2 {
+		t.Fatalf("attempts = %d, want 2", got)
+	}
+}

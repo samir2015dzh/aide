@@ -1,0 +1,878 @@
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { Client, Machine } from "@hermesh/proto/local";
+import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@hermesh/proto/session";
+import {
+  agoText, clockText, dateOf, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
+  interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
+  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, type Step,
+} from "@hermesh/core";
+import { AgentLogo, Mark, agentName } from "@hermesh/ui";
+import { local } from "../api";
+import { StatusDot, useStateView } from "../components";
+import { Icon } from "../icons";
+import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
+import { keys } from "../platform";
+import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
+import { useNow, useStore } from "../store";
+import { interrupt } from "./actions";
+import { Code } from "./Code";
+import { Markdown } from "./Markdown";
+import { partialOutput, useToolOutput } from "./output";
+import { QuestionPanel } from "./Question";
+import { ContentScope } from "./scope";
+import { useRowState } from "./useRowState";
+import { useVirtualRows, type VirtualRow } from "./useVirtualRows";
+
+/**
+ * The conversation, newest at the bottom, ending with the reply the agent is
+ * still writing (draft); while a turn is live, the control area sits over
+ * its bottom edge.
+ */
+export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[]; draft: string }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
+  const grant = grantLabel(st, s);
+  // A session the owner started takes the owner's messages, here (docs/technical-design.md §3.4).
+  const mine = s.createdBy === "owner";
+  const writing = mine && s.status !== SessionStatus.ARCHIVED;
+  // Who goes on with it, in a sentence.
+  const who = mine ? t("chat.you") : grant;
+  const running = isActive(s);
+  const items = useMemo(() => groupSteps(transcript(events, running)), [events, running]);
+  const ends = useMemo(() => replyEnds(items, running), [items, running]);
+  const live = isInterruptible(s);
+
+  // The session's current failure is told once, at the end; the rows leave it out.
+  const failure = s.progress?.lastFailure;
+  const current = isFailed(s) ? failure : undefined;
+  // Each row with what it shows worked out from all the items; rows that would draw nothing are left out, as an
+  // empty row in the list would still take a gap. The reply being written is the row its stored message will be
+  // (the next event's), so finishing it keeps its code, tables and diagrams as they are.
+  const settled = useMemo(() => rowsOf(items, ends, current), [items, ends, current?.kind, current?.message]);
+  const next = (events.at(-1)?.seq ?? 0n) + 1n;
+  const rows = useMemo(() => (draft === "" ? settled : [...settled, draftRow(next, draft)]), [settled, draft, next]);
+  // Nothing of a conversation that has events yet: they are still on their way, or can't come.
+  const unread = items.length === 0 && draft === "" && (s.progress?.lastEventSeq ?? 0n) > 0n;
+
+  return (
+    <ContentScope value={s.sessionId}>
+      <ChatFrame
+        rows={rows}
+        initial={rowHeights}
+        label={t("chat.log")}
+        follow={s.status}
+        unread={unread ? <Unread s={s} /> : undefined}
+        head={
+          s.status === SessionStatus.ARCHIVED && (
+            <div className="anote">
+              <Icon name="archive" className="sm" />
+              {t("chat.archived")}
+              <button className="link" onClick={() => unarchive(st, s)}>{t("chat.unarchive")}</button>
+            </div>
+          )
+        }
+        row={(r) => <Row it={r.it} rowKey={r.key} end={r.end} live={r.live} sessionId={s.sessionId} clients={st.clients} grant={who} starter={s.createdBy} previous={r.previous} />}
+        foot={
+          <>
+            <Stale s={s} behind={(events.at(-1)?.seq ?? 0n) < (s.progress?.lastEventSeq ?? 0n)} />
+            {isFailed(s) && (failure || s.error !== "") && <Failed s={s} failure={failure} grant={who} />}
+            {s.status === SessionStatus.IDLE && !isFailed(s) && !isInterruption(failure) && items.length > 0 && <DoneLine text={mine ? t("chat.turnDoneYou") : t("chat.turnDone", { grant })} />}
+          </>
+        }
+        control={live ? (onHeight, lift) => <ControlArea s={s} grant={grant} events={events} onHeight={onHeight} lift={lift} /> : undefined}
+        dock={writing ? (onHeight) => <MessageBox s={s} onHeight={onHeight} /> : undefined}
+      />
+    </ContentScope>
+  );
+}
+
+/**
+ * A conversation's frame, as a session's page and a sub-agent's record (her/Progress.tsx) have it: its rows, newest
+ * at the bottom, only those near what is in sight drawn (useVirtualRows, docs/desktop-performance.md §7), between
+ * `head` and `foot`; `unread` in their place while there is nothing to show. It opens at its end and stays there as
+ * it grows (or `follow` changes) unless the person scrolled up; scrolled well up, a button takes them back down.
+ * `control`, while a turn is live, sits over its bottom edge; `dock` (a message box) under it, at the very bottom.
+ */
+export function ChatFrame<R extends VirtualRow>({ rows, initial, label, row, head, foot, unread, control, dock, follow }: {
+  rows: R[];
+  initial: Record<string, number>;
+  label: string;
+  row: (r: R) => ReactNode;
+  head?: ReactNode;
+  foot?: ReactNode;
+  unread?: ReactNode;
+  control?: (onHeight: (h: number) => void, lift: number) => ReactNode;
+  dock?: (onHeight: (h: number) => void) => ReactNode;
+  follow?: unknown;
+}) {
+  const { t } = useTranslation("session");
+  const live = control !== undefined;
+  const scroll = useRef<HTMLDivElement>(null);
+  // The scroller and the list as elements too, for the window (useVirtualRows): set once, by refs that do not change.
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  const [list, setList] = useState<HTMLDivElement | null>(null);
+  const scrollRef = useCallback((el: HTMLDivElement | null) => {
+    scroll.current = el;
+    setScroller(el);
+  }, []);
+  const [ctlHeight, setCtlHeight] = useState(0);
+  const [dockHeight, setDockHeight] = useState(0);
+  // What sits over the conversation's bottom edge: the control area while a turn is live, over the dock.
+  const bottom = (live ? ctlHeight : 0) + (dock ? dockHeight : 0);
+  const virtual = useVirtualRows({ scroller, list, rows, initial });
+
+  // Follow the conversation: open at its end, and stay there as it grows unless the person scrolled up;
+  // scrolled well up, a button takes them back down.
+  const atEnd = useRef(true);
+  const lastTop = useRef(0);
+  // When the person last acted on the conversation itself. A held pointer (the scrollbar) counts until it lets go.
+  const touched = useRef(-Infinity);
+  const touch = () => {
+    touched.current = performance.now();
+  };
+  const hold = () => {
+    touched.current = Infinity;
+    window.addEventListener("pointerup", touch, { once: true });
+    window.addEventListener("pointercancel", touch, { once: true });
+  };
+  const [away, setAway] = useState(false);
+  useLayoutEffect(() => {
+    const el = scroll.current;
+    if (el && atEnd.current) el.scrollTop = el.scrollHeight;
+    if (el) lastTop.current = el.scrollTop;
+  }, [rows, bottom, follow]);
+  // Fonts, formulas, diagrams and tables can resize without a new event. Reading above the end, the row at the top
+  // of the view stays where it is; at the end, the end stays in view.
+  const anchor = useRef<{ key: string; top: number } | null>(null);
+  const rememberAnchor = () => {
+    const el = scroll.current;
+    if (!el) return;
+    // At the end there is nothing to hold, and finding the row measures every one above it, at each scroll that follows.
+    if (atEnd.current) {
+      anchor.current = null;
+      return;
+    }
+    const top = el.getBoundingClientRect().top;
+    const row = [...el.querySelectorAll<HTMLElement>("[data-step-key]")].find((node) => node.getBoundingClientRect().bottom > top);
+    anchor.current = row ? { key: row.dataset.stepKey!, top: row.getBoundingClientRect().top - top } : null;
+  };
+  const empty = unread !== undefined;
+  useEffect(() => {
+    const el = scroll.current;
+    const body = el?.firstElementChild;
+    if (!el || !body) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      // Following the end needs no frame of its own: this runs before the frame it resized is painted.
+      if (atEnd.current) {
+        el.scrollTop = el.scrollHeight;
+        lastTop.current = el.scrollTop;
+        return;
+      }
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (anchor.current) {
+          const row = el.querySelector<HTMLElement>(`[data-step-key="${CSS.escape(anchor.current.key)}"]`);
+          if (row) el.scrollTop += row.getBoundingClientRect().top - el.getBoundingClientRect().top - anchor.current.top;
+        }
+        lastTop.current = el.scrollTop;
+        rememberAnchor();
+      });
+    });
+    observer.observe(body);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [empty]);
+  const onScroll = () => {
+    const el = scroll.current;
+    if (!el) return;
+    const below = el.scrollHeight - el.scrollTop - el.clientHeight;
+    // Only the person going up leaves the end. Rows settle their heights after the scroll that followed them,
+    // which moves the position with no one touching anything: that goes back to the end.
+    if (below < 80) atEnd.current = true;
+    else if (el.scrollTop < lastTop.current && performance.now() - touched.current < 1000) atEnd.current = false;
+    else if (atEnd.current) el.scrollTop = el.scrollHeight;
+    lastTop.current = el.scrollTop;
+    setAway(!atEnd.current && below > 240);
+    rememberAnchor();
+  };
+  const toEnd = () => {
+    const el = scroll.current;
+    if (!el) return;
+    atEnd.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
+
+  // Leaving a conversation read far back: what it held goes back once the next page settles (memory.ts).
+  const held = useRef(0);
+  held.current = rows.length;
+  useEffect(() => () => void (held.current >= HEAVY_ROWS && releaseAfterLeaving()), []);
+
+  return (
+    <>
+      <div className="cscroll markdown-chat" ref={scrollRef} onScroll={onScroll} onWheel={touch} onTouchMove={touch} onKeyDown={touch} onPointerDown={hold}>
+        {empty ? unread : <div className="dbody" style={bottom > 0 ? { paddingBottom: bottom + 40 } : undefined}>
+          {head}
+          <div className="tr" role="log" aria-label={label} ref={setList} data-rows={rows.length}>
+            {/* One flat list of keyed rows and spaces: a row keeps its element (and what is selected in it) however the parts change. */}
+            {virtual.parts.flatMap((part) =>
+              "space" in part
+                ? [<div key={`space:${part.at}`} className="vspace" style={{ height: part.space }} aria-hidden="true" />]
+                : rows.slice(part.from, part.to).map((r) => (
+                    <div key={r.key} className="vrow" data-step-key={r.key} ref={virtual.measure(r.key)}>
+                      {row(r)}
+                    </div>
+                  )),
+            )}
+          </div>
+          {foot}
+        </div>}
+      </div>
+      <button
+        className={`tobottom ${away ? "on" : ""}`}
+        style={{ "--dock": `${bottom}px` } as CSSProperties}
+        aria-label={t("chat.toBottom")}
+        title={t("chat.toBottom")}
+        tabIndex={away ? 0 : -1}
+        aria-hidden={!away}
+        onClick={toEnd}
+      >
+        <Icon name="arrowDown" />
+      </button>
+      {control?.(setCtlHeight, dock ? dockHeight : 0)}
+      {dock?.(setDockHeight)}
+    </>
+  );
+}
+
+/** Under a conversation whose last turn went well: a quiet line that says so. */
+export function DoneLine({ text }: { text: string }) {
+  return (
+    <div className="livebar" style={{ justifyContent: "center", paddingTop: 18 }}>
+      <Icon name="check" className="sm" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+/** How long a conversation may take to come before the page says it can't be read. */
+const unreadWait = 15_000;
+
+type Unreadable = { kind: "notConnected" } | { kind: "offline"; machine: Machine } | { kind: "noAnswer" };
+
+/**
+ * Why a conversation can't be read now: it is kept on the machine the
+ * session runs on, and this Mac isn't connected, or that machine is
+ * offline, or (a while after the page opened, still behind) it doesn't
+ * answer. The stream keeps trying meanwhile.
+ */
+function useUnreadable(s: Session, behind: boolean): Unreadable | undefined {
+  const st = useStore();
+  const now = useNow(1000);
+  const [since] = useState(() => Date.now());
+  const m = st.machines.find((x) => x.machineId === s.machineId);
+  if (m?.local) return undefined;
+  if (st.status?.relayConnected === false) return { kind: "notConnected" };
+  if (m && !m.online) return { kind: "offline", machine: m };
+  return behind && now.getTime() - since >= unreadWait ? { kind: "noAnswer" } : undefined;
+}
+
+/** In place of a conversation not read yet: why, or the wait. */
+function Unread({ s }: { s: Session }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
+  const why = useUnreadable(s, true);
+  const now = useNow(30_000);
+  const name = machineName(st, s.machineId);
+  if (!why) return <div className="empty"><Mark size={40} variant="pulse" /></div>;
+  let title: string, detail: string;
+  if (why.kind === "notConnected") {
+    title = t("chat.unread.notConnected");
+    detail = t("chat.unread.notConnectedDetail", { name });
+  } else if (why.kind === "offline") {
+    const seen = dateOf(why.machine.lastSeen);
+    title = t("chat.unread.offline", { name });
+    detail = seen ? t("chat.unread.offlineSeen", { ago: agoText(seen, now) }) : t("chat.unread.offlineDetail");
+  } else {
+    title = t("chat.unread.noAnswer", { name });
+    detail = t("chat.unread.noAnswerDetail");
+  }
+  return (
+    <div className="empty" role="status">
+      <Mark size={40} variant="wait" />
+      <b>{title}</b>
+      <span>{detail}</span>
+    </div>
+  );
+}
+
+/** Under a conversation kept from before that can't be brought up to date now: a quiet line that says why it may be old. */
+function Stale({ s, behind }: { s: Session; behind: boolean }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
+  const why = useUnreadable(s, behind);
+  if (!why) return null;
+  return (
+    <div className="livebar stale" role="status" style={{ justifyContent: "center", paddingTop: 18 }}>
+      <Icon name="wifi" className="sm" />
+      <span>{t(`chat.stale.${why.kind}`, { name: machineName(st, s.machineId) })}</span>
+      {s.status === SessionStatus.UNSPECIFIED && <StaleState s={s} />}
+    </div>
+  );
+}
+
+/** What was last known of the session, and since when its machine has been out of touch (docs/session-states.md). */
+function StaleState({ s }: { s: Session }) {
+  const v = useStateView(s);
+  return <b className="stale-state">{stateLine(v)}</b>;
+}
+
+/** When the turn before the one starting at items[i] started (for its time line). */
+function previousTurn(items: Step[], i: number): Date | undefined {
+  if (items[i].kind !== "turn") return undefined;
+  for (let j = i - 1; j >= 0; j--) {
+    const it = items[j];
+    if (it.kind === "turn") return it.at;
+  }
+  return undefined;
+}
+
+/** A row of the list: its item, whether it ends a turn's reply, whether it is the reply being written, and the turn before it. */
+type ChatRow = VirtualRow & { it: Step; end: boolean; live: boolean; previous: Date | undefined };
+
+/** Each kind's height until rows of it are measured: only how long the scrollbar is depends on it. */
+const rowHeights: Record<string, number> = { turn: 30, user: 64, agent: 220, tools: 32, question: 80, turnEnd: 36, message: 100, error: 36 };
+
+/**
+ * The rows the conversation draws, in order: the items but those that draw nothing (a time line within half an hour of
+ * the turn before, a question still pending, a turn that went well, the session's current failure, told at the end).
+ */
+function rowsOf(items: Step[], ends: Set<bigint>, current: Failure | undefined): ChatRow[] {
+  const out: ChatRow[] = [];
+  items.forEach((it, i) => {
+    const previous = previousTurn(items, i);
+    if (!draws(it, previous, current)) return;
+    out.push({ key: String(it.seq), kind: it.kind, it, end: ends.has(it.seq), live: false, previous });
+  });
+  return out;
+}
+
+/** The row of the reply the agent is still writing: keyed as its stored message will be, the event after the last. */
+function draftRow(seq: bigint, text: string): ChatRow {
+  return { key: String(seq), kind: "agent", it: { kind: "agent", seq, text, at: undefined }, end: false, live: true, previous: undefined };
+}
+
+/** Whether an item draws anything (RowView returns null for those that don't). */
+function draws(it: Step, previous: Date | undefined, current: Failure | undefined): boolean {
+  switch (it.kind) {
+    case "turn":
+      return !!it.at && turnTimeLine(it.at, previous, new Date()) !== null;
+    case "question":
+      return !!it.resolution;
+    case "turnEnd":
+      return it.end.isError && (isInterruption(it.end.failure) || !sameFailure(current, it.end.failure));
+    case "error":
+      return isInterruption(it.error.failure) || !sameFailure(current, it.error.failure);
+    default:
+      return true;
+  }
+}
+
+/** starter: who started the session ("owner" or a client id). */
+type RowProps = { it: Step; rowKey: string; end: boolean; live: boolean; sessionId: string; clients: Client[]; grant: string; starter: string; previous: Date | undefined };
+
+/**
+ * A row renders again only when what it shows changed: the conversation's
+ * items are made anew from the events each time, but an event never changes
+ * (the reply being written only grows).
+ */
+const Row = memo(
+  RowView,
+  (a, b) =>
+    sameStep(a.it, b.it) && a.rowKey === b.rowKey && a.end === b.end && a.live === b.live && a.sessionId === b.sessionId &&
+    a.clients === b.clients && a.grant === b.grant && a.starter === b.starter && a.previous?.getTime() === b.previous?.getTime(),
+);
+
+function sameStep(a: Step, b: Step): boolean {
+  if (a.kind !== b.kind || a.seq !== b.seq) return false;
+  switch (a.kind) {
+    case "turn":
+      return a.at?.getTime() === (b as typeof a).at?.getTime();
+    case "agent":
+      return a.text === (b as typeof a).text;
+    case "tools": {
+      const c = (b as typeof a).calls;
+      return a.calls.length === c.length && a.calls.every((x, i) => x.call === c[i].call && x.result === c[i].result && x.running === c[i].running);
+    }
+    case "question":
+      return a.resolution === (b as typeof a).resolution;
+    default:
+      return true;
+  }
+}
+
+function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, previous }: RowProps) {
+  const { t } = useTranslation("session");
+  switch (it.kind) {
+    case "turn":
+      return <TimeLine at={it.at} previous={previous} />;
+    case "user": {
+      // The one who started the session speaks on the right with no name (the card says who); anyone else
+      // who wrote into it (you, in a session one of your agents started; another agent) is named.
+      const by =
+        it.from === "" || it.from === starter
+          ? undefined
+          : it.from === "owner"
+            ? t("chat.fromYou")
+            : agentName(it.fromName || clients.find((c) => c.clientId === it.from)?.label || it.from);
+      return <UserBubble text={it.text} at={it.at} by={by} />;
+    }
+    case "agent":
+      // A turn's reply is one, however many times it writes: when it is over, its last words say when and Copy.
+      return <AgentText text={it.text} end={end} at={it.at} live={live} />;
+    case "tools":
+      return it.calls.length === 1 ? (
+        <ToolRow id={String(it.calls[0].seq)} call={it.calls[0].call} result={it.calls[0].result} resultSeq={it.calls[0].resultSeq} running={it.calls[0].running} sessionId={sessionId} />
+      ) : (
+        <ToolGroup id={rowKey} calls={it.calls} sessionId={sessionId} />
+      );
+    case "question":
+      // The pending question is in the control area; a settled one stays in the conversation.
+      if (!it.resolution) return null;
+      return (
+        <div className="tq">
+          <Icon name="q" className="sm" /><b>{t("chat.agentAsked")}</b>
+          <span className="sel-text">{it.question.items.map((x) => x.text).join(" ")}</span>
+          <div className="ans">{resolutionTitle(it.resolution, (by) => { const l = clients.find((c) => c.clientId === by)?.label; return l ? agentName(l) : by; })}</div>
+        </div>
+      );
+    case "turnEnd": {
+      const end = it.end;
+      if (end.isError && isInterruption(end.failure)) return <InterruptNote failure={end.failure} clients={clients} grant={grant} />;
+      // The session's current failure is told once, at the end (rowsOf leaves it out); an earlier one (a later turn went on) in one quiet line.
+      if (end.isError) return <FailLine id={rowKey} title={t("chat.turnFailed", { turn: end.turn, title: failureTitle(end.failure?.kind ?? 0) })} message={end.failure?.message ?? ""} />;
+      // A turn that went well needs no line: the next message shows it went on.
+      return null;
+    }
+    case "message":
+      // A message between the session and another of the owner's agents: who, and what became of it.
+      return (
+        <div className={it.direction === "in" ? "msg in" : "msg out"}>
+          <div className="msg-head">
+            <Icon name="mail" className="sm" />
+            <b>{t(it.direction === "in" ? "chat.messageFrom" : "chat.messageTo", { name: it.name || it.address })}</b>
+            {it.delivered === "queued" && <span className="msg-note">{t("chat.messageQueued")}</span>}
+          </div>
+          <div className="msg-body sel-text"><Markdown text={it.text} /></div>
+        </div>
+      );
+    case "error": {
+      const e = it.error;
+      // Stopped before its turn began (queued or starting): an interruption, not a failure.
+      if (isInterruption(e.failure)) return <InterruptNote failure={e.failure} clients={clients} grant={grant} />;
+      return <FailLine id={rowKey} title={e.failure ? t("chat.failedWith", { title: failureTitle(e.failure.kind) }) : t("chat.failed")} message={e.message} />;
+    }
+  }
+}
+
+/** What was sent to the agent, on the right; no name (the info card says who). On hover, when it was sent, and Copy. */
+/** by: who wrote it, when that isn't who the conversation belongs to. */
+export function UserBubble({ text, at, by }: { text: string; at?: Date; by?: string }) {
+  return (
+    <div className="um">
+      {by && <div className="um-by">{by}</div>}
+      <div className="bub sel-text">{text}</div>
+      <Copy text={text} at={at} />
+    </div>
+  );
+}
+
+/** The agent's words across the page. end: the last of its reply, which says when on hover, and Copy. live: still being written. */
+export function AgentText({ text, end, at, live = false }: { text: string; end: boolean; at?: Date; live?: boolean }) {
+  return (
+    <div className={end ? "am end" : "am"}>
+      <Markdown text={text} streaming={live} />
+      {end && <Copy text={text} at={at} />}
+    </div>
+  );
+}
+
+/** A turn stopped on purpose: by you, by one of your agents, or by Hermesh. */
+function InterruptNote({ failure, clients, grant }: { failure: Failure | undefined; clients: Client[]; grant: string }) {
+  const { t } = useTranslation("session");
+  const by = interrupter(failure);
+  if (by === "owner") return <div className="tnote">{t("chat.interruptedByYou", { grant })}</div>;
+  const label = clients.find((c) => c.clientId === by)?.label;
+  return <div className="tnote">{label ? t("chat.interruptedBy", { name: agentName(label), grant }) : t("chat.interrupted", { grant })}</div>;
+}
+
+/** A time line before a turn, for the first one and after a pause. */
+export function TimeLine({ at, previous }: { at: Date | undefined; previous: Date | undefined }) {
+  const now = useNow(60_000);
+  const text = at ? turnTimeLine(at, previous, now) : null;
+  return text ? <div className="tdiv">{text}</div> : null;
+}
+
+/** Under a message on hover: when it was sent, and Copy. */
+function Copy({ text, at }: { text: string; at?: Date }) {
+  const { t } = useTranslation("session");
+  const [done, setDone] = useState(false);
+  return (
+    <div className="msg-act">
+      {at && <SentAt at={at} />}
+      <button
+        className="tb"
+        aria-label={t("chat.copy")}
+        title={t("chat.copy")}
+        onClick={() => navigator.clipboard.writeText(text).then(() => (setDone(true), setTimeout(() => setDone(false), 1500)))}
+      >
+        <Icon name={done ? "check" : "copy"} className="sm" />
+      </button>
+    </div>
+  );
+}
+
+function SentAt({ at }: { at: Date }) {
+  const now = useNow(60_000);
+  return <span className="msg-time">{agoText(at, now)}</span>;
+}
+
+type Calls = Extract<Step, { kind: "tools" }>["calls"];
+
+/** Tool calls in a row as one grey line ("Read 3 files, ran 1 command"), opened to show each; folded until the owner opens it. */
+function ToolGroup({ id, calls, sessionId }: { id: string; calls: Calls; sessionId: string }) {
+  return (
+    <ToolFold id={id} summary={stepSummary(calls)} running={calls.some((c) => c.running)}>
+      {calls.map((c) => (
+        <ToolRow key={c.call.callId || String(c.seq)} id={String(c.seq)} call={c.call} result={c.result} resultSeq={c.resultSeq} running={c.running} sessionId={sessionId} />
+      ))}
+    </ToolFold>
+  );
+}
+
+/** Steps in a row as one grey line (`summary`), opened to show each (`children`); folded until opened, as it stays while its row is not drawn (useRowState). */
+export function ToolFold({ id, summary, running, children }: { id: string; summary: string; running: boolean; children: ReactNode }) {
+  const { t } = useTranslation("session");
+  const [open, setOpen] = useRowState(`group:${id}`, false);
+  return (
+    <div className={`tgroup ${open ? "open" : ""}`}>
+      <button className="tg-h" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {running && <span className="mini-spin" role="img" aria-label={t("chat.inProgress")} />}
+        <span>{summary}</span>
+        <Icon name="caret" className="chev" />
+      </button>
+      {open && <div className="tg-b">{children}</div>}
+    </div>
+  );
+}
+
+/**
+ * One tool call: what it did, and its output when opened, read whole then
+ * when the conversation holds only its start. Folded until opened, failed
+ * ones too; the one running spins.
+ */
+function ToolRow({ id, call, result, resultSeq, running, sessionId }: { id: string; call: ToolCall; result: ToolResult | undefined; resultSeq?: bigint; running: boolean; sessionId: string }) {
+  const { t } = useTranslation("session");
+  const denied = call.decision === "deny";
+  const failed = denied || result?.isError === true;
+  const [open, setOpen] = useRowState(`tool:${id}`, false);
+  const whole = useToolOutput(sessionId, result, resultSeq, open);
+  // A machine from before whole outputs kept only their start.
+  const note = whole.failed ? t("chat.outputUnreadable") : result && !partialOutput(result) && result.truncated ? t("chat.truncated") : "";
+  const output = denied ? call.reason : whole.text !== "" ? whole.text + (note ? `\n${note}` : "") : "";
+  return (
+    <ToolLine
+      verb={toolVerb(call, running)}
+      object={toolSummary(toolObject(call), sessionId)}
+      title={call.summary}
+      shell={call.kind === "shell"}
+      running={running || whole.reading}
+      failed={failed}
+      output={output}
+      open={open}
+      onToggle={() => setOpen(!open)}
+    />
+  );
+}
+
+/**
+ * A step on its line: its verb, what it acted on (a command as code; `title`, all of it), and what it gave when
+ * opened (`output`; nothing to open without one). The one at work spins; a failed one is red. prose: its output is
+ * words, not a program's (a thought).
+ */
+export function ToolLine({ verb, object, title, shell, running, failed, output, open, onToggle, prose = false }: {
+  verb: string;
+  object: string;
+  title: string;
+  shell: boolean;
+  running: boolean;
+  failed: boolean;
+  output: string;
+  open: boolean;
+  onToggle: () => void;
+  prose?: boolean;
+}) {
+  const { t } = useTranslation("session");
+  return (
+    <div className={`tool ${failed ? "err" : ""} ${prose ? "thought" : ""} ${open && output ? "open" : ""}`}>
+      <button className="th" onClick={() => output && onToggle()} aria-expanded={output ? open : undefined}>
+        {running && <span className="mini-spin" role="img" aria-label={t("chat.inProgress")} />}
+        <span className="vb">{verb}</span>
+        {shell ? (
+          <code className="sm2 cmd" title={title}>
+            <Code text={object} lang="bash" />
+          </code>
+        ) : (
+          <span className="sm2" title={title}>{object}</span>
+        )}
+        {output && <Icon name="caret" className="chev" />}
+      </button>
+      {output && <div className="out sel-text">{output}</div>}
+    </div>
+  );
+}
+
+/** Failures whose advice already says to send another message. */
+const adviceResumes = new Set([
+  FailureKind.RATE_LIMIT,
+  FailureKind.PROVIDER_ERROR,
+  FailureKind.NETWORK,
+  FailureKind.CONTEXT_OVERFLOW,
+  FailureKind.RESUME_REJECTED,
+  FailureKind.AGENT_CRASHED,
+  FailureKind.STALLED,
+]);
+
+function sameFailure(a: Failure | undefined, b: Failure | undefined): boolean {
+  return !!a && !!b && a.kind === b.kind && a.message === b.message;
+}
+
+/**
+ * A session that stopped on a failure, where the agent's reply would be: a
+ * quiet card telling what happened to the coding agent, what to do when it
+ * is the owner's to fix, and that the agent driving the session goes on
+ * from here; then Details (the agent's own words, folded) and Archive.
+ */
+function Failed({ s, failure, grant }: { s: Session; failure: Failure | undefined; grant: string }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
+  const message = failure?.message ?? s.error;
+  const kind = failure?.kind ?? FailureKind.UNSPECIFIED;
+  const advice = failure && !adviceResumes.has(kind) ? failureAdvice(failure) : "";
+  return (
+    <FailCard
+      headline={failureHeadline(kind, codingAgentTitle(s.agent))}
+      hints={[advice, s.createdBy === "owner" ? t("chat.resumeYou") : t("chat.resume", { grant: agentName(grant) })]}
+      message={message}
+      actions={isArchivable(s) && <button className="link" onClick={() => archive(st, s)}>{t("chat.archive")}</button>}
+    />
+  );
+}
+
+/** Where a conversation stopped on a failure: a quiet card with what happened, what to do (`hints`), then Details (`message`, folded) and `actions`. */
+export function FailCard({ headline, hints, message, actions }: { headline: string; hints: string[]; message: string; actions?: ReactNode }) {
+  const { t } = useTranslation("session");
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="qcard" role="alert">
+      <Icon name="alert" className="qf-ic" />
+      <div className="qf-main">
+        <b className="qf-title">{headline}</b>
+        {hints.filter((h) => h !== "").map((h) => <div key={h} className="qf-hint">{h}</div>)}
+        <div className="qf-act">
+          {message !== "" && (
+            <button className="link" aria-expanded={open} onClick={() => setOpen(!open)}>
+              {t("chat.details")} <Icon name="chevR" className={`sm chev ${open ? "open" : ""}`} />
+            </button>
+          )}
+          {actions}
+        </div>
+        {open && <div className="qf-raw sel-text">{message}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** An earlier failure in the conversation: one red line, its words folded. */
+export function FailLine({ id, title, message }: { id: string; title: string; message: string }) {
+  const [open, setOpen] = useRowState(`failure:${id}`, false);
+  return (
+    <div className="qfail past">
+      <button className="qf-line" aria-expanded={message !== "" ? open : undefined} onClick={() => message !== "" && setOpen(!open)}>
+        <Icon name="info" className="sm" />
+        <span>{title}</span>
+        {message !== "" && <Icon name="chevR" className={`sm chev ${open ? "open" : ""}`} />}
+      </button>
+      {open && <div className="qf-raw sel-text">{message}</div>}
+    </div>
+  );
+}
+
+/** The bottom of a live turn: a pending question above, what runs now and Interrupt below. */
+function ControlArea({ s, grant, events, onHeight, lift }: { s: Session; grant: string; events: SessionEvent[]; onHeight: (h: number) => void; lift: number }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
+  const q = pendingQuestion(s);
+  return (
+    <ControlBar panel={q && <QuestionPanel key={q.questionId} s={s} q={q} />} onHeight={onHeight} lift={lift}>
+      <LiveStatus s={s} grant={grant} events={events} />
+      <span className="ctl-sep" />
+      <button className="ctl-btn" title={t("control.interruptTitle", { keys: keys("CmdOrCtrl+.") })} onClick={() => interrupt(st, s)}>
+        <Icon name="stop" />
+        {t("control.interrupt")}
+        <span className="kbd">{keys("CmdOrCtrl+.")}</span>
+      </button>
+    </ControlBar>
+  );
+}
+
+/**
+ * The bottom of a live turn, over the conversation: what is asked (`panel`) above, the row of what runs now and how
+ * to stop it below; `lift` px higher while a message box is under it.
+ */
+export function ControlBar({ panel, onHeight, lift = 0, children }: { panel?: ReactNode; onHeight: (h: number) => void; lift?: number; children: ReactNode }) {
+  const { t } = useTranslation("session");
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      onHeight(0);
+    };
+  }, [onHeight]);
+  return (
+    <div className={`cbar ${panel ? "q" : ""}`} role="region" aria-label={t("control.label")} ref={ref} style={lift ? { bottom: lift + 8 } : undefined}>
+      {panel}
+      <div className="cbar-row">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Where the owner writes to a session the owner started: ↩ sends, ⇧↩ breaks the line, nothing is sent while an
+ * input method composes. Sent while a turn runs, the message joins it or runs next, as the agent takes it; while
+ * the agent asks, it is the answer. Failures become a toast and the text stays.
+ */
+function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      onHeight(0);
+    };
+  }, [onHeight]);
+  // The text grows with what is written, then scrolls.
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
+  const agent = codingAgentTitle(s.agent);
+  const ready = text.trim() !== "" && !busy;
+  const send = async () => {
+    if (!ready) return;
+    setBusy(true);
+    if (await st.run(() => local.sendMessage({ sessionId: s.sessionId, text }))) setText("");
+    setBusy(false);
+    area.current?.focus();
+  };
+  return (
+    <div className="mbox" ref={ref}>
+      <div className="mbox-in">
+        <textarea
+          ref={area}
+          className="mbox-t"
+          rows={1}
+          value={text}
+          placeholder={t("composer.placeholder", { agent })}
+          aria-label={t("composer.label", { agent })}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            void send();
+          }}
+        />
+        <button className="mbox-send" disabled={!ready} onClick={send} title={t("composer.send")} aria-label={t("composer.send")}>
+          <Icon name="arrowUp" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LiveStatus({ s, grant, events }: { s: Session; grant: string; events: SessionEvent[] }) {
+  const { t } = useTranslation("session");
+  const now = useNow(1000);
+  const v = useStateView(s);
+  switch (s.status) {
+    case SessionStatus.WAITING_INPUT:
+      return (
+        <>
+          <StatusDot s={s} />
+          <b>{t("waiting")}</b>
+          <span className="ph">{t("control.waitingDetail", { grant, turn: currentTurn(s) })}</span>
+        </>
+      );
+    case SessionStatus.RUNNING:
+      return (
+        <>
+          <span className="live-logo"><AgentLogo agent={s.agent} size={18} /></span>
+          <b>{t("control.working", { agent: codingAgentTitle(s.agent) })}</b>
+          <span className="el">{clockText(elapsedSeconds(turnStart(s, events), now))}</span>
+          {v.link === SessionLink.STALLED && <span className="ph">{coreT("link.quiet", { ago: durationText(v.quietMs) })}</span>}
+          <LostSpans s={s} />
+        </>
+      );
+    case SessionStatus.UNSPECIFIED: // its machine cannot be read now: what was last known, and since when
+      return (
+        <>
+          <StatusDot s={s} />
+          <b>{stateLine(v)}</b>
+          <LostSpans s={s} />
+        </>
+      );
+    default:
+      return (
+        <>
+          <span className="live-logo"><AgentLogo agent={s.agent} size={18} /></span>
+          <b>{statusTitle(s.status)}</b>
+          {phaseText(s) !== statusTitle(s.status) && <span className="ph">{phaseText(s)}</span>}
+          <LostSpans s={s} />
+        </>
+      );
+  }
+}
+
+/** When the session's machine was out of touch while the session was there (the last such time), kept after it is back. */
+function LostSpans({ s }: { s: Session }) {
+  const st = useStore();
+  const spans = lostDuring(st.machines.find((m) => m.machineId === s.machineId), s);
+  const last = spans.at(-1);
+  if (!last) return null;
+  const hm = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const text = last.to ? coreT("link.lostSpan", { from: hm(last.from), to: hm(last.to) }) : coreT("link.lostSpanOpen", { from: hm(last.from) });
+  return <span className="ph lostspan" title={spans.map((x) => `${hm(x.from)}–${x.to ? hm(x.to) : ""}`).join(", ")}>{text}</span>;
+}
+
+/** When the turn in progress started: from its events, else when the session was created. */
+export function turnStart(s: Session, events: SessionEvent[]): Date {
+  return turnStartedAt(events) ?? createdDate(s);
+}
+

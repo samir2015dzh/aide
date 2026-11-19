@@ -1,0 +1,441 @@
+// Package update installs newer Hermesh releases over the programs in
+// place, for `hermeshd update`, `hermesh update` and hermeshd's background
+// updater (docs/machine-updates.md).
+package update
+
+import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"context"
+	"crypto/ecdsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+
+	"golang.org/x/mod/semver"
+
+	"github.com/hermeshai/hermesh/internal/flock"
+)
+
+// Build-time constants: test builds set them with -ldflags -X.
+var (
+	// releases is where the releases are.
+	releases = "https://github.com/samir2015dzh/hermesh/releases"
+	// publicKey is the release signing key, scripts/release-pubkey.pem as
+	// base64 DER.
+	publicKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzD/o6QtTf/uoNlaxWkJ9d/wLLUMGMmUzv8882oxECt9fQtjjhZqDaRuq6w1x4fz5tNHzpwE6nTRZUitMp7VkuA=="
+	// testInterval, when set, replaces every wait of the background updater.
+	testInterval = ""
+)
+
+// Programs are the programs an update replaces, where they are (Windows:
+// with hermeshdw, the windowless hermeshd its service runs; elsewhere with
+// her, Her's kernel, which hermeshd runs from beside itself).
+var Programs = programs()
+
+func programs() []string {
+	if runtime.GOOS == "windows" {
+		return []string{"hermeshd.exe", "hermeshdw.exe", "hermesh.exe"}
+	}
+	return []string{"hermeshd", "hermesh", "her"}
+}
+
+// aliases are the names hermeshd and hermesh have since the product was
+// called Aide, beside the names they had, which the service, agents' hooks
+// and scripts run (RENAME-AIDE.md B1, B2): links to the files, or on
+// Windows copies of them. Install keeps them up to date, and makes them on
+// a machine installed before the rename.
+var aliases = map[string]string{"hermeshd": "aided", "hermesh": "aide"}
+
+// placeAliases makes dir's aliases of the programs in names those programs.
+func placeAliases(dir string, names []string) error {
+	for _, name := range names {
+		base := strings.TrimSuffix(name, ".exe")
+		alias := aliases[base]
+		if alias == "" {
+			continue
+		}
+		alias += name[len(base):]
+		path := filepath.Join(dir, alias)
+		if runtime.GOOS != "windows" {
+			if target, err := os.Readlink(path); err == nil && target == name {
+				continue
+			}
+			tmp := sibling(dir, alias, "link")
+			os.Remove(tmp)
+			if err := os.Symlink(name, tmp); err != nil {
+				return err
+			}
+			if err := os.Rename(tmp, path); err != nil {
+				return err
+			}
+			continue
+		}
+		// Windows: a copy, the running one renamed aside first.
+		body, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+		prev := previousPath(dir, alias)
+		if old, _ := filepath.Glob(prev + ".*"); old != nil {
+			for _, o := range old {
+				os.Remove(o)
+			}
+		}
+		if _, err := os.Stat(path); err == nil {
+			if err := os.Rename(path, fmt.Sprintf("%s.%d", prev, time.Now().UnixNano())); err != nil {
+				return err
+			}
+		}
+		if err := os.WriteFile(path, body, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// herConsole is the folder of her's console beside her, and
+// herConsoleAsset its archive in a release (docs/her-server.md §6.4).
+// herComputer is the folder of agent-desktop, which her's computer use
+// runs on a Linux desktop (docs/linux.md §5), and herPDF the folder of her
+// PDF worker and PDFium (§4), which must be her's own release's.
+const (
+	herConsole      = "her-console"
+	herConsoleAsset = "her-console.tar.gz"
+	herComputer     = "her-computer"
+	herPDF          = "her-pdf"
+)
+
+// folders are the folders beside her that an update replaces whole, each
+// with its archive in a release.
+var folders = map[string]string{
+	herConsole:  herConsoleAsset,
+	herComputer: herComputer + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tar.gz",
+	herPDF:      herPDF + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tar.gz",
+}
+
+// asset is a program's file in a release: hermeshd-linux-arm64,
+// hermeshd-windows-amd64.exe.
+func asset(name string) string {
+	base := strings.TrimSuffix(name, ".exe")
+	return base + "-" + runtime.GOOS + "-" + runtime.GOARCH + name[len(base):]
+}
+
+// newPath and previousPath are where a program's next and last versions
+// wait beside it, keeping its extension (Windows runs .exe files only).
+func newPath(dir, name string) string { return sibling(dir, name, "new") }
+
+func previousPath(dir, name string) string { return sibling(dir, name, "previous") }
+
+func sibling(dir, name, what string) string {
+	base := strings.TrimSuffix(name, ".exe")
+	return filepath.Join(dir, "."+base+"."+what+name[len(base):])
+}
+
+// Release is a signed release: its version and its files' hashes.
+type Release struct {
+	Version string
+	sums    map[string]string
+}
+
+var client = &http.Client{Timeout: 5 * time.Minute}
+
+// Latest reads the latest release's signed checksum list and version.
+func Latest(ctx context.Context) (*Release, error) {
+	base := releases + "/latest/download/"
+	sums, err := fetch(ctx, base+"checksums.txt", 1<<20)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := fetch(ctx, base+"checksums.txt.sig", 4<<10)
+	if err != nil {
+		return nil, err
+	}
+	version, err := fetch(ctx, base+"version", 1<<10)
+	if err != nil {
+		return nil, err
+	}
+	return verify(sums, sig, version)
+}
+
+// verify checks the list's signature and the version against the list.
+func verify(sums, sig, version []byte) (*Release, error) {
+	der, err := base64.StdEncoding.DecodeString(publicKey)
+	if err != nil {
+		return nil, err
+	}
+	key, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return nil, err
+	}
+	pub, ok := key.(*ecdsa.PublicKey)
+	digest := sha256.Sum256(sums)
+	if !ok || !ecdsa.VerifyASN1(pub, digest[:], sig) {
+		return nil, errors.New("the release's checksum signature does not verify")
+	}
+	r := &Release{sums: map[string]string{}}
+	for _, line := range strings.Split(string(sums), "\n") {
+		if f := strings.Fields(line); len(f) == 2 {
+			r.sums[f[1]] = f[0]
+		}
+	}
+	if h := sha256.Sum256(version); r.sums["version"] != hex.EncodeToString(h[:]) {
+		return nil, errors.New("the release's version is not in its signed checksum list")
+	}
+	r.Version = strings.TrimSpace(string(version))
+	if !semver.IsValid("v" + r.Version) {
+		return nil, fmt.Errorf("the release's version %q is not a version", r.Version)
+	}
+	return r, nil
+}
+
+// Newer reports whether r is a higher version than current.
+func (r *Release) Newer(current string) bool {
+	return semver.Compare("v"+r.Version, "v"+current) > 0
+}
+
+func fetch(ctx context.Context, url string, limit int64) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s: %s", url, res.Status)
+	}
+	return io.ReadAll(io.LimitReader(res.Body, limit))
+}
+
+var executable = os.Executable
+
+// Dir is the folder of the running program, which an update writes.
+func Dir() (string, error) {
+	exe, err := executable()
+	if err != nil {
+		return "", err
+	}
+	if exe, err = filepath.EvalSymlinks(exe); err != nil {
+		return "", err
+	}
+	if strings.Contains(exe, ".app/Contents/") {
+		return "", errors.New("this hermeshd is part of the Aide app, which updates itself")
+	}
+	// The Windows app copies its programs into the folder install.ps1 uses,
+	// and updates them itself (docs/windows.md §6.2).
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(filepath.Join(os.Getenv("LOCALAPPDATA"), "HermeshApp", "Update.exe")); err == nil {
+			return "", errors.New("this hermeshd is the Aide app's, which updates it")
+		}
+	}
+	return filepath.Dir(exe), nil
+}
+
+// Install puts r's programs in dir over the ones there, keeping each old
+// one as .<name>.previous, and her's console with them. Each new program
+// must start and say r's version (her: start) before any is replaced. her
+// and its console go only from a release that carries them. On Windows a
+// running program can't be replaced, only renamed: the old one moves aside
+// instead.
+func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, error) {
+	lock, err := flock.Acquire(filepath.Join(dataDir, "update"))
+	if err != nil {
+		return nil, errors.New("another update is running")
+	}
+	defer lock.Release()
+	var names []string
+	for _, name := range Programs {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil && (!ownVersion(name) || r.sums[asset(name)] != "") {
+			names = append(names, name)
+		}
+	}
+	if names == nil {
+		return nil, fmt.Errorf("no Aide programs in %s", dir)
+	}
+	for _, name := range []string{herConsole, herComputer, herPDF} {
+		if st, err := os.Stat(filepath.Join(dir, name)); err == nil && st.IsDir() && r.sums[folders[name]] != "" {
+			names = append(names, name)
+		}
+	}
+	for _, name := range names {
+		if err := download(ctx, dir, name, r); err != nil {
+			for _, n := range names {
+				os.RemoveAll(newPath(dir, n))
+			}
+			return nil, err
+		}
+	}
+	for _, name := range names {
+		path := filepath.Join(dir, name)
+		prev := previousPath(dir, name)
+		os.RemoveAll(prev)
+		if folders[name] != "" { // a folder, moved aside whole
+			if err := os.Rename(path, prev); err != nil {
+				return nil, err
+			}
+		} else if runtime.GOOS == "windows" {
+			older, _ := filepath.Glob(prev + ".*")
+			for _, o := range older {
+				os.Remove(o) // unless it runs
+			}
+			// The one before may still run (the service's supervisor):
+			// it stays, and this one moves beside it.
+			if err := os.Rename(path, prev); err != nil {
+				if err := os.Rename(path, fmt.Sprintf("%s.%d", prev, time.Now().UnixNano())); err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			os.Link(path, prev)
+		}
+		if err := os.Rename(newPath(dir, name), path); err != nil {
+			return nil, err
+		}
+	}
+	if err := placeAliases(dir, names); err != nil {
+		return names, fmt.Errorf("updated, but not the programs' new names: %w", err)
+	}
+	return names, nil
+}
+
+// download puts name's next version beside it, checked.
+func download(ctx context.Context, dir, name string, r *Release) error {
+	file := asset(name)
+	if folders[name] != "" {
+		file = folders[name]
+	}
+	want := r.sums[file]
+	if want == "" {
+		return fmt.Errorf("%s is not in the release's signed checksum list", file)
+	}
+	body, err := fetch(ctx, releases+"/download/v"+r.Version+"/"+file, 512<<20)
+	if err != nil {
+		return err
+	}
+	if h := sha256.Sum256(body); hex.EncodeToString(h[:]) != want {
+		return fmt.Errorf("%s does not match its checksum", file)
+	}
+	tmp := newPath(dir, name)
+	if folders[name] != "" {
+		os.RemoveAll(tmp)
+		if err := unpack(body, tmp); err != nil {
+			return fmt.Errorf("cannot unpack %s: %w", file, err)
+		}
+		return nil
+	}
+	if err := os.WriteFile(tmp, body, 0o755); err != nil {
+		return fmt.Errorf("cannot write %s: %w", dir, err)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if ownVersion(name) {
+		if out, err := exec.CommandContext(ctx, tmp, "--version").Output(); err != nil {
+			return fmt.Errorf("the downloaded %s does not start: %v %s", name, err, bytes.TrimSpace(out))
+		}
+		return nil
+	}
+	out, err := exec.CommandContext(ctx, tmp, "version").Output()
+	if err != nil || strings.TrimSpace(string(out)) != r.Version {
+		return fmt.Errorf("the downloaded %s does not start as %s: %v %s", name, r.Version, err, bytes.TrimSpace(out))
+	}
+	return nil
+}
+
+// ownVersion: her has a version of its own, and goes only from a release
+// that carries it.
+func ownVersion(name string) bool { return name == "her" }
+
+// unpack writes the folders and files of a .tar.gz into dir, its programs
+// as programs.
+func unpack(body []byte, dir string) error {
+	zr, err := gzip.NewReader(bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	tr := tar.NewReader(zr)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		name := filepath.FromSlash(h.Name)
+		if !filepath.IsLocal(name) {
+			return fmt.Errorf("%q is outside the archive's folder", h.Name)
+		}
+		path := filepath.Join(dir, name)
+		switch h.Typeflag {
+		case tar.TypeDir:
+			err = os.MkdirAll(path, 0o755)
+		case tar.TypeReg:
+			var b []byte
+			if b, err = io.ReadAll(tr); err == nil {
+				os.MkdirAll(filepath.Dir(path), 0o755)
+				mode := os.FileMode(0o644)
+				if h.Mode&0o111 != 0 {
+					mode = 0o755
+				}
+				err = os.WriteFile(path, b, mode)
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// State is what the updater keeps in <data dir>/update/update.json.
+type State struct {
+	Off       bool      `json:"off,omitempty"`       // automatic updates turned off
+	Checked   time.Time `json:"checked,omitzero"`    // the last successful check
+	Available string    `json:"available,omitempty"` // a newer version it found
+	From      string    `json:"from,omitempty"`      // the last update's versions
+	To        string    `json:"to,omitempty"`
+	Updated   time.Time `json:"updated,omitzero"`
+}
+
+func statePath(dataDir string) string { return filepath.Join(dataDir, "update", "update.json") }
+
+// Load reads the state; none yet is the zero State (automatic updates on).
+func Load(dataDir string) State {
+	var s State
+	if b, err := os.ReadFile(statePath(dataDir)); err == nil {
+		json.Unmarshal(b, &s)
+	}
+	return s
+}
+
+// Edit changes the state.
+func Edit(dataDir string, f func(*State)) error {
+	s := Load(dataDir)
+	f(&s)
+	b, _ := json.MarshalIndent(s, "", "  ")
+	path := statePath(dataDir)
+	os.MkdirAll(filepath.Dir(path), 0o700)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}

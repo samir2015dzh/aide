@@ -1,0 +1,131 @@
+{
+  "extDescription": {
+    "message": "Lets Her, the assistant in Aide, work in tabs it opens in your Chrome, with your sign-ins. It never sees your other tabs."
+  },
+  "statusConnected": {
+    "message": "Connected"
+  },
+  "statusStandby": {
+    "message": "Not in use"
+  },
+  "statusConnecting": {
+    "message": "Connecting…"
+  },
+  "statusNotOpen": {
+    "message": "Her is not running"
+  },
+  "statusMissing": {
+    "message": "Not set up on this computer"
+  },
+  "hintMissing": {
+    "message": "Install Aide and turn on Her for this computer."
+  },
+  "hintStandby": {
+    "message": "Her uses another browser or profile."
+  },
+  "hintNotOpen": {
+    "message": "Open Aide to let Her use this browser."
+  },
+  "openApp": {
+    "message": "Open Aide"
+  },
+  "useThis": {
+    "message": "Use this browser"
+  },
+  "tabs": {
+    "message": "$1 tabs"
+  },
+  "oneTab": {
+    "message": "1 tab"
+  },
+  "working": {
+    "message": "Working"
+  },
+  "approval": {
+    "message": "Waiting for your approval in Aide"
+  },
+  "finished": {
+    "message": "Finished"
+  },
+  "back": {
+    "message": "Back to conversation"
+  },
+  "done": {
+    "message": "I'm done"
+  },
+  "stop": {
+    "message": "Stop"
+  },
+  "offer": {
+    "message": "Hand this tab to Her"
+  },
+  "offerNote": {
+    "message": "Her will be able to read and use this tab."
+  },
+  "groupWaiting": {
+    "message": "Waiting · $1"
+  },
+  "titleConnected": {
+    "message": "Aide: connected"
+  },
+  "titleStandby": {
+    "message": "Aide: not in use"
+  },
+  "titleConnecting": {
+    "message": "Aide: connecting"
+  },
+  "titleNotOpen": {
+    "message": "Aide: Her is not running"
+  },
+  "titleMissing": {
+    "message": "Aide is not set up on this computer"
+  },
+  "titleOutdated": {
+    "message": "Aide: needs an update"
+  },
+  "titleWaiting": {
+    "message": "Her is waiting for you"
+  },
+  "statusStuck": {
+    "message": "Can't reach Her"
+  },
+  "statusUpdateExtension": {
+    "message": "The extension needs an update"
+  },
+  "statusUpdateHer": {
+    "message": "Aide needs an update"
+  },
+  "hintStuck": {
+    "message": "Opening Aide repairs the connection. Then retry."
+  },
+  "hintUpdateExtension": {
+    "message": "It reconnects by itself afterwards, and your tabs stay as they are."
+  },
+  "hintUpdateHer": {
+    "message": "Open it and update. It reconnects by itself afterwards."
+  },
+  "retry": {
+    "message": "Try again"
+  },
+  "update": {
+    "message": "Update extension"
+  },
+  "waitingOne": {
+    "message": "1 thing needs you"
+  },
+  "waiting": {
+    "message": "$1 things need you"
+  },
+  "titleStuck": {
+    "message": "Aide: can't connect"
+  },
+  "statusNoAnswer": {
+    "message": "The extension is not responding"
+  },
+  "hintNoAnswer": {
+    "message": "Reloading the extension brings it back. Your tabs stay as they are."
+  },
+  "reload": {
+    "message": "Reload extension"
+  }
+}

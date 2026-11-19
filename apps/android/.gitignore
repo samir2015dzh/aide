@@ -1,0 +1,10 @@
+# The core library, Gradle's outputs and caches, the APK: built, never kept.
+/build/
+/app/build/
+/.gradle/
+/.kotlin/
+/local.properties
+/.idea/
+*.apk
+*.aab
+*.aar

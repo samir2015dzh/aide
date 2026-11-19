@@ -1,0 +1,341 @@
+package cli
+
+import (
+	"context"
+	"crypto/rand"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/signal"
+	"slices"
+	"strings"
+	"syscall"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/oklog/ulid/v2"
+	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
+	"github.com/hermeshai/hermesh/internal/brandenv"
+	"github.com/hermeshai/hermesh/internal/machine"
+	"github.com/hermeshai/hermesh/internal/paths"
+	"github.com/hermeshai/hermesh/internal/peer"
+	"github.com/hermeshai/hermesh/internal/update"
+	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/hermeshai/hermesh/pkg/transport"
+)
+
+// Exit codes are part of the agent-facing contract.
+const (
+	exitOK          = 0
+	exitUsage       = 2
+	exitDenied      = 3
+	exitUnavailable = 4
+	exitFailed      = 5
+	exitTimeout     = 6
+	// The turn failed for a reason that may pass (rate limit, network,
+	// provider error, crash, stall); sending the message again may succeed.
+	exitRetryable = 7
+	// The agent asked a question and waits for an answer
+	// (`hermesh session answer`, or a message with `session send`).
+	exitNeedsInput = 8
+	exitGeneric    = 1
+)
+
+type exitError struct {
+	code int
+	// kind is the error's kind in the output contract ("" derives it).
+	kind      string
+	err       error
+	hint      string
+	retryable bool
+	// reported: the command already printed the error in its JSON output.
+	reported bool
+	// An unreachable machine's: its name, why, and when it was last heard
+	// from (zero: not known).
+	machine, why string
+	heard        time.Time
+}
+
+func (e *exitError) Error() string {
+	if e.hint == "" {
+		return e.err.Error()
+	}
+	return e.err.Error() + " (" + e.hint + ")"
+}
+
+func (e *exitError) Unwrap() error { return e.err }
+
+func fail(code int, format string, a ...any) error {
+	return &exitError{code: code, err: fmt.Errorf(format, a...)}
+}
+
+func exitCode(err error) int {
+	var ee *exitError
+	if errors.As(err, &ee) {
+		return ee.code
+	}
+	if errors.Is(err, errNotLoggedIn) || errors.Is(err, errRevoked) || errors.Is(err, transport.ErrAdmission) {
+		return exitDenied
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return exitTimeout
+	}
+	switch connect.CodeOf(err) {
+	case connect.CodePermissionDenied, connect.CodeUnauthenticated:
+		return exitDenied
+	case connect.CodeUnavailable:
+		return exitUnavailable
+	case connect.CodeInvalidArgument, connect.CodeNotFound, connect.CodeFailedPrecondition:
+		return exitUsage
+	case connect.CodeDeadlineExceeded:
+		return exitTimeout
+	case connect.CodeResourceExhausted:
+		return exitRetryable
+	}
+	return exitGeneric
+}
+
+// Main runs the CLI and returns the process exit code.
+func Main(args []string, stdout, stderr io.Writer) int {
+	// HERMESH_LINK=off: every command connects by itself (link.go).
+	// HERMESH_LOCAL=off: a machine on this computer is reached through the
+	// relay as any other (local.go).
+	a := &app{hc: http.DefaultClient, link: brandenv.Get("LINK") != "off", local: brandenv.Get("LOCAL") != "off"}
+	defaultOutput := "text"
+	if brandenv.Get("OUTPUT") == "json" {
+		defaultOutput = "json"
+	}
+	root := a.root(defaultOutput)
+	root.SetArgs(args)
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return a.execute(ctx, root, stdout, stderr)
+}
+
+// root is the command tree, run by a.
+func (a *app) root(defaultOutput string) *cobra.Command {
+	root := &cobra.Command{Use: "hermesh", Short: "Drive Claude Code, Codex and other coding agents on your owner's machines through Aide",
+		SilenceUsage: true, SilenceErrors: true}
+	root.PersistentFlags().StringVarP(&a.output, "output", "o", defaultOutput, "output format: text (to read) or json (one document, see docs/cli-output.md); AIDE_OUTPUT=json makes json the default")
+	root.PersistentFlags().StringVar(&a.as, "as", "", asHelp)
+	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return &exitError{code: exitUsage, err: err} })
+	root.PersistentPreRunE = func(*cobra.Command, []string) error {
+		if a.output != "text" && a.output != "json" {
+			return &exitError{code: exitUsage, kind: "usage", err: fmt.Errorf("unknown output format %q (text or json)", a.output)}
+		}
+		if a.as == "" && a.mem == nil { // a caller running commands for others has no environment of theirs
+			a.as = brandenv.Get("AS")
+		}
+		if a.as != "" {
+			n, err := identity.NormalizeName(a.as)
+			if err != nil {
+				return &exitError{code: exitUsage, kind: "usage", err: fmt.Errorf("--as %q: %w", a.as, err)}
+			}
+			a.as = n
+		}
+		if a.mem != nil {
+			return nil // credentials held by the caller, no files
+		}
+		a.home = paths.CLIHome()
+		return nil
+	}
+	// `hermesh login` was the command before `auth login`; installs and
+	// copied instructions may still use it.
+	login := a.loginCmd()
+	login.Hidden = true
+	root.AddCommand(a.authCmd(), login, a.agentCmd(), a.projectCmd(), a.sessionCmd(), a.messageCmd(), a.workCmd(), a.machineCmd(), &cobra.Command{Use: "version", Short: "Show this CLI's version", Args: cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			if a.output == "json" {
+				return a.report(c.OutOrStdout(), nil, field{"version", machine.Version})
+			}
+			fmt.Fprintln(c.OutOrStdout(), machine.Version)
+			return nil
+		}}, a.updateCmd(), a.linkCmd())
+	return root
+}
+
+// updateCmd is `hermesh update`, the same as `hermeshd update`
+// (docs/machine-updates.md).
+func (a *app) updateCmd() *cobra.Command {
+	var check, yes bool
+	c := &cobra.Command{Use: "update", Short: "Update Aide here to the latest release", Args: cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			if a.output == "json" {
+				return &exitError{code: exitUsage, kind: "usage", err: errors.New("aide update has no JSON output"), hint: "run it without -o json"}
+			}
+			return update.Run(c.Context(), c.InOrStdin(), c.OutOrStdout(), paths.DataDir(), check, yes)
+		}}
+	c.Flags().BoolVar(&check, "check", false, "only say whether a newer version exists")
+	c.Flags().BoolVar(&yes, "yes", false, "update without asking, even when that stops a session")
+	return c
+}
+
+// execute runs root and returns the exit code, printing a failure the
+// command did not print itself.
+func (a *app) execute(ctx context.Context, root *cobra.Command, stdout, stderr io.Writer) int {
+	if err := root.ExecuteContext(ctx); err != nil {
+		if strings.Contains(err.Error(), "unknown command") || strings.Contains(err.Error(), "accepts") || strings.Contains(err.Error(), "required flag") {
+			err = &exitError{code: exitUsage, kind: "usage", err: err}
+		}
+		var ee *exitError
+		switch {
+		case errors.As(err, &ee) && ee.reported:
+		case a.output == "json":
+			writeDoc(stdout, err, a.asField()...)
+		default:
+			fmt.Fprintln(stderr, "error:", err)
+		}
+		return exitCode(err)
+	}
+	if a.output == "text" && a.inboxWaiting > 0 && a.as == "" {
+		fmt.Fprintf(stderr, "%d message(s) wait in your inbox: aide message list\n", a.inboxWaiting)
+	}
+	return exitOK
+}
+
+// group makes cmd a group of subcommands: alone it prints its help, and
+// an unknown subcommand is a usage error (cobra would print the help and
+// exit 0, which reads as success).
+func group(cmd *cobra.Command) *cobra.Command {
+	cmd.Args = cobra.NoArgs
+	cmd.RunE = func(c *cobra.Command, _ []string) error { return c.Help() }
+	return cmd
+}
+
+// ---------------------------------------------------------------------------
+
+// workspaceName is the CLI spelling of a project's workspace mode.
+func workspaceName(w identityv1.Workspace) string {
+	if w == identityv1.Workspace_WORKSPACE_IN_PLACE {
+		return "in_place"
+	}
+	return "worktree"
+}
+
+type machineRef struct {
+	ID, Name string
+	Online   bool
+	Entry    *relayv1.MachineEntry
+}
+
+func listMachines(ctx context.Context, c *peer.Client) ([]*relayv1.MachineEntry, error) {
+	hc, err := c.Control()
+	if err != nil {
+		return nil, err
+	}
+	res, err := relayv1connect.NewClientControlServiceClient(hc, "http://relay", transport.ClientNoCompression).ListMachines(ctx, &relayv1.ListMachinesRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return res.Machines, nil
+}
+
+// machineRefs keeps the listed machines whose certs the owner root signed.
+// Their names are the relay's word: checkName holds each machine to the
+// name it presents on the end-to-end connection.
+func (a *app) machineRefs(entries []*relayv1.MachineEntry) []machineRef {
+	var out []machineRef
+	for _, e := range entries {
+		nc, _, err := a.trust.VerifyMachineCert(e.MachineCert)
+		if err != nil {
+			continue
+		}
+		name := e.Name
+		if name == "" {
+			name = nc.MachineId
+		}
+		out = append(out, machineRef{ID: nc.MachineId, Name: name, Online: e.Online, Entry: e})
+	}
+	slices.SortFunc(out, func(x, y machineRef) int { return strings.Compare(x.Name, y.Name) })
+	return out
+}
+
+// checkName refuses a machine that calls itself something else, over the
+// end-to-end connection, than the name the relay listed it under: a relay
+// relabelling the owner's machines would send work to the wrong one.
+func checkName(ref machineRef, n *peer.Machine) error {
+	if ref.Name == ref.ID || n.Name == ref.Name {
+		return nil
+	}
+	return &exitError{code: exitUnavailable, kind: "mismatch", retryable: true,
+		err:  fmt.Errorf("machine %s calls itself %q, but the list said %q: not using it", ref.ID, n.Name, ref.Name),
+		hint: "it was probably just renamed: run `aide project list` again; if this keeps happening, the relay may be tampering"}
+}
+
+// findMachine returns the machine with that name or id.
+func findMachine(machines []machineRef, nameOrID string) (machineRef, bool) {
+	for _, m := range machines {
+		if m.ID == nameOrID || m.Name == nameOrID {
+			return m, true
+		}
+	}
+	return machineRef{}, false
+}
+
+// resolveMachine picks the machine named by flag, or else the one the
+// session id belongs to (its id starts with the machine id's prefix).
+func resolveMachine(machines []machineRef, flag, sessionID string) (machineRef, error) {
+	if flag != "" {
+		if m, ok := findMachine(machines, flag); ok {
+			return m, nil
+		}
+		return machineRef{}, &exitError{code: exitUsage, kind: "not_found", err: fmt.Errorf("no machine %q", flag), hint: "see `aide project list`"}
+	}
+	if parts := strings.SplitN(sessionID, "_", 3); len(parts) == 3 {
+		for _, m := range machines {
+			if strings.HasPrefix(strings.TrimPrefix(m.ID, "m_"), parts[1]) {
+				return m, nil
+			}
+		}
+	}
+	return machineRef{}, &exitError{code: exitUsage, kind: "not_found", err: fmt.Errorf("no session %q on the machines this client can reach", sessionID),
+		hint: "see `aide session list`"}
+}
+
+// targetMachines returns the machine named by flag, or all of them.
+func targetMachines(machines []machineRef, flag string) ([]machineRef, error) {
+	if flag != "" {
+		n, err := resolveMachine(machines, flag, "")
+		if err != nil {
+			return nil, err
+		}
+		return []machineRef{n}, nil
+	}
+	return machines, nil
+}
+
+// warmTargets warms what targetMachines will pick.
+func warmTargets(flag string) func([]machineRef) []machineRef {
+	return func(seen []machineRef) []machineRef {
+		ms, _ := targetMachines(seen, flag)
+		return ms
+	}
+}
+
+func ids(machines []machineRef) []string {
+	var out []string
+	for _, n := range machines {
+		if n.Online {
+			out = append(out, n.ID)
+		}
+	}
+	return out
+}
+
+// newIdempotencyKey draws from crypto/rand: ulid.Make's entropy is seeded
+// from the clock, the same in processes started in one tick of a coarse
+// clock (Windows'), and two such `session start`s were taken for one.
+func newIdempotencyKey() string {
+	return strings.ToLower(ulid.MustNew(ulid.Now(), rand.Reader).String())
+}
+
+func timestampOf(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t) }

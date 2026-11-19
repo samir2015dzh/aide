@@ -1,0 +1,53 @@
+.PHONY: generate lint test test-app e2e e2e-real e2e-chaos build app-windows release clean
+
+generate:
+	go tool buf generate
+	pnpm install --frozen-lockfile
+	go tool buf generate --template buf.gen.ts.yaml
+
+# Windows is vetted too, so that nothing Unix-only creeps back (docs/windows.md, W0).
+lint:
+	go tool buf lint
+	go vet ./...
+	GOOS=windows go vet ./...
+	test -z "$$(gofmt -l cmd internal pkg e2e)"
+
+test:
+	go test ./cmd/... ./internal/... ./pkg/... -count=1
+
+# The desktop app's pure logic and types, and Her's client packages.
+test-app:
+	pnpm install --frozen-lockfile
+	pnpm -r typecheck
+	pnpm --filter @hermesh/core test
+	pnpm --filter @hermesh/her-protocol test
+	pnpm --filter @hermesh/her-client test
+	pnpm --filter @hermesh/desktop test
+
+# End-to-end with real binaries and scripted agents.
+e2e:
+	go test ./e2e/ -count=1 -timeout 45m
+
+# End-to-end with this machine's real Claude Code and Codex (costs tokens).
+e2e-real:
+	HERMESH_REAL_CLI=1 go test ./e2e/ ./internal/provider/providertest/ -count=1 -v -timeout 30m
+
+# Real Codex under injected faults: killed processes, relay restart,
+# provider outage, missing login, concurrency, agent git rewrites.
+e2e-chaos:
+	HERMESH_CHAOS=1 go test ./e2e/ -run TestChaos -count=1 -v -timeout 90m
+
+build:
+	mkdir -p bin
+	go build -o bin/ ./cmd/...
+
+# The Windows app: its files from any system, the .msix on Windows (docs/windows.md §6.1).
+app-windows:
+	pnpm install --frozen-lockfile
+	node apps/desktop/scripts/package-win.mjs
+
+release:
+	./scripts/release.sh
+
+clean:
+	rm -rf bin dist apps/desktop/out

@@ -1,0 +1,83 @@
+import { expect, test } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fixture, launch, snap } from "./app";
+
+// The app on Windows (docs/windows.md §5), against the real daemon there:
+// a PC's words and Ctrl shortcuts, the menu button where macOS has the
+// menu bar, the notification area's icon, and staying there once the
+// window closes. The rest of the suite runs on macOS.
+test.skip(process.platform !== "win32", "Windows only");
+
+type Hook = { tray(): { view: { state: string } }; mainWindow(): { close(): void } | undefined };
+
+test("a PC's words, type and corners, and Ctrl shortcuts, the menu button, the notification area, staying there without a window, and a link bringing it back", async () => {
+  const { app, page } = await launch();
+  await expect(page.locator("html")).toHaveAttribute("data-platform", "win");
+  const map = page.getByRole("region", { name: "链路" });
+  await expect(map.getByRole("button", { name: "这台电脑", exact: true })).toBeVisible();
+  // Search, in the sidebar's top band, says its shortcut with Ctrl.
+  await expect(page.locator(".side-top").getByRole("button", { name: "搜索" })).toHaveAttribute("title", "搜索 Ctrl+K");
+  await expect(page.getByRole("button", { name: "菜单" })).toBeVisible();
+  // Windows 11's type and corners, and its accent bar on the selected row.
+  const overview = page.locator(".side-nav").getByRole("button", { name: /^概览/ });
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("14px");
+  expect(await overview.evaluate((e) => getComputedStyle(e).borderRadius)).toBe("4px");
+  expect(await overview.evaluate((e) => getComputedStyle(e, "::before").width)).toBe("3px");
+  await expect.poll(() => app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().view.state)).toBe("ok");
+  await snap(page, "windows");
+  await app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.mainWindow()?.close());
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(0);
+  // Still there: its notification area's icon still follows the daemon.
+  expect(await app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().view.state)).toBe("ok");
+  // A hermesh: link, opened again as Windows does (a second Hermesh.exe), brings the window back.
+  await app.evaluate(({ app }) => app.emit("second-instance", {}, ["Hermesh.exe", "hermesh://open"]));
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w) => w.isVisible()).length)).toBe(1);
+  await app.close();
+});
+
+test("the window opens at the size it had last time, loading in the middle until hermeshd answers", async () => {
+  const width = (app: Awaited<ReturnType<typeof launch>>["app"]) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0);
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
+  const first = await launch(undefined, { profile });
+  await expect(first.page.getByRole("button", { name: "菜单" })).toBeVisible();
+  await expect.poll(() => width(first.app)).toBeGreaterThan(900);
+  await first.app.close();
+
+  const { app, page } = await launch(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "hmsock-")), "none"), { profile });
+  await expect(page.getByText("正在连接后台服务…")).toBeVisible();
+  expect(await width(app)).toBeGreaterThan(900);
+  await app.close();
+});
+
+test("an older signer set up here: Needs You offers the app's, with one UAC prompt; Account & Devices warns of silent elevation", async () => {
+  const { page, app } = await launch(undefined, { env: { HERMESH_TEST_SIGNER_DIR: fixture.oldSigner! } });
+  const needs = page.getByRole("region", { name: "需要你处理" });
+  await expect(needs).toContainText("Aide 签名器有新版本");
+  await expect(needs).toContainText("这台电脑装的是 0.0.1。");
+  await expect(needs.getByRole("button", { name: "更新…" })).toBeVisible();
+  await snap(page, "windows-signer-update");
+  // With a signer here, Account & Devices says so when programs become administrator without asking: as this PC is set.
+  const reg = execFileSync("reg.exe", ["query", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"], { encoding: "utf8" });
+  const silent = /^\s*(EnableLUA|ConsentPromptBehaviorAdmin)\s+REG_DWORD\s+0x0\b/im.test(reg);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("account"))]);
+  await settings.waitForLoadState();
+  await expect(settings.getByRole("main", { name: "账号与设备" })).toBeVisible();
+  const warning = settings.getByText("任何程序都能不经你同意获得管理员权限");
+  if (silent) {
+    await expect(warning).toBeVisible();
+    await expect(settings.getByRole("button", { name: "打开用户帐户控制设置…" })).toBeVisible();
+    await snap(settings, "windows-elevates-silently");
+  } else {
+    await expect(warning).toHaveCount(0);
+  }
+  await app.close();
+
+  // Up to date: nothing to offer.
+  const current = await launch();
+  await expect(current.page.getByRole("region", { name: "链路" })).toBeVisible();
+  await expect(current.page.getByText("Aide 签名器有新版本")).toHaveCount(0);
+  await current.app.close();
+});

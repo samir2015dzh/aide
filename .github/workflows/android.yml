@@ -1,0 +1,31 @@
+name: android
+# The Android app builds, and its unit tests pass, on every change (a tag's APK
+# is release.yml's). The APK of each run is kept as an artifact, to install from.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+# No build names a server (they are given to others): the login page asks for it.
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: the NDK, if the runner lacks it
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          ls "$SDK"/ndk >/dev/null 2>&1 || yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724"
+      - name: build and test
+        run: VERSION="0.0.0-${GITHUB_SHA::8}" apps/android/scripts/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aide-android-debug
+          path: apps/android/build/*.apk

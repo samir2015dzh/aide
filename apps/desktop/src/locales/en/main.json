@@ -1,0 +1,97 @@
+{
+  "menu": {
+    "app": {
+      "about": "About Aide",
+      "services": "Services",
+      "hide": "Hide Aide",
+      "hideOthers": "Hide Others",
+      "unhide": "Show All",
+      "quit": "Quit Aide"
+    },
+    "settings": "Settings…",
+    "update": {
+      "install": "Restart to Update",
+      "check": "Check for Updates…",
+      "details": "Show Update Details…"
+    },
+    "file": {
+      "title": "File",
+      "newSession": "New Task…",
+      "newGrant": "Connect Agent…",
+      "addMachine": "Add Machine…",
+      "addProject": "Add Project…",
+      "enterCode": "Enter Pairing Code…",
+      "close": "Close Window"
+    },
+    "edit": {
+      "title": "Edit",
+      "undo": "Undo",
+      "redo": "Redo",
+      "cut": "Cut",
+      "copy": "Copy",
+      "paste": "Paste",
+      "selectAll": "Select All",
+      "find": "Find Task…",
+      "search": "Search"
+    },
+    "view": {
+      "title": "View",
+      "overview": "Overview",
+      "nextAttention": "Next Task That Needs You",
+      "nextActive": "Next Task in Progress",
+      "showInspector": "Show Info Panel",
+      "hideInspector": "Hide Info Panel",
+      "showSidebar": "Expand Sidebar",
+      "hideSidebar": "Collapse Sidebar",
+      "fullScreen": "Enter Full Screen"
+    },
+    "session": {
+      "title": "Task",
+      "answer": "Answer Question",
+      "interrupt": "Interrupt This Turn",
+      "copyId": "Copy Task ID",
+      "archive": "Archive",
+      "unarchive": "Unarchive"
+    },
+    "window": {
+      "title": "Window",
+      "minimize": "Minimize",
+      "zoom": "Zoom",
+      "settings": "Settings"
+    },
+    "help": {
+      "title": "Help",
+      "help": "Aide Help",
+      "shortcuts": "Keyboard Shortcuts",
+      "whatsNew": "What’s New"
+    }
+  },
+  "settingsWindow": "Settings",
+  "disconnectedGrant": "Disconnected agent",
+  "anAgent": "An agent",
+  "you": "You",
+  "move": {
+    "title": "Move Aide to the Applications folder?",
+    "body": "Aide needs to be in the Applications folder to run in the background and update automatically. It will reopen from there.",
+    "move": "Move to Applications Folder",
+    "quit": "Quit",
+    "failedTitle": "Couldn’t move Aide to the Applications folder",
+    "failedBody": "Drag Aide to the Applications folder in Finder, then open it from there.",
+    "ok": "OK"
+  },
+  "tray": {
+    "open": "Open Aide"
+  },
+  "signer": {
+    "declined": "Windows asked for permission to set up Aide’s signer, and permission wasn’t granted. Without it, this PC can’t store your owner key.",
+    "notAdmin": "Only an administrator account can make this PC a trusted device. Join as a machine only, or approve on another device.",
+    "uacOff": "User Account Control is turned off, so other programs could access your key. Turn it on to make this PC a trusted device.",
+    "noTPM": "This PC doesn’t have a TPM 2.0 security chip to store your owner key.",
+    "failed": "Aide’s signer couldn’t be set up (error {{code}}).",
+    "notRunning": "Aide’s signer didn’t start. Please try again.",
+    "noHello": "Windows Hello confirms this change, and it isn’t set up. Set it up in Settings › Accounts › Sign-in options (a PIN is enough), then try again.",
+    "unlockFailed": "How this PC unlocks its key couldn’t be changed (error {{code}})."
+  },
+  "herConsole": "Her Console — {{name}}",
+  "herConsoleBad": "The console’s address isn’t one Aide opens."
+}

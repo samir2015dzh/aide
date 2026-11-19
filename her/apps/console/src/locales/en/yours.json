@@ -1,0 +1,81 @@
+{
+  "title": "Your Chrome",
+  "control": {
+    "title": "Allow Her to Control Browsers",
+    "desc": "Her opens web pages and acts in them. Which sites she may use without asking is below.",
+    "default": "Default Browser",
+    "defaultDesc": "When the agent doesn't name a browser, new pages open here.",
+    "defaultLocked": "Connect your Chrome to choose it. Until then, new pages open in the built-in browser.",
+    "builtin": "Built-in Browser",
+    "yours": "{{name}} (Your Browser)"
+  },
+  "computer": {
+    "macos": "Mac",
+    "linux": "Linux computer"
+  },
+  "connectTitle": "Connect Your Chrome",
+  "badge": {
+    "on": "In use",
+    "chosen": "Chosen",
+    "ready": "Connected",
+    "lost": "Not connected",
+    "outdated": "Needs update"
+  },
+  "off": "Let Her open sites that need your sign-ins in your own Chrome, on the {{computer}} Her runs on.",
+  "on": "Her's tabs go in a “Aide” tab group and work in the background. Closing the “debugging” bar at the top of Chrome takes a tab back.",
+  "ready": "The extension is connected, but Her doesn't use it yet.",
+  "lost": "The extension is not connected. Check that Chrome is open on the {{computer}} Her runs on, and that Aide is on in its extensions page.",
+  "noChrome": "There is no Chrome on the {{computer}} Her runs on, so yours can't connect from there.",
+  "refused": "Aide was just updated; the extension is moving to the new version and will connect in a few seconds.",
+  "refusedStuck": "The extension is still running the old program. Click its reload button on Chrome's extensions page.",
+  "outdated": {
+    "extension": "The extension in {{name}} is too old. It updates by itself; to update it now, choose “Update extension” in its menu.",
+    "her": "The extension is newer than this Aide; update Aide on the {{computer}} Her runs on."
+  },
+  "connect": "Connect",
+  "use": "Use",
+  "reconnect": "Reconnect…",
+  "disconnect": "Disconnect",
+  "useThis": "Use This",
+  "guide": {
+    "title": "Connect Your Chrome",
+    "close": "Close",
+    "steps": {
+      "install": "Add extension",
+      "wait": "Connect"
+    },
+    "store": "Add the Aide extension to Chrome on the {{computer}} Her runs on. You only do this once.",
+    "addToChrome": "Add to Chrome",
+    "install": "Add the Aide extension to Chrome on the {{computer}} Her runs on. You only do this once:",
+    "howto": {
+      "open": "In Chrome, open the extensions page:",
+      "openPage": "Open",
+      "developer": "Turn on “Developer mode” at the top right of the page, and leave it on: Chrome may turn the extension off without it.",
+      "drag": "Drag the folder Aide keeps the extension in onto the extensions page:",
+      "reveal": "Show Folder",
+      "load": {
+        "macos": "Or click “Load unpacked”, press ⇧⌘G in the window that opens, and paste this folder:",
+        "linux": "Or click “Load unpacked”, press Ctrl+L in the window that opens, and paste this folder:"
+      }
+    },
+    "already": "Added it before? Find Aide on the extensions page and click its reload button.",
+    "added": "I've Added It",
+    "waiting": "Waiting for the extension in Chrome to connect…",
+    "countdown": "{{count}}s",
+    "waitHint": "Still not connected? Check that Chrome is open, then on its extensions page find Aide, make sure its switch is on, and click its reload button.",
+    "back": "Back",
+    "done": "Connected to {{name}}",
+    "doneHint": "Sites open here in every conversation from its next step. Disconnect it on this page at any time; closing the “debugging” bar at the top of Chrome also takes a tab back.",
+    "finish": "Done",
+    "asDefault": "Make it the default browser"
+  },
+  "builtin": {
+    "title": "Built-in Browser",
+    "none": "No Chrome Found",
+    "desc": "Her opens pages in her own {{program}} on the {{computer}} she runs on, without your sign-ins, {{how}}.",
+    "window": "in a window there",
+    "noWindow": "with no window",
+    "missing": "There is no Chrome on the {{computer}} Her runs on. Install Google Chrome there, and Her finds it.",
+    "linuxInstall": "On Ubuntu or Debian, in a terminal there:"
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "bucket": {
+    "attention": "需要处理",
+    "active": "进行中",
+    "done": "已结束",
+    "today": "今天",
+    "yesterday": "昨天",
+    "week": "本周更早",
+    "earlier": "更早",
+    "archived": "已归档"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "today": "今天",
+    "yesterday": "昨天",
+    "minutesLeft": "还剩 {{count}} 分钟"
+  },
+  "status": {
+    "queued": "排队中",
+    "preparing": "准备中",
+    "running": "运行中",
+    "idle": "空闲",
+    "archived": "已归档",
+    "crashed": "已崩溃（再发消息可继续）",
+    "waitingInput": "等你回答",
+    "unknown": "状态未知"
+  },
+  "phase": {
+    "preparing": "正在准备 worktree…",
+    "thinking": "思考中",
+    "editing": "编辑 {{target}}",
+    "running": "执行 {{target}}"
+  },
+  "failure": {
+    "auth": "未登录",
+    "quota": "额度已用完",
+    "rateLimit": "限流",
+    "providerError": "模型服务出错",
+    "network": "网络错误",
+    "contextOverflow": "上下文已满",
+    "modelUnavailable": "模型不可用",
+    "invalidRequest": "请求被拒绝",
+    "refused": "模型拒绝执行",
+    "limitReached": "达到步数上限",
+    "resumeRejected": "无法恢复任务",
+    "agentCrashed": "agent 进程意外退出",
+    "stalled": "长时间无进展",
+    "timeout": "超过时长上限",
+    "startFailed": "无法启动 agent",
+    "baseRefUnavailable": "找不到基准引用",
+    "other": "失败"
+  },
+  "advice": {
+    "auth": "请在该机器上以同一系统用户运行一次对应的 CLI 完成登录。",
+    "quota": "请等待额度恢复后再试，或更换 Agent / 模型。",
+    "transient": "暂时性问题，请稍后重新发送消息。",
+    "newContext": "再次发送消息将在新上下文中继续，工作区中的代码改动将会保留。",
+    "modelUnavailable": "请更换模型并开启新任务。",
+    "limitReached": "发送“继续”即可接着执行。",
+    "resume": "再次发送消息即可恢复任务。",
+    "startFailed": "请在 Aide 设置中打开该机器的详情页，排查无法启动 Agent 的原因。",
+    "baseRefUnavailable": "请确认基准引用名称，以及项目的远端仓库里有这个分支或 tag（机器会从那里拉取），再在这个任务里发一条消息，重试原来的请求。"
+  },
+  "headline": {
+    "auth": "{{agent}} 未登录",
+    "quota": "{{agent}} 的额度已用完",
+    "rateLimit": "{{agent}} 触发了限流",
+    "providerError": "{{agent}} 的模型服务出错",
+    "network": "{{agent}} 无法连接网络",
+    "contextOverflow": "{{agent}} 的上下文已满",
+    "modelUnavailable": "{{agent}} 无法使用该模型",
+    "invalidRequest": "{{agent}} 的请求被拒绝",
+    "refused": "模型拒绝了该任务",
+    "limitReached": "{{agent}} 已达步数上限",
+    "resumeRejected": "{{agent}} 无法恢复此前的对话",
+    "agentCrashed": "{{agent}} 意外退出了",
+    "stalled": "{{agent}} 长时间没有进展",
+    "timeout": "本轮执行已超时",
+    "startFailed": "{{agent}} 未能启动",
+    "baseRefUnavailable": "无法创建工作目录：找不到基准引用",
+    "other": "{{agent}} 出错了"
+  },
+  "notice": {
+    "startedBody": "{{grant}} 发起 · {{project}} · {{agent}}",
+    "questionTitle": "{{grant}} 在等你回答",
+    "questionBody": "{{title}}：{{text}}",
+    "failedTitle": "「{{title}}」出错了：{{failure}}",
+    "failedBody": "{{grant}} · {{agent}} · {{project}}。{{advice}}",
+    "turnDoneTitle": "「{{title}}」第 {{turn}} 轮完成",
+    "noChanges": "没有改动文件",
+    "changes_other": "{{count}} 个文件 +{{insertions}} −{{deletions}}",
+    "herName": "Her",
+    "herTitle": "{{name}} · {{environment}}",
+    "herApproval": "等你批准：{{text}}",
+    "herQuestion": "等你回答：{{text}}"
+  },
+  "pairing": {
+    "machine": "机器「{{label}}」想加入",
+    "device": "「{{label}}」想成为你的可信设备",
+    "client": "「{{label}}」想连接",
+    "body": "核对码 {{code}}。点击比对并批准，如不认识请拒绝。"
+  },
+  "resolution": {
+    "answeredByYou": "你回答：{{answers}}",
+    "answeredBy": "{{name}} 回答：{{answers}}",
+    "declinedByYou": "你跳过了回答",
+    "declinedBy": "{{name}} 跳过了回答",
+    "timedOut": "无人回答，Agent 已自行继续",
+    "withdrawn": "问题已撤回",
+    "separator": "；"
+  },
+  "steps": {
+    "read": {
+      "done": "已读取",
+      "doing": "正在读取",
+      "count_other": "读取了 {{count}} 个文件"
+    },
+    "search": {
+      "done": "已搜索",
+      "doing": "正在搜索",
+      "count_other": "搜索了 {{count}} 次"
+    },
+    "edit": {
+      "done": "已编辑",
+      "doing": "正在编辑",
+      "count_other": "编辑了 {{count}} 个文件"
+    },
+    "shell": {
+      "done": "已运行",
+      "doing": "正在运行",
+      "count_other": "运行了 {{count}} 条命令"
+    },
+    "network": {
+      "done": "已访问",
+      "doing": "正在访问",
+      "count_other": "访问了 {{count}} 个网页"
+    },
+    "mcp": {
+      "done": "已调用",
+      "doing": "正在调用",
+      "count_other": "调用了 {{count}} 个工具"
+    },
+    "other": {
+      "done": "已使用",
+      "doing": "正在使用",
+      "count_other": "使用了 {{count}} 个工具"
+    },
+    "deny": {
+      "done": "已拒绝",
+      "count_other": "拒绝了 {{count}} 个操作"
+    },
+    "separator": "、"
+  },
+  "state": {
+    "queued": "排队中",
+    "running": "运行中",
+    "waitingInput": "等你回答",
+    "waitingApproval": "等你审批",
+    "doneUnseen": "已完成未看",
+    "done": "已完成",
+    "failed": "出错",
+    "interrupted": "已中断",
+    "archived": "已归档",
+    "unknown": "状态未知"
+  },
+  "link": {
+    "stalled": "{{state}} · {{ago}}无新事件",
+    "checking": "{{state}}？· 机器未应答",
+    "lost": "失联 · 最后已知 {{state}}",
+    "lostFor": "失联 · 最后已知 {{state}} · {{ago}}前",
+    "syncing": "{{state}} · 正在同步",
+    "lostSpan": "曾失联 {{from}}–{{to}}",
+    "lostSpanOpen": "失联自 {{from}}",
+    "quiet": "{{ago}}无新事件"
+  },
+  "ago": {
+    "seconds": "{{count}} 秒",
+    "minutes": "{{count}} 分钟",
+    "hours": "{{count}} 小时",
+    "days": "{{count}} 天"
+  }
+}

@@ -1,0 +1,20 @@
+/* The session page: what the prototype styles in app.css, plus what real data needs. */
+.mini-spin{width:12px;height:12px;border-radius:50%;border:1.6px solid var(--fill3);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+.tq>.ic{display:inline-block;vertical-align:-2px;margin-right:5px;color:var(--l2)}
+.link.plain{color:var(--l1);text-align:left}
+.qx-item+.qx-item .qx-q{font-size:13px;margin-top:14px}
+.qx-own{margin-top:8px}
+.qx-own .field{height:32px;border-radius:10px}
+.dl.note .c{color:var(--l3)}
+
+/* The coding agent working: its own logo, breathing. */
+.live-logo{display:inline-flex;animation:live-breathe 2.4s ease-in-out infinite}
+@keyframes live-breathe{0%,100%{opacity:1}50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.live-logo{animation:none}}
+/* The owner's message box under a session the owner started (Chat.tsx MessageBox); the control area sits above it. */
+.mbox{position:absolute;left:0;right:0;bottom:0;z-index:4;pointer-events:none;padding:16px 16px 16px;background:linear-gradient(to bottom,transparent,var(--win) 16px)}
+.mbox-in{pointer-events:auto;max-width:var(--conversation-width);margin:0 auto;display:flex;align-items:flex-end;gap:4px;background:var(--win);border-radius:22px;box-shadow:0 0 0 .5px var(--menu-bd),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);padding:6px}
+.mbox-t{flex:1;min-width:0;resize:none;border:0;outline:none;background:none;font:inherit;font-size:14px;line-height:20px;color:var(--l1);padding:6px 6px;min-height:32px;max-height:200px;overflow-y:auto}
+.mbox-send{width:32px;height:32px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex:none}
+.mbox-send:disabled{color:var(--l3);background:var(--fill2)}
+.dwrap.dock .mbox{right:270px}

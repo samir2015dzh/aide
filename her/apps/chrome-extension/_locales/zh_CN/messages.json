@@ -1,0 +1,131 @@
+{
+  "extDescription": {
+    "message": "让 Aide 内置的助手 Her 在你的 Chrome 里打开标签页，使用你的登录状态；它看不到你自己的标签页。"
+  },
+  "statusConnected": {
+    "message": "已连接"
+  },
+  "statusStandby": {
+    "message": "没有在用"
+  },
+  "statusConnecting": {
+    "message": "正在连接…"
+  },
+  "statusNotOpen": {
+    "message": "Her 没有在运行"
+  },
+  "statusMissing": {
+    "message": "这台电脑还没有设置"
+  },
+  "hintMissing": {
+    "message": "安装 Aide，并为这台电脑打开 Her。"
+  },
+  "hintStandby": {
+    "message": "Her 正在用另一个浏览器或配置文件。"
+  },
+  "hintNotOpen": {
+    "message": "打开 Aide，Her 才能用这个浏览器。"
+  },
+  "openApp": {
+    "message": "打开 Aide"
+  },
+  "useThis": {
+    "message": "改用这个浏览器"
+  },
+  "tabs": {
+    "message": "$1 个标签页"
+  },
+  "oneTab": {
+    "message": "1 个标签页"
+  },
+  "working": {
+    "message": "工作中"
+  },
+  "approval": {
+    "message": "等你在 Aide 里批准"
+  },
+  "finished": {
+    "message": "任务已结束"
+  },
+  "back": {
+    "message": "回到对话"
+  },
+  "done": {
+    "message": "我处理好了"
+  },
+  "stop": {
+    "message": "停止"
+  },
+  "offer": {
+    "message": "把这个标签页交给 Her"
+  },
+  "offerNote": {
+    "message": "Her 将能读取和操作这个标签页。"
+  },
+  "groupWaiting": {
+    "message": "等你 · $1"
+  },
+  "titleConnected": {
+    "message": "Aide：已连接"
+  },
+  "titleStandby": {
+    "message": "Aide：没有在用"
+  },
+  "titleConnecting": {
+    "message": "Aide：正在连接"
+  },
+  "titleNotOpen": {
+    "message": "Aide：Her 没有在运行"
+  },
+  "titleMissing": {
+    "message": "这台电脑还没有设置 Aide"
+  },
+  "titleOutdated": {
+    "message": "Aide：需要更新"
+  },
+  "titleWaiting": {
+    "message": "Her 在等你"
+  },
+  "statusStuck": {
+    "message": "连不上 Her"
+  },
+  "statusUpdateExtension": {
+    "message": "扩展需要更新"
+  },
+  "statusUpdateHer": {
+    "message": "Aide 需要更新"
+  },
+  "hintStuck": {
+    "message": "打开 Aide 能修好连接，再重试。"
+  },
+  "hintUpdateExtension": {
+    "message": "更新后会自动连上，标签页不受影响。"
+  },
+  "hintUpdateHer": {
+    "message": "打开它并更新，之后会自动连上。"
+  },
+  "retry": {
+    "message": "重试"
+  },
+  "update": {
+    "message": "更新扩展"
+  },
+  "waitingOne": {
+    "message": "有 1 件事等你"
+  },
+  "waiting": {
+    "message": "有 $1 件事等你"
+  },
+  "titleStuck": {
+    "message": "Aide：连不上"
+  },
+  "statusNoAnswer": {
+    "message": "扩展没有响应"
+  },
+  "hintNoAnswer": {
+    "message": "重新加载扩展就能恢复，标签页不受影响。"
+  },
+  "reload": {
+    "message": "重新加载扩展"
+  }
+}
