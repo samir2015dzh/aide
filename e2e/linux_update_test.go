@@ -20,13 +20,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/hermeshai/hermesh/internal/connaddr"
 )
 
 // linuxServerImage is a fresh Ubuntu server with systemd running, and git
@@ -66,18 +67,17 @@ func TestLinuxUpdate(t *testing.T) {
 	relayData := filepath.Join(tmp, "relay")
 	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sockDir, _ := os.MkdirTemp("/tmp", "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
 	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), ClaimCode: claim, RootPublicKey: rootPub(root)})
+	app := newTestApp(t, sock)
+	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-mac"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	address := strings.Replace(setup.ConnectAddress, "127.0.0.1", "host.docker.internal", 1)
+	address := strings.Replace(connaddr.Format(fmt.Sprintf("http://127.0.0.1:%d", port), setup.OwnerId), "127.0.0.1", "host.docker.internal", 1)
 
 	// The server.
 	name, sh := startLinuxServer(t, "hermesh-update", "vps-1")
@@ -107,17 +107,11 @@ func TestLinuxUpdate(t *testing.T) {
 	if _, err := fmt.Fprint(input, "\n/srv/hermesh data\n"); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 60*time.Second, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(installOut.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
+	var machineID string
+	eventually(t, 60*time.Second, "the machine logged in", func() bool {
+		machineID = loggedInMachine(installOut.String())
+		return machineID != ""
 	})
-	approved, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "vps-1"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil {
 		t.Fatalf("install: %v\n%s", err, installOut.String())
 	}
@@ -130,23 +124,20 @@ func TestLinuxUpdate(t *testing.T) {
 			return ""
 		}
 		for _, m := range res.Machines {
-			if m.MachineId == approved.MachineId && m.Online && m.Status != nil {
+			if m.MachineId == machineID && m.Online && m.Status != nil {
 				return m.Status.Version
 			}
 		}
 		return ""
 	}
 	eventually(t, 60*time.Second, "the machine online on 0.0.1", func() bool { return machineVersion() == "0.0.1" })
-	if _, err := app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: approved.MachineId, ProjectId: "demo", Path: "/srv/demo"}); err != nil {
+	if _, err := app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: machineID, ProjectId: "demo", Path: "/srv/demo"}); err != nil {
 		t.Fatal(err)
 	}
 
 	// 2. B while a session runs.
 	home := []string{"HERMESH_HOME=" + filepath.Join(tmp, "agent")}
-	login := start(t, "login", home, filepath.Join(bin, "hermesh"), "auth", "login", setup.ConnectAddress, "--name", "agent")
-	if _, err := app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
+	login := start(t, "login", append(slices.Clone(home), loginEnv()...), filepath.Join(bin, "hermesh"), "auth", "login", connaddr.Format(fmt.Sprintf("http://127.0.0.1:%d", port), setup.OwnerId), "--name", "agent")
 	login.wait(t, 30*time.Second)
 	started := run(t, home, time.Minute, filepath.Join(bin, "hermesh"), "session", "start", "--project", "vps-1/demo", "-o", "json", "--prompt", "sleep 40s\nsay done")
 	var doc struct {
@@ -181,7 +172,7 @@ func TestLinuxUpdate(t *testing.T) {
 
 	// 3. The install command again: it updates without pairing.
 	again, err := sh(installCmd)
-	if err != nil || !strings.Contains(again, "already paired") || !strings.Contains(again, "Keeping this location") || codeRE.MatchString(again) {
+	if err != nil || !strings.Contains(again, "already logged in") || !strings.Contains(again, "Keeping this location") || strings.Contains(again, "Logged in as") {
 		t.Fatalf("install again: %v\n%s", err, again)
 	}
 	eventually(t, 60*time.Second, "the machine back on 0.0.2", func() bool { return machineVersion() == "0.0.2" })
@@ -308,9 +299,11 @@ func (r *testReleases) publish(v string) {
 	r.latest = v
 }
 
-// installCommand is the install command of the latest release, with args.
+// installCommand is the install command of the latest release, with args,
+// logging the machine in with the test account.
 func (r *testReleases) installCommand(args string) string {
-	return "curl -fsSL " + r.url + "/latest/download/install.sh | HERMESH_DOWNLOAD_BASE=" + r.url + "/latest/download sh -s -- " + args
+	return "curl -fsSL " + r.url + "/latest/download/install.sh | HERMESH_DOWNLOAD_BASE=" + r.url + "/latest/download AIDE_ACCOUNT=" + testAccount +
+		" AIDE_PASSWORD='" + testPassword + "' sh -s -- " + args
 }
 
 // startLinuxServer starts a fresh Ubuntu server with systemd running (its

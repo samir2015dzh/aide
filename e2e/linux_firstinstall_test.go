@@ -12,7 +12,7 @@ import (
 	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/hermeshai/hermesh/internal/connaddr"
 )
 
 // fakeClaude is a claude CLI signed in only through the CLAUDE_CONFIG_DIR
@@ -50,18 +50,17 @@ func TestLinuxFirstInstall(t *testing.T) {
 	relayData := filepath.Join(tmp, "relay")
 	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sockDir, _ := os.MkdirTemp("/tmp", "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
 	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), ClaimCode: claim, RootPublicKey: rootPub(root)})
+	app := newTestApp(t, sock)
+	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-mac"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	address := strings.Replace(setup.ConnectAddress, "127.0.0.1", "host.docker.internal", 1)
+	address := strings.Replace(connaddr.Format(fmt.Sprintf("http://127.0.0.1:%d", port), setup.OwnerId), "127.0.0.1", "host.docker.internal", 1)
 	build := exec.Command("docker", "build", "-t", "hermesh-e2e-linux-server:1", "-")
 	build.Stdin = strings.NewReader(linuxServerImage)
 	if out, err := build.CombinedOutput(); err != nil {
@@ -106,21 +105,15 @@ func TestLinuxFirstInstall(t *testing.T) {
 		if err := p.Start(); err != nil {
 			t.Fatal(err)
 		}
-		var code string
-		eventually(t, 60*time.Second, "pairing code", func() bool {
-			if m := codeRE.FindStringSubmatch(out.String()); m != nil {
-				code = m[1]
-			}
-			return code != ""
+		var machineID string
+		eventually(t, 60*time.Second, "the machine logged in", func() bool {
+			machineID = loggedInMachine(out.String())
+			return machineID != ""
 		})
-		approved, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: host})
-		if err != nil {
-			t.Fatal(err)
-		}
 		if err := p.Wait(); err != nil {
 			t.Fatalf("pair: %v\n%s", err, out.String())
 		}
-		return out.String(), approved.MachineId, sh
+		return out.String(), machineID, sh
 	}
 	online := func(id string) bool {
 		res, err := app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})

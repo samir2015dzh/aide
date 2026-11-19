@@ -46,7 +46,7 @@ func projectCommand(dataDir *string, openMachine func() (*machine.Machine, error
 		}
 		defer n.Close()
 		if !n.Paired() {
-			return "", fmt.Errorf("this machine is not paired yet; run `aided pair`")
+			return "", fmt.Errorf("this machine is not logged in yet; run `aided login <server>`")
 		}
 		return n.ApplyLocal(ctx, cmd)
 	}

@@ -5,6 +5,7 @@ package e2e
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -98,10 +99,7 @@ func TestMachineBackAfterDeadLink(t *testing.T) {
 	// The machine reaches the relay over a network of its own.
 	network, relay := newCutProxy(t, strings.TrimPrefix(st.RelayUrl, "http://"), 0)
 	daemon, data := filepath.Join(w.bin, "hermeshd"), filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", env, daemon, "pair", "http://"+relay+"/"+st.OwnerId, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", "http://"+relay+"/"+st.OwnerId, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}

@@ -7,13 +7,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/hermeshai/hermesh/internal/connaddr"
 )
 
 // ownerMac is an owner Mac (the owner daemon, also running its local machine
@@ -28,7 +31,6 @@ type ownerMac struct {
 	cliEnv     []string
 	owner      *proc
 	app        *testApp
-	root       *identity.SoftwareKey
 	sock       string
 	logs       []*proc
 	relay      *proc
@@ -37,35 +39,28 @@ type ownerMac struct {
 	relayDebug string // where the relay serves /metrics
 	ownerDebug string // where the owner's hermeshd serves /metrics
 	repoHead   string // the owner's HEAD, which sessions must never move
-	addr       string // the owner's connection address
+	addr       string // the owner's server, as a connection address (any login takes it)
+	server     string // the owner's server
 	// nproc, when set, is the owner daemon's limit on the user's processes
 	// (ulimit -u): it then can't start programs once they reach it.
 	nproc int
 }
 
 // newOwnerMac starts it; daemonEnv and daemonArgs configure the owner
-// daemon, grant is what the owner approves for the agent.
+// daemon, grant is the agent's scope (nil or empty: what logging in gives).
 func newOwnerMac(t *testing.T, daemonEnv []string, grant *localv1.GrantSpec, daemonArgs ...string) *ownerMac {
 	t.Helper()
-	return newOwnerMacSigned(t, nil, daemonEnv, grant, daemonArgs...)
-}
-
-// newOwnerMacSigned is newOwnerMac with another signer in place of the Go
-// stand-in (nil: the stand-in). signer starts it for w.sock and returns
-// the file it keeps the root key in (identity.SaveKey's format).
-func newOwnerMacSigned(t *testing.T, signer func(w *ownerMac) string, daemonEnv []string, grant *localv1.GrantSpec, daemonArgs ...string) *ownerMac {
-	t.Helper()
-	return newOwnerMacAt(t, signer, 0, daemonEnv, grant, daemonArgs...)
+	return newOwnerMacAt(t, 0, daemonEnv, grant, daemonArgs...)
 }
 
 // newFarOwnerMac is newOwnerMac with the relay oneWay away from everyone
 // (delayProxy).
 func newFarOwnerMac(t *testing.T, oneWay time.Duration, daemonEnv []string, grant *localv1.GrantSpec) *ownerMac {
 	t.Helper()
-	return newOwnerMacAt(t, nil, oneWay, daemonEnv, grant)
+	return newOwnerMacAt(t, oneWay, daemonEnv, grant)
 }
 
-func newOwnerMacAt(t *testing.T, signer func(w *ownerMac) string, oneWay time.Duration, daemonEnv []string, grant *localv1.GrantSpec, daemonArgs ...string) *ownerMac {
+func newOwnerMacAt(t *testing.T, oneWay time.Duration, daemonEnv []string, grant *localv1.GrantSpec, daemonArgs ...string) *ownerMac {
 	t.Helper()
 	w := &ownerMac{t: t, bin: binaries(t), tmp: t.TempDir(), daemonArgs: daemonArgs}
 	w.ownerDebug = fmt.Sprintf("127.0.0.1:%d", freePort(t))
@@ -90,8 +85,7 @@ func newOwnerMacAt(t *testing.T, signer func(w *ownerMac) string, oneWay time.Du
 	for try := 1; ; try++ {
 		port = freePort(t)
 		w.relayDebug = fmt.Sprintf("127.0.0.1:%d", freePort(t))
-		// Its tests pair many agents and machines from this one address.
-		w.relayArgs = []string{"serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port), "--debug-addr", w.relayDebug, "--pairings-per-minute", "100"}
+		w.relayArgs = []string{"serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port), "--debug-addr", w.relayDebug}
 		if w.runRelay() {
 			break
 		}
@@ -100,35 +94,19 @@ func newOwnerMacAt(t *testing.T, signer func(w *ownerMac) string, oneWay time.Du
 		}
 		t.Logf("relay did not start on 127.0.0.1:%d, again on another port:\n%s", port, w.relay.output())
 	}
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "claim-code", "--data-dir", relayData).stdout)
+	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "setup-code", "--data-dir", relayData).stdout)
 
 	w.startOwner()
-	var keyFile string
-	if signer == nil {
-		w.root, _ = identity.GenerateKey()
-		w.app = newTestApp(t, w.sock, w.root)
-	} else {
-		keyFile = signer(w)
-		w.app = &testApp{t: t, client: localClient(t, w.sock), cancel: func() {}}
-	}
-	// No root key with the request: hermeshd asks the signer to create one,
-	// as it does for the desktop app.
+	w.app = newTestApp(t, w.sock)
 	relayURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	if oneWay > 0 {
 		relayURL = "http://" + delayProxy(t, relayURL[len("http://"):], oneWay)
 	}
-	setup, err := w.app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: relayURL, ClaimCode: claim, RootLabel: "test-mac"})
+	setup, err := w.app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: relayURL, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "test-mac"})
 	if err != nil {
 		t.Fatalf("setup: %v\n%s", err, w.owner.output())
 	}
-	if keyFile != "" {
-		if w.root, err = identity.LoadKey(keyFile); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if setup.OwnerId != identity.OwnerID(rootPub(w.root)) {
-		t.Fatalf("owner %s is not named by the key the signer created", setup.OwnerId)
-	}
+	w.server, w.addr = relayURL, connaddr.Format(relayURL, setup.OwnerId)
 	localMachine, err := w.app.client.SetLocalMachine(ctx, &localv1.SetLocalMachineRequest{Enabled: true, MachineName: "owner-mac"})
 	if err != nil {
 		t.Fatal(err)
@@ -143,15 +121,65 @@ func newOwnerMacAt(t *testing.T, signer func(w *ownerMac) string, oneWay time.Du
 		t.Fatal(err)
 	}
 	w.cliEnv = []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent")}
-	w.addr = setup.ConnectAddress
-	login := start(t, "login", w.cliEnv, filepath.Join(w.bin, "hermesh"), "auth", "login", setup.ConnectAddress, "--name", "bot")
-	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: grant}); err != nil {
-		t.Fatal(err)
-	}
-	if c := login.wait(t, 30*time.Second); c != 0 {
-		t.Fatalf("login: %s", login.output())
-	}
+	w.loginAgent(w.cliEnv, "bot", grant)
 	return w
+}
+
+// loginAgent logs an agent in with the owner's account (env names its
+// home), and gives it spec's scope when spec says more than the defaults.
+// It returns the agent's grant id.
+func (w *ownerMac) loginAgent(env []string, name string, spec *localv1.GrantSpec) string {
+	w.t.Helper()
+	if r := run(w.t, append(slices.Clone(env), loginEnv()...), 60*time.Second, filepath.Join(w.bin, "hermesh"), "auth", "login", w.server, "--name", name); r.code != 0 {
+		w.t.Fatalf("login %s: %+v", name, r)
+	}
+	ctx := context.Background()
+	var grantID string
+	eventually(w.t, 30*time.Second, "the agent "+name+" listed", func() bool {
+		cs, err := w.app.client.ListClients(ctx, &localv1.ListClientsRequest{})
+		for _, c := range cs.GetClients() {
+			if err == nil && c.Label == name {
+				grantID = c.GrantId
+			}
+		}
+		return grantID != ""
+	})
+	if spec != nil && !proto.Equal(spec, &localv1.GrantSpec{}) {
+		spec = proto.Clone(spec).(*localv1.GrantSpec)
+		if spec.Label == "" {
+			spec.Label = name
+		}
+		if _, err := w.app.client.UpdateClient(ctx, &localv1.UpdateClientRequest{GrantId: grantID, Spec: spec}); err != nil {
+			w.t.Fatalf("the agent %s's scope: %v", name, err)
+		}
+	}
+	return grantID
+}
+
+// loginMachine logs a machine in with the owner's account: aided login,
+// with its data in dataDir and its name, no service; env and args add to
+// it. It returns the machine's id.
+func (w *ownerMac) loginMachine(name, dataDir string, env []string, args ...string) string {
+	w.t.Helper()
+	r := run(w.t, append(slices.Clone(env), loginEnv()...), 60*time.Second, filepath.Join(w.bin, "hermeshd"),
+		append([]string{"login", w.server, "--name", name, "--no-service", "--data-dir", dataDir}, args...)...)
+	if r.code != 0 {
+		w.t.Fatalf("aided login %s: %+v", name, r)
+	}
+	id := loggedInMachine(r.stdout)
+	if id == "" {
+		w.t.Fatalf("aided login %s said no machine id:\n%s", name, r.stdout)
+	}
+	return id
+}
+
+// loggedInMachine is the machine id `aided login` printed ("✓ Logged in as
+// “name” (m_…)"), "" before it did.
+func loggedInMachine(out string) string {
+	if m := regexp.MustCompile(`Logged in as .*\((m_[a-z0-9]+)\)`).FindStringSubmatch(out); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
 func (w *ownerMac) startRelay() {
@@ -216,11 +244,17 @@ func (w *ownerMac) restartOwner(kill bool) {
 	}
 	w.app.cancel()
 	w.startOwner()
-	w.app = newTestApp(w.t, w.sock, w.root)
+	w.app = newTestApp(w.t, w.sock)
 	eventually(w.t, 30*time.Second, "machine back", func() bool {
 		r := w.cli(30*time.Second, "project", "list")
 		return r.code == 0 && strings.Contains(r.stdout, "owner-mac/demo")
 	})
+}
+
+// signs is how often the owner's devices had the server sign something
+// (OwnerControl.Sign), as the relay counts it.
+func (w *ownerMac) signs() int {
+	return metric(w.t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="Sign"}`)
 }
 
 func (w *ownerMac) cli(timeout time.Duration, args ...string) result {

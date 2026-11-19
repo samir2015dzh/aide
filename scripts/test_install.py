@@ -2,7 +2,7 @@
 
 Run the published shell script through a pipe in a real pseudo-terminal,
 with signed fixture downloads. Only the OS/mount inventory and the final
-pairing binary are fixtures; curl, signature verification and filesystem
+login binary are fixtures; curl, signature verification and filesystem
 operations are real. Full daemon/service coverage lives in LinuxUpdate.
 """
 
@@ -138,7 +138,7 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(code, 0, output)
         self.assertTrue(self.entry.is_dir())
         self.assertFalse(self.entry.is_symlink())
-        self.assertIn("PAIRING pair", output)
+        self.assertIn("PAIRING login", output)
         self.assertIn("\033[36m", output)
 
     def test_custom_path_with_spaces_persists_on_reinstall(self):
@@ -259,9 +259,9 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual((bin / "her-console/index.html").read_bytes(), b"console two")
         self.assertFalse((bin / "her-console/stale.js").exists())
 
-    def test_cli_and_device_have_no_her(self):
+    def test_cli_has_no_her(self):
         self.publish_her(b"console")
-        for args in ("--cli", "--device"):
+        for args in ("--cli",):
             code, output = self.run_install(terminal=False, args=args)
             self.assertEqual(code, 0, output)
             self.assertFalse((self.home / ".local/bin/her").exists(), args)

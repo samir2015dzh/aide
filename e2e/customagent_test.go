@@ -142,7 +142,7 @@ func TestCustomAgent(t *testing.T) {
 
 	// Another computer of the owner's: configured through its tunnel.
 	work, _ := w.otherMac("work-mac", nil)
-	wid := w.joinTyped(work, st, "work-mac").LocalMachineId
+	wid := w.logInMachineOnly(work, st, "work-mac").LocalMachineId
 	eventually(t, 30*time.Second, "work-mac online", func() bool {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
 		if err != nil {

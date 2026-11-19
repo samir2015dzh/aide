@@ -89,7 +89,7 @@ func demoWorld(t *testing.T, text demoText) desktopFixture {
 		}
 	}
 	mini, _ := w.otherMac("mac-mini", env)
-	st := w.joinTyped(mini, home, "mac-mini")
+	st := w.logInMachineOnly(mini, home, "mac-mini")
 	if _, err := mini.AddProject(ctx, &localv1.AddProjectRequest{MachineId: st.LocalMachineId, ProjectId: "ios-app", Path: gitRepo(t, map[string]string{"README.md": "# ios-app\n"})}); err != nil {
 		t.Fatal(err)
 	}

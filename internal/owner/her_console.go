@@ -298,7 +298,8 @@ func (c *herConsole) pollSignin(w http.ResponseWriter, r *http.Request, id strin
 
 // ---------------------------------------------------------------------------
 // The console can't sign: a connector started as a command goes through
-// here, which asks this device's signer, as SetHerCommandConnector does.
+// here, which has the server sign it for this device, as
+// SetHerCommandConnector does.
 //
 //	POST <base>command-connector {"name", "command", "args", "env", "remove"}
 //	     → {} once applied, or a short text saying why not
@@ -327,12 +328,9 @@ func (o *Owner) consoleCommandConnector(w http.ResponseWriter, r *http.Request, 
 // consoleError is how the console is told why a call failed: an HTTP
 // status, and a short text.
 func consoleError(err error) (int, string) {
-	if errors.Is(err, ErrSigningRejected) {
-		return http.StatusForbidden, err.Error()
-	}
 	ce := new(connect.Error)
 	if !errors.As(err, &ce) {
-		return http.StatusInternalServerError, err.Error() // as the signer timing out
+		return http.StatusInternalServerError, err.Error()
 	}
 	switch ce.Code() {
 	case connect.CodeInvalidArgument:

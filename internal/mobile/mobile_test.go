@@ -49,10 +49,10 @@ func TestCoreServesLocalServiceToTheTokenOnly(t *testing.T) {
 			t.Fatalf("token %q: got %v, want unauthenticated", tok, err)
 		}
 	}
-	// An iPhone is never a machine.
-	_, err = client(c, c.Token()).RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: "https://relay.invalid", OwnerId: "o_x", MachineOnly: true})
+	// A phone is never a machine.
+	_, err = client(c, c.Token()).LogIn(ctx, &localv1.LogInRequest{RelayUrl: "https://relay.invalid", Account: "a", Password: "correct horse", MachineOnly: true})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("machine-only join: got %v, want failed precondition", err)
+		t.Fatalf("machine-only login: got %v, want failed precondition", err)
 	}
 	c.Pause()
 	c.Resume()

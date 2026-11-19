@@ -168,6 +168,12 @@ func (t *Trust) verifyByRoot(s *identityv1.Signed, out proto.Message) error {
 	return VerifyWith(s, pub, out)
 }
 
+// VerifyRootSigned checks that s is signed by a current root key, and
+// parses its body into out.
+func (t *Trust) VerifyRootSigned(s *identityv1.Signed, out proto.Message) error {
+	return t.verifyByRoot(s, out)
+}
+
 func (t *Trust) VerifyMachineCert(s *identityv1.Signed) (*identityv1.MachineCert, *ecdsa.PublicKey, error) {
 	nc := &identityv1.MachineCert{}
 	if err := t.verifyByRoot(s, nc); err != nil {
@@ -277,8 +283,10 @@ func VerifyEraseAck(s *identityv1.Signed, trust *Trust) (*identityv1.EraseAck, e
 	if _, pub, err := trust.VerifyDeviceCert(a.DeviceCert); err != nil || !bytes.Equal(MarshalPublicKey(pub), a.PublicKey) {
 		return nil, fmt.Errorf("erase ack: its device cert does not name its key (%v)", err)
 	}
-	if a.DeviceCert.SignerKeyId != a.Subject {
-		return nil, errors.New("erase ack: its device cert is not signed by its subject")
+	// A device that logged in is known by its device key; one set up before
+	// accounts by the root key that signed its device cert.
+	if a.DeviceCert.SignerKeyId != a.Subject && Fingerprint(a.PublicKey) != a.Subject {
+		return nil, errors.New("erase ack: its subject is neither its device key nor the root key of its device cert")
 	}
 	return a, nil
 }

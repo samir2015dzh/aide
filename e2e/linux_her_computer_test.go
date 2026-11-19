@@ -162,22 +162,16 @@ func linuxHerMachine(t *testing.T, tag, dockerfile, host string, files map[strin
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 2*time.Minute, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(out.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
+	var machineID string
+	eventually(t, 2*time.Minute, "the machine logged in", func() bool {
+		machineID = loggedInMachine(out.String())
+		return machineID != ""
 	})
-	approved, err := c.ApproveMachinePairing(context.Background(), &localv1.ApproveMachinePairingRequest{Code: code, MachineName: host})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil {
 		t.Fatalf("install: %v\n%s", err, out.String())
 	}
-	turnHerOn(t, c, approved.MachineId)
-	return c, approved.MachineId, name, sh, out.String()
+	turnHerOn(t, c, machineID)
+	return c, machineID, name, sh, out.String()
 }
 
 // linuxAgentDesktop is her-computer-linux-<arch>.tar.gz as scripts/release.sh

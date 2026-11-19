@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -131,10 +132,7 @@ func TestAgentLink(t *testing.T) {
 	ctx := context.Background()
 	home2 := filepath.Join(w.tmp, "agent2")
 	env2 := []string{"HERMESH_HOME=" + home2}
-	login := start(t, "login2", env2, hermesh, "auth", "login", w.addr, "--name", "bot2")
-	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
+	login := start(t, "login2", append(slices.Clone(env2), loginEnv()...), hermesh, "auth", "login", w.addr, "--name", "bot2")
 	if c := login.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("login: %s", login.output())
 	}

@@ -417,7 +417,7 @@ func (o *ownerControl) PublishCards(ctx context.Context, req *relayv1.PublishCar
 	p := peerFrom(ctx)
 	t := p.t
 	if p.deviceCert == nil {
-		return nil, errf(connect.CodePermissionDenied, "only a trusted device signs cards")
+		return nil, errf(connect.CodePermissionDenied, "only one of the owner's devices signs cards")
 	}
 	live := o.s.liveClients(t)
 	for _, card := range req.Cards {

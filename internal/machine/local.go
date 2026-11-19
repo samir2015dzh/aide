@@ -351,12 +351,6 @@ func retiredKeys(dataDir string) []identity.Signer {
 	return keys
 }
 
-// SignPairingRequest signs pr with this machine's key, for a pairing the
-// caller drives itself (the app's join as a machine only).
-func (n *Machine) SignPairingRequest(pr *identityv1.PairingRequest) (*identityv1.Signed, error) {
-	return identity.Sign(pr, n.key)
-}
-
 // Refused reports whether the relay refused this machine the last time it
 // connected because it is no longer its owner's: the owner removed it, or
 // is gone. Other refusals (a relay being reset, a passing failure) are not

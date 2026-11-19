@@ -21,21 +21,22 @@ enum SignatureAlgorithm {
   SIGNATURE_ALGORITHM_ECDSA_P256_SHA256 = 1;
 }
 
-// RootKey is the root key of one trusted device (docs/trusted-devices.md):
-// a key in its secure hardware that signs everything adding permissions.
+// RootKey is a key that signs everything adding permissions
+// (docs/accounts.md): the server's own key, which signs for whoever logs in
+// with the account and password, and, for an owner set up before accounts,
+// the root keys its devices had then.
 message RootKey {
   // PKIX SubjectPublicKeyInfo, DER.
   bytes public_key = 1;
-  // The device's name, e.g. "Yi's MacBook Pro".
+  // Its name, e.g. "服务器" or "Yi's MacBook Pro".
   string label = 2;
-  // "macos" now; later "ios", "windows", "linux".
+  // "server" for the server's key; for a device's, "windows", "android"...
   string platform = 3;
 }
 
-// RootCert lists the owner's trusted devices. Version 1 lists one key and
-// is signed by it, and owner_id = "o_" + fingerprint(that key)[:24]. Every
-// later version is signed by a key of the version before it, so the set of
-// trusted devices changes only with the approval of one already in it.
+// RootCert lists the owner's root keys. Version 1 lists one key and is
+// signed by it, and owner_id = "o_" + fingerprint(that key)[:24]. Every
+// later version is signed by a key of the version before it.
 message RootCert {
   string owner_id = 1;
   reserved 2;
@@ -51,9 +52,9 @@ message RootChain {
   repeated Signed certs = 1;
 }
 
-// OwnerDeviceCert is signed by a trusted device's root key, for that
-// device's own device key, used for day-to-day owner reads, cancels and
-// revocation pushes.
+// OwnerDeviceCert is signed by a root key (the server's, when the device
+// logged in), for the device's own device key: what the owner's devices
+// connect, read, drive and manage with.
 message OwnerDeviceCert {
   string owner_id = 1;
   bytes device_public_key = 2;
@@ -87,35 +88,6 @@ message PushRegistration {
   string service = 8;
 }
 
-enum PairingKind {
-  PAIRING_KIND_UNSPECIFIED = 0;
-  PAIRING_KIND_MACHINE = 1;
-  PAIRING_KIND_CLIENT = 2;
-  // A new trusted device; its subject key is the device's root key.
-  PAIRING_KIND_DEVICE = 3;
-}
-
-// PairingRequest is self-signed by the subject key.
-message PairingRequest {
-  PairingKind kind = 1;
-  bytes subject_public_key = 2;
-  // Self-reported label (agent name or machine hostname).
-  string label = 3;
-  string hostname = 4;
-  string platform = 5;
-  string owner_id = 6;
-  google.protobuf.Timestamp created_at = 7;
-  // The requester will ask the person for the two digits of the cert that
-  // admits it (JoinMatchCode of its body), because the owner it pinned came
-  // from a hosted center: a Mac joining as a machine only. The approving
-  // device shows them once it signed.
-  bool confirm_match = 8;
-  // Set when a server holds this client's private key on behalf of a remote
-  // agent product (the MCP gateway): that server's public URL. The relay
-  // accepts it only from its own gateway, never over the network.
-  string custodian = 9;
-}
-
 // MachineCert is signed by a root key. It is the machine's identity, its
 // key; the machine's name is a setting (SetName), not part of it.
 message MachineCert {
@@ -125,8 +97,9 @@ message MachineCert {
   reserved 4;
   reserved "machine_name";
   google.protobuf.Timestamp issued_at = 5;
-  // A trusted device's own machine: the key id of that device's root key.
-  // Removing the device removes this machine too.
+  // A device's own machine: that device's id (the key id of its device key,
+  // or of its root key for a device set up before accounts). Removing the
+  // device removes this machine too.
   string device_key_id = 6;
 }
 
@@ -170,8 +143,8 @@ message Grant {
   uint32 max_concurrent_sessions = 12;
   google.protobuf.Timestamp not_before = 13;
   google.protobuf.Timestamp expires_at = 14;
-  // Copied from the PairingRequest: the server that holds the client key
-  // (an MCP connection), "" for a client that holds its own key.
+  // The server that holds the client key (an MCP connection), "" for a
+  // client that holds its own key.
   string custodian = 15;
   // The icon the owner picked for it: "" draws its app's when its name or
   // where it signs in says which (the default), "letter" its initial,
@@ -199,6 +172,9 @@ message EraseOrder {
   // Random: names this erase, for the acks.
   string erase_id = 2;
   google.protobuf.Timestamp issued_at = 3;
+  // The device that erased everything, by its name (the server signs the
+  // order for it).
+  string by = 4;
 }
 
 // EraseAck says that the key in it got an erase order and is erasing:
@@ -327,6 +303,9 @@ message RevocationList {
   repeated string revoked_grant_ids = 2;
   repeated string revoked_machine_ids = 3;
   map<string, uint64> min_grant_versions = 4;
+  // Devices signed out (removed, or signed out by a password change): the
+  // key ids of their device keys. Their device certs no longer admit them.
+  repeated string revoked_device_keys = 5;
 }
 
 // Credentials are embedded in the E2E TLS certificate extension and in the

@@ -10,7 +10,6 @@ import (
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
 // TestWorkOnIPhone (docs/work-stats.md): the Mac's machine counts its
@@ -58,8 +57,7 @@ func TestWorkOnIPhone(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	root, _ := identity.GenerateKey()
-	m := joinMobile(t, w, st.RelayUrl, dir, root)
+	m := joinMobile(t, w, st.RelayUrl, dir)
 	front, leave := context.WithCancel(ctx)
 	scr := watchScreenOf(front, t, m.client)
 	var res *localv1.QueryWorkResponse

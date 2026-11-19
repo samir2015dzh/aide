@@ -1,13 +1,11 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 )
@@ -23,21 +21,7 @@ func TestMCPResumeMissingWorktree(t *testing.T) {
 	w.relayArgs = append(w.relayArgs, "--mcp")
 	w.startRelay()
 	app := newOAuthApp(t, mcpAddress(t, w.app), "Resume test")
-	app.connect(app.authorize())
-	var req *localv1.PairingDetails
-	eventually(t, 30*time.Second, "MCP approval request", func() bool {
-		l, err := w.app.client.ListPairingRequests(context.Background(), &localv1.ListPairingRequestsRequest{})
-		if err != nil || len(l.Pairings) != 1 {
-			return false
-		}
-		req = l.Pairings[0]
-		return true
-	})
-	if _, err := w.app.client.ApproveClientPairing(context.Background(), &localv1.ApproveClientPairingRequest{Code: req.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
-	eventually(t, 30*time.Second, "MCP approved", func() bool { return app.consentState() == "active" })
-	client := app.mcpSession(app.finish(app.get(app.consentURL)).Access)
+	client := app.mcpSession(app.finish(app.connect(app.authorize())).Access)
 	gitOut(t, w.repo, "branch", "task-base", w.repoHead)
 	gitOut(t, w.repo, "checkout", "-b", "project-default")
 	if err := os.WriteFile(filepath.Join(w.repo, "default-only.txt"), []byte("not in task-base\n"), 0o644); err != nil {

@@ -13,7 +13,6 @@ import (
 	"connectrpc.com/connect"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
 // TestEraseEverything: from one trusted device, with one approval, the
@@ -65,13 +64,7 @@ func TestEraseEverything(t *testing.T) {
 	// erases everything.
 	pairVPS := func(name string) (data string) {
 		data = filepath.Join(w.tmp, name)
-		pair := start(t, "pair "+name, env, daemon, "pair", w.addr, "--name", name, "--no-service", "--data-dir", data)
-		if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: name}); err != nil {
-			t.Fatal(err)
-		}
-		if c := pair.wait(t, 30*time.Second); c != 0 {
-			t.Fatalf("pair %s: %s", name, pair.output())
-		}
+		w.loginMachine(name, data, env)
 		return data
 	}
 	runVPS := func(name, data string) *proc {
@@ -84,8 +77,8 @@ func TestEraseEverything(t *testing.T) {
 		return err == nil && slices.ContainsFunc(res.Machines, func(m *localv1.Machine) bool { return m.MachineName == name && m.Online })
 	}
 	onData, offData := pairVPS("vps-on"), pairVPS("vps-off")
-	// Paired, and never used again until the owner is a new one: a machine
-	// and an agent the erase never reaches.
+	// Logged in, and never used again until the owner is a new one: a
+	// machine and an agent the erase never reaches.
 	lateData := pairVPS("vps-late")
 	lateAgent := w.addAgent("late", &localv1.GrantSpec{})
 	// On a Mac the app's owner shares the data directory: it stays.
@@ -103,28 +96,13 @@ func TestEraseEverything(t *testing.T) {
 	vpsOff.stop()
 	vpsLate.stop()
 
-	// A Mac that is only a machine, and a second trusted device.
+	// A Mac that is only a machine, and a second device of the owner's.
 	mac3, _ := w.otherMac("mac3", env)
 	home, _ := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
-	w.joinTyped(mac3, home, "mac3")
+	w.logInMachineOnly(mac3, home, "mac3")
 	_, mac2Sock := w.otherMac("mac2", env)
-	root2, _ := identity.GenerateKey()
-	app2 := newTestApp(t, mac2Sock, root2)
-	join, err := app2.client.RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: home.RelayUrl, OwnerId: home.OwnerId,
-		RootPublicKey: rootPub(root2), RootLabel: "mac2", RootPlatform: "macos"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var approval *localv1.ApproveDevicePairingResponse
-	eventually(t, 15*time.Second, "mac2's request on the Mac", func() bool {
-		approval, err = w.app.client.ApproveDevicePairing(ctx, &localv1.ApproveDevicePairingRequest{Code: join.Code})
-		return err == nil
-	})
-	eventually(t, time.Minute, "the approval reaches mac2", func() bool {
-		r, err := app2.client.WaitJoin(ctx, &localv1.WaitJoinRequest{Code: join.Code})
-		return err == nil && r.Done
-	})
-	if _, err := app2.client.ConfirmJoin(ctx, &localv1.ConfirmJoinRequest{Code: join.Code, Accept: true, MatchCode: approval.MatchCode}); err != nil {
+	app2 := newTestApp(t, mac2Sock)
+	if _, err := app2.client.LogIn(ctx, &localv1.LogInRequest{RelayUrl: home.RelayUrl, Account: testAccount, Password: testPassword, Label: "mac2", Platform: "macos"}); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, 30*time.Second, "mac2 sees the machines", func() bool {
@@ -154,21 +132,18 @@ func TestEraseEverything(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Erase everything, from the Mac: one approval.
-	before := len(w.app.signedTypes())
+	// Erase everything, from the Mac: the server signs the order.
+	before := w.signs()
 	erase, err := w.app.client.EraseEverything(ctx, &localv1.EraseEverythingRequest{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := w.app.signedTypes()[before:]; !slices.Equal(got, []string{"hermesh.identity.v1.EraseOrder"}) {
-		t.Fatalf("erasing signed %v", got)
+	if got := w.signs() - before; got != 1 {
+		t.Fatalf("erasing signed %d times", got)
 	}
 	// Asked again (a second click) while erasing: refused, nothing signed.
 	if _, err := w.app.client.EraseEverything(ctx, &localv1.EraseEverythingRequest{}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("erasing twice: %v", err)
-	}
-	if got := w.app.signedTypes()[before:]; len(got) != 1 {
-		t.Fatalf("erasing twice signed %v", got)
 	}
 
 	// The agent learns it at its next command, and forgets its pairing.
@@ -222,9 +197,6 @@ func TestEraseEverything(t *testing.T) {
 		len(st.Erased.KeptWorktrees) != 1 {
 		t.Fatalf("the Mac after erasing: %v %v", st, err)
 	}
-	if got := w.app.deletedKeys(); !slices.Equal(got, []string{identity.KeyID(w.root.Public())}) {
-		t.Fatalf("deleted root keys %v", got)
-	}
 	kept := st.Erased.KeptWorktrees[0]
 	if b, err := os.ReadFile(filepath.Join(kept, "unsaved.txt")); err != nil || string(b) != "work in progress\n" {
 		t.Fatalf("the kept worktree %s: %q %v", kept, b, err)
@@ -248,14 +220,11 @@ func TestEraseEverything(t *testing.T) {
 		t.Fatalf("a her of the server's own, where Her was never on: %v", err)
 	}
 
-	// The other trusted device and the machine-only Mac erased themselves.
+	// The other device and the machine-only Mac erased themselves.
 	eventually(t, 30*time.Second, "mac2 erased", func() bool {
 		st, err := app2.client.GetStatus(ctx, &localv1.GetStatusRequest{})
 		return err == nil && !st.Initialized && st.Erased != nil && st.Erased.EraseId == erase.EraseId && st.Erased.By == "test-mac"
 	})
-	if got := app2.deletedKeys(); !slices.Equal(got, []string{identity.KeyID(root2.Public())}) {
-		t.Fatalf("mac2 deleted root keys %v", got)
-	}
 	eventually(t, 30*time.Second, "mac3 erased", func() bool {
 		st, err := mac3.GetStatus(ctx, &localv1.GetStatusRequest{})
 		return err == nil && !st.MachineOnly && !st.Initialized && st.Erased != nil
@@ -271,9 +240,9 @@ func TestEraseEverything(t *testing.T) {
 	}
 	machineErased(offData)
 
-	// A cold start: the relay can be claimed again, and the Mac set up anew.
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(w.bin, "hermesh-relay"), "claim-code", "--data-dir", filepath.Join(w.tmp, "relay")).stdout)
-	setup, err := w.app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: home.RelayUrl, ClaimCode: claim, RootLabel: "test-mac"})
+	// A cold start: the server can be set up again, and the Mac with it.
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(w.bin, "hermesh-relay"), "setup-code", "--data-dir", filepath.Join(w.tmp, "relay")).stdout)
+	setup, err := w.app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: home.RelayUrl, SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-mac"})
 	if err != nil {
 		t.Fatalf("setting up again: %v", err)
 	}
@@ -284,22 +253,16 @@ func TestEraseEverything(t *testing.T) {
 		t.Fatalf("status once set up again: %v", st)
 	}
 
-	// Those the erase never reached pair with the new owner as they are: their
-	// old owner is gone from the server, nothing to log out of first.
-	gone := "is gone from its server (it erased everything, or was reset)"
-	login := start(t, "login late again", lateAgent, filepath.Join(w.bin, "hermesh"), "auth", "login", setup.ConnectAddress, "--name", "late")
-	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
+	// Those the erase never reached log in to the new owner as they are:
+	// their old owner is gone from the server, nothing to log out of first.
+	gone := "is gone from its server (it erased everything)"
+	login := start(t, "login late again", append(slices.Clone(lateAgent), loginEnv()...), filepath.Join(w.bin, "hermesh"), "auth", "login", home.RelayUrl, "--name", "late")
 	if c := login.wait(t, 30*time.Second); c != 0 || !strings.Contains(login.output(), gone) {
-		t.Fatalf("the late agent pairing again: %d\n%s", c, login.output())
+		t.Fatalf("the late agent logging in again: %d\n%s", c, login.output())
 	}
-	pair := start(t, "pair vps-late again", env, daemon, "pair", setup.ConnectAddress, "--name", "vps-late", "--no-service", "--data-dir", lateData)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-late"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair vps-late again", append(slices.Clone(env), loginEnv()...), daemon, "login", home.RelayUrl, "--name", "vps-late", "--no-service", "--data-dir", lateData)
 	if c := pair.wait(t, 30*time.Second); c != 0 || !strings.Contains(pair.output(), gone) {
-		t.Fatalf("vps-late pairing again: %d\n%s", c, pair.output())
+		t.Fatalf("vps-late logging in again: %d\n%s", c, pair.output())
 	}
 }
 
@@ -316,10 +279,7 @@ func TestEraseThisMachine(t *testing.T) {
 	ctx := context.Background()
 	daemon := filepath.Join(w.bin, "hermeshd")
 	data := filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", env, daemon, "pair", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}

@@ -11,11 +11,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
 	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
 	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
@@ -198,30 +196,6 @@ func (n *machineControl) Notify(ctx context.Context, req *relayv1.NotifyRequest)
 	return &relayv1.NotifyResponse{}, nil
 }
 
-// notifyPairing tells the owner's devices of a new request to connect: the
-// relay knows its contents anyway (it is public), and seals it like a
-// machine's notice so the phone reads both alike.
-func (s *Server) notifyPairing(ownerID, code string, pr *identityv1.PairingRequest) {
-	if !s.pushing() || ownerID == "" {
-		return
-	}
-	t, err := s.loadTenant(ownerID)
-	if err != nil || t == nil {
-		return
-	}
-	notice := &sessionv1.Notice{Kind: "pairing", At: timestamppb.Now(), PairingKind: pr.Kind, PairingLabel: pr.Label,
-		VerificationCode: identity.VerificationCode(pr.Kind, pr.SubjectPublicKey, ownerID), PairingCode: code}
-	for _, pt := range s.pushTargets(t) {
-		reg := &identityv1.PushRegistration{}
-		identity.Unverified(pt.Registration, reg) // verified by pushTargets
-		sealed, err := identity.SealNotice(reg.NoticePublicKey, notice)
-		if err != nil {
-			continue
-		}
-		s.deliver(pt, sealed, "pairing", "pairing")
-	}
-}
-
 // pushing reports whether this relay sends notifications at all.
 func (s *Server) pushing() bool { return s.cfg.Pusher != nil }
 
@@ -235,9 +209,9 @@ func (s *Server) deliver(pt *relayv1.PushTarget, sealed []byte, kind, thread str
 	if pusher == nil || reg.Service != "" {
 		return
 	}
-	// A question or a request to connect also breaks through Focus as
-	// time-sensitive; Her says too much for that.
-	timeSensitive := kind == "question" || kind == "pairing"
+	// A question also breaks through Focus as time-sensitive; Her says too
+	// much for that.
+	timeSensitive := kind == "question"
 	urgent := timeSensitive || kind == "her"
 	level := "active"
 	if timeSensitive {

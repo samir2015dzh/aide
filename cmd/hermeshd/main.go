@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -120,7 +121,7 @@ func rootCommand() *cobra.Command {
 		Long: `hermeshd runs on each machine where coding agents (Claude Code, Codex) work
 for your agents. It runs as the user you code as, in the background.
 
-First time, the install script runs "aided pair" for you. Afterwards:
+First time, the install script runs "aided login" for you. Afterwards:
   aided doctor                   check everything, and what to fix
   aided project add ~/code/app   let agents work in a folder
   aided service status           is it running, and does it start at boot
@@ -262,9 +263,9 @@ A computer that runs no coding agents can approve instead: aided device.`}
 			return err
 		},
 	}
-	run.Flags().BoolVar(&ownerMode, "owner", false, "run the owner role for the Aide app or a Linux trusted device (serves the local API)")
+	run.Flags().BoolVar(&ownerMode, "owner", false, "run the owner role for the Aide app (serves the local API)")
 	run.Flags().StringVar(&socket, "socket", "", "local API socket path (owner role)")
-	run.Flags().BoolVar(&noMachine, "no-machine", false, "with --owner: never run a machine here (a Linux trusted device)")
+	run.Flags().BoolVar(&noMachine, "no-machine", false, "with --owner: never run a machine here")
 	run.Flags().StringVar(&debugAddr, "debug-addr", brandenv.Get("DEBUG_ADDR"), "serve /metrics and /debug/pprof on this loopback address")
 	run.Flags().BoolVar(&supervise, "supervise", false, "run the daemon as a child, and start it again whenever it exits but for a clean stop (Windows)")
 	run.Flags().MarkHidden("supervise")
@@ -278,34 +279,33 @@ A computer that runs no coding agents can approve instead: aided device.`}
 	run.Flags().DurationVar(&retryDelay, "retry-delay", 0, "a turn stopped by a rate limit or a model at capacity goes on by itself after this long, then 4 and 10 times as long, before it fails (default 30s; 0: it fails at once)")
 	runFlagSet = run.Flags().Changed
 
-	var name string
-	var noService, yes bool
+	var name, account string
+	var noService, yes, passwordStdin bool
 	pair := &cobra.Command{
-		Use:     "pair [connection address | server]",
-		Aliases: []string{"login"},
-		Short:   "Pair this machine with your Aide: you approve it in Aide on your computer or phone",
-		Long: `Pair this machine with your Aide on your own server. Give its
-connection address (relay.example.com/o_…, in Aide under Settings ›
-Account): the request goes to that owner's devices by itself. A bare
-server address (or $AIDE_CENTER, else $AIDE_SERVER) works too: enter
-the code it shows in Aide on your computer or phone, then type here the
-two digits your device shows. There is no default server: without an
-address it stops. Then it installs the background service.`,
-		Example: `  aided pair relay.example.com/o_abc… --name build-box
-  aided pair relay.example.com`,
+		Use:     "login [server]",
+		Aliases: []string{"pair"},
+		Short:   "Log this machine in to your Aide server with your account and password",
+		Long: `Log this machine in to your own Aide server with your account and
+password: the server adds it to your machines by itself, with no one
+approving and nothing to compare. The server is the argument (or
+$AIDE_SERVER); there is no default. The account is --account, else
+$AIDE_ACCOUNT, else asked for; the password is asked for (or read from
+stdin with --password-stdin, or taken from $AIDE_PASSWORD). Then it
+installs the background service.`,
+		Example: `  aided login relay.example.com --name build-box
+  echo "$PASSWORD" | aided login relay.example.com --account me --password-stdin`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var arg string
 			if len(args) > 0 {
 				arg = args[0]
 			}
-			address := connaddr.Center(arg)
-			// Run again on a paired machine whose owner is still there (the
+			address := connaddr.Server(arg)
+			// Run again on a machine logged in whose owner is still there (the
 			// install command, updating): start the service on this program.
-			_, wantOwner, _ := connaddr.ParseAny(address)
-			if c, running, err := machineCheck(cmd.Context(), dataDir, openMachine); err == nil && c.Paired && (wantOwner == "" || wantOwner == c.OwnerID) &&
+			if c, running, err := machineCheck(cmd.Context(), dataDir, openMachine); err == nil && c.Paired &&
 				!machine.OwnerGone(cmd.Context(), http.DefaultClient, c.RelayURL, c.OwnerID) {
-				fmt.Printf("This machine is already paired as %q.\n", c.Name)
+				fmt.Printf("This machine is already logged in as %q.\n", c.Name)
 				switch {
 				case service.Running():
 					if err := service.Restart(); err != nil {
@@ -327,17 +327,44 @@ address it stops. Then it installs the background service.`,
 				}
 				return nil
 			}
-			// Not paired yet (or its owner is gone): pairing needs the
+			// Not logged in yet (or its owner is gone): logging in needs the
 			// person's own server, typed; there is no default to fall to.
 			if address == "" {
 				return connaddr.ErrNoServer
 			}
+			if account == "" {
+				account = brandenv.Get("ACCOUNT")
+			}
+			password := brandenv.Get("PASSWORD")
+			if passwordStdin {
+				l, err := bufio.NewReader(os.Stdin).ReadString('\n')
+				if err != nil && l == "" {
+					return fmt.Errorf("reading the password from stdin: %w", err)
+				}
+				password = strings.TrimRight(l, "\r\n")
+			}
+			if account == "" || password == "" {
+				t, err := newTerminal()
+				if err != nil {
+					return fmt.Errorf("%w: give --account and the password (--password-stdin or $AIDE_PASSWORD)", err)
+				}
+				if account == "" {
+					if account, err = t.line("Account: "); err != nil {
+						return err
+					}
+				}
+				if password == "" {
+					if password, err = t.secret("Password: "); err != nil {
+						return err
+					}
+				}
+			}
 			n, err := openMachine()
 			restart := false
 			if err != nil && service.Installed() {
-				// Pairing again (e.g. after the owner identity was reset):
+				// Logging in again (e.g. after the owner erased everything):
 				// the running service holds the data directory.
-				fmt.Println("Stopping the background service to pair this machine…")
+				fmt.Println("Stopping the background service to log this machine in…")
 				if uerr := service.Uninstall(); uerr == nil {
 					restart = true
 					n, err = openMachine()
@@ -348,7 +375,7 @@ address it stops. Then it installs the background service.`,
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
-			if err := n.Pair(ctx, address, name, os.Stdout); err != nil {
+			if err := n.LogIn(ctx, address, account, password, name, os.Stdout); err != nil {
 				n.Close()
 				return err
 			}
@@ -421,14 +448,16 @@ address it stops. Then it installs the background service.`,
 		},
 	}
 	pair.Flags().StringVar(&name, "name", "", "machine name shown to the owner (default: hostname)")
+	pair.Flags().StringVar(&account, "account", "", "the owner's account (default: $AIDE_ACCOUNT, else asked for)")
+	pair.Flags().BoolVar(&passwordStdin, "password-stdin", false, "read the password from stdin")
 	pair.Flags().BoolVar(&noService, "no-service", false, "do not install the background service")
 	pair.Flags().BoolVar(&yes, "yes", false, "")
-	pair.Flags().MarkDeprecated("yes", "it did something only with a hosted center; your own server's owner is pinned without it")
+	pair.Flags().MarkDeprecated("yes", "it did nothing on a server of one's own")
 
 	doctor := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check this machine's setup, and say what to fix",
-		Long:  "Check the pairing, the coding agents, the background service and the connection to the relay. It exits 1 when something needs fixing, and says how.",
+		Long:  "Check the login, the coding agents, the background service and the connection to the server. It exits 1 when something needs fixing, and says how.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// The app's hermeshd holds the machine: ask it.
@@ -443,9 +472,9 @@ address it stops. Then it installs the background service.`,
 			ok := true
 			fmt.Printf("machine id   %s\n", c.MachineID)
 			if c.Paired {
-				fmt.Printf("paired       yes, as %q\n", c.Name)
+				fmt.Printf("logged in    yes, as %q\n", c.Name)
 			} else {
-				fmt.Println("paired       NO  → run: aided pair")
+				fmt.Println("logged in    NO  → run: aided login <server>")
 				ok = false
 			}
 			fmt.Printf("PATH         %s\n", shellenv.Path())
@@ -495,9 +524,9 @@ address it stops. Then it installs the background service.`,
 			if err != nil {
 				return err
 			}
-			paired := "not paired → run: aided pair"
+			paired := "not logged in → run: aided login <server>"
 			if c.Paired {
-				paired = fmt.Sprintf("paired as %q, relay %s", c.Name, c.RelayURL)
+				paired = fmt.Sprintf("logged in as %q, server %s", c.Name, c.RelayURL)
 				if running && c.Connected {
 					paired += ", connected"
 				}
@@ -534,7 +563,7 @@ address it stops. Then it installs the background service.`,
 		Long: `hermeshd runs in the background as a service of this user: a systemd user
 service on Linux (with lingering, so it starts at boot with nobody logged
 in), a LaunchAgent on macOS, a Task Scheduler logon task on Windows.
-"aided pair" installs it.`}
+"aided login" installs it.`}
 	var serviceOwner bool
 	install := &cobra.Command{Use: "install", Short: "Install and start the service (again)", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		bin, _ := os.Executable()
@@ -566,7 +595,7 @@ in), a LaunchAgent on macOS, a Task Scheduler logon task on Windows.
 			fmt.Println("✓ Restarted")
 			return nil
 		}},
-		&cobra.Command{Use: "uninstall", Short: "Stop the service and stop starting it; pairing and projects stay", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		&cobra.Command{Use: "uninstall", Short: "Stop the service and stop starting it; the login and projects stay", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := service.Uninstall(); err != nil {
 				return err
 			}
@@ -634,7 +663,6 @@ Aide also updates itself when no session is running, unless
 			}
 			return shellenv.OnUserPath(args[1], args[0] == "add")
 		}}
-	root.AddCommand(deviceCommands(&dataDir)...)
 	root.AddCommand(eraseCommand(&dataDir), uninstallCommand(&dataDir), herCommand(&dataDir), dshBridgeCommand())
 	root.AddCommand(run, pair, doctor, status, audit, svc, upd, helper, messageMCP, userPath, projects,
 		&cobra.Command{Use: "version", Short: "Print the version", Args: cobra.NoArgs, Run: func(*cobra.Command, []string) { fmt.Println(machine.Version) }})
@@ -829,7 +857,7 @@ func eraseMachine(dataDir string, cfg machine.Config) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "The owner erased everything: Aide's data on this machine is erased. Pair it again with `aided pair <connection address>`.")
+	fmt.Fprintln(os.Stderr, "The owner erased everything: Aide's data on this machine is erased. Log it in again with `aided login <server>`.")
 	for _, wt := range kept {
 		fmt.Fprintf(os.Stderr, "Kept, with uncommitted changes: %s\n", wt)
 	}

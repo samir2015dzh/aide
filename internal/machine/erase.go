@@ -75,7 +75,7 @@ func (n *Machine) checkErase(ctx context.Context) bool {
 			n.mu.Lock()
 			n.goneSaid = true
 			n.mu.Unlock()
-			n.log.Warn("the owner is gone from its server (it erased everything, or was reset): pair this machine again with `aided pair <connection address>`")
+			n.log.Warn("the owner is gone from its server (it erased everything): log this machine in again with `aided login <server>`")
 		}
 		return false
 	}

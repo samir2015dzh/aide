@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hermesh/identity/v1/identity.proto.
  */
 export const file_hermesh_identity_v1_identity: GenFile = /*@__PURE__*/
-  fileDesc("CiJoZXJtZXNoL2lkZW50aXR5L3YxL2lkZW50aXR5LnByb3RvEhNoZXJtZXNoLmlkZW50aXR5LnYxIoQBCgZTaWduZWQSDAoEdHlwZRgBIAEoCRIMCgRib2R5GAIgASgMEhUKDXNpZ25lcl9rZXlfaWQYAyABKAkSNAoDYWxnGAQgASgOMicuaGVybWVzaC5pZGVudGl0eS52MS5TaWduYXR1cmVBbGdvcml0aG0SEQoJc2lnbmF0dXJlGAUgASgMIj4KB1Jvb3RLZXkSEgoKcHVibGljX2tleRgBIAEoDBINCgVsYWJlbBgCIAEoCRIQCghwbGF0Zm9ybRgDIAEoCSKoAQoIUm9vdENlcnQSEAoIb3duZXJfaWQYASABKAkSLwoJcm9vdF9rZXlzGAMgAygLMhwuaGVybWVzaC5pZGVudGl0eS52MS5Sb290S2V5Eg8KB3ZlcnNpb24YBCABKAQSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAIQA1ITcmVjb3ZlcnlfcHVibGljX2tleSI3CglSb290Q2hhaW4SKgoFY2VydHMYASADKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZCJ8Cg9Pd25lckRldmljZUNlcnQSEAoIb3duZXJfaWQYASABKAkSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSDQoFbGFiZWwYAyABKAkSLQoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLNAQoQUHVzaFJlZ2lzdHJhdGlvbhIQCghvd25lcl9pZBgBIAEoCRIZChFkZXZpY2VfcHVibGljX2tleRgCIAEoDBINCgV0b2tlbhgDIAEoCRITCgtlbnZpcm9ubWVudBgEIAEoCRIZChFub3RpY2VfcHVibGljX2tleRgFIAEoDBINCgVraW5kcxgGIAMoCRItCglpc3N1ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3NlcnZpY2UYCCABKAki+wEKDlBhaXJpbmdSZXF1ZXN0Ei4KBGtpbmQYASABKA4yIC5oZXJtZXNoLmlkZW50aXR5LnYxLlBhaXJpbmdLaW5kEhoKEnN1YmplY3RfcHVibGljX2tleRgCIAEoDBINCgVsYWJlbBgDIAEoCRIQCghob3N0bmFtZRgEIAEoCRIQCghwbGF0Zm9ybRgFIAEoCRIQCghvd25lcl9pZBgGIAEoCRIuCgpjcmVhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1jb25maXJtX21hdGNoGAggASgIEhEKCWN1c3RvZGlhbhgJIAEoCSKpAQoLTWFjaGluZUNlcnQSEAoIb3duZXJfaWQYASABKAkSEgoKbWFjaGluZV9pZBgCIAEoCRIaChJtYWNoaW5lX3B1YmxpY19rZXkYAyABKAwSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1kZXZpY2Vfa2V5X2lkGAYgASgJSgQIBBAFUgxtYWNoaW5lX25hbWUi8wMKBUdyYW50EhAKCG93bmVyX2lkGAEgASgJEhAKCGdyYW50X2lkGAIgASgJEg8KB3ZlcnNpb24YAyABKAQSEQoJY2xpZW50X2lkGAQgASgJEhkKEWNsaWVudF9wdWJsaWNfa2V5GAUgASgMEhQKDGNsaWVudF9sYWJlbBgGIAEoCRITCgttYWNoaW5lX2lkcxgHIAMoCRITCgtwcm9qZWN0X2lkcxgIIAMoCRIOCgZhZ2VudHMYCSADKAkSPAoPdGFza192aXNpYmlsaXR5GAsgASgOMiMuaGVybWVzaC5pZGVudGl0eS52MS5UYXNrVmlzaWJpbGl0eRIfChdtYXhfY29uY3VycmVudF9zZXNzaW9ucxgMIAEoDRIuCgpub3RfYmVmb3JlGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIRCgljdXN0b2RpYW4YDyABKAkSEwoLY2xpZW50X2ljb24YECABKAkSFAoMY2xpZW50X2ltYWdlGBEgASgMEhYKDmhlcl9tYWNoaW5lX2lkGBIgASgJEhQKDG1hY2hpbmVfZXhlYxgTIAEoCEoECAoQC1IGcHJlc2V0Il8KCkVyYXNlT3JkZXISEAoIb3duZXJfaWQYASABKAkSEAoIZXJhc2VfaWQYAiABKAkSLQoJaXNzdWVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJzCghFcmFzZUFjaxIQCghlcmFzZV9pZBgBIAEoCRISCgpwdWJsaWNfa2V5GAIgASgMEg8KB3N1YmplY3QYAyABKAkSMAoLZGV2aWNlX2NlcnQYBCABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZCKOBQoMQWRtaW5Db21tYW5kEhAKCG93bmVyX2lkGAEgASgJEhIKCmNvbW1hbmRfaWQYAiABKAkSGQoRdGFyZ2V0X21hY2hpbmVfaWQYAyABKAkSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNgoLYWRkX3Byb2plY3QYCiABKAsyHy5oZXJtZXNoLmlkZW50aXR5LnYxLkFkZFByb2plY3RIABI8Cg5yZW1vdmVfcHJvamVjdBgLIAEoCzIiLmhlcm1lc2guaWRlbnRpdHkudjEuUmVtb3ZlUHJvamVjdEgAEjQKCnNldF9wYXVzZWQYDSABKAsyHi5oZXJtZXNoLmlkZW50aXR5LnYxLlNldFBhdXNlZEgAEjAKCHNldF9uYW1lGA4gASgLMhwuaGVybWVzaC5pZGVudGl0eS52MS5TZXROYW1lSAASQAoSc2V0X2FnZW50X2RlZmF1bHRzGA8gASgLMiIuaGVybWVzaC5pZGVudGl0eS52MS5BZ2VudERlZmF1bHRzSAASLgoHc2V0X2hlchgQIAEoCzIbLmhlcm1lc2guaWRlbnRpdHkudjEuU2V0SGVySAASSgoWc2V0X2hlcl9hc3Npc3RhbnRfbW9kZRgRIAEoCzIoLmhlcm1lc2guaWRlbnRpdHkudjEuU2V0SGVyQXNzaXN0YW50TW9kZUgAElAKGXNldF9oZXJfY29tbWFuZF9jb25uZWN0b3IYEiABKAsyKy5oZXJtZXNoLmlkZW50aXR5LnYxLlNldEhlckNvbW1hbmRDb25uZWN0b3JIAEIJCgdjb21tYW5kSgQIDBANUg5yZW5hbWVfbWFjaGluZSKgAQoKQWRkUHJvamVjdBISCgpwcm9qZWN0X2lkGAEgASgJEgwKBHBhdGgYAiABKAkSGAoQZGVmYXVsdF9iYXNlX3JlZhgDIAEoCRIxCgl3b3Jrc3BhY2UYBCABKA4yHi5oZXJtZXNoLmlkZW50aXR5LnYxLldvcmtzcGFjZRITCgtkZXNjcmlwdGlvbhgFIAEoCRIOCgZhZ2VudHMYBiADKAkiIwoNUmVtb3ZlUHJvamVjdBISCgpwcm9qZWN0X2lkGAEgASgJIhcKB1NldE5hbWUSDAoEbmFtZRgBIAEoCSIbCglTZXRQYXVzZWQSDgoGcGF1c2VkGAEgASgIIigKBlNldEhlchIPCgdlbmFibGVkGAEgASgIEg0KBWVyYXNlGAIgASgIIj4KE1NldEhlckFzc2lzdGFudE1vZGUSDgoGYm90X2lkGAEgASgJEhcKD3Blcm1pc3Npb25fbW9kZRgCIAEoCSLEAQoWU2V0SGVyQ29tbWFuZENvbm5lY3RvchIMCgRuYW1lGAEgASgJEg8KB2NvbW1hbmQYAiABKAkSDAoEYXJncxgDIAMoCRJBCgNlbnYYBCADKAsyNC5oZXJtZXNoLmlkZW50aXR5LnYxLlNldEhlckNvbW1hbmRDb25uZWN0b3IuRW52RW50cnkSDgoGcmVtb3ZlGAUgASgIGioKCEVudkVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiewoNQWdlbnREZWZhdWx0cxINCgVhZ2VudBgBIAEoCRINCgVtb2RlbBgCIAEoCRIOCgZlZmZvcnQYAyABKAkSLgoFc3BlZWQYBCABKA4yHy5oZXJtZXNoLmlkZW50aXR5LnYxLkFnZW50U3BlZWQSDAoEbW9kZRgFIAEoCSLqAQoOUmV2b2NhdGlvbkxpc3QSEAoIb3duZXJfaWQYASABKAkSGQoRcmV2b2tlZF9ncmFudF9pZHMYAiADKAkSGwoTcmV2b2tlZF9tYWNoaW5lX2lkcxgDIAMoCRJVChJtaW5fZ3JhbnRfdmVyc2lvbnMYBCADKAsyOS5oZXJtZXNoLmlkZW50aXR5LnYxLlJldm9jYXRpb25MaXN0Lk1pbkdyYW50VmVyc2lvbnNFbnRyeRo3ChVNaW5HcmFudFZlcnNpb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgEOgI4ASKKAgoLQ3JlZGVudGlhbHMSMgoKcm9vdF9jaGFpbhgFIAEoCzIeLmhlcm1lc2guaWRlbnRpdHkudjEuUm9vdENoYWluEhQKDG1hY2hpbmVfbmFtZRgGIAEoCRIzCgxtYWNoaW5lX2NlcnQYAiABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZEgAEiwKBWdyYW50GAMgASgLMhsuaGVybWVzaC5pZGVudGl0eS52MS5TaWduZWRIABIyCgtkZXZpY2VfY2VydBgEIAEoCzIbLmhlcm1lc2guaWRlbnRpdHkudjEuU2lnbmVkSABCCQoHc3ViamVjdEoECAEQAlIJcm9vdF9jZXJ0IpgBCgtDb250YWN0Q2FyZBIQCghvd25lcl9pZBgBIAEoCRIRCgljbGllbnRfaWQYAiABKAkSGQoRY2xpZW50X3B1YmxpY19rZXkYAyABKAwSDAoEbmFtZRgEIAEoCRIMCgRraW5kGAUgASgJEi0KCWlzc3VlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAilQEKEUluYm94UmVnaXN0cmF0aW9uEhAKCG93bmVyX2lkGAEgASgJEg0KBWluYm94GAIgASgJEhgKEGluYm94X3B1YmxpY19rZXkYAyABKAwSFgoOdGFrZXNfbWVzc2FnZXMYBCABKAkSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLMAQoHQ29udGFjdBIpCgRjYXJkGAEgASgLMhsuaGVybWVzaC5pZGVudGl0eS52MS5TaWduZWQSMAoLZGV2aWNlX2NlcnQYAiABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZBIxCgxtYWNoaW5lX2NlcnQYAyABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZBIxCgxyZWdpc3RyYXRpb24YBCABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZCpkChJTaWduYXR1cmVBbGdvcml0aG0SIwofU0lHTkFUVVJFX0FMR09SSVRITV9VTlNQRUNJRklFRBAAEikKJVNJR05BVFVSRV9BTEdPUklUSE1fRUNEU0FfUDI1Nl9TSEEyNTYQASp3CgtQYWlyaW5nS2luZBIcChhQQUlSSU5HX0tJTkRfVU5TUEVDSUZJRUQQABIYChRQQUlSSU5HX0tJTkRfTUFDSElORRABEhcKE1BBSVJJTkdfS0lORF9DTElFTlQQAhIXChNQQUlSSU5HX0tJTkRfREVWSUNFEAMqVgoJV29ya3NwYWNlEhkKFVdPUktTUEFDRV9VTlNQRUNJRklFRBAAEhYKEldPUktTUEFDRV9XT1JLVFJFRRABEhYKEldPUktTUEFDRV9JTl9QTEFDRRACKmMKDlRhc2tWaXNpYmlsaXR5Eh8KG1RBU0tfVklTSUJJTElUWV9VTlNQRUNJRklFRBAAEhcKE1RBU0tfVklTSUJJTElUWV9PV04QARIXChNUQVNLX1ZJU0lCSUxJVFlfQUxMEAIqWQoKQWdlbnRTcGVlZBIbChdBR0VOVF9TUEVFRF9VTlNQRUNJRklFRBAAEhgKFEFHRU5UX1NQRUVEX1NUQU5EQVJEEAESFAoQQUdFTlRfU1BFRURfRkFTVBACYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CiJoZXJtZXNoL2lkZW50aXR5L3YxL2lkZW50aXR5LnByb3RvEhNoZXJtZXNoLmlkZW50aXR5LnYxIoQBCgZTaWduZWQSDAoEdHlwZRgBIAEoCRIMCgRib2R5GAIgASgMEhUKDXNpZ25lcl9rZXlfaWQYAyABKAkSNAoDYWxnGAQgASgOMicuaGVybWVzaC5pZGVudGl0eS52MS5TaWduYXR1cmVBbGdvcml0aG0SEQoJc2lnbmF0dXJlGAUgASgMIj4KB1Jvb3RLZXkSEgoKcHVibGljX2tleRgBIAEoDBINCgVsYWJlbBgCIAEoCRIQCghwbGF0Zm9ybRgDIAEoCSKoAQoIUm9vdENlcnQSEAoIb3duZXJfaWQYASABKAkSLwoJcm9vdF9rZXlzGAMgAygLMhwuaGVybWVzaC5pZGVudGl0eS52MS5Sb290S2V5Eg8KB3ZlcnNpb24YBCABKAQSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAIQA1ITcmVjb3ZlcnlfcHVibGljX2tleSI3CglSb290Q2hhaW4SKgoFY2VydHMYASADKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZCJ8Cg9Pd25lckRldmljZUNlcnQSEAoIb3duZXJfaWQYASABKAkSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSDQoFbGFiZWwYAyABKAkSLQoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLNAQoQUHVzaFJlZ2lzdHJhdGlvbhIQCghvd25lcl9pZBgBIAEoCRIZChFkZXZpY2VfcHVibGljX2tleRgCIAEoDBINCgV0b2tlbhgDIAEoCRITCgtlbnZpcm9ubWVudBgEIAEoCRIZChFub3RpY2VfcHVibGljX2tleRgFIAEoDBINCgVraW5kcxgGIAMoCRItCglpc3N1ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3NlcnZpY2UYCCABKAkiqQEKC01hY2hpbmVDZXJ0EhAKCG93bmVyX2lkGAEgASgJEhIKCm1hY2hpbmVfaWQYAiABKAkSGgoSbWFjaGluZV9wdWJsaWNfa2V5GAMgASgMEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZGV2aWNlX2tleV9pZBgGIAEoCUoECAQQBVIMbWFjaGluZV9uYW1lIvMDCgVHcmFudBIQCghvd25lcl9pZBgBIAEoCRIQCghncmFudF9pZBgCIAEoCRIPCgd2ZXJzaW9uGAMgASgEEhEKCWNsaWVudF9pZBgEIAEoCRIZChFjbGllbnRfcHVibGljX2tleRgFIAEoDBIUCgxjbGllbnRfbGFiZWwYBiABKAkSEwoLbWFjaGluZV9pZHMYByADKAkSEwoLcHJvamVjdF9pZHMYCCADKAkSDgoGYWdlbnRzGAkgAygJEjwKD3Rhc2tfdmlzaWJpbGl0eRgLIAEoDjIjLmhlcm1lc2guaWRlbnRpdHkudjEuVGFza1Zpc2liaWxpdHkSHwoXbWF4X2NvbmN1cnJlbnRfc2Vzc2lvbnMYDCABKA0SLgoKbm90X2JlZm9yZRgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJY3VzdG9kaWFuGA8gASgJEhMKC2NsaWVudF9pY29uGBAgASgJEhQKDGNsaWVudF9pbWFnZRgRIAEoDBIWCg5oZXJfbWFjaGluZV9pZBgSIAEoCRIUCgxtYWNoaW5lX2V4ZWMYEyABKAhKBAgKEAtSBnByZXNldCJrCgpFcmFzZU9yZGVyEhAKCG93bmVyX2lkGAEgASgJEhAKCGVyYXNlX2lkGAIgASgJEi0KCWlzc3VlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASCgoCYnkYBCABKAkicwoIRXJhc2VBY2sSEAoIZXJhc2VfaWQYASABKAkSEgoKcHVibGljX2tleRgCIAEoDBIPCgdzdWJqZWN0GAMgASgJEjAKC2RldmljZV9jZXJ0GAQgASgLMhsuaGVybWVzaC5pZGVudGl0eS52MS5TaWduZWQijgUKDEFkbWluQ29tbWFuZBIQCghvd25lcl9pZBgBIAEoCRISCgpjb21tYW5kX2lkGAIgASgJEhkKEXRhcmdldF9tYWNoaW5lX2lkGAMgASgJEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjYKC2FkZF9wcm9qZWN0GAogASgLMh8uaGVybWVzaC5pZGVudGl0eS52MS5BZGRQcm9qZWN0SAASPAoOcmVtb3ZlX3Byb2plY3QYCyABKAsyIi5oZXJtZXNoLmlkZW50aXR5LnYxLlJlbW92ZVByb2plY3RIABI0CgpzZXRfcGF1c2VkGA0gASgLMh4uaGVybWVzaC5pZGVudGl0eS52MS5TZXRQYXVzZWRIABIwCghzZXRfbmFtZRgOIAEoCzIcLmhlcm1lc2guaWRlbnRpdHkudjEuU2V0TmFtZUgAEkAKEnNldF9hZ2VudF9kZWZhdWx0cxgPIAEoCzIiLmhlcm1lc2guaWRlbnRpdHkudjEuQWdlbnREZWZhdWx0c0gAEi4KB3NldF9oZXIYECABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNldEhlckgAEkoKFnNldF9oZXJfYXNzaXN0YW50X21vZGUYESABKAsyKC5oZXJtZXNoLmlkZW50aXR5LnYxLlNldEhlckFzc2lzdGFudE1vZGVIABJQChlzZXRfaGVyX2NvbW1hbmRfY29ubmVjdG9yGBIgASgLMisuaGVybWVzaC5pZGVudGl0eS52MS5TZXRIZXJDb21tYW5kQ29ubmVjdG9ySABCCQoHY29tbWFuZEoECAwQDVIOcmVuYW1lX21hY2hpbmUioAEKCkFkZFByb2plY3QSEgoKcHJvamVjdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJEhgKEGRlZmF1bHRfYmFzZV9yZWYYAyABKAkSMQoJd29ya3NwYWNlGAQgASgOMh4uaGVybWVzaC5pZGVudGl0eS52MS5Xb3Jrc3BhY2USEwoLZGVzY3JpcHRpb24YBSABKAkSDgoGYWdlbnRzGAYgAygJIiMKDVJlbW92ZVByb2plY3QSEgoKcHJvamVjdF9pZBgBIAEoCSIXCgdTZXROYW1lEgwKBG5hbWUYASABKAkiGwoJU2V0UGF1c2VkEg4KBnBhdXNlZBgBIAEoCCIoCgZTZXRIZXISDwoHZW5hYmxlZBgBIAEoCBINCgVlcmFzZRgCIAEoCCI+ChNTZXRIZXJBc3Npc3RhbnRNb2RlEg4KBmJvdF9pZBgBIAEoCRIXCg9wZXJtaXNzaW9uX21vZGUYAiABKAkixAEKFlNldEhlckNvbW1hbmRDb25uZWN0b3ISDAoEbmFtZRgBIAEoCRIPCgdjb21tYW5kGAIgASgJEgwKBGFyZ3MYAyADKAkSQQoDZW52GAQgAygLMjQuaGVybWVzaC5pZGVudGl0eS52MS5TZXRIZXJDb21tYW5kQ29ubmVjdG9yLkVudkVudHJ5Eg4KBnJlbW92ZRgFIAEoCBoqCghFbnZFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBInsKDUFnZW50RGVmYXVsdHMSDQoFYWdlbnQYASABKAkSDQoFbW9kZWwYAiABKAkSDgoGZWZmb3J0GAMgASgJEi4KBXNwZWVkGAQgASgOMh8uaGVybWVzaC5pZGVudGl0eS52MS5BZ2VudFNwZWVkEgwKBG1vZGUYBSABKAkihwIKDlJldm9jYXRpb25MaXN0EhAKCG93bmVyX2lkGAEgASgJEhkKEXJldm9rZWRfZ3JhbnRfaWRzGAIgAygJEhsKE3Jldm9rZWRfbWFjaGluZV9pZHMYAyADKAkSVQoSbWluX2dyYW50X3ZlcnNpb25zGAQgAygLMjkuaGVybWVzaC5pZGVudGl0eS52MS5SZXZvY2F0aW9uTGlzdC5NaW5HcmFudFZlcnNpb25zRW50cnkSGwoTcmV2b2tlZF9kZXZpY2Vfa2V5cxgFIAMoCRo3ChVNaW5HcmFudFZlcnNpb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgEOgI4ASKKAgoLQ3JlZGVudGlhbHMSMgoKcm9vdF9jaGFpbhgFIAEoCzIeLmhlcm1lc2guaWRlbnRpdHkudjEuUm9vdENoYWluEhQKDG1hY2hpbmVfbmFtZRgGIAEoCRIzCgxtYWNoaW5lX2NlcnQYAiABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZEgAEiwKBWdyYW50GAMgASgLMhsuaGVybWVzaC5pZGVudGl0eS52MS5TaWduZWRIABIyCgtkZXZpY2VfY2VydBgEIAEoCzIbLmhlcm1lc2guaWRlbnRpdHkudjEuU2lnbmVkSABCCQoHc3ViamVjdEoECAEQAlIJcm9vdF9jZXJ0IpgBCgtDb250YWN0Q2FyZBIQCghvd25lcl9pZBgBIAEoCRIRCgljbGllbnRfaWQYAiABKAkSGQoRY2xpZW50X3B1YmxpY19rZXkYAyABKAwSDAoEbmFtZRgEIAEoCRIMCgRraW5kGAUgASgJEi0KCWlzc3VlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAilQEKEUluYm94UmVnaXN0cmF0aW9uEhAKCG93bmVyX2lkGAEgASgJEg0KBWluYm94GAIgASgJEhgKEGluYm94X3B1YmxpY19rZXkYAyABKAwSFgoOdGFrZXNfbWVzc2FnZXMYBCABKAkSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLMAQoHQ29udGFjdBIpCgRjYXJkGAEgASgLMhsuaGVybWVzaC5pZGVudGl0eS52MS5TaWduZWQSMAoLZGV2aWNlX2NlcnQYAiABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZBIxCgxtYWNoaW5lX2NlcnQYAyABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZBIxCgxyZWdpc3RyYXRpb24YBCABKAsyGy5oZXJtZXNoLmlkZW50aXR5LnYxLlNpZ25lZCpkChJTaWduYXR1cmVBbGdvcml0aG0SIwofU0lHTkFUVVJFX0FMR09SSVRITV9VTlNQRUNJRklFRBAAEikKJVNJR05BVFVSRV9BTEdPUklUSE1fRUNEU0FfUDI1Nl9TSEEyNTYQASpWCglXb3Jrc3BhY2USGQoVV09SS1NQQUNFX1VOU1BFQ0lGSUVEEAASFgoSV09SS1NQQUNFX1dPUktUUkVFEAESFgoSV09SS1NQQUNFX0lOX1BMQUNFEAIqYwoOVGFza1Zpc2liaWxpdHkSHwobVEFTS19WSVNJQklMSVRZX1VOU1BFQ0lGSUVEEAASFwoTVEFTS19WSVNJQklMSVRZX09XThABEhcKE1RBU0tfVklTSUJJTElUWV9BTEwQAipZCgpBZ2VudFNwZWVkEhsKF0FHRU5UX1NQRUVEX1VOU1BFQ0lGSUVEEAASGAoUQUdFTlRfU1BFRURfU1RBTkRBUkQQARIUChBBR0VOVF9TUEVFRF9GQVNUEAJiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * Signed wraps a serialized message together with a signature over
@@ -56,8 +56,10 @@ export const SignedSchema: GenMessage<Signed> = /*@__PURE__*/
   messageDesc(file_hermesh_identity_v1_identity, 0);
 
 /**
- * RootKey is the root key of one trusted device (docs/trusted-devices.md):
- * a key in its secure hardware that signs everything adding permissions.
+ * RootKey is a key that signs everything adding permissions
+ * (docs/accounts.md): the server's own key, which signs for whoever logs in
+ * with the account and password, and, for an owner set up before accounts,
+ * the root keys its devices had then.
  *
  * @generated from message hermesh.identity.v1.RootKey
  */
@@ -70,14 +72,14 @@ export type RootKey = Message<"hermesh.identity.v1.RootKey"> & {
   publicKey: Uint8Array;
 
   /**
-   * The device's name, e.g. "Yi's MacBook Pro".
+   * Its name, e.g. "服务器" or "Yi's MacBook Pro".
    *
    * @generated from field: string label = 2;
    */
   label: string;
 
   /**
-   * "macos" now; later "ios", "windows", "linux".
+   * "server" for the server's key; for a device's, "windows", "android"...
    *
    * @generated from field: string platform = 3;
    */
@@ -92,10 +94,9 @@ export const RootKeySchema: GenMessage<RootKey> = /*@__PURE__*/
   messageDesc(file_hermesh_identity_v1_identity, 1);
 
 /**
- * RootCert lists the owner's trusted devices. Version 1 lists one key and
- * is signed by it, and owner_id = "o_" + fingerprint(that key)[:24]. Every
- * later version is signed by a key of the version before it, so the set of
- * trusted devices changes only with the approval of one already in it.
+ * RootCert lists the owner's root keys. Version 1 lists one key and is
+ * signed by it, and owner_id = "o_" + fingerprint(that key)[:24]. Every
+ * later version is signed by a key of the version before it.
  *
  * @generated from message hermesh.identity.v1.RootCert
  */
@@ -149,9 +150,9 @@ export const RootChainSchema: GenMessage<RootChain> = /*@__PURE__*/
   messageDesc(file_hermesh_identity_v1_identity, 3);
 
 /**
- * OwnerDeviceCert is signed by a trusted device's root key, for that
- * device's own device key, used for day-to-day owner reads, cancels and
- * revocation pushes.
+ * OwnerDeviceCert is signed by a root key (the server's, when the device
+ * logged in), for the device's own device key: what the owner's devices
+ * connect, read, drive and manage with.
  *
  * @generated from message hermesh.identity.v1.OwnerDeviceCert
  */
@@ -259,76 +260,6 @@ export const PushRegistrationSchema: GenMessage<PushRegistration> = /*@__PURE__*
   messageDesc(file_hermesh_identity_v1_identity, 5);
 
 /**
- * PairingRequest is self-signed by the subject key.
- *
- * @generated from message hermesh.identity.v1.PairingRequest
- */
-export type PairingRequest = Message<"hermesh.identity.v1.PairingRequest"> & {
-  /**
-   * @generated from field: hermesh.identity.v1.PairingKind kind = 1;
-   */
-  kind: PairingKind;
-
-  /**
-   * @generated from field: bytes subject_public_key = 2;
-   */
-  subjectPublicKey: Uint8Array;
-
-  /**
-   * Self-reported label (agent name or machine hostname).
-   *
-   * @generated from field: string label = 3;
-   */
-  label: string;
-
-  /**
-   * @generated from field: string hostname = 4;
-   */
-  hostname: string;
-
-  /**
-   * @generated from field: string platform = 5;
-   */
-  platform: string;
-
-  /**
-   * @generated from field: string owner_id = 6;
-   */
-  ownerId: string;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp created_at = 7;
-   */
-  createdAt?: Timestamp | undefined;
-
-  /**
-   * The requester will ask the person for the two digits of the cert that
-   * admits it (JoinMatchCode of its body), because the owner it pinned came
-   * from a hosted center: a Mac joining as a machine only. The approving
-   * device shows them once it signed.
-   *
-   * @generated from field: bool confirm_match = 8;
-   */
-  confirmMatch: boolean;
-
-  /**
-   * Set when a server holds this client's private key on behalf of a remote
-   * agent product (the MCP gateway): that server's public URL. The relay
-   * accepts it only from its own gateway, never over the network.
-   *
-   * @generated from field: string custodian = 9;
-   */
-  custodian: string;
-};
-
-/**
- * Describes the message hermesh.identity.v1.PairingRequest.
- * Use `create(PairingRequestSchema)` to create a new message.
- */
-export const PairingRequestSchema: GenMessage<PairingRequest> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 6);
-
-/**
  * MachineCert is signed by a root key. It is the machine's identity, its
  * key; the machine's name is a setting (SetName), not part of it.
  *
@@ -356,8 +287,9 @@ export type MachineCert = Message<"hermesh.identity.v1.MachineCert"> & {
   issuedAt?: Timestamp | undefined;
 
   /**
-   * A trusted device's own machine: the key id of that device's root key.
-   * Removing the device removes this machine too.
+   * A device's own machine: that device's id (the key id of its device key,
+   * or of its root key for a device set up before accounts). Removing the
+   * device removes this machine too.
    *
    * @generated from field: string device_key_id = 6;
    */
@@ -369,7 +301,7 @@ export type MachineCert = Message<"hermesh.identity.v1.MachineCert"> & {
  * Use `create(MachineCertSchema)` to create a new message.
  */
 export const MachineCertSchema: GenMessage<MachineCert> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 7);
+  messageDesc(file_hermesh_identity_v1_identity, 6);
 
 /**
  * Grant is signed by a root key. For a given grant_id, machines only accept
@@ -446,8 +378,8 @@ export type Grant = Message<"hermesh.identity.v1.Grant"> & {
   expiresAt?: Timestamp | undefined;
 
   /**
-   * Copied from the PairingRequest: the server that holds the client key
-   * (an MCP connection), "" for a client that holds its own key.
+   * The server that holds the client key (an MCP connection), "" for a
+   * client that holds its own key.
    *
    * @generated from field: string custodian = 15;
    */
@@ -494,7 +426,7 @@ export type Grant = Message<"hermesh.identity.v1.Grant"> & {
  * Use `create(GrantSchema)` to create a new message.
  */
 export const GrantSchema: GenMessage<Grant> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 8);
+  messageDesc(file_hermesh_identity_v1_identity, 7);
 
 /**
  * EraseOrder is the owner's order to erase Hermesh everywhere
@@ -521,6 +453,14 @@ export type EraseOrder = Message<"hermesh.identity.v1.EraseOrder"> & {
    * @generated from field: google.protobuf.Timestamp issued_at = 3;
    */
   issuedAt?: Timestamp | undefined;
+
+  /**
+   * The device that erased everything, by its name (the server signs the
+   * order for it).
+   *
+   * @generated from field: string by = 4;
+   */
+  by: string;
 };
 
 /**
@@ -528,7 +468,7 @@ export type EraseOrder = Message<"hermesh.identity.v1.EraseOrder"> & {
  * Use `create(EraseOrderSchema)` to create a new message.
  */
 export const EraseOrderSchema: GenMessage<EraseOrder> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 9);
+  messageDesc(file_hermesh_identity_v1_identity, 8);
 
 /**
  * EraseAck says that the key in it got an erase order and is erasing:
@@ -572,7 +512,7 @@ export type EraseAck = Message<"hermesh.identity.v1.EraseAck"> & {
  * Use `create(EraseAckSchema)` to create a new message.
  */
 export const EraseAckSchema: GenMessage<EraseAck> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 10);
+  messageDesc(file_hermesh_identity_v1_identity, 9);
 
 /**
  * AdminCommand is signed by a root key and executed by the target machine.
@@ -659,7 +599,7 @@ export type AdminCommand = Message<"hermesh.identity.v1.AdminCommand"> & {
  * Use `create(AdminCommandSchema)` to create a new message.
  */
 export const AdminCommandSchema: GenMessage<AdminCommand> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 11);
+  messageDesc(file_hermesh_identity_v1_identity, 10);
 
 /**
  * @generated from message hermesh.identity.v1.AddProject
@@ -706,7 +646,7 @@ export type AddProject = Message<"hermesh.identity.v1.AddProject"> & {
  * Use `create(AddProjectSchema)` to create a new message.
  */
 export const AddProjectSchema: GenMessage<AddProject> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 12);
+  messageDesc(file_hermesh_identity_v1_identity, 11);
 
 /**
  * @generated from message hermesh.identity.v1.RemoveProject
@@ -723,7 +663,7 @@ export type RemoveProject = Message<"hermesh.identity.v1.RemoveProject"> & {
  * Use `create(RemoveProjectSchema)` to create a new message.
  */
 export const RemoveProjectSchema: GenMessage<RemoveProject> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 13);
+  messageDesc(file_hermesh_identity_v1_identity, 12);
 
 /**
  * The machine's name, as people and agents call it (agents address
@@ -743,7 +683,7 @@ export type SetName = Message<"hermesh.identity.v1.SetName"> & {
  * Use `create(SetNameSchema)` to create a new message.
  */
 export const SetNameSchema: GenMessage<SetName> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 14);
+  messageDesc(file_hermesh_identity_v1_identity, 13);
 
 /**
  * @generated from message hermesh.identity.v1.SetPaused
@@ -760,7 +700,7 @@ export type SetPaused = Message<"hermesh.identity.v1.SetPaused"> & {
  * Use `create(SetPausedSchema)` to create a new message.
  */
 export const SetPausedSchema: GenMessage<SetPaused> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 15);
+  messageDesc(file_hermesh_identity_v1_identity, 14);
 
 /**
  * SetHer turns Her on or off for the machine (docs/her-server.md §5.2): on, its
@@ -789,7 +729,7 @@ export type SetHer = Message<"hermesh.identity.v1.SetHer"> & {
  * Use `create(SetHerSchema)` to create a new message.
  */
 export const SetHerSchema: GenMessage<SetHer> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 16);
+  messageDesc(file_hermesh_identity_v1_identity, 15);
 
 /**
  * SetHerAssistantMode sets how freely one of Her's assistants acts: her's
@@ -817,7 +757,7 @@ export type SetHerAssistantMode = Message<"hermesh.identity.v1.SetHerAssistantMo
  * Use `create(SetHerAssistantModeSchema)` to create a new message.
  */
 export const SetHerAssistantModeSchema: GenMessage<SetHerAssistantMode> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 17);
+  messageDesc(file_hermesh_identity_v1_identity, 16);
 
 /**
  * SetHerCommandConnector adds, changes or removes a connector that her starts
@@ -863,7 +803,7 @@ export type SetHerCommandConnector = Message<"hermesh.identity.v1.SetHerCommandC
  * Use `create(SetHerCommandConnectorSchema)` to create a new message.
  */
 export const SetHerCommandConnectorSchema: GenMessage<SetHerCommandConnector> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 18);
+  messageDesc(file_hermesh_identity_v1_identity, 17);
 
 /**
  * AgentDefaults is what a coding agent's sessions on the machine run with
@@ -913,7 +853,7 @@ export type AgentDefaults = Message<"hermesh.identity.v1.AgentDefaults"> & {
  * Use `create(AgentDefaultsSchema)` to create a new message.
  */
 export const AgentDefaultsSchema: GenMessage<AgentDefaults> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 19);
+  messageDesc(file_hermesh_identity_v1_identity, 18);
 
 /**
  * RevocationList only ever reduces permissions, so machines accept it from the
@@ -942,6 +882,14 @@ export type RevocationList = Message<"hermesh.identity.v1.RevocationList"> & {
    * @generated from field: map<string, uint64> min_grant_versions = 4;
    */
   minGrantVersions: { [key: string]: bigint };
+
+  /**
+   * Devices signed out (removed, or signed out by a password change): the
+   * key ids of their device keys. Their device certs no longer admit them.
+   *
+   * @generated from field: repeated string revoked_device_keys = 5;
+   */
+  revokedDeviceKeys: string[];
 };
 
 /**
@@ -949,7 +897,7 @@ export type RevocationList = Message<"hermesh.identity.v1.RevocationList"> & {
  * Use `create(RevocationListSchema)` to create a new message.
  */
 export const RevocationListSchema: GenMessage<RevocationList> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 20);
+  messageDesc(file_hermesh_identity_v1_identity, 19);
 
 /**
  * Credentials are embedded in the E2E TLS certificate extension and in the
@@ -1001,7 +949,7 @@ export type Credentials = Message<"hermesh.identity.v1.Credentials"> & {
  * Use `create(CredentialsSchema)` to create a new message.
  */
 export const CredentialsSchema: GenMessage<Credentials> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 21);
+  messageDesc(file_hermesh_identity_v1_identity, 20);
 
 /**
  * ContactCard names one of the owner's agents, for the others to write to
@@ -1051,7 +999,7 @@ export type ContactCard = Message<"hermesh.identity.v1.ContactCard"> & {
  * Use `create(ContactCardSchema)` to create a new message.
  */
 export const ContactCardSchema: GenMessage<ContactCard> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 22);
+  messageDesc(file_hermesh_identity_v1_identity, 21);
 
 /**
  * InboxRegistration is an inbox's key, signed by the inbox's identity key
@@ -1100,7 +1048,7 @@ export type InboxRegistration = Message<"hermesh.identity.v1.InboxRegistration">
  * Use `create(InboxRegistrationSchema)` to create a new message.
  */
 export const InboxRegistrationSchema: GenMessage<InboxRegistration> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 23);
+  messageDesc(file_hermesh_identity_v1_identity, 22);
 
 /**
  * Contact is one of the owner's inboxes as a sender checks it: an agent's
@@ -1136,7 +1084,7 @@ export type Contact = Message<"hermesh.identity.v1.Contact"> & {
  * Use `create(ContactSchema)` to create a new message.
  */
 export const ContactSchema: GenMessage<Contact> = /*@__PURE__*/
-  messageDesc(file_hermesh_identity_v1_identity, 24);
+  messageDesc(file_hermesh_identity_v1_identity, 23);
 
 /**
  * @generated from enum hermesh.identity.v1.SignatureAlgorithm
@@ -1160,39 +1108,6 @@ export enum SignatureAlgorithm {
  */
 export const SignatureAlgorithmSchema: GenEnum<SignatureAlgorithm> = /*@__PURE__*/
   enumDesc(file_hermesh_identity_v1_identity, 0);
-
-/**
- * @generated from enum hermesh.identity.v1.PairingKind
- */
-export enum PairingKind {
-  /**
-   * @generated from enum value: PAIRING_KIND_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: PAIRING_KIND_MACHINE = 1;
-   */
-  MACHINE = 1,
-
-  /**
-   * @generated from enum value: PAIRING_KIND_CLIENT = 2;
-   */
-  CLIENT = 2,
-
-  /**
-   * A new trusted device; its subject key is the device's root key.
-   *
-   * @generated from enum value: PAIRING_KIND_DEVICE = 3;
-   */
-  DEVICE = 3,
-}
-
-/**
- * Describes the enum hermesh.identity.v1.PairingKind.
- */
-export const PairingKindSchema: GenEnum<PairingKind> = /*@__PURE__*/
-  enumDesc(file_hermesh_identity_v1_identity, 1);
 
 /**
  * Workspace is how a project's sessions use its directory.
@@ -1230,7 +1145,7 @@ export enum Workspace {
  * Describes the enum hermesh.identity.v1.Workspace.
  */
 export const WorkspaceSchema: GenEnum<Workspace> = /*@__PURE__*/
-  enumDesc(file_hermesh_identity_v1_identity, 2);
+  enumDesc(file_hermesh_identity_v1_identity, 1);
 
 /**
  * @generated from enum hermesh.identity.v1.TaskVisibility
@@ -1256,7 +1171,7 @@ export enum TaskVisibility {
  * Describes the enum hermesh.identity.v1.TaskVisibility.
  */
 export const TaskVisibilitySchema: GenEnum<TaskVisibility> = /*@__PURE__*/
-  enumDesc(file_hermesh_identity_v1_identity, 3);
+  enumDesc(file_hermesh_identity_v1_identity, 2);
 
 /**
  * @generated from enum hermesh.identity.v1.AgentSpeed
@@ -1286,5 +1201,5 @@ export enum AgentSpeed {
  * Describes the enum hermesh.identity.v1.AgentSpeed.
  */
 export const AgentSpeedSchema: GenEnum<AgentSpeed> = /*@__PURE__*/
-  enumDesc(file_hermesh_identity_v1_identity, 4);
+  enumDesc(file_hermesh_identity_v1_identity, 3);
 

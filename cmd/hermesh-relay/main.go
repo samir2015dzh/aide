@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -30,12 +31,10 @@ import (
 )
 
 func main() {
-	root := &cobra.Command{Use: "hermesh-relay", Short: "Aide relay (self-hosted, untrusted coordinator)", SilenceUsage: true}
-	var dataDir, listen, domain, certFile, keyFile, debugAddr, publicURL, setupURL string
+	root := &cobra.Command{Use: "hermesh-relay", Short: "Aide server: the owner's account, and where devices, machines and agents meet", SilenceUsage: true}
+	var dataDir, listen, domain, certFile, keyFile, debugAddr, publicURL string
 	var withMCP bool
 	var pushSpool string
-	var pairingTTL time.Duration
-	var pairingsPerMinute int
 	serve := &cobra.Command{
 		Use:   "serve",
 		Short: "Run the relay",
@@ -59,7 +58,7 @@ func main() {
 					return err
 				}
 			}
-			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: log, Pusher: pusher, PairingTTL: pairingTTL, PairingsPerMinute: pairingsPerMinute, MCPURL: mcpURL})
+			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: log, Pusher: pusher, MCPURL: mcpURL})
 			if err != nil {
 				return err
 			}
@@ -67,23 +66,24 @@ func main() {
 			// Without a domain or an HTTPS proxy: say what that leaves open.
 			if !strings.HasPrefix(firstNonEmpty(publicURL, defaultPublicURL(domain, certFile, listen)), "https://") {
 				fmt.Fprint(os.Stderr, "\n  Plain HTTP, not encrypted on the way. Sessions stay end-to-end encrypted,\n"+
-					"  but the claim code and which machines are online can be seen on the network.\n"+
+					"  but the setup code, the account's password as it logs in, and which machines\n"+
+					"  are online can be seen on the network.\n"+
 					"  For HTTPS, give it a domain (HERMESH_RELAY_DOMAIN, --domain), or put an HTTPS\n"+
 					"  proxy in front and set HERMESH_RELAY_PUBLIC_URL (--public-url).\n")
 				if withMCP {
 					fmt.Fprint(os.Stderr, "  Claude, ChatGPT and other MCP apps need HTTPS: they won't connect.\n")
 				}
 			}
-			if code, err := srv.ClaimCode(); err != nil {
+			if code, err := srv.SetupCode(); err != nil {
 				return err
 			} else if code != "" {
-				fmt.Fprintf(os.Stderr, "\n  This relay is not claimed yet.\n  Claim code: %s\n  Enter it in the Aide app during setup.\n\n", code)
+				fmt.Fprintf(os.Stderr, "\n  This server is not set up yet.\n  Setup code: %s\n  In the Aide app, choose Set Up a New Server, and type it with the account\n  and password the server will keep.\n\n", code)
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			handler := srv.Handler()
 			if withMCP {
-				gw, err := startMCP(srv, log, dataDir, mcpURL, setupURL)
+				gw, err := startMCP(srv, log, dataDir, mcpURL)
 				if err != nil {
 					return err
 				}
@@ -93,7 +93,7 @@ func main() {
 				gw.Mount(mux)
 				// An address without the key, or with a wrong one.
 				noKey := func(w http.ResponseWriter, _ *http.Request) {
-					http.Error(w, "This server's MCP address has a key in it. Copy it in Aide: on the Mac in Settings › Account & Devices › Advanced, on the iPhone in Account and Devices. Or run hermesh-relay mcp-url on the server.", http.StatusNotFound)
+					http.Error(w, "This server's MCP address has a key in it. Copy it in Aide: Settings › Connect › Assistants. Or run aide-relay mcp-url on the server.", http.StatusNotFound)
 				}
 				mux.HandleFunc("/mcp", noKey)
 				mux.HandleFunc("/mcp/", noKey)
@@ -150,38 +150,65 @@ func main() {
 	serve.Flags().StringVar(&certFile, "tls-cert", "", "TLS certificate file")
 	serve.Flags().StringVar(&keyFile, "tls-key", "", "TLS key file")
 	serve.Flags().StringVar(&debugAddr, "debug-addr", "", "serve /metrics and /debug/pprof on this loopback address")
-	serve.Flags().BoolVar(&withMCP, "mcp", envBool("RELAY_MCP"), "also serve MCP at <public URL>/mcp/<key> for remote agent products (Claude, ChatGPT, Codex, ...); this relay then holds the keys of the MCP connections you approve (or HERMESH_RELAY_MCP=1)")
+	serve.Flags().BoolVar(&withMCP, "mcp", envBool("RELAY_MCP"), "also serve MCP at <public URL>/mcp/<key> for remote agent products (Claude, ChatGPT, Codex, ...); this server then holds the keys of the MCP connections made with your account (or HERMESH_RELAY_MCP=1)")
 	serve.Flags().StringVar(&publicURL, "public-url", brandenv.Get("RELAY_PUBLIC_URL"), "the URL people reach this relay at, behind a proxy that serves HTTPS (default: from --domain, else the listen address; or HERMESH_RELAY_PUBLIC_URL)")
 	serve.Flags().StringVar(&pushSpool, "push-spool", "", "write notifications to files in this directory instead of sending them (tests)")
-	serve.Flags().DurationVar(&pairingTTL, "pairing-ttl", 0, "how long a pairing request waits (tests; default 10m)")
-	serve.Flags().IntVar(&pairingsPerMinute, "pairings-per-minute", 0, "pairing requests one address may make a minute (tests; default 10)")
-	serve.Flags().MarkHidden("pairing-ttl")
-	serve.Flags().MarkHidden("pairings-per-minute")
 	serve.Flags().MarkHidden("push-spool")
-	serve.Flags().StringVar(&setupURL, "setup-url", "https://github.com/samir2015dzh/hermesh/releases/latest", "where MCP users are sent to get Aide")
 
-	claim := &cobra.Command{
-		Use:   "claim-code",
-		Short: "Print the claim code of an unclaimed relay",
+	setupCode := &cobra.Command{
+		Use:     "setup-code",
+		Aliases: []string{"claim-code"},
+		Short:   "Print the setup code of a server not set up yet",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))})
 			if err != nil {
 				return err
 			}
 			defer srv.Close()
-			code, err := srv.ClaimCode()
+			code, err := srv.SetupCode()
 			if err != nil {
 				return err
 			}
 			if code == "" {
-				fmt.Println("already claimed")
+				fmt.Println("already set up")
 				return nil
 			}
 			fmt.Println(code)
 			return nil
 		},
 	}
-	claim.Flags().StringVar(&dataDir, "data-dir", envOr("RELAY_DATA", "./relay-data"), "data directory")
+	setupCode.Flags().StringVar(&dataDir, "data-dir", envOr("RELAY_DATA", "./relay-data"), "data directory")
+
+	var account string
+	password := &cobra.Command{
+		Use:   "password",
+		Short: "Set the account's password here on the server, for when it is forgotten: every device and agent that logged in is signed out",
+		Long: `Set the account's password on the server's own computer, for when it
+is forgotten. It reads the new password from stdin. Every device and agent
+that logged in is signed out (machines stay); log in again with the new
+password. Restart the server afterwards, so that it signs them out at once.`,
+		Example: `  docker exec -i aide-relay aide-relay password --account me < new-password.txt`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			l, err := bufio.NewReader(os.Stdin).ReadString('\n')
+			if err != nil && l == "" {
+				return fmt.Errorf("reading the new password from stdin: %w", err)
+			}
+			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))})
+			if err != nil {
+				return err
+			}
+			defer srv.Close()
+			n, err := srv.SetPassword(account, strings.TrimRight(l, "\r\n"))
+			if err != nil {
+				return err
+			}
+			fmt.Printf("The password is set; %d devices and agents were signed out. Restart the server.\n", n)
+			return nil
+		},
+	}
+	password.Flags().StringVar(&dataDir, "data-dir", envOr("RELAY_DATA", "./relay-data"), "data directory")
+	password.Flags().StringVar(&account, "account", "", "the account (it may be renamed here)")
+	password.MarkFlagRequired("account")
 
 	var renew bool
 	mcpCmd := &cobra.Command{
@@ -207,7 +234,7 @@ func main() {
 	}
 	mcpCmd.Flags().StringVar(&dataDir, "data-dir", envOr("RELAY_DATA", "./relay-data"), "data directory")
 	mcpCmd.Flags().BoolVar(&renew, "new", false, "make a new key, for when the address got out")
-	root.AddCommand(serve, claim, mcpCmd)
+	root.AddCommand(serve, setupCode, password, mcpCmd)
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -241,7 +268,7 @@ func mcpAddress(dataDir, public string, renew bool) (string, error) {
 // startMCP starts the MCP gateway of a self-hosted relay at mcpURL: its
 // state in mcp.db and the key that seals the connections' keys in
 // mcp-vault.key.
-func startMCP(srv *relay.Server, log *slog.Logger, dataDir, mcpURL, setupURL string) (*mcpgw.Gateway, error) {
+func startMCP(srv *relay.Server, log *slog.Logger, dataDir, mcpURL string) (*mcpgw.Gateway, error) {
 	db, err := sqlitedb.Open(filepath.Join(dataDir, "mcp.db"), []string{mcpgw.Schema(false)})
 	if err != nil {
 		return nil, err
@@ -256,7 +283,7 @@ func startMCP(srv *relay.Server, log *slog.Logger, dataDir, mcpURL, setupURL str
 		webhooks = &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	}
 	gw, err := mcpgw.New(mcpgw.Config{Issuer: publicURL, ResourceURL: mcpURL, KeyedResource: true, Relay: srv, Backend: &mcpgw.SQLBackend{DB: db},
-		Vault: vault, Accounts: mcpgw.SingleOwner{Relay: srv}, SetupURL: setupURL, Logger: log, WebhookClient: webhooks})
+		Vault: vault, Accounts: mcpgw.SingleOwner{Relay: srv}, Logger: log, WebhookClient: webhooks})
 	if err != nil {
 		return nil, err
 	}

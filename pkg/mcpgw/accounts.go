@@ -8,9 +8,8 @@ import (
 )
 
 // SingleOwner is the Accounts of a self-hosted relay: one owner (none until
-// the relay is claimed) and no sign-in. Anyone who reaches the relay can
-// start a connection, as anyone can ask to pair today; only the owner's
-// Touch ID lets it reach a machine.
+// the server is set up), whose account and password the consent page asks
+// for (relay.IssueGrant): only those connect an app.
 type SingleOwner struct{ Relay *relay.Server }
 
 func (s SingleOwner) Browser(*http.Request) (Account, bool) {

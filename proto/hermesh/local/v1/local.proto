@@ -8,10 +8,10 @@ import "hermesh/identity/v1/identity.proto";
 import "hermesh/machine/v1/machine.proto";
 import "hermesh/session/v1/session.proto";
 
-// LocalService is served by the hermeshd bundled with Hermesh.app over a
-// Unix socket. It is the only API the app uses. Anything that adds
-// permissions is signed by this trusted device's root key, which only the
-// app holds: hermeshd asks for those signatures via WatchSigningRequests.
+// LocalService is served by the aided bundled with the app over a local
+// socket. It is the only API the app uses. Anything that adds permissions
+// is signed by the server, for this device, which logged in with the
+// account and password (docs/accounts.md).
 service LocalService {
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
   // Watch sends what this device knows of the owner's world (hermeshd's
@@ -37,39 +37,29 @@ service LocalService {
   // code from a browser sign-in to the account that owns it.
   rpc SignIn(SignInRequest) returns (SignInResponse);
 
-  // Onboarding: the first trusted device creates the owner.
+  // Onboarding (docs/accounts.md): a new server is set up with the setup
+  // code it printed and the account and password it will keep; any other
+  // device logs in with the server, the account and the password. Either
+  // way the server signs this device in itself: no other device approves,
+  // no codes are compared.
   rpc Setup(SetupRequest) returns (SetupResponse);
+  rpc LogIn(LogInRequest) returns (LogInResponse);
+  // The account: its name; changing it or the password needs the current
+  // password, and a new password signs out every other device and agent
+  // that logged in.
+  rpc GetLogin(GetLoginRequest) returns (GetLoginResponse);
+  rpc SetLogin(SetLoginRequest) returns (SetLoginResponse);
 
-  // Another device joins the owner (docs/trusted-devices.md 4.2): it asks,
-  // waits for a trusted device to approve, then the person confirms they
-  // approved it there, and only then is the owner kept.
-  rpc RequestJoin(RequestJoinRequest) returns (RequestJoinResponse);
-  // Long poll: returns when approved or expired, or after about 25s.
-  rpc WaitJoin(WaitJoinRequest) returns (WaitJoinResponse);
-  rpc ConfirmJoin(ConfirmJoinRequest) returns (ConfirmJoinResponse);
-  // Joins with the owner's account and password instead (docs/password-login.md):
-  // no other device, no codes, no digits. The device becomes a trusted
-  // device as a join would make it.
-  rpc PasswordLogin(PasswordLoginRequest) returns (PasswordLoginResponse);
-  // On a trusted device: turns logging in with an account and password on,
-  // changes the password (every device and agent that logged in with the
-  // old one is signed out), or turns it off. One Touch ID.
-  rpc SetLoginPassword(SetLoginPasswordRequest) returns (SetLoginPasswordResponse);
-  rpc GetLoginPassword(GetLoginPasswordRequest) returns (GetLoginPasswordResponse);
-
-  // Trusted devices.
+  // The owner's devices.
   rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
-  // Approves a device's join request: signs the next root cert with it.
-  rpc ApproveDevicePairing(ApproveDevicePairingRequest) returns (ApproveDevicePairingResponse);
-  // Removes another device: the next root cert without it, what it signed
-  // re-issued by this one, and its own machine revoked.
+  // Signs another device out: it can no longer connect, and its own machine
+  // is removed.
   rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
-  // Forgets the owner on this device, after it was removed, so it can be
-  // set up again or join again: its root key is deleted, and its own
-  // machine keeps its projects.
+  // Forgets the owner on this device, after it was removed, so it can log
+  // in again: its own machine keeps its projects.
   rpc Leave(LeaveRequest) returns (LeaveResponse);
   // Erases Hermesh on every device of the owner (docs/erase-everything.md):
-  // signs the order (Touch ID) and hands it to the relay. This device keeps
+  // the server signs the order and keeps it. This device keeps
   // running until FinishErase, to show the others acking.
   rpc EraseEverything(EraseEverythingRequest) returns (EraseEverythingResponse);
   // How an erase stands: each device, machine and agent, and whether it
@@ -78,23 +68,8 @@ service LocalService {
   // Erases this device too: the app opens on its first run.
   rpc FinishErase(FinishEraseRequest) returns (FinishEraseResponse);
 
-  // Signing delegation.
-  rpc WatchSigningRequests(WatchSigningRequestsRequest) returns (stream SigningRequest);
-  rpc CompleteSigningRequest(CompleteSigningRequestRequest) returns (CompleteSigningRequestResponse);
-  // Brings the signer's open approval forward, for a signer that is not the
-  // app's child (Windows: docs/windows.md §7.3).
-  rpc ShowSigner(ShowSignerRequest) returns (ShowSignerResponse);
-
   // This Mac as an execution machine.
   rpc SetLocalMachine(SetLocalMachineRequest) returns (SetLocalMachineResponse);
-
-  // Pairing.
-  rpc LookupPairing(LookupPairingRequest) returns (LookupPairingResponse);
-  // Requests waiting for this owner's approval, newest first: machines and
-  // personal agents that used the connection address.
-  rpc ListPairingRequests(ListPairingRequestsRequest) returns (ListPairingRequestsResponse);
-  rpc ApproveMachinePairing(ApproveMachinePairingRequest) returns (ApproveMachinePairingResponse);
-  rpc ApproveClientPairing(ApproveClientPairingRequest) returns (ApproveClientPairingResponse);
 
   // Machines.
   rpc ListMachines(ListMachinesRequest) returns (ListMachinesResponse);
@@ -260,8 +235,8 @@ message WatchResponse {
   repeated string removed_device_key_ids = 8;
   repeated Project projects = 9;
   repeated ProjectRef removed_projects = 10;
-  repeated PairingDetails pairings = 11;
-  repeated string removed_pairing_codes = 12;
+  reserved 11, 12;
+  reserved "pairings", "removed_pairing_codes";
   // Sessions started or changed, each as it is now; with reset, the first
   // page of every machine's (each one's newest and every unsettled one),
   // also of the machines that cannot be reached now, as last known.
@@ -328,13 +303,13 @@ message GetStatusResponse {
   string local_machine_id = 6;
   string local_machine_name = 7;
   string version = 8;
-  // Connection address handed to agents and installers.
-  string connect_address = 9;
+  reserved 9;
+  reserved "connect_address";
   // The relay is a hosted center; its web console at console_url can list
   // and revoke, while adding machines and agents happens only here.
   bool hosted = 10;
   string console_url = 11;
-  // This device's root key id (one of the owner's trusted devices).
+  // This device's id among the owner's devices (Device.key_id).
   string device_key_id = 12;
   // This device is no longer one of the owner's trusted devices: another
   // removed it, or the owner started over. Leave resets it.
@@ -358,8 +333,8 @@ message GetStatusResponse {
   // A self-hosted relay's MCP address, with its key, to paste into agent
   // products ("" when it serves none, and on the official service).
   string mcp_url = 18;
-  // The signer, where it is not the app's child (Windows).
-  SignerState signer = 19;
+  reserved 19;
+  reserved "signer";
   // The account's picture on the official service (GetAccount), learned
   // each time this device connects: "" when it has none, and on a server
   // of one's own.
@@ -418,144 +393,67 @@ message SignInRequest {
 message SignInResponse {}
 
 message SetupRequest {
+  // The new server, and the setup code it printed on its first start.
   string relay_url = 1;
-  string claim_code = 2;
-  // With a link code from the browser sign-in: its PKCE verifier.
-  string claim_verifier = 5;
-  // Root public key (SPKI DER). Empty: hermeshd asks the signer to create
-  // one (a SigningRequest with create_root_key), which is what the desktop
-  // app does; tests and headless setups pass their own.
-  bytes root_public_key = 3;
-  string root_label = 4;
-  // "macos", later "ios", "windows", "linux".
-  string root_platform = 6;
-  // Also make this device a machine with this name, in the same signature
-  // (one Touch ID). Empty: not a machine.
+  string setup_code = 2;
+  // The account and password it will keep, as LogInRequest's.
+  string account = 3;
+  string password = 4;
+  // This device's name and platform ("windows", "android", "linux"...).
+  string label = 5;
+  string platform = 6;
+  // Also make this device a machine with this name. Empty: not a machine.
   string local_machine_name = 7;
-  // The account, as the center named it in the sign-in link (for display).
-  string account = 8;
 }
 
 message SetupResponse {
   string owner_id = 1;
-  reserved 2;
-  reserved "recovery_words";
-  string connect_address = 3;
 }
 
-message RequestJoinRequest {
-  // Where devices connect (a relay, or a hosted center's connect URL).
-  string relay_url = 1;
-  // The owner to join. On a hosted center the console gave it, so it is
-  // not trusted: ConfirmJoin is the person's word that they approved it.
-  // Empty on a hosted center: one of the owner's devices claims the
-  // request by its code (docs/onboarding.md §9.5); the device cert is
-  // signed once it is claimed.
-  string owner_id = 2;
-  // As in SetupRequest: empty asks the signer for a new root key.
-  bytes root_public_key = 3;
-  string root_label = 4;
-  string root_platform = 5;
-  // Also make this device a machine with this name, signed with the
-  // request (one Touch ID) and installed once it joined. Empty: not one.
-  string local_machine_name = 6;
-  // Join as a machine only: no root key and no Touch ID; this device's
-  // machine asks to join, named root_label, and is approved like any
-  // machine.
-  bool machine_only = 7;
-  // With machine_only: the person typed the owner's connection address
-  // here, so the owner is theirs and ConfirmJoin asks for no digits.
-  // Otherwise the owner id came from the center and the digits are needed.
-  bool owner_typed = 8;
-  // As SetupRequest.account.
-  string account = 9;
-}
-
-message RequestJoinResponse {
-  string code = 1;
-  // What the approving device shows for this request (none without an
-  // owner: the code binds the key).
-  string verification_code = 2;
-  google.protobuf.Timestamp expires_at = 3;
-  // Without an owner, on a hosted center: the console's page for the code,
-  // which the iPhone opens as a universal link (for a QR).
-  string pairing_link = 4;
-}
-
-message WaitJoinRequest {
-  string code = 1;
-}
-
-message WaitJoinResponse {
-  bool done = 1;
-  bool expired = 2;
-  // Once done: the trusted device that approved, and all of them now.
-  string approved_by = 3;
-  repeated Device devices = 4;
-  // ConfirmJoin needs the two digits the approving device shows.
-  bool match_required = 5;
-  // A join without an owner: one of an owner's devices claimed it (by the
-  // account it names, a hint), and is yet to approve.
-  bool claimed = 6;
-  string claimed_by = 7;
-}
-
-message ConfirmJoinRequest {
-  string code = 1;
-  // The person approved this on one of their devices; false discards it.
-  bool accept = 2;
-  // To accept: the two digits the approving device showed once it signed
-  // (JoinMatchCode of the root cert listing this device). They match only
-  // if that device is the person's own; three wrong tries discard the join.
-  // For a machine only: of the machine cert, and only when
-  // WaitJoinResponse.match_required.
-  string match_code = 3;
-}
-
-message ConfirmJoinResponse {
-  string owner_id = 1;
-  string connect_address = 2;
-}
-
-message PasswordLoginRequest {
-  // The owner's server, as typed. Empty: $HERMESH_SERVER, else refused (no
-  // build names a server). Any connection address works; its owner part is
-  // not needed.
+message LogInRequest {
+  // The owner's server, as typed (with or without https://; a connection
+  // address works too). Empty: $AIDE_SERVER, else refused (no build names
+  // a server).
   string relay_url = 1;
   string account = 2;
   string password = 3;
-  // As in RequestJoinRequest.
-  bytes root_public_key = 4;
-  string root_label = 5;
-  string root_platform = 6;
-  string local_machine_name = 7;
+  // As in SetupRequest.
+  string label = 4;
+  string platform = 5;
+  string local_machine_name = 6;
+  // Log in as a machine only: this computer runs tasks for the owner, named
+  // label, but is not one of the owner's devices.
+  bool machine_only = 7;
 }
 
-message PasswordLoginResponse {
+message LogInResponse {
   string owner_id = 1;
-  string connect_address = 2;
 }
 
-message SetLoginPasswordRequest {
-  // Empty account and password: turn logging in with a password off.
+message GetLoginRequest {}
+
+message GetLoginResponse {
   string account = 1;
-  string password = 2;
-}
-
-message SetLoginPasswordResponse {
-  // Devices signed out by the change (they logged in with the old password).
-  uint32 removed_devices = 1;
-}
-
-message GetLoginPasswordRequest {}
-
-message GetLoginPasswordResponse {
-  // Empty: logging in with a password is off.
-  string account = 1;
-  // The server to type on a new device (no owner part).
+  // The server to type on a new device, computer or agent.
   string server = 2;
-  // Devices that logged in with the current password.
-  repeated string devices = 3;
+  // A password login from before accounts waits to be converted: SetLogin
+  // with its password (current_password) does it.
+  bool convert = 3;
+  // Logging in is turned off.
+  bool off = 4;
+}
+
+message SetLoginRequest {
+  string current_password = 1;
+  // Unset: kept.
+  string account = 2;
+  string new_password = 3;
+  bool off = 4;
+}
+
+message SetLoginResponse {
+  // Devices and agents signed out by a new password.
+  uint32 signed_out = 1;
 }
 
 message Device {
@@ -566,6 +464,8 @@ message Device {
   // The device's own machine, if it is one.
   string machine_id = 5;
   bool machine_online = 6;
+  // Set up before accounts: a root key of its own in the root cert.
+  bool legacy = 7;
 }
 
 message ListDevicesRequest {}
@@ -574,21 +474,10 @@ message ListDevicesResponse {
   repeated Device devices = 1;
 }
 
-message ApproveDevicePairingRequest {
-  string code = 1;
-}
-
-message ApproveDevicePairingResponse {
-  string key_id = 1;
-  // The two digits to type on the device that joined (the app computes
-  // them itself from the root cert it signed).
-  string match_code = 2;
-}
-
 message RemoveDeviceRequest {
   string key_id = 1;
-  // Her's data on the device's own machine is erased first, signed with the
-  // same approval, while it answers (docs/her-server.md §5.6).
+  // Her's data on the device's own machine is erased first, while it
+  // answers (docs/her-server.md §5.6).
   bool erase_her = 2;
 }
 
@@ -649,76 +538,6 @@ message Erased {
   string by = 5;
 }
 
-message WatchSigningRequestsRequest {
-  // This signer brings its open approval forward when asked (ShowSigner):
-  // its watch also gets requests that carry only show.
-  bool show = 1;
-}
-
-message ShowSignerRequest {}
-message ShowSignerResponse {}
-
-// The signers watching for requests, as hermeshd sees them.
-message SignerState {
-  bool connected = 1;
-  // A request waits for the owner's approval.
-  bool busy = 2;
-}
-
-message SigningRequest {
-  string request_id = 1;
-  // Fully-qualified message type of body, e.g. "hermesh.identity.v1.Grant".
-  // The app parses and renders body itself before asking for Touch ID.
-  string type = 2;
-  bytes body = 3;
-  // Bytes to sign (the domain-separated message).
-  bytes message = 4;
-  // Batch requests share one user confirmation.
-  string batch_id = 5;
-  // Set instead of type, body and message: hermeshd needs a new root key
-  // (Setup or RequestJoin without one). The signer creates it, keeping the
-  // others it holds (one per profile), and answers with its public key.
-  bool create_root_key = 6;
-  // The local process whose call led to this request, as hermeshd saw it on
-  // its socket: a hint for the person, not proof.
-  Caller caller = 7;
-  // After signing: show the two digits of this body (JoinMatchCode), for
-  // the person to type on the machine that asked for them
-  // (PairingRequest.confirm_match).
-  bool show_match = 8;
-  // A pairing the person already confirmed as theirs, or a machine or
-  // device whose code they looked up here (PairingDetails.confirmed): no
-  // verification code to compare.
-  bool confirmed = 9;
-  // The root key to sign with (its key id): the current profile's. With
-  // delete_root_key: the key to delete.
-  string root_key_id = 10;
-  // Set instead of type, body and message: the device left the owner of
-  // root_key_id (Leave), so the signer deletes that key, without asking,
-  // and completes the request.
-  bool delete_root_key = 11;
-  // Set alone, to a watch that asked for it: bring the open approval
-  // forward (ShowSigner). Nothing to complete.
-  bool show = 12;
-}
-
-message Caller {
-  int32 pid = 1;
-  // Path of its executable; empty if the OS did not tell.
-  string executable = 2;
-}
-
-message CompleteSigningRequestRequest {
-  string request_id = 1;
-  // ASN.1 DER ECDSA-P256-SHA256 signature over SigningRequest.message.
-  bytes signature = 2;
-  bool rejected = 3;
-  // The answer to create_root_key: the new root public key, SPKI DER.
-  bytes public_key = 4;
-}
-
-message CompleteSigningRequestResponse {}
-
 message SetLocalMachineRequest {
   bool enabled = 1;
   string machine_name = 2;
@@ -726,54 +545,6 @@ message SetLocalMachineRequest {
 
 message SetLocalMachineResponse {
   string machine_id = 1;
-}
-
-message PairingDetails {
-  hermesh.identity.v1.PairingKind kind = 1;
-  string label = 2;
-  string hostname = 3;
-  string platform = 4;
-  string fingerprint = 5;
-  google.protobuf.Timestamp expires_at = 6;
-  string subject_id = 7;
-  // Binds the requester's key to this owner; the requester shows the same
-  // code when a hosted center claimed its request.
-  string verification_code = 8;
-  // The pairing code, to approve the request with.
-  string code = 9;
-  // The server that will hold the client's key (an MCP connection made
-  // through it), "" when the client holds its own.
-  string custodian = 10;
-  // The person already said this request is theirs while signed in to
-  // their account (a pairing link, an MCP consent, a code typed here): its
-  // requester shows no verification code to compare.
-  bool confirmed = 11;
-}
-
-message ListPairingRequestsRequest {}
-
-message ListPairingRequestsResponse {
-  repeated PairingDetails pairings = 1;
-}
-
-message LookupPairingRequest {
-  string code = 1;
-}
-
-message LookupPairingResponse {
-  PairingDetails details = 1;
-}
-
-message ApproveMachinePairingRequest {
-  string code = 1;
-  string machine_name = 2;
-}
-
-message ApproveMachinePairingResponse {
-  string machine_id = 1;
-  // The machine asked for the two digits (PairingRequest.confirm_match):
-  // the signer showed them, computed from the machine cert it signed.
-  string match_code = 2;
 }
 
 message GrantSpec {
@@ -792,15 +563,6 @@ message GrantSpec {
   bool machine_exec = 9;
 }
 
-message ApproveClientPairingRequest {
-  string code = 1;
-  GrantSpec spec = 2;
-}
-
-message ApproveClientPairingResponse {
-  string client_id = 1;
-  string grant_id = 2;
-}
 
 message Machine {
   string machine_id = 1;

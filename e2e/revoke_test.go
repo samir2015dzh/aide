@@ -30,14 +30,7 @@ func TestRevokedAgentsLeaveTheList(t *testing.T) {
 	env := func(name string) []string { return []string{"HERMESH_HOME=" + filepath.Join(w.tmp, name)} }
 	pair := func(name string, machines ...string) {
 		t.Helper()
-		login := start(t, "login "+name, env(name), filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", name)
-		if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t),
-			Spec: &localv1.GrantSpec{MachineIds: machines}}); err != nil {
-			t.Fatal(err)
-		}
-		if c := login.wait(t, 30*time.Second); c != 0 {
-			t.Fatalf("login %s: %s", name, login.output())
-		}
+		w.loginAgent(env(name), name, &localv1.GrantSpec{MachineIds: machines})
 	}
 	pair("only-mac", mac)
 	pair("mac-and-other", mac, other)

@@ -1,11 +1,12 @@
 # Aide installer for Windows. Downloads release programs from GitHub
 # Releases, verifies them against the signed checksum list, installs them
-# under %LOCALAPPDATA%\Programs\Hermesh\bin and (for a machine) starts
-# pairing. Windows PowerShell 5.1 or later; no administrator needed.
+# under %LOCALAPPDATA%\Programs\Hermesh\bin and (for a machine) logs it in
+# to your server with your account and password (docs/accounts.md).
+# Windows PowerShell 5.1 or later; no administrator needed.
 #
-#   Add a machine:   irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1 | iex
-#                    (with a connection address or a name:
-#                    & ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) <address> -Name build-box)
+#   Add a machine:   & ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) <server> -Name build-box
+#                    (it asks for the account and password, or takes them from
+#                    $env:AIDE_ACCOUNT and $env:AIDE_PASSWORD)
 #   Agent CLI only:  & ([scriptblock]::Create((irm .../install.ps1))) -Cli
 #
 # Environment: AIDE_VERSION (default latest), AIDE_BIN_DIR (default
@@ -141,10 +142,10 @@ if (-not (Get-Setting NO_PATH) -and -not (($userPath -split ';') -contains $BinD
 if (-not (($env:Path -split ';') -contains $BinDir)) { $env:Path = "$env:Path;$BinDir" }
 
 if ($Cli) {
-  Write-Host "Next: aide auth login <your server's connection address>"
+  Write-Host "Next: aide auth login <your server> --account <your account>"
   return
 }
-$pair = @("pair")
-if ($Name) { $pair += @("--name", $Name) }
-if ($Address) { $pair += $Address }
-& (Join-Path $BinDir "hermeshd.exe") @pair
+$login = @("login")
+if ($Name) { $login += @("--name", $Name) }
+if ($Address) { $login += $Address }
+& (Join-Path $BinDir "hermeshd.exe") @login

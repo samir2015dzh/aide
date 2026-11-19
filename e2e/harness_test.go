@@ -11,8 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -156,25 +154,6 @@ func (p *proc) output() string {
 	return p.out.String()
 }
 
-var codeRE = regexp.MustCompile(`Pairing code: ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})`)
-
-func (p *proc) pairingCode(t *testing.T) string {
-	t.Helper()
-	deadline := time.After(30 * time.Second)
-	for {
-		select {
-		case l := <-p.lines:
-			if m := codeRE.FindStringSubmatch(l); m != nil {
-				return m[1]
-			}
-		case <-p.done:
-			t.Fatalf("%s exited before showing a pairing code:\n%s", p.name, p.output())
-		case <-deadline:
-			t.Fatalf("%s showed no pairing code:\n%s", p.name, p.output())
-		}
-	}
-}
-
 func (p *proc) wait(t *testing.T, timeout time.Duration) int {
 	t.Helper()
 	select {
@@ -213,35 +192,24 @@ func run(t *testing.T, env []string, timeout time.Duration, bin string, args ...
 	return r
 }
 
-// testApp plays the signer of the desktop app: it talks to the bundled
-// hermeshd over the Unix socket, answers signing requests with software
-// root keys (in place of the Secure Enclave), one per profile: root first,
-// handed over when hermeshd asks for a new root key, then new ones.
+// The owner's account and password in the tests (docs/accounts.md).
+const testAccount, testPassword = "owner", "correct horse battery"
+
+// loginEnv is what a command logs in with: the test account and password.
+func loginEnv() []string {
+	return []string{"AIDE_ACCOUNT=" + testAccount, "AIDE_PASSWORD=" + testPassword}
+}
+
+// testApp is the desktop app as the tests drive it: a client of the
+// bundled hermeshd over its local socket.
 type testApp struct {
 	t      *testing.T
 	client localv1connect.LocalServiceClient
-	root   *identity.SoftwareKey
 	cancel context.CancelFunc
-
-	mu      sync.Mutex
-	keys    map[string]*identity.SoftwareKey // by key id, root's included
-	handed  bool                             // root was handed over as a new key
-	deleted []string                         // key ids hermeshd had deleted
-	signed  []string
-	callers []*localv1.Caller
-	reject  bool
-	// check plays the owner reading the request before Touch ID (e.g.
-	// comparing a verification code); an error declines it.
-	check func(*localv1.SigningRequest) error
 }
 
-func newTestApp(t *testing.T, sock string, root *identity.SoftwareKey) *testApp {
-	a := &testApp{t: t, client: localClient(t, sock), root: root, keys: map[string]*identity.SoftwareKey{identity.KeyID(root.Public()): root}}
-	ctx, cancel := context.WithCancel(context.Background())
-	a.cancel = cancel
-	t.Cleanup(cancel)
-	go a.signLoop(ctx)
-	return a
+func newTestApp(t *testing.T, sock string) *testApp {
+	return &testApp{t: t, client: localClient(t, sock), cancel: func() {}}
 }
 
 // localClient is a client of hermeshd's local API on sock, once it answers.
@@ -259,92 +227,6 @@ func localClient(t *testing.T, sock string) localv1connect.LocalServiceClient {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-}
-
-func (a *testApp) signLoop(ctx context.Context) {
-	for ctx.Err() == nil {
-		stream, err := a.client.WatchSigningRequests(ctx, &localv1.WatchSigningRequestsRequest{})
-		if err != nil {
-			time.Sleep(200 * time.Millisecond)
-			continue
-		}
-		for stream.Receive() {
-			req := stream.Msg()
-			a.mu.Lock()
-			a.callers = append(a.callers, req.Caller)
-			a.mu.Unlock()
-			if req.CreateRootKey {
-				a.mu.Lock()
-				k := a.root
-				if a.handed {
-					k, _ = identity.GenerateKey()
-					a.keys[identity.KeyID(k.Public())] = k
-				}
-				a.handed = true
-				a.mu.Unlock()
-				a.client.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId, PublicKey: rootPub(k)})
-				continue
-			}
-			if req.DeleteRootKey {
-				a.mu.Lock()
-				delete(a.keys, req.RootKeyId)
-				a.deleted = append(a.deleted, req.RootKeyId)
-				a.mu.Unlock()
-				a.client.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId})
-				continue
-			}
-			// Like the real signer: parse and "show" what is signed, then
-			// check the message is exactly the domain-separated body.
-			if !bytes.Equal(req.Message, identity.SigningInput(req.Type, req.Body)) {
-				a.client.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId, Rejected: true})
-				continue
-			}
-			a.mu.Lock()
-			a.signed = append(a.signed, req.Type)
-			reject, check := a.reject, a.check
-			a.mu.Unlock()
-			if check != nil {
-				if err := check(req); err != nil {
-					a.t.Logf("app declined %s: %v", req.Type, err)
-					reject = true
-				}
-			}
-			if reject {
-				a.client.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId, Rejected: true})
-				continue
-			}
-			a.mu.Lock()
-			key := a.keys[req.RootKeyId]
-			a.mu.Unlock()
-			if key == nil {
-				a.t.Logf("app has no root key %s", req.RootKeyId)
-				a.client.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId, Rejected: true})
-				continue
-			}
-			sig, _ := key.SignMessage(req.Message)
-			a.client.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId, Signature: sig})
-		}
-		stream.Close()
-	}
-}
-
-// addKey gives the app another root key, for a profile set up with it.
-func (a *testApp) addKey(k *identity.SoftwareKey) {
-	a.mu.Lock()
-	a.keys[identity.KeyID(k.Public())] = k
-	a.mu.Unlock()
-}
-
-func (a *testApp) deletedKeys() []string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return slices.Clone(a.deleted)
-}
-
-func (a *testApp) signedTypes() []string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return append([]string(nil), a.signed...)
 }
 
 func rootPub(k *identity.SoftwareKey) []byte { return identity.MarshalPublicKey(k.Public()) }

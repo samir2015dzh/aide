@@ -141,7 +141,15 @@ flowchart LR
 | L1 end-to-end channel | Inside the stream the relay has spliced together, the two ends run **TLS 1.3 mutual authentication** directly; the certificates embed credentials issued by the owner | Only the two ends |
 | L2 RPC | HTTP/2 + Connect (protobuf) | Only the two ends |
 
-**Two inviolable principles** (no phase and no feature may break them; changing them later means a full migration and re-pairing every device):
+> **Changed 2026-11-20 by the owner's choice ([accounts.md](accounts.md)):**
+> the server keeps the owner's account and password and a root key of its
+> own, and signs whoever logs in; devices no longer approve anything, and
+> pairing codes are gone. The two principles below no longer hold: the
+> server is the authority, and what it costs is in accounts.md §7. The
+> sections on pairing (§2.3, §3.5, §3.8, F2, F8) describe the model before
+> it.
+
+**Two principles of the model before accounts** (changing them meant a full migration, which accounts.md §5 is):
 
 1. **The trust model and key hierarchy are fixed**:
    - the root chain of trusted devices (the first device names the owner; each later version is signed by a device of the one before, [trusted-devices.md](trusted-devices.md)) → root keys → device certificates, machine certificates, grants, admin commands;

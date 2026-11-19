@@ -18,7 +18,6 @@ import (
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 	"github.com/hermeshai/hermesh/internal/provider/acp"
 	"github.com/hermeshai/hermesh/internal/shellenv"
-	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
 // desktopFixture is what the desktop app's Playwright tests get
@@ -384,7 +383,7 @@ func TestDesktopHerBeforeHer(t *testing.T) {
 	sock, data, bin := filepath.Join(sockDir, "o.sock"), filepath.Join(w.tmp, "old-box"), filepath.Join(w.bin, "hermeshd")
 	loop := `while :; do HERMESH_TEST_BEFORE_HER="$(cat "$1")" "$2" run --owner --data-dir "$3" --socket "$4"; sleep 0.2; done`
 	w.logs = append(w.logs, start(t, "owner old-box", herEnv(her, herConsole(t), t.TempDir(), mock.base), "/bin/sh", "-c", loop, "sh", flag, bin, data, sock))
-	w.joinTyped(localClient(t, sock), home, "old-box")
+	w.logInMachineOnly(localClient(t, sock), home, "old-box")
 	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv,
 		BeforeHer: flag, BeforeHerDaemon: bin + " run --owner --data-dir " + data, owner: w}, "her-before.spec.ts")
 }
@@ -471,7 +470,7 @@ func desktopHerWorld(t *testing.T) desktopFixture {
 	work, _ := w.otherMac("work-mac", workEnv)
 	daemon := w.logs[len(w.logs)-1] // the one otherMac started
 	t.Cleanup(daemon.stop)
-	w.joinTyped(work, home, "work-mac")
+	w.logInMachineOnly(work, home, "work-mac")
 	return desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv, OtherMac: daemon.cmd.Process.Pid, Connector: connector, HerHome: macHome, owner: w}
 }
 
@@ -527,7 +526,7 @@ func otherMacSession(t *testing.T, f desktopFixture) int {
 	}
 	work, _ := w.otherMac("work-mac", []string{"HERMESH_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")})
 	daemon := w.logs[len(w.logs)-1] // the one otherMac started
-	st := w.joinTyped(work, home, "work-mac")
+	st := w.logInMachineOnly(work, home, "work-mac")
 	if _, err := work.AddProject(ctx, &localv1.AddProjectRequest{MachineId: st.LocalMachineId, ProjectId: "billing", Path: gitRepo(t, map[string]string{"README.md": "# billing\n"})}); err != nil {
 		t.Fatal(err)
 	}
@@ -642,7 +641,7 @@ func newFreshOwner(t *testing.T, w *ownerMac, name string, gated, bare bool) fre
 	relay := start(t, name+" relay", nil, relayBin, "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	w.logs = append(w.logs, relay)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "claim-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "setup-code", "--data-dir", relayData).stdout)
 
 	stub := func(file, script string) string {
 		p := filepath.Join(tmp, file)
@@ -677,8 +676,7 @@ func newFreshOwner(t *testing.T, w *ownerMac, name string, gated, bare bool) fre
 	owner := start(t, name+" owner", env, filepath.Join(w.bin, "hermeshd"),
 		"run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
 	w.logs = append(w.logs, owner)
-	root, _ := identity.GenerateKey()
-	newTestApp(t, sock, root)
+	newTestApp(t, sock)
 	return freshOwner{Socket: sock, RelayURL: fmt.Sprintf("http://127.0.0.1:%d", port), ClaimCode: claim, Gate: gate}
 }
 

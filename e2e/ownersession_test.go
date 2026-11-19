@@ -52,7 +52,7 @@ func TestOwnerSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	other, _ := w.otherMac("work-mac", env)
-	far := w.joinTyped(other, home, "work-mac").LocalMachineId
+	far := w.logInMachineOnly(other, home, "work-mac").LocalMachineId
 	if _, err := other.AddProject(ctx, &localv1.AddProjectRequest{MachineId: far, ProjectId: "billing", Path: gitRepo(t, map[string]string{"README.md": "# billing\n"})}); err != nil {
 		t.Fatal(err)
 	}

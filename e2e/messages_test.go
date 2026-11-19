@@ -302,22 +302,8 @@ func TestMCPInbox(t *testing.T) {
 	w.startRelay()
 
 	app := newOAuthApp(t, mcpAddress(t, w.app), "Assistant")
-	app.connect(app.authorize())
-	var req *localv1.PairingDetails
-	eventually(t, 30*time.Second, "the approval request on the Mac", func() bool {
-		l, err := w.app.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		if err != nil || len(l.Pairings) != 1 {
-			return false
-		}
-		req = l.Pairings[0]
-		return true
-	})
-	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: req.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
-	eventually(t, 30*time.Second, "the page seeing the approval", func() bool { return app.consentState() == "active" })
-	session := app.mcpSession(app.finish(app.get(app.consentURL)).Access)
-	slowly(t, 30*time.Second, "the tools working after approval", func() bool {
+	session := app.mcpSession(app.finish(app.connect(app.authorize())).Access)
+	slowly(t, 30*time.Second, "the tools working", func() bool {
 		d := callTool(t, session, "project_list", nil)
 		return d.OK && len(projectsOf(d).Projects) == 1
 	})
@@ -851,18 +837,12 @@ func slowly(t *testing.T, timeout time.Duration, what string, cond func() bool) 
 	}
 }
 
-// addAgent pairs another agent CLI with the owner, as newOwnerMac pairs
-// "bot", and returns its environment.
+// addAgent logs another agent CLI in with the owner's account, as
+// newOwnerMac does "bot", and returns its environment.
 func (w *ownerMac) addAgent(name string, grant *localv1.GrantSpec) []string {
 	w.t.Helper()
 	env := []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent-"+name)}
-	login := start(w.t, "login "+name, env, filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", name)
-	if _, err := w.app.client.ApproveClientPairing(context.Background(), &localv1.ApproveClientPairingRequest{Code: login.pairingCode(w.t), Spec: grant}); err != nil {
-		w.t.Fatal(err)
-	}
-	if c := login.wait(w.t, 30*time.Second); c != 0 {
-		w.t.Fatalf("login %s: %s", name, login.output())
-	}
+	w.loginAgent(env, name, grant)
 	return env
 }
 
@@ -1065,7 +1045,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("to an offline machine: %+v", r)
 	}
 	w.startOwner()
-	w.app = newTestApp(t, w.sock, w.root)
+	w.app = newTestApp(t, w.sock)
 	eventually(t, 30*time.Second, "the machine online", func() bool {
 		return !strings.Contains(w.cli(30*time.Second, "project", "list").stdout, "offline")
 	})

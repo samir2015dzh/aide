@@ -276,8 +276,7 @@ message StartSessionResponse {
 // key end to end (identity.v1.PushRegistration): the relay forwards it
 // without reading it.
 message Notice {
-  // "question", "failure", "turn_done", "session_started", "pairing" or
-  // "her".
+  // "question", "failure", "turn_done", "session_started" or "her".
   string kind = 1;
   google.protobuf.Timestamp at = 2;
   // A session's notice.
@@ -297,11 +296,8 @@ message Notice {
   // kind "turn_done": the turn and what it changed.
   uint32 turn = 12;
   DiffStat diff_stat = 13;
-  // kind "pairing": who asks to connect, and the code to compare.
-  hermesh.identity.v1.PairingKind pairing_kind = 14;
-  string pairing_label = 15;
-  string verification_code = 16;
-  string pairing_code = 17;
+  reserved 14 to 17;
+  reserved "pairing_kind", "pairing_label", "verification_code", "pairing_code";
   // kind "her": what an assistant of Her's on the machine (machine names
   // it) has for the owner, as HerLatest says it: "message", "question" (it
   // asks the owner to choose) or "approval" (it waits for an approval or a

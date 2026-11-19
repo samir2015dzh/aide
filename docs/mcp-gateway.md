@@ -1,5 +1,7 @@
 # MCP gateway
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the consent page now asks for the owner's account and password and connects the app at once, with a grant the server signs (`relay.IssueGrant`); the waiting states (`awaiting_setup`, `awaiting_approval`), the approval request on a trusted device and its push are gone. What this page says of them describes the gateway before.
+
 Status: built, 2026-10-21 (self-hosted relay: `hermesh-relay serve --mcp`; the hosted center embeds the same gateway).
 
 The MCP gateway lets AI agent products that only speak remote MCP (Claude.ai,

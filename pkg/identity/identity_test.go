@@ -160,25 +160,6 @@ func TestRootChain(t *testing.T) {
 	}
 }
 
-func TestPairingCode(t *testing.T) {
-	k, _ := GenerateKey()
-	spki := MarshalPublicKey(k.Public())
-	c := PairingCode(identityv1.PairingKind_PAIRING_KIND_CLIENT, spki)
-	if len(c) != 14 || strings.Count(c, "-") != 2 {
-		t.Fatalf("bad code %q", c)
-	}
-	if NormalizePairingCode(strings.ToLower(strings.ReplaceAll(c, "-", " "))) != c {
-		t.Fatal("normalize failed")
-	}
-	if PairingCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, spki) == c {
-		t.Fatal("kind not bound into code")
-	}
-	k2, _ := GenerateKey()
-	if PairingCode(identityv1.PairingKind_PAIRING_KIND_CLIENT, MarshalPublicKey(k2.Public())) == c {
-		t.Fatal("different keys share a code")
-	}
-}
-
 func TestTLSCredentialsRoundTrip(t *testing.T) {
 	k, _ := GenerateKey()
 	creds := &identityv1.Credentials{RootChain: &identityv1.RootChain{Certs: []*identityv1.Signed{{Type: "x"}}}}
@@ -194,38 +175,3 @@ func TestTLSCredentialsRoundTrip(t *testing.T) {
 		t.Fatal("round trip mismatch")
 	}
 }
-
-// TestJoinMatchCode pins the digits (the Mac app computes them too; its
-// --check-expected checks the same vector).
-func TestJoinMatchCode(t *testing.T) {
-	if got := JoinMatchCode([]byte("hermesh")); got != "42" {
-		t.Fatalf("JoinMatchCode = %q", got)
-	}
-	if len(JoinMatchCode(nil)) != 2 {
-		t.Fatal("not two digits")
-	}
-}
-
-func TestVerificationCode(t *testing.T) {
-	spki := []byte("fixed test key bytes")
-	// Pinned vector: the Mac app (SigningPreview.verificationCode) must
-	// produce the same value.
-	if got := VerificationCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, spki, "o_testowner"); got != verificationVector {
-		t.Fatalf("vector changed: %s", got)
-	}
-	a := VerificationCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, spki, "o_a")
-	for _, other := range []string{
-		VerificationCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, spki, "o_b"),
-		VerificationCode(identityv1.PairingKind_PAIRING_KIND_CLIENT, spki, "o_a"),
-		VerificationCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, append([]byte("x"), spki...), "o_a"),
-	} {
-		if other == a {
-			t.Fatal("verification code ignores owner, kind or key")
-		}
-	}
-	if PairingCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, spki) == a {
-		t.Fatal("verification code equals the pairing code")
-	}
-}
-
-const verificationVector = "K5FG-B5PE-48PS"

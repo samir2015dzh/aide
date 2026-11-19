@@ -15,7 +15,7 @@ and sees every machine's sessions. It is never a machine.
 
 | Place | What it shows |
 |---|---|
-| Joining | The owner's account and password, by default ([password-login.md](password-login.md)): nothing to approve or compare. Or a connection address (`relay.example.com/o_…`): the phone asks to join, shows the verification code another trusted device must show too, and once approved there takes the two digits that device shows. Or a new server of one's own, by its address and claim code: the phone becomes the first trusted device |
+| Logging in | The server, the owner's account and password ([accounts.md](accounts.md)): nothing to approve or compare. Or a new server, with the setup code it printed and the account and password it will keep |
 | Sessions | Every machine's sessions by state (Needs You, In Progress, Recent), each with who sent the work (the agent's grant name, "Her", or "You", and the name it started under), the coding agent, project, machine and state; older pages on request |
 | A session | Its conversation, live: the owner's messages, the agent's replies (a reply being written shows as it is written), tool calls folded into one line a run, opening to each call and its result, questions and how they were resolved. At the bottom the agent's question to answer (options, multi-select, free text, secrets hidden) or leave to the agent, or Interrupt while it works |
 | Approvals | Requests to connect: machines (named here), agents (every project and coding agent, for 7, 30 or 90 days) and trusted devices, with the verification code to compare; Dismiss hides one here. A pairing code typed, or a `hermesh://pair?code=…` link, looks one up |

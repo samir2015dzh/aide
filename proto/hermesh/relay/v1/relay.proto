@@ -61,67 +61,104 @@ message StreamHeader {
 
 service RelayPublicService {
   rpc GetInfo(GetInfoRequest) returns (GetInfoResponse);
-  rpc Claim(ClaimRequest) returns (ClaimResponse);
-  rpc SubmitPairing(SubmitPairingRequest) returns (SubmitPairingResponse);
-  // Long poll: returns when the pairing completes or after ~25s.
-  rpc WaitPairing(WaitPairingRequest) returns (WaitPairingResponse);
   // A device, machine or agent that got an erase order says it is erasing.
   rpc AckErase(AckEraseRequest) returns (AckEraseResponse);
-  // Logging in with an account and password (docs/password-login.md). The
-  // KDF's salt and costs for the account (made up for an unknown one).
-  rpc StartLogin(StartLoginRequest) returns (StartLoginResponse);
-  // With the key the password derives: the sealed password key; then, with
-  // what the client signed with it, publishes that.
-  rpc Login(LoginRequest) returns (LoginResponse);
+  // Setting up a new server (docs/accounts.md §2): with the setup code it
+  // printed, the account and password it will keep; the caller is then
+  // logged in as with LogIn.
+  rpc SetUp(SetUpRequest) returns (LogInResponse);
+  // Logging in with the account and password: the server signs the
+  // caller's credential itself, with no one else approving.
+  rpc LogIn(LogInRequest) returns (LogInResponse);
 }
 
-// The Argon2id parameters a password is derived with.
-message PasswordKdf {
-  bytes salt = 1;
-  uint32 time = 2;
-  uint32 memory_kib = 3;
-  uint32 threads = 4;
+// What logs in.
+enum JoinKind {
+  JOIN_KIND_UNSPECIFIED = 0;
+  // One of the owner's devices (the desktop app, the phone): an
+  // OwnerDeviceCert for its device key.
+  JOIN_KIND_DEVICE = 1;
+  // A machine only (a server running aided): a MachineCert.
+  JOIN_KIND_MACHINE = 2;
+  // An agent (the aide CLI, Her): a Grant to every machine, project and
+  // coding agent, its own tasks, until revoked.
+  JOIN_KIND_AGENT = 3;
 }
 
-message StartLoginRequest {
+message Joiner {
+  JoinKind kind = 1;
+  // The device key, the machine key or the agent's key (SPKI DER).
+  bytes public_key = 2;
+  // Its name: the device's, the machine's (else its host name) or the
+  // agent's.
+  string label = 3;
+  string platform = 4;
+  string hostname = 5;
+  // A device that also runs a machine: that machine's key, certified with
+  // it, and the name it asks for.
+  bytes machine_public_key = 6;
+  string machine_name = 7;
+}
+
+message SetUpRequest {
+  // As the server printed it on its first start (aide-relay setup-code).
+  string setup_code = 1;
+  string account = 2;
+  string password = 3;
+  Joiner joiner = 4;
+}
+
+message LogInRequest {
   string account = 1;
+  // Over the server's TLS; it keeps only an Argon2id hash.
+  string password = 2;
+  Joiner joiner = 3;
 }
 
-message StartLoginResponse {
-  PasswordKdf kdf = 1;
-}
-
-message LoginRequest {
-  string account = 1;
-  // The first half of Argon2id(password): proves the password; the second
-  // half, which opens the sealed key, never leaves the client.
-  bytes auth_key = 2;
-  // Once the client opened the key, what it signed with it, one of:
-  // a device: the root chain that lists its own root key;
-  hermesh.identity.v1.RootChain root_chain = 3;
-  // an agent: the grant for its pending pairing request (the code).
-  string pairing_code = 4;
-  hermesh.identity.v1.Signed credential = 5;
-}
-
-message LoginResponse {
+message LogInResponse {
   string owner_id = 1;
   hermesh.identity.v1.RootChain root_chain = 2;
-  PasswordLogin login = 3;
+  // The OwnerDeviceCert, MachineCert or Grant, signed by the server's key.
+  hermesh.identity.v1.Signed credential = 3;
+  // A device's own machine (Joiner.machine_public_key): its MachineCert.
+  hermesh.identity.v1.Signed machine_cert = 4;
+  // The account, as the server keeps it.
+  string account = 5;
+  // A machine (or a device's own): the name it takes, the label it asked
+  // with unless another machine of the owner has that one, then with -2, -3…
+  string machine_name = 6;
 }
 
-// What the relay keeps for logging in with a password: the password key
-// (a root key listed in the owner's root cert) sealed by the password.
-message PasswordLogin {
+// The account the server keeps (its meta): the name, and an Argon2id hash
+// of the password.
+message Account {
   string account = 1;
-  PasswordKdf kdf = 2;
-  // SHA-256 of the auth key (LoginRequest.auth_key).
+  bytes salt = 2;
+  uint32 time = 3;
+  uint32 memory_kib = 4;
+  uint32 threads = 5;
+  bytes hash = 6;
+  // Counts password changes: a login made under an earlier one is signed
+  // out by the change.
+  uint64 generation = 7;
+}
+
+// A password login from before accounts, as such a server kept it: read
+// once, by the first login with its password, to convert it
+// (docs/accounts.md §5), then deleted.
+message OldPasswordLogin {
+  message Kdf {
+    bytes salt = 1;
+    uint32 time = 2;
+    uint32 memory_kib = 3;
+    uint32 threads = 4;
+  }
+  // The same fields as the record had, so its bytes parse as this.
+  string account = 1;
+  Kdf kdf = 2;
   bytes verifier = 3;
-  // The password key's PKCS#8 DER, AES-256-GCM with the second half of
-  // Argon2id(password), additional data the owner id and the public key.
   bytes nonce = 4;
   bytes sealed_key = 5;
-  // SPKI DER, listed in the root cert.
   bytes public_key = 6;
 }
 
@@ -161,56 +198,6 @@ message AckEraseRequest {
 }
 
 message AckEraseResponse {}
-
-message ClaimRequest {
-  string claim_code = 1;
-  hermesh.identity.v1.RootChain root_chain = 2;
-  hermesh.identity.v1.Signed device_cert = 3;
-  // Hosted center: the PKCE verifier of a link code made for an app that
-  // signed in through the browser.
-  string claim_verifier = 4;
-  // Hosted center: this device, already one of the owner's, signs in again
-  // (it signed out). The account of the link code must be that owner's;
-  // nothing is linked or changed.
-  bool resume = 5;
-}
-
-message ClaimResponse {
-  string relay_id = 1;
-}
-
-message SubmitPairingRequest {
-  // Signed PairingRequest (self-signed by the subject key).
-  hermesh.identity.v1.Signed request = 1;
-}
-
-message SubmitPairingResponse {
-  string code = 1;
-  google.protobuf.Timestamp expires_at = 2;
-}
-
-message WaitPairingRequest {
-  string code = 1;
-  // Hosted center: the owner the requester already saw the claim for (and
-  // showed the verification code of). Unset, the call returns as soon as
-  // the request is claimed; set, it waits for the signed credential.
-  string known_owner_id = 2;
-}
-
-message WaitPairingResponse {
-  bool done = 1;
-  bool expired = 2;
-  // Signed MachineCert or Grant, plus the current root cert.
-  hermesh.identity.v1.Credentials credentials = 3;
-  // Hosted center: an account claimed the request for this owner. The
-  // requester does not trust this: it shows the verification code computed
-  // from its key and owner_id, and the owner compares it on the signer.
-  bool claimed = 4;
-  string owner_id = 5;
-  hermesh.identity.v1.RootChain root_chain = 6;
-  // Masked account name, e.g. "y***@gmail.com" (informational).
-  string account_hint = 7;
-}
 
 // ---------------------------------------------------------------------------
 // Control services, served by the relay on CONTROL streams.
@@ -381,33 +368,33 @@ message GetLatestGrantResponse {
 }
 
 service OwnerControlService {
-  rpc GetPairingRequest(GetPairingRequestRequest) returns (GetPairingRequestResponse);
-  // Pending pairing requests bound to this owner: made with its connection
-  // address, or claimed by its account. The owner's signer shows them
-  // without anyone typing a code.
-  rpc ListPairingRequests(ListPairingRequestsRequest) returns (ListPairingRequestsResponse);
-  // A request made without an owner (a bare center URL): the owner typed its
-  // code on its own device. A hosted center binds it to the caller; one
-  // already bound to the caller is returned as is. The requester checks the
-  // binding with the verification code.
-  rpc ClaimPairingRequest(ClaimPairingRequestRequest) returns (ClaimPairingRequestResponse);
-  rpc CompletePairing(CompletePairingRequest) returns (CompletePairingResponse);
+  // The server signs what a device of the owner asks (docs/accounts.md §3):
+  // a machine cert, a grant, an admin command, a root cert, an erase order.
+  // A device that logged in is the owner, so it needs no other approval.
+  rpc Sign(SignRequest) returns (SignResponse);
   rpc ListMachines(ListMachinesRequest) returns (ListMachinesResponse);
   rpc ListClients(ListClientsRequest) returns (ListClientsResponse);
-  // WatchOwner sends what ListMachines, ListClients and ListPairingRequests
-  // return, then each again whenever it changed, until the connection ends
+  // WatchOwner sends what ListMachines, ListClients and ListDevices return,
+  // then each again whenever it changed, until the connection ends
   // (docs/state-sync.md §3.2): the owner's devices follow it instead of
   // polling those three.
   rpc WatchOwner(WatchOwnerRequest) returns (stream OwnerUpdate);
   rpc PublishGrant(PublishGrantRequest) returns (PublishGrantResponse);
   rpc PublishMachineCert(PublishMachineCertRequest) returns (PublishMachineCertResponse);
   rpc Revoke(RevokeRequest) returns (RevokeResponse);
-  // A longer root chain: a trusted device joined or was removed.
-  rpc PublishRootChain(PublishRootChainRequest) returns (PublishRootChainResponse);
-  // Logging in with a password: what the relay keeps for it (its key must
-  // be in the root cert), or nothing to turn it off.
-  rpc SetPasswordLogin(SetPasswordLoginRequest) returns (SetPasswordLoginResponse);
-  rpc GetPasswordLogin(GetPasswordLoginRequest) returns (GetPasswordLoginResponse);
+  // The account (docs/accounts.md §4): its name, and whether a password
+  // login from before accounts waits to be converted with the password.
+  rpc GetLogin(GetLoginRequest) returns (GetLoginResponse);
+  // Changes the account's name or password, given the current password;
+  // a new password signs out every other device and agent that logged in.
+  rpc SetLogin(SetLoginRequest) returns (SetLoginResponse);
+  // The owner's devices: those that logged in, and those set up before
+  // accounts (a root key of theirs in the root cert).
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  // Signs a device out: its device cert no longer admits it, its own
+  // machine is removed, and what a device from before accounts signed is
+  // signed again by the server.
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
   // The owner erases everything (docs/erase-everything.md): the relay keeps
   // the signed order for 10 minutes, forgets the owner, and every peer of
   // it is refused, and shown the order in that time.
@@ -550,53 +537,88 @@ message RegisterPushRequest {
 
 message RegisterPushResponse {}
 
-message GetPairingRequestRequest {
-  string code = 1;
+message Unsigned {
+  // The message's full name, e.g. "hermesh.identity.v1.MachineCert".
+  string type = 1;
+  bytes body = 2;
 }
 
-message GetPairingRequestResponse {
-  hermesh.identity.v1.Signed request = 1;
-  google.protobuf.Timestamp expires_at = 2;
+message SignRequest {
+  repeated Unsigned messages = 1;
 }
 
-message ClaimPairingRequestRequest {
-  string code = 1;
+message SignResponse {
+  repeated hermesh.identity.v1.Signed signed = 1;
 }
 
-message ClaimPairingRequestResponse {
-  hermesh.identity.v1.Signed request = 1;
-  google.protobuf.Timestamp expires_at = 2;
+message GetLoginRequest {}
+
+message GetLoginResponse {
+  string account = 1;
+  // The server keeps a password login from before accounts (the password
+  // key): SetLogin with its password converts it.
+  bool convert = 2;
+  // Logging in is turned off (SetLogin off): no new device, machine or
+  // agent can log in; those logged in stay.
+  bool off = 3;
 }
 
-message ListPairingRequestsRequest {}
-
-message ListPairingRequestsResponse {
-  repeated PendingPairing pairings = 1;
+message SetLoginRequest {
+  string current_password = 1;
+  // Unset: kept.
+  string account = 2;
+  string new_password = 3;
+  // Turns logging in off, or (false, with the current password) on again.
+  bool off = 4;
+  // This device: the change does not sign it out.
+  string device_key = 5;
 }
 
-message PendingPairing {
-  string code = 1;
-  hermesh.identity.v1.Signed request = 2;
-  google.protobuf.Timestamp expires_at = 3;
+message SetLoginResponse {
+  string account = 1;
+  // Devices and agents signed out by a new password.
+  uint32 signed_out = 2;
 }
 
-message CompletePairingRequest {
-  string code = 1;
-  // Signed MachineCert (machine pairing) or Signed Grant (client pairing).
-  hermesh.identity.v1.Signed credential = 2;
+message DeviceEntry {
+  // The key id of its device key, or of its root key for a device set up
+  // before accounts (then legacy).
+  string key_id = 1;
+  string label = 2;
+  string platform = 3;
+  bool legacy = 4;
+  google.protobuf.Timestamp logged_in_at = 5;
+  bool online = 6;
 }
 
-message CompletePairingResponse {}
+message ListDevicesRequest {}
+
+message ListDevicesResponse {
+  repeated DeviceEntry devices = 1;
+}
+
+message RemoveDeviceRequest {
+  string key_id = 1;
+}
+
+message RemoveDeviceResponse {
+  // A device from before accounts: the machine certs and grants it had
+  // signed, signed again by the server.
+  uint32 reissued_machines = 1;
+  uint32 reissued_grants = 2;
+}
 
 message WatchOwnerRequest {}
 
 // Each list whole, in the first message and whenever it changed (unset: as
-// before). Pairing requests expire by their expires_at; none is sent for
+// before).
 // that.
 message OwnerUpdate {
   ListMachinesResponse machines = 1;
   ListClientsResponse clients = 2;
-  ListPairingRequestsResponse pairings = 3;
+  reserved 3;
+  reserved "pairings";
+  ListDevicesResponse devices = 4;
 }
 
 message ListClientsRequest {}
@@ -623,11 +645,6 @@ message RevokeRequest {
 
 message RevokeResponse {}
 
-message PublishRootChainRequest {
-  hermesh.identity.v1.RootChain root_chain = 1;
-}
-
-message PublishRootChainResponse {}
 
 message EraseOwnerRequest {
   // A signed EraseOrder, by one of the owner's root keys.
@@ -790,16 +807,3 @@ message MessageStatusResponse {
   repeated MessageState states = 1;
 }
 
-message SetPasswordLoginRequest {
-  PasswordLogin login = 1;
-}
-
-message SetPasswordLoginResponse {}
-
-message GetPasswordLoginRequest {}
-
-message GetPasswordLoginResponse {
-  // Without the verifier and the sealed key. Unset: off.
-  string account = 1;
-  bytes public_key = 2;
-}

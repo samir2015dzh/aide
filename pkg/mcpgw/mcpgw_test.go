@@ -21,11 +21,18 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
+	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
 	"github.com/hermeshai/hermesh/internal/sqlitedb"
+	"github.com/hermeshai/hermesh/pkg/identity"
 	"github.com/hermeshai/hermesh/pkg/relay"
 )
 
-// testAccounts: one account, signed in, with no owner yet.
+// testAccounts: one account, signed in. The server's owner logs in with
+// testAccount and testPassword.
 type testAccounts struct{}
 
 func (testAccounts) Browser(*http.Request) (Account, bool) {
@@ -35,6 +42,8 @@ func (testAccounts) SignInURL(next string) string { return "/signin?next=" + url
 func (testAccounts) Owner(context.Context, string) (string, error) {
 	return "", nil
 }
+
+const testAccount, testPassword = "owner", "correct horse battery"
 
 type clock struct {
 	mu sync.Mutex
@@ -89,6 +98,18 @@ func newFixture(t *testing.T, mod func(*Config)) *fixture {
 	}
 	t.Cleanup(f.g.Close)
 	f.g.Mount(mux)
+	r = cfg.Relay
+	r.Mount(mux)
+	if r.SingleOwner() != "" {
+		return f // set up by the test, with testAccount
+	}
+	// The server, set up with its account.
+	code, _ := r.SetupCode()
+	device, _ := identity.GenerateKey()
+	if _, err := relayv1connect.NewRelayPublicServiceClient(http.DefaultClient, f.srv.URL).SetUp(context.Background(), &relayv1.SetUpRequest{SetupCode: code,
+		Account: testAccount, Password: testPassword, Joiner: &relayv1.Joiner{Kind: relayv1.JoinKind_JOIN_KIND_DEVICE, PublicKey: identity.MarshalPublicKey(device.Public()), Label: "pc"}}); err != nil {
+		t.Fatal(err)
+	}
 	return f
 }
 
@@ -152,7 +173,8 @@ func (b *browser) get(u string) (*http.Response, string) {
 	return res, string(body)
 }
 
-// consentCode runs the consent page and returns the authorization code.
+// consentCode runs the consent page, logging in with the owner's account,
+// and returns the authorization code.
 func (b *browser) consentCode(clientID, redirect string) string {
 	b.f.t.Helper()
 	_, page := b.get(b.f.authorizeURL(clientID, redirect, nil))
@@ -161,7 +183,8 @@ func (b *browser) consentCode(clientID, redirect string) string {
 	if csrf == nil || id == nil {
 		b.f.t.Fatalf("consent page:\n%s", page)
 	}
-	res, err := b.PostForm(b.f.srv.URL+"/oauth/consent", url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"}})
+	res, err := b.PostForm(b.f.srv.URL+"/oauth/consent", url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"},
+		"account": {testAccount}, "password": {testPassword}})
 	if err != nil {
 		b.f.t.Fatal(err)
 	}
@@ -248,7 +271,8 @@ func TestAuthorizeRefusesBadRequests(t *testing.T) {
 	// referrer, like the consent page) is not another site.
 	csrf := f.g.csrfToken(id)
 	post := func(origin string) int {
-		req, _ := http.NewRequest(http.MethodPost, f.srv.URL+"/oauth/consent", strings.NewReader(url.Values{"id": {id}, "csrf": {csrf}, "action": {"connect"}}.Encode()))
+		req, _ := http.NewRequest(http.MethodPost, f.srv.URL+"/oauth/consent", strings.NewReader(url.Values{"id": {id}, "csrf": {csrf}, "action": {"connect"},
+			"account": {testAccount}, "password": {testPassword}}.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Set("Origin", origin)
 		res, err := b.Do(req)
@@ -384,72 +408,48 @@ func TestTokensRotateAndReplaysAreRevoked(t *testing.T) {
 	}
 }
 
-// A connection waits for the owner's approval as long as the app keeps
-// using it (no deadline), and ends once unused for a day.
-func TestUnapprovedConnectionsWaitWhileUsed(t *testing.T) {
+// The consent page connects an app only with the owner's account and
+// password: a wrong one shows the page again, saying so, and makes no
+// connection; the right one makes it active at once, with a grant the
+// server signed, which tools then use.
+func TestConsentLogsInWithTheAccount(t *testing.T) {
 	f := newFixture(t, nil)
 	redirect := "http://127.0.0.1/callback"
 	client := f.register(redirect)
-	code := f.browser().consentCode(client, redirect)
-	_, tok := f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}})
+	b := f.browser()
+	_, page := b.get(f.authorizeURL(client, redirect, nil))
+	if !strings.Contains(page, `name="password"`) || strings.Contains(page, "pprove") {
+		t.Fatalf("consent page:\n%s", page)
+	}
+	csrf := regexp.MustCompile(`name="csrf" value="([^"]+)"`).FindStringSubmatch(page)
+	id := regexp.MustCompile(`name="id" value="([^"]+)"`).FindStringSubmatch(page)
+	res, err := b.PostForm(f.srv.URL+"/oauth/consent", url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"},
+		"account": {testAccount}, "password": {"wrong password"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized || !strings.Contains(string(body), "Wrong account or password") || !strings.Contains(string(body), `value="`+testAccount+`"`) {
+		t.Fatalf("a wrong password: %d\n%s", res.StatusCode, body)
+	}
+	if conns, _ := f.g.db.ListConnections(context.Background(), ConnectionFilter{AccountID: "a1"}); len(conns) != 0 {
+		t.Fatalf("a wrong password made %+v", conns)
+	}
+	code := b.consentCode(client, redirect)
+	if _, tok := f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}}); tok["access_token"] == nil {
+		t.Fatalf("token: %v", tok)
+	}
 	conns, _ := f.g.db.ListConnections(context.Background(), ConnectionFilter{AccountID: "a1"})
-	if len(conns) != 1 || conns[0].State != StateAwaitingSetup || conns[0].ClientName != "Test (127.0.0.1)" || !conns[0].Asked {
+	if len(conns) != 1 || conns[0].State != StateActive || conns[0].ClientName != "Test (127.0.0.1)" || conns[0].GrantID == "" {
 		t.Fatalf("connection: %+v", conns)
 	}
-	refresh := func(rt string) (int, map[string]any) {
-		return f.token(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {rt}, "client_id": {client}})
-	}
-	// Days later, still used: still waiting, still working.
-	for range 3 {
-		f.clock.add(20 * time.Hour)
-		status, next := refresh(tok["refresh_token"].(string))
-		if status != 200 {
-			t.Fatalf("refresh after 20 hours: %d %v", status, next)
-		}
-		tok = next
-		f.g.advanceWaiting(context.Background())
-		if c, _ := f.g.db.GetConnection(context.Background(), conns[0].ID); c.State != StateAwaitingSetup {
-			t.Fatalf("a connection in use ended: %+v", c)
-		}
-	}
-	// Then left alone: it ends with its tokens.
-	f.clock.add(waitingIdle + time.Minute)
-	f.g.advanceWaiting(context.Background())
-	c, _ := f.g.db.GetConnection(context.Background(), conns[0].ID)
-	if c.State != StateExpired || c.SealedKey != nil {
-		t.Fatalf("unused for a day: %+v", c)
-	}
-	if status, _ := refresh(tok["refresh_token"].(string)); status != 400 {
-		t.Fatal("an ended connection's tokens must stop working")
-	}
-}
-
-// Anyone who can reach a self-hosted relay can connect: connections
-// waiting for approval make room for newer ones, the oldest first, rather
-// than keep the owner's own apps out.
-func TestWaitingConnectionsMakeRoom(t *testing.T) {
-	f := newFixture(t, nil)
-	ctx := context.Background()
-	redirect := "http://127.0.0.1/callback"
-	var first string
-	for i := range maxWaiting {
-		f.browser().consentCode(f.register(redirect), redirect)
-		if i == 0 {
-			conns, _ := f.g.db.ListConnections(ctx, ConnectionFilter{AccountID: "a1"})
-			first = conns[0].ID
-		}
-		f.clock.add(time.Minute)
-	}
-	// The owner's own app, an hour later (registrations are limited per
-	// address and hour).
-	f.clock.add(time.Hour)
-	f.browser().consentCode(f.register(redirect), redirect)
-	waiting, _ := f.g.db.ListConnections(ctx, ConnectionFilter{AccountID: "a1", States: []string{StateAwaitingSetup, StateAwaitingApproval}})
-	if len(waiting) != maxWaiting {
-		t.Fatalf("%d connections waiting, want %d", len(waiting), maxWaiting)
-	}
-	if c, _ := f.g.db.GetConnection(ctx, first); c.State != StateRevoked || c.SealedKey != nil {
-		t.Fatalf("the oldest waiting connection should have made room: %+v", c)
+	signed := &identityv1.Signed{}
+	proto.Unmarshal(conns[0].Grant, signed)
+	g := &identityv1.Grant{}
+	if identity.Unverified(signed, g) != nil || g.Custodian != f.srv.URL || g.TaskVisibility != identityv1.TaskVisibility_TASK_VISIBILITY_ALL ||
+		!identity.Allows(g.MachineIds, "m_x") {
+		t.Fatalf("grant: %+v", g)
 	}
 }
 
@@ -600,16 +600,13 @@ func TestAccountManagesItsConnections(t *testing.T) {
 	access := tok["access_token"].(string)
 	ctx := context.Background()
 	list, err := f.g.Connections(ctx, "a1")
-	if err != nil || len(list) != 1 || list[0].Name != "Test" || list[0].State != StateAwaitingSetup || list[0].Verified {
+	if err != nil || len(list) != 1 || list[0].Name != "Test" || list[0].State != StateActive || list[0].Verified {
 		t.Fatalf("connections: %+v %v", list, err)
 	}
 	if others, _ := f.g.Connections(ctx, "a2"); len(others) != 0 {
 		t.Fatalf("another account sees %+v", others)
 	}
 	id := list[0].ID
-	if err := f.g.ResendApproval(ctx, "a1", id); err != nil {
-		t.Fatalf("resend while waiting for setup: %v", err)
-	}
 	if err := f.g.Disconnect(ctx, "a2", id); err != ErrNoConnection {
 		t.Fatalf("another account disconnects: %v", err)
 	}

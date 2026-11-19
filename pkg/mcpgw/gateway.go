@@ -1,9 +1,10 @@
 // Package mcpgw is the MCP gateway: an OAuth 2.1 authorization server and
 // an MCP resource server (Streamable HTTP) that let remote agent products
-// (Claude, ChatGPT, Codex, Cursor, ...) use Hermesh. Each approved MCP
-// connection is a Hermesh client whose key the gateway holds: its tools run
-// the hermesh CLI's commands for that client, against the machines its
-// owner-signed grant reaches. See docs/mcp-gateway.md.
+// (Claude, ChatGPT, Codex, Cursor, ...) use Aide. Each MCP connection is an
+// Aide client whose key the gateway holds, made when the person logs in
+// with the owner's account and password on the consent page: its tools run
+// the aide CLI's commands for that client, against the machines its grant
+// reaches. See docs/mcp-gateway.md.
 //
 // The gateway is embedded by a relay server, the way the hosted center
 // embeds the relay: a self-hosted relay serves its one owner, the hosted
@@ -63,8 +64,8 @@ type Config struct {
 	// (a self-hosted relay, where anyone may connect): nothing served to
 	// others names it, and an authorization must name it.
 	KeyedResource bool
-	// Relay is the relay this server runs: pairing, grants, revocations,
-	// presence and admission.
+	// Relay is the relay this server runs: the account, grants,
+	// revocations, presence and admission.
 	Relay *relay.Server
 	// RelayHandler serves the relay's endpoints; the gateway's clients dial
 	// it in-process. Default: Relay.InProcessHandler().
@@ -72,8 +73,6 @@ type Config struct {
 	Backend      Backend
 	Vault        Vault
 	Accounts     Accounts
-	// SetupURL is where people get Hermesh for Mac.
-	SetupURL string
 	// WakePage is where an owner sets up a doorbell from an agent's link:
 	// the code follows it (e.g. https://hermesh.io/w/). Empty for none: the
 	// link is hermesh://wake?code=…, which the Hermesh app on a computer opens.
@@ -122,17 +121,10 @@ const (
 	codeTTL          = 60 * time.Second
 	accessTTL        = time.Hour
 	// Tokens unused for this long stop working.
-	refreshIdle = 30 * 24 * time.Hour
-	// A connection never approved ends after this long without use.
-	waitingIdle = 24 * time.Hour
-	// askAgainWithin: a connection its app used this recently asks again
-	// when a trusted device of the owner connects.
-	askAgainWithin     = 24 * time.Hour
+	refreshIdle        = 30 * 24 * time.Hour
 	refreshRetryWindow = 60 * time.Second
-	// Approved connections per owner (or per account before it has an
-	// owner), and connections waiting for approval besides.
+	// Connections per owner.
 	maxConnections = 10
-	maxWaiting     = 10
 	keyCacheTTL    = 10 * time.Minute
 	// loopEvery spaces the loop's rounds; connLockTTL bounds how long a
 	// connection's state change holds its lock on every node.
@@ -182,9 +174,6 @@ func New(cfg Config) (*Gateway, error) {
 	if cfg.RelayHandler == nil {
 		cfg.RelayHandler = cfg.Relay.InProcessHandler()
 	}
-	if cfg.SetupURL == "" {
-		cfg.SetupURL = "https://github.com/samir2015dzh/hermesh/releases/latest"
-	}
 	if cfg.VerifiedClients == nil {
 		cfg.VerifiedClients = []string{"claude.ai", "chatgpt.com", "openai.com"}
 	}
@@ -222,7 +211,6 @@ func New(cfg Config) (*Gateway, error) {
 		}
 	}
 	cfg.Relay.SetMessageHook(g.onMessage)
-	cfg.Relay.SetOwnerHook(func(ownerID string) { g.askAgain(context.Background(), ownerID) })
 	cfg.Relay.AddEraseHook(func(ownerID string) { g.OwnerGone(context.Background(), ownerID) })
 	cfg.Relay.SetDoorbells(g)
 	go g.loop()
@@ -251,7 +239,6 @@ func (g *Gateway) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /oauth/client.json", g.handleHerClient)
 	mux.HandleFunc("GET /oauth/consent", g.handleConsentPage)
 	mux.HandleFunc("POST /oauth/consent", g.handleConsentAction)
-	mux.HandleFunc("GET /oauth/consent/status", g.handleConsentStatus)
 	mux.HandleFunc("GET /oauth/consent/continue", g.handleConsentContinue)
 	prm := "/.well-known/oauth-protected-resource"
 	if !g.cfg.KeyedResource {
@@ -261,9 +248,8 @@ func (g *Gateway) Mount(mux *http.ServeMux) {
 	mux.Handle(g.resource.Path, g.mcpHandler())
 }
 
-// loop moves connections along: approval requests the apps asked for sent
-// to Macs that came online, answers picked up, connections never approved
-// and no longer used ended, peers no longer used closed.
+// loop rings the doorbells due again, closes the peers no longer used and
+// sweeps what has expired.
 func (g *Gateway) loop() {
 	defer close(g.done)
 	t := time.NewTicker(loopEvery)
@@ -275,9 +261,6 @@ func (g *Gateway) loop() {
 		case <-g.stop:
 			return
 		case <-t.C:
-			if g.lead() {
-				g.advanceWaiting(context.Background())
-			}
 			g.ringAgainDue()
 			g.closeIdlePeers(false)
 		case <-sweep.C:
@@ -287,48 +270,6 @@ func (g *Gateway) loop() {
 			if err := g.db.Sweep(context.Background(), g.cfg.Now()); err != nil {
 				g.log.Warn("mcp sweep", "err", err)
 			}
-		}
-	}
-}
-
-func (g *Gateway) advanceWaiting(ctx context.Context) {
-	conns, err := g.db.ListConnections(ctx, ConnectionFilter{States: []string{StateAwaitingSetup, StateAwaitingApproval}})
-	if err != nil {
-		g.log.Warn("mcp: listing waiting connections", "err", err)
-		return
-	}
-	for _, c := range conns {
-		if _, err := g.advance(ctx, c.ID); err != nil {
-			g.log.Warn("mcp: connection", "id", c.ID, "err", err)
-		}
-	}
-}
-
-// OwnerLinked tells the gateway an account got its owner: connections
-// waiting for the Mac move on now rather than at the next tick.
-func (g *Gateway) OwnerLinked(ctx context.Context, accountID string) {
-	conns, err := g.db.ListConnections(ctx, ConnectionFilter{AccountID: accountID, States: []string{StateAwaitingSetup}})
-	if err != nil {
-		return
-	}
-	for _, c := range conns {
-		g.advance(ctx, c.ID)
-	}
-}
-
-// askAgain sends the owner, whose trusted device just connected, the
-// approvals that went unanswered: a connection keeps asking until the owner
-// answers, as long as its app used it in the last day.
-func (g *Gateway) askAgain(ctx context.Context, ownerID string) {
-	conns, err := g.db.ListConnections(ctx, ConnectionFilter{OwnerID: ownerID, States: []string{StateAwaitingApproval}})
-	if err != nil {
-		g.log.Warn("mcp: listing an owner's waiting connections", "owner", ownerID, "err", err)
-		return
-	}
-	now := g.cfg.Now()
-	for _, c := range conns {
-		if c.PairingCode == "" && now.Sub(lastUse(c)) < askAgainWithin {
-			g.ask(ctx, c.ID)
 		}
 	}
 }

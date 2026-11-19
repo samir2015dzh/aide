@@ -54,29 +54,15 @@ const (
 	LocalServiceSignInProcedure = "/hermesh.local.v1.LocalService/SignIn"
 	// LocalServiceSetupProcedure is the fully-qualified name of the LocalService's Setup RPC.
 	LocalServiceSetupProcedure = "/hermesh.local.v1.LocalService/Setup"
-	// LocalServiceRequestJoinProcedure is the fully-qualified name of the LocalService's RequestJoin
-	// RPC.
-	LocalServiceRequestJoinProcedure = "/hermesh.local.v1.LocalService/RequestJoin"
-	// LocalServiceWaitJoinProcedure is the fully-qualified name of the LocalService's WaitJoin RPC.
-	LocalServiceWaitJoinProcedure = "/hermesh.local.v1.LocalService/WaitJoin"
-	// LocalServiceConfirmJoinProcedure is the fully-qualified name of the LocalService's ConfirmJoin
-	// RPC.
-	LocalServiceConfirmJoinProcedure = "/hermesh.local.v1.LocalService/ConfirmJoin"
-	// LocalServicePasswordLoginProcedure is the fully-qualified name of the LocalService's
-	// PasswordLogin RPC.
-	LocalServicePasswordLoginProcedure = "/hermesh.local.v1.LocalService/PasswordLogin"
-	// LocalServiceSetLoginPasswordProcedure is the fully-qualified name of the LocalService's
-	// SetLoginPassword RPC.
-	LocalServiceSetLoginPasswordProcedure = "/hermesh.local.v1.LocalService/SetLoginPassword"
-	// LocalServiceGetLoginPasswordProcedure is the fully-qualified name of the LocalService's
-	// GetLoginPassword RPC.
-	LocalServiceGetLoginPasswordProcedure = "/hermesh.local.v1.LocalService/GetLoginPassword"
+	// LocalServiceLogInProcedure is the fully-qualified name of the LocalService's LogIn RPC.
+	LocalServiceLogInProcedure = "/hermesh.local.v1.LocalService/LogIn"
+	// LocalServiceGetLoginProcedure is the fully-qualified name of the LocalService's GetLogin RPC.
+	LocalServiceGetLoginProcedure = "/hermesh.local.v1.LocalService/GetLogin"
+	// LocalServiceSetLoginProcedure is the fully-qualified name of the LocalService's SetLogin RPC.
+	LocalServiceSetLoginProcedure = "/hermesh.local.v1.LocalService/SetLogin"
 	// LocalServiceListDevicesProcedure is the fully-qualified name of the LocalService's ListDevices
 	// RPC.
 	LocalServiceListDevicesProcedure = "/hermesh.local.v1.LocalService/ListDevices"
-	// LocalServiceApproveDevicePairingProcedure is the fully-qualified name of the LocalService's
-	// ApproveDevicePairing RPC.
-	LocalServiceApproveDevicePairingProcedure = "/hermesh.local.v1.LocalService/ApproveDevicePairing"
 	// LocalServiceRemoveDeviceProcedure is the fully-qualified name of the LocalService's RemoveDevice
 	// RPC.
 	LocalServiceRemoveDeviceProcedure = "/hermesh.local.v1.LocalService/RemoveDevice"
@@ -91,29 +77,9 @@ const (
 	// LocalServiceFinishEraseProcedure is the fully-qualified name of the LocalService's FinishErase
 	// RPC.
 	LocalServiceFinishEraseProcedure = "/hermesh.local.v1.LocalService/FinishErase"
-	// LocalServiceWatchSigningRequestsProcedure is the fully-qualified name of the LocalService's
-	// WatchSigningRequests RPC.
-	LocalServiceWatchSigningRequestsProcedure = "/hermesh.local.v1.LocalService/WatchSigningRequests"
-	// LocalServiceCompleteSigningRequestProcedure is the fully-qualified name of the LocalService's
-	// CompleteSigningRequest RPC.
-	LocalServiceCompleteSigningRequestProcedure = "/hermesh.local.v1.LocalService/CompleteSigningRequest"
-	// LocalServiceShowSignerProcedure is the fully-qualified name of the LocalService's ShowSigner RPC.
-	LocalServiceShowSignerProcedure = "/hermesh.local.v1.LocalService/ShowSigner"
 	// LocalServiceSetLocalMachineProcedure is the fully-qualified name of the LocalService's
 	// SetLocalMachine RPC.
 	LocalServiceSetLocalMachineProcedure = "/hermesh.local.v1.LocalService/SetLocalMachine"
-	// LocalServiceLookupPairingProcedure is the fully-qualified name of the LocalService's
-	// LookupPairing RPC.
-	LocalServiceLookupPairingProcedure = "/hermesh.local.v1.LocalService/LookupPairing"
-	// LocalServiceListPairingRequestsProcedure is the fully-qualified name of the LocalService's
-	// ListPairingRequests RPC.
-	LocalServiceListPairingRequestsProcedure = "/hermesh.local.v1.LocalService/ListPairingRequests"
-	// LocalServiceApproveMachinePairingProcedure is the fully-qualified name of the LocalService's
-	// ApproveMachinePairing RPC.
-	LocalServiceApproveMachinePairingProcedure = "/hermesh.local.v1.LocalService/ApproveMachinePairing"
-	// LocalServiceApproveClientPairingProcedure is the fully-qualified name of the LocalService's
-	// ApproveClientPairing RPC.
-	LocalServiceApproveClientPairingProcedure = "/hermesh.local.v1.LocalService/ApproveClientPairing"
 	// LocalServiceListMachinesProcedure is the fully-qualified name of the LocalService's ListMachines
 	// RPC.
 	LocalServiceListMachinesProcedure = "/hermesh.local.v1.LocalService/ListMachines"
@@ -316,37 +282,28 @@ type LocalServiceClient interface {
 	// Signs the current profile in again: on a hosted center with a link
 	// code from a browser sign-in to the account that owns it.
 	SignIn(context.Context, *v1.SignInRequest) (*v1.SignInResponse, error)
-	// Onboarding: the first trusted device creates the owner.
+	// Onboarding (docs/accounts.md): a new server is set up with the setup
+	// code it printed and the account and password it will keep; any other
+	// device logs in with the server, the account and the password. Either
+	// way the server signs this device in itself: no other device approves,
+	// no codes are compared.
 	Setup(context.Context, *v1.SetupRequest) (*v1.SetupResponse, error)
-	// Another device joins the owner (docs/trusted-devices.md 4.2): it asks,
-	// waits for a trusted device to approve, then the person confirms they
-	// approved it there, and only then is the owner kept.
-	RequestJoin(context.Context, *v1.RequestJoinRequest) (*v1.RequestJoinResponse, error)
-	// Long poll: returns when approved or expired, or after about 25s.
-	WaitJoin(context.Context, *v1.WaitJoinRequest) (*v1.WaitJoinResponse, error)
-	ConfirmJoin(context.Context, *v1.ConfirmJoinRequest) (*v1.ConfirmJoinResponse, error)
-	// Joins with the owner's account and password instead (docs/password-login.md):
-	// no other device, no codes, no digits. The device becomes a trusted
-	// device as a join would make it.
-	PasswordLogin(context.Context, *v1.PasswordLoginRequest) (*v1.PasswordLoginResponse, error)
-	// On a trusted device: turns logging in with an account and password on,
-	// changes the password (every device and agent that logged in with the
-	// old one is signed out), or turns it off. One Touch ID.
-	SetLoginPassword(context.Context, *v1.SetLoginPasswordRequest) (*v1.SetLoginPasswordResponse, error)
-	GetLoginPassword(context.Context, *v1.GetLoginPasswordRequest) (*v1.GetLoginPasswordResponse, error)
-	// Trusted devices.
+	LogIn(context.Context, *v1.LogInRequest) (*v1.LogInResponse, error)
+	// The account: its name; changing it or the password needs the current
+	// password, and a new password signs out every other device and agent
+	// that logged in.
+	GetLogin(context.Context, *v1.GetLoginRequest) (*v1.GetLoginResponse, error)
+	SetLogin(context.Context, *v1.SetLoginRequest) (*v1.SetLoginResponse, error)
+	// The owner's devices.
 	ListDevices(context.Context, *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error)
-	// Approves a device's join request: signs the next root cert with it.
-	ApproveDevicePairing(context.Context, *v1.ApproveDevicePairingRequest) (*v1.ApproveDevicePairingResponse, error)
-	// Removes another device: the next root cert without it, what it signed
-	// re-issued by this one, and its own machine revoked.
+	// Signs another device out: it can no longer connect, and its own machine
+	// is removed.
 	RemoveDevice(context.Context, *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error)
-	// Forgets the owner on this device, after it was removed, so it can be
-	// set up again or join again: its root key is deleted, and its own
-	// machine keeps its projects.
+	// Forgets the owner on this device, after it was removed, so it can log
+	// in again: its own machine keeps its projects.
 	Leave(context.Context, *v1.LeaveRequest) (*v1.LeaveResponse, error)
 	// Erases Hermesh on every device of the owner (docs/erase-everything.md):
-	// signs the order (Touch ID) and hands it to the relay. This device keeps
+	// the server signs the order and keeps it. This device keeps
 	// running until FinishErase, to show the others acking.
 	EraseEverything(context.Context, *v1.EraseEverythingRequest) (*v1.EraseEverythingResponse, error)
 	// How an erase stands: each device, machine and agent, and whether it
@@ -354,21 +311,8 @@ type LocalServiceClient interface {
 	EraseStatus(context.Context, *v1.EraseStatusRequest) (*v1.EraseStatusResponse, error)
 	// Erases this device too: the app opens on its first run.
 	FinishErase(context.Context, *v1.FinishEraseRequest) (*v1.FinishEraseResponse, error)
-	// Signing delegation.
-	WatchSigningRequests(context.Context, *v1.WatchSigningRequestsRequest) (*connect.ServerStreamForClient[v1.SigningRequest], error)
-	CompleteSigningRequest(context.Context, *v1.CompleteSigningRequestRequest) (*v1.CompleteSigningRequestResponse, error)
-	// Brings the signer's open approval forward, for a signer that is not the
-	// app's child (Windows: docs/windows.md §7.3).
-	ShowSigner(context.Context, *v1.ShowSignerRequest) (*v1.ShowSignerResponse, error)
 	// This Mac as an execution machine.
 	SetLocalMachine(context.Context, *v1.SetLocalMachineRequest) (*v1.SetLocalMachineResponse, error)
-	// Pairing.
-	LookupPairing(context.Context, *v1.LookupPairingRequest) (*v1.LookupPairingResponse, error)
-	// Requests waiting for this owner's approval, newest first: machines and
-	// personal agents that used the connection address.
-	ListPairingRequests(context.Context, *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error)
-	ApproveMachinePairing(context.Context, *v1.ApproveMachinePairingRequest) (*v1.ApproveMachinePairingResponse, error)
-	ApproveClientPairing(context.Context, *v1.ApproveClientPairingRequest) (*v1.ApproveClientPairingResponse, error)
 	// Machines.
 	ListMachines(context.Context, *v1.ListMachinesRequest) (*v1.ListMachinesResponse, error)
 	RenameMachine(context.Context, *v1.RenameMachineRequest) (*v1.RenameMachineResponse, error)
@@ -570,52 +514,28 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("Setup")),
 			connect.WithClientOptions(opts...),
 		),
-		requestJoin: connect.NewClient[v1.RequestJoinRequest, v1.RequestJoinResponse](
+		logIn: connect.NewClient[v1.LogInRequest, v1.LogInResponse](
 			httpClient,
-			baseURL+LocalServiceRequestJoinProcedure,
-			connect.WithSchema(localServiceMethods.ByName("RequestJoin")),
+			baseURL+LocalServiceLogInProcedure,
+			connect.WithSchema(localServiceMethods.ByName("LogIn")),
 			connect.WithClientOptions(opts...),
 		),
-		waitJoin: connect.NewClient[v1.WaitJoinRequest, v1.WaitJoinResponse](
+		getLogin: connect.NewClient[v1.GetLoginRequest, v1.GetLoginResponse](
 			httpClient,
-			baseURL+LocalServiceWaitJoinProcedure,
-			connect.WithSchema(localServiceMethods.ByName("WaitJoin")),
+			baseURL+LocalServiceGetLoginProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetLogin")),
 			connect.WithClientOptions(opts...),
 		),
-		confirmJoin: connect.NewClient[v1.ConfirmJoinRequest, v1.ConfirmJoinResponse](
+		setLogin: connect.NewClient[v1.SetLoginRequest, v1.SetLoginResponse](
 			httpClient,
-			baseURL+LocalServiceConfirmJoinProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ConfirmJoin")),
-			connect.WithClientOptions(opts...),
-		),
-		passwordLogin: connect.NewClient[v1.PasswordLoginRequest, v1.PasswordLoginResponse](
-			httpClient,
-			baseURL+LocalServicePasswordLoginProcedure,
-			connect.WithSchema(localServiceMethods.ByName("PasswordLogin")),
-			connect.WithClientOptions(opts...),
-		),
-		setLoginPassword: connect.NewClient[v1.SetLoginPasswordRequest, v1.SetLoginPasswordResponse](
-			httpClient,
-			baseURL+LocalServiceSetLoginPasswordProcedure,
-			connect.WithSchema(localServiceMethods.ByName("SetLoginPassword")),
-			connect.WithClientOptions(opts...),
-		),
-		getLoginPassword: connect.NewClient[v1.GetLoginPasswordRequest, v1.GetLoginPasswordResponse](
-			httpClient,
-			baseURL+LocalServiceGetLoginPasswordProcedure,
-			connect.WithSchema(localServiceMethods.ByName("GetLoginPassword")),
+			baseURL+LocalServiceSetLoginProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetLogin")),
 			connect.WithClientOptions(opts...),
 		),
 		listDevices: connect.NewClient[v1.ListDevicesRequest, v1.ListDevicesResponse](
 			httpClient,
 			baseURL+LocalServiceListDevicesProcedure,
 			connect.WithSchema(localServiceMethods.ByName("ListDevices")),
-			connect.WithClientOptions(opts...),
-		),
-		approveDevicePairing: connect.NewClient[v1.ApproveDevicePairingRequest, v1.ApproveDevicePairingResponse](
-			httpClient,
-			baseURL+LocalServiceApproveDevicePairingProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ApproveDevicePairing")),
 			connect.WithClientOptions(opts...),
 		),
 		removeDevice: connect.NewClient[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse](
@@ -648,52 +568,10 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("FinishErase")),
 			connect.WithClientOptions(opts...),
 		),
-		watchSigningRequests: connect.NewClient[v1.WatchSigningRequestsRequest, v1.SigningRequest](
-			httpClient,
-			baseURL+LocalServiceWatchSigningRequestsProcedure,
-			connect.WithSchema(localServiceMethods.ByName("WatchSigningRequests")),
-			connect.WithClientOptions(opts...),
-		),
-		completeSigningRequest: connect.NewClient[v1.CompleteSigningRequestRequest, v1.CompleteSigningRequestResponse](
-			httpClient,
-			baseURL+LocalServiceCompleteSigningRequestProcedure,
-			connect.WithSchema(localServiceMethods.ByName("CompleteSigningRequest")),
-			connect.WithClientOptions(opts...),
-		),
-		showSigner: connect.NewClient[v1.ShowSignerRequest, v1.ShowSignerResponse](
-			httpClient,
-			baseURL+LocalServiceShowSignerProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ShowSigner")),
-			connect.WithClientOptions(opts...),
-		),
 		setLocalMachine: connect.NewClient[v1.SetLocalMachineRequest, v1.SetLocalMachineResponse](
 			httpClient,
 			baseURL+LocalServiceSetLocalMachineProcedure,
 			connect.WithSchema(localServiceMethods.ByName("SetLocalMachine")),
-			connect.WithClientOptions(opts...),
-		),
-		lookupPairing: connect.NewClient[v1.LookupPairingRequest, v1.LookupPairingResponse](
-			httpClient,
-			baseURL+LocalServiceLookupPairingProcedure,
-			connect.WithSchema(localServiceMethods.ByName("LookupPairing")),
-			connect.WithClientOptions(opts...),
-		),
-		listPairingRequests: connect.NewClient[v1.ListPairingRequestsRequest, v1.ListPairingRequestsResponse](
-			httpClient,
-			baseURL+LocalServiceListPairingRequestsProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ListPairingRequests")),
-			connect.WithClientOptions(opts...),
-		),
-		approveMachinePairing: connect.NewClient[v1.ApproveMachinePairingRequest, v1.ApproveMachinePairingResponse](
-			httpClient,
-			baseURL+LocalServiceApproveMachinePairingProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ApproveMachinePairing")),
-			connect.WithClientOptions(opts...),
-		),
-		approveClientPairing: connect.NewClient[v1.ApproveClientPairingRequest, v1.ApproveClientPairingResponse](
-			httpClient,
-			baseURL+LocalServiceApproveClientPairingProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ApproveClientPairing")),
 			connect.WithClientOptions(opts...),
 		),
 		listMachines: connect.NewClient[v1.ListMachinesRequest, v1.ListMachinesResponse](
@@ -1087,27 +965,16 @@ type localServiceClient struct {
 	signOut                  *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
 	signIn                   *connect.Client[v1.SignInRequest, v1.SignInResponse]
 	setup                    *connect.Client[v1.SetupRequest, v1.SetupResponse]
-	requestJoin              *connect.Client[v1.RequestJoinRequest, v1.RequestJoinResponse]
-	waitJoin                 *connect.Client[v1.WaitJoinRequest, v1.WaitJoinResponse]
-	confirmJoin              *connect.Client[v1.ConfirmJoinRequest, v1.ConfirmJoinResponse]
-	passwordLogin            *connect.Client[v1.PasswordLoginRequest, v1.PasswordLoginResponse]
-	setLoginPassword         *connect.Client[v1.SetLoginPasswordRequest, v1.SetLoginPasswordResponse]
-	getLoginPassword         *connect.Client[v1.GetLoginPasswordRequest, v1.GetLoginPasswordResponse]
+	logIn                    *connect.Client[v1.LogInRequest, v1.LogInResponse]
+	getLogin                 *connect.Client[v1.GetLoginRequest, v1.GetLoginResponse]
+	setLogin                 *connect.Client[v1.SetLoginRequest, v1.SetLoginResponse]
 	listDevices              *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
-	approveDevicePairing     *connect.Client[v1.ApproveDevicePairingRequest, v1.ApproveDevicePairingResponse]
 	removeDevice             *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
 	leave                    *connect.Client[v1.LeaveRequest, v1.LeaveResponse]
 	eraseEverything          *connect.Client[v1.EraseEverythingRequest, v1.EraseEverythingResponse]
 	eraseStatus              *connect.Client[v1.EraseStatusRequest, v1.EraseStatusResponse]
 	finishErase              *connect.Client[v1.FinishEraseRequest, v1.FinishEraseResponse]
-	watchSigningRequests     *connect.Client[v1.WatchSigningRequestsRequest, v1.SigningRequest]
-	completeSigningRequest   *connect.Client[v1.CompleteSigningRequestRequest, v1.CompleteSigningRequestResponse]
-	showSigner               *connect.Client[v1.ShowSignerRequest, v1.ShowSignerResponse]
 	setLocalMachine          *connect.Client[v1.SetLocalMachineRequest, v1.SetLocalMachineResponse]
-	lookupPairing            *connect.Client[v1.LookupPairingRequest, v1.LookupPairingResponse]
-	listPairingRequests      *connect.Client[v1.ListPairingRequestsRequest, v1.ListPairingRequestsResponse]
-	approveMachinePairing    *connect.Client[v1.ApproveMachinePairingRequest, v1.ApproveMachinePairingResponse]
-	approveClientPairing     *connect.Client[v1.ApproveClientPairingRequest, v1.ApproveClientPairingResponse]
 	listMachines             *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
 	renameMachine            *connect.Client[v1.RenameMachineRequest, v1.RenameMachineResponse]
 	setMachinePaused         *connect.Client[v1.SetMachinePausedRequest, v1.SetMachinePausedResponse]
@@ -1241,54 +1108,27 @@ func (c *localServiceClient) Setup(ctx context.Context, req *v1.SetupRequest) (*
 	return nil, err
 }
 
-// RequestJoin calls hermesh.local.v1.LocalService.RequestJoin.
-func (c *localServiceClient) RequestJoin(ctx context.Context, req *v1.RequestJoinRequest) (*v1.RequestJoinResponse, error) {
-	response, err := c.requestJoin.CallUnary(ctx, connect.NewRequest(req))
+// LogIn calls hermesh.local.v1.LocalService.LogIn.
+func (c *localServiceClient) LogIn(ctx context.Context, req *v1.LogInRequest) (*v1.LogInResponse, error) {
+	response, err := c.logIn.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
 	return nil, err
 }
 
-// WaitJoin calls hermesh.local.v1.LocalService.WaitJoin.
-func (c *localServiceClient) WaitJoin(ctx context.Context, req *v1.WaitJoinRequest) (*v1.WaitJoinResponse, error) {
-	response, err := c.waitJoin.CallUnary(ctx, connect.NewRequest(req))
+// GetLogin calls hermesh.local.v1.LocalService.GetLogin.
+func (c *localServiceClient) GetLogin(ctx context.Context, req *v1.GetLoginRequest) (*v1.GetLoginResponse, error) {
+	response, err := c.getLogin.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
 	return nil, err
 }
 
-// ConfirmJoin calls hermesh.local.v1.LocalService.ConfirmJoin.
-func (c *localServiceClient) ConfirmJoin(ctx context.Context, req *v1.ConfirmJoinRequest) (*v1.ConfirmJoinResponse, error) {
-	response, err := c.confirmJoin.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// PasswordLogin calls hermesh.local.v1.LocalService.PasswordLogin.
-func (c *localServiceClient) PasswordLogin(ctx context.Context, req *v1.PasswordLoginRequest) (*v1.PasswordLoginResponse, error) {
-	response, err := c.passwordLogin.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// SetLoginPassword calls hermesh.local.v1.LocalService.SetLoginPassword.
-func (c *localServiceClient) SetLoginPassword(ctx context.Context, req *v1.SetLoginPasswordRequest) (*v1.SetLoginPasswordResponse, error) {
-	response, err := c.setLoginPassword.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// GetLoginPassword calls hermesh.local.v1.LocalService.GetLoginPassword.
-func (c *localServiceClient) GetLoginPassword(ctx context.Context, req *v1.GetLoginPasswordRequest) (*v1.GetLoginPasswordResponse, error) {
-	response, err := c.getLoginPassword.CallUnary(ctx, connect.NewRequest(req))
+// SetLogin calls hermesh.local.v1.LocalService.SetLogin.
+func (c *localServiceClient) SetLogin(ctx context.Context, req *v1.SetLoginRequest) (*v1.SetLoginResponse, error) {
+	response, err := c.setLogin.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1298,15 +1138,6 @@ func (c *localServiceClient) GetLoginPassword(ctx context.Context, req *v1.GetLo
 // ListDevices calls hermesh.local.v1.LocalService.ListDevices.
 func (c *localServiceClient) ListDevices(ctx context.Context, req *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error) {
 	response, err := c.listDevices.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ApproveDevicePairing calls hermesh.local.v1.LocalService.ApproveDevicePairing.
-func (c *localServiceClient) ApproveDevicePairing(ctx context.Context, req *v1.ApproveDevicePairingRequest) (*v1.ApproveDevicePairingResponse, error) {
-	response, err := c.approveDevicePairing.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1358,68 +1189,9 @@ func (c *localServiceClient) FinishErase(ctx context.Context, req *v1.FinishEras
 	return nil, err
 }
 
-// WatchSigningRequests calls hermesh.local.v1.LocalService.WatchSigningRequests.
-func (c *localServiceClient) WatchSigningRequests(ctx context.Context, req *v1.WatchSigningRequestsRequest) (*connect.ServerStreamForClient[v1.SigningRequest], error) {
-	return c.watchSigningRequests.CallServerStream(ctx, connect.NewRequest(req))
-}
-
-// CompleteSigningRequest calls hermesh.local.v1.LocalService.CompleteSigningRequest.
-func (c *localServiceClient) CompleteSigningRequest(ctx context.Context, req *v1.CompleteSigningRequestRequest) (*v1.CompleteSigningRequestResponse, error) {
-	response, err := c.completeSigningRequest.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ShowSigner calls hermesh.local.v1.LocalService.ShowSigner.
-func (c *localServiceClient) ShowSigner(ctx context.Context, req *v1.ShowSignerRequest) (*v1.ShowSignerResponse, error) {
-	response, err := c.showSigner.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
 // SetLocalMachine calls hermesh.local.v1.LocalService.SetLocalMachine.
 func (c *localServiceClient) SetLocalMachine(ctx context.Context, req *v1.SetLocalMachineRequest) (*v1.SetLocalMachineResponse, error) {
 	response, err := c.setLocalMachine.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// LookupPairing calls hermesh.local.v1.LocalService.LookupPairing.
-func (c *localServiceClient) LookupPairing(ctx context.Context, req *v1.LookupPairingRequest) (*v1.LookupPairingResponse, error) {
-	response, err := c.lookupPairing.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ListPairingRequests calls hermesh.local.v1.LocalService.ListPairingRequests.
-func (c *localServiceClient) ListPairingRequests(ctx context.Context, req *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error) {
-	response, err := c.listPairingRequests.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ApproveMachinePairing calls hermesh.local.v1.LocalService.ApproveMachinePairing.
-func (c *localServiceClient) ApproveMachinePairing(ctx context.Context, req *v1.ApproveMachinePairingRequest) (*v1.ApproveMachinePairingResponse, error) {
-	response, err := c.approveMachinePairing.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ApproveClientPairing calls hermesh.local.v1.LocalService.ApproveClientPairing.
-func (c *localServiceClient) ApproveClientPairing(ctx context.Context, req *v1.ApproveClientPairingRequest) (*v1.ApproveClientPairingResponse, error) {
-	response, err := c.approveClientPairing.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -2001,37 +1773,28 @@ type LocalServiceHandler interface {
 	// Signs the current profile in again: on a hosted center with a link
 	// code from a browser sign-in to the account that owns it.
 	SignIn(context.Context, *v1.SignInRequest) (*v1.SignInResponse, error)
-	// Onboarding: the first trusted device creates the owner.
+	// Onboarding (docs/accounts.md): a new server is set up with the setup
+	// code it printed and the account and password it will keep; any other
+	// device logs in with the server, the account and the password. Either
+	// way the server signs this device in itself: no other device approves,
+	// no codes are compared.
 	Setup(context.Context, *v1.SetupRequest) (*v1.SetupResponse, error)
-	// Another device joins the owner (docs/trusted-devices.md 4.2): it asks,
-	// waits for a trusted device to approve, then the person confirms they
-	// approved it there, and only then is the owner kept.
-	RequestJoin(context.Context, *v1.RequestJoinRequest) (*v1.RequestJoinResponse, error)
-	// Long poll: returns when approved or expired, or after about 25s.
-	WaitJoin(context.Context, *v1.WaitJoinRequest) (*v1.WaitJoinResponse, error)
-	ConfirmJoin(context.Context, *v1.ConfirmJoinRequest) (*v1.ConfirmJoinResponse, error)
-	// Joins with the owner's account and password instead (docs/password-login.md):
-	// no other device, no codes, no digits. The device becomes a trusted
-	// device as a join would make it.
-	PasswordLogin(context.Context, *v1.PasswordLoginRequest) (*v1.PasswordLoginResponse, error)
-	// On a trusted device: turns logging in with an account and password on,
-	// changes the password (every device and agent that logged in with the
-	// old one is signed out), or turns it off. One Touch ID.
-	SetLoginPassword(context.Context, *v1.SetLoginPasswordRequest) (*v1.SetLoginPasswordResponse, error)
-	GetLoginPassword(context.Context, *v1.GetLoginPasswordRequest) (*v1.GetLoginPasswordResponse, error)
-	// Trusted devices.
+	LogIn(context.Context, *v1.LogInRequest) (*v1.LogInResponse, error)
+	// The account: its name; changing it or the password needs the current
+	// password, and a new password signs out every other device and agent
+	// that logged in.
+	GetLogin(context.Context, *v1.GetLoginRequest) (*v1.GetLoginResponse, error)
+	SetLogin(context.Context, *v1.SetLoginRequest) (*v1.SetLoginResponse, error)
+	// The owner's devices.
 	ListDevices(context.Context, *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error)
-	// Approves a device's join request: signs the next root cert with it.
-	ApproveDevicePairing(context.Context, *v1.ApproveDevicePairingRequest) (*v1.ApproveDevicePairingResponse, error)
-	// Removes another device: the next root cert without it, what it signed
-	// re-issued by this one, and its own machine revoked.
+	// Signs another device out: it can no longer connect, and its own machine
+	// is removed.
 	RemoveDevice(context.Context, *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error)
-	// Forgets the owner on this device, after it was removed, so it can be
-	// set up again or join again: its root key is deleted, and its own
-	// machine keeps its projects.
+	// Forgets the owner on this device, after it was removed, so it can log
+	// in again: its own machine keeps its projects.
 	Leave(context.Context, *v1.LeaveRequest) (*v1.LeaveResponse, error)
 	// Erases Hermesh on every device of the owner (docs/erase-everything.md):
-	// signs the order (Touch ID) and hands it to the relay. This device keeps
+	// the server signs the order and keeps it. This device keeps
 	// running until FinishErase, to show the others acking.
 	EraseEverything(context.Context, *v1.EraseEverythingRequest) (*v1.EraseEverythingResponse, error)
 	// How an erase stands: each device, machine and agent, and whether it
@@ -2039,21 +1802,8 @@ type LocalServiceHandler interface {
 	EraseStatus(context.Context, *v1.EraseStatusRequest) (*v1.EraseStatusResponse, error)
 	// Erases this device too: the app opens on its first run.
 	FinishErase(context.Context, *v1.FinishEraseRequest) (*v1.FinishEraseResponse, error)
-	// Signing delegation.
-	WatchSigningRequests(context.Context, *v1.WatchSigningRequestsRequest, *connect.ServerStream[v1.SigningRequest]) error
-	CompleteSigningRequest(context.Context, *v1.CompleteSigningRequestRequest) (*v1.CompleteSigningRequestResponse, error)
-	// Brings the signer's open approval forward, for a signer that is not the
-	// app's child (Windows: docs/windows.md §7.3).
-	ShowSigner(context.Context, *v1.ShowSignerRequest) (*v1.ShowSignerResponse, error)
 	// This Mac as an execution machine.
 	SetLocalMachine(context.Context, *v1.SetLocalMachineRequest) (*v1.SetLocalMachineResponse, error)
-	// Pairing.
-	LookupPairing(context.Context, *v1.LookupPairingRequest) (*v1.LookupPairingResponse, error)
-	// Requests waiting for this owner's approval, newest first: machines and
-	// personal agents that used the connection address.
-	ListPairingRequests(context.Context, *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error)
-	ApproveMachinePairing(context.Context, *v1.ApproveMachinePairingRequest) (*v1.ApproveMachinePairingResponse, error)
-	ApproveClientPairing(context.Context, *v1.ApproveClientPairingRequest) (*v1.ApproveClientPairingResponse, error)
 	// Machines.
 	ListMachines(context.Context, *v1.ListMachinesRequest) (*v1.ListMachinesResponse, error)
 	RenameMachine(context.Context, *v1.RenameMachineRequest) (*v1.RenameMachineResponse, error)
@@ -2251,52 +2001,28 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("Setup")),
 		connect.WithHandlerOptions(opts...),
 	)
-	localServiceRequestJoinHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceRequestJoinProcedure,
-		svc.RequestJoin,
-		connect.WithSchema(localServiceMethods.ByName("RequestJoin")),
+	localServiceLogInHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceLogInProcedure,
+		svc.LogIn,
+		connect.WithSchema(localServiceMethods.ByName("LogIn")),
 		connect.WithHandlerOptions(opts...),
 	)
-	localServiceWaitJoinHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceWaitJoinProcedure,
-		svc.WaitJoin,
-		connect.WithSchema(localServiceMethods.ByName("WaitJoin")),
+	localServiceGetLoginHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceGetLoginProcedure,
+		svc.GetLogin,
+		connect.WithSchema(localServiceMethods.ByName("GetLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
-	localServiceConfirmJoinHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceConfirmJoinProcedure,
-		svc.ConfirmJoin,
-		connect.WithSchema(localServiceMethods.ByName("ConfirmJoin")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServicePasswordLoginHandler := connect.NewUnaryHandlerSimple(
-		LocalServicePasswordLoginProcedure,
-		svc.PasswordLogin,
-		connect.WithSchema(localServiceMethods.ByName("PasswordLogin")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceSetLoginPasswordHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceSetLoginPasswordProcedure,
-		svc.SetLoginPassword,
-		connect.WithSchema(localServiceMethods.ByName("SetLoginPassword")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceGetLoginPasswordHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceGetLoginPasswordProcedure,
-		svc.GetLoginPassword,
-		connect.WithSchema(localServiceMethods.ByName("GetLoginPassword")),
+	localServiceSetLoginHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetLoginProcedure,
+		svc.SetLogin,
+		connect.WithSchema(localServiceMethods.ByName("SetLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListDevicesHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListDevicesProcedure,
 		svc.ListDevices,
 		connect.WithSchema(localServiceMethods.ByName("ListDevices")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceApproveDevicePairingHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceApproveDevicePairingProcedure,
-		svc.ApproveDevicePairing,
-		connect.WithSchema(localServiceMethods.ByName("ApproveDevicePairing")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceRemoveDeviceHandler := connect.NewUnaryHandlerSimple(
@@ -2329,52 +2055,10 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("FinishErase")),
 		connect.WithHandlerOptions(opts...),
 	)
-	localServiceWatchSigningRequestsHandler := connect.NewServerStreamHandlerSimple(
-		LocalServiceWatchSigningRequestsProcedure,
-		svc.WatchSigningRequests,
-		connect.WithSchema(localServiceMethods.ByName("WatchSigningRequests")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceCompleteSigningRequestHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceCompleteSigningRequestProcedure,
-		svc.CompleteSigningRequest,
-		connect.WithSchema(localServiceMethods.ByName("CompleteSigningRequest")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceShowSignerHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceShowSignerProcedure,
-		svc.ShowSigner,
-		connect.WithSchema(localServiceMethods.ByName("ShowSigner")),
-		connect.WithHandlerOptions(opts...),
-	)
 	localServiceSetLocalMachineHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceSetLocalMachineProcedure,
 		svc.SetLocalMachine,
 		connect.WithSchema(localServiceMethods.ByName("SetLocalMachine")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceLookupPairingHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceLookupPairingProcedure,
-		svc.LookupPairing,
-		connect.WithSchema(localServiceMethods.ByName("LookupPairing")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceListPairingRequestsHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceListPairingRequestsProcedure,
-		svc.ListPairingRequests,
-		connect.WithSchema(localServiceMethods.ByName("ListPairingRequests")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceApproveMachinePairingHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceApproveMachinePairingProcedure,
-		svc.ApproveMachinePairing,
-		connect.WithSchema(localServiceMethods.ByName("ApproveMachinePairing")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceApproveClientPairingHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceApproveClientPairingProcedure,
-		svc.ApproveClientPairing,
-		connect.WithSchema(localServiceMethods.ByName("ApproveClientPairing")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListMachinesHandler := connect.NewUnaryHandlerSimple(
@@ -2773,22 +2457,14 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceSignInHandler.ServeHTTP(w, r)
 		case LocalServiceSetupProcedure:
 			localServiceSetupHandler.ServeHTTP(w, r)
-		case LocalServiceRequestJoinProcedure:
-			localServiceRequestJoinHandler.ServeHTTP(w, r)
-		case LocalServiceWaitJoinProcedure:
-			localServiceWaitJoinHandler.ServeHTTP(w, r)
-		case LocalServiceConfirmJoinProcedure:
-			localServiceConfirmJoinHandler.ServeHTTP(w, r)
-		case LocalServicePasswordLoginProcedure:
-			localServicePasswordLoginHandler.ServeHTTP(w, r)
-		case LocalServiceSetLoginPasswordProcedure:
-			localServiceSetLoginPasswordHandler.ServeHTTP(w, r)
-		case LocalServiceGetLoginPasswordProcedure:
-			localServiceGetLoginPasswordHandler.ServeHTTP(w, r)
+		case LocalServiceLogInProcedure:
+			localServiceLogInHandler.ServeHTTP(w, r)
+		case LocalServiceGetLoginProcedure:
+			localServiceGetLoginHandler.ServeHTTP(w, r)
+		case LocalServiceSetLoginProcedure:
+			localServiceSetLoginHandler.ServeHTTP(w, r)
 		case LocalServiceListDevicesProcedure:
 			localServiceListDevicesHandler.ServeHTTP(w, r)
-		case LocalServiceApproveDevicePairingProcedure:
-			localServiceApproveDevicePairingHandler.ServeHTTP(w, r)
 		case LocalServiceRemoveDeviceProcedure:
 			localServiceRemoveDeviceHandler.ServeHTTP(w, r)
 		case LocalServiceLeaveProcedure:
@@ -2799,22 +2475,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceEraseStatusHandler.ServeHTTP(w, r)
 		case LocalServiceFinishEraseProcedure:
 			localServiceFinishEraseHandler.ServeHTTP(w, r)
-		case LocalServiceWatchSigningRequestsProcedure:
-			localServiceWatchSigningRequestsHandler.ServeHTTP(w, r)
-		case LocalServiceCompleteSigningRequestProcedure:
-			localServiceCompleteSigningRequestHandler.ServeHTTP(w, r)
-		case LocalServiceShowSignerProcedure:
-			localServiceShowSignerHandler.ServeHTTP(w, r)
 		case LocalServiceSetLocalMachineProcedure:
 			localServiceSetLocalMachineHandler.ServeHTTP(w, r)
-		case LocalServiceLookupPairingProcedure:
-			localServiceLookupPairingHandler.ServeHTTP(w, r)
-		case LocalServiceListPairingRequestsProcedure:
-			localServiceListPairingRequestsHandler.ServeHTTP(w, r)
-		case LocalServiceApproveMachinePairingProcedure:
-			localServiceApproveMachinePairingHandler.ServeHTTP(w, r)
-		case LocalServiceApproveClientPairingProcedure:
-			localServiceApproveClientPairingHandler.ServeHTTP(w, r)
 		case LocalServiceListMachinesProcedure:
 			localServiceListMachinesHandler.ServeHTTP(w, r)
 		case LocalServiceRenameMachineProcedure:
@@ -2982,36 +2644,20 @@ func (UnimplementedLocalServiceHandler) Setup(context.Context, *v1.SetupRequest)
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.Setup is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) RequestJoin(context.Context, *v1.RequestJoinRequest) (*v1.RequestJoinResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.RequestJoin is not implemented"))
+func (UnimplementedLocalServiceHandler) LogIn(context.Context, *v1.LogInRequest) (*v1.LogInResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.LogIn is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) WaitJoin(context.Context, *v1.WaitJoinRequest) (*v1.WaitJoinResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.WaitJoin is not implemented"))
+func (UnimplementedLocalServiceHandler) GetLogin(context.Context, *v1.GetLoginRequest) (*v1.GetLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.GetLogin is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) ConfirmJoin(context.Context, *v1.ConfirmJoinRequest) (*v1.ConfirmJoinResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ConfirmJoin is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) PasswordLogin(context.Context, *v1.PasswordLoginRequest) (*v1.PasswordLoginResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.PasswordLogin is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) SetLoginPassword(context.Context, *v1.SetLoginPasswordRequest) (*v1.SetLoginPasswordResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.SetLoginPassword is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) GetLoginPassword(context.Context, *v1.GetLoginPasswordRequest) (*v1.GetLoginPasswordResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.GetLoginPassword is not implemented"))
+func (UnimplementedLocalServiceHandler) SetLogin(context.Context, *v1.SetLoginRequest) (*v1.SetLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.SetLogin is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListDevices(context.Context, *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ListDevices is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) ApproveDevicePairing(context.Context, *v1.ApproveDevicePairingRequest) (*v1.ApproveDevicePairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ApproveDevicePairing is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) RemoveDevice(context.Context, *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error) {
@@ -3034,36 +2680,8 @@ func (UnimplementedLocalServiceHandler) FinishErase(context.Context, *v1.FinishE
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.FinishErase is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) WatchSigningRequests(context.Context, *v1.WatchSigningRequestsRequest, *connect.ServerStream[v1.SigningRequest]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.WatchSigningRequests is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) CompleteSigningRequest(context.Context, *v1.CompleteSigningRequestRequest) (*v1.CompleteSigningRequestResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.CompleteSigningRequest is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) ShowSigner(context.Context, *v1.ShowSignerRequest) (*v1.ShowSignerResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ShowSigner is not implemented"))
-}
-
 func (UnimplementedLocalServiceHandler) SetLocalMachine(context.Context, *v1.SetLocalMachineRequest) (*v1.SetLocalMachineResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.SetLocalMachine is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) LookupPairing(context.Context, *v1.LookupPairingRequest) (*v1.LookupPairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.LookupPairing is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) ListPairingRequests(context.Context, *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ListPairingRequests is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) ApproveMachinePairing(context.Context, *v1.ApproveMachinePairingRequest) (*v1.ApproveMachinePairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ApproveMachinePairing is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) ApproveClientPairing(context.Context, *v1.ApproveClientPairingRequest) (*v1.ApproveClientPairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.ApproveClientPairing is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListMachines(context.Context, *v1.ListMachinesRequest) (*v1.ListMachinesResponse, error) {
