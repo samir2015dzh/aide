@@ -15,9 +15,9 @@ import (
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 )
 
-// TestEraseEverything: from one trusted device, with one approval, the
-// owner erases Hermesh everywhere (docs/erase-everything.md). The other
-// trusted device, a Mac that is only a machine, a machine on a server and
+// TestEraseEverything: from one of the owner's devices (the server signs
+// the order), the owner erases Aide everywhere (docs/erase-everything.md).
+// The other device, a Mac that is only a machine, a machine on a server and
 // the agent each erase themselves when the relay refuses them; a machine
 // that was off does so when it next starts. A worktree with uncommitted
 // changes is kept, a clean one is not. The relay can be claimed again, and
@@ -112,6 +112,10 @@ func TestEraseEverything(t *testing.T) {
 
 	// What it would erase, shown before asking: each device, machine and
 	// agent once (the Mac's own machine is the Mac), with who is online.
+	eventually(t, 30*time.Second, "the Mac lists mac2 among the devices", func() bool {
+		res, err := w.app.client.ListDevices(ctx, &localv1.ListDevicesRequest{})
+		return err == nil && len(res.Devices) == 2
+	})
 	preview, err := w.app.client.EraseStatus(ctx, &localv1.EraseStatusRequest{})
 	if err != nil {
 		t.Fatal(err)
@@ -268,8 +272,8 @@ func TestEraseEverything(t *testing.T) {
 
 // TestEraseThisMachine: `hermeshd erase` on a server erases its machine
 // only: not while it runs, then unpaired (its owner's devices stop listing
-// it) and its data gone. On a trusted device it says which command erases
-// everything instead.
+// it) and its data gone. On one of the owner's devices it says where to
+// erase everything instead.
 func TestEraseThisMachine(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -304,9 +308,9 @@ func TestEraseThisMachine(t *testing.T) {
 	}
 	eventually(t, 30*time.Second, "vps-1 gone from the owner's machines", func() bool { return !listed() })
 
-	// A trusted device (this Mac's owner role) erases everything instead.
+	// One of the owner's devices (this Mac's owner role) erases everything instead, in the app.
 	if r := run(t, nil, 30*time.Second, daemon, "erase", "--yes", "--data-dir", filepath.Join(w.tmp, "owner-mac")); r.code == 0 ||
-		!strings.Contains(r.stderr, "aided device erase-everything") {
-		t.Fatalf("erase on a trusted device: %+v", r)
+		!strings.Contains(r.stderr, "erase Aide on all your devices in the app") {
+		t.Fatalf("erase on one of the owner's devices: %+v", r)
 	}
 }

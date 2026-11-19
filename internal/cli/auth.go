@@ -79,8 +79,10 @@ func (a *app) alreadyPaired(ctx context.Context, w io.Writer, relayURL, ownerID 
 		return false, "", &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("cannot read the login stored in %s (%v)", a.home, err),
 			hint: "run `aide auth logout`, then log in again"}
 	}
-	if (ownerID != "" && ownerID != a.st.OwnerID || ownerID == "" && relayURL != a.st.RelayURL) &&
-		machine.OwnerGone(ctx, a.hc, a.st.RelayURL, a.st.OwnerID) {
+	// Asked whatever the owner logged in to now: logging in names the
+	// server and the account, not the owner, and a server set up again
+	// after erasing everything has a new owner at the same address.
+	if machine.OwnerGone(ctx, a.hc, a.st.RelayURL, a.st.OwnerID) {
 		// The owner erased everything, or was reset: nothing to keep, pair with the new one.
 		fmt.Fprintf(w, "The previous owner %s is gone from its server (it erased everything); logging in to the new one.\n", a.st.OwnerID)
 		previous = a.g.ClientLabel

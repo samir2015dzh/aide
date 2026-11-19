@@ -187,19 +187,20 @@ func TestUserJourney(t *testing.T) {
 		if spec.Label == "" {
 			spec.Label = name
 		}
-		cs, err := app.client.ListClients(ctx, &localv1.ListClientsRequest{})
-		if err != nil {
+		// The Mac learns of it from the server's watch.
+		var grant string
+		eventually(t, 30*time.Second, "the agent "+name+" listed", func() bool {
+			cs, err := app.client.ListClients(ctx, &localv1.ListClientsRequest{})
+			for _, c := range cs.GetClients() {
+				if err == nil && c.Label == name {
+					grant = c.GrantId
+				}
+			}
+			return grant != ""
+		})
+		if _, err := app.client.UpdateClient(ctx, &localv1.UpdateClientRequest{GrantId: grant, Spec: spec}); err != nil {
 			t.Fatal(err)
 		}
-		for _, c := range cs.Clients {
-			if c.Label == name {
-				if _, err := app.client.UpdateClient(ctx, &localv1.UpdateClientRequest{GrantId: c.GrantId, Spec: spec}); err != nil {
-					t.Fatal(err)
-				}
-				return
-			}
-		}
-		t.Fatalf("the agent %s is not listed: %v", name, cs.Clients)
 	}
 	pairClient(grokEnv, "grok", &localv1.GrantSpec{})
 	if r := cli(grokEnv, 20*time.Second, "auth", "login", addr); !strings.Contains(r.stdout, "Already logged in") {

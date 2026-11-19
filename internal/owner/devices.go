@@ -2,6 +2,7 @@ package owner
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/ecdsa"
 	"errors"
@@ -94,6 +95,16 @@ func (o *Owner) ListDevices(ctx context.Context) ([]*localv1.Device, error) {
 		}
 		out = append(out, d)
 	}
+	// This device first, then the others by name.
+	slices.SortStableFunc(out, func(a, b *localv1.Device) int {
+		if a.ThisDevice != b.ThisDevice {
+			if a.ThisDevice {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(a.Label, b.Label)
+	})
 	return out, nil
 }
 

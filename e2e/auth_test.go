@@ -13,7 +13,6 @@ import (
 	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
 	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
@@ -181,13 +180,12 @@ func TestAuth(t *testing.T) {
 		t.Fatalf("status after pairing again: %+v", r)
 	}
 
-	// Another owner's address is refused while paired with this one.
-	relayURL, _, _ := connaddr.Parse(w.addr)
-	r = cli(w.cliEnv, "auth", "login", connaddr.Format(relayURL, "o_"+strings.Repeat("a", 24)))
+	// Another server is refused while logged in to this one.
+	r = cli(w.cliEnv, "auth", "login", "http://127.0.0.1:1")
 	if r.code != 2 {
-		t.Fatalf("login, other owner: %+v", r)
+		t.Fatalf("login, other server: %+v", r)
 	}
-	has(r, "login, other owner", "already logged in", "aide auth logout")
+	has(r, "login, other server", "already logged in", "aide auth logout")
 
 	// Logout forgets the key and the grant, and says the owner still lists
 	// the agent until they revoke it.

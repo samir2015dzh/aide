@@ -144,9 +144,11 @@ func (o *Owner) joiner(label, platform, localMachine string) (*relayv1.Joiner, *
 // asked for one, its own machine, which it then starts.
 func (o *Owner) loggedIn(ctx context.Context, relayURL string, res *relayv1.LogInResponse, j *relayv1.Joiner, device *identity.SoftwareKey,
 	n *machine.Machine, localMachine string) error {
-	if n != nil {
-		defer n.Close()
-	}
+	defer func() {
+		if n != nil {
+			n.Close()
+		}
+	}()
 	if err := machine.CheckLogIn(res, j); err != nil {
 		return err
 	}
@@ -164,7 +166,9 @@ func (o *Owner) loggedIn(ctx context.Context, relayURL string, res *relayv1.LogI
 		return o.rebindLocalMachine(ctx, res.RootChain, res.MachineCert)
 	}
 	if n != nil {
+		// Closed before the machine is installed, which opens it again.
 		n.Close()
+		n = nil
 	}
 	if res.MachineName != "" {
 		localMachine = res.MachineName

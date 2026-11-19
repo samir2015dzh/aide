@@ -155,8 +155,9 @@ func TestLinuxUninstall(t *testing.T) {
 	}
 }
 
-// TestUninstallTrustedDevice: on a trusted device `hermeshd uninstall`
-// removes nothing: its key may be what holds the owner's Hermesh.
+// TestUninstallTrustedDevice: on one of the owner's devices `hermeshd
+// uninstall` removes nothing: the device is signed out from another first,
+// so it is not left listed.
 func TestUninstallTrustedDevice(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -174,8 +175,8 @@ func TestUninstallTrustedDevice(t *testing.T) {
 	os.WriteFile(daemon, b, 0o755)
 	data := filepath.Join(w.tmp, "owner-mac")
 	r := run(t, nil, 30*time.Second, daemon, "uninstall", "--yes", "--data-dir", data)
-	if r.code == 0 || !strings.Contains(r.stderr, "trusted device") {
-		t.Fatalf("uninstall on a trusted device: %+v", r)
+	if r.code == 0 || !strings.Contains(r.stderr, "one of your devices") {
+		t.Fatalf("uninstall on one of the owner's devices: %+v", r)
 	}
 	if _, err := os.Stat(daemon); err != nil {
 		t.Fatalf("hermeshd removed: %v", err)

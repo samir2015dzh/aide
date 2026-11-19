@@ -141,10 +141,12 @@ func TestMCPGateway(t *testing.T) {
 	if places.Projects[0].Project != "owner-mac/demo" {
 		t.Fatalf("projects: %s", doc.raw)
 	}
-	clients, err := mac.client.ListClients(ctx, &localv1.ListClientsRequest{})
-	if err != nil || len(clients.Clients) != 1 {
-		t.Fatalf("clients: %v %v", clients, err)
-	}
+	// The Mac learns of it from the server's watch.
+	var clients *localv1.ListClientsResponse
+	eventually(t, 30*time.Second, "the MCP client among the Mac's agents", func() bool {
+		clients, err = mac.client.ListClients(ctx, &localv1.ListClientsRequest{})
+		return err == nil && len(clients.Clients) == 1
+	})
 	mcpClient := clients.Clients[0]
 	if mcpClient.Custodian != base || mcpClient.Spec.TaskVisibility != identityv1.TaskVisibility_TASK_VISIBILITY_ALL {
 		t.Fatalf("the MCP client's grant: %+v", mcpClient)
