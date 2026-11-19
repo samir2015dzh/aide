@@ -42,7 +42,7 @@ fun openAppSettings(context: Context) {
     }
 }
 
-/** The switch for staying connected in the background, the connection, and the way to HyperOS's settings (Machines › This phone). */
+/** The switch for staying connected in the background, the connection, and the way to HyperOS's settings (Settings › This phone). */
 @Composable
 fun KeepaliveSettings(model: AppModel) {
     val on by model.keepalive.enabled.collectAsState()

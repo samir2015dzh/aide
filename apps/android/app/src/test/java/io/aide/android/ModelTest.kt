@@ -2,7 +2,6 @@ package io.aide.android
 
 import io.aide.android.api.Client
 import io.aide.android.api.Machine
-import io.aide.android.api.PairingDetails
 import io.aide.android.api.Question
 import io.aide.android.api.QuestionItem
 import io.aide.android.api.QuestionOption
@@ -11,25 +10,32 @@ import io.aide.android.api.SessionProgress
 import io.aide.android.api.SessionStatus
 import io.aide.android.api.WatchResponse
 import io.aide.android.api.Answer
-import io.aide.android.model.ConnectAddress
-import io.aide.android.model.PairingLink
+import io.aide.android.api.ApiError
+import io.aide.android.api.Device
 import io.aide.android.model.World
 import io.aide.android.model.buildAnswers
 import io.aide.android.model.choose
+import io.aide.android.model.loginError
+import io.aide.android.model.newLoginProblem
+import io.aide.android.model.plainHttp
 import io.aide.android.model.serverURL
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class WorldTest {
     private fun s(id: String, status: String, at: String, by: String = "c_1") = Session(sessionId = id, status = status, updatedAt = at, createdBy = by)
 
     @Test fun resetReplacesAllButSessions() {
-        var w = World().apply(WatchResponse(reset = true, machines = listOf(Machine("m_1", "b")), pairings = listOf(PairingDetails(code = "P1")),
+        var w = World().apply(WatchResponse(reset = true, machines = listOf(Machine("m_1", "b")), devices = listOf(Device("k_1", "Pixel"), Device("k_2", "Mac")),
             sessions = listOf(s("old", SessionStatus.IDLE, "2026-01-01T00:00:00Z"))))
-        w = w.apply(WatchResponse(machines = listOf(Machine("m_2", "a")), removedPairingCodes = listOf("P1")))
+        w = w.apply(WatchResponse(machines = listOf(Machine("m_2", "a")), removedDeviceKeyIds = listOf("k_2")))
         assertEquals(listOf("a", "b"), w.machines.map { it.machineName })
-        assertEquals(emptyList<PairingDetails>(), w.pairings)
+        assertEquals(listOf("k_1"), w.devices.map { it.keyId })
         // Again from the start: the machines it lists alone, the sessions loaded kept.
         w = w.apply(WatchResponse(reset = true, machines = listOf(Machine("m_2", "a")), sessions = listOf(s("new", SessionStatus.RUNNING, "2026-01-02T00:00:00Z"))))
         assertEquals(listOf("m_2"), w.machines.map { it.machineId })
@@ -85,28 +91,54 @@ class WorldTest {
 }
 
 class LinksTest {
-    @Test fun connectionAddresses() {
-        val o = "o_" + "a".repeat(24)
-        assertEquals(ConnectAddress("https://mesh.example.com", o), ConnectAddress.parse("mesh.example.com/$o"))
-        assertEquals(ConnectAddress("http://203.0.113.7:8080/relay", o), ConnectAddress.parse(" http://203.0.113.7:8080/relay/$o "))
-        assertNull(ConnectAddress.parse("mesh.example.com"))
-        assertNull(ConnectAddress.parse("mesh.example.com/o_short"))
-        assertNull(ConnectAddress.parse("ftp://mesh.example.com/$o"))
-    }
-
-    @Test fun pairingCodes() {
-        assertEquals("ABCD-EFGH-JK12", PairingLink.code("abcd-efgh-jk12"))
-        assertEquals("ABCD-EFGH-JK12", PairingLink.code("hermesh://pair?code=ABCD-EFGH-JK12"))
-        assertEquals("ABCD-EFGH-JK12", PairingLink.code("https://hermesh.io/p/ABCD-EFGH-JK12"))
-        assertNull(PairingLink.code("https://hermesh.io/x/ABCD-EFGH-JK12"))
-        assertNull(PairingLink.code("ABCD"))
-    }
-
     @Test fun serverAddresses() {
         assertEquals("https://mesh.example.com", serverURL("mesh.example.com/"))
         assertEquals("http://203.0.113.7:8080", serverURL("203.0.113.7:8080"))
         assertEquals("http://relay.lan:8080", serverURL("http://relay.lan:8080"))
         assertNull(serverURL("  "))
+    }
+}
+
+/** The account: what a new one needs, before it is sent, and what failures say. */
+class AccountTest {
+    private lateinit var locale: Locale
+
+    @org.junit.Before fun english() {
+        locale = Locale.getDefault()
+        Locale.setDefault(Locale.ENGLISH)
+    }
+
+    @org.junit.After fun restore() = Locale.setDefault(locale)
+
+    @Test fun aNewLoginAsTheServerChecksIt() {
+        // relay.CheckNewLogin: an account without spaces or slashes, at most 64; a password of 8 or more, not the account.
+        assertNull(newLoginProblem(" Owner ", "correct horse"))
+        assertNotNull(newLoginProblem("", "correct horse"))
+        assertNotNull(newLoginProblem("the owner", "correct horse"))
+        assertNotNull(newLoginProblem("a/b", "correct horse"))
+        assertNotNull(newLoginProblem("a".repeat(65), "correct horse"))
+        assertEquals("The password needs at least 8 characters.", newLoginProblem("owner", "1234567"))
+        assertNull(newLoginProblem("owner", "12345678"))
+        assertNull(newLoginProblem("owner", "密码密码密码密码")) // characters, not bytes
+        assertNotNull(newLoginProblem("password1", " PASSWORD1 "))
+    }
+
+    @Test fun plainHttpIsWarnedOf() {
+        assertTrue(plainHttp("http://aide.lan:8080"))
+        assertTrue(plainHttp("203.0.113.7:8080")) // an IP address: http (no certificate)
+        assertFalse(plainHttp("aide.example.com"))
+        assertFalse(plainHttp("https://aide.example.com"))
+        assertFalse(plainHttp(""))
+    }
+
+    @Test fun failuresAsThePersonReadsThem() {
+        assertEquals("Wrong account or password.", loginError(ApiError("permission_denied", "wrong account or password")))
+        assertEquals("Wrong setup code.", loginError(ApiError("permission_denied", "wrong setup code")))
+        assertEquals("The current password is wrong.", loginError(ApiError("permission_denied", "the current password is wrong")))
+        assertTrue(loginError(ApiError("resource_exhausted", "too many wrong passwords; try again in 2 minutes")).startsWith("Too many tries"))
+        assertTrue(loginError(ApiError("failed_precondition", "logging in is turned off for this account; turn it on from a device that is logged in")).startsWith("Logging in is turned off"))
+        assertTrue(loginError(ApiError("already_exists", "this server is set up already: log in with its account")).startsWith("This server is set up already"))
+        assertEquals("the password needs at least 8 characters", loginError(ApiError("invalid_argument", "the password needs at least 8 characters")))
     }
 }
 

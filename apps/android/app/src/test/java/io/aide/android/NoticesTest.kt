@@ -55,25 +55,20 @@ class NoticesTest {
         assertEquals("3 files +10 −4", done.body)
         assertEquals("No file changes", show(parseNotice("""{"kind":"turn_done","title":"Fix","turn":1}""")).body)
 
-        val pairing = show(parseNotice("""{"kind":"pairing","pairingKind":"PAIRING_KIND_DEVICE","pairingLabel":"iPad","verificationCode":"ABCD-1234","pairingCode":"AAAA-BBBB-CCCC"}"""))
-        assertEquals("“iPad” wants to become your trusted device", pairing.title)
-        assertTrue(pairing.body.contains("ABCD-1234"))
-        assertEquals(NoticeTarget(pairing = "AAAA-BBBB-CCCC"), pairing.target)
-        assertEquals("pairing", pairing.thread)
-        assertEquals("“Cursor” wants to connect to your computer", show(parseNotice("""{"kind":"pairing","pairingKind":"PAIRING_KIND_CLIENT","pairingLabel":"Cursor"}""")).title)
-
         val her = show(parseNotice("""{"kind":"her","herKind":"approval","machineId":"m_1","botId":"b1","botName":"Her","text":"Send the email?"}"""))
         assertEquals("Her", her.title)
-        assertEquals("Waiting for your approval: Send the email?", her.body)
+        assertEquals("Waiting for you: Send the email?", her.body)
         assertEquals(NoticeTarget(herMachine = "m_1"), her.target)
 
         val unknown = show(parseNotice("""{"kind":"something_new"}"""))
         assertTrue(unknown.target.isEmpty)
+        // A request to connect, from a machine older than accounts: no such notice any more.
+        assertTrue(show(parseNotice("""{"kind":"pairing","pairingLabel":"iPad","verificationCode":"ABCD-1234"}""")).target.isEmpty)
     }
 
     @Test fun oneNotificationPerThread() {
         assertEquals(notificationId("s_1"), notificationId("s_1"))
         assertTrue(notificationId("s_1") != notificationId("s_2"))
-        assertTrue(notificationId("pairing") >= 0)
+        assertTrue(notificationId("her:m_1:b1") >= 0)
     }
 }

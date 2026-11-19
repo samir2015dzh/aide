@@ -4,7 +4,6 @@ import io.aide.android.api.Client
 import io.aide.android.api.Device
 import io.aide.android.api.GetStatusResponse
 import io.aide.android.api.Machine
-import io.aide.android.api.PairingDetails
 import io.aide.android.api.Project
 import io.aide.android.api.Session
 import io.aide.android.api.SessionCursor
@@ -24,7 +23,6 @@ data class World(
     val clients: List<Client> = emptyList(),
     val devices: List<Device> = emptyList(),
     val projects: List<Project> = emptyList(),
-    val pairings: List<PairingDetails> = emptyList(),
     val sessions: Map<String, Session> = emptyMap(),
     val next: SessionCursor? = null,
     /** The first message came. */
@@ -38,7 +36,6 @@ data class World(
             clients = upsert(base.clients, r.clients, r.removedGrantIds) { it.grantId }.sortedBy { it.label.lowercase() },
             devices = upsert(base.devices, r.devices, r.removedDeviceKeyIds) { it.keyId },
             projects = upsert(base.projects, r.projects, r.removedProjects.map { "${it.machineId}/${it.projectId}" }) { "${it.machineId}/${it.projectId}" },
-            pairings = upsert(base.pairings, r.pairings, r.removedPairingCodes) { it.code },
             sessions = mergeSessions(base.sessions, r.sessions, r.deletedSessionIds),
         )
     }
@@ -54,9 +51,6 @@ data class World(
         }
         return if (s.createdAs.isNotEmpty() && s.createdAs != who) "$who · ${s.createdAs}" else who
     }
-
-    /** Requests to connect that wait for this phone: machines, agents, devices. */
-    val waitingPairings: List<PairingDetails> get() = pairings.sortedBy { it.expiresAt }
 
     /**
      * A session as screens show it: while its machine can't be read (offline, or not answering) its state is not

@@ -8,8 +8,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * LocalService (hermesh.local.v1) of the core in this app's process: the
- * only API the app uses, as on the iPhone. Calls that the person signs wait
- * as long as they take (timeout 0).
+ * only API the app uses, as on the iPhone.
  */
 class LocalApi(port: Long, token: String) {
     val client = ConnectClient("http://127.0.0.1:$port", token, "hermesh.local.v1.LocalService")
@@ -29,14 +28,31 @@ class LocalApi(port: Long, token: String) {
     suspend fun status(): GetStatusResponse = call("GetStatus", Empty())
     fun watch(): Flow<WatchResponse> = stream("Watch", Empty())
 
-    suspend fun setup(relayUrl: String, claimCode: String, label: String): Unit =
-        call<SetupRequest, JsonElement>("Setup", SetupRequest(relayUrl, claimCode, label), timeoutSeconds = 0).let { }
+    // The account (docs/accounts.md). The server checks a password with
+    // Argon2id, which takes a moment: these wait longer than the rest.
 
-    suspend fun requestJoin(relayUrl: String, ownerId: String, label: String): RequestJoinResponse =
-        call("RequestJoin", RequestJoinRequest(relayUrl, ownerId, label), timeoutSeconds = 0)
+    /** Sets a new server up with the setup code it printed, and logs this phone in to it. */
+    suspend fun setup(relayUrl: String, setupCode: String, account: String, password: String, label: String): SetupResponse =
+        call("Setup", SetupRequest(relayUrl, setupCode, account, password, label), timeoutSeconds = 60)
 
-    suspend fun passwordLogin(relayUrl: String, account: String, password: String, label: String): PasswordLoginResponse =
-        call("PasswordLogin", PasswordLoginRequest(relayUrl, account, password, label), timeoutSeconds = 0)
+    /** Logs this phone in to the owner's server: it is signed in at once. */
+    suspend fun logIn(relayUrl: String, account: String, password: String, label: String): LogInResponse =
+        call("LogIn", LogInRequest(relayUrl, account, password, label), timeoutSeconds = 60)
+
+    suspend fun getLogin(): GetLoginResponse = call("GetLogin", Empty())
+
+    suspend fun setLogin(req: SetLoginRequest): SetLoginResponse = call("SetLogin", req, timeoutSeconds = 60)
+
+    suspend fun listDevices(): ListDevicesResponse = call("ListDevices", Empty())
+
+    /** Signs another device out: it can no longer connect, and its own machine is removed. */
+    suspend fun removeDevice(keyId: String, eraseHer: Boolean): RemoveDeviceResponse =
+        call("RemoveDevice", RemoveDeviceRequest(keyId, eraseHer), timeoutSeconds = 60)
+
+    /** Forgets the owner on this phone once it was signed out, so that it can log in again. */
+    suspend fun leave() {
+        call<Empty, JsonElement>("Leave", Empty())
+    }
 
     suspend fun listDSHSessions(): ListDSHSessionsResponse = call("ListDSHSessions", Empty(), timeoutSeconds = 60)
 
@@ -53,25 +69,6 @@ class LocalApi(port: Long, token: String) {
 
     suspend fun interruptDSHSession(machineId: String, sessionId: String): InterruptDSHSessionResponse =
         call("InterruptDSHSession", InterruptDSHSessionRequest(machineId, sessionId), timeoutSeconds = 30)
-
-    suspend fun waitJoin(code: String): WaitJoinResponse = call("WaitJoin", CodeRequest(code), timeoutSeconds = 60)
-
-    suspend fun confirmJoin(code: String, accept: Boolean, match: String = "") {
-        call<ConfirmJoinRequest, JsonElement>("ConfirmJoin", ConfirmJoinRequest(code, accept, match))
-    }
-
-    suspend fun lookupPairing(code: String): PairingDetails? =
-        call<CodeRequest, LookupPairingResponse>("LookupPairing", CodeRequest(code)).details
-
-    suspend fun approveMachine(code: String, name: String): ApproveMachinePairingResponse =
-        call("ApproveMachinePairing", ApproveMachinePairingRequest(code, name), timeoutSeconds = 0)
-
-    suspend fun approveClient(code: String, spec: GrantSpec) {
-        call<ApproveClientPairingRequest, JsonElement>("ApproveClientPairing", ApproveClientPairingRequest(code, spec), timeoutSeconds = 0)
-    }
-
-    suspend fun approveDevice(code: String): ApproveDevicePairingResponse =
-        call("ApproveDevicePairing", CodeRequest(code), timeoutSeconds = 0)
 
     suspend fun listSessions(before: SessionCursor? = null): ListSessionsResponse =
         call("ListSessions", ListSessionsRequest(before = before))

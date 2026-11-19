@@ -4,7 +4,6 @@
     <!-- The core reaches the relay; the app reaches the core on 127.0.0.1. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Notices the app shows itself (Android 13+ asks): from its own connection. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- The connection service (connection/ConnectionService.kt). -->
@@ -28,13 +27,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- A pairing code to approve: hermesh://pair?code=… -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="hermesh" android:host="pair" />
             </intent-filter>
         </activity>
         <!-- Keeps the relay connection in the background, so notices reach the phone

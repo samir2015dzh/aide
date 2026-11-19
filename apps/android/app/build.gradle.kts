@@ -22,8 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "io.aide.android"
-        // Android 11: Keystore keys bound to biometrics or the screen lock
-        // (setUserAuthenticationParameters), BiometricPrompt with both.
+        // Android 11, as the core is built for (build-core.sh -androidapi 30).
         minSdk = 30
         targetSdk = 35
         versionCode = 1
@@ -79,11 +78,9 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.fragment:fragment-ktx:1.8.8")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-process:2.9.2")
-    implementation("androidx.biometric:biometric:1.1.0")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")

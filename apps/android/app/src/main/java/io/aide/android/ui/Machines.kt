@@ -15,34 +15,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.Machine
 import io.aide.android.model.AppModel
 import io.aide.android.model.agentTitle
-import io.aide.android.signer.RootKeys
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-/** The machines and their coding agents, the trusted devices, and this phone. */
+/** The machines and their coding agents (the devices and this phone are in Settings). */
 @Composable
 fun MachinesTab(model: AppModel) {
     val world by model.world.collectAsState()
-    val st = world.status
-    val keep by model.keepalive.enabled.collectAsState()
-    var keyLevel by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(st.deviceKeyId) {
-        if (st.deviceKeyId.isNotEmpty()) keyLevel = withContext(Dispatchers.IO) { runCatching { RootKeys.securityLevel(st.deviceKeyId) }.getOrNull() }
-    }
     Column(Modifier.fillMaxSize()) {
         PageTitle(t("Machines", "机器"))
         SyncLine(model)
@@ -59,25 +46,6 @@ fun MachinesTab(model: AppModel) {
                     ),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp),
                 )
-            }
-            item { SectionHeader(t("Trusted devices", "可信设备")) }
-            items(world.devices, key = { it.keyId }) { d ->
-                Text(d.label + (if (d.thisDevice) t(" (this phone)", "（这台手机）") else "") + " · " + d.platform, Modifier.padding(horizontal = 4.dp))
-            }
-            item {
-                SectionHeader(t("This phone", "这台手机"))
-                Column(Modifier.padding(horizontal = 4.dp)) {
-                    Labeled(t("Server", "服务器"), st.relayUrl)
-                    if (st.connectAddress.isNotEmpty()) Labeled(t("Connection address", "连接地址"), st.connectAddress)
-                    if (st.account.isNotEmpty()) Labeled(t("Account", "账号"), st.account)
-                    keyLevel?.let { Labeled(t("Root key kept in", "根密钥存放于"), it) }
-                    Labeled(t("Core version", "核心版本"), st.version)
-                    KeepaliveSettings(model)
-                    Labeled(
-                        t("Notifications", "通知"),
-                        if (keep) t("through Aide’s own connection", "经 Aide 自己的连接") else t("while Aide is open", "Aide 打开时"),
-                    )
-                }
             }
         }
     }

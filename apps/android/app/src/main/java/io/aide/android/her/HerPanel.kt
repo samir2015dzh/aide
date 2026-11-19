@@ -18,8 +18,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * A machine's Her while her page is open (the iPhone's HerChat, minimal):
  * the environment's connection (bots/subscribe: her assistants and their
  * routines), and her default assistant's conversation (bots/open: its
- * snapshot, then its events). Messages go with HerSend; her tool approvals
- * are answered with session/op. Memory is read once asked.
+ * snapshot, then its events). Messages go with HerSend; Her acts without
+ * asking for approvals (docs/accounts.md §7). Memory is read once asked.
  */
 class HerPanel(private val model: AppModel, val machineId: String) {
     private val her = HerClient(model.api!!, machineId)
@@ -28,8 +28,6 @@ class HerPanel(private val model: AppModel, val machineId: String) {
     val bots = _bots.asStateFlow()
     private val _lines = MutableStateFlow<List<HerLine>>(emptyList())
     val lines = _lines.asStateFlow()
-    private val _approvals = MutableStateFlow<List<HerApproval>>(emptyList())
-    val approvals = _approvals.asStateFlow()
     private val _working = MutableStateFlow(false)
     val working = _working.asStateFlow()
     private val _connected = MutableStateFlow(false)
@@ -107,7 +105,6 @@ class HerPanel(private val model: AppModel, val machineId: String) {
     private fun publish() {
         val c = conversation ?: return
         _lines.value = c.lines()
-        _approvals.value = c.approvals
         _working.value = c.working
     }
 
@@ -121,21 +118,6 @@ class HerPanel(private val model: AppModel, val machineId: String) {
         } catch (e: Exception) {
             model.say(e.message ?: e.toString())
             false
-        }
-    }
-
-    /** Allows a tool call once, or denies it. */
-    suspend fun decide(a: HerApproval, allow: Boolean) {
-        val id = conversation?.sessionId ?: return
-        val op = JsonObject(mapOf(
-            "type" to JsonPrimitive("approval"),
-            "call_id" to JsonPrimitive(a.callId),
-            "decision" to JsonObject(mapOf("type" to JsonPrimitive(if (allow) "approve" else "deny"))),
-        ))
-        try {
-            her.call("session/op", JsonObject(mapOf("session_id" to JsonPrimitive(id), "op" to op)), convConnection)
-        } catch (e: Exception) {
-            model.say(e.message ?: e.toString())
         }
     }
 

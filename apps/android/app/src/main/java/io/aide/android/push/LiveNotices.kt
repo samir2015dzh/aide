@@ -12,8 +12,8 @@ import java.time.Instant
 /**
  * Notices from the core's own connection (docs/android-app.md §4): what
  * changed in the owner's world, as Watch brings it, said as the notices a
- * machine seals for a phone (the kinds in noticeKinds, and requests to
- * connect), so they show as before (show, Push.notify). It follows the
+ * machine seals for a phone (the kinds in noticeKinds), so they show as
+ * before (show, Push.notify). It follows the
  * desktop's rules (packages/core notices.ts):
  *
  * - A session seen for the first time tells about its question, and is new
@@ -23,10 +23,9 @@ import java.time.Instant
  * - Her: an environment whose unread count grew with a newer message from
  *   an assistant that is not muted. An environment seen the first time is
  *   no news.
- * - Every pending request to connect, once.
  *
- * What is no longer pending (an answered question, a request answered
- * elsewhere or expired, Her read everywhere) is withdrawn.
+ * What is no longer pending (an answered question, Her read everywhere) is
+ * withdrawn.
  */
 class LiveNotices {
     private data class Snapshot(val question: String, val failed: Boolean)
@@ -37,16 +36,10 @@ class LiveNotices {
     private var seen = mapOf<String, Snapshot>()
     private var since: Instant? = null
     private var her: Map<String, HerSnapshot>? = null
-    private var pairings = setOf<String>()
     private var asking = setOf<String>()
     private var herShown = setOf<String>()
 
     private data class HerSnapshot(val unread: Int, val latest: String)
-
-    /** A request the person looked up here: no news. */
-    fun known(pairingCode: String) {
-        pairings = pairings + pairingCode
-    }
 
     fun look(w: World, now: Instant = Instant.now()): Changes {
         val show = mutableListOf<Notice>()
@@ -106,18 +99,6 @@ class LiveNotices {
         }
         her = environments.associate { it.machineId to HerSnapshot(it.her!!.unread, latestKey(it)) }
 
-        // Requests to connect: each once; taken back once gone.
-        val pending = w.pairings.map { it.code }.toSet()
-        for (p in w.pairings) {
-            if (p.code in pairings) continue
-            show += Notice(
-                kind = "pairing", pairingKind = p.kind, pairingLabel = p.label,
-                verificationCode = p.verificationCode.ifEmpty { p.code }, pairingCode = p.code,
-            )
-        }
-        // They share one notification (show's thread "pairing"): it goes with the last.
-        if (pairings.isNotEmpty() && pending.isEmpty()) withdraw += "pairing"
-        pairings = pending
         return Changes(show, withdraw)
     }
 

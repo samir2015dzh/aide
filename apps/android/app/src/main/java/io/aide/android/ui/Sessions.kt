@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -70,6 +72,27 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
                 item {
                     TextButton(onClick = { scope.launch { model.loadOlder() } }, modifier = Modifier.padding(8.dp)) { Text(t("Load older sessions", "加载更早的会话")) }
                 }
+            }
+        }
+    }
+}
+
+/** The sessions waiting for you: open one to answer it there. */
+@Composable
+fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
+    val world by model.world.collectAsState()
+    val sessions = world.buckets.needsYou
+    Column(Modifier.fillMaxSize()) {
+        PageTitle(t("Needs you", "需要你"))
+        SyncLine(model)
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (sessions.isEmpty()) {
+                item { Text(t("Nothing waits for you.", "没有等你处理的事。"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                item(key = "h-sessions") { SectionHeader(t("Tasks waiting for you", "等你处理的任务") + " · ${sessions.size}") }
+            }
+            items(sessions, key = { it.sessionId }) { s ->
+                Card(Modifier.fillMaxWidth()) { SessionRow(s, world) { open(s.sessionId) } }
             }
         }
     }
