@@ -17,11 +17,11 @@ val buildCore by tasks.registering(Exec::class) {
 }
 
 android {
-    namespace = "io.hermesh.android"
+    namespace = "io.aide.android"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.hermesh.android"
+        applicationId = "io.aide.android"
         // Android 11: Keystore keys bound to biometrics or the screen lock
         // (setUserAuthenticationParameters), BiometricPrompt with both.
         minSdk = 30

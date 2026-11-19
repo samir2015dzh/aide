@@ -36,7 +36,7 @@ Words are English, or Chinese on a phone set to Chinese (`ui/Words.kt`).
 
 ```
 apps/android/
-├── app/src/main/java/io/hermesh/android/
+├── app/src/main/java/io/aide/android/
 │   ├── HermeshApp.kt, MainActivity.kt   the core started with the process; the window, BiometricPrompt
 │   ├── api/       Connect client (JSON codec) for LocalService, its messages
 │   ├── model/     AppModel (state, actions, Watch, lifecycle), World, Transcript, links, answers
@@ -232,7 +232,7 @@ whose `preBuild` runs `build-core.sh` (gomobile bind for `android/arm64`
 and `android/amd64`, skipped when nothing in Go changed; `FORCE=1` builds
 again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
 `VERSION=0.1.2` stamps the version. The APK is debug-signed (application id
-`io.hermesh.android.debug`); outputs and caches stay out of git
+`io.aide.android.debug`); outputs and caches stay out of git
 (`apps/android/.gitignore`).
 
 ## 7. Tests

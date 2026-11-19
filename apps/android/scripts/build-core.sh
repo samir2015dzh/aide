@@ -36,7 +36,7 @@ go build -o "$TMP/bin/gomobile" golang.org/x/mobile/cmd/gomobile
 export PATH="$TMP/bin:$PATH"
 mkdir -p "$(dirname "$OUT")"
 echo "› building the core for android/arm64 and android/amd64"
-gomobile bind -target=android/arm64,android/amd64 -androidapi 30 -javapkg io.hermesh.android \
+gomobile bind -target=android/arm64,android/amd64 -androidapi 30 -javapkg io.aide.android \
   -trimpath -ldflags "-s -w -X github.com/hermeshai/hermesh/internal/machine.Version=${VERSION#v}" \
   -o "$OUT" ./cmd/hermesh-mobile/android
 rm -f "${OUT%.aar}-sources.jar"

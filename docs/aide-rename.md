@@ -30,8 +30,6 @@ Updates keep both names: a machine installed before the rename gets
   `Program Files\Hermesh Signer`, the `hermesh:` links. What Windows
   shows of them (Task Manager, Installed apps, the Start menu's
   `Aide.lnk`) says Aide.
-- **Android**: `io.hermesh.android`. Another id would be another app,
-  without this phone's key.
 - **Protocol and keys**: the proto packages (`hermesh.*.v1`, the signing
   domain), every `hermesh-…-v1` label signed or derived from, `hermesh://`
   links, the WebSocket subprotocol, the MCP server's name (`hermesh`, its
@@ -43,3 +41,11 @@ Updates keep both names: a machine installed before the rename gets
   every installed version looks.
 - **Release notes** of the versions before the rename read as they were
   written.
+
+## Android: a new app (owner's instruction of 2026-11-19)
+
+The Android app's id changed with the rename after all: `io.aide.android`
+(the debug build `io.aide.android.debug`), and with it the Kotlin package
+and the core's Java package. A phone gets it as a new app beside the old
+`io.hermesh.android`, which the owner uninstalls by hand: the new app
+starts without the old one's key and logs in again.
