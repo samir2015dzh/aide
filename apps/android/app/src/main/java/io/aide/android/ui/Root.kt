@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +47,7 @@ sealed interface Route {
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
 }
 
-enum class Tab { Sessions, Approvals, Machines, Her }
+enum class Tab { Sessions, NeedsYou, Machines, Her, Settings }
 
 @Composable
 fun Root(model: AppModel) {
@@ -63,15 +64,12 @@ fun Root(model: AppModel) {
                 BackgroundGuide(model)
             }
         }
-        SigningSheet(model)
-        MatchDialog(model)
     }
 }
 
 @Composable
 private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     val world by model.world.collectAsState()
-    val dismissed by model.dismissed.collectAsState()
     var tab by rememberSaveable { mutableStateOf(Tab.Sessions) }
     val stack = remember { mutableStateListOf<Route>() }
     BackHandler(enabled = stack.isNotEmpty()) { stack.removeAt(stack.lastIndex) }
@@ -82,7 +80,6 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         when {
             o.session.isNotEmpty() -> { stack.clear(); stack.add(Route.Session(o.session)) }
             o.herMachine.isNotEmpty() -> { stack.clear(); stack.add(Route.Her(o.herMachine)) }
-            o.pairing.isNotEmpty() -> { stack.clear(); tab = Tab.Approvals }
         }
         model.opened()
     }
@@ -96,28 +93,29 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         }
         return
     }
-    val waiting = world.waitingPairings.count { it.code !in dismissed }
     val needs = world.buckets.needsYou.size
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(tab == Tab.Sessions, { tab = Tab.Sessions }, icon = { Icon(Icons.AutoMirrored.Filled.List, null) }, label = { Text(t("Tasks", "任务")) })
-                // Needs you: the questions and approvals of sessions, and the requests to join, in one place.
-                NavigationBarItem(tab == Tab.Approvals, { tab = Tab.Approvals }, icon = {
-                    BadgedBox(badge = { if (needs + waiting > 0) Badge(containerColor = Warning, contentColor = androidx.compose.ui.graphics.Color.White) { Text("${needs + waiting}") } }) { Icon(Icons.Filled.Notifications, null) }
+                // Needs you: the sessions waiting for an answer, in one place.
+                NavigationBarItem(tab == Tab.NeedsYou, { tab = Tab.NeedsYou }, icon = {
+                    BadgedBox(badge = { if (needs > 0) Badge(containerColor = Warning, contentColor = androidx.compose.ui.graphics.Color.White) { Text("$needs") } }) { Icon(Icons.Filled.Notifications, null) }
                 }, label = { Text(t("Needs you", "需要你")) })
                 NavigationBarItem(tab == Tab.Machines, { tab = Tab.Machines }, icon = { Icon(Icons.Filled.Home, null) }, label = { Text(t("Machines", "机器")) })
                 NavigationBarItem(tab == Tab.Her, { tab = Tab.Her }, icon = { Icon(Icons.Filled.Face, null) }, label = { Text("Her") })
+                NavigationBarItem(tab == Tab.Settings, { tab = Tab.Settings }, icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(t("Settings", "设置")) })
             }
         },
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
                 Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
-                Tab.Approvals -> ApprovalsTab(model) { stack.add(Route.Session(it)) }
+                Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
                 Tab.Machines -> MachinesTab(model)
                 Tab.Her -> HerTab(model) { stack.add(Route.Her(it)) }
+                Tab.Settings -> SettingsTab(model)
             }
         }
     }

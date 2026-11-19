@@ -23,35 +23,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.aide.android.model.AppModel
-import io.aide.android.model.AppModel.Join
-import io.aide.android.model.ConnectAddress
+import io.aide.android.model.MIN_PASSWORD
+import io.aide.android.model.newLoginProblem
+import io.aide.android.model.plainHttp
 import io.aide.android.model.serverURL
 import kotlinx.coroutines.launch
 
 /**
- * Making this phone a trusted device: logging in with the owner's account
- * and password (the default; docs/password-login.md), joining an owner who
- * has one already (their connection address; another trusted device
- * approves, and two digits confirm it), or claiming a new server of one's
- * own with its claim code. Each makes a root key in this phone's Keystore.
- * Each starts with the owner's own server, typed: no build names one and
- * there is no official service to fall back to.
+ * Making this phone one of the owner's devices (docs/accounts.md), two
+ * ways: logging in to the owner's server with the account and password,
+ * or setting a new server up with the setup code it printed and the
+ * account and password it will keep. Either way the server signs this
+ * phone in at once: no other device approves, nothing is compared. Each
+ * starts with the owner's own server, typed: no build names one.
  */
 @Composable
 fun Onboarding(model: AppModel, snackbar: SnackbarHostState) {
-    val join by model.join.collectAsState()
     val world by model.world.collectAsState()
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { pad ->
         Column(
@@ -61,143 +58,90 @@ fun Onboarding(model: AppModel, snackbar: SnackbarHostState) {
             Spacer(Modifier.height(24.dp))
             Text("Aide", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
             if (world.status.removed) {
-                Text(t("This phone was removed from its owner’s trusted devices.", "这台手机已被移出可信设备。"), color = MaterialTheme.colorScheme.error)
+                Text(t("This phone was signed out by another of your devices. Log in again to use it.", "这台手机已被你的另一台设备登出。重新登录即可继续使用。"), color = MaterialTheme.colorScheme.error)
             }
-            when (val j = join) {
-                is Join.Waiting -> Waiting(model, j)
-                is Join.Digits -> Digits(model, j)
-                Join.Asking -> {
-                    Text(t("Asking to join…", "正在请求加入…"))
-                    CircularProgressIndicator()
-                }
-                else -> Start(model, (j as? Join.Failed)?.message)
-            }
+            Start(model)
         }
     }
 }
 
-/** How this phone becomes a trusted device: the owner's account and password (the default), a connection address, or a new server's claim code. */
-private enum class Way { Password, Join, Claim }
+/** What a new password needs (relay.CheckNewLogin), under its field. */
+val passwordHint: @Composable () -> Unit = {
+    Text(t("At least $MIN_PASSWORD characters, not the account name.", "至少 $MIN_PASSWORD 个字符，不能和账号相同。"))
+}
+
+/** The two ways in: log in to a server, or set a new one up. */
+private enum class Way { LogIn, SetUp }
 
 @Composable
-private fun Start(model: AppModel, failure: String?) {
-    var way by rememberSaveable { mutableStateOf(Way.Password) }
+private fun Start(model: AppModel) {
+    var way by rememberSaveable { mutableStateOf(Way.LogIn) }
     var address by rememberSaveable { mutableStateOf("") }
-    var claim by rememberSaveable { mutableStateOf("") }
+    var setupCode by rememberSaveable { mutableStateOf("") }
     var account by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // Not saved: a password is not kept past the screen.
+    var password by remember { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val claiming = way == Way.Claim
+    val setUp = way == Way.SetUp
+    Text(if (setUp) t("Set up a new server", "设置新的服务器") else t("Log in", "登录"), style = MaterialTheme.typography.titleLarge)
     Text(
-        when (way) {
-            Way.Password -> t("Log in with your Aide account and password (set on your computer: Settings › Account & Devices). No other device needs to approve.",
-                "用你的 Aide 账号和密码登录（在电脑上的 设置 › 账号与设备 里设定），不需要别的设备批准。")
-            Way.Claim -> t("Claim a new server of your own: this phone becomes your first trusted device.", "认领一台新的自建服务器：这台手机将成为你的第一台可信设备。")
-            Way.Join -> t("Join as a trusted device: enter your connection address. One of your trusted devices approves this phone.", "以可信设备加入：输入你的连接地址，由你已有的一台可信设备批准这台手机。")
+        if (setUp) {
+            t(
+                "A new server prints a setup code when it first starts. Type it, and the account and password the server will keep: you log in with them on every device.",
+                "新的服务器第一次启动时会显示一个设置码。输入设置码，再设定服务器要保存的账号和密码：以后每台设备都用它们登录。",
+            )
+        } else {
+            t("Log in with your server, account and password. No other device needs to approve.", "用你的服务器、账号和密码登录，不需要别的设备批准。")
         },
     )
     OutlinedTextField(
         value = address, onValueChange = { address = it; error = null },
-        label = { Text(if (way == Way.Join) t("Connection address", "连接地址") else t("Server address", "服务器地址")) },
-        placeholder = { Text(if (way == Way.Join) "mesh.example.com/o_…" else "mesh.example.com") },
+        label = { Text(t("Server", "服务器")) },
+        placeholder = { Text("aide.example.com") },
         singleLine = true, modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
     )
-    if (way == Way.Password) {
-        OutlinedTextField(value = account, onValueChange = { account = it; error = null }, label = { Text(t("Account", "账号")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(
-            value = password, onValueChange = { password = it; error = null }, label = { Text(t("Password", "密码")) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        )
+    if (setUp) {
+        OutlinedTextField(value = setupCode, onValueChange = { setupCode = it; error = null }, label = { Text(t("Setup code", "设置码")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
     }
-    if (claiming) {
-        OutlinedTextField(value = claim, onValueChange = { claim = it; error = null }, label = { Text(t("Claim code", "认领码")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    }
-    if (address.trim().startsWith("http://") || address.trim().matches(Regex("""\d{1,3}(\.\d{1,3}){3}.*"""))) {
+    OutlinedTextField(
+        value = account, onValueChange = { account = it; error = null }, label = { Text(t("Account", "账号")) }, singleLine = true,
+        modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+    )
+    OutlinedTextField(
+        value = password, onValueChange = { password = it; error = null }, label = { Text(t("Password", "密码")) }, singleLine = true,
+        modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        supportingText = passwordHint.takeIf { setUp },
+    )
+    if (plainHttp(address)) {
         Text(
-            t("Not encrypted (HTTP). Sessions stay end-to-end encrypted, but the claim code and which machines are online travel in the clear.",
-                "未加密（HTTP）。会话仍是端到端加密的，但认领码与哪些机器在线会明文传输。"),
+            t(
+                "Not encrypted (HTTP): your password and setup code travel readable on the network. Sessions stay end-to-end encrypted.",
+                "未加密（HTTP）：密码和设置码会在网络上明文传输。会话仍是端到端加密的。",
+            ),
             style = MaterialTheme.typography.bodySmall, color = Warning,
         )
     }
-    (error ?: failure)?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     Button(
         onClick = {
-            when (way) {
-                Way.Password -> {
-                    val server = serverURL(address) ?: return@Button run { error = t("That isn’t a server address.", "这不是服务器地址。") }
-                    busy = true
-                    scope.launch {
-                        error = model.passwordLogin(server, account, password)
-                        busy = false
-                    }
-                }
-                Way.Claim -> {
-                    val server = serverURL(address) ?: return@Button run { error = t("That isn’t a server address.", "这不是服务器地址。") }
-                    busy = true
-                    scope.launch {
-                        error = model.claim(server, claim)
-                        busy = false
-                    }
-                }
-                Way.Join -> {
-                    val a = ConnectAddress.parse(address) ?: return@Button run {
-                        error = t("That isn’t a connection address. It looks like relay.example.com/o_…", "这不是连接地址，形如 relay.example.com/o_…")
-                    }
-                    model.join(a)
-                }
+            val server = serverURL(address) ?: return@Button run { error = t("That isn’t a server address.", "这不是服务器地址。") }
+            if (setUp) newLoginProblem(account, password)?.let { return@Button run { error = it } }
+            busy = true
+            scope.launch {
+                error = if (setUp) model.setUp(server, setupCode, account, password) else model.logIn(server, account, password)
+                busy = false
+                if (error == null) password = ""
             }
         },
-        enabled = !busy && when (way) {
-            Way.Password -> address.isNotBlank() && account.isNotBlank() && password.isNotEmpty()
-            Way.Claim -> address.isNotBlank() && claim.isNotBlank()
-            Way.Join -> address.isNotBlank()
-        },
+        enabled = !busy && address.isNotBlank() && account.isNotBlank() && password.isNotEmpty() && (!setUp || setupCode.isNotBlank()),
         modifier = Modifier.fillMaxWidth(),
-    ) { Text(if (way == Way.Password) t("Log In", "登录") else t("Continue", "继续")) }
+    ) { Text(if (setUp) t("Set Up", "设置") else t("Log In", "登录")) }
     if (busy) CircularProgressIndicator()
-    for (other in Way.entries.filter { it != way }) {
-        TextButton(onClick = { way = other; error = null }) {
-            Text(
-                when (other) {
-                    Way.Password -> t("Log in with account and password instead", "改用账号密码登录")
-                    Way.Join -> t("Join with a connection address (another device approves)…", "用连接地址加入（由另一台设备批准）…")
-                    Way.Claim -> t("A new server? Enter its claim code…", "新服务器？输入认领码…")
-                },
-            )
-        }
+    TextButton(onClick = { way = if (setUp) Way.LogIn else Way.SetUp; error = null }) {
+        Text(if (setUp) t("Log in to a server instead", "改为登录已有的服务器") else t("A new server? Set it up with its setup code…", "新的服务器？用设置码设置新的服务器…"))
     }
-}
-
-@Composable
-private fun Waiting(model: AppModel, j: Join.Waiting) {
-    Text(t("Approve this phone on one of your trusted devices.", "请在你的一台可信设备上批准这台手机。"), style = MaterialTheme.typography.titleMedium)
-    if (j.verificationCode.isNotEmpty()) {
-        Text(t("Check that it shows this code:", "确认它显示的是这个验证码："))
-        Text(j.verificationCode, fontFamily = FontFamily.Monospace, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    }
-    Text(t("Pairing code: ", "配对码：") + j.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    CircularProgressIndicator()
-    TextButton(onClick = model::cancelJoin) { Text(t("Cancel", "取消")) }
-}
-
-@Composable
-private fun Digits(model: AppModel, j: Join.Digits) {
-    var digits by rememberSaveable { mutableStateOf("") }
-    Text(
-        (if (j.approvedBy.isNotEmpty()) t("Approved on ${j.approvedBy}. ", "已在 ${j.approvedBy} 上批准。") else "") +
-            t("Type the two digits it shows.", "请输入它显示的两位数字。"),
-        style = MaterialTheme.typography.titleMedium,
-    )
-    OutlinedTextField(
-        value = digits, onValueChange = { if (it.length <= 2) digits = it.filter(Char::isDigit) },
-        singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-        label = { Text(t("Digits", "数字")) },
-    )
-    j.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    Button(onClick = { model.confirmDigits(digits) }, enabled = digits.length == 2, modifier = Modifier.fillMaxWidth()) { Text(t("Confirm", "确认")) }
-    TextButton(onClick = model::cancelJoin) { Text(t("Cancel", "取消")) }
 }

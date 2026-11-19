@@ -10,10 +10,11 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.aide.android.api.ApiError
 import io.aide.android.api.Answer
-import io.aide.android.api.GrantSpec
+import io.aide.android.api.Device
+import io.aide.android.api.GetLoginResponse
 import io.aide.android.api.LocalApi
-import io.aide.android.api.PairingDetails
 import io.aide.android.api.Session
+import io.aide.android.api.SetLoginRequest
 import io.aide.android.connection.ConnectionService
 import io.aide.android.connection.Keepalive
 import io.aide.android.connection.Link
@@ -23,8 +24,6 @@ import io.aide.android.push.LiveNotices
 import io.aide.android.push.NoticeTarget
 import io.aide.android.push.Push
 import io.aide.android.push.show
-import io.aide.android.signer.AppSigner
-import io.aide.android.signer.Expectation
 import io.aide.android.ui.t
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,15 +47,14 @@ import java.io.File
  * process (the shared Go core), followed through one Watch while the app
  * is in front, or while the connection service keeps it in the background
  * (connection/ConnectionService.kt, on unless the person turned it off).
- * Otherwise in the background the core pauses (no relay, no signing), as
- * on the iPhone, and the app syncs when it comes back to the front. What
- * the Watch brings that needs the person is notified (push/LiveNotices.kt).
+ * Otherwise in the background the core pauses (no relay), as on the
+ * iPhone, and the app syncs when it comes back to the front. What the
+ * Watch brings that needs the person is notified (push/LiveNotices.kt).
  */
 class AppModel(private val context: Context) {
     enum class Phase { Starting, Failed, Onboarding, Ready }
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val signer = AppSigner()
 
     private val _phase = MutableStateFlow(Phase.Starting)
     val phase = _phase.asStateFlow()
@@ -66,9 +64,6 @@ class AppModel(private val context: Context) {
     val foreground = _foreground.asStateFlow()
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val messages = _messages.asSharedFlow()
-    /** Pairings the person dismissed here (they expire on the relay). */
-    private val _dismissed = MutableStateFlow(setOf<String>())
-    val dismissed = _dismissed.asStateFlow()
     var startError: String? = null
         private set
 
@@ -95,7 +90,6 @@ class AppModel(private val context: Context) {
                 val dir = File(context.filesDir, "hermesh").apply { mkdirs() }
                 val info = withContext(Dispatchers.IO) { Hermeshcore.start(dir.absolutePath) }
                 api = LocalApi(info.port, info.token)
-                Hermeshcore.runSigner(signer)
             } catch (e: Exception) {
                 startError = e.message
                 _phase.value = Phase.Failed
@@ -110,7 +104,6 @@ class AppModel(private val context: Context) {
             follow() // the connection service may have started first (the system restarted it)
             scope.launch { keepConnected() }
         }
-        scope.launch { signer.failures.collect { _messages.tryEmit("Nothing was signed: $it") } }
     }
 
     private fun foreground() {
@@ -231,10 +224,6 @@ class AppModel(private val context: Context) {
 
     fun open(target: NoticeTarget) {
         _opening.value = target
-        if (target.pairing.isNotEmpty()) scope.launch {
-            phase.first { it == Phase.Ready }
-            lookup(target.pairing)
-        }
     }
 
     fun opened() {
@@ -255,146 +244,66 @@ class AppModel(private val context: Context) {
         null
     }
 
-    // Joining and setting up.
+    // Logging in and setting up (docs/accounts.md): the server signs this
+    // phone in at once; nothing is approved elsewhere, compared or signed here.
 
     val deviceLabel: String get() = listOf(Build.MANUFACTURER.replaceFirstChar { it.uppercase() }, Build.MODEL).distinct().joinToString(" ")
 
-    /** Claims a new self-hosted server with its claim code: this phone becomes the owner's first trusted device. */
-    suspend fun claim(server: String, claimCode: String): String? {
-        val api = api ?: return "The core is not running"
-        signer.expect(Expectation.Own)
+    /** Logs in to the owner's server with the account and password. Returns what went wrong, or null. */
+    suspend fun logIn(server: String, account: String, password: String): String? = onboard {
+        it.logIn(server, account.trim(), password, deviceLabel)
+    }
+
+    /** Sets a new server up with the setup code it printed, keeping this account and password, and logs in to it. */
+    suspend fun setUp(server: String, setupCode: String, account: String, password: String): String? = onboard {
+        it.setup(server, setupCode.trim(), account.trim(), password, deviceLabel)
+    }
+
+    private suspend fun onboard(call: suspend (LocalApi) -> Unit): String? {
+        val api = api ?: return t("Aide’s core is not running.", "Aide 的核心没有运行。")
         return try {
-            api.setup(server, claimCode.trim(), deviceLabel)
+            // Signed out by another device: forget that owner first, so that this phone can log in again.
+            if (_world.value.status.removed) api.leave()
+            call(api)
             refreshStatus()
             null
         } catch (e: ApiError) {
-            if (signer.cancelledOwn) null else e.message
+            loginError(e)
         }
     }
+
+    // The account and the devices (Settings).
+
+    /** The account as the server keeps it; null when it can't be read now (said). */
+    suspend fun login(): GetLoginResponse? = report { api!!.getLogin() }
 
     /**
-     * Logs in with the owner's account and password: this phone becomes a
-     * trusted device with no other device approving, nothing to compare and
-     * nothing to sign here (docs/password-login.md). server empty: the
-     * build's own. Returns what went wrong, or null.
+     * Changes the account's name or password, or turns logging in off or
+     * on, with the current password. Returns how many devices and agents a
+     * new password signed out, or null when it failed (failed says why).
      */
-    suspend fun passwordLogin(server: String, account: String, password: String): String? {
-        val api = api ?: return "The core is not running"
+    suspend fun setLogin(req: SetLoginRequest, failed: (String) -> Unit): Int? {
+        val api = api ?: return null
         return try {
-            api.passwordLogin(server, account.trim(), password, deviceLabel)
-            refreshStatus()
-            null
+            api.setLogin(req).signedOut.also { refreshStatus() }
         } catch (e: ApiError) {
-            when (e.code) {
-                "permission_denied" -> t("Wrong account or password.", "账号或密码不对。")
-                "resource_exhausted" -> t("Too many wrong passwords. Try again in a few minutes.", "密码错误次数太多，请过几分钟再试。")
-                else -> e.message.ifEmpty { e.code }
-            }
+            failed(loginError(e))
+            null
         }
     }
 
-    sealed interface Join {
-        data object Idle : Join
-        data object Asking : Join
-        /** Waiting for a trusted device to approve: it shows the same verification code. */
-        data class Waiting(val code: String, val verificationCode: String) : Join
-        /** Approved: type the two digits the approving device shows. */
-        data class Digits(val code: String, val approvedBy: String, val error: String? = null) : Join
-        data class Failed(val message: String) : Join
-    }
-
-    private val _join = MutableStateFlow<Join>(Join.Idle)
-    val join = _join.asStateFlow()
-    private var joining: Job? = null
-
-    /** Asks the owner at address to take this phone as a trusted device, and waits for one of theirs to approve. */
-    fun join(address: ConnectAddress) {
-        val api = api ?: return
-        joining?.cancel()
-        _join.value = Join.Asking
-        joining = scope.launch {
-            signer.expect(Expectation.Own)
-            try {
-                val res = api.requestJoin(address.relay, address.owner, deviceLabel)
-                _join.value = Join.Waiting(res.code, res.verificationCode)
-                while (true) {
-                    val w = api.waitJoin(res.code)
-                    if (w.done && !w.matchRequired) {
-                        api.confirmJoin(res.code, accept = true)
-                        _join.value = Join.Idle
-                        refreshStatus()
-                        return@launch
-                    }
-                    if (w.done) {
-                        _join.value = Join.Digits(res.code, w.approvedBy)
-                        return@launch
-                    }
-                    if (w.expired) throw ApiError("expired", "The request expired. Start again.")
-                }
-            } catch (e: ApiError) {
-                _join.value = if (signer.cancelledOwn) Join.Idle else Join.Failed(e.message.ifEmpty { e.code })
-            }
-        }
-    }
-
-    fun confirmDigits(digits: String) {
-        val d = _join.value as? Join.Digits ?: return
-        scope.launch {
-            try {
-                api!!.confirmJoin(d.code, accept = true, match = digits.trim())
-                _join.value = Join.Idle
-                refreshStatus()
-            } catch (e: ApiError) {
-                _join.value = d.copy(error = if (e.code == "invalid_argument") "Those aren’t the digits. Check the other device and try again." else e.message)
-            }
-        }
-    }
-
-    fun cancelJoin() {
-        joining?.cancel()
-        val code = when (val j = _join.value) {
-            is Join.Waiting -> j.code
-            is Join.Digits -> j.code
-            else -> null
-        }
-        if (code != null) scope.launch { runCatching { api?.confirmJoin(code, accept = false) } }
-        _join.value = Join.Idle
-    }
-
-    // Approvals.
-
-    fun dismiss(p: PairingDetails) {
-        _dismissed.value = _dismissed.value + p.code
-    }
-
-    /** Approves a machine; the answer carries the two digits to type on it when it asked for them. */
-    suspend fun approveMachine(p: PairingDetails, name: String): String? = report {
-        if (!p.confirmed) signer.expect(Expectation.Code(p.verificationCode))
-        api!!.approveMachine(p.code, name).matchCode.also { dismiss(p) }
-    }
-
-    /** Approves an agent: every project and coding agent, for ttlDays. */
-    suspend fun approveClient(p: PairingDetails, label: String, ttlDays: Int): Boolean = report {
-        if (!p.confirmed) signer.expect(Expectation.Code(p.verificationCode))
-        api!!.approveClient(p.code, GrantSpec(label = label, agents = listOf("*"), ttlDays = ttlDays))
-        dismiss(p)
+    /** Signs another device out; its own machine goes with it, Her's data there erased first if asked. */
+    suspend fun removeDevice(d: Device, eraseHer: Boolean): Boolean = report {
+        api!!.removeDevice(d.keyId, eraseHer)
+        val w = _world.value
+        _world.value = w.copy(devices = w.devices.filter { it.keyId != d.keyId })
         true
     } ?: false
 
-    /** Approves a trusted device; the answer carries the two digits to type on it. */
-    suspend fun approveDevice(p: PairingDetails): String? = report {
-        if (!p.confirmed) signer.expect(Expectation.Code(p.verificationCode))
-        api!!.approveDevice(p.code).matchCode.also { dismiss(p) }
-    }
-
-    /** A pairing code typed or scanned here: its request, to approve. */
-    suspend fun lookup(code: String): PairingDetails? = report {
-        val p = api!!.lookupPairing(code) ?: return@report null
-        live.known(p.code) // looked up here: no notification
-        _dismissed.value = _dismissed.value - p.code
-        val w = _world.value
-        _world.value = w.copy(pairings = w.pairings.filter { it.code != p.code } + p)
-        p
+    /** The devices again, from the server (the Watch brings their changes too). */
+    suspend fun refreshDevices() {
+        val api = api ?: return
+        runCatching { api.listDevices() }.getOrNull()?.let { _world.value = _world.value.copy(devices = it.devices) }
     }
 
     // Sessions.
@@ -430,4 +339,25 @@ class AppModel(private val context: Context) {
         val w = _world.value
         _world.value = w.copy(sessions = mergeSessions(w.sessions, listOf(s)))
     }
+}
+
+/** What logging in, setting up or changing the account failed with, as the person reads it. */
+fun loginError(e: ApiError): String = when (e.code) {
+    "permission_denied" -> when {
+        e.message.contains("setup code") -> t("Wrong setup code.", "设置码不对。")
+        e.message.contains("current password") -> t("The current password is wrong.", "当前密码不对。")
+        else -> t("Wrong account or password.", "账号或密码不对。")
+    }
+    "resource_exhausted" -> t("Too many tries. Wait a few minutes and try again.", "尝试次数太多，请过几分钟再试。")
+    "already_exists" -> if (e.message.contains("set up already")) {
+        t("This server is set up already: log in with its account instead.", "这台服务器已经设置过了，请改用它的账号登录。")
+    } else {
+        e.message
+    }
+    "failed_precondition" -> when {
+        e.message.contains("not set up") -> t("This server is not set up yet: set it up with the setup code it printed.", "这台服务器还没有设置，请用它显示的设置码来设置。")
+        e.message.contains("turned off") -> t("Logging in is turned off for this account. Turn it on from a device that is logged in.", "这个账号的登录已关闭，请在已登录的设备上重新打开。")
+        else -> e.message
+    }
+    else -> e.message.ifEmpty { e.code }
 }

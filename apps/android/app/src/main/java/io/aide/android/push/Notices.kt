@@ -8,15 +8,15 @@ import io.aide.android.ui.t
 // What the phone shows of a notice (session.v1.Notice) its own connection
 // brought (LiveNotices), as the iPhone's NoticeText says it.
 
-/** The notices this phone asks for (as the iPhone's defaults; requests to connect always come). */
+/** The notices this phone asks for (as the iPhone's defaults). */
 val noticeKinds = listOf("session_started", "question", "failure", "her")
 
 /** A notice opened, as the app's protojson reads it. */
 fun parseNotice(json: String): Notice = ConnectClient.json.decodeFromString(Notice.serializer(), json)
 
-/** What a notice opens: a session, a request to connect (by its code), or Her on a machine. */
-data class NoticeTarget(val session: String = "", val pairing: String = "", val herMachine: String = "") {
-    val isEmpty get() = session.isEmpty() && pairing.isEmpty() && herMachine.isEmpty()
+/** What a notice opens: a session, or Her on a machine. */
+data class NoticeTarget(val session: String = "", val herMachine: String = "") {
+    val isEmpty get() = session.isEmpty() && herMachine.isEmpty()
 }
 
 /** A notice as the phone shows it: its words, the thread newer ones replace, what a tap opens. */
@@ -47,22 +47,11 @@ fun show(n: Notice): Shown = when (n.kind) {
         ).filter { it.isNotEmpty() }.joinToString("\n"),
         n.sessionId, NoticeTarget(session = n.sessionId), urgent = false,
     )
-    "pairing" -> Shown(
-        when (n.pairingKind) {
-            "PAIRING_KIND_DEVICE" -> t("“${n.pairingLabel}” wants to become your trusted device", "“${n.pairingLabel}”想成为你的可信设备")
-            "PAIRING_KIND_MACHINE" -> t("A machine calling itself “${n.pairingLabel}” wants to join", "一台自称“${n.pairingLabel}”的机器想要加入")
-            else -> t("“${n.pairingLabel}” wants to connect to your computer", "“${n.pairingLabel}”想连接你的电脑")
-        },
-        t(
-            "Verification code ${n.verificationCode}. Open Aide to compare it and approve; if you don’t know it, deny it.",
-            "校验码 ${n.verificationCode}。打开 Aide 核对后批准；不认识就拒绝。",
-        ),
-        "pairing", NoticeTarget(pairing = n.pairingCode), urgent = true,
-    )
     "her" -> Shown(
         n.botName.ifEmpty { "Her" },
         when (n.herKind) {
-            "approval" -> t("Waiting for your approval: ${n.text}", "等你批准：${n.text}")
+            // A secure card waits for the owner (Her asks no approvals: she acts).
+            "approval" -> t("Waiting for you: ${n.text}", "等你处理：${n.text}")
             "question" -> t("Waiting for your answer: ${n.text}", "等你回答：${n.text}")
             else -> n.text
         },

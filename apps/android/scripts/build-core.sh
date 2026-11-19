@@ -4,7 +4,7 @@
 #   apps/android/scripts/build-core.sh   →   apps/android/build/core/hermeshcore.aar
 # It does nothing when the library is newer than every Go source file
 # (the Gradle build runs it before each build). VERSION stamps the version.
-# No build names a server: logging in asks for it (docs/password-login.md).
+# No build names a server: logging in asks for it (docs/accounts.md).
 # Needs ANDROID_HOME (or ANDROID_SDK_ROOT) with an NDK in it, or
 # ANDROID_NDK_HOME; gomobile and gobind come from go.mod's tools.
 set -euo pipefail

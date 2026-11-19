@@ -69,9 +69,6 @@ sealed interface HerLine {
     data class Failed(override val key: String, val text: String) : HerLine
 }
 
-/** A tool call Her waits for the owner to allow. */
-data class HerApproval(val callId: String, val name: String, val summary: String, val reason: String?)
-
 /**
  * A conversation: the snapshot bots/open returned, then each session/event
  * after it (the iPhone's HerSession, reading only what the panel shows).
@@ -81,8 +78,6 @@ class HerConversation(snapshot: JsonElement?) {
     var lastSeq: Long = snapshot["last_seq"].long ?: 0
         private set
     private val entries = mutableListOf<JsonElement>()
-    var approvals: List<HerApproval> = emptyList()
-        private set
     /** A task runs. */
     var working = false
         private set
@@ -90,14 +85,8 @@ class HerConversation(snapshot: JsonElement?) {
     init {
         entries += snapshot["transcript"]["items"].arr
         val task = snapshot["active_task"]
-        if (task["task_id"].str != null) {
-            working = true
-            approvals = task["approvals"].arr.mapNotNull(::approval)
-        }
+        if (task["task_id"].str != null) working = true
     }
-
-    private fun approval(j: JsonElement?): HerApproval? =
-        j["call_id"].str?.let { HerApproval(it, j["name"].str ?: "", j["summary"].str ?: "", j["reason"].str) }
 
     /** An event (her's Event); one it has already changes nothing. */
     fun apply(e: JsonElement?) {
@@ -105,20 +94,11 @@ class HerConversation(snapshot: JsonElement?) {
         if (seq <= lastSeq) return
         lastSeq = seq
         when (e["type"].str) {
-            "task_started" -> {
-                working = true
-                approvals = emptyList()
-            }
+            "task_started" -> working = true
             "message_completed" -> entries += JsonObject(mapOf("type" to JsonPrimitive("message"), "message_id" to (e["message_id"] ?: JsonNull), "message" to (e["message"] ?: JsonNull)))
-            "approval_requested" -> e.let(::approval)?.let { a -> approvals = approvals.filter { it.callId != a.callId } + a }
-            "approval_resolved" -> approvals = approvals.filter { it.callId != e["call_id"].str }
-            "task_completed", "task_interrupted", "session_closed" -> {
-                working = false
-                approvals = emptyList()
-            }
+            "task_completed", "task_interrupted", "session_closed" -> working = false
             "task_failed" -> {
                 working = false
-                approvals = emptyList()
                 entries += JsonObject(mapOf("type" to JsonPrimitive("task_end"), "outcome" to JsonPrimitive("failed"), "error" to (e["error"] ?: JsonNull)))
             }
         }

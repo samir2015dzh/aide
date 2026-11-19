@@ -40,7 +40,6 @@ data class GetStatusResponse(
     val relayUrl: String = "",
     val relayConnected: Boolean = false,
     val version: String = "",
-    val connectAddress: String = "",
     val hosted: Boolean = false,
     val deviceKeyId: String = "",
     val removed: Boolean = false,
@@ -88,7 +87,7 @@ data class HerLatest(
     val botName: String = "",
     val text: String = "",
     val at: String = "",
-    /** HER_LATEST_KIND_MESSAGE, _QUESTION or _APPROVAL. */
+    /** HER_LATEST_KIND_MESSAGE, _QUESTION or _APPROVAL (a secure card waits). */
     val kind: String = "",
     val muted: Boolean = false,
 )
@@ -157,6 +156,8 @@ data class Device(
     val thisDevice: Boolean = false,
     val machineId: String = "",
     val machineOnline: Boolean = false,
+    /** Set up before accounts: a root key of its own in the root cert. */
+    val legacy: Boolean = false,
 )
 
 @Serializable
@@ -169,22 +170,6 @@ data class Project(
 
 @Serializable
 data class ProjectRef(val machineId: String = "", val projectId: String = "")
-
-@Serializable
-data class PairingDetails(
-    /** PAIRING_KIND_MACHINE, PAIRING_KIND_CLIENT (an agent) or PAIRING_KIND_DEVICE. */
-    val kind: String = "",
-    val label: String = "",
-    val hostname: String = "",
-    val platform: String = "",
-    val fingerprint: String = "",
-    val expiresAt: String = "",
-    val subjectId: String = "",
-    val verificationCode: String = "",
-    val code: String = "",
-    val custodian: String = "",
-    val confirmed: Boolean = false,
-)
 
 @Serializable
 data class Failure(val kind: String = "", val message: String = "", val retryable: Boolean = false, val hint: String = "")
@@ -274,8 +259,6 @@ data class WatchResponse(
     val removedDeviceKeyIds: List<String> = emptyList(),
     val projects: List<Project> = emptyList(),
     val removedProjects: List<ProjectRef> = emptyList(),
-    val pairings: List<PairingDetails> = emptyList(),
-    val removedPairingCodes: List<String> = emptyList(),
     val sessions: List<Session> = emptyList(),
     val deletedSessionIds: List<String> = emptyList(),
     val next: SessionCursor? = null,
@@ -321,33 +304,34 @@ data class SessionEvent(
 // Requests and the answers the app reads.
 
 @Serializable data class Empty(val unused: String? = null)
-@Serializable data class SetupRequest(val relayUrl: String, val claimCode: String, val rootLabel: String, @EncodeDefault val rootPlatform: String = "android")
-@Serializable data class RequestJoinRequest(val relayUrl: String, val ownerId: String, val rootLabel: String, @EncodeDefault val rootPlatform: String = "android")
-/** Logging in with the owner's account and password (docs/password-login.md); relayUrl empty: the build's own server. */
-@Serializable data class PasswordLoginRequest(
+/** Setting a new server up with the setup code it printed, and the account and password it will keep (docs/accounts.md). */
+@Serializable data class SetupRequest(
+    val relayUrl: String,
+    val setupCode: String,
+    val account: String,
+    val password: String,
+    val label: String,
+    @EncodeDefault val platform: String = "android",
+)
+@Serializable data class SetupResponse(val ownerId: String = "")
+/** Logging in to the owner's server with the account and password: the server signs this phone in at once. */
+@Serializable data class LogInRequest(
     val relayUrl: String,
     val account: String,
     val password: String,
-    val rootLabel: String,
-    @EncodeDefault val rootPlatform: String = "android",
+    val label: String,
+    @EncodeDefault val platform: String = "android",
 )
-@Serializable data class PasswordLoginResponse(val ownerId: String = "", val connectAddress: String = "")
-@Serializable data class RequestJoinResponse(val code: String = "", val verificationCode: String = "", val expiresAt: String = "")
-@Serializable data class CodeRequest(val code: String)
-@Serializable data class WaitJoinResponse(
-    val done: Boolean = false,
-    val expired: Boolean = false,
-    val approvedBy: String = "",
-    val matchRequired: Boolean = false,
-    val claimed: Boolean = false,
-    val claimedBy: String = "",
-)
-@Serializable data class ConfirmJoinRequest(val code: String, val accept: Boolean, val matchCode: String = "")
-@Serializable data class ApproveMachinePairingRequest(val code: String, val machineName: String)
-@Serializable data class ApproveMachinePairingResponse(val machineId: String = "", val matchCode: String = "")
-@Serializable data class ApproveClientPairingRequest(val code: String, val spec: GrantSpec)
-@Serializable data class ApproveDevicePairingResponse(val keyId: String = "", val matchCode: String = "")
-@Serializable data class LookupPairingResponse(val details: PairingDetails? = null)
+@Serializable data class LogInResponse(val ownerId: String = "")
+/** The account, as the server keeps it; off: logging in is turned off; convert: an old password login waits to be converted. */
+@Serializable data class GetLoginResponse(val account: String = "", val server: String = "", val convert: Boolean = false, val off: Boolean = false)
+/** A new name or password, or logging in off or on, with the current password; account and newPassword empty: kept. */
+@Serializable data class SetLoginRequest(val currentPassword: String, val account: String = "", val newPassword: String = "", val off: Boolean = false)
+/** How many devices and agents a new password signed out. */
+@Serializable data class SetLoginResponse(val signedOut: Int = 0)
+@Serializable data class ListDevicesResponse(val devices: List<Device> = emptyList())
+@Serializable data class RemoveDeviceRequest(val keyId: String, val eraseHer: Boolean = false)
+@Serializable data class RemoveDeviceResponse(val reissuedMachines: Int = 0, val reissuedGrants: Int = 0)
 @Serializable data class SessionIdRequest(val sessionId: String)
 @Serializable data class SessionResponse(val session: Session? = null)
 @Serializable data class StreamSessionEventsRequest(
@@ -400,7 +384,7 @@ data class SessionEvent(
 
 @Serializable data class DiffStat(val filesChanged: Int = 0, val insertions: Int = 0, val deletions: Int = 0)
 
-/** hermesh.session.v1.Notice: what a machine (or the relay, for a request to connect) sealed to this phone's notice key. */
+/** hermesh.session.v1.Notice: what a machine sealed to this phone's notice key. */
 @Serializable
 data class Notice(
     val kind: String = "",
@@ -415,10 +399,6 @@ data class Notice(
     val failureMessage: String = "",
     val turn: Int = 0,
     val diffStat: DiffStat? = null,
-    val pairingKind: String = "",
-    val pairingLabel: String = "",
-    val verificationCode: String = "",
-    val pairingCode: String = "",
     val herKind: String = "",
     val machineId: String = "",
     val botId: String = "",

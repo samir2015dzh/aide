@@ -17,13 +17,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -137,7 +135,6 @@ fun HerPage(model: AppModel, machineId: String, back: () -> Unit) {
 @Composable
 private fun HerChat(panel: HerPanel) {
     val lines by panel.lines.collectAsState()
-    val approvals by panel.approvals.collectAsState()
     val working by panel.working.collectAsState()
     var text by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -156,20 +153,7 @@ private fun HerChat(panel: HerPanel) {
                     is HerLine.Failed -> Text(l.text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            if (working && approvals.isEmpty()) item { Text(t("Her is working…", "Her 正在处理…"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-        }
-        approvals.forEach { a ->
-            Surface(tonalElevation = 3.dp) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(t("Her asks to use ${a.name}", "Her 请求使用 ${a.name}"), fontWeight = FontWeight.SemiBold, color = Warning)
-                    if (a.summary.isNotEmpty()) Text(a.summary, style = MaterialTheme.typography.bodySmall)
-                    a.reason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { scope.launch { panel.decide(a, allow = true) } }) { Text(t("Allow Once", "允许一次")) }
-                        OutlinedButton(onClick = { scope.launch { panel.decide(a, allow = false) } }) { Text(t("Deny", "拒绝")) }
-                    }
-                }
-            }
+            if (working) item { Text(t("Her is working…", "Her 正在处理…"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         }
         Row(Modifier.fillMaxWidth().imePadding().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(text, { text = it }, Modifier.weight(1f), placeholder = { Text(t("Message Her", "给 Her 发消息")) }, maxLines = 5)

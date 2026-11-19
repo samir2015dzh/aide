@@ -4,42 +4,12 @@ import io.aide.android.her.HerBot
 import io.aide.android.her.HerConversation
 import io.aide.android.her.HerLine
 import io.aide.android.her.HerMemory
-import io.aide.android.signer.Card
-import io.aide.android.signer.Cards
-import io.aide.android.signer.Expectation
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-
-class CardsTest {
-    @Test fun cardsAsTheCoreSendsThem() {
-        // cmd/hermesh-mobile/android: preview.Card as JSON, empty fields left out.
-        val cards = Cards.parse("""[{"title":"Approve a machine","code":"1234 5678","lines":["Machine: mac"]},{"title":"Join","own":true}]""")
-        assertEquals(Card(title = "Approve a machine", code = "1234 5678", lines = listOf("Machine: mac")), cards[0])
-        assertTrue(cards[1].own)
-    }
-
-    @Test fun expectationsSkipOnlyWhatThePersonConfirmed() {
-        val machine = listOf(Card(title = "Approve a machine", code = "1234 5678"))
-        assertTrue(Expectation.Code("1234 5678").matches(machine))
-        assertFalse(Expectation.Code("9999 0000").matches(machine))
-        assertFalse(Expectation.Code("").matches(listOf(Card(title = "x"))))
-        assertTrue(Expectation.Own.matches(listOf(Card(title = "Join", own = true), Card(title = "Key", own = true))))
-        assertFalse(Expectation.Own.matches(listOf(Card(title = "Join", own = true), Card(title = "Grant"))))
-        assertFalse(Expectation.Own.matches(emptyList()))
-    }
-
-    @Test fun messagesAndSignaturesAsBase64() {
-        // Go's json.Marshal of [][]byte.
-        val msgs = Cards.messages("""["b25l","AAEC/w=="]""")
-        assertEquals("one", msgs[0].decodeToString())
-        assertEquals(listOf(0, 1, 2, 255), msgs[1].map { it.toInt() and 0xff })
-        assertEquals("""["b25l","AAEC/w=="]""", Cards.signatures(msgs))
-    }
-}
 
 class HerTest {
     private fun j(s: String): JsonElement = Json.parseToJsonElement(s)
@@ -51,7 +21,7 @@ class HerTest {
              {"type":"message","message_id":"a1","message":{"role":"assistant","content":[{"type":"thinking","text":"hm"},{"type":"tool_call","id":"t1","name":"send_to_user","arguments":{"text":"Done: 9:00 every day."}},{"type":"tool_call","id":"t2","name":"routine_set","arguments":{}}]}},
              {"type":"message","message_id":"u2","mail":{"kind":"routine"},"message":{"role":"user","content":[{"type":"text","text":"routine ran"}]}}
            ]},
-           "active_task":{"task_id":"k1","approvals":[{"call_id":"t9","name":"shell","summary":"rm -rf build"}]}}""",
+           "active_task":{"task_id":"k1"}}""",
     )
 
     @Test fun theConversationAsThePanelShowsIt() {
@@ -59,9 +29,9 @@ class HerTest {
         assertEquals("hs1", c.sessionId)
         assertEquals(listOf(HerLine.Owner("u1", "remind me at 9"), HerLine.Her("t1", "Done: 9:00 every day.")), c.lines())
         assertTrue(c.working)
-        assertEquals("rm -rf build", c.approvals.single().summary)
-        c.apply(j("""{"seq":11,"type":"approval_resolved","call_id":"t9","decision":{"type":"approve"}}"""))
-        assertTrue(c.approvals.isEmpty())
+        // Her acts without asking: an approval event (from an older her) changes nothing shown.
+        c.apply(j("""{"seq":11,"type":"approval_requested","call_id":"t9","name":"shell","summary":"rm -rf build"}"""))
+        assertTrue(c.working)
         c.apply(j("""{"seq":12,"type":"message_completed","message_id":"a2","message":{"role":"assistant","content":[{"type":"tool_call","id":"t3","name":"send_to_user","arguments":{"text":"Cleaned."}}]}}"""))
         c.apply(j("""{"seq":12,"type":"message_completed","message_id":"a2","message":{"role":"assistant","content":[]}}""")) // seen
         c.apply(j("""{"seq":13,"type":"task_completed"}"""))

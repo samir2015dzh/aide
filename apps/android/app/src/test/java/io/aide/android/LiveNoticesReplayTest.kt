@@ -21,12 +21,14 @@ import java.util.Locale
 
 /**
  * The notices a real core's Watch gives, as the app follows it: the Watch
- * of e2e TestAndroidCore (the bound core joined to an owner Mac through a
- * relay; an agent asks to connect, starts sessions that ask and fail, the
- * owner starts one, the relay goes away and comes back while a session
- * asks), recorded as the app reads it (watch-recorded.jsonl; a fresh one
- * from HERMESH_ANDROID_WATCH_RECORD when set), played through World and
- * LiveNotices as AppModel does.
+ * of e2e TestAndroidCore (the bound core and an owner Mac on one relay; an
+ * agent connects, starts sessions that ask and fail, the owner starts one,
+ * the relay goes away and comes back while a session asks), recorded as the
+ * app reads it (watch-recorded.jsonl; a fresh one from
+ * HERMESH_ANDROID_WATCH_RECORD when set), played through World and
+ * LiveNotices as AppModel does. The recording is from before accounts: it
+ * also carries the agent's request to connect (the Watch's pairings, gone
+ * since), which the app no longer reads, so nothing is told of it.
  */
 class LiveNoticesReplayTest {
     private lateinit var locale: Locale
@@ -56,11 +58,9 @@ class LiveNoticesReplayTest {
         val shown = steps.flatMap { it.shown }
         val withdrawn = steps.flatMap { it.withdrawn }
 
-        // The agent's request to connect, once; taken back once approved.
-        val pairing = shown.filter { it.kind == "pairing" }
-        assertEquals(1, pairing.size)
-        assertEquals("“Muse” wants to connect to your computer", show(pairing[0]).title)
-        assertTrue(pairing[0].pairingCode.isNotEmpty() && withdrawn.contains("pairing"))
+        // Only the kinds this phone asks for: no request to connect, which no longer exists.
+        assertTrue(shown.all { it.kind in listOf("session_started", "question", "failure", "her") })
+        assertTrue(withdrawn.none { it == "pairing" })
 
         // Muse's three sessions are news; the owner's own is not.
         val started = shown.filter { it.kind == "session_started" }
