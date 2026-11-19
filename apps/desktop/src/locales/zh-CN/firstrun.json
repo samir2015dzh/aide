@@ -138,7 +138,8 @@
       "timedOut": "找到了 {{binary}}，但它 20 秒内没有响应。在终端里运行它，看看是不是卡住了。",
       "missingRuntime": "找到了 {{binary}}，但运行它需要的 {{runtime}} 找不到。确认它在终端里能运行。",
       "failed": "找到了 {{binary}}，但运行时报错：{{detail}}"
-    }
+    },
+    "howToConnect": "怎么连接…"
   },
   "erased": {
     "done": "Aide 已全部清空",

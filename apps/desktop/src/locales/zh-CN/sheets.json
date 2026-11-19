@@ -207,7 +207,8 @@
     "promptPlaceholder": "要 {{agent}} 做什么？",
     "starting": "正在启动…",
     "start": "启动",
-    "started": "已启动「{{title}}」"
+    "started": "已启动「{{title}}」",
+    "howToConnect": "怎么连接 DSH、Claude Desktop…"
   },
   "working": "正在处理…"
 }

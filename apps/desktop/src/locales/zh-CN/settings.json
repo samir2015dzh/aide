@@ -236,7 +236,8 @@
     "herEraseTitle": "清空「{{name}}」上 Her 的数据？",
     "herEraseMessage": "删除「{{name}}」上 Her 的助手、对话、记忆、定时任务、文件、连接器和模型登录，无法恢复。",
     "herEraseButton": "清空",
-    "herErased": "已清空「{{name}}」上 Her 的数据"
+    "herErased": "已清空「{{name}}」上 Her 的数据",
+    "howToConnect": "怎么连接 DSH、Claude Desktop…"
   },
   "wake": {
     "title": "新消息提醒",

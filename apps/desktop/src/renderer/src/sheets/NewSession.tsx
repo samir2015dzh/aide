@@ -1,3 +1,4 @@
+import { ConnectLink } from "../components";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { codingAgentTitle, displayTitle } from "@hermesh/core";
@@ -100,7 +101,9 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
                 ))}
               </div>
             ) : (
-              t("newSession.noMachines")
+              <>
+                {t("newSession.noMachines")} <ConnectLink>{t("newSession.howToConnect")}</ConnectLink>
+              </>
             )}
           </span>
         </div>
@@ -118,7 +121,9 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
                   ))}
                 </div>
               ) : (
-                t("newSession.noAgents", { machine: machine.machineName })
+                <>
+                  {t("newSession.noAgents", { machine: machine.machineName })} <ConnectLink>{t("newSession.howToConnect")}</ConnectLink>
+                </>
               )}
             </span>
           </div>

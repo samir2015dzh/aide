@@ -210,7 +210,8 @@
     "promptPlaceholder": "What should {{agent}} do?",
     "starting": "Starting…",
     "start": "Start",
-    "started": "Started “{{title}}”"
+    "started": "Started “{{title}}”",
+    "howToConnect": "How to Connect DSH, Claude Desktop…"
   },
   "working": "Working…"
 }

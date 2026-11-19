@@ -16,7 +16,7 @@ import { unreadCount } from "./her/environments";
 import { expiringClients } from "./overview/Attention";
 import { keys, ownKeys } from "./platform";
 import { useNow, useStore, type Store } from "./store";
-import { StateText, useStateView } from "./components";
+import { ConnectLink, StateText, useStateView } from "./components";
 
 export function grantLabel(st: Store, s: Session): string {
   if (s.createdBy === "owner") return i18n.t("common:sidebar.you");
@@ -259,6 +259,7 @@ function Sessions({ now }: { now: Date }) {
           <div className="side-empty">
             <b>{t("sidebar.emptyTitle")}</b>
             {t(st.status?.machineOnly ? "sidebar.emptyMachine" : "sidebar.emptyBody")}
+            {!st.status?.machineOnly && <ConnectLink>{t("sidebar.howToConnect")}</ConnectLink>}
           </div>
         ) : (
           <div className="endrow">

@@ -238,7 +238,8 @@
     "herEraseTitle": "Erase Her’s data on “{{name}}”?",
     "herEraseMessage": "Her’s assistants, conversations, memory, routines, files, connectors and model logins on “{{name}}” are deleted. This can’t be undone.",
     "herEraseButton": "Erase",
-    "herErased": "Her’s data on “{{name}}” is erased"
+    "herErased": "Her’s data on “{{name}}” is erased",
+    "howToConnect": "How to Connect DSH, Claude Desktop…"
   },
   "wake": {
     "title": "Wake on New Messages",

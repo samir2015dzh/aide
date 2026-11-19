@@ -139,7 +139,8 @@
       "timedOut": "Found {{binary}}, but it didn’t respond within 20 seconds. Run it in Terminal to check if it’s hanging.",
       "missingRuntime": "Found {{binary}}, but its required runtime ({{runtime}}) wasn’t found. Make sure it runs in Terminal.",
       "failed": "Found {{binary}}, but running it failed: {{detail}}"
-    }
+    },
+    "howToConnect": "How to Connect…"
   },
   "erased": {
     "done": "Aide erased everything",

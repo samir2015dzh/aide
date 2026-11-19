@@ -158,3 +158,15 @@ export function PopMenu({ label, items, anchor, keyboard, onClose }: { label: st
   );
 }
 
+/**
+ * A link to the Connect guide (Settings › Connect), at one line ("deepseek",
+ * "claude", "codex", "custom", "assistants") when given: from the places a
+ * person looks for how to connect an agent (docs/accounts.md §3).
+ */
+export function ConnectLink({ line, children }: { line?: string; children: ReactNode }) {
+  return (
+    <button type="button" className="link" onClick={() => window.hermesh?.openSettings(line ? `connect/${line}` : "connect")}>
+      {children}
+    </button>
+  );
+}

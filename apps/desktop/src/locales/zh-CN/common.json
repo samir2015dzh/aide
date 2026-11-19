@@ -56,7 +56,8 @@
     "dsh": "DeepSeek 会话",
     "searchHint": "搜索任务、机器、Agent",
     "machinesOnline": "机器 {{online}}/{{total}} 在线",
-    "connect": "连接 Agent"
+    "connect": "连接 Agent",
+    "howToConnect": "怎么连接 DSH、Claude Desktop…"
   },
   "accountMenu": {
     "settings": "设置…",

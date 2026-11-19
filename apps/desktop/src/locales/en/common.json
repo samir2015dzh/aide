@@ -59,7 +59,8 @@
     "dsh": "DeepSeek Sessions",
     "searchHint": "Search tasks, machines, agents",
     "machinesOnline": "{{online}}/{{total}} machines online",
-    "connect": "Connect Agents"
+    "connect": "Connect Agents",
+    "howToConnect": "How to Connect DSH, Claude Desktop…"
   },
   "accountMenu": {
     "settings": "Settings…",
