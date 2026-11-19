@@ -93,36 +93,6 @@ export const mac: Platform = {
     shell.openExternal("x-apple.systempreferences:com.apple.LoginItems-Settings.extension");
   },
 
-  // The signer (Hermesh Signer.app) holds the root key and shows what is
-  // signed; it speaks the app's language (-AppleLanguages, as macOS reads it).
-  signer(language) {
-    const bin = !app.isPackaged ? process.env.HERMESH_SIGNER || undefined : path.join(process.resourcesPath, "..", "Helpers", "Hermesh Signer.app", "Contents", "MacOS", "HermeshSigner");
-    const names: Record<string, string> = { en: "en", "zh-CN": "zh-Hans" };
-    return bin ? { bin, args: ["-AppleLanguages", `(${names[language] ?? "en"})`] } : undefined;
-  },
-
-  // The signer is the app's child (signer.ts).
-  async readySigner() {},
-
-  // The signer comes and goes with the app.
-  async signerUpdate() {
-    return undefined;
-  },
-  async updateSigner() {},
-
-  // Touch ID, always: no choice to offer.
-  async signerUnlock() {
-    return undefined;
-  },
-  async setSignerUnlock() {
-    return false;
-  },
-
-  // Elevation is never silent on a Mac: Touch ID or the password, each time.
-  async elevatesSilently() {
-    return false;
-  },
-  openElevationSettings() {},
 
   runInTerminal(c: TerminalCommand, command: string) {
     if (c === "antigravityLogin" && app.isPackaged) {

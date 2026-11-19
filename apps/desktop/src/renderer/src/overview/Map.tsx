@@ -8,7 +8,7 @@ import { i18n } from "../../../shared/i18n";
 import { grantFace } from "../components";
 import { problemShort, problemsOf, severe } from "../health";
 import { Icon } from "../icons";
-import { hostOf } from "../sheets/Pairing";
+import { hostOf } from "../sheets/common";
 import { useStore, type Store } from "../store";
 
 // "Connections": who may use this computer (grants: a personal agent connects only

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateOf } from "@hermesh/core";
+import { type Tab } from "./ConnectGuide";
+import { lines } from "./connectGuideLogic";
 import { Icon } from "./icons";
 import { ToastView } from "./MainWindow";
-import { openPairing } from "./sheets/Pairing";
 import { SheetHost } from "./Sheets";
 import { useNow, useStore } from "./store";
 import { Account } from "./settings/Account";
@@ -32,6 +33,9 @@ function route(s: string): { page: Page; item: string } {
   if (p === "devices") return { page: "account", item: "" };
   return { page: pages.find((x) => x.id === p)?.id ?? "general", item: rest.join("/") };
 }
+
+/** "connect/<line>": the line of the Connect guide to open on. */
+const connectLine = (item: string): Tab | undefined => ([...lines, "assistants"] as string[]).includes(item) ? (item as Tab) : undefined;
 
 /**
  * The settings window (#settings or #settings/<page>[/<item>]), laid out as
@@ -63,10 +67,6 @@ export function SettingsWindow() {
     return !c.revoked && d && d.getTime() - now.getTime() <= 7 * 86_400_000;
   }).length;
 
-  // A request's notification, while a sheet here waits for requests (main/ipc.ts).
-  const latest = useRef(st);
-  latest.current = st;
-  useEffect(() => window.hermesh?.onCommand((c) => c.startsWith("pairing:") && openPairing(latest.current, c.slice("pairing:".length))), []);
   useEffect(
     () =>
       window.hermesh?.onSettingsTab((s) => {
@@ -119,7 +119,7 @@ export function SettingsWindow() {
         </div>
         <div className="set-body">
           {page === "general" && <General />}
-          {page === "connect" && <Connect />}
+          {page === "connect" && <Connect key={item} line={connectLine(item)} />}
           {page === "grants" && <Grants open={item} select={setItem} />}
           {page === "machines" && <Machines open={item} select={setItem} ask={setAsk} />}
           {page === "ops" && <OpsLog />}

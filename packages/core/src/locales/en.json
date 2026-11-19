@@ -97,12 +97,6 @@
     "herApproval": "Waiting for your approval: {{text}}",
     "herQuestion": "Waiting for your answer: {{text}}"
   },
-  "pairing": {
-    "machine": "Machine “{{label}}” wants to join",
-    "device": "“{{label}}” wants to be your trusted device",
-    "client": "“{{label}}” wants to connect",
-    "body": "Verification code {{code}}. Click to verify and approve, or deny if you don’t recognize it."
-  },
   "resolution": {
     "answeredByYou": "You answered: {{answers}}",
     "answeredBy": "{{name}} answered: {{answers}}",

@@ -1,4 +1,4 @@
-import type { Client, Device, GetStatusResponse, Machine, PairingDetails, Project, Unreachable, WatchResponse } from "@hermesh/proto/local";
+import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, WatchResponse } from "@hermesh/proto/local";
 import { SessionLink, SessionStatus, type Session, type SessionCursor } from "@hermesh/proto/session";
 import { mergeSessions, relistedCursor } from "./sessions";
 import { defaultStateLimits, livenessOf, sessionStateOf, type StateLimits } from "./states";
@@ -15,7 +15,6 @@ export type World = {
   clients: Client[];
   devices: Device[];
   projects: Project[];
-  pairings: PairingDetails[];
   sessions: Session[];
   /** The first message arrived. */
   loaded: boolean;
@@ -25,7 +24,7 @@ export type World = {
   workVersion: number;
 };
 
-export const emptyWorld: World = { machines: [], clients: [], devices: [], projects: [], pairings: [], sessions: [], loaded: false, workVersion: 0 };
+export const emptyWorld: World = { machines: [], clients: [], devices: [], projects: [], sessions: [], loaded: false, workVersion: 0 };
 
 /** Replaces each item that changed (by key) where it was, adds new ones, and drops those removed; list itself when nothing changed. */
 function upsert<T>(list: T[], changed: T[], removed: string[], key: (x: T) => string): T[] {
@@ -58,7 +57,6 @@ export function applyWatch(w: World, m: WatchResponse): World {
     clients: upsert(base.clients, m.clients, m.removedGrantIds, (x) => x.grantId),
     devices: upsert(base.devices, m.devices, m.removedDeviceKeyIds, (x) => x.keyId),
     projects: upsert(base.projects, m.projects, m.removedProjects.map(projectKey), projectKey),
-    pairings: upsert(base.pairings, m.pairings, m.removedPairingCodes, (x) => x.code),
     sessions: mergeSessions(base.sessions, m.sessions, m.deletedSessionIds),
     loaded: true,
   };

@@ -31,7 +31,7 @@ export interface TeamState {
 }
 
 /** The team's state from the sessions the app holds (archived ones are no part of it) and the requests to connect. */
-export function teamState(sessions: Session[], requests: number): TeamState {
+export function teamState(sessions: Session[], requests = 0): TeamState {
   const visible = sessions.filter((s) => s.status !== SessionStatus.ARCHIVED);
   const latest = (list: Session[]) => list.sort((a, b) => updatedDate(b).getTime() - updatedDate(a).getTime());
   const waiting = latest(visible.filter((s) => s.status === SessionStatus.WAITING_INPUT));

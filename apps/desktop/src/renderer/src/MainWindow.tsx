@@ -5,7 +5,6 @@ import { agentName } from "@hermesh/ui";
 import { local } from "./api";
 import { Overview } from "./Overview";
 import { DSHSessions } from "./dsh/DSHSessions";
-import { RequestCards } from "./RequestCards";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -97,7 +96,6 @@ export function MainWindow() {
         ) : (
           <Overview />
         )}
-        <RequestCards />
       </section>
       {search.shown !== null && <SearchPalette key={search.shown} leaving={search.leaving} />}
       <SheetHost />

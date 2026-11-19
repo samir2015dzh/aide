@@ -1,11 +1,10 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { PairingKind } from "@hermesh/proto/identity";
-import { MachineSchema, PairingDetailsSchema } from "@hermesh/proto/local";
+import { MachineSchema } from "@hermesh/proto/local";
 import { HerLatestKind, HerLatestSchema, HerStatusSchema } from "@hermesh/proto/machine";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionStatus } from "@hermesh/proto/session";
 import { describe, expect, test } from "vitest";
-import { filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshot, noticeSnapshots, pairingNotice, type NoticeItem } from "./notices";
+import { filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshot, noticeSnapshots, type NoticeItem } from "./notices";
 import { ask, at, progressOf, session } from "./testing";
 
 const grant = () => "Grok Bot";
@@ -97,17 +96,6 @@ describe("session notices", () => {
     expect(kinds(filterNotices(items, {}))).toEqual(["started", "question", "failed"]);
     expect(kinds(filterNotices(items, { notifyStarted: false, notifyQuestion: false, notifyTurnDone: true }))).toEqual(["failed", "turnDone"]);
     expect(kinds(filterNotices(items, { notifyFailed: false }))).toEqual(["started", "question"]);
-  });
-});
-
-describe("pairing notices", () => {
-  test("each kind of request, with the code to check", () => {
-    const p = (kind: PairingKind, verificationCode = "4F7-2K9") => create(PairingDetailsSchema, { kind, label: "gpu-box", code: "ABCD-EFGH", verificationCode });
-    expect(pairingNotice(p(PairingKind.MACHINE))).toEqual({ title: "机器「gpu-box」想加入", body: "核对码 4F7-2K9。点击比对并批准，如不认识请拒绝。" });
-    expect(pairingNotice(p(PairingKind.CLIENT)).title).toBe("「gpu-box」想连接");
-    expect(pairingNotice(p(PairingKind.DEVICE)).title).toBe("「gpu-box」想成为你的可信设备");
-    // Without a verification code, the pairing code is what both sides show.
-    expect(pairingNotice(p(PairingKind.CLIENT, "")).body).toBe("核对码 ABCD-EFGH。点击比对并批准，如不认识请拒绝。");
   });
 });
 

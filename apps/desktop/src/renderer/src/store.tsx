@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ConnectError } from "@connectrpc/connect";
-import type { Client, Device, GetStatusResponse, Machine, PairingDetails, Project, Unreachable, Wake } from "@hermesh/proto/local";
+import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, Wake } from "@hermesh/proto/local";
 import type { Session } from "@hermesh/proto/session";
 import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@hermesh/core";
 import type { Peek } from "./layout";
@@ -20,7 +20,6 @@ export type Data = {
   machines: Machine[];
   projects: Project[];
   projectsUnreachable: Unreachable[];
-  pairings: PairingDetails[];
   devices: Device[];
 };
 
@@ -46,9 +45,6 @@ export type Sheet =
   /** New Session (docs/technical-design.md §3.4): a machine and agent picked first when given. */
   | { kind: "newSession"; machineId?: string; agent?: string }
   | { kind: "addDevice" }
-  | { kind: "enterCode" }
-  /** details: from LookupPairing, until the poll lists the request. */
-  | { kind: "pairing"; code: string; details?: PairingDetails }
   | { kind: "scope"; clientId: string; renew: boolean }
   /**
    * An agent's doorbell (docs/agent-names.md §7): with wake, see and change it;
@@ -90,11 +86,7 @@ type UI = {
   searchFor: Partial<SessionFilter>;
   sheet: Sheet | null;
   toast: Toast | null;
-  /** Pairing codes the owner put off ("Deny"): left out of pairings until opened again. */
-  dismissed: string[];
-  /** The request whose card is in front (a notification's, clicked). */
-  frontRequest: string | null;
-  /** A machine only asked to become a trusted device: the join pages show. */
+  /** A machine only asked to become one of the owner's devices too: logging in again shows. */
   upgrading: boolean;
   /**
    * Her's sub-agents that wait for the owner and that work, as the conversation the Her page follows says; null
@@ -184,8 +176,8 @@ export function HermeshProvider({ children }: { children: ReactNode }) {
   const unreachable = useMemo(() => unreachableMachines(world.machines), [world.machines]);
   const status = world.down ? null : world.loaded ? world.status : undefined;
   const data = useMemo<Data>(
-    () => ({ status, clients: world.clients, machines: world.machines, projects: world.projects, projectsUnreachable: unreachable, pairings: world.pairings, devices: world.devices }),
-    [status, world.clients, world.machines, world.projects, unreachable, world.pairings, world.devices],
+    () => ({ status, clients: world.clients, machines: world.machines, projects: world.projects, projectsUnreachable: unreachable, devices: world.devices }),
+    [status, world.clients, world.machines, world.projects, unreachable, world.devices],
   );
   const stateLimits = useMemo(() => stateLimitsOf(world.status), [world.status]);
   const sessions = useMemo(() => withKnownState(world.sessions, world.machines, stateLimits), [world.sessions, world.machines, stateLimits]);
@@ -207,8 +199,6 @@ export function HermeshProvider({ children }: { children: ReactNode }) {
     searchFor: {},
     sheet: null,
     toast: null,
-    dismissed: [],
-    frontRequest: null,
     upgrading: false,
     herAgents: null,
     ...Object.fromEntries(Object.entries(savedView()).filter(([, v]) => v !== undefined)),
@@ -276,7 +266,6 @@ export function HermeshProvider({ children }: { children: ReactNode }) {
   const store = useMemo<Store>(
     () => ({
       ...data,
-      pairings: data.pairings.filter((p) => !ui.dismissed.includes(p.code)),
       sessions,
       lastKnown,
       stateLimits,

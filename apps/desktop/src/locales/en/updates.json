@@ -33,9 +33,6 @@
   "noHistory": "Read the release history in your browser.",
   "checkedAt": "Last checked {{time}}",
   "neverChecked": "No successful check yet",
-  "approvalTitle": "Finish the approval first",
-  "approvalBody": "An approval is still pending. Return to it before restarting Aide.",
-  "returnToApproval": "Return to Approval",
   "error": {
     "network": "Couldn’t check for updates. Check your internet connection.",
     "location": "Aide can update itself only from the Applications folder. Move it there in Finder, then try again.",
@@ -47,10 +44,9 @@
   "fullHistory": "Full Release History",
   "install": {
     "heading": "Install",
-    "mac": "**On a Mac**, to approve and run coding agents: `Aide-macos-arm64.dmg` (Apple silicon) or `Aide-macos-x64.dmg` (Intel)",
-    "windows": "**On a Windows 11 PC**, to approve and run coding agents: `Aide-windows-x64-setup.exe`, or `Aide-windows-arm64-setup.exe` on Arm. The installer isn't signed yet, so Windows will warn once; click More info › Run anyway to install",
+    "mac": "**On a Mac**, to manage your machines and tasks and run coding agents: `Aide-macos-arm64.dmg` (Apple silicon) or `Aide-macos-x64.dmg` (Intel)",
+    "windows": "**On a Windows 11 PC**, to manage your machines and tasks and run coding agents: `Aide-windows-x64-setup.exe`, or `Aide-windows-arm64-setup.exe` on Arm. The installer isn't signed yet, so Windows will warn once; click More info › Run anyway to install",
     "machine": "**On a machine for coding agents** (Linux or macOS): `{{command}}`",
-    "device": "**On a Linux computer that only approves**: the same command, ending with `sh -s -- --device`",
     "cli": "**For your agent's CLI**: the same command, ending with `sh -s -- --cli`",
     "relay": "**On your own server**: the image `{{image}}`",
     "note": "The remaining files are used by the installer and automatic updates; you don't need to download them manually."

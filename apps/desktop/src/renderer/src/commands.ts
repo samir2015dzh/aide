@@ -6,7 +6,6 @@ import { i18n } from "../../shared/i18n";
 import { local } from "./api";
 import { layoutOf, setCard, setSidebar } from "./layout";
 import { copySessionId, focusAnswer, interrupt } from "./session/actions";
-import { frontRequest } from "./RequestCards";
 import { archive, grantLabel, listSections } from "./Sidebar";
 import { useStore, type Store } from "./store";
 
@@ -68,7 +67,6 @@ function run(st: Store, c: Command) {
     case "newSession":
     case "addMachine":
     case "addProject":
-    case "enterCode":
       return st.set({ sheet: { kind: c } });
     case "answer":
       if (!s || !pendingQuestion(s)) return;
@@ -92,8 +90,6 @@ function run(st: Store, c: Command) {
   switch (verb) {
     case "open":
       return open(st, arg);
-    case "pairing":
-      return frontRequest(st, arg);
     case "her":
       // A notification's: the Her entry, in its environment.
       return st.set({ selection: { kind: "her", machine: arg } });

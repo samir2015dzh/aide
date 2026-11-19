@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { local } from "../api";
 import { SRow, Switch } from "../settings/common";
 import { useStore, type Sheet } from "../store";
-import { ErrorLine, SignerWaiting, useAction } from "./common";
+import { ErrorLine, Working, useAction } from "./common";
 
 /**
  * Turning Her off on a machine (docs/her-server.md §5.6): her data stays for next time, unless the owner
@@ -26,7 +26,7 @@ export function HerOffSheet({ sheet }: { sheet: Extract<Sheet, { kind: "herOff" 
       <h3 id="sheet-title">{t("herOff.title", { name })}</h3>
       <p className="sub">{t("herOff.sub")}</p>
       <EraseHerData name={name} on={erase} set={setErase} disabled={busy} />
-      {busy && <SignerWaiting detail={t("herOff.approve")} />}
+      {busy && <Working />}
       <ErrorLine text={error} />
       <div className="sheet-foot">
         <button className="btn" disabled={busy} onClick={() => st.set({ sheet: null })}>{t("cancel")}</button>

@@ -10,72 +10,24 @@
     "title": "Let Agents Connect Securely",
     "lede": "Let Grok Bot and Muse in the cloud use Claude Code and Codex on your computer,<br/>and give specialist tasks to specialist agents.",
     "start": "Get Started",
-    "selfHosted": "Use Your Own Server…",
-    "promise": "Even if the server is breached, attackers can’t reach your computer. Tasks are end-to-end encrypted, so the server never sees your content."
-  },
-  "selfHosted": {
-    "title": "Connect Your Own Server",
-    "body": "Enter the address of the Aide server you deployed, along with the claim code shown when it first started.",
-    "address": "Server address",
-    "claim": "Claim code",
-    "plain": "Not encrypted (HTTP). Your tasks remain end-to-end encrypted, but the claim code and online machine status travel in plain text. Anyone on the network could read them or claim this server before you do, and Claude and ChatGPT won't be able to connect. This is fine for testing on a trusted network, but add a domain with HTTPS for ongoing use.",
-    "join": "Already using Aide on another device? Go back and log in with your account and password, or <join>join it by approval…</join>"
-  },
-  "joinAddress": {
-    "invalid": "Invalid connection address. Expected format: relay.example.com/o_xxxxxxxx",
-    "title": "Join Your Existing Aide",
-    "body": "Find your connection address in Aide on a device you already have, under Settings › Account & Devices › Advanced. That device then approves this one.",
-    "address": "Connection address"
+    "selfHosted": "Set Up a New Server…",
+    "promise": "Tasks are end-to-end encrypted, so the server never sees your content."
   },
   "authorize": {
-    "joinNote": "After you continue, confirm once with Touch ID, then approve on your existing device.",
-    "joinNote_win": "After you continue, confirm once with Windows Hello, then approve on your existing device.",
-    "machineOnlyNote": "No Touch ID needed. Just approve on your existing device.",
-    "machineOnlyNote_win": "No Windows Hello needed. Just approve on your existing device.",
-    "settingUp": "Setting Up…",
-    "titleJoin": "Add This Mac to Your Aide?",
-    "titleJoin_win": "Add This PC to Your Aide?",
-    "titleTrust": "Make This Mac Your Trusted Device?",
-    "titleTrust_win": "Make This PC Your Trusted Device?",
+    "settingUp": "Logging In…",
+    "title": "What Does This Computer Do in Aide?",
     "body": "Aide only does what’s listed below. It never changes system settings or reads your files.",
-    "trusted": "Trusted device",
-    "trustedBody": "Creates your owner key inside this Mac’s Secure Enclave, where it never leaves the device. Whenever a machine or agent wants to connect, you approve with Touch ID here.",
-    "trustedBody_win": "Creates your owner key inside this PC’s security chip (TPM), where it never leaves the device. Whenever a machine or agent wants to connect, you approve with Windows Hello here.",
-    "trustedOff": "Off: no owner key is stored here. This Mac only runs tasks, cannot approve requests, and cannot see your other machines. Ideal for a work Mac.",
-    "trustedOff_win": "Off: no owner key is stored here. This PC only runs tasks, cannot approve requests, and cannot see your other machines. Ideal for a work PC.",
+    "device": "One of your devices",
+    "deviceBody": "See and manage all your machines, agents and tasks here.",
+    "deviceOff": "Off: this computer is a machine only. It runs tasks and can’t see your other machines. Ideal for a work computer.",
     "required": "Required",
-    "share": "Share this Mac’s agents safely",
-    "share_win": "Share this PC’s agents safely",
+    "share": "Share this computer’s agents safely",
     "shareBody": "Aide runs Claude Code and Codex from the command line just as you do. It never reads API keys or tokens, or touches your agent sign-ins. When turned off, you can still use your other machines and turn this on later in Settings.",
-    "shareBody_win": "Aide runs Claude Code and Codex from the command line just as you do. It never reads API keys or tokens, or touches your agent sign-ins. When turned off, you can still use your other machines and turn this on later in Settings.",
     "shareBodyMachine": "Aide runs Claude Code and Codex from the command line just as you do. It never reads API keys or tokens, or touches your agent sign-ins.",
-    "shareBodyMachine_win": "Aide runs Claude Code and Codex from the command line just as you do. It never reads API keys or tokens, or touches your agent sign-ins.",
     "remind": "Remind me when something comes up",
-    "remindBody": "Open Aide at login in the menu bar and notify me of connection requests, agent questions, and failed tasks.",
-    "remindBody_win": "Open Aide at login in the notification area and notify me of connection requests, agent questions, and failed tasks.",
-    "remindBodyMachine": "Open Aide at login in the menu bar and notify me when a task fails.",
-    "remindBodyMachine_win": "Open Aide at login in the notification area and notify me when a task fails.",
-    "failed": "Couldn’t Finish Setting Up"
-  },
-  "join": {
-    "expired": "The join request expired. Please try again.",
-    "wrongDigits": "Incorrect digits. Enter the two digits shown on your other device.",
-    "titleDigits": "Enter the Two Digits Shown on Your Other Device",
-    "titleApprove": "Approve on Your Existing Device",
-    "asking": "Sending join request…",
-    "waiting": "Open Aide on your existing device and approve this Mac’s join request.",
-    "waiting_win": "Open Aide on your existing device and approve this PC’s join request.",
-    "waitingMachine": "Open Aide on your existing device and approve this Mac joining as a machine.",
-    "waitingMachine_win": "Open Aide on your existing device and approve this PC joining as a machine.",
-    "codeHint": "Must match what your other device shows",
-    "approved": "Approved on “{{name}}”. Enter the two digits shown there:",
-    "digits": "Two digits",
-    "notMe": "I Didn’t Approve This",
-    "join": "Join",
-    "notMeNote": "Don’t see two digits on your other device? Then this approval wasn’t yours. Click “I Didn’t Approve This”.",
-    "notMeNoteMachine": "Don’t see two digits on your other device? Make sure Aide is updated to the latest version there, then click “I Didn’t Approve This” and try again. If it’s already up to date, this approval wasn’t yours.",
-    "retry": "Try Again",
-    "failed": "Couldn’t Join Your Aide"
+    "remindBody": "Open Aide at login in the notification area and notify me of agent questions and failed tasks.",
+    "remindBodyMachine": "Open Aide at login in the notification area and notify me when a task fails.",
+    "failed": "Couldn’t Log In"
   },
   "unreachable": {
     "title": "Can’t Reach the Aide Server",
@@ -83,26 +35,21 @@
     "body_win": "This network may be blocking {{host}}, which often happens on corporate networks and proxies. Try another network, such as your phone’s hotspot. Nothing on this PC has been changed yet."
   },
   "removed": {
-    "title": "This Mac Is No Longer in Your Aide Account",
-    "title_win": "This PC Is No Longer in Your Aide Account",
-    "body": "It was removed from another device, or your account was reset. This Mac can no longer approve requests. Set it up again to rejoin your account.",
-    "body_win": "It was removed from another device, or your account was reset. This PC can no longer approve requests. Set it up again to rejoin your account.",
-    "bodyMachine": "It was removed from your machines, or your account was reset. It will no longer accept tasks. Set it up again to rejoin your account.",
-    "setUp": "Set Up This Mac Again",
-    "setUp_win": "Set Up This PC Again"
+    "title": "This Computer Was Signed Out",
+    "body": "It was signed out from another of your devices, or your account was reset. Log in again to use it.",
+    "bodyMachine": "It was removed from your machines, or your account was reset. It no longer accepts tasks. Log in again to use it.",
+    "setUp": "Log In Again"
   },
   "machineOnly": {
     "removeProject": "Remove Project",
-    "upgrade": "Let This Mac Approve Too…",
-    "upgrade_win": "Let This PC Approve Too…",
+    "upgrade": "Make This Computer One of Your Devices Too…",
     "leave": "Leave Your Aide…",
     "leaveTitle": "Leave Your Aide?",
-    "leaveMessage": "This Mac will stop accepting tasks immediately, and any running turns will be interrupted. It will also be removed from your machine list (if it’s offline, remove it from a trusted device). Your project folders stay untouched.",
-    "leaveMessage_win": "This PC will stop accepting tasks immediately, and any running turns will be interrupted. It will also be removed from your machine list (if it’s offline, remove it from a trusted device). Your project folders stay untouched.",
+    "leaveMessage": "This PC will stop accepting tasks immediately, and any running turns will be interrupted. It will also be removed from your machine list (if it’s offline, remove it from another of your devices). Your project folders stay untouched.",
     "leaveButton": "Leave"
   },
   "connect": {
-    "promise": "Once approved, it receives a signed grant and connects directly to your computer with its own key using end-to-end encryption. The server never sees your content.",
+    "promise": "Logged in with your account and password, it connects directly to your computer with its own key, end-to-end encrypted. The server never sees your content.",
     "later": "Connect Later"
   },
   "firstTask": {
@@ -199,19 +146,27 @@
     "by": "You erased everything in Aide on “{{device}}”",
     "byBody": "Aide on this Mac has been erased too.",
     "byBody_win": "Aide on this PC has been erased too.",
-    "pending": "{{names}} were offline. Reset or pair each one again the next time you use it.",
+    "pending": "{{names}} were offline. Log each one in again the next time you use it.",
     "kept": "Kept with uncommitted changes:",
     "reveal": "Show in Finder",
     "reveal_win": "Show in File Explorer",
     "dismiss": "Close"
   },
-  "declined": "Nothing was signed because the request was declined or not confirmed in the signer.",
   "password": {
-    "start": "Log In with Account and Password",
+    "start": "Log In",
     "title": "Log In to Your Aide",
-    "body": "The account and password you set on a device you already have (Settings › Account & Devices). Once logged in, this computer is one of your trusted devices; no other device needs to approve it.",
+    "body": "Your server, account and password. Once logged in, this computer is one of your devices: no other device approves it, and there is no code to compare.",
     "account": "Account",
     "password": "Password",
     "server": "Server"
+  },
+  "setUp": {
+    "title": "Set Up a New Server",
+    "body": "Enter the address of the Aide server you deployed, the setup code it showed when it first started, and the account and password it will keep. Every device, machine and agent then logs in with them.",
+    "address": "Server address",
+    "code": "Setup code",
+    "account": "Account",
+    "password": "Password (8 characters or more)",
+    "plain": "Not encrypted (HTTP). Tasks stay end-to-end encrypted, but the setup code, your password as you log in and which machines are online travel in plain text for anyone on the network to read, and Claude and ChatGPT won’t connect. Try it on a trusted network only; for ongoing use, give the server a domain with HTTPS."
   }
 }

@@ -96,12 +96,6 @@
     "herApproval": "等你批准：{{text}}",
     "herQuestion": "等你回答：{{text}}"
   },
-  "pairing": {
-    "machine": "机器「{{label}}」想加入",
-    "device": "「{{label}}」想成为你的可信设备",
-    "client": "「{{label}}」想连接",
-    "body": "核对码 {{code}}。点击比对并批准，如不认识请拒绝。"
-  },
   "resolution": {
     "answeredByYou": "你回答：{{answers}}",
     "answeredBy": "{{name}} 回答：{{answers}}",

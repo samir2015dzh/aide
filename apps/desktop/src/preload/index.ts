@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 import type { Language } from "../shared/i18n";
-import type { Bridge, Command, ComputerPermission, MenuItem, MenuState, Preferences, SignerUnlock, TerminalCommand, TrayAction, TrayView } from "../shared/bridge";
+import type { Bridge, Command, ComputerPermission, MenuItem, MenuState, Preferences, TerminalCommand, TrayAction, TrayView } from "../shared/bridge";
 import type { UpdateInfo } from "../shared/update";
 
 // The only things the page gets from outside its sandbox. Data comes from
@@ -40,7 +40,6 @@ const bridge: Bridge = {
   releaseMemory: () => webFrame.clearCache(),
   onCommand: (cb: (c: Command) => void) => listen("command", cb),
   setMenuState: (s: MenuState) => ipcRenderer.send("menu-state", s),
-  waitForPairings: (on: boolean) => ipcRenderer.send("wait-pairings", on === true),
   openExternal: (url: string) => ipcRenderer.send("open-external", url),
   pickDirectory: () => ipcRenderer.invoke("pick-directory"),
   pathForFile: (file: File) => {
@@ -63,13 +62,6 @@ const bridge: Bridge = {
   runInTerminal: (c: TerminalCommand) => ipcRenderer.send("run-in-terminal", c),
   setWindowMode: (m: "onboarding" | "main") => ipcRenderer.send("window-mode", m),
   computerName: () => ask("computer-name"),
-  readySigner: () => ask("ready-signer"),
-  signerUpdate: () => ask("signer-update"),
-  updateSigner: () => ask("update-signer"),
-  signerUnlock: (keyId: string) => ask("signer-unlock", keyId),
-  setSignerUnlock: (keyId: string, mode: SignerUnlock) => ask("set-signer-unlock", keyId, mode),
-  elevatesSilently: () => ask("elevates-silently"),
-  openElevationSettings: () => ipcRenderer.send("open-elevation-settings"),
   onLink: (cb: (url: string) => void) => {
     // Links wait in the main process until taken: the page may load after one arrived.
     const take = () => ask<string[]>("take-links").then((urls) => urls.forEach(cb));
@@ -90,7 +82,6 @@ const bridge: Bridge = {
   updateWindowHeight: (height: number) => ipcRenderer.send("update-window-height", height),
   openWhatsNew: () => ipcRenderer.send("open-whats-new"),
   snoozeUpdate: () => ipcRenderer.invoke("snooze-update"),
-  returnToApproval: () => ipcRenderer.send("return-to-approval"),
   getUpdate: () => ipcRenderer.invoke("update"),
   onUpdate: (cb: (u: UpdateInfo) => void) => listen("update", cb),
   checkForUpdates: () => ipcRenderer.send("check-for-updates"),

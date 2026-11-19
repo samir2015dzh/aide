@@ -9,7 +9,6 @@ import { setAppMenu } from "./menu";
 import { applyAppearance, posted, watch } from "./notify";
 import { dataDir, socketPath } from "./paths";
 import { platform } from "./platform";
-import { keepSignerRunning } from "./signer";
 import { receiveLink } from "./links";
 import { showTray, trayState } from "./tray";
 import { startUpdater } from "./updater";
@@ -86,8 +85,6 @@ app.whenReady().then(async () => {
   platform.registerDaemon();
   setAppMenu();
   watch();
-  const stopSigner = keepSignerRunning(socketPath());
-  app.on("will-quit", stopSigner);
   // The page keeps its layout in localStorage, which Chromium writes to disk a moment later: what
   // changed just before quitting (the info card hidden, say) is written now, not lost.
   app.on("will-quit", () => session.defaultSession.flushStorageData());

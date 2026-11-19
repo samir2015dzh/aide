@@ -7,7 +7,7 @@ import { cancelHerChatGpt, cancelHerConnector, herConsoleURL, herFilesKept, reop
 import { preferences, setPreferences, world } from "./notify";
 import { platform } from "./platform";
 import { errorMessage, takeLinks } from "./links";
-import { catchUp, check, download, install, openUpdates, returnToApproval, setAutoDownload, snooze, updateInfo } from "./updater";
+import { catchUp, check, download, install, openUpdates, setAutoDownload, snooze, updateInfo } from "./updater";
 import { mainWindow, ours, setMode, showHerConsole, showMain, showSettings, showWhatsNew, sizeUpdates } from "./windows";
 
 // The page's requests to the main process (see shared/bridge.ts). Each
@@ -22,24 +22,13 @@ export const currentMenuState = () => menuState;
 export const menuStateListeners = new Set<() => void>();
 const reporting = new WeakSet<WebContents>();
 let pending: Command | undefined;
-// The page waiting for pairing requests, in whichever window (waitForPairings).
-let waiting: WebContents | undefined;
-const watched = new WeakSet<WebContents>();
 
 /**
  * Hands a command to the main window's page (app menu, menu bar,
  * notifications), opening the window first if needed; a page still loading
- * gets it once it reports its menu state. A pairing request's goes to the
- * page waiting for requests, if one is (the first run's included).
+ * gets it once it reports its menu state.
  */
 export function command(c: Command) {
-  if (c.startsWith("pairing:") && waiting) {
-    const win = BrowserWindow.fromWebContents(waiting);
-    win?.show();
-    win?.focus();
-    waiting.send("command", c);
-    return;
-  }
   const win = showMain();
   if (menuState.main) win.webContents.send("command", c);
   else pending = c;
@@ -97,26 +86,6 @@ export function registerIPC() {
     }
     menuStateListeners.forEach((f) => f());
   });
-  ipcMain.on("wait-pairings", (e, on: boolean) => {
-    if (!trusted(e)) return;
-    if (!on) {
-      if (waiting === e.sender) waiting = undefined;
-      return;
-    }
-    // A page closed or loaded again waits no more.
-    if (!watched.has(e.sender)) {
-      watched.add(e.sender);
-      const gone = () => waiting === e.sender && (waiting = undefined);
-      e.sender.on("destroyed", gone);
-      e.sender.on("did-start-loading", gone);
-    }
-    waiting = e.sender;
-    // One clicked before the page showed (the first run, still setting up).
-    if (pending?.startsWith("pairing:")) {
-      e.sender.send("command", pending);
-      pending = undefined;
-    }
-  });
   ipcMain.handle("pick-directory", async (e) => {
     if (!trusted(e)) return null;
     const win = BrowserWindow.fromWebContents(e.sender);
@@ -158,24 +127,6 @@ export function registerIPC() {
       }
     };
   ipcMain.handle("computer-name", answer(platform.computerName));
-  ipcMain.handle("ready-signer", answer(platform.readySigner));
-  ipcMain.handle("signer-update", answer(platform.signerUpdate));
-  ipcMain.handle("update-signer", answer(platform.updateSigner));
-  // A key id is a fingerprint (base32); it goes on an elevated command line.
-  const keyId = (v: unknown) => {
-    if (typeof v !== "string" || !/^[a-z2-7]{16,64}$/i.test(v)) throw new Error("not a key id");
-    return v;
-  };
-  ipcMain.handle("signer-unlock", answer((k: unknown) => platform.signerUnlock(keyId(k))));
-  ipcMain.handle(
-    "set-signer-unlock",
-    answer((k: unknown, mode: unknown) => {
-      if (mode !== "hello" && mode !== "passphrase") throw new Error("not an unlock mode");
-      return platform.setSignerUnlock(keyId(k), mode);
-    }),
-  );
-  ipcMain.handle("elevates-silently", answer(platform.elevatesSilently));
-  ipcMain.on("open-elevation-settings", (e) => trusted(e) && platform.openElevationSettings());
   ipcMain.handle("take-links", answer(takeLinks));
 
   // Her (main/her.ts): a machine's console in its own window, an assistant's file saved to Downloads, and
@@ -274,7 +225,6 @@ export function registerIPC() {
   ipcMain.on("update-window-height", (e, height: unknown) => trusted(e) && sizeUpdates(e.sender, height));
   ipcMain.on("open-whats-new", (e) => trusted(e) && showWhatsNew());
   ipcMain.handle("snooze-update", (e) => trusted(e) && snooze());
-  ipcMain.on("return-to-approval", (e) => trusted(e) && returnToApproval());
   ipcMain.on("updates-online", (e) => trusted(e) && catchUp());
   ipcMain.handle("update", (e) => (trusted(e) ? updateInfo() : null));
   ipcMain.on("check-for-updates", (e) => trusted(e) && check());

@@ -8,7 +8,7 @@ import { local } from "../api";
 import { Icon } from "../icons";
 import { machineName } from "../Sidebar";
 import { useStore, type Store } from "../store";
-import { ErrorLine, SignerWaiting, useAction } from "./common";
+import { ErrorLine, Working, useAction } from "./common";
 
 const key = (p: Project) => `${p.machineId}/${p.projectId}`;
 
@@ -146,7 +146,7 @@ export function ScopeSheet({ clientId, renew }: { clientId: string; renew: boole
       <h3 id="sheet-title">{renew ? t("scopeSheet.titleRenew", { name: c.label }) : t("scopeSheet.titleChange", { name: c.label })}</h3>
       <p className="sub">{t("scopeSheet.sub", { name: c.label })}</p>
       <ScopeRows scope={scope} onChange={setScope} open={renew ? "" : "p"} />
-      {act.busy && <SignerWaiting detail={t("scopeSheet.signerDetail")} />}
+      {act.busy && <Working />}
       <ErrorLine text={act.error} />
       <div className="sheet-foot">
         <button className="btn" onClick={close}>{t("cancel")}</button>

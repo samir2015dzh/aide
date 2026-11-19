@@ -105,7 +105,6 @@ function template(): MenuItemConstructorOptions[] {
         item("newGrant", t("file.newGrant"), "newGrant", owner, { accelerator: "Shift+CmdOrCtrl+N" }),
         item("addMachine", t("file.addMachine"), "addMachine", owner),
         item("addProject", t("file.addProject"), "addProject", main),
-        item("enterCode", t("file.enterCode"), "enterCode", owner, { accelerator: "Shift+CmdOrCtrl+P" }),
         sep,
         ...(mac ? [] : [settings, sep]),
         { role: "close", label: t("file.close") },

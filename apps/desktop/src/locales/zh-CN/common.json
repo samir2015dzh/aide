@@ -19,13 +19,11 @@
     "queued": "排队中",
     "running": "运行中"
   },
-  "codeTiles": {
-    "label": "核对码"
-  },
   "personal": {
     "other": "其他 Agent",
-    "connectMessage": "请帮我把你接入我的电脑（Aide）：\n1. 安装：curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli\n2. 登录：~/.local/bin/aide auth login {{address}} --name \"{{name}}\"\n3. 把屏幕上显示的核对码（Verification code）告诉我，我在电脑上确认后你就能用了。\n之后用 aide project list 看能用的项目，用 aide session start --project {{project}} --prompt \"…\" 开始工作，aide --help 查看全部命令。",
-    "projectArg": "项目"
+    "connectMessage": "请帮我把你接入我的电脑（Aide）：\n1. 安装：curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli\n2. 登录：AIDE_PASSWORD='{{password}}' ~/.local/bin/aide auth login {{server}} --account {{account}} --name \"{{name}}\"\n登录后就能用了。用 aide project list 看能用的项目，用 aide session start --project {{project}} --prompt \"…\" 开始工作，aide --help 查看全部命令。",
+    "projectArg": "项目",
+    "passwordArg": "密码"
   },
   "sidebar": {
     "label": "边栏",
@@ -53,19 +51,19 @@
     "you": "你",
     "sentBy": "{{name}} 派的",
     "running_other": "{{count}} 个在忙",
-    "pairing": "连接请求",
     "sentByYou": "你派的",
     "newSession": "新建任务",
     "dsh": "DeepSeek 会话",
     "searchHint": "搜索任务、机器、Agent",
-    "machinesOnline": "机器 {{online}}/{{total}} 在线"
+    "machinesOnline": "机器 {{online}}/{{total}} 在线",
+    "connect": "连接 Agent"
   },
   "accountMenu": {
     "settings": "设置…",
-    "newGrant": "连接 agent…",
+    "newGrant": "连接助手…",
     "addMachine": "添加机器…",
-    "enterCode": "输入配对码…",
-    "account": "账号…"
+    "account": "账号…",
+    "connect": "连接 DSH、Claude Desktop…"
   },
   "sessionMenu": {
     "open": "打开",

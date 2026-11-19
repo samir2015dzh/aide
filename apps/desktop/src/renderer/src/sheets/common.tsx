@@ -1,15 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Mark } from "@hermesh/ui";
 import { errorText } from "../store";
-
-/** While shown, the page waits for pairing requests: their notifications, clicked, come to its window (main/ipc.ts). */
-export function useWaitForPairings() {
-  useEffect(() => {
-    window.hermesh?.waitForPairings(true);
-    return () => window.hermesh?.waitForPairings(false);
-  }, []);
-}
 
 /** An action a sheet waits on; its error stays in the sheet. Resolves to whether it worked. */
 export function useAction() {
@@ -31,15 +23,14 @@ export function useAction() {
   return { busy, error, go };
 }
 
-/** While an RPC waits for the signer: the owner checks and touches Touch ID in its window. */
-export function SignerWaiting({ detail }: { detail: string }) {
+/** While an action the sheet started is under way. */
+export function Working() {
   const { t } = useTranslation("sheets");
   return (
     <div className="waitline">
-      <Mark size={40} variant="wait" />
+      <Mark size={24} variant="seq" />
       <div>
-        <b>{t("signerWaiting")}</b>
-        <span>{detail}</span>
+        <b>{t("working")}</b>
       </div>
     </div>
   );
@@ -47,4 +38,13 @@ export function SignerWaiting({ detail }: { detail: string }) {
 
 export function ErrorLine({ text }: { text: string }) {
   return text ? <p className="sheet-err" role="alert">{text}</p> : null;
+}
+
+/** The host of a custodian URL ("https://example.com" → "example.com"). */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
 }

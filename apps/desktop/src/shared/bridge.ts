@@ -11,9 +11,9 @@ export type MenuItem = { id: string; label: string; enabled?: boolean; checked?:
 export type Command =
   | "overview" | "search" | "find" | "nextAttention" | "nextActive"
   | "toggleInspector" | "toggleSidebar"
-  | "newGrant" | "newSession" | "addMachine" | "addProject" | "enterCode"
+  | "newGrant" | "newSession" | "addMachine" | "addProject"
   | "answer" | "interrupt" | "archive" | "unarchive" | "copySessionId"
-  | `open:${string}` | `pairing:${string}`
+  | `open:${string}`
   | `searchGrant:${string}` | `searchMachine:${string}` | "undo" | "upgrade"
   /** DeepSeek Harness's own sessions (the settings window's Connect guide). */
   | "dsh"
@@ -74,8 +74,6 @@ export type Bridge = {
   onCommand(cb: (c: Command) => void): () => void;
   /** Tells the app menu what the page shows, so its items enable and check right. */
   setMenuState(state: MenuState): void;
-  /** The page waits for pairing requests (Connect Your Agent, Add Machine, Add Trusted Device): their notifications come to it. */
-  waitForPairings(on: boolean): void;
   openExternal(url: string): void;
   pickDirectory(): Promise<string | null>;
   /** Where a file given to the page (picked, dropped, pasted) is on this computer; empty for one that is not a file there. */
@@ -105,20 +103,6 @@ export type Bridge = {
   setWindowMode(mode: "onboarding" | "main"): void;
   /** This computer's name as the person sees it. */
   computerName(): Promise<string>;
-  /** Before hermeshd asks for a new root key: the signer is there (Windows sets it up, with one UAC prompt). */
-  readySigner(): Promise<void>;
-  /** The installed signer's version, when the app carries a newer one. */
-  signerUpdate(): Promise<string | undefined>;
-  /** Puts the app's signer in place of the installed one (Windows: one UAC prompt). */
-  updateSigner(): Promise<void>;
-  /** How the signer unlocks this device's root key keyId for each approval (Windows); undefined where there is no choice. */
-  signerUnlock(keyId: string): Promise<SignerUnlock | undefined>;
-  /** Switches it, once the owner confirms the way it is now (Windows: one UAC prompt, then the signer's window); false when nothing changed. */
-  setSignerUnlock(keyId: string, mode: SignerUnlock): Promise<boolean>;
-  /** With the signer set up, programs become administrator here without asking (Windows: UAC off or Never notify). */
-  elevatesSilently(): Promise<boolean>;
-  /** Opens the system's User Account Control settings. */
-  openElevationSettings(): void;
   /** hermesh:// links the app received (wake links), also those that came before the page subscribed. */
   onLink(cb: (url: string) => void): () => void;
   /** What the main process does on its own: notifications and the menu bar (stored in the app's profile). */
@@ -145,7 +129,6 @@ export type Bridge = {
   updateWindowHeight(height: number): void;
   openWhatsNew(): void;
   snoozeUpdate(): Promise<void>;
-  returnToApproval(): void;
   getUpdate(): Promise<UpdateInfo>;
   onUpdate(cb: (u: UpdateInfo) => void): () => void;
   checkForUpdates(): void;
@@ -181,8 +164,6 @@ export type Preferences = {
 /** needsApproval: macOS waits for the person to allow it in System Settings › Login Items. */
 export type LoginItem = { on: boolean; needsApproval: boolean };
 
-/** How a Windows signer unlocks its root key for each approval (hermesh-signer unlock): Windows Hello, or a passphrase in its window. */
-export type SignerUnlock = "hello" | "passphrase";
 
 export type MenuState = {
   main: boolean;

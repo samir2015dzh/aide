@@ -10,72 +10,24 @@
     "title": "让 Agent 安全地互相连接",
     "lede": "让 Grok Bot、Muse 在云端使用你电脑上的 Claude Code、Codex，<br/>把专业的任务分派给专业的 Agent。",
     "start": "立即开始",
-    "selfHosted": "使用自己的服务器…",
-    "promise": "即使服务器被攻破，攻击者也访问不了你的电脑。任务内容端到端加密，服务器看不到内容。"
-  },
-  "selfHosted": {
-    "title": "连接你自己的服务器",
-    "body": "填入你部署的 Aide 服务器地址，和它第一次启动时给出的认领码。",
-    "address": "服务器地址",
-    "claim": "认领码",
-    "plain": "未加密（HTTP）。任务内容仍然端到端加密，但认领码、哪些机器在线等信息会明文传输：网络上的人能看到，甚至抢在你前面认领这台服务器。Claude、ChatGPT 也连不上。用来试用或在可信的网络里没问题；要长期使用，请给服务器配一个域名。",
-    "join": "已经在别的设备上用 Aide？返回用账号密码登录，或者<join>通过批准加入…</join>"
-  },
-  "joinAddress": {
-    "invalid": "连接地址不对：应该像 relay.example.com/o_xxxxxxxx",
-    "title": "加入你已有的 Aide",
-    "body": "连接地址在你已有设备的 Aide 里：设置 › 账号与设备 › 高级。之后由那台设备批准这台。",
-    "address": "连接地址"
+    "selfHosted": "设置新的服务器…",
+    "promise": "任务内容端到端加密，服务器看不到内容。"
   },
   "authorize": {
-    "joinNote": "继续后按一次 Touch ID，再到你已有的设备上批准。",
-    "joinNote_win": "继续后用一次 Windows Hello，再到你已有的设备上批准。",
-    "machineOnlyNote": "不需要 Touch ID，到你已有的设备上批准即可。",
-    "machineOnlyNote_win": "不需要 Windows Hello，到你已有的设备上批准即可。",
-    "settingUp": "正在设置…",
-    "titleJoin": "让这台 Mac 加入你的 Aide？",
-    "titleJoin_win": "让这台电脑加入你的 Aide？",
-    "titleTrust": "让这台 Mac 成为你的可信设备？",
-    "titleTrust_win": "让这台电脑成为你的可信设备？",
+    "settingUp": "正在登录…",
+    "title": "这台电脑在 Aide 里做什么？",
     "body": "Aide 只做下面这些事：不改系统设置，不读你的文件。",
-    "trusted": "可信设备",
-    "trustedBody": "在这台 Mac 的安全芯片里生成你的管理密钥，它不会离开这台 Mac。以后机器和 agent 要连接你的电脑，都要你在这里按 Touch ID 批准。",
-    "trustedBody_win": "在这台电脑的安全芯片（TPM）里生成你的管理密钥，它不会离开这台电脑。以后机器和 agent 要连接你的电脑，都要你在这里用 Windows Hello 批准。",
-    "trustedOff": "关闭：不在这里生成管理密钥。这台 Mac 只运行任务，不能批准，也看不到你的其他机器。适合公司的 Mac。",
-    "trustedOff_win": "关闭：不在这里生成管理密钥。这台电脑只运行任务，不能批准，也看不到你的其他机器。适合公司的电脑。",
+    "device": "你的设备",
+    "deviceBody": "在这里查看和管理你的所有机器、agent 和任务。",
+    "deviceOff": "关闭：这台电脑只作为执行机器，只运行任务，看不到你的其他机器。适合公司的电脑。",
     "required": "必需",
     "share": "安全可信地共享本机 agent",
-    "share_win": "安全可信地共享本机 agent",
-    "shareBody": "Aide 像你自己一样，用命令行调用这台 Mac 上的 Claude Code、Codex。不读取 API Key 和 Token，也不碰这些 agent 的登录授权。关掉也能用别的机器，以后可以在设置里再开。",
-    "shareBody_win": "Aide 像你自己一样，用命令行调用这台电脑上的 Claude Code、Codex。不读取 API Key 和 Token，也不碰这些 agent 的登录授权。关掉也能用别的机器，以后可以在设置里再开。",
-    "shareBodyMachine": "Aide 像你自己一样，用命令行调用这台 Mac 上的 Claude Code、Codex。不读取 API Key 和 Token，也不碰这些 agent 的登录授权。",
-    "shareBodyMachine_win": "Aide 像你自己一样，用命令行调用这台电脑上的 Claude Code、Codex。不读取 API Key 和 Token，也不碰这些 agent 的登录授权。",
+    "shareBody": "Aide 像你自己一样，用命令行调用这台电脑上的 Claude Code、Codex。不读取 API Key 和 Token，也不碰这些 agent 的登录授权。关掉也能用别的机器，以后可以在设置里再开。",
+    "shareBodyMachine": "Aide 像你自己一样，用命令行调用这台电脑上的 Claude Code、Codex。不读取 API Key 和 Token，也不碰这些 agent 的登录授权。",
     "remind": "有事时提醒我",
-    "remindBody": "登录时打开 Aide（只在菜单栏）。有连接请求、agent 提问、任务出错时发通知。",
-    "remindBody_win": "登录时打开 Aide（只在通知区域）。有连接请求、agent 提问、任务出错时发通知。",
-    "remindBodyMachine": "登录时打开 Aide（只在菜单栏）。任务出错时发通知。",
-    "remindBodyMachine_win": "登录时打开 Aide（只在通知区域）。任务出错时发通知。",
-    "failed": "没能完成设置"
-  },
-  "join": {
-    "expired": "加入请求已过期，请重新加入。",
-    "wrongDigits": "数字不匹配。请输入你另一台设备上显示的两位数字。",
-    "titleDigits": "输入已有设备上的两位数字",
-    "titleApprove": "在你已有的设备上批准",
-    "asking": "正在发送加入请求…",
-    "waiting": "打开你已有设备上的 Aide，批准这台 Mac 的加入请求。",
-    "waiting_win": "打开你已有设备上的 Aide，批准这台电脑的加入请求。",
-    "waitingMachine": "打开你已有设备上的 Aide，批准这台 Mac 作为执行机器加入。",
-    "waitingMachine_win": "打开你已有设备上的 Aide，批准这台电脑作为执行机器加入。",
-    "codeHint": "须与已有设备显示的一致",
-    "approved": "「{{name}}」已批准。请输入对方设备上显示的两位数字：",
-    "digits": "两位数字",
-    "notMe": "我没有批准过",
-    "join": "加入",
-    "notMeNote": "另一台设备上没有显示数字？说明并非你本人批准，请点击“我没有批准过”。",
-    "notMeNoteMachine": "另一台设备上没有显示数字？如果那台设备上的 Aide 不是最新版本，请先更新，再点击“我没有批准过”重新加入；若已是最新版本仍无数字，说明并非你本人批准。",
-    "retry": "重试",
-    "failed": "没能加入你的 Aide"
+    "remindBody": "登录时打开 Aide（只在通知区域）。agent 提问、任务出错时发通知。",
+    "remindBodyMachine": "登录时打开 Aide（只在通知区域）。任务出错时发通知。",
+    "failed": "没能登录"
   },
   "unreachable": {
     "title": "连不上 Aide 服务器",
@@ -83,26 +35,21 @@
     "body_win": "当前网络可能拦住了 {{host}}，公司网络和代理常会这样。换个网络（比如手机热点）再试，这台电脑上还什么都没改。"
   },
   "removed": {
-    "title": "这台 Mac 已不在你的 Aide 账号里",
-    "title_win": "这台电脑已不在你的 Aide 账号里",
-    "body": "这台设备已从你的其他设备上移除，或账号已被重置，现已无法批准任何请求。重新设置即可再次加入账号。",
-    "body_win": "这台设备已从你的其他设备上移除，或账号已被重置，现已无法批准任何请求。重新设置即可再次加入账号。",
-    "bodyMachine": "这台设备已从你的机器列表中移除，或账号已被重置，现已停止接收任务。重新设置即可再次加入账号。",
-    "setUp": "重新设置这台 Mac",
-    "setUp_win": "重新设置这台电脑"
+    "title": "这台电脑已被登出",
+    "body": "你在另一台设备上把它登出了，或者账号已被重置。重新登录即可再次使用。",
+    "bodyMachine": "它已从你的机器列表中移除，或账号已被重置，现已停止接收任务。重新登录即可再次使用。",
+    "setUp": "重新登录"
   },
   "machineOnly": {
     "removeProject": "移除项目",
-    "upgrade": "让这台 Mac 也能批准…",
-    "upgrade_win": "让这台电脑也能批准…",
+    "upgrade": "让这台电脑也成为你的设备…",
     "leave": "离开你的 Aide…",
     "leaveTitle": "离开你的 Aide？",
-    "leaveMessage": "这台 Mac 将立即停止接收任务，正在进行的任务会被中断，并从你的机器列表中移除（若当前无法连接服务器，请在可信设备上将其移除）。项目设置仍保留在本机。",
-    "leaveMessage_win": "这台电脑将立即停止接收任务，正在进行的任务会被中断，并从你的机器列表中移除（若当前无法连接服务器，请在可信设备上将其移除）。项目设置仍保留在本机。",
+    "leaveMessage": "这台电脑将立即停止接收任务，正在进行的任务会被中断，并从你的机器列表中移除（若当前无法连接服务器，请在你的其他设备上将其移除）。项目设置仍保留在本机。",
     "leaveButton": "离开"
   },
   "connect": {
-    "promise": "批准后，它将获得你签名的授权，并使用自身密钥与你的电脑建立端到端加密直连，服务器看不到任何内容。",
+    "promise": "它用账号密码登录后，用自己的密钥与你的电脑建立端到端加密直连，服务器看不到任何内容。",
     "later": "稍后再连"
   },
   "firstTask": {
@@ -198,19 +145,27 @@
     "by": "你在「{{device}}」上全部清空了 Aide",
     "byBody": "这台 Mac 上的 Aide 也已清空。",
     "byBody_win": "这台电脑上的 Aide 也已清空。",
-    "pending": "{{names}}当时离线，之后各自重置或重新配对即可。",
+    "pending": "{{names}}当时离线，之后各自重新登录即可。",
     "kept": "有未提交的改动，已保留：",
     "reveal": "在访达中显示",
     "reveal_win": "在文件资源管理器中显示",
     "dismiss": "关闭"
   },
-  "declined": "这次没有签名：在签名器里被拒绝了，或者没有完成确认。",
   "password": {
-    "start": "账号密码登录",
+    "start": "登录",
     "title": "登录你的 Aide",
-    "body": "输入你在已有设备上（设置 › 账号与设备）设定的账号和密码。登录后这台电脑就是你的可信设备，不需要别的设备批准。",
+    "body": "输入你的服务器地址、账号和密码。登录后这台电脑就是你的设备，不需要别的设备批准，也不用核对任何码。",
     "account": "账号",
     "password": "密码",
     "server": "服务器"
+  },
+  "setUp": {
+    "title": "设置新的服务器",
+    "body": "填入你部署的 Aide 服务器地址、它第一次启动时给出的设置码，以及它要保管的账号和密码。之后每台设备、机器和 agent 都用这个账号和密码登录。",
+    "address": "服务器地址",
+    "code": "设置码",
+    "account": "账号",
+    "password": "密码（至少 8 位）",
+    "plain": "未加密（HTTP）。任务内容仍然端到端加密，但设置码、登录时的密码、哪些机器在线都会明文传输：网络上的人能看到。Claude、ChatGPT 也连不上。只在可信的网络里试用；要长期使用，请给服务器配一个域名。"
   }
 }

@@ -5,18 +5,16 @@ import { EraseSheet } from "./sheets/Erase";
 import { HerOffSheet } from "./sheets/HerOff";
 import { NewGrantSheet } from "./sheets/NewGrant";
 import { NewSessionSheet } from "./sheets/NewSession";
-import { EnterCodeSheet, PairingSheet } from "./sheets/Pairing";
 import { ScopeSheet } from "./sheets/Scope";
 import { WakeSheet } from "./sheets/Wake";
 import { useLeaving } from "./components";
 import { useStore, type Sheet } from "./store";
 import "./sheets/sheets.css";
 
-// Sheets over the window: connect an agent, start a session, add machine/project/device, pairing code,
-// pairing approval, scope, an agent's wake, confirm, erase everything, turning Her off. One at a time, in st.sheet (the app
+// Sheets over the window: connect an agent, start a session, add machine/project/device, scope, an agent's wake, confirm, erase everything, turning Her off. One at a time, in st.sheet (the app
 // menu's commands open them through commands.ts).
 
-const widths: Record<Sheet["kind"], number> = { newGrant: 620, addMachine: 560, addProject: 540, newSession: 600, addDevice: 520, enterCode: 420, pairing: 500, scope: 560, wake: 480, confirm: 440, erase: 520, herOff: 460 };
+const widths: Record<Sheet["kind"], number> = { newGrant: 620, addMachine: 560, addProject: 540, newSession: 600, addDevice: 520, scope: 560, wake: 480, confirm: 440, erase: 520, herOff: 460 };
 
 export function SheetHost() {
   const st = useStore();
@@ -36,7 +34,7 @@ export function SheetHost() {
     <>
       <div className={`sheet-scrim ${leaving ? "leaving" : ""}`} />
       <div className={`sheet ${leaving ? "leaving" : ""}`} inert={leaving} role="dialog" aria-modal="true" aria-labelledby="sheet-title" style={{ width: widths[shown.kind] }}>
-        <Body key={shown.kind === "pairing" ? `pairing:${shown.code}` : shown.kind} sheet={shown} />
+        <Body key={shown.kind} sheet={shown} />
       </div>
     </>
   );
@@ -54,10 +52,6 @@ function Body({ sheet }: { sheet: Sheet }) {
       return <NewSessionSheet machineId={sheet.machineId} agent={sheet.agent} />;
     case "addDevice":
       return <AddDeviceSheet />;
-    case "enterCode":
-      return <EnterCodeSheet />;
-    case "pairing":
-      return <PairingSheet code={sheet.code} details={sheet.details} />;
     case "scope":
       return <ScopeSheet clientId={sheet.clientId} renew={sheet.renew} />;
     case "wake":
