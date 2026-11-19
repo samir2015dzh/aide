@@ -8,6 +8,9 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const [entry] = process.argv.slice(2);
+// Before the plugin loads (TypeScript, stripped by Node): a test that waits
+// for "ready" can tell a Node that never ran from a plugin that never loaded.
+process.stdout.write(JSON.stringify({ node: process.version }) + "\n");
 const mod = await import(pathToFileURL(entry).href); // a Windows path (D:\...) is no module URL
 const log = process.env.FAKE_DSH_LOG;
 const record = (req) => {
