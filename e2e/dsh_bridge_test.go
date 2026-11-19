@@ -76,7 +76,8 @@ func TestDSHBridgePlugin(t *testing.T) {
 		t.Fatalf("no %s from the plugin after %s; the Host is %s; node's stderr: %q",
 			what, time.Since(began).Round(time.Millisecond), state, stderr.String())
 	}
-	next := func(what string) map[string]any {
+	// The next line within d, failing at once if the Host ends first.
+	nextWithin := func(what string, d time.Duration) map[string]any {
 		t.Helper()
 		select {
 		case m, ok := <-lines:
@@ -90,21 +91,44 @@ func TestDSHBridgePlugin(t *testing.T) {
 				}
 			}
 			return m
-		case <-time.After(15 * time.Second):
+		case err := <-exited:
+			exited <- err
+			fail(what, err)
+		case <-time.After(d):
 			fail(what, nil)
-			return nil
 		}
+		return nil
 	}
-	// Node itself, before the plugin loads: its version, and how long it took to start.
-	if m := next("start of node"); m["node"] == nil {
-		t.Fatalf("plugin: %v", m)
-	} else {
-		t.Logf("node %v started in %s", m["node"], time.Since(began).Round(time.Millisecond))
+	next := func(what string) map[string]any { t.Helper(); return nextWithin(what, 15*time.Second) }
+	// Readiness comes in two steps, each with its own signal:
+	//  1. Node runs: the Host script's first line, {"node": version}, written
+	//     before it loads anything. How long that takes is the computer's, not
+	//     the plugin's: a fresh Windows runner scans the first node.exe it
+	//     starts before it runs, which once took longer than the 15 s this
+	//     test allowed for everything (windows-e2e, 2026-11-19). So it may take
+	//     up to 2 minutes while Node is alive; Node ending fails at once, with
+	//     what it printed.
+	//  2. The plugin is ready: {"ready": true}, once DSH's apply() returned:
+	//     the plugin loaded (its TypeScript stripped by Node) and its
+	//     rendezvous is up. That is the plugin's own work: 15 s, as before.
+	hello := nextWithin("start of node", 2*time.Minute)
+	if hello["node"] == nil {
+		t.Fatalf("plugin: %v", hello)
 	}
+	nodeStarted := time.Since(began)
 	if m := next("start"); m["ready"] != true {
 		t.Fatalf("plugin: %v", m)
 	}
-	t.Logf("the plugin was ready after %s", time.Since(began).Round(time.Millisecond))
+	ready := time.Since(began) - nodeStarted
+	timing := fmt.Sprintf("node %v started in %s; the plugin was ready %s later", hello["node"], nodeStarted.Round(time.Millisecond), ready.Round(time.Millisecond))
+	t.Log(timing)
+	// In CI, also where a passing run shows it (the job's summary).
+	if f := os.Getenv("GITHUB_STEP_SUMMARY"); f != "" {
+		if w, err := os.OpenFile(f, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644); err == nil {
+			fmt.Fprintf(w, "TestDSHBridgePlugin: %s\n\n", timing)
+			w.Close()
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var b *dshnative.Bridge
