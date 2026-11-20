@@ -68,14 +68,6 @@ pub fn prompt_in_progress(id: &str) -> RpcError {
     )
 }
 
-pub fn approval_not_pending(call_id: &str) -> RpcError {
-    RpcError::with_kind(
-        error_code::APPROVAL_NOT_PENDING,
-        "approval_not_pending",
-        format!("no approval is pending for call {call_id}"),
-    )
-}
-
 pub fn server_full(max: usize) -> RpcError {
     RpcError::with_kind(
         error_code::SERVER_FULL,

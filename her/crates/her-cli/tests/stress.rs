@@ -132,7 +132,7 @@ async fn unix_client(path: &Path) -> (Client, her_rpc::IncomingRx) {
     (client, rx)
 }
 
-/// Native protocol, Unix socket: one connection per session, half of them asking approvals.
+/// Native protocol, Unix socket: one connection per session.
 async fn phase_unix(env: Arc<TestEnv>, metrics: Arc<Metrics>) {
     let socket = env.home.path().join("run").join("stress.sock");
     let url = format!("unix://{}", socket.display());
@@ -147,9 +147,8 @@ async fn phase_unix(env: Arc<TestEnv>, metrics: Arc<Metrics>) {
             let (client, rx) = unix_client(&socket).await;
             let demux = Demux::spawn(rx);
             let cwd = env.workspace(&format!("unix-{c}"));
-            let mode = if c % 2 == 0 { "bypass-permissions" } else { "manual" };
             let created = client
-                .request("session/new", json!({"cwd": cwd, "permission_mode": mode}))
+                .request("session/new", json!({"cwd": cwd}))
                 .await
                 .unwrap();
             let session = created["session_id"].as_str().unwrap().to_string();
@@ -158,7 +157,7 @@ async fn phase_unix(env: Arc<TestEnv>, metrics: Arc<Metrics>) {
             for i in 0..prompts {
                 let (text, expected) = scenario(&format!("u{c}-{i}"), c + i);
                 let started = Instant::now();
-                let turn = native_prompt(&client, &mut events, &session, &text, true).await;
+                let turn = native_prompt(&client, &mut events, &session, &text).await;
                 assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.end);
                 check_text(&expected, &turn.text, &turn.stamp_us, &metrics);
                 metrics.record(started, turn.events.len());
@@ -192,7 +191,7 @@ async fn phase_probe(env: Arc<TestEnv>, metrics: Arc<Metrics>) {
     let mut events = demux.subscribe(&session);
     for i in 0..5 {
         let started = Instant::now();
-        let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:stamp:200:2]] probe {i}"), false).await;
+        let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:stamp:200:2]] probe {i}")).await;
         assert_eq!(turn.end["type"], "task_completed");
         assert_eq!(turn.text.matches('@').count(), 200);
         metrics.stamps(&turn.stamp_us);
@@ -219,7 +218,7 @@ async fn phase_stdio(env: Arc<TestEnv>, metrics: Arc<Metrics>) {
             for i in 0..4 {
                 let (text, expected) = scenario(&format!("s{s}-{i}"), s * 3 + i);
                 let started = Instant::now();
-                let turn = native_prompt(&client, &mut events, &session, &text, true).await;
+                let turn = native_prompt(&client, &mut events, &session, &text).await;
                 assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.end);
                 check_text(&expected, &turn.text, &turn.stamp_us, &metrics);
                 metrics.record(started, turn.events.len());
@@ -267,9 +266,7 @@ async fn phase_acp(env: Arc<TestEnv>, metrics: Arc<Metrics>) {
                     let mut latencies = Vec::new();
                     while let Ok(incoming) = rx.try_recv() {
                         events += 1;
-                        if let Incoming::Request { id, .. } = &incoming {
-                            client.respond(id, json!({"outcome": {"outcome": "selected", "optionId": "approve"}}));
-                        }
+                        assert!(!matches!(incoming, Incoming::Request { .. }), "her asks the client nothing");
                         let update = &incoming.params()["update"];
                         if update["sessionUpdate"] == "agent_message_chunk" {
                             let text = update["content"]["text"].as_str().unwrap_or("");
@@ -380,7 +377,7 @@ async fn phase_slow_consumer(env: Arc<TestEnv>) {
 
     let expected: String = "0123456789abcdef".repeat(64 * 512);
     let started = Instant::now();
-    let turn = native_prompt(&owner, &mut events, &session, "[[mock:big:512]] flood", false).await;
+    let turn = native_prompt(&owner, &mut events, &session, "[[mock:big:512]] flood").await;
     let owner_time = started.elapsed();
     assert_eq!(turn.end["type"], "task_completed");
     assert_eq!(turn.text, expected, "the reading client gets everything");
@@ -417,7 +414,7 @@ async fn phase_slow_consumer(env: Arc<TestEnv>) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 async fn stress_every_path_under_load() {
-    let env = Arc::new(TestEnv::new("bypass-permissions", "[tools.limits]\nmax_parallel = 4\n[server]\nmax_sessions = 4096\n").await);
+    let env = Arc::new(TestEnv::new("[tools.limits]\nmax_parallel = 4\n[server]\nmax_sessions = 4096\n").await);
     let mut err = std::io::stderr().lock();
     let _ = writeln!(err, "[stress] scale {}", scale());
     drop(err);

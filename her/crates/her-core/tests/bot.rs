@@ -32,7 +32,6 @@ use her_llm::api::scripted::ScriptedApi;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
 use her_tools::builtin_registry;
@@ -75,12 +74,12 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome) -> KernelDeps {
 }
 
 /// A bot named `name` in its own folder, as the server starts one.
-async fn bot(name: &str, mode: PermissionMode, scripts: Vec<Script>) -> Harness {
-    bot_on(None, name, mode, scripts).await
+async fn bot(name: &str, scripts: Vec<Script>) -> Harness {
+    bot_on(None, name, scripts).await
 }
 
 /// The same, with its log in `store` instead of the usual file.
-async fn bot_on(store: Option<Arc<dyn SessionStore>>, name: &str, mode: PermissionMode, scripts: Vec<Script>) -> Harness {
+async fn bot_on(store: Option<Arc<dyn SessionStore>>, name: &str, scripts: Vec<Script>) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let home = HerHome::new(dunce::canonicalize(dir.path()).unwrap().join("home"));
     home.ensure().unwrap();
@@ -94,13 +93,10 @@ async fn bot_on(store: Option<Arc<dyn SessionStore>>, name: &str, mode: Permissi
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: folder.clone(),
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: Some(BotIdentity {
             id: "b1".into(),
             name: name.into(),
@@ -180,7 +176,6 @@ fn texts(message: &Message) -> String {
 async fn a_bot_talks_through_send_to_user_and_ends_its_turn() {
     let mut h = bot(
         "研究员",
-        PermissionMode::Manual,
         vec![send("c1", "在查了。"), send_last("c2", "三种：甲、乙、丙。")],
     )
     .await;
@@ -221,7 +216,6 @@ async fn a_bot_talks_through_send_to_user_and_ends_its_turn() {
 async fn an_empty_message_is_an_error_and_ends_nothing() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::tool_call("c1", "send_to_user", json!({ "text": "  ", "end_turn": true })),
             send_last("c2", "好的。"),
@@ -251,7 +245,6 @@ fn owners_last(request: &her_llm::Context) -> String {
 async fn a_word_follows_each_of_the_owners_messages() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             send("c1", "好。").then_tool_call("c2", "spawn_agent", json!({ "description": "查资料", "task": "Find it." })),
             Script::text("Waiting for its report."),
@@ -279,7 +272,6 @@ async fn a_word_follows_each_of_the_owners_messages() {
 async fn end_turn_waits_for_input_that_came_meanwhile() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             send_last("c1", "春天的诗。").then_sleep(Duration::from_millis(400)),
             send_last("c2", "夏天的诗。"),
@@ -302,7 +294,6 @@ async fn end_turn_waits_for_input_that_came_meanwhile() {
 async fn a_message_while_a_tool_runs_interrupts_nothing() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             Script::tool_call("c1", "send_to_user", json!({ "text": "我跑一下。" })).then_tool_call("c2", "bash", json!({ "command": "sleep 1 && echo finished" })),
             send_last("c3", "跑完了，1 公里是 0.62 英里。"),
@@ -347,7 +338,6 @@ fn undelivered(h: &Harness) -> usize {
 async fn a_bot_that_answers_in_plain_text_is_reminded_to_send() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::text("2。"), send_last("c1", "2。")],
     )
     .await;
@@ -368,7 +358,6 @@ async fn a_bot_that_answers_in_plain_text_is_reminded_to_send() {
 async fn the_reminder_comes_once_per_task() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::text("嗯。"), Script::text("嗯嗯。"), Script::text("在。"), send_last("c1", "在。")],
     )
     .await;
@@ -389,7 +378,6 @@ async fn the_reminder_comes_once_per_task() {
 async fn a_retried_task_is_reminded_too() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::fail(ErrorKind::QuotaExceeded, "quota exceeded"), Script::text("2。"), send_last("c1", "2。")],
     )
     .await;
@@ -407,7 +395,6 @@ async fn a_retried_task_is_reminded_too() {
 async fn only_an_unanswered_message_brings_a_reminder() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             // Answered, then a private last word.
             send("c1", "好的。"),
@@ -432,7 +419,6 @@ async fn only_an_unanswered_message_brings_a_reminder() {
     // A message that comes while the bot works, then a private last word: reminded.
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             send("c1", "春天的诗。").then_sleep(Duration::from_millis(400)),
             Script::text("Both done."),
@@ -455,7 +441,6 @@ async fn only_an_unanswered_message_brings_a_reminder() {
 async fn a_private_answer_is_reminded_before_the_next_message_joins() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::text("春天的诗。").then_sleep(Duration::from_millis(400)),
             send("c1", "春天的诗。"),
@@ -482,7 +467,6 @@ async fn a_private_answer_is_reminded_before_the_next_message_joins() {
 async fn a_message_before_the_first_request_joins_it() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::text("春。夏。"),
             send("c1", "春。").then_tool_call("c2", "send_to_user", json!({ "text": "夏。", "end_turn": true })),
@@ -508,7 +492,6 @@ async fn a_message_before_the_first_request_joins_it() {
 async fn a_message_during_the_reminders_reply_joins_after_it() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::text("春天的诗。"),
             send_last("c1", "春天的诗。").then_sleep(Duration::from_millis(400)),
@@ -576,7 +559,6 @@ async fn a_message_that_lands_as_a_task_ends_starts_the_next() {
     let mut h = bot_on(
         Some(Arc::new(SlowSyncStore)),
         "Her",
-        PermissionMode::Manual,
         vec![send_last("c1", "春。"), send_last("c2", "夏。")],
     )
     .await;
@@ -599,7 +581,6 @@ async fn a_message_that_lands_as_a_silent_task_ends_is_answered() {
     let mut h = bot_on(
         Some(Arc::new(SlowSyncStore)),
         "Her",
-        PermissionMode::Manual,
         vec![Script::text("春。"), Script::text("还是春。"), send_last("c1", "夏。")],
     )
     .await;
@@ -622,7 +603,6 @@ async fn a_message_that_lands_as_a_silent_task_ends_is_answered() {
 async fn each_message_in_a_row_gets_its_own_reminder() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::text("春。").then_sleep(Duration::from_millis(400)),
             send("c1", "春。"),
@@ -646,7 +626,6 @@ async fn each_message_in_a_row_gets_its_own_reminder() {
 async fn silence_after_a_reminder_gives_way_to_the_next_message() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::text("春。").then_sleep(Duration::from_millis(400)),
             Script::text("还是春。"),
@@ -669,11 +648,10 @@ async fn silence_after_a_reminder_gives_way_to_the_next_message() {
 async fn a_bots_sub_agents_get_a_sessions_prompt_and_a_send_to_user_of_their_own() {
     let mut h = bot(
         "研究员",
-        PermissionMode::Manual,
         vec![
             Script::tool_call("c1", "spawn_agent", json!({ "description": "查资料", "task": "Find it." }))
                 .then_tool_call("c2", "send_to_user", json!({ "text": "交给子智能体了。", "end_turn": true })),
-            // The sub-agent: a word to the owner, which needs no approval here, and its report.
+            // The sub-agent: a word to the owner, and its report.
             Script::tool_call("k1", "send_to_user", json!({ "text": "查到一半了。" })),
             Script::text("Found: 42."),
             // The bot, woken by the report.
@@ -685,7 +663,6 @@ async fn a_bots_sub_agents_get_a_sessions_prompt_and_a_send_to_user_of_their_own
     let events = until(&mut h.kernel, |m| matches!(m, EventMsg::Idle)).await;
     assert_eq!(sent(&events), ["交给子智能体了。", "查到了：42。"]);
     assert!(events.iter().any(|e| is_told(&e.msg)));
-    assert!(!events.iter().any(|e| matches!(&e.msg, EventMsg::AgentEvent { event, .. } if matches!(event.msg, EventMsg::ApprovalRequested { .. }))));
     let requests = h.api.requests();
     assert_eq!(requests.len(), 4);
     let agent = &requests[1];
@@ -706,7 +683,6 @@ async fn a_bots_sub_agents_get_a_sessions_prompt_and_a_send_to_user_of_their_own
 async fn a_new_name_is_told_once() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![send_last("c1", "在。"), send_last("c2", "我是研究员。"), send_last("c3", "好。")],
     )
     .await;
@@ -738,7 +714,6 @@ async fn a_new_name_is_told_once() {
 async fn a_result_written_after_the_first_message_is_reminded_and_sent() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             send("c1", "在查了。"),
             Script::tool_call("c2", "bash", json!({ "command": "echo 42" })),
@@ -761,7 +736,6 @@ async fn a_result_written_after_the_first_message_is_reminded_and_sent() {
 async fn a_report_written_up_in_plain_text_is_reminded_and_sent() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             Script::tool_call("c1", "send_to_user", json!({ "text": "好，我查一下。" })).then_tool_call("c2", "spawn_agent", json!({ "description": "查资料", "task": "Find it." })),
             // Ending the turn after handing the work over owes nothing: no reminder here.
@@ -784,7 +758,6 @@ async fn a_report_written_up_in_plain_text_is_reminded_and_sent() {
 async fn an_empty_reply_after_handing_work_over_ends_the_turn() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             Script::tool_call("c1", "send_to_user", json!({ "text": "好，我查一下。" })).then_tool_call("c2", "spawn_agent", json!({ "description": "查资料", "task": "Find it." })),
             Script::text(""),
@@ -805,7 +778,6 @@ async fn an_empty_reply_after_handing_work_over_ends_the_turn() {
 async fn silence_after_a_reminder_of_its_work_is_no_failure() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             send("c1", "在查了。"),
             Script::tool_call("c2", "bash", json!({ "command": "echo 42" })),
@@ -824,7 +796,6 @@ async fn silence_after_a_reminder_of_its_work_is_no_failure() {
 async fn a_new_message_counts_anew_after_a_reminder() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             // Written only, reminded, and a new message comes while it is reminded.
             Script::text("Only written."),
@@ -849,7 +820,6 @@ async fn a_new_message_counts_anew_after_a_reminder() {
 async fn a_bots_agents_work_in_the_background_whatever_the_model_sends() {
     let mut h = bot(
         "Her",
-        PermissionMode::BypassPermissions,
         vec![
             Script::tool_call("c1", "send_to_user", json!({ "text": "好。" })).then_tool_call("c2", "spawn_agent", json!({ "description": "查资料", "task": "Find it.", "wait": true })),
             Script::text("Waiting for its report."),
@@ -914,7 +884,7 @@ async fn through_both(h: &mut Harness) -> Vec<Event> {
 /// on (agent-messaging-design §3.1).
 #[tokio::test]
 async fn a_bot_relays_what_a_working_agent_sends() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     let bot_scripts = vec![handing_over(), Script::text("It is at work."), send_last("c3", "3 月的数据缺了，我先按其余 11 个月做。"), send_last("c4", "做好了。")];
     scripted_apart(&h, bot_scripts, speaking_up());
     h.kernel.submit(Op::prompt("把销售额按月汇总")).await.unwrap();
@@ -926,7 +896,7 @@ async fn a_bot_relays_what_a_working_agent_sends() {
 /// It may have nothing the owner needs: one word about it, like after any work, and no failure.
 #[tokio::test]
 async fn a_bot_that_keeps_a_message_to_itself_is_reminded_once() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     let bot_scripts = vec![handing_over(), Script::text("It is at work."), Script::text("Nothing for them yet."), Script::text("Really nothing."), send_last("c4", "做好了。")];
     scripted_apart(&h, bot_scripts, speaking_up());
     h.kernel.submit(Op::prompt("把销售额按月汇总")).await.unwrap();
@@ -988,7 +958,7 @@ fn own_tool_started(m: &EventMsg) -> bool {
 /// and reads it with whatever wakes it next (agent-messaging-design §17).
 #[tokio::test]
 async fn what_an_agent_tells_the_owner_wakes_nobody() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     scripted_apart(&h, vec![handing_over(), Script::text("It is at work."), send_last("c4", "做好了。")], telling());
     h.kernel.submit(Op::prompt("把销售额按月汇总")).await.unwrap();
     let opening = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
@@ -1023,7 +993,7 @@ async fn what_an_agent_tells_the_owner_wakes_nobody() {
 /// never between a call and its result.
 #[tokio::test]
 async fn what_an_agent_tells_the_owner_joins_a_working_bots_history_at_the_next_boundary() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     let bots = vec![handing_over(), busy("c3"), send_last("c4", "这边好了。"), send_last("c5", "做好了。")];
     scripted_apart(&h, bots, telling());
     h.kernel.submit(Op::prompt("把销售额按月汇总")).await.unwrap();
@@ -1049,7 +1019,7 @@ async fn what_an_agent_tells_the_owner_joins_a_working_bots_history_at_the_next_
 /// When no boundary follows, the end of the task is the place: the next may be a long way off.
 #[tokio::test]
 async fn what_an_agent_tells_the_owner_as_a_task_ends_is_written_with_its_end() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     let last_step = busy("c3").then_tool_call("c4", "send_to_user", json!({ "text": "你先忙。", "end_turn": true }));
     scripted_apart(&h, vec![handing_over(), last_step, send_last("c5", "做好了。")], telling());
     h.kernel.submit(Op::prompt("把销售额按月汇总")).await.unwrap();
@@ -1073,7 +1043,7 @@ async fn what_an_agent_tells_the_owner_as_a_task_ends_is_written_with_its_end() 
 /// Read back from the log: the owner still sees it, and the model still knows.
 #[tokio::test]
 async fn what_an_agent_told_the_owner_survives_a_restart() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     scripted_apart(&h, vec![handing_over(), Script::text("It is at work."), send_last("c9", "在。")], telling());
     h.kernel.submit(Op::prompt("把销售额按月汇总")).await.unwrap();
     until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
@@ -1088,12 +1058,9 @@ async fn what_an_agent_told_the_owner_survives_a_restart() {
         session: SessionRef::Id(id),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&h.api, &h.folder, &h.home)).await.unwrap();
@@ -1110,7 +1077,7 @@ async fn what_an_agent_told_the_owner_survives_a_restart() {
 /// What an agent says is no reply of the bot's: the owner's message is still owed one.
 #[tokio::test]
 async fn what_an_agent_tells_the_owner_answers_nothing_for_the_bot() {
-    let mut h = bot("Her", PermissionMode::BypassPermissions, vec![]).await;
+    let mut h = bot("Her", vec![]).await;
     let hand_over = Script::tool_call("c1", "spawn_agent", json!({ "description": "汇总", "task": "Sum it.", "name": "sales" }));
     let bots = vec![hand_over, busy("c2"), Script::text("Only my own thoughts."), send_last("c3", "好，在做了。"), send_last("c4", "做好了。")];
     scripted_apart(&h, bots, telling());
@@ -1130,7 +1097,7 @@ async fn what_an_agent_tells_the_owner_answers_nothing_for_the_bot() {
 /// `system_prompt` entry (bot-turn-design §8).
 #[tokio::test]
 async fn a_new_bot_prompt_reaches_a_resumed_bot_once() {
-    let h = bot("Her", PermissionMode::Manual, vec![send_last("c1", "在。")]).await;
+    let h = bot("Her", vec![send_last("c1", "在。")]).await;
     let mut kernel = h.kernel;
     kernel.run(prompt("在吗")).await.unwrap();
     let id = kernel.session_id().to_string();
@@ -1141,12 +1108,9 @@ async fn a_new_bot_prompt_reaches_a_resumed_bot_once() {
         session: SessionRef::Id(id.clone()),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let prompts = || {
@@ -1187,7 +1151,7 @@ async fn a_new_bot_prompt_reaches_a_resumed_bot_once() {
 /// A resumed bot session keeps its tool and prompt; a name changed meanwhile is told.
 #[tokio::test]
 async fn a_resumed_bot_keeps_send_to_user_and_learns_its_new_name() {
-    let h = bot("Her", PermissionMode::Manual, vec![send_last("c1", "在。")]).await;
+    let h = bot("Her", vec![send_last("c1", "在。")]).await;
     let mut kernel = h.kernel;
     kernel.run(prompt("在吗")).await.unwrap();
     let id = kernel.session_id().to_string();
@@ -1197,12 +1161,9 @@ async fn a_resumed_bot_keeps_send_to_user_and_learns_its_new_name() {
         session: SessionRef::Id(id),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: Some("运维".into()),
     };
     let mut kernel = Kernel::resume(options, deps(&h.api, &h.folder, &h.home)).await.unwrap();
@@ -1216,13 +1177,11 @@ async fn a_resumed_bot_keeps_send_to_user_and_learns_its_new_name() {
     assert!(last.messages.iter().any(|m| texts(m) == update));
 }
 
-/// Writing in the bot's own folder needs no approval where the workspace's files need none,
-/// though the folder is in the data directory (bot-design §2.5).
+/// A bot writes in its own folder, and beside it, without anyone being asked (bot-design §2.5).
 #[tokio::test]
 async fn a_bot_writes_in_its_own_folder_without_asking() {
     let mut h = bot(
         "Her",
-        PermissionMode::AcceptEdits,
         vec![
             Script::tool_call("c1", "write", json!({ "path": "report.md", "content": "# 周报" })),
             Script::tool_call("c2", "write", json!({ "path": "../bot.json", "content": "{}" })),
@@ -1233,8 +1192,7 @@ async fn a_bot_writes_in_its_own_folder_without_asking() {
     let result = h.kernel.run(prompt("写一份周报")).await.unwrap();
     assert!(matches!(result.end, TaskEnd::Completed { .. }));
     assert_eq!(std::fs::read_to_string(h.folder.join("report.md")).unwrap(), "# 周报");
-    // Outside its folder, the data directory stays protected: nobody can approve here.
-    assert!(!h.folder.parent().unwrap().join("bot.json").exists());
+    assert!(h.folder.parent().unwrap().join("bot.json").exists(), "nobody is asked, nothing refuses it");
     let results: Vec<String> = h.api.requests()[2]
         .messages
         .iter()
@@ -1243,8 +1201,7 @@ async fn a_bot_writes_in_its_own_folder_without_asking() {
             _ => None,
         })
         .collect();
-    assert!(results[0].starts_with("Wrote"), "{results:?}");
-    assert!(!results[1].starts_with("Wrote"), "{results:?}");
+    assert!(results[0].starts_with("Wrote") && results[1].starts_with("Wrote"), "{results:?}");
 }
 
 // ---- Message types (bot-design §3.12) ----
@@ -1293,7 +1250,7 @@ fn results(h: &Harness) -> Vec<(bool, String)> {
 
 #[tokio::test]
 async fn an_attachment_is_one_message_of_files_and_says_what_they_are() {
-    let mut h = bot("Her", PermissionMode::Manual, vec![attach("c1", &["毛利率.png", "./报告.pdf"])]).await;
+    let mut h = bot("Her", vec![attach("c1", &["毛利率.png", "./报告.pdf"])]).await;
     std::fs::write(h.folder.join("毛利率.png"), png(960, 600)).unwrap();
     std::fs::write(h.folder.join("报告.pdf"), b"%PDF-1.7").unwrap();
     let result = h.kernel.run(prompt("发我")).await.unwrap();
@@ -1328,7 +1285,7 @@ fn copy_of(file: &serde_json::Value) -> (PathBuf, Vec<u8>) {
 
 #[tokio::test]
 async fn a_sent_file_is_kept_as_it_was_when_sent() {
-    let mut h = bot("Her", PermissionMode::Manual, vec![attach("c1", &["报告.md"]), attach("c2", &["报告.md"]), attach("c3", &["报告.md"])]).await;
+    let mut h = bot("Her", vec![attach("c1", &["报告.md"]), attach("c2", &["报告.md"]), attach("c3", &["报告.md"])]).await;
     let file = h.folder.join("报告.md");
     std::fs::write(&file, "第一版").unwrap();
     let first = details(&h.kernel.run(prompt("发我")).await.unwrap().events)[0]["files"][0].clone();
@@ -1352,7 +1309,7 @@ async fn a_file_outside_the_folder_is_kept_too() {
     let outside = tempfile::tempdir().unwrap();
     let file = dunce::canonicalize(outside.path()).unwrap().join("合同.pdf");
     std::fs::write(&file, b"%PDF-1.7 outside").unwrap();
-    let mut h = bot("Her", PermissionMode::Manual, vec![attach("c1", &[file.to_str().unwrap()])]).await;
+    let mut h = bot("Her", vec![attach("c1", &[file.to_str().unwrap()])]).await;
     let sent = details(&h.kernel.run(prompt("发我")).await.unwrap().events)[0]["files"][0].clone();
     let (copy, bytes) = copy_of(&sent);
     assert_eq!(bytes, b"%PDF-1.7 outside");
@@ -1363,7 +1320,7 @@ async fn a_file_outside_the_folder_is_kept_too() {
 #[tokio::test]
 async fn a_file_that_cannot_be_copied_is_sent_without_a_copy() {
     use std::os::unix::fs::PermissionsExt;
-    let mut h = bot("Her", PermissionMode::Manual, vec![attach("c1", &["报告.md"])]).await;
+    let mut h = bot("Her", vec![attach("c1", &["报告.md"])]).await;
     std::fs::write(h.folder.join("报告.md"), "周报").unwrap();
     // Nothing can be written where the copies go.
     let sent = h.home.bot_sent_dir("b1");
@@ -1377,7 +1334,7 @@ async fn a_file_that_cannot_be_copied_is_sent_without_a_copy() {
 
 #[tokio::test]
 async fn an_image_is_told_by_its_contents_and_only_up_to_the_panels_limit() {
-    let mut h = bot("Her", PermissionMode::Manual, vec![attach("c1", &["photo.pdf", "chart.png", "huge.png"])]).await;
+    let mut h = bot("Her", vec![attach("c1", &["photo.pdf", "chart.png", "huge.png"])]).await;
     std::fs::write(h.folder.join("photo.pdf"), png(10, 20)).unwrap();
     std::fs::write(h.folder.join("chart.png"), b"not a picture").unwrap();
     let mut huge = png(4000, 3000);
@@ -1396,7 +1353,6 @@ async fn an_image_is_told_by_its_contents_and_only_up_to_the_panels_limit() {
 async fn a_file_made_in_the_same_step_can_be_sent() {
     let mut h = bot(
         "Her",
-        PermissionMode::AcceptEdits,
         vec![Script::tool_call("c1", "write", json!({ "path": "report.md", "content": "# 周报" })).then_tool_call(
             "c2",
             "send_to_user",
@@ -1413,7 +1369,6 @@ async fn a_file_made_in_the_same_step_can_be_sent() {
 async fn a_wrong_path_sends_nothing_and_names_each_one() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             attach("c1", &["there.txt", "gone.pdf", ".", "https://example.com/a.png"]),
             attach("c2", &["there.txt"]),
@@ -1438,7 +1393,6 @@ async fn a_wrong_path_sends_nothing_and_names_each_one() {
 async fn files_may_come_with_words_and_need_no_type() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![
             Script::tool_call("c1", "send_to_user", json!({ "type": "attachment", "text": "在这里。", "files": [{ "path": "a.txt" }] })),
             Script::tool_call("c2", "send_to_user", json!({ "text": "还有这个。", "files": [{ "path": "a.txt" }], "end_turn": true })),
@@ -1459,7 +1413,6 @@ async fn files_may_come_with_words_and_need_no_type() {
 async fn a_question_may_have_no_options_and_still_ends_the_turn() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::tool_call("c1", "send_to_user", json!({ "type": "question", "text": "发给谁？" }))],
     )
     .await;
@@ -1473,7 +1426,6 @@ async fn a_question_may_have_no_options_and_still_ends_the_turn() {
 async fn options_without_a_type_make_a_question() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::tool_call("c1", "send_to_user", json!({ "text": "发给谁？", "options": [{ "label": "财务组" }] }))],
     )
     .await;
@@ -1486,7 +1438,6 @@ async fn a_question_ends_the_turn_and_its_answer_is_an_ordinary_message() {
     let question = json!({ "type": "question", "text": "发给谁？", "options": [{ "label": "财务组" }, { "label": "全部门" }] });
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::tool_call("c1", "send_to_user", question), send_last("c2", "发好了。")],
     )
     .await;
@@ -1516,7 +1467,6 @@ async fn a_type_takes_its_own_parameters_and_says_what_is_wrong() {
     for (args, expected) in cases {
         let mut h = bot(
             "Her",
-            PermissionMode::Manual,
             vec![Script::tool_call("c1", "send_to_user", args.clone()), send_last("c2", "好的。")],
         )
         .await;
@@ -1531,7 +1481,6 @@ async fn a_type_takes_its_own_parameters_and_says_what_is_wrong() {
 async fn an_empty_value_counts_as_left_out() {
     let mut h = bot(
         "Her",
-        PermissionMode::Manual,
         vec![Script::tool_call(
             "c1",
             "send_to_user",
@@ -1547,7 +1496,7 @@ async fn an_empty_value_counts_as_left_out() {
 /// What every request carries: plain enough for any provider (bot-design §3.12).
 #[tokio::test]
 async fn the_tools_parameters_are_flat_with_a_plain_enum() {
-    let mut h = bot("Her", PermissionMode::Manual, vec![send_last("c1", "好的。")]).await;
+    let mut h = bot("Her", vec![send_last("c1", "好的。")]).await;
     h.kernel.run(prompt("hi")).await.unwrap();
     let requests = h.api.requests();
     let tool = requests[0].tools.iter().find(|t| t.name == "send_to_user").unwrap();

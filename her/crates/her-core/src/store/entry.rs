@@ -9,7 +9,6 @@ use her_llm::UsageTotals;
 use her_protocol::CompactionReason;
 use her_protocol::CompletionReason;
 use her_protocol::MailInfo;
-use her_protocol::PermissionMode;
 use her_protocol::ErrorInfo;
 use serde::Deserialize;
 use serde::Serialize;
@@ -126,8 +125,6 @@ pub enum EntryKind {
         model: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         thinking: Option<ThinkingLevel>,
-        #[serde(default, skip_serializing_if = "Option::is_none", alias = "approval_mode")]
-        permission_mode: Option<PermissionMode>,
     },
     /// A checkpoint: the context continues from `retained` and `summary` instead of the
     /// messages before this entry, which stay in the log.
@@ -362,21 +359,17 @@ mod tests {
         assert_eq!(branch.kind, EntryKind::Branch { before_first: false });
     }
 
+    /// Logs from when sessions had a permission mode still load; the mode is dropped.
     #[test]
-    fn logs_from_before_the_rename_still_load() {
-        let settings: Entry =
-            serde_json::from_str(r#"{"id":"x","parent":null,"ts":1,"type":"settings","approval_mode":"full-auto"}"#)
-                .unwrap();
-        assert_eq!(
-            settings.kind,
-            EntryKind::Settings {
-                model: None,
-                thinking: None,
-                permission_mode: Some(PermissionMode::BypassPermissions),
-            }
-        );
-        let json = serde_json::to_string(&settings).unwrap();
-        assert!(json.ends_with(r#""type":"settings","permission_mode":"bypass-permissions"}"#), "{json}");
+    fn logs_with_a_permission_mode_still_load() {
+        for line in [
+            r#"{"id":"x","parent":null,"ts":1,"type":"settings","approval_mode":"full-auto"}"#,
+            r#"{"id":"x","parent":null,"ts":1,"type":"settings","model":"m/x","permission_mode":"manual"}"#,
+        ] {
+            let settings: Entry = serde_json::from_str(line).unwrap();
+            assert!(matches!(settings.kind, EntryKind::Settings { .. }), "{line}");
+            assert!(!serde_json::to_string(&settings).unwrap().contains("_mode"), "{line}");
+        }
     }
 
     /// One line of each entry type with nested data, as logs hold them: read and written
@@ -396,7 +389,7 @@ mod tests {
             r#"{"id":"2787b9a3","parent":"2787b9a1","ts":1793224073145,"type":"system_prompt","text":"be brief","tools":["read"],"skills":[{"name":"review","path":"/p/.her/skills/review/SKILL.md","scope":"project","model_invocable":true,"argument_hint":"[file]"}],"mcp":"MCP servers: vault"}"#,
             r#"{"id":"2787b9a4","parent":"2787b9a3","ts":1793224073146,"type":"message","message":{"role":"user","content":[{"type":"text","text":"<skill>"}],"ts":3},"skill":{"name":"review","path":"/p/.her/skills/review/SKILL.md","input":"/review a.rs"}}"#,
             r#"{"id":"2787b9a5","parent":"2787b9a4","ts":1793224073147,"type":"compaction","seq":3,"reason":"threshold","summary":"s","retained":[],"skills":[{"name":"review","path":"/p/.her/skills/review/SKILL.md","content":"<skill>"}],"model":"m/x","usage":{"input":1,"output":2,"cache_read":0,"cache_write":0,"cost":{"currency":"USD","input":0.0,"output":0.0,"cache_read":0.0,"cache_write":0.0,"total":0.0}},"tokens_before":9,"tokens_after":3}"#,
-            r#"{"id":"2787b9a2","parent":"2787b9a1","ts":1793224073144,"type":"settings","model":"m/x","thinking":"high","permission_mode":"manual"}"#,
+            r#"{"id":"2787b9a2","parent":"2787b9a1","ts":1793224073144,"type":"settings","model":"m/x","thinking":"high"}"#,
             r#"{"id":"2787b9a6","parent":"2787b9a5","ts":1793224073148,"type":"date","date":"2026-11-03"}"#,
             r#"{"id":"2787b9a8","parent":"2787b9a6","ts":1793224073149,"type":"card_resolved","card_id":"c_k3j9x2m4qa","kind":"connect","outcome":"done","note":"Notion connected: 14 tools (notion_search, …)."}"#,
         ];

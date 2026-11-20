@@ -146,7 +146,7 @@ fn find_log(env: &TestEnv) -> String {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_message_gets_a_reply_and_quit_says_how_to_continue() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &[]);
     pty.wait_for("mock/mock-1");
     pty.wait_for("› ");
@@ -163,7 +163,7 @@ async fn a_message_gets_a_reply_and_quit_says_how_to_continue() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_first_message_can_come_on_the_command_line() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &["say hi"]);
     pty.wait_for("Hello from mock.");
     pty.wait_for("tokens:");
@@ -171,55 +171,24 @@ async fn the_first_message_can_come_on_the_command_line() {
     assert_eq!(pty.wait_exit(), 0);
 }
 
+/// A change runs at once: nothing asks, and the task goes to its end.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_change_shows_what_it_does_and_waits_for_the_answer() {
-    let env = TestEnv::new("manual", QUIET).await;
+async fn a_change_runs_without_asking() {
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &[]);
     pty.wait_for("› ");
     pty.type_text("[[mock:files]] change it\r");
-    // The write: its first lines, and the question.
-    pty.wait_for("+ alpha");
-    let asked = pty.wait_for("[y] yes");
-    pty.type_text("what\r");
-    pty.wait_for_after(asked, "please answer");
-    pty.type_text("y\r");
-    pty.wait_for("allowed: write");
-    // The edit: what goes and what comes.
-    pty.wait_for("- alpha");
-    pty.wait_for("+ gamma");
-    let at = pty.wait_for("allowed: write");
-    pty.wait_for_after(at, "[y] yes");
-    pty.type_text("y\r");
     pty.wait_for("files done");
     pty.wait_for("tokens:");
+    assert!(!pty.seen().contains("[y] yes"), "nothing asks");
     assert_eq!(std::fs::read_to_string(env.work.path().join("notes.txt")).unwrap(), "gamma\nbeta\n");
     pty.type_text("/exit\r");
     assert_eq!(pty.wait_exit(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn no_answers_with_words_for_the_model() {
-    let env = TestEnv::new("manual", QUIET).await;
-    let mut pty = Pty::start(&env, &[]);
-    pty.wait_for("› ");
-    pty.type_text("[[mock:files]] change it\r");
-    pty.wait_for("[y] yes");
-    pty.type_text("n\r");
-    pty.wait_for("feedback (optional)");
-    pty.type_text("not this one\r");
-    pty.wait_for("denied: write");
-    assert!(!env.work.path().join("notes.txt").exists());
-    pty.wait_for("files done");
-    pty.wait_for("tokens:");
-    pty.type_text("/quit\r");
-    assert_eq!(pty.wait_exit(), 0);
-    let log = find_log(&env);
-    assert!(log.contains("not this one"), "the model hears why: {log}");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_message_sent_while_a_task_runs_waits_and_comes_back_with_up() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &[]);
     pty.wait_for("› ");
     pty.type_text("[[mock:slow:100]] take your time\r");
@@ -237,7 +206,7 @@ async fn a_message_sent_while_a_task_runs_waits_and_comes_back_with_up() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn commands_do_their_own_work_and_other_slashes_are_messages() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &[]);
     pty.wait_for("› ");
     pty.type_text("/help\r");
@@ -248,9 +217,6 @@ async fn commands_do_their_own_work_and_other_slashes_are_messages() {
     let at = pty.seen().len();
     pty.type_text("/tools\r");
     pty.wait_for_after(at, "web_search");
-    let at = pty.seen().len();
-    pty.type_text("/permissions accept-edits\r");
-    pty.wait_for_after(at, "permissions: accept-edits");
     let at = pty.seen().len();
     pty.type_text("/rename a good name\r");
     pty.wait_for_after(at, "renamed: a good name");
@@ -267,7 +233,7 @@ async fn commands_do_their_own_work_and_other_slashes_are_messages() {
 /// A command the kernel answers without a task leaves the mode ready for the next message.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_kernels_own_commands_end_with_the_mode_idle() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &["say hi"]);
     pty.wait_for("tokens:");
     let at = pty.seen().len();
@@ -287,7 +253,7 @@ async fn the_kernels_own_commands_end_with_the_mode_idle() {
 /// Text in the input box stays while a question is answered, and a resize does not lose it.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_pasted_block_stays_one_message() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &[]);
     pty.wait_for("› ");
     pty.type_text("\x1b[200~first line\nsecond line\x1b[201~");
@@ -302,7 +268,7 @@ async fn a_pasted_block_stays_one_message() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_session_continues_with_resume() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &["say hi"]);
     pty.wait_for("tokens:");
     pty.type_text("/quit\r");
@@ -327,7 +293,7 @@ fn number_of(seen: &str, name: &str) -> String {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn first_time_without_a_model_goes_through_logging_in_to_a_reply() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     std::fs::write(env.home.path().join("config.toml"), QUIET).unwrap();
     let models = format!("[providers.deepseek]\nbase_url = \"{}\"\n", env.mock.base_url());
     std::fs::write(env.home.path().join("models.toml"), models).unwrap();
@@ -358,7 +324,7 @@ async fn first_time_without_a_model_goes_through_logging_in_to_a_reply() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn logging_in_at_a_terminal_hides_the_key_and_takes_a_refusal() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let mut pty = Pty::start(&env, &["login", "deepseek"]);
     pty.wait_for("Paste the key of DeepSeek");
     pty.type_text(&format!("{}\n", her_mock::REJECTED_KEY));
@@ -368,7 +334,7 @@ async fn logging_in_at_a_terminal_hides_the_key_and_takes_a_refusal() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_project_that_brings_servers_asks_once() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     std::fs::create_dir(env.work.path().join(".git")).unwrap();
     std::fs::write(
         env.work.path().join(".mcp.json"),
@@ -393,7 +359,7 @@ async fn a_project_that_brings_servers_asks_once() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn typing_in_a_script_is_refused_and_slips_are_caught() {
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let out = env.her(&[]).stdin(Stdio::null()).output().await.unwrap();
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains("her exec"));
@@ -435,7 +401,7 @@ async fn a_sign_in_takes_the_address_a_browser_elsewhere_ended_on() {
     use her_mock::mcp::McpTestOptions;
     use her_mock::mcp_auth::McpTestAuth;
     use her_mock::mcp_auth::OAuthOptions;
-    let env = TestEnv::new("manual", QUIET).await;
+    let env = TestEnv::new(QUIET).await;
     let auth = McpTestAuth::OAuth(OAuthOptions { metadata_document: false, registration: true, token_ttl_secs: 3600 });
     let mock = her_mock::mcp::serve_http("127.0.0.1:0", McpTestOptions { auth, ..Default::default() }).await.unwrap();
     let added = env.her(&["mcp", "add", "tracker", "--url", &mock.url(), "--no-login"]).output().await.unwrap();

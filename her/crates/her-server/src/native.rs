@@ -318,7 +318,6 @@ impl NativeProtocol {
                         extra_roots: p.extra_roots,
                         model: p.model,
                         thinking: p.thinking,
-                        permission_mode: p.permission_mode,
                         mcp_servers: p.mcp_servers,
                     };
                     let reply_id = id.clone();
@@ -337,7 +336,6 @@ impl NativeProtocol {
                     let overrides = ResumeOverrides {
                         model: p.model,
                         thinking: p.thinking,
-                        permission_mode: p.permission_mode,
                         mcp_servers: p.mcp_servers,
                     };
                     let reply_id = id.clone();

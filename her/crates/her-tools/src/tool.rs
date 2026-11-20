@@ -1,5 +1,5 @@
-//! The tool contract. Tools only declare what they are; approval, concurrency, truncation and
-//! recording are the kernel's job.
+//! The tool contract. Tools only declare what they are; concurrency, truncation and recording
+//! are the kernel's job. Nobody is asked before a call: what the kernel does not refuse runs.
 
 use async_trait::async_trait;
 use her_llm::ToolSpec;
@@ -25,8 +25,7 @@ pub trait Tool: Send + Sync + 'static {
     /// Name, description and JSON Schema of the parameters.
     fn spec(&self) -> &ToolSpec;
 
-    /// Read-only tools may run in parallel and skip approval by default; mutating tools run
-    /// exclusively and go through the approval policy.
+    /// Read-only tools may run in parallel; mutating tools run exclusively.
     fn kind(&self) -> ToolKind {
         ToolKind::ReadOnly
     }
@@ -51,12 +50,6 @@ pub trait Tool: Send + Sync + 'static {
         self.origin()
     }
 
-    /// For a tool from outside: whether one call runs without asking in the modes that ask.
-    fn runs_unasked(&self, args: &Value) -> bool {
-        let _ = args;
-        false
-    }
-
     /// Lines added to the "tool guidelines" part of the system prompt.
     fn guidelines(&self) -> &[&'static str] {
         &[]
@@ -69,46 +62,20 @@ pub trait Tool: Send + Sync + 'static {
     }
 
     /// Repairs well-known mistakes in the arguments, such as a list sent as a JSON string. The
-    /// kernel calls it first; hooks, approval, events and `execute` see the result.
+    /// kernel calls it first; hooks, events and `execute` see the result.
     fn prepare_arguments(&self, args: Value) -> Value {
         args
     }
 
     /// What the call will do on which site, judged from the session's current state
-    /// (browser-design §7.1). The kernel computes it once, before the hooks; approval judges
-    /// it, and `execute` gets the same list in [`ToolCtx::authorities`]. `Err` fails the call
-    /// without asking anyone.
+    /// (browser-design §7.1). The kernel computes it once, before the hooks; the policy judges
+    /// it, and `execute` gets the same list in [`ToolCtx::authorities`]. `Err` fails the call.
     async fn authorities(&self, args: &Value, ctx: &ToolCtx) -> Result<Vec<Authority>, ToolError> {
         let _ = (args, ctx);
         Ok(Vec::new())
     }
 
-    /// Checks a call before the user is asked to approve it, so nobody approves a call that
-    /// cannot succeed. Must not change anything.
-    async fn check(&self, args: &Value, ctx: &ToolCtx) -> Result<(), ToolError> {
-        let _ = (args, ctx);
-        Ok(())
-    }
-
-    /// For a tool that a host outside the kernel runs: what one call would do, in the host's
-    /// words. The approval policy asks for it only before it would ask the user about a call
-    /// that changes something. `None` for every other tool, or when the host does not say.
-    async fn approval_words(&self, args: &Value) -> Option<ApprovalWords> {
-        let _ = args;
-        None
-    }
-
     async fn execute(&self, args: Value, ctx: ToolCtx) -> Result<ToolOutput, ToolError>;
-}
-
-/// What a tool's host says of one call, for the approval policy ([`Tool::approval_words`]).
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ApprovalWords {
-    /// What the call would do, for the user who approves it.
-    pub summary: String,
-    /// The words of the rule that covers the call, if one can: an allow rule with them lets it
-    /// run unasked, and approving for the session keeps one.
-    pub rule: Option<Vec<String>>,
 }
 
 /// Display category of a call; independent of [`ToolKind`], which only drives locking.
@@ -192,8 +159,8 @@ pub struct ToolCtx {
     /// its browser. It lets one instance of such a tool serve every session. The tools here
     /// ignore it.
     pub session_state: Arc<SessionState>,
-    /// What [`Tool::authorities`] returned when the call was approved; never recomputed, so
-    /// the tool can check that the page is still the approved one (browser-design §7.4).
+    /// What [`Tool::authorities`] returned when the call was judged; never recomputed, so the
+    /// tool can check that the page is still the one judged (browser-design §7.4).
     pub authorities: Arc<[Authority]>,
 }
 
@@ -234,7 +201,7 @@ impl fmt::Debug for SessionState {
     }
 }
 
-/// A page as a call was approved for: the tab, the frame and the document (browser-design
+/// A page as a call was judged for: the tab, the frame and the document (browser-design
 /// §7.1). Execution runs only on that page.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PageTarget {
@@ -257,8 +224,6 @@ pub enum Authority {
     Upload { origin: String, paths: Vec<PathBuf>, target: PageTarget, own: bool },
     /// Runs a script on a page: it can read and change anything there.
     Script { origin: String, target: PageTarget, own: bool },
-    /// Hands a page to the user for what only they can do: a sign-in, a CAPTCHA.
-    UserStep { what: String, own: bool },
     /// Reads a desktop app's window. `app` is its bundle id, or its name when it has none.
     AppObserve { app: String },
     /// Acts on a desktop app. `action` says what, for the user.

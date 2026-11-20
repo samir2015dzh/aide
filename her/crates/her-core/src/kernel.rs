@@ -8,13 +8,11 @@ use her_llm::ThinkingLevel;
 use her_llm::UsageTotals;
 use her_llm::UserContent;
 use her_protocol::AgentRef;
-use her_protocol::CommandRule;
 use her_protocol::ErrorInfo;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::Op;
 use her_protocol::PROTOCOL_VERSION;
-use her_protocol::PermissionMode;
 use her_protocol::PromptMode;
 use her_protocol::api::SessionInfo;
 use her_protocol::api::TaskOutcome;
@@ -42,7 +40,7 @@ use crate::agents;
 use crate::agents::AgentTree;
 use crate::agents::ChildDeps;
 use crate::deferred::AgentRole;
-use crate::approval::ApprovalPolicy;
+use crate::policy::ToolPolicy;
 use crate::bot;
 use crate::bot::BotIdentity;
 use crate::cards::Cards;
@@ -97,7 +95,7 @@ pub struct KernelDeps {
     pub tools: Arc<ToolRegistry>,
     pub env: Arc<dyn Environment>,
     pub store: Arc<dyn SessionStore>,
-    /// Extra hooks; the approval policy is always added last.
+    /// Extra hooks; the tool policy is always added last.
     pub hooks: Vec<Arc<dyn Hooks>>,
     /// MCP servers for the session, merged and validated by the front end. Started with the
     /// session; empty means no MCP.
@@ -128,14 +126,10 @@ pub struct KernelDeps {
 pub struct StartOptions {
     pub model: String,
     pub thinking: ThinkingLevel,
-    pub permission_mode: PermissionMode,
     pub cwd: PathBuf,
     pub home: HerHome,
     pub config: Arc<Config>,
     pub project_root: Option<PathBuf>,
-    pub trusted: bool,
-    /// Whether a front end can answer approval requests. Without one, "ask" means "deny".
-    pub interactive_approvals: bool,
     /// A bot's session (bot-design §2.2): its header names the bot, its prompt is a bot's and
     /// it gets `send_to_user`.
     pub bot: Option<BotIdentity>,
@@ -146,12 +140,9 @@ pub struct ResumeOptions {
     /// Overrides; `None` keeps the session's own settings.
     pub model: Option<String>,
     pub thinking: Option<ThinkingLevel>,
-    pub permission_mode: Option<PermissionMode>,
     pub home: HerHome,
     pub config: Arc<Config>,
     pub project_root: Option<PathBuf>,
-    pub trusted: bool,
-    pub interactive_approvals: bool,
     /// A bot's session: the bot's name now, when it may have changed (bot-design §2.4).
     pub bot_name: Option<String>,
 }
@@ -208,16 +199,12 @@ struct Launch {
     location: PathBuf,
     writer: SessionWriter,
     home: HerHome,
-    trusted: bool,
-    interactive_approvals: bool,
     config: Arc<Config>,
     deps: KernelDeps,
     state: SessionState,
     agents: Option<Arc<AgentTree>>,
     sub_agent: bool,
     role: AgentRole,
-    main: Option<Weak<Session>>,
-    approval_line: Arc<tokio::sync::Mutex<()>>,
     locks: Arc<PathLocks>,
     mcp: Option<Arc<McpManager>>,
     /// The tree's browser and desktop settings (connectors-entry-design §9.4).
@@ -231,7 +218,7 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
     let (op_tx, op_rx) = mpsc::channel(OP_CHANNEL_CAPACITY);
     let (internal_tx, internal_rx) = mpsc::unbounded_channel();
     let mut hooks = launch.deps.hooks;
-    hooks.push(Arc::new(ApprovalPolicy));
+    hooks.push(Arc::new(ToolPolicy));
     let log_closed = launch.writer.closed();
     let (session_dir, temporary) = HerHome::session_data_dir(&launch.location, &launch.id);
     let shown = Arc::new(Mutex::new(Shown::default()));
@@ -245,8 +232,6 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
     starting.groups.extend(mesh.as_ref().and_then(|mesh| mesh.group()));
     let deferred: crate::deferred::DeferredCell = Arc::new(Mutex::new(Arc::new(starting)));
     let base_tools = mcp::base_tools(&launch.deps.tools, launch.mcp.as_ref(), &deferred, &shown);
-    let skill_roots =
-        crate::protected::skill_locations(&launch.config.skills, &launch.home, launch.deps.env.cwd());
     let tool_state = Arc::new(her_tools::SessionState::default());
     if let Some(tree) = &launch.agents {
         tool_state.insert(tree.clone());
@@ -260,7 +245,6 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
             embedded,
             session_dir.join("downloads"),
             launch.deps.env.workspace_roots().to_vec(),
-            launch.state.site_grants.clone(),
             launch.root_id.clone(),
         )));
     }
@@ -293,7 +277,6 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
             }),
         }));
     }
-    let own_folder = launch.home.private_folder(&crate::protected::canonical_lossy(launch.deps.env.cwd()));
     let session = Arc::new(Session {
         id: launch.id.clone(),
         llm: launch.deps.llm,
@@ -323,23 +306,17 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
         context_report: Mutex::new(None),
         request_estimates: Mutex::new(Vec::new()),
         data_dir: crate::protected::canonical_data_dir(launch.home.root()),
-        own_folder,
-        skill_roots,
         memory_dir: launch.memory_dir,
-        trusted: launch.trusted,
-        interactive_approvals: launch.interactive_approvals,
         locks: launch.locks,
         agents: launch.agents,
         sub_agent: launch.sub_agent,
         agent_role: role,
-        main: launch.main,
-        approval_line: launch.approval_line,
         tool_state,
         input_seq: watch::channel(0).0,
         config: launch.config,
         state: Mutex::new(launch.state),
     });
-    // A browser batch judges its later steps by the session's approval policy (§12.1).
+    // A browser batch judges its later steps by the session's tool policy (§12.1).
     if let Some(browser) = session.tool_state.get::<BrowserHandle>() {
         let weak = Arc::downgrade(&session);
         browser.set_judge(Arc::new(move |authorities| {
@@ -380,7 +357,6 @@ fn agent_tree(
     deps: &mut KernelDeps,
     home: &HerHome,
     config: &Arc<Config>,
-    trusted: bool,
     mcp: Option<Arc<McpManager>>,
     bot: bool,
 ) -> Option<Arc<AgentTree>> {
@@ -395,7 +371,6 @@ fn agent_tree(
         hooks: deps.hooks.clone(),
         home: home.clone(),
         config: config.clone(),
-        trusted,
         mcp,
         browser_pool: deps.browser_pool.clone(),
         docs: deps.docs.clone(),
@@ -449,24 +424,15 @@ pub(crate) struct ChildLaunch {
     pub(crate) skills: Arc<[SkillRef]>,
     pub(crate) model: Arc<Model>,
     pub(crate) thinking: ThinkingLevel,
-    pub(crate) permission_mode: PermissionMode,
-    pub(crate) session_rules: Vec<CommandRule>,
-    pub(crate) site_grants: Vec<her_protocol::SiteGrant>,
     pub(crate) deps: KernelDeps,
     pub(crate) home: HerHome,
     pub(crate) config: Arc<Config>,
-    pub(crate) trusted: bool,
-    /// The main session's own: where its questions go, or that nobody answers them.
-    pub(crate) interactive_approvals: bool,
-    pub(crate) main: Weak<Session>,
-    pub(crate) approval_line: Arc<tokio::sync::Mutex<()>>,
     pub(crate) locks: Arc<PathLocks>,
     /// The main session's browser and desktop settings, which the sub-agent follows.
     pub(crate) system: Arc<SystemCell>,
 }
 
-/// Starts a sub-agent's session: an ordinary session with its own log, whose questions go to
-/// the main session's user.
+/// Starts a sub-agent's session: an ordinary session with its own log.
 pub(crate) fn start_child(mut child: ChildLaunch) -> Result<Kernel, KernelError> {
     // A routine's run is on its own: no other agent to talk to, nor one that knows of it.
     let run = child.header.agent.as_ref().is_some_and(|agent| agent.routine.is_some());
@@ -485,10 +451,7 @@ pub(crate) fn start_child(mut child: ChildLaunch) -> Result<Kernel, KernelError>
         child.system_prompt.clone(),
         child.model,
         child.thinking,
-        child.permission_mode,
     );
-    state.session_rules = child.session_rules;
-    state.site_grants = child.site_grants;
     state.base_prompt = child.base_prompt;
     state.mcp_section = child.mcp_section;
     state.skills = child.skills.clone();
@@ -499,16 +462,12 @@ pub(crate) fn start_child(mut child: ChildLaunch) -> Result<Kernel, KernelError>
         location: created.location.clone(),
         writer: created.writer,
         home: child.home,
-        trusted: child.trusted,
-        interactive_approvals: child.interactive_approvals,
         config: child.config,
         deps: child.deps,
         state,
         agents: None,
         sub_agent: true,
         role: if run { AgentRole::None } else { AgentRole::SubAgent },
-        main: Some(child.main),
-        approval_line: child.approval_line,
         locks: child.locks,
         mcp: child.mcp,
         system: child.system,
@@ -520,7 +479,6 @@ pub(crate) fn start_child(mut child: ChildLaunch) -> Result<Kernel, KernelError>
     session.record(EntryKind::Settings {
         model: Some(model_ref.clone()),
         thinking: Some(child.thinking),
-        permission_mode: Some(child.permission_mode),
     });
     // The task brief comes next: from it on, the log is on disk while the agent works, not only
     // once its task ends.
@@ -533,7 +491,6 @@ pub(crate) fn start_child(mut child: ChildLaunch) -> Result<Kernel, KernelError>
         resumed: false,
         session_file: created.location,
         thinking: child.thinking,
-        permission_mode: child.permission_mode,
         context_window,
         usage: UsageTotals::default(),
         context: Some(session.budget().usage),
@@ -665,7 +622,7 @@ impl Kernel {
     pub async fn start(opts: StartOptions, mut deps: KernelDeps) -> Result<Kernel, KernelError> {
         let resolved = deps.llm.resolve(&opts.model)?;
         let mcp = mcp_manager(&deps, &opts.config, opts.project_root.clone());
-        let agents = agent_tree(&mut deps, &opts.home, &opts.config, opts.trusted, mcp.clone(), opts.bot.is_some());
+        let agents = agent_tree(&mut deps, &opts.home, &opts.config, mcp.clone(), opts.bot.is_some());
         // After the sub-agents took their tools: they have a `send_to_user` of their own.
         if opts.bot.is_some() {
             deps.tools = extended(&deps.tools, "bot", bot::tools);
@@ -710,7 +667,6 @@ impl Kernel {
             mcp::compose(&system_prompt, mcp_section.as_deref()).into(),
             resolved.model,
             thinking,
-            opts.permission_mode,
         );
         state.base_prompt = system_prompt.into();
         state.mcp_section = mcp_section;
@@ -732,16 +688,12 @@ impl Kernel {
             location: created.location.clone(),
             writer: created.writer,
             home: opts.home.clone(),
-            trusted: opts.trusted,
-            interactive_approvals: opts.interactive_approvals,
             config: opts.config,
             deps,
             state,
             agents: agents.clone(),
             sub_agent: false,
             role: main_role(agents.is_some()),
-            main: None,
-            approval_line: Arc::default(),
             locks: Arc::new(PathLocks::new()),
             mcp: mcp.clone(),
             system,
@@ -756,7 +708,6 @@ impl Kernel {
         session.record(EntryKind::Settings {
             model: Some(model_ref.clone()),
             thinking: Some(opts.thinking),
-            permission_mode: Some(opts.permission_mode),
         });
         // A session that closes without doing anything needs no forced flush of these.
         session.writer.settle();
@@ -768,14 +719,10 @@ impl Kernel {
             resumed: false,
             session_file: created.location,
             thinking: opts.thinking,
-            permission_mode: opts.permission_mode,
             context_window,
             usage: UsageTotals::default(),
             context: Some(session.budget().usage),
         });
-        if opts.permission_mode == PermissionMode::BypassPermissions {
-            session.warn_bypass();
-        }
         for warning in warnings {
             session.warn(warning);
         }
@@ -789,7 +736,7 @@ impl Kernel {
         let loaded = deps.store.open(&opts.session)?;
         let mcp = mcp_manager(&deps, &opts.config, opts.project_root.clone());
         let bot_ref = loaded.header.bot.clone();
-        let agents = agent_tree(&mut deps, &opts.home, &opts.config, opts.trusted, mcp.clone(), bot_ref.is_some());
+        let agents = agent_tree(&mut deps, &opts.home, &opts.config, mcp.clone(), bot_ref.is_some());
         if bot_ref.is_some() {
             deps.tools = extended(&deps.tools, "bot", bot::tools);
         }
@@ -801,10 +748,8 @@ impl Kernel {
         let mut last_template = None;
         let mut model_ref = None;
         let mut thinking = None;
-        let mut permission_mode = None;
         // What was spent, and all that belongs to the session rather than to the conversation,
-        // comes from the whole log: going back takes none of it back, and a permission mode
-        // tightened after the point gone back to stays tightened.
+        // comes from the whole log: going back takes none of it back.
         let usage = usage_of(history.in_order());
         let restored_agents = agents::restore(&history.branch(), deps.store.as_ref());
         let mut max_task = 0u32;
@@ -816,14 +761,9 @@ impl Kernel {
             match &entry.kind {
                 EntryKind::Title { title: t } => title = Some(t.clone()),
                 EntryKind::Archived { archived: a } => archived = *a,
-                EntryKind::Settings {
-                    model,
-                    thinking: t,
-                    permission_mode: a,
-                } => {
+                EntryKind::Settings { model, thinking: t } => {
                     model_ref = model.clone().or(model_ref);
                     thinking = t.or(thinking);
-                    permission_mode = a.or(permission_mode);
                 }
                 EntryKind::Task { task_id, .. } => {
                     if let Some(n) = task_id.strip_prefix('t').and_then(|n| n.parse::<u32>().ok()) {
@@ -886,7 +826,6 @@ impl Kernel {
             Some(level) => resolved.model.resolve_thinking(level),
             None => crate::models::thinking_for(&deps.llm, &resolved.model, thinking.unwrap_or(opts.config.thinking)),
         };
-        let permission_mode = opts.permission_mode.or(permission_mode).unwrap_or(opts.config.permission_mode);
         let mut warnings = loaded.warnings;
         warnings.extend(replaced);
         let context_window = u64::from(resolved.model.context_window);
@@ -932,7 +871,6 @@ impl Kernel {
             mcp::compose(&system_prompt, mcp_section.as_deref()).into(),
             resolved.model,
             thinking,
-            permission_mode,
         );
         state.base_prompt = system_prompt;
         state.mcp_section = mcp_section.clone();
@@ -958,23 +896,19 @@ impl Kernel {
         });
         let routines = deps.routines.clone();
         let model_ref = state.model.reference();
-        let overridden = opts.model.is_some() || opts.thinking.is_some() || opts.permission_mode.is_some();
+        let overridden = opts.model.is_some() || opts.thinking.is_some();
         let (mut kernel, session) = launch(Launch {
             id: loaded.header.id.clone(),
             root_id: loaded.header.id.clone(),
             location: loaded.location.clone(),
             writer: loaded.writer,
             home: opts.home.clone(),
-            trusted: opts.trusted,
-            interactive_approvals: opts.interactive_approvals,
             config: opts.config,
             deps,
             state,
             agents: agents.clone(),
             sub_agent: false,
             role: main_role(agents.is_some()),
-            main: None,
-            approval_line: Arc::default(),
             locks: Arc::new(PathLocks::new()),
             mcp: mcp.clone(),
             system,
@@ -1007,7 +941,6 @@ impl Kernel {
             session.record(EntryKind::Settings {
                 model: Some(model_ref.clone()),
                 thinking: Some(thinking),
-                permission_mode: Some(permission_mode),
             });
         }
         session.emit(EventMsg::SessionStarted {
@@ -1018,15 +951,11 @@ impl Kernel {
             resumed: true,
             session_file: loaded.location,
             thinking,
-            permission_mode,
             context_window,
             usage,
             // From the usage that the log keeps with every response.
             context: Some(session.budget().usage),
         });
-        if permission_mode == PermissionMode::BypassPermissions {
-            session.warn_bypass();
-        }
         for warning in warnings {
             session.warn(warning);
         }
@@ -1166,7 +1095,6 @@ impl Kernel {
             session_file: self.session_file.clone(),
             model: String::new(),
             thinking: ThinkingLevel::Off,
-            permission_mode: PermissionMode::Manual,
             context_window: 0,
             title: None,
             archived: false,
@@ -1176,7 +1104,6 @@ impl Kernel {
             let state = session.state.lock();
             info.model = state.model.reference();
             info.thinking = state.thinking;
-            info.permission_mode = state.permission_mode;
             info.context_window = u64::from(state.model.context_window);
             info.title = state.title.clone();
             info.archived = state.archived;
@@ -1304,10 +1231,7 @@ async fn submission_loop(
                     Op::Requeue { id, mode } => session.requeue(&id, mode),
                     Op::SteerNow => session.steer_now(),
                     Op::AgentInterrupt { agent } => session.interrupt_agent(&agent),
-                    Op::Approval { call_id, decision } => session.resolve_approval(&call_id, decision),
-                    Op::AgentApproval { agent, call_id, decision } => session.answer_agent(&agent, &call_id, decision),
                     Op::SetModel { model, thinking } => session.set_model(&model, thinking),
-                    Op::SetPermissionMode { mode } => session.set_permission_mode(mode),
                     Op::SetTitle { title } => session.set_title(&title),
                     Op::SetArchived { archived } => session.set_archived(archived),
                     Op::Compact => task::on_compact(&session),
@@ -1317,7 +1241,6 @@ async fn submission_loop(
             Some(message) = internal.recv() => match *message {
                 Internal::Mail(mail) => task::on_mail(&session, mail),
                 Internal::Card(card) => task::on_card(&session, card),
-                Internal::Permissions { mode, rules, grants } => session.apply_permissions(mode, rules, grants),
             },
         }
     }

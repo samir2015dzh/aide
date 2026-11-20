@@ -509,12 +509,6 @@
       "$ref": "#/definitions/MeshCallResult"
     },
     {
-      "$ref": "#/definitions/MeshDescribeParams"
-    },
-    {
-      "$ref": "#/definitions/MeshDescribeResult"
-    },
-    {
       "$ref": "#/definitions/MeshHostParams"
     },
     {
@@ -686,12 +680,6 @@
   "definitions": {
     "ActiveTask": {
       "properties": {
-        "approvals": {
-          "items": {
-            "$ref": "#/definitions/PendingApproval"
-          },
-          "type": "array"
-        },
         "streaming": {
           "anyOf": [
             {
@@ -1253,87 +1241,6 @@
         "after_previous"
       ],
       "type": "string"
-    },
-    "ApprovalDecision": {
-      "oneOf": [
-        {
-          "properties": {
-            "type": {
-              "enum": [
-                "approve"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "Approves this call and what the request proposed for the rest of the session.",
-          "properties": {
-            "grant": {
-              "description": "Which of `proposed_grants` to keep, by index; the first when left out.",
-              "format": "uint",
-              "minimum": 0.0,
-              "type": [
-                "integer",
-                "null"
-              ]
-            },
-            "persist": {
-              "description": "Keep that grant beyond the session too: written to the user's configuration under `[browser.sites]` (browser-design D-197). Not for \"any site\".",
-              "type": "boolean"
-            },
-            "type": {
-              "enum": [
-                "approve_for_session"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "feedback": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "type": {
-              "enum": [
-                "deny"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "Deny and interrupt the whole task.",
-          "properties": {
-            "type": {
-              "enum": [
-                "abort"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "type": "object"
-        }
-      ]
     },
     "ArrowHead": {
       "enum": [
@@ -2068,13 +1975,13 @@
           "type": "boolean"
         },
         "unread": {
-          "description": "Messages and approval requests since the user last looked (`bots/read`).",
+          "description": "Messages and secure cards since the user last looked (`bots/read`).",
           "format": "uint32",
           "minimum": 0.0,
           "type": "integer"
         },
         "waiting": {
-          "description": "The oldest approval it waits for: what the call does.",
+          "description": "The oldest secure card it waits on: what the card asks for. Her asks nobody to approve an action, so nothing else waits.",
           "type": [
             "string",
             "null"
@@ -3907,32 +3814,6 @@
       "required": [
         "description",
         "name"
-      ],
-      "type": "object"
-    },
-    "CommandRule": {
-      "additionalProperties": false,
-      "description": "Command prefix rule for the bash tool.",
-      "properties": {
-        "decision": {
-          "$ref": "#/definitions/RuleDecision"
-        },
-        "prefix": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "reason": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "decision",
-        "prefix"
       ],
       "type": "object"
     },
@@ -10776,10 +10657,6 @@
             "model": {
               "type": "string"
             },
-            "permission_mode": {
-              "$ref": "#/definitions/PermissionMode",
-              "default": "manual"
-            },
             "protocol_version": {
               "format": "uint32",
               "minimum": 0.0,
@@ -11055,7 +10932,7 @@
           "type": "object"
         },
         {
-          "description": "The call passed preflight and approval and is now executing.",
+          "description": "The call passed preflight and is now executing.",
           "properties": {
             "call_id": {
               "type": "string"
@@ -11114,95 +10991,6 @@
           "required": [
             "call_id",
             "result",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "args": true,
-            "call_id": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "own_browser": {
-              "description": "The call works in the user's own browser, with their real sign-ins, rather than the built-in one (connectors-entry-design §3.4): clients say so.",
-              "type": "boolean"
-            },
-            "proposed_grants": {
-              "description": "Site permissions that `approve_for_session` may keep; its `grant` picks one, the first by default.",
-              "items": {
-                "$ref": "#/definitions/SiteGrant"
-              },
-              "type": "array"
-            },
-            "proposed_mode": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/PermissionMode"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Mode that `approve_for_session` switches the session to. With none of this, `proposed_rule` and `proposed_grants`, approving for the session approves this call only."
-            },
-            "proposed_rule": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/CommandRule"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Command prefix that `approve_for_session` allows from then on."
-            },
-            "reason": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "summary": {
-              "type": "string"
-            },
-            "type": {
-              "enum": [
-                "approval_requested"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "args",
-            "call_id",
-            "name",
-            "summary",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "call_id": {
-              "type": "string"
-            },
-            "decision": {
-              "$ref": "#/definitions/ApprovalDecision"
-            },
-            "type": {
-              "enum": [
-                "approval_resolved"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "call_id",
-            "decision",
             "type"
           ],
           "type": "object"
@@ -11513,9 +11301,6 @@
             "model": {
               "type": "string"
             },
-            "permission_mode": {
-              "$ref": "#/definitions/PermissionMode"
-            },
             "thinking": {
               "$ref": "#/definitions/ThinkingLevel"
             },
@@ -11528,7 +11313,6 @@
           },
           "required": [
             "model",
-            "permission_mode",
             "thinking",
             "type"
           ],
@@ -11568,39 +11352,6 @@
           },
           "required": [
             "archived",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "A call that needs approval was refused because nothing here can give it: a run without a person, such as `her exec` in a script.",
-          "properties": {
-            "call_id": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "reason": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "summary": {
-              "type": "string"
-            },
-            "type": {
-              "enum": [
-                "approval_refused"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "call_id",
-            "name",
-            "summary",
             "type"
           ],
           "type": "object"
@@ -11990,25 +11741,6 @@
           "type": "object"
         },
         {
-          "description": "The user did what the session waits for in the page.",
-          "properties": {
-            "kind": {
-              "enum": [
-                "done"
-              ],
-              "type": "string"
-            },
-            "session_id": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "session_id"
-          ],
-          "type": "object"
-        },
-        {
           "description": "The user stopped a session's task from the extension.",
           "properties": {
             "kind": {
@@ -12093,13 +11825,6 @@
     "ExtensionSession": {
       "description": "What a session looks like to the extension.",
       "properties": {
-        "handoff": {
-          "description": "What it waits for the user to do in the page.",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "state": {
           "$ref": "#/definitions/SessionState"
         },
@@ -12756,31 +12481,6 @@
         "position"
       ],
       "type": "object"
-    },
-    "GrantAuthority": {
-      "oneOf": [
-        {
-          "description": "Open pages of the origin.",
-          "enum": [
-            "navigate"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Open pages of the origin and act on them: click, type, select.",
-          "enum": [
-            "act"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Run scripts in pages of the origin (`browser_eval`). Only this: it neither opens nor acts, and opening or acting never runs scripts. Kept for the session only, never in the configuration (browser-design §7.6, D-175 revised).",
-          "enum": [
-            "script"
-          ],
-          "type": "string"
-        }
-      ]
     },
     "HyperlinkTarget": {
       "description": "Where a link goes.",
@@ -13521,13 +13221,6 @@
         }
       ]
     },
-    "McpApproval": {
-      "description": "How much a server's tools are trusted to run unasked.",
-      "enum": [
-        "never"
-      ],
-      "type": "string"
-    },
     "McpAuthKind": {
       "oneOf": [
         {
@@ -14155,17 +13848,6 @@
     "McpServerConfig": {
       "description": "One MCP server: a local command (stdio) or a URL (Streamable HTTP).\n\nString values may contain `${VAR}` and `${VAR:-default}`; they are expanded from her's environment when the server connects, so a missing variable fails only this server.",
       "properties": {
-        "approval": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/McpApproval"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "`never`: its tools run without asking in every permission mode. Taken only from the user's own configuration file."
-        },
         "args": {
           "items": {
             "type": "string"
@@ -14775,50 +14457,6 @@
       ],
       "type": "object"
     },
-    "MeshDescribeParams": {
-      "description": "Parameters of `mesh/describe`, a request from the kernel to the `mesh/host` connection.",
-      "properties": {
-        "arguments": true,
-        "bot": {
-          "description": "The bot whose conversation makes the call.",
-          "type": "string"
-        },
-        "name": {
-          "description": "The tool.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "arguments",
-        "bot",
-        "name"
-      ],
-      "type": "object"
-    },
-    "MeshDescribeResult": {
-      "description": "The result of `mesh/describe`.",
-      "properties": {
-        "rule": {
-          "default": null,
-          "description": "The words of the rule that covers the call: an allow rule with them lets it run unasked, and approving for the session keeps one. None: every such call is asked about.",
-          "items": {
-            "type": "string"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
-        },
-        "summary": {
-          "description": "What the call would do, in words for the user who approves it.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "summary"
-      ],
-      "type": "object"
-    },
     "MeshHostParams": {
       "description": "Parameters of `mesh/host`: the `mesh` group as the host gives it.",
       "properties": {
@@ -14890,7 +14528,7 @@
         },
         "writes": {
           "default": false,
-          "description": "It changes something: a call goes through the approval policy. One that only reads runs in every mode.",
+          "description": "It changes something: such calls run one at a time, never beside another call.",
           "type": "boolean"
         }
       },
@@ -15447,7 +15085,7 @@
           "type": "object"
         },
         {
-          "description": "Ends the running step, the model's reply or its tool calls, so that waiting steering input joins the history now; the task goes on. Nothing happens when no steering input waits or an approval does.",
+          "description": "Ends the running step, the model's reply or its tool calls, so that waiting steering input joins the history now; the task goes on. Nothing happens when no steering input waits.",
           "properties": {
             "type": {
               "enum": [
@@ -15483,56 +15121,6 @@
         },
         {
           "properties": {
-            "call_id": {
-              "type": "string"
-            },
-            "decision": {
-              "$ref": "#/definitions/ApprovalDecision"
-            },
-            "type": {
-              "enum": [
-                "approval"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "call_id",
-            "decision",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "description": "Answers what a sub-agent asks: its `approval_requested`, carried by an `agent_event`.",
-          "properties": {
-            "agent": {
-              "description": "The agent's id.",
-              "type": "string"
-            },
-            "call_id": {
-              "type": "string"
-            },
-            "decision": {
-              "$ref": "#/definitions/ApprovalDecision"
-            },
-            "type": {
-              "enum": [
-                "agent_approval"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "agent",
-            "call_id",
-            "decision",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
             "model": {
               "type": "string"
             },
@@ -15555,24 +15143,6 @@
           },
           "required": [
             "model",
-            "type"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "mode": {
-              "$ref": "#/definitions/PermissionMode"
-            },
-            "type": {
-              "enum": [
-                "set_permission_mode"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "mode",
             "type"
           ],
           "type": "object"
@@ -16120,89 +15690,6 @@
         "name"
       ],
       "type": "object"
-    },
-    "PendingApproval": {
-      "description": "Same fields as the `approval_requested` event.",
-      "properties": {
-        "args": true,
-        "call_id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "own_browser": {
-          "type": "boolean"
-        },
-        "proposed_grants": {
-          "items": {
-            "$ref": "#/definitions/SiteGrant"
-          },
-          "type": "array"
-        },
-        "proposed_mode": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/PermissionMode"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "proposed_rule": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/CommandRule"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "reason": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "summary": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "args",
-        "call_id",
-        "name",
-        "summary"
-      ],
-      "type": "object"
-    },
-    "PermissionMode": {
-      "description": "How much the session may do without asking. Deny and ask rules apply in every mode. Deserializing also accepts the names used before protocol version 2.",
-      "oneOf": [
-        {
-          "description": "Every file change and every command that is not known to be read-only asks first.",
-          "enum": [
-            "manual"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "File changes and simple file-system commands inside the workspace run without asking.",
-          "enum": [
-            "accept-edits"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "Everything runs without asking, protected paths included. Only deny rules, ask rules and deleting a critical path still stop an action.",
-          "enum": [
-            "bypass-permissions"
-          ],
-          "type": "string"
-        }
-      ]
     },
     "PictureFillMode": {
       "enum": [
@@ -17305,14 +16792,6 @@
       ],
       "type": "object"
     },
-    "RuleDecision": {
-      "enum": [
-        "allow",
-        "ask",
-        "deny"
-      ],
-      "type": "string"
-    },
     "RunRead": {
       "properties": {
         "end": {
@@ -17697,15 +17176,11 @@
             "null"
           ]
         },
-        "permission_mode": {
-          "$ref": "#/definitions/PermissionMode"
-        },
         "thinking": {
           "$ref": "#/definitions/ThinkingLevel"
         }
       },
       "required": [
-        "permission_mode",
         "thinking"
       ],
       "type": "object"
@@ -17800,9 +17275,6 @@
         "model": {
           "type": "string"
         },
-        "permission_mode": {
-          "$ref": "#/definitions/PermissionMode"
-        },
         "session_file": {
           "type": "string"
         },
@@ -17823,7 +17295,6 @@
         "context_window",
         "cwd",
         "model",
-        "permission_mode",
         "session_file",
         "session_id",
         "thinking"
@@ -17917,16 +17388,6 @@
             "null"
           ]
         },
-        "permission_mode": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/PermissionMode"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "thinking": {
           "anyOf": [
             {
@@ -18014,16 +17475,6 @@
             "null"
           ]
         },
-        "permission_mode": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/PermissionMode"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "session_id": {
           "type": "string"
         },
@@ -18107,13 +17558,6 @@
           "enum": [
             "idle",
             "running"
-          ],
-          "type": "string"
-        },
-        {
-          "description": "A task waits for an approval.",
-          "enum": [
-            "awaiting_approval"
           ],
           "type": "string"
         },
@@ -18758,23 +18202,6 @@
         }
       ]
     },
-    "SiteGrant": {
-      "description": "Permission for the browser tools on one origin, for the rest of the session (docs/kernel/browser-design.md §7.3).",
-      "properties": {
-        "authority": {
-          "$ref": "#/definitions/GrantAuthority"
-        },
-        "origin": {
-          "description": "`https://example.com`, or `*` for every site (navigation only).",
-          "type": "string"
-        }
-      },
-      "required": [
-        "authority",
-        "origin"
-      ],
-      "type": "object"
-    },
     "SkillEntry": {
       "description": "One `SKILL.md` that was found, and what became of it.",
       "properties": {
@@ -19324,7 +18751,7 @@
       "type": "string"
     },
     "SlideChangeSummary": {
-      "description": "What a batch or proposal does to one slide, for the canvas markers and the approval card.",
+      "description": "What a batch or proposal does to one slide, for the canvas markers.",
       "properties": {
         "index": {
           "description": "From 1; where it ends up, or was for a deleted slide.",
@@ -21299,13 +20726,6 @@
       "description": "Warnings a client may recognise. A client meeting a code it does not know shows `message`.",
       "oneOf": [
         {
-          "description": "The session runs in bypass-permissions: sent when it starts, resumes or switches into it.",
-          "enum": [
-            "bypass_permissions"
-          ],
-          "type": "string"
-        },
-        {
           "description": "MCP servers that were not ready for the session's first request. A client that shows `mcp_server_status` already has this.",
           "enum": [
             "mcp_servers_not_ready"
@@ -21617,7 +21037,6 @@
     "-32012": "session_not_loaded",
     "-32013": "not_attached",
     "-32014": "prompt_in_progress",
-    "-32015": "approval_not_pending",
     "-32016": "server_full",
     "-32017": "overloaded",
     "-32018": "unsupported_content",
@@ -22286,10 +21705,6 @@
     "mesh/call": {
       "params": "MeshCallParams",
       "result": "MeshCallResult"
-    },
-    "mesh/describe": {
-      "params": "MeshDescribeParams",
-      "result": "MeshDescribeResult"
     }
   },
   "x-stability": {
@@ -22475,8 +21890,7 @@
     },
     "server_requests": {
       "docx/serialize": "internal",
-      "mesh/call": "internal",
-      "mesh/describe": "internal"
+      "mesh/call": "internal"
     }
   }
 }

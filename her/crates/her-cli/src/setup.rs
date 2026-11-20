@@ -12,7 +12,6 @@ use her_core::instructions;
 use her_core::runtime;
 use her_llm::ModelRegistry;
 use her_protocol::McpServerConfig;
-use her_protocol::PermissionMode;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -30,7 +29,7 @@ pub struct Runtime {
     pub project_root: Option<PathBuf>,
     pub trusted: bool,
     pub warnings: Vec<String>,
-    /// Settings taken from HER_MODEL and HER_PERMISSION_MODE, as `key=value`.
+    /// Settings taken from HER_MODEL, as `key=value`.
     pub env_overrides: Vec<String>,
     /// MCP servers of a session here: the configured ones, then `--mcp-config`. Disabled ones
     /// are kept for listing; sessions do not start them.
@@ -213,8 +212,8 @@ pub fn no_model_help(rt: &Runtime) -> String {
     )
 }
 
-/// HER_MODEL and HER_PERMISSION_MODE as `key=value` overrides. HER_APPROVAL is the old
-/// name of HER_PERMISSION_MODE.
+/// HER_MODEL as a `key=value` override. HER_PERMISSION_MODE and HER_APPROVAL are gone: her
+/// runs every action without asking, and says so when one is set.
 pub fn env_overrides(warnings: &mut Vec<String>) -> anyhow::Result<Vec<String>> {
     let var = |name: &str| {
         let value = std::env::var(name).ok()?;
@@ -225,18 +224,10 @@ pub fn env_overrides(warnings: &mut Vec<String>) -> anyhow::Result<Vec<String>> 
     if let Some(model) = var("HER_MODEL") {
         overrides.push(format!("model={model}"));
     }
-    let mode = match (var("HER_PERMISSION_MODE"), var("HER_APPROVAL")) {
-        (Some(mode), _) => Some(("HER_PERMISSION_MODE", mode)),
-        (None, Some(mode)) => {
-            warnings.push("HER_APPROVAL is now called HER_PERMISSION_MODE".to_string());
-            Some(("HER_APPROVAL", mode))
+    for name in ["HER_PERMISSION_MODE", "HER_APPROVAL"] {
+        if var(name).is_some() {
+            warnings.push(format!("{name} is ignored: her runs every action without asking"));
         }
-        (None, None) => None,
-    };
-    if let Some((name, value)) = mode {
-        let (mode, notice) = PermissionMode::parse_with_notice(&value).map_err(|err| anyhow::anyhow!("{name}: {err}"))?;
-        warnings.extend(notice.map(|notice| format!("{name}: {notice}")));
-        overrides.push(format!("permission_mode={mode}"));
     }
     Ok(overrides)
 }

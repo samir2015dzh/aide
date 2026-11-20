@@ -18,7 +18,6 @@ use her_llm::ModelRegistry;
 use her_llm::ThinkingLevel;
 use her_protocol::McpServerConfig;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::api::ResourceReadParams;
 use her_protocol::api::ResourceReadResult;
 use her_protocol::api::SessionInfo;
@@ -86,7 +85,6 @@ pub struct NewSession {
     pub extra_roots: Vec<PathBuf>,
     pub model: Option<String>,
     pub thinking: Option<ThinkingLevel>,
-    pub permission_mode: Option<PermissionMode>,
     /// Refuse a model whose provider has no credentials yet, for clients that have a way to send
     /// the person to sign in (ACP); others hear of it when a task fails.
     pub require_credentials: bool,
@@ -99,13 +97,12 @@ pub struct NewSession {
 pub struct ResumeOverrides {
     pub model: Option<String>,
     pub thinking: Option<ThinkingLevel>,
-    pub permission_mode: Option<PermissionMode>,
     pub mcp_servers: Vec<McpServerConfig>,
 }
 
 impl ResumeOverrides {
     fn is_empty(&self) -> bool {
-        self.model.is_none() && self.thinking.is_none() && self.permission_mode.is_none() && self.mcp_servers.is_empty()
+        self.model.is_none() && self.thinking.is_none() && self.mcp_servers.is_empty()
     }
 }
 
@@ -189,7 +186,6 @@ impl Server {
         let defaults = SessionDefaults {
             model: workspace.config.model.clone(),
             thinking: workspace.config.thinking,
-            permission_mode: workspace.config.permission_mode,
         };
         let connections = her_connections::Manager::new(options.home.root().to_path_buf(), &llm);
         // A person may watch: show a window where there is a display.
@@ -531,15 +527,10 @@ impl Server {
         let options = StartOptions {
             model,
             thinking: args.thinking.unwrap_or(workspace.config.thinking),
-            permission_mode: args
-                .permission_mode
-                .unwrap_or(workspace.config.permission_mode),
             cwd: workspace.cwd.clone(),
             home: self.0.home.clone(),
             project_root: workspace.project_root.clone(),
-            trusted: workspace.trusted,
             config: Arc::new(workspace.config),
-            interactive_approvals: true,
             bot: None,
         };
         let kernel = Kernel::start(options, deps)
@@ -631,12 +622,9 @@ impl Server {
             session: SessionRef::Path(location),
             model: overrides.model,
             thinking: overrides.thinking,
-            permission_mode: overrides.permission_mode,
             home: self.0.home.clone(),
             project_root: workspace.project_root.clone(),
-            trusted: workspace.trusted,
             config: Arc::new(workspace.config),
-            interactive_approvals: true,
             // A bot's conversation learns a name given while it was not loaded.
             bot_name: header.bot.as_ref().and_then(|bot| self.0.bots.name(&bot.id)),
         };

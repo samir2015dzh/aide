@@ -277,7 +277,6 @@ mod tests {
     use super::*;
     use her_llm::Catalog;
     use her_llm::RegistryOptions;
-    use her_protocol::PermissionMode;
     use her_llm::ThinkingLevel;
 
     #[test]
@@ -298,7 +297,7 @@ mod tests {
         provider.listing.entries[0].names = [("en".to_string(), "Standard".to_string()), ("zh".to_string(), "标准".to_string())].into();
         provider.names = [("en".to_string(), "QwenWork".to_string())].into();
         llm.replace_source("model-connections", vec![provider]).unwrap();
-        let defaults = SessionDefaults { model: Some("deepseek/deepseek-flash".into()), thinking: ThinkingLevel::Medium, permission_mode: PermissionMode::Manual };
+        let defaults = SessionDefaults { model: Some("deepseek/deepseek-flash".into()), thinking: ThinkingLevel::Medium };
         let listed = list(&llm, &defaults, &|_| false);
         let names = |id: &str| listed.models.iter().find(|m| m.id == id).unwrap().names.clone();
         assert_eq!(names("qwenwork-a/flash")["en"], "Standard", "a channel's names reach the list");
@@ -341,7 +340,7 @@ mod tests {
         let llm = registry(dir.path(), &[("a", None, &["one"]), ("b", None, &["two"])]);
         assert_eq!(default_model(&llm, None), None);
         assert!(matches!(session_model(&llm, None, None), Err(KernelError::NoModel)));
-        let defaults = SessionDefaults { model: None, thinking: ThinkingLevel::Default, permission_mode: PermissionMode::Manual };
+        let defaults = SessionDefaults { model: None, thinking: ThinkingLevel::Default };
         let listing = list(&llm, &defaults, &|_| false);
         assert_eq!(listing.defaults.unwrap().model, None);
         assert!(listing.models.is_empty(), "no provider's model is offered before it is connected");
@@ -352,7 +351,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let llm = registry(dir.path(), &[("a", Some("k"), &["one"]), ("b", None, &["two"])]);
         assert_eq!(default_model(&llm, Some("b/two")).as_deref(), Some("b/two"));
-        let defaults = SessionDefaults { model: Some("b/two".into()), thinking: ThinkingLevel::Default, permission_mode: PermissionMode::Manual };
+        let defaults = SessionDefaults { model: Some("b/two".into()), thinking: ThinkingLevel::Default };
         let listing = list(&llm, &defaults, &|_| false);
         assert_eq!(listing.defaults.unwrap().model.as_deref(), Some("b/two"));
         let keyless = listing.models.iter().find(|m| m.id == "b/two").expect("listed, to ask for its key");
@@ -365,7 +364,7 @@ mod tests {
         let llm = registry(dir.path(), &[("a", None, &["one"]), ("b", Some("k"), &["zebra", "apple"]), ("c", Some("k"), &["other"])]);
         assert_eq!(default_model(&llm, None).as_deref(), Some("b/zebra"));
         assert_eq!(session_model(&llm, Some("c/other".into()), None).unwrap(), "c/other", "one asked for wins");
-        let defaults = SessionDefaults { model: None, thinking: ThinkingLevel::Default, permission_mode: PermissionMode::Manual };
+        let defaults = SessionDefaults { model: None, thinking: ThinkingLevel::Default };
         let listing = list(&llm, &defaults, &|_| false);
         assert_eq!(listing.defaults.unwrap().model.as_deref(), Some("b/zebra"));
         assert!(listing.models.iter().all(|m| m.available), "the keyless provider offers nothing");

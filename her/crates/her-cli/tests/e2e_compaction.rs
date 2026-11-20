@@ -95,14 +95,13 @@ max_output_tokens = 2000
 /// Runs `her exec` with `args` and returns the exit code and the event stream.
 fn her(env: &Env, args: &[&str]) -> (i32, Vec<Value>) {
     let output = Command::new(env!("CARGO_BIN_EXE_her"))
-        .args(["exec", "--output", "stream-json", "--approval", "full-auto"])
+        .args(["exec", "--output", "stream-json"])
         .args(args)
         .current_dir(&env.work)
         .env("HER_HOME", &env.home)
         // The developer's own skills would change the system prompt and every size measured here.
         .env("HOME", &env.home)
         .env_remove("HER_MODEL")
-        .env_remove("HER_APPROVAL")
         .output()
         .expect("run her");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -306,7 +305,6 @@ fn a_long_task_compacts_repeatedly_reuses_the_cache_and_resumes() {
         .env("HER_HOME", &env.home)
         .env("HOME", &env.home)
         .env_remove("HER_MODEL")
-        .env_remove("HER_APPROVAL")
         .output()
         .expect("run her");
     let text = String::from_utf8_lossy(&output.stdout);

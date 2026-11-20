@@ -1,6 +1,6 @@
 //! The desktop tools end to end: a scripted model reads and types into a real TextEdit window
-//! through the kernel and agent-desktop, with per-app approvals, grants kept in the user's
-//! configuration, a denied app and a ref used on the wrong app.
+//! through the kernel and agent-desktop, without asking anyone, with a denied app and a ref used
+//! on the wrong app.
 //!
 //! It operates the desktop, so it runs only with `HER_DESKTOP_E2E=1`, on macOS, with
 //! agent-desktop installed and allowed to use accessibility.
@@ -19,18 +19,13 @@ use her_llm::RegistryOptions;
 use her_llm::ThinkingLevel;
 use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
-use her_protocol::ApprovalDecision;
 use her_protocol::Event;
 use her_protocol::EventMsg;
-use her_protocol::GrantAuthority;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
-use her_protocol::SiteGrant;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
 use her_tools::builtin_registry;
 use serde_json::json;
-use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
@@ -45,7 +40,6 @@ static TEXTEDIT_TURN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(())
 struct Harness {
     kernel: Kernel,
     api: Arc<ScriptedApi>,
-    config: PathBuf,
     _dir: TempDir,
 }
 
@@ -66,7 +60,7 @@ fn osascript(script: &str) -> String {
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
-async fn harness(mode: PermissionMode) -> Harness {
+async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let work = dir.path().join("work");
     std::fs::create_dir_all(&work).unwrap();
@@ -103,20 +97,16 @@ async fn harness(mode: PermissionMode) -> Harness {
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: work,
         home,
         config: Arc::new(config),
         project_root: None,
-        trusted: true,
-        interactive_approvals: true,
         bot: None,
     };
     let kernel = Kernel::start(options, deps).await.unwrap();
     Harness {
         kernel,
         api,
-        config: user,
         _dir: dir,
     }
 }
@@ -162,37 +152,12 @@ async fn until(kernel: &mut Kernel, stop: impl Fn(&EventMsg) -> bool) -> Vec<Eve
     }
 }
 
-fn approval(events: &[Event]) -> (String, String, Vec<SiteGrant>) {
-    match &events.last().unwrap().msg {
-        EventMsg::ApprovalRequested {
-            call_id,
-            summary,
-            proposed_grants,
-            ..
-        } => (call_id.clone(), summary.clone(), proposed_grants.clone()),
-        other => panic!("expected an approval request, got {other:?}"),
-    }
-}
-
-fn asked(events: &[Event]) -> bool {
-    events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. }))
-}
-
-fn approval_or_end(m: &EventMsg) -> bool {
-    matches!(m, EventMsg::ApprovalRequested { .. } | EventMsg::TaskCompleted { .. })
-}
-
-async fn approve_for_session(h: &mut Harness, call_id: String) {
-    let decision = ApprovalDecision::ApproveForSession { grant: Some(0), persist: true };
-    h.kernel.submit(Op::Approval { call_id, decision }).await.unwrap();
-}
-
 /// What the model is told of computer use: any app, a browser app among them, with no word
 /// against web pages in its catalog line or in the guidelines tool_search gives. Operates
 /// nothing, so it runs everywhere.
 #[tokio::test]
 async fn computer_use_is_offered_for_any_app() {
-    let mut h = harness(PermissionMode::Manual).await;
+    let mut h = harness().await;
     h.api.push(Script::tool_call("c1", "tool_search", json!({ "query": "cua" })));
     h.api.push(Script::text("found"));
     h.kernel.submit(Op::prompt("look at my Chrome extensions")).await.unwrap();
@@ -206,7 +171,7 @@ async fn computer_use_is_offered_for_any_app() {
 }
 
 #[tokio::test]
-async fn reads_and_types_into_textedit_with_per_app_approval() {
+async fn reads_and_types_into_textedit_without_asking() {
     if !enabled() {
         return;
     }
@@ -215,22 +180,15 @@ async fn reads_and_types_into_textedit_with_per_app_approval() {
     osascript("tell application \"TextEdit\" to make new document");
     osascript("tell application \"TextEdit\" to activate");
     tokio::time::sleep(Duration::from_secs(1)).await;
-    let mut h = harness(PermissionMode::Manual).await;
-    let app_origin = format!("app://{TEXTEDIT}");
+    let mut h = harness().await;
 
-    // 1. Listing apps asks nothing; the first read of TextEdit asks, named by its bundle id
-    // whatever case the model used, and offers the read grant.
+    // 1. Listing apps and reading TextEdit, named in any case, run at once.
     h.api.push(
         Script::tool_call("c1", "cua_apps", json!({}))
             .then_tool_call("c2", "cua_snapshot", json!({ "app": "com.apple.textedit" })),
     );
     h.api.push(Script::text("read"));
     h.kernel.submit(Op::prompt("look at my TextEdit window")).await.unwrap();
-    let events = until(&mut h.kernel, approval_or_end).await;
-    let (call_id, summary, grants) = approval(&events);
-    assert_eq!(summary, format!("read the window of {TEXTEDIT}"));
-    assert_eq!(grants, vec![SiteGrant { authority: GrantAuthority::Navigate, origin: app_origin.clone() }]);
-    approve_for_session(&mut h, call_id).await;
     until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
     let results = last_results(&h.api);
     assert!(results[0].contains(TEXTEDIT), "{}", results[0]);
@@ -249,14 +207,13 @@ async fn reads_and_types_into_textedit_with_per_app_approval() {
         h.api.push(Script::tool_call("c2b", "cua_snapshot", snapshot.clone()));
         h.api.push(Script::text("read"));
         h.kernel.submit(Op::prompt("that window")).await.unwrap();
-        let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-        assert!(!asked(&events), "TextEdit may be read for the session");
+        until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
         window = last_results(&h.api).pop().unwrap();
     }
     assert!(window.contains("<app-content") && window.contains("textfield"), "{window}");
     let field = ref_of(&window, "textfield");
 
-    // 2. Reading again asks nothing; the first action asks, with the act grant.
+    // 2. Reading again and acting run at once too.
     let typed = "hello from the her desktop e2e";
     h.api.push(
         Script::tool_call("c3", "cua_snapshot", snapshot.clone())
@@ -264,19 +221,12 @@ async fn reads_and_types_into_textedit_with_per_app_approval() {
     );
     h.api.push(Script::text("typed"));
     h.kernel.submit(Op::prompt("write a line")).await.unwrap();
-    let events = until(&mut h.kernel, approval_or_end).await;
-    let (call_id, summary, grants) = approval(&events);
-    assert!(summary.starts_with(&format!("set-value {field}")) && summary.ends_with(&format!("in {TEXTEDIT}")), "{summary}");
-    assert_eq!(grants, vec![SiteGrant { authority: GrantAuthority::Act, origin: app_origin.clone() }]);
-    approve_for_session(&mut h, call_id).await;
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert_eq!(events.iter().filter(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })).count(), 0);
+    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
     let results = last_results(&h.api);
     assert!(results[1].contains("done") || results[1].contains("sent"), "{}", results[1]);
     assert_eq!(osascript("tell application \"TextEdit\" to get text of document 1"), typed);
 
-    // 3. With the act grant nothing asks; a denied app and a ref used on another app fail
-    // without asking.
+    // 3. A denied app and a ref used on another app fail.
     let finder_ref = field.clone();
     h.api.push(
         Script::tool_call("c5", "cua_act", json!({ "app": TEXTEDIT, "action": "press", "text": "cmd+a" }))
@@ -285,17 +235,11 @@ async fn reads_and_types_into_textedit_with_per_app_approval() {
     );
     h.api.push(Script::text("done"));
     h.kernel.submit(Op::prompt("more")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(!asked(&events), "nothing asks");
+    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
     let results = last_results(&h.api);
     assert!(results[0].contains("press"), "{}", results[0]);
     assert!(results[1].contains("denied"), "{}", results[1]);
     assert!(results[2].contains("not com.apple.finder"), "{}", results[2]);
-
-    // 4. "Remember" kept the grant in the user's configuration, as act.
-    let kept: toml::Table = toml::from_str(&std::fs::read_to_string(&h.config).unwrap()).unwrap();
-    assert_eq!(kept["desktop"]["apps"][TEXTEDIT].as_str(), Some("act"));
-    assert_eq!(kept["desktop"]["apps"]["com.apple.finder"].as_str(), Some("deny"));
 
     osascript("tell application \"TextEdit\" to close document 1 saving no");
 }
@@ -323,7 +267,7 @@ async fn types_and_presses_into_textedit_in_the_background() {
     let front = frontmost();
     assert_ne!(front, TEXTEDIT, "another app must be at the front");
     let clip = clipboard();
-    let mut h = harness(PermissionMode::BypassPermissions).await;
+    let mut h = harness().await;
 
     let act = |action: &str, text: &str| json!({ "app": TEXTEDIT, "action": action, "text": text });
     h.api.push(

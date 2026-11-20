@@ -313,7 +313,6 @@ mod tests {
         entry(EntryKind::Settings {
             model: Some("m".into()),
             thinking: None,
-            permission_mode: None,
         })
     }
 

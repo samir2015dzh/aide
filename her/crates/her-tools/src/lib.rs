@@ -31,7 +31,6 @@ pub use files::PathLocks;
 pub use local_env::LocalEnvironment;
 pub use registry::RegistryError;
 pub use registry::ToolRegistry;
-pub use tool::ApprovalWords;
 pub use tool::Authority;
 pub use tool::PageTarget;
 pub use tool::ProgressSink;

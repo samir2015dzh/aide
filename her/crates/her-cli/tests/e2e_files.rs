@@ -41,7 +41,7 @@ fn sha256(bytes: &[u8]) -> String {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_file_panel_lists_reads_saves_and_hears_changes() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["FilesListResult", "FilesReadResult", "FilesWriteResult", "FilesChangedParams"]);
     let project = env.workspace("proj");
     std::fs::create_dir_all(project.join("src")).unwrap();

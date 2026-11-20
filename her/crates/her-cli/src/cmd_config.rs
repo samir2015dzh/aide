@@ -21,8 +21,6 @@ use crate::setup;
 /// Settings that decide what the agent may do. A model given permission to run `her config` has
 /// no business changing them; this is one more step, not a boundary (§4.2).
 const PERMISSION_KEYS: &[&str] = &[
-    "permission_mode",
-    "approval_mode",
     "rules",
     "hooks",
     "mcp_servers",
@@ -269,8 +267,8 @@ mod tests {
 
     #[test]
     fn permission_keys_cover_what_is_inside_them() {
-        assert!(is_permission_key("permission_mode"));
-        assert!(is_permission_key("mcp_servers.mail.approval"));
+        assert!(is_permission_key("rules"));
+        assert!(is_permission_key("mcp_servers.mail.command"));
         assert!(is_permission_key("tools.bash.pass_provider_keys"));
         assert!(!is_permission_key("thinking"));
         assert!(!is_permission_key("rules_extra"));

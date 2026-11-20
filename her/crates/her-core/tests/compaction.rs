@@ -26,7 +26,6 @@ use her_llm::UserContent;
 use her_llm::api::scripted::Script;
 use her_llm::catalog::ModelToml;
 use her_llm::api::scripted::ScriptedApi;
-use her_protocol::PermissionMode;
 use her_protocol::CompactionReason;
 use her_protocol::ContextUsage;
 use her_protocol::EventMsg;
@@ -137,13 +136,10 @@ async fn harness(model: &str, config: Config, scripts: Vec<Script>) -> Harness {
     let options = StartOptions {
         model: model.into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: PermissionMode::BypassPermissions,
         cwd: work.clone(),
         home: home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: None,
     };
     let kernel = Kernel::start(options, deps(&api, &work, &home)).await.unwrap();
@@ -161,12 +157,9 @@ async fn resume(home: &HerHome, work: &Path, session_id: &str, api: &Arc<Scripte
         session: SessionRef::Id(session_id.to_string()),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     Kernel::resume(options, deps(api, work, home)).await.unwrap()
@@ -672,13 +665,10 @@ async fn without_a_session_log_saved_output_is_temporary() {
     let options = StartOptions {
         model: SMALL.into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: PermissionMode::BypassPermissions,
         cwd: work.clone(),
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: None,
     };
     let mut kernel = Kernel::start(options, deps).await.unwrap();

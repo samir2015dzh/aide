@@ -109,21 +109,6 @@ pub struct SetConfigOptionRequest {
     pub value: Value,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct RequestPermissionResponse {
-    pub outcome: Outcome,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(tag = "outcome", rename_all = "snake_case")]
-pub enum Outcome {
-    Cancelled,
-    Selected {
-        #[serde(rename = "optionId")]
-        option_id: String,
-    },
-}
-
 /// `authenticate`
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,15 +158,8 @@ mod tests {
         assert!(matches!(prompt.prompt[3], ContentBlock::Resource { resource: EmbeddedResource::Text { .. } }));
         assert!(matches!(prompt.prompt[4], ContentBlock::Audio {}));
         let set: SetConfigOptionRequest = both::<acp::SetSessionConfigOptionRequest, _>(json!({
-            "sessionId": "s", "configId": "permission_mode", "value": "manual"
+            "sessionId": "s", "configId": "thinking", "value": "high"
         }));
-        assert_eq!(set.value, json!("manual"));
-        let answer: RequestPermissionResponse = both::<acp::RequestPermissionResponse, _>(json!({
-            "outcome": {"outcome": "selected", "optionId": "approve"}
-        }));
-        assert!(matches!(answer.outcome, Outcome::Selected { ref option_id } if option_id == "approve"));
-        let cancelled: RequestPermissionResponse =
-            both::<acp::RequestPermissionResponse, _>(json!({"outcome": {"outcome": "cancelled"}}));
-        assert!(matches!(cancelled.outcome, Outcome::Cancelled));
+        assert_eq!(set.value, json!("high"));
     }
 }

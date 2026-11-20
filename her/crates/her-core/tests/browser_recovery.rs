@@ -190,7 +190,6 @@ async fn kernel_tools_list_snapshot_and_open_after_recovering_stale_tabs() {
     use her_core::{HerHome, JsonlStore, Kernel, KernelDeps, StartOptions, TaskEnd};
     use her_llm::api::scripted::{Script, ScriptedApi};
     use her_llm::{Catalog, Message, ModelRegistry, RegistryOptions, ThinkingLevel, UserContent};
-    use her_protocol::PermissionMode;
     use her_tools::{BashTool, LocalEnvironment, builtin_registry};
 
     for (targets, snapshot_first) in [(vec!["T6", "T7", "T8"], false), (vec!["T6", "T7", "T8"], true), (vec!["T7"], false)] {
@@ -234,13 +233,10 @@ async fn kernel_tools_list_snapshot_and_open_after_recovering_stale_tabs() {
         let options = StartOptions {
             model: "test/scripted".into(),
             thinking: ThinkingLevel::Off,
-            permission_mode: PermissionMode::Manual,
             cwd: dir.path().into(),
             home,
             config: Arc::new(config),
             project_root: None,
-            trusted: true,
-            interactive_approvals: false,
             bot: None,
         };
         let mut kernel = Kernel::start(options, deps).await.unwrap();

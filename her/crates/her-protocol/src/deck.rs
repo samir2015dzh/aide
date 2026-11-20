@@ -1630,7 +1630,7 @@ pub enum SlideChangeKind {
     Moved,
 }
 
-/// What a batch or proposal does to one slide, for the canvas markers and the approval card.
+/// What a batch or proposal does to one slide, for the canvas markers.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SlideChangeSummary {
     pub slide_id: String,

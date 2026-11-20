@@ -1448,16 +1448,6 @@ const STALE: &str =
 /// Regressions: each was a bug this suite found, fixed since.
 mod regressions {
     use super::*;
-    #[cfg(unix)]
-    use her_tools::Tool;
-    #[cfg(unix)]
-    use her_tools::Typed;
-    #[cfg(unix)]
-    use her_tools::builtin::EditTool;
-    #[cfg(unix)]
-    use her_tools::builtin::WriteTool;
-    #[cfg(unix)]
-    use std::os::unix::fs::PermissionsExt;
     use support::model::EditModel;
     use support::model::Located;
 
@@ -1524,65 +1514,6 @@ mod regressions {
             }
         }
         assert!(joins > 0, "no edit joined a CR and an LF");
-    }
-
-    #[cfg(unix)]
-    /// edit's check passes for a file it may not write, so the user approves an edit that
-    /// then fails; write's check refuses the same file.
-    #[tokio::test]
-    async fn edit_check_refuses_a_read_only_file() {
-        if support::is_root() {
-            return;
-        }
-        let s = Session::new();
-        s.put("locked.txt", b"a\n");
-        std::fs::set_permissions(s.path("locked.txt"), std::fs::Permissions::from_mode(0o444)).unwrap();
-        let args = json!({"path": "locked.txt", "edits": [{"old_text": "a", "new_text": "b"}]});
-        let run = Typed::new(EditTool).execute(args.clone(), s.ctx.clone()).await.unwrap_err();
-        let check = Typed::new(EditTool).check(&args, &s.ctx).await;
-        assert_eq!(check.map_err(|e| e.to_string()), Err(run.to_string()), "check and run");
-    }
-
-    #[cfg(unix)]
-    /// write's check passes for a link whose target is in a directory that does not exist,
-    /// although the run never creates that directory.
-    #[tokio::test]
-    async fn write_check_refuses_a_link_into_a_missing_directory() {
-        let s = Session::new();
-        std::os::unix::fs::symlink("missing/new.md", s.path("link")).unwrap();
-        let args = json!({"path": "link", "content": "x"});
-        let run = Typed::new(WriteTool).execute(args.clone(), s.ctx.clone()).await.unwrap_err();
-        let check = Typed::new(WriteTool).check(&args, &s.ctx).await;
-        assert!(check.is_err(), "check passed; the run said: {run}");
-    }
-
-    #[cfg(unix)]
-    /// The checks of write and edit pass for files in a directory this process may not
-    /// write, where neither can put its temporary file.
-    #[tokio::test]
-    async fn checks_refuse_a_file_in_a_read_only_directory() {
-        if support::is_root() {
-            return;
-        }
-        let s = Session::new();
-        std::fs::create_dir(s.path("ro")).unwrap();
-        s.put("ro/f.txt", b"a\n");
-        s.mark_read("ro/f.txt");
-        std::fs::set_permissions(s.path("ro"), std::fs::Permissions::from_mode(0o555)).unwrap();
-        let calls: [(&dyn Tool, Value); 3] = [
-            (&Typed::new(WriteTool), json!({"path": "ro/new.txt", "content": "x"})),
-            (&Typed::new(WriteTool), json!({"path": "ro/f.txt", "content": "x"})),
-            (&Typed::new(EditTool), json!({"path": "ro/f.txt", "edits": [{"old_text": "a", "new_text": "b"}]})),
-        ];
-        let mut approved = Vec::new();
-        for (tool, args) in calls {
-            let run = tool.execute(args.clone(), s.ctx.clone()).await;
-            if let (Ok(()), Err(run)) = (tool.check(&args, &s.ctx).await, run) {
-                approved.push(format!("{args}: {run}"));
-            }
-        }
-        std::fs::set_permissions(s.path("ro"), std::fs::Permissions::from_mode(0o755)).unwrap();
-        assert!(approved.is_empty(), "check passed, the run failed:\n{}", approved.join("\n"));
     }
 
     /// The hunk headers of edit's diff count the lines of their hunks. The diff of the similar

@@ -15,7 +15,6 @@ use her_protocol::api::ActiveTask;
 use her_protocol::api::AgentSnapshot;
 use her_protocol::api::PartialBlock;
 use her_protocol::api::PartialMessage;
-use her_protocol::api::PendingApproval;
 use her_protocol::api::SessionInfo;
 use her_protocol::api::SessionSnapshot;
 use her_protocol::api::QueuedInput;
@@ -97,9 +96,6 @@ impl SessionMirror {
 
     /// What the session is doing, as lists show it.
     pub fn state(&self) -> SessionState {
-        if self.first_approval().is_some() {
-            return SessionState::AwaitingApproval;
-        }
         match &self.active {
             Some(_) => SessionState::Running,
             None if self.failed => SessionState::Failed,
@@ -129,29 +125,9 @@ impl SessionMirror {
         self.agents.iter().filter(|a| a.status == AgentStatus::Running).count() as u32
     }
 
-    /// What the oldest pending approval asks about, the session's own or a sub-agent's.
-    pub fn first_approval(&self) -> Option<&str> {
-        self.active
-            .as_ref()
-            .and_then(|task| task.approvals.first())
-            .map(|a| a.summary.as_str())
-            .or_else(|| self.agents.iter().filter(|a| a.status == AgentStatus::Running).find_map(|a| a.session.first_approval()))
-    }
-
     /// What the oldest card waiting for the owner says: the words above it, else its title.
     pub fn first_card(&self) -> Option<&str> {
         self.cards.first().map(|(_, waits)| waits.as_str())
-    }
-
-    pub fn approval_pending(&self, call_id: &str) -> bool {
-        self.active
-            .as_ref()
-            .is_some_and(|task| task.approvals.iter().any(|a| a.call_id == call_id))
-    }
-
-    /// A sub-agent's approval, which its own session's mirror holds.
-    pub fn agent_approval_pending(&self, agent: &str, call_id: &str) -> bool {
-        self.agents.iter().any(|a| a.agent_id == agent && a.session.approval_pending(call_id))
     }
 
     pub fn transcript(&self) -> &[TranscriptItem] {
@@ -192,7 +168,6 @@ impl SessionMirror {
                 cwd,
                 session_file,
                 thinking,
-                permission_mode,
                 context_window,
                 usage,
                 ..
@@ -201,7 +176,6 @@ impl SessionMirror {
                 self.info.cwd = cwd.clone();
                 self.info.session_file = session_file.clone();
                 self.info.thinking = *thinking;
-                self.info.permission_mode = *permission_mode;
                 self.info.context_window = *context_window;
                 self.usage = usage.clone();
             }
@@ -219,12 +193,10 @@ impl SessionMirror {
             EventMsg::SettingsChanged {
                 model,
                 thinking,
-                permission_mode,
                 context_window,
             } => {
                 self.info.model = model.clone();
                 self.info.thinking = *thinking;
-                self.info.permission_mode = *permission_mode;
                 if *context_window > 0 {
                     self.info.context_window = *context_window;
                 }
@@ -235,7 +207,6 @@ impl SessionMirror {
                     turn: 0,
                     streaming: None,
                     tools: Vec::new(),
-                    approvals: Vec::new(),
                 });
                 self.task_started = Some(event.ts);
             }
@@ -329,37 +300,6 @@ impl SessionMirror {
                 });
                 if let Some(task) = &mut self.active {
                     task.tools.retain(|t| &t.call_id != call_id);
-                    task.approvals.retain(|a| &a.call_id != call_id);
-                }
-            }
-            EventMsg::ApprovalRequested {
-                call_id,
-                name,
-                args,
-                summary,
-                reason,
-                proposed_rule,
-                proposed_mode,
-                proposed_grants,
-                own_browser,
-            } => {
-                if let Some(task) = &mut self.active {
-                    task.approvals.push(PendingApproval {
-                        call_id: call_id.clone(),
-                        name: name.clone(),
-                        args: args.clone(),
-                        summary: summary.clone(),
-                        reason: reason.clone(),
-                        proposed_rule: proposed_rule.clone(),
-                        proposed_mode: *proposed_mode,
-                        proposed_grants: proposed_grants.clone(),
-                        own_browser: *own_browser,
-                    });
-                }
-            }
-            EventMsg::ApprovalResolved { call_id, .. } => {
-                if let Some(task) = &mut self.active {
-                    task.approvals.retain(|a| &a.call_id != call_id);
                 }
             }
             EventMsg::TaskCompleted {
@@ -651,7 +591,6 @@ fn keep_tail(text: &mut String, max: usize) {
 mod tests {
     use super::*;
     use her_llm::UserMessage;
-    use her_protocol::PermissionMode;
     use her_protocol::CompletionReason;
     use her_protocol::ToolCategory;
     use std::path::PathBuf;
@@ -663,7 +602,6 @@ mod tests {
             session_file: PathBuf::from("/f"),
             model: "p/m".into(),
             thinking: Default::default(),
-            permission_mode: PermissionMode::Manual,
             context_window: 1000,
             title: None,
             archived: false,
@@ -979,20 +917,7 @@ mod tests {
                 locations: Vec::new(),
             },
         ));
-        m.apply(&ev(
-            7,
-            EventMsg::ApprovalRequested {
-                call_id: "c1".into(),
-                name: "bash".into(),
-                args: serde_json::json!({"command": "ls"}),
-                summary: "ls".into(),
-                reason: None,
-                proposed_rule: None,
-                proposed_mode: None,
-                proposed_grants: Vec::new(),
-                own_browser: false,
-            },
-        ));
+        m.apply(&ev(7, EventMsg::ToolRunning { call_id: "c1".into() }));
         let snap = m.snapshot(None);
         assert_eq!(snap.last_seq, 7);
         let task = snap.active_task.unwrap();
@@ -1004,7 +929,7 @@ mod tests {
             }]
         );
         assert_eq!(task.tools.len(), 1);
-        assert!(m.approval_pending("c1"));
+        assert!(task.tools[0].running, "the call runs without waiting for anyone");
         m.apply(&ev(
             8,
             EventMsg::TaskCompleted {
@@ -1026,75 +951,7 @@ mod tests {
     }
 
     #[test]
-    fn what_a_sub_agent_asks_shows_while_the_session_itself_is_idle() {
-        let mut m = SessionMirror::new(info(), Vec::new());
-        m.apply(&ev(
-            1,
-            EventMsg::AgentStarted {
-                agent_id: "a1".into(),
-                name: "writer".into(),
-                description: "写文件".into(),
-                session_file: PathBuf::from("/a1"),
-                call_id: "spawn".into(),
-            },
-        ));
-        let inner = |seq, msg| EventMsg::AgentEvent {
-            agent_id: "a1".into(),
-            event: Box::new(ev(seq, msg)),
-        };
-        m.apply(&ev(
-            2,
-            inner(
-                1,
-                EventMsg::TaskStarted {
-                    task_id: "t1".into(),
-                    trigger: Default::default(),
-                },
-            ),
-        ));
-        m.apply(&ev(
-            3,
-            inner(
-                2,
-                EventMsg::ApprovalRequested {
-                    call_id: "c1".into(),
-                    name: "bash".into(),
-                    args: serde_json::json!({"command": "rm x"}),
-                    summary: "rm x".into(),
-                    reason: None,
-                    proposed_rule: None,
-                    proposed_mode: None,
-                    proposed_grants: Vec::new(),
-                    own_browser: false,
-                },
-            ),
-        ));
-        assert!(!m.busy());
-        assert_eq!(m.state(), SessionState::AwaitingApproval);
-        assert_eq!(m.first_approval(), Some("rm x"));
-        assert!(m.agent_approval_pending("a1", "c1"));
-        assert!(!m.approval_pending("c1"), "the session's own are apart");
-        assert!(!m.agent_approval_pending("a2", "c1"));
-        let snap = m.snapshot(None);
-        assert_eq!(snap.agents[0].active_task.as_ref().unwrap().approvals[0].call_id, "c1");
-
-        m.apply(&ev(
-            4,
-            inner(
-                3,
-                EventMsg::ApprovalResolved {
-                    call_id: "c1".into(),
-                    decision: her_protocol::ApprovalDecision::Approve,
-                },
-            ),
-        ));
-        assert_eq!(m.state(), SessionState::Idle);
-        assert_eq!(m.first_approval(), None);
-        assert!(!m.agent_approval_pending("a1", "c1"));
-    }
-
-    #[test]
-    fn the_list_state_follows_approvals_and_failures() {
+    fn the_list_state_follows_tasks_and_failures() {
         let mut m = SessionMirror::new(info(), Vec::new());
         assert_eq!(m.state(), SessionState::Idle);
         m.apply(&Event {
@@ -1107,21 +964,6 @@ mod tests {
         });
         assert_eq!(m.state(), SessionState::Running);
         assert_eq!(m.task_started(), Some(1_700_000_000_000));
-        m.apply(&ev(
-            2,
-            EventMsg::ApprovalRequested {
-                call_id: "c1".into(),
-                name: "bash".into(),
-                args: serde_json::json!({"command": "rm x"}),
-                summary: "rm x".into(),
-                reason: None,
-                proposed_rule: None,
-                proposed_mode: None,
-                proposed_grants: Vec::new(),
-                own_browser: false,
-            },
-        ));
-        assert_eq!(m.state(), SessionState::AwaitingApproval);
         m.apply(&ev(
             3,
             EventMsg::TaskFailed {

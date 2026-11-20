@@ -374,7 +374,6 @@ pub fn document() -> Value {
     // Requests the server sends to a client, which answers them.
     let server_requests = [
         (method::DOCX_SERIALIZE, name::<api::DocxSerializeParams>(g), name::<api::DocxSerializeResult>(g)),
-        (method::MESH_DESCRIBE, name::<api::MeshDescribeParams>(g), name::<api::MeshDescribeResult>(g)),
         (method::MESH_CALL, name::<api::MeshCallParams>(g), name::<api::MeshCallResult>(g)),
     ];
     // Also used on their own: `her exec --output stream-json` lines and `--ops-stdin` lines.
@@ -657,7 +656,7 @@ mod tests {
             assert!(kinds.contains(&kind), "Event lacks {kind}: {kinds:?}");
         }
         assert!(event["properties"].get("seq").is_some());
-        assert_eq!(doc["x-error-codes"]["-32015"], "approval_not_pending");
+        assert!(doc["x-error-codes"].get("-32015").is_none(), "approvals are gone");
     }
 
     /// The committed copy (`crates/her-protocol/schema.json`) must match the types. Run with

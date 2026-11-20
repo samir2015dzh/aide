@@ -1,5 +1,5 @@
 //! The writer side of an ACP connection: maps kernel events to `session/update`
-//! notifications, permission requests and prompt responses, in queue order.
+//! notifications and prompt responses, in queue order.
 
 use bytes::Bytes;
 use her_core::config::AcpSettings;
@@ -22,7 +22,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -48,25 +47,12 @@ pub(crate) enum Control {
 pub(crate) struct Shared {
     pub notices: AtomicBool,
     pub compaction: AtomicBool,
-    /// Our permission requests, by request id.
-    pub permissions: Mutex<HashMap<Id, Asked>>,
     /// Open prompts: request id → session, for `$/cancel_request`.
     pub prompts: Mutex<HashMap<Id, String>>,
-    next_request: AtomicU64,
-}
-
-/// What one of our permission requests asks about.
-pub(crate) struct Asked {
-    pub session: String,
-    /// The sub-agent that asks, if one does.
-    pub agent: Option<String>,
-    pub call_id: String,
 }
 
 struct ToolInfo {
     name: String,
-    title: String,
-    kind: &'static str,
     args: Value,
     path: Option<PathBuf>,
 }
@@ -85,8 +71,6 @@ struct SessionState {
     skip_user: bool,
     tools: HashMap<String, ToolInfo>,
     progress: HashMap<String, Progress>,
-    /// Permission request per call, until answered or resolved elsewhere.
-    permission_by_call: HashMap<String, Id>,
     /// What each sub-agent goes by, by its id.
     agents: HashMap<String, String>,
     info: Option<SessionInfo>,
@@ -103,7 +87,6 @@ impl SessionState {
             skip_user: false,
             tools: HashMap::new(),
             progress: HashMap::new(),
-            permission_by_call: HashMap::new(),
             agents: HashMap::new(),
             info,
             cost: 0.0,
@@ -244,8 +227,6 @@ impl AcpEncoder {
                     call_id.clone(),
                     ToolInfo {
                         name: name.clone(),
-                        title: title.clone(),
-                        kind: category_kind(*category),
                         args: args.clone(),
                         path: locations.first().map(|l| l.path.clone()),
                     },
@@ -295,14 +276,6 @@ impl AcpEncoder {
                     },
                 ));
             }
-            EventMsg::ApprovalRequested { .. } => request_permission(&self.shared, state, sid, None, &frame.event.msg, out),
-            EventMsg::ApprovalResolved { call_id, .. } => withdraw_permission(&self.shared, state, call_id, out),
-            // What a sub-agent asks goes to the client like the session's own.
-            EventMsg::AgentEvent { agent_id, event } => match &event.msg {
-                EventMsg::ApprovalRequested { .. } => request_permission(&self.shared, state, sid, Some(agent_id), &event.msg, out),
-                EventMsg::ApprovalResolved { call_id, .. } => withdraw_permission(&self.shared, state, &agent_call_id(agent_id, call_id), out),
-                _ => {}
-            },
             EventMsg::TurnCompleted { usage, .. } => {
                 let amount = usage.cost.input + usage.cost.output + usage.cost.cache_read + usage.cost.cache_write;
                 state.cost += amount;
@@ -324,13 +297,11 @@ impl AcpEncoder {
             EventMsg::SettingsChanged {
                 model,
                 thinking,
-                permission_mode,
                 context_window,
             } => {
                 if let Some(info) = &mut state.info {
                     info.model = model.clone();
                     info.thinking = *thinking;
-                    info.permission_mode = *permission_mode;
                     if *context_window > 0 {
                         info.context_window = *context_window;
                     }
@@ -481,67 +452,6 @@ impl AcpEncoder {
             }
             _ => {}
         }
-    }
-}
-
-/// A sub-agent's calls are no tool calls of the session's, and sessions choose their call ids
-/// apart from each other: what the client knows one by.
-fn agent_call_id(agent: &str, call_id: &str) -> String {
-    format!("agent-{agent}/{call_id}")
-}
-
-/// Asks the client about a call, the session's or a sub-agent's: `session/request_permission`.
-fn request_permission(shared: &Shared, state: &mut SessionState, sid: &str, agent: Option<&str>, asked: &EventMsg, out: &mut Vec<Bytes>) {
-    let EventMsg::ApprovalRequested {
-        call_id,
-        summary,
-        proposed_rule,
-        proposed_mode,
-        proposed_grants,
-        ..
-    } = asked
-    else {
-        return;
-    };
-    let id = Id::Str(format!("her-{}", shared.next_request.fetch_add(1, Ordering::Relaxed)));
-    shared.permissions.lock().insert(
-        id.clone(),
-        Asked {
-            session: sid.to_string(),
-            agent: agent.map(str::to_string),
-            call_id: call_id.clone(),
-        },
-    );
-    let (tool_call_id, title, kind) = match agent {
-        // The client has not seen this call: the question says who asks.
-        Some(agent) => {
-            let who = state.agents.get(agent).map_or("agent", String::as_str);
-            (agent_call_id(agent, call_id), format!("{who}: {summary}"), "other")
-        }
-        None => {
-            let tool = state.tools.get(call_id);
-            let title = tool.filter(|t| !t.title.is_empty()).map_or(summary.as_str(), |t| t.title.as_str());
-            (call_id.clone(), title.to_string(), tool.map_or("other", |t| t.kind))
-        }
-    };
-    let params = json!({
-        "sessionId": sid,
-        "toolCall": { "toolCallId": tool_call_id, "title": title, "kind": kind, "status": "pending" },
-        "options": out::permission_options(proposed_rule.as_ref().map(|r| r.prefix.as_slice()), *proposed_mode, proposed_grants),
-    });
-    state.permission_by_call.insert(tool_call_id, id.clone());
-    out.push(Bytes::from(her_rpc::request(&id, out::REQUEST_PERMISSION, &params)));
-}
-
-/// Answered some other way: withdraws our request, if it is still open.
-fn withdraw_permission(shared: &Shared, state: &mut SessionState, tool_call_id: &str, out: &mut Vec<Bytes>) {
-    if let Some(id) = state.permission_by_call.remove(tool_call_id)
-        && shared.permissions.lock().remove(&id).is_some()
-    {
-        out.push(Bytes::from(her_rpc::notification(
-            "$/cancel_request",
-            &json!({ "requestId": id }),
-        )));
     }
 }
 

@@ -38,13 +38,13 @@ her "explain what this repository does"
 her exec --json "summarize the changes on this branch" | jq -r .final_output
 ```
 
-Exit codes say what happened: 0 done, 1 failed, 2 bad usage or no model, 3 done but something it tried needed an approval nobody could give, 130 interrupted. See [scripting](docs/cli/scripting.md).
+Exit codes say what happened: 0 done, 1 failed, 2 bad usage or no model, 130 interrupted. See [scripting](docs/cli/scripting.md).
 
 **From other programs.** `her acp` serves editors over the Agent Client Protocol ([acp.md](docs/cli/acp.md)). `her serve` speaks JSON-RPC ([json-rpc.md](docs/cli/json-rpc.md)); [examples/rpc](examples/rpc) has a complete client in a page of Python.
 
 ## What you should know
 
-- **There is no operating-system sandbox.** What protects you is permission modes, rules, the workspace boundary and protected paths: [permissions](docs/cli/permissions.md). Use `bypass-permissions` only in a container or a throwaway machine.
+- **her runs actions without asking, and there is no operating-system sandbox.** There are no action approvals; deny rules and a few built-in refusals are what stops an action: [permissions](docs/cli/permissions.md).
 - **A repository can try to influence the model.** `AGENTS.md` and a project's Skills are always read.
 - **No telemetry.** Every network access is listed in [privacy](docs/cli/privacy.md).
 
@@ -52,13 +52,12 @@ Exit codes say what happened: 0 done, 1 failed, 2 bad usage or no model, 3 done 
 
 If you are a coding agent setting her up or calling it:
 
-- Run a task with `her exec --json "TASK"`. The answer is in `final_output`; `exit_code`, `error`, `tool_calls` and `refused` say how it went. `her exec --resume last "NEXT"` continues.
+- Run a task with `her exec --json "TASK"`. The answer is in `final_output`; `exit_code`, `error` and `tool_calls` say how it went. `her exec --resume last "NEXT"` continues.
 - `her status --json`, `her doctor --json`, `her models --json` and `her tools --json` look at the environment and change nothing.
 - Failures under `--json` are JSON on stdout: `{"error": {"kind", "message", "help"}, "exit_code": 2}`.
-- Exit code 3 means something was refused because nobody could approve it. Set a permission mode or a rule, do not retry blindly.
-- Pass `--dangerously-skip-permissions` only if the person told you to, or inside a container that exists for this run.
+- her asks nobody before an action: every tool call runs unless a deny rule or a built-in refusal stops it (`Tool call denied: …`). Do not work around a refusal.
 - A key goes through standard input, never an argument: `printf %s "$KEY" | her login deepseek --key-stdin --model deepseek/deepseek-flash`.
-- `her config set` refuses settings about permissions while `AI_AGENT` is set. They are for the person.
+- `her config set` refuses settings about what the agent may do (rules, tools, MCP servers) while `AI_AGENT` is set. They are for the person.
 - The documentation index is [docs/cli/llms.txt](docs/cli/llms.txt).
 
 ## Documentation

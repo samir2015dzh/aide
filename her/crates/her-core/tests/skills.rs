@@ -1,5 +1,5 @@
 //! Skills in the kernel: discovery into the frozen system prompt and the session log, reading
-//! a skill without approval, protection of skill directories, and resume.
+//! a skill, the skill directories, and resume.
 
 use her_core::Config;
 use her_core::HerHome;
@@ -20,7 +20,6 @@ use her_llm::UserContent;
 use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
 use her_protocol::EventMsg;
-use her_protocol::PermissionMode;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
 use her_tools::builtin_registry;
@@ -89,17 +88,14 @@ fn deps(api: &Arc<ScriptedApi>, env: &Env, tools: &[&str]) -> KernelDeps {
 
 const ALL_TOOLS: &[&str] = &["read", "write", "edit", "bash"];
 
-async fn start(env: &Env, api: &Arc<ScriptedApi>, mode: PermissionMode, config: Config, tools: &[&str]) -> Kernel {
+async fn start(env: &Env, api: &Arc<ScriptedApi>, config: Config, tools: &[&str]) -> Kernel {
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: env.work.clone(),
         home: env.home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: None,
     };
     Kernel::start(options, deps(api, env, tools)).await.unwrap()
@@ -131,7 +127,7 @@ fn logged_system_prompt(file: &Path) -> Value {
 }
 
 #[tokio::test]
-async fn the_model_reads_a_listed_skill_without_approval_and_resume_keeps_the_catalog() {
+async fn the_model_reads_a_listed_skill_and_resume_keeps_the_catalog() {
     let env = env();
     write_skill(&env.work.join(".agents/skills/lint"), "name: lint\ndescription: Lint rules for this repo.", "");
     let pdf = write_skill(
@@ -161,13 +157,9 @@ async fn the_model_reads_a_listed_skill_without_approval_and_resume_keeps_the_ca
     api.push(Script::text("done"));
     // No deferred group, so what the model gets is the frozen prompt alone, as logged.
     let no_search = || Config { web_search: her_core::config::WebSearchSettings { enabled: false, ..Default::default() }, ..Config::default() };
-    let mut kernel = start(&env, &api, PermissionMode::Manual, no_search(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &api, no_search(), ALL_TOOLS).await;
     let result = kernel.run(prompt("extract the tables from report.pdf")).await.unwrap();
     assert_eq!(result.end, TaskEnd::Completed { last_message: Some("done".into()) });
-    assert!(
-        !result.events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })),
-        "reading a skill outside the workspace needs no approval, even in manual mode"
-    );
     let warnings: Vec<String> = result
         .events
         .iter()
@@ -232,12 +224,9 @@ async fn the_model_reads_a_listed_skill_without_approval_and_resume_keeps_the_ca
         session: SessionRef::Id(her_core::short_id(&session_id).to_string()),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: env.home.clone(),
         config: Arc::new(no_search()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&api, &env, ALL_TOOLS)).await.unwrap();
@@ -245,13 +234,13 @@ async fn the_model_reads_a_listed_skill_without_approval_and_resume_keeps_the_ca
     assert_eq!(api.requests()[0].system, system);
     let fresh = ScriptedApi::new();
     fresh.push(Script::text("new"));
-    let mut kernel = start(&env, &fresh, PermissionMode::Manual, Config::default(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &fresh, Config::default(), ALL_TOOLS).await;
     kernel.run(prompt("hello")).await.unwrap();
     assert!(fresh.requests()[0].system.contains("<skill name=\"late\""));
 }
 
 #[tokio::test]
-async fn skill_directories_are_protected_paths() {
+async fn skill_directories_are_written_without_asking() {
     let env = env();
     let shared = env.base.join("shared-skills");
     std::fs::create_dir_all(&shared).unwrap();
@@ -270,17 +259,13 @@ async fn skill_directories_are_protected_paths() {
             .then_tool_call("call_4", "write", json!({"path": ".agents/skills/y/SKILL.md", "content": "x"})),
     );
     api.push(Script::text("ok"));
-    // accept-edits writes in the workspace without asking, except protected paths; with
-    // nobody to answer, asking means a refusal.
-    let mut kernel = start(&env, &api, PermissionMode::AcceptEdits, config, ALL_TOOLS).await;
+    // Her asks nobody before an action: the skill folders are written like any other.
+    let mut kernel = start(&env, &api, config, ALL_TOOLS).await;
     kernel.run(prompt("write some files")).await.unwrap();
     assert!(env.work.join("notes.txt").exists());
-    assert!(!env.work.join(".claude/skills/new/SKILL.md").exists());
-    assert!(!shared.join("x/SKILL.md").exists());
-    assert!(!env.work.join(".agents/skills/y/SKILL.md").exists());
-    let results = tool_results(&api.requests()[1]);
-    let refused: Vec<bool> = results.iter().map(|r| r.contains("nobody can approve it")).collect();
-    assert_eq!(refused, vec![true, false, true, true], "{results:?}");
+    assert!(env.work.join(".claude/skills/new/SKILL.md").exists());
+    assert!(shared.join("x/SKILL.md").exists());
+    assert!(env.work.join(".agents/skills/y/SKILL.md").exists());
 }
 
 #[tokio::test]
@@ -292,7 +277,7 @@ async fn no_catalog_when_turned_off_or_unreadable() {
         async move {
             let api = ScriptedApi::new();
             api.push(Script::text("hi"));
-            let mut kernel = start(env, &api, PermissionMode::Manual, config, tools).await;
+            let mut kernel = start(env, &api, config, tools).await;
             kernel.run(prompt("hello")).await.unwrap();
             api.requests()[0].system.clone()
         }
@@ -375,7 +360,7 @@ async fn mentions_anywhere_load_each_skill_once_and_keep_the_users_words() {
     let review = write_skill(&env.home.skills_dir().join("review"), "name: review\ndescription: Review.", "Check it twice.\n");
     let api = ScriptedApi::new();
     api.push(Script::text("deployed"));
-    let mut kernel = start(&env, &api, PermissionMode::Manual, Config::default(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &api, Config::default(), ALL_TOOLS).await;
     let typed = "请先按 /skill:review 检查，再用/skill:deploy发到 staging；/skill:review 之后再看一遍";
     let result = kernel.run(prompt(typed)).await.unwrap();
     assert_eq!(result.end, TaskEnd::Completed { last_message: Some("deployed".into()) });
@@ -454,7 +439,7 @@ async fn only_explicit_mentions_of_the_users_own_input_load_skills() {
     for _ in 0..6 {
         api.push(Script::text("ok"));
     }
-    let mut kernel = start(&env, &api, PermissionMode::Manual, Config::default(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &api, Config::default(), ALL_TOOLS).await;
     kernel
         .submit(her_protocol::Op::Prompt {
             input: prompt("/skill:deploy from another agent"),
@@ -496,7 +481,7 @@ async fn slash_compact_runs_as_a_task_even_with_nothing_to_compact() {
     let api = ScriptedApi::new();
     api.push(Script::text("first answer"));
     api.push(Script::text("## Summary\nThe user said hi."));
-    let mut kernel = start(&env, &api, PermissionMode::Manual, Config::default(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &api, Config::default(), ALL_TOOLS).await;
     let nothing = kernel.run(prompt("/compact")).await.unwrap();
     assert!(matches!(nothing.end, TaskEnd::Completed { .. }));
     let warned = |events: &[her_protocol::Event]| {
@@ -549,7 +534,7 @@ async fn compaction_keeps_the_skills_in_use_and_resume_rebuilds_them() {
     api.push(Script::text("reviewed"));
     api.push(Script::text("## Summary\nDeployed and reviewed."));
     api.push(Script::text("ok"));
-    let mut kernel = start(&env, &api, PermissionMode::Manual, Config::default(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &api, Config::default(), ALL_TOOLS).await;
     kernel.run(prompt("/skill:deploy staging")).await.unwrap();
     kernel.run(prompt("check the code")).await.unwrap();
     let compacted = kernel.run(prompt("/compact")).await.unwrap();
@@ -582,12 +567,9 @@ async fn compaction_keeps_the_skills_in_use_and_resume_rebuilds_them() {
         session: SessionRef::Id(session_id),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: env.home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&api, &env, ALL_TOOLS)).await.unwrap();
@@ -619,7 +601,7 @@ async fn queued_input_comes_back_as_written() {
     write_skill(&env.home.skills_dir().join("deploy"), "name: deploy\ndescription: Deploy.", "Body.\n");
     let api = ScriptedApi::new();
     api.push(Script::tool_call("call_1", "bash", json!({"command": "sleep 30"})));
-    let mut kernel = start(&env, &api, PermissionMode::BypassPermissions, Config::default(), ALL_TOOLS).await;
+    let mut kernel = start(&env, &api, Config::default(), ALL_TOOLS).await;
     kernel.submit(her_protocol::Op::prompt("wait")).await.unwrap();
     loop {
         let event = kernel.next_event().await.unwrap();

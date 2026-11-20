@@ -31,7 +31,6 @@ use her_protocol::AgentStatus;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::PromptMode;
 use her_protocol::WarningCode;
 use her_tools::BashTool;
@@ -104,11 +103,11 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome, hooks: Vec<Arc<dyn 
 }
 
 impl Harness {
-    async fn start(mode: PermissionMode) -> Harness {
-        Self::start_with(mode, Vec::new(), None).await
+    async fn start() -> Harness {
+        Self::start_with(Vec::new(), None).await
     }
 
-    async fn start_with(mode: PermissionMode, hooks: Vec<Arc<dyn Hooks>>, bot: Option<BotIdentity>) -> Harness {
+    async fn start_with(hooks: Vec<Arc<dyn Hooks>>, bot: Option<BotIdentity>) -> Harness {
         let dir = tempfile::tempdir().unwrap();
         let work = dir.path().join("work");
         std::fs::create_dir_all(&work).unwrap();
@@ -121,13 +120,10 @@ impl Harness {
         let options = StartOptions {
             model: "test/scripted".into(),
             thinking: ThinkingLevel::Off,
-            permission_mode: mode,
             cwd: work.clone(),
             home: home.clone(),
             config: Arc::new(Config::default()),
             project_root: None,
-            trusted: false,
-            interactive_approvals: true,
             bot,
         };
         let kernel = Kernel::start(options, deps(&api, &work, &home, hooks)).await.unwrap();
@@ -307,7 +303,7 @@ fn spawn(id: &str, name: &str, task: &str) -> Script {
 
 #[tokio::test]
 async fn the_model_gets_what_came_before_and_the_new_message() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one").with_usage(1_000, 10));
     h.say("one").await;
     h.answer(Script::text("answer two").with_usage(5_000, 20));
@@ -357,7 +353,7 @@ async fn the_model_gets_what_came_before_and_the_new_message() {
 
 #[tokio::test]
 async fn a_message_sent_again_can_be_taken_back_again() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     let one = h.say("one").await;
     h.answer(Script::text("answer again"));
@@ -379,7 +375,7 @@ async fn a_message_sent_again_can_be_taken_back_again() {
 
 #[tokio::test]
 async fn going_back_before_the_first_message_changes_what_lists_show() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer"));
     let first = h.say("the first").await;
     h.answer(Script::text("answer"));
@@ -399,7 +395,7 @@ async fn going_back_before_the_first_message_changes_what_lists_show() {
 
 #[tokio::test]
 async fn a_message_that_was_interjected_can_be_taken_back_too() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::tool_call("c1", "bash", json!({ "command": "sleep 0.3; echo done" })));
     h.answer(Script::text("after the interjection"));
     h.prompt("one").await;
@@ -427,7 +423,7 @@ async fn a_message_that_was_interjected_can_be_taken_back_too() {
 
 #[tokio::test]
 async fn a_failed_task_can_be_tried_again_with_other_words() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     h.say("one").await;
     h.answer(Script::fail(ErrorKind::Auth, "bad key"));
@@ -445,7 +441,7 @@ async fn a_failed_task_can_be_tried_again_with_other_words() {
 
 #[tokio::test]
 async fn a_reply_being_written_stops_first() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     h.say("one").await;
     h.answer(Script::text("partial").then_sleep(LONG).then_text("never"));
@@ -465,7 +461,7 @@ async fn a_reply_being_written_stops_first() {
 
 #[tokio::test]
 async fn a_running_command_stops_first() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::tool_call("c1", "bash", json!({ "command": "sleep 30" })));
     h.prompt("one").await;
     let events = h.until(|m| matches!(m, EventMsg::ToolRunning { .. })).await;
@@ -480,22 +476,8 @@ async fn a_running_command_stops_first() {
 }
 
 #[tokio::test]
-async fn a_call_waiting_for_approval_never_runs() {
-    let mut h = Harness::start(PermissionMode::Manual).await;
-    h.answer(Script::tool_call("c1", "bash", json!({ "command": "touch made.txt" })));
-    h.prompt("one").await;
-    let events = h.until(|m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let one = id_of(&events, "one");
-    h.answer(Script::text("answer ONE"));
-    h.resend(&one, "ONE").await;
-    h.until_idle().await;
-    assert!(!h.work.join("made.txt").exists());
-    assert_eq!(h.conversation(), ["ONE", "answer ONE"]);
-}
-
-#[tokio::test]
 async fn what_waits_goes_back_to_the_composer_and_never_to_the_model() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("partial").then_sleep(LONG).then_text("never"));
     h.prompt("one").await;
     let events = h.until(|m| matches!(m, EventMsg::MessageDelta { .. })).await;
@@ -549,7 +531,7 @@ impl Hooks for HoldTurnEnd {
 #[tokio::test]
 async fn a_task_that_completes_as_the_resend_arrives_still_hands_back_what_waits() {
     let hold = Arc::new(HoldTurnEnd::default());
-    let mut h = Harness::start_with(PermissionMode::BypassPermissions, vec![hold.clone()], None).await;
+    let mut h = Harness::start_with(vec![hold.clone()], None).await;
     h.answer(Script::text("answer one"));
     let one = h.say("one").await;
     hold.armed.store(true, Ordering::SeqCst);
@@ -581,7 +563,7 @@ async fn a_task_that_completes_as_the_resend_arrives_still_hands_back_what_waits
 #[tokio::test]
 async fn interjected_input_does_not_slip_in_while_the_task_stops() {
     let hold = Arc::new(HoldTurnEnd::default());
-    let mut h = Harness::start_with(PermissionMode::BypassPermissions, vec![hold.clone()], None).await;
+    let mut h = Harness::start_with(vec![hold.clone()], None).await;
     hold.armed.store(true, Ordering::SeqCst);
     h.answer(Script::text("answer one"));
     h.prompt("one").await;
@@ -612,7 +594,7 @@ async fn interjected_input_does_not_slip_in_while_the_task_stops() {
 #[tokio::test]
 async fn a_resend_still_waiting_when_the_session_closes_does_not_go_ahead() {
     let hold = Arc::new(HoldTurnEnd::default());
-    let mut h = Harness::start_with(PermissionMode::BypassPermissions, vec![hold.clone()], None).await;
+    let mut h = Harness::start_with(vec![hold.clone()], None).await;
     h.answer(Script::text("answer one"));
     let one = h.say("one").await;
     hold.armed.store(true, Ordering::SeqCst);
@@ -645,7 +627,7 @@ async fn a_resend_still_waiting_when_the_session_closes_does_not_go_ahead() {
 
 #[tokio::test]
 async fn going_back_before_a_compaction_undoes_it_and_after_it_keeps_it() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     h.say("one").await;
     h.answer(Script::text("answer two"));
@@ -675,7 +657,7 @@ async fn going_back_before_a_compaction_undoes_it_and_after_it_keeps_it() {
 
 #[tokio::test]
 async fn back_to_a_context_too_large_it_compacts_again_first() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     // The scripted model's window is 128,000: compaction starts at 107,827.
     h.answer(Script::text("a long answer").with_usage(110_000, 10));
     h.say("one").await;
@@ -702,7 +684,7 @@ async fn back_to_a_context_too_large_it_compacts_again_first() {
 
 #[tokio::test]
 async fn an_agent_started_in_what_is_taken_back_stops_and_leaves() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     h.say("one").await;
     h.answer(spawn("c1", "worker", "Work for long."));
@@ -762,7 +744,7 @@ async fn an_agent_started_in_what_is_taken_back_stops_and_leaves() {
 
 #[tokio::test]
 async fn reopened_after_going_back_only_the_agents_of_the_conversation_are_there() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(spawn("c1", "kept", "Work for a moment."));
     h.answer(Script::text("started it"));
     h.answer(Script::text("read its report"));
@@ -789,12 +771,9 @@ async fn reopened_after_going_back_only_the_agents_of_the_conversation_are_there
         session: SessionRef::Id(session),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: true,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&api, &work, &home, Vec::new())).await.unwrap();
@@ -805,7 +784,7 @@ async fn reopened_after_going_back_only_the_agents_of_the_conversation_are_there
 
 #[tokio::test]
 async fn an_agent_started_earlier_works_on_and_its_report_comes() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(spawn("c1", "worker", "Work for a while."));
     h.answer(Script::text("started it"));
     h.script("worker", Script::text("the result").then_sleep(Duration::from_millis(600)));
@@ -827,7 +806,7 @@ async fn an_agent_started_earlier_works_on_and_its_report_comes() {
 
 #[tokio::test]
 async fn a_report_delivered_in_what_is_taken_back_comes_again() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(spawn("c1", "worker", "Work for a moment."));
     h.answer(Script::text("started it"));
     h.script("worker", Script::text("the result").then_sleep(Duration::from_millis(200)));
@@ -872,7 +851,7 @@ async fn a_report_delivered_in_what_is_taken_back_comes_again() {
 
 #[tokio::test]
 async fn a_waiting_report_from_an_agent_taken_back_never_arrives() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     h.say("one").await;
     h.answer(spawn("c1", "worker", "Work for a moment."));
@@ -903,7 +882,7 @@ async fn a_waiting_report_from_an_agent_taken_back_never_arrives() {
 
 #[tokio::test]
 async fn a_file_read_only_in_what_is_taken_back_must_be_read_again_before_a_write() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     std::fs::write(h.work.join("a.txt"), "old a").unwrap();
     std::fs::write(h.work.join("b.txt"), "old b").unwrap();
     h.answer(Script::tool_call("c1", "read", json!({ "path": "a.txt" })).then_tool_call("c2", "read", json!({ "path": "b.txt" })));
@@ -936,19 +915,17 @@ async fn a_file_read_only_in_what_is_taken_back_must_be_read_again_before_a_writ
 
 #[tokio::test]
 async fn a_resumed_session_has_the_new_branch_and_all_that_belongs_to_the_session() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one").with_usage(100, 10));
     h.say("one").await;
     h.answer(Script::text("answer two").with_usage(200, 20));
     let two = h.say("two").await;
     // These come after the point gone back to, and stand.
     h.submit(Op::SetTitle { title: "Named".into() }).await;
-    h.submit(Op::SetPermissionMode { mode: PermissionMode::Manual }).await;
-    h.until(|m| matches!(m, EventMsg::SettingsChanged { .. })).await;
+    h.until(|m| matches!(m, EventMsg::TitleChanged { .. })).await;
     h.answer(Script::text("answer TWO").with_usage(300, 30));
     h.resend(&two, "TWO").await;
     h.until_idle().await;
-    assert_eq!(h.kernel.info().permission_mode, PermissionMode::Manual);
 
     let session = h.kernel.session_id().to_string();
     let Harness { kernel, api, lanes, work, home, _dir } = h;
@@ -957,23 +934,19 @@ async fn a_resumed_session_has_the_new_branch_and_all_that_belongs_to_the_sessio
         session: SessionRef::Id(session),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: true,
         bot_name: None,
     };
     let kernel = Kernel::resume(options, deps(&api, &work, &home, Vec::new())).await.unwrap();
     let mut h = Harness { kernel, api, lanes, work, home, _dir };
 
     let events = h.until(|m| matches!(m, EventMsg::SessionStarted { .. })).await;
-    let EventMsg::SessionStarted { permission_mode, usage, resumed, .. } = &events.last().unwrap().msg else {
+    let EventMsg::SessionStarted { usage, resumed, .. } = &events.last().unwrap().msg else {
         unreachable!()
     };
     assert!(resumed);
-    assert_eq!(*permission_mode, PermissionMode::Manual, "tightened after that point, and still tightened");
     let spent = &usage.per_model["test/scripted"];
     assert_eq!((spent.input, spent.output), (600, 60), "what the part taken back cost was paid");
     assert_eq!(h.kernel.info().title.as_deref(), Some("Named"));
@@ -995,7 +968,7 @@ async fn a_resumed_session_has_the_new_branch_and_all_that_belongs_to_the_sessio
 
 #[tokio::test]
 async fn what_cannot_go_ahead_is_refused_and_changes_nothing() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     h.answer(Script::text("answer one"));
     h.prompt("one").await;
     let events = h.until_idle().await;
@@ -1046,7 +1019,7 @@ async fn what_cannot_go_ahead_is_refused_and_changes_nothing() {
 #[tokio::test]
 async fn a_bots_conversation_does_not_go_back() {
     let bot = BotIdentity { id: "b1".into(), name: "Her".into() };
-    let mut h = Harness::start_with(PermissionMode::BypassPermissions, Vec::new(), Some(bot)).await;
+    let mut h = Harness::start_with(Vec::new(), Some(bot)).await;
     h.answer(Script::tool_call("c1", "send_to_user", json!({ "text": "hi" })));
     h.prompt("one").await;
     let events = h.until_idle().await;
@@ -1064,7 +1037,7 @@ async fn a_bots_conversation_does_not_go_back() {
 /// second (her-cli e2e_native the_desktop_flow_over_the_socket).
 #[tokio::test]
 async fn a_tasks_end_event_has_its_log_entrys_time() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions).await;
+    let mut h = Harness::start().await;
     let mut ends = Vec::new();
     for word in ["one", "two", "three"] {
         h.answer(Script::text(&format!("answer {word}")));

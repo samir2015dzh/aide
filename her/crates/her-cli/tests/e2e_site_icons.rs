@@ -16,7 +16,7 @@ const PNG: &[u8] = &[
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_kept_icon_is_given_and_a_page_without_a_site_has_none() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["BrowserSiteIconResult"]);
     let dir = env.home.path().join("browser/icons");
     // As a first visit to the page left it: `example.test` cannot be reached, so the icon

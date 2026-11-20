@@ -77,7 +77,7 @@ async fn use_in_exec(env: &TestEnv, cwd: &Path, server: &str) -> String {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_page_checks_signs_in_then_adds_an_oauth_server() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = common::SchemaCheck::new(&["McpProbeResult", "McpLoginResult", "McpCheckResult", "McpListResult"]);
     let work = project(&env, "repo");
     let mock = oauth_server(true).await;
@@ -148,7 +148,7 @@ async fn the_page_checks_signs_in_then_adds_an_oauth_server() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_command_line_checks_before_adding_and_signs_in() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = project(&env, "repo");
 
     // Nothing is written for a server that does not answer, unless asked to.
@@ -216,7 +216,7 @@ async fn the_command_line_checks_before_adding_and_signs_in() {
 
 #[tokio::test]
 async fn one_service_is_added_once_and_keeps_its_logo() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = project(&env, "work");
     let docs = her_mock::mcp::serve_http("127.0.0.1:0", McpTestOptions::default()).await.unwrap();
     let (code, out) = run(&env, &work, &["mcp", "add", "docs", "--url", &docs.url()]).await;
@@ -240,7 +240,7 @@ async fn one_service_is_added_once_and_keeps_its_logo() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn oauth_login_resumes_cancels_and_replaces_only_a_changed_resource() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let first = oauth_server(true).await;
     let second = oauth_server(true).await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["serve", "--stdio"]);
@@ -299,7 +299,7 @@ async fn catch_redirect(device: tokio::net::TcpListener) -> HashMap<String, Stri
 /// browser goes back to the client's device, and the client brings what it caught to her.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_client_completes_a_sign_in_whose_browser_is_on_its_device() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = common::SchemaCheck::new(&["McpLoginResult"]);
     let mock = oauth_server(true).await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["serve", "--stdio"]);

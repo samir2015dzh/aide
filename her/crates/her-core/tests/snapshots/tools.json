@@ -2189,7 +2189,7 @@
     }
   },
   {
-    "description": "Act on the page: click, dblclick, hover, fill, type, press, select, check, uncheck, scroll or upload, on an element by its ref from the latest snapshot. press, type and scroll without a ref go to the focused element or the page. Coordinates (x, y) are a fallback for what the snapshot cannot name. The result says what changed on the page. If the page changed since the call was approved, nothing is sent: take a snapshot and try again.",
+    "description": "Act on the page: click, dblclick, hover, fill, type, press, select, check, uncheck, scroll or upload, on an element by its ref from the latest snapshot. press, type and scroll without a ref go to the focused element or the page. Coordinates (x, y) are a fallback for what the snapshot cannot name. The result says what changed on the page. If the page changed since the call was made, nothing is sent: take a snapshot and try again.",
     "group": "browser",
     "kind": "mutating",
     "loaded": false,
@@ -2291,7 +2291,7 @@
     }
   },
   {
-    "description": "Wait for text to appear or disappear, the URL to change, or the network to go quiet; or wait a fixed number of seconds. Actions already wait for the page to settle, so use this only for what happens later. With user, it hands the page to the user for what only they can do.",
+    "description": "Wait for text to appear or disappear, the URL to change, or the network to go quiet; or wait a fixed number of seconds. Actions already wait for the page to settle, so use this only for what happens later.",
     "group": "browser",
     "kind": "read_only",
     "loaded": false,
@@ -2327,11 +2327,6 @@
         "url": {
           "default": null,
           "description": "Wait until the URL contains this.",
-          "type": "string"
-        },
-        "user": {
-          "default": null,
-          "description": "What only the user can do in the page, such as \"sign in to example.com\": they are asked, and the call returns when they are done, with the page as it is then.",
           "type": "string"
         }
       },
@@ -2395,7 +2390,7 @@
     }
   },
   {
-    "description": "Run several browser tool calls in one go, in order, such as filling a form and submitting it. Only the first step is approved up front; each later step runs only if it needs no approval (its site is allowed already), and the batch stops at the first step that fails or needs approval: then call that step on its own. The result has each step's result. Use refs from a snapshot taken before the batch, or from an earlier step's result only if no navigation came in between.",
+    "description": "Run several browser tool calls in one go, in order, such as filling a form and submitting it. Each step is checked when it comes, and the batch stops at the first step that fails or is refused. The result has each step's result. Use refs from a snapshot taken before the batch, or from an earlier step's result only if no navigation came in between.",
     "group": "browser",
     "kind": "mutating",
     "loaded": false,
@@ -2404,7 +2399,7 @@
       "additionalProperties": false,
       "properties": {
         "steps": {
-          "description": "The steps, run in order; the batch stops at the first that fails or needs approval.",
+          "description": "The steps, run in order; the batch stops at the first that fails or is refused.",
           "items": {
             "properties": {
               "args": {

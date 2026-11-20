@@ -121,7 +121,7 @@ impl AgentTree {
             parent_task: String::new(),
             routine: Some(run.routine_id.clone()),
         });
-        let kernel = kernel::start_child(self.child_launch(root, header, false)).map_err(|err| format!("cannot start the run: {err}"))?;
+        let kernel = kernel::start_child(self.child_launch(root, header)).map_err(|err| format!("cannot start the run: {err}"))?;
         let bot = root.state.lock().bot.as_ref().map_or_else(|| "the bot".to_string(), |bot| bot.current.clone());
         Ok((kernel, brief(&bot, run)))
     }

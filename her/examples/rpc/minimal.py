@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Drives her over its JSON-RPC protocol: start a session, send a task, answer its approvals,
-print the reply. Needs nothing but Python and her.
+"""Drives her over its JSON-RPC protocol: start a session, send a task, show the tools it runs
+(her asks nobody before an action), print the reply. Needs nothing but Python and her.
 
     python3 minimal.py "fix the failing test"
     python3 minimal.py "fix the failing test" /path/to/her
@@ -51,11 +51,8 @@ while True:
     kind = event["type"]
     if kind == "message_delta" and event["delta"]["type"] == "text":
         reply.append(event["delta"]["text"])
-    elif kind == "approval_requested":
-        # A real client would ask someone. This one says yes to everything.
-        print(f"approving: {event['summary']}", file=sys.stderr)
-        answer = {"type": "approval", "call_id": event["call_id"], "decision": {"type": "approve"}}
-        call("session/op", {"session_id": session, "op": answer})
+    elif kind == "tool_started":
+        print(f"running: {event['title']}", file=sys.stderr)
     elif kind == "task_failed":
         sys.exit(event["error"]["message"])
     elif kind == "idle":

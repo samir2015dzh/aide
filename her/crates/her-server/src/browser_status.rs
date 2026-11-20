@@ -178,14 +178,6 @@ impl Server {
                 }
                 self.browser_request(&BrowserRequest::TabOffered { target_id, url, title });
             }
-            ExtensionMessage::Done { session_id } => {
-                let done = self.hubs().into_iter().find_map(|hub| {
-                    (*hub.shared.session.id == *session_id).then(|| hub.shared.handoff.lock().as_ref().map(crate::hub::Handoff::done)).flatten()
-                });
-                if let Some(op) = done {
-                    self.extension_op(session_id, op);
-                }
-            }
             ExtensionMessage::Stop { session_id } => self.extension_op(session_id, Op::Interrupt),
             ExtensionMessage::UseThis => {
                 let instance = self.0.extensions.lock().iter().find(|e| e.host == host).and_then(|e| e.status.instance.clone());
@@ -239,7 +231,6 @@ impl Server {
                     ExtensionSession {
                         title: title.lines().next().unwrap_or_default().to_string(),
                         state: summary.state,
-                        handoff: hub.shared.handoff.lock().as_ref().map(|h| h.what.clone()),
                         task: hub.shared.task.lock().clone(),
                     },
                 );

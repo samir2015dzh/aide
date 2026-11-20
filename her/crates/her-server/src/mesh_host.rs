@@ -1,14 +1,12 @@
 //! The mesh host: a connection that called `mesh/host` gives a bot's own conversation the `mesh`
-//! group of deferred tools. The kernel sends it `mesh/describe` before the user is asked about a
-//! call that writes and `mesh/call` to run a tool, and it sends `mesh/news`, which wakes the
-//! bot's conversation. The group's words are all the host's.
+//! group of deferred tools. The kernel sends it `mesh/call` to run a tool, without asking anyone
+//! first, and it sends `mesh/news`, which wakes the bot's conversation. The group's words are all
+//! the host's.
 
 use async_trait::async_trait;
 use her_core::mesh::MeshHost;
 use her_protocol::api::MeshCallParams;
 use her_protocol::api::MeshCallResult;
-use her_protocol::api::MeshDescribeParams;
-use her_protocol::api::MeshDescribeResult;
 use her_protocol::api::MeshHostParams;
 use her_protocol::api::MeshNewsParams;
 use her_protocol::api::method;
@@ -30,8 +28,6 @@ use crate::conn::ConnHandle;
 use crate::hub::HubCmd;
 use crate::server::Server;
 
-/// How long the host may take to say what a call would do: the user waits to be asked.
-const DESCRIBE_TIMEOUT: Duration = Duration::from_secs(15);
 /// How long the host may take to run one tool.
 const CALL_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -146,11 +142,6 @@ pub(crate) struct BotMesh {
 impl MeshHost for BotMesh {
     fn group(&self) -> (u64, Option<Arc<MeshHostParams>>) {
         self.hosts.group()
-    }
-
-    async fn describe(&self, name: &str, arguments: &Value) -> Result<MeshDescribeResult, String> {
-        let params = MeshDescribeParams { bot: self.bot.clone(), name: name.to_string(), arguments: arguments.clone() };
-        self.hosts.request(method::MESH_DESCRIBE, &params, DESCRIBE_TIMEOUT).await
     }
 
     async fn call(&self, call_id: &str, name: &str, arguments: Value) -> Result<MeshCallResult, String> {
@@ -297,14 +288,6 @@ mod tests {
         let request = next(&mut lines).await;
         send(&mut writes, json!({"jsonrpc": "2.0", "id": request["id"], "result": {"output": "{\"ok\":true}", "details": {"session": {"session_id": "s_1"}}}})).await;
         assert_eq!(waiting.await.unwrap(), Ok(MeshCallResult { output: "{\"ok\":true}".into(), is_error: false, details: Some(json!({"session": {"session_id": "s_1"}})) }));
-
-        let mesh = server.bot_mesh("b1");
-        let waiting = tokio::spawn(async move { mesh.describe("start", &json!({"workshop": "shed"})).await });
-        let request = next(&mut lines).await;
-        assert_eq!(request["method"], "mesh/describe");
-        assert_eq!(request["params"], json!({"bot": "b1", "name": "start", "arguments": {"workshop": "shed"}}));
-        send(&mut writes, json!({"jsonrpc": "2.0", "id": request["id"], "result": {"summary": "Start work in shed", "rule": ["mesh", "shed"]}})).await;
-        assert_eq!(waiting.await.unwrap(), Ok(MeshDescribeResult { summary: "Start work in shed".into(), rule: Some(vec!["mesh".into(), "shed".into()]) }));
 
         // An error answer is the host's message, in a sentence.
         let waiting = call(&server);

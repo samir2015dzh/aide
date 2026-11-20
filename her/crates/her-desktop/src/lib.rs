@@ -2,7 +2,7 @@
 //! (https://github.com/vercel-labs/agent-desktop): it reads an app's window through the OS
 //! accessibility tree and acts on elements by ref, without moving the pointer or taking focus.
 //! Each call runs the CLI once and reads its one JSON envelope. Independent of the kernel; the
-//! tools and their approval live in her-core.
+//! tools and the policy that may refuse them live in her-core.
 
 use serde_json::Value;
 use std::path::Path;

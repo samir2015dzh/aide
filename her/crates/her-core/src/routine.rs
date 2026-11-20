@@ -197,8 +197,8 @@ pub(crate) fn tool() -> Arc<dyn Tool> {
     Arc::new(Typed::new(ManageRoutine))
 }
 
-/// What an approval asks about: the call in words, not its JSON.
-pub(crate) fn approval_summary(args: &Value) -> String {
+/// What the call does, in words rather than its JSON: the title clients show.
+fn call_summary(args: &Value) -> String {
     let text = |key: &str| args.get(key).and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty());
     let action = text("action").unwrap_or("change");
     match (text("name").or(text("id")), text("when")) {
@@ -353,7 +353,7 @@ impl TypedTool for ManageRoutine {
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         ToolDescription {
             category: ToolCategory::Other,
-            title: approval_summary(args),
+            title: call_summary(args),
             locations: Vec::new(),
         }
     }
@@ -464,8 +464,8 @@ mod tests {
     }
 
     #[test]
-    fn an_approval_says_what_the_call_does() {
-        let summary = |args: Value| approval_summary(&args);
+    fn the_title_says_what_the_call_does() {
+        let summary = |args: Value| call_summary(&args);
         assert_eq!(summary(json!({"action": "create", "name": "喝水", "when": "每小时"})), "create routine \"喝水\": 每小时");
         assert_eq!(summary(json!({"action": "delete", "id": "r_7k3m2p"})), "delete routine \"r_7k3m2p\"");
         assert_eq!(summary(json!({"action": "pause"})), "pause a routine");

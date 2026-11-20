@@ -84,7 +84,6 @@
     "_about": "One row per option a run can set, named on every surface. Names may differ by surface, but each one is written here. sample is a valid value, used to check the configuration key.",
     "model": { "flag": "--model", "config": "model", "sample": "provider/model-id", "env": "HER_MODEL", "rpc": "model", "acp": "model" },
     "thinking": { "flag": "--thinking", "config": "thinking", "sample": "low", "rpc": "thinking", "acp": "thinking" },
-    "permission_mode": { "flag": "--permission-mode", "config": "permission_mode", "sample": "manual", "env": "HER_PERMISSION_MODE", "rpc": "permission_mode", "acp": "permission_mode" },
     "cwd": { "flag": "--cwd", "rpc": "cwd" },
     "max_turns": { "flag": "--max-turns", "config": "max_turns", "sample": "3" },
     "tools": { "flag": "--tools", "config": "tools.enabled", "sample": "[\"read\"]" },
@@ -97,7 +96,8 @@
     "--help": "Help.",
     "--resume": "Which session to continue.",
     "--no-save": "Whether to keep a log of this run.",
-    "--dangerously-skip-permissions": "Shortcut for --permission-mode bypass-permissions, named as the warning it is.",
+    "--permission-mode": "Gone: her runs every action without asking. Hidden, and ignored with a warning, so that old scripts keep working.",
+    "--dangerously-skip-permissions": "Gone, as --permission-mode.",
     "--output": "What to print.",
     "--json": "Same as --output json, as on every command that prints data.",
     "--ops-stdin": "Read operations from stdin.",
@@ -105,7 +105,7 @@
     "--image": "Part of this task's input."
   },
   "deprecated_flags": {
-    "--approval": { "replacement": "--permission-mode", "remove_in": "0.3.0" }
+    "--approval": { "replacement": "nothing: her runs every action without asking", "remove_in": "0.3.0" }
   },
   "env": {
     "_about": "Every HER_* name in crates/. job: setting-override (same name and values as the setting; only when CI or a wrapper needs it for a whole process tree), location, environment, diagnostics, tool-child (set for the commands a tool runs), test, build. stability: stable (documented for users), deprecated (needs remove_in), internal. A test variable starts with HER_TEST_, unless it is marked legacy.",
@@ -114,7 +114,7 @@
     "HER_INSTALL_DIR": { "job": "location", "stability": "stable" },
     "HER_RELEASES_URL": { "job": "environment", "stability": "stable" },
     "HER_MODEL": { "job": "setting-override", "stability": "stable" },
-    "HER_PERMISSION_MODE": { "job": "setting-override", "stability": "stable" },
+    "HER_PERMISSION_MODE": { "job": "setting-override", "stability": "deprecated", "remove_in": "0.3.0" },
     "HER_APPROVAL": { "job": "setting-override", "stability": "deprecated", "remove_in": "0.3.0" },
     "HER_CREDENTIAL_STORE": { "job": "environment", "stability": "stable" },
     "HER_NO_BROWSER": { "job": "environment", "stability": "stable" },

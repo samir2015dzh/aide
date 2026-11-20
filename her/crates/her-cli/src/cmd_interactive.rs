@@ -21,15 +21,11 @@ use her_llm::Message;
 use her_llm::ThinkingLevel;
 use her_llm::UsageTotals;
 use her_llm::UserContent;
-use her_protocol::ApprovalDecision;
-use her_protocol::CommandRule;
 use her_protocol::Delta;
 use her_protocol::EventMsg;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::PromptMode;
 use her_protocol::QueuedInput;
-use her_protocol::SiteGrant;
 use her_protocol::api::TranscriptItem;
 use serde_json::Value;
 use std::io::IsTerminal;
@@ -44,15 +40,11 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 
 use crate::RunArgs;
-use crate::approval_prompt;
-use crate::approval_prompt::Answer;
-use crate::approval_prompt::Question;
 use crate::render;
 use crate::render::Style;
 use crate::setup;
 use crate::term;
 use crate::term::editor::Editor;
-use crate::term::live;
 use crate::term::live::Live;
 use crate::term::markdown::Formatter;
 
@@ -61,14 +53,14 @@ const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 /// Two presses of Ctrl-C within this quit.
 const AGAIN: Duration = Duration::from_secs(2);
 const COMMANDS: &[&str] = &[
-    "/help", "/compact", "/context", "/model", "/thinking", "/permissions", "/new", "/resume", "/rewind", "/rename", "/status", "/tools", "/mcp",
+    "/help", "/compact", "/context", "/model", "/thinking", "/new", "/resume", "/rewind", "/rename", "/status", "/tools", "/mcp",
     "/skills", "/login", "/quit", "/exit",
 ];
 
 const HELP: &str = "\
 Enter sends; while a task runs it joins at the next step. Tab, with text: send after the task.
 Alt+Enter or Ctrl+J: new line. Up: history, or take back what waits. Ctrl+C: stop the task.
-/model [ID]  /thinking [LEVEL]  /permissions [MODE]  /new  /resume [ID]  /rewind  /rename TEXT
+/model [ID]  /thinking [LEVEL]  /new  /resume [ID]  /rewind  /rename TEXT
 /compact  /context  /status  /tools  /mcp  /skills  /login  /quit";
 
 /// How the mode was started.
@@ -86,7 +78,6 @@ enum Slash<'a> {
     Help,
     Model(Option<&'a str>),
     Thinking(Option<&'a str>),
-    Permissions(Option<&'a str>),
     New,
     Resume(Option<&'a str>),
     Rewind,
@@ -108,7 +99,6 @@ fn parse_slash(text: &str) -> Option<Slash<'_>> {
         "/help" => plain(Slash::Help),
         "/model" => Some(Slash::Model(arg)),
         "/thinking" => Some(Slash::Thinking(arg)),
-        "/permissions" => Some(Slash::Permissions(arg)),
         "/new" => plain(Slash::New),
         "/resume" => Some(Slash::Resume(arg)),
         "/rewind" => plain(Slash::Rewind),
@@ -120,40 +110,6 @@ fn parse_slash(text: &str) -> Option<Slash<'_>> {
         "/login" => plain(Slash::Login),
         "/quit" | "/exit" => plain(Slash::Quit),
         _ => None,
-    }
-}
-
-/// One approval waiting for its answer.
-struct Asking {
-    agent_id: Option<String>,
-    agent_label: Option<String>,
-    call_id: String,
-    name: String,
-    args: Value,
-    summary: String,
-    reason: Option<String>,
-    rule: Option<CommandRule>,
-    mode: Option<PermissionMode>,
-    grants: Vec<SiteGrant>,
-    answer: Editor,
-    /// `n` was answered: the words for the model come now.
-    feedback: bool,
-    hint: Option<&'static str>,
-    /// What the question folded away, until `v`.
-    folded: Vec<String>,
-}
-
-impl Asking {
-    fn question(&self) -> Question<'_> {
-        Question {
-            agent: self.agent_label.as_deref(),
-            name: &self.name,
-            summary: &self.summary,
-            reason: self.reason.as_deref(),
-            rule: self.rule.as_ref(),
-            mode: self.mode,
-            grants: &self.grants,
-        }
     }
 }
 
@@ -182,8 +138,6 @@ struct App {
     phase: Phase,
     progress: Vec<String>,
     queue: Vec<QueuedInput>,
-    asking: Vec<Asking>,
-    agents: Vec<(String, String)>,
     model: String,
     context_percent: Option<u64>,
     task_tokens: u64,
@@ -301,8 +255,6 @@ pub async fn interactive(overrides: &[String], start: Start) -> anyhow::Result<u
         phase: Phase::Replying,
         progress: Vec::new(),
         queue: Vec::new(),
-        asking: Vec::new(),
-        agents: Vec::new(),
         context_percent: None,
         task_tokens: 0,
         usage: UsageTotals::default(),
@@ -317,7 +269,7 @@ pub async fn interactive(overrides: &[String], start: Start) -> anyhow::Result<u
         raw: Some(term::Raw::enter().context("cannot set up the terminal")?),
         trusted: rt.trusted,
     };
-    app.banner(&rt, &run);
+    app.banner();
     if resuming {
         app.print_recent();
     }
@@ -336,13 +288,10 @@ async fn start_kernel(rt: &setup::Runtime, model: String, run: &RunArgs) -> anyh
     let options = StartOptions {
         model,
         thinking: run.thinking.unwrap_or(rt.config.thinking),
-        permission_mode: run.permission_mode().unwrap_or(rt.config.permission_mode),
         cwd: rt.cwd.clone(),
         home: rt.home.clone(),
         config: Arc::new(rt.config.clone()),
         project_root: rt.project_root.clone(),
-        trusted: rt.trusted,
-        interactive_approvals: true,
         bot: None,
     };
     Ok(Kernel::start(options, deps).await?)
@@ -354,12 +303,9 @@ async fn resume_kernel(rt: &setup::Runtime, path: &Path, run: &RunArgs) -> anyho
         session: SessionRef::Path(path.to_path_buf()),
         model: run.model.clone(),
         thinking: run.thinking,
-        permission_mode: run.permission_mode(),
         home: rt.home.clone(),
         config: Arc::new(rt.config.clone()),
         project_root: rt.project_root.clone(),
-        trusted: rt.trusted,
-        interactive_approvals: true,
         bot_name: None,
     };
     Ok(Kernel::resume(options, deps).await?)
@@ -493,11 +439,10 @@ fn user_text(input: &[UserContent]) -> String {
 }
 
 impl App {
-    fn banner(&mut self, rt: &setup::Runtime, run: &RunArgs) {
+    fn banner(&mut self) {
         let home = setup::home().ok();
         let shown = home.map_or_else(|| self.cwd.display().to_string(), |home| crate::cmd_customize::shorten(&home, &self.cwd));
-        let mode = run.permission_mode().unwrap_or(rt.config.permission_mode);
-        let line = format!("her {} · {} · {mode} · {shown}", release::VERSION, self.model);
+        let line = format!("her {} · {} · {shown}", release::VERSION, self.model);
         self.finished.push(self.style.dim(&line));
     }
 
@@ -592,36 +537,20 @@ impl App {
             };
             lines.push(self.style.dim(&format!("↳ {label}: {text}")));
         }
-        let cursor = match self.asking.first() {
-            Some(asking) => {
-                for line in approval_prompt::lines(&self.style, &asking.question()) {
-                    lines.push(line);
-                }
-                if let Some(hint) = asking.hint {
-                    lines.push(format!("  {hint}"));
-                }
-                let prefix = if asking.feedback { her_core::lang::say("feedback (optional): ", "给模型的说明（可不填）：") } else { "> " };
-                let (_, column) = asking.answer.cursor_position();
-                lines.push(format!("{prefix}{}", asking.answer.text()));
-                (lines.len() - 1, live::width(prefix) + column)
-            }
-            None => {
-                if self.replacing.is_some() {
-                    lines.push(self.style.dim(her_core::lang::say(
-                        "Sending replaces that message and what came after it. Ctrl+C keeps them.",
-                        "发送后，这条消息和它之后的内容会被替换。Ctrl+C 取消。",
-                    )));
-                } else if !self.choosing.is_empty() {
-                    lines.push(self.style.dim(her_core::lang::say("A number picks the message. Ctrl+C keeps them all.", "输入序号选择消息。Ctrl+C 取消。")));
-                }
-                let first = lines.len();
-                let (line, column) = self.editor.cursor_position();
-                for (index, text) in self.editor.lines().into_iter().enumerate() {
-                    lines.push(format!("{}{text}", if index == 0 { "› " } else { "  " }));
-                }
-                (first + line, column + 2)
-            }
-        };
+        if self.replacing.is_some() {
+            lines.push(self.style.dim(her_core::lang::say(
+                "Sending replaces that message and what came after it. Ctrl+C keeps them.",
+                "发送后，这条消息和它之后的内容会被替换。Ctrl+C 取消。",
+            )));
+        } else if !self.choosing.is_empty() {
+            lines.push(self.style.dim(her_core::lang::say("A number picks the message. Ctrl+C keeps them all.", "输入序号选择消息。Ctrl+C 取消。")));
+        }
+        let first = lines.len();
+        let (line, column) = self.editor.cursor_position();
+        for (index, text) in self.editor.lines().into_iter().enumerate() {
+            lines.push(format!("{}{text}", if index == 0 { "› " } else { "  " }));
+        }
+        let cursor = (first + line, column + 2);
         let finished = std::mem::take(&mut self.finished);
         let _ = self.live.draw(&mut std::io::stdout(), &finished, &lines, cursor, size);
     }
@@ -629,14 +558,10 @@ impl App {
     fn status_line(&self) -> Option<String> {
         let started = self.running?;
         let say = her_core::lang::say;
-        let what = if !self.asking.is_empty() {
-            say("waiting for you", "等你回答")
-        } else {
-            match self.phase {
-                Phase::Replying => say("replying", "正在回复"),
-                Phase::Thinking => say("thinking", "正在思考"),
-                Phase::Tool => say("running a tool", "正在运行工具"),
-            }
+        let what = match self.phase {
+            Phase::Replying => say("replying", "正在回复"),
+            Phase::Thinking => say("thinking", "正在思考"),
+            Phase::Tool => say("running a tool", "正在运行工具"),
         };
         let mut line = format!("{} {what} · {}s", SPINNER[self.frame % SPINNER.len()], started.elapsed().as_secs());
         if self.task_tokens > 0 {
@@ -739,20 +664,9 @@ impl App {
                     self.finished.push(line.to_string());
                 }
             }
-            EventMsg::ApprovalRequested { .. } => self.on_approval(None, msg),
-            EventMsg::AgentEvent { agent_id, event } => match &event.msg {
-                EventMsg::ApprovalRequested { .. } => self.on_approval(Some(agent_id.clone()), &event.msg),
-                other => {
-                    for line in render::status_lines(&self.style, other).into_iter().filter(|_| matches!(other, EventMsg::ApprovalRefused { .. })) {
-                        self.finished.push(line);
-                    }
-                }
-            },
-            EventMsg::AgentStarted { agent_id, name, description, .. } => {
-                let label = if description.is_empty() { name.clone() } else { description.clone() };
-                self.agents.push((agent_id.clone(), label));
-                self.print_lines(msg);
-            }
+            // A sub-agent's own events stay in its session.
+            EventMsg::AgentEvent { .. } => {}
+            EventMsg::AgentStarted { .. } => self.print_lines(msg),
             EventMsg::TaskCompleted { usage, .. } | EventMsg::TaskFailed { usage, .. } | EventMsg::TaskInterrupted { usage, .. } => {
                 self.end_reply();
                 self.usage.merge(usage);
@@ -776,105 +690,17 @@ impl App {
         self.finished.extend(lines);
     }
 
-    fn on_approval(&mut self, agent_id: Option<String>, msg: &EventMsg) {
-        let EventMsg::ApprovalRequested { call_id, name, args, summary, reason, proposed_rule, proposed_mode, proposed_grants, .. } = msg else {
-            return;
-        };
-        self.end_reply();
-        let agent_label = agent_id.as_ref().and_then(|id| self.agents.iter().find(|(known, _)| known == id)).map(|(_, label)| label.clone());
-        let details = approval_prompt::details(&self.style, name, args);
-        // Most of the screen, and the question below it stays in view.
-        let room = terminal_size().1.saturating_sub(10).clamp(4, approval_prompt::FOLD_LINES);
-        let (shown, folded) = if details.len() > room { (details[..room].to_vec(), details[room..].to_vec()) } else { (details, Vec::new()) };
-        self.finished.extend(shown);
-        if !folded.is_empty() {
-            self.finished.push(self.style.dim(&format!("  … {} more line(s): v shows them", folded.len())));
-        }
-        self.asking.push(Asking {
-            agent_id,
-            agent_label,
-            call_id: call_id.clone(),
-            name: name.clone(),
-            args: args.clone(),
-            summary: summary.clone(),
-            reason: reason.clone(),
-            rule: proposed_rule.clone(),
-            mode: *proposed_mode,
-            grants: proposed_grants.clone(),
-            answer: Editor::default(),
-            feedback: false,
-            hint: None,
-            folded,
-        });
-    }
-
-    async fn decide(&mut self, decision: ApprovalDecision) {
-        let asking = self.asking.remove(0);
-        let word = match &decision {
-            ApprovalDecision::Approve | ApprovalDecision::ApproveForSession { .. } => her_core::lang::say("allowed", "已允许"),
-            ApprovalDecision::Deny { .. } => her_core::lang::say("denied", "已拒绝"),
-            ApprovalDecision::Abort => her_core::lang::say("stopped", "已停止"),
-        };
-        let shown = format!("  {word}: {} {}", asking.name, render::tool_summary(&asking.name, &asking.args));
-        self.print(self.style.dim(&shown));
-        let op = match asking.agent_id {
-            Some(agent) => Op::AgentApproval { agent, call_id: asking.call_id, decision },
-            None => Op::Approval { call_id: asking.call_id, decision },
-        };
-        let _ = self.kernel.submit(op).await;
-    }
-
     async fn on_terminal(&mut self, event: TermEvent) -> anyhow::Result<()> {
         self.dirty = true;
         match event {
-            TermEvent::Key(key) if key.kind != KeyEventKind::Release => {
-                if self.asking.is_empty() {
-                    self.on_key(key).await?;
-                } else {
-                    self.on_approval_key(key).await;
-                }
-            }
+            TermEvent::Key(key) if key.kind != KeyEventKind::Release => self.on_key(key).await?,
             TermEvent::Paste(text) => {
                 let text = text.replace("\r\n", "\n").replace('\r', "\n");
-                match self.asking.first_mut() {
-                    Some(asking) => asking.answer.insert(&text),
-                    None => self.editor.insert(&text),
-                }
+                self.editor.insert(&text);
             }
             _ => {}
         }
         Ok(())
-    }
-
-    async fn on_approval_key(&mut self, key: KeyEvent) {
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-        let Some(asking) = self.asking.first_mut() else { return };
-        match key.code {
-            KeyCode::Enter => {
-                let line = asking.answer.take();
-                if asking.feedback {
-                    let feedback = Some(line.trim().to_string()).filter(|text| !text.is_empty());
-                    self.decide(ApprovalDecision::Deny { feedback }).await;
-                    return;
-                }
-                asking.hint = None;
-                match approval_prompt::answer(&asking.question(), &line) {
-                    Answer::Decided(decision) => self.decide(decision).await,
-                    Answer::NeedsFeedback => asking.feedback = true,
-                    Answer::ShowAll => {
-                        let folded = std::mem::take(&mut asking.folded);
-                        self.finished.extend(folded);
-                    }
-                    Answer::Again(hint) => asking.hint = Some(hint),
-                }
-            }
-            KeyCode::Char('c') if ctrl => self.decide(ApprovalDecision::Abort).await,
-            KeyCode::Char(c) if !ctrl => asking.answer.insert(c.encode_utf8(&mut [0; 4])),
-            KeyCode::Backspace => asking.answer.backspace(),
-            KeyCode::Left => asking.answer.left(),
-            KeyCode::Right => asking.answer.right(),
-            _ => {}
-        }
     }
 
     async fn on_key(&mut self, key: KeyEvent) -> anyhow::Result<()> {
@@ -1112,17 +938,6 @@ impl App {
                 }
                 Err(err) => self.print(self.style.yellow(&err.to_string())),
             },
-            Slash::Permissions(None) => {
-                let current = self.kernel.info().permission_mode;
-                self.print(format!("permissions: {current}"));
-            }
-            Slash::Permissions(Some(mode)) => match PermissionMode::parse_with_notice(mode) {
-                Ok((mode, _)) => {
-                    let _ = self.kernel.submit(Op::SetPermissionMode { mode }).await;
-                    self.print(self.style.dim(&format!("permissions: {mode}")));
-                }
-                Err(err) => self.print(self.style.yellow(&err)),
-            },
             Slash::Rename(title) => {
                 if title.is_empty() {
                     self.print(self.style.yellow("/rename TEXT"));
@@ -1210,8 +1025,6 @@ impl App {
         self.cwd.clone_from(&rt.cwd);
         self.trusted = rt.trusted;
         self.queue.clear();
-        self.asking.clear();
-        self.agents.clear();
         self.context_percent = None;
         self.model = self.kernel.info().model;
         if session.is_some() {

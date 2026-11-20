@@ -202,7 +202,6 @@ Protocol version 2. Generated from `her protocol schema` by `tools/gen-protocol-
 | -32012 | `session_not_loaded` |
 | -32013 | `not_attached` |
 | -32014 | `prompt_in_progress` |
-| -32015 | `approval_not_pending` |
 | -32016 | `server_full` |
 | -32017 | `overloaded` |
 | -32018 | `unsupported_content` |

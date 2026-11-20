@@ -4,7 +4,7 @@
 //! [`her_protocol::Event`]s; the kernel never prints or reads the terminal.
 
 mod agents;
-pub mod approval;
+pub mod policy;
 pub mod bot;
 pub mod bot_memory;
 mod browser;

@@ -322,11 +322,6 @@ impl McpManager {
         }
     }
 
-    /// Whether a server has yet to say what its tools are.
-    pub(crate) fn connecting(&self) -> bool {
-        self.servers().iter().any(|s| s.status().state == McpServerState::Starting)
-    }
-
     /// One line per server that is not usable now, for search results and warnings.
     pub(crate) fn unavailable(&self) -> Vec<String> {
         self.servers()

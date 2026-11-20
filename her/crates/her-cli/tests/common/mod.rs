@@ -35,8 +35,8 @@ pub struct TestEnv {
 }
 
 impl TestEnv {
-    /// A home whose default model is the mock, with `permission_mode` and extra config lines.
-    pub async fn new(permission_mode: &str, extra_config: &str) -> TestEnv {
+    /// A home whose default model is the mock, with extra config lines.
+    pub async fn new(extra_config: &str) -> TestEnv {
         let mock = MockServer::start().await.expect("mock server");
         let home = tempfile::tempdir().expect("home");
         let work = tempfile::tempdir().expect("work");
@@ -46,7 +46,7 @@ impl TestEnv {
         std::fs::write(
             home.path().join("config.toml"),
             format!(
-                "model = \"mock/mock-1\"\npermission_mode = \"{permission_mode}\"\n{extra_config}\n[llm]\nmax_retries = 2\n"
+                "model = \"mock/mock-1\"\n{extra_config}\n[llm]\nmax_retries = 2\n"
             ),
         )
         .unwrap();
@@ -110,7 +110,6 @@ impl TestEnv {
             .env_remove("ZAI_CODING_PLAN_API_KEY")
             .env_remove("ZHIPU_CODING_PLAN_API_KEY")
             .env_remove("HER_MODEL")
-            .env_remove("HER_APPROVAL")
             .env_remove("HER_LOG")
             .kill_on_drop(true);
         cmd
@@ -239,7 +238,6 @@ pub struct NativeTurn {
     /// Concatenated text deltas.
     pub text: String,
     pub end: Value,
-    pub approvals: usize,
     /// Mock wrote the chunk → this client received the event, in microseconds.
     pub stamp_us: Vec<f64>,
 }
@@ -250,14 +248,12 @@ impl NativeTurn {
     }
 }
 
-/// Sends a prompt through `session/op` and collects that session's events until the task ends,
-/// approving every request when `approve` is set.
+/// Sends a prompt through `session/op` and collects that session's events until the task ends.
 pub async fn native_prompt(
     client: &Client,
     events: &mut mpsc::UnboundedReceiver<Incoming>,
     session: &str,
     text: &str,
-    approve: bool,
 ) -> NativeTurn {
     let op = json!({"session_id": session, "op": {"type": "prompt", "input": [{"type": "text", "text": text}]}});
     client.request("session/op", op).await.expect("prompt accepted");
@@ -278,12 +274,6 @@ pub async fn native_prompt(
                 stamp_latencies(text, *received, &mut turn.stamp_us);
             }
             turn.text.push_str(text);
-        }
-        if kind == "approval_requested" && approve {
-            turn.approvals += 1;
-            let op = json!({"session_id": session, "op": {"type": "approval", "call_id": event["call_id"],
-                "decision": {"type": "approve_for_session"}}});
-            client.request("session/op", op).await.expect("approval accepted");
         }
         let end = matches!(kind.as_str(), "task_completed" | "task_failed" | "task_interrupted");
         turn.events.push(event.clone());

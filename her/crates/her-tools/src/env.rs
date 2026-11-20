@@ -68,7 +68,7 @@ pub trait Environment: Send + Sync + 'static {
     /// by value: a large file is not copied again on the way to the disk.
     async fn write_file(&self, path: &Path, data: Vec<u8>) -> io::Result<WriteOutcome>;
     /// Refuses, without writing anything, what `write_file` would refuse for reasons that can
-    /// be seen beforehand. Used by checks before approval, so nobody approves a doomed write.
+    /// be seen beforehand, so a tool can fail before it changes anything.
     async fn check_write(&self, path: &Path) -> io::Result<()> {
         let _ = path;
         Ok(())

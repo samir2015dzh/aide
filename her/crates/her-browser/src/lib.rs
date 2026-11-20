@@ -1,7 +1,7 @@
 //! Browser control for her (docs/kernel/browser-design.md): a CDP client over a pipe, a
 //! managed Chromium shared per profile, and per-session tabs with snapshots, refs, input and
-//! the check that a call still runs on the page it was approved for. Independent of the
-//! kernel; the tools and the approval policy live in her-core.
+//! the check that a call still runs on the page it was judged for. Independent of the
+//! kernel; the tools and the policy that refuses calls live in her-core.
 
 pub mod cdp;
 pub mod input;
@@ -34,9 +34,9 @@ pub enum BrowserError {
     Launch(String),
     #[error(transparent)]
     Cdp(#[from] CdpError),
-    /// The page is not the one the call was approved for; nothing was sent (§7.4).
+    /// The page is not the one the call was judged for; nothing was sent (§7.4).
     #[error(
-        "The page changed after this call was approved (now {now}); nothing was sent. Take a snapshot and try again."
+        "The page changed after this call was made (now {now}); nothing was sent. Take a snapshot and try again."
     )]
     PageChanged { now: String },
     /// A ref that no longer points at anything; the text says why.

@@ -1,6 +1,6 @@
 //! The `mesh` group in a bot's own conversation (crate::mesh): a host outside the kernel gives the
-//! group's words and runs its tools, the approval policy asks about its writes in the host's
-//! words, and the host's news wakes the conversation. Scripted model, a host of the test's own,
+//! group's words and runs its tools, writes included, without asking anyone, and the host's news
+//! wakes the conversation. Scripted model, a host of the test's own,
 //! real JSONL session log.
 
 use async_trait::async_trait;
@@ -25,15 +25,12 @@ use her_llm::UserContent;
 use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
 use her_protocol::AgentRef;
-use her_protocol::ApprovalDecision;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::MailKind;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::TaskTrigger;
 use her_protocol::api::MeshCallResult;
-use her_protocol::api::MeshDescribeResult;
 use her_protocol::api::MeshHostParams;
 use her_protocol::api::MeshTool;
 use her_tools::BashTool;
@@ -57,7 +54,6 @@ const GUIDELINE: &str = "A workshop works on alone: never wait for it.";
 #[derive(Default)]
 struct Host {
     group: Mutex<(u64, Option<Arc<MeshHostParams>>)>,
-    described: Mutex<Vec<(String, Value)>>,
     called: Mutex<Vec<(String, String, Value)>>,
     /// The host left after the turn's request went out.
     gone: Mutex<bool>,
@@ -88,15 +84,6 @@ fn group() -> MeshHostParams {
 impl MeshHost for Host {
     fn group(&self) -> (u64, Option<Arc<MeshHostParams>>) {
         self.group.lock().clone()
-    }
-
-    async fn describe(&self, name: &str, arguments: &Value) -> Result<MeshDescribeResult, String> {
-        self.described.lock().push((name.to_string(), arguments.clone()));
-        let workshop = arguments["workshop"].as_str().unwrap_or_default();
-        if workshop == "nowhere" {
-            return Err("The mesh host did not answer within 15 seconds.".into());
-        }
-        Ok(MeshDescribeResult { summary: format!("Start work in {workshop}"), rule: Some(vec!["mesh".into(), workshop.into()]) })
     }
 
     async fn call(&self, call_id: &str, name: &str, arguments: Value) -> Result<MeshCallResult, String> {
@@ -142,7 +129,7 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome, host: &Arc<Host>) -
 }
 
 /// Her's conversation with the host's group, when `offered`.
-async fn her(mode: PermissionMode, offered: bool) -> Harness {
+async fn her(offered: bool) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let home = HerHome::new(dunce::canonicalize(dir.path()).unwrap().join("home"));
     home.ensure().unwrap();
@@ -157,13 +144,10 @@ async fn her(mode: PermissionMode, offered: bool) -> Harness {
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: folder.clone(),
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: true,
         bot: Some(BotIdentity { id: "b1".into(), name: "Her".into() }),
     };
     let kernel = Kernel::start(options, deps(&api, &folder, &home, &host)).await.unwrap();
@@ -252,7 +236,7 @@ fn spawning(ctx: &Context) -> Option<Script> {
 
 #[tokio::test]
 async fn the_group_is_in_her_catalog_only_while_a_host_offers_tools() {
-    let mut h = her(PermissionMode::BypassPermissions, false).await;
+    let mut h = her(false).await;
     h.api.respond_with(spawning);
     h.kernel.run(prompt("hello")).await.unwrap();
     assert!(!in_catalog(&h.api.requests()[0]), "no host yet");
@@ -283,7 +267,7 @@ async fn the_group_is_in_her_catalog_only_while_a_host_offers_tools() {
 
 #[tokio::test]
 async fn tool_search_gives_the_hosts_words_and_call_tool_runs_its_tools() {
-    let mut h = her(PermissionMode::Manual, true).await;
+    let mut h = her(true).await;
     for script in [
         Script::tool_call("c1", "tool_search", json!({ "server": "mesh" })),
         call("c2", "look", json!({ "workshop": "shed" })),
@@ -315,9 +299,6 @@ async fn tool_search_gives_the_hosts_words_and_call_tool_runs_its_tools() {
             ("c4".to_string(), "look".to_string(), json!({ "workshop": "attic" })),
         ]
     );
-    // A tool that only reads is never asked about, nor described.
-    assert!(!result.events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })));
-    assert!(h.host.described.lock().is_empty());
 
     // The host leaves in the middle of a turn: the call says so, in the host's sentence.
     *h.host.gone.lock() = true;
@@ -334,57 +315,17 @@ async fn tool_search_gives_the_hosts_words_and_call_tool_runs_its_tools() {
     assert_eq!(result_of(&result.events, "c8"), ("Unknown tool 'look'. Use tool_search to find tools.".to_string(), true));
 }
 
-/// Runs one `start` in `workshop`: what the approval asked, if it asked (answered with `decision`),
-/// and the call's result.
-async fn start(h: &mut Harness, id: &str, workshop: &str, decision: ApprovalDecision) -> (Option<(String, Option<Vec<String>>)>, (String, bool)) {
-    h.api.push(call(id, "start", json!({ "workshop": workshop })));
-    h.api.push(send_last(&format!("{id}-said"), "done"));
-    h.kernel.submit(Op::prompt("start")).await.unwrap();
-    let mut events = until(&mut h.kernel, |m| ended(m) || matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let asked = match &events.last().unwrap().msg {
-        EventMsg::ApprovalRequested { call_id, summary, proposed_rule, .. } => {
-            assert_eq!(call_id, id);
-            Some((summary.clone(), proposed_rule.as_ref().map(|rule| rule.prefix.clone())))
-        }
-        _ => None,
-    };
-    if asked.is_some() {
-        h.kernel.submit(Op::Approval { call_id: id.to_string(), decision }).await.unwrap();
-        events.extend(until(&mut h.kernel, ended).await);
-    }
-    (asked, result_of(&events, id))
-}
-
+/// A write runs at once, as every call does: nobody is asked, and the host runs it.
 #[tokio::test]
-async fn a_write_asks_in_the_hosts_words_and_its_rule_is_kept_for_the_session() {
-    let mut h = her(PermissionMode::Manual, true).await;
-    let ran = ("start done".to_string(), false);
-    let rule = |workshop: &str| Some(vec!["mesh".to_string(), workshop.to_string()]);
-    let for_session = ApprovalDecision::ApproveForSession { grant: None, persist: false };
-
-    let (asked, result) = start(&mut h, "c1", "shed", for_session.clone()).await;
-    assert_eq!(asked, Some(("Start work in shed".to_string(), rule("shed"))));
-    assert_eq!(result, ran);
-    // The rule is kept: the same workshop runs unasked, another one asks.
-    let (asked, result) = start(&mut h, "c2", "shed", ApprovalDecision::Approve).await;
-    assert_eq!((asked, result), (None, ran.clone()));
-    let (asked, result) = start(&mut h, "c3", "attic", ApprovalDecision::Deny { feedback: None }).await;
-    assert_eq!(asked, Some(("Start work in attic".to_string(), rule("attic"))));
-    assert_eq!(result, ("The user denied this tool call.".to_string(), true));
-    // A host that does not say: the call and its arguments, and nothing to keep.
-    let (asked, result) = start(&mut h, "c4", "nowhere", for_session).await;
-    assert_eq!(asked, Some((r#"start {"workshop":"nowhere"}"#.to_string(), None)));
-    assert_eq!(result, ran);
-    let (asked, _) = start(&mut h, "c5", "nowhere", ApprovalDecision::Approve).await;
-    assert!(asked.is_some(), "approving it for the session kept nothing");
-    assert_eq!(h.host.described.lock().len(), 5);
-    assert_eq!(h.host.called.lock().len(), 4, "the denied call never reached the host");
-
-    // With every action allowed the host is not asked what a call would do.
-    h.kernel.submit(Op::SetPermissionMode { mode: PermissionMode::BypassPermissions }).await.unwrap();
-    let (asked, result) = start(&mut h, "c6", "attic", ApprovalDecision::Approve).await;
-    assert_eq!((asked, result), (None, ran));
-    assert_eq!(h.host.described.lock().len(), 5);
+async fn a_write_runs_without_asking() {
+    let mut h = her(true).await;
+    for (id, workshop) in [("c1", "shed"), ("c2", "attic")] {
+        h.api.push(call(id, "start", json!({ "workshop": workshop })));
+        h.api.push(send_last(&format!("{id}-said"), "done"));
+        let result = h.kernel.run(prompt("start")).await.unwrap();
+        assert_eq!(result_of(&result.events, id), ("start done".to_string(), false));
+    }
+    assert_eq!(h.host.called.lock().len(), 2);
 }
 
 fn from() -> AgentRef {
@@ -400,7 +341,7 @@ fn read(h: &Harness) -> usize {
 
 #[tokio::test]
 async fn news_wakes_an_idle_conversation_and_is_recorded_as_mail() {
-    let mut h = her(PermissionMode::Manual, true).await;
+    let mut h = her(true).await;
     h.api.push(send_last("c1", "The shelf is built."));
     let mut heard = h.kernel.news("n1".into(), from(), NEWS.into());
     let events = until(&mut h.kernel, ended).await;
@@ -426,7 +367,7 @@ async fn news_wakes_an_idle_conversation_and_is_recorded_as_mail() {
 
 #[tokio::test]
 async fn news_waits_while_her_work_is_stopped_and_comes_once_with_the_next_message() {
-    let mut h = her(PermissionMode::Manual, true).await;
+    let mut h = her(true).await;
     // The owner stops her in the middle of a reply.
     h.api.push(Script::default().then_sleep(Duration::from_secs(30)));
     h.kernel.submit(Op::prompt("work")).await.unwrap();
@@ -454,7 +395,6 @@ async fn news_waits_while_her_work_is_stopped_and_comes_once_with_the_next_messa
     // In a turn, it joins at the next step.
     h.api.push(Script::tool_call("c2", "bash", json!({ "command": "sleep 1" })));
     h.api.push(send_last("c3", "Both done."));
-    h.kernel.submit(Op::SetPermissionMode { mode: PermissionMode::BypassPermissions }).await.unwrap();
     h.kernel.submit(Op::prompt("more")).await.unwrap();
     until(&mut h.kernel, |m| matches!(m, EventMsg::ToolRunning { .. })).await;
     let later = "<news id=\"n2\">The door is hung.</news>";

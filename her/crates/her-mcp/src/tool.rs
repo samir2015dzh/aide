@@ -32,7 +32,6 @@ pub struct McpTool {
     tool: String,
     title: String,
     parallel: bool,
-    runs_unasked: bool,
 }
 
 impl McpTool {
@@ -46,7 +45,6 @@ impl McpTool {
                 parameters,
             },
             parallel: info.read_only || server.config().parallel_tools,
-            runs_unasked: server.config().runs_unasked(info.read_only),
             title: format!("{}: {}", server.name(), info.display_title()),
             tool: info.name.clone(),
             server,
@@ -111,10 +109,6 @@ impl Tool for McpTool {
 
     fn origin(&self) -> ToolOrigin {
         ToolOrigin::Mcp
-    }
-
-    fn runs_unasked(&self, _args: &Value) -> bool {
-        self.runs_unasked
     }
 
     fn describe(&self, _args: &Value, _env: &dyn Environment) -> ToolDescription {

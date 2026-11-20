@@ -10,7 +10,7 @@
 | MCP servers and where they sign in | If you configured them | Do not configure them |
 | GitHub (the release repository) | `her upgrade`, `her install`; the interactive mode looks for a new release once a day | `update.check = false` |
 | Google's Chrome for Testing address | `her install browser` | Do not install it |
-| What the model runs or opens | Commands and web pages, under your permission mode and site permissions | [permissions](permissions.md) |
+| What the model runs or opens | Commands and web pages, without asking, unless a deny rule or `[browser.sites]` refuses them | [permissions](permissions.md) |
 
 `her exec`, `her serve` and `her acp` never look for updates.
 

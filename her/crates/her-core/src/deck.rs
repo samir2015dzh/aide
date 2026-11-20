@@ -2,7 +2,7 @@
 //! group `deck`. The read tools read a deck the kernel holds (DeckStore) as it is now, unsaved
 //! edits included, and any other .pptx from disk through the session's environment. `deck_edit`
 //! changes the kernel's deck, opening it there when no one has, as one step the user can take
-//! back; whether it asks first is the approval policy's. `deck_save` writes the file.
+//! back; it runs without asking. `deck_save` writes the file.
 
 use async_trait::async_trait;
 use her_llm::UserContent;

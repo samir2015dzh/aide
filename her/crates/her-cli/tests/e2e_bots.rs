@@ -114,7 +114,7 @@ const PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkY
 
 #[tokio::test]
 async fn a_bot_talks_in_messages_and_its_row_follows() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -172,7 +172,7 @@ async fn a_bot_talks_in_messages_and_its_row_follows() {
 
 #[tokio::test]
 async fn messages_in_a_row_are_answered_in_order() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -193,7 +193,7 @@ async fn messages_in_a_row_are_answered_in_order() {
 /// §3.11, D-321). What it only wrote stays private.
 #[tokio::test]
 async fn a_bot_that_never_sends_fails_so_the_owner_knows() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -220,7 +220,7 @@ async fn a_bot_that_never_sends_fails_so_the_owner_knows() {
 /// (bot-design §3.11).
 #[tokio::test]
 async fn a_bot_that_forgets_to_send_is_reminded_and_the_user_sees_one_message() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -246,7 +246,7 @@ async fn a_bot_that_forgets_to_send_is_reminded_and_the_user_sees_one_message() 
 /// a reply to the next message must not count as answering it too (bot-design §3.11).
 #[tokio::test]
 async fn a_private_answer_goes_out_before_the_next_message_is_answered() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -271,7 +271,7 @@ async fn a_private_answer_goes_out_before_the_next_message_is_answered() {
 /// this walks across it; `her-core/tests/bot.rs` holds the task there.
 #[tokio::test]
 async fn a_message_that_lands_as_a_silent_bot_fails_is_still_answered() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -294,7 +294,7 @@ async fn a_message_that_lands_as_a_silent_bot_fails_is_still_answered() {
 
 #[tokio::test]
 async fn a_sub_agent_works_in_the_background_and_the_bot_relays_its_report() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -324,7 +324,7 @@ async fn a_sub_agent_works_in_the_background_and_the_bot_relays_its_report() {
 /// delivered when the report comes. No wait, no reminder.
 #[tokio::test]
 async fn a_long_job_goes_to_the_background_and_the_bot_keeps_talking() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -363,7 +363,7 @@ async fn a_long_job_goes_to_the_background_and_the_bot_keeps_talking() {
 /// owner, the work goes on, and its report still follows.
 #[tokio::test]
 async fn a_working_agent_speaks_up_and_the_bot_tells_the_owner() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -402,7 +402,7 @@ async fn a_working_agent_speaks_up_and_the_bot_tells_the_owner() {
 /// counts as unread, the bot is not woken, and it is still there when the conversation is read back.
 #[tokio::test]
 async fn a_working_agent_tells_the_owner_and_the_bot_sleeps_on() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -443,7 +443,7 @@ async fn a_working_agent_tells_the_owner_and_the_bot_sleeps_on() {
 /// they show, and the stopped work stays quiet (bot-turn-design §5.3).
 #[tokio::test]
 async fn the_bot_checks_on_the_work_and_stops_it() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -482,9 +482,10 @@ async fn the_bot_checks_on_the_work_and_stops_it() {
     assert!(stopped.iter().chain(&next).any(report), "{stopped:?} {next:?}");
 }
 
+/// A bot runs a command without asking anyone: nothing waits on its row.
 #[tokio::test]
-async fn approvals_come_after_the_message_that_asks_and_count_as_unread() {
-    let env = TestEnv::new("manual", "").await;
+async fn a_bot_runs_commands_without_asking() {
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -492,24 +493,17 @@ async fn approvals_come_after_the_message_that_asks_and_count_as_unread() {
     let bot = listed["bots"][0]["id"].as_str().unwrap().to_string();
     let session = open(&client, &bot).await;
     say(&client, &session, "[[mock:confirm:touch confirmed.txt]] 建个文件").await;
-    let events = until_event(&mut wire, |e| e["type"] == "approval_requested").await;
-    // The message that asks shows before the approval: the call's start, not its result.
-    assert_eq!(sent(&events), ["要执行命令，确认一下。"]);
-    let call = events.last().unwrap()["call_id"].clone();
-    let row = until_row(&mut wire, &bot, |b| b["waiting"].is_string()).await;
-    assert_eq!(row["waiting"], "touch confirmed.txt");
-    assert_eq!(row["unread"], 2, "the message and the approval");
-    let op = json!({"session_id": session, "op": {"type": "approval", "call_id": call, "decision": {"type": "approve"}}});
-    client.request("session/op", op).await.unwrap();
     let events = until_event(&mut wire, ended).await;
-    assert!(sent(&events)[0].starts_with("做完了"));
+    assert!(events.iter().all(|e| !e["type"].as_str().unwrap_or("").starts_with("approval")), "{events:?}");
+    assert!(sent(&events).iter().any(|t| t.starts_with("做完了")), "{events:?}");
     assert!(env.home.path().join("bots").join(&bot).join("files").join("confirmed.txt").exists());
     until_row(&mut wire, &bot, |b| b.get("waiting").is_none() && b.get("typing").is_none()).await;
 }
 
+/// A sub-agent of a bot runs its command at once, and its report comes back.
 #[tokio::test]
-async fn what_a_sub_agent_asks_waits_on_the_row_and_the_bot_keeps_talking() {
-    let env = TestEnv::new("manual", "").await;
+async fn a_bots_sub_agent_runs_commands_without_asking() {
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -517,25 +511,8 @@ async fn what_a_sub_agent_asks_waits_on_the_row_and_the_bot_keeps_talking() {
     let bot = listed["bots"][0]["id"].as_str().unwrap().to_string();
     let session = open(&client, &bot).await;
     say(&client, &session, "[[mock:relay_run:touch made.txt]] 建个文件").await;
-    let asked = |e: &Value| e["type"] == "agent_event" && e["event"]["type"] == "approval_requested";
-    let events = until_event(&mut wire, asked).await;
-    assert_eq!(sent(&events), ["交给子智能体了。"]);
-    let ask = events.last().unwrap().clone();
-
-    let row = until_row(&mut wire, &bot, |b| b["waiting"].is_string()).await;
-    assert_eq!(row["waiting"], "touch made.txt");
-    assert_eq!(row["agents_working"], 1);
-    assert_eq!(row["unread"], 2, "the message and the approval");
-
-    // The question does not hold the bot up.
-    say(&client, &session, "还在吗").await;
-    until_event(&mut wire, |e| e["type"] == "tool_started" && e["args"]["text"] == "做完了：还在吗").await;
-    let files = env.home.path().join("bots").join(&bot).join("files");
-    assert!(!files.join("made.txt").exists());
-
-    let op = json!({"session_id": session, "op": {"type": "agent_approval", "agent": ask["agent_id"], "call_id": ask["event"]["call_id"], "decision": {"type": "approve"}}});
-    client.request("session/op", op).await.unwrap();
     let events = until_event(&mut wire, |e| e["type"] == "idle").await;
+    let files = env.home.path().join("bots").join(&bot).join("files");
     assert!(files.join("made.txt").exists());
     assert!(sent(&events).iter().any(|t| t.contains("<agent_report")), "{events:?}");
     until_row(&mut wire, &bot, |b| b.get("waiting").is_none() && b.get("agents_working").is_none()).await;
@@ -543,7 +520,7 @@ async fn what_a_sub_agent_asks_waits_on_the_row_and_the_bot_keeps_talking() {
 
 #[tokio::test]
 async fn a_new_bot_starts_on_the_model_it_was_made_with() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     drop(incoming);
@@ -569,14 +546,14 @@ async fn a_new_bot_starts_on_the_model_it_was_made_with() {
 /// The panel shows them as the bot's: clearing leaves them, whether its conversation is loaded or
 /// not, and a log that will not load does not stop it.
 #[tokio::test]
-async fn clearing_leaves_the_model_and_the_permission_mode() {
-    let env = TestEnv::new("manual", "").await;
+async fn clearing_leaves_the_model_and_the_thinking_level() {
+    let env = TestEnv::new("").await;
     let settings = async |client: &Client, bot: &str| {
         let opened = client.request("bots/open", json!({"bot_id": bot})).await.unwrap();
         let info = &opened["snapshot"]["session"];
-        (opened["session_id"].as_str().unwrap().to_string(), info["model"].clone(), info["thinking"].clone(), info["permission_mode"].clone())
+        (opened["session_id"].as_str().unwrap().to_string(), info["model"].clone(), info["thinking"].clone())
     };
-    let chosen = (json!("deepseek/deepseek-flash"), json!("low"), json!("accept-edits"));
+    let chosen = (json!("deepseek/deepseek-flash"), json!("low"));
     let (child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     drop(incoming);
@@ -584,9 +561,8 @@ async fn clearing_leaves_the_model_and_the_permission_mode() {
     let bot = created["bot"]["id"].as_str().unwrap().to_string();
     let (first, ..) = settings(&client, &bot).await;
     client.request("session/op", json!({"session_id": first, "op": {"type": "set_model", "model": chosen.0, "thinking": chosen.1}})).await.unwrap();
-    client.request("session/op", json!({"session_id": first, "op": {"type": "set_permission_mode", "mode": chosen.2}})).await.unwrap();
     tokio::time::timeout(WAIT, async {
-        while settings(&client, &bot).await.3 != chosen.2 {
+        while settings(&client, &bot).await.2 != chosen.1 {
             tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         }
     })
@@ -595,13 +571,13 @@ async fn clearing_leaves_the_model_and_the_permission_mode() {
 
     // Loaded.
     client.request("bots/clear", json!({"bot_id": bot})).await.unwrap();
-    let (second, model, thinking, mode) = settings(&client, &bot).await;
+    let (second, model, thinking) = settings(&client, &bot).await;
     assert_ne!(second, first);
-    assert_eq!((model, thinking, mode), chosen.clone());
+    assert_eq!((model, thinking), chosen.clone());
     drop((client, child));
 
     // Not loaded, and read back from its file after another restart.
-    let changed = json!("bypass-permissions");
+    let changed = json!("high");
     let (child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -610,10 +586,10 @@ async fn clearing_leaves_the_model_and_the_permission_mode() {
     let (second, ..) = settings(&client, &bot).await;
     say(&client, &second, "[[mock:send:在。]] 在吗").await;
     until_event(&mut wire, ended).await;
-    client.request("session/op", json!({"session_id": second, "op": {"type": "set_permission_mode", "mode": changed}})).await.unwrap();
+    client.request("session/op", json!({"session_id": second, "op": {"type": "set_model", "model": chosen.0, "thinking": changed}})).await.unwrap();
     // The test kills her: it has to be in the log first.
     tokio::time::timeout(WAIT, async {
-        while !logs(env.home.path()).iter().any(|(_, text)| text.contains(&second) && text.contains("bypass-permissions")) {
+        while !logs(env.home.path()).iter().any(|(_, text)| text.contains(&second) && text.contains(r#""thinking":"high""#)) {
             tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         }
     })
@@ -629,9 +605,9 @@ async fn clearing_leaves_the_model_and_the_permission_mode() {
     native_init(&client).await;
     let mut wire = route(incoming);
     client.request("bots/subscribe", Value::Null).await.unwrap();
-    let (third, model, thinking, mode) = settings(&client, &bot).await;
+    let (third, model, thinking) = settings(&client, &bot).await;
     assert_ne!(third, second);
-    assert_eq!((model, thinking, mode), (chosen.0.clone(), chosen.1.clone(), changed));
+    assert_eq!((model, thinking), (chosen.0.clone(), changed));
 
     // A log that will not load: clearing goes on, a new conversation starts.
     say(&client, &third, "[[mock:send:在。]] 在吗").await;
@@ -650,7 +626,7 @@ async fn clearing_leaves_the_model_and_the_permission_mode() {
 
 #[tokio::test]
 async fn renaming_avatars_clearing_and_deleting() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -719,7 +695,7 @@ async fn renaming_avatars_clearing_and_deleting() {
 /// clear it, and the conversation forgets at once; the notes go to the trash with the bot.
 #[tokio::test]
 async fn a_bot_remembers_across_a_cleared_conversation() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -784,7 +760,7 @@ async fn a_bot_remembers_across_a_cleared_conversation() {
 
 #[tokio::test]
 async fn bots_and_their_rows_survive_a_restart() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let bot;
     {
         let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
@@ -820,7 +796,7 @@ async fn bots_and_their_rows_survive_a_restart() {
 /// A bot made before the characters were told apart by their eyes: its `bot.json` keeps the old name.
 #[tokio::test]
 async fn a_bot_saved_with_an_old_character_stays_in_the_list() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let id = "0193f0aa-0000-7000-8000-000000000001";
     let dir = env.home.path().join("bots").join(id);
     std::fs::create_dir_all(&dir).unwrap();
@@ -840,7 +816,7 @@ async fn a_bot_saved_with_an_old_character_stays_in_the_list() {
 /// no second default bot is made.
 #[tokio::test]
 async fn a_default_bot_saved_as_herbot_keeps_its_name() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let id = "0193f0aa-0000-7000-8000-000000000002";
     let dir = env.home.path().join("bots").join(id);
     std::fs::create_dir_all(&dir).unwrap();
@@ -871,7 +847,7 @@ fn png_head(width: u32, height: u32) -> Vec<u8> {
 /// list outlives the conversation.
 #[tokio::test]
 async fn the_files_a_bot_sent_are_listed_with_their_versions_and_counted_until_seen() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -937,7 +913,7 @@ async fn the_files_a_bot_sent_are_listed_with_their_versions_and_counted_until_s
 /// A conversation cleared before is not read.
 #[tokio::test]
 async fn files_sent_before_there_was_a_record_are_read_from_the_logs() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let bot;
     {
         let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
@@ -985,7 +961,7 @@ async fn files_sent_before_there_was_a_record_are_read_from_the_logs() {
 
 #[tokio::test]
 async fn files_and_questions_show_in_the_bots_row_and_count_as_unread() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);

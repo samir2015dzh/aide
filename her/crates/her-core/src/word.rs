@@ -36,7 +36,7 @@ const GUIDELINES: &[&str] = &[
      full text, style, comments and tracked changes, and docx_find to locate words. Read or find before you change anything. \
      Never unzip a .docx or edit its XML with the shell.",
     "Word documents, changing them: docx_edit makes tracked changes (mode suggest) by default; the user accepts or rejects them \
-     in the document, so there is nothing to approve in the conversation. Use mode direct only when the user explicitly asks \
+     in the document. Use mode direct only when the user explicitly asks \
      for the text to be changed directly, or for text you wrote yourself just before. Put a set of related changes in one \
      docx_edit with a note in the user's words. Do not accept or reject tracked changes (docx_review), yours included, unless \
      the user asks. docx_save only when the user asks for the file to be saved or the task is to produce the file.",

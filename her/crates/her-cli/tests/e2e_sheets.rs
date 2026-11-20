@@ -31,7 +31,7 @@ fn on_disk(path: &Path, sheet: &str, at: &str) -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_workbook_is_read_edited_and_saved_over_the_protocol() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["DocOpenResult", "DocCellsResult", "DocApplyResult", "DocInfo"]);
     let (_child, client, mut incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     client.request("initialize", json!({"protocol_version": 2, "client_info": {"name": "e2e"}})).await.unwrap();
@@ -154,7 +154,7 @@ async fn a_workbook_is_read_edited_and_saved_over_the_protocol() {
 /// save inside the workspace is not asked again. The tool results say what a model needs to know.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn an_agent_reads_tries_edits_and_saves_a_workbook() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -164,9 +164,9 @@ async fn an_agent_reads_tries_edits_and_saves_a_workbook() {
     let session = client.request("session/new", json!({"cwd": cwd})).await.unwrap()["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
 
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:sheet:模型.xlsx]] 把 WACC 调到 9% 看看估值", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:sheet:模型.xlsx]] 把 WACC 调到 9% 看看估值").await;
     assert_eq!(turn.end["type"], "task_completed", "{:#?}", turn.events);
-    assert_eq!(turn.approvals, 1, "doc_edit is asked about; after approve_for_session, doc_save is not");
+    assert!(turn.types().iter().all(|t| !t.starts_with("approval")), "nothing is asked");
     let results: Vec<String> = turn
         .events
         .iter()
@@ -189,7 +189,7 @@ async fn an_agent_reads_tries_edits_and_saves_a_workbook() {
 /// A CSV saved by Excel on a Chinese system (GBK, CRLF) and a legacy .xls (spreadsheet-design §10).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_csv_is_edited_in_its_own_encoding_and_an_xls_stays_read_only() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, _incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     client.request("initialize", json!({"protocol_version": 2, "client_info": {"name": "e2e"}})).await.unwrap();
     let cwd = env.workspace("csv");
@@ -259,7 +259,7 @@ async fn a_csv_is_edited_in_its_own_encoding_and_an_xls_stays_read_only() {
 /// cells, and fill down or right as Excel's ⌘D and ⌘R do, as one undoable edit.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_grid_traces_finds_and_fills() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["DocFoundResult", "DocApplyResult"]);
     let (_child, client, _incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     client.request("initialize", json!({"protocol_version": 2, "client_info": {"name": "e2e"}})).await.unwrap();

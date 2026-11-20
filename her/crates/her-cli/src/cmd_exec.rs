@@ -18,7 +18,6 @@ use her_protocol::Op;
 use serde_json::Value;
 use serde_json::json;
 use std::io::BufRead;
-use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,7 +27,6 @@ use tokio::sync::mpsc;
 use crate::OutputFormat;
 use crate::ExecArgs;
 use crate::RunArgs;
-use crate::approval_prompt;
 use crate::render::Renderer;
 use crate::setup;
 
@@ -49,22 +47,18 @@ pub async fn exec(
     let model = setup::session_model(&rt, run.model.clone())?;
     setup::check_credentials(&rt, &model)?;
     let prompt = input_of(setup::read_prompt(prompt)?, &args.image)?;
-    let interactive = interactive(args);
     let deps = rt.kernel_deps(save, &run.add_dir)?;
     let options = StartOptions {
         model,
         thinking: run.thinking.unwrap_or(rt.config.thinking),
-        permission_mode: run.permission_mode().unwrap_or(rt.config.permission_mode),
         cwd: rt.cwd.clone(),
         home: rt.home.clone(),
         config: Arc::new(rt.config.clone()),
         project_root: rt.project_root.clone(),
-        trusted: rt.trusted,
-        interactive_approvals: interactive,
         bot: None,
     };
     let kernel = Kernel::start(options, deps).await?;
-    drive(kernel, prompt, args, interactive, save, &rt.warnings).await
+    drive(kernel, prompt, args, save, &rt.warnings).await
 }
 
 pub async fn resume(
@@ -88,28 +82,19 @@ pub async fn resume(
     let prompt = input_of(setup::read_prompt(prompt)?, &args.image)?;
     let mut rt = setup::init(header.cwd.clone(), &with_run_overrides(overrides, run))?;
     rt.warnings.extend(run.warnings());
-    let interactive = interactive(args);
     let deps = rt.kernel_deps(true, &run.add_dir)?;
     let options = ResumeOptions {
         session: SessionRef::Path(path),
         model: run.model.clone(),
         thinking: run.thinking,
-        permission_mode: run.permission_mode(),
         home: rt.home.clone(),
         config: Arc::new(rt.config.clone()),
         project_root: rt.project_root.clone(),
-        trusted: rt.trusted,
-        interactive_approvals: interactive,
         bot_name: None,
     };
     let kernel = Kernel::resume(options, deps).await?;
     setup::check_credentials(&rt, &kernel.info().model)?;
-    drive(kernel, prompt, args, interactive, true, &rt.warnings).await
-}
-
-/// Approvals are asked for in the terminal only when the output is text for a person.
-fn interactive(args: &ExecArgs) -> bool {
-    args.ops_stdin || (args.format() == OutputFormat::Text && std::io::stdin().is_terminal())
+    drive(kernel, prompt, args, true, &rt.warnings).await
 }
 
 pub(crate) fn with_run_overrides(overrides: &[String], run: &RunArgs) -> Vec<String> {
@@ -149,13 +134,12 @@ fn input_of(text: String, images: &[PathBuf]) -> anyhow::Result<Vec<UserContent>
     Ok(input)
 }
 
-/// Runs one task to its end. Exit codes: 0 completed, 1 failed, 3 completed but something it tried
-/// was refused because nothing here can approve it, 130 interrupted.
+/// Runs one task to its end. Exit codes: 0 completed, 1 failed, 130 interrupted. Nobody is asked
+/// about a tool call: what the policy does not refuse runs.
 async fn drive(
     mut kernel: Kernel,
     input: Vec<UserContent>,
     run: &ExecArgs,
-    interactive: bool,
     saved: bool,
     warnings: &[String],
 ) -> anyhow::Result<u8> {
@@ -187,46 +171,6 @@ async fn drive(
             eprintln!("{}", renderer.style().yellow(&format!("warning: {message}")));
         }
         outcome.observe(&event.msg);
-        // The session's approvals, and a sub-agent's as its `agent_event` carries them.
-        let (agent, asked) = match &event.msg {
-            EventMsg::AgentEvent { agent_id, event } => (Some(agent_id), &event.msg),
-            msg => (None, msg),
-        };
-        if let EventMsg::ApprovalRequested {
-            call_id,
-            name,
-            args,
-            summary,
-            reason,
-            proposed_rule,
-            proposed_mode,
-            proposed_grants,
-            ..
-        } = asked
-            && interactive
-            && !run.ops_stdin
-        {
-            let question = approval_prompt::Question {
-                agent: agent.and_then(|id| outcome.agent_label(id)),
-                name,
-                summary,
-                reason: reason.as_deref(),
-                rule: proposed_rule.as_ref(),
-                mode: *proposed_mode,
-                grants: proposed_grants,
-            };
-            let decision = approval_prompt::ask(renderer.style(), question, args).await;
-            let call_id = call_id.clone();
-            let op = match agent {
-                Some(agent) => Op::AgentApproval {
-                    agent: agent.clone(),
-                    call_id,
-                    decision,
-                },
-                None => Op::Approval { call_id, decision },
-            };
-            let _ = ops.send(op).await;
-        }
         match &event.msg {
             // The exit code is that of the last task; the run ends once nothing is left to do,
             // so that sub-agents still working are not cut off.
@@ -243,18 +187,6 @@ async fn drive(
     for event in kernel.shutdown().await {
         if format != OutputFormat::Json {
             renderer.render(&event);
-        }
-    }
-    if exit_code == 0 && !outcome.refused.is_empty() {
-        exit_code = 3;
-        if format != OutputFormat::StreamJson {
-            let count = outcome.refused.len();
-            eprintln!(
-                "{}",
-                renderer.style().yellow(&format!(
-                    "{count} action(s) were refused because nothing here can approve them; set --permission-mode, add a rule, or answer with --ops-stdin"
-                ))
-            );
         }
     }
     if let Some(path) = &run.output_last_message {
@@ -289,25 +221,11 @@ struct Outcome {
     agents: Vec<AgentOutcome>,
     /// The last `/context` report.
     context: Option<her_protocol::ContextReport>,
-    /// What was refused because nothing could approve it, a sub-agent's as well.
-    refused: Vec<Value>,
 }
 
 impl Outcome {
-    /// What sub-agent `id` goes by.
-    fn agent_label(&self, id: &str) -> Option<&str> {
-        let agent = self.agents.iter().find(|a| a.id == id)?;
-        Some(if agent.description.is_empty() { &agent.name } else { &agent.description })
-    }
-
     fn observe(&mut self, msg: &EventMsg) {
         match msg {
-            EventMsg::ApprovalRefused { name, summary, .. } => self.refused.push(json!({ "name": name, "summary": summary })),
-            EventMsg::AgentEvent { event, .. } => {
-                if let EventMsg::ApprovalRefused { name, summary, .. } = &event.msg {
-                    self.refused.push(json!({ "name": name, "summary": summary }));
-                }
-            }
             EventMsg::SessionStarted { model, .. } | EventMsg::SettingsChanged { model, .. } => {
                 self.model = model.clone();
             }
@@ -381,7 +299,6 @@ impl Outcome {
                 "cost": self.usage.cost_by_currency(),
             },
             "tool_calls": self.tool_calls,
-            "refused": self.refused,
             "context": self.context,
             "agents": self.agents.iter().map(|a| {
                 let tokens = a.usage.tokens();

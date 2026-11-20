@@ -1,7 +1,7 @@
 //! The fixture site of one run: the case's files over HTTP on a loopback port, and a log of
 //! every request to `/api/…` with its fields, which is what checks look at.
 //!
-//! Loopback needs no approval from the browser tools, so `her exec` can do the whole task
+//! The browser tools ask nobody before they act, so `her exec` can do the whole task
 //! without anyone answering prompts. One site per run gives each run its own origin, so
 //! cookies and storage left by an earlier run never leak into the next one.
 

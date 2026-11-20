@@ -27,7 +27,6 @@ use her_llm::UserContent;
 use her_llm::api::scripted::Script;
 use her_llm::catalog::ModelToml;
 use her_llm::api::scripted::ScriptedApi;
-use her_protocol::PermissionMode;
 use her_protocol::EventMsg;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
@@ -119,13 +118,10 @@ async fn harness(config: Config) -> Harness {
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: PermissionMode::BypassPermissions,
         cwd: work.clone(),
         home: home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: None,
     };
     let kernel = Kernel::start(options, deps(&api, &work, &home)).await.unwrap();
@@ -480,12 +476,9 @@ async fn saved_output_is_still_readable_after_a_compaction_and_a_resume() {
         session: SessionRef::Id(session_id),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&api, &work, &home)).await.unwrap();

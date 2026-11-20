@@ -223,7 +223,7 @@ Before you tell the user you cannot do something, look with tool_search for a to
 that does it.
 
 Follow what the user asks in this conversation over defaults in instruction files and skills,
-within your tool and approval rules. Verify your work when practical, and say so when you could
+within your tool rules. Verify your work when practical, and say so when you could
 not.
 
 Never make things up:

@@ -570,14 +570,12 @@ fn card_end(messages: &[Value]) -> Option<(String, String)> {
 }
 
 /// Whether a `mesh` tool's result says the call did not go through. The wire carries no error
-/// flag, so the text decides: what the kernel says of a call that was denied, could not be
-/// approved, was not found or was stopped; what it says when the mesh host cannot be reached; or
-/// a JSON document whose `ok` is false.
+/// flag, so the text decides: what the kernel says of a call that was denied, was not found or
+/// was stopped; what it says when the mesh host cannot be reached; or a JSON document whose `ok`
+/// is false.
 fn mesh_failed(result: &str) -> bool {
     const REFUSED: &[&str] = &[
-        "The user denied this tool call",
         "Tool call denied",
-        "This tool call needs approval",
         "Unknown tool",
         "Invalid arguments",
         "Cancelled by user",
@@ -784,7 +782,7 @@ fn plan(shared: &Shared, messages: &[Value], name: &str, arg: &str, prompt: &str
             }
             _ => done("ask"),
         },
-        // Commands for sub-agents, one each, which the user may have to approve.
+        // Commands for sub-agents, one each.
         "delegate" => match step {
             0 => Plan::Step(Step::calls(delegated(arg))),
             1 => Plan::Step(Step::text("交给子智能体了。".to_string())),
@@ -1083,10 +1081,6 @@ fn plan(shared: &Shared, messages: &[Value], name: &str, arg: &str, prompt: &str
                 finish: "stop",
                 delay: Duration::from_millis(arg.trim().parse().unwrap_or(1000)),
             }),
-        },
-        "handoff" => match step {
-            0 => Plan::Step(Step::calls(vec![("call_tool", json!({"name": "browser_wait", "arguments": {"user": arg.trim()}}))])),
-            _ => Plan::Step(Step::text(format!("handoff done: {}", last_tool_result(messages)))),
         },
         // A page opened without naming a browser: where the user's default sends it.
         "default_browser" => match step {

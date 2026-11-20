@@ -614,7 +614,7 @@ impl Capture {
 /// - A symbolic link stays a link; the file at the end of it is replaced ([`write_target`]).
 /// - A file with other hard links is detached from them, since the rename puts a new file under
 ///   this one name. This is deliberate: writing in place would change the file under all its
-///   names, including names outside the workspace that the approval policy never checked.
+///   names, including names outside the workspace that the call never named.
 /// - A file this process may not write is refused, although the rename would replace it with
 ///   write access to the directory alone.
 fn atomic_write(path: &Path, data: &[u8]) -> io::Result<WriteOutcome> {

@@ -78,7 +78,7 @@ impl EventFrame {
             EventMsg::ToolProgress { text, .. } => text.len(),
             EventMsg::MessageCompleted { message, .. } => message_size(message),
             EventMsg::ToolCompleted { result, .. } => content_size(&result.content) + 256,
-            EventMsg::ToolStarted { args, .. } | EventMsg::ApprovalRequested { args, .. } => 256 + value_size(args),
+            EventMsg::ToolStarted { args, .. } => 256 + value_size(args),
             _ => 96,
         }
     }

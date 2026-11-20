@@ -15,7 +15,7 @@ use serde_json::json;
 /// Anthropic's addresses still lead to the mock, should a test give them a key, and a local Ollama
 /// on the developer's machine stays out of it.
 async fn bare() -> TestEnv {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     std::fs::write(env.home.path().join("config.toml"), "").unwrap();
     let base = env.mock.base_url();
     std::fs::write(
@@ -281,7 +281,7 @@ async fn a_session_whose_only_model_is_gone_still_opens() {
 
     let resumed = client.request("session/resume", json!({"session_id": used})).await.unwrap();
     assert_eq!(resumed["snapshot"]["session"]["model"], json!(flash), "the log's model is kept");
-    let turn = native_prompt(&client, &mut events, &used, "hello", false).await;
+    let turn = native_prompt(&client, &mut events, &used, "hello").await;
     let warned = turn.events.iter().any(|e| e["type"] == "warning" && e["message"].as_str().is_some_and(|m| m.contains("connect a model")))
         || serde_json::to_string(&resumed).unwrap().contains("connect a model");
     assert!(warned, "the session says what happened: {:#?}", turn.events);

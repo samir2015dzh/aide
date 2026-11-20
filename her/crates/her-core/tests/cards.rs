@@ -27,7 +27,6 @@ use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
 use her_protocol::Event;
 use her_protocol::EventMsg;
-use her_protocol::PermissionMode;
 use her_protocol::TaskTrigger;
 use her_protocol::api::TranscriptItem;
 use her_protocol::card::AskedBy;
@@ -125,13 +124,10 @@ async fn her() -> Harness {
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: PermissionMode::Manual,
         cwd: folder.clone(),
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: Some(BotIdentity { id: "b1".into(), name: "Her".into() }),
     };
     let kernel = Kernel::start(options, deps(&api, &folder, &home)).await.unwrap();
@@ -328,12 +324,9 @@ async fn an_open_card_is_taken_back_after_a_restart() {
         session: SessionRef::Id(session),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let kernel = Kernel::resume(options, deps(&h.api, &h.folder, &h.home)).await.unwrap();

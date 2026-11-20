@@ -1,8 +1,9 @@
 //! The ACP (Agent Client Protocol) projection: editors drive her sessions over stdio.
 //!
 //! Requests are parsed with the official schema types; outgoing messages are serialized
-//! straight from kernel events in this process (see `out`). Approvals become
-//! `session/request_permission` requests, and a `session/prompt` is answered when its task ends.
+//! straight from kernel events in this process (see `out`). Her runs tool calls without asking,
+//! so it never sends `session/request_permission`; a `session/prompt` is answered when its task
+//! ends.
 
 mod content;
 mod encoder;
@@ -12,8 +13,6 @@ mod schema;
 
 use bytes::Bytes;
 use her_llm::ThinkingLevel;
-use her_protocol::ApprovalDecision;
-use her_protocol::PermissionMode;
 use her_protocol::Op;
 use her_protocol::PromptMode;
 use her_protocol::api::EventClass;
@@ -53,9 +52,7 @@ use crate::schema::InitializeRequest;
 use crate::schema::ListSessionsRequest;
 use crate::schema::NewSessionRequest;
 use crate::schema::OpenSessionRequest;
-use crate::schema::Outcome;
 use crate::schema::PromptRequest;
-use crate::schema::RequestPermissionResponse;
 use crate::schema::SessionRequest;
 use crate::schema::SetConfigOptionRequest;
 
@@ -501,32 +498,6 @@ impl AcpProtocol {
         });
     }
 
-    /// The client answered one of our permission requests.
-    /// (See [`decode_option`] for the option ids.)
-    fn permission_answer(&self, id: &Id, result: Result<&RawValue, &RpcError>, conn: &ConnHandle) {
-        let Some(asked) = self.shared.permissions.lock().remove(id) else {
-            return;
-        };
-        let decision = match result {
-            Ok(raw) => match serde_json::from_str::<RequestPermissionResponse>(raw.get()) {
-                Ok(response) => match response.outcome {
-                    Outcome::Selected { option_id } => decode_option(&option_id),
-                    Outcome::Cancelled => ApprovalDecision::Abort,
-                },
-                Err(_) => ApprovalDecision::Deny { feedback: None },
-            },
-            Err(_) => ApprovalDecision::Deny { feedback: None },
-        };
-        let server = self.server.clone();
-        let conn = conn.clone();
-        tokio::spawn(async move {
-            let op = match asked.agent {
-                Some(agent) => Op::AgentApproval { agent, call_id: asked.call_id, decision },
-                None => Op::Approval { call_id: asked.call_id, decision },
-            };
-            let _ = server.submit(&asked.session, conn, op, false, Box::new(|_| Vec::new())).await;
-        });
-    }
 }
 
 async fn set_config(server: &Server, conn: &ConnHandle, request: SetConfigOptionRequest) -> Result<Value, RpcError> {
@@ -552,12 +523,6 @@ async fn set_config(server: &Server, conn: &ConnHandle, request: SetConfigOption
                 thinking: Some(level),
             }
         }
-        // `approval_mode` is the id this option had before permission modes were renamed.
-        "permission_mode" | "approval_mode" => {
-            let (mode, _) = PermissionMode::parse_with_notice(&value).map_err(RpcError::invalid_params)?;
-            info.permission_mode = mode;
-            Op::SetPermissionMode { mode }
-        }
         other => return Err(RpcError::invalid_params(format!("unknown config option '{other}'"))),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -582,7 +547,8 @@ impl Protocol for AcpProtocol {
         match message.kind() {
             Kind::Request { id, method, params } => self.request(id, method, params, conn),
             Kind::Notification { method, params } => self.notification(method, params, conn),
-            Kind::Response { id, result } => self.permission_answer(id, result, conn),
+            // Her sends the client no requests, so there is nothing to answer.
+            Kind::Response { .. } => {}
             Kind::Invalid => conn.send_error(message.id.as_ref(), &RpcError::invalid_request("not a request, notification or response")),
         }
     }
@@ -595,60 +561,5 @@ impl Protocol for AcpProtocol {
         for (_, task) in self.running.lock().drain() {
             task.abort();
         }
-    }
-}
-
-/// The decision for a permission option the client picked: `approve`, `approve_for_session`,
-/// `approve_for_session:<index>` for one of the proposed site grants, or
-/// `approve_always:<index>` to keep that grant in the configuration.
-fn decode_option(option_id: &str) -> ApprovalDecision {
-    match option_id {
-        "approve" => ApprovalDecision::Approve,
-        "approve_for_session" => ApprovalDecision::ApproveForSession { grant: None, persist: false },
-        other => {
-            let (index, persist) = match (other.strip_prefix("approve_for_session:"), other.strip_prefix("approve_always:")) {
-                (Some(index), _) => (index, false),
-                (_, Some(index)) => (index, true),
-                _ => return ApprovalDecision::Deny { feedback: None },
-            };
-            match index.parse::<usize>() {
-                Ok(index) => ApprovalDecision::ApproveForSession { grant: Some(index), persist },
-                Err(_) => ApprovalDecision::Deny { feedback: None },
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use her_protocol::GrantAuthority;
-    use her_protocol::SiteGrant;
-
-    #[test]
-    fn site_grants_round_trip_through_permission_options() {
-        let grants = [
-            SiteGrant {
-                authority: GrantAuthority::Navigate,
-                origin: "https://example.com".into(),
-            },
-            SiteGrant {
-                authority: GrantAuthority::Navigate,
-                origin: "*".into(),
-            },
-        ];
-        let options = out::permission_options(None, None, &grants);
-        let ids: Vec<&str> = options.as_array().unwrap().iter().map(|o| o["optionId"].as_str().unwrap()).collect();
-        assert_eq!(
-            ids,
-            ["approve", "approve_for_session:0", "approve_for_session:1", "approve_always:0", "approve_always:1", "deny"],
-            "every site can be kept too"
-        );
-        assert_eq!(decode_option("approve"), ApprovalDecision::Approve);
-        assert_eq!(decode_option("approve_for_session"), ApprovalDecision::ApproveForSession { grant: None, persist: false });
-        assert_eq!(decode_option("approve_for_session:1"), ApprovalDecision::ApproveForSession { grant: Some(1), persist: false });
-        assert_eq!(decode_option("approve_always:0"), ApprovalDecision::ApproveForSession { grant: Some(0), persist: true });
-        assert_eq!(decode_option("approve_always:x"), ApprovalDecision::Deny { feedback: None });
-        assert_eq!(decode_option("deny"), ApprovalDecision::Deny { feedback: None });
     }
 }

@@ -4,7 +4,6 @@
 
 use async_trait::async_trait;
 use her_llm::ToolSpec;
-use her_tools::ApprovalWords;
 use her_tools::Environment;
 use her_tools::Tool;
 use her_tools::ToolCategory;
@@ -241,11 +240,6 @@ impl Tool for ToolSearch {
         ToolOrigin::Mcp
     }
 
-    // It only looks through the definitions her already holds.
-    fn runs_unasked(&self, _args: &Value) -> bool {
-        true
-    }
-
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         let query = args.get("query").and_then(Value::as_str).unwrap_or_default();
         let server = args.get("server").and_then(Value::as_str);
@@ -422,17 +416,6 @@ impl Tool for CallTool {
         }
     }
 
-    fn runs_unasked(&self, args: &Value) -> bool {
-        let Some(name) = args.get("name").and_then(Value::as_str) else { return true };
-        let Some(manager) = &self.manager else { return true };
-        let catalog = manager.catalog();
-        match catalog.find(name) {
-            Some(entry) => entry.server.config().runs_unasked(entry.info.read_only),
-            // Nothing runs under a name no server has, unless one still connecting brings it.
-            None => !manager.connecting(),
-        }
-    }
-
     fn prepare_arguments(&self, mut args: Value) -> Value {
         // The arguments sent as a JSON string.
         let parsed = match args.get("arguments") {
@@ -469,18 +452,6 @@ impl Tool for CallTool {
             Some((tool, inner)) => tool.authorities(&inner, ctx).await,
             None => Ok(Vec::new()),
         }
-    }
-
-    async fn check(&self, args: &Value, ctx: &ToolCtx) -> Result<(), ToolError> {
-        match self.builtin(args) {
-            Some((tool, inner)) => tool.check(&inner, ctx).await,
-            None => Ok(()),
-        }
-    }
-
-    async fn approval_words(&self, args: &Value) -> Option<ApprovalWords> {
-        let (tool, inner) = self.builtin(args)?;
-        tool.approval_words(&inner).await
     }
 
     async fn execute(&self, args: Value, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {

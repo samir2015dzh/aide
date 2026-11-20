@@ -1,10 +1,11 @@
 //! The browser tools end to end: a scripted model drives a real Chromium through the kernel,
-//! with approvals, site grants and the check that a call runs only on the page it was
-//! approved for (docs/kernel/browser-design.md §11.2). Skipped where no browser is installed.
+//! without asking anyone, with the refusals of the configuration and the check that a call runs
+//! only on the page it was judged for (docs/kernel/browser-design.md §11.2). Skipped where no
+//! browser is installed.
 //!
 //! The pages are served on 127.0.0.1, but under the name `shop.test`: the browser maps it
 //! there (a wrapper adds `--host-resolver-rules`), while the kernel cannot resolve it and so
-//! treats it as an ordinary public site, which asks before it is opened or acted on.
+//! treats it as an ordinary public site.
 
 #![allow(clippy::print_stderr)]
 
@@ -23,13 +24,7 @@ use her_llm::ThinkingLevel;
 use her_llm::UserContent;
 use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
-use her_protocol::ApprovalDecision;
-use her_protocol::Event;
 use her_protocol::EventMsg;
-use her_protocol::GrantAuthority;
-use her_protocol::Op;
-use her_protocol::PermissionMode;
-use her_protocol::SiteGrant;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
 use her_tools::builtin_registry;
@@ -39,7 +34,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::Instant;
 use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -148,17 +142,17 @@ struct Harness {
 }
 
 /// A session with the browser tools on, or `None` without a browser on this machine.
-async fn harness(mode: PermissionMode, interactive: bool, sites: &[(&str, &str)]) -> Option<Harness> {
-    harness_with(mode, interactive, sites, "").await
+async fn harness(sites: &[(&str, &str)]) -> Option<Harness> {
+    harness_with(sites, "").await
 }
 
 /// `extra`: more lines for `[browser]`.
-async fn harness_with(mode: PermissionMode, interactive: bool, sites: &[(&str, &str)], extra: &str) -> Option<Harness> {
-    harness_config(mode, interactive, sites, extra, true).await
+async fn harness_with(sites: &[(&str, &str)], extra: &str) -> Option<Harness> {
+    harness_config(sites, extra, true).await
 }
 
 /// `enabled`: the built-in browser is on from the start.
-async fn harness_config(mode: PermissionMode, interactive: bool, sites: &[(&str, &str)], extra: &str, enabled: bool) -> Option<Harness> {
+async fn harness_config(sites: &[(&str, &str)], extra: &str, enabled: bool) -> Option<Harness> {
     let dir = tempfile::tempdir().unwrap();
     let Some(executable) = wrapper(dir.path()) else {
         eprintln!("no Chromium-family browser installed; skipping");
@@ -208,13 +202,10 @@ async fn harness_config(mode: PermissionMode, interactive: bool, sites: &[(&str,
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: work,
         home,
         config: Arc::new(config),
         project_root: None,
-        trusted: true,
-        interactive_approvals: interactive,
         bot: None,
     };
     let kernel = Kernel::start(options, deps).await.unwrap();
@@ -261,71 +252,17 @@ fn ref_of(text: &str, what: &str) -> String {
     line[start..].split(']').next().unwrap().to_string()
 }
 
-/// Collects events until `stop` matches (inclusive), answering approvals with `answer`.
-async fn until(kernel: &mut Kernel, stop: impl Fn(&EventMsg) -> bool) -> Vec<Event> {
-    let mut events = Vec::new();
-    let deadline = Instant::now() + Duration::from_secs(60);
-    loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        let event = tokio::time::timeout(remaining, kernel.next_event())
-            .await
-            .expect("timed out waiting for an event")
-            .expect("the session ended");
-        let done = stop(&event.msg);
-        events.push(event);
-        if done {
-            return events;
-        }
-    }
-}
-
-fn approval(events: &[Event]) -> (String, String, Vec<SiteGrant>) {
-    match &events.last().unwrap().msg {
-        EventMsg::ApprovalRequested {
-            call_id,
-            summary,
-            proposed_grants,
-            ..
-        } => (call_id.clone(), summary.clone(), proposed_grants.clone()),
-        other => panic!("expected an approval request, got {other:?}"),
-    }
-}
-
-async fn approve(kernel: &mut Kernel, call_id: String, decision: ApprovalDecision) {
-    kernel.submit(Op::Approval { call_id, decision }).await.unwrap();
-}
-
-fn asked(events: &[Event]) -> bool {
-    events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. }))
-}
-
 #[tokio::test]
-async fn approvals_grants_and_the_approved_page() {
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[]).await else {
+async fn the_tools_act_without_asking_and_only_on_the_page_judged() {
+    let Some(mut h) = harness(&[]).await else {
         return;
     };
     let login = format!("{}/login", h.origin);
 
-    // 1. Opening a site asks, offering this site and every site; approving once opens it.
+    // 1. Opening a site nobody configured runs at once.
     h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": login })));
     h.api.push(Script::text("opened"));
-    h.kernel.submit(Op::prompt("sign in")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, summary, grants) = approval(&events);
-    assert_eq!(summary, format!("open {login}"));
-    let site_grants = vec![
-        SiteGrant {
-            authority: GrantAuthority::Act,
-            origin: h.origin.clone(),
-        },
-        SiteGrant {
-            authority: GrantAuthority::Act,
-            origin: "*".into(),
-        },
-    ];
-    assert_eq!(grants, site_grants);
-    approve(&mut h.kernel, call_id, ApprovalDecision::Approve).await;
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
+    run(&mut h.kernel, "sign in").await;
     let page = last_results(&h.api).pop().unwrap();
     assert!(page.contains("Sign in") && page.contains("<page-content"), "{page}");
     assert!(page.contains("[type=password]") || page.contains("Password"), "{page}");
@@ -333,26 +270,20 @@ async fn approvals_grants_and_the_approved_page() {
     let password = ref_of(&page, "Password");
     let button = ref_of(&page, "Continue");
 
-    // 2. Reading asks nothing; the first action on the site asks the same question again.
+    // 2. Reading and acting run at once too.
     h.api.push(
         Script::tool_call("c2", "browser_snapshot", json!({ "query": "continue" }))
             .then_tool_call("c3", "browser_act", json!({ "action": "fill", "ref": email, "text": "ada@example.com" })),
     );
     h.api.push(Script::text("filled"));
-    h.kernel.submit(Op::prompt("fill it")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, summary, grants) = approval(&events);
-    assert!(summary.starts_with("fill") && summary.ends_with(&format!("on {}", h.origin)), "{summary}");
-    assert_eq!(grants, site_grants);
-    approve(&mut h.kernel, call_id, ApprovalDecision::ApproveForSession { grant: None, persist: false }).await;
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
+    run(&mut h.kernel, "fill it").await;
     let results = last_results(&h.api);
     let found = &results[results.len() - 2];
     assert!(found.contains("Continue") && !found.contains("Email"), "query: {found}");
     assert!(results.last().unwrap().contains("ada@example.com"), "{}", results.last().unwrap());
 
-    // 3. With the grant, typing a password and submitting ask nothing; the password does
-    // not show, and the click lands on the next page.
+    // 3. Typing a password and submitting: the password does not show, and the click lands on
+    // the next page.
     h.api.push(
         Script::tool_call("c4", "browser_act", json!({ "action": "fill", "ref": password, "text": "hunter2" }))
             .then_tool_call("c5", "browser_act", json!({ "action": "click", "ref": button })),
@@ -360,22 +291,20 @@ async fn approvals_grants_and_the_approved_page() {
     h.api.push(Script::text("signed in"));
     let result = run(&mut h.kernel, "submit").await;
     assert!(matches!(result.end, TaskEnd::Completed { .. }));
-    assert!(!asked(&result.events));
     let results = last_results(&h.api);
     let filled = &results[results.len() - 2];
     assert!(!filled.contains("hunter2"), "{filled}");
     let clicked = results.last().unwrap();
     assert!(clicked.contains("Welcome back"), "{clicked}");
 
-    // 4. An old ref after the navigation is refused before anything is asked or sent.
+    // 4. An old ref after the navigation is refused before anything is sent.
     h.api.push(Script::tool_call("c6", "browser_act", json!({ "action": "click", "ref": button })));
     h.api.push(Script::text("stale"));
-    let result = run(&mut h.kernel, "click again").await;
-    assert!(!asked(&result.events));
+    run(&mut h.kernel, "click again").await;
     let stale = last_results(&h.api).pop().unwrap();
     assert!(stale.contains("navigated"), "{stale}");
 
-    // 5. Navigate and act in one reply: the act was approved for the page before the
+    // 5. Navigate and act in one reply: the act was judged for the page before the
     // navigation, so it sends nothing.
     let other = format!("{}/other", h.origin);
     let current = {
@@ -391,7 +320,6 @@ async fn approvals_grants_and_the_approved_page() {
     );
     h.api.push(Script::text("raced"));
     let result = run(&mut h.kernel, "race").await;
-    assert!(!asked(&result.events), "the site is granted");
     let results = last_results(&h.api);
     assert!(results[results.len() - 2].contains("Another page"), "{}", results[results.len() - 2]);
     let raced = results.last().unwrap();
@@ -418,42 +346,8 @@ async fn approvals_grants_and_the_approved_page() {
 }
 
 #[tokio::test]
-async fn without_an_approver_only_configured_sites_open() {
-    // `her exec`: nobody to ask. An unconfigured site gets an answer that says how to allow it.
-    let Some(mut h) = harness(PermissionMode::Manual, false, &[]).await else {
-        return;
-    };
-    let login = format!("{}/login", h.origin);
-    h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": login })));
-    h.api.push(Script::text("cannot"));
-    let result = run(&mut h.kernel, "open it").await;
-    assert!(!asked(&result.events));
-    let text = last_results(&h.api).pop().unwrap();
-    assert!(text.contains("nobody can approve it") && text.contains("[browser.sites]"), "{text}");
-    assert!(text.contains(&h.origin), "{text}");
-    h.kernel.shutdown().await;
-
-    // Configured to act: opens and acts without asking.
-    let Some(mut h) = harness(PermissionMode::Manual, false, &[("ORIGIN", "act")]).await else {
-        return;
-    };
-    let login = format!("{}/login", h.origin);
-    h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": login })));
-    h.api.push(Script::text("opened"));
-    run(&mut h.kernel, "open it").await;
-    let page = last_results(&h.api).pop().unwrap();
-    let button = ref_of(&page, "Continue");
-    h.api.push(Script::tool_call("c2", "browser_act", json!({ "action": "click", "ref": button })));
-    h.api.push(Script::text("done"));
-    let result = run(&mut h.kernel, "continue").await;
-    assert!(!asked(&result.events));
-    assert!(last_results(&h.api).pop().unwrap().contains("Welcome back"));
-    h.kernel.shutdown().await;
-}
-
-#[tokio::test]
-async fn denied_sites_and_metadata_addresses_are_refused_in_every_mode() {
-    let Some(mut h) = harness(PermissionMode::BypassPermissions, true, &[("ORIGIN", "deny")]).await else {
+async fn denied_sites_and_metadata_addresses_are_refused() {
+    let Some(mut h) = harness(&[("ORIGIN", "deny")]).await else {
         return;
     };
     let login = format!("{}/login", h.origin);
@@ -462,12 +356,11 @@ async fn denied_sites_and_metadata_addresses_are_refused_in_every_mode() {
             .then_tool_call("c2", "browser_navigate", json!({ "url": "http://169.254.169.254/latest/meta-data" })),
     );
     h.api.push(Script::text("refused"));
-    let result = run(&mut h.kernel, "open").await;
-    assert!(!asked(&result.events));
+    run(&mut h.kernel, "open").await;
     let results = last_results(&h.api);
     assert!(results[0].contains("denied by browser.sites"), "{}", results[0]);
     assert!(results[1].contains("cloud metadata"), "{}", results[1]);
-    // Bypass opens other sites without asking; reading before anything is open says so.
+    // Reading before anything is open says so.
     h.api.push(Script::tool_call("c3", "browser_snapshot", json!({})));
     h.api.push(Script::text("nothing"));
     run(&mut h.kernel, "read").await;
@@ -476,9 +369,9 @@ async fn denied_sites_and_metadata_addresses_are_refused_in_every_mode() {
 }
 
 #[tokio::test]
-async fn a_batch_runs_its_steps_and_stops_where_approval_is_needed() {
+async fn a_batch_runs_its_steps_and_stops_where_one_is_refused() {
     // A configured site: every step runs, the form is filled and sent in one call.
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[("ORIGIN", "act")]).await else {
+    let Some(mut h) = harness(&[("ORIGIN", "act")]).await else {
         return;
     };
     let login = format!("{}/login", h.origin);
@@ -494,38 +387,30 @@ async fn a_batch_runs_its_steps_and_stops_where_approval_is_needed() {
     ]);
     h.api.push(Script::tool_call("c2", "browser_batch", json!({ "steps": steps })));
     h.api.push(Script::text("sent"));
-    let result = run(&mut h.kernel, "sign in").await;
-    assert!(!asked(&result.events));
+    run(&mut h.kernel, "sign in").await;
     let text = last_results(&h.api).pop().unwrap();
     assert!(text.contains("Step 4 of 4 (browser_snapshot)") && text.contains("Welcome back"), "{text}");
     assert!(!text.contains("value=\"hunter2\""), "{text}");
     h.kernel.shutdown().await;
 
-    // No grant: the first step is asked about with the batch; the second, on a site not yet
-    // allowed for acting, stops the batch.
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[]).await else {
+    // A site nobody configured: every step runs; a later step that is refused stops the batch.
+    let Some(mut h) = harness(&[]).await else {
         return;
     };
     let other = format!("{}/other", h.origin);
     let steps = json!([
         { "tool": "browser_navigate", "args": { "url": other } },
-        { "tool": "browser_act", "args": { "action": "scroll" } },
+        { "tool": "browser_navigate", "args": { "url": "http://169.254.169.254/latest" } },
         { "tool": "browser_snapshot" },
     ]);
     h.api.push(Script::tool_call("c1", "browser_batch", json!({ "steps": steps })));
     h.api.push(Script::text("stopped"));
-    h.kernel.submit(Op::prompt("go")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, summary, _) = approval(&events);
-    assert_eq!(summary, format!("open {other}"));
-    approve(&mut h.kernel, call_id, ApprovalDecision::Approve).await;
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert_eq!(events.iter().filter(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })).count(), 0);
+    run(&mut h.kernel, "go").await;
     let text = last_results(&h.api).pop().unwrap();
     // Steps before the last report briefly: where the page is, not its snapshot.
     assert!(text.contains("Page: \"Other\"") && !text.contains("Another page"), "the first step ran: {text}");
     assert!(text.contains("Take a snapshot to see the page."), "{text}");
-    assert!(text.contains("Step 2 (browser_act) needs approval") && text.contains("1 of 3 steps ran"), "{text}");
+    assert!(text.contains("Step 2 (browser_navigate) was refused") && text.contains("1 of 3 steps ran"), "{text}");
 
     // Batches do not nest, and an unknown tool fails before anything runs.
     h.api.push(Script::tool_call("c2", "browser_batch", json!({ "steps": [{ "tool": "browser_batch" }] })));
@@ -536,8 +421,8 @@ async fn a_batch_runs_its_steps_and_stops_where_approval_is_needed() {
 }
 
 #[tokio::test]
-async fn scripts_run_only_when_enabled_and_ask_once_per_site_unless_bypass() {
-    let Some(mut h) = harness_with(PermissionMode::BypassPermissions, true, &[], "script_enabled = false").await else {
+async fn scripts_run_only_when_enabled() {
+    let Some(mut h) = harness_with(&[], "script_enabled = false").await else {
         return;
     };
     let other = format!("{}/other", h.origin);
@@ -550,8 +435,8 @@ async fn scripts_run_only_when_enabled_and_ask_once_per_site_unless_bypass() {
     assert!(last_results(&h.api).pop().unwrap().contains("Unknown tool"), "turned off: not even listed");
     h.kernel.shutdown().await;
 
-    // On by default (browser-design §10.1); bypass runs scripts without asking.
-    let Some(mut h) = harness(PermissionMode::BypassPermissions, true, &[]).await else {
+    // On by default (browser-design §10.1): scripts run without asking.
+    let Some(mut h) = harness(&[]).await else {
         return;
     };
     let other = format!("{}/other", h.origin);
@@ -564,92 +449,17 @@ async fn scripts_run_only_when_enabled_and_ask_once_per_site_unless_bypass() {
         json!({ "expression": "document.querySelector('h1').textContent = 'Changed'; ({ title: document.title, n: 6 * 7 })" }),
     ));
     h.api.push(Script::text("ran"));
-    h.kernel.submit(Op::prompt("eval")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(!events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })), "bypass does not ask");
+    run(&mut h.kernel, "eval").await;
     let text = last_results(&h.api).pop().unwrap();
     assert!(text.contains("\"n\": 42") && text.contains("\"title\": \"Other\""), "{text}");
     assert!(text.contains("Changed"), "the change shows: {text}");
     h.kernel.shutdown().await;
 
-    // Other modes ask once per site, even where the site is allowed to act.
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[("ORIGIN", "act")]).await else {
-        return;
-    };
-    let other = format!("{}/other", h.origin);
-    h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": other })));
-    h.api.push(Script::text("opened"));
-    run(&mut h.kernel, "open").await;
-    h.api.push(Script::tool_call("c2", "browser_eval", json!({ "expression": "6 * 7" })));
-    h.api.push(Script::text("ran"));
-    h.kernel.submit(Op::prompt("eval")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, summary, grants) = approval(&events);
-    assert_eq!(summary, format!("run a script on {}", h.origin));
-    assert_eq!(grants, vec![SiteGrant { authority: GrantAuthority::Script, origin: h.origin.clone() }]);
-    approve(&mut h.kernel, call_id, ApprovalDecision::ApproveForSession { grant: Some(0), persist: true }).await;
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(last_results(&h.api).pop().unwrap().contains("42"));
-    // The site's next script runs without a question; nothing went into the configuration.
-    h.api.push(Script::tool_call("c3", "browser_eval", json!({ "expression": "6 * 7" })));
-    h.api.push(Script::text("ran again"));
-    h.kernel.submit(Op::prompt("again")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(!events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })), "asked once per site");
-    assert!(last_results(&h.api).pop().unwrap().contains("42"));
-    let saved = std::fs::read_to_string(&h.config).unwrap_or_default();
-    assert!(!saved.contains("script"), "{saved}");
-    h.kernel.shutdown().await;
-}
-
-#[tokio::test]
-async fn always_allowing_a_site_writes_it_to_the_user_configuration() {
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[]).await else {
-        return;
-    };
-    let login = format!("{}/login", h.origin);
-    h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": login })));
-    h.api.push(Script::text("opened"));
-    h.kernel.submit(Op::prompt("open")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, _, _) = approval(&events);
-    approve(&mut h.kernel, call_id, ApprovalDecision::ApproveForSession { grant: Some(0), persist: true }).await;
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    let saved: toml::Table = std::fs::read_to_string(&h.config).unwrap().parse().unwrap();
-    assert_eq!(saved["browser"]["sites"][&h.origin].as_str(), Some("act"), "{saved}");
-    assert_eq!(saved["browser"]["enabled"].as_bool(), Some(true), "the rest of the file stays");
-    h.kernel.shutdown().await;
-}
-
-#[tokio::test]
-async fn always_allowing_every_site_writes_it_to_the_user_configuration() {
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[]).await else {
-        return;
-    };
-    let login = format!("{}/login", h.origin);
-    h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": login })));
-    h.api.push(Script::text("opened"));
-    h.kernel.submit(Op::prompt("open")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, _, grants) = approval(&events);
-    assert_eq!(grants[1].origin, "*");
-    approve(&mut h.kernel, call_id, ApprovalDecision::ApproveForSession { grant: Some(1), persist: true }).await;
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    let saved: toml::Table = std::fs::read_to_string(&h.config).unwrap().parse().unwrap();
-    assert_eq!(saved["browser"]["sites"]["*"].as_str(), Some("act"), "{saved}");
-    // Acting on the page asks nothing from then on.
-    let page = last_results(&h.api).pop().unwrap();
-    let email = ref_of(&page, "Email");
-    h.api.push(Script::tool_call("c2", "browser_act", json!({ "action": "fill", "ref": email, "text": "ada@example.com" })));
-    h.api.push(Script::text("filled"));
-    let result = run(&mut h.kernel, "fill").await;
-    assert!(!asked(&result.events), "every site is allowed");
-    h.kernel.shutdown().await;
 }
 
 #[tokio::test]
 async fn tabs_close_when_the_session_ends() {
-    let Some(mut h) = harness(PermissionMode::Manual, false, &[("ORIGIN", "act")]).await else {
+    let Some(mut h) = harness(&[("ORIGIN", "act")]).await else {
         return;
     };
     let alive = format!("{}/alive?end", h.origin);
@@ -665,7 +475,7 @@ async fn tabs_close_when_the_session_ends() {
 
 #[tokio::test]
 async fn a_sub_agents_tabs_close_when_it_reports_and_the_main_sessions_stay() {
-    let Some(mut h) = harness(PermissionMode::Manual, false, &[("ORIGIN", "act")]).await else {
+    let Some(mut h) = harness(&[("ORIGIN", "act")]).await else {
         return;
     };
     let main = format!("{}/alive?main", h.origin);
@@ -703,36 +513,18 @@ async fn a_sub_agents_tabs_close_when_it_reports_and_the_main_sessions_stay() {
 }
 
 #[tokio::test]
-async fn a_sub_agent_asks_for_a_site_and_the_grant_holds_for_the_tree() {
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[]).await else {
+async fn a_sub_agent_opens_a_site_without_asking() {
+    let Some(mut h) = harness(&[]).await else {
         return;
     };
     let login = format!("{}/login", h.origin);
     h.api.push(Script::tool_call("c1", "spawn_agent", json!({ "description": "open the page", "task": "open the page", "name": "web", "wait": true })));
     h.api.push(Script::tool_call("k1", "browser_navigate", json!({ "url": login })));
     h.api.push(Script::text("opened it"));
-    // The site is allowed now: the main session opens it without asking.
     h.api.push(Script::tool_call("c2", "browser_navigate", json!({ "url": login })));
     h.api.push(Script::text("done"));
-    h.kernel.submit(Op::prompt("go")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::AgentEvent { event, .. } if matches!(event.msg, EventMsg::ApprovalRequested { .. }))).await;
-    let EventMsg::AgentEvent { agent_id, event } = &events.last().unwrap().msg else {
-        unreachable!()
-    };
-    let EventMsg::ApprovalRequested { call_id, proposed_grants, .. } = &event.msg else {
-        unreachable!()
-    };
-    assert_eq!(proposed_grants[0].origin, h.origin);
-    h.kernel
-        .submit(Op::AgentApproval {
-            agent: agent_id.clone(),
-            call_id: call_id.clone(),
-            decision: ApprovalDecision::ApproveForSession { grant: Some(0), persist: false },
-        })
-        .await
-        .unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(!asked(&events), "the main session was not asked");
+    let result = run(&mut h.kernel, "go").await;
+    assert!(matches!(result.end, TaskEnd::Completed { .. }), "{:?}", result.end);
     let page = last_results(&h.api).pop().unwrap();
     assert!(page.contains("Sign in"), "{page}");
     h.kernel.shutdown().await;
@@ -767,7 +559,7 @@ fn tool_names(api: &ScriptedApi) -> Vec<String> {
 /// computer-use-design §5).
 #[tokio::test]
 async fn the_browser_turned_on_and_off_while_a_session_is_open() {
-    let Some(mut h) = harness_config(PermissionMode::BypassPermissions, true, &[], "", false).await else {
+    let Some(mut h) = harness_config(&[], "", false).await else {
         return;
     };
     h.api.push(Script::text("no browser yet"));
@@ -821,59 +613,47 @@ async fn the_browser_turned_on_and_off_while_a_session_is_open() {
     h.kernel.shutdown().await;
 }
 
-/// "All sites" taken back in the configuration: an open session asks again from its next
-/// step, and the policy alone changing costs the tools nothing (connectors-entry-design §9.4).
+/// A site denied in the configuration: an open session refuses it from its next step, and the
+/// policy alone changing costs the tools nothing (connectors-entry-design §9.4).
 #[tokio::test]
-async fn taking_back_every_site_reaches_an_open_session() {
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[("*", "act")]).await else {
+async fn denying_a_site_reaches_an_open_session() {
+    let Some(mut h) = harness(&[]).await else {
         return;
     };
     let login = format!("{}/login", h.origin);
     h.api.push(Script::tool_call("c1", "browser_navigate", json!({ "url": login })));
     h.api.push(Script::text("opened"));
-    let result = run(&mut h.kernel, "open").await;
-    assert!(!asked(&result.events), "every site is allowed");
+    run(&mut h.kernel, "open").await;
+    assert!(last_results(&h.api).pop().unwrap().contains("Sign in"));
     let tools_before = tool_names(&h.api);
 
-    rewrite(&h.config, "\"*\" = \"act\"", "");
+    rewrite(&h.config, "[browser.sites]\n", &format!("[browser.sites]\n\"{}\" = \"deny\"\n", h.origin));
     assert!(h.kernel.set_system_connectors(settings_from(&h.config)));
     let other = format!("{}/other", h.origin);
     h.api.push(Script::tool_call("c2", "browser_navigate", json!({ "url": other })));
-    h.api.push(Script::text("asked"));
-    h.kernel.submit(Op::prompt("again")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let (call_id, summary, _) = approval(&events);
-    assert!(summary.contains("/other"), "{summary}");
+    h.api.push(Script::text("refused"));
+    run(&mut h.kernel, "again").await;
+    assert!(last_results(&h.api).pop().unwrap().contains("denied by browser.sites"));
     assert_eq!(tool_names(&h.api), tools_before, "the policy alone changes no tool");
-    approve(&mut h.kernel, call_id, ApprovalDecision::Approve).await;
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
     h.kernel.shutdown().await;
 }
 
-/// A browser tool run through call_tool is judged as itself: in manual mode the first visit to
-/// a site asks, with the site's grants, and the tool started says what it does
-/// (computer-use-design §5).
+/// A browser tool run through call_tool is judged as itself, and the tool started says what it
+/// does (computer-use-design §5).
 #[tokio::test]
 async fn a_browser_tool_through_call_tool_is_judged_as_itself() {
-    let Some(mut h) = harness(PermissionMode::Manual, true, &[]).await else {
+    let Some(mut h) = harness(&[]).await else {
         return;
     };
     let login = format!("{}/login", h.origin);
     h.api.push(Script::tool_call("c1", "call_tool", json!({ "name": "browser_navigate", "arguments": { "url": login } })));
     h.api.push(Script::text("opened"));
-    h.kernel.submit(Op::prompt("open the login page")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let started = events.iter().find_map(|e| match &e.msg {
+    let result = run(&mut h.kernel, "open the login page").await;
+    let started = result.events.iter().find_map(|e| match &e.msg {
         EventMsg::ToolStarted { title, .. } => Some(title.clone()),
         _ => None,
     });
     assert_eq!(started.as_deref(), Some("open shop.test"), "the browser tool's own title");
-    let (call_id, summary, grants) = approval(&events);
-    assert!(summary.contains("/login"), "{summary}");
-    assert!(!grants.is_empty(), "the site's grants are offered");
-    approve(&mut h.kernel, call_id, ApprovalDecision::Approve).await;
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(!events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })));
     assert!(last_results(&h.api).pop().unwrap().contains("Sign in"), "the page opened");
     h.kernel.shutdown().await;
 }

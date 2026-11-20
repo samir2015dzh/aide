@@ -19,7 +19,7 @@ async fn research_and_coding_assets_cross_the_real_cli_model_and_tool_boundaries
         "[mcp_servers.sim]\nurl = {:?}\nexposure = \"direct\"\nrequired = true\n",
         tools.url()
     );
-    let env = common::TestEnv::new("bypass-permissions", &config).await;
+    let env = common::TestEnv::new(&config).await;
     for case in scenarios().iter().filter(|s| s.turns == 1) {
         let output = env
             .her(&["exec", "--output", "stream-json", &case.prompt("e2e", 0)])
@@ -72,7 +72,7 @@ async fn corrupted_tool_evidence_fails_the_real_task_instead_of_reporting_succes
         "[mcp_servers.sim]\nurl = {:?}\nexposure = \"direct\"\nrequired = true\n",
         tools.url()
     );
-    let env = common::TestEnv::new("bypass-permissions", &config).await;
+    let env = common::TestEnv::new(&config).await;
     let case = her_mock::simulation::scenario("macro").unwrap();
     let output = env
         .her(&["exec", "--output", "stream-json", &case.prompt("corrupt", 0)])

@@ -17,7 +17,7 @@ her doctor --json
 | `this session is open in another her or Aide` | One process at a time per session. Close the other, or start a new one |
 | `the interactive mode needs a terminal` | In a script, use `her exec "PROMPT"` |
 | `PDF support is not installed` | `her install pdf`. Workbooks do not need it |
-| Exit code 3 | Something needed approval. Set `--permission-mode` or a rule |
+| `Tool call denied` in a result | A deny rule or a built-in refusal stopped it: see [permissions](permissions.md) |
 | `unknown setting` as a warning | A newer version wrote it, or a typo: the warning gives the line |
 
 Set `HER_LOG=debug` for details in `~/.her/logs`.

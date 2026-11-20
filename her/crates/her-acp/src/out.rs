@@ -5,9 +5,6 @@ use her_core::lang::say;
 use bytes::Bytes;
 use her_llm::ThinkingLevel;
 use her_llm::UserContent;
-use her_protocol::GrantAuthority;
-use her_protocol::PermissionMode;
-use her_protocol::SiteGrant;
 use her_protocol::CompletionReason;
 use her_protocol::api::CommandInfo;
 use her_protocol::api::SessionInfo;
@@ -18,7 +15,6 @@ use serde_json::json;
 use std::path::Path;
 
 pub const SESSION_UPDATE: &str = "session/update";
-pub const REQUEST_PERMISSION: &str = "session/request_permission";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -241,17 +237,11 @@ pub fn config_options(server: &Server, info: &SessionInfo) -> Value {
         .chain(levels)
         .map(|l| json!({ "value": l.as_str(), "name": thinking_label(l) }))
         .collect();
-    let mode_options: Vec<Value> = PermissionMode::ALL
-        .iter()
-        .map(|m| json!({ "value": m.as_str(), "name": mode_label(*m) }))
-        .collect();
     json!([
         { "id": "model", "name": say("Model", "模型"), "category": "model", "type": "select",
           "currentValue": info.model, "options": model_options },
         { "id": "thinking", "name": say("Thinking", "推理等级"), "category": "thought_level", "type": "select",
           "currentValue": info.thinking.as_str(), "options": level_options },
-        { "id": "permission_mode", "name": say("Permissions", "权限模式"), "category": "mode", "type": "select",
-          "currentValue": info.permission_mode.as_str(), "options": mode_options },
     ])
 }
 
@@ -267,54 +257,4 @@ fn thinking_label(level: ThinkingLevel) -> &'static str {
         ThinkingLevel::Xhigh => say("Extra high", "超高"),
         ThinkingLevel::Max => say("Max", "最高"),
     }
-}
-
-fn mode_label(mode: PermissionMode) -> &'static str {
-    match mode {
-        PermissionMode::Manual => say("Ask each time", "逐项确认"),
-        PermissionMode::AcceptEdits => say("Accept edits", "自动接受编辑"),
-        PermissionMode::BypassPermissions => say("Bypass permissions", "跳过权限确认"),
-    }
-}
-
-/// Permission options for an approval. "Always" is offered only when approving for the
-/// session means more than this call: a command rule, a switch of the permission mode, or a
-/// site grant; each grant gets its own option, `approve_for_session:<index>`.
-pub fn permission_options(rule: Option<&[String]>, mode: Option<PermissionMode>, grants: &[SiteGrant]) -> Value {
-    let always = match (rule, mode) {
-        (Some(prefix), _) if !prefix.is_empty() => Some(format!("{} {}", say("Always allow in this session:", "本会话总是允许"), prefix.join(" "))),
-        (_, Some(mode)) => Some(format!("{} “{}”", say("Allow, and switch to", "允许，并切换到"), mode_label(mode))),
-        _ => None,
-    };
-    let mut options = vec![json!({ "optionId": "approve", "name": say("Allow", "允许"), "kind": "allow_once" })];
-    if let Some(always) = always {
-        options.push(json!({ "optionId": "approve_for_session", "name": always, "kind": "allow_always" }));
-    }
-    for (index, grant) in grants.iter().enumerate() {
-        let name = match (grant.authority, grant.origin.as_str()) {
-            (GrantAuthority::Navigate, "*") => say("Open any site in this session", "本会话允许打开所有网站").to_string(),
-            (GrantAuthority::Act, "*") => say("Allow any site in this session", "本会话允许所有网站").to_string(),
-            (GrantAuthority::Navigate, origin) => format!("{} {origin}", say("Open in this session:", "本会话允许打开")),
-            (GrantAuthority::Act, origin) => format!("{} {origin}", say("Allow in this session:", "本会话允许")),
-            (GrantAuthority::Script, origin) => format!("{} {origin}", say("Allow scripts in this session:", "本会话允许运行脚本：")),
-        };
-        options.push(json!({ "optionId": format!("approve_for_session:{index}"), "name": name, "kind": "allow_always" }));
-    }
-    // Kept in the configuration, every site included (D-197, D-221).
-    for (index, grant) in grants.iter().enumerate() {
-        let name = match (grant.authority, grant.origin.as_str()) {
-            // Scripts are allowed for the session only (browser-design §7.6).
-            (GrantAuthority::Script, _) => continue,
-            (_, "*") => say(
-                "Always allow any site (saved; a page with injected instructions could steer actions on sites you are signed in to)",
-                "总是允许所有网站（写入配置；风险：被注入指令的页面可能诱导操作你登录的网站）",
-            )
-            .to_string(),
-            (GrantAuthority::Navigate, origin) => format!("{} {origin} ({})", say("Always open", "总是允许打开"), say("saved", "写入配置")),
-            (GrantAuthority::Act, origin) => format!("{} {origin} ({})", say("Always allow", "总是允许"), say("saved", "写入配置")),
-        };
-        options.push(json!({ "optionId": format!("approve_always:{index}"), "name": name, "kind": "allow_always" }));
-    }
-    options.push(json!({ "optionId": "deny", "name": say("Deny", "拒绝"), "kind": "reject_once" }));
-    Value::Array(options)
 }
