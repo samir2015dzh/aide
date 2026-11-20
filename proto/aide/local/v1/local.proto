@@ -344,6 +344,10 @@ message GetStatusResponse {
   repeated string abilities = 21;
   // The limits sessions' states are worked out with.
   StateLimits state_limits = 22;
+  // The relay is older than its MCP address (GetMCP): it gives none, and
+  // updating it does; mcp_url is "" then. False while it is not asked yet,
+  // and when it gives none because its MCP is off.
+  bool relay_older_than_mcp = 23;
 }
 
 message ListProfilesRequest {}

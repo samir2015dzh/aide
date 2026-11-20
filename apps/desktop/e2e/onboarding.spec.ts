@@ -290,9 +290,13 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   await kinds.getByRole("radio", { name: "其他 Agent" }).click();
   await page.getByLabel("名称").fill("Jarvis");
   await expect(msg).toContainText('--name "Jarvis"');
-  // ChatGPT connects by the server's MCP address, which a server on plain HTTP has none of.
+  // ChatGPT connects by the server's MCP address, which this test's server (MCP off, and as new as the app)
+  // gives none of: no step pastes an address that isn't there, and the note says why (not its age, nor HTTPS).
   await kinds.getByRole("radio", { name: "ChatGPT" }).click();
-  await expect(page.getByText("你的服务器没有提供 MCP 地址", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("mcp-note")).toContainText("服务器上的 MCP 没有开启");
+  await expect(page.getByTestId("mcp-note")).not.toContainText("HTTPS");
+  await expect(page.getByText("把下面的网址", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("添加自定义连接器", { exact: false })).toHaveCount(0);
   await expect(msg).toHaveCount(0);
   await kinds.getByRole("radio", { name: "Grok Bot" }).click();
   await expect(page.getByText("它用账号密码登录后，用自己的密钥与你的电脑建立端到端加密直连，服务器看不到任何内容。")).toBeVisible();

@@ -77,6 +77,7 @@ type Owner struct {
 	dialing    *relayDial   // the dial to the relay under way, if any
 	kept       *peer.Client // client, kept over a pause: not known to work yet
 	mcpURL     string       // the relay's own MCP address, with its key (GetMCP)
+	mcpOld     bool         // the relay is older than GetMCP
 	pendingMu  sync.Mutex   // pending names (pendingNames)
 	cardsMu    sync.Mutex   // one card sync at a time (cards.go)
 	removed    bool         // the relay no longer counts this device as the owner's
@@ -634,13 +635,27 @@ func (o *Owner) fetchMCP() {
 	if err != nil {
 		return
 	}
-	res, err := ctl.GetMCP(ctx, &relayv1.GetMCPRequest{})
-	if err != nil { // a relay older than GetMCP
+	url, old, ok := mcpAnswer(ctl.GetMCP(ctx, &relayv1.GetMCPRequest{}))
+	if !ok {
 		return
 	}
 	o.mu.Lock()
-	o.mcpURL = res.Url
+	o.mcpURL, o.mcpOld = url, old
 	o.mu.Unlock()
+}
+
+// mcpAnswer is what GetMCP's answer says: the relay's MCP address ("" when
+// its MCP is off), or that the relay is older than GetMCP (it does not know
+// the call); not ok when it did not answer (asked again at the next
+// connection).
+func mcpAnswer(res *relayv1.GetMCPResponse, err error) (url string, older, ok bool) {
+	switch {
+	case err == nil:
+		return res.Url, false, true
+	case connect.CodeOf(err) == connect.CodeUnimplemented:
+		return "", true, true
+	}
+	return "", false, false
 }
 
 func (o *Owner) control(ctx context.Context) (relayv1connect.OwnerControlServiceClient, *peer.Client, error) {
@@ -683,7 +698,7 @@ func (o *Owner) ownerStatus() *localv1.GetStatusResponse {
 		st.LocalMachineEnabled, st.LocalMachineId, st.LocalMachineName = true, o.localMachine.MachineID(), o.localMachine.Name()
 	}
 	if o.ownerID != "" {
-		st.McpUrl = o.mcpURL
+		st.McpUrl, st.RelayOlderThanMcp = o.mcpURL, o.mcpOld
 	}
 	if o.rootPub != nil && o.ownerID != "" {
 		st.DeviceKeyId = identity.KeyID(o.rootPub)

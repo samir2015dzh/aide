@@ -175,6 +175,11 @@ ALTER TABLE sessions ADD COLUMN repo_branch TEXT NOT NULL DEFAULT '';
 `, `
 ALTER TABLE sessions ADD COLUMN mode TEXT NOT NULL DEFAULT '';
 `, `
+CREATE TABLE session_ports (
+  session_id TEXT PRIMARY KEY,
+  base INTEGER NOT NULL UNIQUE
+);
+`, `
 ALTER TABLE sessions ADD COLUMN seen_turns INTEGER NOT NULL DEFAULT -1;
 ALTER TABLE sessions ADD COLUMN seen_question TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN seen_present INTEGER NOT NULL DEFAULT 0;
@@ -497,6 +502,63 @@ func (s *Store) DeleteSession(r *sessionRow) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// A session's ports (docs/cli.md "Ports for dev servers"): portBlocks
+// blocks of portBlock ports from portFirst, that is 20000-26999, above the
+// usual development ports (3000, 5173, 8080...) and below every system's
+// ephemeral range (Linux 32768+, macOS and Windows 49152+).
+const (
+	portFirst  = 20000
+	portBlock  = 10
+	portBlocks = 700
+)
+
+var errNoPorts = errors.New("every port block is taken")
+
+// SessionPorts is the first port of the session's block, the one it was
+// given before or else the lowest free one, kept until ReleasePorts.
+func (s *Store) SessionPorts(id string) (int, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	var base int
+	err = tx.QueryRow(`SELECT base FROM session_ports WHERE session_id=?`, id).Scan(&base)
+	if err == nil || !errors.Is(err, sql.ErrNoRows) {
+		return base, err
+	}
+	rows, err := tx.Query(`SELECT base FROM session_ports ORDER BY base`)
+	if err != nil {
+		return 0, err
+	}
+	base = portFirst
+	for rows.Next() {
+		var b int
+		if err := rows.Scan(&b); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		if b != base {
+			break
+		}
+		base += portBlock
+	}
+	rows.Close()
+	if base >= portFirst+portBlock*portBlocks {
+		return 0, errNoPorts
+	}
+	if _, err := tx.Exec(`INSERT INTO session_ports(session_id, base) VALUES(?,?)`, id, base); err != nil {
+		return 0, err
+	}
+	return base, tx.Commit()
+}
+
+// ReleasePorts frees the session's port block for another session.
+func (s *Store) ReleasePorts(id string) error {
+	_, err := s.db.Exec(`DELETE FROM session_ports WHERE session_id=?`, id)
+	return err
 }
 
 // DeletedSessionsSince is what is kept of the sessions deleted at or after t

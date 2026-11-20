@@ -205,6 +205,13 @@
     "body": "{{machine}} 上的 Aide 版本较旧，还没有这项功能。在那里更新 Aide 后，这里会自动恢复。",
     "text": "那台电脑上的 Aide 版本较旧，还没有这项功能。在那台电脑上更新 Aide 后再试。"
   },
+  "herUnavailable": {
+    "offTitle": "{{machine}} 上还没开启 Her",
+    "offBody": "这不是版本问题。在 设置 › 机器 里为 {{machine}} 开启 Her，开好后这里会自动显示。",
+    "notRunningTitle": "Her 还没在 {{machine}} 上跑起来",
+    "notRunningBody": "Her 已经开启，但还没在那台电脑上运行，可能正在启动。稍等片刻，这里会自动恢复；一直不行，就在那台电脑上重启 Aide。",
+    "failedBody": "Her 已经开启，但没能在那台电脑上启动：{{error}}。在那台电脑上重启 Aide；还是不行，在 设置 › 机器 里把 Her 关掉再打开。"
+  },
   "dsh": {
     "title": "DeepSeek 会话",
     "note": "你机器上 DeepSeek Harness 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以从这里给它发消息。",

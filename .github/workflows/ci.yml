@@ -28,6 +28,11 @@ jobs:
         run: go tool buf breaking --against '.git#branch=origin/main'
       - name: unit tests
         run: make test
+      # The relay image builds from its own context (.dockerignore): built here,
+      # not pushed, so that a package that context leaves out fails on the PR,
+      # not first in relay-image (2026-11-20: apps/dsh-bridge).
+      - name: relay image
+        run: docker build -f deploy/relay/Dockerfile .
       - name: installer terminal interaction
         run: python3 scripts/test_install.py
       - name: end-to-end (scripted agents)

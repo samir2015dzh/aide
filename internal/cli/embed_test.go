@@ -27,7 +27,7 @@ func TestToolsAreTheCommands(t *testing.T) {
 	for _, tl := range Tools() {
 		tools[tl.Name] = tl
 	}
-	for _, name := range []string{"auth_status", "project_list", "session_start", "session_get", "session_list", "session_events",
+	for _, name := range []string{"auth_status", "project_list", "session_start", "session_get", "session_wait", "session_list", "session_events",
 		"session_answer", "session_interrupt", "session_archive", "session_unarchive", "session_diff", "session_push",
 		"message_send", "message_list", "message_ack", "message_status", "message_contacts"} {
 		if _, ok := tools[name]; !ok {
@@ -70,6 +70,9 @@ func TestToolsAreTheCommands(t *testing.T) {
 	}
 	if get := tools["session_get"]; get.Arg == nil || get.Arg.Name != "session_id" || !get.Arg.Required {
 		t.Errorf("session_get's argument: %+v", get.Arg)
+	}
+	if w := tools["session_wait"]; w.Arg == nil || w.Arg.Name != "session_id" || param(w, "timeout") == nil || param(w, "wait") != nil {
+		t.Errorf("session_wait: %+v", w)
 	}
 	if p := param(tools["session_answer"], "choose"); p == nil || p.Type != "array" {
 		t.Errorf("choose: %+v", p)

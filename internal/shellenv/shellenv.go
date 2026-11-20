@@ -28,14 +28,17 @@ var (
 )
 
 // Path returns the login-shell PATH merged with the current one. A read
-// that worked is kept; one that failed is tried again a minute later, and
-// meanwhile the current PATH and the usual install directories are used.
-// A shell that could not start for want of processes is no fault of the
-// shell's: it is tried again on the next call.
+// that worked is kept (on Windows, for refreshAfter: reading it starts no
+// program, and a tool installed after aided started is on it then); one
+// that failed is tried again a minute later, and meanwhile the current
+// PATH and the usual install directories are used. A shell that could not
+// start for want of processes is no fault of the shell's: it is tried
+// again on the next call.
 func Path() string {
 	mu.Lock()
 	defer mu.Unlock()
-	if path != "" && (problem == "" || time.Since(readAt) < retryAfter) {
+	fresh := refreshAfter == 0 || time.Since(readAt) < refreshAfter
+	if path != "" && fresh && (problem == "" || time.Since(readAt) < retryAfter) {
 		return path
 	}
 	p, env, why, short := resolve()
