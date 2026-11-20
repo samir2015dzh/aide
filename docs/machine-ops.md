@@ -136,3 +136,102 @@ outside (`projects outside them stay usable: old (/srv/old)`), and so does
 <name>`). Removing it is the owner's choice; the roots never remove or
 disable a project on their own.
 
+
+## 6. The configuration as a file
+
+> Status: implemented (2026-11-20, borrowed item 17). A machine's settings
+> as one YAML file, for a version control repository: exported, and applied
+> again here or on another machine.
+
+On the machine, as its own user (as `aided project` and `aided roots`:
+through the running service's control socket, or directly when it isn't
+running):
+
+```
+aided config export > aide-machine.yaml        # the file
+aided config apply -f aide-machine.yaml --dry-run   # what would change; changes nothing
+aided config apply -f aide-machine.yaml        # make it so; again: nothing to change
+```
+
+Both take `-o json` (or `AIDE_OUTPUT=json`): one document as
+[cli-output.md](cli-output.md) §2 has it, data key `config` and
+`config_apply` (§5 there).
+
+### 6.1 What is in it
+
+```yaml
+version: 1
+workspace_roots:
+    - /home/me/code
+projects:
+    - id: app
+      path: /home/me/code/app
+      workspace: worktree          # or in_place
+      base: HEAD                   # a worktree project's base ref
+      description: the shop
+      agents:                      # left out: every coding agent
+        - claude
+agent_defaults:
+    - agent: codex
+      model: gpt-5
+      effort: high
+      speed: fast                  # standard or fast, Codex only
+custom_agents:
+    - name: mine
+      command: my-agent
+      args: [--acp]
+      env:
+        - name: MODE
+          value: fast
+        - name: MY_API_KEY
+          secret: true             # named, never valued
+```
+
+**No secret is in it.** A custom agent's secret variable (marked secret, or
+named like a key, a token, a password, as the app marks them) is written
+with `secret: true` and no value; its value stays in the machine's
+credential store. Not in it at all: grants and credentials (the machine's
+certificate, its key, the agents' grants: they are signed by the server for
+one key and mean nothing elsewhere), the machine's name (unique among the
+owner's machines: the next machine logs in under its own), pausing, Her, and
+the projects the machine made itself for `session start --repo` (clones in
+its data folder).
+
+### 6.2 Who may apply what
+
+Apply changes no more than the machine's own user could before: it goes
+through the same entry as `aided project` and `aided roots`
+(`Machine.ApplyLocal`), which takes projects and the workspace roots.
+
+| Section | Set by, before this | `aided config apply` |
+|---|---|---|
+| `workspace_roots` | the machine's user (`aided roots`), or the owner root-signed | Applied |
+| `projects` | the machine's user (`aided project`), or the owner's devices | Applied |
+| `agent_defaults` | the owner's devices only (`AdminCommand.set_agent_defaults`) | Compared, never changed |
+| `custom_agents` | the owner's devices only (`MachineAdminService.SaveCustomAgent`) | Compared, never changed |
+
+An agent (the `aide` CLI, MCP) changes none of them, and gets no `config`
+command: its grant lets it use machines, not set them up.
+
+Agent defaults or custom agents in the file that differ from the machine's
+are named, as `owner_only` changes; the rest is applied, and the command
+fails with kind `denied` (exit 3), its hint saying to set them in the Aide
+app or leave them out of the file. The same file applied on the machine it
+came from changes nothing and is refused nothing.
+
+### 6.3 How it applies
+
+- **Again and again, the same result**: what already is as the file says is
+  not a change; applying a file twice changes nothing the second time.
+- **A section left out is left as it is**; a project or custom agent not in
+  the file is kept (apply never removes one: `aided project remove`).
+- **Everything is checked first**, against the roots the file sets: a file
+  with a wrong value changes nothing. The kinds: `usage` (an unknown
+  version, workspace or agent, a project twice), `not_found` (a folder not
+  on this machine: a root, or a project's; a worktree project's must be a
+  git repository), `outside_roots` (a project outside the roots),
+  `invalid_state` (**a conflict**: a project id this machine has at another
+  path; remove it first, or give it another id in the file).
+- The roots are set before the projects. A project's description is
+  trimmed, its agents' duplicates dropped, and a worktree project's empty
+  base is `HEAD`, as `aided project add` does.

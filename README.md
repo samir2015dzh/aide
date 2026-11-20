@@ -76,10 +76,10 @@ docker run -d --name aide-relay --restart unless-stopped \
   -p 80:80 -p 443:443 -v aide-relay:/data \
   -e AIDE_RELAY_DOMAIN=relay.example.com -e AIDE_RELAY_MCP=1 \
   ghcr.io/samir2015dzh/aide-relay
-docker logs aide-relay   # the one-time setup code
+docker logs aide-relay   # the one-time setup code, valid for an hour
 ```
 
-In the app, choose **Set Up a New Server** and enter the domain, the setup code, and the account and password the server will keep (`docker exec aide-relay aide-relay setup-code` prints the code again). The server belongs to the one owner who sets it up. A forgotten password is set again on the server: `docker exec -i aide-relay aide-relay password --account me` reads the new one on stdin; restart the server after. `AIDE_RELAY_MCP=1` turns on the MCP gateway for cloud assistants; `docker exec aide-relay aide-relay mcp-url` prints its secret address. Behind a reverse proxy, publish port 8080 and set `AIDE_RELAY_PUBLIC_URL=https://relay.example.com` instead of the domain.
+In the app, choose **Set Up a New Server** and enter the domain, the setup code, and the account and password the server will keep (`docker exec aide-relay aide-relay setup-code` prints the code again; once its hour is over the code is refused, and that command prints a new one; `AIDE_RELAY_SETUP_CODE_TTL=24h`, or `--setup-code-ttl`, sets another time, `0` none). The server belongs to the one owner who sets it up. A forgotten password is set again on the server: `docker exec -i aide-relay aide-relay password --account me` reads the new one on stdin; restart the server after. `AIDE_RELAY_MCP=1` turns on the MCP gateway for cloud assistants; `docker exec aide-relay aide-relay mcp-url` prints its secret address. Behind a reverse proxy, publish port 8080 and set `AIDE_RELAY_PUBLIC_URL=https://relay.example.com` instead of the domain.
 
 A relay set up before the rename keeps running as it is: it reads the `AIDE_RELAY_*` variables, its volume and its owner stay, and the image has `aide-relay` too. One set up before accounts with the old password login turns it into the account at the first login with that password ([docs/accounts.md](docs/accounts.md) §5). Back up the data volume: it holds the server's key and your account.
 

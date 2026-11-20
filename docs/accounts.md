@@ -61,7 +61,13 @@ costs.
 ## 2. Setting a server up
 
 A new server prints a **setup code** on its first start (and
-`aide-relay setup-code` prints it again). The first device sets it up
+`aide-relay setup-code` prints it again). A code is taken for an hour from
+when it was made (`--setup-code-ttl`, `AIDE_RELAY_SETUP_CODE_TTL`; `0`:
+forever): then SetUp refuses it ("the setup code expired"), and the next
+one asked for (`aide-relay setup-code`, or the server's next start) is a
+new one, the old one never taken again. A code kept by a server from before
+codes expired gets its hour when next asked for. A server set up has no
+code: its owner, devices, machines and agents are untouched. The first device sets it up
 (`RelayPublicService.SetUp`; the apps' 设置新的服务器): the server, the setup
 code, the account and the password it will keep. The server then makes its
 key, signs root cert v1 listing it alone, keeps the account as an Argon2id
