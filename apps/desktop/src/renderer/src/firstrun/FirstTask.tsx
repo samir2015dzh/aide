@@ -83,9 +83,13 @@ function helloPrompt(st: ReturnType<typeof useStore>, granted: string[], granted
   const local = st.machines.find((m) => m.local);
   const ready = (local?.status?.agents ?? []).filter((a) => a.available && a.loggedIn).map((a) => a.name);
   const agents = granted.filter((a) => a !== "*");
-  const coder = (agents.length > 0 ? agents : ready).find((a) => ready.includes(a)) ?? agents[0] ?? ready[0];
-  const projects = st.projects.filter((p) => p.machineId === local?.machineId && (!coder || p.agents.length === 0 || p.agents.includes(coder)));
   const allowed = grantedProjects.filter((p) => p !== "*");
+  // One with a project here it may use first: an assistant logged in may use every coding agent and project.
+  const hasProject = (a: string) =>
+    st.projects.some((p) => p.machineId === local?.machineId && (p.agents.length === 0 || p.agents.includes(a)) && (allowed.length === 0 || allowed.includes(p.projectId)));
+  const pool = (agents.length > 0 ? agents : ready).filter((a) => ready.includes(a));
+  const coder = pool.find(hasProject) ?? pool[0] ?? agents[0] ?? ready[0];
+  const projects = st.projects.filter((p) => p.machineId === local?.machineId && (!coder || p.agents.length === 0 || p.agents.includes(coder)));
   const project = (allowed.length > 0 ? projects.find((p) => allowed.includes(p.projectId)) : projects[0])?.projectId ?? allowed[0];
   const who = coder ? codingAgentTitle(coder) : i18n.t("firstrun:firstTask.codingAgent");
   return project ? i18n.t("firstrun:firstTask.promptInProject", { project, agent: who }) : i18n.t("firstrun:firstTask.prompt", { agent: who });

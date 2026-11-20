@@ -18,8 +18,6 @@ export type Hook = {
     downloads: number;
     installs: number;
     advance(ms: number): Promise<void>;
-    signing(on: boolean): void;
-    signerSignals: string[];
     online: boolean;
     badNotes: boolean;
     longNotes: boolean;
@@ -53,7 +51,7 @@ export async function installer(inApplications = false, move: "success" | "cance
     delete process.env.HERMESH_DATA_DIR;
     delete process.env.HERMESH_SOCKET;
     Object.defineProperty(app, "isPackaged", { get: () => true });
-    const state = globalThis.installTest = { dialogs: [], loginItems: [], launchctl: [], protocols: [], moved: 0, feedFails: false, latest: "0.0.0", feedRequests: 0, holdFeed: false, downloads: 0, installs: 0, signerSignals: [], online: true, badNotes: false, longNotes: false, links: [] };
+    const state = globalThis.installTest = { dialogs: [], loginItems: [], launchctl: [], protocols: [], moved: 0, feedFails: false, latest: "0.0.0", feedRequests: 0, holdFeed: false, downloads: 0, installs: 0, online: true, badNotes: false, longNotes: false, links: [] };
     net.isOnline = () => state.online;
     shell.openExternal = async (url) => { state.links.push(url); };
     // Advance only long scheduling timers; daemon polling and renderer clocks remain real.
@@ -84,11 +82,9 @@ export async function installer(inApplications = false, move: "success" | "cance
       now = end;
       await new Promise((r) => realTimeout(r, 20));
     };
-    // A signer subprocess boundary, carrying the same busy bit as the real Swift signer.
     const { EventEmitter } = require("node:events");
-    const { PassThrough } = require("node:stream");
-    const fs = require("node:fs"), cp = require("node:child_process");
-    const exists = fs.existsSync, spawn = cp.spawn, execFile = cp.execFile;
+    const cp = require("node:child_process");
+    const execFile = cp.execFile;
     // launchd: a job booted out is still there for one look, while it exits.
     let looksUntilGone = Infinity;
     cp.execFile = (bin, ...args) => {
@@ -100,16 +96,6 @@ export async function installer(inApplications = false, move: "success" | "cance
       const callback = args.at(-1);
       if (typeof callback === "function") setImmediate(() => callback(gone ? new Error("not loaded") : null, "", ""));
       return new EventEmitter();
-    };
-    fs.existsSync = (p) => String(p).endsWith("/HermeshSigner") || exists(p);
-    cp.spawn = (bin, ...args) => {
-      if (!String(bin).endsWith("/HermeshSigner")) return spawn(bin, ...args);
-      const child = new EventEmitter();
-      child.stdout = new PassThrough();
-      child.kill = (signal) => { state.signerSignals.push(signal); return true; };
-      state.signing = (on) => child.stdout.write("HERMESH_SIGNER_BUSY=" + (on ? 1 : 0) + "\\n");
-      setImmediate(() => state.signing(false));
-      return child;
     };
     app.getVersion = () => "1.0.0";
     app.isInApplicationsFolder = () => config.inApplications;

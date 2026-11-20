@@ -69,7 +69,6 @@ export async function startDaemon(socket: string): Promise<Daemon> {
       listClients: () => ({ clients: w.clients }),
       listProjects: () => ({ projects: w.projects, unreachable: [] }),
       listDevices: () => ({ devices: w.devices }),
-      listPairingRequests: () => ({ pairings: [] }),
       listSessions: (req) => page(req.limit, req.before),
       async *watch(_req, ctx) {
         const ch = channel<WatchResponse>(ctx.signal);

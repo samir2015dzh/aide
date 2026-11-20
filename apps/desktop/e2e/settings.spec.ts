@@ -36,7 +36,6 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   const settings = await openSettings(app, page);
   await expect(nav(settings, "通用")).toHaveAttribute("aria-current", "page");
   const general = page_(settings, "通用");
-  await expect(general.getByRole("switch", { name: "连接请求" })).toHaveAttribute("aria-checked", "true");
   await expect(general.getByRole("switch", { name: "新任务" })).toHaveAttribute("aria-checked", "true");
   const login = general.getByRole("switch", { name: "登录时打开 Aide" });
   await expect(login).toHaveAttribute("aria-checked", "false");
@@ -61,9 +60,9 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   await expect(bot).toContainText("长期有效");
   await snap(settings, "settings-grants");
 
-  // Adding happens in a sheet over the settings window: the first run's connect page.
+  // Adding happens in a sheet over the settings window: the first run's assistants.
   await grants.getByRole("button", { name: "连接 agent…" }).click();
-  await expect(settings.getByRole("dialog", { name: "连接你的 Agent" })).toBeVisible();
+  await expect(settings.getByRole("dialog", { name: "连接助手" })).toBeVisible();
   await settings.keyboard.press("Escape");
   await expect(settings.getByRole("dialog")).toHaveCount(0);
 
@@ -464,30 +463,31 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
   await app.close();
 });
 
-test("settings 账号与设备 shows the identity, the trusted devices and, folded, the addresses", async () => {
+test("settings 账号与设备 shows the identity, the devices logged in, the account and, folded, the addresses", async () => {
   const { app, page } = await launch();
   const status = await page.evaluate(() =>
     fetch("app://hermesh/api/hermesh.local.v1.LocalService/GetStatus", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.json()),
   );
   const settings = await openSettings(app, page, "account");
   const panel = page_(settings, "账号与设备");
-  const devices = panel.getByRole("list", { name: "可信设备" });
+  const devices = panel.getByRole("list", { name: "你的设备" });
   await expect(devices).toContainText("test-mac");
   await expect(devices).toContainText(thisComputer);
-  await expect(devices.getByRole("button", { name: "移除…" })).toHaveCount(0);
+  await expect(devices.getByRole("button", { name: "登出" })).toHaveCount(0); // never itself
+  await expect(panel).toContainText(`账号 ${status.account}`);
   await expect(panel).not.toContainText(status.ownerId);
   await snap(settings, "settings-account");
 
   await devices.getByRole("button", { name: "添加设备…" }).click();
-  await expect(settings.getByRole("dialog", { name: "添加可信设备" })).toBeVisible();
+  await expect(settings.getByRole("dialog", { name: "添加设备" })).toBeVisible();
   await settings.keyboard.press("Escape");
   await expect(settings.getByRole("dialog")).toHaveCount(0);
 
   await panel.getByRole("button", { name: "高级" }).click();
   await expect(panel).toContainText(status.ownerId);
   await expect(panel).toContainText("已连接");
-  await expect(panel).toContainText(`aided pair ${status.connectAddress}`);
-  await expect(panel).toContainText(`aide auth login ${status.connectAddress}`);
+  await expect(panel).toContainText(`aided login ${status.relayUrl} --account ${status.account}`);
+  await expect(panel).toContainText(`aide auth login ${status.relayUrl} --account ${status.account}`);
   await panel.getByRole("button", { name: "拷贝身份 ID" }).click();
   await expect(settings.getByRole("status")).toContainText("已拷贝");
   expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(status.ownerId);
@@ -497,14 +497,14 @@ test("settings 账号与设备 shows the identity, the trusted devices and, fold
   await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(status.mcpUrl);
   await snap(settings, "settings-account-advanced");
 
-  // Still a trusted device: signing out only explains how.
+  // Still logged in: signing out only explains how.
   await panel.getByRole("button", { name: "退出登录…" }).click();
-  const dialog = settings.getByRole("dialog", { name: onWindows ? "让这台电脑退出登录？" : "让这台 Mac 退出登录？" });
-  await expect(dialog).toContainText("先在你的另一台可信设备上");
+  const dialog = settings.getByRole("dialog", { name: "让这台电脑退出登录？" });
+  await expect(dialog).toContainText("请在你的另一台设备上");
   await dialog.getByRole("button", { name: "好" }).click();
   await expect(dialog).toBeHidden();
 
-  // Another page opens in the same window; the old 可信设备 link lands here too.
+  // Another page opens in the same window; the old 可信设备 page's link lands here too.
   await page.evaluate(() => window.hermesh?.openSettings("general"));
   await expect(nav(settings, "通用")).toHaveAttribute("aria-current", "page");
   await page.evaluate(() => window.hermesh?.openSettings("devices"));

@@ -99,34 +99,6 @@ test("background discovery stays quiet; details, snooze and automatic download s
   await expect(panel.getByRole("button", { name: /检查更新/ })).toHaveCount(0);
 });
 
-test("approval protection covers the window and fast menu command; returning never approves", async () => {
-  const app = await installer(true);
-  const main = await app.firstWindow();
-  await main.setViewportSize({ width: 1000, height: 760 });
-  await expect((await sessionList(main))).toBeVisible();
-  await clickMenu(app, "overview");
-  await app.evaluate(() => { (globalThis as unknown as Hook).installTest.latest = "1.2.0"; });
-  await advance(app, 30_000);
-  await app.evaluate(({ autoUpdater }) => autoUpdater.emit("update-downloaded", {}, "", "1.2.0"));
-  await expect(main.getByRole("button", { name: /更新已就绪/ })).toBeVisible();
-  await snap(main, "updates-sidebar");
-  const updates = await open(app, main);
-  await app.evaluate(() => (globalThis as unknown as Hook).installTest.signing(true));
-  await expect(updates.getByRole("button", { name: "返回授权" })).toBeVisible();
-  await expect(updates.getByRole("button", { name: "重新启动以更新" })).toHaveCount(0);
-  await clickMenu(app, "installUpdate");
-  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.installs)).toBe(0);
-  await updates.getByRole("button", { name: "返回授权" }).click();
-  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.signerSignals)).toEqual(["SIGUSR1"]);
-  await snap(updates, "updates-approval");
-  await app.evaluate(() => (globalThis as unknown as Hook).installTest.signing(false));
-  await expect(updates.getByRole("button", { name: "重新启动以更新" })).toBeVisible();
-  await updates.close();
-  await clickMenu(app, "installUpdate");
-  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.installs)).toBe(1);
-  expect(app.windows().filter((p) => p.url().endsWith("#updates"))).toHaveLength(0);
-});
-
 test("checks debounce, retry with backoff, recover after wake, and preserve freshness across launches", async () => {
   let app = await installer(true);
   let main = await app.firstWindow();

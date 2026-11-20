@@ -5,22 +5,15 @@ import path from "node:path";
 import { launch, snap, sessionList } from "./app";
 
 // The shell around the UI: the page reaches hermeshd only through the main
-// process, which never lets it near signing.
+// process, and only its local service.
 test("the page reads sessions from hermeshd through the main process", async () => {
   const { app, page } = await launch();
   await expect((await sessionList(page))).toContainText("写 hello");
   await app.close();
 });
 
-test("signing requests are not reachable from the page", async () => {
+test("no other service is reachable from the page", async () => {
   const { app, page } = await launch();
-  for (const method of ["WatchSigningRequests", "CompleteSigningRequest"]) {
-    const status = await page.evaluate(
-      (m) => fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.status),
-      method,
-    );
-    expect(status, method).toBe(403);
-  }
   const other = await page.evaluate(() =>
     fetch("app://hermesh/api/some.other.Service/Method", { method: "POST", body: "{}" }).then((r) => r.status),
   );

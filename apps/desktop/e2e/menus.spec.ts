@@ -88,13 +88,8 @@ test("the app menu drives the main window", async () => {
 
 test("the menu bar panel counts what needs the owner and what runs; a count opens the first one", async () => {
   const { app, page } = await launch();
-  const pairings = await page.evaluate(() =>
-    fetch("app://hermesh/api/hermesh.local.v1.LocalService/ListPairingRequests", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
-      .then((r) => r.json())
-      .then((r: { pairings?: unknown[] }) => r.pairings?.length ?? 0),
-  );
-  // A question and two failures, and every pairing request; one running.
-  await expect.poll(async () => (await tray(app)).view).toMatchObject({ state: "ok", online: 1, attention: 3 + pairings, running: 1 });
+  // A question and two failures; one running.
+  await expect.poll(async () => (await tray(app)).view).toMatchObject({ state: "ok", online: 1, attention: 3, running: 1 });
   expect((await tray(app)).badge).toBe(true);
 
   // The icon opens the panel under it.
@@ -107,17 +102,16 @@ test("the menu bar panel counts what needs the owner and what runs; a count open
   await expect.poll(async () => (await tray(app)).open || (await toggle(), false)).toBe(true);
   await expect(win.getByRole("status")).toHaveText("正常");
   await expect(win.getByText("你的 agent 能用 1 台机器")).toBeVisible();
-  await expect(win.getByRole("button", { name: `需要处理 ${3 + pairings}` })).toBeVisible();
+  await expect(win.getByRole("button", { name: "需要处理 3" })).toBeVisible();
   await expect(win.getByRole("button", { name: "进行中 1" })).toBeVisible();
   await expect(win.getByRole("button", { name: "设置" })).toBeVisible();
   await expect(win.getByRole("button", { name: "退出 Aide" })).toBeVisible();
   await snap(win, "tray-panel");
 
-  // 需要处理 opens the first thing waiting: a pairing request, else the question.
+  // 需要处理 opens the first thing waiting: the question.
   await win.getByRole("button", { name: /^需要处理/ }).click();
   await expect.poll(async () => (await tray(app)).open).toBe(false);
-  if (pairings) await expect(page.getByRole("dialog")).toBeVisible();
-  else await expect(page.getByRole("heading", { name: "选颜色" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "选颜色" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // 进行中 opens the running one.

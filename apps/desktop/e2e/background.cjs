@@ -9,3 +9,6 @@ BrowserWindow.prototype.show = function () {
 };
 BrowserWindow.prototype.focus = function () {};
 app.focus = () => {};
+// Linux, where the suite can run too, takes the Mac's platform code (src/main/platform), whose traffic lights it
+// has none of: without this, placing them throws in the main process, and Electron's error box blocks it.
+if (!BrowserWindow.prototype.setWindowButtonPosition) BrowserWindow.prototype.setWindowButtonPosition = () => {};

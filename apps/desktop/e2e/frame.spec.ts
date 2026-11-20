@@ -36,7 +36,7 @@ test("the sidebar keeps one rhythm, one heading per group and a quiet foot", asy
   const centre = async (l: ReturnType<typeof page.locator>) => ((b) => b.y + b.height / 2)(await box(l));
   const hide = await centre(page.getByRole("button", { name: "收成窄栏" }));
   const nav = page.locator(".side-nav");
-  await expect(nav.getByRole("button")).toHaveText([/^Her/, /^概览/]);
+  await expect(nav.getByRole("button")).toHaveText([/^Her/, /^概览/, "连接 Agent"]);
   const her = await box(nav.getByRole("button", { name: /^Her/ }));
   const overview = await box(nav.getByRole("button", { name: /^概览/ }));
   expect(overview.height).toBe(32);
@@ -173,7 +173,7 @@ test("the avatar opens the account menu above it, opaque, by mouse and keyboard"
   const item = (name: string) => menu.getByRole("menuitem", { name: new RegExp(`^${name}`) });
   await avatar.click();
   await expect(avatar).toHaveAttribute("aria-expanded", "true");
-  await expect(menu.getByRole("menuitem")).toHaveText(["连接 agent…⇧⌘N", "添加机器…", "输入配对码…⇧⌘P", "设置…⌘,", "账号…"]);
+  await expect(menu.getByRole("menuitem")).toHaveText(["连接助手…⇧⌘N", "添加机器…", "连接 DSH、Claude Desktop…", "设置…⌘,", "账号…"]);
   await menu.evaluate((el) => Promise.all(el.getAnimations().map((x) => x.finished))); // it rises into place
   const a = (await avatar.boundingBox())!;
   const m = (await menu.boundingBox())!;
@@ -184,10 +184,10 @@ test("the avatar opens the account menu above it, opaque, by mouse and keyboard"
   expect(background).toMatch(/^rgb\(/); // no alpha: the list doesn't show through
   await snap(page, "account-menu");
 
-  // 连接 agent… opens its sheet, and the menu closes.
-  await item("连接 agent").click();
+  // 连接助手… opens its sheet, and the menu closes.
+  await item("连接助手").click();
   await expect(menu).toHaveCount(0);
-  const sheet = page.getByRole("dialog", { name: "连接你的 Agent" });
+  const sheet = page.getByRole("dialog", { name: "连接助手" });
   await expect(sheet).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
@@ -203,7 +203,7 @@ test("the avatar opens the account menu above it, opaque, by mouse and keyboard"
 
   // From the keyboard: the first item is chosen at once, the arrows go round, ↩ picks.
   await page.keyboard.press("Enter");
-  await expect(item("连接 agent")).toBeFocused();
+  await expect(item("连接助手")).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(item("账号")).toBeFocused();
   // Waiting from before the key: the window may open before the menu is checked.
