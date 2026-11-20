@@ -1,5 +1,11 @@
 # Hermesh state sync: one replica per device, change feeds on every hop
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** there
+> are no pairing requests any more: devices, machines and agents log in with
+> the account and password and the server signs them in at once. What this
+> page says of pairing requests (their lists, polls, fields and tests)
+> describes the feed before; the rest holds.
+
 Status: accepted, 2026-10-25 (decisions in §10). Built 2026-10-26, steps 1
 to 5 (§7); what the building changed is in §11. The hosted center gets
 `WatchOwner` with its own release (§10, 5); until then hermeshd polls it

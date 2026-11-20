@@ -1,5 +1,12 @@
 # Secure cards: when Her needs something only the owner can give
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** Her's
+> approvals are gone ([her-server.md](her-server.md)), so what this page says
+> is "already covered by her's approvals" no longer is; there are no
+> trusted devices, only the owner's devices, which reach Her; and nothing is
+> signed with Touch ID (the later `root_sign` kind would be signed by the
+> server for the device). Cards themselves hold.
+
 Status: step 1 (cards and connectors, §7) built 2026-11-09; step 2 and later
 are not. It builds on
 [her-server.md](her-server.md): the console (§10), security (§8) and the
@@ -298,7 +305,7 @@ be led to ask for a card nobody wanted. Against that:
 
 ### 5.4 Who decides
 
-- Only the owner's trusted devices reach Her (her-server.md §8), so only
+- Only the owner's devices reach Her (her-server.md §8), so only
   they can call `cards/answer`. Agents can't reach Her at all: not through
   hosted MCP, not through agent messages.
 - hermeshd checks every op against its allowlist of console calls and its

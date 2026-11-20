@@ -1,5 +1,12 @@
 # Her and her team: one product from Her and the mesh
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** agents
+> and Her act directly, with no action approvals ([her-server.md](her-server.md)),
+> and agents connect by logging in, with no pairing sheet. What this page
+> says of approvals (the "Approval" paragraphs, an approval in the bar or the
+> record, "needs your approval", their tests) and of requests to connect
+> that wait describes the apps before.
+
 Status: stage 1 built on the iPhone 2026-11-13, with acceptance results
 updated 2026-11-14 (§13); stage 2 (§6) decided 2026-11-14 (all three, B1,
 B3 then B2), designed in §6.1 to §6.5 and built 2026-11-15 (§6.6). The
