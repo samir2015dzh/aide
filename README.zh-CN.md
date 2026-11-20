@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/samir2015dzh/hermesh/releases">发布页</a> ·
+  <a href="https://github.com/samir2015dzh/aide/releases">发布页</a> ·
   <a href="#开始使用">开始使用</a> ·
   <a href="#运行你自己的服务器">你的服务器</a> ·
   <a href="docs/aide-rename.md">改名前的名字</a> ·
@@ -35,7 +35,7 @@ Aide 没有官方服务器：每个使用者自己运行一台（见[运行你�
 
 | 平台 | 下载 |
 |---|---|
-| **Windows** | [最新发布](https://github.com/samir2015dzh/hermesh/releases/latest)里的 `Aide-windows-x64-setup.exe` |
+| **Windows** | [最新发布](https://github.com/samir2015dzh/aide/releases/latest)里的 `Aide-windows-x64-setup.exe` |
 | **Android** | 同一个发布里的 `Aide-<版本>-debug.apk` |
 
 打开应用，填你服务器的地址。Windows 应用同时把这台电脑变成能跑编码 agent 的机器。Windows 安装包还没有代码签名：SmartScreen 拦的话，点「更多信息 › 仍要运行」。
@@ -45,13 +45,13 @@ Aide 没有官方服务器：每个使用者自己运行一台（见[运行你�
 在要跑编码 agent 的 Linux 电脑上：
 
 ```bash
-curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- relay.example.com/o_xxxxxxxx
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- relay.example.com/o_xxxxxxxx
 ```
 
 没装应用的 Windows 电脑，在 PowerShell 里：
 
 ```powershell
-& ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) relay.example.com/o_xxxxxxxx
+& ([scriptblock]::Create((irm https://github.com/samir2015dzh/aide/releases/latest/download/install.ps1))) relay.example.com/o_xxxxxxxx
 ```
 
 在应用里批准这台机器。确认 Claude Code 或 Codex 已经以同一个用户装好并登录，用 `aided doctor` 检查一遍，用 `aided project add <文件夹>` 让 agent 在某个文件夹里干活。参考：[docs/hermeshd.md](docs/hermeshd.md)。
@@ -61,7 +61,7 @@ curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/inst
 命令行 agent（Claude Code、Codex、Cursor 或你自己的）安装 `aide` 命令并申请加入：
 
 ```bash
-curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- --cli
 aide auth login relay.example.com/o_xxxxxxxx --name "构建机上的 Codex"
 ```
 
