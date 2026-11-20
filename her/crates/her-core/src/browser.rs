@@ -757,6 +757,10 @@ impl TypedTool for BrowserSnapshot {
         navigates or the element goes away. Use query to find something without reading everything, ref for one \
         region, and mode \"text\" to read an article.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     async fn authorities(&self, args: &SnapshotArgs, ctx: &ToolCtx) -> Result<Vec<Authority>, ToolError> {
         observe(ctx, args.tab.as_deref(), args.id()).await
     }
@@ -996,6 +1000,10 @@ impl TypedTool for BrowserScreenshot {
     const DESCRIPTION: &'static str = "Take a screenshot of the viewport, the full page or one element (by ref), to \
         check how the page looks. To read or act on the page, use browser_snapshot instead.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     async fn authorities(&self, args: &ScreenshotArgs, ctx: &ToolCtx) -> Result<Vec<Authority>, ToolError> {
         observe(ctx, args.tab.as_deref(), args.tab.as_deref().or(args.reference.as_deref())).await
     }
@@ -1090,6 +1098,10 @@ impl TypedTool for BrowserWait {
         quiet; or wait a fixed number of seconds. Actions already wait for the page to settle, so use this only for \
         what happens later.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     async fn authorities(&self, args: &WaitArgs, ctx: &ToolCtx) -> Result<Vec<Authority>, ToolError> {
         observe(ctx, args.tab.as_deref(), args.tab.as_deref()).await
     }
@@ -1162,6 +1174,10 @@ impl TypedTool for BrowserConsole {
     const NAME: &'static str = "browser_console";
     const DESCRIPTION: &'static str = "Read the tab's console messages, uncaught exceptions and failed requests since \
         the last read.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     async fn authorities(&self, args: &ConsoleArgs, ctx: &ToolCtx) -> Result<Vec<Authority>, ToolError> {
         observe(ctx, args.tab.as_deref(), args.tab.as_deref()).await

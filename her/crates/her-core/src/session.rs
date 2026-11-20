@@ -305,6 +305,8 @@ pub(crate) struct Session {
     pub(crate) data_dir: PathBuf,
     /// See [`SessionView::memory_dir`].
     pub(crate) memory_dir: Option<PathBuf>,
+    /// See [`SessionView::patrol`].
+    pub(crate) patrol: Option<PathBuf>,
     /// One lock per file, shared with the sub-agents: changes to a file never interleave.
     pub(crate) locks: Arc<PathLocks>,
     /// The sub-agents of a main session. `None` for a sub-agent, which cannot start any.
@@ -797,6 +799,7 @@ impl Session {
             env: self.env.clone(),
             data_dir: self.data_dir.clone(),
             memory_dir: self.memory_dir.clone(),
+            patrol: self.patrol.clone(),
             browser: self.system.get().browser.policy.clone(),
             desktop: self.system.get().desktop.clone(),
         }

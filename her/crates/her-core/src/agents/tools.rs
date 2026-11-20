@@ -10,6 +10,7 @@ use her_tools::ToolCategory;
 use her_tools::ToolCtx;
 use her_tools::ToolDescription;
 use her_tools::ToolError;
+use her_tools::ToolKind;
 use her_tools::ToolOutput;
 use her_tools::Typed;
 use her_tools::TypedTool;
@@ -216,6 +217,10 @@ impl TypedTool for SpawnAgent {
         blocker; its report still follows."
     );
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
+
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         describe_spawn(args)
     }
@@ -242,6 +247,10 @@ impl TypedTool for BotSpawnAgent {
         and can send you an <agent_message> when it needs you to act; its report still follows."
     );
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
+
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         describe_spawn(args)
     }
@@ -265,6 +274,10 @@ impl TypedTool for SendMessage {
     const NAME: &'static str = "send_message";
     const DESCRIPTION: &'static str = SEND_DESCRIPTION;
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
+
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         describe_send(args)
     }
@@ -281,6 +294,10 @@ impl TypedTool for BotSendMessage {
     type Args = BotSendArgs;
     const NAME: &'static str = "send_message";
     const DESCRIPTION: &'static str = SEND_DESCRIPTION;
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
 
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         describe_send(args)
@@ -305,6 +322,10 @@ impl TypedTool for SubAgentSendMessage {
     const NAME: &'static str = "send_message";
     const DESCRIPTION: &'static str = SUB_AGENT_SEND_DESCRIPTION;
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
+
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         describe_send(args)
     }
@@ -326,6 +347,10 @@ impl TypedTool for SubAgentSendToUser {
     const NAME: &'static str = crate::bot::SEND_TO_USER;
     const DESCRIPTION: &'static str = "Send the user a short message about your work. It reaches them at once, in \
         the conversation they have with your parent, and doesn't stop your work.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
 
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         let first = args
@@ -357,6 +382,10 @@ impl TypedTool for ListAgents {
         recent steps, what it last said and how long ago it last did anything. Name agents, or leave it out for all. \
         For diagnosing, not for waiting: a report comes when an agent is done.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn describe(&self, _args: &Value, _env: &dyn Environment) -> ToolDescription {
         other("list agents".to_string())
     }
@@ -380,6 +409,10 @@ impl TypedTool for StopAgents {
     const DESCRIPTION: &'static str = "Stop running agents at once: name them, or set all to true. A stopped agent keeps \
         its context, and send_message lets it continue later. The result lists what stopped and what had already \
         finished.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
 
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         other(if args.get("all").and_then(Value::as_bool).unwrap_or(false) {

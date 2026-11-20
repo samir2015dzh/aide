@@ -240,6 +240,16 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await expect(routines).toContainText("发给你了", { timeout: 30_000 });
   await expect(routines).not.toContainText("已删除");
   await routines.getByRole("button", { name: "返回" }).click();
+  // Made a patrol on its page (docs/her-patrol.md): its runs only look, and its row says so.
+  const patrol = routines.getByRole("switch", { name: "只读巡查" });
+  await expect(patrol).toHaveAttribute("aria-checked", "false");
+  await patrol.click();
+  await expect(patrol).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await expect(routines).toContainText("巡查模式：每次运行只查看");
+  await routines.getByRole("button", { name: "返回" }).click();
+  await expect(routines.locator(".rtn-row").filter({ hasText: "拉伸" }).locator(".rtn-tag")).toHaveText("巡查");
+  await snap(page, "her-routine-patrol");
+  await routines.locator(".rtn-row").filter({ hasText: "拉伸" }).click();
   await routines.getByRole("button", { name: "删除" }).click();
   await page.getByRole("dialog", { name: "删除定时任务「拉伸」？" }).getByRole("button", { name: "删除" }).click();
   await expect(routines).toContainText("还没有定时任务", { timeout: 30_000 });

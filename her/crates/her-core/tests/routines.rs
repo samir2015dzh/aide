@@ -120,6 +120,7 @@ fn a_run() -> RoutineRun {
         now: "Thu 2026-11-05 09:00".into(),
         late: false,
         report_failure: true,
+        patrol: None,
     }
 }
 
@@ -389,6 +390,56 @@ async fn a_run_acts_without_asking() {
     assert!(!result.is_error, "{}", result.text_content());
     assert!(h.home.bot_files_dir("b1").join("made-by-run").exists(), "the command ran");
     assert!(!drain(&mut h.kernel).await.iter().any(|e| matches!(e.msg, EventMsg::AgentEvent { .. })));
+}
+
+/// A patrol (docs/her-patrol.md) looks and writes its notes, and nothing else: what it was refused
+/// goes after its reply as suggestions, so the run reports even when it says there is nothing.
+#[tokio::test]
+async fn a_patrol_only_looks_and_suggests_the_rest() {
+    let notes_at = |h: &Harness| h.home.bot_patrol_dir("b1", "r_1");
+    let mut h = bot_with(Vec::new(), None).await;
+    let notes = notes_at(&h);
+    std::fs::create_dir_all(&notes).unwrap();
+    std::fs::write(h.home.bot_files_dir("b1").join("seen.txt"), "磁盘 97%\n").unwrap();
+    let note = notes.join("notes.md").display().to_string();
+    for script in [
+        Script::tool_call("c1", "read", json!({ "path": "seen.txt" })),
+        Script::tool_call("c2", "bash", json!({ "command": "touch made-by-run" })),
+        Script::tool_call("c3", "write", json!({ "path": "made-by-run.txt", "content": "x" })),
+        Script::tool_call("c4", "write", json!({ "path": note, "content": "- 建议：删掉旧日志。\n" })),
+        Script::text("NOTHING_TO_REPORT 看过了。"),
+        send_last("c5", "转告。"),
+    ] {
+        h.api.push(script);
+    }
+    let run = RoutineRun { patrol: Some(notes.clone()), ..a_run() };
+    let ended = outcome(h.kernel.start_run(run).unwrap()).await;
+
+    let brief = texts(&h.api.requests()[0].messages[0]);
+    assert!(brief.contains("This routine is a patrol") && brief.contains(&format!("your notes, in `{}`", notes.display())), "{brief}");
+    let folder = h.home.bot_files_dir("b1");
+    assert!(!folder.join("made-by-run").exists() && !folder.join("made-by-run.txt").exists(), "nothing was changed");
+    assert_eq!(std::fs::read_to_string(&note).unwrap(), "- 建议：删掉旧日志。\n");
+    let results: Vec<_> = h.api.requests()[4]
+        .messages
+        .iter()
+        .filter_map(|m| match m {
+            Message::ToolResult(result) => Some((result.is_error, result.text_content())),
+            _ => None,
+        })
+        .collect();
+    assert!(!results[0].0, "read: {}", results[0].1);
+    for (refused, text) in &results[1..3] {
+        assert!(*refused && text.contains("This routine is a patrol: it only looks"), "{text}");
+    }
+    assert!(!results[3].0, "the note: {}", results[3].1);
+
+    assert_eq!(ended.outcome, RoutineOutcome::Reported, "refused calls are never quiet");
+    let report = ended.report.unwrap();
+    assert!(report.starts_with("NOTHING_TO_REPORT 看过了。\n\nNot done, as this routine only looks."), "{report}");
+    assert!(report.contains("\n- touch made-by-run") && report.contains("made-by-run.txt"), "{report}");
+    let letter = texts(h.api.requests()[5].messages.last().unwrap());
+    assert!(letter.contains("Not done, as this routine only looks"), "the bot hears it: {letter}");
 }
 
 /// A late run is told so.
@@ -698,6 +749,7 @@ impl RoutineHost for FakeHost {
                 prompt: "Remind them.".into(),
                 schedule: "0 8 * * *".into(),
                 state: RoutineState::Active,
+                patrol: false,
                 recent: Vec::new(),
             },
         )
@@ -763,7 +815,7 @@ async fn manage_routine_goes_to_the_service_and_tells_the_next_runs() {
         [
             "create b1 喝水 [0 8 * * *] [每天 8 点]",
             "get b1 r_new",
-            "update b1 r_new RoutineChange { name: None, prompt: Some(\"Remind them kindly.\"), schedule: None, when: None }",
+            "update b1 r_new RoutineChange { name: None, prompt: Some(\"Remind them kindly.\"), schedule: None, when: None, patrol: None }",
             "set_enabled b1 r_new false",
             "set_enabled b1 r_new true",
             "delete b1 r_new",
