@@ -282,6 +282,7 @@ func (o *Owner) stayConnected(ctx context.Context) {
 				done = c.Done()
 				warned = false
 				o.log.Info("owner: relay connected", "after", time.Since(started).Round(time.Millisecond))
+				o.kickScreens()
 			} else if !warned && ctx.Err() == nil {
 				warned = true
 				o.log.Warn("owner: relay unreachable", "err", err, "retry_in", backoff)
@@ -296,6 +297,7 @@ func (o *Owner) stayConnected(ctx context.Context) {
 			case <-done:
 			}
 			o.log.Info("owner: relay disconnected")
+			o.kickScreens()
 			err := c.Refused()
 			if err == nil {
 				backoff = time.Second
@@ -311,6 +313,13 @@ func (o *Owner) stayConnected(ctx context.Context) {
 			backoff = min(backoff*2, 10*time.Second)
 		}
 	}
+}
+
+// kickScreens has the screens look again now (the status changed).
+func (o *Owner) kickScreens() {
+	o.rep.mu.Lock()
+	o.rep.kickLocked()
+	o.rep.mu.Unlock()
 }
 
 func (o *Owner) requireInit() error {
@@ -1046,9 +1055,12 @@ func (o *Owner) setPendingName(machineID, name string) {
 }
 
 // namePending names the machines approved under another name than the one
-// they asked with, once they are online (run in the background).
+// they asked with, once they are online (run in the background). Nothing
+// asks for that since approvals went (docs/accounts.md): it names what an
+// older version left pending, and stops once nothing is, instead of
+// reading the store every 3 s for good (docs/resident.md §4).
 func (o *Owner) namePending(ctx context.Context) {
-	for {
+	for len(o.pendingNames()) > 0 {
 		select {
 		case <-ctx.Done():
 			return

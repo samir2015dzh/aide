@@ -185,19 +185,31 @@ func (r *replica) liveness(machines []*localv1.Machine) {
 }
 
 // keepLiveness brings the machines' liveness up to date every
-// livenessEvery while s runs.
+// livenessEvery while s runs and a window looks, else every
+// livenessBackground, and at once when a window comes (docs/resident.md §4).
 func (r *replica) keepLiveness(s *sources) {
-	t := time.NewTicker(livenessEvery)
+	t := time.NewTimer(livenessEvery)
 	defer t.Stop()
 	for {
 		up := r.o.relayUp()
 		r.mu.Lock()
 		r.livenessLocked(s, up, time.Now())
 		r.mu.Unlock()
+		looking, arrived := windowLooking()
+		if looking {
+			t.Reset(livenessEvery)
+		} else {
+			t.Reset(livenessBackground)
+		}
 		select {
 		case <-s.ctx.Done():
 			return
 		case <-t.C:
+		case <-arrived:
 		}
 	}
 }
+
+// livenessBackground: how often liveness is brought up to date while no
+// window looks (the notification area's state, notices).
+const livenessBackground = 10 * time.Second

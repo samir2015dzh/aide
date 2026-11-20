@@ -20,6 +20,7 @@
   },
   "status": {
     "queued": "Queued",
+    "queuedLowMemory": "Queued · the computer is low on memory; starts once memory frees up",
     "preparing": "Preparing",
     "running": "Running",
     "idle": "Idle",
