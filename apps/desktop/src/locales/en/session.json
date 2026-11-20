@@ -128,7 +128,7 @@
   },
   "composer": {
     "label": "Message to {{agent}}",
-    "placeholder": "Message {{agent}}…",
+    "placeholder": "Message {{agent}}… (!plan or !implement first; #s_… brings in an earlier session)",
     "send": "Send"
   }
 }

@@ -475,6 +475,10 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	if err := checkAttachments(req.Prompt, req.Attachments); err != nil {
 		return nil, err
 	}
+	text, err := s.expandPrompt(p, req.Prompt)
+	if err != nil {
+		return nil, err
+	}
 	if max := g.GetMaxConcurrentSessions(); max > 0 && s.activeFor(p.ClientID) >= int(max) {
 		return nil, cerr(connect.CodeResourceExhausted, "this client already has %d active sessions", max)
 	}
@@ -494,7 +498,7 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 		}
 	}
 	id := "s_" + strings.TrimPrefix(s.machineID, "m_")[:8] + "_" + strings.ToLower(ulid.Make().String())
-	prompt, err := newMessage(s.attachmentsDir(id), req.Prompt, req.Attachments)
+	prompt, err := newMessage(s.attachmentsDir(id), text, req.Attachments)
 	if err != nil {
 		return nil, fmt.Errorf("saving attachments: %w", err)
 	}
@@ -676,7 +680,11 @@ func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts
 	if s.paused() {
 		return nil, cerr(connect.CodeUnavailable, "this machine is paused by its owner")
 	}
-	m, err := newMessage(s.attachmentsDir(id), text, atts)
+	expanded, err := s.expandPrompt(p, text)
+	if err != nil {
+		return nil, err
+	}
+	m, err := newMessage(s.attachmentsDir(id), expanded, atts)
 	if err != nil {
 		return nil, fmt.Errorf("saving attachments: %w", err)
 	}
