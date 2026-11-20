@@ -1,4 +1,9 @@
 {
+  "down": {
+    "off": "Her isn't on for {{machine}} yet. Turn on Run Her in Settings › Machines and this comes back by itself.",
+    "starting": "Her isn't running on {{machine}} yet. Just after turning it on or updating, give it a moment: this comes back by itself once she runs.",
+    "failed": "Her couldn't start on {{machine}}: {{error}}. Once that is fixed, this comes back by itself."
+  },
   "page": {
     "more": "More",
     "manage": "Manage “{{name}}”…",

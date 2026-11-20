@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import type { BotMemoryPage, BotMemoryResult, BotSummary } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
-import { errorText, useStore } from "../store";
-import { herAnswers, needsUpdate } from "../skew";
+import { useStore } from "../store";
+import { herAnswers, herNeedsUpdate } from "../skew";
+import { herErrorText } from "./herErrors";
 import { Tile } from "./Composer";
 import { useHer } from "./context";
 import { useSaveFile, type FileScope } from "./Messages";
@@ -35,7 +36,7 @@ export function useMemory(bot: BotSummary): { memory: BotMemoryResult | null; er
     let live = true;
     her.call("bots/memory", { bot_id: bot.id }).then(
       (m) => live && (setMemory(m), setError(null), setLacks(false)),
-      (e) => live && (setError(errorText(e)), setLacks(needsUpdate(e))),
+      (e) => live && (setError(herErrorText(her.machine, e)), setLacks(herNeedsUpdate(her.machine, e))),
     );
     return () => {
       live = false;

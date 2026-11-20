@@ -73,7 +73,11 @@ export function Assistants({ c, size = 44 }: { c: ReturnType<typeof useConnect>;
         </button>
       </div>
     );
+  // No address to paste: why, instead of steps that say to paste one (the server serves none, is older than
+  // telling it, or could not be asked).
+  const problem = st.status?.mcpProblem ?? "";
   const noMCP = c.mcp && !c.text;
+  const why = problem === "old_server" ? t("assistants.oldServer") : problem ? t("assistants.mcpError", { error: problem }) : t("assistants.noMCP");
   return (
     <>
       <div className="pa-pick" role="radiogroup" aria-label={t("assistants.pick")}>
@@ -91,13 +95,16 @@ export function Assistants({ c, size = 44 }: { c: ReturnType<typeof useConnect>;
             <input id="cf-name" className="field" maxLength={64} value={c.otherName} onChange={(e) => c.rename(e.target.value)} />
           </div>
         )}
-        <ol className="cg-list">
-          {(c.mcp ? ["mcp1", "mcp2", "mcp3"] : ["cli1", "cli2", "cli3"]).map((k) => (
-            <li key={k}>{t(`assistants.${k}` as never, { name: c.label, app: c.kind.name, password: `<${i18n.t("common:personal.passwordArg")}>` })}</li>
-          ))}
-        </ol>
+        {!noMCP && (
+          <ol className="cg-list">
+            {/* Each app's own menu path (mcp1.<id>), never another's. */}
+            {(c.mcp ? [`mcp1.${c.kind.id}`, "mcp2", "mcp3"] : ["cli1", "cli2", "cli3"]).map((k) => (
+              <li key={k}>{t(`assistants.${k}` as never, { name: c.label, app: c.kind.name, password: `<${i18n.t("common:personal.passwordArg")}>` })}</li>
+            ))}
+          </ol>
+        )}
         {noMCP ? (
-          <p className="cg-note">{t("assistants.noMCP")}</p>
+          <p className="cg-note">{why}</p>
         ) : (
           <div className="pa-msg">
             <div className="msgbox sel-text">{c.text}</div>

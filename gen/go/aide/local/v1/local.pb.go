@@ -776,7 +776,12 @@ type GetStatusResponse struct {
 	// one (docs/version-skew.md §6.1): "her_reply" (docs/her-reply.md).
 	Abilities []string `protobuf:"bytes,21,rep,name=abilities,proto3" json:"abilities,omitempty"`
 	// The limits sessions' states are worked out with.
-	StateLimits   *StateLimits `protobuf:"bytes,22,opt,name=state_limits,json=stateLimits,proto3" json:"state_limits,omitempty"`
+	StateLimits *StateLimits `protobuf:"bytes,22,opt,name=state_limits,json=stateLimits,proto3" json:"state_limits,omitempty"`
+	// Why mcp_url is empty when the server was asked and could not say:
+	// "old_server", a relay older than GetMCP (updating it brings the
+	// address); else the error asking it. Both empty with no mcp_url: the
+	// server serves no MCP gateway (it needs a domain with HTTPS).
+	McpProblem    string `protobuf:"bytes,23,opt,name=mcp_problem,json=mcpProblem,proto3" json:"mcp_problem,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -949,6 +954,13 @@ func (x *GetStatusResponse) GetStateLimits() *StateLimits {
 		return x.StateLimits
 	}
 	return nil
+}
+
+func (x *GetStatusResponse) GetMcpProblem() string {
+	if x != nil {
+		return x.McpProblem
+	}
+	return ""
 }
 
 type ListProfilesRequest struct {
@@ -9580,7 +9592,7 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x05kinds\x18\x04 \x03(\tR\x05kinds\x12\x18\n" +
 	"\aservice\x18\x05 \x01(\tR\aservice\"\x16\n" +
 	"\x14RegisterPushResponse\"\x12\n" +
-	"\x10GetStatusRequest\"\x87\x06\n" +
+	"\x10GetStatusRequest\"\xa8\x06\n" +
 	"\x11GetStatusResponse\x12 \n" +
 	"\vinitialized\x18\x01 \x01(\bR\vinitialized\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x1b\n" +
@@ -9604,7 +9616,9 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\amcp_url\x18\x12 \x01(\tR\x06mcpUrl\x12,\n" +
 	"\x12account_avatar_url\x18\x14 \x01(\tR\x10accountAvatarUrl\x12\x1c\n" +
 	"\tabilities\x18\x15 \x03(\tR\tabilities\x12=\n" +
-	"\fstate_limits\x18\x16 \x01(\v2\x1a.aide.local.v1.StateLimitsR\vstateLimitsJ\x04\b\t\x10\n" +
+	"\fstate_limits\x18\x16 \x01(\v2\x1a.aide.local.v1.StateLimitsR\vstateLimits\x12\x1f\n" +
+	"\vmcp_problem\x18\x17 \x01(\tR\n" +
+	"mcpProblemJ\x04\b\t\x10\n" +
 	"J\x04\b\x13\x10\x14R\x0fconnect_addressR\x06signer\"\x15\n" +
 	"\x13ListProfilesRequest\"J\n" +
 	"\x14ListProfilesResponse\x122\n" +

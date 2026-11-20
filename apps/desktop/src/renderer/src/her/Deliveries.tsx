@@ -6,7 +6,8 @@ import type { BotSummary, DeliveredFile, DeliveriesListResult, DeliveriesSources
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { Dialog } from "../session/markdown/Dialog";
-import { herAnswers, needsUpdate } from "../skew";
+import { herAnswers, herNeedsUpdate } from "../skew";
+import { herErrorText } from "./herErrors";
 import { errorText, useNow, useStore } from "../store";
 import { BotAvatar } from "./Avatar";
 import { useHer } from "./context";
@@ -89,7 +90,7 @@ export function DeliveriesPanel({ bot, kept, onBack, onClose }: { bot: BotSummar
     let live = true;
     her.call("deliveries/list", { bot_id: bot.id, ...filters }).then(
       (r) => live && (setList(onlyDeliveries(r, media)), setError(null), setLacks(false)),
-      (e) => live && (setError(errorText(e)), setLacks(needsUpdate(e))),
+      (e) => live && (setError(herErrorText(her.machine, e)), setLacks(herNeedsUpdate(her.machine, e))),
     );
     return () => {
       live = false;
