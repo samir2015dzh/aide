@@ -157,28 +157,8 @@ answered:
 	call(t, h, "", "models/list", nil)
 	_, err := h.Call(ctx, &herv1.CallRequest{ConnectionId: "gone", Request: &herv1.Request{Method: "models/list"}})
 	code(t, err, connect.CodeNotFound)
-	// Full access, as the owner's devices set it: on the conversation.
-	if _, err := h.Call(ctx, &herv1.CallRequest{ConnectionId: opened.ConnectionId, Request: &herv1.Request{Method: "session/op",
-		Params: []byte(`{"session_id":"` + open.SessionID + `","op":{"type":"set_permission_mode","mode":"bypass-permissions"}}`)}}); err != nil {
-		t.Fatal(err)
-	}
-
-	// SetHerAssistantMode's way, which older devices sign.
-	if err := h.AssistantMode(ctx, botID, "bypass-permissions"); err != nil {
-		t.Fatal(err)
-	}
-	var snap struct {
-		Snapshot struct {
-			Session struct {
-				PermissionMode string `json:"permission_mode"`
-			} `json:"session"`
-		} `json:"snapshot"`
-	}
-	json.Unmarshal(call(t, h, "", "bots/open", map[string]any{"bot_id": botID, "history_limit": 0}), &snap)
-	if snap.Snapshot.Session.PermissionMode != "bypass-permissions" {
-		t.Fatalf("mode %q", snap.Snapshot.Session.PermissionMode)
-	}
-	code(t, h.AssistantMode(ctx, botID, "full-auto"), connect.CodeInvalidArgument)
+	// Her has no permission modes: SetHerAssistantMode's way is gone.
+	code(t, h.AssistantMode(ctx, botID, "bypass-permissions"), connect.CodeUnimplemented)
 
 	// SetHerCommandConnector's way: added, changed, removed.
 	servers := func() map[string]map[string]any {

@@ -124,32 +124,11 @@ func (h *Host) Call(ctx context.Context, req *herv1.CallRequest) (*herv1.CallRes
 	return &herv1.CallResponse{Response: res}, nil
 }
 
-// AssistantMode sets how freely an assistant acts (SetHerAssistantMode):
-// on a connection of its own, the assistant's conversation is opened and
-// its permission mode set.
+// AssistantMode answered SetHerAssistantMode, which set an assistant's
+// permission mode. Her has none any more: she runs actions without asking
+// (docs/her-server.md §0), so there is nothing to set.
 func (h *Host) AssistantMode(ctx context.Context, botID, mode string) error {
-	switch mode {
-	case "manual", "accept-edits", "bypass-permissions":
-	default:
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown permission mode %q (manual, accept-edits or bypass-permissions)", mode))
-	}
-	c, err := h.dial(ctx, false)
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	params, _ := json.Marshal(map[string]any{"bot_id": botID, "history_limit": 0})
-	res, err := c.call(ctx, "bots/open", params)
-	if err := answered("bots/open", res, err); err != nil {
-		return err
-	}
-	var open struct {
-		SessionID string `json:"session_id"`
-	}
-	json.Unmarshal(res.Result, &open)
-	params, _ = json.Marshal(map[string]any{"session_id": open.SessionID, "op": map[string]string{"type": "set_permission_mode", "mode": mode}})
-	res, err = c.call(ctx, "session/op", params)
-	return answered("session/op", res, err)
+	return connect.NewError(connect.CodeUnimplemented, errors.New("Her has no permission modes: she runs actions without asking"))
 }
 
 // connectorName is a name her takes for an MCP server.

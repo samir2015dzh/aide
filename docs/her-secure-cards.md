@@ -41,13 +41,12 @@ Others do the same:
 - Grok Bot's cards are mostly a connector's authorization, and a site's
   sign-in it fills in for the user.
 
-**Already covered without cards**, by her's approvals:
-
-- a risky command or file write;
-- a browser step on a site Her may not act on yet (the approval offers the
-  site's permission);
-- a step only the owner can do in a page Her's Mac shows, with
-  `browser_wait` `user`.
+**Not cards, and not asked at all.** Her runs actions without asking
+(decided 2026-11-20): a command, a file write, a browser step on any site
+run at once. A step only the owner can do in a page (a sign-in, a CAPTCHA)
+is said in her reply, and she goes on when the owner says it is done. Secure
+cards are not approvals of an action: they are how the owner gives what only
+they have, a secret or a sign-in, and they stay.
 
 ## 2. How Her asks
 
@@ -117,9 +116,8 @@ Others do the same:
   > {type: "card", card: "c_12"}: that ends your turn, and you hear how it
   > went.
 
-- **They `run_unasked`:** they change nothing, so her's approval layer has
-  nothing to ask. The card is the only way a change happens, in every
-  permission mode, full access included.
+- **They change nothing by themselves:** the card is the only way a change
+  happens, and it waits for the owner's answer on the card.
 
 ### 2.3 Why not a CLI or an MCP server
 

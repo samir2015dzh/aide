@@ -43,9 +43,8 @@ func TestCheck(t *testing.T) {
 		{"no method", "", ``, connect.CodeUnimplemented},
 		{"params that are not JSON", "bots/open", `{"bot_id":`, connect.CodeInvalidArgument},
 
-		{"asking first", "session/op", `{"session_id":"s","op":{"type":"set_permission_mode","mode":"manual"}}`, 0},
-		{"accepting edits", "session/op", `{"session_id":"s","op":{"type":"set_permission_mode","mode":"accept-edits"}}`, 0},
-		{"full access", "session/op", `{"session_id":"s","op":{"type":"set_permission_mode","mode":"bypass-permissions"}}`, 0},
+		{"a prompt", "session/op", `{"session_id":"s","op":{"type":"prompt","input":[{"type":"text","text":"hi"}]}}`, 0},
+		{"a title", "session/op", `{"session_id":"s","op":{"type":"set_title","title":"t"}}`, 0},
 
 		{"probing a server by address", "mcp/probe", `{"probe_id":"p","server":{"url":"https://example.com/mcp"}}`, 0},
 		{"probing a command, which starts it", "mcp/probe", `{"probe_id":"p","server":{"command":"sh","args":["-c","id"]}}`, connect.CodePermissionDenied},
@@ -195,11 +194,11 @@ func TestCardsAnswer(t *testing.T) {
 // What is looked into is what goes to her: params are decoded once and
 // encoded again, so a duplicate key reaches her as the value checked.
 func TestCheckSendsWhatItChecked(t *testing.T) {
-	params, err := check("session/op", []byte(`{"session_id":"s","op":{"type":"set_permission_mode","mode":"bypass-permissions","mode":"manual"}}`))
+	params, err := check("session/op", []byte(`{"session_id":"s","op":{"type":"set_title","title":"first","title":"second"}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(params), `"mode"`) != 1 || !strings.Contains(string(params), `"mode":"manual"`) {
+	if strings.Count(string(params), `"title"`) != 1 || !strings.Contains(string(params), `"title":"second"`) {
 		t.Fatalf("sent %s", params)
 	}
 	// Others go as they came, numbers whole.

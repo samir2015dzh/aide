@@ -29,8 +29,8 @@ func (s *syncBuffer) Write(p []byte) (int, error) {
 func (s *syncBuffer) String() string { s.mu.Lock(); defer s.mu.Unlock(); return s.b.String() }
 
 // Her's conversation in a terminal, with a real her (her-mock its model): a
-// message goes and her answer shows; an approval she asks for is asked
-// there, and the answer typed goes back.
+// message goes and her answer shows; a command she runs runs at once, with
+// nothing asked in the terminal.
 func TestTalk(t *testing.T) {
 	bin := hertest.Bin(t)
 	hertest.Home(t, bin)
@@ -62,12 +62,10 @@ func TestTalk(t *testing.T) {
 	io.WriteString(typed, "[[mock:send:hello from a terminal]] hi\n")
 	wait("Her: hello from a terminal")
 
-	// A command she wants to run asks first, in the terminal.
+	// A command she wants to run runs: nothing is asked.
 	io.WriteString(typed, "[[mock:confirm]] run it\n")
-	wait("Allow? [y/N]")
-	io.WriteString(typed, "y\n")
 	wait("做完了：")
-	if !strings.Contains(out.String(), "Exit code: 0") {
+	if strings.Contains(out.String(), "Allow?") || !strings.Contains(out.String(), "Exit code: 0") {
 		t.Fatalf("the command's result:\n%s", out.String())
 	}
 	typed.Close()

@@ -33,7 +33,15 @@ The decisions:
    console's HTTP and Her's status.
 5. **Keys decide.** Only the owner's trusted devices reach Her. Actions
    that need the root key are signed in the apps, with Touch ID.
-6. **Coding agents and the rest of Hermesh don't change.**
+6. **Her runs actions without asking.** There are no action approvals
+   (decided 2026-11-20): no permission modes, no approval window, no
+   question before a command, a file change, a connector's tool, a browser
+   step or a desktop app. A call runs unless a deny rule or one of her's
+   built-in refusals stops it (deleting the workspace or the home folder,
+   another bot's memory, a site or app the configuration denies). Secure
+   cards stay: they are how the owner enters a secret or signs in to a
+   connector, not approvals of an action.
+7. **Coding agents and the rest of Hermesh don't change.**
 
 ## 1. Names
 
@@ -48,7 +56,7 @@ The decisions:
 | Her | The agent, and the default assistant of every Her Server | Her |
 | Her Server | A machine Her is turned on for, where hermeshd runs her. A role, not a program or a kind of hardware | Shown as an environment |
 | Environment | A Her Server as the apps show it | The machine's name, such as "Mac mini" |
-| Assistant | A named bot on a Her Server (her's `bots/*`). It has its own conversation, memory, folder, routines, model, thinking level and approval mode, and shares its environment's logins, connectors and skills. The apps show one for now, Her | Assistant (助手) |
+| Assistant | A named bot on a Her Server (her's `bots/*`). It has its own conversation, memory, folder, routines, model and thinking level, and shares its environment's logins, connectors and skills. The apps show one for now, Her | Assistant (助手) |
 | Conversation | An assistant's one ongoing chat: a her session | |
 | Sub-agent | A worker an assistant starts for part of a task. Never listed | Progress lines |
 | Routine | Instructions an assistant runs on a schedule | Routine (定时任务) |
@@ -210,8 +218,8 @@ flowchart TB
     Files --> Home
 ```
 
-The Her host also turns her's notifications (a reply, a question, an
-approval waiting) into notices sealed to the owner's phones (§5.1).
+The Her host also turns her's notifications (a reply, a question, a secure
+card waiting) into notices sealed to the owner's phones (§5.1).
 
 ### 4.3 Code modules
 
@@ -339,15 +347,16 @@ sequenceDiagram
     M->>H: session/op
     H->>P: model request
     P-->>H: reply, streamed
-    H-->>M: events: steps, send_to_user, approvals
+    H-->>M: events: steps, send_to_user, secure cards
     M-->>O: HerOpen events, through the relay
     O-->>App: events, and the environment's cache is updated
     M->>R: notice sealed to each phone that asked
     R->>R: hands it to Apple's push service
 ```
 
-An approval works the same way back: the app answers with `session/op`
-(approval), which takes the same path to her.
+Her asks nobody before an action, so nothing comes back for a step: the
+steps run as they come. A secure card's answer (`cards/answer`) takes the
+same path to her.
 
 ### 5.2 Turning Her on for a machine
 
@@ -540,7 +549,7 @@ or to use Erase Everything.
 | Methods | Used by | Owner's devices | Agents |
 |---|---|---|---|
 | `bots/*`: assistants, their memory, routines, unread marks | Her entry | Allowed | No |
-| `session/op` and session events: prompts, approvals, answers, stopping | Her entry | Allowed | No |
+| `session/op` and session events: prompts, answers, stopping | Her entry | Allowed | No |
 | `models/list` | Her entry, console | Allowed | No |
 | `desktop/status`: whether computer use can work there (§4.4) | Her entry | Allowed | No |
 | `config/*`, `connections/*`, `credentials/*`, `mcp/*`, `skills/*`, `web_search/*`, `browser/allow`, `browser/status`, `browser/use_extension`, `browser/open_setup`, `storage/usage`, `providers/*` (a model service of the owner's own) | Console | Allowed | No |
@@ -567,9 +576,9 @@ The protos are the contract; this is their outline.
     JSON-RPC requests at `/her/console/rpc`.
 - [identity.proto](../proto/hermesh/identity/v1/identity.proto): three
   root-signed `AdminCommand`s. `SetHer` turns Her on or off for a machine, and erases her data if asked (§5.6);
-  `SetHerAssistantMode` sets an assistant's permission mode, the only way to
-  reach `bypass-permissions`; `SetHerCommandConnector` manages connectors
-  started as commands.
+  `SetHerAssistantMode` set an assistant's permission mode, which her no
+  longer has: Her runs actions without asking, and the command is to be
+  removed; `SetHerCommandConnector` manages connectors started as commands.
 - [machine.proto](../proto/hermesh/machine/v1/machine.proto): `HerStatus` in
   `MachineStatus`. Besides enabled, running, version, a ready model and
   errors, it carries the unread count and the newest message, so the
@@ -585,8 +594,8 @@ The protos are the contract; this is their outline.
 ### 6.3 Changes in her
 
 1. **Assistants.** Rename the default bot to Her (today `HerBot` in
-   [bots.rs](../her/crates/her-server/src/bots.rs)). New assistants ask
-   before risky steps instead of starting with full access.
+   [bots.rs](../her/crates/her-server/src/bots.rs)). Assistants run
+   their actions without asking: her has no action approvals (2026-11-20).
 2. **Remote sign-in.** `chatgpt/login` and `mcp/login` take an optional
    `redirect_uri` on the client's device (loopback only) and return the
    authorization request without listening. `chatgpt/complete` and
@@ -754,9 +763,9 @@ permissions do ([trusted-devices.md](trusted-devices.md) §4.6):
 - turning Her on or off for a machine;
 - adding a connector started as a command on the Her Server.
 
-Everything else in the Her entry and the console uses the device key,
-switching an assistant to full access included: the owner chooses it, on a
-sheet that says what it means (decided 2026-11-09). A
+Everything else in the Her entry and the console uses the device key. There
+is no full-access switch to sign: Her runs every action without asking
+(decided 2026-11-20). A
 console never signs: it asks, and the app's signer shows exactly what will
 be signed. Letting Her use the owner's own Chrome is one of these: it
 connects only after the owner adds the Hermesh extension to that Chrome by
@@ -805,7 +814,7 @@ What the page has, for that one assistant:
 - the conversation: messages, files, questions with buttons, the last
   bubble while it works, messages sent in a row, its steps, the moving
   avatar;
-- the approval window and the input box;
+- the input box (no approval window: Her runs actions without asking);
 - the blank page, where Her greets;
 - Her's settings;
 - menus, unread marks and alerts;
@@ -827,16 +836,17 @@ What changes, because Her may run on another computer than the app:
 - **Models.** Her picks only from the models its environment can already
   use. Adding a key or a login is in the console, and the model menu links
   there.
-- **Permissions.** Her asks before risky steps; full access is the owner's
-  choice, confirmed once on a sheet. Full access is never the default, because a Her Server reads web pages and
-  messages from anyone.
+- **Permissions.** Her runs actions without asking: there are no action
+  approvals and no permission modes. Deny rules and her's built-in refusals
+  are what stops an action, and a Her Server reads web pages and messages
+  from anyone, so it is a machine where that is acceptable.
 - **Files.** Her's files are on its Her Server: the app previews or saves
   them through the tunnel, and files dragged into a conversation are
   uploaded there.
 - **What was said, kept.** The page opens with Her and Her's conversation
   as this device keeps them (§7) until her answers, and shows them while the
   environment is offline, under the line of §9.3, after the app restarts
-  too. That copy is read-only: questions and approvals wait for the
+  too. That copy is read-only: questions and secure cards wait for the
   machine, and what the owner writes waits on the device (§5.5).
 - **Not carried over**: the switch between bot mode and session mode (the
   apps have Hermesh's own sessions), the list of assistants and making
@@ -917,7 +927,7 @@ While no machine runs Her, the Her entry shows the first run:
 The same design, written in Swift.
 
 - The console opens in a web view.
-- Notices cover Her's replies, questions and approvals, with actions.
+- Notices cover Her's replies, questions and secure cards, with actions.
 - Sign-ins catch their callback in the app.
 - Files come from the Files app or the share sheet.
 
@@ -959,7 +969,7 @@ through the real apps and the relay.
    sign-in on a Mac Her Server).
 5. The Mac app's Her entry, with Her alone (§9.1):
    - the environment switcher, beside Her's name;
-   - the conversation: messages, questions, the approval window, steps,
+   - the conversation: messages, questions, steps,
      the busy state, the input box, unread marks;
    - Her's settings;
    - the first run.
@@ -976,7 +986,7 @@ Test: this Mac and a Linux cloud machine as two environments.
 - Talk to Her in each, and switch between them.
 - Take the Linux machine offline, write to it, bring it back, and get the
   reply.
-- Switching an assistant to full access asks the owner to confirm it.
+- Her runs a step without asking anyone, and the conversation shows it as it runs.
 
 ### Phase 2: everything an environment can do
 
@@ -998,7 +1008,7 @@ Test, on the Linux environment:
 
 1. The Her entry in Swift.
 2. The console in a web view.
-3. Notices for Her's replies, questions and approvals. The notices are
+3. Notices for Her's replies, questions and secure cards. The notices are
    built, without actions yet: the Her Server's hermeshd seals a notice of
    kind `her` to each iPhone that asked for it whenever the Mac app would
    notify (`HerStatus.latest` new, unread grown, the assistant not muted),
@@ -1008,7 +1018,7 @@ Test, on the Linux environment:
 Test, from the iPhone alone:
 
 - Talk to both environments.
-- Answer an approval from a notification.
+- Answer a question from a notification.
 - Change an assistant's model.
 - Open the console.
 

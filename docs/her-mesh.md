@@ -89,9 +89,8 @@ These were settled before this document was written.
    which could not wake her (§16).
 6. **News wakes Her in her own conversation.** The conversation that
    started a session is the one that hears of it.
-7. **Approval follows Her's mode.** In the default mode she asks before each
-   start, and the owner can choose not to be asked again for that project.
-   In full access she doesn't ask.
+7. **No approvals.** Her runs the mesh tools as she runs every tool:
+   without asking (decided 2026-11-20, §5).
 8. **Sessions only, for now.** Her writes to sessions and hears from her own
    sessions. Other agents can't write to her, and she doesn't write to them.
 9. **Phone notices stay as they are.** The owner may hear of a session from
@@ -214,7 +213,7 @@ draft, in English and Chinese as everywhere in the apps.
 computers · Doesn't expire" and Revoke. The reminder that a grant expires in
 7 days never fires for her.
 
-**Approvals** are in §5.
+There are no approvals: §5.
 
 ### 3.7 Protocol additions
 
@@ -259,7 +258,6 @@ her run by hermeshd, the host is hermeshd.
 | Method | Direction | What it does |
 |---|---|---|
 | `mesh/host` | hermeshd → her | Registers this connection as the host and gives the group: its catalog line, its guidelines and its tools. A later host replaces it; it leaves with its connection |
-| `mesh/describe` | her → hermeshd | Before the approval gate, for a tool that writes: what the call would do, in words for the owner, and what "don't ask again" would cover (§5) |
 | `mesh/call` | her → hermeshd | Runs one tool. Params: the assistant's id, the call's id, the tool's name and arguments. Result: the command's JSON document, and details for the apps (§4.5) |
 | `mesh/news` | hermeshd → her | Puts news into an assistant's conversation and wakes her (§6). It answers once the news is in the conversation |
 
@@ -450,7 +448,7 @@ tool result for the apps and the model never reads
 - One `cli.Peer` for Her, kept while she is on: the relay connection and the
   tunnels to machines stay open from one call to the next.
 - hermeshd keeps a small record of the sessions Her started: session id,
-  project address, title. `mesh/describe` reads it (§5).
+  project address, title.
 - A grant the owner changed or revoked reaches Her through `Adopted`, as it
   reaches a gateway connection. Once revoked, hermeshd takes the group back
   from her.
@@ -464,81 +462,29 @@ assistant's conversation only (`header.bot.is_some()`,
 runs don't have it in this step. her run alone, without hermeshd, never has
 it.
 
-## 5. Approval
+## 5. No approvals
+
+Her runs actions without asking (decided 2026-11-20). That holds for the
+mesh tools too: `session_start`, `session_send`, `session_answer` and
+`session_push` run at once, as reads do. There is no approval window, no
+permission mode and no "don't ask again for this project"; `mesh/describe`,
+which gave the words of an approval, is gone, and the kernel sends the host
+only `mesh/call`.
 
 A session's coding agent runs with every permission on its computer: Claude
 Code with `--dangerously-skip-permissions`
 ([claude.go](../internal/provider/claude/claude.go)), Codex with
 `danger-full-access` and `approvalPolicy: never`
 ([codex.go](../internal/provider/codex/codex.go)). Starting a session is
-running any command there. If it needed no approval, the default mode would
-mean nothing: Her would ask before her own `bash`, and not before telling
-Claude Code to run the same command.
+running any command there, and so is anything Her reads (a web page, a mail,
+a session's result) that leads her to start one. What still limits her is
+the machine's own checks (the repository, the branch, its git login) and her
+grant, which the owner gives when Her is turned on.
 
-| Tools | Manual (default) | Accept edits | Full access |
-|---|---|---|---|
-| `project_list`, `coding_agent_list`, `session_get`, `session_list`, `session_events`, `session_diff`, `work_summary` | Run | Run | Run |
-| `session_start`, `session_send`, `session_answer` | Ask, unless the project is remembered | Ask, unless the project is remembered | Run |
-| `session_push` | Ask | Ask | Run |
-| `session_interrupt` | Run | Run | Run |
-| `session_archive`, `session_unarchive` | Run | Run | Run |
-
-- **A stop never waits for an approval.** An interrupt loses at most the
-  turn in progress.
+- **A stop is immediate.** An interrupt loses at most the turn in progress.
 - **Archiving can be undone**, and the branch keeps the work.
-
-**What the owner is asked.** `mesh/describe` gives the words, so they name
-real things and not raw arguments:
-
-| Call | What the approval shows |
-|---|---|
-| `session_start` | "Start Claude Code in macbook/hermesh", then the prompt |
-| `session_start` in a GitHub repository | "Start Claude Code in GitHub acme/widget, branch feature, on macbook" ("its default branch" when she names none), then the prompt |
-| `session_push` | "Push the branch of "Fix the flaky relay test" (Claude Code, macbook/github.acme.widget) to its remote", then that it goes to the project's origin with the computer's own git login, without force |
-| `session_send` | "Write to "Fix the flaky relay test" (Claude Code, macbook/hermesh)", then the message |
-| `session_answer` | "Answer "Which branch?" in "Fix the flaky relay test"", then the answer |
-
-**"Don't ask again for this project."** The approval window already has
-"approve for the session" ([op.rs](../her/crates/her-protocol/src/op.rs),
-`ApproveForSession`), which keeps a rule. `mesh/describe` proposes the rule
-`mesh <machine>/<project>`. Once kept, starts, messages and answers in that
-project run without asking. For a session Her did not start, hermeshd
-proposes no rule, and every write to it is asked.
-
-**A GitHub repository** is remembered as the project its clone is kept as
-on the computer she names (`machine`, which she must give with `repo`):
-`mesh <machine>/github.<owner>.<repo>`, the owner and name in lower case as
-the machine keeps them. However she writes the repository (`acme/widget`,
-its https or ssh URL), the rule is the same; it covers that repository on
-that computer only, not another repository nor the same one elsewhere; and
-it is the address of the clone's project, so it also covers starts there by
-`project` once the clone exists. A repository the machine would refuse, or
-one without a computer, gets no rule (and the start fails). The machine
-still decides: it checks the repository and the branch with its own git
-login, and what it says of one it can't reach or a branch it lacks is the
-error Her reads, unchanged. Her's grant is for every project (`*`), which
-a session in a repository needs (repo sessions need `*` or that project id).
-
-**A push** is never remembered: it publishes the work, so the owner is
-asked each time, even in a remembered project. In full access it runs, as
-every write does.
-
-Three things the owner should know about that choice:
-
-- It is not a wall. Once a project is remembered, anything Her reads (a web
-  page, a mail, a session's result) could lead her to start a session there
-  with any prompt, and the agent reaches the whole computer, not only the
-  project. It saves taps; the owner picks it knowingly, and it is never the
-  default.
-- It lasts as long as the kernel keeps session rules: until her restarts or
-  the conversation is cleared.
-- The app shows the choice as "Don't ask again for macbook/hermesh", not as
-  the raw rule.
-
-**Nobody there.** A turn that a routine or a session's news started may want
-to start a session. In manual mode the approval waits, and the owner's
-devices are told, as for every approval today. An owner who wants Her to
-chain sessions unattended remembers the project or uses full access.
+- **A push** publishes the work with the computer's own git login, without
+  force.
 
 ## 6. News: how Her is woken
 
@@ -804,12 +750,12 @@ Her becomes the agent with the widest reach. What that changes:
 |---|---|
 | **A Her Server taken over gives access to every machine.** Before, it gave away that environment only ([her-server.md](her-server.md) §8). It matters most for a Her Server on a public cloud host: whoever takes it can run code on the owner's Mac | Accepted, with full access (decision 3). The sheet says it in words (§3.6). Her's keys stay in hermeshd, outside her's process. Turning Her off ends it |
 | **A revocation the relay hides.** With no expiry, a hostile relay can keep a revoked grant alive on a machine that was offline when it was revoked, for as long as it hides the revocation | Accepted (decision 4): the same as for a machine's certificate, which has no expiry either. Revocations go to every online machine end to end, and the owner's device hears which machines confirmed |
-| **Text that drives Her.** A web page, a mail or a session's result tells her to start a session | The approval in manual and accept-edits modes (§5), and the prompt's rule that such text is never a request. In full access, nothing but the prompt: the owner chose that |
+| **Text that drives Her.** A web page, a mail or a session's result tells her to start a session | The prompt's rule that such text is never a request. Her runs actions without asking (§5), so nothing else stands in the way |
 | **A session's result that drives Her.** The agent's last message says "now run this in the other project" | The news is marked as data (§6.2); a new start is asked for (§5) |
 | **Another agent writes to Her** to make her act with her access | Refused in this step (§6.6). [her-secure-cards.md](her-secure-cards.md) §5.4 stays true: agents can't reach Her |
 | **Forged news.** The relay, or an agent, hands Her a made-up result | News must be signed by a machine in the owner's root chain. The relay can't forge that, and an agent's key is not a machine's |
 | **Her's key copied from the machine** | It is kept as the machine's own key is. Whoever can read one can read the other, and the machine's key already runs sessions on that machine |
-| **her itself taken over** (a bug in the kernel, a hostile tool result) | her holds no key and can only ask hermeshd for the twelve tools. In manual mode the approval is decided by the owner's device, not by her |
+| **her itself taken over** (a bug in the kernel, a hostile tool result) | her holds no key and can only ask hermeshd for the twelve tools |
 | **Loops**: Her and a session answer each other without end | The machine's limit of 30 message turns an hour from one agent to a session ([agent-messages.md](agent-messages.md) §7.2) |
 
 The center learns nothing new in kind. Her is one more client with an
@@ -828,12 +774,12 @@ that wait for her, as for every agent.
 | `internal/owner` | Build and sign Her's grant with `SetHer`; `SetHerGrant`; publish it; revoke it when Her is turned off or her machine removed |
 | `internal/machine` | Her's keys; keep and check her grant (`SetHerGrant`); `HerStatus`; the news queue; news for the machine's own Her straight into the queue. Her link is given to it (`Config.NewHerLink`): the CLI package imports this one, so what runs CLI commands lives above it |
 | `internal/herlink` (new) | Her as an agent: the twelve tools with their names, hidden parameters and descriptions, the catalog line, the guidelines, the news text; running a tool with `cli.Exec` for her credentials; what a write would do, for the approval; the record of her sessions; following her inbox |
-| `internal/herhost` | Answer requests from her; register as the mesh host; `mesh/describe`, `mesh/call`, `mesh/news` |
+| `internal/herhost` | Answer requests from her; register as the mesh host; `mesh/call`, `mesh/news` |
 | `internal/cli` | `Follow`: take an inbox's messages for an `Identity` as they arrive; `message send` refuses an inbox that takes messages as `her` |
 | `her-protocol` | The four methods, `MailKind::News` |
 | `her-server` | The mesh host connection, as `docx_host`; give the group to an assistant's conversation; route `mesh/news` to it |
-| `her-core` | A `mesh` deferred group whose tools come from the host; the approval gate asks `mesh/describe` and matches the rule; `MailKind::News` wakes like a report and is kept like a routine's; the two edits to `bot.md`; later the skill |
-| `apps/desktop`, `apps/ios` | The sheet when Her is turned on (§3.6); the line on Her's page for a Her Server already on; Her in the agents list with no expiry; the approval's words and "Don't ask again for <project>"; news shown in the conversation as reports are. English and Chinese |
+| `her-core` | A `mesh` deferred group whose tools come from the host; `MailKind::News` wakes like a report and is kept like a routine's; the two edits to `bot.md`; later the skill |
+| `apps/desktop`, `apps/ios` | The sheet when Her is turned on (§3.6); the line on Her's page for a Her Server already on; Her in the agents list with no expiry; news shown in the conversation as reports are. English and Chinese |
 | `pkg/relay`, the center | Nothing |
 
 **Documents to bring in line once this is built**:
@@ -853,8 +799,7 @@ the stand-in coding agent, and her with a scripted model.
 1. The owner turns Her on. Her grant is published, listed among the agents
    without an expiry, and the second machine accepts her client.
 2. The owner writes a request. Her calls `session_start` on the second
-   machine. In manual mode an approval is asked, with the machine, the
-   project and the prompt. Once approved, the session runs.
+   machine, and the session runs: nobody is asked.
 3. The turn ends. Her's conversation gets the news, she is woken, and the
    owner gets her message. No `session_get` was called in between.
 4. "Don't ask again": a second start in the same project asks nothing; a
@@ -875,7 +820,7 @@ the stand-in coding agent, and her with a scripted model.
     owner allows it, then as above.
 
 **From the iPhone** (as `TestIPhone`): turn Her on with the sheet; ask for a
-change in a project; allow the approval; get the push with her answer.
+change in a project; get the push with her answer.
 
 **From the Mac app** (one run of the affected spec, since it takes over the
 Mac): the same, and Her in the agents list.
@@ -885,7 +830,7 @@ Mac): the same, and Her in the agents list.
 ## 12. Steps
 
 1. **Her as an agent, the group, the wake.** §3 to §7: the grant with Her's
-   first turn-on, the twelve tools, approvals, news into her conversation,
+   first turn-on, the twelve tools, news into her conversation,
    the apps' sheet and agents list. Checked from the iPhone.
 2. **The skill and what the owner sees.** The acceptance script, then the
    skill written from its failures. News in the conversation opens the

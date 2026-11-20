@@ -71,7 +71,7 @@ var commandKeys = map[string]bool{"command": true, "args": true, "env": true, "e
 // (her-core config.rs, ConfigFile). It is a list of what may, not of what
 // may not: most of her's settings decide what runs and how freely (tools.*,
 // rules, extra_writable_roots, the prompt files, agents, desktop, mcp,
-// skills.paths, a browser's executable, a connector's command or approval),
+// skills.paths, a browser's executable, a connector's command),
 // and a setting her adds later must not slip through. A key maps to what may
 // be written in it, nil to anything; "*" stands for any key.
 var writable = node{

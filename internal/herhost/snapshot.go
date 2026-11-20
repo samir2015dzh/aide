@@ -63,8 +63,9 @@ func newSnapshot(version string, methods []string, bots []bot) *snapshot {
 
 // changed takes a bots/changed: what changed in it is the newest, whenever
 // her says it was written. What an assistant waits for the owner to answer
-// (waiting: an approval, or a secure card open, by Her's words with it,
-// else its title) is the newest while it waits, and gives way to the newest
+// (waiting: a secure card open, by Her's words with it, else its title; Her
+// runs actions without asking, so nothing else waits) is the newest while it
+// waits, and gives way to the newest
 // message once it no longer does. It returns the newest when the owner's
 // devices tell of it, as notices.ts herNotices does: it is another one, the
 // unread count grew with it, and its assistant isn't muted.

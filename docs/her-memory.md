@@ -1,5 +1,7 @@
 # Her's memory
 
+> **2026-11-20: Her has no action approvals.** Her runs every action without asking: no permission modes, no approval window, nothing for the owner to approve before a step. Where this document still speaks of an approval of an action, a step waiting for the owner's approval, or full access, it describes what was and no longer is. Secure cards are not approvals and stay.
+
 Status: the base (§3–§7) built 2026-11-11. What §9 lists is not
 built. It builds on [her-server.md](her-server.md): an assistant has "its
 own conversation, memory, folder" (§3 there), and a Her Server holds the
@@ -67,7 +69,7 @@ starts" does not carry over as it is. §4.2 is what replaces it.
 
 - Sub-agents and routine runs share `files/` and write there freely. Beside
   it, their writes are outside their workspace and inside her's data
-  directory, which the approval policy already guards (§6).
+  directory; the tool policy refuses their writes to a bot's memory (§6).
 - Work in the folder ("tidy up my files") cannot sweep the notes away.
 
 What follows from the place, with no code of its own:
@@ -272,7 +274,7 @@ changed) and `bots/memory_clear`.
   time and after a compaction, each recorded once; a log from before memory;
   the limit; writing without asking in manual mode; a routine's run denied
   with full access.
-- The write rule alone: `approval::tests::a_bots_memory_is_written_by_the_bot_alone`.
+- The write rule alone: `policy::tests::a_bots_memory_is_written_by_the_bot_alone`.
 - The service (`her-cli/tests/e2e_bots.rs`, `her serve` and the mock model's
   `remember` and `recall`): a note, a cleared conversation that starts with
   it, and the notes in the trash with a deleted assistant.

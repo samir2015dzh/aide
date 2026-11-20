@@ -1,5 +1,7 @@
 # Her and her team: one product from Her and the mesh
 
+> **2026-11-20: Her has no action approvals.** Her runs every action without asking: no permission modes, no approval window, nothing for the owner to approve before a step. Where this document still speaks of an approval of an action, a step waiting for the owner's approval, or full access, it describes what was and no longer is. Secure cards are not approvals and stay.
+
 Status: stage 1 built on the iPhone 2026-11-13, with acceptance results
 updated 2026-11-14 (§13); stage 2 (§6) decided 2026-11-14 (all three, B1,
 B3 then B2), designed in §6.1 to §6.5 and built 2026-11-15 (§6.6). The
@@ -375,10 +377,9 @@ so its news comes to her (machines already write news to the turn's asker,
 [her-mesh.md](her-mesh.md) §6.1). An answer does not: the turn's news
 still goes to whoever asked for it, and to the session's creator.
 
-**Approval.** Unchanged. A write or an answer to a session she did not
-start has no "don't ask again" rule and is asked every time
-([her-mesh.md](her-mesh.md) §5). Interrupt and archive run unasked, as for
-her own.
+**Approval.** None: Her runs actions without asking (decided 2026-11-20,
+[her-mesh.md](her-mesh.md) §5). A write or an answer to a session she did
+not start runs at once, as interrupting and archiving do.
 
 **Words.** The tools stop saying "of yours" (`session_answer`,
 `session_interrupt`, `session_archive`, `session_unarchive`,
