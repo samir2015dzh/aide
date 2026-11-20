@@ -13,9 +13,10 @@ import { launch } from "./app";
 test.skip(process.platform !== "win32", "Windows only");
 
 // The app's processes in the tray state on a GitHub Windows runner (no GPU:
-// Chromium's GPU process runs on WARP there), with room for the runner's
-// noise. Lower it when the app gets smaller; raising it needs a reason.
-const trayBudgetMB = 150;
+// Chromium's GPU process runs on WARP there): 55.0 MB at first (2026-11-20:
+// main 36.7, GPU 11.6, network service 6.7), with about a third more for the
+// runner's noise. Lower it when the app gets smaller; raising it needs a reason.
+const trayBudgetMB = 75;
 // How long after the window closes it is measured: the tray panel's page goes 30 s after it hides, and Chromium
 // settles what the window left.
 const settle = 45_000;
