@@ -131,8 +131,8 @@ func (p *Provider) command() (bin string, pre, env []string) {
 	for _, a := range p.Apps {
 		for _, dir := range dirs {
 			app := filepath.Join(dir, a.Bundle)
-			exe, script := filepath.Join(app, a.Exec), filepath.Join(app, a.Script)
-			if scriptThere(script) && provider.LookPath("", "", exe) != "" {
+			exe := filepath.Join(app, a.Exec)
+			if script := appScript(app, a.Script); script != "" && provider.LookPath("", "", exe) != "" {
 				return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}
 			}
 		}
@@ -142,8 +142,8 @@ func (p *Provider) command() (bin string, pre, env []string) {
 			continue
 		}
 		for _, app := range windowsAppDirs(a.Windows) {
-			script := filepath.Join(app, a.Script)
-			if !scriptThere(script) {
+			script := appScript(app, a.Script)
+			if script == "" {
 				continue
 			}
 			for _, name := range a.Windows.Exes {
@@ -154,6 +154,72 @@ func (p *Provider) command() (bin string, pre, env []string) {
 		}
 	}
 	return "", nil, nil
+}
+
+// appScript is where the app in folder app keeps its CLI's script, script
+// being where one of its builds keeps it: the same path inside the app's
+// code however the build packs it (resources/app.asar, its .unpacked
+// folder, or resources/app unpacked: seen 2026-11-20, DeepSeek Harness in
+// a folder of the owner's choosing); else, for a script in node_modules,
+// the same package path in a folder at most four down the app's resources.
+// "" when none is there.
+func appScript(app, script string) string {
+	for _, s := range packings(script) {
+		if p := filepath.Join(app, s); scriptThere(p) {
+			return p
+		}
+	}
+	slash := filepath.ToSlash(script)
+	i := strings.LastIndex(slash, "node_modules/")
+	if i < 0 {
+		return ""
+	}
+	tail := filepath.FromSlash(slash[i:])
+	resources := filepath.Join(app, filepath.FromSlash(slash[:strings.Index(slash+"/", "/")]))
+	level := []string{resources}
+	for depth := 0; depth <= 4 && len(level) > 0; depth++ {
+		var next []string
+		for _, d := range level {
+			if p := filepath.Join(d, tail); fileThere(p) {
+				return p
+			}
+			entries, _ := os.ReadDir(d)
+			for _, e := range entries {
+				if e.IsDir() && e.Name() != "node_modules" {
+					next = append(next, filepath.Join(d, e.Name()))
+				}
+			}
+		}
+		level = next
+	}
+	return ""
+}
+
+// packings are script as each way of packing an Electron app's code puts
+// it: inside app.asar, in app.asar.unpacked, or in app; script itself when
+// it names none.
+func packings(script string) []string {
+	parts := strings.Split(filepath.ToSlash(script), "/")
+	for i, part := range parts {
+		switch part {
+		case "app.asar", "app.asar.unpacked", "app":
+			var out []string
+			for _, as := range []string{part, "app.asar", "app.asar.unpacked", "app"} {
+				q := slices.Clone(parts)
+				q[i] = as
+				if p := filepath.FromSlash(strings.Join(q, "/")); !slices.Contains(out, p) {
+					out = append(out, p)
+				}
+			}
+			return out
+		}
+	}
+	return []string{script}
+}
+
+func fileThere(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
 }
 
 // scriptThere: the script is on disk, or inside an .asar archive, which

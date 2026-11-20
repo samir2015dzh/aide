@@ -606,3 +606,61 @@ func TestDesktopAppWhereWindowsSays(t *testing.T) {
 		t.Fatalf("found %q in a folder without the app", bin)
 	}
 }
+
+// The app's code unpacked (resources\app, not app.asar: DeepSeek Harness in
+// a folder of the owner's choosing, 2026-11-20), in app.asar.unpacked, or
+// moved within it: its CLI's script is found by the same package path, and
+// another package's bin.js beside it is not taken for it.
+func TestDesktopAppScriptHoweverPacked(t *testing.T) {
+	const script = "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"
+	write := func(t *testing.T, p string) {
+		t.Helper()
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, nil, 0o755)
+	}
+	for _, c := range []struct{ name, at string }{
+		{"unpacked", "resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+		{"asar.unpacked", "resources/app.asar.unpacked/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+		{"moved", "resources/app/harness/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			app := t.TempDir()
+			write(t, filepath.Join(app, "resources/app/dsh/node_modules/@deepseek-ai/cordis/bin.js"))
+			want := filepath.Join(app, filepath.FromSlash(c.at))
+			write(t, want)
+			if got := appScript(app, script); got != want {
+				t.Fatalf("got %q, want %q", got, want)
+			}
+		})
+	}
+	t.Run("none", func(t *testing.T) {
+		app := t.TempDir()
+		write(t, filepath.Join(app, "resources/app/dsh/node_modules/@deepseek-ai/cordis/bin.js"))
+		if got := appScript(app, script); got != "" {
+			t.Fatalf("got %q", got)
+		}
+	})
+	t.Run("found where Windows says", func(t *testing.T) {
+		t.Setenv("LOCALAPPDATA", t.TempDir())
+		t.Setenv("ProgramFiles", t.TempDir())
+		app := filepath.Join(t.TempDir(), "DSH")
+		exe := filepath.Join(app, "DeepSeek Harness.exe")
+		write(t, exe)
+		bin := filepath.Join(app, "resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js")
+		write(t, bin)
+		was := windowsAppDirs
+		t.Cleanup(func() { windowsAppDirs = was })
+		windowsAppDirs = func(provider.WindowsApp) []string { return []string{app} }
+		var dsh Agent
+		for _, a := range Agents {
+			if a.Name == "deepseek" {
+				dsh = a
+			}
+		}
+		dsh.Command = "aide-no-such-agent"
+		p := &Provider{Agent: dsh, PathEnv: t.TempDir()}
+		if got, pre, _ := p.command(); got != exe || len(pre) != 1 || pre[0] != bin {
+			t.Fatalf("command: %q %q", got, pre)
+		}
+	})
+}

@@ -363,7 +363,7 @@ func TestWindowsDesktopCLI(t *testing.T) {
 		if got := windowsDesktopCLI(appData, local); got != "" {
 			t.Fatalf("no app: got %q", got)
 		}
-		if windowsApp(appData, local) {
+		if windowsApp(appData, local, nil) {
 			t.Fatal("no app: reported installed")
 		}
 		// The app is there but has not fetched Claude Code (an empty
@@ -372,7 +372,7 @@ func TestWindowsDesktopCLI(t *testing.T) {
 		if got := windowsDesktopCLI(appData, local); got != "" {
 			t.Fatalf("empty version folder: got %q", got)
 		}
-		if !windowsApp(appData, local) {
+		if !windowsApp(appData, local, nil) {
 			t.Fatal("app without its CLI: not reported")
 		}
 	})
@@ -423,6 +423,49 @@ func TestWindowsDesktopCLI(t *testing.T) {
 			}
 		})
 	}
+	// Its own folder per package under Claude-Data (seen on a computer with
+	// the MSIX build 6.6395, 2026-11-20): found by the rule, not this path.
+	t.Run("data folder per package", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		want := mk(t, filepath.Join(local, "Claude-Data", "claude_pzs8sxrjxfjjc"), "2.1.326", "d31a4581af92")
+		if got := windowsDesktopCLI(appData, local); got != want {
+			t.Fatalf("got %q, want %q", got, want)
+		}
+		if !windowsApp(appData, local, nil) {
+			t.Fatal("the app's data not taken for the app")
+		}
+	})
+	t.Run("another Claude folder, two down", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		want := mk(t, filepath.Join(appData, "claude-next", "a", "b"), "3.0.1", "")
+		if got := windowsDesktopCLI(appData, local); got != want {
+			t.Fatalf("got %q, want %q", got, want)
+		}
+	})
+	t.Run("not another app's, nor its VM's", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		mk(t, filepath.Join(local, "OtherApp"), "9.9.9", "")
+		vm := filepath.Join(local, "Claude", "claude-code-vm", "2.1.326")
+		os.MkdirAll(vm, 0o755)
+		os.WriteFile(filepath.Join(vm, "claude.exe"), nil, 0o755)
+		mk(t, filepath.Join(local, "Claude", "a", "b", "c"), "2.1.1", "") // three down
+		if got := windowsDesktopCLI(appData, local); got != "" {
+			t.Fatalf("got %q", got)
+		}
+	})
+	t.Run("the app running, its data not fetched yet", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		pkg := filepath.Join(t.TempDir(), "WindowsApps", "Claude_6.6395.1.0_x64__pzs8sxrjxfjjc", "app", "Claude.exe")
+		if windowsApp(appData, local, nil) {
+			t.Fatal("no app: reported installed")
+		}
+		if !windowsApp(appData, local, []string{pkg}) {
+			t.Fatal("the app running from its MSIX package: not reported")
+		}
+		if got := runningCLI([]string{pkg}); got != "" {
+			t.Fatalf("the app taken for Claude Code: %q", got)
+		}
+	})
 	t.Run("roaming 3p", func(t *testing.T) {
 		appData, local := t.TempDir(), t.TempDir()
 		want := mk(t, filepath.Join(appData, "Claude-3p"), "2.1.308", "")
