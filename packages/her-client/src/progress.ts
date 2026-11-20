@@ -12,8 +12,8 @@ import { totals } from "./text.ts";
 // from the conversation the page already follows, sub-agents' own sessions included (their agent_events), so
 // the page asks her for nothing more.
 
-/** How a sub-agent stands, as its card says it. waiting: it asks the owner to approve a call. */
-export type AgentState = "starting" | "running" | "waiting" | "done" | "failed" | "stopped";
+/** How a sub-agent stands, as its card says it. Nothing waits for the owner: her asks nobody before an action. */
+export type AgentState = "starting" | "running" | "done" | "failed" | "stopped";
 
 /** A sub-agent the bot started: its spawn call, and the agent as it is now. */
 export type ProgressTask = { kind: "agent"; key: string; launch: AgentLaunch };
@@ -97,7 +97,7 @@ export function agentState(l: AgentLaunch): AgentState {
   if (!a) return "starting";
   switch (a.status) {
     case "running":
-      return a.view.live?.approvals.length ? "waiting" : "running";
+      return "running";
     case "completed":
       return "done";
     case "failed":
@@ -155,11 +155,10 @@ export function agentPost(l: AgentLaunch): AgentPost {
   }
   const state = agentState(l);
   post.words =
-    state === "waiting" ? line(a.view.live?.approvals[0]?.summary)
-    : state === "failed" ? line(a.error?.message ?? lastEnd(a)?.error?.message)
+    state === "failed" ? line(a.error?.message ?? lastEnd(a)?.error?.message)
     : state === "done" ? (line(a.summary) ?? line(said))
     : line(latest);
-  if ((state === "running" || state === "waiting") && last?.kind === "tool" && ["streaming", "pending", "awaiting_approval", "running"].includes(last.tool.state)) post.now = last.tool;
+  if (state === "running" && last?.kind === "tool" && ["streaming", "pending", "running"].includes(last.tool.state)) post.now = last.tool;
   return post;
 }
 

@@ -29,7 +29,7 @@ export function botWorking(b: BotSummary): boolean {
   return !!b.typing || (b.agents_working ?? 0) > 0;
 }
 
-/** The row's second line, the first that applies: an approval waits, it is busy, its last message. */
+/** The row's second line, the first that applies: a secure card waits, it is busy, its last message. */
 export type BotLine =
   | { kind: "waiting"; text: string }
   | { kind: "agents"; count: number }
@@ -83,7 +83,7 @@ export function initialOf(name: string): string {
   return Array.from(name.trim())[0] ?? "";
 }
 
-/** The bots with something the owner has not seen, and with an approval waiting. */
+/** The bots with something the owner has not seen, and with a secure card waiting. */
 export function attention(list: BotSummary[]): { unread: boolean; waiting: boolean } {
   return { unread: list.some((b) => (b.unread ?? 0) > 0), waiting: list.some((b) => !!b.waiting) };
 }

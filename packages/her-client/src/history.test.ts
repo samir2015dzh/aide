@@ -6,7 +6,7 @@ import { fromSnapshot, latestPage, withHistory } from "./session.ts";
 
 // A session attaches with its latest items; earlier pages go before them, oldest first.
 
-const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const user = (id: string, text: string, ts: number): TranscriptItem => ({ type: "message", message_id: id, message: { role: "user", content: [{ type: "text", text }], ts } });
 
 test("earlier pages go before the snapshot's items, until there is none before", () => {

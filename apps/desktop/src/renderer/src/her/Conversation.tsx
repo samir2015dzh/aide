@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { botChat, busyBubble, pendingApproval, replyOf, runningAgents, type BotItem, type ReplyQuote } from "@hermesh/her-client";
+import { botChat, busyBubble, replyOf, runningAgents, type BotItem, type ReplyQuote } from "@hermesh/her-client";
 import type { BotSummary } from "@hermesh/her-protocol";
 import type { HerWaiting } from "@hermesh/proto/local";
 import { agoText } from "@hermesh/core";
@@ -11,7 +11,7 @@ import { Markdown } from "../session/Markdown";
 import { ContentScope } from "../session/scope";
 import { useVirtualRows, type VirtualRow } from "../session/useVirtualRows";
 import { errorText, useNow, useStore } from "../store";
-import { Approval, type SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import { BusyBubble } from "./Busy";
 import { addAttachments, type Attachment } from "./attachments";
 import { cardOf } from "./cards";
@@ -778,7 +778,6 @@ function Dock({ bot, conv, op, state, onWaiting, onHeight }: {
   const her = useHer();
   const view = conv.view;
   const key = her.machine.machineId;
-  const asking = view && conv.rpc ? pendingApproval(view) : null;
   const waitsForChrome = useWaitsForChrome(conv.rpc, conv.session);
   const [draft, setDraft] = useState<Draft>(() => drafts.get(key) ?? { text: "", attachments: [] });
   const change = (d: Draft) => {
@@ -896,9 +895,7 @@ function Dock({ bot, conv, op, state, onWaiting, onHeight }: {
     void deliver(id);
   };
   // Without a model, the onboarding in the conversation says what to do; the composer waits.
-  const above = asking ? (
-    <Approval key={`${asking.agent?.id ?? ""}/${asking.approval.call_id}`} view={view!} op={op} />
-  ) : waitsForChrome && conv.rpc && conv.session ? (
+  const above = waitsForChrome && conv.rpc && conv.session ? (
     <ChromeWait
       rpc={conv.rpc}
       session={conv.session}

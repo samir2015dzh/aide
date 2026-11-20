@@ -9,8 +9,7 @@ import { Avatar, hues, shapes } from "./Avatar";
 import { useHer } from "./context";
 import "../sheets/sheets.css";
 
-// The Her page's sheets: full access for Her (signed), and another environment
-// (Setup.tsx). They are the app's sheets in look and keys.
+// The Her page's sheets: another environment (Setup.tsx). They are the app's sheets in look and keys.
 
 /** A sheet over the Her page; Esc closes it unless it waits (`busy`). */
 export function HerDialog({ label, width, busy = false, onClose, children }: { label: string; width: number; busy?: boolean; onClose: () => void; children: ReactNode }) {
@@ -107,35 +106,3 @@ export function pickPicture(): Promise<{ png: string } | { error: "too_large" | 
   });
 }
 
-/**
- * Full access for an assistant: it acts without asking on its machine, and so do the agents and
- * routines it starts. The owner says so here once, knowing what it means; nothing is signed.
- */
-export function AccessSheet({ bot }: { bot: BotSummary }) {
-  const { t } = useTranslation("her");
-  const st = useStore();
-  const her = useHer();
-  const act = useAction();
-  const close = () => her.setSheet(null);
-  const go = async () => {
-    const ok = await act.go(() => local.setHerAssistantMode({ machineId: her.machine.machineId, botId: bot.id, permissionMode: "bypass-permissions" }));
-    if (!ok) return;
-    close();
-    st.show(t("access.done", { name: bot.name }));
-  };
-  return (
-    <HerDialog label={t("access.title", { name: bot.name })} width={460} busy={act.busy} onClose={close}>
-      <h3 id="sheet-title">{t("access.title", { name: bot.name })}</h3>
-      <p className="sub">{t("access.body", { environment: her.machine.machineName })}</p>
-      <ErrorLine text={act.error} />
-      <div className="sheet-foot">
-        <button className="btn" onClick={close} disabled={act.busy}>
-          {t("sheet.cancel")}
-        </button>
-        <button className="btn primary destructive" disabled={act.busy} onClick={() => void go()}>
-          {t("access.button")}
-        </button>
-      </div>
-    </HerDialog>
-  );
-}

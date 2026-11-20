@@ -1,14 +1,14 @@
 import type {
-  ActiveTask, AgentStatus, Avatar, AvatarInput, BotSummary, RoutineOutcome, RoutineRunInfo, RoutineSummary, ContextReport, Event, Methods, ApprovalDecision, MailInfo, PermissionMode, AssistantContent, ErrorInfo, EventMsg, Op, PromptMode, RpcErrorObject,
+  ActiveTask, AgentStatus, Avatar, AvatarInput, BotSummary, RoutineOutcome, RoutineRunInfo, RoutineSummary, ContextReport, Event, Methods, MailInfo, AssistantContent, ErrorInfo, EventMsg, Op, PromptMode, RpcErrorObject,
   SessionInfo, SessionSnapshot, SessionState, SessionSummary, ThinkingLevel, TranscriptItem, Usage, UserContent, UserMessage,
 } from "@hermesh/her-protocol";
 import { botScript, demoBots, demoImage, relayScript, type DemoBot, type DemoRoutine } from "./bots.ts";
-import { applyEvent, fromSnapshot, pendingApproval, runningAgents, statusOf, type SessionView } from "../session.ts";
+import { applyEvent, fromSnapshot, runningAgents, statusOf, type SessionView } from "../session.ts";
 import { describe, userText } from "../steps.ts";
 import { agentTask, agentsScenario, wantsAgents, type AgentsScenario } from "./agents.ts";
 import { demoModels, demoSessions, demoSkills, demoSkillUses, replyScript, siteScript, steerScript, wantsSite, type DemoSession, type DemoTask } from "./data.ts";
 import { CustomizeMock, Failure as CustomizeFailure } from "./customize.ts";
-import { asks, type TaskScript, type ToolScript, type TurnScript } from "./script.ts";
+import { type TaskScript, type ToolScript, type TurnScript } from "./script.ts";
 import { snake } from "./snake.ts";
 import { churnBot, churnSession, rng, stressBotTranscript, stressBots, stressReply, stressSessions, stressTranscript, type StressOptions } from "./stress.ts";
 
@@ -69,7 +69,6 @@ interface Run {
   cancelled: boolean;
   /** `steer_now`: the turn under way ends, and the task goes on. */
   cut?: boolean;
-  approvals: Map<string, (d: ApprovalDecision) => void>;
   /** The assistant message being written, if one is (for an interrupt to complete it). */
   writing?: { message_id: string; content: AssistantContent[] };
   /** The turn's tool calls that have no result yet (for `steer_now` to end them). */
@@ -115,7 +114,7 @@ interface Session {
 
 /** What a client following a sub-agent gets of its events, as her sends them. */
 const followed = new Set<string>([
-  "task_started", "turn_started", "message_completed", "stream_retry", "tool_started", "tool_running", "tool_completed", "approval_requested", "approval_resolved",
+  "task_started", "turn_started", "message_completed", "stream_retry", "tool_started", "tool_running", "tool_completed",
   "compaction_started", "compaction_completed", "compaction_failed", "turn_completed", "task_completed", "task_failed", "task_interrupted", "warning",
 ]);
 
@@ -183,7 +182,7 @@ export class MockServer {
     const now = Date.now();
     const turns = o.turns ?? 60;
     for (const [i, summary] of stressSessions(o, now).entries()) {
-      const s = this.create(summary.session_id, summary.cwd, summary.model!, "medium", "manual", Date.parse(summary.created_at), summary.no_project ?? false);
+      const s = this.create(summary.session_id, summary.cwd, summary.model!, "medium", Date.parse(summary.created_at), summary.no_project ?? false);
       s.summary = summary;
       s.fill = () => stressTranscript(i + 1, turns, Date.parse(summary.created_at), o.messages);
     }
@@ -240,14 +239,13 @@ export class MockServer {
     return this.clock ?? Date.now();
   }
 
-  private create(id: string, cwd: string, model: string, thinking: ThinkingLevel, permission_mode: PermissionMode, at: number, no_project = false): Session {
+  private create(id: string, cwd: string, model: string, thinking: ThinkingLevel, at: number, no_project = false): Session {
     const info: SessionInfo = {
       session_id: id,
       cwd,
       session_file: `~/.her/sessions/${new Date(at).toISOString().slice(0, 10)}/${id}.jsonl`,
       model,
       thinking,
-      permission_mode,
       context_window: contextWindow(model),
       archived: false,
     };
@@ -262,13 +260,13 @@ export class MockServer {
 
   /** A session that asks for sub-agents, playing from the start (not in tests). */
   private addAgentsDemo() {
-    const s = this.create("0193f7c1-4d2e-7a90-8b1c-2e3f4a5b6c7d", "~/CodeSpace/calc-lib", "deepseek/deepseek-flash", "off", "bypass-permissions", Date.now() - 2 * 60_000);
+    const s = this.create("0193f7c1-4d2e-7a90-8b1c-2e3f4a5b6c7d", "~/CodeSpace/calc-lib", "deepseek/deepseek-flash", "off", Date.now() - 2 * 60_000);
     s.summary = { ...s.summary, title: "给 calc 的三个模块补测试" };
     if (!this.still) this.prompt(s, [{ type: "text", text: "calc 包里有 mathutil、textutil、listutil 三个互不相关的模块。请用子智能体并行地分别给它们补单元测试（unittest，每个模块至少 20 个用例），保证全部通过，最后汇总告诉我结果。" }]);
   }
 
   private addSnake() {
-    const s = this.create(snake.session_id, snake.cwd, snake.model, snake.thinking, snake.permission_mode, snake.first_ts);
+    const s = this.create(snake.session_id, snake.cwd, snake.model, snake.thinking, snake.first_ts);
     const items: TranscriptItem[] = [
       ...snake.items,
       { type: "task_end", task_id: "t1", outcome: "completed", reason: "done", usage: snake.usage, ts: snake.last_ts },
@@ -281,7 +279,7 @@ export class MockServer {
 
   private addDemo(d: DemoSession) {
     const start = Date.now() - d.ago;
-    const s = this.create(d.id, d.cwd, d.model, d.thinking, d.permission_mode, start, d.no_project);
+    const s = this.create(d.id, d.cwd, d.model, d.thinking, start, d.no_project);
     this.clock = start;
     for (const t of d.history) this.playNow(s, t, t.script.turns.length);
     if (d.live) {
@@ -316,7 +314,7 @@ export class MockServer {
   /** A bot's conversation: a session in its folder, out of session lists. */
   private botSession(id: string, at: number): Session {
     const bot = this.bots.get(id)!;
-    const s = this.create(crypto.randomUUID(), `~/.her/bots/${id}/files`, bot.model ?? demoModels().defaults!.model!, bot.thinking ?? "medium", "manual", at, true);
+    const s = this.create(crypto.randomUUID(), `~/.her/bots/${id}/files`, bot.model ?? demoModels().defaults!.model!, bot.thinking ?? "medium", at, true);
     s.bot = id;
     bot.summary = { ...bot.summary, session_id: s.id };
     return s;
@@ -422,12 +420,10 @@ export class MockServer {
     } else if (e.type === "message_completed" && e.message.role === "user" && !e.mail) {
       const images = e.message.content.filter((c) => c.type === "image").length;
       next = { ...next, last: { from: "user", text: textOf(e.message.content).slice(0, 1000), images, ts: iso(e.message.ts) } };
-    } else if (e.type === "approval_requested" || (e.type === "agent_event" && e.event.type === "approval_requested")) {
-      next = { ...next, unread: (next.unread ?? 0) + 1 };
     }
     const v = s.view;
     const failed = e.type === "task_failed" || (e.type !== "task_started" && !!next.failed);
-    next = { ...next, typing: v.live !== null, agents_working: runningAgents(v).length, waiting: pendingApproval(v)?.approval.summary, failed };
+    next = { ...next, typing: v.live !== null, agents_working: runningAgents(v).length, failed };
     bot.summary = next;
     if (JSON.stringify(next) !== JSON.stringify(was)) this.botsChanged([next]);
   }
@@ -467,7 +463,7 @@ export class MockServer {
 
   /** Writes a task's first turns at once, as history (the clock moves on a little per event). */
   private playNow(s: Session, t: DemoTask, turns: number, keepGoing = false) {
-    const run: Run = { cancelled: false, approvals: new Map() };
+    const run: Run = { cancelled: false };
     s.run = run;
     this.startTask(s, [{ type: "text", text: t.prompt }]);
     t.script.turns.slice(0, turns).forEach((turn, i) => this.turnNow(s, turn, i + 1));
@@ -609,7 +605,6 @@ export class MockServer {
     const run = s.run;
     if (!live || !run) return void this.settle(s);
     run.cancelled = true;
-    for (const resolve of run.approvals.values()) resolve({ type: "abort" });
     if (run.writing) {
       this.complete(s, run.writing.message_id, run.writing.content, "aborted");
       run.writing = undefined;
@@ -632,8 +627,7 @@ export class MockServer {
     const run = s.run;
     if (live && run) {
       run.cancelled = true;
-      for (const resolve of run.approvals.values()) resolve({ type: "abort" });
-      if (run.writing) {
+        if (run.writing) {
         this.complete(s, run.writing.message_id, run.writing.content, "aborted");
         run.writing = undefined;
       }
@@ -672,7 +666,7 @@ export class MockServer {
     const child: Session = { id, view, summary: root.summary, seq: 0, queue: [], tasks: 0, children: [], mails: [], parent: { root, name }, roundStart: this.now() };
     root.children.push(child);
     this.emit(root, { type: "agent_started", agent_id: id, name, description, session_file, call_id });
-    child.run = { cancelled: false, approvals: new Map() };
+    child.run = { cancelled: false };
     this.startTask(child, [{ type: "text", text: agentTask(name, task) }]);
     void this.play(child, script);
     return { agent_id: id, name, session_file, status: "running", background: true, reported: false };
@@ -715,7 +709,7 @@ export class MockServer {
 
   /** Reports start a task: what the model says on them, or its answer once all are in. */
   private wake(s: Session) {
-    s.run = { cancelled: false, approvals: new Map() };
+    s.run = { cancelled: false };
     s.tasks++;
     this.emit(s, { type: "task_started", task_id: `t${s.tasks}`, trigger: "mail" });
     const reports = s.mails.map((m) => m.text);
@@ -883,23 +877,6 @@ export class MockServer {
       const call_id = calls[k].id;
       this.toolStarted(s, call_id, t);
       pending[k].started = true;
-      if (t.approval && (t.approval.own_browser || asks(s.view.info.permission_mode, describe(t.name, t.args, s.view.info.cwd).category))) {
-        const d = describe(t.name, t.args, s.view.info.cwd);
-        this.emit(s, { type: "approval_requested", call_id, name: t.name, args: t.args, summary: t.approval.summary || d.title, reason: t.approval.reason, proposed_grants: t.approval.grants, ...(t.approval.own_browser ? { own_browser: true } : {}) });
-        const decision = await new Promise<ApprovalDecision>((resolve) => run.approvals.set(call_id, resolve));
-        run.approvals.delete(call_id);
-        if (stopped()) return false;
-        this.emit(s, { type: "approval_resolved", call_id, decision });
-        if (decision.type === "abort") {
-          this.interrupt(s);
-          return false;
-        }
-        if (decision.type === "deny") {
-          this.toolCompleted(s, call_id, t, `Denied by user${decision.feedback ? `: ${decision.feedback}` : "."}`);
-          done(k);
-          continue;
-        }
-      }
       await this.sleep(120);
       if (stopped()) return false;
       this.emit(s, { type: "tool_running", call_id });
@@ -943,7 +920,7 @@ export class MockServer {
     if (!script && wantsSite(text)) script = siteScript();
     if (!script && s.id.startsWith("stress-session-")) script = stressReply(text);
     script = this.unkeyed(s) ?? script ?? replyScript(text);
-    s.run = { cancelled: false, approvals: new Map() };
+    s.run = { cancelled: false };
     this.startTask(s, input, id);
     void this.play(s, script);
   }
@@ -1241,9 +1218,9 @@ export class MockServer {
         // Without a project, a folder of its own, as her makes one.
         const id = crypto.randomUUID();
         const cwd = q.cwd ?? `~/.her/chats/${id}`;
-        const s = this.create(id, cwd, model, q.thinking ?? "medium", q.permission_mode ?? "manual", Date.now(), !q.cwd);
+        const s = this.create(id, cwd, model, q.thinking ?? "medium", Date.now(), !q.cwd);
         c.attached.add(s.id);
-        this.emit(s, { type: "session_started", session_id: s.id, protocol_version: 2, model, cwd, resumed: false, session_file: s.view.info.session_file, thinking: s.view.info.thinking, permission_mode: s.view.info.permission_mode, context_window: s.view.info.context_window, usage: { per_model: {} } });
+        this.emit(s, { type: "session_started", session_id: s.id, protocol_version: 2, model, cwd, resumed: false, session_file: s.view.info.session_file, thinking: s.view.info.thinking, context_window: s.view.info.context_window, usage: { per_model: {} } });
         this.listChanged(s);
         return { session_id: s.id, snapshot: snapshotOf(s.view, q.history_limit ?? undefined) };
       }
@@ -1336,12 +1313,12 @@ export class MockServer {
         return this.queueChanged(s);
       }
       case "steer_now":
-        if (s.run && s.run.approvals.size === 0 && s.queue.some((x) => x.mode === "steer")) s.run.cut = true;
+        if (s.run && s.queue.some((x) => x.mode === "steer")) s.run.cut = true;
         return;
       case "continue":
         if (s.view.live) throw new Failure(-32014, "prompt_in_progress", "a task is running");
         const limited = s.view.failure?.kind === "rate_limited";
-        s.run = { cancelled: false, approvals: new Map() };
+        s.run = { cancelled: false };
         s.tasks++;
         this.emit(s, { type: "task_started", task_id: `t${s.tasks}` });
         // The demo's rate-limited review goes on after her waits out the limit twice; anything else just goes on.
@@ -1355,30 +1332,13 @@ export class MockServer {
         if (c) return this.interrupt(c);
         return this.emit(s, { type: "warning", message: `no sub-agent "${op.agent}" is running` });
       }
-      case "approval": {
-        const resolve = s.run?.approvals.get(op.call_id);
-        if (!resolve) throw new Failure(-32015, "approval_not_pending", "no such approval");
-        return resolve(op.decision);
-      }
-      case "agent_approval": {
-        const resolve = s.children.find((c) => c.id === op.agent)?.run?.approvals.get(op.call_id);
-        if (!resolve) throw new Failure(-32015, "approval_not_pending", "no such approval");
-        return resolve(op.decision);
-      }
       case "set_model": {
         // As her does (model-catalog-design §18): a level asked for is kept when the model offers it;
         // on a switch the session's level is kept when the new model offers it; else "default".
         const offered = demoModels(new Set([...this.stored, "anthropic", "kimi"])).models.find((m) => m.id === op.model)?.thinking_levels ?? [];
         const wanted = op.thinking ?? s.view.info.thinking;
         const thinking = wanted !== "default" && offered.includes(wanted) ? wanted : "default";
-        return this.emit(s, { type: "settings_changed", model: op.model, thinking, permission_mode: s.view.info.permission_mode, context_window: contextWindow(op.model) });
-      }
-      case "set_permission_mode": {
-        const before = s.view.info.permission_mode;
-        this.emit(s, { type: "settings_changed", model: s.view.info.model, thinking: s.view.info.thinking, permission_mode: op.mode, context_window: s.view.info.context_window });
-        // As her does on switching into bypass-permissions.
-        if (op.mode === "bypass-permissions" && before !== op.mode) this.emit(s, { type: "warning", code: "bypass_permissions", message: "Permission mode bypass-permissions: tools run without asking." });
-        return;
+        return this.emit(s, { type: "settings_changed", model: op.model, thinking, context_window: contextWindow(op.model) });
       }
       case "compact":
       case "shutdown":
@@ -1415,7 +1375,6 @@ function snapshotOf(v: SessionView, limit = 100): SessionSnapshot {
         turn: live.turn,
         streaming: live.streaming,
         tools: live.tools.map((t) => ({ call_id: t.call_id, name: t.name, category: t.category, title: t.title, args: t.args, running: t.phase === "running", progress_tail: t.progress })),
-        approvals: live.approvals,
       }
     : undefined;
   return {

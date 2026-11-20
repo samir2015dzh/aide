@@ -497,4 +497,4 @@ function RunResult({ run, relaying, onShowBubble }: { run: RoutineRunInfo; relay
 }
 
 /** For a run's steps while the assistant's conversation is still loading: nothing shown depends on it. */
-const NO_INFO: SessionInfo = { session_id: "", cwd: "", session_file: "", model: "", thinking: "off", permission_mode: "manual", context_window: 0, archived: false };
+const NO_INFO: SessionInfo = { session_id: "", cwd: "", session_file: "", model: "", thinking: "off", context_window: 0, archived: false };

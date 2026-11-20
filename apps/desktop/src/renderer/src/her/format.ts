@@ -1,8 +1,8 @@
 import { hourMinute, isYesterday, modelName, monthDay, sameDay, weekday, withinWeek, workSummary, type ToolView, type WorkItem } from "@hermesh/her-client";
-import type { ModelSummary, ModelsListResult, PermissionMode, ThinkingLevel } from "@hermesh/her-protocol";
+import type { ModelSummary, ModelsListResult, ThinkingLevel } from "@hermesh/her-protocol";
 import { i18n } from "../../../shared/i18n";
 
-// Her's words for times, steps, models and permissions, in the app's language.
+// Her's words for times, steps and models, in the app's language.
 
 // Keys made at run time (`steps.read.done`): the typed lookup cannot check them.
 const t = i18n.getFixedT(null, "her") as unknown as (key: string, o?: Record<string, unknown>) => string;
@@ -62,7 +62,6 @@ export function tokensText(n: number): string {
 export function toolVerb(tool: ToolView): string {
   if (tool.state === "denied") return t("steps.denied.done");
   if (tool.state === "cancelled") return t("steps.cancelled");
-  if (tool.state === "awaiting_approval") return t("steps.awaiting");
   const live = tool.state === "running" || tool.state === "pending" || tool.state === "streaming";
   return t(`steps.${tool.category}.${live ? "doing" : "done"}`);
 }
@@ -70,19 +69,6 @@ export function toolVerb(tool: ToolView): string {
 /** What a run of steps did, in one line as a session's group of calls says it: "读取了 2 个文件、运行了 3 条命令". */
 export function workText(items: WorkItem[]): string {
   return workSummary(items).map(({ kind, count }) => t(`steps.count.${kind}`, { count })).join(t("steps.separator"));
-}
-
-/** The verb for asking to do a step: "Run", "Edit". */
-export function toolDo(category: ToolView["category"]): string {
-  return t(`steps.${category}.do`);
-}
-
-export function permissionTitle(m: PermissionMode): string {
-  return t(`permission.${m}.title`);
-}
-
-export function permissionDesc(m: PermissionMode): string {
-  return t(`permission.${m}.desc`);
 }
 
 export function thinkingTitle(l: ThinkingLevel): string {

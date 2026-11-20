@@ -13,20 +13,18 @@ export function stateOf(s: ListSession): SessionState {
   return s.state === "idle" && s.busy ? "running" : s.state;
 }
 
-/** Waiting for an approval, or its last task failed. */
+/** Its last task failed. Nothing else needs the owner: her asks nobody before an action. */
 export function needsAttention(s: ListSession): boolean {
-  const st = stateOf(s);
-  return st === "awaiting_approval" || st === "failed";
+  return stateOf(s) === "failed";
 }
 
 export function isRunning(s: ListSession): boolean {
   return stateOf(s) === "running";
 }
 
-/** A task has started and not ended: running, or waiting for an approval. */
+/** A task has started and not ended. */
 export function inTask(s: ListSession): boolean {
-  const st = stateOf(s);
-  return st === "running" || st === "awaiting_approval";
+  return stateOf(s) === "running";
 }
 
 /** The title, else the start of its first message, else its project (empty without one). */

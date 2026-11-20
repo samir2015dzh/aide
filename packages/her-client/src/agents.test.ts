@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AssistantContent, Event, EventMsg, SessionInfo, SessionSnapshot, Usage, UsageTotals } from "@hermesh/her-protocol";
-import { applyEvents, fromSnapshot, pendingApproval, runningAgents, statusOf, type SessionView } from "./session.ts";
+import { applyEvents, fromSnapshot, runningAgents, statusOf, type SessionView } from "./session.ts";
 import { agentBrief, agentTaskOf, conversation, messageBody, reportBody, taskGists } from "./steps.ts";
 import { agentTask } from "./mock/agents.ts";
 
@@ -9,7 +9,7 @@ import { agentTask } from "./mock/agents.ts";
 // work as agent_event tells it, their reports, and where the work as a whole
 // ends.
 
-const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const usage: Usage = { input: 10, output: 5, cache_read: 0, cache_write: 0, cost: { currency: "USD", input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } };
 const totals: UsageTotals = { per_model: { "p/m": usage } };
 
@@ -333,59 +333,18 @@ test("a report's own words come without the wrapper and the note after it", () =
   assert.equal(agentBrief("no task tags"), "no task tags");
 });
 
-test("what a sub-agent asks waits for the owner while the session itself is idle", () => {
+test("a sub-agent's call runs while the session itself is idle: nothing waits for the owner", () => {
   let v = play([{ type: "task_started", task_id: "t1" }, user("u1", "go"), assistant("a1", [spawnCall("c1", "math")]), ...spawned("c1", "ag1", "math"), done("t1")]);
   assert.equal(statusOf(v), "idle");
-  assert.equal(pendingApproval(v), null);
-  const asked = { call_id: "k1", name: "bash", args: { command: "rm -rf build" }, summary: "rm -rf build" };
   v = play(
     [
       inner("ag1", 1, { type: "task_started", task_id: "t1" }),
-      inner("ag1", 2, { type: "tool_started", call_id: "k1", name: "bash", args: asked.args, category: "execute", title: "rm -rf build" }),
-      inner("ag1", 3, { type: "approval_requested", ...asked }),
+      inner("ag1", 2, { type: "tool_started", call_id: "k1", name: "bash", args: { command: "rm -rf build" }, category: "execute", title: "rm -rf build" }),
+      inner("ag1", 3, { type: "tool_running", call_id: "k1" }),
     ],
     v,
   );
-  assert.equal(statusOf(v), "awaiting_approval");
-  assert.equal(v.live, null);
-  const waiting = pendingApproval(v);
-  assert.equal(waiting?.approval.summary, "rm -rf build");
-  assert.equal(waiting?.agent?.id, "ag1");
-  // Its own work says so too.
-  assert.equal(v.agents[0].view.live?.tools[0].phase, "awaiting_approval");
-
-  v = play([inner("ag1", 4, { type: "approval_resolved", call_id: "k1", decision: { type: "approve" } })], v);
-  assert.equal(pendingApproval(v), null);
   assert.equal(statusOf(v), "idle");
-});
-
-test("a snapshot taken while a sub-agent asks brings the question back", () => {
-  const usage = { per_model: {} };
-  const v = fromSnapshot({
-    session: { session_id: "s", cwd: "/w", session_file: "/f", model: "m", thinking: "default", permission_mode: "manual", context_window: 1, archived: false },
-    last_seq: 3,
-    transcript: { items: [] },
-    usage,
-    agents: [
-      {
-        agent_id: "ag1",
-        name: "math",
-        description: "测数学",
-        call_id: "c1",
-        session_file: "/a",
-        status: "running",
-        since: 1,
-        transcript: { items: [] },
-        active_task: {
-          task_id: "t1",
-          turn: 0,
-          tools: [{ call_id: "k1", name: "bash", category: "execute", title: "rm x", args: { command: "rm x" }, running: false }],
-          approvals: [{ call_id: "k1", name: "bash", args: { command: "rm x" }, summary: "rm x" }],
-        },
-      },
-    ],
-  } as unknown as SessionSnapshot);
-  assert.equal(statusOf(v), "awaiting_approval");
-  assert.equal(pendingApproval(v)?.agent?.description, "测数学");
-  assert.equal(v.agents[0].view.live?.tools[0].phase, "awaiting_approval");
+  assert.equal(v.live, null);
+  assert.equal(v.agents[0].view.live?.tools[0].phase, "running");
 });

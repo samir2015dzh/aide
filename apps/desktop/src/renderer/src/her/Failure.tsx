@@ -3,7 +3,7 @@ import type { ErrorInfo } from "@hermesh/her-protocol";
 import { Icon } from "../icons";
 import { useRowState } from "../session/useRowState";
 import { useStore } from "../store";
-import type { SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import { useHer } from "./context";
 import { failureAdvice, failureTitle, modelTitle } from "./format";
 import { MenuButton, MenuItem, ModelList, SubMenuItem } from "./menus";

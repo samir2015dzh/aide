@@ -7,7 +7,7 @@ import { fromSnapshot, type SessionView } from "./session.ts";
 
 function chat(items: unknown[]): SessionView {
   return fromSnapshot({
-    session: { session_id: "s", cwd: "/", session_file: "/s.jsonl", model: "m", thinking: "off", permission_mode: "manual", context_window: 1, archived: false },
+    session: { session_id: "s", cwd: "/", session_file: "/s.jsonl", model: "m", thinking: "off", context_window: 1, archived: false },
     last_seq: 0,
     transcript: { items: items as never },
     usage: { per_model: {} },

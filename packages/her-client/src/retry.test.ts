@@ -6,7 +6,7 @@ import { applyEvents, fromSnapshot, type SessionView } from "./session.ts";
 // A model request retried after part of the reply arrived: the part is dropped while the
 // retry waits, and the next attempt streams a message of its own.
 
-const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 
 let seq = 0;
 function play(msgs: EventMsg[], from?: SessionView): SessionView {

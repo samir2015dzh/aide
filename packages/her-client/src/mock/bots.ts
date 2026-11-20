@@ -55,7 +55,7 @@ export interface DemoBot {
   /** How long ago its conversation began, and what was said. */
   ago: number;
   history: { prompt: string; script: TaskScript }[];
-  /** A task under way when the demo starts, up to its first turn (an approval, say). */
+  /** A task under way when the demo starts, up to its first turn. */
   live?: { prompt: string; script: TaskScript };
   unread?: number;
   routines?: DemoRoutine[];
@@ -197,7 +197,7 @@ function restartScript(): TaskScript {
       {
         tools: [
           send("看了日志：nginx 的主进程被系统杀掉了，可能是内存不够。要重启 nginx，你确认一下。"),
-          { name: "bash", args: { command: "sudo systemctl restart nginx" }, output: "Exit code: 0", ms: 900, approval: { summary: "sudo systemctl restart nginx" } },
+          { name: "bash", args: { command: "sudo systemctl restart nginx" }, output: "Exit code: 0", ms: 900 },
         ],
       },
       { tools: [send("重启好了，nginx 已经在跑。我会留意一下内存，再挂的话告诉你。", true)] },

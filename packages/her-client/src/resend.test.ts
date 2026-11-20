@@ -6,7 +6,7 @@ import { attachedBlock, changesFilesAfter, conversation, handedTabBlock, handedT
 
 // The conversation going back (`session_rewound`), as a window follows it.
 
-const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const usage = (input: number) => ({ input, output: 1, cache_read: 0, cache_write: 0, cost: { currency: "USD" as const, input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } });
 const said = (id: string, text: string): TranscriptItem => ({ type: "message", message_id: id, message: { role: "user", content: [{ type: "text", text }], ts: 1 } });
 const answered = (id: string, text: string, input: number): TranscriptItem => ({

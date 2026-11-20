@@ -53,7 +53,7 @@ test("a card is read from what send_to_user's result carries; one that isn't a c
 /** Her's conversation with the card shown, as a snapshot gives it, with `later` after it in its history. */
 function conversation(later: object[] = []): SessionSnapshot {
   return {
-    session: { session_id: "conv-her", archived: false, context_window: 200000, cwd: "/her", model: "mock/mock-1", permission_mode: "manual", session_file: "s.jsonl", thinking: "medium" },
+    session: { session_id: "conv-her", archived: false, context_window: 200000, cwd: "/her", model: "mock/mock-1", session_file: "s.jsonl", thinking: "medium" },
     last_seq: 4,
     transcript: {
       items: [

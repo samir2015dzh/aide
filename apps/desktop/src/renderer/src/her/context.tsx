@@ -30,7 +30,7 @@ export type Panel =
   | { kind: "storage" };
 
 /** A sheet over the page: another environment, or full access for Her (signed). */
-export type HerSheet = null | { kind: "add" } | { kind: "access"; bot: BotSummary };
+export type HerSheet = null | { kind: "add" };
 
 export type Her = {
   /** The environment shown: a machine Her is on for. */

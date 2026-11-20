@@ -113,7 +113,7 @@ export function stressSessions(o: StressOptions, now: number): SessionSummary[] 
     const updated = now - Math.floor(Math.pow(r(), 2) * 90 * day);
     const created = updated - int(r, 1, 600) * 60_000;
     const x = r();
-    const state: SessionState = x < 0.01 ? "awaiting_approval" : x < 0.03 ? "running" : x < 0.05 ? "failed" : "idle";
+    const state: SessionState = x < 0.03 ? "running" : x < 0.05 ? "failed" : "idle";
     const noProject = r() < 0.1;
     const topic = pick(r, topics);
     out.push({
@@ -126,7 +126,7 @@ export function stressSessions(o: StressOptions, now: number): SessionSummary[] 
       busy: state === "running",
       attached_clients: 0,
       state,
-      task_started_at: state === "running" || state === "awaiting_approval" ? iso(now - int(r, 5, 900) * 1000) : undefined,
+      task_started_at: state === "running" ? iso(now - int(r, 5, 900) * 1000) : undefined,
       model: r() < 0.6 ? "deepseek/deepseek-flash" : "deepseek/deepseek-pro",
       title: r() < 0.7 ? `${topic}${r() < 0.3 ? `（第 ${int(r, 2, 9)} 轮）` : ""}` : undefined,
       preview: `${topic}，需要先看一下现状再动手。`.slice(0, 120),
@@ -191,7 +191,7 @@ export function stressTranscript(seed: number, turns: number, start: number, mes
   return items;
 }
 
-/** What a stress test's session answers: a long Markdown reply, written out over about 20 seconds, nothing to approve. */
+/** What a stress test's session answers: a long Markdown reply, written out over about 20 seconds. */
 export function stressReply(prompt: string): TaskScript {
   const rows = Array.from({ length: 8 }, (_, i) => `| 模块 ${i + 1} | ${120 + i * 7}ms | ${80 - i * 3}ms |`).join("\n");
   const code = Array.from({ length: 12 }, (_, i) => `export function step${i}(input: number): number {\n  return input * ${i + 1};\n}`).join("\n");

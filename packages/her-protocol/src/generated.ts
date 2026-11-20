@@ -6,7 +6,6 @@
 export const PROTOCOL_VERSION = 2 as const;
 
 export type ActiveTask = {
-  approvals?: PendingApproval[];
   /** The assistant message being generated. */
   streaming?: PartialMessage | null;
   task_id: string;
@@ -127,21 +126,6 @@ export type AnimationSpec = {
 };
 
 export type AnimationTrigger = "on_click" | "with_previous" | "after_previous";
-
-export type ApprovalDecision = {
-  type: "approve";
-} | {
-  /** Which of `proposed_grants` to keep, by index; the first when left out. */
-  grant?: number | null;
-  /** Keep that grant beyond the session too: written to the user's configuration under `[browser.sites]` (browser-design D-197). Not for "any site". */
-  persist?: boolean;
-  type: "approve_for_session";
-} | {
-  feedback?: string | null;
-  type: "deny";
-} | {
-  type: "abort";
-};
 
 export type ArrowHead = "none" | "triangle" | "stealth" | "diamond" | "oval" | "arrow";
 
@@ -351,9 +335,9 @@ export type BotSummary = {
   session_id?: string | null;
   /** It is answering: its conversation runs a task. */
   typing?: boolean;
-  /** Messages and approval requests since the user last looked (`bots/read`). */
+  /** Messages and secure cards since the user last looked (`bots/read`). */
   unread?: number;
-  /** The oldest approval it waits for: what the call does. */
+  /** The oldest secure card it waits on: what the card asks for. Her asks nobody to approve an action, so nothing else waits. */
   waiting?: string | null;
 };
 
@@ -804,13 +788,6 @@ export type CommandInfo = {
   name: string;
   /** The `SKILL.md` of the skill it invokes; absent for a built-in command. */
   skill?: string | null;
-};
-
-/** Command prefix rule for the bash tool. */
-export type CommandRule = {
-  decision: RuleDecision;
-  prefix: string[];
-  reason?: string | null;
 };
 
 export type CompactionReason = "manual" | "threshold" | "overflow" | "model_switch";
@@ -2454,7 +2431,6 @@ export type Event = {
   context_window: number;
   cwd: string;
   model: string;
-  permission_mode: PermissionMode;
   protocol_version: number;
   resumed: boolean;
   session_file: string;
@@ -2520,25 +2496,6 @@ export type Event = {
   result: ToolResultMessage;
   type: "tool_completed";
 } | {
-  args: unknown;
-  call_id: string;
-  name: string;
-  /** The call works in the user's own browser, with their real sign-ins, rather than the built-in one (connectors-entry-design §3.4): clients say so. */
-  own_browser?: boolean;
-  /** Site permissions that `approve_for_session` may keep; its `grant` picks one, the first by default. */
-  proposed_grants?: SiteGrant[];
-  /** Mode that `approve_for_session` switches the session to. With none of this, `proposed_rule` and `proposed_grants`, approving for the session approves this call only. */
-  proposed_mode?: PermissionMode | null;
-  /** Command prefix that `approve_for_session` allows from then on. */
-  proposed_rule?: CommandRule | null;
-  reason?: string | null;
-  summary: string;
-  type: "approval_requested";
-} | {
-  call_id: string;
-  decision: ApprovalDecision;
-  type: "approval_resolved";
-} | {
   reason: CompactionReason;
   type: "compaction_started";
 } | {
@@ -2597,7 +2554,6 @@ export type Event = {
 } | {
   context_window: number;
   model: string;
-  permission_mode: PermissionMode;
   thinking: ThinkingLevel;
   type: "settings_changed";
 } | {
@@ -2606,12 +2562,6 @@ export type Event = {
 } | {
   archived: boolean;
   type: "archived_changed";
-} | {
-  call_id: string;
-  name: string;
-  reason?: string | null;
-  summary: string;
-  type: "approval_refused";
 } | {
   /** What the warning is about, for a client that words or places it itself. Absent for one-off warnings, which are only shown as `message`. */
   code?: WarningCode | null;
@@ -2684,9 +2634,6 @@ export type ExtensionMessage = {
   kind: "open_session";
   session_id: string;
 } | {
-  kind: "done";
-  session_id: string;
-} | {
   kind: "stop";
   session_id: string;
 } | {
@@ -2703,8 +2650,6 @@ export type ExtensionProblem = "update_extension" | "update_her";
 
 /** What a session looks like to the extension. */
 export type ExtensionSession = {
-  /** What it waits for the user to do in the page. */
-  handoff?: string | null;
   state: SessionState;
   /** How the user's latest message starts: the task its tabs are for. */
   task?: string | null;
@@ -2884,8 +2829,6 @@ export type GradientStop = {
   position: number;
 };
 
-export type GrantAuthority = "navigate" | "act" | "script";
-
 /** Where a link goes. */
 export type HyperlinkTarget = {
   kind: "url";
@@ -3059,9 +3002,6 @@ export type MailInfo = {
 
 export type MailKind = "report" | "message" | "routine" | "to_user" | "news";
 
-/** How much a server's tools are trusted to run unasked. */
-export type McpApproval = "never";
-
 export type McpAuthKind = "none" | "oauth" | "credential";
 
 export type McpAuthMode = "oauth";
@@ -3217,8 +3157,6 @@ export type McpRemoteTransport = "streamable_http" | "sse";
  * String values may contain `${VAR}` and `${VAR:-default}`; they are expanded from her's environment when the server connects, so a missing variable fails only this server.
  */
 export type McpServerConfig = {
-  /** `never`: its tools run without asking in every permission mode. Taken only from the user's own configuration file. */
-  approval?: McpApproval | null;
   args?: string[];
   /** Remote server: `oauth` signs in with OAuth; the token is kept in the credential store. */
   auth?: McpAuthMode | null;
@@ -3368,23 +3306,6 @@ export type MeshCallResult = {
   output: string;
 };
 
-/** Parameters of `mesh/describe`, a request from the kernel to the `mesh/host` connection. */
-export type MeshDescribeParams = {
-  arguments: unknown;
-  /** The bot whose conversation makes the call. */
-  bot: string;
-  /** The tool. */
-  name: string;
-};
-
-/** The result of `mesh/describe`. */
-export type MeshDescribeResult = {
-  /** The words of the rule that covers the call: an allow rule with them lets it run unasked, and approving for the session keeps one. None: every such call is asked about. */
-  rule?: string[] | null;
-  /** What the call would do, in words for the user who approves it. */
-  summary: string;
-};
-
 /** Parameters of `mesh/host`: the `mesh` group as the host gives it. */
 export type MeshHostParams = {
   /** What the model reads with the group's definitions, a line each. */
@@ -3413,7 +3334,7 @@ export type MeshTool = {
   name: string;
   /** JSON Schema of its arguments. */
   parameters: unknown;
-  /** It changes something: a call goes through the approval policy. One that only reads runs in every mode. */
+  /** It changes something: such calls run one at a time, never beside another call. */
   writes?: boolean;
 };
 
@@ -3550,22 +3471,9 @@ export type Op = {
   agent: string;
   type: "agent_interrupt";
 } | {
-  call_id: string;
-  decision: ApprovalDecision;
-  type: "approval";
-} | {
-  /** The agent's id. */
-  agent: string;
-  call_id: string;
-  decision: ApprovalDecision;
-  type: "agent_approval";
-} | {
   model: string;
   thinking?: ThinkingLevel | null;
   type: "set_model";
-} | {
-  mode: PermissionMode;
-  type: "set_permission_mode";
 } | {
   title: string;
   type: "set_title";
@@ -3676,22 +3584,6 @@ export type PeerInfo = {
   name: string;
   version?: string | null;
 };
-
-/** Same fields as the `approval_requested` event. */
-export type PendingApproval = {
-  args: unknown;
-  call_id: string;
-  name: string;
-  own_browser?: boolean;
-  proposed_grants?: SiteGrant[];
-  proposed_mode?: PermissionMode | null;
-  proposed_rule?: CommandRule | null;
-  reason?: string | null;
-  summary: string;
-};
-
-/** How much the session may do without asking. Deny and ask rules apply in every mode. Deserializing also accepts the names used before protocol version 2. */
-export type PermissionMode = "manual" | "accept-edits" | "bypass-permissions";
 
 export type PictureFillMode = "stretch" | "tile";
 
@@ -3988,8 +3880,6 @@ export type RowHeight = {
   row: number;
 };
 
-export type RuleDecision = "allow" | "ask" | "deny";
-
 export type RunRead = {
   end: number;
   link?: HyperlinkTarget | null;
@@ -4087,7 +3977,6 @@ export type SessionAttachParams = {
 export type SessionDefaults = {
   /** `provider/model-id`. Absent while no model is set up: `session/new` without a model then fails with `no_model`, and the person has to connect one. */
   model?: string | null;
-  permission_mode: PermissionMode;
   thinking: ThinkingLevel;
 };
 
@@ -4120,7 +4009,6 @@ export type SessionInfo = {
   context_window: number;
   cwd: string;
   model: string;
-  permission_mode: PermissionMode;
   session_file: string;
   session_id: string;
   thinking: ThinkingLevel;
@@ -4149,7 +4037,6 @@ export type SessionNewParams = {
   /** MCP servers for this session, on top of the configured ones; same name wins. */
   mcp_servers?: McpServerConfig[];
   model?: string | null;
-  permission_mode?: PermissionMode | null;
   thinking?: ThinkingLevel | null;
 };
 
@@ -4176,7 +4063,6 @@ export type SessionResumeParams = {
   /** MCP servers for this session when it is loaded; not allowed for a loaded session. */
   mcp_servers?: McpServerConfig[];
   model?: string | null;
-  permission_mode?: PermissionMode | null;
   session_id: string;
   thinking?: ThinkingLevel | null;
 };
@@ -4197,7 +4083,7 @@ export type SessionSnapshot = {
 };
 
 /** What a session is doing, for lists. */
-export type SessionState = "idle" | "running" | "awaiting_approval" | "failed";
+export type SessionState = "idle" | "running" | "failed";
 
 export type SessionSummary = {
   archived: boolean;
@@ -4355,13 +4241,6 @@ export type SheetOp = {
 };
 
 export type SignIn = "none" | "oauth";
-
-/** Permission for the browser tools on one origin, for the rest of the session (docs/kernel/browser-design.md §7.3). */
-export type SiteGrant = {
-  authority: GrantAuthority;
-  /** `https://example.com`, or `*` for every site (navigation only). */
-  origin: string;
-};
 
 /** One `SKILL.md` that was found, and what became of it. */
 export type SkillEntry = {
@@ -4527,7 +4406,7 @@ export type SkillsSetEnabledResult = {
 
 export type SlideChangeKind = "changed" | "inserted" | "deleted" | "moved";
 
-/** What a batch or proposal does to one slide, for the canvas markers and the approval card. */
+/** What a batch or proposal does to one slide, for the canvas markers. */
 export type SlideChangeSummary = {
   /** From 1; where it ends up, or was for a deleted slide. */
   index: number;
@@ -4962,7 +4841,7 @@ export type UserMessage = {
 };
 
 /** Warnings a client may recognise. A client meeting a code it does not know shows `message`. */
-export type WarningCode = "bypass_permissions" | "mcp_servers_not_ready" | "resend_rejected";
+export type WarningCode = "mcp_servers_not_ready" | "resend_rejected";
 
 /** Why a search with a service failed. */
 export type WebSearchErrorKind = "auth_failed" | "quota_exhausted" | "rate_limited" | "unreachable" | "bad_response";
@@ -5200,7 +5079,6 @@ export interface Methods {
 export interface ServerRequests {
   "docx/serialize": [DocxSerializeParams, DocxSerializeResult];
   "mesh/call": [MeshCallParams, MeshCallResult];
-  "mesh/describe": [MeshDescribeParams, MeshDescribeResult];
 }
 
 /** Notifications: their params. */
@@ -5244,7 +5122,6 @@ export const RPC_ERROR_KINDS = {
   "-32012": "session_not_loaded",
   "-32013": "not_attached",
   "-32014": "prompt_in_progress",
-  "-32015": "approval_not_pending",
   "-32016": "server_full",
   "-32017": "overloaded",
   "-32018": "unsupported_content",

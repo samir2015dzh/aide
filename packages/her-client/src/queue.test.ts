@@ -6,7 +6,7 @@ import { applyEvents, fromSnapshot } from "./session.ts";
 // Input sent while a task runs: it waits in view, as the kernel's queue says, until it joins
 // the history under its id; a stopped or failed task hands it back.
 
-const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const start = () => fromSnapshot({ session: info, last_seq: 0, transcript: { items: [] }, usage: { per_model: {} } });
 const msg = (text: string, ts: number): UserMessage => ({ content: [{ type: "text", text }], ts });
 const q = (id: string, text: string, mode: QueuedInput["mode"]): QueuedInput => ({ id, message: msg(text, 1), mode });

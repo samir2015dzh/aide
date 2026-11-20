@@ -312,33 +312,18 @@ button.wb-h:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fpast .chev.open{transform:rotate(90deg)}
 
 /* The composer's zone: the bottom of the page, as wide as the conversation's column. The conversation scrolls under it
-   and fades out above it; an approval, or what keeps the environment from answering, sits over the composer. */
+   and fades out above it; what keeps the environment from answering sits over the composer. */
 .cmp-zone{position:absolute;left:0;right:0;bottom:0;z-index:4;pointer-events:none;padding:28px 16px 16px;background:linear-gradient(to bottom,transparent,var(--win) 28px)}
 .cmp-col{pointer-events:auto;max-width:var(--conversation-width);margin:0 auto;display:flex;flex-direction:column;gap:10px}
 @keyframes her-up{from{opacity:0;transform:translateY(10px) scale(.98)}}
 .appr,.knote{background:var(--pill);border-radius:var(--r-lg);box-shadow:0 0 0 .5px var(--pill-bd),0 10px 30px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06);padding:14px 14px 12px 16px;display:flex;flex-direction:column;animation:her-up .32s cubic-bezier(.2,0,0,1)}
 .appr{gap:10px}
 .knote{gap:6px}
-.appr-h,.knote-h{display:flex;align-items:center;gap:8px;min-width:0;font-size:13.5px;line-height:20px}
-.appr-h b{font-weight:600;flex:none;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .knote-h b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.appr-h .why{flex:1;min-width:0;color:var(--l2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.appr-h .qx-tag{margin-left:auto;flex:none}
-.appr-who{margin-left:auto;flex:0 1 auto;min-width:0;color:var(--l2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.appr-who+.qx-tag{margin-left:0}
-.appr-site{display:flex;flex-direction:column;gap:2px;margin:-4px 0 0 24px;min-width:0;font-size:12.5px;line-height:18px;color:var(--l2)}
-.appr-site code{font-family:var(--mono);font-size:12px;color:var(--l3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.appr-pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:var(--l1);background:var(--code);box-shadow:inset 0 0 0 .5px var(--sep);border-radius:var(--r-md);padding:8px 11px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:132px;overflow-y:auto}
-.appr-pre.diff{padding:6px 0}
-.appr-pre.diff>span{display:block;padding:0 11px}
-.appr-pre .add{background:var(--add-bg);color:var(--add-fg)}
-.appr-pre .del{background:var(--del-bg);color:var(--del-fg)}
-.appr-pre .more{display:block;color:var(--l3)}
 .appr-f{display:flex;align-items:center;gap:8px}
 .appr-f .btn{height:30px;padding:0 14px}
 .appr-f .field{flex:1;height:30px;border-radius:var(--r-sm)}
 .appr-sp{flex:1}
-.appr-keep{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--l2)}
 .knote-i{width:16px;height:16px;flex:none;color:var(--l2)}
 .knote-b{margin:0 0 4px 24px;font-size:12.5px;line-height:19px;color:var(--l2);overflow-wrap:anywhere}
 
@@ -406,7 +391,7 @@ button.wb-h:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .her-menu .mi{min-height:28px;height:auto}
 .her-menu .mi .two{display:flex;flex-direction:column;padding:5px 0;gap:1px;white-space:normal;min-width:0}
 .her-menu .mi .two>span{font-size:11.5px;color:var(--l2)}
-/* An environment's unread messages and approvals, in its row. */
+/* An environment's unread messages and secure cards, in its row. */
 .her-menu .mi .bbadge{flex:none;margin-left:auto;min-width:16px;height:16px;padding:0 5px;border-radius:var(--r-sm);background:var(--accent);color:var(--on-accent);font-size:10.5px;font-weight:600;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
 .her-menu .mmodels{display:contents}
 .her-menu .mlist{max-height:min(348px,55vh);overflow-y:auto;margin:0 -5px;padding:0 5px}

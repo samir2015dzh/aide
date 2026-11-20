@@ -7,7 +7,7 @@ import { agoText } from "@hermesh/core";
 import { Icon } from "../icons";
 import { herAnswers } from "../skew";
 import { errorText, useNow, useStore } from "../store";
-import type { SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import {
   allSitesEdits,
   brokenSkills,

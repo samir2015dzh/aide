@@ -6,7 +6,7 @@ import type { Machine } from "@hermesh/proto/local";
 import { agoText } from "@hermesh/core";
 import { Mark } from "@hermesh/ui";
 import { errorText, useNow, useStore } from "../store";
-import type { SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import { AssistantPanel } from "./AssistantPanel";
 import { useConversation, useEnvironment, useKept, useWaiting } from "./connection";
 import { HerContext, useHer, type Her, type HerSheet, type Panel } from "./context";
@@ -17,7 +17,7 @@ import { environments, envState, pickEnvironment } from "./environments";
 import { RoutinesPanel } from "./RoutinesPanel";
 import { BrowserPage, EnvironmentPage, ModelPage, ProviderPage, SearchPage, SkillPage, SkillsPage, StoragePage } from "./HerPages";
 import { FirstRun, Setup } from "./Setup";
-import { AccessSheet, HerDialog } from "./sheets";
+import { HerDialog } from "./sheets";
 import { TopBar } from "./TopBar";
 import "../session/markdown/markdown.css";
 import "../session/session.css";
@@ -76,10 +76,11 @@ function Environment({ machine, envs, choose }: { machine: Machine; envs: Machin
   const bot = env.bots.find((b) => b.default) ?? kept?.bot;
   const live = useConversation(machine, bot, show);
   const conv = live.view || !kept?.view ? live : { ...live, view: kept.view, session: kept.session };
-  // Her's sub-agents that wait and that work, for the Progress button on her page, while her conversation is followed here.
+  // Her's sub-agents at work, for the Progress button on her page, while her conversation is followed here. None waits:
+  // her asks nobody before an action.
   const followed = live.rpc ? live.view : null;
-  const agentsWaiting = followed ? runningAgents(followed).filter((a) => (a.view.live?.approvals.length ?? 0) > 0).length : -1;
-  const agentsRunning = followed ? runningAgents(followed).length - agentsWaiting : -1;
+  const agentsWaiting = followed ? 0 : -1;
+  const agentsRunning = followed ? runningAgents(followed).length : -1;
   useEffect(() => {
     set({ herAgents: agentsWaiting < 0 ? null : { waits: agentsWaiting, running: agentsRunning } });
   }, [agentsWaiting, agentsRunning, set]);
@@ -178,7 +179,6 @@ function Environment({ machine, envs, choose }: { machine: Machine; envs: Machin
         {bot && shown?.kind === "provider" && <ProviderPage key={shown.id} id={shown.id} onBack={() => setPanel({ kind: "model" })} onClose={() => setPanel(null)} />}
         {bot && shown?.kind === "environment" && <EnvironmentPage onBack={home} onClose={() => setPanel(null)} />}
         {bot && shown?.kind === "storage" && <StoragePage onBack={() => setPanel({ kind: "environment" })} onClose={() => setPanel(null)} />}
-        {sheet?.kind === "access" && <AccessSheet bot={sheet.bot} />}
         {sheet?.kind === "add" && <AddEnvironmentSheet />}
       </div>
     </HerContext.Provider>

@@ -2,10 +2,10 @@
 // examples/snake-game, as transcript items (long thinking, file contents and outputs
 // shortened). Generated from that task's session file, which is not in this repository.
 
-import type { PermissionMode, ThinkingLevel, TranscriptItem, UsageTotals } from "@hermesh/her-protocol";
+import type { ThinkingLevel, TranscriptItem, UsageTotals } from "@hermesh/her-protocol";
 
 export const snake: {
-  session_id: string; cwd: string; created_at: string; model: string; thinking: ThinkingLevel; permission_mode: PermissionMode;
+  session_id: string; cwd: string; created_at: string; model: string; thinking: ThinkingLevel;
   first_ts: number; last_ts: number; usage: UsageTotals; items: TranscriptItem[];
 } = {
   "session_id": "01a1824f-3c8c-74af-9eb4-91ebcfd74e19",
@@ -13,7 +13,6 @@ export const snake: {
   "created_at": "2026-10-28T11:39:53Z",
   "model": "deepseek/deepseek-flash",
   "thinking": "medium",
-  "permission_mode": "bypass-permissions",
   "first_ts": 1793187593356,
   "last_ts": 1793187803005,
   "usage": {
