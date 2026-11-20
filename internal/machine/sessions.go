@@ -1031,6 +1031,9 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	// The agent's temporary files go with its process; its next start makes
 	// the directory again. Attachments stay: they belong to the record.
 	os.RemoveAll(filepath.Join(s.dataDir, "sessions", id, "tmp"))
+	if err := s.st.ReleasePorts(id); err != nil {
+		s.log.Warn("archive: ports not released", "session", id, "err", err)
+	}
 	if !inPlace && s.ws.Exists(id) {
 		if proj, _ := s.st.Project(row.ProjectID); proj != nil {
 			if err := s.ws.Remove(ctx, proj.Path, id); err != nil {
@@ -1568,10 +1571,17 @@ func (s *Sessions) prepare(l *live) {
 	files := s.attachmentsDir(id) // also for files sent later in the session
 	os.MkdirAll(files, 0o700)
 	gate := s.gate(l)
+	env := append(shellenv.Env(tmp), brandenv.Both("SESSION", id)...)
+	if base, err := s.st.SessionPorts(id); err != nil {
+		s.log.Warn("no ports for the session", "session", id, "err", err)
+	} else {
+		env = append(env, brandenv.Prefix+"PORT_BASE="+strconv.Itoa(base), brandenv.Prefix+"PORT_COUNT="+strconv.Itoa(portBlock))
+	}
 	l.mu.Lock()
+	env = append(env, brandenv.Prefix+"WORKTREE="+l.row.Worktree)
 	spec := provider.StartSpec{WorkDir: l.row.Worktree, TempDir: tmp, Prompt: prompt.text, Images: prompt.input().Images, ReadDirs: []string{files}, Model: l.row.Model,
 		ModelScope: l.row.ProjectID + "/" + id,
-		Effort:     l.row.Effort, Speed: l.row.Speed, Mode: l.row.Mode, Title: l.row.Title, Env: append(shellenv.Env(tmp), brandenv.Both("SESSION", id)...), Gate: gate}
+		Effort:     l.row.Effort, Speed: l.row.Speed, Mode: l.row.Mode, Title: l.row.Title, Env: env, Gate: gate}
 	if s.mcp != nil {
 		spec.MCPServers = s.mcp(l.id)
 	}
