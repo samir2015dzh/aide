@@ -309,7 +309,12 @@ func (a *app) waitTurn(ctx context.Context, cmd *cobra.Command, c *peer.Client, 
 			if a.output == "json" {
 				// The caller may not know the session yet (start --wait).
 				fetch, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				s, _ = a.getSession(fetch, c, ref, id)
+				if s, _ = a.getSession(fetch, c, ref, id); s == nil {
+					// The cancelled stream can take the machine's connection
+					// with it (502 through the link): read it on a fresh one.
+					c.ForgetMachine(n)
+					s, _ = a.getSession(fetch, c, ref, id)
+				}
 				cancel()
 			}
 			return a.outcome(w, ref.Name, s, &exitError{code: exitTimeout, kind: "wait_timeout", err: fmt.Errorf("stopped waiting for session %s; its turn goes on", id),
