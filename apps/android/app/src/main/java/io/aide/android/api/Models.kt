@@ -293,6 +293,11 @@ data class WatchResponse(
 @Serializable data class QuestionResolved(val questionId: String = "", val resolution: String = "", val by: String = "", val answers: List<Answer> = emptyList())
 @Serializable data class MessageReceived(val messageId: String = "", val from: String = "", val fromName: String = "", val text: String = "")
 @Serializable data class MessageSent(val messageId: String = "", val to: String = "", val toName: String = "", val text: String = "")
+/** A managed workspace's request as it stands after one change (docs/workspace-requests.md); from: "agent" or a client id. */
+@Serializable data class WorkspaceRequest(
+    val requestId: String = "", val kind: String = "", val status: String = "", val from: String = "", val fromName: String = "",
+    val item: String = "", val note: String = "",
+)
 
 @Serializable
 data class SessionEvent(
@@ -312,6 +317,7 @@ data class SessionEvent(
     val agentDraft: AgentDraft? = null,
     val messageReceived: MessageReceived? = null,
     val messageSent: MessageSent? = null,
+    val workspaceRequest: WorkspaceRequest? = null,
 )
 
 // Requests and the answers the app reads.

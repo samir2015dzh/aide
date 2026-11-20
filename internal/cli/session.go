@@ -534,6 +534,10 @@ func (a *app) printEvent(w io.Writer, e *sessionv1.SessionEvent) {
 	case *sessionv1.SessionEvent_MessageSent:
 		m := k.MessageSent
 		fmt.Fprintf(w, "✉ to %s (%s): %s\n", firstNonEmpty(m.ToName, m.To), m.MessageId, oneLine(m.Text, 200))
+	case *sessionv1.SessionEvent_WorkspaceRequest:
+		r := k.WorkspaceRequest
+		fmt.Fprintf(w, "⚑ workspace request %s (%s %s): %s, by %s%s\n", r.RequestId, r.Kind, oneLine(r.Item, 80), r.Status,
+			firstNonEmpty(r.FromName, r.From), suffix(oneLine(r.Note, 200)))
 	case *sessionv1.SessionEvent_UserMessage:
 		who := ""
 		switch m := k.UserMessage; {

@@ -157,6 +157,19 @@ type messageJSON struct {
 	Subject    string      `json:"subject"`
 	Text       string      `json:"text"`
 	News       *newsJSON   `json:"news"`
+	// A managed workspace's request, or a reply to one.
+	WorkspaceRequest object `json:"workspace_request"`
+}
+
+// workspaceRequestView is a managed workspace's request as the CLI shows
+// it (docs/workspace-requests.md); nil for none.
+func workspaceRequestView(r *sessionv1.WorkspaceRequest) object {
+	if r == nil {
+		return nil
+	}
+	return object{{"request_id", r.RequestId}, {"kind", r.Kind}, {"status", r.Status}, {"from", r.From}, {"from_name", r.FromName},
+		{"item", r.Item}, {"version", r.Version}, {"source", r.Source}, {"repo", r.Repo}, {"purpose", r.Purpose}, {"scope", r.Scope},
+		{"rollback", r.Rollback}, {"note", r.Note}, {"coordinator", r.Coordinator}, {"provisioner", r.Provisioner}, {"message_id", r.MessageId}}
 }
 
 func address(ad *inboxv1.Address) string {
@@ -255,7 +268,8 @@ func (a *app) view(o opened) messageJSON {
 		}
 	}
 	return messageJSON{ID: o.m.MessageId, From: from, To: address(o.m.To), SentAt: tsJSON(o.m.SentAt), ReceivedAt: timeJSON(o.received),
-		InReplyTo: o.m.InReplyTo, Subject: o.m.Subject, Text: o.m.Text, News: newsView(o.m.SessionNews)}
+		InReplyTo: o.m.InReplyTo, Subject: o.m.Subject, Text: o.m.Text, News: newsView(o.m.SessionNews),
+		WorkspaceRequest: workspaceRequestView(o.m.WorkspaceRequest)}
 }
 
 func (a *app) machineName(id string) string {
@@ -838,7 +852,7 @@ type sentJSON struct {
 }
 
 func (a *app) messageSendCmd() *cobra.Command {
-	var to, text, file, subject, replyTo string
+	var to, text, file, subject, replyTo, request, status string
 	var files []string
 	var wait bool
 	var timeout time.Duration
@@ -851,12 +865,22 @@ To a session: the message goes straight to its machine when it is online. If you
 running now, it joins it (and answers its question); otherwise it waits for a turn of its own. While the
 machine is offline it waits at the post office. Files (-f) need the machine online.
 
-To an agent: the message waits in its inbox until it reads it. --wait waits for its reply.`,
+To an agent: the message waits in its inbox until it reads it. --wait waits for its reply.
+
+A managed workspace's coordinator answers a session's request with --workspace-request and --status
+(approved, rejected or provisioned); the message is the reply's words (docs/workspace-requests.md).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			body, err := readPrompt("message", text, file, len(files))
 			if err != nil {
 				return err
+			}
+			var wr *sessionv1.WorkspaceRequest
+			if request != "" || status != "" {
+				if !strings.HasPrefix(request, "wr_") || (status != "approved" && status != "rejected" && status != "provisioned") {
+					return &exitError{code: exitUsage, kind: "usage", err: errors.New("a reply to a workspace request takes --workspace-request wr_… and --status approved, rejected or provisioned")}
+				}
+				wr = &sessionv1.WorkspaceRequest{RequestId: request, Status: status}
 			}
 			atts, err := readFiles(files)
 			if err != nil {
@@ -886,7 +910,10 @@ To an agent: the message waits in its inbox until it reads it. --wait waits for 
 				return err
 			}
 			m := &inboxv1.Message{MessageId: "msg_" + newIdempotencyKey(), From: &inboxv1.Address{Inbox: a.g.ClientId, Session: a.as},
-				To: &inboxv1.Address{Inbox: t.inbox, Session: t.session}, SentAt: timestampOf(time.Now()), InReplyTo: replyTo, Subject: subject, Text: body}
+				To: &inboxv1.Address{Inbox: t.inbox, Session: t.session}, SentAt: timestampOf(time.Now()), InReplyTo: replyTo, Subject: subject, Text: body, WorkspaceRequest: wr}
+			if wr != nil && t.session == "" {
+				return &exitError{code: exitUsage, kind: "usage", err: errors.New("a reply to a workspace request goes to its session (s_…)")}
+			}
 			signed, err := identity.Sign(m, a.key)
 			if err != nil {
 				return err
@@ -921,6 +948,8 @@ To an agent: the message waits in its inbox until it reads it. --wait waits for 
 	cmd.Flags().StringArrayVarP(&files, "file", "f", nil, "attach a file, to a session on an online machine (repeatable)")
 	cmd.Flags().StringVar(&subject, "subject", "", "a short subject")
 	cmd.Flags().StringVar(&replyTo, "reply-to", "", "the id of the message this answers")
+	cmd.Flags().StringVar(&request, "workspace-request", "", "answer a managed workspace's request (wr_…) of the session")
+	cmd.Flags().StringVar(&status, "status", "", "with --workspace-request: approved, rejected or provisioned")
 	cmd.Flags().BoolVar(&wait, "wait", false, "to a session: wait for the turn the message is in; to an agent: wait for its reply")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, timeoutHelp)
 	cmd.MarkFlagRequired("to")

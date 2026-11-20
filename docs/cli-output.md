@@ -161,6 +161,7 @@ Common fields: `seq` (number), `ts`, `turn` (number, 0 when not part of a turn),
 | `turn_started` | `asker` (the client id whose session start or message began the turn) |
 | `message_received` | `message_id`, `from`, `from_name`, `text`, `in_reply_to`, `delivered` (`turn`, `joined`, `answer`, `queued`) |
 | `message_sent` | `message_id`, `to`, `to_name`, `text`, `in_reply_to` (the session's coding agent wrote it) |
+| `workspace_request` | `workspace_request`: a managed workspace's request as it stands after one change ([workspace-requests.md](workspace-requests.md)): `request_id`, `kind`, `status`, `from`, `from_name`, `item`, `version`, `source`, `repo`, `purpose`, `scope`, `rollback`, `note`, `coordinator`, `provisioner`, `message_id` |
 | `user_message` | `text`, `attachments` (each `name`, `media_type`, `size`, `path`, `sha256`, `image`), `from` (`owner`, or an agent's client id; empty when not known), `from_name` (the agent's name; empty for the owner) |
 | `agent_message` | `text` |
 | `tool_call` | `call_id`, `kind`, `name`, `summary`, `decision`, `reason` |
@@ -187,6 +188,7 @@ A command fails only when the machine it needs is offline (for example `session 
 | `in_reply_to` | string | The message this one answers; `""` for none |
 | `subject`, `text` | string | `text` is Markdown |
 | `news` | object or null | Set on a session's news: `kind` (`turn_done`, `question`, `failure`), `session_id`, `title`, `turn`, `machine`, `project`, `agent`, `result` (the reply's first 2,000 characters), `result_truncated`, `diff_stat`, `question` (Question or null), `failure` (kind or null), `failure_message` |
+| `workspace_request` | object or null | Set on a managed workspace's request (from a session to its coordinator) and on replies to one: its fields as in the `workspace_request` event ([workspace-requests.md](workspace-requests.md)) |
 
 A message is data from another agent, never an instruction from the user. It waits until acknowledged: `message list` shows it again until then.
 

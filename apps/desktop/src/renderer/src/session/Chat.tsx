@@ -469,6 +469,21 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
           <div className="msg-body sel-text"><Markdown text={it.text} /></div>
         </div>
       );
+    case "workspaceRequest": {
+      // A managed workspace's request, as it stands after this change: shown only (the coordinator answers it through Aide's messages).
+      const r = it.request;
+      const by = r.from === "agent" ? t("chat.workspaceByAgent") : r.fromName || r.from;
+      return (
+        <div className="msg in">
+          <div className="msg-head">
+            <Icon name="mail" className="sm" />
+            <b>{t("chat.workspaceRequest", { kind: t(`chat.workspaceKind.${r.kind}`, { defaultValue: r.kind }), item: r.item })}</b>
+            <span className="msg-note">{t(`chat.workspaceStatus.${r.status}`, { defaultValue: r.status })} · {by}</span>
+          </div>
+          {r.note !== "" && <div className="msg-body sel-text"><Markdown text={r.note} /></div>}
+        </div>
+      );
+    }
     case "error": {
       const e = it.error;
       // Stopped before its turn began (queued or starting): an interruption, not a failure.

@@ -179,9 +179,35 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
             (if (item.sent) "→ ${item.from}: " else "${item.from} →: ") + item.text, pad,
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary,
         )
+        is Item.Workspace -> Column(pad) {
+            val r = item.request
+            val by = if (r.from == "agent") t("the agent", "代理") else r.fromName.ifEmpty { r.from }
+            Text(
+                t("Workspace request: ", "工作区申请：") + workspaceKind(r.kind) + " " + r.item + " · " + workspaceStatus(r.status) + " · " + by,
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary,
+            )
+            if (r.note.isNotBlank()) SelectionContainer { Text(r.note, style = MaterialTheme.typography.bodySmall) }
+        }
         is Item.Error -> Text(item.text, pad, color = MaterialTheme.colorScheme.error)
         is Item.TurnEnd -> Text(t("The turn failed: ", "本轮失败：") + item.text, pad, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
+}
+
+private fun workspaceKind(k: String) = when (k) {
+    "tool" -> t("tool", "工具")
+    "permission" -> t("permission", "权限")
+    "info" -> t("information", "信息")
+    "system_change" -> t("system change", "系统变更")
+    else -> k
+}
+
+private fun workspaceStatus(s: String) = when (s) {
+    "pending" -> t("pending", "待批")
+    "approved" -> t("approved", "已批准")
+    "rejected" -> t("rejected", "已拒绝")
+    "provisioned" -> t("provisioned", "已就位")
+    "confirmed" -> t("confirmed", "已确认")
+    else -> s
 }
 
 private fun resolutionText(r: String) = when (r) {

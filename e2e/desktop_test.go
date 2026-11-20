@@ -80,7 +80,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "workspace": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -156,7 +156,12 @@ func TestDesktop(t *testing.T) {
 				dshHome = dshDesktopHome(t)
 				more = append(more, "DSH_HOME="+dshHome, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}
-			f := desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
+			var f desktopFixture
+			if name == "workspace" { // a managed workspace's session, on the scripted fake agent (workspaceWorld)
+				f = workspaceWorld(t)
+			} else {
+				f = desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
+			}
 			if name == "dsh" {
 				f.DSHHost, f.DSHHome = startDSHHost(t, dshHome, dshDesktopSession(t, dshHome)), dshHome
 			}

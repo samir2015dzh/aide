@@ -91,13 +91,31 @@ func (n *Machine) deliverLetter(ctx context.Context, p *Principal, m *inboxv1.Me
 	if r, err := n.st.Session(m.To.Session); err == nil && r != nil {
 		creator = r.CreatedBy == p.ClientID
 	}
-	rec := &sessionv1.MessageReceived{MessageId: m.MessageId, From: inboxAddress(m.From), FromName: name, Text: m.Text, InReplyTo: m.InReplyTo}
-	sess, delivered, err := n.sessions.Deliver(ctx, p, m.To.Session, m.From.GetSession(), letterText(m, name, creator), rec, atts)
-	if err != nil {
+	unsee := func() {
 		n.mu.Lock()
 		delete(n.lettersSeen, m.MessageId) // it may come again
 		n.mu.Unlock()
+	}
+	text := letterText(m, name, creator)
+	var reply *sessionv1.WorkspaceRequest
+	if m.WorkspaceRequest != nil { // a reply to a managed workspace's request (workspacereq.go)
+		n.wsReqs.mu.Lock()
+		defer n.wsReqs.mu.Unlock()
+		var err error
+		if reply, text, err = n.workspaceReply(m.To.Session, p.ClientID, name, m); err != nil {
+			unsee()
+			return nil, "", err
+		}
+	}
+	rec := &sessionv1.MessageReceived{MessageId: m.MessageId, From: inboxAddress(m.From), FromName: name, Text: m.Text, InReplyTo: m.InReplyTo}
+	sess, delivered, err := n.sessions.Deliver(ctx, p, m.To.Session, m.From.GetSession(), text, rec, atts)
+	if err != nil {
+		unsee()
 		return nil, "", err
+	}
+	if reply != nil {
+		n.wsReqs.sessions[m.To.Session][reply.RequestId] = reply
+		n.sessions.record(m.To.Session, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_WorkspaceRequest{WorkspaceRequest: reply}})
 	}
 	return sess, delivered, nil
 }

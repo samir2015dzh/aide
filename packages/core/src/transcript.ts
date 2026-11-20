@@ -9,6 +9,7 @@ import {
   type ToolCall,
   type ToolResult,
   type TurnCompleted,
+  type WorkspaceRequest,
 } from "@aide/proto/session";
 import { t } from "./i18n";
 import { dateOf } from "./sessions";
@@ -33,7 +34,12 @@ export type TranscriptItem =
    * (docs/agent-messages.md): in, written to the session (delivered: what
    * became of it), or out, written by its coding agent.
    */
-  | { kind: "message"; seq: bigint; direction: "in" | "out"; name: string; address: string; text: string; delivered: string };
+  | { kind: "message"; seq: bigint; direction: "in" | "out"; name: string; address: string; text: string; delivered: string }
+  /**
+   * A managed workspace's request to its coordinator, or a change to one
+   * (docs/workspace-requests.md): shown, never acted on, here.
+   */
+  | { kind: "workspaceRequest"; seq: bigint; request: WorkspaceRequest };
 
 /**
  * transcript pairs tool calls with their results and questions with their
@@ -94,6 +100,9 @@ export function transcript(events: SessionEvent[], running: boolean): Transcript
         items.push({ kind: "message", seq, direction: "out", name: m.toName, address: m.to, text: m.text, delivered: "" });
         break;
       }
+      case "workspaceRequest":
+        items.push({ kind: "workspaceRequest", seq, request: e.kind.value });
+        break;
     }
   }
   return items;

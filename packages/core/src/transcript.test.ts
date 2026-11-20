@@ -41,6 +41,19 @@ describe("transcript", () => {
     expect(items[1]).toMatchObject({ kind: "message", direction: "in", name: "helper", address: "c_helper", text: "check staging", delivered: "queued" });
     expect(items[2]).toMatchObject({ kind: "message", direction: "out", name: "bot", address: "c_bot", text: "halfway" });
   });
+  test("a managed workspace's request, each change as it stands", () => {
+    const items = transcript(
+      [
+        ev(0, { case: "workspaceRequest", value: { requestId: "wr_1", kind: "tool", item: "ripgrep", status: "pending", from: "agent" } }),
+        ev(1, { case: "workspaceRequest", value: { requestId: "wr_1", kind: "tool", item: "ripgrep", status: "approved", from: "c_coord", fromName: "muse", note: "ok" } }),
+      ],
+      false,
+    );
+    expect(items.map((i) => i.kind === "workspaceRequest" && [i.request.requestId, i.request.status, i.request.fromName])).toEqual([
+      ["wr_1", "pending", ""],
+      ["wr_1", "approved", "muse"],
+    ]);
+  });
   test("who wrote each message: the starter, the owner, an agent, or not known", () => {
     const items = transcript(
       [

@@ -255,6 +255,10 @@ type StartSpec struct {
 	// MCPServers are tools Aide gives the agent, as stdio MCP servers:
 	// the session's messages (docs/agent-messages.md §7.4).
 	MCPServers []MCPServer
+	// Instructions are added to the agent's system prompt: a managed
+	// workspace's section (docs/workspace-requests.md). Claude Code and
+	// Codex take them; ACP has no place for them.
+	Instructions string
 	// Project and Requester (its client's name; "" for the owner's own
 	// devices) say what a new session is for, for agents whose own apps
 	// list it apart from Aide (the Claude desktop app).

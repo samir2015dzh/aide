@@ -37,6 +37,7 @@ aide --as "Tech Demos" session start --project web --prompt "…"   # several bo
 aide --as "Tech Demos" message wake   # started by a webhook (a Grok Bot routine)? a one-time link for your owner, who pastes its URL and key: then Aide wakes you when messages arrive
 aide message ack msg_xxx         # handled: it leaves the inbox
 aide message send --to "Grok Bot" --message "PR #143 is ready"   # to another of the owner's agents (message contacts lists them)
+aide message send --to s_xxx --workspace-request wr_xxx --status approved --message "Low risk: approved"   # a managed workspace's coordinator answers a request (docs/workspace-requests.md)
 ```
 
 **Messages to a session.** `message send --to <session>` goes straight to its machine when it's online. If you asked for the turn running now, it joins it (Claude Code and Codex take it at the next tool boundary) and answers its question; otherwise it starts a turn of its own, or waits for one, so one agent's words never go into another's turn. Any agent whose grant covers the session and that may see it can write to it; only the agent that started it can interrupt or archive it (and Her, whose grant covers every session she may see: [her-team.md](her-team.md) §6.1). While the machine is offline the message waits for it (files need it online). `session send` still works for now, as an alias.

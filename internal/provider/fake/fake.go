@@ -37,6 +37,11 @@
 //	message <to>|<text> call the session's message_send tool (Aide's MCP
 //	                    server) to write text to agent to ("" for the
 //	                    session's creator); its result is the turn's
+//	tool <name> <json>  call Aide's tool name with the JSON arguments; its
+//	                    result is the turn's ("error: " and it, when it failed)
+//	tools               agent message "tools: <names>" (Aide's tools, sorted)
+//	instructions        agent message: what the system prompt was given
+//	                    (StartSpec.Instructions; "instructions: none" when empty)
 //
 // Steer appends a script to the running turn, run before it completes.
 //
@@ -60,6 +65,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -309,6 +315,27 @@ func (s *session) script(ctx context.Context, prompt string) (last string, ended
 			res, isErr := s.callTool(ctx, "message_send", map[string]any{"to": to, "message": text})
 			last = res
 			s.emit(provider.Event{Kind: provider.EventToolResult, CallID: id, Summary: res, IsError: isErr})
+		case "tool": // tool <name> <json>
+			name, js, _ := strings.Cut(arg, " ")
+			var args map[string]any
+			json.Unmarshal([]byte(js), &args)
+			s.emit(provider.Event{Kind: provider.EventToolCall, CallID: id, ToolKind: provider.ToolMCP, ToolName: name, Summary: name})
+			res, isErr := s.callTool(ctx, name, args)
+			if isErr {
+				res = "error: " + res
+			}
+			last = res
+			s.emit(provider.Event{Kind: provider.EventToolResult, CallID: id, Summary: res, IsError: isErr})
+			s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: res})
+		case "tools":
+			last = "tools: " + strings.Join(s.toolNames(ctx), ",")
+			s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: last})
+		case "instructions":
+			last = s.spec.Instructions
+			if last == "" {
+				last = "instructions: none"
+			}
+			s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: last})
 		case "write":
 			path, text, _ := strings.Cut(arg, " ")
 			text = strings.ReplaceAll(text, `\n`, "\n")
@@ -501,11 +528,10 @@ func (s *session) decide(ctx context.Context, a provider.ToolAction) provider.De
 	return s.spec.Gate(ctx, a)
 }
 
-// callTool calls one of the tools Aide gave the session, the way an
-// agent does: it starts the MCP server and calls the tool.
-func (s *session) callTool(ctx context.Context, name string, args map[string]any) (string, bool) {
+// connect starts Aide's MCP server, the way an agent does.
+func (s *session) connect(ctx context.Context) (*mcp.ClientSession, error) {
 	if len(s.spec.MCPServers) == 0 {
-		return "no Aide tools in this session", true
+		return nil, errors.New("no Aide tools in this session")
 	}
 	m := s.spec.MCPServers[0]
 	cmd := exec.CommandContext(ctx, m.Command, m.Args...)
@@ -515,7 +541,36 @@ func (s *session) callTool(ctx context.Context, name string, args map[string]any
 	}
 	cs, err := mcp.NewClient(&mcp.Implementation{Name: "fake", Version: "1"}, nil).Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {
-		return "starting the tools: " + err.Error(), true
+		return nil, fmt.Errorf("starting the tools: %w", err)
+	}
+	return cs, nil
+}
+
+// toolNames are the names of the tools Aide gave the session, sorted.
+func (s *session) toolNames(ctx context.Context) []string {
+	cs, err := s.connect(ctx)
+	if err != nil {
+		return nil
+	}
+	defer cs.Close()
+	res, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, t := range res.Tools {
+		names = append(names, t.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// callTool calls one of the tools Aide gave the session, the way an
+// agent does: it starts the MCP server and calls the tool.
+func (s *session) callTool(ctx context.Context, name string, args map[string]any) (string, bool) {
+	cs, err := s.connect(ctx)
+	if err != nil {
+		return err.Error(), true
 	}
 	defer cs.Close()
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})

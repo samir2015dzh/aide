@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -329,6 +330,19 @@ func TestModelArgs(t *testing.T) {
 	}
 	if args := strings.Join(Args(provider.StartSpec{}), " "); strings.Contains(args, "--model") || strings.Contains(args, "--effort") {
 		t.Fatal(args)
+	}
+}
+
+// A managed workspace's section goes after Claude Code's own system prompt;
+// without one, nothing is added.
+func TestInstructionsArgs(t *testing.T) {
+	args := Args(provider.StartSpec{Instructions: "# 受管工作区\nline two"})
+	i := slices.Index(args, "--append-system-prompt")
+	if i < 0 || args[i+1] != "# 受管工作区\nline two" {
+		t.Fatal(args)
+	}
+	if slices.Contains(Args(provider.StartSpec{}), "--append-system-prompt") {
+		t.Fatal("added without instructions")
 	}
 }
 

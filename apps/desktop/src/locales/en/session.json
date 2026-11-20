@@ -30,6 +30,10 @@
     "messageFrom": "Message from {{name}}",
     "messageTo": "Message to {{name}}",
     "messageQueued": "queued for next turn",
+    "workspaceRequest": "Workspace request: {{kind}} {{item}}",
+    "workspaceByAgent": "the agent",
+    "workspaceKind": {"tool": "tool", "permission": "permission", "info": "information", "system_change": "system change"},
+    "workspaceStatus": {"pending": "pending", "approved": "approved", "rejected": "rejected", "provisioned": "provisioned", "confirmed": "confirmed"},
     "unread": {
       "offline": "{{name}} is offline",
       "offlineDetail": "This conversation is stored on that machine and will appear once it reconnects.",

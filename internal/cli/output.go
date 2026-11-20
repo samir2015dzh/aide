@@ -401,6 +401,8 @@ func eventView(e *sessionv1.SessionEvent) object {
 	case *sessionv1.SessionEvent_MessageSent:
 		m := k.MessageSent
 		return typed("message_sent", field{"message_id", m.MessageId}, field{"to", m.To}, field{"to_name", m.ToName}, field{"text", m.Text}, field{"in_reply_to", m.InReplyTo})
+	case *sessionv1.SessionEvent_WorkspaceRequest:
+		return append(o, field{"type", "workspace_request"}, field{"workspace_request", workspaceRequestView(k.WorkspaceRequest)})
 	case *sessionv1.SessionEvent_UserMessage:
 		atts := []object{}
 		for _, f := range k.UserMessage.Attachments {

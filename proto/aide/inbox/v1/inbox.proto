@@ -31,6 +31,10 @@ message Message {
   string text = 7;
   // Set on messages aided writes about a session's turn.
   SessionNews session_news = 8;
+  // Set on a managed workspace's request (from a session to its
+  // coordinator) and on its replies (from the coordinator or provisioner
+  // to the session): docs/workspace-requests.md.
+  aide.session.v1.WorkspaceRequest workspace_request = 9;
 }
 
 // SessionNews tells whoever asked for a turn how it went: it ended, it
