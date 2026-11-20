@@ -19,6 +19,7 @@ import (
 
 	"github.com/samir2015dzh/aide/internal/brandenv"
 	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/paths"
 )
 
 // On Windows aided runs from a Task Scheduler task of this user's, at
@@ -52,10 +53,34 @@ var (
 	task     string
 )
 
-// definition is where Install keeps the task it registered.
-func definition() string {
-	dir, _ := os.UserCacheDir() // %LocalAppData%
-	return filepath.Join(dir, "Aide", "service", "aided.xml")
+// definition is where Install keeps the task it registered for dataDir: in
+// dataDir, so that installing the service makes no directory the data
+// directory's choice has not made (2026-11-20: a fixed %LocalAppData%\Aide
+// here made the new data directory before the first start, and the one from
+// before the rename was left behind).
+func definition(dataDir string) string {
+	return filepath.Join(dataDir, "service", "aided.xml")
+}
+
+// definitions are the places a task's definition for dataDir may be: its
+// own, where an installation from before the rename kept it, and where the
+// first build after the rename put it, whatever the data directory.
+func definitions(dataDir string) []string {
+	cache, _ := os.UserCacheDir() // %LocalAppData%
+	return []string{definition(dataDir), filepath.Join(cache, legacy.DataDirTitle, "service", legacy.Daemon+".xml"), filepath.Join(cache, "Aide", "service", "aided.xml")}
+}
+
+// stray removes what the first build after the rename made outside the data
+// directory: its task definition, and the folders that only held it.
+func stray(dataDir string) {
+	cache, _ := os.UserCacheDir()
+	dir := filepath.Join(cache, "Aide")
+	if strings.EqualFold(filepath.Clean(dir), filepath.Clean(dataDir)) {
+		return
+	}
+	os.Remove(filepath.Join(dir, "service", "aided.xml"))
+	os.Remove(filepath.Join(dir, "service")) // only while empty
+	os.Remove(dir)                           // the same
 }
 
 // windowless is aidedw.exe next to bin, when there is one.
@@ -85,7 +110,8 @@ func Install(bin, dataDir, logDir string, args ...string) error {
 		return err
 	}
 	argv := append(append([]string{"run", "--supervise"}, args...), "--data-dir", dataDir)
-	path := definition()
+	stray(dataDir)
+	path := definition(dataDir)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
@@ -101,7 +127,9 @@ func Install(bin, dataDir, logDir string, args ...string) error {
 
 func Uninstall() error {
 	schtasks("/End", "/TN", taskName())
-	os.Remove(definition())
+	for _, d := range definitions(paths.DataDir()) {
+		os.Remove(d)
+	}
 	if !Installed() {
 		return nil
 	}
@@ -145,8 +173,13 @@ func ReloadOldJob(dataDir string) (bool, error) { return false, nil }
 // InstalledFor reports whether the installed service runs the machine in
 // dataDir.
 func InstalledFor(dataDir string) bool {
-	b, err := os.ReadFile(definition())
-	return err == nil && Installed() && strings.Contains(fromUTF16(b), xmlEscape(" --data-dir "+syscall.EscapeArg(dataDir))+"</Arguments>")
+	arg := xmlEscape(" --data-dir "+syscall.EscapeArg(dataDir)) + "</Arguments>"
+	for _, d := range definitions(dataDir) {
+		if b, err := os.ReadFile(d); err == nil && strings.Contains(fromUTF16(b), arg) {
+			return Installed()
+		}
+	}
+	return false
 }
 
 // taskXML is the task Install registers: at this user's logon, as this
