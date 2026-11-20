@@ -7,10 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -27,6 +29,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/flock"
 	"github.com/samir2015dzh/aide/internal/herhost"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"github.com/samir2015dzh/aide/internal/paths"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
@@ -172,6 +175,30 @@ const (
 
 func KeyPath(dataDir string) string { return filepath.Join(dataDir, "keys", "machine.key") }
 
+// storeName is the machine's database in its data directory.
+const storeName = "aided.db"
+
+// keepStore renames the database of a machine from before the rename
+// (internal/legacy) to storeName while there is none of that name: its
+// sessions, settings and agents go on. The database itself goes last, so
+// that a rename cut short is done again at the next start.
+func keepStore(dataDir string) error {
+	old := filepath.Join(dataDir, legacy.Daemon+".db")
+	now := filepath.Join(dataDir, storeName)
+	if _, err := os.Stat(now); err == nil {
+		return nil
+	}
+	if _, err := os.Stat(old); err != nil {
+		return nil
+	}
+	for _, ext := range []string{"-wal", "-shm", ""} {
+		if err := os.Rename(old+ext, now+ext); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("the machine's database from before the rename: %w", err)
+		}
+	}
+	return nil
+}
+
 // Open loads machine state from dataDir (creating the machine key if needed).
 func Open(cfg Config) (*Machine, error) {
 	if cfg.Logger == nil {
@@ -190,7 +217,11 @@ func Open(cfg Config) (*Machine, error) {
 	if err != nil {
 		return nil, err
 	}
-	st, err := OpenStore(filepath.Join(cfg.DataDir, "aided.db"))
+	if err := keepStore(cfg.DataDir); err != nil {
+		lock.Release()
+		return nil, err
+	}
+	st, err := OpenStore(filepath.Join(cfg.DataDir, storeName))
 	if err != nil {
 		lock.Release()
 		return nil, err

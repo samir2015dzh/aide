@@ -58,7 +58,9 @@ const (
 	// %LOCALAPPDATA%).
 	DataDirTitle = "Hermesh"
 	// Daemon, DaemonWindowless and CLI are the programs' names, which its
-	// services, logon tasks and agents' hooks run.
+	// services, logon tasks and agents' hooks run; Daemon also named the
+	// machine's database (<Daemon>.db) and the service's task definition
+	// (<Daemon>.xml).
 	Daemon           = "hermeshd"
 	DaemonWindowless = "hermeshdw"
 	CLI              = "hermesh"
