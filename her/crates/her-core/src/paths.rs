@@ -165,6 +165,11 @@ impl HerHome {
         self.bot_dir(id).join(crate::bot_memory::DIR)
     }
 
+    /// A bot's confirmation rules (docs/her-confirm-rules.md).
+    pub fn bot_confirm_rules(&self, id: &str) -> PathBuf {
+        self.bot_dir(id).join(crate::confirm_rules::FILE)
+    }
+
     /// Whether a session in `cwd` (canonical) has no project: one started without a project,
     /// or a bot's. Neither looks for a project around its folder.
     pub fn has_no_project(&self, cwd: &Path) -> bool {

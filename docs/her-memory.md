@@ -221,6 +221,11 @@ before these rules, about a third of the turns that said "noted" ended
 without the edit, and a note made after the reply was followed by the same
 reply sent again. `tools/bench/bot_memory.mjs` runs those cases.
 
+A preference about asking first before a kind of action ("以后这类不用问我",
+"always ask me before paying") is not written here (2026-11-20): it is a
+confirmation rule, kept apart, listed and deleted in the apps
+([her-confirm-rules.md](her-confirm-rules.md)).
+
 ## 6. Who writes
 
 | Who | Reads | Writes | How |

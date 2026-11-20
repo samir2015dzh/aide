@@ -154,7 +154,7 @@ fn group_of(tool: &dyn Tool) -> &'static str {
     match tool.spec().name.as_str() {
         crate::mcp::tools::SEARCH_TOOL | crate::mcp::tools::CALL_TOOL => "deferred",
         "spawn_agent" | "send_message" => "agents",
-        "send_to_user" | crate::routine::MANAGE_ROUTINE => "bot",
+        "send_to_user" | crate::routine::MANAGE_ROUTINE | crate::confirm_rules::TOOL => "bot",
         _ => "base",
     }
 }

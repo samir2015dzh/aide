@@ -244,6 +244,9 @@ pub mod method {
     pub const BOTS_MEMORY: &str = "bots/memory";
     /// Moves a bot's memory to the trash; its conversation stays.
     pub const BOTS_MEMORY_CLEAR: &str = "bots/memory_clear";
+    /// A bot's confirmation rules (docs/her-confirm-rules.md); new ones come from the chat.
+    pub const BOTS_CONFIRM_RULES: &str = "bots/confirm_rules";
+    pub const BOTS_CONFIRM_RULE_DELETE: &str = "bots/confirm_rule_delete";
     /// Server notification to `bots/subscribe`rs.
     pub const BOTS_CHANGED: &str = "bots/changed";
     /// The files a bot sent its owner, newest first (docs/her-deliverables.md §4.3).

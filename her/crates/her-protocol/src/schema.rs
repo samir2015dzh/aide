@@ -324,6 +324,8 @@ pub fn document() -> Value {
         (method::BOTS_DELETE, Some(name::<bot::BotIdParams>(g)), name::<api::Empty>(g)),
         (method::BOTS_MEMORY, Some(name::<bot::BotIdParams>(g)), name::<bot::BotMemoryResult>(g)),
         (method::BOTS_MEMORY_CLEAR, Some(name::<bot::BotIdParams>(g)), name::<api::Empty>(g)),
+        (method::BOTS_CONFIRM_RULES, Some(name::<bot::BotIdParams>(g)), name::<bot::BotConfirmRulesResult>(g)),
+        (method::BOTS_CONFIRM_RULE_DELETE, Some(name::<bot::BotConfirmRuleParams>(g)), name::<api::Empty>(g)),
         (method::DELIVERIES_LIST, Some(name::<bot::DeliveriesListParams>(g)), name::<bot::DeliveriesListResult>(g)),
         (method::DELIVERIES_SEEN, Some(name::<bot::DeliveriesSeenParams>(g)), name::<api::Empty>(g)),
         (method::DELIVERIES_SOURCES, Some(name::<bot::DeliveriesSourcesParams>(g)), name::<bot::DeliveriesSourcesResult>(g)),
