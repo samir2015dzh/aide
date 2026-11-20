@@ -225,9 +225,39 @@ adb install -r apps/android/build/Aide-0.0.0-dev-debug.apk
 whose `preBuild` runs `build-core.sh` (gomobile bind for `android/arm64`
 and `android/amd64`, skipped when nothing in Go changed; `FORCE=1` builds
 again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
-`VERSION=0.1.2` stamps the version. The APK is debug-signed (application id
+`VERSION=0.1.2` stamps the version. The APK is a debug build (application id
 `io.aide.android.debug`); outputs and caches stay out of git
 (`apps/android/.gitignore`).
+
+### 6.1 The app's signing key
+
+Android installs a new version over the old only when both are signed with
+the same key. Every APK GitHub builds (the `android` workflow's, on each
+change, and the release's) is therefore signed with one fixed key, the app's
+own: a PKCS #12 keystore, alias `aide`, whose certificate's SHA-256 is
+
+```
+DE:97:97:AE:37:45:09:54:6B:D5:34:DF:69:C5:91:21:0B:33:D9:61:20:E0:8C:38:09:2C:3C:8E:15:2D:D1:79
+```
+
+- The keystore and its passwords are never in the repository. The workflows
+  read them from the repository secrets `ANDROID_KEYSTORE_BASE64` (the
+  keystore, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+  `ANDROID_KEY_PASSWORD`, and give them to Gradle as `AIDE_ANDROID_KEYSTORE`
+  (a path), `AIDE_ANDROID_KEYSTORE_PASSWORD`, `AIDE_ANDROID_KEY_ALIAS` and
+  `AIDE_ANDROID_KEY_PASSWORD` (`app/build.gradle.kts`). The same variables
+  sign a build made elsewhere; without them Gradle signs with its own debug
+  key, which no other build shares.
+- `scripts/check-signature.sh <apk>` checks, with `apksigner`, that an APK has
+  exactly one signer and that it is this certificate. Both workflows run it
+  after building; the release uploads nothing it fails. A run without the
+  secrets fails, except a pull request from a fork (given no secrets), which
+  builds with a throwaway key and says so.
+- Losing the key means no later version can install over the app; it is kept
+  outside GitHub as well. Do not generate another.
+- An APK signed before the key (each CI run had its own throwaway key) does
+  not take an update: uninstall it once, then install; later versions install
+  over it, staying logged in.
 
 ## 7. Tests
 

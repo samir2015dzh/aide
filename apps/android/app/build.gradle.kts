@@ -31,12 +31,32 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }
 
+    // The app's own key, the same for every build (the debug APK and a release
+    // alike), so each version installs over the last (docs/android-app.md §6.1).
+    // Only the environment names it: the keystore and its passwords are never in
+    // the repository. Without AIDE_ANDROID_KEYSTORE (a build on one's own
+    // computer) the build is signed with Gradle's debug key, as before.
+    val appKeystore = System.getenv("AIDE_ANDROID_KEYSTORE").orEmpty()
+    signingConfigs {
+        if (appKeystore.isNotEmpty()) {
+            create("app") {
+                storeFile = file(appKeystore)
+                storeType = "pkcs12"
+                storePassword = System.getenv("AIDE_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("AIDE_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("AIDE_ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            if (appKeystore.isNotEmpty()) signingConfig = signingConfigs.getByName("app")
         }
         release {
             isMinifyEnabled = false
+            if (appKeystore.isNotEmpty()) signingConfig = signingConfigs.getByName("app")
         }
     }
     compileOptions {
