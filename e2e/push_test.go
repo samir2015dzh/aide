@@ -18,6 +18,7 @@ import (
 
 	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
 	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
 	"github.com/hermeshai/hermesh/pkg/identity"
 )
@@ -208,10 +209,10 @@ func mustGlob(dir string) []string {
 
 // TestPushHerNotices: Her on the owner Mac's own machine tells a device
 // registered for "her" what the Mac app's notifications tell
-// (notices.ts herNotices): her reply, a question she asks and a secure card
-// she waits on, one sealed notice each, which only the device opens. A
-// muted assistant tells nothing, nor does unmuting it, nor her starting
-// again with what she had.
+// (notices.ts herNotices): her reply, a question she asks and the words of
+// a secure card she waits on, one sealed notice each, which only the device
+// opens. A muted assistant tells nothing, nor does unmuting it, nor her
+// starting again with what she had.
 func TestPushHerNotices(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -334,8 +335,18 @@ func TestPushHerNotices(t *testing.T) {
 		address = regexp.MustCompile(`http://\S+/mcp`).FindString(tracker.output())
 		return address != ""
 	})
+	// Her's words with the card come as her message, and the card waiting
+	// by them is that message again: no second notice (notices.ts
+	// herNotices; herhost's TestSnapshotNews). The machine's status says it
+	// waits.
+	const words = "这件事要用到它，请在卡片上确认。"
 	send("[[mock:connect:tracker|" + address + "]] 接上我的 tracker")
-	one("approval", "这件事要用到它，请在卡片上确认。")
+	one("message", words)
+	eventually(t, 30*time.Second, "the card waiting, in the machine's status", func() bool {
+		l := listedMachine(t, c, mac).GetHer().GetLatest()
+		return l.GetBotId() == bot.ID && l.GetKind() == machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL && l.GetText() == words
+	})
+	none("a second notice for the card waiting")
 
 	// The push service got none of it in the clear.
 	for _, f := range mustGlob(spool) {
