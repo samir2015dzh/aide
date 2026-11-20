@@ -140,10 +140,14 @@ function ListPage({ bot, routines, onOpen, onCreate }: { bot: BotSummary; routin
 }
 
 function RoutineRow({ bot, routine, onOpen }: { bot: BotSummary; routine: RoutineSummary; onOpen: () => void }) {
+  const { t } = useTranslation("her");
   return (
     <div className={`rtn-row ${routine.state !== "active" ? "off" : ""}`} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()}>
       <div className="rtn-t">
-        <div className="rtn-n">{routine.name}</div>
+        <div className="rtn-n">
+          {routine.name}
+          {routine.patrol && <span className="rtn-tag">{t("routines.patrolTag")}</span>}
+        </div>
         <SecondLine routine={routine} />
       </div>
       <EnabledSwitch bot={bot} routine={routine} />
@@ -187,6 +191,22 @@ function EnabledSwitch({ bot, routine }: { bot: BotSummary; routine: RoutineSumm
         e.stopPropagation();
         void her.run(() => her.call("bots/routine_set_enabled", { bot_id: bot.id, routine_id: routine.id, enabled: !on }));
       }}
+    />
+  );
+}
+
+/** A patrol's runs only look; what they would change comes back as suggestions (docs/her-patrol.md). */
+function PatrolSwitch({ bot, routine }: { bot: BotSummary; routine: RoutineSummary }) {
+  const { t } = useTranslation("her");
+  const her = useHer();
+  const on = routine.patrol === true;
+  return (
+    <button
+      className={`sw ${on ? "on" : ""}`}
+      role="switch"
+      aria-checked={on}
+      aria-label={t("routines.patrol")}
+      onClick={() => void her.run(() => her.call("bots/routine_set_patrol", { bot_id: bot.id, routine_id: routine.id, patrol: !on }))}
     />
   );
 }
@@ -256,6 +276,12 @@ function RoutinePage({ bot, routine, onOpenRun, onDraft }: { bot: BotSummary; ro
             </div>
           )}
           <div className="frow">
+            <span className="fl">{t("routines.patrol")}</span>
+            <div className="fv">
+              <PatrolSwitch bot={bot} routine={routine} />
+            </div>
+          </div>
+          <div className="frow">
             <span className="fl">{t("routines.when")}</span>
             <div className="fv">{routine.when}</div>
           </div>
@@ -276,6 +302,7 @@ function RoutinePage({ bot, routine, onOpenRun, onDraft }: { bot: BotSummary; ro
           )}
         </div>
       </section>
+      {routine.patrol && <p className="set-note">{t("routines.patrolNote", { name: bot.name })}</p>}
       <section>
         <h3 className="fhead">{t("routines.prompt")}</h3>
         <div className="rtn-prompt sel-text">{detail?.prompt ?? ""}</div>

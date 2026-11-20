@@ -23,8 +23,9 @@ pub trait TypedTool: Send + Sync + 'static {
     const NAME: &'static str;
     const DESCRIPTION: &'static str;
 
+    /// See [`Tool::kind`].
     fn kind(&self) -> ToolKind {
-        ToolKind::ReadOnly
+        ToolKind::Mutating
     }
 
     /// See [`Tool::kind_for`]. Receives the raw arguments.

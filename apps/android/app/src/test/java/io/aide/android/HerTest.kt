@@ -43,11 +43,12 @@ class HerTest {
     }
 
     @Test fun botsRoutinesAndMemory() {
-        val bots = HerBot.list(j("""{"bots":[{"id":"b1","name":"Her","default":true,"unread":2,"routines":[{"id":"r1","name":"Morning","when":"every day at 9","state":"active","next_run":"2026-11-17T09:00:00Z","last_run":{"outcome":"reported"}}]},{"id":"b2","name":"Scout"}]}"""))
+        val bots = HerBot.list(j("""{"bots":[{"id":"b1","name":"Her","default":true,"unread":2,"routines":[{"id":"r1","name":"Morning","when":"every day at 9","state":"active","next_run":"2026-11-17T09:00:00Z","last_run":{"outcome":"reported"},"patrol":true}]},{"id":"b2","name":"Scout"}]}"""))
         assertEquals(listOf("b1", "b2"), bots.map { it.id })
         val r = bots[0].routines.single()
         assertEquals("every day at 9", r.schedule)
         assertEquals("reported", r.lastOutcome)
+        assertEquals(true, r.patrol)
         val merged = HerBot.merge(bots, j("""{"bots":[{"id":"b1","name":"Her 2","default":true}],"deleted":["b2"]}"""))
         assertEquals(listOf("Her 2"), merged.map { it.name })
         assertEquals(HerMemory("likes tea", listOf("people")), HerMemory.parse(j("""{"text":"likes tea","pages":[{"name":"people","path":"/m/people.md"}]}""")))
