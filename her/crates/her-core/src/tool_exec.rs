@@ -199,7 +199,7 @@ async fn run_tool(
     let limits = ctx.limits.clone();
     let running = || session.emit(EventMsg::ToolRunning { call_id: call.id.clone() });
     let result = match tool.kind_for(&call.arguments.to_value()) {
-        ToolKind::ReadOnly => {
+        ToolKind::ReadOnly | ToolKind::Concurrent => {
             let _guard = session.tool_gate.read().await;
             running();
             execute(tool.as_ref(), &call, ctx, task).await

@@ -505,6 +505,9 @@ claude,codex]`, plus `aided project list` and `aided project remove`.
   once.
 - They give no one more than they had: whoever has a shell on the machine
   can do as much already.
+- `aided roots set <folder>…` fences the folders the devices browse and
+  make projects of, and where agents' commands start; `aided roots` shows
+  them ([machine-ops.md](machine-ops.md) §5).
 
 ### 6.8 An agent on the same server
 

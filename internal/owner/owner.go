@@ -1392,7 +1392,7 @@ func (o *Owner) RecheckAgents(ctx context.Context, machineID string) error {
 // for Add a Project; this device's own machine is searched in process.
 func (o *Owner) MachineRepos(ctx context.Context, machineID string) ([]*machinev1.Repo, error) {
 	if l := o.local(); l != nil && l.MachineID() == machineID {
-		return machine.FindRepos(ctx), nil
+		return l.FindRepos(ctx), nil
 	}
 	n, err := o.machineClient(ctx, machineID)
 	if err != nil {
@@ -1409,7 +1409,7 @@ func (o *Owner) MachineRepos(ctx context.Context, machineID string) ([]*machinev
 // Project; this device's own machine is read in process.
 func (o *Owner) MachineFolders(ctx context.Context, machineID, path string, hidden bool) (*machinev1.ListFoldersResponse, error) {
 	if l := o.local(); l != nil && l.MachineID() == machineID {
-		return machine.ListFolders(path, hidden)
+		return l.ListFolders(path, hidden)
 	}
 	n, err := o.machineClient(ctx, machineID)
 	if err != nil {
@@ -2400,6 +2400,18 @@ func (o *Owner) RollbackSession(ctx context.Context, id string, turn uint32) (*s
 		return nil, err
 	}
 	return o.written(id)(n.Session.RollbackSession(ctx, &sessionv1.RollbackSessionRequest{SessionId: id, Turn: turn}))
+}
+
+// MarkSessionSeen records on a session's machine what the owner has seen of it.
+func (o *Owner) MarkSessionSeen(ctx context.Context, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
+	if l := o.localSession(req.SessionId); l != nil {
+		return l.MarkSeen(ctx, req)
+	}
+	n, err := o.sessionMachine(ctx, req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	return o.written(req.SessionId)(n.Session.MarkSessionSeen(ctx, req))
 }
 
 // AnswerQuestion answers a session's question as the owner.

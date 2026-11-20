@@ -101,10 +101,11 @@ func TestCLIOutputContract(t *testing.T) {
 	}
 
 	// Text: --wait prints the session exactly as get does; stdout has the
-	// data, stderr only the session ID and the error.
+	// data, stderr only the session ID and the error. The owner has not
+	// opened the agent's finished turn: done unseen (docs/session-states.md §2).
 	r := run(t, env, time.Minute, bin, "session", "start", "--project", "demo", "--wait", "--prompt", "write t.txt t\nsay Wrote t.txt.")
 	tid := strings.Fields(r.stderr)[1]
-	want := "session " + tid + " · done · owner-mac/demo · claude · 1 turn\nchanges: 1 file changed, +1 -0 (`aide session diff " + tid + "`)\n\nWrote t.txt.\n"
+	want := "session " + tid + " · done unseen · owner-mac/demo · claude · 1 turn\nchanges: 1 file changed, +1 -0 (`aide session diff " + tid + "`)\n\nWrote t.txt.\n"
 	if r.code != 0 || r.stdout != want || r.stderr != "session "+tid+" in owner-mac/demo\n" {
 		t.Fatalf("start --wait text:\n%s---\n%s", r.stdout, r.stderr)
 	}

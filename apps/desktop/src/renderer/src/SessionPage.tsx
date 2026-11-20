@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Session } from "@aide/proto/session";
-import { displayTitle } from "@aide/core";
+import { displayTitle, openedNews } from "@aide/core";
+import { local } from "./api";
 import { Icon } from "./icons";
 import { layoutOf, setCard } from "./layout";
 import { keys, ownKeys } from "./platform";
@@ -20,6 +22,7 @@ export function SessionPage({ s }: { s: Session }) {
   // The card keeps the conversation clear of it when there is room beside it; over the conversation (no room) it leaves it be.
   const { card } = layoutOf(st);
   const info = card !== "hidden";
+  useMarkSeen(s);
   return (
     <>
       <div className="ctool drag">
@@ -45,4 +48,34 @@ export function SessionPage({ s }: { s: Session }) {
       </div>
     </>
   );
+}
+
+/** Whether the window is in front of the owner: shown, and focused. */
+function useInFront(): boolean {
+  const now = () => document.visibilityState === "visible" && document.hasFocus();
+  const [front, setFront] = useState(now);
+  useEffect(() => {
+    const look = () => setFront(now());
+    window.addEventListener("focus", look);
+    window.addEventListener("blur", look);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.removeEventListener("focus", look);
+      window.removeEventListener("blur", look);
+      document.removeEventListener("visibilitychange", look);
+    };
+  }, []);
+  return front;
+}
+
+/**
+ * The session's page in front of the owner tells its machine what the owner has now seen (docs/session-states.md
+ * §7): a finished turn leaves "new results", a question is the owner's own, on every device.
+ */
+function useMarkSeen(s: Session) {
+  const front = useInFront();
+  const news = openedNews(s);
+  useEffect(() => {
+    if (front && news !== "") local.markSessionSeen({ sessionId: s.sessionId, opened: true }).catch(() => {});
+  }, [s.sessionId, news, front]);
 }

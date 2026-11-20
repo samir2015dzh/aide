@@ -236,6 +236,10 @@ impl Tool for ToolSearch {
         &self.spec
     }
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn origin(&self) -> ToolOrigin {
         ToolOrigin::Mcp
     }

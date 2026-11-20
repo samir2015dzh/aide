@@ -79,6 +79,10 @@ class LocalApi(port: Long, token: String) {
     suspend fun answer(sessionId: String, questionId: String, answers: List<Answer>, decline: Boolean): Session? =
         call<AnswerQuestionRequest, AnswerQuestionResponse>("AnswerQuestion", AnswerQuestionRequest(sessionId, questionId, answers, decline)).session
 
+    /** The owner opened the session's page (docs/session-states.md §7). */
+    suspend fun markSeen(sessionId: String): Session? =
+        call<MarkSessionSeenRequest, SessionResponse>("MarkSessionSeen", MarkSessionSeenRequest(sessionId, opened = true)).session
+
     suspend fun interrupt(sessionId: String): Session? =
         call<SessionIdRequest, SessionResponse>("InterruptSession", SessionIdRequest(sessionId)).session
 

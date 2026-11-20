@@ -25,10 +25,10 @@ import (
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
-// The control socket lets `aided project …` change a running machine's
-// projects, `aided doctor` and `status` ask it how it is, and
-// `uninstall` and `erase` whether Her's data is kept (the machine holds its
-// data directory). Projects are the machine's own settings: whoever has a
+// The control socket lets `aided project …` and `aided roots …` change a
+// running machine's projects and workspace roots, `aided doctor` and
+// `status` ask it how it is, and `uninstall` and `erase` whether Her's
+// data is kept (the machine holds its data directory). Projects are the machine's own settings: whoever has a
 // shell as this user can do as much already, so only this user may connect.
 
 func (n *Machine) serveControl(ctx context.Context) {
@@ -62,6 +62,9 @@ func (n *Machine) serveControl(ctx context.Context) {
 		b, _ := protojson.Marshal(res)
 		w.Write(b)
 	})
+	mux.HandleFunc("GET /roots", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(n.Roots())
+	})
 	mux.HandleFunc("GET /check", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(n.Check(r.Context()))
 	})
@@ -80,6 +83,16 @@ func (n *Machine) serveControl(ctx context.Context) {
 		os.Remove(path)
 	}()
 	srv.Serve(ln)
+}
+
+// Roots are the machine's workspace roots, for `aided roots`.
+type Roots struct {
+	Roots   []string // none: any folder
+	Outside []string // projects outside them, "id (path)"
+}
+
+func (n *Machine) Roots() Roots {
+	return Roots{Roots: n.WorkspaceRoots(), Outside: n.ProjectsOutsideRoots()}
 }
 
 // Check is how this machine is, for `aided doctor`, `status` and
@@ -116,13 +129,13 @@ func power() *resident.State {
 // HerPid is her's process while she runs, else 0.
 func (n *Machine) HerPid() int { return n.her.Pid() }
 
-// ApplyLocal applies a project change from this machine's own user: adding
-// or removing a project, nothing else.
+// ApplyLocal applies a change from this machine's own user: adding or
+// removing a project, or setting the workspace roots; nothing else.
 func (n *Machine) ApplyLocal(ctx context.Context, cmd *identityv1.AdminCommand) (string, error) {
 	switch cmd.Command.(type) {
-	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject:
+	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetWorkspaceRoots:
 	default:
-		return "", errors.New("only projects can be changed on the machine itself")
+		return "", errors.New("only projects and workspace roots can be changed on the machine itself")
 	}
 	cmd.OwnerId, cmd.TargetMachineId, cmd.CommandId = n.OwnerID(), n.machineID, identity.RandomCode(16)
 	cmd.ExpiresAt = timestamppb.New(time.Now().Add(time.Minute))

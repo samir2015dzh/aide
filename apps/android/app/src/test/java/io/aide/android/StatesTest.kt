@@ -5,6 +5,7 @@ import io.aide.android.api.LostSpan
 import io.aide.android.api.Machine
 import io.aide.android.api.Session
 import io.aide.android.api.SessionProgress
+import io.aide.android.api.SessionSeen
 import io.aide.android.api.SessionStatus
 import io.aide.android.model.Liveness
 import io.aide.android.model.SessionLink
@@ -46,7 +47,11 @@ class StatesTest {
             val s = Session(
                 status = "SESSION_STATUS_" + ss["status"]!!.jsonPrimitive.content,
                 updatedAt = ts(ss, "updated_ago"),
-                progress = SessionProgress(lastEventAt = ts(ss, "last_event_ago"), lastFailure = if (failure.isEmpty()) null else Failure(kind = "FAILURE_KIND_$failure")),
+                progress = SessionProgress(
+                    lastEventAt = ts(ss, "last_event_ago"), lastFailure = if (failure.isEmpty()) null else Failure(kind = "FAILURE_KIND_$failure"),
+                    turnCount = ss["turns"]?.jsonPrimitive?.intOrNull ?: 0,
+                ),
+                seen = ss["seen_turns"]?.jsonPrimitive?.intOrNull?.let { SessionSeen(turns = it) },
             )
             val m = c["machine"]!!.jsonObject
             val v = sessionStateOf(

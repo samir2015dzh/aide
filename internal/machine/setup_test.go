@@ -34,7 +34,7 @@ func TestListFolders(t *testing.T) {
 	os.Symlink(filepath.Join(home, "code", "readme.txt"), filepath.Join(home, "code", "file-link"))
 	write("Documents/thesis/.git/HEAD", "ref: refs/heads/main\n")
 
-	res, err := ListFolders("~/code", false)
+	res, err := ListFolders(nil, "~/code", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,13 +55,13 @@ func TestListFolders(t *testing.T) {
 		t.Fatal("Notes is no repository")
 	}
 
-	withHidden, err := ListFolders("~/code", true)
+	withHidden, err := ListFolders(nil, "~/code", true)
 	if err != nil || len(withHidden.Folders) != 4 || withHidden.Folders[0].Name != ".cache" {
 		t.Fatalf("hidden: %v %v", withHidden, err)
 	}
 
 	// Inside the repository: its branches, local ones only.
-	repo, err := ListFolders(filepath.Join(home, "code", "app"), false)
+	repo, err := ListFolders(nil, filepath.Join(home, "code", "app"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestListFolders(t *testing.T) {
 		t.Fatalf("repo %+v", repo)
 	}
 
-	top, err := ListFolders("", false)
+	top, err := ListFolders(nil, "", false)
 	if err != nil || top.Path != "~" {
 		t.Fatalf("home: %v %v", top, err)
 	}
@@ -83,10 +83,10 @@ func TestListFolders(t *testing.T) {
 		}
 	}
 
-	if _, err := ListFolders("~/nowhere", false); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := ListFolders(nil, "~/nowhere", false); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("missing folder: %v", err)
 	}
-	if _, err := ListFolders("code", false); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := ListFolders(nil, "code", false); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("relative path: %v", err)
 	}
 }

@@ -181,6 +181,9 @@ service LocalService {
   // DeleteSession and RenameSession: aide.session.v1.SessionService's.
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
   rpc RenameSession(RenameSessionRequest) returns (SessionResponse);
+  // MarkSessionSeen: aide.session.v1.SessionService's, forwarded to the
+  // session's machine (docs/session-states.md §7).
+  rpc MarkSessionSeen(aide.session.v1.MarkSessionSeenRequest) returns (SessionResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc GetDiff(GetDiffRequest) returns (aide.session.v1.GetDiffResponse);
   // aide.session.v1.SessionService.PushSession, as the owner.

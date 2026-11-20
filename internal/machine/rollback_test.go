@@ -33,6 +33,10 @@ func TestRollbackToAnEarlierTurn(t *testing.T) {
 	}
 	third, _ := h.s.st.TurnCommit(id, 3)
 	refs := h.rec.count()
+	owner := &Principal{Kind: PrincipalOwner}
+	if _, err := h.s.MarkSeen(context.Background(), owner, &sessionv1.MarkSessionSeenRequest{SessionId: id, Opened: true}); err != nil {
+		t.Fatal(err)
+	}
 
 	sess, err := h.rollback(id, 1)
 	if err != nil {
@@ -65,6 +69,9 @@ func TestRollbackToAnEarlierTurn(t *testing.T) {
 	}
 	if head, _ := resolveRef(context.Background(), wt, "refs/heads/"+sess.Branch); head != first {
 		t.Fatalf("branch at %s, want %s", head, first)
+	}
+	if sess.Seen.GetTurns() != 1 {
+		t.Fatalf("seen after the rollback: %v", sess.Seen)
 	}
 	if c, _ := h.s.st.TurnCommit(id, 2); c != "" {
 		t.Fatalf("turn 2 is still recorded: %s", c)

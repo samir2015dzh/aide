@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/internal/peer"
 )
 
@@ -35,14 +36,16 @@ func (a *app) machineExecCmd() *cobra.Command {
 output and exit code: PowerShell on Windows, sh elsewhere. Give it with
 --command, or after the machine and "--" (aide machine exec vps-1 -- git
 status); its words are joined with spaces, as ssh does. It runs in --workdir
-("~/app" or a full path; default the home folder) and is ended after
+("~/app" or a full path; default the home folder), which must be inside the
+machine's workspace roots when its owner set some, and is ended after
 --timeout (default 60s, at most 10m). Each of stdout and stderr is cut at 1 MiB.
 
 The owner allows this per agent in Aide (Settings → Access → Run
 commands); until then the machine refuses. Every call, refused ones too, is
 in the machine's ops log, which the owner sees; the output is kept nowhere.
 Exit code 0 when the command exited 0, 5 when it exited otherwise (its own
-exit code is in the output), 6 when it ran out of time, 3 when refused.`,
+exit code is in the output), 6 when it ran out of time, 3 when refused
+(kind outside_roots when --workdir is outside the workspace roots).`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if command != "" && len(args) > 1 {
@@ -69,6 +72,10 @@ exit code is in the output), 6 when it ran out of time, 3 when refused.`,
 			}
 			return a.onMachine(ctx, c, ref, func(_ *peer.Client, n *peer.Machine, ref machineRef) error {
 				res, err := n.Ops.Exec(ctx, &machinev1.ExecRequest{Command: command, Workdir: workdir, TimeoutSeconds: uint32(timeout / time.Second)})
+				if machine.IsOutsideRoots(err) {
+					return &exitError{code: exitDenied, kind: "outside_roots", err: err,
+						hint: "give a --workdir inside the machine's workspace roots; its owner changes them on the machine with `aided roots`"}
+				}
 				if connect.CodeOf(err) == connect.CodePermissionDenied {
 					return &exitError{code: exitDenied, kind: "denied", err: err,
 						hint: "the owner allows this agent to run commands in Aide: Settings → Access → this agent → Run commands"}

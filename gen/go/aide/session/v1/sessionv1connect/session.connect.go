@@ -86,6 +86,9 @@ const (
 	// SessionServiceRollbackSessionProcedure is the fully-qualified name of the SessionService's
 	// RollbackSession RPC.
 	SessionServiceRollbackSessionProcedure = "/aide.session.v1.SessionService/RollbackSession"
+	// SessionServiceMarkSessionSeenProcedure is the fully-qualified name of the SessionService's
+	// MarkSessionSeen RPC.
+	SessionServiceMarkSessionSeenProcedure = "/aide.session.v1.SessionService/MarkSessionSeen"
 )
 
 // SessionServiceClient is a client for the aide.session.v1.SessionService service.
@@ -145,6 +148,12 @@ type SessionServiceClient interface {
 	// a RolledBack event. In-place sessions have no snapshots and are
 	// refused (FAILED_PRECONDITION), as is a session with a turn running.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error)
+	// MarkSessionSeen records what the owner has seen of the session
+	// (Session.seen), on its machine, so every device of the owner agrees.
+	// Only the owner's devices may mark. It is not activity: updated_at
+	// stays (lists keep their order); nothing is written when nothing new is
+	// seen, nor of an archived session.
+	MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error)
 }
 
 // NewSessionServiceClient constructs a client for the aide.session.v1.SessionService service. By
@@ -266,6 +275,12 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("RollbackSession")),
 			connect.WithClientOptions(opts...),
 		),
+		markSessionSeen: connect.NewClient[v1.MarkSessionSeenRequest, v1.Session](
+			httpClient,
+			baseURL+SessionServiceMarkSessionSeenProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("MarkSessionSeen")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -289,6 +304,7 @@ type sessionServiceClient struct {
 	readToolOutput   *connect.Client[v1.ReadToolOutputRequest, v1.ToolOutputChunk]
 	pushSession      *connect.Client[v1.PushSessionRequest, v1.PushSessionResponse]
 	rollbackSession  *connect.Client[v1.RollbackSessionRequest, v1.Session]
+	markSessionSeen  *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
 }
 
 // StartSession calls aide.session.v1.SessionService.StartSession.
@@ -441,6 +457,15 @@ func (c *sessionServiceClient) RollbackSession(ctx context.Context, req *v1.Roll
 	return nil, err
 }
 
+// MarkSessionSeen calls aide.session.v1.SessionService.MarkSessionSeen.
+func (c *sessionServiceClient) MarkSessionSeen(ctx context.Context, req *v1.MarkSessionSeenRequest) (*v1.Session, error) {
+	response, err := c.markSessionSeen.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // SessionServiceHandler is an implementation of the aide.session.v1.SessionService service.
 type SessionServiceHandler interface {
 	StartSession(context.Context, *v1.StartSessionRequest) (*v1.StartSessionResponse, error)
@@ -498,6 +523,12 @@ type SessionServiceHandler interface {
 	// a RolledBack event. In-place sessions have no snapshots and are
 	// refused (FAILED_PRECONDITION), as is a session with a turn running.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error)
+	// MarkSessionSeen records what the owner has seen of the session
+	// (Session.seen), on its machine, so every device of the owner agrees.
+	// Only the owner's devices may mark. It is not activity: updated_at
+	// stays (lists keep their order); nothing is written when nothing new is
+	// seen, nor of an archived session.
+	MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error)
 }
 
 // NewSessionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -615,6 +646,12 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("RollbackSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceMarkSessionSeenHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceMarkSessionSeenProcedure,
+		svc.MarkSessionSeen,
+		connect.WithSchema(sessionServiceMethods.ByName("MarkSessionSeen")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.session.v1.SessionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SessionServiceStartSessionProcedure:
@@ -653,6 +690,8 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServicePushSessionHandler.ServeHTTP(w, r)
 		case SessionServiceRollbackSessionProcedure:
 			sessionServiceRollbackSessionHandler.ServeHTTP(w, r)
+		case SessionServiceMarkSessionSeenProcedure:
+			sessionServiceMarkSessionSeenHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -732,4 +771,8 @@ func (UnimplementedSessionServiceHandler) PushSession(context.Context, *v1.PushS
 
 func (UnimplementedSessionServiceHandler) RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.RollbackSession is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.MarkSessionSeen is not implemented"))
 }

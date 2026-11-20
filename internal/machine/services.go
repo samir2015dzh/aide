@@ -95,6 +95,10 @@ func (s *sessionService) RenameSession(ctx context.Context, req *sessionv1.Renam
 	return s.n.sessions.Rename(ctx, principalFrom(ctx), req.SessionId, req.Title)
 }
 
+func (s *sessionService) MarkSessionSeen(ctx context.Context, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
+	return s.n.sessions.MarkSeen(ctx, principalFrom(ctx), req)
+}
+
 func (s *sessionService) GetDiff(ctx context.Context, req *sessionv1.GetDiffRequest) (*sessionv1.GetDiffResponse, error) {
 	return s.n.sessions.Diff(ctx, principalFrom(ctx), req)
 }
@@ -252,14 +256,14 @@ func (s *adminService) ListRepos(ctx context.Context, _ *machinev1.ListReposRequ
 	if principalFrom(ctx).Kind != PrincipalOwner {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
 	}
-	return &machinev1.ListReposResponse{Repos: FindRepos(ctx)}, nil
+	return &machinev1.ListReposResponse{Repos: FindRepos(ctx, s.n.WorkspaceRoots())}, nil
 }
 
 func (s *adminService) ListFolders(ctx context.Context, req *machinev1.ListFoldersRequest) (*machinev1.ListFoldersResponse, error) {
 	if principalFrom(ctx).Kind != PrincipalOwner {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
 	}
-	return ListFolders(req.Path, req.Hidden)
+	return ListFolders(s.n.WorkspaceRoots(), req.Path, req.Hidden)
 }
 
 func (s *adminService) TestAgent(ctx context.Context, req *machinev1.TestAgentRequest) (*machinev1.TestAgentResponse, error) {
@@ -375,6 +379,9 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		if err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)
 		}
+		if err := checkRoots(n.WorkspaceRoots(), path); err != nil {
+			return "", err
+		}
 		base := p.DefaultBaseRef
 		if mode == identityv1.Workspace_WORKSPACE_IN_PLACE {
 			if base != "" {
@@ -422,6 +429,8 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 			}
 		}
 		return "paused=" + v, nil
+	case *identityv1.AdminCommand_SetWorkspaceRoots:
+		return n.setWorkspaceRoots(c.SetWorkspaceRoots.Roots)
 	case *identityv1.AdminCommand_SetHer:
 		return n.setHer(c.SetHer.Enabled, c.SetHer.Erase)
 	case *identityv1.AdminCommand_SetHerCommandConnector:

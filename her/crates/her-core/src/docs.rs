@@ -223,6 +223,10 @@ impl TypedTool for DocOpen {
         page count and outline) or an Excel workbook (its id, sheets, inputs, outputs and circular references). The \
         other doc tools take the id it returns, or the path.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -282,6 +286,10 @@ impl TypedTool for DocRead {
     const DESCRIPTION: &'static str = "Read the text of a document's pages, as Markdown or as blocks with ids for \
         citing (text in the margins comes last on each page); or a range of a workbook, as a table of the values \
         Excel shows, with the formulas listed after it.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
@@ -367,6 +375,10 @@ impl TypedTool for DocFind {
     const NAME: &'static str = "doc_find";
     const DESCRIPTION: &'static str = "Find text in a document: each hit with its page, block id and the text around it.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -441,6 +453,10 @@ impl TypedTool for DocView {
     const NAME: &'static str = "doc_view";
     const DESCRIPTION: &'static str = "Look at a document's page, or a block or region of it, as an image: for \
         layout, tables, charts and scans.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
@@ -677,6 +693,10 @@ impl TypedTool for SheetCalc {
     const DESCRIPTION: &'static str = "Try changes on a workbook without making them: what the outputs would become, \
         circular references iterated as Excel does. For what-if and sensitivity questions, and before doc_edit.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -715,6 +735,10 @@ impl TypedTool for SheetTrace {
     const NAME: &'static str = "sheet_trace";
     const DESCRIPTION: &'static str = "Follow a workbook's formulas from a cell: the cells it reads (up) or the \
         formulas that read it (down), each with its label, value and formula.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES

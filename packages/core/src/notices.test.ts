@@ -2,9 +2,9 @@ import { clone, create } from "@bufbuild/protobuf";
 import { MachineSchema } from "@aide/proto/local";
 import { HerLatestKind, HerLatestSchema, HerStatusSchema } from "@aide/proto/machine";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
+import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionSeenSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshot, noticeSnapshots, type NoticeItem } from "./notices";
+import { filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshot, noticeSnapshots, questionAcks, type NoticeItem } from "./notices";
 import { ask, at, progressOf, session } from "./testing";
 
 const grant = () => "Grok Bot";
@@ -96,6 +96,28 @@ describe("session notices", () => {
     expect(kinds(filterNotices(items, {}))).toEqual(["started", "question", "failed"]);
     expect(kinds(filterNotices(items, { notifyStarted: false, notifyQuestion: false, notifyTurnDone: true }))).toEqual(["failed", "turnDone"]);
     expect(kinds(filterNotices(items, { notifyFailed: false }))).toEqual(["started", "question"]);
+  });
+});
+
+describe("questions a desktop told of", () => {
+  test("each machine hears once that the desktop told the owner, and again once the owner is there", () => {
+    const q = session("s1", SessionStatus.WAITING_INPUT);
+    ask(q, "q1");
+    q.seen = create(SessionSeenSchema, {});
+    const older = session("s2", SessionStatus.WAITING_INPUT); // its machine keeps nothing seen
+    ask(older, "q2");
+    const quiet = session("s3", SessionStatus.WAITING_INPUT); // not told of (notices off)
+    ask(quiet, "q3");
+    quiet.seen = create(SessionSeenSchema, {});
+    const told = new Set(["q1", "q2"]);
+    expect(questionAcks([q, older, quiet], told, false)).toEqual([{ sessionId: "s1", questionId: "q1", present: false }]);
+    q.seen = create(SessionSeenSchema, { questionId: "q1" });
+    expect(questionAcks([q], told, false)).toEqual([]);
+    expect(questionAcks([q], told, true)).toEqual([{ sessionId: "s1", questionId: "q1", present: true }]);
+    q.seen = create(SessionSeenSchema, { questionId: "q1", questionPresent: true });
+    expect(questionAcks([q], told, true)).toEqual([]);
+    // Answered: nothing to tell.
+    expect(questionAcks([{ ...q, status: SessionStatus.RUNNING }], told, true)).toEqual([]);
   });
 });
 
