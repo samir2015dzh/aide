@@ -1,6 +1,8 @@
 package owner
 
 import (
+	"time"
+
 	"context"
 	"errors"
 	"fmt"
@@ -398,9 +400,9 @@ func (l *localService) ListDSHSessions(ctx context.Context, req *localv1.ListDSH
 			return nil, err
 		}
 		info := m.Info()
-		out := &localv1.ListDSHSessionsResponse{Sessions: dshEntries(res, info.MachineId, info.MachineName)}
-		if res.Bridge != nil {
-			out.Bridges = []*localv1.DSHBridgeEntry{{MachineId: info.MachineId, Bridge: res.Bridge}}
+		out := &localv1.ListDSHSessionsResponse{Sessions: dshEntries(res, info.MachineId, info.MachineName, time.Now())}
+		if res.Bridge != nil || res.DshHome != "" {
+			out.Bridges = []*localv1.DSHBridgeEntry{{MachineId: info.MachineId, Bridge: res.Bridge, DshHome: res.DshHome}}
 		}
 		return out, nil
 	}

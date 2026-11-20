@@ -94,7 +94,8 @@ func (n *Machine) dshVisible(p *Principal) (func(cwd string) bool, error) {
 // (provider_ref), and by the folder, a session's worktree (where an
 // earlier DSH session of a session Aide started again, or deleted,
 // worked).
-// The owner also learns the state of the Aide bridge plugin.
+// The owner also learns the state of the Aide bridge plugin, and which
+// DSH home was read.
 func (n *Machine) DSHSessions(ctx context.Context) (*machinev1.ListDSHSessionsResponse, error) {
 	res, err := n.dshSessions(func(string) bool { return true })
 	if err != nil {
@@ -102,6 +103,7 @@ func (n *Machine) DSHSessions(ctx context.Context) (*machinev1.ListDSHSessionsRe
 	}
 	if home, err := dshnative.Home(shellenv.Environ()); err == nil {
 		res.Bridge = dshBridge(ctx, home)
+		res.DshHome = home
 	}
 	return res, nil
 }

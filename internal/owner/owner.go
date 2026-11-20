@@ -129,6 +129,17 @@ type Owner struct {
 	directMu   sync.Mutex
 	direct     map[string][]string // machineID -> normalized direct_addrs, persisted under kDirectAddrs
 	lastDirect map[string]string   // machineID -> last winning direct address, tried first on reconnect
+
+	// dshSeen: each machine's DSH sessions as ListDSHSessions last read
+	// them, listed as lost while it can't be reached (in memory only).
+	dshMu   sync.Mutex
+	dshSeen map[string]dshSeen
+}
+
+// dshSeen is a machine's DSH sessions, and when they were read.
+type dshSeen struct {
+	at      time.Time
+	entries []*localv1.DSHSessionEntry
 }
 
 const (
@@ -1519,7 +1530,9 @@ func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.Lis
 }
 
 // ListDSHSessions gathers the DeepSeek Harness sessions Aide did not
-// start on the machines, newest activity first.
+// start on the machines, newest activity first. A machine that can't be
+// reached has its sessions as last read here, marked lost: their state is
+// last known, never taken for what they do now (docs/session-states.md).
 func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1.ListDSHSessionsResponse, error) {
 	on, off, err := o.onlineMachines(ctx, machineID)
 	if err != nil {
@@ -1527,12 +1540,20 @@ func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1
 	}
 	var mu sync.Mutex
 	out := &localv1.ListDSHSessionsResponse{Unreachable: off}
+	now := time.Now()
 	add := func(res *machinev1.ListDSHSessionsResponse, meta *localv1.Machine) {
+		entries := dshEntries(res, meta.MachineId, meta.MachineName, now)
+		o.dshMu.Lock()
+		if o.dshSeen == nil {
+			o.dshSeen = map[string]dshSeen{}
+		}
+		o.dshSeen[meta.MachineId] = dshSeen{at: now, entries: entries}
+		o.dshMu.Unlock()
 		mu.Lock()
 		defer mu.Unlock()
-		out.Sessions = append(out.Sessions, dshEntries(res, meta.MachineId, meta.MachineName)...)
-		if res.Bridge != nil {
-			out.Bridges = append(out.Bridges, &localv1.DSHBridgeEntry{MachineId: meta.MachineId, Bridge: res.Bridge})
+		out.Sessions = append(out.Sessions, entries...)
+		if res.Bridge != nil || res.DshHome != "" {
+			out.Bridges = append(out.Bridges, &localv1.DSHBridgeEntry{MachineId: meta.MachineId, Bridge: res.Bridge, DshHome: res.DshHome})
 		}
 	}
 	bad, err := o.fanOut(ctx, on, func(l *machine.Local, meta *localv1.Machine) error {
@@ -1548,18 +1569,44 @@ func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1
 		}
 		return err
 	})
+	if err != nil {
+		// The relay can't be reached: neither can the other machines, whose
+		// sessions are then lost, as Aide's own are; this one's still read.
+		for _, n := range on {
+			if !n.Local {
+				bad = append(bad, &localv1.Unreachable{MachineId: n.MachineId, MachineName: n.MachineName, Error: err.Error()})
+			}
+		}
+	}
 	out.Unreachable = append(out.Unreachable, bad...)
+	out.Sessions = append(out.Sessions, o.lostDSHEntries(out.Unreachable)...)
 	slices.SortStableFunc(out.Sessions, func(a, b *localv1.DSHSessionEntry) int {
 		return b.Session.LastActivityAt.AsTime().Compare(a.Session.LastActivityAt.AsTime())
 	})
 	slices.SortFunc(out.Bridges, func(a, b *localv1.DSHBridgeEntry) int { return strings.Compare(a.MachineId, b.MachineId) })
-	return out, err
+	return out, nil
 }
 
-func dshEntries(res *machinev1.ListDSHSessionsResponse, machineID, machineName string) []*localv1.DSHSessionEntry {
+func dshEntries(res *machinev1.ListDSHSessionsResponse, machineID, machineName string, readAt time.Time) []*localv1.DSHSessionEntry {
 	var out []*localv1.DSHSessionEntry
 	for _, s := range res.Sessions {
-		out = append(out, &localv1.DSHSessionEntry{MachineId: machineID, MachineName: machineName, Session: s})
+		out = append(out, &localv1.DSHSessionEntry{MachineId: machineID, MachineName: machineName, Session: s, ReadAt: timestamppb.New(readAt)})
+	}
+	return out
+}
+
+// lostDSHEntries is the DSH sessions last read of the machines in off,
+// marked lost.
+func (o *Owner) lostDSHEntries(off []*localv1.Unreachable) []*localv1.DSHSessionEntry {
+	o.dshMu.Lock()
+	defer o.dshMu.Unlock()
+	var out []*localv1.DSHSessionEntry
+	for _, u := range off {
+		for _, e := range o.dshSeen[u.MachineId].entries {
+			l := proto.Clone(e).(*localv1.DSHSessionEntry)
+			l.Lost = true
+			out = append(out, l)
+		}
 	}
 	return out
 }

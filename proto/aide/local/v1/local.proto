@@ -1292,11 +1292,19 @@ message DSHSessionEntry {
   string machine_id = 1;
   string machine_name = 2;
   aide.machine.v1.DSHSession session = 3;
+  // Its machine can't be reached now: the session is as it was last read
+  // (read_at), its state last known, never running now
+  // (docs/session-states.md: 失联 · 最后已知 …). Nothing can be sent to it.
+  bool lost = 4;
+  // When this device last read it from its machine.
+  google.protobuf.Timestamp read_at = 5;
 }
 
 message DSHBridgeEntry {
   string machine_id = 1;
   aide.machine.v1.DSHBridge bridge = 2;
+  // The DSH home that machine's aided reads DSH's sessions from.
+  string dsh_home = 3;
 }
 
 message SetDSHTakeoverRequest {

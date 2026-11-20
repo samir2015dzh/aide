@@ -89,11 +89,51 @@ Separately, every message in an Aide session now names its writer
 (`UserMessage.from`, `from_name`): the owner joining a session one of
 their agents started is shown as such.
 
-## 6. Not known yet (to check on the owner's computer)
+## 6. The list: a machine gone, an empty list
 
-- Whether DSH Desktop's Plugins page installs from a file path (the plugin
-  manager's API takes paths and tarballs).
+- **A machine that can't be reached** keeps its DSH sessions in the list as
+  this device last read them (`DSHSessionEntry.lost`, `read_at`; kept in the
+  owner's process, not on disk), as Aide's own sessions are kept
+  (docs/session-states.md): **失联 · 最后已知 在 DSH 中打开 · 3 分钟前**,
+  never as what they do now, and with no switch or box to write in. Their
+  conversation is read once the machine is back. The relay itself gone, every
+  other machine's are lost the same way; this computer's are read as ever.
+- **Which DSH home was read**: each machine says (`dsh_home`). With no
+  session found, the page shows it, and that DSH Desktop keeping its data
+  elsewhere is fixed by setting the user environment variable `DSH_HOME` to
+  that folder (aided reads the user's environment as DSH does).
+- The Agent page of DeepSeek Harness (Settings › Machines) links to the page.
+
+## 7. Checked against DSH 0.2.2-rc.5's packages (not run)
+
+What the plugin relies on, read from the npm packages of the version on the
+owner's computer (`@deepseek-ai/dsh@0.2.2-rc.5`) and from Agents Anywhere's
+bridge (`@agents-anywhere/dsh-bridge-next@2.1.0`), which calls the same:
+
+- `sessionController.prompt({sessionId, requestId, mode: 'queue', content},
+  signal)`: a cold session is resumed by it ("prompt … may resolve or resume
+  an ordinary Session"); a retry with the same `requestId` is answered with
+  the first acceptance; the in-process call is the owner's (a `principal`
+  is recorded only for a non-owner Remote caller). AA calls it the same
+  way, then `sessions.flush(agent.session)`, as the plugin does.
+- `agents.get(id)?.cancel({kind: 'user'})`: as AA. Cancelling needs the
+  session live, so `cancel` answers "not running here" otherwise.
+- `ctx.effect(…)`: Cordis 4.1.0 (rc.5's) has it.
+- `engines.dsh` `>=0.2.2-rc.1 <0.3.0-0`: DSH checks `engines.dsh` alone when
+  a plugin declares it, and prereleases take part in the range, so rc.5 and
+  a 0.2.2 release load it.
+- Installing from a path: the plugin manager reads an absolute path's
+  `package.json` (and a tarball after fetching it); DSH Desktop brings its
+  own package manager for this ("application-owned profiles supply their
+  bundled package-manager invocation"), where the npm `dsh plugin` needs
+  pnpm on PATH.
+
+## 8. Not known yet (to check on the owner's computer)
+
+- That DSH Desktop's Plugins page offers installing from a file (the plugin
+  manager takes paths and tarballs; whether its page asks for one).
 - Where DSH Desktop keeps its profile when it is not at
   `<DSH home>/profiles/desktop` (then it is not backed up; the app says so).
-- That DSH Desktop loads the plugin and its services are as read from DSH
-  0.2.2-rc.5's packages (the plugin was not run inside a real DSH here).
+- That DSH Desktop loads the plugin and its services answer as read above
+  (the plugin was not run inside a real DSH here: running DSH is not allowed
+  in the environment this was built in).

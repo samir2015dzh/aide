@@ -163,12 +163,20 @@ export function stateLine(v: StateView): string {
     case SessionLink.CHECKING:
       return t("link.checking", { state: st });
     case SessionLink.LOST:
-      return v.silentMs > 0 ? t("link.lostFor", { state: st, ago: durationText(v.silentMs) }) : t("link.lost", { state: st });
+      return lostLine(st, v.silentMs);
     case SessionLink.SYNCING:
       return t("link.syncing", { state: st });
     default:
       return st;
   }
+}
+
+/**
+ * What is shown of something whose machine is lost: its state as last known, never as now, and for how long
+ * nothing was heard (0: not known). "Lost · last known Running · 7 min ago".
+ */
+export function lostLine(state: string, silentMs: number): string {
+  return silentMs > 0 ? t("link.lostFor", { state, ago: durationText(silentMs) }) : t("link.lost", { state });
 }
 
 /** The times a session's machine was lost while the session was there, the one under way last (to undefined). */

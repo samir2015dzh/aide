@@ -9118,10 +9118,16 @@ func (x *ListDSHSessionsResponse) GetBridges() []*DSHBridgeEntry {
 }
 
 type DSHSessionEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	MachineName   string                 `protobuf:"bytes,2,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
-	Session       *v12.DSHSession        `protobuf:"bytes,3,opt,name=session,proto3" json:"session,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	MachineId   string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	MachineName string                 `protobuf:"bytes,2,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
+	Session     *v12.DSHSession        `protobuf:"bytes,3,opt,name=session,proto3" json:"session,omitempty"`
+	// Its machine can't be reached now: the session is as it was last read
+	// (read_at), its state last known, never running now
+	// (docs/session-states.md: 失联 · 最后已知 …). Nothing can be sent to it.
+	Lost bool `protobuf:"varint,4,opt,name=lost,proto3" json:"lost,omitempty"`
+	// When this device last read it from its machine.
+	ReadAt        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=read_at,json=readAt,proto3" json:"read_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9177,10 +9183,26 @@ func (x *DSHSessionEntry) GetSession() *v12.DSHSession {
 	return nil
 }
 
+func (x *DSHSessionEntry) GetLost() bool {
+	if x != nil {
+		return x.Lost
+	}
+	return false
+}
+
+func (x *DSHSessionEntry) GetReadAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReadAt
+	}
+	return nil
+}
+
 type DSHBridgeEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	Bridge        *v12.DSHBridge         `protobuf:"bytes,2,opt,name=bridge,proto3" json:"bridge,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Bridge    *v12.DSHBridge         `protobuf:"bytes,2,opt,name=bridge,proto3" json:"bridge,omitempty"`
+	// The DSH home that machine's aided reads DSH's sessions from.
+	DshHome       string `protobuf:"bytes,3,opt,name=dsh_home,json=dshHome,proto3" json:"dsh_home,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9227,6 +9249,13 @@ func (x *DSHBridgeEntry) GetBridge() *v12.DSHBridge {
 		return x.Bridge
 	}
 	return nil
+}
+
+func (x *DSHBridgeEntry) GetDshHome() string {
+	if x != nil {
+		return x.DshHome
+	}
+	return ""
 }
 
 type SetDSHTakeoverRequest struct {
@@ -10184,16 +10213,19 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x17ListDSHSessionsResponse\x12:\n" +
 	"\bsessions\x18\x01 \x03(\v2\x1e.aide.local.v1.DSHSessionEntryR\bsessions\x12<\n" +
 	"\vunreachable\x18\x02 \x03(\v2\x1a.aide.local.v1.UnreachableR\vunreachable\x127\n" +
-	"\abridges\x18\x03 \x03(\v2\x1d.aide.local.v1.DSHBridgeEntryR\abridges\"\x8a\x01\n" +
+	"\abridges\x18\x03 \x03(\v2\x1d.aide.local.v1.DSHBridgeEntryR\abridges\"\xd3\x01\n" +
 	"\x0fDSHSessionEntry\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
 	"\fmachine_name\x18\x02 \x01(\tR\vmachineName\x125\n" +
-	"\asession\x18\x03 \x01(\v2\x1b.aide.machine.v1.DSHSessionR\asession\"c\n" +
+	"\asession\x18\x03 \x01(\v2\x1b.aide.machine.v1.DSHSessionR\asession\x12\x12\n" +
+	"\x04lost\x18\x04 \x01(\bR\x04lost\x123\n" +
+	"\aread_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x06readAt\"~\n" +
 	"\x0eDSHBridgeEntry\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x122\n" +
-	"\x06bridge\x18\x02 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\x06bridge\"e\n" +
+	"\x06bridge\x18\x02 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\x06bridge\x12\x19\n" +
+	"\bdsh_home\x18\x03 \x01(\tR\adshHome\"e\n" +
 	"\x15SetDSHTakeoverRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -10634,173 +10666,174 @@ var file_aide_local_v1_local_proto_depIdxs = []int32{
 	107, // 86: aide.local.v1.ListDSHSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
 	160, // 87: aide.local.v1.ListDSHSessionsResponse.bridges:type_name -> aide.local.v1.DSHBridgeEntry
 	186, // 88: aide.local.v1.DSHSessionEntry.session:type_name -> aide.machine.v1.DSHSession
-	187, // 89: aide.local.v1.DSHBridgeEntry.bridge:type_name -> aide.machine.v1.DSHBridge
-	168, // 90: aide.local.v1.ReadDSHSessionRequest.view:type_name -> aide.session.v1.EventView
-	10,  // 91: aide.local.v1.LocalService.GetStatus:input_type -> aide.local.v1.GetStatusRequest
-	2,   // 92: aide.local.v1.LocalService.Watch:input_type -> aide.local.v1.WatchRequest
-	12,  // 93: aide.local.v1.LocalService.ListProfiles:input_type -> aide.local.v1.ListProfilesRequest
-	15,  // 94: aide.local.v1.LocalService.SwitchProfile:input_type -> aide.local.v1.SwitchProfileRequest
-	17,  // 95: aide.local.v1.LocalService.AddProfile:input_type -> aide.local.v1.AddProfileRequest
-	19,  // 96: aide.local.v1.LocalService.SignOut:input_type -> aide.local.v1.SignOutRequest
-	21,  // 97: aide.local.v1.LocalService.SignIn:input_type -> aide.local.v1.SignInRequest
-	23,  // 98: aide.local.v1.LocalService.Setup:input_type -> aide.local.v1.SetupRequest
-	25,  // 99: aide.local.v1.LocalService.LogIn:input_type -> aide.local.v1.LogInRequest
-	27,  // 100: aide.local.v1.LocalService.GetLogin:input_type -> aide.local.v1.GetLoginRequest
-	29,  // 101: aide.local.v1.LocalService.SetLogin:input_type -> aide.local.v1.SetLoginRequest
-	32,  // 102: aide.local.v1.LocalService.ListDevices:input_type -> aide.local.v1.ListDevicesRequest
-	34,  // 103: aide.local.v1.LocalService.RemoveDevice:input_type -> aide.local.v1.RemoveDeviceRequest
-	36,  // 104: aide.local.v1.LocalService.Leave:input_type -> aide.local.v1.LeaveRequest
-	38,  // 105: aide.local.v1.LocalService.EraseEverything:input_type -> aide.local.v1.EraseEverythingRequest
-	40,  // 106: aide.local.v1.LocalService.EraseStatus:input_type -> aide.local.v1.EraseStatusRequest
-	43,  // 107: aide.local.v1.LocalService.FinishErase:input_type -> aide.local.v1.FinishEraseRequest
-	46,  // 108: aide.local.v1.LocalService.SetLocalMachine:input_type -> aide.local.v1.SetLocalMachineRequest
-	52,  // 109: aide.local.v1.LocalService.ListMachines:input_type -> aide.local.v1.ListMachinesRequest
-	54,  // 110: aide.local.v1.LocalService.RenameMachine:input_type -> aide.local.v1.RenameMachineRequest
-	56,  // 111: aide.local.v1.LocalService.SetMachinePaused:input_type -> aide.local.v1.SetMachinePausedRequest
-	58,  // 112: aide.local.v1.LocalService.SetAgentDefaults:input_type -> aide.local.v1.SetAgentDefaultsRequest
-	72,  // 113: aide.local.v1.LocalService.RemoveMachine:input_type -> aide.local.v1.RemoveMachineRequest
-	60,  // 114: aide.local.v1.LocalService.CheckAgents:input_type -> aide.local.v1.CheckAgentsRequest
-	62,  // 115: aide.local.v1.LocalService.ListMachineRepos:input_type -> aide.local.v1.ListMachineReposRequest
-	64,  // 116: aide.local.v1.LocalService.ListMachineFolders:input_type -> aide.local.v1.ListMachineFoldersRequest
-	65,  // 117: aide.local.v1.LocalService.TestMachineAgent:input_type -> aide.local.v1.TestMachineAgentRequest
-	104, // 118: aide.local.v1.LocalService.ListExecLog:input_type -> aide.local.v1.ListExecLogRequest
-	70,  // 119: aide.local.v1.LocalService.GetDiagnostics:input_type -> aide.local.v1.GetDiagnosticsRequest
-	132, // 120: aide.local.v1.LocalService.SetHer:input_type -> aide.local.v1.SetHerRequest
-	134, // 121: aide.local.v1.LocalService.SetHerCommandConnector:input_type -> aide.local.v1.SetHerCommandConnectorRequest
-	136, // 122: aide.local.v1.LocalService.HerOpen:input_type -> aide.local.v1.HerOpenRequest
-	137, // 123: aide.local.v1.LocalService.HerCall:input_type -> aide.local.v1.HerCallRequest
-	138, // 124: aide.local.v1.LocalService.HerSend:input_type -> aide.local.v1.HerSendRequest
-	142, // 125: aide.local.v1.LocalService.ListHerWaiting:input_type -> aide.local.v1.ListHerWaitingRequest
-	144, // 126: aide.local.v1.LocalService.DeleteHerWaiting:input_type -> aide.local.v1.DeleteHerWaitingRequest
-	147, // 127: aide.local.v1.LocalService.GetHerConversation:input_type -> aide.local.v1.GetHerConversationRequest
-	149, // 128: aide.local.v1.LocalService.HerUpload:input_type -> aide.local.v1.HerUploadRequest
-	151, // 129: aide.local.v1.LocalService.HerDownload:input_type -> aide.local.v1.HerDownloadRequest
-	155, // 130: aide.local.v1.LocalService.GetHerConsole:input_type -> aide.local.v1.GetHerConsoleRequest
-	153, // 131: aide.local.v1.LocalService.StopScreen:input_type -> aide.local.v1.StopScreenRequest
-	75,  // 132: aide.local.v1.LocalService.ListProjects:input_type -> aide.local.v1.ListProjectsRequest
-	77,  // 133: aide.local.v1.LocalService.AddProject:input_type -> aide.local.v1.AddProjectRequest
-	79,  // 134: aide.local.v1.LocalService.RemoveProject:input_type -> aide.local.v1.RemoveProjectRequest
-	82,  // 135: aide.local.v1.LocalService.ListClients:input_type -> aide.local.v1.ListClientsRequest
-	84,  // 136: aide.local.v1.LocalService.UpdateClient:input_type -> aide.local.v1.UpdateClientRequest
-	86,  // 137: aide.local.v1.LocalService.RenameClient:input_type -> aide.local.v1.RenameClientRequest
-	88,  // 138: aide.local.v1.LocalService.RevokeClient:input_type -> aide.local.v1.RevokeClientRequest
-	93,  // 139: aide.local.v1.LocalService.ListWakes:input_type -> aide.local.v1.ListWakesRequest
-	95,  // 140: aide.local.v1.LocalService.SetWake:input_type -> aide.local.v1.SetWakeRequest
-	97,  // 141: aide.local.v1.LocalService.CheckWake:input_type -> aide.local.v1.CheckWakeRequest
-	99,  // 142: aide.local.v1.LocalService.ClearWake:input_type -> aide.local.v1.ClearWakeRequest
-	101, // 143: aide.local.v1.LocalService.OpenWakeLink:input_type -> aide.local.v1.OpenWakeLinkRequest
-	108, // 144: aide.local.v1.LocalService.ListSessions:input_type -> aide.local.v1.ListSessionsRequest
-	110, // 145: aide.local.v1.LocalService.WatchSessions:input_type -> aide.local.v1.WatchSessionsRequest
-	112, // 146: aide.local.v1.LocalService.StreamSessionEvents:input_type -> aide.local.v1.StreamSessionEventsRequest
-	4,   // 147: aide.local.v1.LocalService.ListSessionEvents:input_type -> aide.local.v1.ListSessionEventsRequest
-	6,   // 148: aide.local.v1.LocalService.ReadToolOutput:input_type -> aide.local.v1.ReadToolOutputRequest
-	115, // 149: aide.local.v1.LocalService.StartSession:input_type -> aide.local.v1.StartSessionRequest
-	116, // 150: aide.local.v1.LocalService.SendMessage:input_type -> aide.local.v1.SendMessageRequest
-	117, // 151: aide.local.v1.LocalService.InterruptSession:input_type -> aide.local.v1.InterruptSessionRequest
-	118, // 152: aide.local.v1.LocalService.ArchiveSession:input_type -> aide.local.v1.ArchiveSessionRequest
-	119, // 153: aide.local.v1.LocalService.UnarchiveSession:input_type -> aide.local.v1.UnarchiveSessionRequest
-	120, // 154: aide.local.v1.LocalService.DeleteSession:input_type -> aide.local.v1.DeleteSessionRequest
-	122, // 155: aide.local.v1.LocalService.RenameSession:input_type -> aide.local.v1.RenameSessionRequest
-	113, // 156: aide.local.v1.LocalService.AnswerQuestion:input_type -> aide.local.v1.AnswerQuestionRequest
-	130, // 157: aide.local.v1.LocalService.GetDiff:input_type -> aide.local.v1.GetDiffRequest
-	131, // 158: aide.local.v1.LocalService.PushSession:input_type -> aide.local.v1.PushSessionRequest
-	157, // 159: aide.local.v1.LocalService.ListDSHSessions:input_type -> aide.local.v1.ListDSHSessionsRequest
-	165, // 160: aide.local.v1.LocalService.ReadDSHSession:input_type -> aide.local.v1.ReadDSHSessionRequest
-	161, // 161: aide.local.v1.LocalService.SetDSHTakeover:input_type -> aide.local.v1.SetDSHTakeoverRequest
-	162, // 162: aide.local.v1.LocalService.SendDSHMessage:input_type -> aide.local.v1.SendDSHMessageRequest
-	163, // 163: aide.local.v1.LocalService.InterruptDSHSession:input_type -> aide.local.v1.InterruptDSHSessionRequest
-	164, // 164: aide.local.v1.LocalService.PrepareDSHBridge:input_type -> aide.local.v1.PrepareDSHBridgeRequest
-	66,  // 165: aide.local.v1.LocalService.ListMachineCustomAgents:input_type -> aide.local.v1.ListMachineCustomAgentsRequest
-	67,  // 166: aide.local.v1.LocalService.SaveMachineCustomAgent:input_type -> aide.local.v1.SaveMachineCustomAgentRequest
-	68,  // 167: aide.local.v1.LocalService.RemoveMachineCustomAgent:input_type -> aide.local.v1.RemoveMachineCustomAgentRequest
-	69,  // 168: aide.local.v1.LocalService.TestMachineCustomAgent:input_type -> aide.local.v1.TestMachineCustomAgentRequest
-	124, // 169: aide.local.v1.LocalService.QueryWork:input_type -> aide.local.v1.QueryWorkRequest
-	8,   // 170: aide.local.v1.LocalService.RegisterPush:input_type -> aide.local.v1.RegisterPushRequest
-	11,  // 171: aide.local.v1.LocalService.GetStatus:output_type -> aide.local.v1.GetStatusResponse
-	3,   // 172: aide.local.v1.LocalService.Watch:output_type -> aide.local.v1.WatchResponse
-	13,  // 173: aide.local.v1.LocalService.ListProfiles:output_type -> aide.local.v1.ListProfilesResponse
-	16,  // 174: aide.local.v1.LocalService.SwitchProfile:output_type -> aide.local.v1.SwitchProfileResponse
-	18,  // 175: aide.local.v1.LocalService.AddProfile:output_type -> aide.local.v1.AddProfileResponse
-	20,  // 176: aide.local.v1.LocalService.SignOut:output_type -> aide.local.v1.SignOutResponse
-	22,  // 177: aide.local.v1.LocalService.SignIn:output_type -> aide.local.v1.SignInResponse
-	24,  // 178: aide.local.v1.LocalService.Setup:output_type -> aide.local.v1.SetupResponse
-	26,  // 179: aide.local.v1.LocalService.LogIn:output_type -> aide.local.v1.LogInResponse
-	28,  // 180: aide.local.v1.LocalService.GetLogin:output_type -> aide.local.v1.GetLoginResponse
-	30,  // 181: aide.local.v1.LocalService.SetLogin:output_type -> aide.local.v1.SetLoginResponse
-	33,  // 182: aide.local.v1.LocalService.ListDevices:output_type -> aide.local.v1.ListDevicesResponse
-	35,  // 183: aide.local.v1.LocalService.RemoveDevice:output_type -> aide.local.v1.RemoveDeviceResponse
-	37,  // 184: aide.local.v1.LocalService.Leave:output_type -> aide.local.v1.LeaveResponse
-	39,  // 185: aide.local.v1.LocalService.EraseEverything:output_type -> aide.local.v1.EraseEverythingResponse
-	41,  // 186: aide.local.v1.LocalService.EraseStatus:output_type -> aide.local.v1.EraseStatusResponse
-	44,  // 187: aide.local.v1.LocalService.FinishErase:output_type -> aide.local.v1.FinishEraseResponse
-	47,  // 188: aide.local.v1.LocalService.SetLocalMachine:output_type -> aide.local.v1.SetLocalMachineResponse
-	53,  // 189: aide.local.v1.LocalService.ListMachines:output_type -> aide.local.v1.ListMachinesResponse
-	55,  // 190: aide.local.v1.LocalService.RenameMachine:output_type -> aide.local.v1.RenameMachineResponse
-	57,  // 191: aide.local.v1.LocalService.SetMachinePaused:output_type -> aide.local.v1.SetMachinePausedResponse
-	59,  // 192: aide.local.v1.LocalService.SetAgentDefaults:output_type -> aide.local.v1.SetAgentDefaultsResponse
-	73,  // 193: aide.local.v1.LocalService.RemoveMachine:output_type -> aide.local.v1.RemoveMachineResponse
-	61,  // 194: aide.local.v1.LocalService.CheckAgents:output_type -> aide.local.v1.CheckAgentsResponse
-	63,  // 195: aide.local.v1.LocalService.ListMachineRepos:output_type -> aide.local.v1.ListMachineReposResponse
-	188, // 196: aide.local.v1.LocalService.ListMachineFolders:output_type -> aide.machine.v1.ListFoldersResponse
-	189, // 197: aide.local.v1.LocalService.TestMachineAgent:output_type -> aide.machine.v1.TestAgentResponse
-	106, // 198: aide.local.v1.LocalService.ListExecLog:output_type -> aide.local.v1.ListExecLogResponse
-	71,  // 199: aide.local.v1.LocalService.GetDiagnostics:output_type -> aide.local.v1.GetDiagnosticsResponse
-	133, // 200: aide.local.v1.LocalService.SetHer:output_type -> aide.local.v1.SetHerResponse
-	135, // 201: aide.local.v1.LocalService.SetHerCommandConnector:output_type -> aide.local.v1.SetHerCommandConnectorResponse
-	190, // 202: aide.local.v1.LocalService.HerOpen:output_type -> aide.her.v1.OpenEvent
-	191, // 203: aide.local.v1.LocalService.HerCall:output_type -> aide.her.v1.CallResponse
-	141, // 204: aide.local.v1.LocalService.HerSend:output_type -> aide.local.v1.HerSendResponse
-	143, // 205: aide.local.v1.LocalService.ListHerWaiting:output_type -> aide.local.v1.ListHerWaitingResponse
-	145, // 206: aide.local.v1.LocalService.DeleteHerWaiting:output_type -> aide.local.v1.DeleteHerWaitingResponse
-	148, // 207: aide.local.v1.LocalService.GetHerConversation:output_type -> aide.local.v1.GetHerConversationResponse
-	150, // 208: aide.local.v1.LocalService.HerUpload:output_type -> aide.local.v1.HerUploadResponse
-	152, // 209: aide.local.v1.LocalService.HerDownload:output_type -> aide.local.v1.HerDownloadResponse
-	156, // 210: aide.local.v1.LocalService.GetHerConsole:output_type -> aide.local.v1.GetHerConsoleResponse
-	154, // 211: aide.local.v1.LocalService.StopScreen:output_type -> aide.local.v1.StopScreenResponse
-	76,  // 212: aide.local.v1.LocalService.ListProjects:output_type -> aide.local.v1.ListProjectsResponse
-	78,  // 213: aide.local.v1.LocalService.AddProject:output_type -> aide.local.v1.AddProjectResponse
-	80,  // 214: aide.local.v1.LocalService.RemoveProject:output_type -> aide.local.v1.RemoveProjectResponse
-	83,  // 215: aide.local.v1.LocalService.ListClients:output_type -> aide.local.v1.ListClientsResponse
-	85,  // 216: aide.local.v1.LocalService.UpdateClient:output_type -> aide.local.v1.UpdateClientResponse
-	87,  // 217: aide.local.v1.LocalService.RenameClient:output_type -> aide.local.v1.RenameClientResponse
-	89,  // 218: aide.local.v1.LocalService.RevokeClient:output_type -> aide.local.v1.RevokeClientResponse
-	94,  // 219: aide.local.v1.LocalService.ListWakes:output_type -> aide.local.v1.ListWakesResponse
-	96,  // 220: aide.local.v1.LocalService.SetWake:output_type -> aide.local.v1.SetWakeResponse
-	98,  // 221: aide.local.v1.LocalService.CheckWake:output_type -> aide.local.v1.CheckWakeResponse
-	100, // 222: aide.local.v1.LocalService.ClearWake:output_type -> aide.local.v1.ClearWakeResponse
-	102, // 223: aide.local.v1.LocalService.OpenWakeLink:output_type -> aide.local.v1.OpenWakeLinkResponse
-	109, // 224: aide.local.v1.LocalService.ListSessions:output_type -> aide.local.v1.ListSessionsResponse
-	111, // 225: aide.local.v1.LocalService.WatchSessions:output_type -> aide.local.v1.WatchSessionsResponse
-	169, // 226: aide.local.v1.LocalService.StreamSessionEvents:output_type -> aide.session.v1.SessionEvent
-	5,   // 227: aide.local.v1.LocalService.ListSessionEvents:output_type -> aide.local.v1.ListSessionEventsResponse
-	192, // 228: aide.local.v1.LocalService.ReadToolOutput:output_type -> aide.session.v1.ToolOutputChunk
-	123, // 229: aide.local.v1.LocalService.StartSession:output_type -> aide.local.v1.SessionResponse
-	123, // 230: aide.local.v1.LocalService.SendMessage:output_type -> aide.local.v1.SessionResponse
-	123, // 231: aide.local.v1.LocalService.InterruptSession:output_type -> aide.local.v1.SessionResponse
-	123, // 232: aide.local.v1.LocalService.ArchiveSession:output_type -> aide.local.v1.SessionResponse
-	123, // 233: aide.local.v1.LocalService.UnarchiveSession:output_type -> aide.local.v1.SessionResponse
-	121, // 234: aide.local.v1.LocalService.DeleteSession:output_type -> aide.local.v1.DeleteSessionResponse
-	123, // 235: aide.local.v1.LocalService.RenameSession:output_type -> aide.local.v1.SessionResponse
-	114, // 236: aide.local.v1.LocalService.AnswerQuestion:output_type -> aide.local.v1.AnswerQuestionResponse
-	193, // 237: aide.local.v1.LocalService.GetDiff:output_type -> aide.session.v1.GetDiffResponse
-	194, // 238: aide.local.v1.LocalService.PushSession:output_type -> aide.session.v1.PushSessionResponse
-	158, // 239: aide.local.v1.LocalService.ListDSHSessions:output_type -> aide.local.v1.ListDSHSessionsResponse
-	195, // 240: aide.local.v1.LocalService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
-	196, // 241: aide.local.v1.LocalService.SetDSHTakeover:output_type -> aide.machine.v1.SetDSHTakeoverResponse
-	197, // 242: aide.local.v1.LocalService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
-	198, // 243: aide.local.v1.LocalService.InterruptDSHSession:output_type -> aide.machine.v1.InterruptDSHSessionResponse
-	199, // 244: aide.local.v1.LocalService.PrepareDSHBridge:output_type -> aide.machine.v1.PrepareDSHBridgeResponse
-	200, // 245: aide.local.v1.LocalService.ListMachineCustomAgents:output_type -> aide.machine.v1.ListCustomAgentsResponse
-	201, // 246: aide.local.v1.LocalService.SaveMachineCustomAgent:output_type -> aide.machine.v1.SaveCustomAgentResponse
-	202, // 247: aide.local.v1.LocalService.RemoveMachineCustomAgent:output_type -> aide.machine.v1.RemoveCustomAgentResponse
-	203, // 248: aide.local.v1.LocalService.TestMachineCustomAgent:output_type -> aide.machine.v1.TestCustomAgentResponse
-	129, // 249: aide.local.v1.LocalService.QueryWork:output_type -> aide.local.v1.QueryWorkResponse
-	9,   // 250: aide.local.v1.LocalService.RegisterPush:output_type -> aide.local.v1.RegisterPushResponse
-	171, // [171:251] is the sub-list for method output_type
-	91,  // [91:171] is the sub-list for method input_type
-	91,  // [91:91] is the sub-list for extension type_name
-	91,  // [91:91] is the sub-list for extension extendee
-	0,   // [0:91] is the sub-list for field type_name
+	170, // 89: aide.local.v1.DSHSessionEntry.read_at:type_name -> google.protobuf.Timestamp
+	187, // 90: aide.local.v1.DSHBridgeEntry.bridge:type_name -> aide.machine.v1.DSHBridge
+	168, // 91: aide.local.v1.ReadDSHSessionRequest.view:type_name -> aide.session.v1.EventView
+	10,  // 92: aide.local.v1.LocalService.GetStatus:input_type -> aide.local.v1.GetStatusRequest
+	2,   // 93: aide.local.v1.LocalService.Watch:input_type -> aide.local.v1.WatchRequest
+	12,  // 94: aide.local.v1.LocalService.ListProfiles:input_type -> aide.local.v1.ListProfilesRequest
+	15,  // 95: aide.local.v1.LocalService.SwitchProfile:input_type -> aide.local.v1.SwitchProfileRequest
+	17,  // 96: aide.local.v1.LocalService.AddProfile:input_type -> aide.local.v1.AddProfileRequest
+	19,  // 97: aide.local.v1.LocalService.SignOut:input_type -> aide.local.v1.SignOutRequest
+	21,  // 98: aide.local.v1.LocalService.SignIn:input_type -> aide.local.v1.SignInRequest
+	23,  // 99: aide.local.v1.LocalService.Setup:input_type -> aide.local.v1.SetupRequest
+	25,  // 100: aide.local.v1.LocalService.LogIn:input_type -> aide.local.v1.LogInRequest
+	27,  // 101: aide.local.v1.LocalService.GetLogin:input_type -> aide.local.v1.GetLoginRequest
+	29,  // 102: aide.local.v1.LocalService.SetLogin:input_type -> aide.local.v1.SetLoginRequest
+	32,  // 103: aide.local.v1.LocalService.ListDevices:input_type -> aide.local.v1.ListDevicesRequest
+	34,  // 104: aide.local.v1.LocalService.RemoveDevice:input_type -> aide.local.v1.RemoveDeviceRequest
+	36,  // 105: aide.local.v1.LocalService.Leave:input_type -> aide.local.v1.LeaveRequest
+	38,  // 106: aide.local.v1.LocalService.EraseEverything:input_type -> aide.local.v1.EraseEverythingRequest
+	40,  // 107: aide.local.v1.LocalService.EraseStatus:input_type -> aide.local.v1.EraseStatusRequest
+	43,  // 108: aide.local.v1.LocalService.FinishErase:input_type -> aide.local.v1.FinishEraseRequest
+	46,  // 109: aide.local.v1.LocalService.SetLocalMachine:input_type -> aide.local.v1.SetLocalMachineRequest
+	52,  // 110: aide.local.v1.LocalService.ListMachines:input_type -> aide.local.v1.ListMachinesRequest
+	54,  // 111: aide.local.v1.LocalService.RenameMachine:input_type -> aide.local.v1.RenameMachineRequest
+	56,  // 112: aide.local.v1.LocalService.SetMachinePaused:input_type -> aide.local.v1.SetMachinePausedRequest
+	58,  // 113: aide.local.v1.LocalService.SetAgentDefaults:input_type -> aide.local.v1.SetAgentDefaultsRequest
+	72,  // 114: aide.local.v1.LocalService.RemoveMachine:input_type -> aide.local.v1.RemoveMachineRequest
+	60,  // 115: aide.local.v1.LocalService.CheckAgents:input_type -> aide.local.v1.CheckAgentsRequest
+	62,  // 116: aide.local.v1.LocalService.ListMachineRepos:input_type -> aide.local.v1.ListMachineReposRequest
+	64,  // 117: aide.local.v1.LocalService.ListMachineFolders:input_type -> aide.local.v1.ListMachineFoldersRequest
+	65,  // 118: aide.local.v1.LocalService.TestMachineAgent:input_type -> aide.local.v1.TestMachineAgentRequest
+	104, // 119: aide.local.v1.LocalService.ListExecLog:input_type -> aide.local.v1.ListExecLogRequest
+	70,  // 120: aide.local.v1.LocalService.GetDiagnostics:input_type -> aide.local.v1.GetDiagnosticsRequest
+	132, // 121: aide.local.v1.LocalService.SetHer:input_type -> aide.local.v1.SetHerRequest
+	134, // 122: aide.local.v1.LocalService.SetHerCommandConnector:input_type -> aide.local.v1.SetHerCommandConnectorRequest
+	136, // 123: aide.local.v1.LocalService.HerOpen:input_type -> aide.local.v1.HerOpenRequest
+	137, // 124: aide.local.v1.LocalService.HerCall:input_type -> aide.local.v1.HerCallRequest
+	138, // 125: aide.local.v1.LocalService.HerSend:input_type -> aide.local.v1.HerSendRequest
+	142, // 126: aide.local.v1.LocalService.ListHerWaiting:input_type -> aide.local.v1.ListHerWaitingRequest
+	144, // 127: aide.local.v1.LocalService.DeleteHerWaiting:input_type -> aide.local.v1.DeleteHerWaitingRequest
+	147, // 128: aide.local.v1.LocalService.GetHerConversation:input_type -> aide.local.v1.GetHerConversationRequest
+	149, // 129: aide.local.v1.LocalService.HerUpload:input_type -> aide.local.v1.HerUploadRequest
+	151, // 130: aide.local.v1.LocalService.HerDownload:input_type -> aide.local.v1.HerDownloadRequest
+	155, // 131: aide.local.v1.LocalService.GetHerConsole:input_type -> aide.local.v1.GetHerConsoleRequest
+	153, // 132: aide.local.v1.LocalService.StopScreen:input_type -> aide.local.v1.StopScreenRequest
+	75,  // 133: aide.local.v1.LocalService.ListProjects:input_type -> aide.local.v1.ListProjectsRequest
+	77,  // 134: aide.local.v1.LocalService.AddProject:input_type -> aide.local.v1.AddProjectRequest
+	79,  // 135: aide.local.v1.LocalService.RemoveProject:input_type -> aide.local.v1.RemoveProjectRequest
+	82,  // 136: aide.local.v1.LocalService.ListClients:input_type -> aide.local.v1.ListClientsRequest
+	84,  // 137: aide.local.v1.LocalService.UpdateClient:input_type -> aide.local.v1.UpdateClientRequest
+	86,  // 138: aide.local.v1.LocalService.RenameClient:input_type -> aide.local.v1.RenameClientRequest
+	88,  // 139: aide.local.v1.LocalService.RevokeClient:input_type -> aide.local.v1.RevokeClientRequest
+	93,  // 140: aide.local.v1.LocalService.ListWakes:input_type -> aide.local.v1.ListWakesRequest
+	95,  // 141: aide.local.v1.LocalService.SetWake:input_type -> aide.local.v1.SetWakeRequest
+	97,  // 142: aide.local.v1.LocalService.CheckWake:input_type -> aide.local.v1.CheckWakeRequest
+	99,  // 143: aide.local.v1.LocalService.ClearWake:input_type -> aide.local.v1.ClearWakeRequest
+	101, // 144: aide.local.v1.LocalService.OpenWakeLink:input_type -> aide.local.v1.OpenWakeLinkRequest
+	108, // 145: aide.local.v1.LocalService.ListSessions:input_type -> aide.local.v1.ListSessionsRequest
+	110, // 146: aide.local.v1.LocalService.WatchSessions:input_type -> aide.local.v1.WatchSessionsRequest
+	112, // 147: aide.local.v1.LocalService.StreamSessionEvents:input_type -> aide.local.v1.StreamSessionEventsRequest
+	4,   // 148: aide.local.v1.LocalService.ListSessionEvents:input_type -> aide.local.v1.ListSessionEventsRequest
+	6,   // 149: aide.local.v1.LocalService.ReadToolOutput:input_type -> aide.local.v1.ReadToolOutputRequest
+	115, // 150: aide.local.v1.LocalService.StartSession:input_type -> aide.local.v1.StartSessionRequest
+	116, // 151: aide.local.v1.LocalService.SendMessage:input_type -> aide.local.v1.SendMessageRequest
+	117, // 152: aide.local.v1.LocalService.InterruptSession:input_type -> aide.local.v1.InterruptSessionRequest
+	118, // 153: aide.local.v1.LocalService.ArchiveSession:input_type -> aide.local.v1.ArchiveSessionRequest
+	119, // 154: aide.local.v1.LocalService.UnarchiveSession:input_type -> aide.local.v1.UnarchiveSessionRequest
+	120, // 155: aide.local.v1.LocalService.DeleteSession:input_type -> aide.local.v1.DeleteSessionRequest
+	122, // 156: aide.local.v1.LocalService.RenameSession:input_type -> aide.local.v1.RenameSessionRequest
+	113, // 157: aide.local.v1.LocalService.AnswerQuestion:input_type -> aide.local.v1.AnswerQuestionRequest
+	130, // 158: aide.local.v1.LocalService.GetDiff:input_type -> aide.local.v1.GetDiffRequest
+	131, // 159: aide.local.v1.LocalService.PushSession:input_type -> aide.local.v1.PushSessionRequest
+	157, // 160: aide.local.v1.LocalService.ListDSHSessions:input_type -> aide.local.v1.ListDSHSessionsRequest
+	165, // 161: aide.local.v1.LocalService.ReadDSHSession:input_type -> aide.local.v1.ReadDSHSessionRequest
+	161, // 162: aide.local.v1.LocalService.SetDSHTakeover:input_type -> aide.local.v1.SetDSHTakeoverRequest
+	162, // 163: aide.local.v1.LocalService.SendDSHMessage:input_type -> aide.local.v1.SendDSHMessageRequest
+	163, // 164: aide.local.v1.LocalService.InterruptDSHSession:input_type -> aide.local.v1.InterruptDSHSessionRequest
+	164, // 165: aide.local.v1.LocalService.PrepareDSHBridge:input_type -> aide.local.v1.PrepareDSHBridgeRequest
+	66,  // 166: aide.local.v1.LocalService.ListMachineCustomAgents:input_type -> aide.local.v1.ListMachineCustomAgentsRequest
+	67,  // 167: aide.local.v1.LocalService.SaveMachineCustomAgent:input_type -> aide.local.v1.SaveMachineCustomAgentRequest
+	68,  // 168: aide.local.v1.LocalService.RemoveMachineCustomAgent:input_type -> aide.local.v1.RemoveMachineCustomAgentRequest
+	69,  // 169: aide.local.v1.LocalService.TestMachineCustomAgent:input_type -> aide.local.v1.TestMachineCustomAgentRequest
+	124, // 170: aide.local.v1.LocalService.QueryWork:input_type -> aide.local.v1.QueryWorkRequest
+	8,   // 171: aide.local.v1.LocalService.RegisterPush:input_type -> aide.local.v1.RegisterPushRequest
+	11,  // 172: aide.local.v1.LocalService.GetStatus:output_type -> aide.local.v1.GetStatusResponse
+	3,   // 173: aide.local.v1.LocalService.Watch:output_type -> aide.local.v1.WatchResponse
+	13,  // 174: aide.local.v1.LocalService.ListProfiles:output_type -> aide.local.v1.ListProfilesResponse
+	16,  // 175: aide.local.v1.LocalService.SwitchProfile:output_type -> aide.local.v1.SwitchProfileResponse
+	18,  // 176: aide.local.v1.LocalService.AddProfile:output_type -> aide.local.v1.AddProfileResponse
+	20,  // 177: aide.local.v1.LocalService.SignOut:output_type -> aide.local.v1.SignOutResponse
+	22,  // 178: aide.local.v1.LocalService.SignIn:output_type -> aide.local.v1.SignInResponse
+	24,  // 179: aide.local.v1.LocalService.Setup:output_type -> aide.local.v1.SetupResponse
+	26,  // 180: aide.local.v1.LocalService.LogIn:output_type -> aide.local.v1.LogInResponse
+	28,  // 181: aide.local.v1.LocalService.GetLogin:output_type -> aide.local.v1.GetLoginResponse
+	30,  // 182: aide.local.v1.LocalService.SetLogin:output_type -> aide.local.v1.SetLoginResponse
+	33,  // 183: aide.local.v1.LocalService.ListDevices:output_type -> aide.local.v1.ListDevicesResponse
+	35,  // 184: aide.local.v1.LocalService.RemoveDevice:output_type -> aide.local.v1.RemoveDeviceResponse
+	37,  // 185: aide.local.v1.LocalService.Leave:output_type -> aide.local.v1.LeaveResponse
+	39,  // 186: aide.local.v1.LocalService.EraseEverything:output_type -> aide.local.v1.EraseEverythingResponse
+	41,  // 187: aide.local.v1.LocalService.EraseStatus:output_type -> aide.local.v1.EraseStatusResponse
+	44,  // 188: aide.local.v1.LocalService.FinishErase:output_type -> aide.local.v1.FinishEraseResponse
+	47,  // 189: aide.local.v1.LocalService.SetLocalMachine:output_type -> aide.local.v1.SetLocalMachineResponse
+	53,  // 190: aide.local.v1.LocalService.ListMachines:output_type -> aide.local.v1.ListMachinesResponse
+	55,  // 191: aide.local.v1.LocalService.RenameMachine:output_type -> aide.local.v1.RenameMachineResponse
+	57,  // 192: aide.local.v1.LocalService.SetMachinePaused:output_type -> aide.local.v1.SetMachinePausedResponse
+	59,  // 193: aide.local.v1.LocalService.SetAgentDefaults:output_type -> aide.local.v1.SetAgentDefaultsResponse
+	73,  // 194: aide.local.v1.LocalService.RemoveMachine:output_type -> aide.local.v1.RemoveMachineResponse
+	61,  // 195: aide.local.v1.LocalService.CheckAgents:output_type -> aide.local.v1.CheckAgentsResponse
+	63,  // 196: aide.local.v1.LocalService.ListMachineRepos:output_type -> aide.local.v1.ListMachineReposResponse
+	188, // 197: aide.local.v1.LocalService.ListMachineFolders:output_type -> aide.machine.v1.ListFoldersResponse
+	189, // 198: aide.local.v1.LocalService.TestMachineAgent:output_type -> aide.machine.v1.TestAgentResponse
+	106, // 199: aide.local.v1.LocalService.ListExecLog:output_type -> aide.local.v1.ListExecLogResponse
+	71,  // 200: aide.local.v1.LocalService.GetDiagnostics:output_type -> aide.local.v1.GetDiagnosticsResponse
+	133, // 201: aide.local.v1.LocalService.SetHer:output_type -> aide.local.v1.SetHerResponse
+	135, // 202: aide.local.v1.LocalService.SetHerCommandConnector:output_type -> aide.local.v1.SetHerCommandConnectorResponse
+	190, // 203: aide.local.v1.LocalService.HerOpen:output_type -> aide.her.v1.OpenEvent
+	191, // 204: aide.local.v1.LocalService.HerCall:output_type -> aide.her.v1.CallResponse
+	141, // 205: aide.local.v1.LocalService.HerSend:output_type -> aide.local.v1.HerSendResponse
+	143, // 206: aide.local.v1.LocalService.ListHerWaiting:output_type -> aide.local.v1.ListHerWaitingResponse
+	145, // 207: aide.local.v1.LocalService.DeleteHerWaiting:output_type -> aide.local.v1.DeleteHerWaitingResponse
+	148, // 208: aide.local.v1.LocalService.GetHerConversation:output_type -> aide.local.v1.GetHerConversationResponse
+	150, // 209: aide.local.v1.LocalService.HerUpload:output_type -> aide.local.v1.HerUploadResponse
+	152, // 210: aide.local.v1.LocalService.HerDownload:output_type -> aide.local.v1.HerDownloadResponse
+	156, // 211: aide.local.v1.LocalService.GetHerConsole:output_type -> aide.local.v1.GetHerConsoleResponse
+	154, // 212: aide.local.v1.LocalService.StopScreen:output_type -> aide.local.v1.StopScreenResponse
+	76,  // 213: aide.local.v1.LocalService.ListProjects:output_type -> aide.local.v1.ListProjectsResponse
+	78,  // 214: aide.local.v1.LocalService.AddProject:output_type -> aide.local.v1.AddProjectResponse
+	80,  // 215: aide.local.v1.LocalService.RemoveProject:output_type -> aide.local.v1.RemoveProjectResponse
+	83,  // 216: aide.local.v1.LocalService.ListClients:output_type -> aide.local.v1.ListClientsResponse
+	85,  // 217: aide.local.v1.LocalService.UpdateClient:output_type -> aide.local.v1.UpdateClientResponse
+	87,  // 218: aide.local.v1.LocalService.RenameClient:output_type -> aide.local.v1.RenameClientResponse
+	89,  // 219: aide.local.v1.LocalService.RevokeClient:output_type -> aide.local.v1.RevokeClientResponse
+	94,  // 220: aide.local.v1.LocalService.ListWakes:output_type -> aide.local.v1.ListWakesResponse
+	96,  // 221: aide.local.v1.LocalService.SetWake:output_type -> aide.local.v1.SetWakeResponse
+	98,  // 222: aide.local.v1.LocalService.CheckWake:output_type -> aide.local.v1.CheckWakeResponse
+	100, // 223: aide.local.v1.LocalService.ClearWake:output_type -> aide.local.v1.ClearWakeResponse
+	102, // 224: aide.local.v1.LocalService.OpenWakeLink:output_type -> aide.local.v1.OpenWakeLinkResponse
+	109, // 225: aide.local.v1.LocalService.ListSessions:output_type -> aide.local.v1.ListSessionsResponse
+	111, // 226: aide.local.v1.LocalService.WatchSessions:output_type -> aide.local.v1.WatchSessionsResponse
+	169, // 227: aide.local.v1.LocalService.StreamSessionEvents:output_type -> aide.session.v1.SessionEvent
+	5,   // 228: aide.local.v1.LocalService.ListSessionEvents:output_type -> aide.local.v1.ListSessionEventsResponse
+	192, // 229: aide.local.v1.LocalService.ReadToolOutput:output_type -> aide.session.v1.ToolOutputChunk
+	123, // 230: aide.local.v1.LocalService.StartSession:output_type -> aide.local.v1.SessionResponse
+	123, // 231: aide.local.v1.LocalService.SendMessage:output_type -> aide.local.v1.SessionResponse
+	123, // 232: aide.local.v1.LocalService.InterruptSession:output_type -> aide.local.v1.SessionResponse
+	123, // 233: aide.local.v1.LocalService.ArchiveSession:output_type -> aide.local.v1.SessionResponse
+	123, // 234: aide.local.v1.LocalService.UnarchiveSession:output_type -> aide.local.v1.SessionResponse
+	121, // 235: aide.local.v1.LocalService.DeleteSession:output_type -> aide.local.v1.DeleteSessionResponse
+	123, // 236: aide.local.v1.LocalService.RenameSession:output_type -> aide.local.v1.SessionResponse
+	114, // 237: aide.local.v1.LocalService.AnswerQuestion:output_type -> aide.local.v1.AnswerQuestionResponse
+	193, // 238: aide.local.v1.LocalService.GetDiff:output_type -> aide.session.v1.GetDiffResponse
+	194, // 239: aide.local.v1.LocalService.PushSession:output_type -> aide.session.v1.PushSessionResponse
+	158, // 240: aide.local.v1.LocalService.ListDSHSessions:output_type -> aide.local.v1.ListDSHSessionsResponse
+	195, // 241: aide.local.v1.LocalService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
+	196, // 242: aide.local.v1.LocalService.SetDSHTakeover:output_type -> aide.machine.v1.SetDSHTakeoverResponse
+	197, // 243: aide.local.v1.LocalService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
+	198, // 244: aide.local.v1.LocalService.InterruptDSHSession:output_type -> aide.machine.v1.InterruptDSHSessionResponse
+	199, // 245: aide.local.v1.LocalService.PrepareDSHBridge:output_type -> aide.machine.v1.PrepareDSHBridgeResponse
+	200, // 246: aide.local.v1.LocalService.ListMachineCustomAgents:output_type -> aide.machine.v1.ListCustomAgentsResponse
+	201, // 247: aide.local.v1.LocalService.SaveMachineCustomAgent:output_type -> aide.machine.v1.SaveCustomAgentResponse
+	202, // 248: aide.local.v1.LocalService.RemoveMachineCustomAgent:output_type -> aide.machine.v1.RemoveCustomAgentResponse
+	203, // 249: aide.local.v1.LocalService.TestMachineCustomAgent:output_type -> aide.machine.v1.TestCustomAgentResponse
+	129, // 250: aide.local.v1.LocalService.QueryWork:output_type -> aide.local.v1.QueryWorkResponse
+	9,   // 251: aide.local.v1.LocalService.RegisterPush:output_type -> aide.local.v1.RegisterPushResponse
+	172, // [172:252] is the sub-list for method output_type
+	92,  // [92:172] is the sub-list for method input_type
+	92,  // [92:92] is the sub-list for extension type_name
+	92,  // [92:92] is the sub-list for extension extendee
+	0,   // [0:92] is the sub-list for field type_name
 }
 
 func init() { file_aide_local_v1_local_proto_init() }

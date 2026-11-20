@@ -101,6 +101,8 @@
     "runInTerminal": "在终端运行",
     "adding": "正在添加…",
     "addProject": "添加项目…",
+    "dshSessions": "DeepSeek Harness 里已有的会话",
+    "dshSessionsOpen": "查看",
     "otherProjects": "其他项目 · 给没有安装的 agent",
     "allProjects": "项目",
     "alsoFor": "「{{project}}」也给 {{agent}} 用了",

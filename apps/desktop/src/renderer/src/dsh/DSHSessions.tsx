@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { agoText, dateOf, transcript } from "@aide/core";
+import { agoText, dateOf, lostLine, transcript } from "@aide/core";
 import { DSHSessionState, type DSHBridge, type DSHSession, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
 import type { DSHSessionEntry, Unreachable } from "@aide/proto/local";
 import { EventView, type SessionEvent } from "@aide/proto/session";
@@ -14,6 +14,8 @@ import "./dsh.css";
 // tool, which Aide did not start: their list (by last activity) and what DSH wrote of each. Read
 // only, until the owner takes one over (docs/dsh-takeover.md): then Aide sends it their messages
 // through the bridge plugin in DSH Desktop, queued after a turn that runs, as DSH queues its own.
+// A machine that can't be reached keeps its sessions here as last read, lost: their state is last
+// known, never shown as what they do now (docs/session-states.md), and nothing can be sent to them.
 
 const stateClass: Record<DSHSessionState, string> = {
   [DSHSessionState.DSH_SESSION_STATE_UNSPECIFIED]: "unknown",
@@ -31,13 +33,18 @@ export function DSHSessions() {
   const [entries, setEntries] = useState<DSHSessionEntry[]>();
   const [unreachable, setUnreachable] = useState<Unreachable[]>([]);
   const [bridges, setBridges] = useState<Record<string, DSHBridge | undefined>>({});
+  const [homes, setHomes] = useState<{ machineId: string; home: string }[]>([]);
   const [error, setError] = useState("");
   const [archived, setArchived] = useState(false);
   const sel = st.selection.kind === "dsh" ? st.selection : undefined;
   const load = useCallback(() => {
     local.listDSHSessions({}).then(
       (r) => (
-        setEntries(r.sessions), setUnreachable(r.unreachable), setBridges(Object.fromEntries(r.bridges.map((b) => [b.machineId, b.bridge]))), setError("")
+        setEntries(r.sessions),
+        setUnreachable(r.unreachable),
+        setBridges(Object.fromEntries(r.bridges.map((b) => [b.machineId, b.bridge]))),
+        setHomes(r.bridges.filter((b) => b.dshHome).map((b) => ({ machineId: b.machineId, home: b.dshHome }))),
+        setError("")
       ),
       (e) => setError(errorText(e)),
     );
@@ -50,7 +57,13 @@ export function DSHSessions() {
   const shown = (entries ?? []).filter((e) => archived || !e.session?.archived);
   const nArchived = (entries ?? []).length - shown.length;
   const chosen = sel?.id ? entries?.find((e) => e.machineId === sel.machine && e.session?.sessionId === sel.id) : undefined;
-  const stateText = (s: DSHSession) =>
+  const stateText = (e: DSHSessionEntry) => {
+    const s = e.session!;
+    const said = ownStateText(s);
+    const read = dateOf(e.readAt);
+    return e.lost ? lostLine(said, read ? now.getTime() - read.getTime() : 0) : said;
+  };
+  const ownStateText = (s: DSHSession) =>
     s.state === DSHSessionState.DSH_SESSION_STATE_RUNNING
       ? t("dsh.running")
       : s.state === DSHSessionState.DSH_SESSION_STATE_IDLE
@@ -70,10 +83,20 @@ export function DSHSessions() {
           {error && <p className="dsh-note warn">{error}</p>}
           {unreachable.map((u) => (
             <p key={u.machineId} className="dsh-note warn">
-              {t("dsh.unreachable", { name: u.machineName || u.machineId })}
+              {t(entries?.some((e) => e.lost && e.machineId === u.machineId) ? "dsh.unreachableLastKnown" : "dsh.unreachable", { name: u.machineName || u.machineId })}
             </p>
           ))}
-          {entries && shown.length === 0 && <p className="dsh-empty">{t("dsh.none")}</p>}
+          {entries && shown.length === 0 && (
+            <div className="dsh-empty">
+              <p>{t("dsh.none")}</p>
+              {homes.map((h) => (
+                <p key={h.machineId} className="dsh-home">
+                  {t("dsh.readFrom", { name: st.machines.find((m) => m.machineId === h.machineId)?.machineName || h.machineId })} <span className="mono sel-text">{h.home}</span>
+                </p>
+              ))}
+              {homes.length > 0 && <p className="dsh-home">{t("dsh.homeHint")}</p>}
+            </div>
+          )}
           {shown.map((e) => {
             const s = e.session!;
             const at = dateOf(s.lastActivityAt);
@@ -84,11 +107,11 @@ export function DSHSessions() {
                 aria-current={chosen === e || undefined}
                 onClick={() => st.set({ selection: { kind: "dsh", machine: e.machineId, id: s.sessionId } })}
               >
-                <i className={`dsh-dot ${stateClass[s.state]}`} title={stateText(s)} aria-hidden="true" />
+                <i className={`dsh-dot ${e.lost ? "lost" : stateClass[s.state]}`} title={stateText(e)} aria-hidden="true" />
                 <span className="t">
                   <b>{s.title || s.sessionId}</b>
                   <span>
-                    {[stateText(s), at ? agoText(at, now) : "", e.machineName, baseName(s.cwd), s.archived ? t("dsh.archived") : ""].filter(Boolean).join(" · ")}
+                    {[stateText(e), at ? agoText(at, now) : "", e.machineName, baseName(s.cwd), s.archived ? t("dsh.archived") : ""].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               </button>
@@ -102,12 +125,33 @@ export function DSHSessions() {
         </nav>
         <div className="dsh-view">
           {chosen ? (
-            <DSHTranscript key={`${chosen.machineId}/${chosen.session!.sessionId}`} entry={chosen} stateText={stateText(chosen.session!)} bridge={bridges[chosen.machineId]} changed={load} />
+            chosen.lost ? (
+              <LostSession entry={chosen} stateText={stateText(chosen)} />
+            ) : (
+              <DSHTranscript key={`${chosen.machineId}/${chosen.session!.sessionId}`} entry={chosen} stateText={stateText(chosen)} bridge={bridges[chosen.machineId]} changed={load} />
+            )
           ) : (
             <p className="dsh-empty">{t("dsh.pick")}</p>
           )}
         </div>
       </div>
+    </>
+  );
+}
+
+/** A session whose machine can't be reached: what was last read of it, and that its content waits for the machine. */
+function LostSession({ entry, stateText }: { entry: DSHSessionEntry; stateText: string }) {
+  const { t } = useTranslation("common");
+  const s = entry.session!;
+  return (
+    <>
+      <div className="dsh-head">
+        <div className="dsh-head-row">
+          <h2>{s.title || s.sessionId}</h2>
+        </div>
+        <span>{[stateText, entry.machineName, s.cwd].filter(Boolean).join(" · ")}</span>
+      </div>
+      <p className="dsh-empty">{t("dsh.lostNote", { name: entry.machineName || entry.machineId })}</p>
     </>
   );
 }

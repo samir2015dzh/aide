@@ -3181,7 +3181,10 @@ type ListDSHSessionsResponse struct {
 	Sessions []*DSHSession          `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
 	// The Aide bridge plugin in DSH Desktop, through which a session
 	// taken over is sent messages (unset for an agent's call).
-	Bridge        *DSHBridge `protobuf:"bytes,2,opt,name=bridge,proto3" json:"bridge,omitempty"`
+	Bridge *DSHBridge `protobuf:"bytes,2,opt,name=bridge,proto3" json:"bridge,omitempty"`
+	// The DSH home the sessions are read from (unset for an agent's call):
+	// where to look when DSH Desktop has sessions this list lacks.
+	DshHome       string `protobuf:"bytes,3,opt,name=dsh_home,json=dshHome,proto3" json:"dsh_home,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3228,6 +3231,13 @@ func (x *ListDSHSessionsResponse) GetBridge() *DSHBridge {
 		return x.Bridge
 	}
 	return nil
+}
+
+func (x *ListDSHSessionsResponse) GetDshHome() string {
+	if x != nil {
+		return x.DshHome
+	}
+	return ""
 }
 
 // DSHBridge is the Aide bridge plugin as aided finds it.
@@ -5066,10 +5076,11 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\ragent_version\x18\x04 \x01(\tR\fagentVersion\x12\x16\n" +
 	"\x06millis\x18\x05 \x01(\rR\x06millis\x12!\n" +
 	"\fauth_methods\x18\x06 \x03(\tR\vauthMethods\"\x18\n" +
-	"\x16ListDSHSessionsRequest\"\x86\x01\n" +
+	"\x16ListDSHSessionsRequest\"\xa1\x01\n" +
 	"\x17ListDSHSessionsResponse\x127\n" +
 	"\bsessions\x18\x01 \x03(\v2\x1b.aide.machine.v1.DSHSessionR\bsessions\x122\n" +
-	"\x06bridge\x18\x02 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\x06bridge\"t\n" +
+	"\x06bridge\x18\x02 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\x06bridge\x12\x19\n" +
+	"\bdsh_home\x18\x03 \x01(\tR\adshHome\"t\n" +
 	"\tDSHBridge\x125\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1f.aide.machine.v1.DSHBridgeStateR\x05state\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x16\n" +

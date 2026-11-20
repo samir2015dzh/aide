@@ -627,6 +627,9 @@ message ListDSHSessionsResponse {
   // The Aide bridge plugin in DSH Desktop, through which a session
   // taken over is sent messages (unset for an agent's call).
   DSHBridge bridge = 2;
+  // The DSH home the sessions are read from (unset for an agent's call):
+  // where to look when DSH Desktop has sessions this list lacks.
+  string dsh_home = 3;
 }
 
 // DSHBridge is the Aide bridge plugin as aided finds it.

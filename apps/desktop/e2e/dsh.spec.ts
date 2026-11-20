@@ -7,7 +7,7 @@ import { fixture, launch, snap } from "./app";
 // for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
 // (here the real plugin in a stand-in DSH Host, which writes it into the session as DSH would) and
 // comes back marked as sent from Aide. With DSH Desktop gone, the send fails saying so and the
-// text stays. Off again, read only.
+// text stays. Off again, read only. With no session of DSH's found, the page names the DSH home it read.
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -77,5 +77,13 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await takeover.click();
   await expect(takeover).toHaveAttribute("aria-checked", "false");
   await expect(box).toHaveCount(0);
+
+  // No session of DSH's found: the page says which DSH home it read, and how to point Aide at another.
+  fs.rmSync(path.join(fixture.dshHome!, "sessions"), { recursive: true });
+  await expect(list).toContainText("你的机器上没有 DeepSeek Harness 自己的会话。", { timeout: 30_000 });
+  await expect(list).toContainText("上读取的目录：");
+  await expect(list.locator(".dsh-home .mono")).toHaveText(fixture.dshHome!);
+  await expect(list).toContainText("DSH_HOME");
+  await snap(page, "dsh-none-home");
   await app.close();
 });

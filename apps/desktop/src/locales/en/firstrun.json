@@ -102,6 +102,8 @@
     "runInTerminal": "Run in Terminal",
     "adding": "Adding…",
     "addProject": "Add Project…",
+    "dshSessions": "Sessions already in DeepSeek Harness",
+    "dshSessionsOpen": "Show",
     "otherProjects": "Other projects · for agents not installed",
     "allProjects": "Projects",
     "alsoFor": "“{{project}}” is now enabled for {{agent}} too",

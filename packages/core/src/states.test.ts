@@ -5,7 +5,7 @@ import { FailureKind, FailureSchema, SessionLink, SessionProgressSchema, Session
 import cases from "../../../internal/sessionstate/testdata/cases.json" with { type: "json" };
 import { describe, expect, test } from "vitest";
 import { i18n } from "./i18n";
-import { defaultStateLimits, livenessOf, lostDuring, sessionStateOf, stateLimitsOf, stateLine } from "./states";
+import { defaultStateLimits, livenessOf, lostDuring, lostLine, sessionStateOf, stateLimitsOf, stateLine } from "./states";
 
 // The cases internal/sessionstate (Go) and the Android app are checked against too.
 type Case = {
@@ -60,6 +60,9 @@ describe("what screens show", () => {
     void i18n.changeLanguage("zh-CN");
     expect(stateLine(sessionStateOf(run, local, defaultStateLimits, now))).toBe("运行中 · 12 分钟无新事件");
     expect(stateLine(sessionStateOf(run, lost, defaultStateLimits, now))).toBe("失联 · 最后已知 运行中 · 7 分钟前");
+    // A DSH session of a machine gone, in DSH's own word for its state.
+    expect(lostLine("在 DSH 中打开", 3 * 60_000)).toBe("失联 · 最后已知 在 DSH 中打开 · 3 分钟前");
+    expect(lostLine("运行中", 0)).toBe("失联 · 最后已知 运行中");
     void i18n.changeLanguage("en");
   });
 

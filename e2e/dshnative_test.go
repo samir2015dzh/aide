@@ -64,6 +64,7 @@ func TestDSHNativeSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	work, _ := w.otherMac("work-mac", []string{"DSH_HOME=" + workHome})
+	workDaemon := w.logs[len(w.logs)-1] // the one otherMac started
 	w.logInMachineOnly(work, home, "work-mac")
 	writeDSHLog(t, workHome, map[string]any{"id": "tool-7", "cwd": "/srv/site"}, dshTurn(100, 1, "Deploy the site", "Deployed."))
 
@@ -79,6 +80,20 @@ func TestDSHNativeSessions(t *testing.T) {
 	}
 	if want := "work-mac tool-7 Deploy the site 105000 false\nowner-mac desktop-1 Explain the repo 6000 false"; strings.Join(got, "\n") != want {
 		t.Fatalf("listed:\n%s\nwant:\n%s", strings.Join(got, "\n"), want)
+	}
+	// Each machine says which DSH home it read, for when DSH Desktop has
+	// sessions the list lacks.
+	homes := map[string]string{}
+	for _, b := range list.Bridges {
+		homes[b.MachineId] = b.DshHome
+	}
+	for _, e := range list.Sessions {
+		if want, _ := filepath.Abs(map[string]string{"owner-mac": macHome, "work-mac": workHome}[e.MachineName]); homes[e.MachineId] != want {
+			t.Errorf("%s read DSH home %q, want %q", e.MachineName, homes[e.MachineId], want)
+		}
+		if e.Lost || e.ReadAt == nil {
+			t.Errorf("%s: lost %v, read at %v, while its machine answers", e.Session.SessionId, e.Lost, e.ReadAt)
+		}
 	}
 	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
 		for _, e := range list.Sessions {
@@ -139,6 +154,30 @@ func TestDSHNativeSessions(t *testing.T) {
 			}
 			t.Fatalf("DSH's home %s changed", dir)
 		}
+	}
+
+	// work-mac goes away: its session stays listed as last read, lost, and
+	// never as what it does now; this Mac's is read as before.
+	stopped := time.Now()
+	workDaemon.stop()
+	eventually(t, time.Minute, "work-mac's session lost", func() bool {
+		list, err = w.app.client.ListDSHSessions(ctx, &localv1.ListDSHSessionsRequest{})
+		return err == nil && len(list.Unreachable) == 1 && len(list.Sessions) == 2
+	})
+	for _, e := range list.Sessions {
+		switch e.MachineName {
+		case "work-mac":
+			if !e.Lost || e.Session.SessionId != "tool-7" || e.Session.Title != "Deploy the site" || e.ReadAt == nil || e.ReadAt.AsTime().After(stopped) {
+				t.Errorf("work-mac's, its machine gone: %v", e)
+			}
+		default:
+			if e.Lost || e.Session.SessionId != "desktop-1" {
+				t.Errorf("this Mac's: %v", e)
+			}
+		}
+	}
+	if list.Unreachable[0].MachineName != "work-mac" {
+		t.Errorf("unreachable: %v", list.Unreachable)
 	}
 }
 
