@@ -78,6 +78,9 @@ type Server struct {
 	expiredAt   time.Time
 	stop        chan struct{}
 	stopOnce    sync.Once
+	// The connections being served: Close ends them, and waits for them
+	// (unregistering one writes to the store) before closing the store.
+	serving sync.WaitGroup
 
 	mu      sync.Mutex
 	tenants map[string]*tenant
@@ -166,6 +169,16 @@ func New(cfg Config) (*Server, error) {
 
 func (s *Server) Close() error {
 	s.stopOnce.Do(func() { close(s.stop) })
+	s.mu.Lock()
+	for _, t := range s.tenants {
+		for p := range t.peers {
+			if p.sess != nil {
+				p.sess.Close()
+			}
+		}
+	}
+	s.mu.Unlock()
+	s.serving.Wait()
 	return s.store.Close()
 }
 
@@ -330,6 +343,14 @@ func (s *Server) Mount(mux *http.ServeMux) {
 // Admission.
 
 func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
+	select {
+	case <-s.stop:
+		http.Error(w, "the relay is closing", http.StatusServiceUnavailable)
+		return
+	default:
+	}
+	s.serving.Add(1)
+	defer s.serving.Done()
 	inProcess := r.Context().Value(inProcessKey{}) != nil
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
 	if err != nil {
