@@ -91,12 +91,23 @@ CREATE TABLE erase_acks (
   acked_at INTEGER NOT NULL,
   PRIMARY KEY (erase_id, key_id)
 );
+`, `
+DROP TABLE pairing;
+CREATE TABLE logins (
+  key_id TEXT PRIMARY KEY,
+  kind INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  generation INTEGER NOT NULL,
+  logged_in_at INTEGER NOT NULL
+);
 `}
 
-// Store is the Backend of a self-hosted relay: one owner, SQLite. It keeps
-// only public, signed objects and metadata, never a secret that could make
-// a machine execute anything. The owner id arguments are ignored except that
-// RootChain answers only for the claimed owner.
+// Store is the Backend of a self-hosted relay: one owner, SQLite. Beside
+// signed objects and metadata it keeps the account (a hash of its password)
+// and the server's own key, which signs for whoever logs in
+// (docs/accounts.md). The owner id arguments are ignored except that
+// RootChain answers only for the owner set up.
 type Store struct{ db *sql.DB }
 
 var (
@@ -139,8 +150,9 @@ func (s *Store) RelayID() (string, error) {
 	return id, s.setMeta("relay_id", []byte(id))
 }
 
-// ClaimCode returns the pending claim code, creating one if unclaimed.
-func (s *Store) ClaimCode() (string, error) {
+// SetupCode returns the code to set up a new server with, creating one
+// until it is set up.
+func (s *Store) SetupCode() (string, error) {
 	v, err := s.getMeta("claim_code")
 	if err != nil || v != nil {
 		return string(v), err
@@ -155,15 +167,23 @@ func (s *Store) OwnerID() (string, error) {
 	return string(v), err
 }
 
-func (s *Store) SaveClaim(ownerID string, rootChain *identityv1.RootChain, deviceCert *identityv1.Signed) error {
+// SaveSetup keeps a new owner: its root chain, the server's key and the
+// account, and forgets the setup code.
+func (s *Store) SaveSetup(ownerID string, rootChain *identityv1.RootChain, serverKey []byte, account *relayv1.Account) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 	rc, _ := proto.Marshal(rootChain)
-	dc, _ := proto.Marshal(deviceCert)
-	for k, v := range map[string][]byte{"owner_id": []byte(ownerID), "root_chain": rc, "device_cert": dc} {
+	var ab []byte
+	if account != nil {
+		ab, _ = proto.Marshal(account)
+	}
+	for k, v := range map[string][]byte{"owner_id": []byte(ownerID), "root_chain": rc, "server_key": serverKey, "account": ab} {
+		if len(v) == 0 {
+			continue // a test's owner, without an account
+		}
 		if _, err := tx.Exec(`INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`, k, v); err != nil {
 			return err
 		}
@@ -291,74 +311,6 @@ func (s *Store) GrantForClient(_, clientID string) (*identityv1.Signed, error) {
 	}
 	g := &identityv1.Signed{}
 	return g, proto.Unmarshal(b, g)
-}
-
-func (s *Store) PutPairing(p *Pairing) error {
-	b, _ := proto.Marshal(p.Request)
-	_, err := s.db.Exec(`INSERT INTO pairing(code,kind,request,expires_at,owner_id) VALUES(?,?,?,?,?)
-		ON CONFLICT(code) DO UPDATE SET request=excluded.request, expires_at=excluded.expires_at WHERE pairing.result IS NULL`,
-		p.Code, int(p.Kind), b, p.ExpiresAt.Unix(), p.OwnerID)
-	return err
-}
-
-func (s *Store) GetPairing(code string) (*Pairing, error) {
-	var kind int
-	var req, res []byte
-	var exp int64
-	p := &Pairing{Code: code, Request: &identityv1.Signed{}}
-	err := s.db.QueryRow(`SELECT kind, request, expires_at, result, owner_id FROM pairing WHERE code=?`, code).
-		Scan(&kind, &req, &exp, &res, &p.OwnerID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	p.Kind, p.ExpiresAt = identityv1.PairingKind(kind), time.Unix(exp, 0)
-	if err := proto.Unmarshal(req, p.Request); err != nil {
-		return nil, err
-	}
-	if res != nil {
-		p.Result = &identityv1.Signed{}
-		if err := proto.Unmarshal(res, p.Result); err != nil {
-			return nil, err
-		}
-	}
-	return p, nil
-}
-
-func (s *Store) CompletePairing(code string, result *identityv1.Signed) error {
-	b, _ := proto.Marshal(result)
-	_, err := s.db.Exec(`UPDATE pairing SET result=?, expires_at=? WHERE code=?`, b, time.Now().Add(time.Hour).Unix(), code)
-	return err
-}
-
-func (s *Store) PendingPairings(now time.Time) (int, error) {
-	var n int
-	err := s.db.QueryRow(`SELECT count(*) FROM pairing WHERE result IS NULL AND expires_at > ?`, now.Unix()).Scan(&n)
-	return n, err
-}
-
-func (s *Store) OwnerPendingPairings(ownerID string, now time.Time) ([]string, error) {
-	rows, err := s.db.Query(`SELECT code FROM pairing WHERE result IS NULL AND expires_at > ? AND (owner_id=? OR owner_id='') ORDER BY expires_at DESC LIMIT 100`, now.Unix(), ownerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var codes []string
-	for rows.Next() {
-		var c string
-		if err := rows.Scan(&c); err != nil {
-			return nil, err
-		}
-		codes = append(codes, c)
-	}
-	return codes, rows.Err()
-}
-
-func (s *Store) PurgePairings(now time.Time) error {
-	_, err := s.db.Exec(`DELETE FROM pairing WHERE expires_at <= ?`, now.Unix())
-	return err
 }
 
 func (s *Store) LogConnection(_ string, role int, subjectID, remote, event string) {
@@ -558,8 +510,8 @@ func (s *Store) Cards(string) (map[string]StoredCard, error) {
 	return out, rows.Err()
 }
 
-// EraseOwner keeps the order and leaves the relay unclaimed, as it was
-// before its first owner: a new claim code is made when one is asked for.
+// EraseOwner keeps the order and leaves the server as it was before its
+// first owner: a new setup code is made when one is asked for.
 func (s *Store) EraseOwner(ownerID, eraseID string, order *identityv1.Signed, chain *identityv1.RootChain, at time.Time) error {
 	ob, _ := proto.Marshal(order)
 	cb, _ := proto.Marshal(chain)
@@ -574,8 +526,8 @@ ON CONFLICT(owner_id) DO UPDATE SET erase_id=excluded.erase_id, erase_order=excl
 		return err
 	}
 	for _, q := range []string{
-		`DELETE FROM meta WHERE key IN ('owner_id', 'root_chain', 'device_cert', 'revocations', 'claim_code')`,
-		`DELETE FROM machine_certs`, `DELETE FROM grants`, `DELETE FROM pairing`, `DELETE FROM push_targets`,
+		`DELETE FROM meta WHERE key IN ('owner_id', 'root_chain', 'device_cert', 'revocations', 'claim_code', 'server_key', 'account', 'password_login', 'logins_off')`,
+		`DELETE FROM machine_certs`, `DELETE FROM grants`, `DELETE FROM logins`, `DELETE FROM push_targets`,
 		`DELETE FROM messages`, `DELETE FROM inbox_registrations`, `DELETE FROM contact_cards`, `DELETE FROM connection_log`,
 	} {
 		if _, err := tx.Exec(q); err != nil {

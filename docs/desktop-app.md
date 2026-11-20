@@ -1,5 +1,15 @@
 # Hermesh Desktop: Hybrid Architecture
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the app
+> holds no root key and signs nothing: the server keeps the account and
+> password and a key of its own, and signs the app in when it logs in (登录,
+> or 设置新的服务器 with the setup code). The native signer (Hermesh Signer.app,
+> its Secure Enclave key and Touch ID, §1, §4's signer row, all of §5, the
+> signer rows of §6.3, §7, §8, §9 and §10), the verification code and the
+> two digits, and approving agents, machines and devices in the app are
+> gone. The Electron app, the daemon as the only process that talks to
+> relays and machines, the UI, updates and languages hold.
+
 Status: accepted 2026-10-19, being built. It replaces [technical-design.md](technical-design.md) §7 and settled decision #3, and amends decision #4.
 
 ## 1. Decision

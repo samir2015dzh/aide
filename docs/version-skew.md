@@ -22,7 +22,7 @@ Ten minutes later the Mac's app updated, and the same screen worked.
 | Side | How it updates | Behind for |
 |---|---|---|
 | iPhone app (and its core, `cmd/hermesh-mobile`) | TestFlight or the App Store, when the owner allows it | Days |
-| Mac app (with its `hermeshd`, `her` and signer) | Squirrel.Mac on quit or restart ([desktop-app.md](desktop-app.md) §6.5) | Hours to days |
+| Mac app (with its `hermeshd`, `her` and, before 2026-11-20, its signer) | Squirrel.Mac on quit or restart ([desktop-app.md](desktop-app.md) §6.5) | Hours to days |
 | A Mac app's own `hermeshd` | Restarted by the new app, after any running session ends (desktop-app.md §6.5) | Minutes, or until a session ends |
 | Machines from `install.sh` | Every 6 hours, after their sessions end ([machine-updates.md](machine-updates.md)) | Up to a day, or for good when automatic updates are off |
 
@@ -187,7 +187,7 @@ cancellation, and never once her restarted.
 ### 6.7 A machine from before Her
 
 The case: an iPhone turning Her on for a machine whose `hermeshd` was 0.1.4
-or older. Face ID signed `SetHer`, and the machine answered
+or older. Face ID signed `SetHer` (the server signs it since 2026-11-20, [accounts.md](accounts.md)), and the machine answered
 `invalid_argument` "unknown admin command", shown as it came. `SetHer` and
 `MachineStatus.her` both came in 0.1.5 (6093c626, a4422506), and every
 `hermeshd` since sends `her` in its status. So a machine that answered,
@@ -202,7 +202,7 @@ from what it serves, not from its version number (§5.1).
   Her was never on has none. Updated, its status has `her`, and the row offers
   Her by itself. A machine whose status hasn't come yet is unknown, and may be
   chosen, as §6.2 has it.
-- **Before Face ID:** turning Her on asks the machine for its status first
+- **Before signing:** turning Her on asks the machine for its status first
   (`Owner.SetHer`). One from before Her answers `unimplemented`, and one that
   can't be reached `unavailable`, with no signature asked for.
 - **The safety net:** a command a machine doesn't know is `unimplemented`

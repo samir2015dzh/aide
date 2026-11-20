@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
@@ -16,6 +18,8 @@ import (
 	"github.com/spf13/cobra"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
+	"github.com/hermeshai/hermesh/internal/localipc"
 	"github.com/hermeshai/hermesh/internal/machine"
 	"github.com/hermeshai/hermesh/internal/paths"
 	"github.com/hermeshai/hermesh/internal/service"
@@ -28,7 +32,7 @@ func uninstallCommand(dataDir *string) *cobra.Command {
 	var yes, eraseHer bool
 	cmd := &cobra.Command{
 		Use:   "uninstall",
-		Short: "Remove Aide for this user on this computer: its machine, unpaired, the background service, its data and its programs",
+		Short: "Remove Aide for this user on this computer: its machine, logged out, the background service, its data and its programs",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if runtime.GOOS == "windows" {
@@ -92,7 +96,7 @@ func uninstall(ctx context.Context, w io.Writer, ask func(string) (string, error
 		}
 	}
 	svc := service.InstalledFor(dataDir)
-	machineLine := "its machine: unpaired, and gone from your devices"
+	machineLine := "its machine: logged out, and gone from your machines"
 	herHome, herData := filepath.Join(home, ".her"), false
 	if isMachine {
 		c, running, err := machineCheck(ctx, dataDir, func() (*machine.Machine, error) { return machine.Open(cfg) })
@@ -100,7 +104,7 @@ func uninstall(ctx context.Context, w io.Writer, ask func(string) (string, error
 			return errors.New("hermeshd runs here outside its service: stop `aided run`, then uninstall")
 		}
 		if c.Paired {
-			machineLine = fmt.Sprintf("its machine “%s” (owner %s): unpaired, and gone from your devices", c.Name, c.OwnerID)
+			machineLine = fmt.Sprintf("its machine “%s” (owner %s): logged out, and gone from your machines", c.Name, c.OwnerID)
 		}
 		if c.Busy > 0 {
 			machineLine += fmt.Sprintf("; the %d sessions running now stop", c.Busy)
@@ -258,20 +262,19 @@ func eraseHerData(cfg machine.Config, home string) {
 }
 
 // checkLeftAsDevice refuses while this computer is one of the owner's
-// trusted devices: its key may be the one that holds the owner's Hermesh.
+// devices (logged in through its owner role): sign it out first, from
+// another device, so that it is not left listed.
 func checkLeftAsDevice(ctx context.Context, dataDir string) error {
-	c, err := ownerRole(ctx, dataDir, true)
-	if err != nil {
-		return fmt.Errorf("this computer is set up as a trusted device, and whether it still is one can't be checked: %w", err)
-	}
-	st, err := c.GetStatus(ctx, &localv1.GetStatusRequest{})
+	sock := paths.LocalAPI(dataDir)
+	hc := &http.Client{Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return localipc.Dial(ctx, sock)
+	}}}
+	st, err := localv1connect.NewLocalServiceClient(hc, "http://local").GetStatus(ctx, &localv1.GetStatusRequest{})
 	switch {
 	case err != nil:
-		return err
-	case st.Removed:
-		return errors.New("this computer was removed from your trusted devices: run `aided device leave`, then uninstall")
-	case st.Initialized:
-		return errors.New("this computer is one of your trusted devices, holding a key to your Aide: remove it from another of your devices and run `aided device leave` here (or erase Aide everywhere with `aided device erase-everything`), then uninstall")
+		return fmt.Errorf("this computer is set up as one of your devices, and whether it still is one can't be checked (start it with `aided run --owner --no-machine`): %w", err)
+	case st.Initialized && !st.Removed:
+		return errors.New("this computer is one of your devices: sign it out from another of your devices (Settings › Account), then uninstall")
 	}
 	return nil
 }

@@ -1,5 +1,17 @@
 # Hermesh Technical Design (Final)
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the
+> relay keeps the owner's account and password (Argon2id) and a key of its
+> own, listed in the root cert, and signs every device, machine and agent
+> that logs in with them, at once. No longer true here: the relay as
+> untrusted and the two principles of §2.2; pairing codes, verification
+> codes and connection addresses (`/o_…`) as the way in (§0, §2.3, §3.5,
+> §8, §10.1); the root key in the app's Secure Enclave and Touch ID on every
+> authorization (§0, §2.1, §3.1, §7); approval of a new client or machine
+> in the app; the claim code (now the setup code, `aide-relay setup-code`).
+> Credentials are verified, and sessions are end-to-end encrypted, as
+> before. The rest of this page is the P1 design as it was.
+
 > Version: v2.2 (2026-10-16)
 > Status: P1 (personal edition MVP) finalized; P2 is a directional plan
 > Changes from v2.0:
@@ -141,7 +153,15 @@ flowchart LR
 | L1 end-to-end channel | Inside the stream the relay has spliced together, the two ends run **TLS 1.3 mutual authentication** directly; the certificates embed credentials issued by the owner | Only the two ends |
 | L2 RPC | HTTP/2 + Connect (protobuf) | Only the two ends |
 
-**Two inviolable principles** (no phase and no feature may break them; changing them later means a full migration and re-pairing every device):
+> **Changed 2026-11-20 by the owner's choice ([accounts.md](accounts.md)):**
+> the server keeps the owner's account and password and a root key of its
+> own, and signs whoever logs in; devices no longer approve anything, and
+> pairing codes are gone. The two principles below no longer hold: the
+> server is the authority, and what it costs is in accounts.md §7. The
+> sections on pairing (§2.3, §3.5, §3.8, F2, F8) describe the model before
+> it.
+
+**Two principles of the model before accounts** (changing them meant a full migration, which accounts.md §5 is):
 
 1. **The trust model and key hierarchy are fixed**:
    - the root chain of trusted devices (the first device names the owner; each later version is signed by a device of the one before, [trusted-devices.md](trusted-devices.md)) → root keys → device certificates, machine certificates, grants, admin commands;
@@ -154,7 +174,7 @@ flowchart LR
 
 Both principles are part of the malicious relay test suite (A7) and are verified on every CI run.
 
-One opt-in exception (2026-10-21): a relay server may run the **MCP gateway** (docs/mcp-gateway.md), which holds the client keys of the MCP connections its owners approved with Touch ID, so that remote agent products can use Hermesh. Within such a connection's grant the server can act as it and see the sessions it reaches; it gains nothing over any other client or machine, cannot widen a grant, and cannot create a connection that reaches a machine without the owner's Touch ID. People who don't accept that run their own relay.
+One opt-in exception (2026-10-21, before accounts): a relay server may run the **MCP gateway** (docs/mcp-gateway.md), which holds the client keys of the MCP connections its owners approved with Touch ID, so that remote agent products can use Hermesh. Within such a connection's grant the server can act as it and see the sessions it reaches; it gains nothing over any other client or machine, cannot widen a grant, and cannot create a connection that reaches a machine without the owner's Touch ID. People who don't accept that run their own relay.
 
 ### 2.3 The Complete User Journey
 

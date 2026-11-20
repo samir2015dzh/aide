@@ -581,12 +581,12 @@ func startLinuxHer(t *testing.T, w *ownerMac, her string, mock *herMock, console
 	name := fmt.Sprintf("hermesh-her-e2e-%d", time.Now().UnixNano())
 	script := strings.Join([]string{
 		"mkdir -p /data/her && cp /herinit/* /data/her/",
-		"/opt/hermesh/hermeshd pair " + strings.Replace(w.addr, "127.0.0.1", "host.docker.internal", 1) + " --name linux-her --no-service --data-dir /data",
+		"/opt/hermesh/hermeshd login " + strings.Replace(w.addr, "127.0.0.1", "host.docker.internal", 1) + " --name linux-her --no-service --data-dir /data",
 		"exec /opt/hermesh/hermeshd run --data-dir /data",
 	}, " && ")
 	args := []string{"run", "--rm", "-d", "--name", name, "--add-host", "host.docker.internal:host-gateway",
 		"-v", linuxBin + ":/opt/hermesh:ro", "-v", her + ":/opt/her/her:ro", "-v", console + ":/opt/her/console:ro", "-v", linuxHome + ":/herinit:ro"}
-	for _, e := range herEnv("/opt/her/her", "/opt/her/console", "/data/her", mockForLinux) {
+	for _, e := range append(herEnv("/opt/her/her", "/opt/her/console", "/data/her", mockForLinux), loginEnv()...) {
 		args = append(args, "-e", e)
 	}
 	args = append(args, dockerArgs...)
@@ -600,24 +600,16 @@ func startLinuxHer(t *testing.T, w *ownerMac, her string, mock *herMock, console
 			t.Logf("==== linux machine ====\n%s", logs())
 		}
 	})
-	var code string
-	eventually(t, 90*time.Second, "linux pairing code", func() bool {
-		m := codeRE.FindStringSubmatch(logs())
-		if m != nil {
-			code = m[1]
-		}
-		return m != nil
+	eventually(t, 90*time.Second, "the linux machine logged in", func() bool {
+		machineID = loggedInMachine(logs())
+		return machineID != ""
 	})
 	c := w.app.client
-	approved, err := c.ApproveMachinePairing(context.Background(), &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "linux-her"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	eventually(t, 60*time.Second, "linux machine online", func() bool {
-		m := listedMachine(t, c, approved.MachineId)
+		m := listedMachine(t, c, machineID)
 		return m != nil && m.Online && m.Status != nil
 	})
-	return approved.MachineId, name
+	return machineID, name
 }
 
 // TestHerTwoEnvironments has Her on this Mac and on a Linux machine in

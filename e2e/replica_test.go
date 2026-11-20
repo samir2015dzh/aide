@@ -43,7 +43,7 @@ func metric(t *testing.T, addr, prefix string) int {
 }
 
 // TestOwnerReplica (docs/state-sync.md, step 1): with the relay 300 ms away,
-// the owner's app lists machines, agents, pairing requests, devices,
+// the owner's app lists machines, agents, devices,
 // projects and the sessions of this Mac and of another machine in a few
 // milliseconds, from hermeshd's replica; three windows polling as the app
 // did cost the relay no call (hermeshd follows WatchOwner); and what changes
@@ -89,10 +89,6 @@ func TestOwnerReplica(t *testing.T) {
 		"GetStatus":    func() error { _, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{}); return err },
 		"ListMachines": func() error { _, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{}); return err },
 		"ListClients":  func() error { _, err := w.app.client.ListClients(ctx, &localv1.ListClientsRequest{}); return err },
-		"ListPairingRequests": func() error {
-			_, err := w.app.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-			return err
-		},
 		"ListDevices":  func() error { _, err := w.app.client.ListDevices(ctx, &localv1.ListDevicesRequest{}); return err },
 		"ListProjects": func() error { _, err := w.app.client.ListProjects(ctx, &localv1.ListProjectsRequest{}); return err },
 		"ListSessions": func() error {
@@ -116,7 +112,7 @@ func TestOwnerReplica(t *testing.T) {
 		}
 	}
 
-	// Three windows polling as the app's screens did (pairing requests
+	// Three windows polling as the app's screens did (the sessions
 	// every second, the rest every three) cost the relay nothing: hermeshd
 	// follows its WatchOwner.
 	const span = 30 * time.Second
@@ -126,9 +122,9 @@ func TestOwnerReplica(t *testing.T) {
 	for range 3 {
 		wg.Go(func() {
 			for i := 0; pollCtx.Err() == nil; i++ {
-				calls["ListPairingRequests"]()
+				calls["ListSessions"]()
 				if i%3 == 0 {
-					for _, name := range []string{"GetStatus", "ListMachines", "ListClients", "ListProjects", "ListDevices", "ListSessions"} {
+					for _, name := range []string{"GetStatus", "ListMachines", "ListClients", "ListProjects", "ListDevices"} {
 						calls[name]()
 					}
 				}
@@ -179,10 +175,7 @@ func farOwnerWithVPS(t *testing.T, oneWay time.Duration) (w *ownerMac, vpsID str
 	ctx := context.Background()
 	daemon := filepath.Join(w.bin, "hermeshd")
 	data := filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", env, daemon, "pair", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}
@@ -227,7 +220,6 @@ type screen struct {
 	clients  map[string]*localv1.Client
 	projects map[string]*localv1.Project
 	devices  map[string]*localv1.Device
-	pairings map[string]*localv1.PairingDetails
 	sessions map[string]*sessionv1.Session
 	// shownUnreachable: each machine the screen was told could not be
 	// reached, and why, in the order told.
@@ -266,7 +258,6 @@ func (s *screen) follow(ctx context.Context, t *testing.T, client localv1connect
 			if m.Reset_ {
 				s.resets++
 				s.machines, s.clients, s.projects, s.devices = map[string]*localv1.Machine{}, map[string]*localv1.Client{}, map[string]*localv1.Project{}, map[string]*localv1.Device{}
-				s.pairings = map[string]*localv1.PairingDetails{}
 				if s.sessions == nil {
 					s.sessions = map[string]*sessionv1.Session{}
 				}
@@ -304,12 +295,6 @@ func (s *screen) follow(ctx context.Context, t *testing.T, client localv1connect
 			for _, id := range m.RemovedDeviceKeyIds {
 				delete(s.devices, id)
 			}
-			for _, x := range m.Pairings {
-				s.pairings[x.Code] = x
-			}
-			for _, code := range m.RemovedPairingCodes {
-				delete(s.pairings, code)
-			}
 			for _, x := range m.Sessions {
 				if old := s.sessions[x.SessionId]; old == nil || old.GetProgress().GetLastEventSeq() <= x.GetProgress().GetLastEventSeq() {
 					s.sessions[x.SessionId] = x
@@ -337,7 +322,7 @@ func (s *screen) has(f func(*screen) bool) func() bool {
 // TestOwnerWatch (docs/state-sync.md, step 2): a screen that follows
 // LocalService.Watch gets the owner's world at once, and then each change
 // without asking: a project added, a session started on another machine
-// and its turn ending, a pairing request (the relay pushes it), that
+// and its turn ending, an agent logging in, that
 // machine going offline (its sessions stay, the machine marked unreachable)
 // and coming back. Nothing comes while nothing changes.
 func TestOwnerWatch(t *testing.T) {
@@ -370,18 +355,23 @@ func TestOwnerWatch(t *testing.T) {
 		return x != nil && x.Status == sessionv1.SessionStatus_SESSION_STATUS_IDLE
 	}))
 
-	// A pairing request reaches the screen as the relay pushes it: nobody
-	// asks the relay for pairing requests.
-	asked := metric(t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="ListPairingRequests"}`)
+	// An agent that logs in reaches the screen as the relay pushes it:
+	// nobody asks the relay for the list.
+	asked := metric(t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="ListClients"}`)
 	began := time.Now()
-	login := start(t, "login2", []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent2")}, filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", "bot2")
-	code := login.pairingCode(t)
-	eventually(t, 5*time.Second, "the pairing request on the screen", scr.has(func(s *screen) bool { return s.pairings[code] != nil }))
-	t.Logf("pairing request on the screen %v after the agent asked", time.Since(began).Round(time.Millisecond))
-	if got := metric(t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="ListPairingRequests"}`); got != asked {
-		t.Errorf("the relay was asked for pairing requests %d times", got-asked)
+	w.loginAgent([]string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent2")}, "bot2", nil)
+	eventually(t, 5*time.Second, "the new agent on the screen", scr.has(func(s *screen) bool {
+		for _, c := range s.clients {
+			if c.Label == "bot2" {
+				return true
+			}
+		}
+		return false
+	}))
+	t.Logf("the new agent on the screen %v after it logged in", time.Since(began).Round(time.Millisecond))
+	if got := metric(t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="ListClients"}`); got > asked+1 {
+		t.Errorf("the relay was asked for the agents %d times", got-asked)
 	}
-	login.stop()
 
 	// Idle: nothing to send.
 	time.Sleep(2 * time.Second) // what settles after the turn (the machine's counts)

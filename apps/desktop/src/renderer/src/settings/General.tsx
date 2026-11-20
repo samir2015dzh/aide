@@ -71,9 +71,6 @@ export function General() {
       <div>
         <div className="fhead">{t("general.notifications")}</div>
         <div className="fgroup">
-          <SRow title={t("general.connectionRequests")} desc={t("general.connectionRequestsDesc")}>
-            <Switch on label={t("general.connectionRequests")} disabled />
-          </SRow>
           {pref("notifyStarted", t("general.sessionStarted"))}
           {pref("notifyQuestion", t("general.agentQuestions"), t("general.agentQuestionsDesc"))}
           {pref("notifyFailed", t("general.sessionFailed"))}

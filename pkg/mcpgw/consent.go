@@ -10,12 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"connectrpc.com/connect"
 )
 
-// The consent page: who asks and what for, Connect or Cancel; then what
-// is left to do (approve on a trusted device, set Hermesh up), and on to the app.
-// It always lets the connection be made: approval may come later.
+// The consent page: who asks and what for; the owner's account and
+// password, and Connect or Cancel. The right password connects the app at
+// once: the server signs its grant itself (docs/accounts.md), and the
+// browser goes on to the app.
 
 // authorization returns the browser's authorization, checking that this
 // browser started it.
@@ -43,14 +44,14 @@ type consentData struct {
 	Verified     bool
 	RedirectHost string
 	LoopbackOnly bool
-	Account      string
 	Server       string
-	OwnerReady   bool
+	// Error: why the account and password did not connect it.
+	Error string
+	// Typed: the account typed, kept when the password was wrong.
+	Typed string
 	// Progress: after Connect.
 	Progress    bool
 	State       string
-	Code        string
-	SetupURL    string
 	ContinueURL string
 	Message     string
 }
@@ -81,25 +82,23 @@ func (g *Gateway) handleConsentPage(w http.ResponseWriter, r *http.Request) {
 		g.errorPage(w, r, http.StatusBadRequest, "The app could not be identified. Connect from the app again.")
 		return
 	}
-	d := g.pageData(r, id, c, a, acct)
+	d := g.pageData(r, id, c, a)
 	if a.ConnectionID != "" {
-		conn, err := g.advance(ctx, a.ConnectionID)
+		conn, err := g.db.GetConnection(ctx, a.ConnectionID)
 		if err != nil || conn == nil {
 			g.errorPage(w, r, http.StatusInternalServerError, "Something went wrong. Connect from the app again.")
 			return
 		}
-		st := g.status(conn)
-		d.Progress, d.State, d.Code, d.Message = true, conn.State, conn.PairingCode, st.Next
+		d.Progress, d.State, d.Message = true, conn.State, g.status(conn).Next
 		d.ContinueURL = "/oauth/consent/continue?id=" + url.QueryEscape(id)
 	}
 	g.render(w, consentPage, d)
 }
 
-func (g *Gateway) pageData(r *http.Request, id string, c *Client, a *Authorization, acct Account) consentData {
+func (g *Gateway) pageData(r *http.Request, id string, c *Client, a *Authorization) consentData {
 	lang, t := strings_(r)
-	t = withDevice(t, g.device(acct.OwnerID, lang))
 	d := consentData{T: t, Lang: lang, ID: id, CSRF: g.csrfToken(id), App: c.Name, Verified: c.Verified, LoopbackOnly: c.loopbackOnly(),
-		Account: acct.Hint, Server: g.issuer.Host, OwnerReady: acct.OwnerID != "", SetupURL: g.cfg.SetupURL}
+		Server: g.issuer.Host}
 	if u, err := url.Parse(c.ID); err == nil && c.Source == "cimd" {
 		d.AppHost = u.Hostname()
 	}
@@ -146,9 +145,16 @@ func (g *Gateway) handleConsentAction(w http.ResponseWriter, r *http.Request) {
 				g.errorPage(w, r, http.StatusBadRequest, "The app could not be identified. Connect from the app again.")
 				return
 			}
-			conn, err := g.createConnection(ctx, a, acct, c, r.UserAgent())
+			conn, err := g.createConnection(ctx, a, acct, c, r.UserAgent(), r.PostForm.Get("account"), r.PostForm.Get("password"))
 			if err == errTooMany {
 				g.errorPage(w, r, http.StatusConflict, "You have connected as many apps as Aide allows. Disconnect one in Aide, then connect again.")
+				return
+			}
+			if why := loginRefusal(err); why != "" {
+				d := g.pageData(r, id, c, a)
+				d.Error, d.Typed = d.T[why], r.PostForm.Get("account")
+				w.WriteHeader(http.StatusUnauthorized)
+				g.render(w, consentPage, d)
 				return
 			}
 			if err != nil {
@@ -164,21 +170,6 @@ func (g *Gateway) handleConsentAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Redirect(w, r, "/oauth/consent?id="+url.QueryEscape(id), http.StatusSeeOther)
-}
-
-// handleConsentStatus is what the page polls while it waits for the Mac.
-func (g *Gateway) handleConsentStatus(w http.ResponseWriter, r *http.Request) {
-	a, _ := g.authorization(r, r.URL.Query().Get("id"))
-	if a == nil || a.ConnectionID == "" {
-		writeJSON(w, http.StatusNotFound, map[string]string{"state": ""})
-		return
-	}
-	c, err := g.advance(r.Context(), a.ConnectionID)
-	if err != nil || c == nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"state": ""})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"state": c.State, "code": c.PairingCode})
 }
 
 // handleConsentContinue sends the browser back to the app with a code.
@@ -249,44 +240,18 @@ func strings_(r *http.Request) (string, map[string]string) {
 	return "en", enText
 }
 
-// withDevice is t with {device} named: where the owner approves.
-func withDevice(t map[string]string, device string) map[string]string {
-	out := make(map[string]string, len(t))
-	for k, v := range t {
-		out[k] = strings.ReplaceAll(v, "{device}", device)
+// loginRefusal is the page's text for why the account and password did not
+// connect the app, "" for any other error.
+func loginRefusal(err error) string {
+	switch connect.CodeOf(err) {
+	case connect.CodePermissionDenied:
+		return "wrong"
+	case connect.CodeResourceExhausted:
+		return "locked"
+	case connect.CodeFailedPrecondition:
+		return "off"
 	}
-	return out
-}
-
-// device names the owner's trusted devices by their platforms in the root
-// chain: "your iPhone", "your Mac", or both, in the page's language.
-func (g *Gateway) device(ownerID, lang string) string {
-	ios, mac := false, false
-	if ownerID != "" {
-		if rc, err := g.cfg.Relay.RootChain(ownerID); err == nil && rc != nil {
-			tr := identity.NewTrust(ownerID)
-			if _, err := tr.AcceptRootChain(rc); err == nil {
-				for _, k := range tr.Root().RootKeys {
-					switch k.Platform {
-					case "ios":
-						ios = true
-					case "macos", "":
-						mac = true
-					default:
-						ios, mac = true, true
-					}
-				}
-			}
-		}
-	}
-	zh := lang == "zh"
-	switch {
-	case ios && !mac:
-		return map[bool]string{false: "your iPhone", true: "iPhone"}[zh]
-	case mac && !ios:
-		return map[bool]string{false: "your Mac", true: "Mac"}[zh]
-	}
-	return map[bool]string{false: "your iPhone or Mac", true: "iPhone 或 Mac"}[zh]
+	return ""
 }
 
 var enText = map[string]string{
@@ -295,26 +260,20 @@ var enText = map[string]string{
 	"unverified":    "Aide could not verify this app. Connect only if you just started this from %s.",
 	"returns":       "It will return to %s.",
 	"loopback":      "This app returns to a program on your computer. Any program there could claim to be this app: connect only if you just started this yourself.",
-	"account":       "Account",
 	"server":        "Server",
-	"can":           "Once you approve it on {device}, it can:",
+	"login":         "Log in with your Aide account to connect it. Once connected, it can:",
 	"can1":          "See your machines, projects and tasks.",
-	"can2":          "Start Claude Code or Codex tasks and talk to them. Those agents run with full permissions in the projects you choose.",
-	"custodian":     "%s holds this connection's key: it can act as the app within what you approve, and sees the tasks the app reaches. To keep that on your own computers, run your own Aide server.",
-	"nextApprove":   "Next, you approve it in Aide on {device}.",
-	"nextSetup":     "Aide isn't set up yet. You can connect now and approve the app once you set up Aide on your iPhone or Mac.",
+	"can2":          "Start Claude Code or Codex tasks and talk to them. Those agents run with full permissions in your projects.",
+	"custodian":     "%s holds this connection's key: it can act as the app, and sees the tasks the app reaches. Disconnect it in Aide at any time.",
+	"account":       "Account",
+	"password":      "Password",
+	"wrong":         "Wrong account or password.",
+	"locked":        "Too many tries. Wait a few minutes, then try again.",
+	"off":           "Logging in is turned off for this account. Turn it on in Aide › Settings › Account.",
 	"connect":       "Connect",
 	"cancel":        "Cancel",
-	"approveTitle":  "Approve on {device}",
-	"approveBody":   "Aide on {device} is asking you to approve %s. Approve it there.",
-	"waiting":       "Waiting for {device}…",
-	"later":         "Finish later",
 	"connected":     "Connected",
 	"connectedBody": "%s can now use Aide.",
-	"oneMore":       "Connected. One more step",
-	"setupBody":     "Install Aide on your iPhone or Mac, set it up with this account, and approve %s when it asks. The app starts working then; there is no need to reconnect.",
-	"download":      "Get Aide",
-	"offlineBody":   "Approve %s in Aide on {device} the next time it is open. The app starts working then; there is no need to reconnect.",
 	"continue":      "Continue to %s",
 	"ended":         "This connection has ended",
 	"errorTitle":    "Can't connect",
@@ -326,26 +285,20 @@ var zhText = map[string]string{
 	"unverified":    "Aide 无法验证这个应用。只有在你刚刚从 %s 发起连接时才继续。",
 	"returns":       "完成后将返回 %s。",
 	"loopback":      "这个应用会返回到你电脑上的某个程序，那里的任何程序都可能冒充它：只有在你刚刚亲自发起时才继续。",
-	"account":       "账号",
 	"server":        "服务器",
-	"can":           "你在 {device} 上批准后，它可以：",
+	"login":         "用你的 Aide 账号登录即可连接。连接后，它可以：",
 	"can1":          "查看你的机器、项目和任务。",
-	"can2":          "启动 Claude Code 或 Codex 任务并与之对话。这些 agent 会在你选择的项目里以完全权限运行。",
-	"custodian":     "%s 保管这个连接的密钥：它可以在你批准的范围内代表该应用操作，并能看到该应用触及的任务。若希望这些只留在你自己的电脑上，请使用自己的 Aide 服务器。",
-	"nextApprove":   "下一步，在 {device} 上的 Aide 里批准。",
-	"nextSetup":     "你还没有设置 Aide。现在可以先连接，在 iPhone 或 Mac 上设置好 Aide 后再批准这个应用。",
+	"can2":          "启动 Claude Code 或 Codex 任务并与之对话。这些 agent 会在你的项目里以完全权限运行。",
+	"custodian":     "%s 保管这个连接的密钥：它可以代表该应用操作，并能看到该应用触及的任务。随时可以在 Aide 里断开它。",
+	"account":       "账号",
+	"password":      "密码",
+	"wrong":         "账号或密码不对。",
+	"locked":        "尝试次数太多，请等几分钟再试。",
+	"off":           "这个账号的登录已关闭。请在 Aide › 设置 › 账号 里打开。",
 	"connect":       "连接",
 	"cancel":        "取消",
-	"approveTitle":  "在 {device} 上批准",
-	"approveBody":   "你 {device} 上的 Aide 正在请求你批准 %s，在那里批准即可。",
-	"waiting":       "正在等待你的 {device}…",
-	"later":         "稍后完成",
 	"connected":     "已连接",
 	"connectedBody": "%s 现在可以使用 Aide 了。",
-	"oneMore":       "已连接，还差一步",
-	"setupBody":     "在 iPhone 或 Mac 上安装 Aide，用这个账号完成设置，并在它询问时批准 %s。之后应用即可使用，无需重新连接。",
-	"download":      "获取 Aide",
-	"offlineBody":   "下次打开 {device} 上的 Aide 时批准 %s。之后应用即可使用，无需重新连接。",
 	"continue":      "继续前往 %s",
 	"ended":         "这个连接已结束",
 	"errorTitle":    "无法连接",
@@ -383,6 +336,7 @@ ul{margin:8px 0 8px 18px;padding:0}li{margin:4px 0}.row{display:flex;gap:8px;mar
 button,.btn{flex:1;font:inherit;font-weight:500;padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-align:center;text-decoration:none}
 .primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .kv{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;margin-top:14px;font-size:13px;color:var(--muted)}
+label{display:block;margin-top:12px;font-size:13px;color:var(--muted)}input{display:block;width:100%;margin-top:4px;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 </style></head><body><main><div class="card">`
 
 const pageFoot = `</div></main></body></html>`
@@ -394,32 +348,21 @@ var consentPage = template.Must(template.New("consent").Funcs(funcs).Parse(pageH
 {{else}}<p class="warn">{{f (index .T "unverified") .RedirectHost}}</p>{{end}}
 <p class="muted">{{f (index .T "returns") .RedirectHost}}</p>
 {{if .LoopbackOnly}}<p class="warn">{{index .T "loopback"}}</p>{{end}}
-<p>{{index .T "can"}}</p>
+<p>{{index .T "login"}}</p>
 <ul><li>{{index .T "can1"}}</li><li>{{index .T "can2"}}</li></ul>
 <p class="muted">{{f (index .T "custodian") .Server}}</p>
-<p class="muted">{{if .OwnerReady}}{{index .T "nextApprove"}}{{else}}{{index .T "nextSetup"}}{{end}}</p>
 <form method="post" action="/oauth/consent"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="csrf" value="{{.CSRF}}">
+<label>{{index .T "account"}}<input name="account" autocomplete="username" value="{{.Typed}}"></label>
+<label>{{index .T "password"}}<input name="password" type="password" autocomplete="current-password"></label>
+{{if .Error}}<p class="warn">{{.Error}}</p>{{end}}
 <div class="row"><button name="action" value="cancel">{{index .T "cancel"}}</button><button class="primary" name="action" value="connect">{{index .T "connect"}}</button></div></form>
-<div class="kv">{{if .Account}}<span>{{index .T "account"}}</span><span>{{.Account}}</span>{{else}}<span>{{index .T "server"}}</span><span>{{.Server}}</span>{{end}}</div>
+<div class="kv"><span>{{index .T "server"}}</span><span>{{.Server}}</span></div>
 {{else if eq .State "active"}}
 <h1>{{index .T "connected"}}</h1><p>{{f (index .T "connectedBody") .App}}</p>
 <div class="row"><a class="btn primary" id="go" href="{{.ContinueURL}}">{{f (index .T "continue") .App}}</a></div>
 <script>setTimeout(function(){location.href=document.getElementById("go").href},800)</script>
-{{else if and (eq .State "awaiting_approval") .Code}}
-<h1>{{index .T "approveTitle"}}</h1><p>{{f (index .T "approveBody") .App}}</p>
-<p class="muted">{{index .T "waiting"}}</p>
-<div class="row"><a class="btn" href="{{.ContinueURL}}">{{index .T "later"}}</a></div>
-{{else if eq .State "awaiting_approval"}}
-<h1>{{index .T "oneMore"}}</h1><p>{{f (index .T "offlineBody") .App}}</p>
-<div class="row"><a class="btn primary" href="{{.ContinueURL}}">{{f (index .T "continue") .App}}</a></div>
-{{else if eq .State "awaiting_setup"}}
-<h1>{{index .T "oneMore"}}</h1><p>{{f (index .T "setupBody") .App}}</p>
-<div class="row"><a class="btn" href="{{.SetupURL}}" target="_blank" rel="noopener">{{index .T "download"}}</a><a class="btn primary" href="{{.ContinueURL}}">{{f (index .T "continue") .App}}</a></div>
 {{else}}
 <h1>{{index .T "ended"}}</h1><p>{{.Message}}</p>
-{{end}}
-{{if and .Progress (ne .State "active") (ne .State "revoked") (ne .State "expired")}}
-<script>(function(){var s={{.State}},c={{.Code}};setInterval(function(){fetch("/oauth/consent/status?id="+encodeURIComponent({{.ID}}),{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(j){if(j.state&&(j.state!==s||j.code!==c))location.reload()})},2000)})()</script>
 {{end}}` + pageFoot))
 
 var errorPageTmpl = template.Must(template.New("error").Funcs(funcs).Parse(pageHead + `

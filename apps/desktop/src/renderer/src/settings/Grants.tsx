@@ -7,7 +7,7 @@ import { agentName } from "@hermesh/ui";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import { AgentName, GrantAvatar } from "../components";
-import { hostOf } from "../sheets/Pairing";
+import { hostOf } from "../sheets/common";
 import { machineName } from "../Sidebar";
 import { useNow, useStore, type Store } from "../store";
 import { GoRow, More, Row, SRow, Switch } from "./common";

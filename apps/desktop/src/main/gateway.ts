@@ -3,10 +3,8 @@ import { Readable } from "node:stream";
 
 // The renderer reaches hermeshd only through here: requests to
 // app://hermesh/api/<service>/<method> are forwarded to the daemon's Unix
-// socket. Signing requests are the signer's alone, so those two methods are
-// never forwarded.
+// socket.
 const service = "hermesh.local.v1.LocalService";
-const blocked = new Set(["WatchSigningRequests", "CompleteSigningRequest"]);
 const forwardedHeaders = ["content-type", "connect-protocol-version", "connect-timeout-ms", "connect-content-encoding", "connect-accept-encoding"];
 
 let open = 0;
@@ -19,7 +17,7 @@ export const forwardedCalls = () => Object.fromEntries(calls);
 
 export function allowed(apiPath: string): boolean {
   const m = /^\/([\w.]+)\/(\w+)$/.exec(apiPath);
-  return m !== null && m[1] === service && !blocked.has(m[2]);
+  return m !== null && m[1] === service;
 }
 
 export async function forward(req: Request, apiPath: string, socket: string, cors: Record<string, string>): Promise<Response> {

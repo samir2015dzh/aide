@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.."
 VERSION="${VERSION:?set VERSION}"
 OUT=dist/release
 rm -rf "$OUT" && mkdir -p "$OUT"
-# No build names a server: logging in asks for it (docs/password-login.md).
+# No build names a server: logging in asks for it (docs/accounts.md).
 LDFLAGS="-s -w -X github.com/hermeshai/hermesh/internal/machine.Version=${VERSION#v}"
 for os in linux; do
   for arch in arm64 amd64; do

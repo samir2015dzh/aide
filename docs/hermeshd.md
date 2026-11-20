@@ -7,14 +7,16 @@ It runs in the background as the user it is installed for.
 ## Install
 
 ```bash
-curl -fsSL https://github.com/hermeshai/hermesh/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- relay.example.com
 ```
 
 - It installs `hermeshd` and `hermesh` in `~/.local/bin` and runs
-  `aided pair`: scan the code it shows with Aide on your iPhone (or
-  enter it in the app), then type the two digits your device shows.
+  `aided login`: it asks for your account and password (or takes them
+  from `$AIDE_ACCOUNT` and `$AIDE_PASSWORD`, the password handed to it on
+  stdin), and your server adds the machine to your machines at once, with
+  nothing to approve or compare ([accounts.md](accounts.md) §3).
 - On Linux it also installs `her`, `her-console/`, `her-pdf/` and
-  `her-computer/` there (not with `--cli` or `--device`): Her's kernel, its
+  `her-computer/` there (not with `--cli`): Her's kernel, its
   console, what reads PDFs for it, and agent-desktop, which Her's computer
   use runs on a computer with a desktop ([linux.md](linux.md) §4, §5; the
   last two need glibc). They run only once you turn
@@ -23,8 +25,13 @@ curl -fsSL https://github.com/hermeshai/hermesh/releases/latest/download/install
 - As root, it says it installs for root: press Enter, or type another
   user to install for (creating it if needed). From then on, run the
   commands as that user: `su - dev`.
-- With a connection address after `sh -s --`, the request goes to that
-  owner's devices by itself: compare the verification code there.
+- Your server goes after `sh -s --` (`sh -s -- relay.example.com`), else
+  `$AIDE_SERVER`; there is no default. `--name build-box` names the
+  machine (default: its host name; taken already, the server gives it
+  the next free one, `-2`, `-3`…).
+- `aided login [server] --account A` does the same by hand
+  (`--password-stdin` reads the password from stdin, `--no-service`
+  skips the background service).
 - On a first install, it shows the default data directory and available
   space. Press Enter to accept it, paste an absolute path (spaces and
   `~/` work without quoting), or type `q` to cancel. On Synology DSM,
@@ -62,21 +69,21 @@ to an older version ([machine-updates.md](machine-updates.md)).
 | `aided update auto off`, `auto on` | Turns automatic updates off or on |
 
 `aide update` does the same on a computer with only the agent CLI. The
-install command, run again, also updates a paired machine.
+install command, run again, also updates a machine logged in.
 
 ### On Windows
 
 In PowerShell, as yourself (no administrator):
 
 ```powershell
-irm https://github.com/hermeshai/hermesh/releases/latest/download/install.ps1 | iex
+& ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) relay.example.com
 ```
 
 - It installs `hermeshd`, `hermeshdw` and `hermesh` in
   `%LOCALAPPDATA%\Programs\Hermesh\bin`, adds that folder to your PATH and
-  runs `aided pair`, as on Linux.
-- With a connection address or a name:
-  `& ([scriptblock]::Create((irm https://github.com/hermeshai/hermesh/releases/latest/download/install.ps1))) <address> -Name build-box`;
+  runs `aided login`, as on Linux (the account and password asked for,
+  or from `$env:AIDE_ACCOUNT` and `$env:AIDE_PASSWORD`).
+- With a name: the same, ending `<server> -Name build-box`;
   the agents' CLI only: the same with `-Cli`.
 - The background service is a Task Scheduler task of yours that starts at
   logon. It runs `hermeshdw`, `hermeshd` without a console window, which
@@ -90,14 +97,14 @@ irm https://github.com/hermeshai/hermesh/releases/latest/download/install.ps1 | 
 
 | Command | Does |
 |---|---|
-| `aided doctor` | Checks the pairing, the coding agents, the service and the relay, and says what to fix (exit 1 when something is wrong); and how Her is |
+| `aided doctor` | Checks the login, the coding agents, the service and the relay, and says what to fix (exit 1 when something is wrong); and how Her is |
 | `aided status` | The machine, whether it is connected, the service, updates, Her (installed, which version, on, running) and the projects |
 | `aided her` | Talk to Her in this terminal: the Her this machine runs once Her is on for it ([linux.md](linux.md) §8) |
 | `aided project add <folder>` | Lets agents work in a folder: a separate worktree per session, or `--in-place`; `--agents claude` limits it |
 | `aided project list`, `project remove <name>` | The projects; removing one leaves its folder |
 | `aided service status` | Whether the service runs and starts at boot, and where its log is |
 | `aided service restart` | Restart it |
-| `aided service install`, `service uninstall` | Start the service again; stop it for good (pairing and projects stay) |
+| `aided service install`, `service uninstall` | Start the service again; stop it for good (the login and projects stay) |
 
 The log is `~/.local/share/hermesh/logs/hermeshd.log` on Linux
 (`tail -f` it), `~/Library/Application Support/Hermesh/logs/` on macOS,
@@ -118,22 +125,6 @@ password (or marked secret) is kept apart, in `keys/agent-secrets.json`:
 sealed with DPAPI for this Windows user on Windows; elsewhere readable by
 this user only, as the machine's own key in the same folder is.
 
-## A trusted device instead
-
-A computer, or a user, that runs no coding agents can approve like your
-iPhone ([onboarding.md](onboarding.md) §9). Its key is sealed by a
-passphrase. Install it with the same command, ending `sh -s -- --device`:
-it asks whether Aide is on another device already, and joins it or sets
-Aide up.
-
-| Command | Does |
-|---|---|
-| `aided device join <connection address or server>` | Joins your Aide: approve it in Aide on your computer or phone if it shows the same verification code, then type the two digits |
-| `aided device setup <server>` | The first device, when you have no other: claims your server with the claim code it printed (`--claim-code`, or typed when asked) |
-| `aided approve [code]` | Approves what waits: machines, agents, devices |
-| `aided device list`, `device remove <name>` | The trusted devices; removing a lost one re-issues what it signed |
-| `aided device leave` | This computer stops being one, and its key is deleted |
-
 ## Removing Aide
 
 On Linux and macOS, as the user Aide was installed for (after a root
@@ -145,7 +136,7 @@ aided uninstall
 
 It lists what goes and asks first (`--yes` for scripts):
 
-- the machine, unpaired: your devices stop listing it (if the server
+- the machine, logged out: your devices stop listing it (if the server
   can't be reached, it says so; remove the machine in the app then);
 - the background service, stopped and removed;
 - the data directory, and where it links to (a Synology volume's
@@ -157,9 +148,9 @@ Your project folders and repositories stay, and so does `~/.her`, Her's
 assistants, conversations and settings: delete it yourself to remove
 them. Worktrees with uncommitted changes move to
 `~/hermesh-kept-worktrees`. Lingering, which the installer turned on,
-stays: it says how to turn it off. It refuses on a trusted device until
-it has left (`aided device leave`), and while `aided run` runs
-outside the service. After `--cli` only, there is no hermeshd:
+stays: it says how to turn it off. It refuses on a computer that is one
+of your devices until another of your devices signs it out (Settings ›
+Account), and while `aided run` runs outside the service. After `--cli` only, there is no hermeshd:
 `rm -rf ~/.local/bin/hermesh ~/.config/hermesh`.
 
 On Windows, in PowerShell:

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
 // TestRelayImage runs the relay image as the README says, a volume of its
@@ -98,7 +97,7 @@ func TestRelayImage(t *testing.T) {
 	if m == nil {
 		t.Fatalf("no claim code in the log:\n%s", docker("logs", name))
 	}
-	if c := docker("exec", name, "hermesh-relay", "claim-code"); c != m[1] {
+	if c := docker("exec", name, "hermesh-relay", "setup-code"); c != m[1] {
 		t.Fatalf("claim-code %q, the log's %q", c, m[1])
 	}
 	mcpURL := docker("exec", name, "hermesh-relay", "mcp-url")
@@ -106,9 +105,8 @@ func TestRelayImage(t *testing.T) {
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
 	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(t.TempDir(), "owner"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: strings.TrimPrefix(base, "http://"), ClaimCode: m[1], RootPublicKey: rootPub(root), RootLabel: "test-mac", RootPlatform: "macos"}); err != nil {
+	app := newTestApp(t, sock)
+	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: strings.TrimPrefix(base, "http://"), SetupCode: m[1], Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"}); err != nil {
 		t.Fatalf("setup: %v\n%s", err, docker("logs", name))
 	}
 	if got := mcpAddress(t, app); got != mcpURL {
@@ -116,7 +114,7 @@ func TestRelayImage(t *testing.T) {
 	}
 
 	docker("restart", name)
-	if c := docker("exec", name, "hermesh-relay", "claim-code"); c != "already claimed" {
+	if c := docker("exec", name, "hermesh-relay", "setup-code"); c != "already claimed" {
 		t.Fatalf("claim-code after a restart: %q", c)
 	}
 	if u := docker("exec", name, "hermesh-relay", "mcp-url"); u != mcpURL {

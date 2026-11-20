@@ -975,8 +975,7 @@ func (x *StartSessionResponse) GetSession() *Session {
 // without reading it.
 type Notice struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "question", "failure", "turn_done", "session_started", "pairing" or
-	// "her".
+	// "question", "failure", "turn_done", "session_started" or "her".
 	Kind string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	At   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=at,proto3" json:"at,omitempty"`
 	// A session's notice.
@@ -996,11 +995,6 @@ type Notice struct {
 	// kind "turn_done": the turn and what it changed.
 	Turn     uint32    `protobuf:"varint,12,opt,name=turn,proto3" json:"turn,omitempty"`
 	DiffStat *DiffStat `protobuf:"bytes,13,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
-	// kind "pairing": who asks to connect, and the code to compare.
-	PairingKind      v1.PairingKind `protobuf:"varint,14,opt,name=pairing_kind,json=pairingKind,proto3,enum=hermesh.identity.v1.PairingKind" json:"pairing_kind,omitempty"`
-	PairingLabel     string         `protobuf:"bytes,15,opt,name=pairing_label,json=pairingLabel,proto3" json:"pairing_label,omitempty"`
-	VerificationCode string         `protobuf:"bytes,16,opt,name=verification_code,json=verificationCode,proto3" json:"verification_code,omitempty"`
-	PairingCode      string         `protobuf:"bytes,17,opt,name=pairing_code,json=pairingCode,proto3" json:"pairing_code,omitempty"`
 	// kind "her": what an assistant of Her's on the machine (machine names
 	// it) has for the owner, as HerLatest says it: "message", "question" (it
 	// asks the owner to choose) or "approval" (it waits for an approval or a
@@ -1133,34 +1127,6 @@ func (x *Notice) GetDiffStat() *DiffStat {
 		return x.DiffStat
 	}
 	return nil
-}
-
-func (x *Notice) GetPairingKind() v1.PairingKind {
-	if x != nil {
-		return x.PairingKind
-	}
-	return v1.PairingKind(0)
-}
-
-func (x *Notice) GetPairingLabel() string {
-	if x != nil {
-		return x.PairingLabel
-	}
-	return ""
-}
-
-func (x *Notice) GetVerificationCode() string {
-	if x != nil {
-		return x.VerificationCode
-	}
-	return ""
-}
-
-func (x *Notice) GetPairingCode() string {
-	if x != nil {
-		return x.PairingCode
-	}
-	return ""
 }
 
 func (x *Notice) GetHerKind() string {
@@ -4647,7 +4613,7 @@ const file_hermesh_session_v1_session_proto_rawDesc = "" +
 	"\x06sha256\x18\x05 \x01(\tR\x06sha256\x12\x14\n" +
 	"\x05image\x18\x06 \x01(\bR\x05image\"M\n" +
 	"\x14StartSessionResponse\x125\n" +
-	"\asession\x18\x01 \x01(\v2\x1b.hermesh.session.v1.SessionR\asession\"\x84\x06\n" +
+	"\asession\x18\x01 \x01(\v2\x1b.hermesh.session.v1.SessionR\asession\"\x8e\x05\n" +
 	"\x06Notice\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12*\n" +
 	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x1d\n" +
@@ -4663,17 +4629,13 @@ const file_hermesh_session_v1_session_proto_rawDesc = "" +
 	" \x01(\x0e2\x1f.hermesh.session.v1.FailureKindR\afailure\x12'\n" +
 	"\x0ffailure_message\x18\v \x01(\tR\x0efailureMessage\x12\x12\n" +
 	"\x04turn\x18\f \x01(\rR\x04turn\x129\n" +
-	"\tdiff_stat\x18\r \x01(\v2\x1c.hermesh.session.v1.DiffStatR\bdiffStat\x12C\n" +
-	"\fpairing_kind\x18\x0e \x01(\x0e2 .hermesh.identity.v1.PairingKindR\vpairingKind\x12#\n" +
-	"\rpairing_label\x18\x0f \x01(\tR\fpairingLabel\x12+\n" +
-	"\x11verification_code\x18\x10 \x01(\tR\x10verificationCode\x12!\n" +
-	"\fpairing_code\x18\x11 \x01(\tR\vpairingCode\x12\x19\n" +
+	"\tdiff_stat\x18\r \x01(\v2\x1c.hermesh.session.v1.DiffStatR\bdiffStat\x12\x19\n" +
 	"\bher_kind\x18\x12 \x01(\tR\aherKind\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x13 \x01(\tR\tmachineId\x12\x15\n" +
 	"\x06bot_id\x18\x14 \x01(\tR\x05botId\x12\x19\n" +
 	"\bbot_name\x18\x15 \x01(\tR\abotName\x12\x12\n" +
-	"\x04text\x18\x16 \x01(\tR\x04text\"m\n" +
+	"\x04text\x18\x16 \x01(\tR\x04textJ\x04\b\x0e\x10\x12R\fpairing_kindR\rpairing_labelR\x11verification_codeR\fpairing_code\"m\n" +
 	"\bDiffStat\x12#\n" +
 	"\rfiles_changed\x18\x01 \x01(\rR\ffilesChanged\x12\x1e\n" +
 	"\n" +
@@ -5114,9 +5076,8 @@ var file_hermesh_session_v1_session_proto_goTypes = []any{
 	(*PushSessionRequest)(nil),      // 59: hermesh.session.v1.PushSessionRequest
 	(*PushSessionResponse)(nil),     // 60: hermesh.session.v1.PushSessionResponse
 	(*timestamppb.Timestamp)(nil),   // 61: google.protobuf.Timestamp
-	(v1.PairingKind)(0),             // 62: hermesh.identity.v1.PairingKind
-	(v1.Workspace)(0),               // 63: hermesh.identity.v1.Workspace
-	(*v1.Signed)(nil),               // 64: hermesh.identity.v1.Signed
+	(v1.Workspace)(0),               // 62: hermesh.identity.v1.Workspace
+	(*v1.Signed)(nil),               // 63: hermesh.identity.v1.Signed
 }
 var file_hermesh_session_v1_session_proto_depIdxs = []int32{
 	3,  // 0: hermesh.session.v1.Failure.kind:type_name -> hermesh.session.v1.FailureKind
@@ -5126,104 +5087,103 @@ var file_hermesh_session_v1_session_proto_depIdxs = []int32{
 	16, // 4: hermesh.session.v1.Notice.question:type_name -> hermesh.session.v1.Question
 	3,  // 5: hermesh.session.v1.Notice.failure:type_name -> hermesh.session.v1.FailureKind
 	13, // 6: hermesh.session.v1.Notice.diff_stat:type_name -> hermesh.session.v1.DiffStat
-	62, // 7: hermesh.session.v1.Notice.pairing_kind:type_name -> hermesh.identity.v1.PairingKind
-	13, // 8: hermesh.session.v1.SessionProgress.diff_stat:type_name -> hermesh.session.v1.DiffStat
-	14, // 9: hermesh.session.v1.SessionProgress.usage:type_name -> hermesh.session.v1.Usage
-	7,  // 10: hermesh.session.v1.SessionProgress.last_failure:type_name -> hermesh.session.v1.Failure
-	16, // 11: hermesh.session.v1.SessionProgress.pending_question:type_name -> hermesh.session.v1.Question
-	61, // 12: hermesh.session.v1.SessionProgress.turn_started_at:type_name -> google.protobuf.Timestamp
-	61, // 13: hermesh.session.v1.SessionProgress.last_event_at:type_name -> google.protobuf.Timestamp
-	17, // 14: hermesh.session.v1.Question.items:type_name -> hermesh.session.v1.QuestionItem
-	61, // 15: hermesh.session.v1.Question.asked_at:type_name -> google.protobuf.Timestamp
-	61, // 16: hermesh.session.v1.Question.expires_at:type_name -> google.protobuf.Timestamp
-	18, // 17: hermesh.session.v1.QuestionItem.options:type_name -> hermesh.session.v1.QuestionOption
-	16, // 18: hermesh.session.v1.QuestionAsked.question:type_name -> hermesh.session.v1.Question
-	4,  // 19: hermesh.session.v1.QuestionResolved.resolution:type_name -> hermesh.session.v1.QuestionResolution
-	19, // 20: hermesh.session.v1.QuestionResolved.answers:type_name -> hermesh.session.v1.Answer
-	0,  // 21: hermesh.session.v1.Session.status:type_name -> hermesh.session.v1.SessionStatus
-	15, // 22: hermesh.session.v1.Session.progress:type_name -> hermesh.session.v1.SessionProgress
-	61, // 23: hermesh.session.v1.Session.created_at:type_name -> google.protobuf.Timestamp
-	61, // 24: hermesh.session.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
-	63, // 25: hermesh.session.v1.Session.workspace:type_name -> hermesh.identity.v1.Workspace
-	0,  // 26: hermesh.session.v1.ListSessionsRequest.status:type_name -> hermesh.session.v1.SessionStatus
-	61, // 27: hermesh.session.v1.ListSessionsRequest.since:type_name -> google.protobuf.Timestamp
-	25, // 28: hermesh.session.v1.ListSessionsRequest.before:type_name -> hermesh.session.v1.SessionCursor
-	5,  // 29: hermesh.session.v1.ListSessionsRequest.view:type_name -> hermesh.session.v1.SessionView
-	61, // 30: hermesh.session.v1.SessionCursor.updated_at:type_name -> google.protobuf.Timestamp
-	22, // 31: hermesh.session.v1.ListSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
-	25, // 32: hermesh.session.v1.ListSessionsResponse.next:type_name -> hermesh.session.v1.SessionCursor
-	5,  // 33: hermesh.session.v1.WatchSessionsRequest.view:type_name -> hermesh.session.v1.SessionView
-	22, // 34: hermesh.session.v1.WatchSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
-	6,  // 35: hermesh.session.v1.StreamEventsRequest.view:type_name -> hermesh.session.v1.EventView
-	6,  // 36: hermesh.session.v1.ListEventsRequest.view:type_name -> hermesh.session.v1.EventView
-	32, // 37: hermesh.session.v1.ListEventsResponse.events:type_name -> hermesh.session.v1.SessionEvent
-	61, // 38: hermesh.session.v1.SessionEvent.ts:type_name -> google.protobuf.Timestamp
-	33, // 39: hermesh.session.v1.SessionEvent.status:type_name -> hermesh.session.v1.StatusChanged
-	34, // 40: hermesh.session.v1.SessionEvent.turn_started:type_name -> hermesh.session.v1.TurnStarted
-	37, // 41: hermesh.session.v1.SessionEvent.user_message:type_name -> hermesh.session.v1.UserMessage
-	38, // 42: hermesh.session.v1.SessionEvent.agent_message:type_name -> hermesh.session.v1.AgentMessage
-	40, // 43: hermesh.session.v1.SessionEvent.tool_call:type_name -> hermesh.session.v1.ToolCall
-	41, // 44: hermesh.session.v1.SessionEvent.tool_result:type_name -> hermesh.session.v1.ToolResult
-	44, // 45: hermesh.session.v1.SessionEvent.turn_completed:type_name -> hermesh.session.v1.TurnCompleted
-	45, // 46: hermesh.session.v1.SessionEvent.error:type_name -> hermesh.session.v1.ErrorEvent
-	20, // 47: hermesh.session.v1.SessionEvent.question_asked:type_name -> hermesh.session.v1.QuestionAsked
-	21, // 48: hermesh.session.v1.SessionEvent.question_resolved:type_name -> hermesh.session.v1.QuestionResolved
-	39, // 49: hermesh.session.v1.SessionEvent.agent_draft:type_name -> hermesh.session.v1.AgentDraft
-	35, // 50: hermesh.session.v1.SessionEvent.message_received:type_name -> hermesh.session.v1.MessageReceived
-	36, // 51: hermesh.session.v1.SessionEvent.message_sent:type_name -> hermesh.session.v1.MessageSent
-	0,  // 52: hermesh.session.v1.StatusChanged.status:type_name -> hermesh.session.v1.SessionStatus
-	10, // 53: hermesh.session.v1.MessageReceived.attachments:type_name -> hermesh.session.v1.AttachmentInfo
-	10, // 54: hermesh.session.v1.UserMessage.attachments:type_name -> hermesh.session.v1.AttachmentInfo
-	14, // 55: hermesh.session.v1.TurnCompleted.usage:type_name -> hermesh.session.v1.Usage
-	13, // 56: hermesh.session.v1.TurnCompleted.diff_stat:type_name -> hermesh.session.v1.DiffStat
-	7,  // 57: hermesh.session.v1.TurnCompleted.failure:type_name -> hermesh.session.v1.Failure
-	7,  // 58: hermesh.session.v1.ErrorEvent.failure:type_name -> hermesh.session.v1.Failure
-	9,  // 59: hermesh.session.v1.SendMessageRequest.attachments:type_name -> hermesh.session.v1.Attachment
-	22, // 60: hermesh.session.v1.SendMessageResponse.session:type_name -> hermesh.session.v1.Session
-	64, // 61: hermesh.session.v1.DeliverMessageRequest.message:type_name -> hermesh.identity.v1.Signed
-	9,  // 62: hermesh.session.v1.DeliverMessageRequest.attachments:type_name -> hermesh.session.v1.Attachment
-	22, // 63: hermesh.session.v1.DeliverMessageResponse.session:type_name -> hermesh.session.v1.Session
-	19, // 64: hermesh.session.v1.AnswerQuestionRequest.answers:type_name -> hermesh.session.v1.Answer
-	13, // 65: hermesh.session.v1.GetDiffResponse.stat:type_name -> hermesh.session.v1.DiffStat
-	8,  // 66: hermesh.session.v1.SessionService.StartSession:input_type -> hermesh.session.v1.StartSessionRequest
-	23, // 67: hermesh.session.v1.SessionService.GetSession:input_type -> hermesh.session.v1.GetSessionRequest
-	24, // 68: hermesh.session.v1.SessionService.ListSessions:input_type -> hermesh.session.v1.ListSessionsRequest
-	27, // 69: hermesh.session.v1.SessionService.WatchSessions:input_type -> hermesh.session.v1.WatchSessionsRequest
-	29, // 70: hermesh.session.v1.SessionService.StreamEvents:input_type -> hermesh.session.v1.StreamEventsRequest
-	30, // 71: hermesh.session.v1.SessionService.ListEvents:input_type -> hermesh.session.v1.ListEventsRequest
-	46, // 72: hermesh.session.v1.SessionService.SendMessage:input_type -> hermesh.session.v1.SendMessageRequest
-	48, // 73: hermesh.session.v1.SessionService.DeliverMessage:input_type -> hermesh.session.v1.DeliverMessageRequest
-	50, // 74: hermesh.session.v1.SessionService.InterruptSession:input_type -> hermesh.session.v1.InterruptSessionRequest
-	51, // 75: hermesh.session.v1.SessionService.ArchiveSession:input_type -> hermesh.session.v1.ArchiveSessionRequest
-	52, // 76: hermesh.session.v1.SessionService.UnarchiveSession:input_type -> hermesh.session.v1.UnarchiveSessionRequest
-	53, // 77: hermesh.session.v1.SessionService.DeleteSession:input_type -> hermesh.session.v1.DeleteSessionRequest
-	55, // 78: hermesh.session.v1.SessionService.RenameSession:input_type -> hermesh.session.v1.RenameSessionRequest
-	57, // 79: hermesh.session.v1.SessionService.GetDiff:input_type -> hermesh.session.v1.GetDiffRequest
-	56, // 80: hermesh.session.v1.SessionService.AnswerQuestion:input_type -> hermesh.session.v1.AnswerQuestionRequest
-	42, // 81: hermesh.session.v1.SessionService.ReadToolOutput:input_type -> hermesh.session.v1.ReadToolOutputRequest
-	59, // 82: hermesh.session.v1.SessionService.PushSession:input_type -> hermesh.session.v1.PushSessionRequest
-	11, // 83: hermesh.session.v1.SessionService.StartSession:output_type -> hermesh.session.v1.StartSessionResponse
-	22, // 84: hermesh.session.v1.SessionService.GetSession:output_type -> hermesh.session.v1.Session
-	26, // 85: hermesh.session.v1.SessionService.ListSessions:output_type -> hermesh.session.v1.ListSessionsResponse
-	28, // 86: hermesh.session.v1.SessionService.WatchSessions:output_type -> hermesh.session.v1.WatchSessionsResponse
-	32, // 87: hermesh.session.v1.SessionService.StreamEvents:output_type -> hermesh.session.v1.SessionEvent
-	31, // 88: hermesh.session.v1.SessionService.ListEvents:output_type -> hermesh.session.v1.ListEventsResponse
-	47, // 89: hermesh.session.v1.SessionService.SendMessage:output_type -> hermesh.session.v1.SendMessageResponse
-	49, // 90: hermesh.session.v1.SessionService.DeliverMessage:output_type -> hermesh.session.v1.DeliverMessageResponse
-	22, // 91: hermesh.session.v1.SessionService.InterruptSession:output_type -> hermesh.session.v1.Session
-	22, // 92: hermesh.session.v1.SessionService.ArchiveSession:output_type -> hermesh.session.v1.Session
-	22, // 93: hermesh.session.v1.SessionService.UnarchiveSession:output_type -> hermesh.session.v1.Session
-	54, // 94: hermesh.session.v1.SessionService.DeleteSession:output_type -> hermesh.session.v1.DeleteSessionResponse
-	22, // 95: hermesh.session.v1.SessionService.RenameSession:output_type -> hermesh.session.v1.Session
-	58, // 96: hermesh.session.v1.SessionService.GetDiff:output_type -> hermesh.session.v1.GetDiffResponse
-	22, // 97: hermesh.session.v1.SessionService.AnswerQuestion:output_type -> hermesh.session.v1.Session
-	43, // 98: hermesh.session.v1.SessionService.ReadToolOutput:output_type -> hermesh.session.v1.ToolOutputChunk
-	60, // 99: hermesh.session.v1.SessionService.PushSession:output_type -> hermesh.session.v1.PushSessionResponse
-	83, // [83:100] is the sub-list for method output_type
-	66, // [66:83] is the sub-list for method input_type
-	66, // [66:66] is the sub-list for extension type_name
-	66, // [66:66] is the sub-list for extension extendee
-	0,  // [0:66] is the sub-list for field type_name
+	13, // 7: hermesh.session.v1.SessionProgress.diff_stat:type_name -> hermesh.session.v1.DiffStat
+	14, // 8: hermesh.session.v1.SessionProgress.usage:type_name -> hermesh.session.v1.Usage
+	7,  // 9: hermesh.session.v1.SessionProgress.last_failure:type_name -> hermesh.session.v1.Failure
+	16, // 10: hermesh.session.v1.SessionProgress.pending_question:type_name -> hermesh.session.v1.Question
+	61, // 11: hermesh.session.v1.SessionProgress.turn_started_at:type_name -> google.protobuf.Timestamp
+	61, // 12: hermesh.session.v1.SessionProgress.last_event_at:type_name -> google.protobuf.Timestamp
+	17, // 13: hermesh.session.v1.Question.items:type_name -> hermesh.session.v1.QuestionItem
+	61, // 14: hermesh.session.v1.Question.asked_at:type_name -> google.protobuf.Timestamp
+	61, // 15: hermesh.session.v1.Question.expires_at:type_name -> google.protobuf.Timestamp
+	18, // 16: hermesh.session.v1.QuestionItem.options:type_name -> hermesh.session.v1.QuestionOption
+	16, // 17: hermesh.session.v1.QuestionAsked.question:type_name -> hermesh.session.v1.Question
+	4,  // 18: hermesh.session.v1.QuestionResolved.resolution:type_name -> hermesh.session.v1.QuestionResolution
+	19, // 19: hermesh.session.v1.QuestionResolved.answers:type_name -> hermesh.session.v1.Answer
+	0,  // 20: hermesh.session.v1.Session.status:type_name -> hermesh.session.v1.SessionStatus
+	15, // 21: hermesh.session.v1.Session.progress:type_name -> hermesh.session.v1.SessionProgress
+	61, // 22: hermesh.session.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	61, // 23: hermesh.session.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
+	62, // 24: hermesh.session.v1.Session.workspace:type_name -> hermesh.identity.v1.Workspace
+	0,  // 25: hermesh.session.v1.ListSessionsRequest.status:type_name -> hermesh.session.v1.SessionStatus
+	61, // 26: hermesh.session.v1.ListSessionsRequest.since:type_name -> google.protobuf.Timestamp
+	25, // 27: hermesh.session.v1.ListSessionsRequest.before:type_name -> hermesh.session.v1.SessionCursor
+	5,  // 28: hermesh.session.v1.ListSessionsRequest.view:type_name -> hermesh.session.v1.SessionView
+	61, // 29: hermesh.session.v1.SessionCursor.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 30: hermesh.session.v1.ListSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
+	25, // 31: hermesh.session.v1.ListSessionsResponse.next:type_name -> hermesh.session.v1.SessionCursor
+	5,  // 32: hermesh.session.v1.WatchSessionsRequest.view:type_name -> hermesh.session.v1.SessionView
+	22, // 33: hermesh.session.v1.WatchSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
+	6,  // 34: hermesh.session.v1.StreamEventsRequest.view:type_name -> hermesh.session.v1.EventView
+	6,  // 35: hermesh.session.v1.ListEventsRequest.view:type_name -> hermesh.session.v1.EventView
+	32, // 36: hermesh.session.v1.ListEventsResponse.events:type_name -> hermesh.session.v1.SessionEvent
+	61, // 37: hermesh.session.v1.SessionEvent.ts:type_name -> google.protobuf.Timestamp
+	33, // 38: hermesh.session.v1.SessionEvent.status:type_name -> hermesh.session.v1.StatusChanged
+	34, // 39: hermesh.session.v1.SessionEvent.turn_started:type_name -> hermesh.session.v1.TurnStarted
+	37, // 40: hermesh.session.v1.SessionEvent.user_message:type_name -> hermesh.session.v1.UserMessage
+	38, // 41: hermesh.session.v1.SessionEvent.agent_message:type_name -> hermesh.session.v1.AgentMessage
+	40, // 42: hermesh.session.v1.SessionEvent.tool_call:type_name -> hermesh.session.v1.ToolCall
+	41, // 43: hermesh.session.v1.SessionEvent.tool_result:type_name -> hermesh.session.v1.ToolResult
+	44, // 44: hermesh.session.v1.SessionEvent.turn_completed:type_name -> hermesh.session.v1.TurnCompleted
+	45, // 45: hermesh.session.v1.SessionEvent.error:type_name -> hermesh.session.v1.ErrorEvent
+	20, // 46: hermesh.session.v1.SessionEvent.question_asked:type_name -> hermesh.session.v1.QuestionAsked
+	21, // 47: hermesh.session.v1.SessionEvent.question_resolved:type_name -> hermesh.session.v1.QuestionResolved
+	39, // 48: hermesh.session.v1.SessionEvent.agent_draft:type_name -> hermesh.session.v1.AgentDraft
+	35, // 49: hermesh.session.v1.SessionEvent.message_received:type_name -> hermesh.session.v1.MessageReceived
+	36, // 50: hermesh.session.v1.SessionEvent.message_sent:type_name -> hermesh.session.v1.MessageSent
+	0,  // 51: hermesh.session.v1.StatusChanged.status:type_name -> hermesh.session.v1.SessionStatus
+	10, // 52: hermesh.session.v1.MessageReceived.attachments:type_name -> hermesh.session.v1.AttachmentInfo
+	10, // 53: hermesh.session.v1.UserMessage.attachments:type_name -> hermesh.session.v1.AttachmentInfo
+	14, // 54: hermesh.session.v1.TurnCompleted.usage:type_name -> hermesh.session.v1.Usage
+	13, // 55: hermesh.session.v1.TurnCompleted.diff_stat:type_name -> hermesh.session.v1.DiffStat
+	7,  // 56: hermesh.session.v1.TurnCompleted.failure:type_name -> hermesh.session.v1.Failure
+	7,  // 57: hermesh.session.v1.ErrorEvent.failure:type_name -> hermesh.session.v1.Failure
+	9,  // 58: hermesh.session.v1.SendMessageRequest.attachments:type_name -> hermesh.session.v1.Attachment
+	22, // 59: hermesh.session.v1.SendMessageResponse.session:type_name -> hermesh.session.v1.Session
+	63, // 60: hermesh.session.v1.DeliverMessageRequest.message:type_name -> hermesh.identity.v1.Signed
+	9,  // 61: hermesh.session.v1.DeliverMessageRequest.attachments:type_name -> hermesh.session.v1.Attachment
+	22, // 62: hermesh.session.v1.DeliverMessageResponse.session:type_name -> hermesh.session.v1.Session
+	19, // 63: hermesh.session.v1.AnswerQuestionRequest.answers:type_name -> hermesh.session.v1.Answer
+	13, // 64: hermesh.session.v1.GetDiffResponse.stat:type_name -> hermesh.session.v1.DiffStat
+	8,  // 65: hermesh.session.v1.SessionService.StartSession:input_type -> hermesh.session.v1.StartSessionRequest
+	23, // 66: hermesh.session.v1.SessionService.GetSession:input_type -> hermesh.session.v1.GetSessionRequest
+	24, // 67: hermesh.session.v1.SessionService.ListSessions:input_type -> hermesh.session.v1.ListSessionsRequest
+	27, // 68: hermesh.session.v1.SessionService.WatchSessions:input_type -> hermesh.session.v1.WatchSessionsRequest
+	29, // 69: hermesh.session.v1.SessionService.StreamEvents:input_type -> hermesh.session.v1.StreamEventsRequest
+	30, // 70: hermesh.session.v1.SessionService.ListEvents:input_type -> hermesh.session.v1.ListEventsRequest
+	46, // 71: hermesh.session.v1.SessionService.SendMessage:input_type -> hermesh.session.v1.SendMessageRequest
+	48, // 72: hermesh.session.v1.SessionService.DeliverMessage:input_type -> hermesh.session.v1.DeliverMessageRequest
+	50, // 73: hermesh.session.v1.SessionService.InterruptSession:input_type -> hermesh.session.v1.InterruptSessionRequest
+	51, // 74: hermesh.session.v1.SessionService.ArchiveSession:input_type -> hermesh.session.v1.ArchiveSessionRequest
+	52, // 75: hermesh.session.v1.SessionService.UnarchiveSession:input_type -> hermesh.session.v1.UnarchiveSessionRequest
+	53, // 76: hermesh.session.v1.SessionService.DeleteSession:input_type -> hermesh.session.v1.DeleteSessionRequest
+	55, // 77: hermesh.session.v1.SessionService.RenameSession:input_type -> hermesh.session.v1.RenameSessionRequest
+	57, // 78: hermesh.session.v1.SessionService.GetDiff:input_type -> hermesh.session.v1.GetDiffRequest
+	56, // 79: hermesh.session.v1.SessionService.AnswerQuestion:input_type -> hermesh.session.v1.AnswerQuestionRequest
+	42, // 80: hermesh.session.v1.SessionService.ReadToolOutput:input_type -> hermesh.session.v1.ReadToolOutputRequest
+	59, // 81: hermesh.session.v1.SessionService.PushSession:input_type -> hermesh.session.v1.PushSessionRequest
+	11, // 82: hermesh.session.v1.SessionService.StartSession:output_type -> hermesh.session.v1.StartSessionResponse
+	22, // 83: hermesh.session.v1.SessionService.GetSession:output_type -> hermesh.session.v1.Session
+	26, // 84: hermesh.session.v1.SessionService.ListSessions:output_type -> hermesh.session.v1.ListSessionsResponse
+	28, // 85: hermesh.session.v1.SessionService.WatchSessions:output_type -> hermesh.session.v1.WatchSessionsResponse
+	32, // 86: hermesh.session.v1.SessionService.StreamEvents:output_type -> hermesh.session.v1.SessionEvent
+	31, // 87: hermesh.session.v1.SessionService.ListEvents:output_type -> hermesh.session.v1.ListEventsResponse
+	47, // 88: hermesh.session.v1.SessionService.SendMessage:output_type -> hermesh.session.v1.SendMessageResponse
+	49, // 89: hermesh.session.v1.SessionService.DeliverMessage:output_type -> hermesh.session.v1.DeliverMessageResponse
+	22, // 90: hermesh.session.v1.SessionService.InterruptSession:output_type -> hermesh.session.v1.Session
+	22, // 91: hermesh.session.v1.SessionService.ArchiveSession:output_type -> hermesh.session.v1.Session
+	22, // 92: hermesh.session.v1.SessionService.UnarchiveSession:output_type -> hermesh.session.v1.Session
+	54, // 93: hermesh.session.v1.SessionService.DeleteSession:output_type -> hermesh.session.v1.DeleteSessionResponse
+	22, // 94: hermesh.session.v1.SessionService.RenameSession:output_type -> hermesh.session.v1.Session
+	58, // 95: hermesh.session.v1.SessionService.GetDiff:output_type -> hermesh.session.v1.GetDiffResponse
+	22, // 96: hermesh.session.v1.SessionService.AnswerQuestion:output_type -> hermesh.session.v1.Session
+	43, // 97: hermesh.session.v1.SessionService.ReadToolOutput:output_type -> hermesh.session.v1.ToolOutputChunk
+	60, // 98: hermesh.session.v1.SessionService.PushSession:output_type -> hermesh.session.v1.PushSessionResponse
+	82, // [82:99] is the sub-list for method output_type
+	65, // [65:82] is the sub-list for method input_type
+	65, // [65:65] is the sub-list for extension type_name
+	65, // [65:65] is the sub-list for extension extendee
+	0,  // [0:65] is the sub-list for field type_name
 }
 
 func init() { file_hermesh_session_v1_session_proto_init() }

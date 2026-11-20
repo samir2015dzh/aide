@@ -6,29 +6,28 @@
 > on 2026-11-18, §4.2). A Kotlin + Jetpack Compose app for Android 11 and later, with
 > the iPhone app's core features; the rest is listed in §8.
 
-The Android phone is a **trusted device** of its owner
-([trusted-devices.md](trusted-devices.md)), as the iPhone is
-([iphone-app.md](iphone-app.md)): it holds a root key, approves and signs,
-and sees every machine's sessions. It is never a machine.
+The Android phone is one of its owner's **devices**: it logs in to the
+owner's server with the account and password, and the server signs it in at
+once ([accounts.md](accounts.md)). It holds no root key, approves nothing
+and signs nothing, and sees every machine's sessions. It is never a machine.
 
 ## 1. What it does
 
 | Place | What it shows |
 |---|---|
-| Joining | The owner's account and password, by default ([password-login.md](password-login.md)): nothing to approve or compare. Or a connection address (`relay.example.com/o_…`): the phone asks to join, shows the verification code another trusted device must show too, and once approved there takes the two digits that device shows. Or a new server of one's own, by its address and claim code: the phone becomes the first trusted device |
+| Logging in | The server, the owner's account and password ([accounts.md](accounts.md)): nothing to approve or compare. Or a new server, with the setup code it printed and the account and password it will keep |
 | Sessions | Every machine's sessions by state (Needs You, In Progress, Recent), each with who sent the work (the agent's grant name, "Her", or "You", and the name it started under), the coding agent, project, machine and state; older pages on request |
 | A session | Its conversation, live: the owner's messages, the agent's replies (a reply being written shows as it is written), tool calls folded into one line a run, opening to each call and its result, questions and how they were resolved. At the bottom the agent's question to answer (options, multi-select, free text, secrets hidden) or leave to the agent, or Interrupt while it works |
-| Approvals | Requests to connect: machines (named here), agents (every project and coding agent, for 7, 30 or 90 days) and trusted devices, with the verification code to compare; Dismiss hides one here. A pairing code typed, or a `hermesh://pair?code=…` link, looks one up |
-| Machines | Each machine: online, unreachable or updating, platform, version, sessions running, its coding agents (version, signed in), Her; Check Agents Again. The trusted devices. This phone: server, connection address, where its root key is kept (StrongBox, TEE), the core's version, the connection (connected, reconnecting, disconnected), the switch for staying connected in the background, notifications (§4) |
-| Notifications | Through the app's own connection (§4.1): a new session, a question, a failure, a request to connect, Her; a tap opens what it is about |
+| Needs you | The sessions waiting for an answer |
+| Machines | Each machine: online, unreachable or updating, platform, version, sessions running, its coding agents (version, signed in), Her; Check Agents Again |
+| Settings | The account (§3): its name and server; changing the name or the password, and turning logging in off or on, each with the current password. The devices, each but this phone with Sign Out. This phone: server, account, the core's version, the connection (connected, reconnecting, disconnected), the switch for staying connected in the background, notifications (§4) |
+| Notifications | Through the app's own connection (§4.1): a new session, a question, a failure, Her; a tap opens what it is about |
 | Her | The machines that run Her (§5) |
 
-Signing: every batch the core asks the phone to sign is shown first, as the
-shared core words it (`internal/preview`, the cards the Linux and Windows
-signers show), unless the person confirmed exactly that in the app already
-(they compared the verification code approving a pairing, or it is their own
-join or setup); then BiometricPrompt confirms it is them. The two digits to
-type on a device or machine just approved show after signing.
+Nothing is signed on the phone, and nothing waits for it: no pairing codes,
+verification codes or digits, no approvals of machines, agents or devices,
+and no approvals of what agents (Her included) do (the owner's rulings of
+2026-11-20, [accounts.md](accounts.md)).
 
 Words are English, or Chinese on a phone set to Chinese (`ui/Words.kt`).
 
@@ -36,11 +35,10 @@ Words are English, or Chinese on a phone set to Chinese (`ui/Words.kt`).
 
 ```
 apps/android/
-├── app/src/main/java/io/hermesh/android/
-│   ├── HermeshApp.kt, MainActivity.kt   the core started with the process; the window, BiometricPrompt
+├── app/src/main/java/io/aide/android/
+│   ├── HermeshApp.kt, MainActivity.kt   the core started with the process; the window
 │   ├── api/       Connect client (JSON codec) for LocalService, its messages
-│   ├── model/     AppModel (state, actions, Watch, lifecycle), World, Transcript, links, answers
-│   ├── signer/    RootKeys (Keystore), AppSigner (the core's Signer), cards and expectations
+│   ├── model/     AppModel (state, actions, Watch, lifecycle), World, Transcript, links, answers, the account's checks
 │   ├── her/       Her's protocol over the core's HerOpen/HerCall/HerSend, the panel's state
 │   ├── connection/ the foreground service that keeps the connection in the background, its switch (§4.1)
 │   ├── push/      notifications: what the Watch brings as notices (LiveNotices), showing them
@@ -55,7 +53,7 @@ cmd/hermesh-mobile/android/  the Go package bound for Android (package hermeshco
   `internal/mobile` (the owner role without a local machine) with
   gomobile-friendly calls: `Start(dataDir)` (port and token), `Resume`,
   `Pause`, `NetworkChanged`, `PathChanged`, as the iPhone's C library has
-  them, `KeyID` and `RunSigner`. Nothing in it is Android's alone: the
+  them. Nothing in it is Android's alone: the
   iPhone app keeps building `cmd/hermesh-mobile` as before, and both share
   `internal/mobile` (and its log, `mobile.Logger`). gomobile and gobind are
   `go.mod` tools, so their version is the module's.
@@ -69,37 +67,34 @@ cmd/hermesh-mobile/android/  the Go package bound for Android (package hermeshco
   (`Resume`) and the app follows the owner's world through one `Watch` and a
   session's events through `StreamSessionEvents` (follow, drafts); behind,
   the connection service keeps the core and the `Watch` running (§4.1), or,
-  with it switched off, the core pauses (`Pause`: no relay, no signer), as
+  with it switched off, the core pauses (`Pause`: no relay), as
   the iPhone does. A change of network (`ConnectivityManager`) connects
   again at once.
 - **Data.** `filesDir/hermesh` (the owner role's), no backup or device
-  transfer (`data_extraction_rules.xml`): the data names a root key that
-  lives in this phone's Keystore alone.
+  transfer (`data_extraction_rules.xml`): it holds this phone's device key,
+  which another phone must not take over (it logs in itself).
 
-## 3. The signer
+## 3. Logging in and the account
 
-The design follows the Mac's Secure Enclave signer and the Windows TPM
-signer (`internal/signer`): the core's `signer.Run` answers signing
-requests, the app implements its `Keys` and `Owner` through the binding's
-`Signer` interface (`signer/AppSigner.kt`).
-
-- **Keys** (`signer/RootKeys.kt`): one P-256 key per profile the owner role
-  keeps, made in the Android Keystore, in **StrongBox** when the phone has
-  one, else in the **TEE**; the private key never leaves it. Each is bound to
-  the person: `setUserAuthenticationRequired` with
-  `AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL` for 10 seconds after a
-  confirmation (a batch of re-issued grants takes that long in StrongBox;
-  a batch that outlasts it asks again), usable only while the phone is
-  unlocked, and kept when a fingerprint is added (as Face ID's
-  `userPresence` keeps the iPhone's). The core names keys by `KeyID` (a
-  fingerprint of the public key), which the app asks the binding for.
-- **Creating** a key needs no confirmation; **deleting** one happens when
-  the core asks (the phone left that owner); **signing** needs the cards
-  approved, then BiometricPrompt. A phone without a screen lock cannot make
-  such keys, and says so.
-- **Posture**: as on the iPhone (Secure Enclave, `userPresence`) and Windows
-  (TPM, Windows Hello): the key cannot be exported, every use needs the
-  person, what is signed is shown from the signed bytes by the shared core.
+- **Onboarding** (`ui/Onboarding.kt`), two ways: **登录 / Log in** (server,
+  account, password: `LogIn`, platform `android`, the phone's name as its
+  label) and **设置新的服务器 / Set up a new server** (server, the setup code
+  it printed, the account and the password it will keep, at least 8
+  characters and not the account name, checked as the server checks them:
+  `Setup`). A server typed as `http://` or a bare IP address is warned of:
+  the password and setup code would cross the network readable. A phone
+  that another device signed out says so, forgets that owner (`Leave`) and
+  logs in again.
+- **Settings › Account** (`ui/Settings.kt`, `GetLogin`, `SetLogin`): the
+  account and the server to type on a new device; the name or the password
+  changed, or logging in turned off or on, each with the current password.
+  A new password signs out the other devices and every agent that logged
+  in (the phone says so before, and how many after); this phone and the
+  machines stay. An old password login waiting to be converted is
+  converted with its password.
+- **Settings › Devices** (`ListDevices`, the `Watch`'s devices,
+  `RemoveDevice`): every device of the owner; any but this phone can be
+  signed out (登出), Her's data on its machine erased first if asked.
 
 ## 4. Notifications
 
@@ -113,25 +108,25 @@ background by a foreground service.
 ### 4.1 The app's own connection (in use)
 
 1. **What is notified.** The core's `Watch` brings every change of the
-   owner's world (sessions, machines and their Her, requests to connect).
+   owner's world (sessions, machines and their Her).
    `push/LiveNotices.kt` compares each with what it saw before, by the
    desktop's rules (`packages/core` `notices.ts`, `apps/desktop` `notify.ts`),
    and says what is new as the notices a machine seals for a phone
    (`session.v1.Notice`): a session started by someone other than the owner
    after the app first looked; a question (also one still waiting when the
    app starts); a failure (not an interruption); an assistant's newer
-   message in Her, unless muted; every request to connect. The kinds are
+   message in Her, unless muted. The kinds are
    the iPhone's defaults (`noticeKinds`; finished turns are not notified).
    They are shown by `Push.notify` (`Notices.kt` `show`):
-   one notification a session (and one for requests to connect, one per
-   assistant), a tap opening the session, Approvals or Her; on a locked
+   one notification a session (and one per assistant), a tap opening the
+   session or Her; on a locked
    screen only the generic "Something needs you" (`VISIBILITY_PRIVATE`).
    What is no longer pending is taken back: a question answered here or
-   elsewhere, the last request to connect gone, Her read everywhere.
+   elsewhere, Her read everywhere.
    Nothing new reaches the relay or the machines: no registration, no push
    service, nothing for Xiaomi.
 2. **Staying connected.** Once the phone is joined to an owner, and while
-   **Machines › This phone › Stay connected in the background** is on (the
+   **Settings › This phone › Stay connected in the background** is on (the
    default), the app starts `ConnectionService`, a foreground service
    (`foregroundServiceType="specialUse"`: none of the other types fits a
    connection to one's own server, and `dataSync` is limited to 6 hours a
@@ -146,9 +141,9 @@ background by a foreground service.
    network changes (Wi-Fi to cellular and back: `NetworkChanged`,
    `PathChanged`). The app shows the connection as **connected**,
    **reconnecting** (a network but no relay) or **disconnected** (no
-   network) on Machines › This phone, under each page's title, and in the
+   network) on Settings › This phone, under each page's title, and in the
    service's notification. Back online, the `Watch` brings the world again:
-   a question that waits, a request to connect, a session started meanwhile
+   a question that waits, a session started meanwhile
    is notified then; a failure, or a Her message already read, that came
    and went while disconnected is not.
 4. **When the system ends it.** `START_STICKY`: the system starts the
@@ -159,7 +154,7 @@ background by a foreground service.
    ends it; notices then wait until the app is opened. To keep it alive
    longer the app asks once (skippable, not again) to set **Battery saver:
    No restrictions** and **Autostart: on** (§4.2), with a button to the
-   app's settings page; the same button stays on Machines › This phone.
+   app's settings page; the same button stays on Settings › This phone.
 5. **Permissions.** `POST_NOTIFICATIONS` (asked on Android 13+, now in
    every build), `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`.
 
@@ -206,13 +201,12 @@ on each, her default assistant's
 
 - **conversation**: its snapshot and events (`bots/open`), the owner's
   messages and what Her sent (`send_to_user`), a task that failed; sending
-  words (`HerSend`, kept on the phone until the machine is back); her tool
-  calls that wait for the owner, allowed once or denied (`session/op`);
+  words (`HerSend`, kept on the phone until the machine is back); Her acts
+  without asking for approvals;
 - **routines**, read-only (from `bots/subscribe`);
 - **memory**, read-only (`bots/memory`).
 
-Signed Her changes (turning Her on or off, connectors) go through the signer
-as every other approval does. Not there: pictures and files, quoting a
+Turning Her on or off and connectors are set from the desktop app. Not there: pictures and files, quoting a
 message, other assistants, secure cards, sub-agents' progress, settings
 (§8).
 
@@ -232,7 +226,7 @@ whose `preBuild` runs `build-core.sh` (gomobile bind for `android/arm64`
 and `android/amd64`, skipped when nothing in Go changed; `FORCE=1` builds
 again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
 `VERSION=0.1.2` stamps the version. The APK is debug-signed (application id
-`io.hermesh.android.debug`); outputs and caches stay out of git
+`io.aide.android.debug`); outputs and caches stay out of git
 (`apps/android/.gitignore`).
 
 ## 7. Tests
@@ -241,32 +235,35 @@ again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
   JVM unit tests of the Connect client against a server playing the core
   (unary, streams, errors, what requests carry), the protojson models (as
   Go's protojson writes them), the world (resets, merges, buckets, who sent
-  a session), transcripts, answers, links, the signer's cards and
-  expectations, Her's protocol, and notices: each kind as shown in English
+  a session), transcripts, answers, links, the account's checks (a new
+  account and password, plain HTTP, what failures say) and its requests
+  (`LogIn`, `Setup`, `GetLogin`, `SetLogin`, `ListDevices`, `RemoveDevice`),
+  Her's protocol, and notices: each kind as shown in English
   and Chinese, what a tap opens; the
   notices the `Watch` brings (`LiveNoticesTest`: Watch messages as the core
   writes them in, the notices and what is taken back out: the first look,
   new sessions not the owner's, failures but not interruptions, questions,
-  Her muted or read, requests to connect, one looked up here) and the
+  Her muted or read, nothing before logging in or once signed out) and the
   connection as shown.
-- `go test ./cmd/hermesh-mobile/...`: the binding (start, signer adapters).
+- `go test ./cmd/hermesh-mobile/...`: the binding (start).
 - `go test ./e2e -run TestAndroidCore`: the bound core end to end, driven
-  as the app drives it: joins an owner Mac as a trusted device (its root key
-  made through the app's signer), approves an agent, follows its session
+  as the app drives it: logs in to the owner's server with the account and
+  password (platform `android`) and is among the owner's devices at once;
+  an agent logs in with the account, and the phone follows its session
   live, gets its question, answers it, and the session ends with the
   answer. Beside it the
   test follows the core's `Watch` as the app does (the JSON codec): the
-  request to connect and the question show there before the phone answers;
+  agent and the question show there before the phone answers;
   then the owner starts a session of their own, Muse one that fails, and
   one that asks while the relay is stopped: the `Watch` shows the relay
   gone, then back (the core reconnecting by itself), then the question.
   With `HERMESH_ANDROID_WATCH_RECORD=<file>` it writes that `Watch` out,
   for `LiveNoticesReplayTest`, which plays it through `World` and
   `LiveNotices` as `AppModel` does (`app/src/test/resources/watch-recorded.jsonl`
-  is one such recording; the env var makes it play a fresh one): one
-  notice for the request to connect, Muse's three sessions but not the
-  owner's, both questions (the second only once reconnected), the failure,
-  and what is taken back.
+  is one such recording, from before accounts: the request to connect it
+  also carries is no longer read; the env var makes it play a fresh one):
+  Muse's three sessions but not the owner's, both questions (the second
+  only once reconnected), the failure, and what is taken back.
 - `go test ./e2e -run TestPushNotices` also checks that the relay refuses
   a registration for a push service it doesn't know (Mi Push's, since its
   removal).
@@ -282,10 +279,10 @@ again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
   diff and session info; Markdown, code colours, math and diagrams in
   replies (shown as plain text); a tool call's whole output
   (`ReadToolOutput`); conversations kept on the phone (`world.pb`).
-- Grants: renew, change scope, rename, disconnect, pause; an agent approved
-  for some projects or coding agents only (always all, for 7/30/90 days).
+- Grants: renew, change scope, rename, disconnect, pause (an agent that
+  logs in gets every project and coding agent, until revoked).
 - Machines: rename, remove, pause; coding agents' defaults and projects;
-  removing a trusted device; profiles (more than one owner); sign out,
+  profiles (more than one owner); sign out,
   leave, erase everything.
 - Joining or setting up through the official service (sign-in in a
   browser); QR codes; a hosted center's `.well-known` connect URL.

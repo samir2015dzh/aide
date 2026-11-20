@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AboutWindow, UpdatesWindow, WhatsNewWindow } from "./update";
 import { FirstRun, useFirstRunPending } from "./FirstRun";
 import { Mark } from "@hermesh/ui";
-import { Join } from "./firstrun/SignIn";
+import { Upgrade } from "./firstrun/SignIn";
 import { MainWindow } from "./MainWindow";
 import { SettingsWindow } from "./Settings";
 import { HermeshProvider, useStore } from "./store";
@@ -23,7 +23,7 @@ export function App() {
 function Root() {
   const st = useStore();
   const firstRun = useFirstRunPending();
-  // A machine only has the main window too; becoming a trusted device, the join pages.
+  // A machine only has the main window too; becoming one of the owner's devices too, logging in again.
   const member = st.status?.initialized === true || st.status?.machineOnly === true;
   const upgrading = st.upgrading && st.status?.machineOnly === true;
   const ready = member && !st.status?.removed && !firstRun && !upgrading;
@@ -34,7 +34,7 @@ function Root() {
   if (st.status === undefined) return <div className="empty drag"><Mark size={40} variant="seq" /></div>;
   if (st.status === null) return <DaemonUnavailable />;
   if (upgrading)
-    return <Join owner={st.status.ownerId} relay={st.status.relayUrl} machine={false} cancel={() => st.set({ upgrading: false })} />;
+    return <Upgrade relay={st.status.relayUrl} cancel={() => st.set({ upgrading: false })} />;
   return ready ? <MainWindow /> : <FirstRun />;
 }
 

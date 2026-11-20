@@ -95,7 +95,7 @@ function view(): TrayView {
   return {
     state: !st ? "daemon" : !st.initialized && !st.machineOnly ? "setup" : st.relayConnected ? "ok" : "down",
     online: world.machines.filter((m) => m.online).length,
-    attention: attention().length + world.pairings.length,
+    attention: attention().length,
     running: running().length,
     update: u.state === "ready" ? u.version : "",
   };
@@ -150,10 +150,9 @@ function contextMenu(): Menu {
 function act(a: TrayAction) {
   panel?.hide();
   if (a === "attention") {
-    // A pairing request first (it times out), then the sessions in the sidebar's order.
-    const p = world.pairings[0];
+    // The sessions in the sidebar's order.
     const s = attention()[0];
-    return p ? command(`pairing:${p.code}`) : s ? command(`open:${s.sessionId}`) : showMain();
+    return s ? command(`open:${s.sessionId}`) : showMain();
   }
   if (a === "running") {
     const s = running()[0];

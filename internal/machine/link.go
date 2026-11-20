@@ -194,7 +194,7 @@ func (n *Machine) acceptRootChain(rc *identityv1.RootChain) {
 	}
 	if changed {
 		n.st.SetProto(kRootChain, n.trust.RootChain())
-		n.audit.Log(AuditRecord{Kind: "root_chain", Detail: fmt.Sprintf("the owner's trusted devices changed (root cert v%d)", n.trust.RootVersion())})
+		n.audit.Log(AuditRecord{Kind: "root_chain", Detail: fmt.Sprintf("the owner's root keys changed (root cert v%d)", n.trust.RootVersion())})
 		n.log.Info("adopted a longer owner root chain", "version", n.trust.RootVersion())
 	}
 }
@@ -230,6 +230,9 @@ func (n *Machine) serveTunnel(ctx context.Context, raw net.Conn, via string, own
 		if s.Kind == identity.SubjectClient {
 			return n.checkGrant(s.Grant)
 		}
+		if s.Kind == identity.SubjectOwnerDevice && n.deviceSignedOut(identity.KeyID(s.PublicKey)) {
+			return errors.New("this device was signed out")
+		}
 		return nil
 	})
 	if err != nil {
@@ -241,6 +244,9 @@ func (n *Machine) serveTunnel(ctx context.Context, raw net.Conn, via string, own
 	mTunnels.Add(1)
 	defer mTunnels.Add(-1)
 	p := &Principal{Kind: PrincipalOwner}
+	if sub.Kind == identity.SubjectOwnerDevice {
+		p.DeviceKey = identity.KeyID(sub.PublicKey)
+	}
 	if sub.Kind == identity.SubjectClient {
 		p = &Principal{Kind: PrincipalClient, ClientID: sub.ID, Grant: sub.Grant}
 		n.rememberClient(sub.ID, sub.Grant)

@@ -1,5 +1,14 @@
 # Her on Linux
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** a Linux
+> computer logs in with the server, the account and the password like any
+> other (`install.sh <server>`, `aided login`). There is no trusted device
+> any more, on Linux or anywhere: §7.3, the protected signer
+> (`hermesh-signer`), `hermeshd approve` and the two digits are gone, and
+> turning Her on takes the server's signature, not a device's. Her's
+> approvals are gone too ([her-server.md](her-server.md)), so the approval
+> lines of §3 and §8 describe her before. The rest holds.
+
 Status: accepted 2026-11-17, with the owner's decisions in §10, after a cold-start test of Her on two fresh Linux computers (§2). §3 to §8 are built on the branch `her-linux`; §9 says how each was checked and what is left. This fork (samir2015dzh/hermesh) takes Her on Linux, §3 to §6 and §8, but not §7, the desktop app and its protected signer (owner, 2026-11-18): §7 is built upstream only. It takes up [desktop-app.md](desktop-app.md) §9 and the "Later" row of [windows.md](windows.md) §9 for Linux, and [her-server.md](her-server.md) §12 for computer use.
 
 ## 1. Goal
@@ -8,7 +17,7 @@ On Linux, Her is what it is on a Mac, on a server with only a terminal and on a 
 
 1. **A Her Server that can do what a Mac's can.** Every tool Her has on a Mac works on Linux where the computer allows it: documents with PDFs, the browser, computer use on a desktop.
 2. **A conversation where the person is.** In the Hermesh app on a Linux desktop, as on a Mac; in the terminal on a server.
-3. **Nobody needs an Apple device or a Windows PC.** A person whose only computer runs Linux sets Hermesh up, approves and talks to Her there.
+3. **Nobody needs an Apple device or a Windows PC.** A person whose only computer runs Linux sets Hermesh up and talks to Her there.
 
 **Which Linux.** Ubuntu 24.04 or later, Debian 13 or later and Fedora 41 or later, x86_64 and arm64, with systemd; GNOME first (Wayland and X11), Plasma second. Servers as today (any Linux with systemd, others with `hermeshd run`).
 

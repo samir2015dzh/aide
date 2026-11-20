@@ -43,21 +43,18 @@ type Authorization struct {
 	ExpiresAt     time.Time
 }
 
-// Connection states.
+// Connection states. (Connections from before accounts may still be stored
+// as "awaiting_setup" or "awaiting_approval": they are not live, and the app
+// connects again.)
 const (
-	// The account has no owner yet: Hermesh isn't set up on a Mac.
-	StateAwaitingSetup = "awaiting_setup"
-	// The owner hasn't approved the connection on a Mac yet.
-	StateAwaitingApproval = "awaiting_approval"
-	// Approved: the connection has a grant.
+	// The connection has a grant.
 	StateActive  = "active"
 	StateRevoked = "revoked"
 	StateExpired = "expired"
 )
 
-// Connection is one (account, agent product) pair: a Hermesh client
-// identity whose key the gateway holds, and, once the owner approved it,
-// its grant.
+// Connection is one (account, agent product) pair: an Aide client identity
+// whose key the gateway holds, and its grant.
 type Connection struct {
 	ID        string
 	AccountID string
@@ -72,17 +69,12 @@ type Connection struct {
 	// SealedKey is the client's private key, sealed by the Vault; nil once
 	// the connection ended.
 	SealedKey []byte
-	// GrantID, Grant (a Signed Grant) and RootChain once approved.
+	// GrantID, Grant (a Signed Grant) and RootChain.
 	GrantID   string
 	Grant     []byte
 	RootChain []byte
-	// The pairing request waiting for the owner, if any.
-	PairingCode    string
-	PairingExpires time.Time
-	// Asked: the app was used while waiting for approval, so an approval
-	// request goes to the owner's Mac once it is online (stored in the
-	// column requests, 1 or 0; requests_day is no longer used).
-	Asked      bool
+	// The columns pairing_code, pairing_expires, requests_day and requests
+	// are no longer used (they served approvals): written empty.
 	ConsentUA  string
 	CreatedAt  time.Time
 	ApprovedAt time.Time
@@ -93,7 +85,7 @@ type Connection struct {
 
 // Live reports whether the connection has not ended.
 func (c *Connection) Live() bool {
-	return c.State == StateAwaitingSetup || c.State == StateAwaitingApproval || c.State == StateActive
+	return c.State == StateActive
 }
 
 // Code is an authorization code.
@@ -346,16 +338,15 @@ requests_day, requests, consent_ua, created_at, approved_at, last_used, ended_at
 
 func scanConnection(row interface{ Scan(...any) error }) (*Connection, error) {
 	c := &Connection{}
-	var pairingExpires, created, approved, used, ended int64
-	var requestsDay string
-	var asked int
+	var unusedExpires, created, approved, used, ended int64
+	var unusedCode, unusedDay string
+	var unusedRequests int
 	err := row.Scan(&c.ID, &c.AccountID, &c.AccountHint, &c.OwnerID, &c.ClientID, &c.ClientName, &c.State, &c.SealedKey, &c.GrantID, &c.Grant, &c.RootChain,
-		&c.PairingCode, &pairingExpires, &requestsDay, &asked, &c.ConsentUA, &created, &approved, &used, &ended, &c.EndReason)
+		&unusedCode, &unusedExpires, &unusedDay, &unusedRequests, &c.ConsentUA, &created, &approved, &used, &ended, &c.EndReason)
 	if err != nil {
 		return nil, err
 	}
-	c.Asked = asked != 0
-	c.PairingExpires, c.CreatedAt, c.ApprovedAt, c.LastUsed, c.EndedAt = fromMS(pairingExpires), fromMS(created), fromMS(approved), fromMS(used), fromMS(ended)
+	c.CreatedAt, c.ApprovedAt, c.LastUsed, c.EndedAt = fromMS(created), fromMS(approved), fromMS(used), fromMS(ended)
 	return c, nil
 }
 
@@ -373,16 +364,9 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET 
 state=excluded.state, sealed_key=excluded.sealed_key, grant_id=excluded.grant_id, grant_signed=excluded.grant_signed, root_chain=excluded.root_chain,
 pairing_code=excluded.pairing_code, pairing_expires=excluded.pairing_expires, requests_day=excluded.requests_day, requests=excluded.requests,
 approved_at=excluded.approved_at, last_used=excluded.last_used, ended_at=excluded.ended_at, end_reason=excluded.end_reason`),
-		c.ID, c.AccountID, c.AccountHint, c.OwnerID, c.ClientID, c.ClientName, c.State, c.SealedKey, c.GrantID, c.Grant, c.RootChain, c.PairingCode, ms(c.PairingExpires),
-		"", boolInt(c.Asked), c.ConsentUA, ms(c.CreatedAt), ms(c.ApprovedAt), ms(c.LastUsed), ms(c.EndedAt), c.EndReason)
+		c.ID, c.AccountID, c.AccountHint, c.OwnerID, c.ClientID, c.ClientName, c.State, c.SealedKey, c.GrantID, c.Grant, c.RootChain, "", 0,
+		"", 0, c.ConsentUA, ms(c.CreatedAt), ms(c.ApprovedAt), ms(c.LastUsed), ms(c.EndedAt), c.EndReason)
 	return err
-}
-
-func boolInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 func (b *SQLBackend) ListConnections(ctx context.Context, f ConnectionFilter) ([]*Connection, error) {

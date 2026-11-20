@@ -8,9 +8,10 @@ import (
 	"time"
 
 	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
 )
 
-// An erased owner leaves only its order behind: the relay is unclaimed, its
+// An erased owner leaves only its order behind: the server is not set up, its
 // owner's records and connection log are gone, and the order and its acks
 // are kept for EraseRetention, then purged.
 func TestEraseOwnerStore(t *testing.T) {
@@ -21,7 +22,7 @@ func TestEraseOwnerStore(t *testing.T) {
 	defer st.Close()
 	const owner = "o_x"
 	chain := &identityv1.RootChain{Certs: []*identityv1.Signed{{Body: []byte("cert")}}}
-	if err := st.SaveClaim(owner, chain, &identityv1.Signed{Body: []byte("device")}); err != nil {
+	if err := st.SaveSetup(owner, chain, []byte("key"), &relayv1.Account{Account: "a"}); err != nil {
 		t.Fatal(err)
 	}
 	st.LogConnection(owner, 1, "m_1", "10.0.0.1", "connected")
@@ -35,10 +36,10 @@ func TestEraseOwnerStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	if id, _ := st.OwnerID(); id != "" {
-		t.Fatalf("still claimed by %q", id)
+		t.Fatalf("still set up for %q", id)
 	}
-	if code, err := st.ClaimCode(); err != nil || code == "" {
-		t.Fatalf("no new claim code: %q %v", code, err)
+	if code, err := st.SetupCode(); err != nil || code == "" {
+		t.Fatalf("no new setup code: %q %v", code, err)
 	}
 	if w, _ := st.WaitingMessages(owner, "c_1"); len(w) != 0 {
 		t.Fatalf("messages kept: %v", w)

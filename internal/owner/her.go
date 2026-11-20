@@ -207,7 +207,7 @@ func (r herRemote) HerConsole() http.Handler {
 // errNoRootKey refuses, on a computer that is only a machine, what only the
 // owner key of a trusted device signs.
 func errNoRootKey(what string) error {
-	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("a trusted device has to %s: this computer is only a machine, without an owner key", what))
+	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("one of your devices has to %s: this computer is only a machine", what))
 }
 
 // SetHer turns Her on or off for a machine, signed by the root key. Turned

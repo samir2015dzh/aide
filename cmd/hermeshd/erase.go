@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,16 +18,14 @@ import (
 )
 
 // Erasing (docs/erase-everything.md): `hermeshd erase` erases this
-// computer's machine only; `hermeshd device erase-everything`, on a trusted
-// device, erases Hermesh on all the owner's devices, as the apps' Erase
-// Everything does.
+// computer's machine only; Erase Everything is in the apps.
 
 // eraseCommand is `hermeshd erase`.
 func eraseCommand(dataDir *string) *cobra.Command {
 	var yes, eraseHer bool
 	cmd := &cobra.Command{
 		Use:   "erase",
-		Short: "Erase Aide on this computer only: its machine, unpaired, with its projects list, sessions and the worktrees Aide made",
+		Short: "Erase Aide on this computer only: its machine, logged out, with its projects list, sessions and the worktrees Aide made",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			var ask func(string) (string, error)
@@ -54,7 +51,7 @@ func erase(ctx context.Context, w io.Writer, ask func(string) (string, error), d
 	cfg := machine.Config{DataDir: filepath.Join(dataDir, "machine")}
 	if _, err := os.Stat(machine.KeyPath(cfg.DataDir)); err != nil {
 		if _, err := os.Stat(filepath.Join(dataDir, "owner")); err == nil {
-			return errors.New("this computer is a trusted device, not a machine: to erase Aide on all your devices run `aided device erase-everything` (on a Mac: Settings › Account & Devices in the app)")
+			return errors.New("this computer is one of your devices, not a machine only: erase Aide on all your devices in the app (Settings › Account)")
 		}
 		fmt.Fprintln(w, "Aide keeps no machine here: nothing to erase.")
 		return nil
@@ -74,7 +71,7 @@ func erase(ctx context.Context, w io.Writer, ask func(string) (string, error), d
 	herHome, herData, _ := machine.HerData(cfg)
 	eraseHer = eraseHer && herData
 	askHer := herData && !eraseHer && ask != nil
-	fmt.Fprintf(w, "%s is unpaired; its projects list, sessions and the worktrees Aide made are erased.\n", what)
+	fmt.Fprintf(w, "%s is logged out; its projects list, sessions and the worktrees Aide made are erased.\n", what)
 	if eraseHer {
 		fmt.Fprintf(w, "Her's assistants, conversations and settings, in %s, are deleted too.\n", herHome)
 	}
@@ -120,7 +117,7 @@ func erase(ctx context.Context, w io.Writer, ask func(string) (string, error), d
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(w, "✓ Aide on this computer is erased. Pair it again with `aided pair <connection address>`.")
+	fmt.Fprintln(w, "✓ Aide on this computer is erased. Log it in again with `aided login <server>`.")
 	for _, wt := range kept {
 		fmt.Fprintf(w, "  Kept, with uncommitted changes: %s\n", wt)
 	}
@@ -150,86 +147,6 @@ func eraseHere(dataDir string, cfg machine.Config) ([]string, error) {
 	return kept, nil
 }
 
-// eraseEverythingCommand is `hermeshd device erase-everything`.
-func eraseEverythingCommand(dataDir *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "erase-everything",
-		Short: "Erase Aide on all your trusted devices, machines and agents, this computer included (signed with this device's key)",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			ctx := cmd.Context()
-			t, err := newTerminal()
-			if err != nil {
-				return err
-			}
-			c, err := ownerRole(ctx, *dataDir, true)
-			if err != nil {
-				return err
-			}
-			st, err := c.GetStatus(ctx, &localv1.GetStatusRequest{})
-			if err != nil {
-				return err
-			}
-			preview, err := c.EraseStatus(ctx, &localv1.EraseStatusRequest{})
-			if err != nil {
-				return err
-			}
-			host := st.RelayUrl
-			if u, err := url.Parse(st.RelayUrl); err == nil && u.Host != "" {
-				host = u.Host
-			}
-			expected := host
-			printErasePreview(preview.Items, host)
-			typed, err := t.line(fmt.Sprintf("\nThis can't be undone. Type %s to confirm: ", expected))
-			if err != nil {
-				return err
-			}
-			if !strings.EqualFold(strings.TrimSpace(typed), expected) {
-				return errors.New("not erased: that isn't " + expected)
-			}
-			stopSigner := startSigner(ctx, c, *dataDir, t)
-			defer stopSigner()
-			res, err := c.EraseEverything(ctx, &localv1.EraseEverythingRequest{})
-			if err != nil {
-				return err
-			}
-			// Each one as it reports; those online have their moment, then this computer.
-			fmt.Println("\nErasing… those online erase now; reset or pair the others again when you next use them.")
-			said := map[int]bool{}
-			for start := time.Now(); ; time.Sleep(time.Second) {
-				r, err := c.EraseStatus(ctx, &localv1.EraseStatusRequest{EraseId: res.EraseId})
-				if err != nil {
-					continue
-				}
-				waiting := false
-				for i, it := range r.Items {
-					if it.Done && !said[i] {
-						said[i] = true
-						fmt.Printf("  ✓ %s\n", it.Name)
-					}
-					waiting = waiting || (it.Online && !it.Done && !it.ThisDevice)
-				}
-				if !waiting || time.Since(start) > 15*time.Second {
-					break
-				}
-			}
-			if _, err := c.FinishErase(ctx, &localv1.FinishEraseRequest{}); err != nil {
-				return fmt.Errorf("this computer couldn't erase itself: %w", err)
-			}
-			fmt.Println("✓ Aide on this computer is erased.")
-			if after, err := c.GetStatus(ctx, &localv1.GetStatusRequest{}); err == nil && after.Erased != nil {
-				if p := after.Erased.Pending; len(p) > 0 {
-					fmt.Printf("  Offline then: %s. Reset or pair each again when you next use it.\n", strings.Join(p, ", "))
-				}
-				for _, wt := range after.Erased.KeptWorktrees {
-					fmt.Printf("  Kept, with uncommitted changes: %s\n", wt)
-				}
-			}
-			return nil
-		},
-	}
-}
-
 // printErasePreview says what erasing everything reaches, by name, and
 // what stays, as the apps' sheet does.
 func printErasePreview(items []*localv1.EraseItem, host string) {
@@ -254,10 +171,10 @@ func printErasePreview(items []*localv1.EraseItem, host string) {
 	}
 	fmt.Println("Erase everything in Aide? Aide on all your devices goes back to how it was when first installed.")
 	fmt.Println("\nErases:")
-	group("device", "Trusted devices", "Signed out; their owner keys, sessions and settings erased", "offline: offers a reset when next opened")
-	group("machine", "Machines", "Unpaired; their projects lists, sessions and the worktrees Aide made erased", "offline: to pair again when next online")
-	group("agent", "Agents", "Disconnected; their pairing on their own computers erased", "signs in again when next used")
-	fmt.Printf("  Your server · %s\n    Back to unclaimed, with a new claim code\n", host)
+	group("device", "Devices", "Signed out; their keys, sessions and settings erased", "offline: offers a reset when next opened")
+	group("machine", "Machines", "Logged out; their projects lists, sessions and the worktrees Aide made erased", "offline: to log in again when next online")
+	group("agent", "Agents", "Disconnected; their login on their own computers erased", "logs in again when next used")
+	fmt.Printf("  Your server · %s\n    Not set up any more, with a new setup code\n", host)
 	stays := []string{"Your project directories and repositories, branches included", "Worktrees with uncommitted changes: moved aside and kept, and you're told where",
 		"What offline devices hold, until each is reset"}
 	fmt.Println("Stays:")

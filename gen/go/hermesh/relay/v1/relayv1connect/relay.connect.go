@@ -44,24 +44,15 @@ const (
 	// RelayPublicServiceGetInfoProcedure is the fully-qualified name of the RelayPublicService's
 	// GetInfo RPC.
 	RelayPublicServiceGetInfoProcedure = "/hermesh.relay.v1.RelayPublicService/GetInfo"
-	// RelayPublicServiceClaimProcedure is the fully-qualified name of the RelayPublicService's Claim
-	// RPC.
-	RelayPublicServiceClaimProcedure = "/hermesh.relay.v1.RelayPublicService/Claim"
-	// RelayPublicServiceSubmitPairingProcedure is the fully-qualified name of the RelayPublicService's
-	// SubmitPairing RPC.
-	RelayPublicServiceSubmitPairingProcedure = "/hermesh.relay.v1.RelayPublicService/SubmitPairing"
-	// RelayPublicServiceWaitPairingProcedure is the fully-qualified name of the RelayPublicService's
-	// WaitPairing RPC.
-	RelayPublicServiceWaitPairingProcedure = "/hermesh.relay.v1.RelayPublicService/WaitPairing"
 	// RelayPublicServiceAckEraseProcedure is the fully-qualified name of the RelayPublicService's
 	// AckErase RPC.
 	RelayPublicServiceAckEraseProcedure = "/hermesh.relay.v1.RelayPublicService/AckErase"
-	// RelayPublicServiceStartLoginProcedure is the fully-qualified name of the RelayPublicService's
-	// StartLogin RPC.
-	RelayPublicServiceStartLoginProcedure = "/hermesh.relay.v1.RelayPublicService/StartLogin"
-	// RelayPublicServiceLoginProcedure is the fully-qualified name of the RelayPublicService's Login
+	// RelayPublicServiceSetUpProcedure is the fully-qualified name of the RelayPublicService's SetUp
 	// RPC.
-	RelayPublicServiceLoginProcedure = "/hermesh.relay.v1.RelayPublicService/Login"
+	RelayPublicServiceSetUpProcedure = "/hermesh.relay.v1.RelayPublicService/SetUp"
+	// RelayPublicServiceLogInProcedure is the fully-qualified name of the RelayPublicService's LogIn
+	// RPC.
+	RelayPublicServiceLogInProcedure = "/hermesh.relay.v1.RelayPublicService/LogIn"
 	// MachineControlServiceReportStatusProcedure is the fully-qualified name of the
 	// MachineControlService's ReportStatus RPC.
 	MachineControlServiceReportStatusProcedure = "/hermesh.relay.v1.MachineControlService/ReportStatus"
@@ -86,18 +77,9 @@ const (
 	// ClientControlServiceGetLatestGrantProcedure is the fully-qualified name of the
 	// ClientControlService's GetLatestGrant RPC.
 	ClientControlServiceGetLatestGrantProcedure = "/hermesh.relay.v1.ClientControlService/GetLatestGrant"
-	// OwnerControlServiceGetPairingRequestProcedure is the fully-qualified name of the
-	// OwnerControlService's GetPairingRequest RPC.
-	OwnerControlServiceGetPairingRequestProcedure = "/hermesh.relay.v1.OwnerControlService/GetPairingRequest"
-	// OwnerControlServiceListPairingRequestsProcedure is the fully-qualified name of the
-	// OwnerControlService's ListPairingRequests RPC.
-	OwnerControlServiceListPairingRequestsProcedure = "/hermesh.relay.v1.OwnerControlService/ListPairingRequests"
-	// OwnerControlServiceClaimPairingRequestProcedure is the fully-qualified name of the
-	// OwnerControlService's ClaimPairingRequest RPC.
-	OwnerControlServiceClaimPairingRequestProcedure = "/hermesh.relay.v1.OwnerControlService/ClaimPairingRequest"
-	// OwnerControlServiceCompletePairingProcedure is the fully-qualified name of the
-	// OwnerControlService's CompletePairing RPC.
-	OwnerControlServiceCompletePairingProcedure = "/hermesh.relay.v1.OwnerControlService/CompletePairing"
+	// OwnerControlServiceSignProcedure is the fully-qualified name of the OwnerControlService's Sign
+	// RPC.
+	OwnerControlServiceSignProcedure = "/hermesh.relay.v1.OwnerControlService/Sign"
 	// OwnerControlServiceListMachinesProcedure is the fully-qualified name of the OwnerControlService's
 	// ListMachines RPC.
 	OwnerControlServiceListMachinesProcedure = "/hermesh.relay.v1.OwnerControlService/ListMachines"
@@ -116,15 +98,18 @@ const (
 	// OwnerControlServiceRevokeProcedure is the fully-qualified name of the OwnerControlService's
 	// Revoke RPC.
 	OwnerControlServiceRevokeProcedure = "/hermesh.relay.v1.OwnerControlService/Revoke"
-	// OwnerControlServicePublishRootChainProcedure is the fully-qualified name of the
-	// OwnerControlService's PublishRootChain RPC.
-	OwnerControlServicePublishRootChainProcedure = "/hermesh.relay.v1.OwnerControlService/PublishRootChain"
-	// OwnerControlServiceSetPasswordLoginProcedure is the fully-qualified name of the
-	// OwnerControlService's SetPasswordLogin RPC.
-	OwnerControlServiceSetPasswordLoginProcedure = "/hermesh.relay.v1.OwnerControlService/SetPasswordLogin"
-	// OwnerControlServiceGetPasswordLoginProcedure is the fully-qualified name of the
-	// OwnerControlService's GetPasswordLogin RPC.
-	OwnerControlServiceGetPasswordLoginProcedure = "/hermesh.relay.v1.OwnerControlService/GetPasswordLogin"
+	// OwnerControlServiceGetLoginProcedure is the fully-qualified name of the OwnerControlService's
+	// GetLogin RPC.
+	OwnerControlServiceGetLoginProcedure = "/hermesh.relay.v1.OwnerControlService/GetLogin"
+	// OwnerControlServiceSetLoginProcedure is the fully-qualified name of the OwnerControlService's
+	// SetLogin RPC.
+	OwnerControlServiceSetLoginProcedure = "/hermesh.relay.v1.OwnerControlService/SetLogin"
+	// OwnerControlServiceListDevicesProcedure is the fully-qualified name of the OwnerControlService's
+	// ListDevices RPC.
+	OwnerControlServiceListDevicesProcedure = "/hermesh.relay.v1.OwnerControlService/ListDevices"
+	// OwnerControlServiceRemoveDeviceProcedure is the fully-qualified name of the OwnerControlService's
+	// RemoveDevice RPC.
+	OwnerControlServiceRemoveDeviceProcedure = "/hermesh.relay.v1.OwnerControlService/RemoveDevice"
 	// OwnerControlServiceEraseOwnerProcedure is the fully-qualified name of the OwnerControlService's
 	// EraseOwner RPC.
 	OwnerControlServiceEraseOwnerProcedure = "/hermesh.relay.v1.OwnerControlService/EraseOwner"
@@ -181,18 +166,15 @@ const (
 // RelayPublicServiceClient is a client for the hermesh.relay.v1.RelayPublicService service.
 type RelayPublicServiceClient interface {
 	GetInfo(context.Context, *v1.GetInfoRequest) (*v1.GetInfoResponse, error)
-	Claim(context.Context, *v1.ClaimRequest) (*v1.ClaimResponse, error)
-	SubmitPairing(context.Context, *v1.SubmitPairingRequest) (*v1.SubmitPairingResponse, error)
-	// Long poll: returns when the pairing completes or after ~25s.
-	WaitPairing(context.Context, *v1.WaitPairingRequest) (*v1.WaitPairingResponse, error)
 	// A device, machine or agent that got an erase order says it is erasing.
 	AckErase(context.Context, *v1.AckEraseRequest) (*v1.AckEraseResponse, error)
-	// Logging in with an account and password (docs/password-login.md). The
-	// KDF's salt and costs for the account (made up for an unknown one).
-	StartLogin(context.Context, *v1.StartLoginRequest) (*v1.StartLoginResponse, error)
-	// With the key the password derives: the sealed password key; then, with
-	// what the client signed with it, publishes that.
-	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
+	// Setting up a new server (docs/accounts.md §2): with the setup code it
+	// printed, the account and password it will keep; the caller is then
+	// logged in as with LogIn.
+	SetUp(context.Context, *v1.SetUpRequest) (*v1.LogInResponse, error)
+	// Logging in with the account and password: the server signs the
+	// caller's credential itself, with no one else approving.
+	LogIn(context.Context, *v1.LogInRequest) (*v1.LogInResponse, error)
 }
 
 // NewRelayPublicServiceClient constructs a client for the hermesh.relay.v1.RelayPublicService
@@ -212,40 +194,22 @@ func NewRelayPublicServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(relayPublicServiceMethods.ByName("GetInfo")),
 			connect.WithClientOptions(opts...),
 		),
-		claim: connect.NewClient[v1.ClaimRequest, v1.ClaimResponse](
-			httpClient,
-			baseURL+RelayPublicServiceClaimProcedure,
-			connect.WithSchema(relayPublicServiceMethods.ByName("Claim")),
-			connect.WithClientOptions(opts...),
-		),
-		submitPairing: connect.NewClient[v1.SubmitPairingRequest, v1.SubmitPairingResponse](
-			httpClient,
-			baseURL+RelayPublicServiceSubmitPairingProcedure,
-			connect.WithSchema(relayPublicServiceMethods.ByName("SubmitPairing")),
-			connect.WithClientOptions(opts...),
-		),
-		waitPairing: connect.NewClient[v1.WaitPairingRequest, v1.WaitPairingResponse](
-			httpClient,
-			baseURL+RelayPublicServiceWaitPairingProcedure,
-			connect.WithSchema(relayPublicServiceMethods.ByName("WaitPairing")),
-			connect.WithClientOptions(opts...),
-		),
 		ackErase: connect.NewClient[v1.AckEraseRequest, v1.AckEraseResponse](
 			httpClient,
 			baseURL+RelayPublicServiceAckEraseProcedure,
 			connect.WithSchema(relayPublicServiceMethods.ByName("AckErase")),
 			connect.WithClientOptions(opts...),
 		),
-		startLogin: connect.NewClient[v1.StartLoginRequest, v1.StartLoginResponse](
+		setUp: connect.NewClient[v1.SetUpRequest, v1.LogInResponse](
 			httpClient,
-			baseURL+RelayPublicServiceStartLoginProcedure,
-			connect.WithSchema(relayPublicServiceMethods.ByName("StartLogin")),
+			baseURL+RelayPublicServiceSetUpProcedure,
+			connect.WithSchema(relayPublicServiceMethods.ByName("SetUp")),
 			connect.WithClientOptions(opts...),
 		),
-		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
+		logIn: connect.NewClient[v1.LogInRequest, v1.LogInResponse](
 			httpClient,
-			baseURL+RelayPublicServiceLoginProcedure,
-			connect.WithSchema(relayPublicServiceMethods.ByName("Login")),
+			baseURL+RelayPublicServiceLogInProcedure,
+			connect.WithSchema(relayPublicServiceMethods.ByName("LogIn")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -253,45 +217,15 @@ func NewRelayPublicServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // relayPublicServiceClient implements RelayPublicServiceClient.
 type relayPublicServiceClient struct {
-	getInfo       *connect.Client[v1.GetInfoRequest, v1.GetInfoResponse]
-	claim         *connect.Client[v1.ClaimRequest, v1.ClaimResponse]
-	submitPairing *connect.Client[v1.SubmitPairingRequest, v1.SubmitPairingResponse]
-	waitPairing   *connect.Client[v1.WaitPairingRequest, v1.WaitPairingResponse]
-	ackErase      *connect.Client[v1.AckEraseRequest, v1.AckEraseResponse]
-	startLogin    *connect.Client[v1.StartLoginRequest, v1.StartLoginResponse]
-	login         *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	getInfo  *connect.Client[v1.GetInfoRequest, v1.GetInfoResponse]
+	ackErase *connect.Client[v1.AckEraseRequest, v1.AckEraseResponse]
+	setUp    *connect.Client[v1.SetUpRequest, v1.LogInResponse]
+	logIn    *connect.Client[v1.LogInRequest, v1.LogInResponse]
 }
 
 // GetInfo calls hermesh.relay.v1.RelayPublicService.GetInfo.
 func (c *relayPublicServiceClient) GetInfo(ctx context.Context, req *v1.GetInfoRequest) (*v1.GetInfoResponse, error) {
 	response, err := c.getInfo.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// Claim calls hermesh.relay.v1.RelayPublicService.Claim.
-func (c *relayPublicServiceClient) Claim(ctx context.Context, req *v1.ClaimRequest) (*v1.ClaimResponse, error) {
-	response, err := c.claim.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// SubmitPairing calls hermesh.relay.v1.RelayPublicService.SubmitPairing.
-func (c *relayPublicServiceClient) SubmitPairing(ctx context.Context, req *v1.SubmitPairingRequest) (*v1.SubmitPairingResponse, error) {
-	response, err := c.submitPairing.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// WaitPairing calls hermesh.relay.v1.RelayPublicService.WaitPairing.
-func (c *relayPublicServiceClient) WaitPairing(ctx context.Context, req *v1.WaitPairingRequest) (*v1.WaitPairingResponse, error) {
-	response, err := c.waitPairing.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -307,18 +241,18 @@ func (c *relayPublicServiceClient) AckErase(ctx context.Context, req *v1.AckEras
 	return nil, err
 }
 
-// StartLogin calls hermesh.relay.v1.RelayPublicService.StartLogin.
-func (c *relayPublicServiceClient) StartLogin(ctx context.Context, req *v1.StartLoginRequest) (*v1.StartLoginResponse, error) {
-	response, err := c.startLogin.CallUnary(ctx, connect.NewRequest(req))
+// SetUp calls hermesh.relay.v1.RelayPublicService.SetUp.
+func (c *relayPublicServiceClient) SetUp(ctx context.Context, req *v1.SetUpRequest) (*v1.LogInResponse, error) {
+	response, err := c.setUp.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
 	return nil, err
 }
 
-// Login calls hermesh.relay.v1.RelayPublicService.Login.
-func (c *relayPublicServiceClient) Login(ctx context.Context, req *v1.LoginRequest) (*v1.LoginResponse, error) {
-	response, err := c.login.CallUnary(ctx, connect.NewRequest(req))
+// LogIn calls hermesh.relay.v1.RelayPublicService.LogIn.
+func (c *relayPublicServiceClient) LogIn(ctx context.Context, req *v1.LogInRequest) (*v1.LogInResponse, error) {
+	response, err := c.logIn.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -329,18 +263,15 @@ func (c *relayPublicServiceClient) Login(ctx context.Context, req *v1.LoginReque
 // service.
 type RelayPublicServiceHandler interface {
 	GetInfo(context.Context, *v1.GetInfoRequest) (*v1.GetInfoResponse, error)
-	Claim(context.Context, *v1.ClaimRequest) (*v1.ClaimResponse, error)
-	SubmitPairing(context.Context, *v1.SubmitPairingRequest) (*v1.SubmitPairingResponse, error)
-	// Long poll: returns when the pairing completes or after ~25s.
-	WaitPairing(context.Context, *v1.WaitPairingRequest) (*v1.WaitPairingResponse, error)
 	// A device, machine or agent that got an erase order says it is erasing.
 	AckErase(context.Context, *v1.AckEraseRequest) (*v1.AckEraseResponse, error)
-	// Logging in with an account and password (docs/password-login.md). The
-	// KDF's salt and costs for the account (made up for an unknown one).
-	StartLogin(context.Context, *v1.StartLoginRequest) (*v1.StartLoginResponse, error)
-	// With the key the password derives: the sealed password key; then, with
-	// what the client signed with it, publishes that.
-	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
+	// Setting up a new server (docs/accounts.md §2): with the setup code it
+	// printed, the account and password it will keep; the caller is then
+	// logged in as with LogIn.
+	SetUp(context.Context, *v1.SetUpRequest) (*v1.LogInResponse, error)
+	// Logging in with the account and password: the server signs the
+	// caller's credential itself, with no one else approving.
+	LogIn(context.Context, *v1.LogInRequest) (*v1.LogInResponse, error)
 }
 
 // NewRelayPublicServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -356,58 +287,34 @@ func NewRelayPublicServiceHandler(svc RelayPublicServiceHandler, opts ...connect
 		connect.WithSchema(relayPublicServiceMethods.ByName("GetInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
-	relayPublicServiceClaimHandler := connect.NewUnaryHandlerSimple(
-		RelayPublicServiceClaimProcedure,
-		svc.Claim,
-		connect.WithSchema(relayPublicServiceMethods.ByName("Claim")),
-		connect.WithHandlerOptions(opts...),
-	)
-	relayPublicServiceSubmitPairingHandler := connect.NewUnaryHandlerSimple(
-		RelayPublicServiceSubmitPairingProcedure,
-		svc.SubmitPairing,
-		connect.WithSchema(relayPublicServiceMethods.ByName("SubmitPairing")),
-		connect.WithHandlerOptions(opts...),
-	)
-	relayPublicServiceWaitPairingHandler := connect.NewUnaryHandlerSimple(
-		RelayPublicServiceWaitPairingProcedure,
-		svc.WaitPairing,
-		connect.WithSchema(relayPublicServiceMethods.ByName("WaitPairing")),
-		connect.WithHandlerOptions(opts...),
-	)
 	relayPublicServiceAckEraseHandler := connect.NewUnaryHandlerSimple(
 		RelayPublicServiceAckEraseProcedure,
 		svc.AckErase,
 		connect.WithSchema(relayPublicServiceMethods.ByName("AckErase")),
 		connect.WithHandlerOptions(opts...),
 	)
-	relayPublicServiceStartLoginHandler := connect.NewUnaryHandlerSimple(
-		RelayPublicServiceStartLoginProcedure,
-		svc.StartLogin,
-		connect.WithSchema(relayPublicServiceMethods.ByName("StartLogin")),
+	relayPublicServiceSetUpHandler := connect.NewUnaryHandlerSimple(
+		RelayPublicServiceSetUpProcedure,
+		svc.SetUp,
+		connect.WithSchema(relayPublicServiceMethods.ByName("SetUp")),
 		connect.WithHandlerOptions(opts...),
 	)
-	relayPublicServiceLoginHandler := connect.NewUnaryHandlerSimple(
-		RelayPublicServiceLoginProcedure,
-		svc.Login,
-		connect.WithSchema(relayPublicServiceMethods.ByName("Login")),
+	relayPublicServiceLogInHandler := connect.NewUnaryHandlerSimple(
+		RelayPublicServiceLogInProcedure,
+		svc.LogIn,
+		connect.WithSchema(relayPublicServiceMethods.ByName("LogIn")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/hermesh.relay.v1.RelayPublicService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RelayPublicServiceGetInfoProcedure:
 			relayPublicServiceGetInfoHandler.ServeHTTP(w, r)
-		case RelayPublicServiceClaimProcedure:
-			relayPublicServiceClaimHandler.ServeHTTP(w, r)
-		case RelayPublicServiceSubmitPairingProcedure:
-			relayPublicServiceSubmitPairingHandler.ServeHTTP(w, r)
-		case RelayPublicServiceWaitPairingProcedure:
-			relayPublicServiceWaitPairingHandler.ServeHTTP(w, r)
 		case RelayPublicServiceAckEraseProcedure:
 			relayPublicServiceAckEraseHandler.ServeHTTP(w, r)
-		case RelayPublicServiceStartLoginProcedure:
-			relayPublicServiceStartLoginHandler.ServeHTTP(w, r)
-		case RelayPublicServiceLoginProcedure:
-			relayPublicServiceLoginHandler.ServeHTTP(w, r)
+		case RelayPublicServiceSetUpProcedure:
+			relayPublicServiceSetUpHandler.ServeHTTP(w, r)
+		case RelayPublicServiceLogInProcedure:
+			relayPublicServiceLogInHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -421,28 +328,16 @@ func (UnimplementedRelayPublicServiceHandler) GetInfo(context.Context, *v1.GetIn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.GetInfo is not implemented"))
 }
 
-func (UnimplementedRelayPublicServiceHandler) Claim(context.Context, *v1.ClaimRequest) (*v1.ClaimResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.Claim is not implemented"))
-}
-
-func (UnimplementedRelayPublicServiceHandler) SubmitPairing(context.Context, *v1.SubmitPairingRequest) (*v1.SubmitPairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.SubmitPairing is not implemented"))
-}
-
-func (UnimplementedRelayPublicServiceHandler) WaitPairing(context.Context, *v1.WaitPairingRequest) (*v1.WaitPairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.WaitPairing is not implemented"))
-}
-
 func (UnimplementedRelayPublicServiceHandler) AckErase(context.Context, *v1.AckEraseRequest) (*v1.AckEraseResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.AckErase is not implemented"))
 }
 
-func (UnimplementedRelayPublicServiceHandler) StartLogin(context.Context, *v1.StartLoginRequest) (*v1.StartLoginResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.StartLogin is not implemented"))
+func (UnimplementedRelayPublicServiceHandler) SetUp(context.Context, *v1.SetUpRequest) (*v1.LogInResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.SetUp is not implemented"))
 }
 
-func (UnimplementedRelayPublicServiceHandler) Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.Login is not implemented"))
+func (UnimplementedRelayPublicServiceHandler) LogIn(context.Context, *v1.LogInRequest) (*v1.LogInResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.RelayPublicService.LogIn is not implemented"))
 }
 
 // MachineControlServiceClient is a client for the hermesh.relay.v1.MachineControlService service.
@@ -789,33 +684,33 @@ func (UnimplementedClientControlServiceHandler) GetLatestGrant(context.Context, 
 
 // OwnerControlServiceClient is a client for the hermesh.relay.v1.OwnerControlService service.
 type OwnerControlServiceClient interface {
-	GetPairingRequest(context.Context, *v1.GetPairingRequestRequest) (*v1.GetPairingRequestResponse, error)
-	// Pending pairing requests bound to this owner: made with its connection
-	// address, or claimed by its account. The owner's signer shows them
-	// without anyone typing a code.
-	ListPairingRequests(context.Context, *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error)
-	// A request made without an owner (a bare center URL): the owner typed its
-	// code on its own device. A hosted center binds it to the caller; one
-	// already bound to the caller is returned as is. The requester checks the
-	// binding with the verification code.
-	ClaimPairingRequest(context.Context, *v1.ClaimPairingRequestRequest) (*v1.ClaimPairingRequestResponse, error)
-	CompletePairing(context.Context, *v1.CompletePairingRequest) (*v1.CompletePairingResponse, error)
+	// The server signs what a device of the owner asks (docs/accounts.md §3):
+	// a machine cert, a grant, an admin command, a root cert, an erase order.
+	// A device that logged in is the owner, so it needs no other approval.
+	Sign(context.Context, *v1.SignRequest) (*v1.SignResponse, error)
 	ListMachines(context.Context, *v1.ListMachinesRequest) (*v1.ListMachinesResponse, error)
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
-	// WatchOwner sends what ListMachines, ListClients and ListPairingRequests
-	// return, then each again whenever it changed, until the connection ends
+	// WatchOwner sends what ListMachines, ListClients and ListDevices return,
+	// then each again whenever it changed, until the connection ends
 	// (docs/state-sync.md §3.2): the owner's devices follow it instead of
 	// polling those three.
 	WatchOwner(context.Context, *v1.WatchOwnerRequest) (*connect.ServerStreamForClient[v1.OwnerUpdate], error)
 	PublishGrant(context.Context, *v1.PublishGrantRequest) (*v1.PublishGrantResponse, error)
 	PublishMachineCert(context.Context, *v1.PublishMachineCertRequest) (*v1.PublishMachineCertResponse, error)
 	Revoke(context.Context, *v1.RevokeRequest) (*v1.RevokeResponse, error)
-	// A longer root chain: a trusted device joined or was removed.
-	PublishRootChain(context.Context, *v1.PublishRootChainRequest) (*v1.PublishRootChainResponse, error)
-	// Logging in with a password: what the relay keeps for it (its key must
-	// be in the root cert), or nothing to turn it off.
-	SetPasswordLogin(context.Context, *v1.SetPasswordLoginRequest) (*v1.SetPasswordLoginResponse, error)
-	GetPasswordLogin(context.Context, *v1.GetPasswordLoginRequest) (*v1.GetPasswordLoginResponse, error)
+	// The account (docs/accounts.md §4): its name, and whether a password
+	// login from before accounts waits to be converted with the password.
+	GetLogin(context.Context, *v1.GetLoginRequest) (*v1.GetLoginResponse, error)
+	// Changes the account's name or password, given the current password;
+	// a new password signs out every other device and agent that logged in.
+	SetLogin(context.Context, *v1.SetLoginRequest) (*v1.SetLoginResponse, error)
+	// The owner's devices: those that logged in, and those set up before
+	// accounts (a root key of theirs in the root cert).
+	ListDevices(context.Context, *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error)
+	// Signs a device out: its device cert no longer admits it, its own
+	// machine is removed, and what a device from before accounts signed is
+	// signed again by the server.
+	RemoveDevice(context.Context, *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error)
 	// The owner erases everything (docs/erase-everything.md): the relay keeps
 	// the signed order for 10 minutes, forgets the owner, and every peer of
 	// it is refused, and shown the order in that time.
@@ -860,28 +755,10 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	ownerControlServiceMethods := v1.File_hermesh_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
 	return &ownerControlServiceClient{
-		getPairingRequest: connect.NewClient[v1.GetPairingRequestRequest, v1.GetPairingRequestResponse](
+		sign: connect.NewClient[v1.SignRequest, v1.SignResponse](
 			httpClient,
-			baseURL+OwnerControlServiceGetPairingRequestProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("GetPairingRequest")),
-			connect.WithClientOptions(opts...),
-		),
-		listPairingRequests: connect.NewClient[v1.ListPairingRequestsRequest, v1.ListPairingRequestsResponse](
-			httpClient,
-			baseURL+OwnerControlServiceListPairingRequestsProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("ListPairingRequests")),
-			connect.WithClientOptions(opts...),
-		),
-		claimPairingRequest: connect.NewClient[v1.ClaimPairingRequestRequest, v1.ClaimPairingRequestResponse](
-			httpClient,
-			baseURL+OwnerControlServiceClaimPairingRequestProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("ClaimPairingRequest")),
-			connect.WithClientOptions(opts...),
-		),
-		completePairing: connect.NewClient[v1.CompletePairingRequest, v1.CompletePairingResponse](
-			httpClient,
-			baseURL+OwnerControlServiceCompletePairingProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("CompletePairing")),
+			baseURL+OwnerControlServiceSignProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("Sign")),
 			connect.WithClientOptions(opts...),
 		),
 		listMachines: connect.NewClient[v1.ListMachinesRequest, v1.ListMachinesResponse](
@@ -920,22 +797,28 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(ownerControlServiceMethods.ByName("Revoke")),
 			connect.WithClientOptions(opts...),
 		),
-		publishRootChain: connect.NewClient[v1.PublishRootChainRequest, v1.PublishRootChainResponse](
+		getLogin: connect.NewClient[v1.GetLoginRequest, v1.GetLoginResponse](
 			httpClient,
-			baseURL+OwnerControlServicePublishRootChainProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("PublishRootChain")),
+			baseURL+OwnerControlServiceGetLoginProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("GetLogin")),
 			connect.WithClientOptions(opts...),
 		),
-		setPasswordLogin: connect.NewClient[v1.SetPasswordLoginRequest, v1.SetPasswordLoginResponse](
+		setLogin: connect.NewClient[v1.SetLoginRequest, v1.SetLoginResponse](
 			httpClient,
-			baseURL+OwnerControlServiceSetPasswordLoginProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("SetPasswordLogin")),
+			baseURL+OwnerControlServiceSetLoginProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("SetLogin")),
 			connect.WithClientOptions(opts...),
 		),
-		getPasswordLogin: connect.NewClient[v1.GetPasswordLoginRequest, v1.GetPasswordLoginResponse](
+		listDevices: connect.NewClient[v1.ListDevicesRequest, v1.ListDevicesResponse](
 			httpClient,
-			baseURL+OwnerControlServiceGetPasswordLoginProcedure,
-			connect.WithSchema(ownerControlServiceMethods.ByName("GetPasswordLogin")),
+			baseURL+OwnerControlServiceListDevicesProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("ListDevices")),
+			connect.WithClientOptions(opts...),
+		),
+		removeDevice: connect.NewClient[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse](
+			httpClient,
+			baseURL+OwnerControlServiceRemoveDeviceProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("RemoveDevice")),
 			connect.WithClientOptions(opts...),
 		),
 		eraseOwner: connect.NewClient[v1.EraseOwnerRequest, v1.EraseOwnerResponse](
@@ -1009,62 +892,33 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // ownerControlServiceClient implements OwnerControlServiceClient.
 type ownerControlServiceClient struct {
-	getPairingRequest   *connect.Client[v1.GetPairingRequestRequest, v1.GetPairingRequestResponse]
-	listPairingRequests *connect.Client[v1.ListPairingRequestsRequest, v1.ListPairingRequestsResponse]
-	claimPairingRequest *connect.Client[v1.ClaimPairingRequestRequest, v1.ClaimPairingRequestResponse]
-	completePairing     *connect.Client[v1.CompletePairingRequest, v1.CompletePairingResponse]
-	listMachines        *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
-	listClients         *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
-	watchOwner          *connect.Client[v1.WatchOwnerRequest, v1.OwnerUpdate]
-	publishGrant        *connect.Client[v1.PublishGrantRequest, v1.PublishGrantResponse]
-	publishMachineCert  *connect.Client[v1.PublishMachineCertRequest, v1.PublishMachineCertResponse]
-	revoke              *connect.Client[v1.RevokeRequest, v1.RevokeResponse]
-	publishRootChain    *connect.Client[v1.PublishRootChainRequest, v1.PublishRootChainResponse]
-	setPasswordLogin    *connect.Client[v1.SetPasswordLoginRequest, v1.SetPasswordLoginResponse]
-	getPasswordLogin    *connect.Client[v1.GetPasswordLoginRequest, v1.GetPasswordLoginResponse]
-	eraseOwner          *connect.Client[v1.EraseOwnerRequest, v1.EraseOwnerResponse]
-	getAccount          *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
-	getMCP              *connect.Client[v1.GetMCPRequest, v1.GetMCPResponse]
-	registerPush        *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
-	publishCards        *connect.Client[v1.PublishCardsRequest, v1.PublishCardsResponse]
-	listWakes           *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
-	setWake             *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
-	checkWake           *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
-	clearWake           *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
-	openWakeLink        *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
-	getScreenServers    *connect.Client[v1.GetScreenServersRequest, v1.GetScreenServersResponse]
+	sign               *connect.Client[v1.SignRequest, v1.SignResponse]
+	listMachines       *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
+	listClients        *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
+	watchOwner         *connect.Client[v1.WatchOwnerRequest, v1.OwnerUpdate]
+	publishGrant       *connect.Client[v1.PublishGrantRequest, v1.PublishGrantResponse]
+	publishMachineCert *connect.Client[v1.PublishMachineCertRequest, v1.PublishMachineCertResponse]
+	revoke             *connect.Client[v1.RevokeRequest, v1.RevokeResponse]
+	getLogin           *connect.Client[v1.GetLoginRequest, v1.GetLoginResponse]
+	setLogin           *connect.Client[v1.SetLoginRequest, v1.SetLoginResponse]
+	listDevices        *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
+	removeDevice       *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
+	eraseOwner         *connect.Client[v1.EraseOwnerRequest, v1.EraseOwnerResponse]
+	getAccount         *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
+	getMCP             *connect.Client[v1.GetMCPRequest, v1.GetMCPResponse]
+	registerPush       *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
+	publishCards       *connect.Client[v1.PublishCardsRequest, v1.PublishCardsResponse]
+	listWakes          *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
+	setWake            *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
+	checkWake          *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
+	clearWake          *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
+	openWakeLink       *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
+	getScreenServers   *connect.Client[v1.GetScreenServersRequest, v1.GetScreenServersResponse]
 }
 
-// GetPairingRequest calls hermesh.relay.v1.OwnerControlService.GetPairingRequest.
-func (c *ownerControlServiceClient) GetPairingRequest(ctx context.Context, req *v1.GetPairingRequestRequest) (*v1.GetPairingRequestResponse, error) {
-	response, err := c.getPairingRequest.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ListPairingRequests calls hermesh.relay.v1.OwnerControlService.ListPairingRequests.
-func (c *ownerControlServiceClient) ListPairingRequests(ctx context.Context, req *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error) {
-	response, err := c.listPairingRequests.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ClaimPairingRequest calls hermesh.relay.v1.OwnerControlService.ClaimPairingRequest.
-func (c *ownerControlServiceClient) ClaimPairingRequest(ctx context.Context, req *v1.ClaimPairingRequestRequest) (*v1.ClaimPairingRequestResponse, error) {
-	response, err := c.claimPairingRequest.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// CompletePairing calls hermesh.relay.v1.OwnerControlService.CompletePairing.
-func (c *ownerControlServiceClient) CompletePairing(ctx context.Context, req *v1.CompletePairingRequest) (*v1.CompletePairingResponse, error) {
-	response, err := c.completePairing.CallUnary(ctx, connect.NewRequest(req))
+// Sign calls hermesh.relay.v1.OwnerControlService.Sign.
+func (c *ownerControlServiceClient) Sign(ctx context.Context, req *v1.SignRequest) (*v1.SignResponse, error) {
+	response, err := c.sign.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1121,27 +975,36 @@ func (c *ownerControlServiceClient) Revoke(ctx context.Context, req *v1.RevokeRe
 	return nil, err
 }
 
-// PublishRootChain calls hermesh.relay.v1.OwnerControlService.PublishRootChain.
-func (c *ownerControlServiceClient) PublishRootChain(ctx context.Context, req *v1.PublishRootChainRequest) (*v1.PublishRootChainResponse, error) {
-	response, err := c.publishRootChain.CallUnary(ctx, connect.NewRequest(req))
+// GetLogin calls hermesh.relay.v1.OwnerControlService.GetLogin.
+func (c *ownerControlServiceClient) GetLogin(ctx context.Context, req *v1.GetLoginRequest) (*v1.GetLoginResponse, error) {
+	response, err := c.getLogin.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
 	return nil, err
 }
 
-// SetPasswordLogin calls hermesh.relay.v1.OwnerControlService.SetPasswordLogin.
-func (c *ownerControlServiceClient) SetPasswordLogin(ctx context.Context, req *v1.SetPasswordLoginRequest) (*v1.SetPasswordLoginResponse, error) {
-	response, err := c.setPasswordLogin.CallUnary(ctx, connect.NewRequest(req))
+// SetLogin calls hermesh.relay.v1.OwnerControlService.SetLogin.
+func (c *ownerControlServiceClient) SetLogin(ctx context.Context, req *v1.SetLoginRequest) (*v1.SetLoginResponse, error) {
+	response, err := c.setLogin.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
 	return nil, err
 }
 
-// GetPasswordLogin calls hermesh.relay.v1.OwnerControlService.GetPasswordLogin.
-func (c *ownerControlServiceClient) GetPasswordLogin(ctx context.Context, req *v1.GetPasswordLoginRequest) (*v1.GetPasswordLoginResponse, error) {
-	response, err := c.getPasswordLogin.CallUnary(ctx, connect.NewRequest(req))
+// ListDevices calls hermesh.relay.v1.OwnerControlService.ListDevices.
+func (c *ownerControlServiceClient) ListDevices(ctx context.Context, req *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error) {
+	response, err := c.listDevices.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// RemoveDevice calls hermesh.relay.v1.OwnerControlService.RemoveDevice.
+func (c *ownerControlServiceClient) RemoveDevice(ctx context.Context, req *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error) {
+	response, err := c.removeDevice.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1250,33 +1113,33 @@ func (c *ownerControlServiceClient) GetScreenServers(ctx context.Context, req *v
 // OwnerControlServiceHandler is an implementation of the hermesh.relay.v1.OwnerControlService
 // service.
 type OwnerControlServiceHandler interface {
-	GetPairingRequest(context.Context, *v1.GetPairingRequestRequest) (*v1.GetPairingRequestResponse, error)
-	// Pending pairing requests bound to this owner: made with its connection
-	// address, or claimed by its account. The owner's signer shows them
-	// without anyone typing a code.
-	ListPairingRequests(context.Context, *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error)
-	// A request made without an owner (a bare center URL): the owner typed its
-	// code on its own device. A hosted center binds it to the caller; one
-	// already bound to the caller is returned as is. The requester checks the
-	// binding with the verification code.
-	ClaimPairingRequest(context.Context, *v1.ClaimPairingRequestRequest) (*v1.ClaimPairingRequestResponse, error)
-	CompletePairing(context.Context, *v1.CompletePairingRequest) (*v1.CompletePairingResponse, error)
+	// The server signs what a device of the owner asks (docs/accounts.md §3):
+	// a machine cert, a grant, an admin command, a root cert, an erase order.
+	// A device that logged in is the owner, so it needs no other approval.
+	Sign(context.Context, *v1.SignRequest) (*v1.SignResponse, error)
 	ListMachines(context.Context, *v1.ListMachinesRequest) (*v1.ListMachinesResponse, error)
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
-	// WatchOwner sends what ListMachines, ListClients and ListPairingRequests
-	// return, then each again whenever it changed, until the connection ends
+	// WatchOwner sends what ListMachines, ListClients and ListDevices return,
+	// then each again whenever it changed, until the connection ends
 	// (docs/state-sync.md §3.2): the owner's devices follow it instead of
 	// polling those three.
 	WatchOwner(context.Context, *v1.WatchOwnerRequest, *connect.ServerStream[v1.OwnerUpdate]) error
 	PublishGrant(context.Context, *v1.PublishGrantRequest) (*v1.PublishGrantResponse, error)
 	PublishMachineCert(context.Context, *v1.PublishMachineCertRequest) (*v1.PublishMachineCertResponse, error)
 	Revoke(context.Context, *v1.RevokeRequest) (*v1.RevokeResponse, error)
-	// A longer root chain: a trusted device joined or was removed.
-	PublishRootChain(context.Context, *v1.PublishRootChainRequest) (*v1.PublishRootChainResponse, error)
-	// Logging in with a password: what the relay keeps for it (its key must
-	// be in the root cert), or nothing to turn it off.
-	SetPasswordLogin(context.Context, *v1.SetPasswordLoginRequest) (*v1.SetPasswordLoginResponse, error)
-	GetPasswordLogin(context.Context, *v1.GetPasswordLoginRequest) (*v1.GetPasswordLoginResponse, error)
+	// The account (docs/accounts.md §4): its name, and whether a password
+	// login from before accounts waits to be converted with the password.
+	GetLogin(context.Context, *v1.GetLoginRequest) (*v1.GetLoginResponse, error)
+	// Changes the account's name or password, given the current password;
+	// a new password signs out every other device and agent that logged in.
+	SetLogin(context.Context, *v1.SetLoginRequest) (*v1.SetLoginResponse, error)
+	// The owner's devices: those that logged in, and those set up before
+	// accounts (a root key of theirs in the root cert).
+	ListDevices(context.Context, *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error)
+	// Signs a device out: its device cert no longer admits it, its own
+	// machine is removed, and what a device from before accounts signed is
+	// signed again by the server.
+	RemoveDevice(context.Context, *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error)
 	// The owner erases everything (docs/erase-everything.md): the relay keeps
 	// the signed order for 10 minutes, forgets the owner, and every peer of
 	// it is refused, and shown the order in that time.
@@ -1317,28 +1180,10 @@ type OwnerControlServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	ownerControlServiceMethods := v1.File_hermesh_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
-	ownerControlServiceGetPairingRequestHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServiceGetPairingRequestProcedure,
-		svc.GetPairingRequest,
-		connect.WithSchema(ownerControlServiceMethods.ByName("GetPairingRequest")),
-		connect.WithHandlerOptions(opts...),
-	)
-	ownerControlServiceListPairingRequestsHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServiceListPairingRequestsProcedure,
-		svc.ListPairingRequests,
-		connect.WithSchema(ownerControlServiceMethods.ByName("ListPairingRequests")),
-		connect.WithHandlerOptions(opts...),
-	)
-	ownerControlServiceClaimPairingRequestHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServiceClaimPairingRequestProcedure,
-		svc.ClaimPairingRequest,
-		connect.WithSchema(ownerControlServiceMethods.ByName("ClaimPairingRequest")),
-		connect.WithHandlerOptions(opts...),
-	)
-	ownerControlServiceCompletePairingHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServiceCompletePairingProcedure,
-		svc.CompletePairing,
-		connect.WithSchema(ownerControlServiceMethods.ByName("CompletePairing")),
+	ownerControlServiceSignHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceSignProcedure,
+		svc.Sign,
+		connect.WithSchema(ownerControlServiceMethods.ByName("Sign")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ownerControlServiceListMachinesHandler := connect.NewUnaryHandlerSimple(
@@ -1377,22 +1222,28 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 		connect.WithSchema(ownerControlServiceMethods.ByName("Revoke")),
 		connect.WithHandlerOptions(opts...),
 	)
-	ownerControlServicePublishRootChainHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServicePublishRootChainProcedure,
-		svc.PublishRootChain,
-		connect.WithSchema(ownerControlServiceMethods.ByName("PublishRootChain")),
+	ownerControlServiceGetLoginHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceGetLoginProcedure,
+		svc.GetLogin,
+		connect.WithSchema(ownerControlServiceMethods.ByName("GetLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
-	ownerControlServiceSetPasswordLoginHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServiceSetPasswordLoginProcedure,
-		svc.SetPasswordLogin,
-		connect.WithSchema(ownerControlServiceMethods.ByName("SetPasswordLogin")),
+	ownerControlServiceSetLoginHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceSetLoginProcedure,
+		svc.SetLogin,
+		connect.WithSchema(ownerControlServiceMethods.ByName("SetLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
-	ownerControlServiceGetPasswordLoginHandler := connect.NewUnaryHandlerSimple(
-		OwnerControlServiceGetPasswordLoginProcedure,
-		svc.GetPasswordLogin,
-		connect.WithSchema(ownerControlServiceMethods.ByName("GetPasswordLogin")),
+	ownerControlServiceListDevicesHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceListDevicesProcedure,
+		svc.ListDevices,
+		connect.WithSchema(ownerControlServiceMethods.ByName("ListDevices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	ownerControlServiceRemoveDeviceHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceRemoveDeviceProcedure,
+		svc.RemoveDevice,
+		connect.WithSchema(ownerControlServiceMethods.ByName("RemoveDevice")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ownerControlServiceEraseOwnerHandler := connect.NewUnaryHandlerSimple(
@@ -1463,14 +1314,8 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 	)
 	return "/hermesh.relay.v1.OwnerControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case OwnerControlServiceGetPairingRequestProcedure:
-			ownerControlServiceGetPairingRequestHandler.ServeHTTP(w, r)
-		case OwnerControlServiceListPairingRequestsProcedure:
-			ownerControlServiceListPairingRequestsHandler.ServeHTTP(w, r)
-		case OwnerControlServiceClaimPairingRequestProcedure:
-			ownerControlServiceClaimPairingRequestHandler.ServeHTTP(w, r)
-		case OwnerControlServiceCompletePairingProcedure:
-			ownerControlServiceCompletePairingHandler.ServeHTTP(w, r)
+		case OwnerControlServiceSignProcedure:
+			ownerControlServiceSignHandler.ServeHTTP(w, r)
 		case OwnerControlServiceListMachinesProcedure:
 			ownerControlServiceListMachinesHandler.ServeHTTP(w, r)
 		case OwnerControlServiceListClientsProcedure:
@@ -1483,12 +1328,14 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 			ownerControlServicePublishMachineCertHandler.ServeHTTP(w, r)
 		case OwnerControlServiceRevokeProcedure:
 			ownerControlServiceRevokeHandler.ServeHTTP(w, r)
-		case OwnerControlServicePublishRootChainProcedure:
-			ownerControlServicePublishRootChainHandler.ServeHTTP(w, r)
-		case OwnerControlServiceSetPasswordLoginProcedure:
-			ownerControlServiceSetPasswordLoginHandler.ServeHTTP(w, r)
-		case OwnerControlServiceGetPasswordLoginProcedure:
-			ownerControlServiceGetPasswordLoginHandler.ServeHTTP(w, r)
+		case OwnerControlServiceGetLoginProcedure:
+			ownerControlServiceGetLoginHandler.ServeHTTP(w, r)
+		case OwnerControlServiceSetLoginProcedure:
+			ownerControlServiceSetLoginHandler.ServeHTTP(w, r)
+		case OwnerControlServiceListDevicesProcedure:
+			ownerControlServiceListDevicesHandler.ServeHTTP(w, r)
+		case OwnerControlServiceRemoveDeviceProcedure:
+			ownerControlServiceRemoveDeviceHandler.ServeHTTP(w, r)
 		case OwnerControlServiceEraseOwnerProcedure:
 			ownerControlServiceEraseOwnerHandler.ServeHTTP(w, r)
 		case OwnerControlServiceGetAccountProcedure:
@@ -1520,20 +1367,8 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 // UnimplementedOwnerControlServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedOwnerControlServiceHandler struct{}
 
-func (UnimplementedOwnerControlServiceHandler) GetPairingRequest(context.Context, *v1.GetPairingRequestRequest) (*v1.GetPairingRequestResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.GetPairingRequest is not implemented"))
-}
-
-func (UnimplementedOwnerControlServiceHandler) ListPairingRequests(context.Context, *v1.ListPairingRequestsRequest) (*v1.ListPairingRequestsResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.ListPairingRequests is not implemented"))
-}
-
-func (UnimplementedOwnerControlServiceHandler) ClaimPairingRequest(context.Context, *v1.ClaimPairingRequestRequest) (*v1.ClaimPairingRequestResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.ClaimPairingRequest is not implemented"))
-}
-
-func (UnimplementedOwnerControlServiceHandler) CompletePairing(context.Context, *v1.CompletePairingRequest) (*v1.CompletePairingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.CompletePairing is not implemented"))
+func (UnimplementedOwnerControlServiceHandler) Sign(context.Context, *v1.SignRequest) (*v1.SignResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.Sign is not implemented"))
 }
 
 func (UnimplementedOwnerControlServiceHandler) ListMachines(context.Context, *v1.ListMachinesRequest) (*v1.ListMachinesResponse, error) {
@@ -1560,16 +1395,20 @@ func (UnimplementedOwnerControlServiceHandler) Revoke(context.Context, *v1.Revok
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.Revoke is not implemented"))
 }
 
-func (UnimplementedOwnerControlServiceHandler) PublishRootChain(context.Context, *v1.PublishRootChainRequest) (*v1.PublishRootChainResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.PublishRootChain is not implemented"))
+func (UnimplementedOwnerControlServiceHandler) GetLogin(context.Context, *v1.GetLoginRequest) (*v1.GetLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.GetLogin is not implemented"))
 }
 
-func (UnimplementedOwnerControlServiceHandler) SetPasswordLogin(context.Context, *v1.SetPasswordLoginRequest) (*v1.SetPasswordLoginResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.SetPasswordLogin is not implemented"))
+func (UnimplementedOwnerControlServiceHandler) SetLogin(context.Context, *v1.SetLoginRequest) (*v1.SetLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.SetLogin is not implemented"))
 }
 
-func (UnimplementedOwnerControlServiceHandler) GetPasswordLogin(context.Context, *v1.GetPasswordLoginRequest) (*v1.GetPasswordLoginResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.GetPasswordLogin is not implemented"))
+func (UnimplementedOwnerControlServiceHandler) ListDevices(context.Context, *v1.ListDevicesRequest) (*v1.ListDevicesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.ListDevices is not implemented"))
+}
+
+func (UnimplementedOwnerControlServiceHandler) RemoveDevice(context.Context, *v1.RemoveDeviceRequest) (*v1.RemoveDeviceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.relay.v1.OwnerControlService.RemoveDevice is not implemented"))
 }
 
 func (UnimplementedOwnerControlServiceHandler) EraseOwner(context.Context, *v1.EraseOwnerRequest) (*v1.EraseOwnerResponse, error) {

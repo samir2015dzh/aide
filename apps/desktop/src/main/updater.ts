@@ -11,7 +11,6 @@ import { feedNotes, nextCheckDelay, nextUpdate, releaseCatalog, squirrelFailure,
 import { command } from "./ipc";
 import { world, worldListeners } from "./notify";
 import { platform } from "./platform";
-import { showSigner, signerBusy, signerListeners } from "./signer";
 import { showUpdates } from "./windows";
 
 // Squirrel.Mac verifies the Developer ID signature and installs on quit. The
@@ -88,8 +87,7 @@ export function snooze() {
 export function updateInfo(): UpdateInfo {
   const p = prefs();
   return { version: app.getVersion(), autoDownload: p.autoDownload, checkedAt: p.checkedAt,
-    attemptedAt: p.attemptedAt, snoozedVersion: p.snoozedVersion, snoozedUntil: p.snoozedUntil,
-    approvalPending: signerBusy() || world.pairings.length > 0, notes, update };
+    attemptedAt: p.attemptedAt, snoozedVersion: p.snoozedVersion, snoozedUntil: p.snoozedUntil, notes, update };
 }
 function apply(e: UpdateEvent): Update {
   update = nextUpdate(update, e);
@@ -125,13 +123,7 @@ function failed(reason: "network" | "location" | "download", message: string) {
 }
 
 export function startUpdater() {
-  let pending = updateInfo().approvalPending;
-  worldListeners.add(() => {
-    restartStaleDaemon();
-    const next = updateInfo().approvalPending;
-    if (pending !== next) { pending = next; changed(); }
-  });
-  signerListeners.add(changed);
+  worldListeners.add(restartStaleDaemon);
   if (!supported) return;
   // Windows: set to the downloaded package's folder (startDownload).
   if (platform.token === "mac") {
@@ -241,14 +233,9 @@ export function openUpdates(manual = false) {
   showUpdates();
   if (manual || update.state === "idle") void check();
 }
-export function returnToApproval() {
-  if (signerBusy()) showSigner();
-  else if (world.pairings[0]) command(`pairing:${world.pairings[0].code}`);
-}
 /** Recheck the live guard even when Restart to Update came from a native menu. */
 export function install() {
   if (update.state !== "ready") return;
-  if (updateInfo().approvalPending) { showUpdates(); changed(); return; }
   autoUpdater.quitAndInstall();
 }
 
@@ -263,7 +250,6 @@ export function install() {
 let daemonRestart: "no" | "soon" | "done" = "no";
 
 function staleDaemon(): string | undefined {
-  if (signerBusy() || world.pairings.length > 0) return undefined;
   const st = world.status;
   if (!st?.version || st.version === app.getVersion()) return undefined;
   const busy = world.sessions.some(

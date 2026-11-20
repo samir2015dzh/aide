@@ -33,9 +33,6 @@
   "noHistory": "在浏览器中阅读历史更新说明。",
   "checkedAt": "上次检查：{{time}}",
   "neverChecked": "尚未成功检查",
-  "approvalTitle": "请先完成授权",
-  "approvalBody": "还有授权正在等待处理。请先返回完成，再重新启动 Aide。",
-  "returnToApproval": "返回授权",
   "error": {
     "network": "没能检查更新，请检查网络连接。",
     "location": "Aide 要放在「应用程序」文件夹里才能自动更新。请在访达中移入后重试。",
@@ -47,10 +44,9 @@
   "fullHistory": "完整更新历史",
   "install": {
     "heading": "安装",
-    "mac": "**在 Mac 上**，用来批准、也能跑编码 agent：Apple 芯片下载 `Aide-macos-arm64.dmg`，Intel 下载 `Aide-macos-x64.dmg`",
-    "windows": "**在 Windows 11 电脑上**，用来批准、也能跑编码 agent：下载 `Aide-windows-x64-setup.exe`，Arm 电脑下载 `Aide-windows-arm64-setup.exe`。安装包还没有签名，Windows 会先提示一次，点“更多信息 › 仍要运行”即可安装",
+    "mac": "**在 Mac 上**，管理你的机器和任务，也能跑编码 agent：Apple 芯片下载 `Aide-macos-arm64.dmg`，Intel 下载 `Aide-macos-x64.dmg`",
+    "windows": "**在 Windows 11 电脑上**，管理你的机器和任务，也能跑编码 agent：下载 `Aide-windows-x64-setup.exe`，Arm 电脑下载 `Aide-windows-arm64-setup.exe`。安装包还没有签名，Windows 会先提示一次，点“更多信息 › 仍要运行”即可安装",
     "machine": "**在给编码 agent 用的机器上**（Linux 或 macOS）：`{{command}}`",
-    "device": "**在只用来批准的 Linux 电脑上**：同一条命令，结尾改成 `sh -s -- --device`",
     "cli": "**给你的 agent 用的命令行**：同一条命令，结尾改成 `sh -s -- --cli`",
     "relay": "**在自己的服务器上**：镜像 `{{image}}`",
     "note": "其他文件由安装脚本和 app 的自动更新下载，不用手动下载。"

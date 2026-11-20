@@ -6,176 +6,101 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
 	"github.com/hermeshai/hermesh/internal/machine"
 	"github.com/hermeshai/hermesh/pkg/identity"
 	"github.com/hermeshai/hermesh/pkg/transport"
 )
 
 func (a *app) authCmd() *cobra.Command {
-	cmd := group(&cobra.Command{Use: "auth", Short: "Pair this client with an owner, check the pairing, or forget it"})
+	cmd := group(&cobra.Command{Use: "auth", Short: "Log this agent in to the owner's server, check the login, or forget it"})
 	cmd.AddCommand(a.loginCmd(), a.authStatusCmd(), a.logoutCmd())
 	return cmd
 }
 
-// maxLabel is the longest name the relay takes in a pairing request.
+// maxLabel is the longest name the server takes.
 const maxLabel = 64
 
 func (a *app) loginCmd() *cobra.Command {
 	var name, account string
 	var yes, passwordStdin bool
 	cmd := &cobra.Command{
-		Use:   "login [connection address | server]",
-		Short: "Pair with an owner: the owner approves it on a trusted device (or log in with --account)",
-		Long: `Pair with an owner, and wait until they approve it in Aide on one of
-their trusted devices (their computer or phone).
+		Use:   "login [server]",
+		Short: "Log in to the owner's server with the account and password",
+		Long: `Log in to the owner's server with their account and password
+(docs/accounts.md): the server signs this agent in itself; no one approves,
+nothing to compare.
 
-Give the owner's server: its connection address (relay.example.com/o_…)
-sends the request to that owner directly; a bare server address
-(relay.example.com) sends it to the server's one owner. Without an
-argument it takes $AIDE_CENTER, else $AIDE_SERVER. There is no
-default server: with none of these it stops and asks for one.
+The server is the argument (relay.example.com), else $AIDE_SERVER; there
+is no default. The account is --account, else $AIDE_ACCOUNT, else asked
+for; the password is asked for (or read from stdin with --password-stdin,
+or taken from $AIDE_PASSWORD). The agent may use every machine, project
+and coding agent until it is revoked, and is signed out when the owner
+changes the password.
 
-Already paired with this owner, it checks with the relay and does nothing
-while the owner still admits this agent; once the owner revoked it, or the
-grant expired, it asks again. To pair with another owner, run
-` + "`aide auth logout`" + ` first, unless the old owner is gone from its
-center (it started over): then login pairs with the new one directly.
-
-With --account it logs in with the owner's account and password instead
-(docs/password-login.md): no one approves, nothing to compare. The server
-is the argument, else $AIDE_SERVER (there is no default); the
-password is asked for (or read from stdin with --password-stdin, or taken
-from $AIDE_PASSWORD). The agent may use every machine, project and
-coding agent until it is revoked, as an approval with the defaults would
-give, and is signed out when the owner changes the password.`,
+Already logged in to this server, it checks with it and does nothing while
+the owner still admits this agent; once the owner revoked it, it logs in
+again as a new agent. To log in to another owner, run ` + "`aide auth logout`" + `
+first, unless the old owner is gone from its server (it erased
+everything): then login goes to the new one directly.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var arg string
 			if len(args) > 0 {
 				arg = args[0]
 			}
-			if account != "" {
-				return a.passwordLogin(cmd, arg, account, name, passwordStdin)
-			}
-			address := connaddr.Center(arg)
-			if address == "" {
-				return fail(exitUsage, "%v", connaddr.ErrNoServer)
-			}
-			relayURL, ownerID, err := connaddr.ParseAny(address)
-			if err != nil {
-				return fail(exitUsage, "%v", err)
-			}
-			if ownerID == "" {
-				if relayURL, err = connaddr.Discover(cmd.Context(), a.hc, relayURL); err != nil {
-					return fail(exitUnavailable, "%v", err)
-				}
-				// An own server has one owner: the request goes to it, and
-				// the owner compares its verification code as for any.
-				if ownerID, err = machine.ServerOwner(cmd.Context(), a.hc, relayURL); err != nil {
-					return fail(exitUnavailable, "%v", err)
-				}
-			}
-			if len(name) > maxLabel {
-				return fail(exitUsage, "--name is %d bytes long; at most %d", len(name), maxLabel)
-			}
-			// In JSON mode stdout has only the final document; the pairing
-			// code and the waiting go to stderr.
-			progress := cmd.OutOrStdout()
-			if a.output == "json" {
-				progress = cmd.ErrOrStderr()
-			}
-			done, previous, err := a.alreadyPaired(cmd.Context(), progress, relayURL, ownerID)
-			if err != nil {
-				return err
-			}
-			if done {
-				return a.loggedIn(cmd)
-			}
-			if err := a.loadKey(); err != nil {
-				return err
-			}
-			host, _ := os.Hostname()
-			if name == "" {
-				name = firstNonEmpty(previous, machine.HostLabel("client@"))
-			}
-			pr := &identityv1.PairingRequest{Kind: identityv1.PairingKind_PAIRING_KIND_CLIENT, SubjectPublicKey: identity.MarshalPublicKey(a.key.Public()),
-				Label: name, Hostname: host, Platform: runtime.GOOS + "/" + runtime.GOARCH, OwnerId: ownerID, CreatedAt: timestamppb.Now()}
-			creds, ownerID, err := machine.PairWithRelay(cmd.Context(), a.hc, relayURL, pr, a.key, progress)
-			if err != nil {
-				return err
-			}
-			a.st = state{RelayURL: relayURL, OwnerID: ownerID}
-			a.trust = identity.NewTrust(ownerID)
-			if _, err := a.trust.AcceptRootChain(creds.RootChain); err != nil {
-				return fmt.Errorf("owner root chain: %w", err)
-			}
-			if err := a.adopt(creds.RootChain, creds.GetGrant()); err != nil {
-				return err
-			}
-			// Its inbox, so that news and messages can reach it from now on.
-			if c, err := a.dial(cmd.Context(), false); err == nil {
-				if err := a.registerInbox(cmd.Context(), c); err != nil {
-					fmt.Fprintln(os.Stderr, "warning: registering this agent's inbox:", err)
-				}
-				c.Close()
-			}
-			fmt.Fprintln(progress, "Paired. Run `aide project list` to see where it can work.")
-			return a.loggedIn(cmd)
+			return a.accountLogin(cmd, arg, account, name, passwordStdin)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "name shown to the owner (default: the current name when pairing again, else client@<hostname>; at most 64 bytes)")
-	cmd.Flags().StringVar(&account, "account", "", "log in with the owner's account and password instead of asking for approval")
-	cmd.Flags().BoolVar(&passwordStdin, "password-stdin", false, "with --account: read the password from stdin")
+	cmd.Flags().StringVar(&name, "name", "", "name shown to the owner (default: the current name when logging in again, else client@<hostname>; at most 64 bytes)")
+	cmd.Flags().StringVar(&account, "account", "", "the owner's account (default: $AIDE_ACCOUNT, else asked for)")
+	cmd.Flags().BoolVar(&passwordStdin, "password-stdin", false, "read the password from stdin")
 	cmd.Flags().BoolVar(&yes, "yes", false, "")
-	cmd.Flags().MarkDeprecated("yes", "it did something only with a hosted center; your own server's owner is pinned without it")
+	cmd.Flags().MarkDeprecated("yes", "it did nothing on a server of one's own")
 	return cmd
 }
 
 // alreadyPaired tells login whether there is nothing to do: this agent is
-// paired with that owner and the relay still admits it. Pairing with
-// another owner needs a logout first. When the agent pairs again, previous
-// is the name it had.
+// logged in to that owner and the server still admits it. Logging in to
+// another owner needs a logout first. When the agent logs in again,
+// previous is the name it had.
 func (a *app) alreadyPaired(ctx context.Context, w io.Writer, relayURL, ownerID string) (done bool, previous string, err error) {
 	err = a.load()
 	if errors.Is(err, errNotLoggedIn) {
 		return false, "", nil
 	}
 	if err != nil {
-		return false, "", &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("cannot read the pairing stored in %s (%v)", a.home, err),
+		return false, "", &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("cannot read the login stored in %s (%v)", a.home, err),
 			hint: "run `aide auth logout`, then log in again"}
 	}
-	if (ownerID != "" && ownerID != a.st.OwnerID || ownerID == "" && relayURL != a.st.RelayURL) &&
-		machine.OwnerGone(ctx, a.hc, a.st.RelayURL, a.st.OwnerID) {
+	// Asked whatever the owner logged in to now: logging in names the
+	// server and the account, not the owner, and a server set up again
+	// after erasing everything has a new owner at the same address.
+	if machine.OwnerGone(ctx, a.hc, a.st.RelayURL, a.st.OwnerID) {
 		// The owner erased everything, or was reset: nothing to keep, pair with the new one.
-		fmt.Fprintf(w, "The previous owner %s is gone from its server (it erased everything, or was reset); pairing with a new owner.\n", a.st.OwnerID)
+		fmt.Fprintf(w, "The previous owner %s is gone from its server (it erased everything); logging in to the new one.\n", a.st.OwnerID)
 		previous = a.g.ClientLabel
 		_, err := a.forget()
 		return false, previous, err
 	}
 	if ownerID != "" && ownerID != a.st.OwnerID || ownerID == "" && relayURL != a.st.RelayURL {
-		return false, "", &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("already paired with owner %s (%s)", a.st.OwnerID, a.address()),
-			hint: "run `aide auth logout` first to pair with another owner"}
+		return false, "", &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("already logged in to owner %s (%s)", a.st.OwnerID, a.address()),
+			hint: "run `aide auth logout` first to log in to another owner"}
 	}
 	previous = a.g.ClientLabel
 	if relayURL != a.st.RelayURL {
 		return false, previous, nil // the owner's relay moved
 	}
-	// A pairing that no longer works is replaced by a new agent with a new
-	// key: the relay keeps a completed request for the old key a while (so
-	// an interrupted login shows the same code again), and the owner keeps
-	// the old agent revoked.
+	// A login that no longer works is replaced by a new agent with a new
+	// key; the owner keeps the old one revoked.
 	if _, _, err := a.trust.VerifyGrant(a.grant, time.Now()); err != nil {
-		fmt.Fprintf(w, "The grant is no longer valid (%v); pairing again as a new client.\n", err)
+		fmt.Fprintf(w, "The grant is no longer valid (%v); logging in again as a new client.\n", err)
 		_, err := a.forget()
 		return false, previous, err
 	}
@@ -183,14 +108,14 @@ func (a *app) alreadyPaired(ctx context.Context, w io.Writer, relayURL, ownerID 
 	switch {
 	case err == nil:
 		c.Close()
-		fmt.Fprintf(w, "Already paired with owner %s as %q. Run `aide auth status` for details.\n", a.st.OwnerID, a.g.ClientLabel)
+		fmt.Fprintf(w, "Already logged in to owner %s as %q. Run `aide auth status` for details.\n", a.st.OwnerID, a.g.ClientLabel)
 		return true, previous, nil
 	case errors.Is(err, errRevoked), errors.Is(err, transport.ErrAdmission):
-		fmt.Fprintf(w, "The owner no longer admits this client (%s); pairing again as a new client.\n", refusal(err))
+		fmt.Fprintf(w, "The owner no longer admits this client (%s); logging in again as a new client.\n", refusal(err))
 		_, err := a.forget()
 		return false, previous, err
 	}
-	return false, "", fail(exitUnavailable, "cannot reach the relay to check the current pairing: %v", err)
+	return false, "", fail(exitUnavailable, "cannot reach the server to check the current login: %v", err)
 }
 
 // forget removes this agent's grant and key from this computer. Embedded
@@ -209,7 +134,7 @@ func (a *app) forget() (removed bool, err error) {
 	return removed, nil
 }
 
-// loggedIn ends a login: in JSON mode the document with the pairing.
+// loggedIn ends a login: in JSON mode the document with the login.
 func (a *app) loggedIn(cmd *cobra.Command) error {
 	if a.output != "json" {
 		return nil
@@ -239,12 +164,12 @@ func (a *app) logoutCmd() *cobra.Command {
 			}
 			switch {
 			case !removed:
-				fmt.Fprintln(w, "Not paired: nothing to forget.")
+				fmt.Fprintln(w, "Not logged in: nothing to forget.")
 			case paired:
 				fmt.Fprintf(w, "Forgot this client's key and grant. Owner %s still lists client %q (%s) until they revoke it in the Aide app or the console.\n",
 					a.st.OwnerID, a.g.ClientLabel, a.g.ClientId)
 			default:
-				fmt.Fprintf(w, "Removed the pairing files in %s.\n", a.home)
+				fmt.Fprintf(w, "Removed the login files in %s.\n", a.home)
 			}
 			return nil
 		},
@@ -315,7 +240,7 @@ func nonNil(s []string) []string {
 func (a *app) authStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Check this client's pairing: identity, grant, and the relay connection",
+		Short: "Check this client's login: identity, grant, and the server connection",
 		Long: `Check this client's pairing, step by step: the identity stored on this
 computer, the owner's grant, the relay connection, and whether the grant is
 the owner's latest. Each failing step says what to do. Exit code 0 when the
@@ -338,12 +263,12 @@ func (a *app) authStatus(ctx context.Context) *authReport {
 	}
 	err := a.load()
 	if errors.Is(err, errNotLoggedIn) {
-		id.set("fail", "not paired", "run `aide auth login <your server’s connection address>` and have the owner approve the request it shows in Aide on one of their trusted devices (computer or phone), or log in with --account", exitDenied)
-		skip("not paired", grant, relay, sync)
+		id.set("fail", "not logged in", "run `aide auth login <your server> --account <account>`: it logs in with the owner's account and password", exitDenied)
+		skip("not logged in", grant, relay, sync)
 		return r
 	}
 	if err != nil {
-		id.set("fail", fmt.Sprintf("cannot read the pairing stored in %s: %v", a.home, err), "run `aide auth logout`, then `aide auth login <address>`", exitDenied)
+		id.set("fail", fmt.Sprintf("cannot read the login stored in %s: %v", a.home, err), "run `aide auth logout`, then `aide auth login <server>`", exitDenied)
 		skip("no identity", grant, relay, sync)
 		return r
 	}

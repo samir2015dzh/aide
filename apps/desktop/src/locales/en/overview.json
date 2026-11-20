@@ -9,8 +9,7 @@
   "add": {
     "newGrant": "Connect Agent…",
     "addMachine": "Add Machine…",
-    "addProject": "Add Project…",
-    "enterCode": "Enter Pairing Code…"
+    "addProject": "Add Project…"
   },
   "unreachable": {
     "offline": "<b>{{name}} is offline</b>; its tasks can’t be shown for now",
@@ -22,20 +21,10 @@
   },
   "attention": {
     "title": "Needs You",
-    "pairingDetail": "{{device}} · verification code <code>{{code}}</code>",
-    "verify": "Verify",
-    "review": "Review",
     "expires_one": "Access for “{{label}}” expires in {{count}} day",
     "expires_other": "Access for “{{label}}” expires in {{count}} days",
     "expiresDetail": "After that it can’t use your machines, and its running tasks will be interrupted",
     "renew": "Renew…",
-    "pairingDevice": "“{{label}}” wants to become your trusted device",
-    "pairingClient": "“{{label}}” wants to connect to your computer",
-    "pairingMachine": "A machine calling itself “{{label}}” wants to join",
-    "signer": "A new version of Aide Signer",
-    "signerDetail": "This PC has {{version}}. Update it so it can sign requests for this version of Aide. Windows will ask for permission once",
-    "updateSigner": "Update…",
-    "signerUpdated": "Signer updated",
     "open": "Open"
   },
   "map": {
@@ -124,7 +113,7 @@
     "here_win": "On this PC",
     "seen_one": "{{count}} task today · last active {{ago}}",
     "seen_other": "{{count}} tasks today · last active {{ago}}",
-    "revokeElsewhere": "To revoke its access, use one of your trusted devices."
+    "revokeElsewhere": "Sign it out in Settings › Access."
   },
   "tiles": {
     "label": "At a glance",

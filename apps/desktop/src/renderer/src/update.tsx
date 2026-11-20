@@ -83,8 +83,7 @@ export function UpdatesWindow() {
   const ready = state === "ready";
   const available = state === "available";
   const busy = state === "checking" || state === "downloading";
-  const blocked = ready && info?.approvalPending;
-  const title = blocked ? t("approvalTitle") : state === "error" ? t("errorTitle") : state === "downloading" ? t("downloading", { version }) : t(state);
+  const title = state === "error" ? t("errorTitle") : state === "downloading" ? t("downloading", { version }) : t(state);
   const highlights = info?.notes.find((n) => n.version === version);
   const skipped = info?.notes.filter((n) => newer(n.version, info.version) && newer(version, n.version)) ?? [];
   const later = async () => { await window.hermesh?.snoozeUpdate(); window.close(); };
@@ -102,7 +101,6 @@ export function UpdatesWindow() {
         {ready && <p>{t("readyBody", { version })}</p>}
         {available && <p>{t("availableBody", { version })}</p>}
         {state === "downloading" && <><div className="update-progress" role="progressbar" aria-label={t("downloading", { version })} /><p>{t("background")}</p></>}
-        {blocked && <p className="update-callout">{t("approvalBody")}</p>}
         {(ready || available || state === "downloading") && <>
           {highlights ? <ReleaseSummary note={highlights} /> : <p className="update-muted">{t("notesMissing")}</p>}
           {skipped.length > 0 && <details className="update-skipped"><summary>{t("intermediate")}</summary>{skipped.map((n) => <ReleaseSummary key={n.version} note={n} />)}</details>}
@@ -117,8 +115,7 @@ export function UpdatesWindow() {
     </div></div>
     <footer className="update-actions">
       <button className="btn" onClick={ready || available ? later : () => window.close()}>{t(ready || available ? "later" : busy || state === "error" ? "close" : "done")}</button>
-      {blocked ? <button className="btn primary" onClick={() => window.hermesh?.returnToApproval()}>{t("returnToApproval")}</button>
-        : ready ? <button className="btn primary" onClick={() => window.hermesh?.installUpdate()}>{t("restart")}</button>
+      {ready ? <button className="btn primary" onClick={() => window.hermesh?.installUpdate()}>{t("restart")}</button>
         : available ? <button className="btn primary" onClick={() => window.hermesh?.downloadUpdate()}>{t("download")}</button>
         : state === "error" || state === "idle" ? <button className="btn primary" onClick={() => window.hermesh?.checkForUpdates()}>{t(state === "error" ? "retry" : "check")}</button> : null}
     </footer>

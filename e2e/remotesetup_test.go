@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -37,10 +38,7 @@ func TestRemoteMachineSetup(t *testing.T) {
 	vpsEnv := append(homeEnv(home), env...)
 	daemon := filepath.Join(w.bin, "hermeshd")
 	data := filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", vpsEnv, daemon, "pair", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair", append(slices.Clone(vpsEnv), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}
@@ -62,10 +60,10 @@ func TestRemoteMachineSetup(t *testing.T) {
 	// doctor and status in its shell ask the running machine (it holds its
 	// data directory).
 	doc := run(t, vpsEnv, 60*time.Second, daemon, "doctor", "--data-dir", data)
-	if !strings.Contains(doc.stdout, `paired       yes, as "vps-1"`) || !strings.Contains(doc.stdout, "relay        connected") || !strings.Contains(doc.stdout, "claude") {
+	if !strings.Contains(doc.stdout, `logged in    yes, as "vps-1"`) || !strings.Contains(doc.stdout, "relay        connected") || !strings.Contains(doc.stdout, "claude") {
 		t.Fatalf("doctor while it runs: %+v", doc)
 	}
-	if st := run(t, vpsEnv, 60*time.Second, daemon, "status", "--data-dir", data); st.code != 0 || !strings.Contains(st.stdout, `paired as "vps-1"`) || !strings.Contains(st.stdout, "connected") {
+	if st := run(t, vpsEnv, 60*time.Second, daemon, "status", "--data-dir", data); st.code != 0 || !strings.Contains(st.stdout, `logged in as "vps-1"`) || !strings.Contains(st.stdout, "connected") {
 		t.Fatalf("status while it runs: %+v", st)
 	}
 

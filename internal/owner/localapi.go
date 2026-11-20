@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"strings"
 
@@ -28,12 +27,7 @@ func (d *Device) ServeLocal(ctx context.Context, sockPath string) error {
 	var protocols http.Protocols
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
-	srv := &http.Server{Handler: d.LocalHandler(), Protocols: &protocols, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-		if p, ok := localipc.Peer(c); ok {
-			return context.WithValue(ctx, callerKey{}, &localv1.Caller{Pid: int32(p.PID), Executable: p.Executable})
-		}
-		return ctx
-	}}
+	srv := &http.Server{Handler: d.LocalHandler(), Protocols: &protocols}
 	go func() {
 		<-ctx.Done()
 		srv.Close()
@@ -80,7 +74,7 @@ func writes(procedure string) bool {
 	case "HerCall", "HerSend", "HerUpload", "HerDownload", "DeleteHerWaiting":
 		return false
 	}
-	return !strings.HasPrefix(name, "Get") && !strings.HasPrefix(name, "List") && !strings.HasPrefix(name, "Lookup")
+	return !strings.HasPrefix(name, "Get") && !strings.HasPrefix(name, "List")
 }
 
 // localService serves the current profile (profiles.go).
@@ -98,14 +92,6 @@ func (l *localService) StopScreen(context.Context, *localv1.StopScreenRequest) (
 
 // errRemoteDesktop answers the remote desktop's calls, which the protocol keeps.
 var errRemoteDesktop = connect.NewError(connect.CodeUnimplemented, errors.New("remote desktop was removed"))
-
-type callerKey struct{}
-
-// callerFrom is the local process that made the call in ctx, if known.
-func callerFrom(ctx context.Context) *localv1.Caller {
-	c, _ := ctx.Value(callerKey{}).(*localv1.Caller)
-	return c
-}
 
 // GetStatus never waits on the relay: RelayConnected is the connection the
 // owner keeps (stayConnected).
@@ -138,44 +124,28 @@ func (l *localService) Setup(ctx context.Context, req *localv1.SetupRequest) (*l
 	return l.o().Setup(ctx, req)
 }
 
-func (l *localService) RequestJoin(ctx context.Context, req *localv1.RequestJoinRequest) (*localv1.RequestJoinResponse, error) {
-	if err := l.d.checkNewOwner(req.OwnerId); err != nil {
-		return nil, err
+func (l *localService) LogIn(ctx context.Context, req *localv1.LogInRequest) (*localv1.LogInResponse, error) {
+	if owner := l.o().serverOwner(ctx, req.RelayUrl); owner != "" {
+		if err := l.d.checkNewOwner(owner); err != nil {
+			return nil, err
+		}
 	}
-	return l.o().RequestJoin(ctx, req)
+	return l.o().LogIn(ctx, req)
 }
 
-func (l *localService) WaitJoin(ctx context.Context, req *localv1.WaitJoinRequest) (*localv1.WaitJoinResponse, error) {
-	return l.o().WaitJoin(ctx, req.Code)
+func (l *localService) GetLogin(ctx context.Context, _ *localv1.GetLoginRequest) (*localv1.GetLoginResponse, error) {
+	return l.o().GetLogin(ctx)
 }
 
-func (l *localService) ConfirmJoin(ctx context.Context, req *localv1.ConfirmJoinRequest) (*localv1.ConfirmJoinResponse, error) {
-	return l.o().ConfirmJoin(ctx, req.Code, req.Accept, req.MatchCode)
-}
-
-func (l *localService) PasswordLogin(ctx context.Context, req *localv1.PasswordLoginRequest) (*localv1.PasswordLoginResponse, error) {
-	return l.o().PasswordLogin(ctx, req)
-}
-
-func (l *localService) SetLoginPassword(ctx context.Context, req *localv1.SetLoginPasswordRequest) (*localv1.SetLoginPasswordResponse, error) {
-	n, err := l.o().SetLoginPassword(ctx, req.Account, req.Password)
+func (l *localService) SetLogin(ctx context.Context, req *localv1.SetLoginRequest) (*localv1.SetLoginResponse, error) {
+	res, err := l.o().SetLogin(ctx, req)
 	l.o().wrote(ctx, err, true)
-	return &localv1.SetLoginPasswordResponse{RemovedDevices: n}, err
-}
-
-func (l *localService) GetLoginPassword(ctx context.Context, _ *localv1.GetLoginPasswordRequest) (*localv1.GetLoginPasswordResponse, error) {
-	return l.o().GetLoginPassword(ctx)
+	return res, err
 }
 
 func (l *localService) ListDevices(ctx context.Context, _ *localv1.ListDevicesRequest) (*localv1.ListDevicesResponse, error) {
 	d, err := l.o().ListDevices(ctx)
 	return &localv1.ListDevicesResponse{Devices: d}, err
-}
-
-func (l *localService) ApproveDevicePairing(ctx context.Context, req *localv1.ApproveDevicePairingRequest) (*localv1.ApproveDevicePairingResponse, error) {
-	id, match, err := l.o().ApproveDevicePairing(ctx, req.Code)
-	l.o().wrote(ctx, err, true)
-	return &localv1.ApproveDevicePairingResponse{KeyId: id, MatchCode: match}, err
 }
 
 func (l *localService) RemoveDevice(ctx context.Context, req *localv1.RemoveDeviceRequest) (*localv1.RemoveDeviceResponse, error) {
@@ -204,33 +174,6 @@ func (l *localService) FinishErase(ctx context.Context, _ *localv1.FinishEraseRe
 	return &localv1.FinishEraseResponse{}, l.d.FinishErase(ctx)
 }
 
-func (l *localService) WatchSigningRequests(ctx context.Context, req *localv1.WatchSigningRequestsRequest, stream *connect.ServerStream[localv1.SigningRequest]) error {
-	ch, stop := l.d.hub.watch(req.Show)
-	defer stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case r := <-ch:
-			if err := stream.Send(r); err != nil {
-				return err
-			}
-		}
-	}
-}
-
-func (l *localService) CompleteSigningRequest(ctx context.Context, req *localv1.CompleteSigningRequestRequest) (*localv1.CompleteSigningRequestResponse, error) {
-	if err := l.d.hub.complete(req); err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
-	}
-	return &localv1.CompleteSigningRequestResponse{}, nil
-}
-
-func (l *localService) ShowSigner(context.Context, *localv1.ShowSignerRequest) (*localv1.ShowSignerResponse, error) {
-	l.d.hub.show()
-	return &localv1.ShowSignerResponse{}, nil
-}
-
 func (l *localService) SetLocalMachine(ctx context.Context, req *localv1.SetLocalMachineRequest) (*localv1.SetLocalMachineResponse, error) {
 	id, err := l.o().SetLocalMachine(ctx, req.Enabled, req.MachineName)
 	l.o().wrote(ctx, err, true)
@@ -238,43 +181,6 @@ func (l *localService) SetLocalMachine(ctx context.Context, req *localv1.SetLoca
 		return nil, err
 	}
 	return &localv1.SetLocalMachineResponse{MachineId: id}, nil
-}
-
-func (l *localService) LookupPairing(ctx context.Context, req *localv1.LookupPairingRequest) (*localv1.LookupPairingResponse, error) {
-	d, err := l.o().LookupPairing(ctx, req.Code)
-	if err != nil {
-		return nil, err
-	}
-	return &localv1.LookupPairingResponse{Details: d}, nil
-}
-
-func (l *localService) ListPairingRequests(ctx context.Context, _ *localv1.ListPairingRequestsRequest) (*localv1.ListPairingRequestsResponse, error) {
-	ps, err := l.o().ListPairingRequests(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &localv1.ListPairingRequestsResponse{Pairings: ps}, nil
-}
-
-func (l *localService) ApproveMachinePairing(ctx context.Context, req *localv1.ApproveMachinePairingRequest) (*localv1.ApproveMachinePairingResponse, error) {
-	id, match, err := l.o().ApproveMachinePairing(ctx, req.Code, req.MachineName)
-	l.o().wrote(ctx, err, true)
-	if err != nil {
-		return nil, err
-	}
-	return &localv1.ApproveMachinePairingResponse{MachineId: id, MatchCode: match}, nil
-}
-
-func (l *localService) ApproveClientPairing(ctx context.Context, req *localv1.ApproveClientPairingRequest) (*localv1.ApproveClientPairingResponse, error) {
-	if req.Spec == nil {
-		req.Spec = &localv1.GrantSpec{}
-	}
-	cid, gid, err := l.o().ApproveClientPairing(ctx, req.Code, req.Spec)
-	l.o().wrote(ctx, err, true)
-	if err != nil {
-		return nil, err
-	}
-	return &localv1.ApproveClientPairingResponse{ClientId: cid, GrantId: gid}, nil
 }
 
 func (l *localService) ListMachines(ctx context.Context, _ *localv1.ListMachinesRequest) (*localv1.ListMachinesResponse, error) {
@@ -479,7 +385,7 @@ func (l *localService) GetDiagnostics(ctx context.Context, _ *localv1.GetDiagnos
 	case st.MachineOnly:
 		role = "machine only"
 	case st.Initialized:
-		role = "trusted device"
+		role = "device"
 	}
 	text := fmt.Sprintf("this device  %s, owner %s\n", role, st.OwnerId)
 	m, ok, err := l.o().onlyMachine()

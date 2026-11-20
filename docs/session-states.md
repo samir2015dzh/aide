@@ -18,7 +18,7 @@ One table works both out, in three languages checked against the same cases:
 [internal/sessionstate](../internal/sessionstate/sessionstate.go) (the CLI,
 and the core), [packages/core states.ts](../packages/core/src/states.ts) (the
 desktop app), and the Android app's
-[States.kt](../apps/android/app/src/main/java/io/hermesh/android/model/States.kt);
+[States.kt](../apps/android/app/src/main/java/io/aide/android/model/States.kt);
 the cases are
 [internal/sessionstate/testdata/cases.json](../internal/sessionstate/testdata/cases.json).
 The enums are `SessionState` and `SessionLink` in

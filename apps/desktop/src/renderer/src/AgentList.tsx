@@ -1,3 +1,5 @@
+import { ConnectLink } from "./components";
+import { lines } from "./connectGuideLogic";
 import { useState, type ReactNode } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -165,6 +167,7 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
               <div key={name} role="listitem" aria-label={codingAgentTitle(name)}>
                 <AgentLogo agent={name} size={16} />
                 {codingAgentTitle(name)}
+                {(lines as readonly string[]).includes(name) && <ConnectLink line={name}>{t("prepare.howToConnect")}</ConnectLink>}
               </div>
             ))}
           </div>

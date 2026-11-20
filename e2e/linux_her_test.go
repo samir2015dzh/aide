@@ -91,17 +91,11 @@ func TestLinuxHer(t *testing.T) {
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 2*time.Minute, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(out.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
+	var machineID string
+	eventually(t, 2*time.Minute, "the machine logged in", func() bool {
+		machineID = loggedInMachine(out.String())
+		return machineID != ""
 	})
-	approved, err := c.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "her-1"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil || !strings.Contains(out.String(), "› downloading "+herAsset) || !strings.Contains(out.String(), "✓ Background service on") ||
 		!strings.Contains(out.String(), "then talk to her there or here: aided her") {
 		t.Fatalf("install: %v\n%s", err, out.String())
@@ -114,7 +108,7 @@ func TestLinuxHer(t *testing.T) {
 		}
 	}
 	pdf("the PDF worker of 0.0.1")
-	id := approved.MachineId
+	id := machineID
 	machineVersion := func() string {
 		if m := listedMachine(t, c, id); m != nil && m.Online && m.Status != nil {
 			return m.Status.Version

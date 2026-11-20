@@ -82,16 +82,6 @@
   "tray": {
     "open": "Open Aide"
   },
-  "signer": {
-    "declined": "Windows asked for permission to set up Aide’s signer, and permission wasn’t granted. Without it, this PC can’t store your owner key.",
-    "notAdmin": "Only an administrator account can make this PC a trusted device. Join as a machine only, or approve on another device.",
-    "uacOff": "User Account Control is turned off, so other programs could access your key. Turn it on to make this PC a trusted device.",
-    "noTPM": "This PC doesn’t have a TPM 2.0 security chip to store your owner key.",
-    "failed": "Aide’s signer couldn’t be set up (error {{code}}).",
-    "notRunning": "Aide’s signer didn’t start. Please try again.",
-    "noHello": "Windows Hello confirms this change, and it isn’t set up. Set it up in Settings › Accounts › Sign-in options (a PIN is enough), then try again.",
-    "unlockFailed": "How this PC unlocks its key couldn’t be changed (error {{code}})."
-  },
   "herConsole": "Her Console — {{name}}",
   "herConsoleBad": "The console’s address isn’t one Aide opens."
 }

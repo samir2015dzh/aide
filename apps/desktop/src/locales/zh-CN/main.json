@@ -82,16 +82,6 @@
   "tray": {
     "open": "打开 Aide"
   },
-  "signer": {
-    "declined": "Windows 请求允许安装 Aide 签名器，但没有获得允许。没有它，这台电脑无法保管你的管理密钥。",
-    "notAdmin": "只有管理员帐户能让这台电脑成为可信设备。可以仅作为执行机器加入，或在你的其他设备上批准。",
-    "uacOff": "用户帐户控制已关闭，任何程序都能拿到密钥。打开它后，才能让这台电脑成为可信设备。",
-    "noTPM": "这台电脑没有可以保管管理密钥的 TPM 2.0。",
-    "failed": "Aide 签名器没能安装（错误 {{code}}）。",
-    "notRunning": "Aide 签名器没有启动，请重试。",
-    "noHello": "这次更改需要用 Windows Hello 确认，但它还没有设置。请先在“设置 › 帐户 › 登录选项”里设置（设个 PIN 即可），再重试。",
-    "unlockFailed": "没能更改这台电脑解锁密钥的方式（错误 {{code}}）。"
-  },
   "herConsole": "Her 控制台 — {{name}}",
   "herConsoleBad": "控制台的地址不是 Aide 会打开的地址。"
 }

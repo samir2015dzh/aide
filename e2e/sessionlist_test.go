@@ -29,10 +29,7 @@ func TestSessionList(t *testing.T) {
 	// A second machine, vps-1, with a project demo as well.
 	daemon := filepath.Join(w.bin, "hermeshd")
 	data := filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", env, daemon, "pair", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}

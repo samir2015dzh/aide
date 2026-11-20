@@ -119,14 +119,7 @@ func startHerServer(t *testing.T, w *ownerMac, her string, mock *herMock, herVar
 	c := w.app.client
 	daemon := filepath.Join(w.bin, "hermeshd"+exe)
 	data := filepath.Join(w.tmp, "her-server")
-	pair := start(t, "pair her-server", nil, daemon, "pair", w.addr, "--name", "her-server", "--no-service", "--data-dir", data)
-	approved, err := c.ApproveMachinePairing(context.Background(), &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "her-server"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if code := pair.wait(t, 30*time.Second); code != 0 {
-		t.Fatalf("pair: %s", pair.output())
-	}
+	machineID = w.loginMachine("her-server", data, nil)
 	// The scripted coding agents here too: the sessions Her starts on her own
 	// machine follow their scripts, whatever this computer has installed.
 	vars := append(herEnv(her, herConsole(t), home, mock.base), "HERMESH_FAKE_PROVIDERS=1")
@@ -136,10 +129,10 @@ func startHerServer(t *testing.T, w *ownerMac, her string, mock *herMock, herVar
 	// her running, in a process group of its own.
 	t.Cleanup(server.stop)
 	eventually(t, 30*time.Second, "her-server online", func() bool {
-		m := listedMachine(t, c, approved.MachineId)
+		m := listedMachine(t, c, machineID)
 		return m != nil && m.Online && m.Status != nil
 	})
-	return approved.MachineId, home
+	return machineID, home
 }
 
 // onMachine runs a command on the machine and returns its output.
@@ -835,13 +828,13 @@ func TestHerCommandConnector(t *testing.T) {
 	}
 
 	// Through hermeshd's route: signed here, applied there.
-	before := len(env.w.app.signedTypes())
+	before := env.w.signs()
 	if code, text := httpDo(t, http.MethodPost, env.console+"command-connector",
 		`{"name":"notes","command":"`+mcpServer+`","args":["--name","notes"],"env":{"NOTES_MOOD":"calm"}}`); code != http.StatusOK {
 		t.Fatalf("command connector: %d %s", code, text)
 	}
-	if got := env.w.app.signedTypes()[before:]; !slices.Equal(got, []string{"hermesh.identity.v1.AdminCommand"}) {
-		t.Fatalf("signed: %v", got)
+	if got := env.w.signs() - before; got != 1 {
+		t.Fatalf("signed %d times", got)
 	}
 	notes, _ := connectors()["notes"].(map[string]any)
 	if b, _ := json.Marshal(notes); notes["command"] != mcpServer || !strings.Contains(string(b), `"args":["--name","notes"]`) ||

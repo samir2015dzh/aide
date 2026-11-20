@@ -16,7 +16,6 @@ import (
 	"connectrpc.com/connect"
 
 	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
 	"github.com/hermeshai/hermesh/pkg/identity"
@@ -184,14 +183,6 @@ func TestPushNotices(t *testing.T) {
 		if raw, _ := os.ReadFile(f); strings.Contains(string(raw), "长长") {
 			t.Fatalf("plaintext in the push payload: %s", raw)
 		}
-	}
-
-	// A request to connect, from the relay itself, with the code to compare.
-	login := start(t, "login", []string{"HERMESH_HOME=" + filepath.Join(t.TempDir(), "agent2")}, filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", "Cursor")
-	code := login.pairingCode(t)
-	p := waitFor("pairing")
-	if p.PairingKind != identityv1.PairingKind_PAIRING_KIND_CLIENT || p.PairingLabel != "Cursor" || p.PairingCode != code || p.VerificationCode == "" {
-		t.Fatalf("pairing notice: %+v", p)
 	}
 
 	// Stopping: an empty token. Nothing more is sent (once what was under

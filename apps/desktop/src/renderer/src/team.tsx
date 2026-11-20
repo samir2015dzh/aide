@@ -18,7 +18,7 @@ import "./team.css";
 /** The team's state from the window's sessions and requests to connect. */
 export function useTeam(): TeamState {
   const st = useStore();
-  return teamState(st.sessions, st.pairings.length);
+  return teamState(st.sessions);
 }
 
 /** Beside Her's name: what the team is doing, the first that holds (§4.2). Nothing while it is quiet. */
@@ -97,15 +97,6 @@ export function NeedsYou({ team, onOpen }: { team: TeamState; onOpen?: () => voi
           </div>
         );
       })}
-      {st.pairings.map((p) => (
-        <button key={p.code} className="tm-row" onClick={() => (onOpen?.(), st.set({ sheet: { kind: "pairing", code: p.code } }))}>
-          <i className="dot-w" aria-hidden="true" />
-          <span className="tm-main">
-            <b>{p.label || t("sidebar.pairing")}</b>
-            <span>{t("team.wantsToConnect")}</span>
-          </span>
-        </button>
-      ))}
       {team.failed.map((s) => (
         <button key={s.sessionId} className="tm-row" onClick={() => open(s)}>
           <i className="dot-f" aria-hidden="true" />
@@ -179,7 +170,7 @@ export function TeamPanel({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", key, true);
     return () => window.removeEventListener("keydown", key, true);
   }, [onClose]);
-  const needs = team.waiting.length + st.pairings.length + team.failed.length;
+  const needs = team.waiting.length + team.failed.length;
   return (
     <>
       <button className="tm-scrim" aria-label={t("team.close")} onClick={onClose} />

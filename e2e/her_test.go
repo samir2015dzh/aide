@@ -47,11 +47,11 @@ func TestHer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// An owner's device: a key of its own certified by the root key, as the
-	// apps' are; its tunnel to alpha goes through the relay.
+	// An owner's device: a key of its own certified by the server's key, as
+	// the apps' are once logged in; its tunnel to alpha goes through the relay.
 	dev, _ := identity.GenerateKey()
 	cert, err := identity.Sign(&identityv1.OwnerDeviceCert{OwnerId: w.ownerID, DevicePublicKey: identity.MarshalPublicKey(dev.Public()),
-		Label: "test device", IssuedAt: timestamppb.Now()}, w.app.root)
+		Label: "test device", IssuedAt: timestamppb.Now()}, w.serverKey(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestHer(t *testing.T) {
 	}
 	apply := func(c *identityv1.AdminCommand) {
 		t.Helper()
-		signed, err := identity.Sign(command(c), w.app.root)
+		signed, err := identity.Sign(command(c), w.serverKey(t))
 		if err != nil {
 			t.Fatal(err)
 		}

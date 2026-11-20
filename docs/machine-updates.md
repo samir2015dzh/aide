@@ -57,8 +57,8 @@ Automatic updates are off. `aided update` still updates.
 | `aide update` | The same, for a computer with only the agent CLI |
 
 - `aided status` adds one line: `updates      automatic · checked 2 hours ago`, or `updates      off · 0.1.2 is available`.
-- On a paired machine, the install command updates and restarts the service; it no longer pairs again.
-- The iPhone's "older than this app" section keeps the install command: it now updates every machine, the ones from before `aided update` too, since the new program does the pairing step.
+- On a machine logged in, the install command updates and restarts the service; it does not log in again.
+- The iPhone's "older than this app" section keeps the install command: it now updates every machine, the ones from before `aided update` too, since the new program does the login step.
 
 ## 5. How it works
 
@@ -78,7 +78,7 @@ Looking for an update reads three small files from `https://github.com/hermeshai
 
 ### 5.3 In the background
 
-- Runs inside `aided run`, machine or Linux trusted device, only when the process is the installed service for its data directory (systemd's `INVOCATION_ID`, launchd's `XPC_SERVICE_NAME`, `service.Supervised`): the service manager is what starts the new version. In a container or under `nohup` it never runs; `aided update --check` still works there.
+- Runs inside `aided run`, on a machine, only when the process is the installed service for its data directory (systemd's `INVOCATION_ID`, launchd's `XPC_SERVICE_NAME`, `service.Supervised`): the service manager is what starts the new version. In a container or under `nohup` it never runs; `aided update --check` still works there.
 - Checks 5 to 15 minutes after start, then every 6 hours with up to an hour's jitter, so a release does not reach every machine at once.
 - With a newer version found, it waits for the guard (§3.1), looking again every 10 minutes, then installs (§5.2) and exits; systemd (`Restart=always`) and launchd (`KeepAlive`) start the new program.
 - launchd keeps a job as it loaded it, and an update replaces only the program. So on a Mac whose service an older version installed as a Background job, the new program corrects the plist when it starts and has launchd load the job again (`service.ReloadOldJob`).
@@ -104,13 +104,13 @@ Looking for an update reads three small files from `https://github.com/hermeshai
 ## 7. Tests
 
 - **Unit** (`internal/update`): signature, version and hash checks, refusing a lower version and an app bundle, the rename and `.previous`, the schedule and the guard with a fake clock.
-- **TestWindowsUpdate** (end to end, on `windows-latest`): `install.ps1` installs A from the test's releases and pairs; B published, the machine updates itself and its supervisor starts B; with automatic updates off, `aided update --yes` installs C.
+- **TestWindowsUpdate** (end to end, on `windows-latest`): `install.ps1` installs A from the test's releases and logs in; B published, the machine updates itself and its supervisor starts B; with automatic updates off, `aided update --yes` installs C.
 - **TestLinuxUpdate** (`HERMESH_DOCKER=1`, end to end): a systemd Ubuntu container logged in as root, a relay on the Mac, and three signed releases A < B < C served by the test over HTTP (test builds name its address and a test key).
-  1. The install command installs A and pairs the machine.
+  1. The install command installs A and logs the machine in.
   2. B is published while a session runs: the machine stays on A. The session ends: the machine restarts itself on B, and the owner's device sees B in the machine's status, with the same machine ID.
-  3. The install command runs again (B): no pairing, the service restarts, still connected.
+  3. The install command runs again (B): no new login, the service restarts, still connected.
   4. `aided update auto off`, C is published: no update; `aided update --check` names C; `aided update --yes` installs it and the device sees C.
-- **TestLinuxHer** (`HERMESH_DOCKER=1`, end to end): the same kind of server and releases, carrying her and its console. The install command installs them and pairs; Her, turned on, answers; B, published while Her is at work, waits for her, then replaces hermeshd, her and the console, and Her answers again; `aided uninstall` removes her and leaves `~/.her`.
+- **TestLinuxHer** (`HERMESH_DOCKER=1`, end to end): the same kind of server and releases, carrying her and its console. The install command installs them and logs in; Her, turned on, answers; B, published while Her is at work, waits for her, then replaces hermeshd, her and the console, and Her answers again; `aided uninstall` removes her and leaves `~/.her`.
 
 ## 8. Later
 
@@ -123,6 +123,6 @@ Looking for an update reads three small files from `https://github.com/hermeshai
 2. A check every 6 hours, first one 5 to 15 minutes after start (§5.3).
 3. They are turned off only on the machine itself (`aided update auto off`), not from a device.
 4. `aided update` asks before stopping a session; `--yes` skips the question.
-5. The install command on a paired machine updates without pairing again.
-6. Linux trusted devices update themselves too.
+5. The install command on a machine logged in updates without logging in again.
+6. Linux trusted devices updated themselves too (there are none since 2026-11-20, [accounts.md](accounts.md)).
 7. Not now: apt/yum packages, updating from a device, rollback (§8).

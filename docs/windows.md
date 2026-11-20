@@ -1,14 +1,26 @@
 # Aide on Windows
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** a PC,
+> like any device, machine or agent, now logs in with the server, the
+> account and the password, and the server signs it in at once. Nothing is
+> approved from another device, and nothing is signed on the PC: the
+> trusted device on Windows (step 3 of §1, all of §7, W3, decision 4), the
+> protected signer in Program Files, its TPM key, Windows Hello and the
+> passphrase mode are gone, and so are their spikes, tests and checks in
+> §10, §11 and §14. Agents' and Her's actions wait for no approval either
+> ([her-server.md](her-server.md)), so the "What a command asks before it
+> runs" row of §15 describes Her before. The rest (the machine, the app,
+> packaging, updates, Her's seams) holds.
+
 Status: accepted 2026-10-30, with the owner's decisions in §12; phases W0 to W3 are built, and §14 lists what is checked on a real PC next and what is left. Her on a PC is §15 (2026-11-17). It replaces [desktop-app.md](desktop-app.md) §9 for Windows. Windows goes into [technical-design.md](technical-design.md) §6.1 and [hermeshd.md](hermeshd.md) as it is built.
 
 ## 1. Goal
 
 A Windows PC does what a Mac does, in three steps that are each useful alone:
 
-1. **A machine.** Coding agents (Claude Code, Codex, ACP agents) run natively on it, in Windows projects, started from any of the owner's devices or agents. No app needed; another trusted device (the iPhone, a Mac, a Linux device) approves it.
-2. **The app.** The same Electron app, from the same code, that feels like a Windows app. Until step 3 it joins as a machine only, approved from another trusted device.
-3. **A trusted device.** It approves, keeping the Mac's promise as far as Windows allows (§7): programs on the PC can ask for a signature, but only the owner, looking at what is really signed, can give one.
+1. **A machine.** Coding agents (Claude Code, Codex, ACP agents) run natively on it, in Windows projects, started from any of the owner's devices or agents. No app needed; it logs in with the owner's account and password (`install.ps1 <server>`).
+2. **The app.** The same Electron app, from the same code, that feels like a Windows app. It logs in as one of the owner's devices, or as a machine only.
+3. **A trusted device** (removed 2026-11-20). It approved, keeping the Mac's promise as far as Windows allows (§7): programs on the PC could ask for a signature, but only the owner, looking at what is really signed, could give one.
 
 **Which Windows.** Windows 11 22H2 or later, x64 and arm64, for the app and the trusted device. Machines also run on Windows 10 22H2 and Windows Server 2019 or later, best effort (CI's Windows runners are Server images). Windows 10's support ended on 2025-10-14; Windows Hello's verifier for desktop apps needs build 22000, Mica build 22621.
 
@@ -167,7 +179,7 @@ KillGroup(pgid int)            // end it gently, then for sure (also at recovery
 |---|---|---|
 | Daemon | `SMAppService` agent; `launchctl bootout`, then registered again | The logon task, which the app registers (`aided service install --owner`); a restart ends the task, whose supervisor's job ends the daemon, and runs it again |
 | Open Hermesh at login | `mainAppService` | The user's Run value, through Electron's login item API, naming the Hermesh.exe above the versions; Startup apps lists and switches it |
-| Signer | `Hermesh Signer.app`, the app's child | A protected system component, not the app's child (§7.3); set up before the first root key (`readySigner`) |
+| Signer (removed 2026-11-20) | `Hermesh Signer.app`, the app's child | A protected system component, not the app's child (§7.3) |
 | Updates | Squirrel.Mac | Squirrel.Windows, through the same `autoUpdater`, from a signed feed (§6.2) |
 | First launch | Move to Applications | Nothing: Setup.exe installed it; the installer's events (install, update, uninstall) start the app to set itself up and quit |
 | Login commands (`codex login`) | A `.command` file in Terminal | A Windows Terminal tab (`wt.exe`), else PowerShell; a command table per OS, still chosen by key |
@@ -205,7 +217,7 @@ Setup.exe installs into `%LOCALAPPDATA%\HermeshApp` (Squirrel removes that folde
 |---|---|
 | Install | A Start menu shortcut at the top of All apps (with the app's AppUserModelID, for toasts); `%LOCALAPPDATA%\Programs\Hermesh\bin` on the user's PATH |
 | Updated | That folder on PATH, still |
-| Uninstall | Ends its running copies (Squirrel ends none, and their files could not go), removes hermeshd's logon task (`aided service uninstall`), the shortcut, the PATH entry, the `hermesh:` link, Open at login and the programs' folder. The data folder stays, as a Mac app's does, and so does the signer in Program Files, which only an administrator removes |
+| Uninstall | Ends its running copies (Squirrel ends none, and their files could not go), removes hermeshd's logon task (`aided service uninstall`), the shortcut, the PATH entry, the `hermesh:` link, Open at login and the programs' folder. The data folder stays, as a Mac app's does, and so does a signer an earlier version put in Program Files, which only an administrator removes |
 
 What these do goes to `<data>\logs\setup.log`, where nobody sees the app's output. Each start, the app then:
 
@@ -218,7 +230,6 @@ What these do goes to `<data>\logs\setup.log`, where nobody sees the app's outpu
   Hermesh.exe, Update.exe                  start the newest version; update and uninstall
   app-<version>\Hermesh.exe, resources\    Electron: main, preload and the page
   app-<version>\bin\hermeshd.exe, hermeshdw.exe, hermesh.exe
-  app-<version>\bin\hermesh-signer.exe     copied into Program Files when this PC becomes a trusted device (§7.3)
 %LOCALAPPDATA%\Programs\Hermesh\bin\       hermeshd.exe, hermeshdw.exe (the logon task), hermesh.exe: on PATH
 ```
 
@@ -234,7 +245,7 @@ What MSIX would have given and Setup.exe doesn't: files that no program of the u
 ### 6.3 Programs without the app
 
 - Release assets add `hermeshd`, `hermeshdw` and `hermesh` for `windows-amd64` and `windows-arm64` (`.exe`), in the signed checksum list.
-- `install.ps1` (Windows PowerShell 5.1) mirrors `install.sh`: a machine by default, or `-Cli`. It has no `-Device`: a Windows trusted device is the app, whose protected signer keeps the key in the TPM behind Windows Hello (§7.3); one set up in a terminal would have a passphrase only, below what decision 4 asks of a PC. It installs into `%LOCALAPPDATA%\Programs\Hermesh\bin`, adds that folder to the user's PATH, checks the signed checksum list (ECDSA, through .NET), registers the logon task, then runs `aided pair`.
+- `install.ps1` (Windows PowerShell 5.1) mirrors `install.sh`: a machine by default, or `-Cli`. It installs into `%LOCALAPPDATA%\Programs\Hermesh\bin`, adds that folder to the user's PATH, checks the signed checksum list (ECDSA, through .NET), registers the logon task, then runs `aided login` (the account and password asked for, or from `$env:AIDE_ACCOUNT` and `$env:AIDE_PASSWORD`).
 - Updating while the daemon runs: rename the running program aside (Windows allows it), write the new one, restart the daemon, delete the old file later. Machines update themselves this way too (machine-updates.md §5.5).
 - One PC, one daemon: the installer refuses machine mode where the app's daemon is registered, and the app takes over a daemon that `install.ps1` set up (it registers the logon task again, with `--owner`).
 
@@ -270,6 +281,8 @@ What signing would take, checked 2026-10-30:
 
 ## 7. A trusted device on Windows
 
+> **Removed (2026-11-20, [accounts.md](accounts.md)):** a PC holds no root key and signs nothing; this section is the design before.
+
 ### 7.1 What Windows enforces
 
 On a Mac the root key is in the Secure Enclave. Only the signed signer can use it (its keychain access group), every signature needs Touch ID, and no other program of the owner can change the signer's panel. So a coding agent with full access can ask for a signature but never sign, and the owner signs what they see.
@@ -291,6 +304,8 @@ What Windows does enforce is integrity levels: an elevated (high-integrity) proc
 Standard (non-administrator) accounts get no protected signer; their trusted device is a phone, a Mac or a Linux device. Option A, under the Linux rule, can come later if people ask for it.
 
 ### 7.3 The protected signer
+
+> **Removed (2026-11-20, [accounts.md](accounts.md)):** nothing is signed on the computer any more; the signer, its installer step and its Windows Hello prompt are gone.
 
 - **Program.** `hermesh-signer.exe`, in Go (`cmd/hermesh-signer`). When the owner makes this PC a trusted device, one elevated setup step (one UAC prompt) copies it into `%ProgramFiles%\Hermesh Signer\` and registers a Task Scheduler task for this user that runs it with the highest privileges, at logon and when triggered. The app and the daemon start it only by triggering that task; nothing else starts it elevated.
 - **Key.** A TPM 2.0 P-256 key (Microsoft Platform Crypto Provider), not exportable, usable only with a random PIN that the signer keeps in `%ProgramData%\Hermesh Signer\keys\<SID>`, which only Administrators and SYSTEM can read: the daemon, the app and the agents, at medium integrity, can ask the TPM for the key by its name but cannot sign with it, and the TPM locks out guessing. One key per profile, as on the Mac (`root_key_id`, `delete_root_key`). Windows 11 requires a TPM 2.0; a PC without one cannot be a trusted device.
@@ -328,7 +343,7 @@ Windows Hello confirms each approval by default. An owner who does not want it c
 
 ## 8. WSL
 
-A WSL distribution is a Linux machine: `install.sh` inside it pairs it like any other. Native Windows sessions do not reach into WSL, since paths, git and process control would cross a VM boundary.
+A WSL distribution is a Linux machine: `install.sh` inside it logs it in like any other. Native Windows sessions do not reach into WSL, since paths, git and process control would cross a VM boundary.
 
 Later, the app can list distributions and offer "Add as a machine". WSL stops a distribution that nothing on Windows uses, so the Windows daemon would keep the distribution's daemon running as a supervised child (`wsl.exe -d <distribution> -- aided run`). Its traffic goes through the relay like any machine's, until the separate project for agents on the same computer.
 

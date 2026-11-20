@@ -3,12 +3,13 @@
 # verifies them against a signed checksum list, installs them under
 # ~/.local/bin (a Linux machine: with her and her-console/, Her's kernel and
 # its console, her-computer/ and her-pdf/, what her computer use and her PDF
-# tools run) and (for machines) starts pairing.
+# tools run) and (for machines) logs the machine in to your server with your
+# account and password (docs/accounts.md).
 #
-#   Add a machine:   curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- [connection address]
-#                    (without one: $AIDE_CENTER, else $AIDE_SERVER; there is no default server)
+#   Add a machine:   curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- <server>
+#                    (without one: $AIDE_SERVER; there is no default server). It asks for the
+#                    account and password, or takes them from $AIDE_ACCOUNT and $AIDE_PASSWORD.
 #   Agent CLI only:  curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli
-#   Trusted device:  … | sh -s -- --device   (a computer that approves and runs no coding agents)
 #   As root:         … | sh -s -- --user dev   (installs for that user, creating it if needed; without it, asks, and root is the default)
 #
 # Environment: AIDE_VERSION (default latest), AIDE_BIN_DIR (default ~/.local/bin); the HERMESH_ names too
@@ -35,7 +36,6 @@ FOR_USER=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --cli) MODE=cli ;;
-    --device) MODE=device ;;
     --name) shift; NAME="${1:-}" ;;
     --user) shift; FOR_USER="${1:-}" ;;
     -*) die "unknown option $1" ;;
@@ -278,7 +278,6 @@ show_space() {
 
 case "$MODE" in
   cli) BINS="hermesh" ;;
-  device) BINS="hermeshd" ;;
   *) BINS="hermeshd hermesh" ;;
 esac
 
@@ -377,26 +376,23 @@ if [ -z "$AS" ]; then
 fi
 
 if [ "$MODE" = cli ]; then
-  echo "Next: aide auth login <your server's connection address>"
+  echo "Next: aide auth login <your server> --account <your account>"
   exit 0
 fi
 
-if [ "$MODE" = device ]; then
-  # A trusted device joins your Hermesh, or, with no other device yet,
-  # sets it up (signing in with a code a browser shows).
-  set -- device join
-  if [ -z "$ADDRESS" ] && [ -n "$TTY" ]; then
-    printf 'Is Aide set up on another device already (your iPhone or Mac)? [Y/n] '
-    read -r yes <"$TTY" || true
-    case "$yes" in n* | N*) set -- device setup ;; esac
-  fi
-else
-  set -- pair
-  [ -n "$NAME" ] && set -- "$@" --name "$NAME"
-fi
+set -- login
+[ -n "$NAME" ] && set -- "$@" --name "$NAME"
 [ -n "$ADDRESS" ] && set -- "$@" "$ADDRESS"
+# The account, when given in the environment, goes along to aided login
+# (runuser keeps no environment of its own); the password goes on its
+# stdin, never on a command line.
+ACCOUNT="${AIDE_ACCOUNT:-${HERMESH_ACCOUNT:-}}"
+PASSWORD="${AIDE_PASSWORD:-${HERMESH_PASSWORD:-}}"
+[ -n "$ACCOUNT" ] && set -- "$@" --account "$ACCOUNT"
 # The terminal goes to hermeshd as its stdin, for what it asks.
-if [ -n "$TTY" ]; then
+if [ -n "$PASSWORD" ]; then
+  printf '%s\n' "$PASSWORD" | env -u AIDE_PASSWORD -u HERMESH_PASSWORD $AS "$BIN_DIR/hermeshd" "$@" --password-stdin
+elif [ -n "$TTY" ]; then
   $AS "$BIN_DIR/hermeshd" "$@" <"$TTY"
 else
   $AS "$BIN_DIR/hermeshd" "$@"

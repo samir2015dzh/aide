@@ -63,8 +63,10 @@ func (o *Owner) EraseEverything(ctx context.Context) (string, error) {
 	run.id = hex.EncodeToString(b)
 	o.mu.Lock()
 	ownerID := o.ownerID
+	dc := &identityv1.OwnerDeviceCert{}
+	identity.Unverified(o.deviceCert, dc)
 	o.mu.Unlock()
-	signed, err := o.signRoot(ctx, &identityv1.EraseOrder{OwnerId: ownerID, EraseId: run.id, IssuedAt: timestamppb.Now()})
+	signed, err := o.signRoot(ctx, &identityv1.EraseOrder{OwnerId: ownerID, EraseId: run.id, IssuedAt: timestamppb.Now(), By: dc.Label})
 	if err != nil {
 		return "", err
 	}
@@ -191,8 +193,15 @@ func (o *Owner) eraseOrder(info *relayv1.GetInfoResponse) *identityv1.EraseOrder
 	return order
 }
 
-// deviceName is the trusted device whose root key is keyID, by its name.
-func (o *Owner) deviceName(keyID string) string {
+// deviceName is the device that erased everything, by its name: as the
+// order names it, else (an order from before accounts) the device whose
+// root key signed it.
+func (o *Owner) deviceName(order *identityv1.Signed) string {
+	eo := &identityv1.EraseOrder{}
+	if identity.Unverified(order, eo) == nil && eo.By != "" {
+		return eo.By
+	}
+	keyID := order.GetSignerKeyId()
 	o.mu.Lock()
 	trust := o.trust
 	o.mu.Unlock()
@@ -205,8 +214,8 @@ func (o *Owner) deviceName(keyID string) string {
 }
 
 // eraseData erases what this profile keeps besides its directory: it acks
-// (its device key, and its machine's), then erases its machine, and has the
-// signer delete its root key. It returns the worktrees kept.
+// (its device key, and its machine's), then erases its machine.
+// It returns the worktrees kept.
 func (o *Owner) eraseData(ctx context.Context, eraseID, keepDir string) []string {
 	o.mu.Lock()
 	relayURL, rootPub, device, cert := o.relayURL, o.rootPub, o.device, o.deviceCert
@@ -231,11 +240,6 @@ func (o *Owner) eraseData(ctx context.Context, eraseID, keepDir string) []string
 		}
 		if kept, err = machine.Erase(cfg, keepDir); err != nil {
 			o.log.Warn("erasing this device's machine", "err", err)
-		}
-	}
-	if rootPub != nil {
-		if err := o.hub.deleteKey(ctx, identity.KeyID(rootPub)); err != nil {
-			o.log.Warn("erasing: the root key stays in the signer", "err", err)
 		}
 	}
 	o.st.db.Close()

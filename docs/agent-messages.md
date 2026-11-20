@@ -35,7 +35,7 @@ by its sender and sealed to its recipient. Sending is the same for every
 agent, and it is the only way an agent says something to a session; taking
 messages depends on what the recipient can do.**
 
-1. **Inboxes** (§3). Every agent the owner approved has one. A machine has
+1. **Inboxes** (§3). Every agent of the owner's has one. A machine has
    one for its sessions: a coding agent lives only in a session, so its
    address is its machine and session.
 2. **Messages** (§4) are signed by the sender's identity key and sealed to the
@@ -84,7 +84,7 @@ messages depends on what the recipient can do.**
 
 - An address is `<inbox>[/<session>]`: `c_7k3m…`, `c_7k3m…/thread-42`,
   `m_q2x9…/s_q2x9ab12_01jb…`. The CLI and the tools also take an agent's
-  name as the owner approved it ("Grok Bot"; an ambiguous name is refused)
+  name as it logged in or the owner renamed it ("Grok Bot"; an ambiguous name is refused)
   and a bare `s_…`, whose machine is in the id.
 - The relay routes on the inbox only. In a message that waits at the post
   office, the session part travels sealed, so the relay never learns which
@@ -99,8 +99,8 @@ messages depends on what the recipient can do.**
   machines and projects the others may use. A machine's card is its
   MachineCert.
 - An inbox exists once it registers its inbox key: the CLI at `auth login`
-  (or its first `messages` command), the gateway when the owner approves the
-  connection, hermeshd when it connects. An agent or machine still on an
+  (or its first `messages` command), the gateway when the owner connects the
+  app on its consent page, hermeshd when it connects. An agent or machine still on an
   older version has none; contacts say so, and writing to it is refused
   with that hint.
 - An agent keeps its address while its grant is renewed. Connecting anew (a
@@ -109,11 +109,11 @@ messages depends on what the recipient can do.**
 
 ## 4. Keys and messages
 
-**Cards.** A trusted device signs an agent's card with its device key when
-the owner approves or renames the agent, and the app signs cards once for
-agents approved before. A card grants nothing: it only tells other agents
-who an address is. Machines never accept a card for anything; they go by
-grants. So it needs no Touch ID, like a machine's settings.
+**Cards.** One of the owner's devices signs an agent's card with its device
+key once the agent is listed (it logged in) or renamed, and again for any
+agent whose card is missing or stale. A card grants nothing: it only tells
+other agents who an address is. Machines never accept a card for anything;
+they go by grants.
 
 **Inbox keys.** Each inbox has an X25519 key pair. Its public key goes to
 the relay in a `InboxRegistration` signed by the inbox's identity key
@@ -123,12 +123,12 @@ against the root chain it pins, so the relay can't swap in a key of its own.
 
 ```proto
 // identity.proto: one of the owner's agents, for others to write to.
-// Signed by a trusted device's device key; grants nothing.
+// Signed by one of the owner's devices' device key; grants nothing.
 message ContactCard {
   string owner_id = 1;
   string inbox = 2;           // the agent's client id
   bytes client_public_key = 3;  // signs its InboxRegistration and its messages
-  string name = 4;              // as the owner approved it
+  string name = 4;              // as it logged in, or as the owner renamed it
   string kind = 5;              // "mcp" or "cli"
   google.protobuf.Timestamp issued_at = 6;
 }
@@ -197,7 +197,7 @@ service MessageService {
   rpc Status(MessageStatusRequest) returns (MessageStatusResponse); // by message id: what became of it
 }
 
-// OwnerControlService gains PublishCards: the cards a trusted device signed.
+// OwnerControlService gains PublishCards: the cards a device of the owner's signed.
 ```
 
 - **Stored per message**: inbox, message id, ciphertext, size, when it
@@ -468,7 +468,7 @@ happened, and each turn's asker.
 | Threat | Result | Why |
 |---|---|---|
 | The relay reads messages | Fails | Sealed to the recipient's inbox key, or inside the end-to-end tunnel |
-| The relay swaps a recipient's inbox key | Fails | The registration is signed by the key on the recipient's card, which a trusted device signed |
+| The relay swaps a recipient's inbox key | Fails | The registration is signed by the key on the recipient's card, which a device of the owner's signed |
 | The relay forges, alters or redirects a message | Fails | The sender's signature; `to` inside the signed message; the inbox and id as associated data |
 | The relay replays a message | Fails | Recipients remember the message ids they handled for the retention |
 | The relay drops or delays messages | Possible | Denial of service, as today |
@@ -587,7 +587,7 @@ Decided 2026-10-26:
    sending a message.
 6. One turn, one asker (§7.2), and messages into a session limited to what
    the sender's grant already reaches (§2, point 4).
-7. Cards are signed by a trusted device's device key, without Touch ID (§4).
+7. Cards are signed by a device's device key (§4).
 8. Claude Code's own inbox is shut in Hermesh sessions now, ahead of messages
    (§7.5).
 9. Names: messages everywhere (`hermesh message`, `message_*` tools,
@@ -624,11 +624,11 @@ Step 1, 2026-10-27 (`TestSessionNews`, `TestMCPInbox`):
   revoked agent signed before its revocation: the same exposure as a
   revocation the relay withholds today, bounded by the grant's expiry.
 - **The list of agents carries each card and the cert of the device that
-  signed it**, so a trusted device signs again a card that is missing, says
+  signed it**, so a device of the owner's signs again a card that is missing, says
   something else, or was signed by a device since removed.
 - **Inboxes register** at `auth login`, on any command until the post
   office has the key, and, for a hosted assistant, on its first tool call
-  after approval.
+  once connected.
 - **The gateway keeps its connections' inboxes in its own table**
   (`mcp_inboxes`), which it creates when missing: the hosted center needs no
   migration for it. The post office itself is the relay's `MessageStore`;

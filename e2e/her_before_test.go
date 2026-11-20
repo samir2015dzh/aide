@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -35,7 +34,7 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 	}
 	box, sock := w.otherMac("old-box", []string{"HERMESH_TEST_BEFORE_HER=1"})
 	daemon := w.logs[len(w.logs)-1] // the one otherMac started
-	id := w.joinTyped(box, home, "old-box").LocalMachineId
+	id := w.logInMachineOnly(box, home, "old-box").LocalMachineId
 
 	var m *localv1.Machine
 	eventually(t, time.Minute, "old-box answers", func() bool {
@@ -46,13 +45,13 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 		t.Fatalf("Her on a machine from before her: %v %v", m.Status.Her, m.Her)
 	}
 
-	signed := len(w.app.signedTypes())
+	signed := w.signs()
 	_, err = c.SetHer(ctx, &localv1.SetHerRequest{MachineId: id, Enabled: true})
 	if connect.CodeOf(err) != connect.CodeUnimplemented || strings.Contains(err.Error(), "unknown admin command") {
 		t.Fatalf("Her on, from before her: %v", err)
 	}
-	if got := w.app.signedTypes(); len(got) != signed {
-		t.Fatalf("Face ID asked for a machine from before her: %v", got[signed:])
+	if got := w.signs(); got != signed {
+		t.Fatalf("the server was asked to sign for a machine from before her: %d times", got-signed)
 	}
 	// Signed and sent all the same (a command the device can't check first):
 	// 0.1.4's answer, made "update Hermesh there".
@@ -61,8 +60,8 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeUnimplemented || strings.Contains(err.Error(), "unknown admin command") {
 		t.Fatalf("a connector, from before her: %v", err)
 	}
-	if got := w.app.signedTypes(); len(got) != signed+1 {
-		t.Fatalf("signed %v", got[signed:])
+	if got := w.signs(); got != signed+1 {
+		t.Fatalf("signed %d times", got-signed)
 	}
 
 	// Updated: started again, without the switch.
@@ -74,8 +73,8 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 	if _, err := c.SetHer(ctx, &localv1.SetHerRequest{MachineId: id, Enabled: true}); err != nil {
 		t.Fatalf("Her on, updated: %v", err)
 	}
-	if got := w.app.signedTypes(); !slices.Contains(got[signed+1:], "hermesh.identity.v1.AdminCommand") {
-		t.Fatalf("Her on, updated, signed %v", got[signed+1:])
+	if got := w.signs(); got <= signed+1 {
+		t.Fatalf("Her on, updated, signed nothing")
 	}
 	eventually(t, time.Minute, "Her on for old-box", func() bool { return listedMachine(t, c, id).GetHer().GetEnabled() })
 }

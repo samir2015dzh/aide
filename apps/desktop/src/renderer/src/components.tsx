@@ -81,29 +81,6 @@ export function GrantAvatar({ c, size = "" }: { c: GrantLook; size?: "" | "md" |
   );
 }
 
-/**
- * A code compared with what the other side shows, as on the signer's panel:
- * a tile per group on a pale aurora block, what it is under its left end and
- * what to do under its right end.
- */
-export function CodeTiles({ code, label: given, hint }: { code: string; label?: string; hint: string }) {
-  const { t } = useTranslation("common");
-  const label = given ?? t("codeTiles.label");
-  return (
-    <div className="ctiles" role="group" aria-label={label} data-code={code}>
-      <div className="ctiles-row">
-        {code.split("-").map((g, i) => (
-          <span key={i}>{g}</span>
-        ))}
-      </div>
-      <div className="ctiles-cap">
-        <span>{label}</span>
-        <b>{hint}</b>
-      </div>
-    </div>
-  );
-}
-
 /** A personal agent kind's icon: its app's, or for Other Agent a plain tile. */
 export function PersonalAgentIcon({ kind, size }: { kind: PersonalAgentKind; size: number }) {
   if (kind.logo) return <AgentTile agent={kind.logo} size={size} />;
@@ -181,3 +158,15 @@ export function PopMenu({ label, items, anchor, keyboard, onClose }: { label: st
   );
 }
 
+/**
+ * A link to the Connect guide (Settings › Connect), at one line ("deepseek",
+ * "claude", "codex", "custom", "assistants") when given: from the places a
+ * person looks for how to connect an agent (docs/accounts.md §3).
+ */
+export function ConnectLink({ line, children }: { line?: string; children: ReactNode }) {
+  return (
+    <button type="button" className="link" onClick={() => window.hermesh?.openSettings(line ? `connect/${line}` : "connect")}>
+      {children}
+    </button>
+  );
+}

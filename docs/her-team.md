@@ -1,6 +1,11 @@
 # Her and her team: one product from Her and the mesh
 
-> **2026-11-20: Her has no action approvals.** Her runs every action without asking: no permission modes, no approval window, nothing for the owner to approve before a step. Where this document still speaks of an approval of an action, a step waiting for the owner's approval, or full access, it describes what was and no longer is. Secure cards are not approvals and stay.
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** agents
+> and Her act directly, with no action approvals ([her-server.md](her-server.md)),
+> and agents connect by logging in, with no pairing sheet. What this page
+> says of approvals (the "Approval" paragraphs, an approval in the bar or the
+> record, "needs your approval", their tests) and of requests to connect
+> that wait describes the apps before.
 
 Status: stage 1 built on the iPhone 2026-11-13, with acceptance results
 updated 2026-11-14 (§13); stage 2 (§6) decided 2026-11-14 (all three, B1,

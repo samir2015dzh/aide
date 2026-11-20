@@ -35,19 +35,17 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
 	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
 	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/pkg/identity"
 	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/metrics"
 	"github.com/hermeshai/hermesh/internal/owner"
 	"github.com/hermeshai/hermesh/internal/peer"
+	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/hermeshai/hermesh/pkg/metrics"
 )
 
 var (
@@ -101,10 +99,8 @@ type env struct {
 	relayURL  string
 	relayDbg  string
 	daemonDbg string
-	addr      string
 	ownerID   string
 	app       localv1connect.LocalServiceClient
-	cancelApp context.CancelFunc
 	machineID string
 }
 
@@ -166,11 +162,11 @@ func setup(ctx context.Context) (*env, error) {
 	e.relay = startProc("relay", nil, filepath.Join(*flagOut, "relay.log"), filepath.Join(e.bin, "hermesh-relay"), "serve", "--data-dir", relayData,
 		"--listen", fmt.Sprintf("127.0.0.1:%d", relayPort), "--debug-addr", fmt.Sprintf("127.0.0.1:%d", relayDbg))
 	waitHTTP(e.relayURL + "/healthz")
-	out, err := exec.Command(filepath.Join(e.bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).Output()
+	out, err := exec.Command(filepath.Join(e.bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).Output()
 	if err != nil {
 		return nil, err
 	}
-	claim := strings.TrimSpace(string(out))
+	setupCode := strings.TrimSpace(string(out))
 
 	// Owner in-process, driven through its Unix socket like the app.
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -181,7 +177,6 @@ func setup(ctx context.Context) (*env, error) {
 	sock := filepath.Join(e.tmp, "o.sock")
 	go o.Run(ctx)
 	go o.ServeLocal(ctx, sock)
-	root, _ := identity.GenerateKey()
 	hc := &http.Client{Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		var d net.Dialer
 		return d.DialContext(ctx, "unix", sock)
@@ -193,30 +188,19 @@ func setup(ctx context.Context) (*env, error) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	actx, cancel := context.WithCancel(ctx)
-	e.cancelApp = cancel
-	go signLoop(actx, e.app, root)
-	setupRes, err := e.app.Setup(ctx, &localv1.SetupRequest{RelayUrl: e.relayURL, ClaimCode: claim, RootPublicKey: identity.MarshalPublicKey(root.Public()), RootLabel: "bench"})
+	setupRes, err := e.app.Setup(ctx, &localv1.SetupRequest{RelayUrl: e.relayURL, SetupCode: setupCode, Account: benchAccount, Password: benchPassword, Label: "bench"})
 	if err != nil {
 		return nil, fmt.Errorf("setup: %w", err)
 	}
-	e.addr, e.ownerID = setupRes.ConnectAddress, setupRes.OwnerId
+	e.ownerID = setupRes.OwnerId
 
-	// Execution machine: pair, then run with the fake Codex.
+	// Execution machine: log in, then run with the fake Codex.
 	machineData := filepath.Join(e.tmp, "machine")
-	pair := exec.Command(filepath.Join(e.bin, "hermeshd"), "pair", e.addr, "--name", "bench", "--no-service", "--data-dir", machineData)
-	stdout, _ := pair.StdoutPipe()
-	pair.Stderr = os.Stderr
-	must(pair.Start())
-	code := readCode(stdout)
-	res, err := e.app.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "bench"})
-	if err != nil {
-		return nil, err
-	}
-	e.machineID = res.MachineId
-	io.Copy(io.Discard, stdout)
-	if err := pair.Wait(); err != nil {
-		return nil, fmt.Errorf("pair: %w", err)
+	login := exec.Command(filepath.Join(e.bin, "hermeshd"), "login", e.relayURL, "--account", benchAccount, "--password-stdin", "--name", "bench", "--no-service", "--data-dir", machineData)
+	login.Stdin = strings.NewReader(benchPassword + "\n")
+	login.Stdout, login.Stderr = io.Discard, os.Stderr
+	if err := login.Run(); err != nil {
+		return nil, fmt.Errorf("login: %w", err)
 	}
 	fake := []string{
 		"HERMESH_CODEX_BIN=" + filepath.Join(e.bin, "fakecodex"),
@@ -235,6 +219,7 @@ func setup(ctx context.Context) (*env, error) {
 	for i := 0; i < 200; i++ {
 		machines, err := e.app.ListMachines(ctx, &localv1.ListMachinesRequest{})
 		if err == nil && len(machines.Machines) == 1 && machines.Machines[0].Online && machines.Machines[0].Status != nil {
+			e.machineID = machines.Machines[0].MachineId
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -255,32 +240,7 @@ func setup(ctx context.Context) (*env, error) {
 	return e, nil
 }
 
-var codeRE = regexp.MustCompile(`Pairing code: ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})`)
-
-func readCode(r io.Reader) string {
-	sc := bufio.NewScanner(r)
-	for sc.Scan() {
-		if m := codeRE.FindStringSubmatch(sc.Text()); m != nil {
-			return m[1]
-		}
-	}
-	panic("no pairing code")
-}
-
-func signLoop(ctx context.Context, app localv1connect.LocalServiceClient, root *identity.SoftwareKey) {
-	for ctx.Err() == nil {
-		stream, err := app.WatchSigningRequests(ctx, &localv1.WatchSigningRequestsRequest{})
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-		for stream.Receive() {
-			req := stream.Msg()
-			sig, _ := root.SignMessage(req.Message)
-			app.CompleteSigningRequest(ctx, &localv1.CompleteSigningRequestRequest{RequestId: req.RequestId, Signature: sig})
-		}
-	}
-}
+const benchAccount, benchPassword = "bench", "bench bench bench"
 
 // agent is one paired identity with one relay connection and one tunnel.
 type agent struct {
@@ -289,31 +249,18 @@ type agent struct {
 }
 
 func pairAgents(ctx context.Context, e *env, n int) ([]*agent, error) {
-	relayURL, ownerID, _ := connaddr.Parse(e.addr)
 	var out []*agent
 	for i := 0; i < n; i++ {
 		key, _ := identity.GenerateKey()
-		pr := &identityv1.PairingRequest{Kind: identityv1.PairingKind_PAIRING_KIND_CLIENT, SubjectPublicKey: identity.MarshalPublicKey(key.Public()),
-			Label: fmt.Sprintf("bench-%d", i), OwnerId: ownerID, CreatedAt: timestamppb.Now()}
-		pr2, pw := io.Pipe()
-		done := make(chan *identityv1.Credentials, 1)
-		go func() {
-			c, _, err := machine.PairWithRelay(ctx, http.DefaultClient, relayURL, pr, key, pw)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "pair agent:", err)
-			}
-			pw.Close()
-			done <- c
-		}()
-		code := readCode(pr2)
-		go io.Copy(io.Discard, pr2)
-		if _, err := e.app.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: code, Spec: &localv1.GrantSpec{Agents: []string{"codex"}}}); err != nil {
+		res, err := machine.LogInTo(ctx, http.DefaultClient, e.relayURL, benchAccount, benchPassword, &relayv1.Joiner{Kind: relayv1.JoinKind_JOIN_KIND_AGENT,
+			PublicKey: identity.MarshalPublicKey(key.Public()), Label: fmt.Sprintf("bench-%d", i)})
+		if err != nil {
 			return nil, err
 		}
-		creds := <-done
-		trust := identity.NewTrust(ownerID)
-		trust.AcceptRootChain(creds.RootChain)
-		d := &peer.Dialer{RelayURL: relayURL, Role: relayv1.Role_ROLE_CLIENT, Key: key, Trust: trust,
+		creds := &identityv1.Credentials{RootChain: res.RootChain, Subject: &identityv1.Credentials_Grant{Grant: res.Credential}}
+		trust := identity.NewTrust(res.OwnerId)
+		trust.AcceptRootChain(res.RootChain)
+		d := &peer.Dialer{RelayURL: e.relayURL, Role: relayv1.Role_ROLE_CLIENT, Key: key, Trust: trust,
 			Credentials: func() *identityv1.Credentials { return creds }}
 		c, err := d.Connect(ctx)
 		if err != nil {

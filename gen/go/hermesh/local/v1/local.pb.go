@@ -176,16 +176,14 @@ type WatchResponse struct {
 	// With reset, and when it changed.
 	Status *GetStatusResponse `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	// Added or changed, and removed, of each kind.
-	Machines            []*Machine        `protobuf:"bytes,3,rep,name=machines,proto3" json:"machines,omitempty"`
-	RemovedMachineIds   []string          `protobuf:"bytes,4,rep,name=removed_machine_ids,json=removedMachineIds,proto3" json:"removed_machine_ids,omitempty"`
-	Clients             []*Client         `protobuf:"bytes,5,rep,name=clients,proto3" json:"clients,omitempty"`
-	RemovedGrantIds     []string          `protobuf:"bytes,6,rep,name=removed_grant_ids,json=removedGrantIds,proto3" json:"removed_grant_ids,omitempty"`
-	Devices             []*Device         `protobuf:"bytes,7,rep,name=devices,proto3" json:"devices,omitempty"`
-	RemovedDeviceKeyIds []string          `protobuf:"bytes,8,rep,name=removed_device_key_ids,json=removedDeviceKeyIds,proto3" json:"removed_device_key_ids,omitempty"`
-	Projects            []*Project        `protobuf:"bytes,9,rep,name=projects,proto3" json:"projects,omitempty"`
-	RemovedProjects     []*ProjectRef     `protobuf:"bytes,10,rep,name=removed_projects,json=removedProjects,proto3" json:"removed_projects,omitempty"`
-	Pairings            []*PairingDetails `protobuf:"bytes,11,rep,name=pairings,proto3" json:"pairings,omitempty"`
-	RemovedPairingCodes []string          `protobuf:"bytes,12,rep,name=removed_pairing_codes,json=removedPairingCodes,proto3" json:"removed_pairing_codes,omitempty"`
+	Machines            []*Machine    `protobuf:"bytes,3,rep,name=machines,proto3" json:"machines,omitempty"`
+	RemovedMachineIds   []string      `protobuf:"bytes,4,rep,name=removed_machine_ids,json=removedMachineIds,proto3" json:"removed_machine_ids,omitempty"`
+	Clients             []*Client     `protobuf:"bytes,5,rep,name=clients,proto3" json:"clients,omitempty"`
+	RemovedGrantIds     []string      `protobuf:"bytes,6,rep,name=removed_grant_ids,json=removedGrantIds,proto3" json:"removed_grant_ids,omitempty"`
+	Devices             []*Device     `protobuf:"bytes,7,rep,name=devices,proto3" json:"devices,omitempty"`
+	RemovedDeviceKeyIds []string      `protobuf:"bytes,8,rep,name=removed_device_key_ids,json=removedDeviceKeyIds,proto3" json:"removed_device_key_ids,omitempty"`
+	Projects            []*Project    `protobuf:"bytes,9,rep,name=projects,proto3" json:"projects,omitempty"`
+	RemovedProjects     []*ProjectRef `protobuf:"bytes,10,rep,name=removed_projects,json=removedProjects,proto3" json:"removed_projects,omitempty"`
 	// Sessions started or changed, each as it is now; with reset, the first
 	// page of every machine's (each one's newest and every unsettled one),
 	// also of the machines that cannot be reached now, as last known.
@@ -295,20 +293,6 @@ func (x *WatchResponse) GetProjects() []*Project {
 func (x *WatchResponse) GetRemovedProjects() []*ProjectRef {
 	if x != nil {
 		return x.RemovedProjects
-	}
-	return nil
-}
-
-func (x *WatchResponse) GetPairings() []*PairingDetails {
-	if x != nil {
-		return x.Pairings
-	}
-	return nil
-}
-
-func (x *WatchResponse) GetRemovedPairingCodes() []string {
-	if x != nil {
-		return x.RemovedPairingCodes
 	}
 	return nil
 }
@@ -756,13 +740,11 @@ type GetStatusResponse struct {
 	LocalMachineId      string                 `protobuf:"bytes,6,opt,name=local_machine_id,json=localMachineId,proto3" json:"local_machine_id,omitempty"`
 	LocalMachineName    string                 `protobuf:"bytes,7,opt,name=local_machine_name,json=localMachineName,proto3" json:"local_machine_name,omitempty"`
 	Version             string                 `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
-	// Connection address handed to agents and installers.
-	ConnectAddress string `protobuf:"bytes,9,opt,name=connect_address,json=connectAddress,proto3" json:"connect_address,omitempty"`
 	// The relay is a hosted center; its web console at console_url can list
 	// and revoke, while adding machines and agents happens only here.
 	Hosted     bool   `protobuf:"varint,10,opt,name=hosted,proto3" json:"hosted,omitempty"`
 	ConsoleUrl string `protobuf:"bytes,11,opt,name=console_url,json=consoleUrl,proto3" json:"console_url,omitempty"`
-	// This device's root key id (one of the owner's trusted devices).
+	// This device's id among the owner's devices (Device.key_id).
 	DeviceKeyId string `protobuf:"bytes,12,opt,name=device_key_id,json=deviceKeyId,proto3" json:"device_key_id,omitempty"`
 	// This device is no longer one of the owner's trusted devices: another
 	// removed it, or the owner started over. Leave resets it.
@@ -786,8 +768,6 @@ type GetStatusResponse struct {
 	// A self-hosted relay's MCP address, with its key, to paste into agent
 	// products ("" when it serves none, and on the official service).
 	McpUrl string `protobuf:"bytes,18,opt,name=mcp_url,json=mcpUrl,proto3" json:"mcp_url,omitempty"`
-	// The signer, where it is not the app's child (Windows).
-	Signer *SignerState `protobuf:"bytes,19,opt,name=signer,proto3" json:"signer,omitempty"`
 	// The account's picture on the official service (GetAccount), learned
 	// each time this device connects: "" when it has none, and on a server
 	// of one's own.
@@ -887,13 +867,6 @@ func (x *GetStatusResponse) GetVersion() string {
 	return ""
 }
 
-func (x *GetStatusResponse) GetConnectAddress() string {
-	if x != nil {
-		return x.ConnectAddress
-	}
-	return ""
-}
-
 func (x *GetStatusResponse) GetHosted() bool {
 	if x != nil {
 		return x.Hosted
@@ -955,13 +928,6 @@ func (x *GetStatusResponse) GetMcpUrl() string {
 		return x.McpUrl
 	}
 	return ""
-}
-
-func (x *GetStatusResponse) GetSigner() *SignerState {
-	if x != nil {
-		return x.Signer
-	}
-	return nil
 }
 
 func (x *GetStatusResponse) GetAccountAvatarUrl() string {
@@ -1492,25 +1458,20 @@ func (*SignInResponse) Descriptor() ([]byte, []int) {
 }
 
 type SetupRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	RelayUrl  string                 `protobuf:"bytes,1,opt,name=relay_url,json=relayUrl,proto3" json:"relay_url,omitempty"`
-	ClaimCode string                 `protobuf:"bytes,2,opt,name=claim_code,json=claimCode,proto3" json:"claim_code,omitempty"`
-	// With a link code from the browser sign-in: its PKCE verifier.
-	ClaimVerifier string `protobuf:"bytes,5,opt,name=claim_verifier,json=claimVerifier,proto3" json:"claim_verifier,omitempty"`
-	// Root public key (SPKI DER). Empty: hermeshd asks the signer to create
-	// one (a SigningRequest with create_root_key), which is what the desktop
-	// app does; tests and headless setups pass their own.
-	RootPublicKey []byte `protobuf:"bytes,3,opt,name=root_public_key,json=rootPublicKey,proto3" json:"root_public_key,omitempty"`
-	RootLabel     string `protobuf:"bytes,4,opt,name=root_label,json=rootLabel,proto3" json:"root_label,omitempty"`
-	// "macos", later "ios", "windows", "linux".
-	RootPlatform string `protobuf:"bytes,6,opt,name=root_platform,json=rootPlatform,proto3" json:"root_platform,omitempty"`
-	// Also make this device a machine with this name, in the same signature
-	// (one Touch ID). Empty: not a machine.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The new server, and the setup code it printed on its first start.
+	RelayUrl  string `protobuf:"bytes,1,opt,name=relay_url,json=relayUrl,proto3" json:"relay_url,omitempty"`
+	SetupCode string `protobuf:"bytes,2,opt,name=setup_code,json=setupCode,proto3" json:"setup_code,omitempty"`
+	// The account and password it will keep, as LogInRequest's.
+	Account  string `protobuf:"bytes,3,opt,name=account,proto3" json:"account,omitempty"`
+	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	// This device's name and platform ("windows", "android", "linux"...).
+	Label    string `protobuf:"bytes,5,opt,name=label,proto3" json:"label,omitempty"`
+	Platform string `protobuf:"bytes,6,opt,name=platform,proto3" json:"platform,omitempty"`
+	// Also make this device a machine with this name. Empty: not a machine.
 	LocalMachineName string `protobuf:"bytes,7,opt,name=local_machine_name,json=localMachineName,proto3" json:"local_machine_name,omitempty"`
-	// The account, as the center named it in the sign-in link (for display).
-	Account       string `protobuf:"bytes,8,opt,name=account,proto3" json:"account,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SetupRequest) Reset() {
@@ -1550,44 +1511,9 @@ func (x *SetupRequest) GetRelayUrl() string {
 	return ""
 }
 
-func (x *SetupRequest) GetClaimCode() string {
+func (x *SetupRequest) GetSetupCode() string {
 	if x != nil {
-		return x.ClaimCode
-	}
-	return ""
-}
-
-func (x *SetupRequest) GetClaimVerifier() string {
-	if x != nil {
-		return x.ClaimVerifier
-	}
-	return ""
-}
-
-func (x *SetupRequest) GetRootPublicKey() []byte {
-	if x != nil {
-		return x.RootPublicKey
-	}
-	return nil
-}
-
-func (x *SetupRequest) GetRootLabel() string {
-	if x != nil {
-		return x.RootLabel
-	}
-	return ""
-}
-
-func (x *SetupRequest) GetRootPlatform() string {
-	if x != nil {
-		return x.RootPlatform
-	}
-	return ""
-}
-
-func (x *SetupRequest) GetLocalMachineName() string {
-	if x != nil {
-		return x.LocalMachineName
+		return x.SetupCode
 	}
 	return ""
 }
@@ -1599,12 +1525,39 @@ func (x *SetupRequest) GetAccount() string {
 	return ""
 }
 
+func (x *SetupRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *SetupRequest) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *SetupRequest) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *SetupRequest) GetLocalMachineName() string {
+	if x != nil {
+		return x.LocalMachineName
+	}
+	return ""
+}
+
 type SetupResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OwnerId        string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	ConnectAddress string                 `protobuf:"bytes,3,opt,name=connect_address,json=connectAddress,proto3" json:"connect_address,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SetupResponse) Reset() {
@@ -1644,58 +1597,39 @@ func (x *SetupResponse) GetOwnerId() string {
 	return ""
 }
 
-func (x *SetupResponse) GetConnectAddress() string {
-	if x != nil {
-		return x.ConnectAddress
-	}
-	return ""
-}
-
-type RequestJoinRequest struct {
+type LogInRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Where devices connect (a relay, or a hosted center's connect URL).
+	// The owner's server, as typed (with or without https://; a connection
+	// address works too). Empty: $AIDE_SERVER, else refused (no build names
+	// a server).
 	RelayUrl string `protobuf:"bytes,1,opt,name=relay_url,json=relayUrl,proto3" json:"relay_url,omitempty"`
-	// The owner to join. On a hosted center the console gave it, so it is
-	// not trusted: ConfirmJoin is the person's word that they approved it.
-	// Empty on a hosted center: one of the owner's devices claims the
-	// request by its code (docs/onboarding.md §9.5); the device cert is
-	// signed once it is claimed.
-	OwnerId string `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	// As in SetupRequest: empty asks the signer for a new root key.
-	RootPublicKey []byte `protobuf:"bytes,3,opt,name=root_public_key,json=rootPublicKey,proto3" json:"root_public_key,omitempty"`
-	RootLabel     string `protobuf:"bytes,4,opt,name=root_label,json=rootLabel,proto3" json:"root_label,omitempty"`
-	RootPlatform  string `protobuf:"bytes,5,opt,name=root_platform,json=rootPlatform,proto3" json:"root_platform,omitempty"`
-	// Also make this device a machine with this name, signed with the
-	// request (one Touch ID) and installed once it joined. Empty: not one.
+	Account  string `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	// As in SetupRequest.
+	Label            string `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
+	Platform         string `protobuf:"bytes,5,opt,name=platform,proto3" json:"platform,omitempty"`
 	LocalMachineName string `protobuf:"bytes,6,opt,name=local_machine_name,json=localMachineName,proto3" json:"local_machine_name,omitempty"`
-	// Join as a machine only: no root key and no Touch ID; this device's
-	// machine asks to join, named root_label, and is approved like any
-	// machine.
-	MachineOnly bool `protobuf:"varint,7,opt,name=machine_only,json=machineOnly,proto3" json:"machine_only,omitempty"`
-	// With machine_only: the person typed the owner's connection address
-	// here, so the owner is theirs and ConfirmJoin asks for no digits.
-	// Otherwise the owner id came from the center and the digits are needed.
-	OwnerTyped bool `protobuf:"varint,8,opt,name=owner_typed,json=ownerTyped,proto3" json:"owner_typed,omitempty"`
-	// As SetupRequest.account.
-	Account       string `protobuf:"bytes,9,opt,name=account,proto3" json:"account,omitempty"`
+	// Log in as a machine only: this computer runs tasks for the owner, named
+	// label, but is not one of the owner's devices.
+	MachineOnly   bool `protobuf:"varint,7,opt,name=machine_only,json=machineOnly,proto3" json:"machine_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RequestJoinRequest) Reset() {
-	*x = RequestJoinRequest{}
+func (x *LogInRequest) Reset() {
+	*x = LogInRequest{}
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RequestJoinRequest) String() string {
+func (x *LogInRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RequestJoinRequest) ProtoMessage() {}
+func (*LogInRequest) ProtoMessage() {}
 
-func (x *RequestJoinRequest) ProtoReflect() protoreflect.Message {
+func (x *LogInRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1707,102 +1641,81 @@ func (x *RequestJoinRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RequestJoinRequest.ProtoReflect.Descriptor instead.
-func (*RequestJoinRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LogInRequest.ProtoReflect.Descriptor instead.
+func (*LogInRequest) Descriptor() ([]byte, []int) {
 	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{23}
 }
 
-func (x *RequestJoinRequest) GetRelayUrl() string {
+func (x *LogInRequest) GetRelayUrl() string {
 	if x != nil {
 		return x.RelayUrl
 	}
 	return ""
 }
 
-func (x *RequestJoinRequest) GetOwnerId() string {
+func (x *LogInRequest) GetAccount() string {
 	if x != nil {
-		return x.OwnerId
+		return x.Account
 	}
 	return ""
 }
 
-func (x *RequestJoinRequest) GetRootPublicKey() []byte {
+func (x *LogInRequest) GetPassword() string {
 	if x != nil {
-		return x.RootPublicKey
-	}
-	return nil
-}
-
-func (x *RequestJoinRequest) GetRootLabel() string {
-	if x != nil {
-		return x.RootLabel
+		return x.Password
 	}
 	return ""
 }
 
-func (x *RequestJoinRequest) GetRootPlatform() string {
+func (x *LogInRequest) GetLabel() string {
 	if x != nil {
-		return x.RootPlatform
+		return x.Label
 	}
 	return ""
 }
 
-func (x *RequestJoinRequest) GetLocalMachineName() string {
+func (x *LogInRequest) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *LogInRequest) GetLocalMachineName() string {
 	if x != nil {
 		return x.LocalMachineName
 	}
 	return ""
 }
 
-func (x *RequestJoinRequest) GetMachineOnly() bool {
+func (x *LogInRequest) GetMachineOnly() bool {
 	if x != nil {
 		return x.MachineOnly
 	}
 	return false
 }
 
-func (x *RequestJoinRequest) GetOwnerTyped() bool {
-	if x != nil {
-		return x.OwnerTyped
-	}
-	return false
-}
-
-func (x *RequestJoinRequest) GetAccount() string {
-	if x != nil {
-		return x.Account
-	}
-	return ""
-}
-
-type RequestJoinResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	// What the approving device shows for this request (none without an
-	// owner: the code binds the key).
-	VerificationCode string                 `protobuf:"bytes,2,opt,name=verification_code,json=verificationCode,proto3" json:"verification_code,omitempty"`
-	ExpiresAt        *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	// Without an owner, on a hosted center: the console's page for the code,
-	// which the iPhone opens as a universal link (for a QR).
-	PairingLink   string `protobuf:"bytes,4,opt,name=pairing_link,json=pairingLink,proto3" json:"pairing_link,omitempty"`
+type LogInResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RequestJoinResponse) Reset() {
-	*x = RequestJoinResponse{}
+func (x *LogInResponse) Reset() {
+	*x = LogInResponse{}
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RequestJoinResponse) String() string {
+func (x *LogInResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RequestJoinResponse) ProtoMessage() {}
+func (*LogInResponse) ProtoMessage() {}
 
-func (x *RequestJoinResponse) ProtoReflect() protoreflect.Message {
+func (x *LogInResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1814,60 +1727,38 @@ func (x *RequestJoinResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RequestJoinResponse.ProtoReflect.Descriptor instead.
-func (*RequestJoinResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use LogInResponse.ProtoReflect.Descriptor instead.
+func (*LogInResponse) Descriptor() ([]byte, []int) {
 	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{24}
 }
 
-func (x *RequestJoinResponse) GetCode() string {
+func (x *LogInResponse) GetOwnerId() string {
 	if x != nil {
-		return x.Code
+		return x.OwnerId
 	}
 	return ""
 }
 
-func (x *RequestJoinResponse) GetVerificationCode() string {
-	if x != nil {
-		return x.VerificationCode
-	}
-	return ""
-}
-
-func (x *RequestJoinResponse) GetExpiresAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.ExpiresAt
-	}
-	return nil
-}
-
-func (x *RequestJoinResponse) GetPairingLink() string {
-	if x != nil {
-		return x.PairingLink
-	}
-	return ""
-}
-
-type WaitJoinRequest struct {
+type GetLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *WaitJoinRequest) Reset() {
-	*x = WaitJoinRequest{}
+func (x *GetLoginRequest) Reset() {
+	*x = GetLoginRequest{}
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *WaitJoinRequest) String() string {
+func (x *GetLoginRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*WaitJoinRequest) ProtoMessage() {}
+func (*GetLoginRequest) ProtoMessage() {}
 
-func (x *WaitJoinRequest) ProtoReflect() protoreflect.Message {
+func (x *GetLoginRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1879,49 +1770,39 @@ func (x *WaitJoinRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use WaitJoinRequest.ProtoReflect.Descriptor instead.
-func (*WaitJoinRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetLoginRequest.ProtoReflect.Descriptor instead.
+func (*GetLoginRequest) Descriptor() ([]byte, []int) {
 	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{25}
 }
 
-func (x *WaitJoinRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-type WaitJoinResponse struct {
+type GetLoginResponse struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
-	Done    bool                   `protobuf:"varint,1,opt,name=done,proto3" json:"done,omitempty"`
-	Expired bool                   `protobuf:"varint,2,opt,name=expired,proto3" json:"expired,omitempty"`
-	// Once done: the trusted device that approved, and all of them now.
-	ApprovedBy string    `protobuf:"bytes,3,opt,name=approved_by,json=approvedBy,proto3" json:"approved_by,omitempty"`
-	Devices    []*Device `protobuf:"bytes,4,rep,name=devices,proto3" json:"devices,omitempty"`
-	// ConfirmJoin needs the two digits the approving device shows.
-	MatchRequired bool `protobuf:"varint,5,opt,name=match_required,json=matchRequired,proto3" json:"match_required,omitempty"`
-	// A join without an owner: one of an owner's devices claimed it (by the
-	// account it names, a hint), and is yet to approve.
-	Claimed       bool   `protobuf:"varint,6,opt,name=claimed,proto3" json:"claimed,omitempty"`
-	ClaimedBy     string `protobuf:"bytes,7,opt,name=claimed_by,json=claimedBy,proto3" json:"claimed_by,omitempty"`
+	Account string                 `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	// The server to type on a new device, computer or agent.
+	Server string `protobuf:"bytes,2,opt,name=server,proto3" json:"server,omitempty"`
+	// A password login from before accounts waits to be converted: SetLogin
+	// with its password (current_password) does it.
+	Convert bool `protobuf:"varint,3,opt,name=convert,proto3" json:"convert,omitempty"`
+	// Logging in is turned off.
+	Off           bool `protobuf:"varint,4,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *WaitJoinResponse) Reset() {
-	*x = WaitJoinResponse{}
+func (x *GetLoginResponse) Reset() {
+	*x = GetLoginResponse{}
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *WaitJoinResponse) String() string {
+func (x *GetLoginResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*WaitJoinResponse) ProtoMessage() {}
+func (*GetLoginResponse) ProtoMessage() {}
 
-func (x *WaitJoinResponse) ProtoReflect() protoreflect.Message {
+func (x *GetLoginResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_hermesh_local_v1_local_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1933,521 +1814,151 @@ func (x *WaitJoinResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use WaitJoinResponse.ProtoReflect.Descriptor instead.
-func (*WaitJoinResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetLoginResponse.ProtoReflect.Descriptor instead.
+func (*GetLoginResponse) Descriptor() ([]byte, []int) {
 	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{26}
 }
 
-func (x *WaitJoinResponse) GetDone() bool {
-	if x != nil {
-		return x.Done
-	}
-	return false
-}
-
-func (x *WaitJoinResponse) GetExpired() bool {
-	if x != nil {
-		return x.Expired
-	}
-	return false
-}
-
-func (x *WaitJoinResponse) GetApprovedBy() string {
-	if x != nil {
-		return x.ApprovedBy
-	}
-	return ""
-}
-
-func (x *WaitJoinResponse) GetDevices() []*Device {
-	if x != nil {
-		return x.Devices
-	}
-	return nil
-}
-
-func (x *WaitJoinResponse) GetMatchRequired() bool {
-	if x != nil {
-		return x.MatchRequired
-	}
-	return false
-}
-
-func (x *WaitJoinResponse) GetClaimed() bool {
-	if x != nil {
-		return x.Claimed
-	}
-	return false
-}
-
-func (x *WaitJoinResponse) GetClaimedBy() string {
-	if x != nil {
-		return x.ClaimedBy
-	}
-	return ""
-}
-
-type ConfirmJoinRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	// The person approved this on one of their devices; false discards it.
-	Accept bool `protobuf:"varint,2,opt,name=accept,proto3" json:"accept,omitempty"`
-	// To accept: the two digits the approving device showed once it signed
-	// (JoinMatchCode of the root cert listing this device). They match only
-	// if that device is the person's own; three wrong tries discard the join.
-	// For a machine only: of the machine cert, and only when
-	// WaitJoinResponse.match_required.
-	MatchCode     string `protobuf:"bytes,3,opt,name=match_code,json=matchCode,proto3" json:"match_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConfirmJoinRequest) Reset() {
-	*x = ConfirmJoinRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[27]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfirmJoinRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfirmJoinRequest) ProtoMessage() {}
-
-func (x *ConfirmJoinRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[27]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfirmJoinRequest.ProtoReflect.Descriptor instead.
-func (*ConfirmJoinRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *ConfirmJoinRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-func (x *ConfirmJoinRequest) GetAccept() bool {
-	if x != nil {
-		return x.Accept
-	}
-	return false
-}
-
-func (x *ConfirmJoinRequest) GetMatchCode() string {
-	if x != nil {
-		return x.MatchCode
-	}
-	return ""
-}
-
-type ConfirmJoinResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OwnerId        string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	ConnectAddress string                 `protobuf:"bytes,2,opt,name=connect_address,json=connectAddress,proto3" json:"connect_address,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *ConfirmJoinResponse) Reset() {
-	*x = ConfirmJoinResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[28]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfirmJoinResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfirmJoinResponse) ProtoMessage() {}
-
-func (x *ConfirmJoinResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[28]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfirmJoinResponse.ProtoReflect.Descriptor instead.
-func (*ConfirmJoinResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *ConfirmJoinResponse) GetOwnerId() string {
-	if x != nil {
-		return x.OwnerId
-	}
-	return ""
-}
-
-func (x *ConfirmJoinResponse) GetConnectAddress() string {
-	if x != nil {
-		return x.ConnectAddress
-	}
-	return ""
-}
-
-type PasswordLoginRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The owner's server, as typed. Empty: $HERMESH_SERVER, else refused (no
-	// build names a server). Any connection address works; its owner part is
-	// not needed.
-	RelayUrl string `protobuf:"bytes,1,opt,name=relay_url,json=relayUrl,proto3" json:"relay_url,omitempty"`
-	Account  string `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
-	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
-	// As in RequestJoinRequest.
-	RootPublicKey    []byte `protobuf:"bytes,4,opt,name=root_public_key,json=rootPublicKey,proto3" json:"root_public_key,omitempty"`
-	RootLabel        string `protobuf:"bytes,5,opt,name=root_label,json=rootLabel,proto3" json:"root_label,omitempty"`
-	RootPlatform     string `protobuf:"bytes,6,opt,name=root_platform,json=rootPlatform,proto3" json:"root_platform,omitempty"`
-	LocalMachineName string `protobuf:"bytes,7,opt,name=local_machine_name,json=localMachineName,proto3" json:"local_machine_name,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *PasswordLoginRequest) Reset() {
-	*x = PasswordLoginRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[29]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PasswordLoginRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PasswordLoginRequest) ProtoMessage() {}
-
-func (x *PasswordLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[29]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PasswordLoginRequest.ProtoReflect.Descriptor instead.
-func (*PasswordLoginRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *PasswordLoginRequest) GetRelayUrl() string {
-	if x != nil {
-		return x.RelayUrl
-	}
-	return ""
-}
-
-func (x *PasswordLoginRequest) GetAccount() string {
+func (x *GetLoginResponse) GetAccount() string {
 	if x != nil {
 		return x.Account
 	}
 	return ""
 }
 
-func (x *PasswordLoginRequest) GetPassword() string {
-	if x != nil {
-		return x.Password
-	}
-	return ""
-}
-
-func (x *PasswordLoginRequest) GetRootPublicKey() []byte {
-	if x != nil {
-		return x.RootPublicKey
-	}
-	return nil
-}
-
-func (x *PasswordLoginRequest) GetRootLabel() string {
-	if x != nil {
-		return x.RootLabel
-	}
-	return ""
-}
-
-func (x *PasswordLoginRequest) GetRootPlatform() string {
-	if x != nil {
-		return x.RootPlatform
-	}
-	return ""
-}
-
-func (x *PasswordLoginRequest) GetLocalMachineName() string {
-	if x != nil {
-		return x.LocalMachineName
-	}
-	return ""
-}
-
-type PasswordLoginResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OwnerId        string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	ConnectAddress string                 `protobuf:"bytes,2,opt,name=connect_address,json=connectAddress,proto3" json:"connect_address,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *PasswordLoginResponse) Reset() {
-	*x = PasswordLoginResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[30]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PasswordLoginResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PasswordLoginResponse) ProtoMessage() {}
-
-func (x *PasswordLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[30]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PasswordLoginResponse.ProtoReflect.Descriptor instead.
-func (*PasswordLoginResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{30}
-}
-
-func (x *PasswordLoginResponse) GetOwnerId() string {
-	if x != nil {
-		return x.OwnerId
-	}
-	return ""
-}
-
-func (x *PasswordLoginResponse) GetConnectAddress() string {
-	if x != nil {
-		return x.ConnectAddress
-	}
-	return ""
-}
-
-type SetLoginPasswordRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Empty account and password: turn logging in with a password off.
-	Account       string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	Password      string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetLoginPasswordRequest) Reset() {
-	*x = SetLoginPasswordRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[31]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetLoginPasswordRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetLoginPasswordRequest) ProtoMessage() {}
-
-func (x *SetLoginPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[31]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetLoginPasswordRequest.ProtoReflect.Descriptor instead.
-func (*SetLoginPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{31}
-}
-
-func (x *SetLoginPasswordRequest) GetAccount() string {
-	if x != nil {
-		return x.Account
-	}
-	return ""
-}
-
-func (x *SetLoginPasswordRequest) GetPassword() string {
-	if x != nil {
-		return x.Password
-	}
-	return ""
-}
-
-type SetLoginPasswordResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Devices signed out by the change (they logged in with the old password).
-	RemovedDevices uint32 `protobuf:"varint,1,opt,name=removed_devices,json=removedDevices,proto3" json:"removed_devices,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *SetLoginPasswordResponse) Reset() {
-	*x = SetLoginPasswordResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[32]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetLoginPasswordResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetLoginPasswordResponse) ProtoMessage() {}
-
-func (x *SetLoginPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[32]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetLoginPasswordResponse.ProtoReflect.Descriptor instead.
-func (*SetLoginPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{32}
-}
-
-func (x *SetLoginPasswordResponse) GetRemovedDevices() uint32 {
-	if x != nil {
-		return x.RemovedDevices
-	}
-	return 0
-}
-
-type GetLoginPasswordRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetLoginPasswordRequest) Reset() {
-	*x = GetLoginPasswordRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[33]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetLoginPasswordRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetLoginPasswordRequest) ProtoMessage() {}
-
-func (x *GetLoginPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[33]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetLoginPasswordRequest.ProtoReflect.Descriptor instead.
-func (*GetLoginPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{33}
-}
-
-type GetLoginPasswordResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Empty: logging in with a password is off.
-	Account string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// The server to type on a new device (no owner part).
-	Server string `protobuf:"bytes,2,opt,name=server,proto3" json:"server,omitempty"`
-	// Devices that logged in with the current password.
-	Devices       []string `protobuf:"bytes,3,rep,name=devices,proto3" json:"devices,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetLoginPasswordResponse) Reset() {
-	*x = GetLoginPasswordResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[34]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetLoginPasswordResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetLoginPasswordResponse) ProtoMessage() {}
-
-func (x *GetLoginPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[34]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetLoginPasswordResponse.ProtoReflect.Descriptor instead.
-func (*GetLoginPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{34}
-}
-
-func (x *GetLoginPasswordResponse) GetAccount() string {
-	if x != nil {
-		return x.Account
-	}
-	return ""
-}
-
-func (x *GetLoginPasswordResponse) GetServer() string {
+func (x *GetLoginResponse) GetServer() string {
 	if x != nil {
 		return x.Server
 	}
 	return ""
 }
 
-func (x *GetLoginPasswordResponse) GetDevices() []string {
+func (x *GetLoginResponse) GetConvert() bool {
 	if x != nil {
-		return x.Devices
+		return x.Convert
 	}
-	return nil
+	return false
+}
+
+func (x *GetLoginResponse) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
+}
+
+type SetLoginRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CurrentPassword string                 `protobuf:"bytes,1,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	// Unset: kept.
+	Account       string `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	NewPassword   string `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	Off           bool   `protobuf:"varint,4,opt,name=off,proto3" json:"off,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLoginRequest) Reset() {
+	*x = SetLoginRequest{}
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLoginRequest) ProtoMessage() {}
+
+func (x *SetLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLoginRequest.ProtoReflect.Descriptor instead.
+func (*SetLoginRequest) Descriptor() ([]byte, []int) {
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SetLoginRequest) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
+}
+
+func (x *SetLoginRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *SetLoginRequest) GetNewPassword() string {
+	if x != nil {
+		return x.NewPassword
+	}
+	return ""
+}
+
+func (x *SetLoginRequest) GetOff() bool {
+	if x != nil {
+		return x.Off
+	}
+	return false
+}
+
+type SetLoginResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Devices and agents signed out by a new password.
+	SignedOut     uint32 `protobuf:"varint,1,opt,name=signed_out,json=signedOut,proto3" json:"signed_out,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLoginResponse) Reset() {
+	*x = SetLoginResponse{}
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLoginResponse) ProtoMessage() {}
+
+func (x *SetLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLoginResponse.ProtoReflect.Descriptor instead.
+func (*SetLoginResponse) Descriptor() ([]byte, []int) {
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SetLoginResponse) GetSignedOut() uint32 {
+	if x != nil {
+		return x.SignedOut
+	}
+	return 0
 }
 
 type Device struct {
@@ -2459,13 +1970,15 @@ type Device struct {
 	// The device's own machine, if it is one.
 	MachineId     string `protobuf:"bytes,5,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	MachineOnline bool   `protobuf:"varint,6,opt,name=machine_online,json=machineOnline,proto3" json:"machine_online,omitempty"`
+	// Set up before accounts: a root key of its own in the root cert.
+	Legacy        bool `protobuf:"varint,7,opt,name=legacy,proto3" json:"legacy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Device) Reset() {
 	*x = Device{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[35]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2477,7 +1990,7 @@ func (x *Device) String() string {
 func (*Device) ProtoMessage() {}
 
 func (x *Device) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[35]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2490,7 +2003,7 @@ func (x *Device) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Device.ProtoReflect.Descriptor instead.
 func (*Device) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{35}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Device) GetKeyId() string {
@@ -2535,6 +2048,13 @@ func (x *Device) GetMachineOnline() bool {
 	return false
 }
 
+func (x *Device) GetLegacy() bool {
+	if x != nil {
+		return x.Legacy
+	}
+	return false
+}
+
 type ListDevicesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2543,7 +2063,7 @@ type ListDevicesRequest struct {
 
 func (x *ListDevicesRequest) Reset() {
 	*x = ListDevicesRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[36]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2555,7 +2075,7 @@ func (x *ListDevicesRequest) String() string {
 func (*ListDevicesRequest) ProtoMessage() {}
 
 func (x *ListDevicesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[36]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2568,7 +2088,7 @@ func (x *ListDevicesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDevicesRequest.ProtoReflect.Descriptor instead.
 func (*ListDevicesRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{36}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{30}
 }
 
 type ListDevicesResponse struct {
@@ -2580,7 +2100,7 @@ type ListDevicesResponse struct {
 
 func (x *ListDevicesResponse) Reset() {
 	*x = ListDevicesResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[37]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2592,7 +2112,7 @@ func (x *ListDevicesResponse) String() string {
 func (*ListDevicesResponse) ProtoMessage() {}
 
 func (x *ListDevicesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[37]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2605,7 +2125,7 @@ func (x *ListDevicesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDevicesResponse.ProtoReflect.Descriptor instead.
 func (*ListDevicesResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{37}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ListDevicesResponse) GetDevices() []*Device {
@@ -2615,109 +2135,11 @@ func (x *ListDevicesResponse) GetDevices() []*Device {
 	return nil
 }
 
-type ApproveDevicePairingRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApproveDevicePairingRequest) Reset() {
-	*x = ApproveDevicePairingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[38]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApproveDevicePairingRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApproveDevicePairingRequest) ProtoMessage() {}
-
-func (x *ApproveDevicePairingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[38]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApproveDevicePairingRequest.ProtoReflect.Descriptor instead.
-func (*ApproveDevicePairingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{38}
-}
-
-func (x *ApproveDevicePairingRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-type ApproveDevicePairingResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	KeyId string                 `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	// The two digits to type on the device that joined (the app computes
-	// them itself from the root cert it signed).
-	MatchCode     string `protobuf:"bytes,2,opt,name=match_code,json=matchCode,proto3" json:"match_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApproveDevicePairingResponse) Reset() {
-	*x = ApproveDevicePairingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[39]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApproveDevicePairingResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApproveDevicePairingResponse) ProtoMessage() {}
-
-func (x *ApproveDevicePairingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[39]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApproveDevicePairingResponse.ProtoReflect.Descriptor instead.
-func (*ApproveDevicePairingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{39}
-}
-
-func (x *ApproveDevicePairingResponse) GetKeyId() string {
-	if x != nil {
-		return x.KeyId
-	}
-	return ""
-}
-
-func (x *ApproveDevicePairingResponse) GetMatchCode() string {
-	if x != nil {
-		return x.MatchCode
-	}
-	return ""
-}
-
 type RemoveDeviceRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	KeyId string                 `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	// Her's data on the device's own machine is erased first, signed with the
-	// same approval, while it answers (docs/her-server.md §5.6).
+	// Her's data on the device's own machine is erased first, while it
+	// answers (docs/her-server.md §5.6).
 	EraseHer      bool `protobuf:"varint,2,opt,name=erase_her,json=eraseHer,proto3" json:"erase_her,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2725,7 +2147,7 @@ type RemoveDeviceRequest struct {
 
 func (x *RemoveDeviceRequest) Reset() {
 	*x = RemoveDeviceRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[40]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2737,7 +2159,7 @@ func (x *RemoveDeviceRequest) String() string {
 func (*RemoveDeviceRequest) ProtoMessage() {}
 
 func (x *RemoveDeviceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[40]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2750,7 +2172,7 @@ func (x *RemoveDeviceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveDeviceRequest.ProtoReflect.Descriptor instead.
 func (*RemoveDeviceRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{40}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *RemoveDeviceRequest) GetKeyId() string {
@@ -2777,7 +2199,7 @@ type RemoveDeviceResponse struct {
 
 func (x *RemoveDeviceResponse) Reset() {
 	*x = RemoveDeviceResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[41]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2789,7 +2211,7 @@ func (x *RemoveDeviceResponse) String() string {
 func (*RemoveDeviceResponse) ProtoMessage() {}
 
 func (x *RemoveDeviceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[41]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2802,7 +2224,7 @@ func (x *RemoveDeviceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveDeviceResponse.ProtoReflect.Descriptor instead.
 func (*RemoveDeviceResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{41}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *RemoveDeviceResponse) GetReissuedMachines() uint32 {
@@ -2827,7 +2249,7 @@ type LeaveRequest struct {
 
 func (x *LeaveRequest) Reset() {
 	*x = LeaveRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[42]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2839,7 +2261,7 @@ func (x *LeaveRequest) String() string {
 func (*LeaveRequest) ProtoMessage() {}
 
 func (x *LeaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[42]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2852,7 +2274,7 @@ func (x *LeaveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaveRequest.ProtoReflect.Descriptor instead.
 func (*LeaveRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{42}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{34}
 }
 
 type LeaveResponse struct {
@@ -2863,7 +2285,7 @@ type LeaveResponse struct {
 
 func (x *LeaveResponse) Reset() {
 	*x = LeaveResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[43]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2875,7 +2297,7 @@ func (x *LeaveResponse) String() string {
 func (*LeaveResponse) ProtoMessage() {}
 
 func (x *LeaveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[43]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2888,7 +2310,7 @@ func (x *LeaveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaveResponse.ProtoReflect.Descriptor instead.
 func (*LeaveResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{43}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{35}
 }
 
 type EraseEverythingRequest struct {
@@ -2899,7 +2321,7 @@ type EraseEverythingRequest struct {
 
 func (x *EraseEverythingRequest) Reset() {
 	*x = EraseEverythingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[44]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2911,7 +2333,7 @@ func (x *EraseEverythingRequest) String() string {
 func (*EraseEverythingRequest) ProtoMessage() {}
 
 func (x *EraseEverythingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[44]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2924,7 +2346,7 @@ func (x *EraseEverythingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EraseEverythingRequest.ProtoReflect.Descriptor instead.
 func (*EraseEverythingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{44}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{36}
 }
 
 type EraseEverythingResponse struct {
@@ -2936,7 +2358,7 @@ type EraseEverythingResponse struct {
 
 func (x *EraseEverythingResponse) Reset() {
 	*x = EraseEverythingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[45]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2948,7 +2370,7 @@ func (x *EraseEverythingResponse) String() string {
 func (*EraseEverythingResponse) ProtoMessage() {}
 
 func (x *EraseEverythingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[45]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2961,7 +2383,7 @@ func (x *EraseEverythingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EraseEverythingResponse.ProtoReflect.Descriptor instead.
 func (*EraseEverythingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{45}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *EraseEverythingResponse) GetEraseId() string {
@@ -2980,7 +2402,7 @@ type EraseStatusRequest struct {
 
 func (x *EraseStatusRequest) Reset() {
 	*x = EraseStatusRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[46]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2992,7 +2414,7 @@ func (x *EraseStatusRequest) String() string {
 func (*EraseStatusRequest) ProtoMessage() {}
 
 func (x *EraseStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[46]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3005,7 +2427,7 @@ func (x *EraseStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EraseStatusRequest.ProtoReflect.Descriptor instead.
 func (*EraseStatusRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{46}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *EraseStatusRequest) GetEraseId() string {
@@ -3028,7 +2450,7 @@ type EraseStatusResponse struct {
 
 func (x *EraseStatusResponse) Reset() {
 	*x = EraseStatusResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[47]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3040,7 +2462,7 @@ func (x *EraseStatusResponse) String() string {
 func (*EraseStatusResponse) ProtoMessage() {}
 
 func (x *EraseStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[47]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3053,7 +2475,7 @@ func (x *EraseStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EraseStatusResponse.ProtoReflect.Descriptor instead.
 func (*EraseStatusResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{47}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *EraseStatusResponse) GetItems() []*EraseItem {
@@ -3088,7 +2510,7 @@ type EraseItem struct {
 
 func (x *EraseItem) Reset() {
 	*x = EraseItem{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[48]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3100,7 +2522,7 @@ func (x *EraseItem) String() string {
 func (*EraseItem) ProtoMessage() {}
 
 func (x *EraseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[48]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3113,7 +2535,7 @@ func (x *EraseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EraseItem.ProtoReflect.Descriptor instead.
 func (*EraseItem) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{48}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *EraseItem) GetKind() string {
@@ -3159,7 +2581,7 @@ type FinishEraseRequest struct {
 
 func (x *FinishEraseRequest) Reset() {
 	*x = FinishEraseRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[49]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3171,7 +2593,7 @@ func (x *FinishEraseRequest) String() string {
 func (*FinishEraseRequest) ProtoMessage() {}
 
 func (x *FinishEraseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[49]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3184,7 +2606,7 @@ func (x *FinishEraseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishEraseRequest.ProtoReflect.Descriptor instead.
 func (*FinishEraseRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{49}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{41}
 }
 
 type FinishEraseResponse struct {
@@ -3195,7 +2617,7 @@ type FinishEraseResponse struct {
 
 func (x *FinishEraseResponse) Reset() {
 	*x = FinishEraseResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[50]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3207,7 +2629,7 @@ func (x *FinishEraseResponse) String() string {
 func (*FinishEraseResponse) ProtoMessage() {}
 
 func (x *FinishEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[50]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3220,7 +2642,7 @@ func (x *FinishEraseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishEraseResponse.ProtoReflect.Descriptor instead.
 func (*FinishEraseResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{50}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{42}
 }
 
 // What the last erase did, for the app to say once on its first run.
@@ -3241,7 +2663,7 @@ type Erased struct {
 
 func (x *Erased) Reset() {
 	*x = Erased{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[51]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3253,7 +2675,7 @@ func (x *Erased) String() string {
 func (*Erased) ProtoMessage() {}
 
 func (x *Erased) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[51]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3266,7 +2688,7 @@ func (x *Erased) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Erased.ProtoReflect.Descriptor instead.
 func (*Erased) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{51}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *Erased) GetEraseId() string {
@@ -3304,491 +2726,6 @@ func (x *Erased) GetBy() string {
 	return ""
 }
 
-type WatchSigningRequestsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// This signer brings its open approval forward when asked (ShowSigner):
-	// its watch also gets requests that carry only show.
-	Show          bool `protobuf:"varint,1,opt,name=show,proto3" json:"show,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *WatchSigningRequestsRequest) Reset() {
-	*x = WatchSigningRequestsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[52]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *WatchSigningRequestsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WatchSigningRequestsRequest) ProtoMessage() {}
-
-func (x *WatchSigningRequestsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[52]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WatchSigningRequestsRequest.ProtoReflect.Descriptor instead.
-func (*WatchSigningRequestsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{52}
-}
-
-func (x *WatchSigningRequestsRequest) GetShow() bool {
-	if x != nil {
-		return x.Show
-	}
-	return false
-}
-
-type ShowSignerRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ShowSignerRequest) Reset() {
-	*x = ShowSignerRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[53]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ShowSignerRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ShowSignerRequest) ProtoMessage() {}
-
-func (x *ShowSignerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[53]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ShowSignerRequest.ProtoReflect.Descriptor instead.
-func (*ShowSignerRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{53}
-}
-
-type ShowSignerResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ShowSignerResponse) Reset() {
-	*x = ShowSignerResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[54]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ShowSignerResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ShowSignerResponse) ProtoMessage() {}
-
-func (x *ShowSignerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[54]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ShowSignerResponse.ProtoReflect.Descriptor instead.
-func (*ShowSignerResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{54}
-}
-
-// The signers watching for requests, as hermeshd sees them.
-type SignerState struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Connected bool                   `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
-	// A request waits for the owner's approval.
-	Busy          bool `protobuf:"varint,2,opt,name=busy,proto3" json:"busy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SignerState) Reset() {
-	*x = SignerState{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[55]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SignerState) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SignerState) ProtoMessage() {}
-
-func (x *SignerState) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[55]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SignerState.ProtoReflect.Descriptor instead.
-func (*SignerState) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{55}
-}
-
-func (x *SignerState) GetConnected() bool {
-	if x != nil {
-		return x.Connected
-	}
-	return false
-}
-
-func (x *SignerState) GetBusy() bool {
-	if x != nil {
-		return x.Busy
-	}
-	return false
-}
-
-type SigningRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	RequestId string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	// Fully-qualified message type of body, e.g. "hermesh.identity.v1.Grant".
-	// The app parses and renders body itself before asking for Touch ID.
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Body []byte `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	// Bytes to sign (the domain-separated message).
-	Message []byte `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
-	// Batch requests share one user confirmation.
-	BatchId string `protobuf:"bytes,5,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
-	// Set instead of type, body and message: hermeshd needs a new root key
-	// (Setup or RequestJoin without one). The signer creates it, keeping the
-	// others it holds (one per profile), and answers with its public key.
-	CreateRootKey bool `protobuf:"varint,6,opt,name=create_root_key,json=createRootKey,proto3" json:"create_root_key,omitempty"`
-	// The local process whose call led to this request, as hermeshd saw it on
-	// its socket: a hint for the person, not proof.
-	Caller *Caller `protobuf:"bytes,7,opt,name=caller,proto3" json:"caller,omitempty"`
-	// After signing: show the two digits of this body (JoinMatchCode), for
-	// the person to type on the machine that asked for them
-	// (PairingRequest.confirm_match).
-	ShowMatch bool `protobuf:"varint,8,opt,name=show_match,json=showMatch,proto3" json:"show_match,omitempty"`
-	// A pairing the person already confirmed as theirs, or a machine or
-	// device whose code they looked up here (PairingDetails.confirmed): no
-	// verification code to compare.
-	Confirmed bool `protobuf:"varint,9,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
-	// The root key to sign with (its key id): the current profile's. With
-	// delete_root_key: the key to delete.
-	RootKeyId string `protobuf:"bytes,10,opt,name=root_key_id,json=rootKeyId,proto3" json:"root_key_id,omitempty"`
-	// Set instead of type, body and message: the device left the owner of
-	// root_key_id (Leave), so the signer deletes that key, without asking,
-	// and completes the request.
-	DeleteRootKey bool `protobuf:"varint,11,opt,name=delete_root_key,json=deleteRootKey,proto3" json:"delete_root_key,omitempty"`
-	// Set alone, to a watch that asked for it: bring the open approval
-	// forward (ShowSigner). Nothing to complete.
-	Show          bool `protobuf:"varint,12,opt,name=show,proto3" json:"show,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SigningRequest) Reset() {
-	*x = SigningRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[56]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SigningRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SigningRequest) ProtoMessage() {}
-
-func (x *SigningRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[56]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SigningRequest.ProtoReflect.Descriptor instead.
-func (*SigningRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{56}
-}
-
-func (x *SigningRequest) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
-}
-
-func (x *SigningRequest) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *SigningRequest) GetBody() []byte {
-	if x != nil {
-		return x.Body
-	}
-	return nil
-}
-
-func (x *SigningRequest) GetMessage() []byte {
-	if x != nil {
-		return x.Message
-	}
-	return nil
-}
-
-func (x *SigningRequest) GetBatchId() string {
-	if x != nil {
-		return x.BatchId
-	}
-	return ""
-}
-
-func (x *SigningRequest) GetCreateRootKey() bool {
-	if x != nil {
-		return x.CreateRootKey
-	}
-	return false
-}
-
-func (x *SigningRequest) GetCaller() *Caller {
-	if x != nil {
-		return x.Caller
-	}
-	return nil
-}
-
-func (x *SigningRequest) GetShowMatch() bool {
-	if x != nil {
-		return x.ShowMatch
-	}
-	return false
-}
-
-func (x *SigningRequest) GetConfirmed() bool {
-	if x != nil {
-		return x.Confirmed
-	}
-	return false
-}
-
-func (x *SigningRequest) GetRootKeyId() string {
-	if x != nil {
-		return x.RootKeyId
-	}
-	return ""
-}
-
-func (x *SigningRequest) GetDeleteRootKey() bool {
-	if x != nil {
-		return x.DeleteRootKey
-	}
-	return false
-}
-
-func (x *SigningRequest) GetShow() bool {
-	if x != nil {
-		return x.Show
-	}
-	return false
-}
-
-type Caller struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Pid   int32                  `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
-	// Path of its executable; empty if the OS did not tell.
-	Executable    string `protobuf:"bytes,2,opt,name=executable,proto3" json:"executable,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Caller) Reset() {
-	*x = Caller{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[57]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Caller) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Caller) ProtoMessage() {}
-
-func (x *Caller) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[57]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Caller.ProtoReflect.Descriptor instead.
-func (*Caller) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{57}
-}
-
-func (x *Caller) GetPid() int32 {
-	if x != nil {
-		return x.Pid
-	}
-	return 0
-}
-
-func (x *Caller) GetExecutable() string {
-	if x != nil {
-		return x.Executable
-	}
-	return ""
-}
-
-type CompleteSigningRequestRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	RequestId string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	// ASN.1 DER ECDSA-P256-SHA256 signature over SigningRequest.message.
-	Signature []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
-	Rejected  bool   `protobuf:"varint,3,opt,name=rejected,proto3" json:"rejected,omitempty"`
-	// The answer to create_root_key: the new root public key, SPKI DER.
-	PublicKey     []byte `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CompleteSigningRequestRequest) Reset() {
-	*x = CompleteSigningRequestRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[58]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompleteSigningRequestRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompleteSigningRequestRequest) ProtoMessage() {}
-
-func (x *CompleteSigningRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[58]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompleteSigningRequestRequest.ProtoReflect.Descriptor instead.
-func (*CompleteSigningRequestRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{58}
-}
-
-func (x *CompleteSigningRequestRequest) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
-}
-
-func (x *CompleteSigningRequestRequest) GetSignature() []byte {
-	if x != nil {
-		return x.Signature
-	}
-	return nil
-}
-
-func (x *CompleteSigningRequestRequest) GetRejected() bool {
-	if x != nil {
-		return x.Rejected
-	}
-	return false
-}
-
-func (x *CompleteSigningRequestRequest) GetPublicKey() []byte {
-	if x != nil {
-		return x.PublicKey
-	}
-	return nil
-}
-
-type CompleteSigningRequestResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CompleteSigningRequestResponse) Reset() {
-	*x = CompleteSigningRequestResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[59]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompleteSigningRequestResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompleteSigningRequestResponse) ProtoMessage() {}
-
-func (x *CompleteSigningRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[59]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompleteSigningRequestResponse.ProtoReflect.Descriptor instead.
-func (*CompleteSigningRequestResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{59}
-}
-
 type SetLocalMachineRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -3799,7 +2736,7 @@ type SetLocalMachineRequest struct {
 
 func (x *SetLocalMachineRequest) Reset() {
 	*x = SetLocalMachineRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[60]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3811,7 +2748,7 @@ func (x *SetLocalMachineRequest) String() string {
 func (*SetLocalMachineRequest) ProtoMessage() {}
 
 func (x *SetLocalMachineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[60]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3824,7 +2761,7 @@ func (x *SetLocalMachineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetLocalMachineRequest.ProtoReflect.Descriptor instead.
 func (*SetLocalMachineRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{60}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SetLocalMachineRequest) GetEnabled() bool {
@@ -3850,7 +2787,7 @@ type SetLocalMachineResponse struct {
 
 func (x *SetLocalMachineResponse) Reset() {
 	*x = SetLocalMachineResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[61]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3862,7 +2799,7 @@ func (x *SetLocalMachineResponse) String() string {
 func (*SetLocalMachineResponse) ProtoMessage() {}
 
 func (x *SetLocalMachineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[61]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3875,418 +2812,12 @@ func (x *SetLocalMachineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetLocalMachineResponse.ProtoReflect.Descriptor instead.
 func (*SetLocalMachineResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{61}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SetLocalMachineResponse) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-type PairingDetails struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Kind        v11.PairingKind        `protobuf:"varint,1,opt,name=kind,proto3,enum=hermesh.identity.v1.PairingKind" json:"kind,omitempty"`
-	Label       string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	Hostname    string                 `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	Platform    string                 `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
-	Fingerprint string                 `protobuf:"bytes,5,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
-	ExpiresAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	SubjectId   string                 `protobuf:"bytes,7,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`
-	// Binds the requester's key to this owner; the requester shows the same
-	// code when a hosted center claimed its request.
-	VerificationCode string `protobuf:"bytes,8,opt,name=verification_code,json=verificationCode,proto3" json:"verification_code,omitempty"`
-	// The pairing code, to approve the request with.
-	Code string `protobuf:"bytes,9,opt,name=code,proto3" json:"code,omitempty"`
-	// The server that will hold the client's key (an MCP connection made
-	// through it), "" when the client holds its own.
-	Custodian string `protobuf:"bytes,10,opt,name=custodian,proto3" json:"custodian,omitempty"`
-	// The person already said this request is theirs while signed in to
-	// their account (a pairing link, an MCP consent, a code typed here): its
-	// requester shows no verification code to compare.
-	Confirmed     bool `protobuf:"varint,11,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PairingDetails) Reset() {
-	*x = PairingDetails{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[62]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PairingDetails) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PairingDetails) ProtoMessage() {}
-
-func (x *PairingDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[62]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PairingDetails.ProtoReflect.Descriptor instead.
-func (*PairingDetails) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{62}
-}
-
-func (x *PairingDetails) GetKind() v11.PairingKind {
-	if x != nil {
-		return x.Kind
-	}
-	return v11.PairingKind(0)
-}
-
-func (x *PairingDetails) GetLabel() string {
-	if x != nil {
-		return x.Label
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetHostname() string {
-	if x != nil {
-		return x.Hostname
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetPlatform() string {
-	if x != nil {
-		return x.Platform
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetFingerprint() string {
-	if x != nil {
-		return x.Fingerprint
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetExpiresAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.ExpiresAt
-	}
-	return nil
-}
-
-func (x *PairingDetails) GetSubjectId() string {
-	if x != nil {
-		return x.SubjectId
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetVerificationCode() string {
-	if x != nil {
-		return x.VerificationCode
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetCustodian() string {
-	if x != nil {
-		return x.Custodian
-	}
-	return ""
-}
-
-func (x *PairingDetails) GetConfirmed() bool {
-	if x != nil {
-		return x.Confirmed
-	}
-	return false
-}
-
-type ListPairingRequestsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListPairingRequestsRequest) Reset() {
-	*x = ListPairingRequestsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[63]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListPairingRequestsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListPairingRequestsRequest) ProtoMessage() {}
-
-func (x *ListPairingRequestsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[63]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListPairingRequestsRequest.ProtoReflect.Descriptor instead.
-func (*ListPairingRequestsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{63}
-}
-
-type ListPairingRequestsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pairings      []*PairingDetails      `protobuf:"bytes,1,rep,name=pairings,proto3" json:"pairings,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListPairingRequestsResponse) Reset() {
-	*x = ListPairingRequestsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[64]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListPairingRequestsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListPairingRequestsResponse) ProtoMessage() {}
-
-func (x *ListPairingRequestsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[64]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListPairingRequestsResponse.ProtoReflect.Descriptor instead.
-func (*ListPairingRequestsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{64}
-}
-
-func (x *ListPairingRequestsResponse) GetPairings() []*PairingDetails {
-	if x != nil {
-		return x.Pairings
-	}
-	return nil
-}
-
-type LookupPairingRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LookupPairingRequest) Reset() {
-	*x = LookupPairingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[65]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LookupPairingRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LookupPairingRequest) ProtoMessage() {}
-
-func (x *LookupPairingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[65]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LookupPairingRequest.ProtoReflect.Descriptor instead.
-func (*LookupPairingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{65}
-}
-
-func (x *LookupPairingRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-type LookupPairingResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Details       *PairingDetails        `protobuf:"bytes,1,opt,name=details,proto3" json:"details,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LookupPairingResponse) Reset() {
-	*x = LookupPairingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[66]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LookupPairingResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LookupPairingResponse) ProtoMessage() {}
-
-func (x *LookupPairingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[66]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LookupPairingResponse.ProtoReflect.Descriptor instead.
-func (*LookupPairingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{66}
-}
-
-func (x *LookupPairingResponse) GetDetails() *PairingDetails {
-	if x != nil {
-		return x.Details
-	}
-	return nil
-}
-
-type ApproveMachinePairingRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	MachineName   string                 `protobuf:"bytes,2,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApproveMachinePairingRequest) Reset() {
-	*x = ApproveMachinePairingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[67]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApproveMachinePairingRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApproveMachinePairingRequest) ProtoMessage() {}
-
-func (x *ApproveMachinePairingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[67]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApproveMachinePairingRequest.ProtoReflect.Descriptor instead.
-func (*ApproveMachinePairingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{67}
-}
-
-func (x *ApproveMachinePairingRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-func (x *ApproveMachinePairingRequest) GetMachineName() string {
-	if x != nil {
-		return x.MachineName
-	}
-	return ""
-}
-
-type ApproveMachinePairingResponse struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	// The machine asked for the two digits (PairingRequest.confirm_match):
-	// the signer showed them, computed from the machine cert it signed.
-	MatchCode     string `protobuf:"bytes,2,opt,name=match_code,json=matchCode,proto3" json:"match_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApproveMachinePairingResponse) Reset() {
-	*x = ApproveMachinePairingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[68]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApproveMachinePairingResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApproveMachinePairingResponse) ProtoMessage() {}
-
-func (x *ApproveMachinePairingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[68]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApproveMachinePairingResponse.ProtoReflect.Descriptor instead.
-func (*ApproveMachinePairingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{68}
-}
-
-func (x *ApproveMachinePairingResponse) GetMachineId() string {
-	if x != nil {
-		return x.MachineId
-	}
-	return ""
-}
-
-func (x *ApproveMachinePairingResponse) GetMatchCode() string {
-	if x != nil {
-		return x.MatchCode
 	}
 	return ""
 }
@@ -4310,7 +2841,7 @@ type GrantSpec struct {
 
 func (x *GrantSpec) Reset() {
 	*x = GrantSpec{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[69]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4322,7 +2853,7 @@ func (x *GrantSpec) String() string {
 func (*GrantSpec) ProtoMessage() {}
 
 func (x *GrantSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[69]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4335,7 +2866,7 @@ func (x *GrantSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantSpec.ProtoReflect.Descriptor instead.
 func (*GrantSpec) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{69}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *GrantSpec) GetLabel() string {
@@ -4394,110 +2925,6 @@ func (x *GrantSpec) GetMachineExec() bool {
 	return false
 }
 
-type ApproveClientPairingRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	Spec          *GrantSpec             `protobuf:"bytes,2,opt,name=spec,proto3" json:"spec,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApproveClientPairingRequest) Reset() {
-	*x = ApproveClientPairingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[70]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApproveClientPairingRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApproveClientPairingRequest) ProtoMessage() {}
-
-func (x *ApproveClientPairingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[70]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApproveClientPairingRequest.ProtoReflect.Descriptor instead.
-func (*ApproveClientPairingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{70}
-}
-
-func (x *ApproveClientPairingRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-func (x *ApproveClientPairingRequest) GetSpec() *GrantSpec {
-	if x != nil {
-		return x.Spec
-	}
-	return nil
-}
-
-type ApproveClientPairingResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	GrantId       string                 `protobuf:"bytes,2,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApproveClientPairingResponse) Reset() {
-	*x = ApproveClientPairingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[71]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApproveClientPairingResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApproveClientPairingResponse) ProtoMessage() {}
-
-func (x *ApproveClientPairingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[71]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApproveClientPairingResponse.ProtoReflect.Descriptor instead.
-func (*ApproveClientPairingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{71}
-}
-
-func (x *ApproveClientPairingResponse) GetClientId() string {
-	if x != nil {
-		return x.ClientId
-	}
-	return ""
-}
-
-func (x *ApproveClientPairingResponse) GetGrantId() string {
-	if x != nil {
-		return x.GrantId
-	}
-	return ""
-}
-
 type Machine struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	MachineId   string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
@@ -4540,7 +2967,7 @@ type Machine struct {
 
 func (x *Machine) Reset() {
 	*x = Machine{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[72]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4552,7 +2979,7 @@ func (x *Machine) String() string {
 func (*Machine) ProtoMessage() {}
 
 func (x *Machine) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[72]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4565,7 +2992,7 @@ func (x *Machine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Machine.ProtoReflect.Descriptor instead.
 func (*Machine) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{72}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *Machine) GetMachineId() string {
@@ -4677,7 +3104,7 @@ type LostSpan struct {
 
 func (x *LostSpan) Reset() {
 	*x = LostSpan{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[73]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4689,7 +3116,7 @@ func (x *LostSpan) String() string {
 func (*LostSpan) ProtoMessage() {}
 
 func (x *LostSpan) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[73]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4702,7 +3129,7 @@ func (x *LostSpan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LostSpan.ProtoReflect.Descriptor instead.
 func (*LostSpan) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{73}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *LostSpan) GetFrom() *timestamppb.Timestamp {
@@ -4734,7 +3161,7 @@ type StateLimits struct {
 
 func (x *StateLimits) Reset() {
 	*x = StateLimits{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[74]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4746,7 +3173,7 @@ func (x *StateLimits) String() string {
 func (*StateLimits) ProtoMessage() {}
 
 func (x *StateLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[74]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4759,7 +3186,7 @@ func (x *StateLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateLimits.ProtoReflect.Descriptor instead.
 func (*StateLimits) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{74}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *StateLimits) GetLostAfterSeconds() uint32 {
@@ -4784,7 +3211,7 @@ type ListMachinesRequest struct {
 
 func (x *ListMachinesRequest) Reset() {
 	*x = ListMachinesRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[75]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4796,7 +3223,7 @@ func (x *ListMachinesRequest) String() string {
 func (*ListMachinesRequest) ProtoMessage() {}
 
 func (x *ListMachinesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[75]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4809,7 +3236,7 @@ func (x *ListMachinesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachinesRequest.ProtoReflect.Descriptor instead.
 func (*ListMachinesRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{75}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{50}
 }
 
 type ListMachinesResponse struct {
@@ -4821,7 +3248,7 @@ type ListMachinesResponse struct {
 
 func (x *ListMachinesResponse) Reset() {
 	*x = ListMachinesResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[76]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4833,7 +3260,7 @@ func (x *ListMachinesResponse) String() string {
 func (*ListMachinesResponse) ProtoMessage() {}
 
 func (x *ListMachinesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[76]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4846,7 +3273,7 @@ func (x *ListMachinesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachinesResponse.ProtoReflect.Descriptor instead.
 func (*ListMachinesResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{76}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *ListMachinesResponse) GetMachines() []*Machine {
@@ -4866,7 +3293,7 @@ type RenameMachineRequest struct {
 
 func (x *RenameMachineRequest) Reset() {
 	*x = RenameMachineRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[77]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4878,7 +3305,7 @@ func (x *RenameMachineRequest) String() string {
 func (*RenameMachineRequest) ProtoMessage() {}
 
 func (x *RenameMachineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[77]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4891,7 +3318,7 @@ func (x *RenameMachineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameMachineRequest.ProtoReflect.Descriptor instead.
 func (*RenameMachineRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{77}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *RenameMachineRequest) GetMachineId() string {
@@ -4916,7 +3343,7 @@ type RenameMachineResponse struct {
 
 func (x *RenameMachineResponse) Reset() {
 	*x = RenameMachineResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[78]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4928,7 +3355,7 @@ func (x *RenameMachineResponse) String() string {
 func (*RenameMachineResponse) ProtoMessage() {}
 
 func (x *RenameMachineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[78]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4941,7 +3368,7 @@ func (x *RenameMachineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameMachineResponse.ProtoReflect.Descriptor instead.
 func (*RenameMachineResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{78}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{53}
 }
 
 type SetMachinePausedRequest struct {
@@ -4954,7 +3381,7 @@ type SetMachinePausedRequest struct {
 
 func (x *SetMachinePausedRequest) Reset() {
 	*x = SetMachinePausedRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[79]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4966,7 +3393,7 @@ func (x *SetMachinePausedRequest) String() string {
 func (*SetMachinePausedRequest) ProtoMessage() {}
 
 func (x *SetMachinePausedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[79]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4979,7 +3406,7 @@ func (x *SetMachinePausedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMachinePausedRequest.ProtoReflect.Descriptor instead.
 func (*SetMachinePausedRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{79}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SetMachinePausedRequest) GetMachineId() string {
@@ -5004,7 +3431,7 @@ type SetMachinePausedResponse struct {
 
 func (x *SetMachinePausedResponse) Reset() {
 	*x = SetMachinePausedResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[80]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5016,7 +3443,7 @@ func (x *SetMachinePausedResponse) String() string {
 func (*SetMachinePausedResponse) ProtoMessage() {}
 
 func (x *SetMachinePausedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[80]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5029,7 +3456,7 @@ func (x *SetMachinePausedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMachinePausedResponse.ProtoReflect.Descriptor instead.
 func (*SetMachinePausedResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{80}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{55}
 }
 
 type SetAgentDefaultsRequest struct {
@@ -5042,7 +3469,7 @@ type SetAgentDefaultsRequest struct {
 
 func (x *SetAgentDefaultsRequest) Reset() {
 	*x = SetAgentDefaultsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[81]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5054,7 +3481,7 @@ func (x *SetAgentDefaultsRequest) String() string {
 func (*SetAgentDefaultsRequest) ProtoMessage() {}
 
 func (x *SetAgentDefaultsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[81]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5067,7 +3494,7 @@ func (x *SetAgentDefaultsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAgentDefaultsRequest.ProtoReflect.Descriptor instead.
 func (*SetAgentDefaultsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{81}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *SetAgentDefaultsRequest) GetMachineId() string {
@@ -5092,7 +3519,7 @@ type SetAgentDefaultsResponse struct {
 
 func (x *SetAgentDefaultsResponse) Reset() {
 	*x = SetAgentDefaultsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[82]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5104,7 +3531,7 @@ func (x *SetAgentDefaultsResponse) String() string {
 func (*SetAgentDefaultsResponse) ProtoMessage() {}
 
 func (x *SetAgentDefaultsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[82]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5117,7 +3544,7 @@ func (x *SetAgentDefaultsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAgentDefaultsResponse.ProtoReflect.Descriptor instead.
 func (*SetAgentDefaultsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{82}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{57}
 }
 
 type CheckAgentsRequest struct {
@@ -5131,7 +3558,7 @@ type CheckAgentsRequest struct {
 
 func (x *CheckAgentsRequest) Reset() {
 	*x = CheckAgentsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[83]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5143,7 +3570,7 @@ func (x *CheckAgentsRequest) String() string {
 func (*CheckAgentsRequest) ProtoMessage() {}
 
 func (x *CheckAgentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[83]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5156,7 +3583,7 @@ func (x *CheckAgentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckAgentsRequest.ProtoReflect.Descriptor instead.
 func (*CheckAgentsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{83}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *CheckAgentsRequest) GetMachineId() string {
@@ -5174,7 +3601,7 @@ type CheckAgentsResponse struct {
 
 func (x *CheckAgentsResponse) Reset() {
 	*x = CheckAgentsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[84]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5186,7 +3613,7 @@ func (x *CheckAgentsResponse) String() string {
 func (*CheckAgentsResponse) ProtoMessage() {}
 
 func (x *CheckAgentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[84]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5199,7 +3626,7 @@ func (x *CheckAgentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckAgentsResponse.ProtoReflect.Descriptor instead.
 func (*CheckAgentsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{84}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{59}
 }
 
 type ListMachineReposRequest struct {
@@ -5211,7 +3638,7 @@ type ListMachineReposRequest struct {
 
 func (x *ListMachineReposRequest) Reset() {
 	*x = ListMachineReposRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[85]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5223,7 +3650,7 @@ func (x *ListMachineReposRequest) String() string {
 func (*ListMachineReposRequest) ProtoMessage() {}
 
 func (x *ListMachineReposRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[85]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5236,7 +3663,7 @@ func (x *ListMachineReposRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineReposRequest.ProtoReflect.Descriptor instead.
 func (*ListMachineReposRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{85}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ListMachineReposRequest) GetMachineId() string {
@@ -5255,7 +3682,7 @@ type ListMachineReposResponse struct {
 
 func (x *ListMachineReposResponse) Reset() {
 	*x = ListMachineReposResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[86]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5267,7 +3694,7 @@ func (x *ListMachineReposResponse) String() string {
 func (*ListMachineReposResponse) ProtoMessage() {}
 
 func (x *ListMachineReposResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[86]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5280,7 +3707,7 @@ func (x *ListMachineReposResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineReposResponse.ProtoReflect.Descriptor instead.
 func (*ListMachineReposResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{86}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ListMachineReposResponse) GetRepos() []*v12.Repo {
@@ -5301,7 +3728,7 @@ type ListMachineFoldersRequest struct {
 
 func (x *ListMachineFoldersRequest) Reset() {
 	*x = ListMachineFoldersRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[87]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5313,7 +3740,7 @@ func (x *ListMachineFoldersRequest) String() string {
 func (*ListMachineFoldersRequest) ProtoMessage() {}
 
 func (x *ListMachineFoldersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[87]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5326,7 +3753,7 @@ func (x *ListMachineFoldersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineFoldersRequest.ProtoReflect.Descriptor instead.
 func (*ListMachineFoldersRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{87}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListMachineFoldersRequest) GetMachineId() string {
@@ -5360,7 +3787,7 @@ type TestMachineAgentRequest struct {
 
 func (x *TestMachineAgentRequest) Reset() {
 	*x = TestMachineAgentRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[88]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5372,7 +3799,7 @@ func (x *TestMachineAgentRequest) String() string {
 func (*TestMachineAgentRequest) ProtoMessage() {}
 
 func (x *TestMachineAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[88]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5385,7 +3812,7 @@ func (x *TestMachineAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestMachineAgentRequest.ProtoReflect.Descriptor instead.
 func (*TestMachineAgentRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{88}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *TestMachineAgentRequest) GetMachineId() string {
@@ -5411,7 +3838,7 @@ type ListMachineCustomAgentsRequest struct {
 
 func (x *ListMachineCustomAgentsRequest) Reset() {
 	*x = ListMachineCustomAgentsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[89]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5423,7 +3850,7 @@ func (x *ListMachineCustomAgentsRequest) String() string {
 func (*ListMachineCustomAgentsRequest) ProtoMessage() {}
 
 func (x *ListMachineCustomAgentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[89]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5436,7 +3863,7 @@ func (x *ListMachineCustomAgentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineCustomAgentsRequest.ProtoReflect.Descriptor instead.
 func (*ListMachineCustomAgentsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{89}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListMachineCustomAgentsRequest) GetMachineId() string {
@@ -5456,7 +3883,7 @@ type SaveMachineCustomAgentRequest struct {
 
 func (x *SaveMachineCustomAgentRequest) Reset() {
 	*x = SaveMachineCustomAgentRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[90]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5468,7 +3895,7 @@ func (x *SaveMachineCustomAgentRequest) String() string {
 func (*SaveMachineCustomAgentRequest) ProtoMessage() {}
 
 func (x *SaveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[90]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5481,7 +3908,7 @@ func (x *SaveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveMachineCustomAgentRequest.ProtoReflect.Descriptor instead.
 func (*SaveMachineCustomAgentRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{90}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SaveMachineCustomAgentRequest) GetMachineId() string {
@@ -5508,7 +3935,7 @@ type RemoveMachineCustomAgentRequest struct {
 
 func (x *RemoveMachineCustomAgentRequest) Reset() {
 	*x = RemoveMachineCustomAgentRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[91]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5520,7 +3947,7 @@ func (x *RemoveMachineCustomAgentRequest) String() string {
 func (*RemoveMachineCustomAgentRequest) ProtoMessage() {}
 
 func (x *RemoveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[91]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5533,7 +3960,7 @@ func (x *RemoveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMachineCustomAgentRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMachineCustomAgentRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{91}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *RemoveMachineCustomAgentRequest) GetMachineId() string {
@@ -5560,7 +3987,7 @@ type TestMachineCustomAgentRequest struct {
 
 func (x *TestMachineCustomAgentRequest) Reset() {
 	*x = TestMachineCustomAgentRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[92]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5572,7 +3999,7 @@ func (x *TestMachineCustomAgentRequest) String() string {
 func (*TestMachineCustomAgentRequest) ProtoMessage() {}
 
 func (x *TestMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[92]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5585,7 +4012,7 @@ func (x *TestMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestMachineCustomAgentRequest.ProtoReflect.Descriptor instead.
 func (*TestMachineCustomAgentRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{92}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *TestMachineCustomAgentRequest) GetMachineId() string {
@@ -5610,7 +4037,7 @@ type GetDiagnosticsRequest struct {
 
 func (x *GetDiagnosticsRequest) Reset() {
 	*x = GetDiagnosticsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[93]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5622,7 +4049,7 @@ func (x *GetDiagnosticsRequest) String() string {
 func (*GetDiagnosticsRequest) ProtoMessage() {}
 
 func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[93]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5635,7 +4062,7 @@ func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsRequest.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{93}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{68}
 }
 
 type GetDiagnosticsResponse struct {
@@ -5647,7 +4074,7 @@ type GetDiagnosticsResponse struct {
 
 func (x *GetDiagnosticsResponse) Reset() {
 	*x = GetDiagnosticsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[94]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5659,7 +4086,7 @@ func (x *GetDiagnosticsResponse) String() string {
 func (*GetDiagnosticsResponse) ProtoMessage() {}
 
 func (x *GetDiagnosticsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[94]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5672,7 +4099,7 @@ func (x *GetDiagnosticsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsResponse.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{94}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *GetDiagnosticsResponse) GetText() string {
@@ -5694,7 +4121,7 @@ type RemoveMachineRequest struct {
 
 func (x *RemoveMachineRequest) Reset() {
 	*x = RemoveMachineRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[95]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5706,7 +4133,7 @@ func (x *RemoveMachineRequest) String() string {
 func (*RemoveMachineRequest) ProtoMessage() {}
 
 func (x *RemoveMachineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[95]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5719,7 +4146,7 @@ func (x *RemoveMachineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMachineRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMachineRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{95}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *RemoveMachineRequest) GetMachineId() string {
@@ -5744,7 +4171,7 @@ type RemoveMachineResponse struct {
 
 func (x *RemoveMachineResponse) Reset() {
 	*x = RemoveMachineResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[96]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5756,7 +4183,7 @@ func (x *RemoveMachineResponse) String() string {
 func (*RemoveMachineResponse) ProtoMessage() {}
 
 func (x *RemoveMachineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[96]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5769,7 +4196,7 @@ func (x *RemoveMachineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMachineResponse.ProtoReflect.Descriptor instead.
 func (*RemoveMachineResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{96}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{71}
 }
 
 type Project struct {
@@ -5789,7 +4216,7 @@ type Project struct {
 
 func (x *Project) Reset() {
 	*x = Project{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[97]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5801,7 +4228,7 @@ func (x *Project) String() string {
 func (*Project) ProtoMessage() {}
 
 func (x *Project) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[97]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5814,7 +4241,7 @@ func (x *Project) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Project.ProtoReflect.Descriptor instead.
 func (*Project) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{97}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *Project) GetMachineId() string {
@@ -5876,7 +4303,7 @@ type ListProjectsRequest struct {
 
 func (x *ListProjectsRequest) Reset() {
 	*x = ListProjectsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[98]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5888,7 +4315,7 @@ func (x *ListProjectsRequest) String() string {
 func (*ListProjectsRequest) ProtoMessage() {}
 
 func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[98]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5901,7 +4328,7 @@ func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{98}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *ListProjectsRequest) GetMachineId() string {
@@ -5921,7 +4348,7 @@ type ListProjectsResponse struct {
 
 func (x *ListProjectsResponse) Reset() {
 	*x = ListProjectsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[99]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5933,7 +4360,7 @@ func (x *ListProjectsResponse) String() string {
 func (*ListProjectsResponse) ProtoMessage() {}
 
 func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[99]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5946,7 +4373,7 @@ func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListProjectsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{99}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ListProjectsResponse) GetProjects() []*Project {
@@ -5980,7 +4407,7 @@ type AddProjectRequest struct {
 
 func (x *AddProjectRequest) Reset() {
 	*x = AddProjectRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[100]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5992,7 +4419,7 @@ func (x *AddProjectRequest) String() string {
 func (*AddProjectRequest) ProtoMessage() {}
 
 func (x *AddProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[100]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6005,7 +4432,7 @@ func (x *AddProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddProjectRequest.ProtoReflect.Descriptor instead.
 func (*AddProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{100}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *AddProjectRequest) GetMachineId() string {
@@ -6065,7 +4492,7 @@ type AddProjectResponse struct {
 
 func (x *AddProjectResponse) Reset() {
 	*x = AddProjectResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[101]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6077,7 +4504,7 @@ func (x *AddProjectResponse) String() string {
 func (*AddProjectResponse) ProtoMessage() {}
 
 func (x *AddProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[101]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6090,7 +4517,7 @@ func (x *AddProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddProjectResponse.ProtoReflect.Descriptor instead.
 func (*AddProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{101}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{76}
 }
 
 type RemoveProjectRequest struct {
@@ -6103,7 +4530,7 @@ type RemoveProjectRequest struct {
 
 func (x *RemoveProjectRequest) Reset() {
 	*x = RemoveProjectRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[102]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6115,7 +4542,7 @@ func (x *RemoveProjectRequest) String() string {
 func (*RemoveProjectRequest) ProtoMessage() {}
 
 func (x *RemoveProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[102]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6128,7 +4555,7 @@ func (x *RemoveProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveProjectRequest.ProtoReflect.Descriptor instead.
 func (*RemoveProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{102}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *RemoveProjectRequest) GetMachineId() string {
@@ -6153,7 +4580,7 @@ type RemoveProjectResponse struct {
 
 func (x *RemoveProjectResponse) Reset() {
 	*x = RemoveProjectResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[103]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6165,7 +4592,7 @@ func (x *RemoveProjectResponse) String() string {
 func (*RemoveProjectResponse) ProtoMessage() {}
 
 func (x *RemoveProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[103]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6178,7 +4605,7 @@ func (x *RemoveProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveProjectResponse.ProtoReflect.Descriptor instead.
 func (*RemoveProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{103}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{78}
 }
 
 type Client struct {
@@ -6208,7 +4635,7 @@ type Client struct {
 
 func (x *Client) Reset() {
 	*x = Client{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[104]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6220,7 +4647,7 @@ func (x *Client) String() string {
 func (*Client) ProtoMessage() {}
 
 func (x *Client) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[104]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6233,7 +4660,7 @@ func (x *Client) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Client.ProtoReflect.Descriptor instead.
 func (*Client) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{104}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *Client) GetClientId() string {
@@ -6342,7 +4769,7 @@ type ListClientsRequest struct {
 
 func (x *ListClientsRequest) Reset() {
 	*x = ListClientsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[105]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6354,7 +4781,7 @@ func (x *ListClientsRequest) String() string {
 func (*ListClientsRequest) ProtoMessage() {}
 
 func (x *ListClientsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[105]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6367,7 +4794,7 @@ func (x *ListClientsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListClientsRequest.ProtoReflect.Descriptor instead.
 func (*ListClientsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{105}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{80}
 }
 
 type ListClientsResponse struct {
@@ -6379,7 +4806,7 @@ type ListClientsResponse struct {
 
 func (x *ListClientsResponse) Reset() {
 	*x = ListClientsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[106]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6391,7 +4818,7 @@ func (x *ListClientsResponse) String() string {
 func (*ListClientsResponse) ProtoMessage() {}
 
 func (x *ListClientsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[106]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6404,7 +4831,7 @@ func (x *ListClientsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListClientsResponse.ProtoReflect.Descriptor instead.
 func (*ListClientsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{106}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *ListClientsResponse) GetClients() []*Client {
@@ -6424,7 +4851,7 @@ type UpdateClientRequest struct {
 
 func (x *UpdateClientRequest) Reset() {
 	*x = UpdateClientRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[107]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6436,7 +4863,7 @@ func (x *UpdateClientRequest) String() string {
 func (*UpdateClientRequest) ProtoMessage() {}
 
 func (x *UpdateClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[107]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6449,7 +4876,7 @@ func (x *UpdateClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateClientRequest.ProtoReflect.Descriptor instead.
 func (*UpdateClientRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{107}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *UpdateClientRequest) GetGrantId() string {
@@ -6476,7 +4903,7 @@ type UpdateClientResponse struct {
 
 func (x *UpdateClientResponse) Reset() {
 	*x = UpdateClientResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[108]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6488,7 +4915,7 @@ func (x *UpdateClientResponse) String() string {
 func (*UpdateClientResponse) ProtoMessage() {}
 
 func (x *UpdateClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[108]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6501,7 +4928,7 @@ func (x *UpdateClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateClientResponse.ProtoReflect.Descriptor instead.
 func (*UpdateClientResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{108}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *UpdateClientResponse) GetGrantVersion() uint64 {
@@ -6532,7 +4959,7 @@ type RenameClientRequest struct {
 
 func (x *RenameClientRequest) Reset() {
 	*x = RenameClientRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[109]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6544,7 +4971,7 @@ func (x *RenameClientRequest) String() string {
 func (*RenameClientRequest) ProtoMessage() {}
 
 func (x *RenameClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[109]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6557,7 +4984,7 @@ func (x *RenameClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameClientRequest.ProtoReflect.Descriptor instead.
 func (*RenameClientRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{109}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *RenameClientRequest) GetGrantId() string {
@@ -6597,7 +5024,7 @@ type RenameClientResponse struct {
 
 func (x *RenameClientResponse) Reset() {
 	*x = RenameClientResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[110]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6609,7 +5036,7 @@ func (x *RenameClientResponse) String() string {
 func (*RenameClientResponse) ProtoMessage() {}
 
 func (x *RenameClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[110]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6622,7 +5049,7 @@ func (x *RenameClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameClientResponse.ProtoReflect.Descriptor instead.
 func (*RenameClientResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{110}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *RenameClientResponse) GetGrantVersion() uint64 {
@@ -6641,7 +5068,7 @@ type RevokeClientRequest struct {
 
 func (x *RevokeClientRequest) Reset() {
 	*x = RevokeClientRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[111]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6653,7 +5080,7 @@ func (x *RevokeClientRequest) String() string {
 func (*RevokeClientRequest) ProtoMessage() {}
 
 func (x *RevokeClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[111]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6666,7 +5093,7 @@ func (x *RevokeClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeClientRequest.ProtoReflect.Descriptor instead.
 func (*RevokeClientRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{111}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *RevokeClientRequest) GetGrantId() string {
@@ -6685,7 +5112,7 @@ type RevokeClientResponse struct {
 
 func (x *RevokeClientResponse) Reset() {
 	*x = RevokeClientResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[112]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6697,7 +5124,7 @@ func (x *RevokeClientResponse) String() string {
 func (*RevokeClientResponse) ProtoMessage() {}
 
 func (x *RevokeClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[112]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6710,7 +5137,7 @@ func (x *RevokeClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeClientResponse.ProtoReflect.Descriptor instead.
 func (*RevokeClientResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{112}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *RevokeClientResponse) GetAcks() []*MachineAck {
@@ -6741,7 +5168,7 @@ type Wake struct {
 
 func (x *Wake) Reset() {
 	*x = Wake{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[113]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6753,7 +5180,7 @@ func (x *Wake) String() string {
 func (*Wake) ProtoMessage() {}
 
 func (x *Wake) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[113]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6766,7 +5193,7 @@ func (x *Wake) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Wake.ProtoReflect.Descriptor instead.
 func (*Wake) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{113}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *Wake) GetClientId() string {
@@ -6846,7 +5273,7 @@ type WakeRing struct {
 
 func (x *WakeRing) Reset() {
 	*x = WakeRing{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[114]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6858,7 +5285,7 @@ func (x *WakeRing) String() string {
 func (*WakeRing) ProtoMessage() {}
 
 func (x *WakeRing) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[114]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6871,7 +5298,7 @@ func (x *WakeRing) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WakeRing.ProtoReflect.Descriptor instead.
 func (*WakeRing) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{114}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *WakeRing) GetAt() *timestamppb.Timestamp {
@@ -6913,7 +5340,7 @@ type WakeCheck struct {
 
 func (x *WakeCheck) Reset() {
 	*x = WakeCheck{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[115]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6925,7 +5352,7 @@ func (x *WakeCheck) String() string {
 func (*WakeCheck) ProtoMessage() {}
 
 func (x *WakeCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[115]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6938,7 +5365,7 @@ func (x *WakeCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WakeCheck.ProtoReflect.Descriptor instead.
 func (*WakeCheck) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{115}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *WakeCheck) GetOk() bool {
@@ -6972,7 +5399,7 @@ type ListWakesRequest struct {
 
 func (x *ListWakesRequest) Reset() {
 	*x = ListWakesRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[116]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6984,7 +5411,7 @@ func (x *ListWakesRequest) String() string {
 func (*ListWakesRequest) ProtoMessage() {}
 
 func (x *ListWakesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[116]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6997,7 +5424,7 @@ func (x *ListWakesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWakesRequest.ProtoReflect.Descriptor instead.
 func (*ListWakesRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{116}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *ListWakesRequest) GetClientId() string {
@@ -7016,7 +5443,7 @@ type ListWakesResponse struct {
 
 func (x *ListWakesResponse) Reset() {
 	*x = ListWakesResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[117]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7028,7 +5455,7 @@ func (x *ListWakesResponse) String() string {
 func (*ListWakesResponse) ProtoMessage() {}
 
 func (x *ListWakesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[117]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7041,7 +5468,7 @@ func (x *ListWakesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWakesResponse.ProtoReflect.Descriptor instead.
 func (*ListWakesResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{117}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *ListWakesResponse) GetWakes() []*Wake {
@@ -7067,7 +5494,7 @@ type SetWakeRequest struct {
 
 func (x *SetWakeRequest) Reset() {
 	*x = SetWakeRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[118]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7079,7 +5506,7 @@ func (x *SetWakeRequest) String() string {
 func (*SetWakeRequest) ProtoMessage() {}
 
 func (x *SetWakeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[118]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7092,7 +5519,7 @@ func (x *SetWakeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWakeRequest.ProtoReflect.Descriptor instead.
 func (*SetWakeRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{118}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *SetWakeRequest) GetClientId() string {
@@ -7149,7 +5576,7 @@ type SetWakeResponse struct {
 
 func (x *SetWakeResponse) Reset() {
 	*x = SetWakeResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[119]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7161,7 +5588,7 @@ func (x *SetWakeResponse) String() string {
 func (*SetWakeResponse) ProtoMessage() {}
 
 func (x *SetWakeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[119]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7174,7 +5601,7 @@ func (x *SetWakeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWakeResponse.ProtoReflect.Descriptor instead.
 func (*SetWakeResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{119}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *SetWakeResponse) GetWake() *Wake {
@@ -7208,7 +5635,7 @@ type CheckWakeRequest struct {
 
 func (x *CheckWakeRequest) Reset() {
 	*x = CheckWakeRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[120]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7220,7 +5647,7 @@ func (x *CheckWakeRequest) String() string {
 func (*CheckWakeRequest) ProtoMessage() {}
 
 func (x *CheckWakeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[120]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7233,7 +5660,7 @@ func (x *CheckWakeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckWakeRequest.ProtoReflect.Descriptor instead.
 func (*CheckWakeRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{120}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *CheckWakeRequest) GetClientId() string {
@@ -7260,7 +5687,7 @@ type CheckWakeResponse struct {
 
 func (x *CheckWakeResponse) Reset() {
 	*x = CheckWakeResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[121]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7272,7 +5699,7 @@ func (x *CheckWakeResponse) String() string {
 func (*CheckWakeResponse) ProtoMessage() {}
 
 func (x *CheckWakeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[121]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7285,7 +5712,7 @@ func (x *CheckWakeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckWakeResponse.ProtoReflect.Descriptor instead.
 func (*CheckWakeResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{121}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *CheckWakeResponse) GetWake() *Wake {
@@ -7312,7 +5739,7 @@ type ClearWakeRequest struct {
 
 func (x *ClearWakeRequest) Reset() {
 	*x = ClearWakeRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[122]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7324,7 +5751,7 @@ func (x *ClearWakeRequest) String() string {
 func (*ClearWakeRequest) ProtoMessage() {}
 
 func (x *ClearWakeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[122]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7337,7 +5764,7 @@ func (x *ClearWakeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearWakeRequest.ProtoReflect.Descriptor instead.
 func (*ClearWakeRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{122}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ClearWakeRequest) GetClientId() string {
@@ -7362,7 +5789,7 @@ type ClearWakeResponse struct {
 
 func (x *ClearWakeResponse) Reset() {
 	*x = ClearWakeResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[123]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7374,7 +5801,7 @@ func (x *ClearWakeResponse) String() string {
 func (*ClearWakeResponse) ProtoMessage() {}
 
 func (x *ClearWakeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[123]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7387,7 +5814,7 @@ func (x *ClearWakeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearWakeResponse.ProtoReflect.Descriptor instead.
 func (*ClearWakeResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{123}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{98}
 }
 
 type OpenWakeLinkRequest struct {
@@ -7399,7 +5826,7 @@ type OpenWakeLinkRequest struct {
 
 func (x *OpenWakeLinkRequest) Reset() {
 	*x = OpenWakeLinkRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[124]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7411,7 +5838,7 @@ func (x *OpenWakeLinkRequest) String() string {
 func (*OpenWakeLinkRequest) ProtoMessage() {}
 
 func (x *OpenWakeLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[124]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7424,7 +5851,7 @@ func (x *OpenWakeLinkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenWakeLinkRequest.ProtoReflect.Descriptor instead.
 func (*OpenWakeLinkRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{124}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *OpenWakeLinkRequest) GetCode() string {
@@ -7445,7 +5872,7 @@ type OpenWakeLinkResponse struct {
 
 func (x *OpenWakeLinkResponse) Reset() {
 	*x = OpenWakeLinkResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[125]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7457,7 +5884,7 @@ func (x *OpenWakeLinkResponse) String() string {
 func (*OpenWakeLinkResponse) ProtoMessage() {}
 
 func (x *OpenWakeLinkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[125]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7470,7 +5897,7 @@ func (x *OpenWakeLinkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenWakeLinkResponse.ProtoReflect.Descriptor instead.
 func (*OpenWakeLinkResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{125}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *OpenWakeLinkResponse) GetClientId() string {
@@ -7506,7 +5933,7 @@ type MachineAck struct {
 
 func (x *MachineAck) Reset() {
 	*x = MachineAck{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[126]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7518,7 +5945,7 @@ func (x *MachineAck) String() string {
 func (*MachineAck) ProtoMessage() {}
 
 func (x *MachineAck) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[126]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7531,7 +5958,7 @@ func (x *MachineAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineAck.ProtoReflect.Descriptor instead.
 func (*MachineAck) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{126}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *MachineAck) GetMachineId() string {
@@ -7572,7 +5999,7 @@ type ListExecLogRequest struct {
 
 func (x *ListExecLogRequest) Reset() {
 	*x = ListExecLogRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[127]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7584,7 +6011,7 @@ func (x *ListExecLogRequest) String() string {
 func (*ListExecLogRequest) ProtoMessage() {}
 
 func (x *ListExecLogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[127]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7597,7 +6024,7 @@ func (x *ListExecLogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExecLogRequest.ProtoReflect.Descriptor instead.
 func (*ListExecLogRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{127}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ListExecLogRequest) GetMachineId() string {
@@ -7618,7 +6045,7 @@ type ExecLogEntry struct {
 
 func (x *ExecLogEntry) Reset() {
 	*x = ExecLogEntry{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[128]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7630,7 +6057,7 @@ func (x *ExecLogEntry) String() string {
 func (*ExecLogEntry) ProtoMessage() {}
 
 func (x *ExecLogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[128]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7643,7 +6070,7 @@ func (x *ExecLogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecLogEntry.ProtoReflect.Descriptor instead.
 func (*ExecLogEntry) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{128}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *ExecLogEntry) GetMachineId() string {
@@ -7678,7 +6105,7 @@ type ListExecLogResponse struct {
 
 func (x *ListExecLogResponse) Reset() {
 	*x = ListExecLogResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[129]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7690,7 +6117,7 @@ func (x *ListExecLogResponse) String() string {
 func (*ListExecLogResponse) ProtoMessage() {}
 
 func (x *ListExecLogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[129]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7703,7 +6130,7 @@ func (x *ListExecLogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExecLogResponse.ProtoReflect.Descriptor instead.
 func (*ListExecLogResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{129}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *ListExecLogResponse) GetEntries() []*ExecLogEntry {
@@ -7731,7 +6158,7 @@ type Unreachable struct {
 
 func (x *Unreachable) Reset() {
 	*x = Unreachable{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[130]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7743,7 +6170,7 @@ func (x *Unreachable) String() string {
 func (*Unreachable) ProtoMessage() {}
 
 func (x *Unreachable) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[130]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7756,7 +6183,7 @@ func (x *Unreachable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Unreachable.ProtoReflect.Descriptor instead.
 func (*Unreachable) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{130}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *Unreachable) GetMachineId() string {
@@ -7797,7 +6224,7 @@ type ListSessionsRequest struct {
 
 func (x *ListSessionsRequest) Reset() {
 	*x = ListSessionsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[131]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7809,7 +6236,7 @@ func (x *ListSessionsRequest) String() string {
 func (*ListSessionsRequest) ProtoMessage() {}
 
 func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[131]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7822,7 +6249,7 @@ func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{131}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *ListSessionsRequest) GetMachineId() string {
@@ -7865,7 +6292,7 @@ type ListSessionsResponse struct {
 
 func (x *ListSessionsResponse) Reset() {
 	*x = ListSessionsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[132]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7877,7 +6304,7 @@ func (x *ListSessionsResponse) String() string {
 func (*ListSessionsResponse) ProtoMessage() {}
 
 func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[132]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7890,7 +6317,7 @@ func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{132}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *ListSessionsResponse) GetSessions() []*v1.Session {
@@ -7922,7 +6349,7 @@ type WatchSessionsRequest struct {
 
 func (x *WatchSessionsRequest) Reset() {
 	*x = WatchSessionsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[133]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7934,7 +6361,7 @@ func (x *WatchSessionsRequest) String() string {
 func (*WatchSessionsRequest) ProtoMessage() {}
 
 func (x *WatchSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[133]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7947,7 +6374,7 @@ func (x *WatchSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchSessionsRequest.ProtoReflect.Descriptor instead.
 func (*WatchSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{133}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{108}
 }
 
 type WatchSessionsResponse struct {
@@ -7969,7 +6396,7 @@ type WatchSessionsResponse struct {
 
 func (x *WatchSessionsResponse) Reset() {
 	*x = WatchSessionsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[134]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7981,7 +6408,7 @@ func (x *WatchSessionsResponse) String() string {
 func (*WatchSessionsResponse) ProtoMessage() {}
 
 func (x *WatchSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[134]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7994,7 +6421,7 @@ func (x *WatchSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchSessionsResponse.ProtoReflect.Descriptor instead.
 func (*WatchSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{134}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *WatchSessionsResponse) GetSessions() []*v1.Session {
@@ -8039,7 +6466,7 @@ type StreamSessionEventsRequest struct {
 
 func (x *StreamSessionEventsRequest) Reset() {
 	*x = StreamSessionEventsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[135]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8051,7 +6478,7 @@ func (x *StreamSessionEventsRequest) String() string {
 func (*StreamSessionEventsRequest) ProtoMessage() {}
 
 func (x *StreamSessionEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[135]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8064,7 +6491,7 @@ func (x *StreamSessionEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamSessionEventsRequest.ProtoReflect.Descriptor instead.
 func (*StreamSessionEventsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{135}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *StreamSessionEventsRequest) GetSessionId() string {
@@ -8114,7 +6541,7 @@ type AnswerQuestionRequest struct {
 
 func (x *AnswerQuestionRequest) Reset() {
 	*x = AnswerQuestionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[136]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8126,7 +6553,7 @@ func (x *AnswerQuestionRequest) String() string {
 func (*AnswerQuestionRequest) ProtoMessage() {}
 
 func (x *AnswerQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[136]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8139,7 +6566,7 @@ func (x *AnswerQuestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AnswerQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{136}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *AnswerQuestionRequest) GetSessionId() string {
@@ -8179,7 +6606,7 @@ type AnswerQuestionResponse struct {
 
 func (x *AnswerQuestionResponse) Reset() {
 	*x = AnswerQuestionResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[137]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8191,7 +6618,7 @@ func (x *AnswerQuestionResponse) String() string {
 func (*AnswerQuestionResponse) ProtoMessage() {}
 
 func (x *AnswerQuestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[137]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8204,7 +6631,7 @@ func (x *AnswerQuestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerQuestionResponse.ProtoReflect.Descriptor instead.
 func (*AnswerQuestionResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{137}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *AnswerQuestionResponse) GetSession() *v1.Session {
@@ -8224,7 +6651,7 @@ type StartSessionRequest struct {
 
 func (x *StartSessionRequest) Reset() {
 	*x = StartSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[138]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8236,7 +6663,7 @@ func (x *StartSessionRequest) String() string {
 func (*StartSessionRequest) ProtoMessage() {}
 
 func (x *StartSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[138]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8249,7 +6676,7 @@ func (x *StartSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartSessionRequest.ProtoReflect.Descriptor instead.
 func (*StartSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{138}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *StartSessionRequest) GetMachineId() string {
@@ -8277,7 +6704,7 @@ type SendMessageRequest struct {
 
 func (x *SendMessageRequest) Reset() {
 	*x = SendMessageRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[139]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8289,7 +6716,7 @@ func (x *SendMessageRequest) String() string {
 func (*SendMessageRequest) ProtoMessage() {}
 
 func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[139]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8302,7 +6729,7 @@ func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendMessageRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{139}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *SendMessageRequest) GetSessionId() string {
@@ -8335,7 +6762,7 @@ type InterruptSessionRequest struct {
 
 func (x *InterruptSessionRequest) Reset() {
 	*x = InterruptSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[140]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8347,7 +6774,7 @@ func (x *InterruptSessionRequest) String() string {
 func (*InterruptSessionRequest) ProtoMessage() {}
 
 func (x *InterruptSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[140]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8360,7 +6787,7 @@ func (x *InterruptSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterruptSessionRequest.ProtoReflect.Descriptor instead.
 func (*InterruptSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{140}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *InterruptSessionRequest) GetSessionId() string {
@@ -8379,7 +6806,7 @@ type ArchiveSessionRequest struct {
 
 func (x *ArchiveSessionRequest) Reset() {
 	*x = ArchiveSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[141]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8391,7 +6818,7 @@ func (x *ArchiveSessionRequest) String() string {
 func (*ArchiveSessionRequest) ProtoMessage() {}
 
 func (x *ArchiveSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[141]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8404,7 +6831,7 @@ func (x *ArchiveSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveSessionRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{141}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *ArchiveSessionRequest) GetSessionId() string {
@@ -8423,7 +6850,7 @@ type UnarchiveSessionRequest struct {
 
 func (x *UnarchiveSessionRequest) Reset() {
 	*x = UnarchiveSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[142]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8435,7 +6862,7 @@ func (x *UnarchiveSessionRequest) String() string {
 func (*UnarchiveSessionRequest) ProtoMessage() {}
 
 func (x *UnarchiveSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[142]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8448,7 +6875,7 @@ func (x *UnarchiveSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchiveSessionRequest.ProtoReflect.Descriptor instead.
 func (*UnarchiveSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{142}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *UnarchiveSessionRequest) GetSessionId() string {
@@ -8467,7 +6894,7 @@ type DeleteSessionRequest struct {
 
 func (x *DeleteSessionRequest) Reset() {
 	*x = DeleteSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[143]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8479,7 +6906,7 @@ func (x *DeleteSessionRequest) String() string {
 func (*DeleteSessionRequest) ProtoMessage() {}
 
 func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[143]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8492,7 +6919,7 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{143}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *DeleteSessionRequest) GetSessionId() string {
@@ -8510,7 +6937,7 @@ type DeleteSessionResponse struct {
 
 func (x *DeleteSessionResponse) Reset() {
 	*x = DeleteSessionResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[144]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8522,7 +6949,7 @@ func (x *DeleteSessionResponse) String() string {
 func (*DeleteSessionResponse) ProtoMessage() {}
 
 func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[144]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8535,7 +6962,7 @@ func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{144}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{119}
 }
 
 type RenameSessionRequest struct {
@@ -8548,7 +6975,7 @@ type RenameSessionRequest struct {
 
 func (x *RenameSessionRequest) Reset() {
 	*x = RenameSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[145]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8560,7 +6987,7 @@ func (x *RenameSessionRequest) String() string {
 func (*RenameSessionRequest) ProtoMessage() {}
 
 func (x *RenameSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[145]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8573,7 +7000,7 @@ func (x *RenameSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameSessionRequest.ProtoReflect.Descriptor instead.
 func (*RenameSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{145}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *RenameSessionRequest) GetSessionId() string {
@@ -8599,7 +7026,7 @@ type SessionResponse struct {
 
 func (x *SessionResponse) Reset() {
 	*x = SessionResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[146]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8611,7 +7038,7 @@ func (x *SessionResponse) String() string {
 func (*SessionResponse) ProtoMessage() {}
 
 func (x *SessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[146]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8624,7 +7051,7 @@ func (x *SessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionResponse.ProtoReflect.Descriptor instead.
 func (*SessionResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{146}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *SessionResponse) GetSession() *v1.Session {
@@ -8650,7 +7077,7 @@ type QueryWorkRequest struct {
 
 func (x *QueryWorkRequest) Reset() {
 	*x = QueryWorkRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[147]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8662,7 +7089,7 @@ func (x *QueryWorkRequest) String() string {
 func (*QueryWorkRequest) ProtoMessage() {}
 
 func (x *QueryWorkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[147]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8675,7 +7102,7 @@ func (x *QueryWorkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryWorkRequest.ProtoReflect.Descriptor instead.
 func (*QueryWorkRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{147}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *QueryWorkRequest) GetTimeZone() string {
@@ -8726,7 +7153,7 @@ type WorkGroup struct {
 
 func (x *WorkGroup) Reset() {
 	*x = WorkGroup{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[148]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8738,7 +7165,7 @@ func (x *WorkGroup) String() string {
 func (*WorkGroup) ProtoMessage() {}
 
 func (x *WorkGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[148]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8751,7 +7178,7 @@ func (x *WorkGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkGroup.ProtoReflect.Descriptor instead.
 func (*WorkGroup) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{148}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *WorkGroup) GetClient() string {
@@ -8797,7 +7224,7 @@ type SessionCount struct {
 
 func (x *SessionCount) Reset() {
 	*x = SessionCount{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[149]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8809,7 +7236,7 @@ func (x *SessionCount) String() string {
 func (*SessionCount) ProtoMessage() {}
 
 func (x *SessionCount) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[149]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8822,7 +7249,7 @@ func (x *SessionCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionCount.ProtoReflect.Descriptor instead.
 func (*SessionCount) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{149}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *SessionCount) GetBucket() uint32 {
@@ -8870,7 +7297,7 @@ type TurnCount struct {
 
 func (x *TurnCount) Reset() {
 	*x = TurnCount{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[150]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8882,7 +7309,7 @@ func (x *TurnCount) String() string {
 func (*TurnCount) ProtoMessage() {}
 
 func (x *TurnCount) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[150]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8895,7 +7322,7 @@ func (x *TurnCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnCount.ProtoReflect.Descriptor instead.
 func (*TurnCount) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{150}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *TurnCount) GetBucket() uint32 {
@@ -8964,7 +7391,7 @@ type WorkSource struct {
 
 func (x *WorkSource) Reset() {
 	*x = WorkSource{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[151]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8976,7 +7403,7 @@ func (x *WorkSource) String() string {
 func (*WorkSource) ProtoMessage() {}
 
 func (x *WorkSource) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[151]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8989,7 +7416,7 @@ func (x *WorkSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkSource.ProtoReflect.Descriptor instead.
 func (*WorkSource) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{151}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *WorkSource) GetMachineId() string {
@@ -9034,7 +7461,7 @@ type QueryWorkResponse struct {
 
 func (x *QueryWorkResponse) Reset() {
 	*x = QueryWorkResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[152]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9046,7 +7473,7 @@ func (x *QueryWorkResponse) String() string {
 func (*QueryWorkResponse) ProtoMessage() {}
 
 func (x *QueryWorkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[152]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9059,7 +7486,7 @@ func (x *QueryWorkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryWorkResponse.ProtoReflect.Descriptor instead.
 func (*QueryWorkResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{152}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *QueryWorkResponse) GetSessions() []*SessionCount {
@@ -9107,7 +7534,7 @@ type GetDiffRequest struct {
 
 func (x *GetDiffRequest) Reset() {
 	*x = GetDiffRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[153]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9119,7 +7546,7 @@ func (x *GetDiffRequest) String() string {
 func (*GetDiffRequest) ProtoMessage() {}
 
 func (x *GetDiffRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[153]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9132,7 +7559,7 @@ func (x *GetDiffRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffRequest.ProtoReflect.Descriptor instead.
 func (*GetDiffRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{153}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *GetDiffRequest) GetSessionId() string {
@@ -9158,7 +7585,7 @@ type PushSessionRequest struct {
 
 func (x *PushSessionRequest) Reset() {
 	*x = PushSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[154]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9170,7 +7597,7 @@ func (x *PushSessionRequest) String() string {
 func (*PushSessionRequest) ProtoMessage() {}
 
 func (x *PushSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[154]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9183,7 +7610,7 @@ func (x *PushSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushSessionRequest.ProtoReflect.Descriptor instead.
 func (*PushSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{154}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *PushSessionRequest) GetSessionId() string {
@@ -9205,7 +7632,7 @@ type SetHerRequest struct {
 
 func (x *SetHerRequest) Reset() {
 	*x = SetHerRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[155]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9217,7 +7644,7 @@ func (x *SetHerRequest) String() string {
 func (*SetHerRequest) ProtoMessage() {}
 
 func (x *SetHerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[155]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9230,7 +7657,7 @@ func (x *SetHerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHerRequest.ProtoReflect.Descriptor instead.
 func (*SetHerRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{155}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *SetHerRequest) GetMachineId() string {
@@ -9262,7 +7689,7 @@ type SetHerResponse struct {
 
 func (x *SetHerResponse) Reset() {
 	*x = SetHerResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[156]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9274,7 +7701,7 @@ func (x *SetHerResponse) String() string {
 func (*SetHerResponse) ProtoMessage() {}
 
 func (x *SetHerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[156]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9287,7 +7714,7 @@ func (x *SetHerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHerResponse.ProtoReflect.Descriptor instead.
 func (*SetHerResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{156}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{131}
 }
 
 type SetHerAssistantModeRequest struct {
@@ -9303,7 +7730,7 @@ type SetHerAssistantModeRequest struct {
 
 func (x *SetHerAssistantModeRequest) Reset() {
 	*x = SetHerAssistantModeRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[157]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9315,7 +7742,7 @@ func (x *SetHerAssistantModeRequest) String() string {
 func (*SetHerAssistantModeRequest) ProtoMessage() {}
 
 func (x *SetHerAssistantModeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[157]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9328,7 +7755,7 @@ func (x *SetHerAssistantModeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHerAssistantModeRequest.ProtoReflect.Descriptor instead.
 func (*SetHerAssistantModeRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{157}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *SetHerAssistantModeRequest) GetMachineId() string {
@@ -9360,7 +7787,7 @@ type SetHerAssistantModeResponse struct {
 
 func (x *SetHerAssistantModeResponse) Reset() {
 	*x = SetHerAssistantModeResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[158]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9372,7 +7799,7 @@ func (x *SetHerAssistantModeResponse) String() string {
 func (*SetHerAssistantModeResponse) ProtoMessage() {}
 
 func (x *SetHerAssistantModeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[158]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9385,7 +7812,7 @@ func (x *SetHerAssistantModeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHerAssistantModeResponse.ProtoReflect.Descriptor instead.
 func (*SetHerAssistantModeResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{158}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{133}
 }
 
 type SetHerCommandConnectorRequest struct {
@@ -9398,7 +7825,7 @@ type SetHerCommandConnectorRequest struct {
 
 func (x *SetHerCommandConnectorRequest) Reset() {
 	*x = SetHerCommandConnectorRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[159]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9410,7 +7837,7 @@ func (x *SetHerCommandConnectorRequest) String() string {
 func (*SetHerCommandConnectorRequest) ProtoMessage() {}
 
 func (x *SetHerCommandConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[159]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9423,7 +7850,7 @@ func (x *SetHerCommandConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHerCommandConnectorRequest.ProtoReflect.Descriptor instead.
 func (*SetHerCommandConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{159}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *SetHerCommandConnectorRequest) GetMachineId() string {
@@ -9448,7 +7875,7 @@ type SetHerCommandConnectorResponse struct {
 
 func (x *SetHerCommandConnectorResponse) Reset() {
 	*x = SetHerCommandConnectorResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[160]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9460,7 +7887,7 @@ func (x *SetHerCommandConnectorResponse) String() string {
 func (*SetHerCommandConnectorResponse) ProtoMessage() {}
 
 func (x *SetHerCommandConnectorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[160]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9473,7 +7900,7 @@ func (x *SetHerCommandConnectorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHerCommandConnectorResponse.ProtoReflect.Descriptor instead.
 func (*SetHerCommandConnectorResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{160}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{135}
 }
 
 type HerOpenRequest struct {
@@ -9486,7 +7913,7 @@ type HerOpenRequest struct {
 
 func (x *HerOpenRequest) Reset() {
 	*x = HerOpenRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[161]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9498,7 +7925,7 @@ func (x *HerOpenRequest) String() string {
 func (*HerOpenRequest) ProtoMessage() {}
 
 func (x *HerOpenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[161]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9511,7 +7938,7 @@ func (x *HerOpenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerOpenRequest.ProtoReflect.Descriptor instead.
 func (*HerOpenRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{161}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *HerOpenRequest) GetMachineId() string {
@@ -9538,7 +7965,7 @@ type HerCallRequest struct {
 
 func (x *HerCallRequest) Reset() {
 	*x = HerCallRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[162]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9550,7 +7977,7 @@ func (x *HerCallRequest) String() string {
 func (*HerCallRequest) ProtoMessage() {}
 
 func (x *HerCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[162]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9563,7 +7990,7 @@ func (x *HerCallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerCallRequest.ProtoReflect.Descriptor instead.
 func (*HerCallRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{162}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *HerCallRequest) GetMachineId() string {
@@ -9610,7 +8037,7 @@ type HerSendRequest struct {
 
 func (x *HerSendRequest) Reset() {
 	*x = HerSendRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[163]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9622,7 +8049,7 @@ func (x *HerSendRequest) String() string {
 func (*HerSendRequest) ProtoMessage() {}
 
 func (x *HerSendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[163]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9635,7 +8062,7 @@ func (x *HerSendRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerSendRequest.ProtoReflect.Descriptor instead.
 func (*HerSendRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{163}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *HerSendRequest) GetMachineId() string {
@@ -9721,7 +8148,7 @@ type HerReply struct {
 
 func (x *HerReply) Reset() {
 	*x = HerReply{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[164]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9733,7 +8160,7 @@ func (x *HerReply) String() string {
 func (*HerReply) ProtoMessage() {}
 
 func (x *HerReply) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[164]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9746,7 +8173,7 @@ func (x *HerReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerReply.ProtoReflect.Descriptor instead.
 func (*HerReply) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{164}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *HerReply) GetRef() string {
@@ -9788,7 +8215,7 @@ type HerPicture struct {
 
 func (x *HerPicture) Reset() {
 	*x = HerPicture{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[165]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9800,7 +8227,7 @@ func (x *HerPicture) String() string {
 func (*HerPicture) ProtoMessage() {}
 
 func (x *HerPicture) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[165]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9813,7 +8240,7 @@ func (x *HerPicture) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerPicture.ProtoReflect.Descriptor instead.
 func (*HerPicture) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{165}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *HerPicture) GetName() string {
@@ -9842,7 +8269,7 @@ type HerSendResponse struct {
 
 func (x *HerSendResponse) Reset() {
 	*x = HerSendResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[166]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9854,7 +8281,7 @@ func (x *HerSendResponse) String() string {
 func (*HerSendResponse) ProtoMessage() {}
 
 func (x *HerSendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[166]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9867,7 +8294,7 @@ func (x *HerSendResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerSendResponse.ProtoReflect.Descriptor instead.
 func (*HerSendResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{166}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *HerSendResponse) GetDelivered() bool {
@@ -9895,7 +8322,7 @@ type ListHerWaitingRequest struct {
 
 func (x *ListHerWaitingRequest) Reset() {
 	*x = ListHerWaitingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[167]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9907,7 +8334,7 @@ func (x *ListHerWaitingRequest) String() string {
 func (*ListHerWaitingRequest) ProtoMessage() {}
 
 func (x *ListHerWaitingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[167]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9920,7 +8347,7 @@ func (x *ListHerWaitingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListHerWaitingRequest.ProtoReflect.Descriptor instead.
 func (*ListHerWaitingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{167}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *ListHerWaitingRequest) GetMachineId() string {
@@ -9946,7 +8373,7 @@ type ListHerWaitingResponse struct {
 
 func (x *ListHerWaitingResponse) Reset() {
 	*x = ListHerWaitingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[168]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9958,7 +8385,7 @@ func (x *ListHerWaitingResponse) String() string {
 func (*ListHerWaitingResponse) ProtoMessage() {}
 
 func (x *ListHerWaitingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[168]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9971,7 +8398,7 @@ func (x *ListHerWaitingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListHerWaitingResponse.ProtoReflect.Descriptor instead.
 func (*ListHerWaitingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{168}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *ListHerWaitingResponse) GetWaiting() []*HerWaiting {
@@ -9992,7 +8419,7 @@ type DeleteHerWaitingRequest struct {
 
 func (x *DeleteHerWaitingRequest) Reset() {
 	*x = DeleteHerWaitingRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[169]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10004,7 +8431,7 @@ func (x *DeleteHerWaitingRequest) String() string {
 func (*DeleteHerWaitingRequest) ProtoMessage() {}
 
 func (x *DeleteHerWaitingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[169]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10017,7 +8444,7 @@ func (x *DeleteHerWaitingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteHerWaitingRequest.ProtoReflect.Descriptor instead.
 func (*DeleteHerWaitingRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{169}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *DeleteHerWaitingRequest) GetMachineId() string {
@@ -10042,7 +8469,7 @@ type DeleteHerWaitingResponse struct {
 
 func (x *DeleteHerWaitingResponse) Reset() {
 	*x = DeleteHerWaitingResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[170]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10054,7 +8481,7 @@ func (x *DeleteHerWaitingResponse) String() string {
 func (*DeleteHerWaitingResponse) ProtoMessage() {}
 
 func (x *DeleteHerWaitingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[170]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10067,7 +8494,7 @@ func (x *DeleteHerWaitingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteHerWaitingResponse.ProtoReflect.Descriptor instead.
 func (*DeleteHerWaitingResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{170}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{145}
 }
 
 // HerWaiting is a message this device keeps until its machine is back.
@@ -10088,7 +8515,7 @@ type HerWaiting struct {
 
 func (x *HerWaiting) Reset() {
 	*x = HerWaiting{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[171]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10100,7 +8527,7 @@ func (x *HerWaiting) String() string {
 func (*HerWaiting) ProtoMessage() {}
 
 func (x *HerWaiting) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[171]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10113,7 +8540,7 @@ func (x *HerWaiting) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerWaiting.ProtoReflect.Descriptor instead.
 func (*HerWaiting) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{171}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *HerWaiting) GetId() string {
@@ -10181,7 +8608,7 @@ type GetHerConversationRequest struct {
 
 func (x *GetHerConversationRequest) Reset() {
 	*x = GetHerConversationRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[172]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10193,7 +8620,7 @@ func (x *GetHerConversationRequest) String() string {
 func (*GetHerConversationRequest) ProtoMessage() {}
 
 func (x *GetHerConversationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[172]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10206,7 +8633,7 @@ func (x *GetHerConversationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHerConversationRequest.ProtoReflect.Descriptor instead.
 func (*GetHerConversationRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{172}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *GetHerConversationRequest) GetMachineId() string {
@@ -10237,7 +8664,7 @@ type GetHerConversationResponse struct {
 
 func (x *GetHerConversationResponse) Reset() {
 	*x = GetHerConversationResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[173]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10249,7 +8676,7 @@ func (x *GetHerConversationResponse) String() string {
 func (*GetHerConversationResponse) ProtoMessage() {}
 
 func (x *GetHerConversationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[173]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10262,7 +8689,7 @@ func (x *GetHerConversationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHerConversationResponse.ProtoReflect.Descriptor instead.
 func (*GetHerConversationResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{173}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *GetHerConversationResponse) GetBot() []byte {
@@ -10298,7 +8725,7 @@ type HerUploadRequest struct {
 
 func (x *HerUploadRequest) Reset() {
 	*x = HerUploadRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[174]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10310,7 +8737,7 @@ func (x *HerUploadRequest) String() string {
 func (*HerUploadRequest) ProtoMessage() {}
 
 func (x *HerUploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[174]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10323,7 +8750,7 @@ func (x *HerUploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerUploadRequest.ProtoReflect.Descriptor instead.
 func (*HerUploadRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{174}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *HerUploadRequest) GetMachineId() string {
@@ -10357,7 +8784,7 @@ type HerUploadResponse struct {
 
 func (x *HerUploadResponse) Reset() {
 	*x = HerUploadResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[175]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10369,7 +8796,7 @@ func (x *HerUploadResponse) String() string {
 func (*HerUploadResponse) ProtoMessage() {}
 
 func (x *HerUploadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[175]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10382,7 +8809,7 @@ func (x *HerUploadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerUploadResponse.ProtoReflect.Descriptor instead.
 func (*HerUploadResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{175}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *HerUploadResponse) GetPath() string {
@@ -10407,7 +8834,7 @@ type HerDownloadRequest struct {
 
 func (x *HerDownloadRequest) Reset() {
 	*x = HerDownloadRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[176]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10419,7 +8846,7 @@ func (x *HerDownloadRequest) String() string {
 func (*HerDownloadRequest) ProtoMessage() {}
 
 func (x *HerDownloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[176]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10432,7 +8859,7 @@ func (x *HerDownloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerDownloadRequest.ProtoReflect.Descriptor instead.
 func (*HerDownloadRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{176}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *HerDownloadRequest) GetMachineId() string {
@@ -10472,7 +8899,7 @@ type HerDownloadResponse struct {
 
 func (x *HerDownloadResponse) Reset() {
 	*x = HerDownloadResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[177]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10484,7 +8911,7 @@ func (x *HerDownloadResponse) String() string {
 func (*HerDownloadResponse) ProtoMessage() {}
 
 func (x *HerDownloadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[177]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10497,7 +8924,7 @@ func (x *HerDownloadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HerDownloadResponse.ProtoReflect.Descriptor instead.
 func (*HerDownloadResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{177}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *HerDownloadResponse) GetLocalPath() string {
@@ -10515,7 +8942,7 @@ type StopScreenRequest struct {
 
 func (x *StopScreenRequest) Reset() {
 	*x = StopScreenRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[178]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10527,7 +8954,7 @@ func (x *StopScreenRequest) String() string {
 func (*StopScreenRequest) ProtoMessage() {}
 
 func (x *StopScreenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[178]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10540,7 +8967,7 @@ func (x *StopScreenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopScreenRequest.ProtoReflect.Descriptor instead.
 func (*StopScreenRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{178}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{153}
 }
 
 type StopScreenResponse struct {
@@ -10551,7 +8978,7 @@ type StopScreenResponse struct {
 
 func (x *StopScreenResponse) Reset() {
 	*x = StopScreenResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[179]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10563,7 +8990,7 @@ func (x *StopScreenResponse) String() string {
 func (*StopScreenResponse) ProtoMessage() {}
 
 func (x *StopScreenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[179]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10576,7 +9003,7 @@ func (x *StopScreenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopScreenResponse.ProtoReflect.Descriptor instead.
 func (*StopScreenResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{179}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{154}
 }
 
 type GetHerConsoleRequest struct {
@@ -10588,7 +9015,7 @@ type GetHerConsoleRequest struct {
 
 func (x *GetHerConsoleRequest) Reset() {
 	*x = GetHerConsoleRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[180]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10600,7 +9027,7 @@ func (x *GetHerConsoleRequest) String() string {
 func (*GetHerConsoleRequest) ProtoMessage() {}
 
 func (x *GetHerConsoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[180]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10613,7 +9040,7 @@ func (x *GetHerConsoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHerConsoleRequest.ProtoReflect.Descriptor instead.
 func (*GetHerConsoleRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{180}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *GetHerConsoleRequest) GetMachineId() string {
@@ -10634,7 +9061,7 @@ type GetHerConsoleResponse struct {
 
 func (x *GetHerConsoleResponse) Reset() {
 	*x = GetHerConsoleResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[181]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10646,7 +9073,7 @@ func (x *GetHerConsoleResponse) String() string {
 func (*GetHerConsoleResponse) ProtoMessage() {}
 
 func (x *GetHerConsoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[181]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10659,7 +9086,7 @@ func (x *GetHerConsoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHerConsoleResponse.ProtoReflect.Descriptor instead.
 func (*GetHerConsoleResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{181}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{156}
 }
 
 func (x *GetHerConsoleResponse) GetUrl() string {
@@ -10679,7 +9106,7 @@ type ListDSHSessionsRequest struct {
 
 func (x *ListDSHSessionsRequest) Reset() {
 	*x = ListDSHSessionsRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[182]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10691,7 +9118,7 @@ func (x *ListDSHSessionsRequest) String() string {
 func (*ListDSHSessionsRequest) ProtoMessage() {}
 
 func (x *ListDSHSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[182]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10704,7 +9131,7 @@ func (x *ListDSHSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDSHSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListDSHSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{182}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *ListDSHSessionsRequest) GetMachineId() string {
@@ -10728,7 +9155,7 @@ type ListDSHSessionsResponse struct {
 
 func (x *ListDSHSessionsResponse) Reset() {
 	*x = ListDSHSessionsResponse{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[183]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10740,7 +9167,7 @@ func (x *ListDSHSessionsResponse) String() string {
 func (*ListDSHSessionsResponse) ProtoMessage() {}
 
 func (x *ListDSHSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[183]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10753,7 +9180,7 @@ func (x *ListDSHSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDSHSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListDSHSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{183}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{158}
 }
 
 func (x *ListDSHSessionsResponse) GetSessions() []*DSHSessionEntry {
@@ -10788,7 +9215,7 @@ type DSHSessionEntry struct {
 
 func (x *DSHSessionEntry) Reset() {
 	*x = DSHSessionEntry{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[184]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10800,7 +9227,7 @@ func (x *DSHSessionEntry) String() string {
 func (*DSHSessionEntry) ProtoMessage() {}
 
 func (x *DSHSessionEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[184]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10813,7 +9240,7 @@ func (x *DSHSessionEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DSHSessionEntry.ProtoReflect.Descriptor instead.
 func (*DSHSessionEntry) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{184}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *DSHSessionEntry) GetMachineId() string {
@@ -10847,7 +9274,7 @@ type DSHBridgeEntry struct {
 
 func (x *DSHBridgeEntry) Reset() {
 	*x = DSHBridgeEntry{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[185]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[160]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10859,7 +9286,7 @@ func (x *DSHBridgeEntry) String() string {
 func (*DSHBridgeEntry) ProtoMessage() {}
 
 func (x *DSHBridgeEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[185]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[160]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10872,7 +9299,7 @@ func (x *DSHBridgeEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DSHBridgeEntry.ProtoReflect.Descriptor instead.
 func (*DSHBridgeEntry) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{185}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *DSHBridgeEntry) GetMachineId() string {
@@ -10900,7 +9327,7 @@ type SetDSHTakeoverRequest struct {
 
 func (x *SetDSHTakeoverRequest) Reset() {
 	*x = SetDSHTakeoverRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[186]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[161]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10912,7 +9339,7 @@ func (x *SetDSHTakeoverRequest) String() string {
 func (*SetDSHTakeoverRequest) ProtoMessage() {}
 
 func (x *SetDSHTakeoverRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[186]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[161]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10925,7 +9352,7 @@ func (x *SetDSHTakeoverRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDSHTakeoverRequest.ProtoReflect.Descriptor instead.
 func (*SetDSHTakeoverRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{186}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{161}
 }
 
 func (x *SetDSHTakeoverRequest) GetMachineId() string {
@@ -10961,7 +9388,7 @@ type SendDSHMessageRequest struct {
 
 func (x *SendDSHMessageRequest) Reset() {
 	*x = SendDSHMessageRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[187]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[162]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10973,7 +9400,7 @@ func (x *SendDSHMessageRequest) String() string {
 func (*SendDSHMessageRequest) ProtoMessage() {}
 
 func (x *SendDSHMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[187]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[162]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10986,7 +9413,7 @@ func (x *SendDSHMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendDSHMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendDSHMessageRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{187}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{162}
 }
 
 func (x *SendDSHMessageRequest) GetMachineId() string {
@@ -11027,7 +9454,7 @@ type InterruptDSHSessionRequest struct {
 
 func (x *InterruptDSHSessionRequest) Reset() {
 	*x = InterruptDSHSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[188]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[163]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11039,7 +9466,7 @@ func (x *InterruptDSHSessionRequest) String() string {
 func (*InterruptDSHSessionRequest) ProtoMessage() {}
 
 func (x *InterruptDSHSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[188]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[163]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11052,7 +9479,7 @@ func (x *InterruptDSHSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterruptDSHSessionRequest.ProtoReflect.Descriptor instead.
 func (*InterruptDSHSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{188}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{163}
 }
 
 func (x *InterruptDSHSessionRequest) GetMachineId() string {
@@ -11078,7 +9505,7 @@ type PrepareDSHBridgeRequest struct {
 
 func (x *PrepareDSHBridgeRequest) Reset() {
 	*x = PrepareDSHBridgeRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[189]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[164]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11090,7 +9517,7 @@ func (x *PrepareDSHBridgeRequest) String() string {
 func (*PrepareDSHBridgeRequest) ProtoMessage() {}
 
 func (x *PrepareDSHBridgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[189]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[164]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11103,7 +9530,7 @@ func (x *PrepareDSHBridgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareDSHBridgeRequest.ProtoReflect.Descriptor instead.
 func (*PrepareDSHBridgeRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{189}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{164}
 }
 
 func (x *PrepareDSHBridgeRequest) GetMachineId() string {
@@ -11129,7 +9556,7 @@ type ReadDSHSessionRequest struct {
 
 func (x *ReadDSHSessionRequest) Reset() {
 	*x = ReadDSHSessionRequest{}
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[190]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[165]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11141,7 +9568,7 @@ func (x *ReadDSHSessionRequest) String() string {
 func (*ReadDSHSessionRequest) ProtoMessage() {}
 
 func (x *ReadDSHSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hermesh_local_v1_local_proto_msgTypes[190]
+	mi := &file_hermesh_local_v1_local_proto_msgTypes[165]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11154,7 +9581,7 @@ func (x *ReadDSHSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadDSHSessionRequest.ProtoReflect.Descriptor instead.
 func (*ReadDSHSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{190}
+	return file_hermesh_local_v1_local_proto_rawDescGZIP(), []int{165}
 }
 
 func (x *ReadDSHSessionRequest) GetMachineId() string {
@@ -11204,7 +9631,7 @@ var File_hermesh_local_v1_local_proto protoreflect.FileDescriptor
 const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"\x1chermesh/local/v1/local.proto\x12\x10hermesh.local.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18hermesh/her/v1/her.proto\x1a\"hermesh/identity/v1/identity.proto\x1a hermesh/machine/v1/machine.proto\x1a hermesh/session/v1/session.proto\"\x0e\n" +
-	"\fWatchRequest\"\xc7\x06\n" +
+	"\fWatchRequest\"\x82\x06\n" +
 	"\rWatchResponse\x12\x14\n" +
 	"\x05reset\x18\x01 \x01(\bR\x05reset\x12;\n" +
 	"\x06status\x18\x02 \x01(\v2#.hermesh.local.v1.GetStatusResponseR\x06status\x125\n" +
@@ -11216,13 +9643,11 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\x16removed_device_key_ids\x18\b \x03(\tR\x13removedDeviceKeyIds\x125\n" +
 	"\bprojects\x18\t \x03(\v2\x19.hermesh.local.v1.ProjectR\bprojects\x12G\n" +
 	"\x10removed_projects\x18\n" +
-	" \x03(\v2\x1c.hermesh.local.v1.ProjectRefR\x0fremovedProjects\x12<\n" +
-	"\bpairings\x18\v \x03(\v2 .hermesh.local.v1.PairingDetailsR\bpairings\x122\n" +
-	"\x15removed_pairing_codes\x18\f \x03(\tR\x13removedPairingCodes\x127\n" +
+	" \x03(\v2\x1c.hermesh.local.v1.ProjectRefR\x0fremovedProjects\x127\n" +
 	"\bsessions\x18\r \x03(\v2\x1b.hermesh.session.v1.SessionR\bsessions\x12.\n" +
 	"\x13deleted_session_ids\x18\x0e \x03(\tR\x11deletedSessionIds\x125\n" +
 	"\x04next\x18\x0f \x01(\v2!.hermesh.session.v1.SessionCursorR\x04next\x12!\n" +
-	"\fwork_version\x18\x10 \x01(\x04R\vworkVersion\"\xbe\x01\n" +
+	"\fwork_version\x18\x10 \x01(\x04R\vworkVersionJ\x04\b\v\x10\fJ\x04\b\f\x10\rR\bpairingsR\x15removed_pairing_codes\"\xbe\x01\n" +
 	"\x18ListSessionEventsRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
@@ -11253,7 +9678,7 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\x05kinds\x18\x04 \x03(\tR\x05kinds\x12\x18\n" +
 	"\aservice\x18\x05 \x01(\tR\aservice\"\x16\n" +
 	"\x14RegisterPushResponse\"\x12\n" +
-	"\x10GetStatusRequest\"\xc8\x06\n" +
+	"\x10GetStatusRequest\"\x8d\x06\n" +
 	"\x11GetStatusResponse\x12 \n" +
 	"\vinitialized\x18\x01 \x01(\bR\vinitialized\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x1b\n" +
@@ -11262,8 +9687,7 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\x15local_machine_enabled\x18\x05 \x01(\bR\x13localMachineEnabled\x12(\n" +
 	"\x10local_machine_id\x18\x06 \x01(\tR\x0elocalMachineId\x12,\n" +
 	"\x12local_machine_name\x18\a \x01(\tR\x10localMachineName\x12\x18\n" +
-	"\aversion\x18\b \x01(\tR\aversion\x12'\n" +
-	"\x0fconnect_address\x18\t \x01(\tR\x0econnectAddress\x12\x16\n" +
+	"\aversion\x18\b \x01(\tR\aversion\x12\x16\n" +
 	"\x06hosted\x18\n" +
 	" \x01(\bR\x06hosted\x12\x1f\n" +
 	"\vconsole_url\x18\v \x01(\tR\n" +
@@ -11275,11 +9699,11 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"signed_out\x18\x0f \x01(\bR\tsignedOut\x12\x18\n" +
 	"\aaccount\x18\x10 \x01(\tR\aaccount\x120\n" +
 	"\x06erased\x18\x11 \x01(\v2\x18.hermesh.local.v1.ErasedR\x06erased\x12\x17\n" +
-	"\amcp_url\x18\x12 \x01(\tR\x06mcpUrl\x125\n" +
-	"\x06signer\x18\x13 \x01(\v2\x1d.hermesh.local.v1.SignerStateR\x06signer\x12,\n" +
+	"\amcp_url\x18\x12 \x01(\tR\x06mcpUrl\x12,\n" +
 	"\x12account_avatar_url\x18\x14 \x01(\tR\x10accountAvatarUrl\x12\x1c\n" +
 	"\tabilities\x18\x15 \x03(\tR\tabilities\x12@\n" +
-	"\fstate_limits\x18\x16 \x01(\v2\x1d.hermesh.local.v1.StateLimitsR\vstateLimits\"\x15\n" +
+	"\fstate_limits\x18\x16 \x01(\v2\x1d.hermesh.local.v1.StateLimitsR\vstateLimitsJ\x04\b\t\x10\n" +
+	"J\x04\b\x13\x10\x14R\x0fconnect_addressR\x06signer\"\x15\n" +
 	"\x13ListProfilesRequest\"M\n" +
 	"\x14ListProfilesResponse\x125\n" +
 	"\bprofiles\x18\x01 \x03(\v2\x19.hermesh.local.v1.ProfileR\bprofiles\"\xc7\x01\n" +
@@ -11305,81 +9729,42 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"claim_code\x18\x01 \x01(\tR\tclaimCode\x12%\n" +
 	"\x0eclaim_verifier\x18\x02 \x01(\tR\rclaimVerifier\x12\x18\n" +
 	"\aaccount\x18\x03 \x01(\tR\aaccount\"\x10\n" +
-	"\x0eSignInResponse\"\xa5\x02\n" +
+	"\x0eSignInResponse\"\xe0\x01\n" +
 	"\fSetupRequest\x12\x1b\n" +
 	"\trelay_url\x18\x01 \x01(\tR\brelayUrl\x12\x1d\n" +
 	"\n" +
-	"claim_code\x18\x02 \x01(\tR\tclaimCode\x12%\n" +
-	"\x0eclaim_verifier\x18\x05 \x01(\tR\rclaimVerifier\x12&\n" +
-	"\x0froot_public_key\x18\x03 \x01(\fR\rrootPublicKey\x12\x1d\n" +
-	"\n" +
-	"root_label\x18\x04 \x01(\tR\trootLabel\x12#\n" +
-	"\rroot_platform\x18\x06 \x01(\tR\frootPlatform\x12,\n" +
-	"\x12local_machine_name\x18\a \x01(\tR\x10localMachineName\x12\x18\n" +
-	"\aaccount\x18\b \x01(\tR\aaccount\"i\n" +
+	"setup_code\x18\x02 \x01(\tR\tsetupCode\x12\x18\n" +
+	"\aaccount\x18\x03 \x01(\tR\aaccount\x12\x1a\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x14\n" +
+	"\x05label\x18\x05 \x01(\tR\x05label\x12\x1a\n" +
+	"\bplatform\x18\x06 \x01(\tR\bplatform\x12,\n" +
+	"\x12local_machine_name\x18\a \x01(\tR\x10localMachineName\"*\n" +
 	"\rSetupResponse\x12\x19\n" +
-	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12'\n" +
-	"\x0fconnect_address\x18\x03 \x01(\tR\x0econnectAddressJ\x04\b\x02\x10\x03R\x0erecovery_words\"\xc4\x02\n" +
-	"\x12RequestJoinRequest\x12\x1b\n" +
-	"\trelay_url\x18\x01 \x01(\tR\brelayUrl\x12\x19\n" +
-	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12&\n" +
-	"\x0froot_public_key\x18\x03 \x01(\fR\rrootPublicKey\x12\x1d\n" +
-	"\n" +
-	"root_label\x18\x04 \x01(\tR\trootLabel\x12#\n" +
-	"\rroot_platform\x18\x05 \x01(\tR\frootPlatform\x12,\n" +
-	"\x12local_machine_name\x18\x06 \x01(\tR\x10localMachineName\x12!\n" +
-	"\fmachine_only\x18\a \x01(\bR\vmachineOnly\x12\x1f\n" +
-	"\vowner_typed\x18\b \x01(\bR\n" +
-	"ownerTyped\x12\x18\n" +
-	"\aaccount\x18\t \x01(\tR\aaccount\"\xb4\x01\n" +
-	"\x13RequestJoinResponse\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\x12+\n" +
-	"\x11verification_code\x18\x02 \x01(\tR\x10verificationCode\x129\n" +
-	"\n" +
-	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12!\n" +
-	"\fpairing_link\x18\x04 \x01(\tR\vpairingLink\"%\n" +
-	"\x0fWaitJoinRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"\xf5\x01\n" +
-	"\x10WaitJoinResponse\x12\x12\n" +
-	"\x04done\x18\x01 \x01(\bR\x04done\x12\x18\n" +
-	"\aexpired\x18\x02 \x01(\bR\aexpired\x12\x1f\n" +
-	"\vapproved_by\x18\x03 \x01(\tR\n" +
-	"approvedBy\x122\n" +
-	"\adevices\x18\x04 \x03(\v2\x18.hermesh.local.v1.DeviceR\adevices\x12%\n" +
-	"\x0ematch_required\x18\x05 \x01(\bR\rmatchRequired\x12\x18\n" +
-	"\aclaimed\x18\x06 \x01(\bR\aclaimed\x12\x1d\n" +
-	"\n" +
-	"claimed_by\x18\a \x01(\tR\tclaimedBy\"_\n" +
-	"\x12ConfirmJoinRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\x12\x16\n" +
-	"\x06accept\x18\x02 \x01(\bR\x06accept\x12\x1d\n" +
-	"\n" +
-	"match_code\x18\x03 \x01(\tR\tmatchCode\"Y\n" +
-	"\x13ConfirmJoinResponse\x12\x19\n" +
-	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12'\n" +
-	"\x0fconnect_address\x18\x02 \x01(\tR\x0econnectAddress\"\x83\x02\n" +
-	"\x14PasswordLoginRequest\x12\x1b\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\"\xe4\x01\n" +
+	"\fLogInRequest\x12\x1b\n" +
 	"\trelay_url\x18\x01 \x01(\tR\brelayUrl\x12\x18\n" +
 	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\x12&\n" +
-	"\x0froot_public_key\x18\x04 \x01(\fR\rrootPublicKey\x12\x1d\n" +
-	"\n" +
-	"root_label\x18\x05 \x01(\tR\trootLabel\x12#\n" +
-	"\rroot_platform\x18\x06 \x01(\tR\frootPlatform\x12,\n" +
-	"\x12local_machine_name\x18\a \x01(\tR\x10localMachineName\"[\n" +
-	"\x15PasswordLoginResponse\x12\x19\n" +
-	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12'\n" +
-	"\x0fconnect_address\x18\x02 \x01(\tR\x0econnectAddress\"O\n" +
-	"\x17SetLoginPasswordRequest\x12\x18\n" +
-	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"C\n" +
-	"\x18SetLoginPasswordResponse\x12'\n" +
-	"\x0fremoved_devices\x18\x01 \x01(\rR\x0eremovedDevices\"\x19\n" +
-	"\x17GetLoginPasswordRequest\"f\n" +
-	"\x18GetLoginPasswordResponse\x12\x18\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x14\n" +
+	"\x05label\x18\x04 \x01(\tR\x05label\x12\x1a\n" +
+	"\bplatform\x18\x05 \x01(\tR\bplatform\x12,\n" +
+	"\x12local_machine_name\x18\x06 \x01(\tR\x10localMachineName\x12!\n" +
+	"\fmachine_only\x18\a \x01(\bR\vmachineOnly\"*\n" +
+	"\rLogInResponse\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\"\x11\n" +
+	"\x0fGetLoginRequest\"p\n" +
+	"\x10GetLoginResponse\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x16\n" +
 	"\x06server\x18\x02 \x01(\tR\x06server\x12\x18\n" +
-	"\adevices\x18\x03 \x03(\tR\adevices\"\xb8\x01\n" +
+	"\aconvert\x18\x03 \x01(\bR\aconvert\x12\x10\n" +
+	"\x03off\x18\x04 \x01(\bR\x03off\"\x8b\x01\n" +
+	"\x0fSetLoginRequest\x12)\n" +
+	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12\x18\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\x12!\n" +
+	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\x12\x10\n" +
+	"\x03off\x18\x04 \x01(\bR\x03off\"1\n" +
+	"\x10SetLoginResponse\x12\x1d\n" +
+	"\n" +
+	"signed_out\x18\x01 \x01(\rR\tsignedOut\"\xd0\x01\n" +
 	"\x06Device\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1a\n" +
@@ -11388,16 +9773,11 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"thisDevice\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x05 \x01(\tR\tmachineId\x12%\n" +
-	"\x0emachine_online\x18\x06 \x01(\bR\rmachineOnline\"\x14\n" +
+	"\x0emachine_online\x18\x06 \x01(\bR\rmachineOnline\x12\x16\n" +
+	"\x06legacy\x18\a \x01(\bR\x06legacy\"\x14\n" +
 	"\x12ListDevicesRequest\"I\n" +
 	"\x13ListDevicesResponse\x122\n" +
-	"\adevices\x18\x01 \x03(\v2\x18.hermesh.local.v1.DeviceR\adevices\"1\n" +
-	"\x1bApproveDevicePairingRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"T\n" +
-	"\x1cApproveDevicePairingResponse\x12\x15\n" +
-	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x1d\n" +
-	"\n" +
-	"match_code\x18\x02 \x01(\tR\tmatchCode\"I\n" +
+	"\adevices\x18\x01 \x03(\v2\x18.hermesh.local.v1.DeviceR\adevices\"I\n" +
 	"\x13RemoveDeviceRequest\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x1b\n" +
 	"\terase_her\x18\x02 \x01(\bR\beraseHer\"l\n" +
@@ -11428,79 +9808,13 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x18\n" +
 	"\apending\x18\x03 \x03(\tR\apending\x12%\n" +
 	"\x0ekept_worktrees\x18\x04 \x03(\tR\rkeptWorktrees\x12\x0e\n" +
-	"\x02by\x18\x05 \x01(\tR\x02by\"1\n" +
-	"\x1bWatchSigningRequestsRequest\x12\x12\n" +
-	"\x04show\x18\x01 \x01(\bR\x04show\"\x13\n" +
-	"\x11ShowSignerRequest\"\x14\n" +
-	"\x12ShowSignerResponse\"?\n" +
-	"\vSignerState\x12\x1c\n" +
-	"\tconnected\x18\x01 \x01(\bR\tconnected\x12\x12\n" +
-	"\x04busy\x18\x02 \x01(\bR\x04busy\"\xff\x02\n" +
-	"\x0eSigningRequest\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x01 \x01(\tR\trequestId\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\fR\x04body\x12\x18\n" +
-	"\amessage\x18\x04 \x01(\fR\amessage\x12\x19\n" +
-	"\bbatch_id\x18\x05 \x01(\tR\abatchId\x12&\n" +
-	"\x0fcreate_root_key\x18\x06 \x01(\bR\rcreateRootKey\x120\n" +
-	"\x06caller\x18\a \x01(\v2\x18.hermesh.local.v1.CallerR\x06caller\x12\x1d\n" +
-	"\n" +
-	"show_match\x18\b \x01(\bR\tshowMatch\x12\x1c\n" +
-	"\tconfirmed\x18\t \x01(\bR\tconfirmed\x12\x1e\n" +
-	"\vroot_key_id\x18\n" +
-	" \x01(\tR\trootKeyId\x12&\n" +
-	"\x0fdelete_root_key\x18\v \x01(\bR\rdeleteRootKey\x12\x12\n" +
-	"\x04show\x18\f \x01(\bR\x04show\":\n" +
-	"\x06Caller\x12\x10\n" +
-	"\x03pid\x18\x01 \x01(\x05R\x03pid\x12\x1e\n" +
-	"\n" +
-	"executable\x18\x02 \x01(\tR\n" +
-	"executable\"\x97\x01\n" +
-	"\x1dCompleteSigningRequestRequest\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1c\n" +
-	"\tsignature\x18\x02 \x01(\fR\tsignature\x12\x1a\n" +
-	"\brejected\x18\x03 \x01(\bR\brejected\x12\x1d\n" +
-	"\n" +
-	"public_key\x18\x04 \x01(\fR\tpublicKey\" \n" +
-	"\x1eCompleteSigningRequestResponse\"U\n" +
+	"\x02by\x18\x05 \x01(\tR\x02by\"U\n" +
 	"\x16SetLocalMachineRequest\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12!\n" +
 	"\fmachine_name\x18\x02 \x01(\tR\vmachineName\"8\n" +
 	"\x17SetLocalMachineResponse\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\"\x8d\x03\n" +
-	"\x0ePairingDetails\x124\n" +
-	"\x04kind\x18\x01 \x01(\x0e2 .hermesh.identity.v1.PairingKindR\x04kind\x12\x14\n" +
-	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1a\n" +
-	"\bhostname\x18\x03 \x01(\tR\bhostname\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\x12 \n" +
-	"\vfingerprint\x18\x05 \x01(\tR\vfingerprint\x129\n" +
-	"\n" +
-	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x1d\n" +
-	"\n" +
-	"subject_id\x18\a \x01(\tR\tsubjectId\x12+\n" +
-	"\x11verification_code\x18\b \x01(\tR\x10verificationCode\x12\x12\n" +
-	"\x04code\x18\t \x01(\tR\x04code\x12\x1c\n" +
-	"\tcustodian\x18\n" +
-	" \x01(\tR\tcustodian\x12\x1c\n" +
-	"\tconfirmed\x18\v \x01(\bR\tconfirmed\"\x1c\n" +
-	"\x1aListPairingRequestsRequest\"[\n" +
-	"\x1bListPairingRequestsResponse\x12<\n" +
-	"\bpairings\x18\x01 \x03(\v2 .hermesh.local.v1.PairingDetailsR\bpairings\"*\n" +
-	"\x14LookupPairingRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"S\n" +
-	"\x15LookupPairingResponse\x12:\n" +
-	"\adetails\x18\x01 \x01(\v2 .hermesh.local.v1.PairingDetailsR\adetails\"U\n" +
-	"\x1cApproveMachinePairingRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\x12!\n" +
-	"\fmachine_name\x18\x02 \x01(\tR\vmachineName\"]\n" +
-	"\x1dApproveMachinePairingResponse\x12\x1d\n" +
-	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
-	"\n" +
-	"match_code\x18\x02 \x01(\tR\tmatchCode\"\xcd\x02\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\"\xcd\x02\n" +
 	"\tGrantSpec\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x1f\n" +
 	"\vmachine_ids\x18\x02 \x03(\tR\n" +
@@ -11511,13 +9825,7 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\x0ftask_visibility\x18\x06 \x01(\x0e2#.hermesh.identity.v1.TaskVisibilityR\x0etaskVisibility\x12\x19\n" +
 	"\bttl_days\x18\a \x01(\rR\attlDays\x126\n" +
 	"\x17max_concurrent_sessions\x18\b \x01(\rR\x15maxConcurrentSessions\x12!\n" +
-	"\fmachine_exec\x18\t \x01(\bR\vmachineExecJ\x04\b\x05\x10\x06R\x06preset\"b\n" +
-	"\x1bApproveClientPairingRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\x12/\n" +
-	"\x04spec\x18\x02 \x01(\v2\x1b.hermesh.local.v1.GrantSpecR\x04spec\"V\n" +
-	"\x1cApproveClientPairingResponse\x12\x1b\n" +
-	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x19\n" +
-	"\bgrant_id\x18\x02 \x01(\tR\agrantId\"\xd3\x04\n" +
+	"\fmachine_exec\x18\t \x01(\bR\vmachineExecJ\x04\b\x05\x10\x06R\x06preset\"\xd3\x04\n" +
 	"\aMachine\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
@@ -12020,7 +10328,7 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"\x15WORK_DIMENSION_CLIENT\x10\x01\x12\x18\n" +
 	"\x14WORK_DIMENSION_AGENT\x10\x02\x12\x1a\n" +
 	"\x16WORK_DIMENSION_MACHINE\x10\x03\x12\x1a\n" +
-	"\x16WORK_DIMENSION_PROJECT\x10\x042\xa9F\n" +
+	"\x16WORK_DIMENSION_PROJECT\x10\x042\xd7<\n" +
 	"\fLocalService\x12T\n" +
 	"\tGetStatus\x12\".hermesh.local.v1.GetStatusRequest\x1a#.hermesh.local.v1.GetStatusResponse\x12J\n" +
 	"\x05Watch\x12\x1e.hermesh.local.v1.WatchRequest\x1a\x1f.hermesh.local.v1.WatchResponse0\x01\x12]\n" +
@@ -12030,29 +10338,17 @@ const file_hermesh_local_v1_local_proto_rawDesc = "" +
 	"AddProfile\x12#.hermesh.local.v1.AddProfileRequest\x1a$.hermesh.local.v1.AddProfileResponse\x12N\n" +
 	"\aSignOut\x12 .hermesh.local.v1.SignOutRequest\x1a!.hermesh.local.v1.SignOutResponse\x12K\n" +
 	"\x06SignIn\x12\x1f.hermesh.local.v1.SignInRequest\x1a .hermesh.local.v1.SignInResponse\x12H\n" +
-	"\x05Setup\x12\x1e.hermesh.local.v1.SetupRequest\x1a\x1f.hermesh.local.v1.SetupResponse\x12Z\n" +
-	"\vRequestJoin\x12$.hermesh.local.v1.RequestJoinRequest\x1a%.hermesh.local.v1.RequestJoinResponse\x12Q\n" +
-	"\bWaitJoin\x12!.hermesh.local.v1.WaitJoinRequest\x1a\".hermesh.local.v1.WaitJoinResponse\x12Z\n" +
-	"\vConfirmJoin\x12$.hermesh.local.v1.ConfirmJoinRequest\x1a%.hermesh.local.v1.ConfirmJoinResponse\x12`\n" +
-	"\rPasswordLogin\x12&.hermesh.local.v1.PasswordLoginRequest\x1a'.hermesh.local.v1.PasswordLoginResponse\x12i\n" +
-	"\x10SetLoginPassword\x12).hermesh.local.v1.SetLoginPasswordRequest\x1a*.hermesh.local.v1.SetLoginPasswordResponse\x12i\n" +
-	"\x10GetLoginPassword\x12).hermesh.local.v1.GetLoginPasswordRequest\x1a*.hermesh.local.v1.GetLoginPasswordResponse\x12Z\n" +
-	"\vListDevices\x12$.hermesh.local.v1.ListDevicesRequest\x1a%.hermesh.local.v1.ListDevicesResponse\x12u\n" +
-	"\x14ApproveDevicePairing\x12-.hermesh.local.v1.ApproveDevicePairingRequest\x1a..hermesh.local.v1.ApproveDevicePairingResponse\x12]\n" +
+	"\x05Setup\x12\x1e.hermesh.local.v1.SetupRequest\x1a\x1f.hermesh.local.v1.SetupResponse\x12H\n" +
+	"\x05LogIn\x12\x1e.hermesh.local.v1.LogInRequest\x1a\x1f.hermesh.local.v1.LogInResponse\x12Q\n" +
+	"\bGetLogin\x12!.hermesh.local.v1.GetLoginRequest\x1a\".hermesh.local.v1.GetLoginResponse\x12Q\n" +
+	"\bSetLogin\x12!.hermesh.local.v1.SetLoginRequest\x1a\".hermesh.local.v1.SetLoginResponse\x12Z\n" +
+	"\vListDevices\x12$.hermesh.local.v1.ListDevicesRequest\x1a%.hermesh.local.v1.ListDevicesResponse\x12]\n" +
 	"\fRemoveDevice\x12%.hermesh.local.v1.RemoveDeviceRequest\x1a&.hermesh.local.v1.RemoveDeviceResponse\x12H\n" +
 	"\x05Leave\x12\x1e.hermesh.local.v1.LeaveRequest\x1a\x1f.hermesh.local.v1.LeaveResponse\x12f\n" +
 	"\x0fEraseEverything\x12(.hermesh.local.v1.EraseEverythingRequest\x1a).hermesh.local.v1.EraseEverythingResponse\x12Z\n" +
 	"\vEraseStatus\x12$.hermesh.local.v1.EraseStatusRequest\x1a%.hermesh.local.v1.EraseStatusResponse\x12Z\n" +
-	"\vFinishErase\x12$.hermesh.local.v1.FinishEraseRequest\x1a%.hermesh.local.v1.FinishEraseResponse\x12i\n" +
-	"\x14WatchSigningRequests\x12-.hermesh.local.v1.WatchSigningRequestsRequest\x1a .hermesh.local.v1.SigningRequest0\x01\x12{\n" +
-	"\x16CompleteSigningRequest\x12/.hermesh.local.v1.CompleteSigningRequestRequest\x1a0.hermesh.local.v1.CompleteSigningRequestResponse\x12W\n" +
-	"\n" +
-	"ShowSigner\x12#.hermesh.local.v1.ShowSignerRequest\x1a$.hermesh.local.v1.ShowSignerResponse\x12f\n" +
-	"\x0fSetLocalMachine\x12(.hermesh.local.v1.SetLocalMachineRequest\x1a).hermesh.local.v1.SetLocalMachineResponse\x12`\n" +
-	"\rLookupPairing\x12&.hermesh.local.v1.LookupPairingRequest\x1a'.hermesh.local.v1.LookupPairingResponse\x12r\n" +
-	"\x13ListPairingRequests\x12,.hermesh.local.v1.ListPairingRequestsRequest\x1a-.hermesh.local.v1.ListPairingRequestsResponse\x12x\n" +
-	"\x15ApproveMachinePairing\x12..hermesh.local.v1.ApproveMachinePairingRequest\x1a/.hermesh.local.v1.ApproveMachinePairingResponse\x12u\n" +
-	"\x14ApproveClientPairing\x12-.hermesh.local.v1.ApproveClientPairingRequest\x1a..hermesh.local.v1.ApproveClientPairingResponse\x12]\n" +
+	"\vFinishErase\x12$.hermesh.local.v1.FinishEraseRequest\x1a%.hermesh.local.v1.FinishEraseResponse\x12f\n" +
+	"\x0fSetLocalMachine\x12(.hermesh.local.v1.SetLocalMachineRequest\x1a).hermesh.local.v1.SetLocalMachineResponse\x12]\n" +
 	"\fListMachines\x12%.hermesh.local.v1.ListMachinesRequest\x1a&.hermesh.local.v1.ListMachinesResponse\x12`\n" +
 	"\rRenameMachine\x12&.hermesh.local.v1.RenameMachineRequest\x1a'.hermesh.local.v1.RenameMachineResponse\x12i\n" +
 	"\x10SetMachinePaused\x12).hermesh.local.v1.SetMachinePausedRequest\x1a*.hermesh.local.v1.SetMachinePausedResponse\x12i\n" +
@@ -12134,7 +10430,7 @@ func file_hermesh_local_v1_local_proto_rawDescGZIP() []byte {
 }
 
 var file_hermesh_local_v1_local_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_hermesh_local_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 191)
+var file_hermesh_local_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 166)
 var file_hermesh_local_v1_local_proto_goTypes = []any{
 	(WorkBucket)(0),                         // 0: hermesh.local.v1.WorkBucket
 	(WorkDimension)(0),                      // 1: hermesh.local.v1.WorkDimension
@@ -12161,505 +10457,447 @@ var file_hermesh_local_v1_local_proto_goTypes = []any{
 	(*SignInResponse)(nil),                  // 22: hermesh.local.v1.SignInResponse
 	(*SetupRequest)(nil),                    // 23: hermesh.local.v1.SetupRequest
 	(*SetupResponse)(nil),                   // 24: hermesh.local.v1.SetupResponse
-	(*RequestJoinRequest)(nil),              // 25: hermesh.local.v1.RequestJoinRequest
-	(*RequestJoinResponse)(nil),             // 26: hermesh.local.v1.RequestJoinResponse
-	(*WaitJoinRequest)(nil),                 // 27: hermesh.local.v1.WaitJoinRequest
-	(*WaitJoinResponse)(nil),                // 28: hermesh.local.v1.WaitJoinResponse
-	(*ConfirmJoinRequest)(nil),              // 29: hermesh.local.v1.ConfirmJoinRequest
-	(*ConfirmJoinResponse)(nil),             // 30: hermesh.local.v1.ConfirmJoinResponse
-	(*PasswordLoginRequest)(nil),            // 31: hermesh.local.v1.PasswordLoginRequest
-	(*PasswordLoginResponse)(nil),           // 32: hermesh.local.v1.PasswordLoginResponse
-	(*SetLoginPasswordRequest)(nil),         // 33: hermesh.local.v1.SetLoginPasswordRequest
-	(*SetLoginPasswordResponse)(nil),        // 34: hermesh.local.v1.SetLoginPasswordResponse
-	(*GetLoginPasswordRequest)(nil),         // 35: hermesh.local.v1.GetLoginPasswordRequest
-	(*GetLoginPasswordResponse)(nil),        // 36: hermesh.local.v1.GetLoginPasswordResponse
-	(*Device)(nil),                          // 37: hermesh.local.v1.Device
-	(*ListDevicesRequest)(nil),              // 38: hermesh.local.v1.ListDevicesRequest
-	(*ListDevicesResponse)(nil),             // 39: hermesh.local.v1.ListDevicesResponse
-	(*ApproveDevicePairingRequest)(nil),     // 40: hermesh.local.v1.ApproveDevicePairingRequest
-	(*ApproveDevicePairingResponse)(nil),    // 41: hermesh.local.v1.ApproveDevicePairingResponse
-	(*RemoveDeviceRequest)(nil),             // 42: hermesh.local.v1.RemoveDeviceRequest
-	(*RemoveDeviceResponse)(nil),            // 43: hermesh.local.v1.RemoveDeviceResponse
-	(*LeaveRequest)(nil),                    // 44: hermesh.local.v1.LeaveRequest
-	(*LeaveResponse)(nil),                   // 45: hermesh.local.v1.LeaveResponse
-	(*EraseEverythingRequest)(nil),          // 46: hermesh.local.v1.EraseEverythingRequest
-	(*EraseEverythingResponse)(nil),         // 47: hermesh.local.v1.EraseEverythingResponse
-	(*EraseStatusRequest)(nil),              // 48: hermesh.local.v1.EraseStatusRequest
-	(*EraseStatusResponse)(nil),             // 49: hermesh.local.v1.EraseStatusResponse
-	(*EraseItem)(nil),                       // 50: hermesh.local.v1.EraseItem
-	(*FinishEraseRequest)(nil),              // 51: hermesh.local.v1.FinishEraseRequest
-	(*FinishEraseResponse)(nil),             // 52: hermesh.local.v1.FinishEraseResponse
-	(*Erased)(nil),                          // 53: hermesh.local.v1.Erased
-	(*WatchSigningRequestsRequest)(nil),     // 54: hermesh.local.v1.WatchSigningRequestsRequest
-	(*ShowSignerRequest)(nil),               // 55: hermesh.local.v1.ShowSignerRequest
-	(*ShowSignerResponse)(nil),              // 56: hermesh.local.v1.ShowSignerResponse
-	(*SignerState)(nil),                     // 57: hermesh.local.v1.SignerState
-	(*SigningRequest)(nil),                  // 58: hermesh.local.v1.SigningRequest
-	(*Caller)(nil),                          // 59: hermesh.local.v1.Caller
-	(*CompleteSigningRequestRequest)(nil),   // 60: hermesh.local.v1.CompleteSigningRequestRequest
-	(*CompleteSigningRequestResponse)(nil),  // 61: hermesh.local.v1.CompleteSigningRequestResponse
-	(*SetLocalMachineRequest)(nil),          // 62: hermesh.local.v1.SetLocalMachineRequest
-	(*SetLocalMachineResponse)(nil),         // 63: hermesh.local.v1.SetLocalMachineResponse
-	(*PairingDetails)(nil),                  // 64: hermesh.local.v1.PairingDetails
-	(*ListPairingRequestsRequest)(nil),      // 65: hermesh.local.v1.ListPairingRequestsRequest
-	(*ListPairingRequestsResponse)(nil),     // 66: hermesh.local.v1.ListPairingRequestsResponse
-	(*LookupPairingRequest)(nil),            // 67: hermesh.local.v1.LookupPairingRequest
-	(*LookupPairingResponse)(nil),           // 68: hermesh.local.v1.LookupPairingResponse
-	(*ApproveMachinePairingRequest)(nil),    // 69: hermesh.local.v1.ApproveMachinePairingRequest
-	(*ApproveMachinePairingResponse)(nil),   // 70: hermesh.local.v1.ApproveMachinePairingResponse
-	(*GrantSpec)(nil),                       // 71: hermesh.local.v1.GrantSpec
-	(*ApproveClientPairingRequest)(nil),     // 72: hermesh.local.v1.ApproveClientPairingRequest
-	(*ApproveClientPairingResponse)(nil),    // 73: hermesh.local.v1.ApproveClientPairingResponse
-	(*Machine)(nil),                         // 74: hermesh.local.v1.Machine
-	(*LostSpan)(nil),                        // 75: hermesh.local.v1.LostSpan
-	(*StateLimits)(nil),                     // 76: hermesh.local.v1.StateLimits
-	(*ListMachinesRequest)(nil),             // 77: hermesh.local.v1.ListMachinesRequest
-	(*ListMachinesResponse)(nil),            // 78: hermesh.local.v1.ListMachinesResponse
-	(*RenameMachineRequest)(nil),            // 79: hermesh.local.v1.RenameMachineRequest
-	(*RenameMachineResponse)(nil),           // 80: hermesh.local.v1.RenameMachineResponse
-	(*SetMachinePausedRequest)(nil),         // 81: hermesh.local.v1.SetMachinePausedRequest
-	(*SetMachinePausedResponse)(nil),        // 82: hermesh.local.v1.SetMachinePausedResponse
-	(*SetAgentDefaultsRequest)(nil),         // 83: hermesh.local.v1.SetAgentDefaultsRequest
-	(*SetAgentDefaultsResponse)(nil),        // 84: hermesh.local.v1.SetAgentDefaultsResponse
-	(*CheckAgentsRequest)(nil),              // 85: hermesh.local.v1.CheckAgentsRequest
-	(*CheckAgentsResponse)(nil),             // 86: hermesh.local.v1.CheckAgentsResponse
-	(*ListMachineReposRequest)(nil),         // 87: hermesh.local.v1.ListMachineReposRequest
-	(*ListMachineReposResponse)(nil),        // 88: hermesh.local.v1.ListMachineReposResponse
-	(*ListMachineFoldersRequest)(nil),       // 89: hermesh.local.v1.ListMachineFoldersRequest
-	(*TestMachineAgentRequest)(nil),         // 90: hermesh.local.v1.TestMachineAgentRequest
-	(*ListMachineCustomAgentsRequest)(nil),  // 91: hermesh.local.v1.ListMachineCustomAgentsRequest
-	(*SaveMachineCustomAgentRequest)(nil),   // 92: hermesh.local.v1.SaveMachineCustomAgentRequest
-	(*RemoveMachineCustomAgentRequest)(nil), // 93: hermesh.local.v1.RemoveMachineCustomAgentRequest
-	(*TestMachineCustomAgentRequest)(nil),   // 94: hermesh.local.v1.TestMachineCustomAgentRequest
-	(*GetDiagnosticsRequest)(nil),           // 95: hermesh.local.v1.GetDiagnosticsRequest
-	(*GetDiagnosticsResponse)(nil),          // 96: hermesh.local.v1.GetDiagnosticsResponse
-	(*RemoveMachineRequest)(nil),            // 97: hermesh.local.v1.RemoveMachineRequest
-	(*RemoveMachineResponse)(nil),           // 98: hermesh.local.v1.RemoveMachineResponse
-	(*Project)(nil),                         // 99: hermesh.local.v1.Project
-	(*ListProjectsRequest)(nil),             // 100: hermesh.local.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),            // 101: hermesh.local.v1.ListProjectsResponse
-	(*AddProjectRequest)(nil),               // 102: hermesh.local.v1.AddProjectRequest
-	(*AddProjectResponse)(nil),              // 103: hermesh.local.v1.AddProjectResponse
-	(*RemoveProjectRequest)(nil),            // 104: hermesh.local.v1.RemoveProjectRequest
-	(*RemoveProjectResponse)(nil),           // 105: hermesh.local.v1.RemoveProjectResponse
-	(*Client)(nil),                          // 106: hermesh.local.v1.Client
-	(*ListClientsRequest)(nil),              // 107: hermesh.local.v1.ListClientsRequest
-	(*ListClientsResponse)(nil),             // 108: hermesh.local.v1.ListClientsResponse
-	(*UpdateClientRequest)(nil),             // 109: hermesh.local.v1.UpdateClientRequest
-	(*UpdateClientResponse)(nil),            // 110: hermesh.local.v1.UpdateClientResponse
-	(*RenameClientRequest)(nil),             // 111: hermesh.local.v1.RenameClientRequest
-	(*RenameClientResponse)(nil),            // 112: hermesh.local.v1.RenameClientResponse
-	(*RevokeClientRequest)(nil),             // 113: hermesh.local.v1.RevokeClientRequest
-	(*RevokeClientResponse)(nil),            // 114: hermesh.local.v1.RevokeClientResponse
-	(*Wake)(nil),                            // 115: hermesh.local.v1.Wake
-	(*WakeRing)(nil),                        // 116: hermesh.local.v1.WakeRing
-	(*WakeCheck)(nil),                       // 117: hermesh.local.v1.WakeCheck
-	(*ListWakesRequest)(nil),                // 118: hermesh.local.v1.ListWakesRequest
-	(*ListWakesResponse)(nil),               // 119: hermesh.local.v1.ListWakesResponse
-	(*SetWakeRequest)(nil),                  // 120: hermesh.local.v1.SetWakeRequest
-	(*SetWakeResponse)(nil),                 // 121: hermesh.local.v1.SetWakeResponse
-	(*CheckWakeRequest)(nil),                // 122: hermesh.local.v1.CheckWakeRequest
-	(*CheckWakeResponse)(nil),               // 123: hermesh.local.v1.CheckWakeResponse
-	(*ClearWakeRequest)(nil),                // 124: hermesh.local.v1.ClearWakeRequest
-	(*ClearWakeResponse)(nil),               // 125: hermesh.local.v1.ClearWakeResponse
-	(*OpenWakeLinkRequest)(nil),             // 126: hermesh.local.v1.OpenWakeLinkRequest
-	(*OpenWakeLinkResponse)(nil),            // 127: hermesh.local.v1.OpenWakeLinkResponse
-	(*MachineAck)(nil),                      // 128: hermesh.local.v1.MachineAck
-	(*ListExecLogRequest)(nil),              // 129: hermesh.local.v1.ListExecLogRequest
-	(*ExecLogEntry)(nil),                    // 130: hermesh.local.v1.ExecLogEntry
-	(*ListExecLogResponse)(nil),             // 131: hermesh.local.v1.ListExecLogResponse
-	(*Unreachable)(nil),                     // 132: hermesh.local.v1.Unreachable
-	(*ListSessionsRequest)(nil),             // 133: hermesh.local.v1.ListSessionsRequest
-	(*ListSessionsResponse)(nil),            // 134: hermesh.local.v1.ListSessionsResponse
-	(*WatchSessionsRequest)(nil),            // 135: hermesh.local.v1.WatchSessionsRequest
-	(*WatchSessionsResponse)(nil),           // 136: hermesh.local.v1.WatchSessionsResponse
-	(*StreamSessionEventsRequest)(nil),      // 137: hermesh.local.v1.StreamSessionEventsRequest
-	(*AnswerQuestionRequest)(nil),           // 138: hermesh.local.v1.AnswerQuestionRequest
-	(*AnswerQuestionResponse)(nil),          // 139: hermesh.local.v1.AnswerQuestionResponse
-	(*StartSessionRequest)(nil),             // 140: hermesh.local.v1.StartSessionRequest
-	(*SendMessageRequest)(nil),              // 141: hermesh.local.v1.SendMessageRequest
-	(*InterruptSessionRequest)(nil),         // 142: hermesh.local.v1.InterruptSessionRequest
-	(*ArchiveSessionRequest)(nil),           // 143: hermesh.local.v1.ArchiveSessionRequest
-	(*UnarchiveSessionRequest)(nil),         // 144: hermesh.local.v1.UnarchiveSessionRequest
-	(*DeleteSessionRequest)(nil),            // 145: hermesh.local.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),           // 146: hermesh.local.v1.DeleteSessionResponse
-	(*RenameSessionRequest)(nil),            // 147: hermesh.local.v1.RenameSessionRequest
-	(*SessionResponse)(nil),                 // 148: hermesh.local.v1.SessionResponse
-	(*QueryWorkRequest)(nil),                // 149: hermesh.local.v1.QueryWorkRequest
-	(*WorkGroup)(nil),                       // 150: hermesh.local.v1.WorkGroup
-	(*SessionCount)(nil),                    // 151: hermesh.local.v1.SessionCount
-	(*TurnCount)(nil),                       // 152: hermesh.local.v1.TurnCount
-	(*WorkSource)(nil),                      // 153: hermesh.local.v1.WorkSource
-	(*QueryWorkResponse)(nil),               // 154: hermesh.local.v1.QueryWorkResponse
-	(*GetDiffRequest)(nil),                  // 155: hermesh.local.v1.GetDiffRequest
-	(*PushSessionRequest)(nil),              // 156: hermesh.local.v1.PushSessionRequest
-	(*SetHerRequest)(nil),                   // 157: hermesh.local.v1.SetHerRequest
-	(*SetHerResponse)(nil),                  // 158: hermesh.local.v1.SetHerResponse
-	(*SetHerAssistantModeRequest)(nil),      // 159: hermesh.local.v1.SetHerAssistantModeRequest
-	(*SetHerAssistantModeResponse)(nil),     // 160: hermesh.local.v1.SetHerAssistantModeResponse
-	(*SetHerCommandConnectorRequest)(nil),   // 161: hermesh.local.v1.SetHerCommandConnectorRequest
-	(*SetHerCommandConnectorResponse)(nil),  // 162: hermesh.local.v1.SetHerCommandConnectorResponse
-	(*HerOpenRequest)(nil),                  // 163: hermesh.local.v1.HerOpenRequest
-	(*HerCallRequest)(nil),                  // 164: hermesh.local.v1.HerCallRequest
-	(*HerSendRequest)(nil),                  // 165: hermesh.local.v1.HerSendRequest
-	(*HerReply)(nil),                        // 166: hermesh.local.v1.HerReply
-	(*HerPicture)(nil),                      // 167: hermesh.local.v1.HerPicture
-	(*HerSendResponse)(nil),                 // 168: hermesh.local.v1.HerSendResponse
-	(*ListHerWaitingRequest)(nil),           // 169: hermesh.local.v1.ListHerWaitingRequest
-	(*ListHerWaitingResponse)(nil),          // 170: hermesh.local.v1.ListHerWaitingResponse
-	(*DeleteHerWaitingRequest)(nil),         // 171: hermesh.local.v1.DeleteHerWaitingRequest
-	(*DeleteHerWaitingResponse)(nil),        // 172: hermesh.local.v1.DeleteHerWaitingResponse
-	(*HerWaiting)(nil),                      // 173: hermesh.local.v1.HerWaiting
-	(*GetHerConversationRequest)(nil),       // 174: hermesh.local.v1.GetHerConversationRequest
-	(*GetHerConversationResponse)(nil),      // 175: hermesh.local.v1.GetHerConversationResponse
-	(*HerUploadRequest)(nil),                // 176: hermesh.local.v1.HerUploadRequest
-	(*HerUploadResponse)(nil),               // 177: hermesh.local.v1.HerUploadResponse
-	(*HerDownloadRequest)(nil),              // 178: hermesh.local.v1.HerDownloadRequest
-	(*HerDownloadResponse)(nil),             // 179: hermesh.local.v1.HerDownloadResponse
-	(*StopScreenRequest)(nil),               // 180: hermesh.local.v1.StopScreenRequest
-	(*StopScreenResponse)(nil),              // 181: hermesh.local.v1.StopScreenResponse
-	(*GetHerConsoleRequest)(nil),            // 182: hermesh.local.v1.GetHerConsoleRequest
-	(*GetHerConsoleResponse)(nil),           // 183: hermesh.local.v1.GetHerConsoleResponse
-	(*ListDSHSessionsRequest)(nil),          // 184: hermesh.local.v1.ListDSHSessionsRequest
-	(*ListDSHSessionsResponse)(nil),         // 185: hermesh.local.v1.ListDSHSessionsResponse
-	(*DSHSessionEntry)(nil),                 // 186: hermesh.local.v1.DSHSessionEntry
-	(*DSHBridgeEntry)(nil),                  // 187: hermesh.local.v1.DSHBridgeEntry
-	(*SetDSHTakeoverRequest)(nil),           // 188: hermesh.local.v1.SetDSHTakeoverRequest
-	(*SendDSHMessageRequest)(nil),           // 189: hermesh.local.v1.SendDSHMessageRequest
-	(*InterruptDSHSessionRequest)(nil),      // 190: hermesh.local.v1.InterruptDSHSessionRequest
-	(*PrepareDSHBridgeRequest)(nil),         // 191: hermesh.local.v1.PrepareDSHBridgeRequest
-	(*ReadDSHSessionRequest)(nil),           // 192: hermesh.local.v1.ReadDSHSessionRequest
-	(*v1.Session)(nil),                      // 193: hermesh.session.v1.Session
-	(*v1.SessionCursor)(nil),                // 194: hermesh.session.v1.SessionCursor
-	(v1.EventView)(0),                       // 195: hermesh.session.v1.EventView
-	(*v1.SessionEvent)(nil),                 // 196: hermesh.session.v1.SessionEvent
-	(*timestamppb.Timestamp)(nil),           // 197: google.protobuf.Timestamp
-	(v11.PairingKind)(0),                    // 198: hermesh.identity.v1.PairingKind
-	(v11.TaskVisibility)(0),                 // 199: hermesh.identity.v1.TaskVisibility
-	(*v12.MachineStatus)(nil),               // 200: hermesh.machine.v1.MachineStatus
-	(*v12.HerStatus)(nil),                   // 201: hermesh.machine.v1.HerStatus
-	(*v11.AgentDefaults)(nil),               // 202: hermesh.identity.v1.AgentDefaults
-	(*v12.Repo)(nil),                        // 203: hermesh.machine.v1.Repo
-	(*v12.CustomAgent)(nil),                 // 204: hermesh.machine.v1.CustomAgent
-	(v11.Workspace)(0),                      // 205: hermesh.identity.v1.Workspace
-	(*v12.ExecRecord)(nil),                  // 206: hermesh.machine.v1.ExecRecord
-	(v1.SessionView)(0),                     // 207: hermesh.session.v1.SessionView
-	(*v1.Answer)(nil),                       // 208: hermesh.session.v1.Answer
-	(*v1.StartSessionRequest)(nil),          // 209: hermesh.session.v1.StartSessionRequest
-	(*v1.Attachment)(nil),                   // 210: hermesh.session.v1.Attachment
-	(*v11.SetHerCommandConnector)(nil),      // 211: hermesh.identity.v1.SetHerCommandConnector
-	(*v13.OpenRequest)(nil),                 // 212: hermesh.her.v1.OpenRequest
-	(*v13.CallRequest)(nil),                 // 213: hermesh.her.v1.CallRequest
-	(*v12.DSHSession)(nil),                  // 214: hermesh.machine.v1.DSHSession
-	(*v12.DSHBridge)(nil),                   // 215: hermesh.machine.v1.DSHBridge
-	(*v12.ListFoldersResponse)(nil),         // 216: hermesh.machine.v1.ListFoldersResponse
-	(*v12.TestAgentResponse)(nil),           // 217: hermesh.machine.v1.TestAgentResponse
-	(*v13.OpenEvent)(nil),                   // 218: hermesh.her.v1.OpenEvent
-	(*v13.CallResponse)(nil),                // 219: hermesh.her.v1.CallResponse
-	(*v1.ToolOutputChunk)(nil),              // 220: hermesh.session.v1.ToolOutputChunk
-	(*v1.GetDiffResponse)(nil),              // 221: hermesh.session.v1.GetDiffResponse
-	(*v1.PushSessionResponse)(nil),          // 222: hermesh.session.v1.PushSessionResponse
-	(*v12.ReadDSHSessionResponse)(nil),      // 223: hermesh.machine.v1.ReadDSHSessionResponse
-	(*v12.SetDSHTakeoverResponse)(nil),      // 224: hermesh.machine.v1.SetDSHTakeoverResponse
-	(*v12.SendDSHMessageResponse)(nil),      // 225: hermesh.machine.v1.SendDSHMessageResponse
-	(*v12.InterruptDSHSessionResponse)(nil), // 226: hermesh.machine.v1.InterruptDSHSessionResponse
-	(*v12.PrepareDSHBridgeResponse)(nil),    // 227: hermesh.machine.v1.PrepareDSHBridgeResponse
-	(*v12.ListCustomAgentsResponse)(nil),    // 228: hermesh.machine.v1.ListCustomAgentsResponse
-	(*v12.SaveCustomAgentResponse)(nil),     // 229: hermesh.machine.v1.SaveCustomAgentResponse
-	(*v12.RemoveCustomAgentResponse)(nil),   // 230: hermesh.machine.v1.RemoveCustomAgentResponse
-	(*v12.TestCustomAgentResponse)(nil),     // 231: hermesh.machine.v1.TestCustomAgentResponse
+	(*LogInRequest)(nil),                    // 25: hermesh.local.v1.LogInRequest
+	(*LogInResponse)(nil),                   // 26: hermesh.local.v1.LogInResponse
+	(*GetLoginRequest)(nil),                 // 27: hermesh.local.v1.GetLoginRequest
+	(*GetLoginResponse)(nil),                // 28: hermesh.local.v1.GetLoginResponse
+	(*SetLoginRequest)(nil),                 // 29: hermesh.local.v1.SetLoginRequest
+	(*SetLoginResponse)(nil),                // 30: hermesh.local.v1.SetLoginResponse
+	(*Device)(nil),                          // 31: hermesh.local.v1.Device
+	(*ListDevicesRequest)(nil),              // 32: hermesh.local.v1.ListDevicesRequest
+	(*ListDevicesResponse)(nil),             // 33: hermesh.local.v1.ListDevicesResponse
+	(*RemoveDeviceRequest)(nil),             // 34: hermesh.local.v1.RemoveDeviceRequest
+	(*RemoveDeviceResponse)(nil),            // 35: hermesh.local.v1.RemoveDeviceResponse
+	(*LeaveRequest)(nil),                    // 36: hermesh.local.v1.LeaveRequest
+	(*LeaveResponse)(nil),                   // 37: hermesh.local.v1.LeaveResponse
+	(*EraseEverythingRequest)(nil),          // 38: hermesh.local.v1.EraseEverythingRequest
+	(*EraseEverythingResponse)(nil),         // 39: hermesh.local.v1.EraseEverythingResponse
+	(*EraseStatusRequest)(nil),              // 40: hermesh.local.v1.EraseStatusRequest
+	(*EraseStatusResponse)(nil),             // 41: hermesh.local.v1.EraseStatusResponse
+	(*EraseItem)(nil),                       // 42: hermesh.local.v1.EraseItem
+	(*FinishEraseRequest)(nil),              // 43: hermesh.local.v1.FinishEraseRequest
+	(*FinishEraseResponse)(nil),             // 44: hermesh.local.v1.FinishEraseResponse
+	(*Erased)(nil),                          // 45: hermesh.local.v1.Erased
+	(*SetLocalMachineRequest)(nil),          // 46: hermesh.local.v1.SetLocalMachineRequest
+	(*SetLocalMachineResponse)(nil),         // 47: hermesh.local.v1.SetLocalMachineResponse
+	(*GrantSpec)(nil),                       // 48: hermesh.local.v1.GrantSpec
+	(*Machine)(nil),                         // 49: hermesh.local.v1.Machine
+	(*LostSpan)(nil),                        // 50: hermesh.local.v1.LostSpan
+	(*StateLimits)(nil),                     // 51: hermesh.local.v1.StateLimits
+	(*ListMachinesRequest)(nil),             // 52: hermesh.local.v1.ListMachinesRequest
+	(*ListMachinesResponse)(nil),            // 53: hermesh.local.v1.ListMachinesResponse
+	(*RenameMachineRequest)(nil),            // 54: hermesh.local.v1.RenameMachineRequest
+	(*RenameMachineResponse)(nil),           // 55: hermesh.local.v1.RenameMachineResponse
+	(*SetMachinePausedRequest)(nil),         // 56: hermesh.local.v1.SetMachinePausedRequest
+	(*SetMachinePausedResponse)(nil),        // 57: hermesh.local.v1.SetMachinePausedResponse
+	(*SetAgentDefaultsRequest)(nil),         // 58: hermesh.local.v1.SetAgentDefaultsRequest
+	(*SetAgentDefaultsResponse)(nil),        // 59: hermesh.local.v1.SetAgentDefaultsResponse
+	(*CheckAgentsRequest)(nil),              // 60: hermesh.local.v1.CheckAgentsRequest
+	(*CheckAgentsResponse)(nil),             // 61: hermesh.local.v1.CheckAgentsResponse
+	(*ListMachineReposRequest)(nil),         // 62: hermesh.local.v1.ListMachineReposRequest
+	(*ListMachineReposResponse)(nil),        // 63: hermesh.local.v1.ListMachineReposResponse
+	(*ListMachineFoldersRequest)(nil),       // 64: hermesh.local.v1.ListMachineFoldersRequest
+	(*TestMachineAgentRequest)(nil),         // 65: hermesh.local.v1.TestMachineAgentRequest
+	(*ListMachineCustomAgentsRequest)(nil),  // 66: hermesh.local.v1.ListMachineCustomAgentsRequest
+	(*SaveMachineCustomAgentRequest)(nil),   // 67: hermesh.local.v1.SaveMachineCustomAgentRequest
+	(*RemoveMachineCustomAgentRequest)(nil), // 68: hermesh.local.v1.RemoveMachineCustomAgentRequest
+	(*TestMachineCustomAgentRequest)(nil),   // 69: hermesh.local.v1.TestMachineCustomAgentRequest
+	(*GetDiagnosticsRequest)(nil),           // 70: hermesh.local.v1.GetDiagnosticsRequest
+	(*GetDiagnosticsResponse)(nil),          // 71: hermesh.local.v1.GetDiagnosticsResponse
+	(*RemoveMachineRequest)(nil),            // 72: hermesh.local.v1.RemoveMachineRequest
+	(*RemoveMachineResponse)(nil),           // 73: hermesh.local.v1.RemoveMachineResponse
+	(*Project)(nil),                         // 74: hermesh.local.v1.Project
+	(*ListProjectsRequest)(nil),             // 75: hermesh.local.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),            // 76: hermesh.local.v1.ListProjectsResponse
+	(*AddProjectRequest)(nil),               // 77: hermesh.local.v1.AddProjectRequest
+	(*AddProjectResponse)(nil),              // 78: hermesh.local.v1.AddProjectResponse
+	(*RemoveProjectRequest)(nil),            // 79: hermesh.local.v1.RemoveProjectRequest
+	(*RemoveProjectResponse)(nil),           // 80: hermesh.local.v1.RemoveProjectResponse
+	(*Client)(nil),                          // 81: hermesh.local.v1.Client
+	(*ListClientsRequest)(nil),              // 82: hermesh.local.v1.ListClientsRequest
+	(*ListClientsResponse)(nil),             // 83: hermesh.local.v1.ListClientsResponse
+	(*UpdateClientRequest)(nil),             // 84: hermesh.local.v1.UpdateClientRequest
+	(*UpdateClientResponse)(nil),            // 85: hermesh.local.v1.UpdateClientResponse
+	(*RenameClientRequest)(nil),             // 86: hermesh.local.v1.RenameClientRequest
+	(*RenameClientResponse)(nil),            // 87: hermesh.local.v1.RenameClientResponse
+	(*RevokeClientRequest)(nil),             // 88: hermesh.local.v1.RevokeClientRequest
+	(*RevokeClientResponse)(nil),            // 89: hermesh.local.v1.RevokeClientResponse
+	(*Wake)(nil),                            // 90: hermesh.local.v1.Wake
+	(*WakeRing)(nil),                        // 91: hermesh.local.v1.WakeRing
+	(*WakeCheck)(nil),                       // 92: hermesh.local.v1.WakeCheck
+	(*ListWakesRequest)(nil),                // 93: hermesh.local.v1.ListWakesRequest
+	(*ListWakesResponse)(nil),               // 94: hermesh.local.v1.ListWakesResponse
+	(*SetWakeRequest)(nil),                  // 95: hermesh.local.v1.SetWakeRequest
+	(*SetWakeResponse)(nil),                 // 96: hermesh.local.v1.SetWakeResponse
+	(*CheckWakeRequest)(nil),                // 97: hermesh.local.v1.CheckWakeRequest
+	(*CheckWakeResponse)(nil),               // 98: hermesh.local.v1.CheckWakeResponse
+	(*ClearWakeRequest)(nil),                // 99: hermesh.local.v1.ClearWakeRequest
+	(*ClearWakeResponse)(nil),               // 100: hermesh.local.v1.ClearWakeResponse
+	(*OpenWakeLinkRequest)(nil),             // 101: hermesh.local.v1.OpenWakeLinkRequest
+	(*OpenWakeLinkResponse)(nil),            // 102: hermesh.local.v1.OpenWakeLinkResponse
+	(*MachineAck)(nil),                      // 103: hermesh.local.v1.MachineAck
+	(*ListExecLogRequest)(nil),              // 104: hermesh.local.v1.ListExecLogRequest
+	(*ExecLogEntry)(nil),                    // 105: hermesh.local.v1.ExecLogEntry
+	(*ListExecLogResponse)(nil),             // 106: hermesh.local.v1.ListExecLogResponse
+	(*Unreachable)(nil),                     // 107: hermesh.local.v1.Unreachable
+	(*ListSessionsRequest)(nil),             // 108: hermesh.local.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),            // 109: hermesh.local.v1.ListSessionsResponse
+	(*WatchSessionsRequest)(nil),            // 110: hermesh.local.v1.WatchSessionsRequest
+	(*WatchSessionsResponse)(nil),           // 111: hermesh.local.v1.WatchSessionsResponse
+	(*StreamSessionEventsRequest)(nil),      // 112: hermesh.local.v1.StreamSessionEventsRequest
+	(*AnswerQuestionRequest)(nil),           // 113: hermesh.local.v1.AnswerQuestionRequest
+	(*AnswerQuestionResponse)(nil),          // 114: hermesh.local.v1.AnswerQuestionResponse
+	(*StartSessionRequest)(nil),             // 115: hermesh.local.v1.StartSessionRequest
+	(*SendMessageRequest)(nil),              // 116: hermesh.local.v1.SendMessageRequest
+	(*InterruptSessionRequest)(nil),         // 117: hermesh.local.v1.InterruptSessionRequest
+	(*ArchiveSessionRequest)(nil),           // 118: hermesh.local.v1.ArchiveSessionRequest
+	(*UnarchiveSessionRequest)(nil),         // 119: hermesh.local.v1.UnarchiveSessionRequest
+	(*DeleteSessionRequest)(nil),            // 120: hermesh.local.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),           // 121: hermesh.local.v1.DeleteSessionResponse
+	(*RenameSessionRequest)(nil),            // 122: hermesh.local.v1.RenameSessionRequest
+	(*SessionResponse)(nil),                 // 123: hermesh.local.v1.SessionResponse
+	(*QueryWorkRequest)(nil),                // 124: hermesh.local.v1.QueryWorkRequest
+	(*WorkGroup)(nil),                       // 125: hermesh.local.v1.WorkGroup
+	(*SessionCount)(nil),                    // 126: hermesh.local.v1.SessionCount
+	(*TurnCount)(nil),                       // 127: hermesh.local.v1.TurnCount
+	(*WorkSource)(nil),                      // 128: hermesh.local.v1.WorkSource
+	(*QueryWorkResponse)(nil),               // 129: hermesh.local.v1.QueryWorkResponse
+	(*GetDiffRequest)(nil),                  // 130: hermesh.local.v1.GetDiffRequest
+	(*PushSessionRequest)(nil),              // 131: hermesh.local.v1.PushSessionRequest
+	(*SetHerRequest)(nil),                   // 132: hermesh.local.v1.SetHerRequest
+	(*SetHerResponse)(nil),                  // 133: hermesh.local.v1.SetHerResponse
+	(*SetHerAssistantModeRequest)(nil),      // 134: hermesh.local.v1.SetHerAssistantModeRequest
+	(*SetHerAssistantModeResponse)(nil),     // 135: hermesh.local.v1.SetHerAssistantModeResponse
+	(*SetHerCommandConnectorRequest)(nil),   // 136: hermesh.local.v1.SetHerCommandConnectorRequest
+	(*SetHerCommandConnectorResponse)(nil),  // 137: hermesh.local.v1.SetHerCommandConnectorResponse
+	(*HerOpenRequest)(nil),                  // 138: hermesh.local.v1.HerOpenRequest
+	(*HerCallRequest)(nil),                  // 139: hermesh.local.v1.HerCallRequest
+	(*HerSendRequest)(nil),                  // 140: hermesh.local.v1.HerSendRequest
+	(*HerReply)(nil),                        // 141: hermesh.local.v1.HerReply
+	(*HerPicture)(nil),                      // 142: hermesh.local.v1.HerPicture
+	(*HerSendResponse)(nil),                 // 143: hermesh.local.v1.HerSendResponse
+	(*ListHerWaitingRequest)(nil),           // 144: hermesh.local.v1.ListHerWaitingRequest
+	(*ListHerWaitingResponse)(nil),          // 145: hermesh.local.v1.ListHerWaitingResponse
+	(*DeleteHerWaitingRequest)(nil),         // 146: hermesh.local.v1.DeleteHerWaitingRequest
+	(*DeleteHerWaitingResponse)(nil),        // 147: hermesh.local.v1.DeleteHerWaitingResponse
+	(*HerWaiting)(nil),                      // 148: hermesh.local.v1.HerWaiting
+	(*GetHerConversationRequest)(nil),       // 149: hermesh.local.v1.GetHerConversationRequest
+	(*GetHerConversationResponse)(nil),      // 150: hermesh.local.v1.GetHerConversationResponse
+	(*HerUploadRequest)(nil),                // 151: hermesh.local.v1.HerUploadRequest
+	(*HerUploadResponse)(nil),               // 152: hermesh.local.v1.HerUploadResponse
+	(*HerDownloadRequest)(nil),              // 153: hermesh.local.v1.HerDownloadRequest
+	(*HerDownloadResponse)(nil),             // 154: hermesh.local.v1.HerDownloadResponse
+	(*StopScreenRequest)(nil),               // 155: hermesh.local.v1.StopScreenRequest
+	(*StopScreenResponse)(nil),              // 156: hermesh.local.v1.StopScreenResponse
+	(*GetHerConsoleRequest)(nil),            // 157: hermesh.local.v1.GetHerConsoleRequest
+	(*GetHerConsoleResponse)(nil),           // 158: hermesh.local.v1.GetHerConsoleResponse
+	(*ListDSHSessionsRequest)(nil),          // 159: hermesh.local.v1.ListDSHSessionsRequest
+	(*ListDSHSessionsResponse)(nil),         // 160: hermesh.local.v1.ListDSHSessionsResponse
+	(*DSHSessionEntry)(nil),                 // 161: hermesh.local.v1.DSHSessionEntry
+	(*DSHBridgeEntry)(nil),                  // 162: hermesh.local.v1.DSHBridgeEntry
+	(*SetDSHTakeoverRequest)(nil),           // 163: hermesh.local.v1.SetDSHTakeoverRequest
+	(*SendDSHMessageRequest)(nil),           // 164: hermesh.local.v1.SendDSHMessageRequest
+	(*InterruptDSHSessionRequest)(nil),      // 165: hermesh.local.v1.InterruptDSHSessionRequest
+	(*PrepareDSHBridgeRequest)(nil),         // 166: hermesh.local.v1.PrepareDSHBridgeRequest
+	(*ReadDSHSessionRequest)(nil),           // 167: hermesh.local.v1.ReadDSHSessionRequest
+	(*v1.Session)(nil),                      // 168: hermesh.session.v1.Session
+	(*v1.SessionCursor)(nil),                // 169: hermesh.session.v1.SessionCursor
+	(v1.EventView)(0),                       // 170: hermesh.session.v1.EventView
+	(*v1.SessionEvent)(nil),                 // 171: hermesh.session.v1.SessionEvent
+	(*timestamppb.Timestamp)(nil),           // 172: google.protobuf.Timestamp
+	(v11.TaskVisibility)(0),                 // 173: hermesh.identity.v1.TaskVisibility
+	(*v12.MachineStatus)(nil),               // 174: hermesh.machine.v1.MachineStatus
+	(*v12.HerStatus)(nil),                   // 175: hermesh.machine.v1.HerStatus
+	(*v11.AgentDefaults)(nil),               // 176: hermesh.identity.v1.AgentDefaults
+	(*v12.Repo)(nil),                        // 177: hermesh.machine.v1.Repo
+	(*v12.CustomAgent)(nil),                 // 178: hermesh.machine.v1.CustomAgent
+	(v11.Workspace)(0),                      // 179: hermesh.identity.v1.Workspace
+	(*v12.ExecRecord)(nil),                  // 180: hermesh.machine.v1.ExecRecord
+	(v1.SessionView)(0),                     // 181: hermesh.session.v1.SessionView
+	(*v1.Answer)(nil),                       // 182: hermesh.session.v1.Answer
+	(*v1.StartSessionRequest)(nil),          // 183: hermesh.session.v1.StartSessionRequest
+	(*v1.Attachment)(nil),                   // 184: hermesh.session.v1.Attachment
+	(*v11.SetHerCommandConnector)(nil),      // 185: hermesh.identity.v1.SetHerCommandConnector
+	(*v13.OpenRequest)(nil),                 // 186: hermesh.her.v1.OpenRequest
+	(*v13.CallRequest)(nil),                 // 187: hermesh.her.v1.CallRequest
+	(*v12.DSHSession)(nil),                  // 188: hermesh.machine.v1.DSHSession
+	(*v12.DSHBridge)(nil),                   // 189: hermesh.machine.v1.DSHBridge
+	(*v12.ListFoldersResponse)(nil),         // 190: hermesh.machine.v1.ListFoldersResponse
+	(*v12.TestAgentResponse)(nil),           // 191: hermesh.machine.v1.TestAgentResponse
+	(*v13.OpenEvent)(nil),                   // 192: hermesh.her.v1.OpenEvent
+	(*v13.CallResponse)(nil),                // 193: hermesh.her.v1.CallResponse
+	(*v1.ToolOutputChunk)(nil),              // 194: hermesh.session.v1.ToolOutputChunk
+	(*v1.GetDiffResponse)(nil),              // 195: hermesh.session.v1.GetDiffResponse
+	(*v1.PushSessionResponse)(nil),          // 196: hermesh.session.v1.PushSessionResponse
+	(*v12.ReadDSHSessionResponse)(nil),      // 197: hermesh.machine.v1.ReadDSHSessionResponse
+	(*v12.SetDSHTakeoverResponse)(nil),      // 198: hermesh.machine.v1.SetDSHTakeoverResponse
+	(*v12.SendDSHMessageResponse)(nil),      // 199: hermesh.machine.v1.SendDSHMessageResponse
+	(*v12.InterruptDSHSessionResponse)(nil), // 200: hermesh.machine.v1.InterruptDSHSessionResponse
+	(*v12.PrepareDSHBridgeResponse)(nil),    // 201: hermesh.machine.v1.PrepareDSHBridgeResponse
+	(*v12.ListCustomAgentsResponse)(nil),    // 202: hermesh.machine.v1.ListCustomAgentsResponse
+	(*v12.SaveCustomAgentResponse)(nil),     // 203: hermesh.machine.v1.SaveCustomAgentResponse
+	(*v12.RemoveCustomAgentResponse)(nil),   // 204: hermesh.machine.v1.RemoveCustomAgentResponse
+	(*v12.TestCustomAgentResponse)(nil),     // 205: hermesh.machine.v1.TestCustomAgentResponse
 }
 var file_hermesh_local_v1_local_proto_depIdxs = []int32{
 	11,  // 0: hermesh.local.v1.WatchResponse.status:type_name -> hermesh.local.v1.GetStatusResponse
-	74,  // 1: hermesh.local.v1.WatchResponse.machines:type_name -> hermesh.local.v1.Machine
-	106, // 2: hermesh.local.v1.WatchResponse.clients:type_name -> hermesh.local.v1.Client
-	37,  // 3: hermesh.local.v1.WatchResponse.devices:type_name -> hermesh.local.v1.Device
-	99,  // 4: hermesh.local.v1.WatchResponse.projects:type_name -> hermesh.local.v1.Project
+	49,  // 1: hermesh.local.v1.WatchResponse.machines:type_name -> hermesh.local.v1.Machine
+	81,  // 2: hermesh.local.v1.WatchResponse.clients:type_name -> hermesh.local.v1.Client
+	31,  // 3: hermesh.local.v1.WatchResponse.devices:type_name -> hermesh.local.v1.Device
+	74,  // 4: hermesh.local.v1.WatchResponse.projects:type_name -> hermesh.local.v1.Project
 	7,   // 5: hermesh.local.v1.WatchResponse.removed_projects:type_name -> hermesh.local.v1.ProjectRef
-	64,  // 6: hermesh.local.v1.WatchResponse.pairings:type_name -> hermesh.local.v1.PairingDetails
-	193, // 7: hermesh.local.v1.WatchResponse.sessions:type_name -> hermesh.session.v1.Session
-	194, // 8: hermesh.local.v1.WatchResponse.next:type_name -> hermesh.session.v1.SessionCursor
-	195, // 9: hermesh.local.v1.ListSessionEventsRequest.view:type_name -> hermesh.session.v1.EventView
-	196, // 10: hermesh.local.v1.ListSessionEventsResponse.events:type_name -> hermesh.session.v1.SessionEvent
-	53,  // 11: hermesh.local.v1.GetStatusResponse.erased:type_name -> hermesh.local.v1.Erased
-	57,  // 12: hermesh.local.v1.GetStatusResponse.signer:type_name -> hermesh.local.v1.SignerState
-	76,  // 13: hermesh.local.v1.GetStatusResponse.state_limits:type_name -> hermesh.local.v1.StateLimits
-	14,  // 14: hermesh.local.v1.ListProfilesResponse.profiles:type_name -> hermesh.local.v1.Profile
-	197, // 15: hermesh.local.v1.RequestJoinResponse.expires_at:type_name -> google.protobuf.Timestamp
-	37,  // 16: hermesh.local.v1.WaitJoinResponse.devices:type_name -> hermesh.local.v1.Device
-	37,  // 17: hermesh.local.v1.ListDevicesResponse.devices:type_name -> hermesh.local.v1.Device
-	50,  // 18: hermesh.local.v1.EraseStatusResponse.items:type_name -> hermesh.local.v1.EraseItem
-	197, // 19: hermesh.local.v1.Erased.at:type_name -> google.protobuf.Timestamp
-	59,  // 20: hermesh.local.v1.SigningRequest.caller:type_name -> hermesh.local.v1.Caller
-	198, // 21: hermesh.local.v1.PairingDetails.kind:type_name -> hermesh.identity.v1.PairingKind
-	197, // 22: hermesh.local.v1.PairingDetails.expires_at:type_name -> google.protobuf.Timestamp
-	64,  // 23: hermesh.local.v1.ListPairingRequestsResponse.pairings:type_name -> hermesh.local.v1.PairingDetails
-	64,  // 24: hermesh.local.v1.LookupPairingResponse.details:type_name -> hermesh.local.v1.PairingDetails
-	199, // 25: hermesh.local.v1.GrantSpec.task_visibility:type_name -> hermesh.identity.v1.TaskVisibility
-	71,  // 26: hermesh.local.v1.ApproveClientPairingRequest.spec:type_name -> hermesh.local.v1.GrantSpec
-	197, // 27: hermesh.local.v1.Machine.last_seen:type_name -> google.protobuf.Timestamp
-	200, // 28: hermesh.local.v1.Machine.status:type_name -> hermesh.machine.v1.MachineStatus
-	201, // 29: hermesh.local.v1.Machine.her:type_name -> hermesh.machine.v1.HerStatus
-	197, // 30: hermesh.local.v1.Machine.heard_at:type_name -> google.protobuf.Timestamp
-	197, // 31: hermesh.local.v1.Machine.unreachable_since:type_name -> google.protobuf.Timestamp
-	75,  // 32: hermesh.local.v1.Machine.lost_spans:type_name -> hermesh.local.v1.LostSpan
-	197, // 33: hermesh.local.v1.LostSpan.from:type_name -> google.protobuf.Timestamp
-	197, // 34: hermesh.local.v1.LostSpan.to:type_name -> google.protobuf.Timestamp
-	74,  // 35: hermesh.local.v1.ListMachinesResponse.machines:type_name -> hermesh.local.v1.Machine
-	202, // 36: hermesh.local.v1.SetAgentDefaultsRequest.defaults:type_name -> hermesh.identity.v1.AgentDefaults
-	203, // 37: hermesh.local.v1.ListMachineReposResponse.repos:type_name -> hermesh.machine.v1.Repo
-	204, // 38: hermesh.local.v1.SaveMachineCustomAgentRequest.agent:type_name -> hermesh.machine.v1.CustomAgent
-	204, // 39: hermesh.local.v1.TestMachineCustomAgentRequest.agent:type_name -> hermesh.machine.v1.CustomAgent
-	205, // 40: hermesh.local.v1.Project.workspace:type_name -> hermesh.identity.v1.Workspace
-	99,  // 41: hermesh.local.v1.ListProjectsResponse.projects:type_name -> hermesh.local.v1.Project
-	132, // 42: hermesh.local.v1.ListProjectsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
-	205, // 43: hermesh.local.v1.AddProjectRequest.workspace:type_name -> hermesh.identity.v1.Workspace
-	71,  // 44: hermesh.local.v1.Client.spec:type_name -> hermesh.local.v1.GrantSpec
-	197, // 45: hermesh.local.v1.Client.expires_at:type_name -> google.protobuf.Timestamp
-	197, // 46: hermesh.local.v1.Client.last_seen:type_name -> google.protobuf.Timestamp
-	106, // 47: hermesh.local.v1.ListClientsResponse.clients:type_name -> hermesh.local.v1.Client
-	71,  // 48: hermesh.local.v1.UpdateClientRequest.spec:type_name -> hermesh.local.v1.GrantSpec
-	128, // 49: hermesh.local.v1.UpdateClientResponse.acks:type_name -> hermesh.local.v1.MachineAck
-	128, // 50: hermesh.local.v1.RevokeClientResponse.acks:type_name -> hermesh.local.v1.MachineAck
-	197, // 51: hermesh.local.v1.Wake.last_ring_at:type_name -> google.protobuf.Timestamp
-	116, // 52: hermesh.local.v1.Wake.recent:type_name -> hermesh.local.v1.WakeRing
-	197, // 53: hermesh.local.v1.WakeRing.at:type_name -> google.protobuf.Timestamp
-	115, // 54: hermesh.local.v1.ListWakesResponse.wakes:type_name -> hermesh.local.v1.Wake
-	115, // 55: hermesh.local.v1.SetWakeResponse.wake:type_name -> hermesh.local.v1.Wake
-	117, // 56: hermesh.local.v1.SetWakeResponse.check:type_name -> hermesh.local.v1.WakeCheck
-	115, // 57: hermesh.local.v1.CheckWakeResponse.wake:type_name -> hermesh.local.v1.Wake
-	117, // 58: hermesh.local.v1.CheckWakeResponse.check:type_name -> hermesh.local.v1.WakeCheck
-	197, // 59: hermesh.local.v1.OpenWakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
-	206, // 60: hermesh.local.v1.ExecLogEntry.record:type_name -> hermesh.machine.v1.ExecRecord
-	130, // 61: hermesh.local.v1.ListExecLogResponse.entries:type_name -> hermesh.local.v1.ExecLogEntry
-	132, // 62: hermesh.local.v1.ListExecLogResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
-	194, // 63: hermesh.local.v1.ListSessionsRequest.before:type_name -> hermesh.session.v1.SessionCursor
-	207, // 64: hermesh.local.v1.ListSessionsRequest.view:type_name -> hermesh.session.v1.SessionView
-	193, // 65: hermesh.local.v1.ListSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
-	132, // 66: hermesh.local.v1.ListSessionsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
-	194, // 67: hermesh.local.v1.ListSessionsResponse.next:type_name -> hermesh.session.v1.SessionCursor
-	193, // 68: hermesh.local.v1.WatchSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
-	132, // 69: hermesh.local.v1.WatchSessionsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
-	195, // 70: hermesh.local.v1.StreamSessionEventsRequest.view:type_name -> hermesh.session.v1.EventView
-	208, // 71: hermesh.local.v1.AnswerQuestionRequest.answers:type_name -> hermesh.session.v1.Answer
-	193, // 72: hermesh.local.v1.AnswerQuestionResponse.session:type_name -> hermesh.session.v1.Session
-	209, // 73: hermesh.local.v1.StartSessionRequest.session:type_name -> hermesh.session.v1.StartSessionRequest
-	210, // 74: hermesh.local.v1.SendMessageRequest.attachments:type_name -> hermesh.session.v1.Attachment
-	193, // 75: hermesh.local.v1.SessionResponse.session:type_name -> hermesh.session.v1.Session
-	0,   // 76: hermesh.local.v1.QueryWorkRequest.bucket:type_name -> hermesh.local.v1.WorkBucket
-	1,   // 77: hermesh.local.v1.QueryWorkRequest.group_by:type_name -> hermesh.local.v1.WorkDimension
-	150, // 78: hermesh.local.v1.SessionCount.group:type_name -> hermesh.local.v1.WorkGroup
-	150, // 79: hermesh.local.v1.TurnCount.group:type_name -> hermesh.local.v1.WorkGroup
-	197, // 80: hermesh.local.v1.WorkSource.synced_at:type_name -> google.protobuf.Timestamp
-	151, // 81: hermesh.local.v1.QueryWorkResponse.sessions:type_name -> hermesh.local.v1.SessionCount
-	151, // 82: hermesh.local.v1.QueryWorkResponse.range_sessions:type_name -> hermesh.local.v1.SessionCount
-	152, // 83: hermesh.local.v1.QueryWorkResponse.turns:type_name -> hermesh.local.v1.TurnCount
-	152, // 84: hermesh.local.v1.QueryWorkResponse.range_turns:type_name -> hermesh.local.v1.TurnCount
-	153, // 85: hermesh.local.v1.QueryWorkResponse.sources:type_name -> hermesh.local.v1.WorkSource
-	211, // 86: hermesh.local.v1.SetHerCommandConnectorRequest.connector:type_name -> hermesh.identity.v1.SetHerCommandConnector
-	212, // 87: hermesh.local.v1.HerOpenRequest.open:type_name -> hermesh.her.v1.OpenRequest
-	213, // 88: hermesh.local.v1.HerCallRequest.call:type_name -> hermesh.her.v1.CallRequest
-	167, // 89: hermesh.local.v1.HerSendRequest.pictures:type_name -> hermesh.local.v1.HerPicture
-	166, // 90: hermesh.local.v1.HerSendRequest.reply:type_name -> hermesh.local.v1.HerReply
-	173, // 91: hermesh.local.v1.HerSendResponse.waiting:type_name -> hermesh.local.v1.HerWaiting
-	173, // 92: hermesh.local.v1.ListHerWaitingResponse.waiting:type_name -> hermesh.local.v1.HerWaiting
-	197, // 93: hermesh.local.v1.HerWaiting.created_at:type_name -> google.protobuf.Timestamp
-	166, // 94: hermesh.local.v1.HerWaiting.reply:type_name -> hermesh.local.v1.HerReply
-	186, // 95: hermesh.local.v1.ListDSHSessionsResponse.sessions:type_name -> hermesh.local.v1.DSHSessionEntry
-	132, // 96: hermesh.local.v1.ListDSHSessionsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
-	187, // 97: hermesh.local.v1.ListDSHSessionsResponse.bridges:type_name -> hermesh.local.v1.DSHBridgeEntry
-	214, // 98: hermesh.local.v1.DSHSessionEntry.session:type_name -> hermesh.machine.v1.DSHSession
-	215, // 99: hermesh.local.v1.DSHBridgeEntry.bridge:type_name -> hermesh.machine.v1.DSHBridge
-	195, // 100: hermesh.local.v1.ReadDSHSessionRequest.view:type_name -> hermesh.session.v1.EventView
-	10,  // 101: hermesh.local.v1.LocalService.GetStatus:input_type -> hermesh.local.v1.GetStatusRequest
-	2,   // 102: hermesh.local.v1.LocalService.Watch:input_type -> hermesh.local.v1.WatchRequest
-	12,  // 103: hermesh.local.v1.LocalService.ListProfiles:input_type -> hermesh.local.v1.ListProfilesRequest
-	15,  // 104: hermesh.local.v1.LocalService.SwitchProfile:input_type -> hermesh.local.v1.SwitchProfileRequest
-	17,  // 105: hermesh.local.v1.LocalService.AddProfile:input_type -> hermesh.local.v1.AddProfileRequest
-	19,  // 106: hermesh.local.v1.LocalService.SignOut:input_type -> hermesh.local.v1.SignOutRequest
-	21,  // 107: hermesh.local.v1.LocalService.SignIn:input_type -> hermesh.local.v1.SignInRequest
-	23,  // 108: hermesh.local.v1.LocalService.Setup:input_type -> hermesh.local.v1.SetupRequest
-	25,  // 109: hermesh.local.v1.LocalService.RequestJoin:input_type -> hermesh.local.v1.RequestJoinRequest
-	27,  // 110: hermesh.local.v1.LocalService.WaitJoin:input_type -> hermesh.local.v1.WaitJoinRequest
-	29,  // 111: hermesh.local.v1.LocalService.ConfirmJoin:input_type -> hermesh.local.v1.ConfirmJoinRequest
-	31,  // 112: hermesh.local.v1.LocalService.PasswordLogin:input_type -> hermesh.local.v1.PasswordLoginRequest
-	33,  // 113: hermesh.local.v1.LocalService.SetLoginPassword:input_type -> hermesh.local.v1.SetLoginPasswordRequest
-	35,  // 114: hermesh.local.v1.LocalService.GetLoginPassword:input_type -> hermesh.local.v1.GetLoginPasswordRequest
-	38,  // 115: hermesh.local.v1.LocalService.ListDevices:input_type -> hermesh.local.v1.ListDevicesRequest
-	40,  // 116: hermesh.local.v1.LocalService.ApproveDevicePairing:input_type -> hermesh.local.v1.ApproveDevicePairingRequest
-	42,  // 117: hermesh.local.v1.LocalService.RemoveDevice:input_type -> hermesh.local.v1.RemoveDeviceRequest
-	44,  // 118: hermesh.local.v1.LocalService.Leave:input_type -> hermesh.local.v1.LeaveRequest
-	46,  // 119: hermesh.local.v1.LocalService.EraseEverything:input_type -> hermesh.local.v1.EraseEverythingRequest
-	48,  // 120: hermesh.local.v1.LocalService.EraseStatus:input_type -> hermesh.local.v1.EraseStatusRequest
-	51,  // 121: hermesh.local.v1.LocalService.FinishErase:input_type -> hermesh.local.v1.FinishEraseRequest
-	54,  // 122: hermesh.local.v1.LocalService.WatchSigningRequests:input_type -> hermesh.local.v1.WatchSigningRequestsRequest
-	60,  // 123: hermesh.local.v1.LocalService.CompleteSigningRequest:input_type -> hermesh.local.v1.CompleteSigningRequestRequest
-	55,  // 124: hermesh.local.v1.LocalService.ShowSigner:input_type -> hermesh.local.v1.ShowSignerRequest
-	62,  // 125: hermesh.local.v1.LocalService.SetLocalMachine:input_type -> hermesh.local.v1.SetLocalMachineRequest
-	67,  // 126: hermesh.local.v1.LocalService.LookupPairing:input_type -> hermesh.local.v1.LookupPairingRequest
-	65,  // 127: hermesh.local.v1.LocalService.ListPairingRequests:input_type -> hermesh.local.v1.ListPairingRequestsRequest
-	69,  // 128: hermesh.local.v1.LocalService.ApproveMachinePairing:input_type -> hermesh.local.v1.ApproveMachinePairingRequest
-	72,  // 129: hermesh.local.v1.LocalService.ApproveClientPairing:input_type -> hermesh.local.v1.ApproveClientPairingRequest
-	77,  // 130: hermesh.local.v1.LocalService.ListMachines:input_type -> hermesh.local.v1.ListMachinesRequest
-	79,  // 131: hermesh.local.v1.LocalService.RenameMachine:input_type -> hermesh.local.v1.RenameMachineRequest
-	81,  // 132: hermesh.local.v1.LocalService.SetMachinePaused:input_type -> hermesh.local.v1.SetMachinePausedRequest
-	83,  // 133: hermesh.local.v1.LocalService.SetAgentDefaults:input_type -> hermesh.local.v1.SetAgentDefaultsRequest
-	97,  // 134: hermesh.local.v1.LocalService.RemoveMachine:input_type -> hermesh.local.v1.RemoveMachineRequest
-	85,  // 135: hermesh.local.v1.LocalService.CheckAgents:input_type -> hermesh.local.v1.CheckAgentsRequest
-	87,  // 136: hermesh.local.v1.LocalService.ListMachineRepos:input_type -> hermesh.local.v1.ListMachineReposRequest
-	89,  // 137: hermesh.local.v1.LocalService.ListMachineFolders:input_type -> hermesh.local.v1.ListMachineFoldersRequest
-	90,  // 138: hermesh.local.v1.LocalService.TestMachineAgent:input_type -> hermesh.local.v1.TestMachineAgentRequest
-	129, // 139: hermesh.local.v1.LocalService.ListExecLog:input_type -> hermesh.local.v1.ListExecLogRequest
-	95,  // 140: hermesh.local.v1.LocalService.GetDiagnostics:input_type -> hermesh.local.v1.GetDiagnosticsRequest
-	157, // 141: hermesh.local.v1.LocalService.SetHer:input_type -> hermesh.local.v1.SetHerRequest
-	159, // 142: hermesh.local.v1.LocalService.SetHerAssistantMode:input_type -> hermesh.local.v1.SetHerAssistantModeRequest
-	161, // 143: hermesh.local.v1.LocalService.SetHerCommandConnector:input_type -> hermesh.local.v1.SetHerCommandConnectorRequest
-	163, // 144: hermesh.local.v1.LocalService.HerOpen:input_type -> hermesh.local.v1.HerOpenRequest
-	164, // 145: hermesh.local.v1.LocalService.HerCall:input_type -> hermesh.local.v1.HerCallRequest
-	165, // 146: hermesh.local.v1.LocalService.HerSend:input_type -> hermesh.local.v1.HerSendRequest
-	169, // 147: hermesh.local.v1.LocalService.ListHerWaiting:input_type -> hermesh.local.v1.ListHerWaitingRequest
-	171, // 148: hermesh.local.v1.LocalService.DeleteHerWaiting:input_type -> hermesh.local.v1.DeleteHerWaitingRequest
-	174, // 149: hermesh.local.v1.LocalService.GetHerConversation:input_type -> hermesh.local.v1.GetHerConversationRequest
-	176, // 150: hermesh.local.v1.LocalService.HerUpload:input_type -> hermesh.local.v1.HerUploadRequest
-	178, // 151: hermesh.local.v1.LocalService.HerDownload:input_type -> hermesh.local.v1.HerDownloadRequest
-	182, // 152: hermesh.local.v1.LocalService.GetHerConsole:input_type -> hermesh.local.v1.GetHerConsoleRequest
-	180, // 153: hermesh.local.v1.LocalService.StopScreen:input_type -> hermesh.local.v1.StopScreenRequest
-	100, // 154: hermesh.local.v1.LocalService.ListProjects:input_type -> hermesh.local.v1.ListProjectsRequest
-	102, // 155: hermesh.local.v1.LocalService.AddProject:input_type -> hermesh.local.v1.AddProjectRequest
-	104, // 156: hermesh.local.v1.LocalService.RemoveProject:input_type -> hermesh.local.v1.RemoveProjectRequest
-	107, // 157: hermesh.local.v1.LocalService.ListClients:input_type -> hermesh.local.v1.ListClientsRequest
-	109, // 158: hermesh.local.v1.LocalService.UpdateClient:input_type -> hermesh.local.v1.UpdateClientRequest
-	111, // 159: hermesh.local.v1.LocalService.RenameClient:input_type -> hermesh.local.v1.RenameClientRequest
-	113, // 160: hermesh.local.v1.LocalService.RevokeClient:input_type -> hermesh.local.v1.RevokeClientRequest
-	118, // 161: hermesh.local.v1.LocalService.ListWakes:input_type -> hermesh.local.v1.ListWakesRequest
-	120, // 162: hermesh.local.v1.LocalService.SetWake:input_type -> hermesh.local.v1.SetWakeRequest
-	122, // 163: hermesh.local.v1.LocalService.CheckWake:input_type -> hermesh.local.v1.CheckWakeRequest
-	124, // 164: hermesh.local.v1.LocalService.ClearWake:input_type -> hermesh.local.v1.ClearWakeRequest
-	126, // 165: hermesh.local.v1.LocalService.OpenWakeLink:input_type -> hermesh.local.v1.OpenWakeLinkRequest
-	133, // 166: hermesh.local.v1.LocalService.ListSessions:input_type -> hermesh.local.v1.ListSessionsRequest
-	135, // 167: hermesh.local.v1.LocalService.WatchSessions:input_type -> hermesh.local.v1.WatchSessionsRequest
-	137, // 168: hermesh.local.v1.LocalService.StreamSessionEvents:input_type -> hermesh.local.v1.StreamSessionEventsRequest
-	4,   // 169: hermesh.local.v1.LocalService.ListSessionEvents:input_type -> hermesh.local.v1.ListSessionEventsRequest
-	6,   // 170: hermesh.local.v1.LocalService.ReadToolOutput:input_type -> hermesh.local.v1.ReadToolOutputRequest
-	140, // 171: hermesh.local.v1.LocalService.StartSession:input_type -> hermesh.local.v1.StartSessionRequest
-	141, // 172: hermesh.local.v1.LocalService.SendMessage:input_type -> hermesh.local.v1.SendMessageRequest
-	142, // 173: hermesh.local.v1.LocalService.InterruptSession:input_type -> hermesh.local.v1.InterruptSessionRequest
-	143, // 174: hermesh.local.v1.LocalService.ArchiveSession:input_type -> hermesh.local.v1.ArchiveSessionRequest
-	144, // 175: hermesh.local.v1.LocalService.UnarchiveSession:input_type -> hermesh.local.v1.UnarchiveSessionRequest
-	145, // 176: hermesh.local.v1.LocalService.DeleteSession:input_type -> hermesh.local.v1.DeleteSessionRequest
-	147, // 177: hermesh.local.v1.LocalService.RenameSession:input_type -> hermesh.local.v1.RenameSessionRequest
-	138, // 178: hermesh.local.v1.LocalService.AnswerQuestion:input_type -> hermesh.local.v1.AnswerQuestionRequest
-	155, // 179: hermesh.local.v1.LocalService.GetDiff:input_type -> hermesh.local.v1.GetDiffRequest
-	156, // 180: hermesh.local.v1.LocalService.PushSession:input_type -> hermesh.local.v1.PushSessionRequest
-	184, // 181: hermesh.local.v1.LocalService.ListDSHSessions:input_type -> hermesh.local.v1.ListDSHSessionsRequest
-	192, // 182: hermesh.local.v1.LocalService.ReadDSHSession:input_type -> hermesh.local.v1.ReadDSHSessionRequest
-	188, // 183: hermesh.local.v1.LocalService.SetDSHTakeover:input_type -> hermesh.local.v1.SetDSHTakeoverRequest
-	189, // 184: hermesh.local.v1.LocalService.SendDSHMessage:input_type -> hermesh.local.v1.SendDSHMessageRequest
-	190, // 185: hermesh.local.v1.LocalService.InterruptDSHSession:input_type -> hermesh.local.v1.InterruptDSHSessionRequest
-	191, // 186: hermesh.local.v1.LocalService.PrepareDSHBridge:input_type -> hermesh.local.v1.PrepareDSHBridgeRequest
-	91,  // 187: hermesh.local.v1.LocalService.ListMachineCustomAgents:input_type -> hermesh.local.v1.ListMachineCustomAgentsRequest
-	92,  // 188: hermesh.local.v1.LocalService.SaveMachineCustomAgent:input_type -> hermesh.local.v1.SaveMachineCustomAgentRequest
-	93,  // 189: hermesh.local.v1.LocalService.RemoveMachineCustomAgent:input_type -> hermesh.local.v1.RemoveMachineCustomAgentRequest
-	94,  // 190: hermesh.local.v1.LocalService.TestMachineCustomAgent:input_type -> hermesh.local.v1.TestMachineCustomAgentRequest
-	149, // 191: hermesh.local.v1.LocalService.QueryWork:input_type -> hermesh.local.v1.QueryWorkRequest
-	8,   // 192: hermesh.local.v1.LocalService.RegisterPush:input_type -> hermesh.local.v1.RegisterPushRequest
-	11,  // 193: hermesh.local.v1.LocalService.GetStatus:output_type -> hermesh.local.v1.GetStatusResponse
-	3,   // 194: hermesh.local.v1.LocalService.Watch:output_type -> hermesh.local.v1.WatchResponse
-	13,  // 195: hermesh.local.v1.LocalService.ListProfiles:output_type -> hermesh.local.v1.ListProfilesResponse
-	16,  // 196: hermesh.local.v1.LocalService.SwitchProfile:output_type -> hermesh.local.v1.SwitchProfileResponse
-	18,  // 197: hermesh.local.v1.LocalService.AddProfile:output_type -> hermesh.local.v1.AddProfileResponse
-	20,  // 198: hermesh.local.v1.LocalService.SignOut:output_type -> hermesh.local.v1.SignOutResponse
-	22,  // 199: hermesh.local.v1.LocalService.SignIn:output_type -> hermesh.local.v1.SignInResponse
-	24,  // 200: hermesh.local.v1.LocalService.Setup:output_type -> hermesh.local.v1.SetupResponse
-	26,  // 201: hermesh.local.v1.LocalService.RequestJoin:output_type -> hermesh.local.v1.RequestJoinResponse
-	28,  // 202: hermesh.local.v1.LocalService.WaitJoin:output_type -> hermesh.local.v1.WaitJoinResponse
-	30,  // 203: hermesh.local.v1.LocalService.ConfirmJoin:output_type -> hermesh.local.v1.ConfirmJoinResponse
-	32,  // 204: hermesh.local.v1.LocalService.PasswordLogin:output_type -> hermesh.local.v1.PasswordLoginResponse
-	34,  // 205: hermesh.local.v1.LocalService.SetLoginPassword:output_type -> hermesh.local.v1.SetLoginPasswordResponse
-	36,  // 206: hermesh.local.v1.LocalService.GetLoginPassword:output_type -> hermesh.local.v1.GetLoginPasswordResponse
-	39,  // 207: hermesh.local.v1.LocalService.ListDevices:output_type -> hermesh.local.v1.ListDevicesResponse
-	41,  // 208: hermesh.local.v1.LocalService.ApproveDevicePairing:output_type -> hermesh.local.v1.ApproveDevicePairingResponse
-	43,  // 209: hermesh.local.v1.LocalService.RemoveDevice:output_type -> hermesh.local.v1.RemoveDeviceResponse
-	45,  // 210: hermesh.local.v1.LocalService.Leave:output_type -> hermesh.local.v1.LeaveResponse
-	47,  // 211: hermesh.local.v1.LocalService.EraseEverything:output_type -> hermesh.local.v1.EraseEverythingResponse
-	49,  // 212: hermesh.local.v1.LocalService.EraseStatus:output_type -> hermesh.local.v1.EraseStatusResponse
-	52,  // 213: hermesh.local.v1.LocalService.FinishErase:output_type -> hermesh.local.v1.FinishEraseResponse
-	58,  // 214: hermesh.local.v1.LocalService.WatchSigningRequests:output_type -> hermesh.local.v1.SigningRequest
-	61,  // 215: hermesh.local.v1.LocalService.CompleteSigningRequest:output_type -> hermesh.local.v1.CompleteSigningRequestResponse
-	56,  // 216: hermesh.local.v1.LocalService.ShowSigner:output_type -> hermesh.local.v1.ShowSignerResponse
-	63,  // 217: hermesh.local.v1.LocalService.SetLocalMachine:output_type -> hermesh.local.v1.SetLocalMachineResponse
-	68,  // 218: hermesh.local.v1.LocalService.LookupPairing:output_type -> hermesh.local.v1.LookupPairingResponse
-	66,  // 219: hermesh.local.v1.LocalService.ListPairingRequests:output_type -> hermesh.local.v1.ListPairingRequestsResponse
-	70,  // 220: hermesh.local.v1.LocalService.ApproveMachinePairing:output_type -> hermesh.local.v1.ApproveMachinePairingResponse
-	73,  // 221: hermesh.local.v1.LocalService.ApproveClientPairing:output_type -> hermesh.local.v1.ApproveClientPairingResponse
-	78,  // 222: hermesh.local.v1.LocalService.ListMachines:output_type -> hermesh.local.v1.ListMachinesResponse
-	80,  // 223: hermesh.local.v1.LocalService.RenameMachine:output_type -> hermesh.local.v1.RenameMachineResponse
-	82,  // 224: hermesh.local.v1.LocalService.SetMachinePaused:output_type -> hermesh.local.v1.SetMachinePausedResponse
-	84,  // 225: hermesh.local.v1.LocalService.SetAgentDefaults:output_type -> hermesh.local.v1.SetAgentDefaultsResponse
-	98,  // 226: hermesh.local.v1.LocalService.RemoveMachine:output_type -> hermesh.local.v1.RemoveMachineResponse
-	86,  // 227: hermesh.local.v1.LocalService.CheckAgents:output_type -> hermesh.local.v1.CheckAgentsResponse
-	88,  // 228: hermesh.local.v1.LocalService.ListMachineRepos:output_type -> hermesh.local.v1.ListMachineReposResponse
-	216, // 229: hermesh.local.v1.LocalService.ListMachineFolders:output_type -> hermesh.machine.v1.ListFoldersResponse
-	217, // 230: hermesh.local.v1.LocalService.TestMachineAgent:output_type -> hermesh.machine.v1.TestAgentResponse
-	131, // 231: hermesh.local.v1.LocalService.ListExecLog:output_type -> hermesh.local.v1.ListExecLogResponse
-	96,  // 232: hermesh.local.v1.LocalService.GetDiagnostics:output_type -> hermesh.local.v1.GetDiagnosticsResponse
-	158, // 233: hermesh.local.v1.LocalService.SetHer:output_type -> hermesh.local.v1.SetHerResponse
-	160, // 234: hermesh.local.v1.LocalService.SetHerAssistantMode:output_type -> hermesh.local.v1.SetHerAssistantModeResponse
-	162, // 235: hermesh.local.v1.LocalService.SetHerCommandConnector:output_type -> hermesh.local.v1.SetHerCommandConnectorResponse
-	218, // 236: hermesh.local.v1.LocalService.HerOpen:output_type -> hermesh.her.v1.OpenEvent
-	219, // 237: hermesh.local.v1.LocalService.HerCall:output_type -> hermesh.her.v1.CallResponse
-	168, // 238: hermesh.local.v1.LocalService.HerSend:output_type -> hermesh.local.v1.HerSendResponse
-	170, // 239: hermesh.local.v1.LocalService.ListHerWaiting:output_type -> hermesh.local.v1.ListHerWaitingResponse
-	172, // 240: hermesh.local.v1.LocalService.DeleteHerWaiting:output_type -> hermesh.local.v1.DeleteHerWaitingResponse
-	175, // 241: hermesh.local.v1.LocalService.GetHerConversation:output_type -> hermesh.local.v1.GetHerConversationResponse
-	177, // 242: hermesh.local.v1.LocalService.HerUpload:output_type -> hermesh.local.v1.HerUploadResponse
-	179, // 243: hermesh.local.v1.LocalService.HerDownload:output_type -> hermesh.local.v1.HerDownloadResponse
-	183, // 244: hermesh.local.v1.LocalService.GetHerConsole:output_type -> hermesh.local.v1.GetHerConsoleResponse
-	181, // 245: hermesh.local.v1.LocalService.StopScreen:output_type -> hermesh.local.v1.StopScreenResponse
-	101, // 246: hermesh.local.v1.LocalService.ListProjects:output_type -> hermesh.local.v1.ListProjectsResponse
-	103, // 247: hermesh.local.v1.LocalService.AddProject:output_type -> hermesh.local.v1.AddProjectResponse
-	105, // 248: hermesh.local.v1.LocalService.RemoveProject:output_type -> hermesh.local.v1.RemoveProjectResponse
-	108, // 249: hermesh.local.v1.LocalService.ListClients:output_type -> hermesh.local.v1.ListClientsResponse
-	110, // 250: hermesh.local.v1.LocalService.UpdateClient:output_type -> hermesh.local.v1.UpdateClientResponse
-	112, // 251: hermesh.local.v1.LocalService.RenameClient:output_type -> hermesh.local.v1.RenameClientResponse
-	114, // 252: hermesh.local.v1.LocalService.RevokeClient:output_type -> hermesh.local.v1.RevokeClientResponse
-	119, // 253: hermesh.local.v1.LocalService.ListWakes:output_type -> hermesh.local.v1.ListWakesResponse
-	121, // 254: hermesh.local.v1.LocalService.SetWake:output_type -> hermesh.local.v1.SetWakeResponse
-	123, // 255: hermesh.local.v1.LocalService.CheckWake:output_type -> hermesh.local.v1.CheckWakeResponse
-	125, // 256: hermesh.local.v1.LocalService.ClearWake:output_type -> hermesh.local.v1.ClearWakeResponse
-	127, // 257: hermesh.local.v1.LocalService.OpenWakeLink:output_type -> hermesh.local.v1.OpenWakeLinkResponse
-	134, // 258: hermesh.local.v1.LocalService.ListSessions:output_type -> hermesh.local.v1.ListSessionsResponse
-	136, // 259: hermesh.local.v1.LocalService.WatchSessions:output_type -> hermesh.local.v1.WatchSessionsResponse
-	196, // 260: hermesh.local.v1.LocalService.StreamSessionEvents:output_type -> hermesh.session.v1.SessionEvent
-	5,   // 261: hermesh.local.v1.LocalService.ListSessionEvents:output_type -> hermesh.local.v1.ListSessionEventsResponse
-	220, // 262: hermesh.local.v1.LocalService.ReadToolOutput:output_type -> hermesh.session.v1.ToolOutputChunk
-	148, // 263: hermesh.local.v1.LocalService.StartSession:output_type -> hermesh.local.v1.SessionResponse
-	148, // 264: hermesh.local.v1.LocalService.SendMessage:output_type -> hermesh.local.v1.SessionResponse
-	148, // 265: hermesh.local.v1.LocalService.InterruptSession:output_type -> hermesh.local.v1.SessionResponse
-	148, // 266: hermesh.local.v1.LocalService.ArchiveSession:output_type -> hermesh.local.v1.SessionResponse
-	148, // 267: hermesh.local.v1.LocalService.UnarchiveSession:output_type -> hermesh.local.v1.SessionResponse
-	146, // 268: hermesh.local.v1.LocalService.DeleteSession:output_type -> hermesh.local.v1.DeleteSessionResponse
-	148, // 269: hermesh.local.v1.LocalService.RenameSession:output_type -> hermesh.local.v1.SessionResponse
-	139, // 270: hermesh.local.v1.LocalService.AnswerQuestion:output_type -> hermesh.local.v1.AnswerQuestionResponse
-	221, // 271: hermesh.local.v1.LocalService.GetDiff:output_type -> hermesh.session.v1.GetDiffResponse
-	222, // 272: hermesh.local.v1.LocalService.PushSession:output_type -> hermesh.session.v1.PushSessionResponse
-	185, // 273: hermesh.local.v1.LocalService.ListDSHSessions:output_type -> hermesh.local.v1.ListDSHSessionsResponse
-	223, // 274: hermesh.local.v1.LocalService.ReadDSHSession:output_type -> hermesh.machine.v1.ReadDSHSessionResponse
-	224, // 275: hermesh.local.v1.LocalService.SetDSHTakeover:output_type -> hermesh.machine.v1.SetDSHTakeoverResponse
-	225, // 276: hermesh.local.v1.LocalService.SendDSHMessage:output_type -> hermesh.machine.v1.SendDSHMessageResponse
-	226, // 277: hermesh.local.v1.LocalService.InterruptDSHSession:output_type -> hermesh.machine.v1.InterruptDSHSessionResponse
-	227, // 278: hermesh.local.v1.LocalService.PrepareDSHBridge:output_type -> hermesh.machine.v1.PrepareDSHBridgeResponse
-	228, // 279: hermesh.local.v1.LocalService.ListMachineCustomAgents:output_type -> hermesh.machine.v1.ListCustomAgentsResponse
-	229, // 280: hermesh.local.v1.LocalService.SaveMachineCustomAgent:output_type -> hermesh.machine.v1.SaveCustomAgentResponse
-	230, // 281: hermesh.local.v1.LocalService.RemoveMachineCustomAgent:output_type -> hermesh.machine.v1.RemoveCustomAgentResponse
-	231, // 282: hermesh.local.v1.LocalService.TestMachineCustomAgent:output_type -> hermesh.machine.v1.TestCustomAgentResponse
-	154, // 283: hermesh.local.v1.LocalService.QueryWork:output_type -> hermesh.local.v1.QueryWorkResponse
-	9,   // 284: hermesh.local.v1.LocalService.RegisterPush:output_type -> hermesh.local.v1.RegisterPushResponse
-	193, // [193:285] is the sub-list for method output_type
-	101, // [101:193] is the sub-list for method input_type
-	101, // [101:101] is the sub-list for extension type_name
-	101, // [101:101] is the sub-list for extension extendee
-	0,   // [0:101] is the sub-list for field type_name
+	168, // 6: hermesh.local.v1.WatchResponse.sessions:type_name -> hermesh.session.v1.Session
+	169, // 7: hermesh.local.v1.WatchResponse.next:type_name -> hermesh.session.v1.SessionCursor
+	170, // 8: hermesh.local.v1.ListSessionEventsRequest.view:type_name -> hermesh.session.v1.EventView
+	171, // 9: hermesh.local.v1.ListSessionEventsResponse.events:type_name -> hermesh.session.v1.SessionEvent
+	45,  // 10: hermesh.local.v1.GetStatusResponse.erased:type_name -> hermesh.local.v1.Erased
+	51,  // 11: hermesh.local.v1.GetStatusResponse.state_limits:type_name -> hermesh.local.v1.StateLimits
+	14,  // 12: hermesh.local.v1.ListProfilesResponse.profiles:type_name -> hermesh.local.v1.Profile
+	31,  // 13: hermesh.local.v1.ListDevicesResponse.devices:type_name -> hermesh.local.v1.Device
+	42,  // 14: hermesh.local.v1.EraseStatusResponse.items:type_name -> hermesh.local.v1.EraseItem
+	172, // 15: hermesh.local.v1.Erased.at:type_name -> google.protobuf.Timestamp
+	173, // 16: hermesh.local.v1.GrantSpec.task_visibility:type_name -> hermesh.identity.v1.TaskVisibility
+	172, // 17: hermesh.local.v1.Machine.last_seen:type_name -> google.protobuf.Timestamp
+	174, // 18: hermesh.local.v1.Machine.status:type_name -> hermesh.machine.v1.MachineStatus
+	175, // 19: hermesh.local.v1.Machine.her:type_name -> hermesh.machine.v1.HerStatus
+	172, // 20: hermesh.local.v1.Machine.heard_at:type_name -> google.protobuf.Timestamp
+	172, // 21: hermesh.local.v1.Machine.unreachable_since:type_name -> google.protobuf.Timestamp
+	50,  // 22: hermesh.local.v1.Machine.lost_spans:type_name -> hermesh.local.v1.LostSpan
+	172, // 23: hermesh.local.v1.LostSpan.from:type_name -> google.protobuf.Timestamp
+	172, // 24: hermesh.local.v1.LostSpan.to:type_name -> google.protobuf.Timestamp
+	49,  // 25: hermesh.local.v1.ListMachinesResponse.machines:type_name -> hermesh.local.v1.Machine
+	176, // 26: hermesh.local.v1.SetAgentDefaultsRequest.defaults:type_name -> hermesh.identity.v1.AgentDefaults
+	177, // 27: hermesh.local.v1.ListMachineReposResponse.repos:type_name -> hermesh.machine.v1.Repo
+	178, // 28: hermesh.local.v1.SaveMachineCustomAgentRequest.agent:type_name -> hermesh.machine.v1.CustomAgent
+	178, // 29: hermesh.local.v1.TestMachineCustomAgentRequest.agent:type_name -> hermesh.machine.v1.CustomAgent
+	179, // 30: hermesh.local.v1.Project.workspace:type_name -> hermesh.identity.v1.Workspace
+	74,  // 31: hermesh.local.v1.ListProjectsResponse.projects:type_name -> hermesh.local.v1.Project
+	107, // 32: hermesh.local.v1.ListProjectsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
+	179, // 33: hermesh.local.v1.AddProjectRequest.workspace:type_name -> hermesh.identity.v1.Workspace
+	48,  // 34: hermesh.local.v1.Client.spec:type_name -> hermesh.local.v1.GrantSpec
+	172, // 35: hermesh.local.v1.Client.expires_at:type_name -> google.protobuf.Timestamp
+	172, // 36: hermesh.local.v1.Client.last_seen:type_name -> google.protobuf.Timestamp
+	81,  // 37: hermesh.local.v1.ListClientsResponse.clients:type_name -> hermesh.local.v1.Client
+	48,  // 38: hermesh.local.v1.UpdateClientRequest.spec:type_name -> hermesh.local.v1.GrantSpec
+	103, // 39: hermesh.local.v1.UpdateClientResponse.acks:type_name -> hermesh.local.v1.MachineAck
+	103, // 40: hermesh.local.v1.RevokeClientResponse.acks:type_name -> hermesh.local.v1.MachineAck
+	172, // 41: hermesh.local.v1.Wake.last_ring_at:type_name -> google.protobuf.Timestamp
+	91,  // 42: hermesh.local.v1.Wake.recent:type_name -> hermesh.local.v1.WakeRing
+	172, // 43: hermesh.local.v1.WakeRing.at:type_name -> google.protobuf.Timestamp
+	90,  // 44: hermesh.local.v1.ListWakesResponse.wakes:type_name -> hermesh.local.v1.Wake
+	90,  // 45: hermesh.local.v1.SetWakeResponse.wake:type_name -> hermesh.local.v1.Wake
+	92,  // 46: hermesh.local.v1.SetWakeResponse.check:type_name -> hermesh.local.v1.WakeCheck
+	90,  // 47: hermesh.local.v1.CheckWakeResponse.wake:type_name -> hermesh.local.v1.Wake
+	92,  // 48: hermesh.local.v1.CheckWakeResponse.check:type_name -> hermesh.local.v1.WakeCheck
+	172, // 49: hermesh.local.v1.OpenWakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
+	180, // 50: hermesh.local.v1.ExecLogEntry.record:type_name -> hermesh.machine.v1.ExecRecord
+	105, // 51: hermesh.local.v1.ListExecLogResponse.entries:type_name -> hermesh.local.v1.ExecLogEntry
+	107, // 52: hermesh.local.v1.ListExecLogResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
+	169, // 53: hermesh.local.v1.ListSessionsRequest.before:type_name -> hermesh.session.v1.SessionCursor
+	181, // 54: hermesh.local.v1.ListSessionsRequest.view:type_name -> hermesh.session.v1.SessionView
+	168, // 55: hermesh.local.v1.ListSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
+	107, // 56: hermesh.local.v1.ListSessionsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
+	169, // 57: hermesh.local.v1.ListSessionsResponse.next:type_name -> hermesh.session.v1.SessionCursor
+	168, // 58: hermesh.local.v1.WatchSessionsResponse.sessions:type_name -> hermesh.session.v1.Session
+	107, // 59: hermesh.local.v1.WatchSessionsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
+	170, // 60: hermesh.local.v1.StreamSessionEventsRequest.view:type_name -> hermesh.session.v1.EventView
+	182, // 61: hermesh.local.v1.AnswerQuestionRequest.answers:type_name -> hermesh.session.v1.Answer
+	168, // 62: hermesh.local.v1.AnswerQuestionResponse.session:type_name -> hermesh.session.v1.Session
+	183, // 63: hermesh.local.v1.StartSessionRequest.session:type_name -> hermesh.session.v1.StartSessionRequest
+	184, // 64: hermesh.local.v1.SendMessageRequest.attachments:type_name -> hermesh.session.v1.Attachment
+	168, // 65: hermesh.local.v1.SessionResponse.session:type_name -> hermesh.session.v1.Session
+	0,   // 66: hermesh.local.v1.QueryWorkRequest.bucket:type_name -> hermesh.local.v1.WorkBucket
+	1,   // 67: hermesh.local.v1.QueryWorkRequest.group_by:type_name -> hermesh.local.v1.WorkDimension
+	125, // 68: hermesh.local.v1.SessionCount.group:type_name -> hermesh.local.v1.WorkGroup
+	125, // 69: hermesh.local.v1.TurnCount.group:type_name -> hermesh.local.v1.WorkGroup
+	172, // 70: hermesh.local.v1.WorkSource.synced_at:type_name -> google.protobuf.Timestamp
+	126, // 71: hermesh.local.v1.QueryWorkResponse.sessions:type_name -> hermesh.local.v1.SessionCount
+	126, // 72: hermesh.local.v1.QueryWorkResponse.range_sessions:type_name -> hermesh.local.v1.SessionCount
+	127, // 73: hermesh.local.v1.QueryWorkResponse.turns:type_name -> hermesh.local.v1.TurnCount
+	127, // 74: hermesh.local.v1.QueryWorkResponse.range_turns:type_name -> hermesh.local.v1.TurnCount
+	128, // 75: hermesh.local.v1.QueryWorkResponse.sources:type_name -> hermesh.local.v1.WorkSource
+	185, // 76: hermesh.local.v1.SetHerCommandConnectorRequest.connector:type_name -> hermesh.identity.v1.SetHerCommandConnector
+	186, // 77: hermesh.local.v1.HerOpenRequest.open:type_name -> hermesh.her.v1.OpenRequest
+	187, // 78: hermesh.local.v1.HerCallRequest.call:type_name -> hermesh.her.v1.CallRequest
+	142, // 79: hermesh.local.v1.HerSendRequest.pictures:type_name -> hermesh.local.v1.HerPicture
+	141, // 80: hermesh.local.v1.HerSendRequest.reply:type_name -> hermesh.local.v1.HerReply
+	148, // 81: hermesh.local.v1.HerSendResponse.waiting:type_name -> hermesh.local.v1.HerWaiting
+	148, // 82: hermesh.local.v1.ListHerWaitingResponse.waiting:type_name -> hermesh.local.v1.HerWaiting
+	172, // 83: hermesh.local.v1.HerWaiting.created_at:type_name -> google.protobuf.Timestamp
+	141, // 84: hermesh.local.v1.HerWaiting.reply:type_name -> hermesh.local.v1.HerReply
+	161, // 85: hermesh.local.v1.ListDSHSessionsResponse.sessions:type_name -> hermesh.local.v1.DSHSessionEntry
+	107, // 86: hermesh.local.v1.ListDSHSessionsResponse.unreachable:type_name -> hermesh.local.v1.Unreachable
+	162, // 87: hermesh.local.v1.ListDSHSessionsResponse.bridges:type_name -> hermesh.local.v1.DSHBridgeEntry
+	188, // 88: hermesh.local.v1.DSHSessionEntry.session:type_name -> hermesh.machine.v1.DSHSession
+	189, // 89: hermesh.local.v1.DSHBridgeEntry.bridge:type_name -> hermesh.machine.v1.DSHBridge
+	170, // 90: hermesh.local.v1.ReadDSHSessionRequest.view:type_name -> hermesh.session.v1.EventView
+	10,  // 91: hermesh.local.v1.LocalService.GetStatus:input_type -> hermesh.local.v1.GetStatusRequest
+	2,   // 92: hermesh.local.v1.LocalService.Watch:input_type -> hermesh.local.v1.WatchRequest
+	12,  // 93: hermesh.local.v1.LocalService.ListProfiles:input_type -> hermesh.local.v1.ListProfilesRequest
+	15,  // 94: hermesh.local.v1.LocalService.SwitchProfile:input_type -> hermesh.local.v1.SwitchProfileRequest
+	17,  // 95: hermesh.local.v1.LocalService.AddProfile:input_type -> hermesh.local.v1.AddProfileRequest
+	19,  // 96: hermesh.local.v1.LocalService.SignOut:input_type -> hermesh.local.v1.SignOutRequest
+	21,  // 97: hermesh.local.v1.LocalService.SignIn:input_type -> hermesh.local.v1.SignInRequest
+	23,  // 98: hermesh.local.v1.LocalService.Setup:input_type -> hermesh.local.v1.SetupRequest
+	25,  // 99: hermesh.local.v1.LocalService.LogIn:input_type -> hermesh.local.v1.LogInRequest
+	27,  // 100: hermesh.local.v1.LocalService.GetLogin:input_type -> hermesh.local.v1.GetLoginRequest
+	29,  // 101: hermesh.local.v1.LocalService.SetLogin:input_type -> hermesh.local.v1.SetLoginRequest
+	32,  // 102: hermesh.local.v1.LocalService.ListDevices:input_type -> hermesh.local.v1.ListDevicesRequest
+	34,  // 103: hermesh.local.v1.LocalService.RemoveDevice:input_type -> hermesh.local.v1.RemoveDeviceRequest
+	36,  // 104: hermesh.local.v1.LocalService.Leave:input_type -> hermesh.local.v1.LeaveRequest
+	38,  // 105: hermesh.local.v1.LocalService.EraseEverything:input_type -> hermesh.local.v1.EraseEverythingRequest
+	40,  // 106: hermesh.local.v1.LocalService.EraseStatus:input_type -> hermesh.local.v1.EraseStatusRequest
+	43,  // 107: hermesh.local.v1.LocalService.FinishErase:input_type -> hermesh.local.v1.FinishEraseRequest
+	46,  // 108: hermesh.local.v1.LocalService.SetLocalMachine:input_type -> hermesh.local.v1.SetLocalMachineRequest
+	52,  // 109: hermesh.local.v1.LocalService.ListMachines:input_type -> hermesh.local.v1.ListMachinesRequest
+	54,  // 110: hermesh.local.v1.LocalService.RenameMachine:input_type -> hermesh.local.v1.RenameMachineRequest
+	56,  // 111: hermesh.local.v1.LocalService.SetMachinePaused:input_type -> hermesh.local.v1.SetMachinePausedRequest
+	58,  // 112: hermesh.local.v1.LocalService.SetAgentDefaults:input_type -> hermesh.local.v1.SetAgentDefaultsRequest
+	72,  // 113: hermesh.local.v1.LocalService.RemoveMachine:input_type -> hermesh.local.v1.RemoveMachineRequest
+	60,  // 114: hermesh.local.v1.LocalService.CheckAgents:input_type -> hermesh.local.v1.CheckAgentsRequest
+	62,  // 115: hermesh.local.v1.LocalService.ListMachineRepos:input_type -> hermesh.local.v1.ListMachineReposRequest
+	64,  // 116: hermesh.local.v1.LocalService.ListMachineFolders:input_type -> hermesh.local.v1.ListMachineFoldersRequest
+	65,  // 117: hermesh.local.v1.LocalService.TestMachineAgent:input_type -> hermesh.local.v1.TestMachineAgentRequest
+	104, // 118: hermesh.local.v1.LocalService.ListExecLog:input_type -> hermesh.local.v1.ListExecLogRequest
+	70,  // 119: hermesh.local.v1.LocalService.GetDiagnostics:input_type -> hermesh.local.v1.GetDiagnosticsRequest
+	132, // 120: hermesh.local.v1.LocalService.SetHer:input_type -> hermesh.local.v1.SetHerRequest
+	134, // 121: hermesh.local.v1.LocalService.SetHerAssistantMode:input_type -> hermesh.local.v1.SetHerAssistantModeRequest
+	136, // 122: hermesh.local.v1.LocalService.SetHerCommandConnector:input_type -> hermesh.local.v1.SetHerCommandConnectorRequest
+	138, // 123: hermesh.local.v1.LocalService.HerOpen:input_type -> hermesh.local.v1.HerOpenRequest
+	139, // 124: hermesh.local.v1.LocalService.HerCall:input_type -> hermesh.local.v1.HerCallRequest
+	140, // 125: hermesh.local.v1.LocalService.HerSend:input_type -> hermesh.local.v1.HerSendRequest
+	144, // 126: hermesh.local.v1.LocalService.ListHerWaiting:input_type -> hermesh.local.v1.ListHerWaitingRequest
+	146, // 127: hermesh.local.v1.LocalService.DeleteHerWaiting:input_type -> hermesh.local.v1.DeleteHerWaitingRequest
+	149, // 128: hermesh.local.v1.LocalService.GetHerConversation:input_type -> hermesh.local.v1.GetHerConversationRequest
+	151, // 129: hermesh.local.v1.LocalService.HerUpload:input_type -> hermesh.local.v1.HerUploadRequest
+	153, // 130: hermesh.local.v1.LocalService.HerDownload:input_type -> hermesh.local.v1.HerDownloadRequest
+	157, // 131: hermesh.local.v1.LocalService.GetHerConsole:input_type -> hermesh.local.v1.GetHerConsoleRequest
+	155, // 132: hermesh.local.v1.LocalService.StopScreen:input_type -> hermesh.local.v1.StopScreenRequest
+	75,  // 133: hermesh.local.v1.LocalService.ListProjects:input_type -> hermesh.local.v1.ListProjectsRequest
+	77,  // 134: hermesh.local.v1.LocalService.AddProject:input_type -> hermesh.local.v1.AddProjectRequest
+	79,  // 135: hermesh.local.v1.LocalService.RemoveProject:input_type -> hermesh.local.v1.RemoveProjectRequest
+	82,  // 136: hermesh.local.v1.LocalService.ListClients:input_type -> hermesh.local.v1.ListClientsRequest
+	84,  // 137: hermesh.local.v1.LocalService.UpdateClient:input_type -> hermesh.local.v1.UpdateClientRequest
+	86,  // 138: hermesh.local.v1.LocalService.RenameClient:input_type -> hermesh.local.v1.RenameClientRequest
+	88,  // 139: hermesh.local.v1.LocalService.RevokeClient:input_type -> hermesh.local.v1.RevokeClientRequest
+	93,  // 140: hermesh.local.v1.LocalService.ListWakes:input_type -> hermesh.local.v1.ListWakesRequest
+	95,  // 141: hermesh.local.v1.LocalService.SetWake:input_type -> hermesh.local.v1.SetWakeRequest
+	97,  // 142: hermesh.local.v1.LocalService.CheckWake:input_type -> hermesh.local.v1.CheckWakeRequest
+	99,  // 143: hermesh.local.v1.LocalService.ClearWake:input_type -> hermesh.local.v1.ClearWakeRequest
+	101, // 144: hermesh.local.v1.LocalService.OpenWakeLink:input_type -> hermesh.local.v1.OpenWakeLinkRequest
+	108, // 145: hermesh.local.v1.LocalService.ListSessions:input_type -> hermesh.local.v1.ListSessionsRequest
+	110, // 146: hermesh.local.v1.LocalService.WatchSessions:input_type -> hermesh.local.v1.WatchSessionsRequest
+	112, // 147: hermesh.local.v1.LocalService.StreamSessionEvents:input_type -> hermesh.local.v1.StreamSessionEventsRequest
+	4,   // 148: hermesh.local.v1.LocalService.ListSessionEvents:input_type -> hermesh.local.v1.ListSessionEventsRequest
+	6,   // 149: hermesh.local.v1.LocalService.ReadToolOutput:input_type -> hermesh.local.v1.ReadToolOutputRequest
+	115, // 150: hermesh.local.v1.LocalService.StartSession:input_type -> hermesh.local.v1.StartSessionRequest
+	116, // 151: hermesh.local.v1.LocalService.SendMessage:input_type -> hermesh.local.v1.SendMessageRequest
+	117, // 152: hermesh.local.v1.LocalService.InterruptSession:input_type -> hermesh.local.v1.InterruptSessionRequest
+	118, // 153: hermesh.local.v1.LocalService.ArchiveSession:input_type -> hermesh.local.v1.ArchiveSessionRequest
+	119, // 154: hermesh.local.v1.LocalService.UnarchiveSession:input_type -> hermesh.local.v1.UnarchiveSessionRequest
+	120, // 155: hermesh.local.v1.LocalService.DeleteSession:input_type -> hermesh.local.v1.DeleteSessionRequest
+	122, // 156: hermesh.local.v1.LocalService.RenameSession:input_type -> hermesh.local.v1.RenameSessionRequest
+	113, // 157: hermesh.local.v1.LocalService.AnswerQuestion:input_type -> hermesh.local.v1.AnswerQuestionRequest
+	130, // 158: hermesh.local.v1.LocalService.GetDiff:input_type -> hermesh.local.v1.GetDiffRequest
+	131, // 159: hermesh.local.v1.LocalService.PushSession:input_type -> hermesh.local.v1.PushSessionRequest
+	159, // 160: hermesh.local.v1.LocalService.ListDSHSessions:input_type -> hermesh.local.v1.ListDSHSessionsRequest
+	167, // 161: hermesh.local.v1.LocalService.ReadDSHSession:input_type -> hermesh.local.v1.ReadDSHSessionRequest
+	163, // 162: hermesh.local.v1.LocalService.SetDSHTakeover:input_type -> hermesh.local.v1.SetDSHTakeoverRequest
+	164, // 163: hermesh.local.v1.LocalService.SendDSHMessage:input_type -> hermesh.local.v1.SendDSHMessageRequest
+	165, // 164: hermesh.local.v1.LocalService.InterruptDSHSession:input_type -> hermesh.local.v1.InterruptDSHSessionRequest
+	166, // 165: hermesh.local.v1.LocalService.PrepareDSHBridge:input_type -> hermesh.local.v1.PrepareDSHBridgeRequest
+	66,  // 166: hermesh.local.v1.LocalService.ListMachineCustomAgents:input_type -> hermesh.local.v1.ListMachineCustomAgentsRequest
+	67,  // 167: hermesh.local.v1.LocalService.SaveMachineCustomAgent:input_type -> hermesh.local.v1.SaveMachineCustomAgentRequest
+	68,  // 168: hermesh.local.v1.LocalService.RemoveMachineCustomAgent:input_type -> hermesh.local.v1.RemoveMachineCustomAgentRequest
+	69,  // 169: hermesh.local.v1.LocalService.TestMachineCustomAgent:input_type -> hermesh.local.v1.TestMachineCustomAgentRequest
+	124, // 170: hermesh.local.v1.LocalService.QueryWork:input_type -> hermesh.local.v1.QueryWorkRequest
+	8,   // 171: hermesh.local.v1.LocalService.RegisterPush:input_type -> hermesh.local.v1.RegisterPushRequest
+	11,  // 172: hermesh.local.v1.LocalService.GetStatus:output_type -> hermesh.local.v1.GetStatusResponse
+	3,   // 173: hermesh.local.v1.LocalService.Watch:output_type -> hermesh.local.v1.WatchResponse
+	13,  // 174: hermesh.local.v1.LocalService.ListProfiles:output_type -> hermesh.local.v1.ListProfilesResponse
+	16,  // 175: hermesh.local.v1.LocalService.SwitchProfile:output_type -> hermesh.local.v1.SwitchProfileResponse
+	18,  // 176: hermesh.local.v1.LocalService.AddProfile:output_type -> hermesh.local.v1.AddProfileResponse
+	20,  // 177: hermesh.local.v1.LocalService.SignOut:output_type -> hermesh.local.v1.SignOutResponse
+	22,  // 178: hermesh.local.v1.LocalService.SignIn:output_type -> hermesh.local.v1.SignInResponse
+	24,  // 179: hermesh.local.v1.LocalService.Setup:output_type -> hermesh.local.v1.SetupResponse
+	26,  // 180: hermesh.local.v1.LocalService.LogIn:output_type -> hermesh.local.v1.LogInResponse
+	28,  // 181: hermesh.local.v1.LocalService.GetLogin:output_type -> hermesh.local.v1.GetLoginResponse
+	30,  // 182: hermesh.local.v1.LocalService.SetLogin:output_type -> hermesh.local.v1.SetLoginResponse
+	33,  // 183: hermesh.local.v1.LocalService.ListDevices:output_type -> hermesh.local.v1.ListDevicesResponse
+	35,  // 184: hermesh.local.v1.LocalService.RemoveDevice:output_type -> hermesh.local.v1.RemoveDeviceResponse
+	37,  // 185: hermesh.local.v1.LocalService.Leave:output_type -> hermesh.local.v1.LeaveResponse
+	39,  // 186: hermesh.local.v1.LocalService.EraseEverything:output_type -> hermesh.local.v1.EraseEverythingResponse
+	41,  // 187: hermesh.local.v1.LocalService.EraseStatus:output_type -> hermesh.local.v1.EraseStatusResponse
+	44,  // 188: hermesh.local.v1.LocalService.FinishErase:output_type -> hermesh.local.v1.FinishEraseResponse
+	47,  // 189: hermesh.local.v1.LocalService.SetLocalMachine:output_type -> hermesh.local.v1.SetLocalMachineResponse
+	53,  // 190: hermesh.local.v1.LocalService.ListMachines:output_type -> hermesh.local.v1.ListMachinesResponse
+	55,  // 191: hermesh.local.v1.LocalService.RenameMachine:output_type -> hermesh.local.v1.RenameMachineResponse
+	57,  // 192: hermesh.local.v1.LocalService.SetMachinePaused:output_type -> hermesh.local.v1.SetMachinePausedResponse
+	59,  // 193: hermesh.local.v1.LocalService.SetAgentDefaults:output_type -> hermesh.local.v1.SetAgentDefaultsResponse
+	73,  // 194: hermesh.local.v1.LocalService.RemoveMachine:output_type -> hermesh.local.v1.RemoveMachineResponse
+	61,  // 195: hermesh.local.v1.LocalService.CheckAgents:output_type -> hermesh.local.v1.CheckAgentsResponse
+	63,  // 196: hermesh.local.v1.LocalService.ListMachineRepos:output_type -> hermesh.local.v1.ListMachineReposResponse
+	190, // 197: hermesh.local.v1.LocalService.ListMachineFolders:output_type -> hermesh.machine.v1.ListFoldersResponse
+	191, // 198: hermesh.local.v1.LocalService.TestMachineAgent:output_type -> hermesh.machine.v1.TestAgentResponse
+	106, // 199: hermesh.local.v1.LocalService.ListExecLog:output_type -> hermesh.local.v1.ListExecLogResponse
+	71,  // 200: hermesh.local.v1.LocalService.GetDiagnostics:output_type -> hermesh.local.v1.GetDiagnosticsResponse
+	133, // 201: hermesh.local.v1.LocalService.SetHer:output_type -> hermesh.local.v1.SetHerResponse
+	135, // 202: hermesh.local.v1.LocalService.SetHerAssistantMode:output_type -> hermesh.local.v1.SetHerAssistantModeResponse
+	137, // 203: hermesh.local.v1.LocalService.SetHerCommandConnector:output_type -> hermesh.local.v1.SetHerCommandConnectorResponse
+	192, // 204: hermesh.local.v1.LocalService.HerOpen:output_type -> hermesh.her.v1.OpenEvent
+	193, // 205: hermesh.local.v1.LocalService.HerCall:output_type -> hermesh.her.v1.CallResponse
+	143, // 206: hermesh.local.v1.LocalService.HerSend:output_type -> hermesh.local.v1.HerSendResponse
+	145, // 207: hermesh.local.v1.LocalService.ListHerWaiting:output_type -> hermesh.local.v1.ListHerWaitingResponse
+	147, // 208: hermesh.local.v1.LocalService.DeleteHerWaiting:output_type -> hermesh.local.v1.DeleteHerWaitingResponse
+	150, // 209: hermesh.local.v1.LocalService.GetHerConversation:output_type -> hermesh.local.v1.GetHerConversationResponse
+	152, // 210: hermesh.local.v1.LocalService.HerUpload:output_type -> hermesh.local.v1.HerUploadResponse
+	154, // 211: hermesh.local.v1.LocalService.HerDownload:output_type -> hermesh.local.v1.HerDownloadResponse
+	158, // 212: hermesh.local.v1.LocalService.GetHerConsole:output_type -> hermesh.local.v1.GetHerConsoleResponse
+	156, // 213: hermesh.local.v1.LocalService.StopScreen:output_type -> hermesh.local.v1.StopScreenResponse
+	76,  // 214: hermesh.local.v1.LocalService.ListProjects:output_type -> hermesh.local.v1.ListProjectsResponse
+	78,  // 215: hermesh.local.v1.LocalService.AddProject:output_type -> hermesh.local.v1.AddProjectResponse
+	80,  // 216: hermesh.local.v1.LocalService.RemoveProject:output_type -> hermesh.local.v1.RemoveProjectResponse
+	83,  // 217: hermesh.local.v1.LocalService.ListClients:output_type -> hermesh.local.v1.ListClientsResponse
+	85,  // 218: hermesh.local.v1.LocalService.UpdateClient:output_type -> hermesh.local.v1.UpdateClientResponse
+	87,  // 219: hermesh.local.v1.LocalService.RenameClient:output_type -> hermesh.local.v1.RenameClientResponse
+	89,  // 220: hermesh.local.v1.LocalService.RevokeClient:output_type -> hermesh.local.v1.RevokeClientResponse
+	94,  // 221: hermesh.local.v1.LocalService.ListWakes:output_type -> hermesh.local.v1.ListWakesResponse
+	96,  // 222: hermesh.local.v1.LocalService.SetWake:output_type -> hermesh.local.v1.SetWakeResponse
+	98,  // 223: hermesh.local.v1.LocalService.CheckWake:output_type -> hermesh.local.v1.CheckWakeResponse
+	100, // 224: hermesh.local.v1.LocalService.ClearWake:output_type -> hermesh.local.v1.ClearWakeResponse
+	102, // 225: hermesh.local.v1.LocalService.OpenWakeLink:output_type -> hermesh.local.v1.OpenWakeLinkResponse
+	109, // 226: hermesh.local.v1.LocalService.ListSessions:output_type -> hermesh.local.v1.ListSessionsResponse
+	111, // 227: hermesh.local.v1.LocalService.WatchSessions:output_type -> hermesh.local.v1.WatchSessionsResponse
+	171, // 228: hermesh.local.v1.LocalService.StreamSessionEvents:output_type -> hermesh.session.v1.SessionEvent
+	5,   // 229: hermesh.local.v1.LocalService.ListSessionEvents:output_type -> hermesh.local.v1.ListSessionEventsResponse
+	194, // 230: hermesh.local.v1.LocalService.ReadToolOutput:output_type -> hermesh.session.v1.ToolOutputChunk
+	123, // 231: hermesh.local.v1.LocalService.StartSession:output_type -> hermesh.local.v1.SessionResponse
+	123, // 232: hermesh.local.v1.LocalService.SendMessage:output_type -> hermesh.local.v1.SessionResponse
+	123, // 233: hermesh.local.v1.LocalService.InterruptSession:output_type -> hermesh.local.v1.SessionResponse
+	123, // 234: hermesh.local.v1.LocalService.ArchiveSession:output_type -> hermesh.local.v1.SessionResponse
+	123, // 235: hermesh.local.v1.LocalService.UnarchiveSession:output_type -> hermesh.local.v1.SessionResponse
+	121, // 236: hermesh.local.v1.LocalService.DeleteSession:output_type -> hermesh.local.v1.DeleteSessionResponse
+	123, // 237: hermesh.local.v1.LocalService.RenameSession:output_type -> hermesh.local.v1.SessionResponse
+	114, // 238: hermesh.local.v1.LocalService.AnswerQuestion:output_type -> hermesh.local.v1.AnswerQuestionResponse
+	195, // 239: hermesh.local.v1.LocalService.GetDiff:output_type -> hermesh.session.v1.GetDiffResponse
+	196, // 240: hermesh.local.v1.LocalService.PushSession:output_type -> hermesh.session.v1.PushSessionResponse
+	160, // 241: hermesh.local.v1.LocalService.ListDSHSessions:output_type -> hermesh.local.v1.ListDSHSessionsResponse
+	197, // 242: hermesh.local.v1.LocalService.ReadDSHSession:output_type -> hermesh.machine.v1.ReadDSHSessionResponse
+	198, // 243: hermesh.local.v1.LocalService.SetDSHTakeover:output_type -> hermesh.machine.v1.SetDSHTakeoverResponse
+	199, // 244: hermesh.local.v1.LocalService.SendDSHMessage:output_type -> hermesh.machine.v1.SendDSHMessageResponse
+	200, // 245: hermesh.local.v1.LocalService.InterruptDSHSession:output_type -> hermesh.machine.v1.InterruptDSHSessionResponse
+	201, // 246: hermesh.local.v1.LocalService.PrepareDSHBridge:output_type -> hermesh.machine.v1.PrepareDSHBridgeResponse
+	202, // 247: hermesh.local.v1.LocalService.ListMachineCustomAgents:output_type -> hermesh.machine.v1.ListCustomAgentsResponse
+	203, // 248: hermesh.local.v1.LocalService.SaveMachineCustomAgent:output_type -> hermesh.machine.v1.SaveCustomAgentResponse
+	204, // 249: hermesh.local.v1.LocalService.RemoveMachineCustomAgent:output_type -> hermesh.machine.v1.RemoveCustomAgentResponse
+	205, // 250: hermesh.local.v1.LocalService.TestMachineCustomAgent:output_type -> hermesh.machine.v1.TestCustomAgentResponse
+	129, // 251: hermesh.local.v1.LocalService.QueryWork:output_type -> hermesh.local.v1.QueryWorkResponse
+	9,   // 252: hermesh.local.v1.LocalService.RegisterPush:output_type -> hermesh.local.v1.RegisterPushResponse
+	172, // [172:253] is the sub-list for method output_type
+	91,  // [91:172] is the sub-list for method input_type
+	91,  // [91:91] is the sub-list for extension type_name
+	91,  // [91:91] is the sub-list for extension extendee
+	0,   // [0:91] is the sub-list for field type_name
 }
 
 func init() { file_hermesh_local_v1_local_proto_init() }
@@ -12667,14 +10905,14 @@ func file_hermesh_local_v1_local_proto_init() {
 	if File_hermesh_local_v1_local_proto != nil {
 		return
 	}
-	file_hermesh_local_v1_local_proto_msgTypes[109].OneofWrappers = []any{}
+	file_hermesh_local_v1_local_proto_msgTypes[84].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hermesh_local_v1_local_proto_rawDesc), len(file_hermesh_local_v1_local_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   191,
+			NumMessages:   166,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

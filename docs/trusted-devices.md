@@ -5,9 +5,12 @@
 > hosted center alike. There were no users yet, so nothing is migrated: a
 > hosted center drops the owners it had, and their accounts link again.
 
-> Fork addition (2026-11-18): a device or agent may also log in with the
-> owner's account and password, which a trusted device turns on; the
-> password key is a root key like the others ([password-login.md](password-login.md)).
+> **Superseded (2026-11-20) by [accounts.md](accounts.md).** Devices no
+> longer hold root keys, nothing is approved on another device, and no
+> codes or digits are compared: the server keeps the account and password
+> and signs whoever logs in. What follows describes the model before it,
+> which devices set up then still carry (their root keys stay listed until
+> they are signed out, accounts.md §4–5); profiles (§4.8) are unchanged.
 
 In one sentence: **every device with the Hermesh app is an equal trusted
 device of its owner**: any of them can approve, each is usually a machine as

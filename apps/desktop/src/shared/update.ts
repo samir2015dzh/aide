@@ -39,7 +39,6 @@ export type UpdateInfo = {
   attemptedAt: number | null;
   snoozedVersion: string;
   snoozedUntil: number;
-  approvalPending: boolean;
   notes: ReleaseNote[];
 };
 

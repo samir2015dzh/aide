@@ -1,3 +1,4 @@
+import { ConnectLink } from "../components";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { Machine } from "@hermesh/proto/local";
@@ -73,7 +74,11 @@ export function Machines({ open, select, ask }: { open: string; select: (id: str
             </GoRow>
           );
         })}
-        {st.machines.length === 0 && <div className="frow muted">{t("machines.none")}</div>}
+        {st.machines.length === 0 && (
+          <div className="frow muted">
+            {t("machines.none")} <ConnectLink>{t("machines.howToConnect")}</ConnectLink>
+          </div>
+        )}
       </div>
       <div className="set-acts">
         <button className="btn" onClick={() => st.set({ sheet: { kind: "addMachine" } })}>{t("machines.add")}</button>

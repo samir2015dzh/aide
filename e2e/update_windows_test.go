@@ -24,7 +24,6 @@ import (
 	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
 // TestWindowsUpdate is docs/machine-updates.md §7 on a Windows machine
@@ -119,19 +118,18 @@ func TestWindowsUpdate(t *testing.T) {
 	relayData := filepath.Join(tmp, "relay")
 	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sock := filepath.Join(tmp, "o.sock")
 	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), ClaimCode: claim, RootPublicKey: rootPub(root)})
-	if err != nil {
+	app := newTestApp(t, sock)
+	server := fmt.Sprintf("http://127.0.0.1:%d", port)
+	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: server, SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-pc", Platform: "windows"}); err != nil {
 		t.Fatal(err)
 	}
 
 	// 1. install.ps1, as a person runs it: A, with its logon task.
 	binDir, data := filepath.Join(tmp, "bin"), filepath.Join(tmp, "machine")
-	env := []string{"HERMESH_DOWNLOAD_BASE=" + releasesURL + "/latest/download", "HERMESH_BIN_DIR=" + binDir, "HERMESH_NO_PATH=1", "HERMESH_DATA_DIR=" + data}
+	env := append([]string{"HERMESH_DOWNLOAD_BASE=" + releasesURL + "/latest/download", "HERMESH_BIN_DIR=" + binDir, "HERMESH_NO_PATH=1", "HERMESH_DATA_DIR=" + data}, loginEnv()...)
 	hermeshd := filepath.Join(binDir, "hermeshd.exe")
 	t.Cleanup(func() {
 		if t.Failed() {
@@ -141,26 +139,19 @@ func TestWindowsUpdate(t *testing.T) {
 		exec.Command(hermeshd, "service", "uninstall").Run()
 	})
 	installScript := filepath.Join(tmp, "releases", "0.0.1", "install.ps1")
-	install := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installScript, setup.ConnectAddress, "-Name", "win-1")
+	install := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installScript, server, "-Name", "win-1")
 	install.Env = append(os.Environ(), env...)
 	var installOut syncBuffer
 	install.Stdout, install.Stderr = &installOut, &installOut
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 2*time.Minute, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(installOut.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
-	})
-	approved, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "win-1"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil {
 		t.Fatalf("install: %v\n%s", err, installOut.String())
+	}
+	machineID := loggedInMachine(installOut.String())
+	if machineID == "" {
+		t.Fatalf("install logged no machine in:\n%s", installOut.String())
 	}
 	machineVersion := func() string {
 		res, err := app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
@@ -168,7 +159,7 @@ func TestWindowsUpdate(t *testing.T) {
 			return ""
 		}
 		for _, m := range res.Machines {
-			if m.MachineId == approved.MachineId && m.Online && m.Status != nil {
+			if m.MachineId == machineID && m.Online && m.Status != nil {
 				return m.Status.Version
 			}
 		}

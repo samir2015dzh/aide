@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Trans, useTranslation } from "react-i18next";
-import type { Client, PairingDetails } from "@hermesh/proto/local";
-import { PairingKind } from "@hermesh/proto/identity";
+import { type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { Client } from "@hermesh/proto/local";
 import { dateOf, displayTitle, pendingQuestion } from "@hermesh/core";
 import { i18n } from "../../../shared/i18n";
 import { opensActivityMonitor, problemBody, problemsOf, problemTitle, severe } from "../health";
@@ -23,8 +22,8 @@ export function expiringClients(st: Store, now: Date): Client[] {
 /**
  * "Needs You": what waits on the owner. Machines kept from working first;
  * then the sessions that ask a question, answered here when one click can
- * (docs/her-team.md §14.4), and those whose turn failed; then pairing requests
- * and grants about to expire, and an older signer than the app's (Windows).
+ * (docs/her-team.md §14.4), and those whose turn failed; then grants about
+ * to expire.
  * A machine only has only its own health here.
  */
 export function Attention({ now }: { now: Date }) {
@@ -34,12 +33,7 @@ export function Attention({ now }: { now: Date }) {
   const expiring = owner ? expiringClients(st, now) : [];
   const sick = st.machines.flatMap((m) => problemsOf(m).map((p) => ({ m, p })));
   const team = useTeam();
-  // The signer the app carries, newer than the one set up: it signs what the old one can't show.
-  const [signer, setSigner] = useState<string>();
-  useEffect(() => {
-    if (owner) window.hermesh?.signerUpdate().then(setSigner, () => {});
-  }, [owner]);
-  const count = sick.length + team.waiting.length + team.failed.length + st.pairings.length + expiring.length + (signer ? 1 : 0);
+  const count = sick.length + team.waiting.length + team.failed.length + expiring.length;
   if (count === 0) return null;
   return (
     <section aria-label={t("attention.title")}>
@@ -69,28 +63,6 @@ export function Attention({ now }: { now: Date }) {
             <button className="btn" onClick={() => st.select(s.sessionId)}>{t("attention.open")}</button>
           </Row>
         ))}
-        {st.pairings.map((p) => (
-          <Row
-            key={p.code}
-            icon="key"
-            tint="a"
-            title={pairingTitle(p)}
-            detail={
-              p.confirmed ? (
-                p.platform || p.hostname
-              ) : (
-                <Trans
-                  t={t}
-                  i18nKey="attention.pairingDetail"
-                  values={{ device: p.platform || p.hostname, code: p.verificationCode }}
-                  components={{ code: <code className="mono" /> }}
-                />
-              )
-            }
-          >
-            <button className="btn primary" onClick={() => st.set({ sheet: { kind: "pairing", code: p.code } })}>{t(p.confirmed ? "attention.review" : "attention.verify")}</button>
-          </Row>
-        ))}
         {expiring.map((c) => {
           const days = Math.max(0, Math.ceil(((dateOf(c.expiresAt)?.getTime() ?? 0) - now.getTime()) / day));
           return (
@@ -99,35 +71,9 @@ export function Attention({ now }: { now: Date }) {
             </Row>
           );
         })}
-        {signer && (
-          <Row icon="shield" tint="a" title={t("attention.signer")} detail={t("attention.signerDetail", { version: signer })}>
-            <button
-              className="btn"
-              onClick={() =>
-                st.run(async () => {
-                  await window.hermesh?.updateSigner();
-                  setSigner(await window.hermesh?.signerUpdate());
-                }, t("attention.signerUpdated"))
-              }
-            >
-              {t("attention.updateSigner")}
-            </button>
-          </Row>
-        )}
       </div>
     </section>
   );
-}
-
-function pairingTitle(p: PairingDetails): string {
-  switch (p.kind) {
-    case PairingKind.DEVICE:
-      return i18n.t("overview:attention.pairingDevice", { label: p.label });
-    case PairingKind.CLIENT:
-      return i18n.t("overview:attention.pairingClient", { label: p.label });
-    default:
-      return i18n.t("overview:attention.pairingMachine", { label: p.label });
-  }
 }
 
 function Row({ icon, tint, title, detail, wrap, children }: { icon: string; tint: string; title: string; detail: ReactNode; wrap?: boolean; children: ReactNode }) {

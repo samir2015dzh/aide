@@ -4,7 +4,7 @@
 #   apps/android/scripts/build-core.sh   →   apps/android/build/core/hermeshcore.aar
 # It does nothing when the library is newer than every Go source file
 # (the Gradle build runs it before each build). VERSION stamps the version.
-# No build names a server: logging in asks for it (docs/password-login.md).
+# No build names a server: logging in asks for it (docs/accounts.md).
 # Needs ANDROID_HOME (or ANDROID_SDK_ROOT) with an NDK in it, or
 # ANDROID_NDK_HOME; gomobile and gobind come from go.mod's tools.
 set -euo pipefail
@@ -36,7 +36,7 @@ go build -o "$TMP/bin/gomobile" golang.org/x/mobile/cmd/gomobile
 export PATH="$TMP/bin:$PATH"
 mkdir -p "$(dirname "$OUT")"
 echo "› building the core for android/arm64 and android/amd64"
-gomobile bind -target=android/arm64,android/amd64 -androidapi 30 -javapkg io.hermesh.android \
+gomobile bind -target=android/arm64,android/amd64 -androidapi 30 -javapkg io.aide.android \
   -trimpath -ldflags "-s -w -X github.com/hermeshai/hermesh/internal/machine.Version=${VERSION#v}" \
   -o "$OUT" ./cmd/hermesh-mobile/android
 rm -f "${OUT%.aar}-sources.jar"

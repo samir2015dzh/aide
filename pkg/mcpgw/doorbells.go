@@ -922,7 +922,7 @@ func (g *Gateway) wakeTool(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 		return docResult(failure(1, "internal", err.Error(), "", true)), nil
 	}
 	if c.State != StateActive {
-		return docResult(g.notReady(c, "message_wake")), nil
+		return docResult(failure(3, "revoked", g.status(c).Next, "", false)), nil
 	}
 	var args struct {
 		As string `json:"as"`

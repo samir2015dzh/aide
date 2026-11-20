@@ -74,6 +74,8 @@ type Principal struct {
 	Kind     PrincipalKind
 	ClientID string
 	Grant    *identityv1.Grant
+	// An owner device's device key id, over a tunnel (signing it out ends it).
+	DeviceKey string
 }
 
 func (p *Principal) ID() string {

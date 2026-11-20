@@ -3,7 +3,7 @@
 ```bash
 make generate   # Go, Swift and TypeScript code from proto
 make lint test  # static checks and unit tests
-make test-app   # the desktop app's types and unit tests, and the signer's
+make test-app   # the desktop app's types and unit tests
 make e2e        # full user flows and malicious-relay tests with real binaries and scripted agents
 make e2e-real   # the same flows with the real Claude Code and Codex on this machine (uses quota)
 HERMESH_DOCKER=1 go test ./e2e -run Linux   # a Linux machine (Docker)
@@ -13,11 +13,11 @@ pnpm --dir apps/desktop dev   # the desktop app against the local hermeshd (HERM
 ```
 
 `make e2e` includes the desktop app's tests, which open the app on this Mac;
-`go test ./e2e -skip 'TestDesktop$|TestSignerApp$'` leaves them out.
+`go test ./e2e -skip 'TestDesktop$'` leaves them out.
 
 ## Releases
 
-A release build of the desktop app needs, besides the Developer ID certificate in the keychain, the signer's Developer ID provisioning profile (App ID `com.hermesh.app.signer`, so the root key stays in the signer's Keychain group) and an App Store Connect API key to notarize:
+A release build of the desktop app needs, besides the Developer ID certificate in the keychain, the signer's Developer ID provisioning profile (App ID `com.hermesh.app.signer`; upstream's Mac app, whose signer this fork does not have, [accounts.md](accounts.md)) and an App Store Connect API key to notarize:
 
 ```bash
 HERMESH_SIGNER_PROFILE=~/.config/hermesh/signer.provisionprofile \
@@ -32,7 +32,7 @@ Releasing: every part of Aide has one version, and each version is one GitHub re
 
 1. **Notes.** Before tagging, the version's highlights go in `apps/desktop/src/locales/{en,zh-CN}/releases.json` (rename `unreleased` to the version, and leave an empty `unreleased`); without them the release workflow stops. Each line says where it applies when that is not everywhere ("On the iPhone…", "On Linux…"). The release's text starts with which file to install for what (`install` in the same folder's `updates.json`), then the highlights, then a link to every change since the last release.
 2. **Tag.** Pushing a `v*` tag runs `release.yml`. It makes a draft release, the builds upload their files to it, and `scripts/release-check.sh` checks them all (every program in the signed checksum list, the Windows programs, the version, install.sh's and install.ps1's key, the Mac app's feeds naming this version). Only then is the draft published, as a **prerelease**: nothing installed updates to it, and the latest release stays as it was. The relay image of the version is on ghcr.io only. A failed run leaves a draft; fix it and run the workflow again, or delete the draft and tag a new version.
-3. **Try it.** On a machine: `curl -fsSL https://github.com/samir2015dzh/hermesh/releases/download/<tag>/install.sh | AIDE_VERSION=<tag> sh` (on a paired machine it updates it). On a Mac: the prerelease's DMG. Your own server: `ghcr.io/samir2015dzh/aide-relay:<tag>`.
+3. **Try it.** On a machine: `curl -fsSL https://github.com/samir2015dzh/hermesh/releases/download/<tag>/install.sh | AIDE_VERSION=<tag> sh` (on a machine logged in it updates it). On a Mac: the prerelease's DMG. Your own server: `ghcr.io/samir2015dzh/aide-relay:<tag>`.
 4. **Promote.** `gh workflow run promote.yml -f tag=<tag>` checks the files again, makes the relay image latest on ghcr.io (nothing goes to Docker Hub, where `hermeshai` is upstream's), then makes the release the latest. Within hours every machine and Mac app updates to it; the workflow waits until `releases/latest` serves it.
 
 **This fork** (`samir2015dzh/hermesh`) releases what its owner uses, under its own key and from its own releases:

@@ -64,7 +64,7 @@ func TestDSHNativeSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	work, _ := w.otherMac("work-mac", []string{"DSH_HOME=" + workHome})
-	w.joinTyped(work, home, "work-mac")
+	w.logInMachineOnly(work, home, "work-mac")
 	writeDSHLog(t, workHome, map[string]any{"id": "tool-7", "cwd": "/srv/site"}, dshTurn(100, 1, "Deploy the site", "Deployed."))
 
 	before := map[string]map[string]string{macHome: dshSnapshot(t, macHome), workHome: dshSnapshot(t, workHome)}

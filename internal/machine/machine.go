@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -515,7 +516,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 // Run serves until ctx is done.
 func (n *Machine) Run(ctx context.Context) error {
 	if !n.Paired() {
-		return errors.New("this machine is not paired yet; run `aided pair <connection address>`")
+		return errors.New("this machine is not logged in yet; run `aided login <server>`")
 	}
 	if err := n.sessions.Recover(); err != nil {
 		return err
@@ -555,7 +556,8 @@ func (n *Machine) applyRevocations(r *identityv1.RevocationList) {
 	n.revocations = cur
 	var close []*tunnel
 	for t := range n.tunnels {
-		if t.principal.Kind == PrincipalClient && n.grantProblemLocked(t.principal.Grant) != nil {
+		if t.principal.Kind == PrincipalClient && n.grantProblemLocked(t.principal.Grant) != nil ||
+			t.principal.DeviceKey != "" && slices.Contains(cur.RevokedDeviceKeys, t.principal.DeviceKey) {
 			close = append(close, t)
 		}
 	}
@@ -570,7 +572,15 @@ func (n *Machine) applyRevocations(r *identityv1.RevocationList) {
 		}
 	}
 	n.checkHerGrant()
-	n.audit.Log(AuditRecord{Kind: "revocations", Detail: fmt.Sprintf("grants=%v machines=%v min=%v", cur.RevokedGrantIds, cur.RevokedMachineIds, cur.MinGrantVersions)})
+	n.audit.Log(AuditRecord{Kind: "revocations", Detail: fmt.Sprintf("grants=%v machines=%v devices=%v min=%v", cur.RevokedGrantIds, cur.RevokedMachineIds, cur.RevokedDeviceKeys, cur.MinGrantVersions)})
+}
+
+// deviceSignedOut tells whether the owner's device with this device key
+// id was signed out.
+func (n *Machine) deviceSignedOut(keyID string) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return slices.Contains(n.revocations.GetRevokedDeviceKeys(), keyID)
 }
 
 func (n *Machine) clientsForGrant(grantID string) []string {
@@ -606,6 +616,7 @@ func mergeRevocations(cur, in *identityv1.RevocationList) {
 	}
 	add(&cur.RevokedGrantIds, in.RevokedGrantIds)
 	add(&cur.RevokedMachineIds, in.RevokedMachineIds)
+	add(&cur.RevokedDeviceKeys, in.RevokedDeviceKeys)
 	if cur.MinGrantVersions == nil {
 		cur.MinGrantVersions = map[string]uint64{}
 	}

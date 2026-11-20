@@ -2,8 +2,8 @@
   "title": "Connect Your Agents",
   "lede": "Each agent connects its own way. Pick one and follow its steps. Aide runs the agent on the computer where it is installed, and you give it tasks from here, from your phone, or through your assistants.",
   "lines": {
-    "deepseek": "DeepSeek (DSH)",
-    "claude": "Claude",
+    "deepseek": "DSH (DeepSeek Harness)",
+    "claude": "Claude Desktop",
     "codex": "Codex",
     "custom": "Other Agent",
     "assistants": "Assistants"
@@ -57,7 +57,7 @@
     "needsProject": "Add a project first: a test task works in one."
   },
   "deepseek": {
-    "intro": "DeepSeek Harness (DSH) is DeepSeek’s coding agent. Aide runs the DSH installed on your computer: the one in the DeepSeek Harness desktop app, or the dsh command.",
+    "intro": "DSH is the DeepSeek Harness desktop app, DeepSeek’s coding agent. Aide runs the DSH installed on your computer: the one in the desktop app, or the dsh command.",
     "need1": "DeepSeek Harness installed on the computer that runs it: the DSH desktop app (installed in its usual folder), or the dsh command.",
     "need2": "DSH set up with your DeepSeek account or API key: open DSH once and send it a message to be sure it answers.",
     "need3": "Aide open on that computer and signed in to your account (this computer already is).",
@@ -76,24 +76,24 @@
     "openSessions": "Open DeepSeek Sessions"
   },
   "claude": {
-    "intro": "Claude here is Claude Code, Anthropic’s coding agent. You don’t need to install it separately if you have the Claude desktop app: Aide uses the Claude Code that the app downloads for itself.",
-    "need1": "The Claude desktop app installed and signed in, or Claude Code installed on its own.",
-    "need2": "With the Claude app: open its Code tab once and start a short session there. That downloads Claude Code, which Aide runs.",
-    "need3": "Claude Code signed in, with a Claude plan or an API key.",
-    "step1": "Choose the computer that has Claude above (this one is chosen for you).",
+    "intro": "Claude here is Claude Desktop, Anthropic’s desktop app. Aide runs the Claude Code that Claude Desktop uses on its Code tab: nothing else to install.",
+    "need1": "Claude Desktop installed and signed in to your Claude account (or Claude Code installed on its own).",
+    "need2": "Open Claude Desktop’s Code tab once and start a short session there. That downloads Claude Code, which Aide runs.",
+    "need3": "Claude Code signed in, with a Claude plan or an API key: if it answers on the Code tab, it is.",
+    "step1": "Choose the computer that has Claude Desktop above (this one is chosen for you).",
     "step2": "Look at Status: it should say “Detected”. If it doesn’t, follow the list under it, then click Check Again.",
     "step3": "If Claude Code has no project yet, click Add Project… and choose a folder it may work in.",
     "step4": "Click Run Test. Claude Code answers one short question.",
     "step5": "Click Start Test Task. A real task starts and opens in Aide.",
-    "fixInstall": "Install the Claude desktop app from claude.ai/download and sign in (or install Claude Code on its own).",
-    "fixWhere": "Have the Claude app already? Open its Code tab once and start a short session: the app downloads Claude Code only then.",
-    "fixCodeTab": "The Claude app hasn’t downloaded Claude Code yet. Open the Claude app, sign in, open its Code tab and start a short session there.",
+    "fixInstall": "Install Claude Desktop from claude.ai/download and sign in (or install Claude Code on its own).",
+    "fixWhere": "Have Claude Desktop already? Open its Code tab once and start a short session: the app downloads Claude Code only then.",
+    "fixCodeTab": "Claude Desktop hasn’t downloaded Claude Code yet. Open Claude Desktop, sign in, open its Code tab and start a short session there.",
     "fixSignIn": "Sign Claude Code in once: open a terminal (PowerShell on Windows), paste the command below and press Enter, then type /login and follow the browser.",
     "testFailedHint": "If the reason says it isn’t logged in, sign Claude Code in (see Status above) and run the test again.",
     "where1": "Tasks you start in Aide with Claude are in Aide’s task list, on every device of yours.",
-    "where2": "The Claude app lists them too, on its Code tab, after it restarts, once you have opened a session there yourself. The Microsoft Store version of the Claude app doesn’t.",
-    "where3": "Continue one in the Claude app only once Aide is done with it: its title ends with who started it “via Aide”.",
-    "assistant": "Want the Claude app’s chat to give tasks to your agents instead? That is a different connection: Assistants, above."
+    "where2": "Claude Desktop lists them too, on its Code tab, after it restarts, once you have opened a session there yourself. The Microsoft Store version of Claude Desktop doesn’t.",
+    "where3": "Continue one in Claude Desktop only once Aide is done with it: its title ends with who started it “via Aide”.",
+    "assistant": "Want Claude Desktop’s chat to give tasks to your agents instead? That is a different connection: Claude under Assistants, above."
   },
   "codex": {
     "intro": "Codex is OpenAI’s coding agent. Aide runs the codex command installed on your computer.",
@@ -174,10 +174,22 @@
     }
   },
   "assistants": {
-    "intro": "Assistants such as Muse, Grok Bot, ChatGPT, the Claude app or OpenClaw don’t run on your computer: they give tasks to the coding agents above. Connect one to let it do that."
-  },
-  "notice": {
-    "request": "{{name}} is asking to connect.",
-    "review": "Review"
+    "intro": "Assistants such as Muse, Grok Bot, ChatGPT, Claude Desktop’s chat or OpenClaw don’t run on your computer: they give tasks to the coding agents above. One logs in with your Aide account and password, and is ready at once: there’s nothing for you to approve.",
+    "pick": "Choose the assistant",
+    "name": "Name",
+    "mcp1": "In {{app}}, add a custom connector (Claude Desktop: Settings › Connectors › Add custom connector) and paste the address below.",
+    "mcp2": "{{app}} opens your Aide server’s login page: enter your Aide account and password, and click Connect.",
+    "mcp3": "Once connected, it shows here, and in Settings › Access.",
+    "cli1": "Copy the message below, replace {{password}} in it with your Aide password, and send it to {{name}}.",
+    "cli2": "{{name}} installs the Aide command line as the message says and logs in: nothing for you to approve, no code to compare.",
+    "cli3": "Once logged in, it shows here, and in Settings › Access.",
+    "noMCP": "Your server offers no MCP address (it needs a domain with HTTPS). Give the server HTTPS first, or connect this assistant with the command line instead (choose Other Agent).",
+    "copy": "Copy",
+    "copied": "Copied",
+    "password": "Anyone with your password can log in to your account and run tasks on your computers. Send it only to assistants you trust; to stop one, sign it out in Settings › Access, or change the password (which signs out every assistant).",
+    "waiting": "Waiting for {{name}} to log in…",
+    "connected": "{{name}} Is Connected",
+    "connectedBody": "It can now start tasks in the projects on all your machines and sees only its own tasks, until you sign it out.",
+    "scope": "Change What It Can Use…"
   }
 }

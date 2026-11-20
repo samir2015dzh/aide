@@ -482,12 +482,10 @@ func TestHerAssistantModeAndSignedCommands(t *testing.T) {
 	}
 
 	k, _ := identity.GenerateKey()
-	o.rootPub = k.Public()
 	o.herInfo = func(context.Context, string) (*machinev1.MachineStatus, error) {
 		return &machinev1.MachineStatus{Her: &machinev1.HerStatus{}}, nil
 	}
-	asked, stop := o.hub.watch(false)
-	defer stop()
+	sg := signWith(o, k)
 	connector := &identityv1.SetHerCommandConnector{Name: "github", Command: "npx", Args: []string{"-y", "server-github"}}
 	for _, c := range []struct {
 		name string
@@ -504,21 +502,21 @@ func TestHerAssistantModeAndSignedCommands(t *testing.T) {
 	} {
 		done := make(chan error, 1)
 		go func() { done <- c.call() }()
-		var r *localv1.SigningRequest
+		var msgs []proto.Message
 		select {
-		case r = <-asked:
+		case msgs = <-sg.asked:
 		case <-time.After(5 * time.Second):
-			t.Fatalf("%s: the signer is not asked", c.name)
+			t.Fatalf("%s: the server is not asked to sign", c.name)
 		}
-		cmd := &identityv1.AdminCommand{}
-		if r.Type != identity.MessageType(cmd) || proto.Unmarshal(r.Body, cmd) != nil || cmd.TargetMachineId != "m_1" {
-			t.Fatalf("%s: signs %s", c.name, r.Type)
+		cmd, ok := msgs[0].(*identityv1.AdminCommand)
+		if len(msgs) != 1 || !ok || cmd.TargetMachineId != "m_1" {
+			t.Fatalf("%s: signs %v", c.name, msgs)
 		}
 		if !proto.Equal(c.got(cmd), c.want) {
 			t.Fatalf("%s: signs %v", c.name, cmd)
 		}
-		o.hub.complete(&localv1.CompleteSigningRequestRequest{RequestId: r.RequestId, Rejected: true})
-		if err := <-done; !errors.Is(err, ErrSigningRejected) {
+		sg.answer <- false
+		if err := <-done; connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Fatalf("%s: %v", c.name, err)
 		}
 	}
@@ -541,9 +539,7 @@ func TestHerAssistantModeAndSignedCommands(t *testing.T) {
 func TestHerOnBeforeHer(t *testing.T) {
 	_, o, _, _ := herOwner(t, &herSide{})
 	k, _ := identity.GenerateKey()
-	o.rootPub = k.Public()
-	asked, stop := o.hub.watch(false)
-	defer stop()
+	sg := signWith(o, k)
 	ctx := context.Background()
 	for _, c := range []struct {
 		name   string
@@ -559,8 +555,8 @@ func TestHerOnBeforeHer(t *testing.T) {
 			t.Errorf("%s: %v", c.name, err)
 		}
 		select {
-		case r := <-asked:
-			t.Fatalf("%s: the signer is asked for %s", c.name, r.Type)
+		case msgs := <-sg.asked:
+			t.Fatalf("%s: the server is asked to sign %v", c.name, msgs)
 		default:
 		}
 	}
@@ -577,7 +573,7 @@ func TestHerOnBeforeHer(t *testing.T) {
 }
 
 // A computer that is only a machine holds no owner key: what needs one is
-// refused, saying a trusted device has to do it.
+// refused, saying one of the owner's devices has to do it.
 func TestHerOnAMachineOnly(t *testing.T) {
 	d, err := Open(Config{DataDir: t.TempDir()})
 	if err != nil {
@@ -591,7 +587,7 @@ func TestHerOnAMachineOnly(t *testing.T) {
 		"Her on":      o.SetHer(ctx, "m_1", true, false),
 		"a connector": o.SetHerCommandConnector(ctx, "m_1", &identityv1.SetHerCommandConnector{Name: "x", Command: "y"}),
 	} {
-		if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "a trusted device has to") {
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "one of your devices has to") {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
@@ -911,14 +907,12 @@ func TestHerSigninGivesUp(t *testing.T) {
 }
 
 // The console can't sign: a connector started as a command goes through
-// the console's address, which asks this device's signer and waits; why it
+// the console's address, which has the server sign it and waits; why it
 // didn't happen comes back in a few words.
 func TestHerConsoleCommandConnector(t *testing.T) {
 	_, o, _, _ := herOwner(t, &herSide{})
 	k, _ := identity.GenerateKey()
-	o.rootPub = k.Public()
-	asked, stop := o.hub.watch(false)
-	defer stop()
+	sg := signWith(o, k)
 	base, _ := o.GetHerConsole("m_1")
 	post := func(body string) (int, string) {
 		resp, err := http.Post(base+"command-connector", "application/json", strings.NewReader(body))
@@ -942,25 +936,23 @@ func TestHerConsoleCommandConnector(t *testing.T) {
 			code, text := post(body)
 			done <- answer{code, text}
 		}()
-		var r *localv1.SigningRequest
+		var msgs []proto.Message
 		select {
-		case r = <-asked:
+		case msgs = <-sg.asked:
 		case <-time.After(5 * time.Second):
-			t.Fatal("the signer is not asked")
+			t.Fatal("the server is not asked to sign")
 		}
-		cmd := &identityv1.AdminCommand{}
-		if proto.Unmarshal(r.Body, cmd) != nil || cmd.TargetMachineId != "m_1" || !proto.Equal(cmd.GetSetHerCommandConnector(), want) {
-			t.Fatalf("signs %v", cmd)
+		cmd, _ := msgs[0].(*identityv1.AdminCommand)
+		if cmd == nil || cmd.TargetMachineId != "m_1" || !proto.Equal(cmd.GetSetHerCommandConnector(), want) {
+			t.Fatalf("signs %v", msgs)
 		}
+		sg.answer <- sign
 		if !sign {
-			o.hub.complete(&localv1.CompleteSigningRequestRequest{RequestId: r.RequestId, Rejected: true})
-			if a := <-done; a.code != http.StatusForbidden || !strings.Contains(a.text, "declined") {
-				t.Fatalf("declined: %+v", a)
+			if a := <-done; a.code != http.StatusForbidden || !strings.Contains(a.text, "refused") {
+				t.Fatalf("refused: %+v", a)
 			}
 			continue
 		}
-		sig, _ := k.SignMessage(r.Message)
-		o.hub.complete(&localv1.CompleteSigningRequestRequest{RequestId: r.RequestId, Signature: sig})
 		// Signed, it goes nowhere: this device has no relay to send it through.
 		if a := <-done; a.code < 400 || !strings.Contains(a.text, "not set up") {
 			t.Fatalf("not sent: %+v", a)
@@ -1418,4 +1410,31 @@ func TestHerSendReplies(t *testing.T) {
 		got[2].Input[1]["text"] != "<resource uri=\"her-reply:hw_1\">\nReplying to this earlier message of mine, quoted in full:\n> which one\n</resource>" {
 		t.Fatalf("handed %+v", got)
 	}
+}
+
+// signing is a stand-in for the server signing for o: each request comes
+// on asked, and is signed with k, or refused, by what is sent on answer.
+type signing struct {
+	asked  chan []proto.Message
+	answer chan bool
+}
+
+func signWith(o *Owner, k *identity.SoftwareKey) *signing {
+	s := &signing{asked: make(chan []proto.Message, 4), answer: make(chan bool, 4)}
+	o.signHook = func(ctx context.Context, msgs []proto.Message) ([]*identityv1.Signed, error) {
+		s.asked <- msgs
+		if !<-s.answer {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the server refused to sign"))
+		}
+		var out []*identityv1.Signed
+		for _, m := range msgs {
+			sg, err := identity.Sign(m, k)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, sg)
+		}
+		return out, nil
+	}
+	return s
 }

@@ -1,5 +1,15 @@
 # Erase everything: one approval, every device back to its first run
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the
+> erase order is signed by the server for the device that asks
+> (`OwnerControlService.Sign`, `EraseOrder.by`), with no Touch ID or Face
+> ID; there are no trusted devices, only the owner's devices, and no Linux
+> trusted device (`hermeshd device erase-everything` is gone). A server
+> erased prints a new setup code (`aide-relay setup-code`); machines log in
+> again with `aided login <server>`, agents with `aide auth login <server>`,
+> devices with 登录, rather than pairing. What erasing reaches and keeps
+> holds.
+
 Status: agreed 2026-10-28 (§8), built (§6). One action, **Erase
 Everything** (全部清空), which first says exactly what it erases.
 

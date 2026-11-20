@@ -26,23 +26,16 @@ import (
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
 	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/pkg/identity"
 )
 
-// TestMCPGateway connects an agent product to a self-hosted relay's MCP
-// gateway the way Claude or Codex does (discovery from a 401, dynamic
-// registration, authorization code with PKCE, the consent page), before
-// Hermesh is even set up, and follows the connection until it works:
-//
-//   - connected with nothing set up: every tool says how to set Hermesh up;
-//   - the owner sets up the Mac: the approval request reaches it by itself,
-//     naming the relay as the key's custodian;
-//   - approved: the same tokens work, the tools are the CLI's commands and
-//     answer with its documents, and the connection sees sessions others
-//     started but steers only its own;
+// TestMCPGateway runs the MCP gateway of a relay serving MCP, as an agent
+// product (Claude, ChatGPT) reaches it:
+//   - the consent page connects the app with the owner's account and
+//     password, at once, no one approving; a wrong password connects
+//     nothing;
+//   - the tools are the CLI's commands and answer with its documents, and
+//     the connection sees sessions others started but steers only its own;
 //   - refresh rotates tokens; a code used twice is refused;
-//   - a second connection made while the Mac is online is approved on the
-//     consent page itself;
 //   - the app disconnecting (RFC 7009) revokes its grant on the relay, and
 //     the owner revoking the first one ends it.
 func TestMCPGateway(t *testing.T) {
@@ -63,31 +56,60 @@ func TestMCPGateway(t *testing.T) {
 	})
 	ctx := context.Background()
 
-	// A relay serving MCP, not claimed yet: nobody has set Hermesh up.
+	// A relay serving MCP, and the owner's Mac set up with it.
 	port := freePort(t)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
 	relayData := filepath.Join(tmp, "relay")
 	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	logs = append(logs, relay)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-
-	// --- Connect before anything is set up -------------------------------
-	// The address, with its key, from the server itself: no app has it yet.
+	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
+	sock := filepath.Join(sockDir, "o.sock")
+	owner := start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
+	logs = append(logs, owner)
+	mac := newTestApp(t, sock)
+	if _, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: base, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	local, err := mac.client.SetLocalMachine(ctx, &localv1.SetLocalMachineRequest{Enabled: true, MachineName: "owner-mac"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := gitRepo(t, map[string]string{"README.md": "# demo\n"})
+	eventually(t, 30*time.Second, "machine online", func() bool {
+		res, err := mac.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+		return err == nil && len(res.Machines) == 1 && res.Machines[0].Online && res.Machines[0].Status != nil
+	})
+	if _, err := mac.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: local.MachineId, ProjectId: "demo", Path: repo}); err != nil {
+		t.Fatal(err)
+	}
+	// The address, with its key, from the server, and the same on the Mac.
 	address := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "mcp-url", "--data-dir", relayData).stdout)
 	if !strings.HasPrefix(address, base+"/mcp/") || len(address) < len(base+"/mcp/")+26 {
 		t.Fatalf("mcp-url: %q", address)
 	}
+	if got := mcpAddress(t, mac); got != address {
+		t.Fatalf("the address on the Mac %q, the server's %q", got, address)
+	}
+
+	// --- The app connects with the owner's account ------------------------
 	app := newOAuthApp(t, address, "Aide test")
 	page := app.authorize()
-	if !strings.Contains(page, "Connect Aide test to Aide") || !strings.Contains(page, "isn&#39;t set up yet") {
+	if !strings.Contains(page, "Connect Aide test to Aide") || !strings.Contains(page, `name="password"`) || strings.Contains(page, "pprove") {
 		t.Fatalf("consent page:\n%s", page)
 	}
 	if !strings.Contains(page, "127.0.0.1:") || !strings.Contains(page, "holds this connection&#39;s key") {
 		t.Fatalf("the consent page must say where the app returns to and who holds the key:\n%s", page)
 	}
+	if again := app.connectAs(page, testAccount, "not the password"); !strings.Contains(again, "Wrong account or password") || !strings.Contains(again, `name="password"`) {
+		t.Fatalf("a wrong password:\n%s", again)
+	}
+	if l, err := mac.client.ListClients(ctx, &localv1.ListClientsRequest{}); err != nil || len(l.Clients) != 0 {
+		t.Fatalf("a wrong password connected %v %v", l, err)
+	}
 	progress := app.connect(page)
-	if !strings.Contains(progress, "One more step") || !strings.Contains(progress, "Get Aide") {
-		t.Fatalf("after connecting with nothing set up:\n%s", progress)
+	if !strings.Contains(progress, "Connected") {
+		t.Fatalf("after connecting:\n%s", progress)
 	}
 	tokens := app.finish(progress)
 	session := app.mcpSession(tokens.Access)
@@ -106,96 +128,31 @@ func TestMCPGateway(t *testing.T) {
 		}
 	}
 	checkMCPDescriptions(t, session, tools.Tools)
-	// Before setup the tools answer as for an owner with nothing in it,
-	// with a note on what to do.
-	doc := callTool(t, session, "project_list", nil)
-	if !doc.OK || len(projectsOf(doc).Projects) != 0 || !strings.Contains(doc.Note, "https://github.com/samir2015dzh/hermesh/releases/latest") {
-		t.Fatalf("project_list before setup: %s", doc.raw)
-	}
-	if doc = callTool(t, session, "session_start", map[string]any{"project": "demo", "prompt": "hi"}); doc.OK || doc.Error.Kind != "not_found" ||
-		!strings.Contains(doc.Error.Hint, "https://github.com/samir2015dzh/hermesh/releases/latest") {
-		t.Fatalf("session_start before setup: %s", doc.raw)
-	}
-	if st := statusOf(t, session); st.State != "awaiting_setup" {
-		t.Fatalf("status before setup: %+v", st)
-	}
+	var doc cliDoc
 
-	// --- The owner sets up the Mac ----------------------------------------
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).stdout)
-	sock := filepath.Join(sockDir, "o.sock")
-	owner := start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
-	logs = append(logs, owner)
-	root, _ := identity.GenerateKey()
-	mac := newTestApp(t, sock, root)
-	setup, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: base, ClaimCode: claim, RootPublicKey: rootPub(root), RootLabel: "test-mac", RootPlatform: "macos"})
-	if err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-	local, err := mac.client.SetLocalMachine(ctx, &localv1.SetLocalMachineRequest{Enabled: true, MachineName: "owner-mac"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	repo := gitRepo(t, map[string]string{"README.md": "# demo\n"})
-	eventually(t, 30*time.Second, "machine online", func() bool {
-		res, err := mac.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
-		return err == nil && len(res.Machines) == 1 && res.Machines[0].Online && res.Machines[0].Status != nil
-	})
-	if _, err := mac.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: local.MachineId, ProjectId: "demo", Path: repo}); err != nil {
-		t.Fatal(err)
-	}
-	// The Mac shows the same address, to paste into the next app.
-	if got := mcpAddress(t, mac); got != address {
-		t.Fatalf("the address on the Mac %q, the server's %q", got, address)
-	}
-
-	// The approval request reaches the Mac by itself, naming its custodian.
-	var req *localv1.PairingDetails
-	eventually(t, 30*time.Second, "the approval request on the Mac", func() bool {
-		l, err := mac.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		if err != nil || len(l.Pairings) != 1 {
-			return false
-		}
-		req = l.Pairings[0]
-		return true
-	})
-	// Confirmed on the consent page: the app shows no code to compare.
-	if req.Kind != identityv1.PairingKind_PAIRING_KIND_CLIENT || req.Custodian != base || req.Label != "Aide test (127.0.0.1)" || req.Platform != "mcp" || !req.Confirmed {
-		t.Fatalf("approval request: %+v", req)
-	}
-	// Used again while it waits: no second request, and the note sends the
-	// person to the Mac, with no code: the Mac shows none for it.
-	doc = callTool(t, session, "project_list", nil)
-	if !doc.OK || len(projectsOf(doc).Projects) != 0 || !strings.Contains(doc.Note, "the request is waiting there now") || strings.Contains(doc.Note, req.Code) {
-		t.Fatalf("project_list while the request waits on the Mac: %s", doc.raw)
-	}
-	if l, err := mac.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{}); err != nil || len(l.Pairings) != 1 {
-		t.Fatalf("requests on the Mac after another use: %v %v", l, err)
-	}
-	if _, err := mac.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: req.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
-
-	// --- Approved: the same tokens work ----------------------------------
+	// --- Connected: the tools work at once --------------------------------
 	var places struct {
 		Projects []struct{ Project string } `json:"projects"`
 	}
-	eventually(t, 30*time.Second, "the tools working after approval", func() bool {
+	eventually(t, 30*time.Second, "the tools working", func() bool {
 		doc = callTool(t, session, "project_list", nil)
 		return doc.OK && json.Unmarshal(doc.raw, &places) == nil && len(places.Projects) == 1
 	})
 	if places.Projects[0].Project != "owner-mac/demo" {
 		t.Fatalf("projects: %s", doc.raw)
 	}
-	clients, err := mac.client.ListClients(ctx, &localv1.ListClientsRequest{})
-	if err != nil || len(clients.Clients) != 1 {
-		t.Fatalf("clients: %v %v", clients, err)
-	}
+	// The Mac learns of it from the server's watch.
+	var clients *localv1.ListClientsResponse
+	eventually(t, 30*time.Second, "the MCP client among the Mac's agents", func() bool {
+		clients, err = mac.client.ListClients(ctx, &localv1.ListClientsRequest{})
+		return err == nil && len(clients.Clients) == 1
+	})
 	mcpClient := clients.Clients[0]
 	if mcpClient.Custodian != base || mcpClient.Spec.TaskVisibility != identityv1.TaskVisibility_TASK_VISIBILITY_ALL {
 		t.Fatalf("the MCP client's grant: %+v", mcpClient)
 	}
-	if st := statusOf(t, session); st.State != "active" {
-		t.Fatalf("status once approved: %+v", st)
+	if st := statusOf(t, session); st.State != "active" || st.Next != "" {
+		t.Fatalf("status once connected: %+v", st)
 	}
 
 	// The ops channel (WO #6): refused until the owner allows it, which
@@ -346,35 +303,19 @@ func TestMCPGateway(t *testing.T) {
 	if doc = callTool(t, session, "session_get", map[string]any{"session_id": id}); doc.OK || doc.Error.Kind != "unreachable" {
 		t.Fatalf("session_get with its machine offline: %s", doc.raw)
 	}
-	// An app connected now waits for the Mac, and says so.
+	// An app connected now works as soon as the Mac is back.
 	app3 := newOAuthApp(t, address, "Third app")
 	page3 := app3.connect(app3.authorize())
-	if !strings.Contains(page3, "One more step") || !strings.Contains(page3, "the next time it is open") {
+	if !strings.Contains(page3, "Connected") {
 		t.Fatalf("connecting while the Mac is offline:\n%s", page3)
 	}
 	s3 := app3.mcpSession(app3.finish(page3).Access)
-	if doc = callTool(t, s3, "project_list", nil); !doc.OK || !strings.Contains(doc.Note, "as soon as Aide is open") {
+	if doc = callTool(t, s3, "project_list", nil); !doc.OK || len(projectsOf(doc).Offline) != 1 {
 		t.Fatalf("a tool while the Mac is offline: %s", doc.raw)
 	}
-	// The Mac is back: the request reaches it by itself.
 	owner = start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), ownerArgs...)
 	logs = append(logs, owner)
-	mac = newTestApp(t, sock, root)
-	var req3 *localv1.PairingDetails
-	eventually(t, 60*time.Second, "the third request on the Mac", func() bool {
-		l, err := mac.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		if err != nil || len(l.Pairings) != 1 {
-			return false
-		}
-		req3 = l.Pairings[0]
-		return true
-	})
-	if req3.Label != "Third app (127.0.0.1)" {
-		t.Fatalf("third request: %+v", req3)
-	}
-	if _, err := mac.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: req3.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
+	mac = newTestApp(t, sock)
 	eventually(t, 60*time.Second, "both apps working with the Mac back", func() bool {
 		d1, d3 := callTool(t, session, "project_list", nil), callTool(t, s3, "project_list", nil)
 		l1, l3 := projectsOf(d1), projectsOf(d3)
@@ -383,10 +324,7 @@ func TestMCPGateway(t *testing.T) {
 
 	// It sees a session another agent started, and cannot steer it.
 	agentEnv := []string{"HERMESH_HOME=" + filepath.Join(tmp, "agent")}
-	login := start(t, "login", agentEnv, filepath.Join(bin, "hermesh"), "auth", "login", setup.ConnectAddress, "--name", "bot")
-	if _, err := mac.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
+	login := start(t, "login", append(slices.Clone(agentEnv), loginEnv()...), filepath.Join(bin, "hermesh"), "auth", "login", base, "--name", "bot")
 	if c := login.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("login: %s", login.output())
 	}
@@ -419,31 +357,9 @@ func TestMCPGateway(t *testing.T) {
 		t.Fatalf("auth_status with refreshed token: %s", doc.raw)
 	}
 
-	// --- A second app, connected while the Mac is online ------------------
+	// --- A second app ------------------------------------------------------
 	app2 := newOAuthApp(t, address, "Second app")
-	page2 := app2.connect(app2.authorize())
-	if !strings.Contains(page2, "Approve on your Mac") {
-		t.Fatalf("with the Mac online the page asks to approve there:\n%s", page2)
-	}
-	var req2 *localv1.PairingDetails
-	eventually(t, 30*time.Second, "the second request on the Mac", func() bool {
-		l, err := mac.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		if err != nil || len(l.Pairings) != 1 {
-			return false
-		}
-		req2 = l.Pairings[0]
-		return true
-	})
-	// No code to compare: the Mac shows none for a request confirmed here
-	// (the page's script still watches it, to reload when it changes).
-	if shown := regexp.MustCompile(`(?s)<script>.*?</script>`).ReplaceAllString(page2, ""); strings.Contains(shown, req2.Code) {
-		t.Fatalf("the page shows the request's code (%s):\n%s", req2.Code, page2)
-	}
-	if _, err := mac.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: req2.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
-	eventually(t, 30*time.Second, "the page seeing the approval", func() bool { return app2.consentState() == "active" })
-	tokens2 := app2.finish(app2.get(app2.consentURL))
+	tokens2 := app2.finish(app2.connect(app2.authorize()))
 	s2 := app2.mcpSession(tokens2.Access)
 	if doc = callTool(t, s2, "project_list", nil); !doc.OK {
 		t.Fatalf("second app: %s", doc.raw)
@@ -500,10 +416,9 @@ func TestMCPGateway(t *testing.T) {
 // cliToolNames are the CLI commands the gateway serves as tools.
 // TestMCPStrangers: a self-hosted relay's MCP address has a key in it.
 // Without it a stranger finds nothing to connect to: not the address, not
-// a way to the consent page. With it (the address got out), ten
-// connections from one address and ten made-up apps, approving nothing,
-// don't keep the owner's own app out: it connects, its approval request
-// reaches the Mac, and once approved it works.
+// a way to the consent page. With it (the address got out), strangers
+// still connect nothing without the account's password, and don't keep
+// the owner's own app out: it connects with the password and works.
 func TestMCPStrangers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -522,12 +437,11 @@ func TestMCPStrangers(t *testing.T) {
 	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--mcp", "--data-dir", relayData,
 		"--listen", fmt.Sprintf(":%d", port), "--public-url", base)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).stdout)
+	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sock := filepath.Join(sockDir, "o.sock")
 	start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	mac := newTestApp(t, sock, root)
-	if _, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: base, ClaimCode: claim, RootPublicKey: rootPub(root), RootLabel: "test-mac", RootPlatform: "macos"}); err != nil {
+	mac := newTestApp(t, sock)
+	if _, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: base, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"}); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
 
@@ -538,7 +452,7 @@ func TestMCPStrangers(t *testing.T) {
 	}
 	body, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	if res.StatusCode != 404 || !strings.Contains(string(body), "hermesh-relay mcp-url") {
+	if res.StatusCode != 404 || !strings.Contains(string(body), "mcp-url") {
 		t.Fatalf("the address without its key: %d %s", res.StatusCode, body)
 	}
 	if res, err := http.Get(base + "/.well-known/oauth-protected-resource"); err != nil || res.StatusCode != 404 {
@@ -556,38 +470,27 @@ func TestMCPStrangers(t *testing.T) {
 		t.Fatalf("an authorization without the key: %d %s", res.StatusCode, res.Header.Get("Location"))
 	}
 
-	// With it.
-	for i := range 10 {
+	// With it, but not the password: nothing is connected. (Four: a fifth
+	// wrong password in a row would lock the account for a minute.)
+	for i := range 4 {
 		a := newOAuthApp(t, address, fmt.Sprintf("Claude %d", i))
-		if page := a.connect(a.authorize()); !strings.Contains(page, "Approve") {
+		if page := a.connectAs(a.authorize(), testAccount, fmt.Sprintf("guess %d guess", i)); !strings.Contains(page, "Wrong account or password") {
 			t.Fatalf("stranger %d:\n%s", i, page)
 		}
+	}
+	if l, err := mac.client.ListClients(ctx, &localv1.ListClientsRequest{}); err != nil || len(l.Clients) != 0 {
+		t.Fatalf("strangers connected %v %v", l, err)
 	}
 
 	app := newOAuthAppVia(t, address, "Codex", fmt.Sprintf("http://[::1]:%d/oauth/register", port))
 	page := app.connect(app.authorize())
-	if strings.Contains(page, "as many apps as Aide allows") {
+	if !strings.Contains(page, "Connected") {
 		t.Fatalf("the owner's own app was kept out:\n%s", page)
 	}
 	session := app.mcpSession(app.finish(page).Access)
-	var req *localv1.PairingDetails
-	eventually(t, 30*time.Second, "the app's approval request on the Mac", func() bool {
-		l, err := mac.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		if err != nil {
-			return false
-		}
-		for _, p := range l.Pairings {
-			if p.Label == "Codex (127.0.0.1)" {
-				req = p
-				return true
-			}
-		}
-		return false
-	})
-	if _, err := mac.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: req.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
+	if st := statusOf(t, session); st.State != "active" {
+		t.Fatalf("the owner's app: %+v", st)
 	}
-	eventually(t, 30*time.Second, "the app working once approved", func() bool { return statusOf(t, session).State == "active" })
 }
 
 // mcpAddress is the relay's MCP address as the owner's apps show it,
@@ -855,14 +758,22 @@ func (a *oauthApp) get(u string) string {
 var csrfRE = regexp.MustCompile(`name="csrf" value="([^"]+)"`)
 var idRE = regexp.MustCompile(`name="id" value="([^"]+)"`)
 
-// connect clicks Connect on the consent page and returns the next page.
+// connect logs in with the owner's account on the consent page, clicks
+// Connect and returns the next page.
 func (a *oauthApp) connect(page string) string {
+	a.t.Helper()
+	return a.connectAs(page, testAccount, testPassword)
+}
+
+// connectAs is connect with another account or password.
+func (a *oauthApp) connectAs(page, account, password string) string {
 	a.t.Helper()
 	csrf, id := csrfRE.FindStringSubmatch(page), idRE.FindStringSubmatch(page)
 	if csrf == nil || id == nil {
 		a.t.Fatalf("no consent form:\n%s", page)
 	}
-	req, _ := http.NewRequest(http.MethodPost, a.issuer+"/oauth/consent", strings.NewReader(url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"}}.Encode()))
+	req, _ := http.NewRequest(http.MethodPost, a.issuer+"/oauth/consent", strings.NewReader(url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"},
+		"account": {account}, "password": {password}}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Origin", a.issuer)
 	res, err := a.hc.Do(req)
@@ -873,19 +784,6 @@ func (a *oauthApp) connect(page string) string {
 	b, _ := io.ReadAll(res.Body)
 	a.consentURL = res.Request.URL.String()
 	return string(b)
-}
-
-// consentState is what the waiting page polls.
-func (a *oauthApp) consentState() string {
-	u, _ := url.Parse(a.consentURL)
-	res, err := a.hc.Get(a.issuer + "/oauth/consent/status?id=" + url.QueryEscape(u.Query().Get("id")))
-	if err != nil {
-		return ""
-	}
-	defer res.Body.Close()
-	var v struct{ State string }
-	json.NewDecoder(res.Body).Decode(&v)
-	return v.State
 }
 
 var continueRE = regexp.MustCompile(`href="(/oauth/consent/continue\?id=[^"]+)"`)

@@ -107,8 +107,8 @@ func (a *app) loadKey() error {
 	return nil
 }
 
-var errNotLoggedIn error = &exitError{code: exitDenied, kind: "not_paired", err: errors.New("not paired yet"),
-	hint: "run `aide auth login <your server’s connection address>` and have the owner approve the request it shows in Aide on one of their trusted devices (computer or phone), or log in with --account"}
+var errNotLoggedIn error = &exitError{code: exitDenied, kind: "not_paired", err: errors.New("not logged in yet"),
+	hint: "run `aide auth login <your server> --account <account>`: it logs in with the owner's account and password"}
 
 // load reads state and verifies the stored grant against the stored root.
 func (a *app) load() error {
@@ -429,8 +429,8 @@ func (a *app) refused(err error) error {
 		if _, ferr := a.forget(); ferr != nil {
 			return ferr
 		}
-		return &exitError{code: exitDenied, kind: "revoked", err: fmt.Errorf("%w: the owner erased everything; this computer's pairing is erased", err),
-			hint: "run `aide auth login <address>` to pair with an owner again"}
+		return &exitError{code: exitDenied, kind: "revoked", err: fmt.Errorf("%w: the owner erased everything; this computer's login is erased", err),
+			hint: "run `aide auth login <server>` to log in to an owner again"}
 	}
 	return &exitError{code: exitDenied, kind: "revoked", err: err, hint: fmt.Sprintf("run `aide auth login %s` to ask the owner again", a.address())}
 }
