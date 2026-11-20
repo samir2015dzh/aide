@@ -244,6 +244,12 @@ pub mod method {
     pub const BOTS_MEMORY: &str = "bots/memory";
     /// Moves a bot's memory to the trash; its conversation stays.
     pub const BOTS_MEMORY_CLEAR: &str = "bots/memory_clear";
+    /// Saves a knowledge entry of a bot's (docs/her-memory.md §10).
+    pub const BOTS_MEMORY_ENTRY_SET: &str = "bots/memory_entry_set";
+    /// Deletes a knowledge entry of a bot's.
+    pub const BOTS_MEMORY_ENTRY_DELETE: &str = "bots/memory_entry_delete";
+    /// Saves or declines an entry the bot proposed.
+    pub const BOTS_MEMORY_PROPOSAL_ANSWER: &str = "bots/memory_proposal_answer";
     /// Server notification to `bots/subscribe`rs.
     pub const BOTS_CHANGED: &str = "bots/changed";
     /// The files a bot sent its owner, newest first (docs/her-deliverables.md §4.3).

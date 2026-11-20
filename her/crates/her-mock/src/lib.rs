@@ -59,6 +59,8 @@
 //! | `say:TEXT` | TEXT, as it is |
 //! | `remember:LINE` | a bot noting LINE in its memory, the `MEMORY.md` its system prompt gives in `<memory path="…">`: a `write` of LINE when nothing is there yet, else an `edit` that puts LINE after the last line; then `记下了。` sent with `end_turn` |
 //! | `recall` | `记得：<what the system prompt's <memory> holds>` sent with `end_turn`, or `什么都不记得。` when it holds nothing |
+//! | `propose:NAME\|TRIGGER\|TEXT` | a bot's `propose_memory` of that entry, then `提议了：<its result>` sent with `end_turn` |
+//! | `recalled` | `想起：<the text of each <recall> block after the last reply, by entry>` sent with `end_turn`, or `没有想起什么。` when none came |
 //!
 //! [`MockOptions`] adds a gateway's latency: a pause before the first chunk of every reply
 //! and between chunks.
@@ -615,6 +617,18 @@ fn plan(shared: &Shared, messages: &[Value], name: &str, arg: &str, prompt: &str
             Some((_, text)) if !text.is_empty() => last_words(bot, format!("记得：{text}")),
             _ => last_words(bot, "什么都不记得。".into()),
         },
+        "propose" => {
+            if step > 0 {
+                return last_words(bot, format!("提议了：{}", last_tool_result(messages)));
+            }
+            let mut parts = arg.splitn(3, '|');
+            let (name, trigger, text) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""), parts.next().unwrap_or(""));
+            Plan::Step(Step::calls(vec![("propose_memory", json!({ "name": name, "trigger": trigger, "text": text }))]))
+        }
+        "recalled" => match recalled(messages).as_slice() {
+            [] => last_words(bot, "没有想起什么。".into()),
+            found => last_words(bot, format!("想起：{}", found.join("；"))),
+        },
         "think" => Plan::Step(Step {
             parts: vec![
                 Part::Thinking("Let me think about this.".into()),
@@ -1137,6 +1151,22 @@ fn memory(messages: &[Value]) -> Option<(String, String)> {
     Some((path.to_string(), if text == "(empty)" { String::new() } else { text.to_string() }))
 }
 
+/// What the `<recall>` blocks after the last reply give (docs/her-memory.md §10): each as
+/// `NAME=TEXT`, the text without the line that introduces it.
+fn recalled(messages: &[Value]) -> Vec<String> {
+    let from = messages.iter().rposition(|m| m.get("role").and_then(Value::as_str) == Some("assistant")).map_or(0, |i| i + 1);
+    let mut found = Vec::new();
+    for message in &messages[from..] {
+        let text = content_text(message);
+        let Some(rest) = text.strip_prefix("<recall entry=\"") else { continue };
+        let Some((name, rest)) = rest.split_once("\">\n") else { continue };
+        let body = rest.trim_end().strip_suffix("</recall>").unwrap_or(rest);
+        let body = body.split_once("\n\n").map_or(body, |(_, body)| body);
+        found.push(format!("{name}={}", body.trim()));
+    }
+    found
+}
+
 /// A bot noting `line` in its memory, with the file tools it has anyway.
 fn remember_step(messages: &[Value], line: &str, step: usize, bot: bool) -> Plan {
     let Some((path, text)) = memory(messages) else {
@@ -1622,6 +1652,15 @@ mod tests {
         assert_eq!(call_of(remember_step(&[json!({"role": "system", "content": "no memory here"}), user], "- x", 0, true)), sent("no memory"));
         assert_eq!(memory(&[system("## A\n- 旧的一条。")]), Some(("/h/bots/b1/memory/MEMORY.md".into(), "## A\n- 旧的一条。".into())));
         assert_eq!(memory(&[system("(empty)")]).unwrap().1, "");
+    }
+
+    #[test]
+    fn recalled_gives_the_recall_blocks_after_the_last_reply() {
+        let block = |name: &str, text: &str| json!({"role": "user", "content": format!("<recall entry=\"{name}\">\nFrom your knowledge.\n\n{text}\n</recall>")});
+        let owner = json!({"role": "user", "content": "[[mock:recalled]] 周报"});
+        let reply = json!({"role": "assistant", "content": "好。"});
+        assert_eq!(recalled(&[block("old", "x"), reply.clone(), owner.clone(), block("weekly", "周五发。"), block("tea", "绿茶。")]), ["weekly=周五发。", "tea=绿茶。"]);
+        assert!(recalled(&[block("old", "x"), reply, owner]).is_empty());
     }
 
     #[test]

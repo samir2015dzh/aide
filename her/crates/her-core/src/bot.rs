@@ -49,7 +49,7 @@ pub const SEND_TO_USER: &str = "send_to_user";
 /// The tools a bot's session gets on top of a session's. Its sub-agents have a `send_to_user` of
 /// their own (agent-messaging-design §17).
 pub(crate) fn tools() -> Vec<Arc<dyn Tool>> {
-    vec![Arc::new(Typed::new(SendToUser)), crate::routine::tool()]
+    vec![Arc::new(Typed::new(SendToUser)), crate::routine::tool(), crate::knowledge::tool()]
 }
 
 /// What a bot about to end its turn still owes its owner.

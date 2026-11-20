@@ -103,6 +103,9 @@ Protocol version 2. Generated from `her protocol schema` by `tools/gen-protocol-
 | `bots/delete` | `BotIdParams` | `Empty` | Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`. |
 | `bots/memory` | `BotIdParams` | `BotMemoryResult` | Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`. |
 | `bots/memory_clear` | `BotIdParams` | `Empty` | Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`. |
+| `bots/memory_entry_delete` | `BotMemoryEntryDeleteParams` | `Empty` | Parameters of `bots/memory_entry_delete`. |
+| `bots/memory_entry_set` | `BotMemoryEntrySetParams` | `Empty` | Parameters of `bots/memory_entry_set`: saves an entry, in place of one of that name. |
+| `bots/memory_proposal_answer` | `BotMemoryProposalAnswerParams` | `Empty` | Parameters of `bots/memory_proposal_answer`: the owner saves a proposal as an entry, or declines it. Either way it waits no more. |
 | `bots/open` | `BotOpenParams` | `SessionNewResult` | Parameters of `bots/open`, which answers as `session/new` does. |
 | `bots/read` | `BotIdParams` | `Empty` | Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`. |
 | `bots/routine` | `BotRoutineParams` | `BotRoutineResult` | Parameters of `bots/routine`, `bots/routine_run_now`, `bots/routine_stop` and `bots/routine_delete`. |

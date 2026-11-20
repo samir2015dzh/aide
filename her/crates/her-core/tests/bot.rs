@@ -194,7 +194,7 @@ async fn a_bot_talks_through_send_to_user_and_ends_its_turn() {
     assert!(!system.contains("{{"), "every mark is filled in");
     assert!(system.contains("Never make things up:") && system.contains("Acting with care:"));
     let names: Vec<&str> = requests[0].tools.iter().map(|t| t.name.as_str()).collect();
-    assert_eq!(names, ["read", "write", "edit", "bash", "spawn_agent", "send_message", "send_to_user", "manage_routine", "tool_search", "call_tool"]);
+    assert_eq!(names, ["read", "write", "edit", "bash", "spawn_agent", "send_message", "send_to_user", "manage_routine", "propose_memory", "tool_search", "call_tool"]);
     // Its sub-agents always work in the background: there is no waiting to choose
     // (bot-turn-design §5.1).
     for tool in requests[0].tools.iter().filter(|t| t.name == "spawn_agent" || t.name == "send_message") {

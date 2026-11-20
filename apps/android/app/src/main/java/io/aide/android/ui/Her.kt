@@ -17,11 +17,13 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -196,6 +198,17 @@ private fun HerMemoryView(panel: HerPanel) {
     val bots by panel.bots.collectAsState()
     var memory by remember { mutableStateOf<HerMemory?>(null) }
     var loaded by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    // The owner's word on a proposal or an entry, then the memory as it now is.
+    val act: (suspend () -> Boolean) -> Unit = { call ->
+        scope.launch {
+            if (call()) {
+                editing = null
+                memory = panel.memory()
+            }
+        }
+    }
     LaunchedEffect(bots.isNotEmpty()) {
         if (bots.isNotEmpty()) {
             memory = panel.memory()
@@ -207,14 +220,71 @@ private fun HerMemoryView(panel: HerPanel) {
         when {
             !loaded -> item { Text(t("Reading memory…", "正在读取记忆…"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             m == null -> item { Text(t("Memory could not be read.", "无法读取记忆。"), color = MaterialTheme.colorScheme.error) }
-            m.text.isBlank() && m.pages.isEmpty() -> item { Text(t("Nothing yet.", "还没有内容。"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            m.text.isBlank() && m.pages.isEmpty() && m.entries.isEmpty() && m.proposals.isEmpty() ->
+                item { Text(t("Nothing yet.", "还没有内容。"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             else -> {
-                item { SelectionContainer { Text(m.text) } }
+                if (m.proposals.isNotEmpty()) {
+                    item { SectionHeader(t("Proposed to remember", "待确认的提议")) }
+                    items(m.proposals, key = { it.id }) { p ->
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                EntryText(p.name, p.trigger, p.text)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = { act { panel.answerProposal(p.id, true) } }) { Text(t("Save", "保存")) }
+                                    OutlinedButton(onClick = { act { panel.answerProposal(p.id, false) } }) { Text(t("Decline", "不要")) }
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Text(
+                            t("It does not use any of it until you save it.", "你保存之前它不会用。"),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (m.text.isNotBlank()) item { SelectionContainer { Text(m.text) } }
                 if (m.pages.isNotEmpty()) {
                     item { SectionHeader(t("Pages", "页面")) }
                     items(m.pages) { Text(it) }
                 }
+                if (m.entries.isNotEmpty()) {
+                    item { SectionHeader(t("Entries recalled when needed", "按需想起的条目")) }
+                    items(m.entries, key = { it.name }) { e ->
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (editing == e.name) {
+                                    var trigger by remember { mutableStateOf(e.trigger) }
+                                    var text by remember { mutableStateOf(e.text) }
+                                    Text(e.name, fontWeight = FontWeight.SemiBold)
+                                    OutlinedTextField(trigger, { trigger = it }, Modifier.fillMaxWidth(), label = { Text(t("Trigger phrases, separated by ;", "触发词，用 ; 分开")) }, singleLine = true)
+                                    OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), label = { Text(t("Text", "内容")) }, minLines = 3)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = { act { panel.saveEntry(e.name, trigger, text) } }, enabled = trigger.isNotBlank() && text.isNotBlank()) { Text(t("Save", "保存")) }
+                                        OutlinedButton(onClick = { editing = null }) { Text(t("Cancel", "取消")) }
+                                    }
+                                } else {
+                                    EntryText(e.name, e.trigger, e.text)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = { editing = e.name }) { Text(t("Edit", "修改")) }
+                                        OutlinedButton(onClick = { act { panel.deleteEntry(e.name) } }) { Text(t("Delete", "删除")) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun EntryText(name: String, trigger: String, text: String) {
+    Text(name, fontWeight = FontWeight.SemiBold)
+    Text(
+        if (trigger.isBlank()) t("No trigger: never recalled by itself", "没有触发词，不会自己想起") else t("Trigger: $trigger", "触发词：$trigger"),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    SelectionContainer { Text(text) }
 }

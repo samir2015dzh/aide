@@ -50,3 +50,52 @@ func TestHerMemory(t *testing.T) {
 	}
 	askHer(t, env, recall, "什么都不记得。")
 }
+
+// TestHerKnowledge: knowledge entries (docs/her-memory.md §10) as the apps
+// reach them, through aided, the relay and the tunnel. Her proposes two
+// entries; neither is recalled before the owner answers. The owner saves one
+// and declines the other: only the saved one is recalled, and only when the
+// owner's words hit its trigger. The owner changes it, then deletes it.
+func TestHerKnowledge(t *testing.T) {
+	env := newHerEnvironment(t)
+	const weekly = "周报周五下午发到团队群。"
+	askHer(t, env, "[[mock:propose:weekly-report|周报; weekly report|"+weekly+"]] 周报以后发团队群", `提议了：Proposed "weekly-report"`)
+	askHer(t, env, "[[mock:propose:coffee|咖啡|主人不喝咖啡。]] 我不喝咖啡", `提议了：Proposed "coffee"`)
+	askHer(t, env, "[[mock:recalled]] 周报和咖啡", "没有想起什么。")
+
+	type entry struct{ Name, Trigger, Text string }
+	var kept struct {
+		Entries   []entry `json:"entries"`
+		Proposals []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"proposals"`
+	}
+	read := func() {
+		kept.Entries, kept.Proposals = nil, nil
+		json.Unmarshal(herCall(t, env, "", "bots/memory", map[string]string{"bot_id": env.bot.ID}), &kept)
+	}
+	read()
+	if len(kept.Proposals) != 2 || kept.Proposals[0].Name != "weekly-report" || kept.Proposals[1].Name != "coffee" || len(kept.Entries) != 0 {
+		t.Fatalf("bots/memory before the owner answered: %+v", kept)
+	}
+	herCall(t, env, "", "bots/memory_proposal_answer", map[string]any{"bot_id": env.bot.ID, "proposal_id": kept.Proposals[0].ID, "accept": true})
+	herCall(t, env, "", "bots/memory_proposal_answer", map[string]any{"bot_id": env.bot.ID, "proposal_id": kept.Proposals[1].ID, "accept": false})
+	read()
+	if len(kept.Proposals) != 0 || !slices.Equal(kept.Entries, []entry{{"weekly-report", "周报; weekly report", weekly}}) {
+		t.Fatalf("bots/memory after the owner answered: %+v", kept)
+	}
+	askHer(t, env, "[[mock:recalled]] 今天天气怎样", "没有想起什么。")
+	if _, said := askHer(t, env, "[[mock:recalled]] 这周的 Weekly Report，还有咖啡", "想起："); said != "想起：weekly-report="+weekly {
+		t.Fatalf("with its trigger hit she said %q", said)
+	}
+
+	herCall(t, env, "", "bots/memory_entry_set", map[string]string{"bot_id": env.bot.ID, "name": "weekly-report", "trigger": "周报", "text": "周报改成周四发。"})
+	askHer(t, env, "[[mock:recalled]] 周报呢", "想起：weekly-report=周报改成周四发。")
+	herCall(t, env, "", "bots/memory_entry_delete", map[string]string{"bot_id": env.bot.ID, "name": "weekly-report"})
+	askHer(t, env, "[[mock:recalled]] 周报呢", "没有想起什么。")
+	read()
+	if len(kept.Entries) != 0 {
+		t.Fatalf("bots/memory after deleting: %+v", kept)
+	}
+}

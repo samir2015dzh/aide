@@ -429,10 +429,13 @@ impl Session {
         }
     }
 
-    /// Whether `call` writes the bot's own memory (docs/her-memory.md §5). Judged by the words
-    /// of the path alone, with no I/O: the path the prompt gives for the memory is the one
-    /// compared with.
+    /// Whether `call` writes the bot's own memory, or proposes an entry for it (docs/her-memory.md
+    /// §5, §10). Judged by the words of the path alone, with no I/O: the path the prompt gives for
+    /// the memory is the one compared with.
     pub(crate) fn is_own_note(&self, call: &her_llm::ToolCall) -> bool {
+        if call.name == crate::knowledge::PROPOSE_MEMORY {
+            return self.memory_dir.is_some();
+        }
         let args = call.arguments.to_value();
         let path = args.get("path").and_then(|path| path.as_str());
         matches!(call.name.as_str(), "write" | "edit")
@@ -465,6 +468,43 @@ impl Session {
         };
         if let Some(text) = changed {
             self.record(EntryKind::Routines { text });
+        }
+    }
+
+    /// Gives a bot the knowledge entries whose trigger the owner's words since the model last
+    /// answered hit, each as its file is now, unless the context holds it as it is already
+    /// (docs/her-memory.md §10).
+    pub(crate) fn note_recall(&self) {
+        let Some(dir) = &self.memory_dir else {
+            return;
+        };
+        let words = {
+            let state = self.state.lock();
+            let mut words = Vec::new();
+            for entry in state.history.branch_back() {
+                match &entry.kind {
+                    EntryKind::Message { message: Message::User(user), .. } => words.extend(user.content.iter().filter_map(|part| match part {
+                        her_llm::UserContent::Text { text } => Some(text.clone()),
+                        _ => None,
+                    })),
+                    EntryKind::Message { .. } | EntryKind::Compaction(_) => break,
+                    _ => {}
+                }
+            }
+            words.join("\n")
+        };
+        // Read before the lock: no I/O happens under it.
+        let hits = crate::knowledge::recall(dir, &words);
+        if hits.is_empty() {
+            return;
+        }
+        let fresh: Vec<_> = {
+            let state = self.state.lock();
+            let given = crate::context::recalled_in_context(&state.history);
+            hits.into_iter().filter(|entry| !given.contains(&(entry.name.as_str(), entry.text.as_str()))).collect()
+        };
+        for entry in fresh {
+            self.record(EntryKind::Recall { name: entry.name, text: entry.text });
         }
     }
 

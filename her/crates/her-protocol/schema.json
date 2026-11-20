@@ -29,6 +29,15 @@
       "$ref": "#/definitions/BotIdParams"
     },
     {
+      "$ref": "#/definitions/BotMemoryEntryDeleteParams"
+    },
+    {
+      "$ref": "#/definitions/BotMemoryEntrySetParams"
+    },
+    {
+      "$ref": "#/definitions/BotMemoryProposalAnswerParams"
+    },
+    {
       "$ref": "#/definitions/BotMemoryResult"
     },
     {
@@ -1671,6 +1680,68 @@
       ],
       "type": "object"
     },
+    "BotMemoryEntry": {
+      "description": "A knowledge entry: its text, and the phrases that bring it up.",
+      "properties": {
+        "name": {
+          "description": "Letters, digits, `-` and `_`.",
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "trigger": {
+          "description": "Phrases separated by `;`. Empty for a file written by hand without one: never recalled.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "text",
+        "trigger"
+      ],
+      "type": "object"
+    },
+    "BotMemoryEntryDeleteParams": {
+      "description": "Parameters of `bots/memory_entry_delete`.",
+      "properties": {
+        "bot_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bot_id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "BotMemoryEntrySetParams": {
+      "description": "Parameters of `bots/memory_entry_set`: saves an entry, in place of one of that name.",
+      "properties": {
+        "bot_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bot_id",
+        "name",
+        "text",
+        "trigger"
+      ],
+      "type": "object"
+    },
     "BotMemoryPage": {
       "description": "A file of a bot's memory besides `MEMORY.md`.",
       "properties": {
@@ -1695,9 +1766,69 @@
       ],
       "type": "object"
     },
+    "BotMemoryProposal": {
+      "description": "An entry Her proposed, waiting for the owner.",
+      "properties": {
+        "created_at": {
+          "description": "RFC 3339.",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "replaces": {
+          "description": "Saving it replaces the entry of that name.",
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_at",
+        "id",
+        "name",
+        "text",
+        "trigger"
+      ],
+      "type": "object"
+    },
+    "BotMemoryProposalAnswerParams": {
+      "description": "Parameters of `bots/memory_proposal_answer`: the owner saves a proposal as an entry, or declines it. Either way it waits no more.",
+      "properties": {
+        "accept": {
+          "type": "boolean"
+        },
+        "bot_id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "accept",
+        "bot_id",
+        "proposal_id"
+      ],
+      "type": "object"
+    },
     "BotMemoryResult": {
       "description": "What a bot keeps in its memory (docs/her-memory.md): its `MEMORY.md` as written, to show as Markdown whatever its form, and the other files of the folder.",
       "properties": {
+        "entries": {
+          "description": "Knowledge entries, by name: recalled only when the owner's words hit their trigger (docs/her-memory.md §10).",
+          "items": {
+            "$ref": "#/definitions/BotMemoryEntry"
+          },
+          "type": "array"
+        },
         "pages": {
           "description": "The other files of the memory folder, by name.",
           "items": {
@@ -1708,6 +1839,13 @@
         "path": {
           "description": "Where `MEMORY.md` is on the Her Server, for `files/read`.",
           "type": "string"
+        },
+        "proposals": {
+          "description": "Entries Her proposed, oldest first. None takes effect until the owner saves it.",
+          "items": {
+            "$ref": "#/definitions/BotMemoryProposal"
+          },
+          "type": "array"
         },
         "text": {
           "description": "`MEMORY.md`, empty when nothing is kept.",
@@ -21140,6 +21278,18 @@
       "params": "BotIdParams",
       "result": "Empty"
     },
+    "bots/memory_entry_delete": {
+      "params": "BotMemoryEntryDeleteParams",
+      "result": "Empty"
+    },
+    "bots/memory_entry_set": {
+      "params": "BotMemoryEntrySetParams",
+      "result": "Empty"
+    },
+    "bots/memory_proposal_answer": {
+      "params": "BotMemoryProposalAnswerParams",
+      "result": "Empty"
+    },
     "bots/open": {
       "params": "BotOpenParams",
       "result": "SessionNewResult"
@@ -21749,6 +21899,9 @@
       "bots/delete": "experimental",
       "bots/memory": "experimental",
       "bots/memory_clear": "experimental",
+      "bots/memory_entry_delete": "experimental",
+      "bots/memory_entry_set": "experimental",
+      "bots/memory_proposal_answer": "experimental",
       "bots/open": "experimental",
       "bots/read": "experimental",
       "bots/routine": "experimental",

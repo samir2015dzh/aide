@@ -126,9 +126,28 @@ class HerConversation(snapshot: JsonElement?) {
     }
 }
 
-/** An assistant's memory (bots/memory): its notes, and the pages it keeps. */
-data class HerMemory(val text: String, val pages: List<String>) {
+/** An assistant's memory (bots/memory): its notes, the pages it keeps, its knowledge entries and what it proposed to keep (docs/her-memory.md §10). */
+data class HerMemory(
+    val text: String,
+    val pages: List<String>,
+    val entries: List<HerEntry> = emptyList(),
+    val proposals: List<HerProposal> = emptyList(),
+) {
     companion object {
-        fun parse(j: JsonElement?) = HerMemory(j["text"].str ?: "", j["pages"].arr.mapNotNull { it["name"].str })
+        fun parse(j: JsonElement?) = HerMemory(
+            j["text"].str ?: "",
+            j["pages"].arr.mapNotNull { it["name"].str },
+            j["entries"].arr.mapNotNull { e -> e["name"].str?.let { HerEntry(it, e["trigger"].str ?: "", e["text"].str ?: "") } },
+            j["proposals"].arr.mapNotNull { p ->
+                val id = p["id"].str ?: return@mapNotNull null
+                HerProposal(id, p["name"].str ?: "", p["trigger"].str ?: "", p["text"].str ?: "")
+            },
+        )
     }
 }
+
+/** A knowledge entry: recalled only when the owner's words hit its trigger. */
+data class HerEntry(val name: String, val trigger: String, val text: String)
+
+/** An entry Her proposed: nothing of it is in her memory until the owner saves it. */
+data class HerProposal(val id: String, val name: String, val trigger: String, val text: String)

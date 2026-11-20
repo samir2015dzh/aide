@@ -10,6 +10,7 @@ use her_core::SessionRef;
 use her_core::SessionStore;
 use her_core::StartOptions;
 use her_core::Workspace;
+use her_core::knowledge;
 use her_llm::ThinkingLevel;
 use her_protocol::Event;
 use her_protocol::EventMsg;
@@ -20,7 +21,12 @@ use her_protocol::bot::Avatar;
 use her_protocol::bot::AvatarInput;
 use her_protocol::bot::BotAvatarResult;
 use her_protocol::bot::BotCreateParams;
+use her_protocol::bot::BotMemoryEntry;
+use her_protocol::bot::BotMemoryEntryDeleteParams;
+use her_protocol::bot::BotMemoryEntrySetParams;
 use her_protocol::bot::BotMemoryPage;
+use her_protocol::bot::BotMemoryProposal;
+use her_protocol::bot::BotMemoryProposalAnswerParams;
 use her_protocol::bot::BotMemoryResult;
 use her_protocol::bot::BotResult;
 use her_protocol::bot::BotSummary;
@@ -703,8 +709,9 @@ impl Server {
         saved
     }
 
-    /// `bots/memory`: the bot's `MEMORY.md` as written and the other files of its memory folder
-    /// (docs/her-memory.md §7). Nothing kept yet is an empty memory, not an error.
+    /// `bots/memory`: the bot's `MEMORY.md` as written, the other files of its memory folder
+    /// (docs/her-memory.md §7), and its knowledge entries and proposals (§10). Nothing kept yet is
+    /// an empty memory, not an error.
     pub async fn bots_memory(&self, id: &str) -> Result<BotMemoryResult, RpcError> {
         self.bot_exists(id)?;
         let dir = self.0.home.bot_memory_dir(id);
@@ -738,6 +745,55 @@ impl Server {
             hub.send(HubCmd::Memory).await?;
         }
         Ok(())
+    }
+
+    /// `bots/memory_entry_set`: the owner saves a knowledge entry, in place of one of that name
+    /// (docs/her-memory.md §10). Its trigger works from the owner's next message on; the prompt
+    /// lists it from its next free moment (§4.2).
+    pub async fn bots_memory_entry_set(&self, p: BotMemoryEntrySetParams) -> Result<(), RpcError> {
+        self.bot_exists(&p.bot_id)?;
+        knowledge::check_name(&p.name).and_then(|()| knowledge::check(&p.trigger, &p.text)).map_err(RpcError::invalid_params)?;
+        let dir = self.0.home.bot_memory_dir(&p.bot_id);
+        tokio::task::spawn_blocking(move || knowledge::save(&dir, &p.name, &p.trigger, &p.text))
+            .await
+            .map_err(|e| RpcError::internal(e.to_string()))?
+            .map(|_| ())
+            .map_err(RpcError::internal)
+    }
+
+    /// `bots/memory_entry_delete`: the owner deletes an entry. As with clearing, the conversation's
+    /// prompt drops it now: the owner asked for it to be forgotten.
+    pub async fn bots_memory_entry_delete(&self, p: BotMemoryEntryDeleteParams) -> Result<(), RpcError> {
+        self.bot_exists(&p.bot_id)?;
+        knowledge::check_name(&p.name).map_err(RpcError::invalid_params)?;
+        let dir = self.0.home.bot_memory_dir(&p.bot_id);
+        let deleted = tokio::task::spawn_blocking(move || knowledge::delete(&dir, &p.name))
+            .await
+            .map_err(|e| RpcError::internal(e.to_string()))?
+            .map_err(RpcError::internal)?;
+        if !deleted {
+            return Err(RpcError::invalid_params("no entry of that name"));
+        }
+        let has_conversation = self.bots().with_bot(&p.bot_id, |bot| bot.file.session_id.is_some())?;
+        if has_conversation {
+            let hub = self.load_bot_session(&p.bot_id).await?;
+            hub.send(HubCmd::Memory).await?;
+        }
+        Ok(())
+    }
+
+    /// `bots/memory_proposal_answer`: the owner saves an entry the bot proposed, or declines it.
+    pub async fn bots_memory_proposal_answer(&self, p: BotMemoryProposalAnswerParams) -> Result<(), RpcError> {
+        self.bot_exists(&p.bot_id)?;
+        let dir = self.0.home.bot_memory_dir(&p.bot_id);
+        tokio::task::spawn_blocking(move || {
+            if !knowledge::proposals(&dir).iter().any(|proposal| proposal.id == p.proposal_id) {
+                return Err(RpcError::invalid_params("no such proposal: it was answered already"));
+            }
+            knowledge::answer(&dir, &p.proposal_id, p.accept).map(|_| ()).map_err(RpcError::internal)
+        })
+        .await
+        .map_err(|e| RpcError::internal(e.to_string()))?
     }
 
     /// `bots/delete`: the bot's folder goes to `trash/bots/`, its conversation to the trash.
@@ -835,5 +891,18 @@ fn read_memory(dir: &Path) -> std::io::Result<BotMemoryResult> {
         }
     }
     pages.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(BotMemoryResult { text: String::from_utf8_lossy(&bytes).into_owned(), path: file.display().to_string(), pages })
+    let entries = knowledge::entries(dir);
+    let proposals = knowledge::proposals(dir)
+        .into_iter()
+        .map(|p| BotMemoryProposal {
+            replaces: entries.iter().any(|entry| entry.name == p.name),
+            id: p.id,
+            name: p.name,
+            trigger: p.trigger,
+            text: p.text,
+            created_at: p.created_at,
+        })
+        .collect();
+    let entries = entries.into_iter().map(|e| BotMemoryEntry { name: e.name, trigger: e.trigger, text: e.text }).collect();
+    Ok(BotMemoryResult { text: String::from_utf8_lossy(&bytes).into_owned(), path: file.display().to_string(), pages, entries, proposals })
 }

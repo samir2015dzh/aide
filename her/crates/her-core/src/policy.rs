@@ -35,6 +35,7 @@ use crate::rules::Target;
 pub(crate) const PATROL_REFUSED: &str = "This routine is a patrol: it only looks";
 
 const OTHERS_MEMORY: &str = "This is a bot's memory, and only the bot itself writes it. Say in your reply what it should know.";
+const OWNERS_ENTRIES: &str = "Knowledge entries are saved by the user alone: propose one with propose_memory, and they save it or decline it.";
 
 pub struct ToolPolicy;
 
@@ -202,10 +203,13 @@ fn has_glob(word: &str) -> bool {
 }
 
 /// A bot's memory is its own notes: it keeps them, and no other session writes them
-/// (docs/her-memory.md §6). Every other file change runs.
+/// (docs/her-memory.md §6), save its knowledge entries and proposals, which no session's file
+/// tools write (§10). Every other file change runs.
 fn evaluate_file_change(raw_path: &str, view: &SessionView) -> Gate {
-    match protected::memory(&canonical_lossy(&view.env.resolve(raw_path)), view) {
+    let path = canonical_lossy(&view.env.resolve(raw_path));
+    match protected::memory(&path, view) {
         Some(false) => Gate::Deny(OTHERS_MEMORY.into()),
+        Some(true) if protected::owners_entries(&path, view) => Gate::Deny(OWNERS_ENTRIES.into()),
         Some(true) | None => Gate::Allow,
     }
 }
@@ -359,6 +363,21 @@ mod tests {
         assert!(matches!(evaluate(&write(&line), &another), Gate::Deny(_)), "another bot's");
         let settings = dir.path().join("her-home/bots/b1/bot.json").display().to_string();
         assert_eq!(evaluate(&write(&settings), &own), Gate::Allow);
+    }
+
+    #[test]
+    fn knowledge_entries_and_proposals_are_not_written_with_file_tools() {
+        let dir = tempfile::tempdir().unwrap();
+        let memory = canonical_lossy(&dir.path().join("her-home/bots/b1/memory"));
+        let mut own = view(dir.path());
+        own.memory_dir = Some(memory.clone());
+        for part in ["knowledge/tea.md", "proposals/p_1.json"] {
+            let path = memory.join(part).display().to_string();
+            assert_eq!(evaluate(&call("write", json!({ "path": path, "content": "x" })), &own), Gate::Deny(OWNERS_ENTRIES.into()), "{part}");
+            assert!(matches!(evaluate(&call("edit", json!({ "path": path, "edits": [] })), &own), Gate::Deny(_)), "{part}");
+        }
+        let page = memory.join("knowledge.md").display().to_string();
+        assert_eq!(evaluate(&call("write", json!({ "path": page, "content": "x" })), &own), Gate::Allow);
     }
 
     /// A tool for the patrol tests: of a given origin and kind, or saying neither.

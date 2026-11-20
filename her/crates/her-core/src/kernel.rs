@@ -253,6 +253,9 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
     if settings.desktop.on(embedded) {
         tool_state.insert(Arc::new(DesktopHandle::new(settings.desktop.clone(), launch.root_id.clone())));
     }
+    if let Some(dir) = &launch.memory_dir {
+        tool_state.insert(Arc::new(crate::knowledge::KnowledgeLink(dir.clone())));
+    }
     let emitter = Arc::new(Emitter::new(event_tx));
     if let Some(host) = &launch.deps.connectors {
         tool_state.insert(Arc::new(ConnectorLink { host: host.clone() }));
