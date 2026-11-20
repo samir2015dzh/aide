@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -22,7 +23,7 @@ import (
 // open.
 
 func messageInfo(inbox, id string) []byte {
-	return []byte("hermesh-message-v1\x00" + inbox + "\x00" + id)
+	return []byte(legacy.Message + inbox + "\x00" + id)
 }
 
 // NewInboxKey makes an inbox's X25519 key pair.

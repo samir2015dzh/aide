@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"strings"
 	"sync"
 	"time"
@@ -121,7 +122,7 @@ func (m *memoryInboxes) DeleteInbox(_ context.Context, id string) error {
 }
 
 func inboxAAD(connectionID, what string) []byte {
-	return []byte("hermesh-mcp-inbox-v1\x00" + what + "\x00" + connectionID)
+	return []byte(legacy.MCPInbox + what + "\x00" + connectionID)
 }
 
 // inbox returns a connection's inbox, made on first use.

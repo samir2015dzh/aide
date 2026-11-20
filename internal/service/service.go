@@ -8,7 +8,14 @@ import (
 	"strings"
 )
 
-const label = "com.hermesh.daemon"
+// The service's names. An installation from before the rename keeps its
+// service under the names it had (internal/legacy): Install updates that one
+// rather than add a second, and the rest manage it.
+const (
+	newLabel = "com.aide.daemon"
+	newUnit  = "aided.service"
+	newTask  = "Aide"
+)
 
 // ErrNoSystemd: this system has no systemd user manager to run the
 // service (a container, WSL without systemd).

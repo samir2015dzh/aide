@@ -5,22 +5,24 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 
 	"google.golang.org/protobuf/proto"
 
 	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
 )
 
-// MessageType returns the fully-qualified protobuf name used as the signing
-// domain, e.g. "hermesh.identity.v1.Grant".
+// MessageType returns the name a message is signed under, the signing
+// domain: its protobuf full name, with the packages' name from before the
+// rename, as everything already signed has it (internal/legacy).
 func MessageType(m proto.Message) string {
-	return string(m.ProtoReflect().Descriptor().FullName())
+	return legacy.SignedType(string(m.ProtoReflect().Descriptor().FullName()))
 }
 
 // SigningInput is the exact byte string a signer signs.
 func SigningInput(typ string, body []byte) []byte {
-	out := make([]byte, 0, len("hermesh-sig-v1")+len(typ)+len(body)+2)
-	out = append(out, "hermesh-sig-v1\x00"...)
+	out := make([]byte, 0, len(legacy.SignPrefix)+len(typ)+len(body)+1)
+	out = append(out, legacy.SignPrefix...)
 	out = append(out, typ...)
 	out = append(out, 0)
 	return append(out, body...)

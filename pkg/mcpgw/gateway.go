@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"log/slog"
 	"net"
 	"net/http"
@@ -315,7 +316,7 @@ func randomToken(n int) string {
 
 // hashSecret is how secrets the gateway hands out are stored.
 func hashSecret(domain, secret string) []byte {
-	h := sha256.Sum256([]byte("hermesh-mcp-" + domain + "-v1\x00" + secret))
+	h := sha256.Sum256([]byte(legacy.MCPSecret + domain + "-v1\x00" + secret))
 	return h[:]
 }
 

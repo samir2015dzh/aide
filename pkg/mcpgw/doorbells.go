@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -354,7 +355,7 @@ func (m *memoryDoorbells) DeleteWakeLink(_ context.Context, codeHash string) err
 }
 
 func doorbellAAD(d *Doorbell, what string) []byte {
-	return []byte("hermesh-mcp-doorbell-v1\x00" + what + "\x00" + bellKey(d.OwnerID, d.Inbox, d.Name))
+	return []byte(legacy.MCPDoorbell + what + "\x00" + bellKey(d.OwnerID, d.Inbox, d.Name))
 }
 
 // ---------------------------------------------------------------------------
@@ -740,7 +741,7 @@ func wakeName(name string) (string, error) {
 }
 
 func hashCode(code string) string {
-	sum := sha256.Sum256([]byte("hermesh-wake-link-v1\x00" + code))
+	sum := sha256.Sum256([]byte(legacy.WakeLink + code))
 	return hex.EncodeToString(sum[:])
 }
 

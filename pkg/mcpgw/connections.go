@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"strings"
 	"time"
 
@@ -101,7 +102,7 @@ func label(name, redirectURI string) string {
 	return s
 }
 
-func keyAAD(connectionID string) []byte { return []byte("hermesh-mcp-key-v1\x00" + connectionID) }
+func keyAAD(connectionID string) []byte { return []byte(legacy.MCPKey + connectionID) }
 
 // key is a connection's client private key.
 func (g *Gateway) key(c *Connection) (*identity.SoftwareKey, error) {

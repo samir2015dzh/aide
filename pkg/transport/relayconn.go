@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"io"
 	"net"
 	"net/http"
@@ -25,7 +26,7 @@ const ProtocolVersion = 1
 
 // AdmitMessage is what a peer signs to prove key possession at admission.
 func AdmitMessage(relayID string, nonce []byte, role relayv1.Role) []byte {
-	m := []byte("hermesh-admit-v1\x00" + relayID + "\x00")
+	m := []byte(legacy.Admit + relayID + "\x00")
 	m = append(m, nonce...)
 	return append(m, 0, byte(role))
 }

@@ -1,19 +1,23 @@
 // Package brandenv reads and writes the environment variables Aide takes,
 // under the names they have since the product was called Aide (AIDE_X)
 // and, as machines and containers set up before then have them, under the
-// names they had (HERMESH_X): RENAME-AIDE.md §2.4. The new name wins when
-// both are set; neither name is going away.
+// names they had (internal/legacy: docs/aide-rename.md). The new name wins
+// when both are set.
 package brandenv
 
-import "os"
+import (
+	"os"
+
+	"github.com/hermeshai/hermesh/internal/legacy"
+)
 
 // The prefixes: the name since the rename, and the one before.
 const (
 	Prefix    = "AIDE_"
-	OldPrefix = "HERMESH_"
+	OldPrefix = legacy.EnvPrefix
 )
 
-// Get is AIDE_<name>, or HERMESH_<name> if that is empty or unset.
+// Get is AIDE_<name>, or the old name's if that is empty or unset.
 func Get(name string) string {
 	if v := os.Getenv(Prefix + name); v != "" {
 		return v

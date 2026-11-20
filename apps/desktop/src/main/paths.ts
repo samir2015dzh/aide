@@ -2,6 +2,7 @@ import { app } from "electron";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { envPrefix, kept } from "./legacy";
 
 // Test builds only (HERMESH_TEST_DATA_DIR when building): a data directory
 // baked in, so an app that Squirrel relaunches after an update still talks
@@ -12,14 +13,14 @@ export const testDataDir = __HERMESH_TEST_DATA_DIR__;
 // Mirrors DataDir and LocalAPI in internal/paths.
 export function dataDir(): string {
   if (testDataDir) return testDataDir;
-  // AIDE_DATA_DIR, or the name it had before the rename (RENAME-AIDE.md §2.4).
-  const set = process.env.AIDE_DATA_DIR || process.env.HERMESH_DATA_DIR;
+  // AIDE_DATA_DIR, or the name it had before the rename (legacy.ts).
+  const set = process.env.AIDE_DATA_DIR || process.env[envPrefix + "DATA_DIR"];
   if (set) return set;
   const home = os.homedir();
-  if (process.platform === "darwin") return path.join(home, "Library", "Application Support", "Hermesh");
-  if (process.platform === "win32") return path.join(process.env.LOCALAPPDATA || path.join(home, "AppData", "Local"), "Hermesh");
-  if (process.env.XDG_DATA_HOME) return path.join(process.env.XDG_DATA_HOME, "hermesh");
-  return path.join(home, ".local", "share", "hermesh");
+  if (process.platform === "darwin") return kept(path.join(home, "Library", "Application Support", "Aide"));
+  if (process.platform === "win32") return kept(path.join(process.env.LOCALAPPDATA || path.join(home, "AppData", "Local"), "Aide"));
+  if (process.env.XDG_DATA_HOME) return kept(path.join(process.env.XDG_DATA_HOME, "aide"));
+  return kept(path.join(home, ".local", "share", "aide"));
 }
 
 export function socketPath(): string {

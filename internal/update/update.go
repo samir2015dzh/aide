@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"io"
 	"net/http"
 	"os"
@@ -42,39 +43,72 @@ var (
 )
 
 // Programs are the programs an update replaces, where they are (Windows:
-// with hermeshdw, the windowless hermeshd its service runs; elsewhere with
-// her, Her's kernel, which hermeshd runs from beside itself).
+// with aidedw, the windowless aided its service runs; elsewhere with her,
+// Her's kernel, which aided runs from beside itself).
 var Programs = programs()
 
 func programs() []string {
 	if runtime.GOOS == "windows" {
-		return []string{"hermeshd.exe", "hermeshdw.exe", "hermesh.exe"}
+		return []string{"aided.exe", "aidedw.exe", "aide.exe"}
 	}
-	return []string{"hermeshd", "hermesh", "her"}
+	return []string{"aided", "aide", "her"}
 }
 
-// aliases are the names hermeshd and hermesh have since the product was
-// called Aide, beside the names they had, which the service, agents' hooks
-// and scripts run (RENAME-AIDE.md B1, B2): links to the files, or on
-// Windows copies of them. Install keeps them up to date, and makes them on
-// a machine installed before the rename.
-var aliases = map[string]string{"hermeshd": "aided", "hermesh": "aide"}
+// legacyNames are the names the programs had before the rename
+// (internal/legacy), which the services, logon tasks and agents' hooks of an
+// installation from before it run. Where one is in the programs' folder, it
+// is kept up to date as a link to the program (on Windows a copy of it);
+// none is made where there was none.
+var legacyNames = map[string]string{"aided": legacy.Daemon, "aidedw": legacy.DaemonWindowless, "aide": legacy.CLI}
 
-// placeAliases makes dir's aliases of the programs in names those programs.
-func placeAliases(dir string, names []string) error {
+// legacyOf is the name name had before the rename, "" for none.
+func legacyOf(name string) string {
+	base := strings.TrimSuffix(name, ".exe")
+	if l := legacyNames[base]; l != "" {
+		return l + name[len(base):]
+	}
+	return ""
+}
+
+// present tells whether the program name is in dir, under its name or the
+// one it had: a program from before the rename is updated to its new name.
+// An alias of it under its new name (a link to the old file) gives way to
+// the program itself.
+func present(dir, name string) bool {
+	path := filepath.Join(dir, name)
+	if fi, err := os.Lstat(path); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		if l := legacyOf(name); l != "" && exists(filepath.Join(dir, l)) {
+			os.Remove(path)
+			return true
+		}
+	}
+	if exists(path) {
+		return true
+	}
+	l := legacyOf(name)
+	return l != "" && exists(filepath.Join(dir, l))
+}
+
+func exists(path string) bool { _, err := os.Stat(path); return err == nil }
+
+// placeLegacy makes each of names' old names that is in dir the program
+// again: a link to it, or on Windows a copy, the running one renamed aside
+// first.
+func placeLegacy(dir string, names []string) error {
 	for _, name := range names {
-		base := strings.TrimSuffix(name, ".exe")
-		alias := aliases[base]
-		if alias == "" {
+		old := legacyOf(name)
+		if old == "" {
 			continue
 		}
-		alias += name[len(base):]
-		path := filepath.Join(dir, alias)
+		path := filepath.Join(dir, old)
+		if _, err := os.Lstat(path); err != nil {
+			continue
+		}
 		if runtime.GOOS != "windows" {
 			if target, err := os.Readlink(path); err == nil && target == name {
 				continue
 			}
-			tmp := sibling(dir, alias, "link")
+			tmp := sibling(dir, old, "link")
 			os.Remove(tmp)
 			if err := os.Symlink(name, tmp); err != nil {
 				return err
@@ -84,21 +118,18 @@ func placeAliases(dir string, names []string) error {
 			}
 			continue
 		}
-		// Windows: a copy, the running one renamed aside first.
 		body, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			return err
 		}
-		prev := previousPath(dir, alias)
-		if old, _ := filepath.Glob(prev + ".*"); old != nil {
-			for _, o := range old {
+		prev := previousPath(dir, old)
+		if older, _ := filepath.Glob(prev + ".*"); older != nil {
+			for _, o := range older {
 				os.Remove(o)
 			}
 		}
-		if _, err := os.Stat(path); err == nil {
-			if err := os.Rename(path, fmt.Sprintf("%s.%d", prev, time.Now().UnixNano())); err != nil {
-				return err
-			}
+		if err := os.Rename(path, fmt.Sprintf("%s.%d", prev, time.Now().UnixNano())); err != nil {
+			return err
 		}
 		if err := os.WriteFile(path, body, 0o755); err != nil {
 			return err
@@ -127,8 +158,8 @@ var folders = map[string]string{
 	herPDF:      herPDF + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tar.gz",
 }
 
-// asset is a program's file in a release: hermeshd-linux-arm64,
-// hermeshd-windows-amd64.exe.
+// asset is a program's file in a release: aided-linux-arm64,
+// aided-windows-amd64.exe.
 func asset(name string) string {
 	base := strings.TrimSuffix(name, ".exe")
 	return base + "-" + runtime.GOOS + "-" + runtime.GOARCH + name[len(base):]
@@ -261,7 +292,7 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 	defer lock.Release()
 	var names []string
 	for _, name := range Programs {
-		if _, err := os.Stat(filepath.Join(dir, name)); err == nil && (!ownVersion(name) || r.sums[asset(name)] != "") {
+		if present(dir, name) && (!ownVersion(name) || r.sums[asset(name)] != "") {
 			names = append(names, name)
 		}
 	}
@@ -285,7 +316,9 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 		path := filepath.Join(dir, name)
 		prev := previousPath(dir, name)
 		os.RemoveAll(prev)
-		if folders[name] != "" { // a folder, moved aside whole
+		if !exists(path) {
+			// Only under its old name until now: nothing to move aside.
+		} else if folders[name] != "" { // a folder, moved aside whole
 			if err := os.Rename(path, prev); err != nil {
 				return nil, err
 			}
@@ -308,8 +341,8 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 			return nil, err
 		}
 	}
-	if err := placeAliases(dir, names); err != nil {
-		return names, fmt.Errorf("updated, but not the programs' new names: %w", err)
+	if err := placeLegacy(dir, names); err != nil {
+		return names, fmt.Errorf("updated, but not the programs' old names: %w", err)
 	}
 	return names, nil
 }

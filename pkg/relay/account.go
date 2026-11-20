@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"slices"
 	"strings"
 	"sync"
@@ -970,7 +971,7 @@ func (s *Server) convertOld(t *tenant, old *relayv1.OldPasswordLogin, account, p
 	if err != nil {
 		return err
 	}
-	aad := append([]byte("hermesh password key\x00"+t.ownerID+"\x00"), old.PublicKey...)
+	aad := append([]byte(legacy.PasswordKey+t.ownerID+"\x00"), old.PublicKey...)
 	der, err := gcm.Open(nil, old.Nonce, old.SealedKey, aad)
 	if err != nil {
 		return errors.New("the password does not open the old password key")

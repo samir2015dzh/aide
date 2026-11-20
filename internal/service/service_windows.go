@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode/utf16"
@@ -26,16 +28,29 @@ import (
 // Scheduler restarts a task that fails to start, not a program that exits,
 // so the supervisor restarts the daemon itself.
 
-// taskName is this user's task: tasks share one namespace per computer.
+// taskName is this user's task: tasks share one namespace per computer. An
+// installation from before the rename keeps its task's name while it has
+// that task (internal/legacy).
 func taskName() string {
-	u := strings.Map(func(r rune) rune {
-		if strings.ContainsRune(`\/:*?"<>|`, r) {
-			return '_'
+	taskOnce.Do(func() {
+		u := strings.Map(func(r rune) rune {
+			if strings.ContainsRune(`\/:*?"<>|`, r) {
+				return '_'
+			}
+			return r
+		}, os.Getenv("USERNAME"))
+		task = newTask + " (" + u + ")"
+		if old := legacy.LogonTask + " (" + u + ")"; schtasks("/Query", "/TN", old) == nil {
+			task = old
 		}
-		return r
-	}, os.Getenv("USERNAME"))
-	return "Hermesh (" + u + ")"
+	})
+	return task
 }
+
+var (
+	taskOnce sync.Once
+	task     string
+)
 
 // definition is where Install keeps the task it registered.
 func definition() string {

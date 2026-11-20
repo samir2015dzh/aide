@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"github.com/hermeshai/hermesh/internal/provider"
 	"github.com/hermeshai/hermesh/internal/shellenv"
 	"github.com/hermeshai/hermesh/pkg/metrics"
@@ -266,7 +267,7 @@ func (w *Workspace) Create(ctx context.Context, repo, baseRef, sessionID string)
 		return "", "", fmt.Errorf("resolve base ref %q: %w", baseRef, err)
 	}
 	base = strings.TrimSpace(base)
-	branch = "hermesh/" + sessionID
+	branch = sessionBranchPrefix + sessionID
 	if err := os.MkdirAll(w.root, 0o700); err != nil {
 		return "", "", err
 	}
@@ -280,6 +281,24 @@ func (w *Workspace) Create(ctx context.Context, repo, baseRef, sessionID string)
 	}
 	base, err = resolveRef(ctx, repo, "refs/heads/"+branch)
 	return base, branch, err
+}
+
+// sessionBranchPrefix starts a session's branch: aide/<session>.
+const sessionBranchPrefix = "aide/"
+
+// sessionBranch is the session's branch in repo: aide/<session>, or the
+// branch a session started before the rename has (internal/legacy), while
+// only that one exists.
+func sessionBranch(ctx context.Context, repo, sessionID string) string {
+	branch := sessionBranchPrefix + sessionID
+	if _, err := resolveRef(ctx, repo, "refs/heads/"+branch); err == nil {
+		return branch
+	}
+	old := legacy.Branch + sessionID
+	if _, err := resolveRef(ctx, repo, "refs/heads/"+old); err == nil {
+		return old
+	}
+	return branch
 }
 
 // FetchRef fetches a base ref the local repository lacks from its remotes,
@@ -421,7 +440,7 @@ func (w *Workspace) Restore(ctx context.Context, repo, sessionID string) error {
 	if err := os.MkdirAll(w.root, 0o700); err != nil {
 		return err
 	}
-	branch := "hermesh/" + sessionID
+	branch := sessionBranch(ctx, repo, sessionID)
 	// A removed directory may still be registered with git. Prune its stale
 	// metadata before either checkout path tries to register it again.
 	w.Prune(ctx, repo)
@@ -581,7 +600,7 @@ func (w *Workspace) Snapshot(ctx context.Context, repo, sessionID string, turn u
 	} else {
 		stat = parseShortstat(out)
 	}
-	branch := "refs/heads/hermesh/" + sessionID
+	branch := "refs/heads/" + sessionBranch(ctx, repo, sessionID)
 	head, err := resolveRef(ctx, repo, branch)
 	if err != nil {
 		return "", nil, err

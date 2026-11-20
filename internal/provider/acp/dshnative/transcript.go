@@ -2,6 +2,7 @@ package dshnative
 
 import (
 	"encoding/json"
+	"github.com/hermeshai/hermesh/internal/legacy"
 	"strings"
 	"time"
 
@@ -49,8 +50,9 @@ func (m message) text(files bool) string {
 // summary): those are not what was said.
 func appended(e event) bool { return string(e.SurfaceOp) == `"append"` }
 
-// RequestPrefix starts the request id of every message Hermesh sends into
-// a DSH session (through the bridge); DSH keeps it as the message's rpcId.
+// RequestPrefix starts the request id of every message Aide sends into a
+// DSH session (through the bridge); DSH keeps it as the message's rpcId.
+// The messages sent before the rename have the old prefix (internal/legacy).
 const RequestPrefix = "hermesh-"
 
 // userText is what the owner wrote, when e is a prompt of theirs (DSH
@@ -61,7 +63,7 @@ func userText(e event) (text string, viaHermesh, ok bool) {
 	if e.Type != "user/message" || !appended(e) || json.Unmarshal(e.Data, &m) != nil || m.Source.Kind != "user" {
 		return "", false, false
 	}
-	return m.text(true), strings.HasPrefix(m.Source.RPCID, RequestPrefix), true
+	return m.text(true), strings.HasPrefix(m.Source.RPCID, RequestPrefix) || strings.HasPrefix(m.Source.RPCID, legacy.DSHRequest), true
 }
 
 // transcript is the conversation as Hermesh's session events: turns
