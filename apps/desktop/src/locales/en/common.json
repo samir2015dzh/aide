@@ -216,6 +216,13 @@
     "body": "Aide on {{machine}} doesn’t have this yet. Update Aide there, and this page loads by itself.",
     "text": "Aide on that computer is older and doesn’t have this yet. Update Aide there, then try again."
   },
+  "herUnavailable": {
+    "offTitle": "Her isn’t on on {{machine}}",
+    "offBody": "This isn’t about versions. Turn Her on for {{machine}} in Settings › Machines, and this shows by itself.",
+    "notRunningTitle": "Her isn’t running on {{machine}} yet",
+    "notRunningBody": "Her is on, but isn’t running on that computer yet; it may be starting. Give it a moment, and this comes back by itself; if it doesn’t, restart Aide on that computer.",
+    "failedBody": "Her is on, but couldn’t start on that computer: {{error}}. Restart Aide there; if that doesn’t help, turn Her off and on again in Settings › Machines."
+  },
   "dsh": {
     "title": "DeepSeek sessions",
     "note": "Sessions on your machines that DeepSeek Harness has of its own (opened in DSH, or by another tool). Read only, until you turn on Take Over for one: then you can send it messages from here.",

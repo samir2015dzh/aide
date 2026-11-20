@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Mark, personalAgents, type PersonalAgentKind } from "@aide/ui";
 import { PersonalAgentIcon } from "./components";
 import { Icon } from "./icons";
+import { assistantSteps, byMCP, mcpApp, mcpState } from "./assistantSteps";
 import { connectMessage, kindName } from "./personal";
 import { useStore } from "./store";
 import { i18n } from "../../shared/i18n";
@@ -14,9 +15,6 @@ import { i18n } from "../../shared/i18n";
 // other is sent a message to run the CLI's `aide auth login`. What it may
 // use is every machine and project, its own tasks, until signed out;
 // changed afterwards from Settings › Access.
-
-/** The assistants that connect by the server's MCP address rather than the CLI. */
-const byMCP = new Set(["claude", "chatgpt"]);
 
 export function useConnect() {
   const st = useStore();
@@ -30,6 +28,7 @@ export function useConnect() {
   const label = (other ? otherName.trim() : kind.name) || "My Agent";
   const mcp = byMCP.has(kind.id);
   const text = mcp ? (st.status?.mcpUrl ?? "") : connectMessage(st.status, label);
+  const shown = assistantSteps(kind.id, mcpState(st.status));
   return {
     kind,
     other,
@@ -39,6 +38,8 @@ export function useConnect() {
     mcp,
     /** What to copy: the MCP address, or the message to send. */
     text,
+    /** Its steps, whether there is something to copy, and the note in its place when not (assistantSteps). */
+    shown,
     /** The agent that logged in since this was opened, if one did. */
     arrived: st.clients.find((c) => !before.has(c.clientId)),
     pick(id: string) {
@@ -73,7 +74,6 @@ export function Assistants({ c, size = 44 }: { c: ReturnType<typeof useConnect>;
         </button>
       </div>
     );
-  const noMCP = c.mcp && !c.text;
   return (
     <>
       <div className="pa-pick" role="radiogroup" aria-label={t("assistants.pick")}>
@@ -91,13 +91,15 @@ export function Assistants({ c, size = 44 }: { c: ReturnType<typeof useConnect>;
             <input id="cf-name" className="field" maxLength={64} value={c.otherName} onChange={(e) => c.rename(e.target.value)} />
           </div>
         )}
-        <ol className="cg-list">
-          {(c.mcp ? ["mcp1", "mcp2", "mcp3"] : ["cli1", "cli2", "cli3"]).map((k) => (
-            <li key={k}>{t(`assistants.${k}` as never, { name: c.label, app: c.kind.name, password: `<${i18n.t("common:personal.passwordArg")}>` })}</li>
-          ))}
-        </ol>
-        {noMCP ? (
-          <p className="cg-note">{t("assistants.noMCP")}</p>
+        {c.shown.steps.length > 0 && (
+          <ol className="cg-list">
+            {c.shown.steps.map((k) => (
+              <li key={k}>{t(`assistants.${k}` as never, { name: c.label, app: mcpApp[c.kind.id] ?? c.kind.name, password: `<${i18n.t("common:personal.passwordArg")}>` })}</li>
+            ))}
+          </ol>
+        )}
+        {c.shown.note ? (
+          <p className="cg-note" data-testid="mcp-note">{t(`assistants.${c.shown.note}` as never)}</p>
         ) : (
           <div className="pa-msg">
             <div className="msgbox sel-text">{c.text}</div>
