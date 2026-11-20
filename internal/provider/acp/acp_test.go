@@ -569,3 +569,29 @@ func TestDesktopAppCLIAsar(t *testing.T) {
 		t.Fatalf("command: %q %q %q", bin, pre, env)
 	}
 }
+
+// A Windows app installed elsewhere than its installer's default (another
+// drive, a folder the owner chose) is found where Windows' list of
+// installed programs says it is; one there whose script is in no known
+// place says the app is there without its CLI, not that nothing is.
+func TestDesktopAppWhereWindowsSays(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	t.Setenv("ProgramFiles", t.TempDir())
+	elsewhere := filepath.Join(t.TempDir(), "Apps", "DSH Desktop")
+	a := App{Bundle: "DSH Desktop", Exec: "DSH Desktop.exe", Script: "resources/app.asar.unpacked/lib/desktop-cli.js", More: []string{"resources/app.asar/lib/desktop-cli.js"}, Names: []string{"DSH Desktop"}}
+	exe := filepath.Join(elsewhere, a.Exec)
+	os.MkdirAll(elsewhere, 0o755)
+	os.WriteFile(exe, nil, 0o755)
+	defer provider.UseAppSources([]provider.InstalledApp{{DisplayName: "DSH Desktop 0.4.1", DisplayIcon: exe + ",0"}}, nil)()
+	p := &Provider{Agent: Agent{Name: "deepseek", Command: "aide-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
+	if info := p.Discover(context.Background()); info.Problem != provider.ProblemAppWithoutCLI || info.Detail != "DSH Desktop" {
+		t.Fatalf("without its script: %+v", info)
+	}
+	asar := filepath.Join(elsewhere, "resources", "app.asar")
+	os.MkdirAll(filepath.Dir(asar), 0o755)
+	os.WriteFile(asar, nil, 0o644)
+	bin, pre, env := p.command()
+	if want := filepath.Join(elsewhere, "resources/app.asar/lib/desktop-cli.js"); bin != exe || len(pre) != 1 || pre[0] != want || len(env) != 1 {
+		t.Fatalf("command: %q %q %q", bin, pre, env)
+	}
+}

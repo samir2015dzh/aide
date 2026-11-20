@@ -62,19 +62,46 @@ func desktopCLI(home string) string {
 	return ""
 }
 
-// windowsDesktopCLI is the newest Claude Code the Claude desktop app keeps
-// for itself on Windows: <userData>\claude-code\<version>\claude.exe, some
-// versions with a <hash> folder between. userData is %APPDATA%\Claude, or
-// for the MSIX package (whose %APPDATA% is redirected)
-// %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude, or in 3p
-// mode %LOCALAPPDATA%\Claude-3p. "" when none has one (or not Windows: the
-// variables are unset there).
+// windowsDesktopCLI is the Claude Code the Claude desktop app keeps for
+// itself on Windows, found in this order:
+//
+//   - the one running now (a Code session open in the app): a claude.exe
+//     under a claude-code folder, whatever the layout around it;
+//   - the newest under one of the app's data folders (windowsUserData), at
+//     claude-code\<version>\claude.exe or a <build-id> folder deeper;
+//   - the newest under the app's own install folder, where the offline
+//     installer keeps it (claude-code\<version>\[<build-id>\]claude.exe at
+//     most a few levels down).
+//
+// claude-code-vm holds the Linux one Cowork's virtual machine runs: not
+// this. "" when none has one (or not Windows: the variables are unset).
 func windowsDesktopCLI(appData, localAppData string) string {
+	if appData == "" && localAppData == "" {
+		return ""
+	}
+	for _, exe := range provider.RunningPrograms("claude.exe") {
+		if inClaudeCode(exe) && provider.LookPath("claude", "", exe) != "" {
+			return exe
+		}
+	}
 	var dirs []string
 	for _, userData := range windowsUserData(appData, localAppData) {
 		d, _ := filepath.Glob(filepath.Join(userData, "claude-code", "*"))
 		dirs = append(dirs, d...)
 	}
+	if p := newestCLI(dirs); p != "" {
+		return p
+	}
+	dirs = nil
+	for _, app := range windowsAppDirs(localAppData) {
+		dirs = append(dirs, claudeCodeVersions(app, 6)...)
+	}
+	return newestCLI(dirs)
+}
+
+// newestCLI is claude.exe in the newest of the version folders dirs, or one
+// <build-id> folder deeper.
+func newestCLI(dirs []string) string {
 	slices.SortStableFunc(dirs, func(a, b string) int {
 		return slices.Compare(versionKey(filepath.Base(b)), versionKey(filepath.Base(a)))
 	})
@@ -87,19 +114,80 @@ func windowsDesktopCLI(appData, localAppData string) string {
 	return ""
 }
 
+// inClaudeCode says whether exe is in a claude-code folder's tree (the
+// desktop app's Claude Code), not the app itself (also claude.exe).
+func inClaudeCode(exe string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(filepath.Dir(exe)), "/") {
+		if strings.EqualFold(part, "claude-code") {
+			return true
+		}
+	}
+	return false
+}
+
+// claudeCodeVersions are the version folders of the claude-code folders
+// under root, at most depth levels down (an app's folder is not large, and
+// a bound keeps a strange one from costing).
+func claudeCodeVersions(root string, depth int) []string {
+	var out []string
+	base := strings.Count(filepath.ToSlash(filepath.Clean(root)), "/")
+	filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || !d.IsDir() {
+			return nil
+		}
+		if strings.Count(filepath.ToSlash(p), "/")-base >= depth {
+			return filepath.SkipDir
+		}
+		if strings.EqualFold(d.Name(), "node_modules") || strings.EqualFold(d.Name(), "claude-code-vm") {
+			return filepath.SkipDir
+		}
+		if strings.EqualFold(d.Name(), "claude-code") {
+			v, _ := filepath.Glob(filepath.Join(p, "*"))
+			out = append(out, v...)
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return out
+}
+
+// windowsAppDirs are where the Claude desktop app itself is installed:
+// where Windows' list of installed programs says, and the classic
+// installer's %LOCALAPPDATA%\AnthropicClaude (its versions' app-<version>
+// folders under it).
+func windowsAppDirs(localAppData string) []string {
+	dirs := provider.AppDirs([]string{"Claude"}, nil)
+	if localAppData != "" {
+		dirs = append(dirs, filepath.Join(localAppData, "AnthropicClaude"))
+	}
+	return dirs
+}
+
 // windowsUserData are where the Claude desktop app may keep its data on
-// Windows, in the order above.
+// Windows: %APPDATA%\Claude (the classic installer's, and the MSIX
+// package's, which writes there unvirtualized), %LOCALAPPDATA%\Claude,
+// the MSIX package's redirected copies (%LOCALAPPDATA%\Packages\Claude_*\
+// LocalCache\Roaming|Local\Claude) and in 3p mode Claude-3p in each of them.
 func windowsUserData(appData, localAppData string) []string {
 	var dirs []string
+	names := []string{"Claude", "Claude-3p"}
 	if appData != "" {
-		dirs = append(dirs, filepath.Join(appData, "Claude"))
+		for _, n := range names {
+			dirs = append(dirs, filepath.Join(appData, n))
+		}
 	}
 	if localAppData != "" {
+		for _, n := range names {
+			dirs = append(dirs, filepath.Join(localAppData, n))
+		}
 		pkgs, _ := filepath.Glob(filepath.Join(localAppData, "Packages", "Claude_*"))
 		for _, p := range pkgs {
-			dirs = append(dirs, filepath.Join(p, "LocalCache", "Roaming", "Claude"))
+			for _, under := range []string{"Roaming", "Local"} {
+				for _, n := range names {
+					dirs = append(dirs, filepath.Join(p, "LocalCache", under, n))
+				}
+			}
 		}
-		dirs = append(dirs, filepath.Join(localAppData, "Claude-3p"))
 	}
 	return dirs
 }

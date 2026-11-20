@@ -405,3 +405,82 @@ func TestWindowsDesktopCLI(t *testing.T) {
 		}
 	})
 }
+
+// The layouts the Claude desktop app is documented to use on Windows
+// (anthropics/claude-code#104672, #62690; the 3p deployment guide), as
+// directory trees: each is found, and what is not Claude Code for Windows
+// (Cowork's claude-code-vm, the app's own Claude.exe) is not taken for it.
+func TestWindowsDesktopCLILayouts(t *testing.T) {
+	file := func(t *testing.T, parts ...string) string {
+		p := filepath.Join(parts...)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	t.Run("roaming, with its .verified mark", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		bin := file(t, appData, "Claude", "claude-code", "2.1.308", "claude.exe")
+		file(t, appData, "Claude", "claude-code", "2.1.308", ".verified")
+		if got := windowsDesktopCLI(appData, local); got != bin {
+			t.Fatalf("got %q, want %q", got, bin)
+		}
+	})
+	t.Run("local appdata", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		bin := file(t, local, "Claude", "claude-code", "2.1.310", "claude.exe")
+		if got := windowsDesktopCLI(appData, local); got != bin {
+			t.Fatalf("got %q, want %q", got, bin)
+		}
+	})
+	t.Run("msix, local cache, 3p, build-id", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		bin := file(t, local, "Packages", "Claude_pzs8sxrjxfjjc", "LocalCache", "Local", "Claude-3p", "claude-code", "2.1.305", "a1b2c3d4e5f6", "claude.exe")
+		if got := windowsDesktopCLI(appData, local); got != bin {
+			t.Fatalf("got %q, want %q", got, bin)
+		}
+	})
+	t.Run("only Cowork's virtual machine copy", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		file(t, appData, "Claude", "claude-code-vm", "2.1.308", "claude")
+		file(t, appData, "Claude", "claude-code-vm", "2.1.308", "claude.exe")
+		if got := windowsDesktopCLI(appData, local); got != "" {
+			t.Fatalf("took the virtual machine's: %q", got)
+		}
+		if !windowsApp(appData, local) {
+			t.Fatal("the app is there: not reported")
+		}
+	})
+	t.Run("inside the app's install folder (offline installer)", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		file(t, local, "AnthropicClaude", "app-4.23118.0", "claude.exe") // the app itself
+		bin := file(t, local, "AnthropicClaude", "app-4.23118.0", "resources", "claude-code", "2.1.300", "0123456789ab", "claude.exe")
+		if got := windowsDesktopCLI(appData, local); got != bin {
+			t.Fatalf("got %q, want %q", got, bin)
+		}
+		// Where the installed programs' list says the app is, elsewhere.
+		elsewhere := t.TempDir()
+		other := file(t, elsewhere, "resources", "claude-code", "2.1.302", "claude.exe")
+		defer provider.UseAppSources([]provider.InstalledApp{{DisplayName: "Claude", InstallLocation: elsewhere}}, nil)()
+		if got := windowsDesktopCLI(appData, local); got != bin && got != other {
+			t.Fatalf("got %q", got)
+		}
+		os.RemoveAll(filepath.Join(local, "AnthropicClaude"))
+		if got := windowsDesktopCLI(appData, local); got != other {
+			t.Fatalf("got %q, want %q", got, other)
+		}
+	})
+	t.Run("the one running now, whatever its layout", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		file(t, appData, "Claude", "claude-code", "2.1.1", "claude.exe")
+		desktop := file(t, local, "AnthropicClaude", "app-4.0.0", "claude.exe")
+		running := file(t, t.TempDir(), "somewhere", "claude-code", "2.1.400", "x", "y", "claude.exe")
+		defer provider.UseAppSources(nil, []string{desktop, running})()
+		if got := windowsDesktopCLI(appData, local); got != running {
+			t.Fatalf("got %q, want the running one %q", got, running)
+		}
+	})
+}

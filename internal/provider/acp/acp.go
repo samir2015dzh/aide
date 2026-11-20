@@ -65,6 +65,13 @@ type Agent struct {
 // (Windows), then the system's.
 type App struct {
 	Bundle, Exec, Script string
+	// More is where else in the app the script may be (another build's
+	// layout).
+	More []string
+	// Names are the app's names in Windows' list of installed programs:
+	// installed elsewhere than the default, or running, it is found where
+	// Windows says it is (provider.AppDirs).
+	Names []string
 }
 
 type Provider struct {
@@ -115,16 +122,39 @@ func (p *Provider) command() (bin string, pre, env []string) {
 	if pf := os.Getenv("ProgramFiles"); pf != "" {
 		dirs = append(dirs, pf) // the machine's Windows ones
 	}
+	bin, pre, env, _ = p.appCommand(dirs)
+	return bin, pre, env
+}
+
+// appCommand finds one of the agent's desktop apps, in dirs (each holding
+// apps by their Bundle) or where Windows says it is, with its CLI's script.
+// found names an app there without the script (another layout than any
+// known): the agent is told missing as that, not as nothing found.
+func (p *Provider) appCommand(dirs []string) (bin string, pre, env []string, found string) {
 	for _, a := range p.Apps {
+		var apps []string
 		for _, dir := range dirs {
-			app := filepath.Join(dir, a.Bundle)
-			exe, script := filepath.Join(app, a.Exec), filepath.Join(app, a.Script)
-			if scriptThere(script) && provider.LookPath("", "", exe) != "" {
-				return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}
+			apps = append(apps, filepath.Join(dir, a.Bundle))
+		}
+		if len(a.Names) > 0 {
+			apps = append(apps, provider.AppDirs(a.Names, []string{filepath.Base(a.Exec)})...)
+		}
+		for _, app := range apps {
+			exe := filepath.Join(app, a.Exec)
+			if provider.LookPath("", "", exe) == "" {
+				continue
+			}
+			for _, s := range append([]string{a.Script}, a.More...) {
+				if script := filepath.Join(app, s); scriptThere(script) {
+					return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}, ""
+				}
+			}
+			if found == "" {
+				found = strings.TrimSuffix(filepath.Base(a.Exec), filepath.Ext(a.Exec))
 			}
 		}
 	}
-	return "", nil, nil
+	return "", nil, nil, found
 }
 
 // scriptThere: the script is on disk, or inside an .asar archive, which
@@ -153,6 +183,9 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	if !provider.Exists(bin) {
 		info.Problem, info.Detail = provider.ProblemNotFound, p.Command+" not found"
 		if app := provider.AppWithoutCLI(p.DesktopApps...); app != "" && p.Binary == "" {
+			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, app
+		}
+		if _, _, _, app := p.appCommand(nil); app != "" && p.Binary == "" {
 			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, app
 		}
 		return info
