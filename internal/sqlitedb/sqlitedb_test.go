@@ -27,16 +27,20 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 	if idle := n.Load(); idle > 12 {
 		t.Fatalf("%d checkpoints in 600 ms of nothing written", idle)
 	}
-	// Writing: back at the interval.
-	before := n.Load()
-	stop := time.Now().Add(300 * time.Millisecond)
-	for time.Now().Before(stop) {
-		if _, err := db.Exec("INSERT INTO t VALUES (1)"); err != nil {
-			t.Fatal(err)
+	idle := n.Load()
+	// Writing: the wait it had backed off to runs out, then it is back at
+	// the interval (counted after that warm-up, while writes go on).
+	write := func(d time.Duration) {
+		for stop := time.Now().Add(d); time.Now().Before(stop); time.Sleep(2 * time.Millisecond) {
+			if _, err := db.Exec("INSERT INTO t VALUES (1)"); err != nil {
+				t.Fatal(err)
+			}
 		}
-		time.Sleep(2 * time.Millisecond)
 	}
-	if busy := n.Load() - before; busy < 15 {
-		t.Fatalf("%d checkpoints in 300 ms of writes", busy)
+	write(400 * time.Millisecond)
+	before := n.Load()
+	write(600 * time.Millisecond)
+	if busy := n.Load() - before; busy < 15 || busy < 2*idle {
+		t.Fatalf("%d checkpoints in 600 ms of writes (%d in 600 ms of nothing)", busy, idle)
 	}
 }
