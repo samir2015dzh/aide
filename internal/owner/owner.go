@@ -2363,6 +2363,18 @@ func (o *Owner) RenameSession(ctx context.Context, id, title string) (*sessionv1
 	return o.written(id)(n.Session.RenameSession(ctx, &sessionv1.RenameSessionRequest{SessionId: id, Title: title}))
 }
 
+// RollbackSession rolls a session back to an earlier turn on its machine.
+func (o *Owner) RollbackSession(ctx context.Context, id string, turn uint32) (*sessionv1.Session, error) {
+	if l := o.localSession(id); l != nil {
+		return l.Rollback(ctx, id, turn)
+	}
+	n, err := o.sessionMachine(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return o.written(id)(n.Session.RollbackSession(ctx, &sessionv1.RollbackSessionRequest{SessionId: id, Turn: turn}))
+}
+
 // AnswerQuestion answers a session's question as the owner.
 func (o *Owner) AnswerQuestion(ctx context.Context, req *sessionv1.AnswerQuestionRequest) (*sessionv1.Session, error) {
 	if l := o.localSession(req.SessionId); l != nil {

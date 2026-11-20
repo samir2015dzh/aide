@@ -115,7 +115,7 @@ func annotations(t cli.Tool) *mcp.ToolAnnotations {
 	}
 	yes := true
 	a := &mcp.ToolAnnotations{OpenWorldHint: &yes}
-	if t.Name == "session_interrupt" || t.Name == "session_archive" || t.Name == "machine_exec" {
+	if t.Name == "session_interrupt" || t.Name == "session_archive" || t.Name == "session_rollback" || t.Name == "machine_exec" {
 		a.DestructiveHint = &yes
 	} else {
 		no := false

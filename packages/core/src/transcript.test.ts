@@ -8,7 +8,7 @@ import {
   type SessionEvent,
 } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { interrupter, isInterruption, resolutionTitle, transcript, turnStartedAt } from "./transcript";
+import { checkpoints, interrupter, isInterruption, resolutionTitle, transcript, turnStartedAt } from "./transcript";
 import { at } from "./testing";
 
 let seq = 0n;
@@ -28,6 +28,22 @@ const conversation = () => [
 ];
 
 describe("transcript", () => {
+  test("a rollback stays in the conversation, and the turns it discarded are no checkpoints", () => {
+    const turn = (n: number, text: string) => [
+      ev(n, { case: "turnStarted", value: { turn: n } }),
+      ev(n, { case: "userMessage", value: { text } }),
+      ev(n, { case: "userMessage", value: { text: text + ", and more" } }),
+      ev(n, { case: "turnCompleted", value: { turn: n } }),
+    ];
+    const events = [...turn(1, "one"), ...turn(2, "two"), ...turn(3, "three"),
+      ev(9, { case: "rolledBack", value: { turn: 1, lastTurn: 3, by: "owner" } }), ...turn(2, "two again")];
+    const items = transcript(events, false);
+    expect(items.find((i) => i.kind === "rollback")).toMatchObject({ turn: 1, lastTurn: 3, by: "owner" });
+    const text = (s: bigint) => items.find((i) => i.seq === s && i.kind === "user");
+    const kept = [...checkpoints(items)].map(([s, t]) => [text(s)?.kind === "user" && (text(s) as { text: string }).text, t]);
+    expect(kept).toEqual([["one", 0], ["two again", 1]]);
+  });
+
   test("messages between the session and the owner's agents, and who asked for each turn", () => {
     const items = transcript(
       [

@@ -36,6 +36,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"session_interrupt": {"session started by this connection", "message_send"},
 		"session_archive":   {"session started by this connection", "read-only"},
 		"session_unarchive": {"session started by this connection", "worktree is restored"},
+		"session_rollback":  {"session started by this connection", "discards every message and change", "yes=true", "in_place", "rolled_back"},
 		"session_diff":      {"worktree", "does not support in_place", "message_send", "git diff", "other sessions"},
 		"session_push":      {"never pushes on its own", "only when the user asked", "pull_request_url"},
 		"message_list":      {"news", "message_ack", "data from that agent", "capped at 50s"},
@@ -51,6 +52,9 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 			t.Errorf("add MCP description coverage for %s", tool.Name)
 		}
 		contains(tool.Name, tool.Description, phrases...)
+		if tool.Name == "session_rollback" && (tool.Annotations == nil || tool.Annotations.DestructiveHint == nil || !*tool.Annotations.DestructiveHint) {
+			t.Errorf("%s is not marked destructive", tool.Name)
+		}
 		b, err := json.Marshal(tool.InputSchema)
 		if err != nil {
 			t.Fatal(err)

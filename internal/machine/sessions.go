@@ -218,6 +218,9 @@ type live struct {
 	// lostContext says why the provider conversation was dropped; the next
 	// fresh provider session is told (see continuityNotice).
 	lostContext string
+	// rollbackNotice, after a rollback, is what the next fresh provider
+	// session is told instead (see rollbackNotice).
+	rollbackNotice string
 	// prepCancel stops the start under way (worktree, agent process),
 	// begun at prepStarted; nil when the session is not PREPARING.
 	prepCancel  context.CancelCauseFunc
@@ -1104,6 +1107,139 @@ func (s *Sessions) Unarchive(ctx context.Context, p *Principal, id string) (*ses
 	return s.toProto(l.row), nil
 }
 
+// Rollback puts an idle worktree session back to the end of turn (0: its
+// base): the worktree and branch are reset to that turn's snapshot, the
+// later turns are forgotten (their events stay, followed by a RolledBack
+// event), and the next turn starts a fresh agent conversation that is
+// told what happened, as the agent's own conversation still holds the
+// discarded turns.
+func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn uint32) (*sessionv1.Session, error) {
+	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)
+	if err != nil {
+		return nil, err
+	}
+	if l == nil {
+		return nil, cerr(connect.CodeFailedPrecondition, "session %s is archived (read-only); unarchive it first", id)
+	}
+	if r.Workspace == identityv1.Workspace_WORKSPACE_IN_PLACE || s.ws.none {
+		return nil, cerr(connect.CodeFailedPrecondition, "session %s works in place, in the project's own directory: Aide takes no per-turn snapshots there (the directory and its git are the owner's), so it cannot be rolled back", id)
+	}
+	proj, err := s.st.Project(r.ProjectID)
+	if err != nil || proj == nil {
+		return nil, cerr(connect.CodeFailedPrecondition, "project %q no longer exists", r.ProjectID)
+	}
+	// What the session shows of its last turn becomes the kept turn's.
+	if err := s.w.sync(writeOp{}); err != nil {
+		return nil, err
+	}
+	kept := s.turnEnd(id, turn)
+	// Held throughout, so no turn starts while the worktree is reset.
+	l.mu.Lock()
+	if st := l.row.Status; st != sessionv1.SessionStatus_SESSION_STATUS_IDLE && st != sessionv1.SessionStatus_SESSION_STATUS_CRASHED {
+		l.mu.Unlock()
+		return nil, cerr(connect.CodeFailedPrecondition, "session %s has a turn in progress (%s); interrupt it first", id, phaseOf(st))
+	}
+	if len(l.asked) > 0 {
+		l.mu.Unlock()
+		return nil, cerr(connect.CodeFailedPrecondition, "session %s is starting the turn another agent's message waits for; interrupt it first", id)
+	}
+	last := l.turn
+	if turn >= last {
+		l.mu.Unlock()
+		if last == 0 {
+			return nil, cerr(connect.CodeFailedPrecondition, "session %s has no turns to roll back", id)
+		}
+		return nil, cerr(connect.CodeInvalidArgument, "session %s has %d turns: roll back to a turn from 0 to %d", id, last, last-1)
+	}
+	commit := l.row.BaseCommit
+	for t := turn; t > 0; t-- { // a turn without a snapshot left its files as the one before
+		c, err := s.st.TurnCommit(id, t)
+		if err != nil {
+			l.mu.Unlock()
+			return nil, err
+		}
+		if c != "" {
+			commit = c
+			break
+		}
+	}
+	if !s.ws.Exists(id) {
+		if err := s.ws.Restore(ctx, proj.Path, id); err != nil {
+			l.mu.Unlock()
+			return nil, fmt.Errorf("restore the worktree: %w", err)
+		}
+	}
+	was, err := s.ws.Reset(ctx, proj.Path, id, commit)
+	if err != nil {
+		l.mu.Unlock()
+		return nil, fmt.Errorf("roll back the worktree: %w", err)
+	}
+	if st, err := diffStat(ctx, proj.Path, l.row.BaseCommit, commit); err == nil {
+		l.row.Progress.DiffStat = st
+	}
+	ps := l.sess
+	l.sess = nil
+	l.turn, l.lastCommit, l.repo = turn, commit, proj.Path
+	l.row.Progress.TurnCount = turn
+	l.row.Result = kept.GetResult()
+	l.row.Progress.LastFailure = kept.GetFailure()
+	l.row.Progress.LastMessageExcerpt, _ = provider.Truncate(kept.GetResult(), 280)
+	l.row.ProviderRef = ""
+	l.rollbackNotice = rollbackNotice(turn, last)
+	changed := s.setStatusLocked(l, sessionv1.SessionStatus_SESSION_STATUS_IDLE)
+	l.mu.Unlock()
+	if ps != nil {
+		ps.Close()
+	}
+	s.w.put(writeOp{dropTurns: &turnRec{sessionID: id, turn: turn}})
+	s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_RolledBack{RolledBack: &sessionv1.RolledBack{
+		Turn: turn, LastTurn: last, Commit: commit, DiscardedCommit: was, By: p.ID()}}})
+	if changed {
+		s.statusChanged(l, sessionv1.SessionStatus_SESSION_STATUS_IDLE, "rolled back by "+p.ID())
+	}
+	if err := s.w.sync(writeOp{}); err != nil {
+		return nil, err
+	}
+	s.audit.Log(AuditRecord{Kind: "session.rollback", Subject: p.ID(), Session: id, Decision: "allow"})
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return s.toProto(l.row), nil
+}
+
+// turnEnd is the TurnCompleted of turn: the latest one, as a rollback
+// discards the turns after it and the next turn takes the number again.
+func (s *Sessions) turnEnd(id string, turn uint32) *sessionv1.TurnCompleted {
+	var before uint64
+	for turn > 0 {
+		evs, more, _, err := s.st.EventPage(id, 0, before, 500)
+		if err != nil || len(evs) == 0 {
+			return nil
+		}
+		for i := len(evs) - 1; i >= 0; i-- {
+			if tc := evs[i].GetTurnCompleted(); tc != nil && tc.Turn == turn {
+				return tc
+			}
+		}
+		if !more {
+			return nil
+		}
+		before = evs[0].Seq
+	}
+	return nil
+}
+
+// rollbackNotice tells the fresh agent conversation after a rollback where
+// the session stands.
+func rollbackNotice(turn, last uint32) string {
+	discarded := fmt.Sprintf("turns %d to %d were", turn+1, last)
+	if turn+1 == last {
+		discarded = fmt.Sprintf("turn %d was", last)
+	}
+	return fmt.Sprintf("[Aide] This session was rolled back to the end of turn %d: %s discarded, their conversation and their changes. "+
+		"The earlier conversation could not be carried over. The worktree is as turn %d left it, committed once per turn; check `git log` and `git diff` to see what was done, "+
+		"then continue with the request below.\n\n", turn, discarded, turn)
+}
+
 // archiveInAgent archives (or unarchives) the session's conversation in the
 // agent's own apps, where it has one (Codex), so their lists keep to the
 // sessions in use. A failure only leaves those lists as they were.
@@ -1584,7 +1720,11 @@ func (s *Sessions) prepare(l *live) {
 	} else {
 		spec.NewRef = newUUID()
 		if l.turn > 0 { // an existing session in a fresh provider session
-			spec.Prompt = continuityNotice(l.lostContext, inPlace) + prompt.text
+			notice := continuityNotice(l.lostContext, inPlace)
+			if l.rollbackNotice != "" {
+				notice = l.rollbackNotice
+			}
+			spec.Prompt = notice + prompt.text
 		}
 	}
 	agent := l.row.Agent
@@ -1637,6 +1777,7 @@ func (s *Sessions) prepare(l *live) {
 		return
 	}
 	l.sess = ps
+	l.rollbackNotice = ""
 	l.row.Pgid = ps.Pgid()
 	l.procStarted = time.Now()
 	if !restarting {
@@ -2305,7 +2446,7 @@ func (s *Sessions) emitOutput(l *live, e *sessionv1.SessionEvent, output string)
 	case *sessionv1.SessionEvent_TurnCompleted:
 		p.CurrentTool = "" // a cut-short turn has no result for its last tool
 		row = snapshotRow(l.row)
-	case *sessionv1.SessionEvent_Status:
+	case *sessionv1.SessionEvent_Status, *sessionv1.SessionEvent_RolledBack:
 		row = snapshotRow(l.row)
 	}
 	var who *workWho
