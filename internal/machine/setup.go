@@ -43,9 +43,10 @@ var protectedOnMac = map[string]bool{"Desktop": true, "Documents": true, "Downlo
 	"Music": true, "Pictures": true, "Public": true, "Applications": true}
 
 // FindRepos lists the git repositories under the home folder, newest commit
-// first, as "~/…" paths. It reads only directory entries and the .git
-// files that tell the branch and the last commit.
-func FindRepos(ctx context.Context) []*machinev1.Repo {
+// first, as "~/…" paths; with workspace roots (roots.go), those in them.
+// It reads only directory entries and the .git files that tell the branch
+// and the last commit.
+func FindRepos(ctx context.Context, roots []string) []*machinev1.Repo {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil
@@ -69,7 +70,9 @@ func FindRepos(ctx context.Context) []*machinev1.Repo {
 			}
 			path := filepath.Join(dir, e.Name())
 			if r := repoAt(home, path); r != nil {
-				repos = append(repos, r)
+				if checkRoots(roots, path) == nil {
+					repos = append(repos, r)
+				}
 				continue
 			}
 			if depth < repoDepth {
@@ -109,14 +112,18 @@ func repoAt(home, path string) *machinev1.Repo {
 // browser, each with whether it is a git repository. path is "~/…", "~"
 // (or empty) or a full path. Like FindRepos it reads only directory
 // entries and .git files, and it doesn't look into the folders macOS
-// protects: the person opens one of those on purpose.
-func ListFolders(path string, hidden bool) (*machinev1.ListFoldersResponse, error) {
+// protects: the person opens one of those on purpose. With workspace roots
+// (roots.go) it lists only folders in them, and an empty path is the first
+// root when the home folder is outside them.
+func ListFolders(roots []string, path string, hidden bool) (*machinev1.ListFoldersResponse, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
 	dir := path
 	switch {
+	case path == "" && checkRoots(roots, home) != nil && roots[0] != "":
+		dir = roots[0]
 	case path == "" || path == "~":
 		dir = home
 	case strings.HasPrefix(path, "~/"):
@@ -125,6 +132,11 @@ func ListFolders(path string, hidden bool) (*machinev1.ListFoldersResponse, erro
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%q is not a full path", path))
 	}
 	dir = filepath.Clean(dir)
+	if _, err := os.Stat(dir); err == nil {
+		if err := checkRoots(roots, dir); err != nil {
+			return nil, err
+		}
+	}
 	entries, err := os.ReadDir(dir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -145,7 +157,7 @@ func ListFolders(path string, hidden bool) (*machinev1.ListFoldersResponse, erro
 		isDir := e.IsDir()
 		if e.Type()&fs.ModeSymlink != 0 {
 			st, err := os.Stat(filepath.Join(dir, e.Name()))
-			isDir = err == nil && st.IsDir()
+			isDir = err == nil && st.IsDir() && checkRoots(roots, filepath.Join(dir, e.Name())) == nil // not one leading out
 		}
 		if !isDir {
 			res.Files++

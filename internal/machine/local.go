@@ -65,6 +65,16 @@ func (l *Local) TestCustomAgent(ctx context.Context, a *machinev1.CustomAgent) (
 	return l.n.TestCustomAgent(ctx, a)
 }
 
+// FindRepos lists the repositories for Add a Project, within the workspace roots.
+func (l *Local) FindRepos(ctx context.Context) []*machinev1.Repo {
+	return FindRepos(ctx, l.n.WorkspaceRoots())
+}
+
+// ListFolders lists a folder for Add a Project, within the workspace roots.
+func (l *Local) ListFolders(path string, hidden bool) (*machinev1.ListFoldersResponse, error) {
+	return ListFolders(l.n.WorkspaceRoots(), path, hidden)
+}
+
 // ExecLog is the machine's ops log (ops.go), newest first.
 func (l *Local) ExecLog() (*machinev1.ListExecLogResponse, error) { return l.n.ExecLog() }
 

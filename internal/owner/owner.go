@@ -1392,7 +1392,7 @@ func (o *Owner) RecheckAgents(ctx context.Context, machineID string) error {
 // for Add a Project; this device's own machine is searched in process.
 func (o *Owner) MachineRepos(ctx context.Context, machineID string) ([]*machinev1.Repo, error) {
 	if l := o.local(); l != nil && l.MachineID() == machineID {
-		return machine.FindRepos(ctx), nil
+		return l.FindRepos(ctx), nil
 	}
 	n, err := o.machineClient(ctx, machineID)
 	if err != nil {
@@ -1409,7 +1409,7 @@ func (o *Owner) MachineRepos(ctx context.Context, machineID string) ([]*machinev
 // Project; this device's own machine is read in process.
 func (o *Owner) MachineFolders(ctx context.Context, machineID, path string, hidden bool) (*machinev1.ListFoldersResponse, error) {
 	if l := o.local(); l != nil && l.MachineID() == machineID {
-		return machine.ListFolders(path, hidden)
+		return l.ListFolders(path, hidden)
 	}
 	n, err := o.machineClient(ctx, machineID)
 	if err != nil {

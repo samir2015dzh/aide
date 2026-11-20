@@ -57,6 +57,7 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 | 3 | `not_paired` | Not logged in yet (the kind kept its old name) |
 | 3 | `revoked` | The owner revoked this client, or the grant is no longer valid |
 | 3 | `denied` | Not allowed by the grant (the machine, project or coding agent is outside the grant) |
+| 3 | `outside_roots` | `machine exec`: `--workdir` is outside the machine's workspace roots ([machine-ops.md](machine-ops.md) §5); the hint says to pick a folder inside them |
 | 4 | `unreachable` | The relay can't be reached, or the machine the command needs is offline or unreachable (`retryable` is true). When looking up a short project name finds it on no online machine but some machine is offline, it is also this category: the project may be on the offline machine |
 | 5 | `archived` | The awaited session was archived |
 | 5 | Session failure kinds | This turn failed and retrying won't help until the cause is resolved: `auth`, `quota`, `context_overflow`, `model_unavailable`, `invalid_request`, `refused`, `limit_reached`, `resume_rejected`, `timeout` (a turn exceeded the machine's time limit), `start_failed`, `base_ref_unavailable` (the base ref is neither in the project's repository nor on its remotes: check its name or push it, then send another message in the same session), `interrupted` (interrupted by someone), `unknown` |
