@@ -29,6 +29,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"project_list":      {"machine/project", "workspace", "base", "agents", "offline", "session_start"},
 		"session_start":     {"non-empty prompt", "without creating a session", "session.session_id", "in_place", "pass it as base", "own git worktree", ".worktreeinclude", "session_get", "session_events", "session_answer", "pass repo", "own git login"},
 		"session_get":       {"session_id", "wait_timeout", "session_answer"},
+		"session_wait":      {"session_get", "wait_timeout", "changes nothing", "returns at once", "never answers a question", "capped at 50s"},
 		"session_list":      {"own", "all", "other clients", "only sessions it started", "archived=true"},
 		"session_events":    {"after", "before", "page.last_seq", "has_more_after"},
 		"message_send":      {"non-empty message", "one way to tell a session", "joins that turn", "turn of its own", "inbox", "message.delivered"},
