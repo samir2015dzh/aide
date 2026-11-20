@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -56,8 +57,16 @@ func (d *Device) LocalHandler() http.Handler {
 // not save power (internal/resident).
 const ViewerHeader = "Aide-Viewer"
 
+// AppHeader is the desktop app's main process's pid, on its own Watch: when
+// power saving starts, the app's processes give back their idle memory with
+// aided's (internal/resident).
+const AppHeader = "Aide-App-Pid"
+
 func viewers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if pid, err := strconv.Atoi(r.Header.Get(AppHeader)); err == nil {
+			defer resident.SetApp(pid)()
+		}
 		if r.Header.Get(ViewerHeader) != "" {
 			defer resident.Viewing()()
 			defer windowViewing()()

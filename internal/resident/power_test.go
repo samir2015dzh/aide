@@ -2,8 +2,10 @@ package resident
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -13,11 +15,12 @@ import (
 // fakeSystem stands for Windows' calls: what aided's and other processes'
 // priority is.
 type fakeSystem struct {
-	mu    sync.Mutex
-	self  bool
-	procs map[int]bool // throttled
-	trees []int        // pids set back with their tree
-	calls int
+	mu      sync.Mutex
+	self    bool
+	procs   map[int]bool // throttled
+	trees   []int        // pids set back with their tree
+	trimmed []int        // pids whose working set was trimmed
+	calls   int
 }
 
 func (f *fakeSystem) saver(busy, her *int) *Saver {
@@ -37,6 +40,13 @@ func (f *fakeSystem) saver(busy, her *int) *Saver {
 		}
 		return nil
 	}
+	s.trim = func(pid int) (uint64, uint64, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.trimmed = append(f.trimmed, pid)
+		return 10 << 20, 1 << 20, nil
+	}
+	s.tree = func(pid int) []int { return []int{pid + 1, pid + 2} }
 	s.priority = func() string {
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -66,7 +76,10 @@ func TestPowerSaving(t *testing.T) {
 	if st := s.State(); st.Saving || !strings.HasPrefix(st.Reason, "idle, saving in") {
 		t.Fatalf("at once: %+v", st)
 	}
-	// Idle long enough: aided and her are throttled, below normal.
+	// Idle long enough: aided and her are throttled, below normal; they and
+	// the app's processes give back their idle memory.
+	done := SetApp(7000)
+	defer done()
 	idleFor(s, enterAfter)
 	if next := s.check(""); next != savingCheck {
 		t.Fatalf("while saving, it looks again in %v", next)
@@ -74,8 +87,25 @@ func TestPowerSaving(t *testing.T) {
 	if st := s.State(); !st.Saving || st.Priority != "below normal" || st.Her != her || !f.self || !f.procs[her] {
 		t.Fatalf("idle: %+v, %+v", st, f.procs)
 	}
+	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+		f.mu.Lock()
+		n := len(f.trimmed)
+		f.mu.Unlock()
+		if n == 5 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("trimmed %v", f.trimmed)
+		}
+	}
+	f.mu.Lock()
+	if got := fmt.Sprint(f.trimmed[1:]); got != "[4242 7000 7001 7002]" || f.trimmed[0] != os.Getpid() {
+		t.Fatalf("trimmed %v", f.trimmed)
+	}
+	f.trimmed = nil
+	f.mu.Unlock()
 	// A window opens: it ends at once, her and her tree back to normal.
-	done := Viewing()
+	done = Viewing()
 	if st := s.State(); st.Saving || st.Reason != "a window opened" || st.Priority != "normal" || f.self || f.procs[her] || len(f.trees) != 1 {
 		t.Fatalf("a window: %+v, %+v", st, f.procs)
 	}

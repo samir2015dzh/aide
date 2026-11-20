@@ -3,6 +3,7 @@ package resident
 import (
 	"context"
 	"log/slog"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -54,6 +55,10 @@ type Saver struct {
 	self      func(on bool) error
 	other     func(pid int, on, tree bool) error
 	priority  func() string
+	trim      func(pid int) (before, after uint64, err error)
+	tree      func(pid int) []int
+	// app is the desktop app's main process, while it watches (SetApp).
+	app atomic.Int64
 
 	mu        sync.Mutex
 	state     State
@@ -66,7 +71,8 @@ var current atomic.Pointer[Saver]
 // NewSaver makes the process's saver, which Wake and Viewing reach; Run
 // runs it.
 func NewSaver(log *slog.Logger, busy, herPid func() int) *Saver {
-	s := &Saver{log: log, busy: busy, her: herPid, kick: make(chan struct{}, 1), supported: supported, self: throttleSelf, other: throttle, priority: priority}
+	s := &Saver{log: log, busy: busy, her: herPid, kick: make(chan struct{}, 1), supported: supported, self: throttleSelf, other: throttle, priority: priority,
+		trim: trimWorkingSet, tree: descendants}
 	s.state = State{Supported: supported, Reason: "starting", Priority: priority()}
 	current.Store(s)
 	return s
@@ -86,6 +92,18 @@ func Wake(why string) {
 	if s := current.Load(); s != nil {
 		s.check(why)
 	}
+}
+
+// SetApp tells the saver of the desktop app's main process (its own watch,
+// for notifications, says which), until done: when saving starts, the app's
+// processes give back their idle memory with aided's and her's (trim).
+func SetApp(pid int) (done func()) {
+	s := current.Load()
+	if s == nil || pid <= 0 {
+		return func() {}
+	}
+	s.app.Store(int64(pid))
+	return func() { s.app.CompareAndSwap(int64(pid), 0) }
 }
 
 // Viewing counts a window of the app watching (a stream it holds open) until
@@ -256,6 +274,9 @@ func (s *Saver) set(on bool, reason string) {
 	}
 	if was != on {
 		s.state.Since = time.Now()
+		if on {
+			go s.trimAll(her)
+		}
 	}
 	s.state.Saving, s.state.Reason, s.state.Priority, s.state.Her = on, reason, s.priority(), s.herPid
 	s.state.Error = ""
@@ -274,6 +295,32 @@ func (s *Saver) set(on bool, reason string) {
 		what = "power saving starts"
 	}
 	s.log.Log(context.Background(), level, what, "reason", reason, "priority", s.state.Priority, "her_pid", s.herPid, "api", apiResult(errs))
+}
+
+// trimAll has Windows take the idle pages of aided, her and the desktop
+// app's processes (main, GPU, utilities; its windows are all closed) as
+// saving starts: nothing of theirs runs then but timers, which touch little,
+// and the memory is free for whatever else runs (docs/resident.md §1.2).
+// The pages a process touches again come back from the standby list.
+func (s *Saver) trimAll(her int) {
+	pids := []int{os.Getpid()}
+	if her != 0 {
+		pids = append(pids, her)
+	}
+	if app := int(s.app.Load()); app != 0 {
+		pids = append(pids, app)
+		pids = append(pids, s.tree(app)...)
+	}
+	var before, after uint64
+	trimmed := 0
+	for _, pid := range pids {
+		b, a, err := s.trim(pid)
+		if err != nil {
+			continue // gone, or not ours to trim
+		}
+		before, after, trimmed = before+b, after+a, trimmed+1
+	}
+	s.log.Info("power saving: idle memory given back", "processes", trimmed, "working_set_mib_before", before>>20, "after", after>>20)
 }
 
 func apiResult(errs []string) string {
