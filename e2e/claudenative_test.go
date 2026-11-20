@@ -63,7 +63,8 @@ func TestClaudeNativeSessions(t *testing.T) {
 	os.WriteFile(filepath.Join(repo, ".git", "config"), []byte("[remote \"origin\"]\n\turl = https://github.com/octo/site.git\n"), 0o644)
 	claudeAppSession(t, filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), filepath.Join(home, ".claude"),
 		"c-site", "改首页", repo, now.Add(-time.Hour), "首页标题改一下", "改好了。")
-	w := newOwnerMac(t, []string{"HOME=" + home, "LOCALAPPDATA=" + local}, &localv1.GrantSpec{})
+	// Windows finds the home folder by USERPROFILE, the others by HOME.
+	w := newOwnerMac(t, []string{"HOME=" + home, "USERPROFILE=" + home, "LOCALAPPDATA=" + local}, &localv1.GrantSpec{})
 	ctx := context.Background()
 
 	// Another computer, a machine only: the installer's %APPDATA%\Claude,
@@ -109,6 +110,9 @@ func TestClaudeNativeSessions(t *testing.T) {
 			case *sessionv1.SessionEvent_AgentMessage:
 				out = append(out, "claude: "+k.AgentMessage.Text)
 			}
+		}
+		if res.Session.Error != "" {
+			t.Fatalf("read %s on %s: %s", id, machine, res.Session.Error)
 		}
 		return res.Session.Title + ": " + strings.Join(out, "; ")
 	}
