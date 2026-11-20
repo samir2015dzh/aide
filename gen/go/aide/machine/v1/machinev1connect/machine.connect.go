@@ -81,6 +81,12 @@ const (
 	// MachineAdminServiceReadDSHSessionProcedure is the fully-qualified name of the
 	// MachineAdminService's ReadDSHSession RPC.
 	MachineAdminServiceReadDSHSessionProcedure = "/aide.machine.v1.MachineAdminService/ReadDSHSession"
+	// MachineAdminServiceListClaudeSessionsProcedure is the fully-qualified name of the
+	// MachineAdminService's ListClaudeSessions RPC.
+	MachineAdminServiceListClaudeSessionsProcedure = "/aide.machine.v1.MachineAdminService/ListClaudeSessions"
+	// MachineAdminServiceReadClaudeSessionProcedure is the fully-qualified name of the
+	// MachineAdminService's ReadClaudeSession RPC.
+	MachineAdminServiceReadClaudeSessionProcedure = "/aide.machine.v1.MachineAdminService/ReadClaudeSession"
 	// MachineAdminServiceSetDSHTakeoverProcedure is the fully-qualified name of the
 	// MachineAdminService's SetDSHTakeover RPC.
 	MachineAdminServiceSetDSHTakeoverProcedure = "/aide.machine.v1.MachineAdminService/SetDSHTakeover"
@@ -460,6 +466,14 @@ type MachineAdminServiceClient interface {
 	// One DSH session and a page of its conversation as DSH saved it, as
 	// session events (as SessionService.ListEvents pages them). Read only.
 	ReadDSHSession(context.Context, *v1.ReadDSHSessionRequest) (*v1.ReadDSHSessionResponse, error)
+	// The Claude Code sessions the Claude desktop app lists on this machine
+	// (its own index), that Aide did not start, newest activity first: read
+	// from the app's and Claude Code's files, which nothing here writes.
+	// Owner only.
+	ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error)
+	// One of them and a page of its conversation, from Claude Code's
+	// transcript, as session events. Read only. Owner only.
+	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error)
 	// Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
 	// on for one session (off for every session until then), then sends it
 	// messages and stops its turn through the Aide bridge plugin in DSH
@@ -559,6 +573,18 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("ReadDSHSession")),
 			connect.WithClientOptions(opts...),
 		),
+		listClaudeSessions: connect.NewClient[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse](
+			httpClient,
+			baseURL+MachineAdminServiceListClaudeSessionsProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ListClaudeSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		readClaudeSession: connect.NewClient[v1.ReadClaudeSessionRequest, v1.ReadClaudeSessionResponse](
+			httpClient,
+			baseURL+MachineAdminServiceReadClaudeSessionProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ReadClaudeSession")),
+			connect.WithClientOptions(opts...),
+		),
 		setDSHTakeover: connect.NewClient[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse](
 			httpClient,
 			baseURL+MachineAdminServiceSetDSHTakeoverProcedure,
@@ -621,6 +647,8 @@ type machineAdminServiceClient struct {
 	listExecLog         *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
 	listDSHSessions     *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
 	readDSHSession      *connect.Client[v1.ReadDSHSessionRequest, v1.ReadDSHSessionResponse]
+	listClaudeSessions  *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
+	readClaudeSession   *connect.Client[v1.ReadClaudeSessionRequest, v1.ReadClaudeSessionResponse]
 	setDSHTakeover      *connect.Client[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse]
 	sendDSHMessage      *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
 	interruptDSHSession *connect.Client[v1.InterruptDSHSessionRequest, v1.InterruptDSHSessionResponse]
@@ -706,6 +734,24 @@ func (c *machineAdminServiceClient) ListDSHSessions(ctx context.Context, req *v1
 // ReadDSHSession calls aide.machine.v1.MachineAdminService.ReadDSHSession.
 func (c *machineAdminServiceClient) ReadDSHSession(ctx context.Context, req *v1.ReadDSHSessionRequest) (*v1.ReadDSHSessionResponse, error) {
 	response, err := c.readDSHSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListClaudeSessions calls aide.machine.v1.MachineAdminService.ListClaudeSessions.
+func (c *machineAdminServiceClient) ListClaudeSessions(ctx context.Context, req *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error) {
+	response, err := c.listClaudeSessions.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ReadClaudeSession calls aide.machine.v1.MachineAdminService.ReadClaudeSession.
+func (c *machineAdminServiceClient) ReadClaudeSession(ctx context.Context, req *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error) {
+	response, err := c.readClaudeSession.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -812,6 +858,14 @@ type MachineAdminServiceHandler interface {
 	// One DSH session and a page of its conversation as DSH saved it, as
 	// session events (as SessionService.ListEvents pages them). Read only.
 	ReadDSHSession(context.Context, *v1.ReadDSHSessionRequest) (*v1.ReadDSHSessionResponse, error)
+	// The Claude Code sessions the Claude desktop app lists on this machine
+	// (its own index), that Aide did not start, newest activity first: read
+	// from the app's and Claude Code's files, which nothing here writes.
+	// Owner only.
+	ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error)
+	// One of them and a page of its conversation, from Claude Code's
+	// transcript, as session events. Read only. Owner only.
+	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error)
 	// Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
 	// on for one session (off for every session until then), then sends it
 	// messages and stops its turn through the Aide bridge plugin in DSH
@@ -907,6 +961,18 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		connect.WithSchema(machineAdminServiceMethods.ByName("ReadDSHSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineAdminServiceListClaudeSessionsHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceListClaudeSessionsProcedure,
+		svc.ListClaudeSessions,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ListClaudeSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceReadClaudeSessionHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceReadClaudeSessionProcedure,
+		svc.ReadClaudeSession,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ReadClaudeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	machineAdminServiceSetDSHTakeoverHandler := connect.NewUnaryHandlerSimple(
 		MachineAdminServiceSetDSHTakeoverProcedure,
 		svc.SetDSHTakeover,
@@ -975,6 +1041,10 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceListDSHSessionsHandler.ServeHTTP(w, r)
 		case MachineAdminServiceReadDSHSessionProcedure:
 			machineAdminServiceReadDSHSessionHandler.ServeHTTP(w, r)
+		case MachineAdminServiceListClaudeSessionsProcedure:
+			machineAdminServiceListClaudeSessionsHandler.ServeHTTP(w, r)
+		case MachineAdminServiceReadClaudeSessionProcedure:
+			machineAdminServiceReadClaudeSessionHandler.ServeHTTP(w, r)
 		case MachineAdminServiceSetDSHTakeoverProcedure:
 			machineAdminServiceSetDSHTakeoverHandler.ServeHTTP(w, r)
 		case MachineAdminServiceSendDSHMessageProcedure:
@@ -1034,6 +1104,14 @@ func (UnimplementedMachineAdminServiceHandler) ListDSHSessions(context.Context, 
 
 func (UnimplementedMachineAdminServiceHandler) ReadDSHSession(context.Context, *v1.ReadDSHSessionRequest) (*v1.ReadDSHSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ReadDSHSession is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ListClaudeSessions is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ReadClaudeSession is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) SetDSHTakeover(context.Context, *v1.SetDSHTakeoverRequest) (*v1.SetDSHTakeoverResponse, error) {

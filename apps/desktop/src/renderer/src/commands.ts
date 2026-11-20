@@ -85,6 +85,8 @@ function run(st: Store, c: Command) {
       return st.status?.machineOnly && st.set({ upgrading: true });
     case "dsh":
       return st.set({ selection: { kind: "dsh" } });
+    case "claude":
+      return st.set({ selection: { kind: "claude" } });
   }
   const [verb, arg] = [c.slice(0, c.indexOf(":")), c.slice(c.indexOf(":") + 1)];
   switch (verb) {

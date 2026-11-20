@@ -104,6 +104,7 @@
     "addProject": "Add Project…",
     "dshSessions": "Sessions already in DeepSeek Harness",
     "dshSessionsOpen": "Show",
+    "claudeSessions": "Sessions already in the Claude app",
     "otherProjects": "Other projects · for agents not installed",
     "allProjects": "Projects",
     "alsoFor": "“{{project}}” is now enabled for {{agent}} too",

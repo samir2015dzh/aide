@@ -102,6 +102,16 @@ func (l *Local) InterruptDSHSession(ctx context.Context, req *machinev1.Interrup
 	return l.n.InterruptDSHSession(ctx, req)
 }
 
+// ClaudeSessions and ReadClaudeSession are the Claude desktop app's Claude
+// Code sessions here (claudesessions.go).
+func (l *Local) ClaudeSessions() (*machinev1.ListClaudeSessionsResponse, error) {
+	return l.n.ClaudeSessions()
+}
+
+func (l *Local) ReadClaudeSession(req *machinev1.ReadClaudeSessionRequest) (*machinev1.ReadClaudeSessionResponse, error) {
+	return l.n.ReadClaudeSession(req)
+}
+
 func (l *Local) ReadDSHSession(req *machinev1.ReadDSHSessionRequest) (*machinev1.ReadDSHSessionResponse, error) {
 	return l.n.ReadDSHSession(req)
 }

@@ -1,8 +1,6 @@
 package owner
 
 import (
-	"time"
-
 	"context"
 	"errors"
 	"fmt"
@@ -10,8 +8,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
@@ -407,6 +407,37 @@ func (l *localService) ListDSHSessions(ctx context.Context, req *localv1.ListDSH
 		return out, nil
 	}
 	return l.o().ListDSHSessions(ctx, req.MachineId)
+}
+
+// ListClaudeSessions and ReadClaudeSession: on a Mac that is only a
+// machine, its own.
+func (l *localService) ListClaudeSessions(ctx context.Context, req *localv1.ListClaudeSessionsRequest) (*localv1.ListClaudeSessionsResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		res, err := m.ClaudeSessions()
+		if err != nil {
+			return nil, err
+		}
+		info := m.Info()
+		out := &localv1.ListClaudeSessionsResponse{Indexes: []*localv1.ClaudeIndexEntry{{MachineId: info.MachineId, Indexes: res.Indexes}}}
+		for _, s := range res.Sessions {
+			out.Sessions = append(out.Sessions, &localv1.ClaudeSessionEntry{MachineId: info.MachineId, MachineName: info.MachineName, Session: s, ReadAt: timestamppb.Now()})
+		}
+		return out, nil
+	}
+	return l.o().ListClaudeSessions(ctx, req.MachineId)
+}
+
+func (l *localService) ReadClaudeSession(ctx context.Context, req *localv1.ReadClaudeSessionRequest) (*machinev1.ReadClaudeSessionResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.ReadClaudeSession(&machinev1.ReadClaudeSessionRequest{SessionId: req.SessionId, AfterSeq: req.AfterSeq, BeforeSeq: req.BeforeSeq, Limit: req.Limit, View: req.View})
+	}
+	return l.o().ReadClaudeSession(ctx, req)
 }
 
 func (l *localService) ReadDSHSession(ctx context.Context, req *localv1.ReadDSHSessionRequest) (*machinev1.ReadDSHSessionResponse, error) {

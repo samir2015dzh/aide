@@ -291,6 +291,15 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
           {busy ? t("prepare.adding") : t("prepare.addProject")}
         </button>
       </section>
+      {/* The Claude app's own sessions are read in the main window's Claude page. */}
+      {agent === "claude" && (
+        <section className="ag-dsh" aria-label={t("prepare.claudeSessions")}>
+          <div className="ag-group">{t("prepare.claudeSessions")}</div>
+          <button className="btn sm" onClick={() => window.aide?.showInMain({ claude: true })}>
+            {t("prepare.dshSessionsOpen")}
+          </button>
+        </section>
+      )}
       {/* DSH's own sessions (those opened in DSH Desktop) are read in the main window's DeepSeek page. */}
       {agent === "deepseek" && (
         <section className="ag-dsh" aria-label={t("prepare.dshSessions")}>

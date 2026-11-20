@@ -507,6 +507,18 @@ service MachineAdminService {
   rpc ReadDSHSession(ReadDSHSessionRequest) returns (ReadDSHSessionResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // The Claude Code sessions the Claude desktop app lists on this machine
+  // (its own index), that Aide did not start, newest activity first: read
+  // from the app's and Claude Code's files, which nothing here writes.
+  // Owner only.
+  rpc ListClaudeSessions(ListClaudeSessionsRequest) returns (ListClaudeSessionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // One of them and a page of its conversation, from Claude Code's
+  // transcript, as session events. Read only. Owner only.
+  rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (ReadClaudeSessionResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
   // Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
   // on for one session (off for every session until then), then sends it
   // messages and stops its turn through the Aide bridge plugin in DSH
@@ -763,6 +775,61 @@ message ReadDSHSessionResponse {
   // cut there, truncated set; its whole is not kept apart, so
   // ReadToolOutput can't read it), and a StatusChanged with reason
   // "compacted" where DSH compacted the conversation.
+  repeated aide.session.v1.SessionEvent events = 2;
+  bool has_more_before = 3;
+  bool has_more_after = 4;
+}
+
+message ListClaudeSessionsRequest {}
+
+message ListClaudeSessionsResponse {
+  repeated ClaudeSession sessions = 1;
+  // The Claude desktop app's index folders read (claude-code-sessions):
+  // where to look when the app has sessions this list lacks.
+  repeated string indexes = 2;
+}
+
+// ClaudeSession is a Claude Code session as the Claude desktop app lists
+// it (docs/claude-sessions.md).
+message ClaudeSession {
+  // The app's id of it ("local_…").
+  string session_id = 1;
+  // Claude Code's own id: its transcript's name.
+  string cli_session_id = 2;
+  // Its title in the app.
+  string title = 3;
+  // The folder it works in.
+  string cwd = 4;
+  // "owner/repo" of the GitHub repository the folder is a checkout of, as
+  // its own origin remote says; "" when it has none (no checkout, no
+  // origin, or not on GitHub). Never guessed from the conversation.
+  string repo = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_activity_at = 7;
+  // Archived in the app.
+  bool archived = 8;
+  string model = 9;
+  // The app's last word on it, after its last turn ("completed",
+  // "blocked", …); "" when it has none.
+  string status = 10;
+  // Why its conversation can't be read (no transcript here); "" when it
+  // can.
+  string error = 11;
+}
+
+message ReadClaudeSessionRequest {
+  string session_id = 1;
+  uint64 after_seq = 2;
+  uint64 before_seq = 3;
+  // 1 to 1000; 0 means 50.
+  uint32 limit = 4;
+  aide.session.v1.EventView view = 5;
+}
+
+message ReadClaudeSessionResponse {
+  ClaudeSession session = 1;
+  // Oldest first: the owner's prompts, Claude's replies, tool calls and
+  // their results (a result longer than 16 KiB is cut there).
   repeated aide.session.v1.SessionEvent events = 2;
   bool has_more_before = 3;
   bool has_more_after = 4;

@@ -155,6 +155,13 @@ func TestDesktop(t *testing.T) {
 				dshHome = dshDesktopHome(t)
 				more = append(more, "DSH_HOME="+dshHome, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}
+			if name == "claudesessions" { // the Claude app's own session, in a checkout of a GitHub repository
+				local, config, repo := t.TempDir(), t.TempDir(), t.TempDir()
+				os.MkdirAll(filepath.Join(repo, ".git"), 0o755)
+				os.WriteFile(filepath.Join(repo, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@github.com:octo/site.git\n"), 0o644)
+				claudeAppSession(t, filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), config, "c-site", "改首页", repo, time.Now().Add(-time.Hour), "首页标题改一下", "改好了。")
+				more = append(more, "LOCALAPPDATA="+local, "CLAUDE_CONFIG_DIR="+config)
+			}
 			f := desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
 			if name == "dsh" {
 				f.DSHHost, f.DSHHome = startDSHHost(t, dshHome, dshDesktopSession(t, dshHome)), dshHome
