@@ -139,8 +139,9 @@ type SessionServiceClient interface {
 	PushSession(context.Context, *v1.PushSessionRequest) (*v1.PushSessionResponse, error)
 	// MarkSessionSeen records what the owner has seen of the session
 	// (Session.seen), on its machine, so every device of the owner agrees.
-	// Only the owner's devices may mark; nothing changes, and updated_at
-	// stays, when nothing new is seen.
+	// Only the owner's devices may mark. It is not activity: updated_at
+	// stays (lists keep their order); nothing is written when nothing new is
+	// seen, nor of an archived session.
 	MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error)
 }
 
@@ -489,8 +490,9 @@ type SessionServiceHandler interface {
 	PushSession(context.Context, *v1.PushSessionRequest) (*v1.PushSessionResponse, error)
 	// MarkSessionSeen records what the owner has seen of the session
 	// (Session.seen), on its machine, so every device of the owner agrees.
-	// Only the owner's devices may mark; nothing changes, and updated_at
-	// stays, when nothing new is seen.
+	// Only the owner's devices may mark. It is not activity: updated_at
+	// stays (lists keep their order); nothing is written when nothing new is
+	// seen, nor of an archived session.
 	MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error)
 }
 

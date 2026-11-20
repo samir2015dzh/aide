@@ -27,9 +27,14 @@ func TestMarkSessionSeen(t *testing.T) {
 	if _, err := h.s.MarkSeen(ctx, h.p, &sessionv1.MarkSessionSeenRequest{SessionId: id, Opened: true}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("an agent marks: %v", err)
 	}
+	was := s
 	s, err := h.s.MarkSeen(ctx, owner, &sessionv1.MarkSessionSeenRequest{SessionId: id, Opened: true})
 	if err != nil || s.Seen.GetTurns() != 1 || sessionstate.StateOf(s) != sessionv1.SessionState_SESSION_STATE_DONE {
 		t.Fatalf("opened: %v %v", s, err)
+	}
+	// Not activity: its place in lists stays.
+	if !s.UpdatedAt.AsTime().Equal(was.UpdatedAt.AsTime()) {
+		t.Fatalf("updated %v, was %v", s.UpdatedAt.AsTime(), was.UpdatedAt.AsTime())
 	}
 	if r, _ := h.s.st.Session(id); r.Seen.GetTurns() != 1 {
 		t.Fatalf("stored seen %v", r.Seen)

@@ -109,7 +109,7 @@ func TestAttentionTriage(t *testing.T) {
 		t.Fatalf("opened on the Mac: %v %v", opened, err)
 	}
 	reads(s.SessionID, done, deskScreen, phoneScreen)
-	// Opened again: nothing new, nothing written (its place in lists kept; the store keeps whole seconds).
+	// Opened again: nothing new, nothing written (the store keeps whole seconds).
 	again, err := desk.MarkSessionSeen(ctx, &sessionv1.MarkSessionSeenRequest{SessionId: s.SessionID, Opened: true})
 	if err != nil || again.Session.UpdatedAt.GetSeconds() != opened.Session.UpdatedAt.GetSeconds() {
 		t.Fatalf("opened again: %v %v", again, err)

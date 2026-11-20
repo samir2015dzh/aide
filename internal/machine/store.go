@@ -380,6 +380,10 @@ type sessionRow struct {
 	// Seen is what the owner has seen of it (MarkSessionSeen). A session
 	// from before seen was kept reads as seen up to its turns then.
 	Seen *sessionv1.SessionSeen
+
+	// seenOnly: this write records only what the owner saw, which is not
+	// activity: updated_at stays, so lists keep their order (MarkSeen).
+	seenOnly bool
 }
 
 const sessionCols = `session_id, project_id, agent, status, created_by, grant_id, model, provider_ref, base_commit, branch, worktree, workspace, question_timeout, pgid, progress, error, result, title, created_at, updated_at, effort, speed, conversation, agent_model, agent_effort, repo, repo_url, repo_branch, mode, seen_turns, seen_question, seen_present`
@@ -390,7 +394,9 @@ type execer interface {
 
 func putSession(db execer, r *sessionRow) error {
 	prog, _ := proto.Marshal(r.Progress)
-	r.UpdatedAt = time.Now()
+	if !r.seenOnly {
+		r.UpdatedAt = time.Now()
+	}
 	_, err := db.Exec(`INSERT INTO sessions(`+sessionCols+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(session_id) DO UPDATE SET status=excluded.status, model=excluded.model, provider_ref=excluded.provider_ref,
 		base_commit=excluded.base_commit, branch=excluded.branch, worktree=excluded.worktree, pgid=excluded.pgid,

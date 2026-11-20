@@ -1214,7 +1214,8 @@ func (s *Sessions) Rename(ctx context.Context, p *Principal, id, title string) (
 // MarkSeen records what the owner has seen of a session (Session.seen):
 // its finished turns once a device opened it, and its pending question
 // once a desktop told of it, and whether the owner was there meanwhile.
-// Nothing is written when nothing new is seen.
+// Nothing is written when nothing new is seen, nor of an archived session;
+// what the owner saw is not activity, so updated_at stays.
 func (s *Sessions) MarkSeen(ctx context.Context, p *Principal, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
 	if p.Kind != PrincipalOwner {
 		return nil, cerr(connect.CodePermissionDenied, "only the owner marks what the owner has seen")
@@ -1228,10 +1229,14 @@ func (s *Sessions) MarkSeen(ctx context.Context, p *Principal, req *sessionv1.Ma
 		r = l.row
 	}
 	seen, changed := seenNow(r, req)
+	changed = changed && r.Status != sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED
 	var row *sessionRow
 	if changed {
 		r.Seen = seen
-		row = snapshotRow(r)
+		c := *r
+		c.Progress = proto.Clone(r.Progress).(*sessionv1.SessionProgress)
+		c.seenOnly = true
+		row = &c
 	}
 	if l != nil {
 		l.mu.Unlock()
