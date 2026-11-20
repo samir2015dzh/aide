@@ -1,7 +1,4 @@
-# The relay image needs only the Go sources (deploy/relay/Dockerfile), and
-# what they embed from elsewhere: the DSH bridge plugin, which aided carries
-# (apps/dsh-bridge/embed.go: its //go:embed files only, not the desktop app
-# or anything else of apps/).
+# The relay image needs only the Go sources (deploy/relay/Dockerfile).
 *
 !go.mod
 !go.sum
@@ -9,8 +6,3 @@
 !internal
 !pkg
 !gen/go
-!apps/dsh-bridge/embed.go
-!apps/dsh-bridge/package.json
-!apps/dsh-bridge/cordis.patch.yml
-!apps/dsh-bridge/README.md
-!apps/dsh-bridge/lib/*.js
