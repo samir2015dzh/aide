@@ -31,6 +31,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/internal/provider/codex"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/pkg/identity"
@@ -215,7 +216,8 @@ func Open(cfg Config) (*Machine, error) {
 	ws.none = cfg.WorkspaceMode == "none"
 	n.sessions = &Sessions{st: st, ws: ws, audit: n.audit, log: n.log,
 		machineID: n.machineID, dataDir: cfg.DataDir, provider: n.provider, info: n.providerInfo, limits: cfg.Limits,
-		paused: n.isPaused, defaults: n.agentDefaults, outOfProcesses: n.outOfProcesses, live: map[string]*live{}}
+		paused: n.isPaused, defaults: n.agentDefaults, outOfProcesses: n.outOfProcesses, live: map[string]*live{},
+		memoryLow: resident.MemoryLow}
 	n.sessions.w = newWriter(st, n.log, n.sessions.deliver, n.sessions.changed)
 	n.sessions.mcp = n.mcpServers
 	n.sessions.requester = func(id string) string { return n.knownClients()[id].Label }

@@ -123,6 +123,11 @@ type Sessions struct {
 	mu         sync.Mutex
 	live       map[string]*live
 	dispatchMu sync.Mutex
+	// memoryLow says whether the system is short of memory (resident.MemoryLow;
+	// tests replace it): queued sessions wait while it is, and memRetry (held
+	// with dispatchMu) looks again.
+	memoryLow func() (bool, string)
+	memRetry  *time.Timer
 	w          *writer
 	// counts tracks live sessions per status so hot paths never scan.
 	counts [10]atomic.Int64
@@ -181,6 +186,7 @@ type live struct {
 	pending       message // the prompt of the turn to start
 	resume        bool
 	queuedAt      time.Time
+	heldMemory    bool // queued and kept from starting while memory is low
 	awaitingFirst bool
 	tools         map[string]string
 	// The current turn: its prompt, tool calls so far, whether its process
@@ -1446,6 +1452,9 @@ func (s *Sessions) dispatch() {
 		return
 	}
 	slices.SortFunc(queued, func(a, b *live) int { return a.queuedAt.Compare(b.queuedAt) })
+	if s.holdForMemory(queued) {
+		return
+	}
 	// Out of power saving before anything starts (internal/resident).
 	resident.Wake("a session starts")
 	for _, l := range queued {
@@ -1458,11 +1467,58 @@ func (s *Sessions) dispatch() {
 			continue
 		}
 		mQueueWait.Since(l.queuedAt)
+		if l.heldMemory {
+			l.heldMemory = false
+			s.log.Info("memory is back: the session starts", "session", l.id, "waited", time.Since(l.queuedAt).Round(time.Second))
+		}
 		l.mu.Unlock()
 		s.setStatus(l, sessionv1.SessionStatus_SESSION_STATUS_PREPARING, "")
 		running++
 		go s.prepare(l)
 	}
+}
+
+// PhaseQueuedLowMemory is the progress phase of a session kept queued
+// while the system is short of memory (docs/resident.md §3): its status
+// stays QUEUED, and the screens say why.
+const PhaseQueuedLowMemory = "queued_low_memory"
+
+// memoryRecheck: how often memory is looked at again while sessions wait for it.
+var memoryRecheck = 5 * time.Second
+
+// holdForMemory keeps the queued sessions from starting while the system is
+// short of memory, saying so on each, and looks again within
+// memoryRecheck; it reports whether they are held. Callers hold dispatchMu.
+func (s *Sessions) holdForMemory(queued []*live) bool {
+	if s.memoryLow == nil {
+		return false
+	}
+	low, why := s.memoryLow()
+	if !low {
+		return false
+	}
+	for _, l := range queued {
+		l.mu.Lock()
+		if l.row.Status != sessionv1.SessionStatus_SESSION_STATUS_QUEUED || l.heldMemory {
+			l.mu.Unlock()
+			continue
+		}
+		l.heldMemory = true
+		l.row.Progress.Phase = PhaseQueuedLowMemory
+		l.mu.Unlock()
+		s.log.Warn("the system is short of memory: the session waits queued", "session", l.id, "memory", why)
+		s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_Status{Status: &sessionv1.StatusChanged{
+			Status: sessionv1.SessionStatus_SESSION_STATUS_QUEUED, Reason: "waiting for memory: " + why}}})
+	}
+	if s.memRetry == nil {
+		s.memRetry = time.AfterFunc(memoryRecheck, func() {
+			s.dispatchMu.Lock()
+			s.memRetry = nil
+			s.dispatchMu.Unlock()
+			s.dispatch()
+		})
+	}
+	return true
 }
 
 func (s *Sessions) prepare(l *live) {
