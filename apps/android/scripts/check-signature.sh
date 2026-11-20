@@ -13,12 +13,15 @@ if [[ -z "$apksigner" ]]; then
   echo "check-signature.sh: no apksigner under ANDROID_HOME's build-tools" >&2
   exit 1
 fi
-"$apksigner" verify --print-certs "$apk" | tee "${TMPDIR:-/tmp}/apk-certs.txt"
-got="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "${TMPDIR:-/tmp}/apk-certs.txt")"
-signers="$(grep -c '^Signer #[0-9]* certificate DN:' "${TMPDIR:-/tmp}/apk-certs.txt" || true)"
-norm() { tr -d ':' | tr '[:upper:]' '[:lower:]'; }
-if [[ "$signers" != 1 || "$(norm <<<"$got")" != "$(norm <<<"$want")" ]]; then
-  echo "check-signature.sh: $apk is not signed with the app's key (signers: $signers; SHA-256 $got, want $want)" >&2
+certs="$("$apksigner" verify --print-certs "$apk")"
+echo "$certs"
+# One line per signer and scheme ("Signer #1 certificate SHA-256 digest: …",
+# or "V2 Signer: certificate SHA-256 digest: …" by newer apksigners): every
+# one must be the app's certificate.
+digests="$(sed -n 's/^.*[Ss]igner.*certificate SHA-256 digest: //p' <<<"$certs" | tr '[:upper:]' '[:lower:]' | sort -u)"
+want_hex="$(tr -d ':' <<<"$want" | tr '[:upper:]' '[:lower:]')"
+if [[ "$digests" != "$want_hex" ]]; then
+  echo "check-signature.sh: $apk is not signed with the app's key alone (SHA-256: ${digests:-none}; want $want)" >&2
   exit 1
 fi
 echo "› signed with the app's key ($want)"

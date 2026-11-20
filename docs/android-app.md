@@ -248,8 +248,8 @@ DE:97:97:AE:37:45:09:54:6B:D5:34:DF:69:C5:91:21:0B:33:D9:61:20:E0:8C:38:09:2C:3C
   `AIDE_ANDROID_KEY_PASSWORD` (`app/build.gradle.kts`). The same variables
   sign a build made elsewhere; without them Gradle signs with its own debug
   key, which no other build shares.
-- `scripts/check-signature.sh <apk>` checks, with `apksigner`, that an APK has
-  exactly one signer and that it is this certificate. Both workflows run it
+- `scripts/check-signature.sh <apk>` checks, with `apksigner`, that every
+  signature an APK carries is this certificate. Both workflows run it
   after building; the release uploads nothing it fails. A run without the
   secrets fails, except a pull request from a fork (given no secrets), which
   builds with a throwaway key and says so.
