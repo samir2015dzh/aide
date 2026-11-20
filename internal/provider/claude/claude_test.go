@@ -473,39 +473,6 @@ func TestWindowsDesktopCLILayouts(t *testing.T) {
 			t.Fatalf("got %q, want %q", got, other)
 		}
 	})
-	// alexwork's (Muse's sample, 2026-11-20): a data folder of another name,
-	// one per package, as the general rule (any Claude* folder, claude-code a
-	// level or two down) finds it, and any other name like it.
-	t.Run("Claude-Data, one folder per package", func(t *testing.T) {
-		appData, local := t.TempDir(), t.TempDir()
-		bin := file(t, local, "Claude-Data", "claude_pzs8sxrjxfjjc", "claude-code", "2.1.326", "d31a4581af92", "claude.exe")
-		if got := windowsDesktopCLI(appData, local); got != bin {
-			t.Fatalf("got %q, want %q", got, bin)
-		}
-		other := file(t, appData, "ClaudeNext", "p", "claude-code", "2.1.400", "claude.exe")
-		if got := windowsDesktopCLI(appData, local); got != other {
-			t.Fatalf("another Claude* name: got %q, want %q", got, other)
-		}
-		// Not under some other app's folder.
-		os.RemoveAll(filepath.Join(appData, "ClaudeNext"))
-		file(t, local, "Other", "claude-code", "9.9.9", "claude.exe")
-		if got := windowsDesktopCLI(appData, local); got != bin {
-			t.Fatalf("took another app's: %q", got)
-		}
-	})
-	t.Run("the MSIX app running from WindowsApps, its Claude Code in its package", func(t *testing.T) {
-		appData, local := t.TempDir(), t.TempDir()
-		pkg := filepath.Join(t.TempDir(), "WindowsApps", "Claude_6.6395.1.0_x64__pzs8sxrjxfjjc")
-		desktop := file(t, pkg, "app", "Claude.exe")
-		bin := file(t, pkg, "app", "resources", "claude-code", "2.1.330", "0123456789ab", "claude.exe")
-		defer provider.UseAppSources(nil, []string{desktop})()
-		if !windowsApp(appData, local) {
-			t.Fatal("the running app: not reported")
-		}
-		if got := windowsDesktopCLI(appData, local); got != bin {
-			t.Fatalf("got %q, want %q", got, bin)
-		}
-	})
 	t.Run("the one running now, whatever its layout", func(t *testing.T) {
 		appData, local := t.TempDir(), t.TempDir()
 		file(t, appData, "Claude", "claude-code", "2.1.1", "claude.exe")

@@ -25,16 +25,10 @@ var Agents = []Agent{
 	// programs, or the running app, says it is.
 	{Name: "deepseek", Command: "dsh", Args: []string{"--profile", "acp"}, DSHPresets: true, Apps: []App{
 		{Bundle: "DSH Desktop.app", Exec: "Contents/MacOS/DSH Desktop", Script: "Contents/Resources/app.asar.unpacked/lib/desktop-cli.js"},
-		// An Electron app keeps its code in resources\app.asar, or unpacked in
-		// resources\app (DeepSeek Harness on alexwork, 2026-11-20); where
-		// neither known place has the script, dsh's own entry point is
-		// looked for in its resources (Find).
 		{Bundle: "DSH Desktop", Exec: "DSH Desktop.exe", Script: "resources/app.asar.unpacked/lib/desktop-cli.js",
-			More:  []string{"resources/app.asar/lib/desktop-cli.js", "resources/app/lib/desktop-cli.js"},
-			Names: []string{"DSH Desktop"}, Find: "node_modules/@deepseek-ai/dsh/lib/bin.js"},
+			More: []string{"resources/app.asar/lib/desktop-cli.js"}, Names: []string{"DSH Desktop"}},
 		{Bundle: "DeepSeek Harness", Exec: "DeepSeek Harness.exe", Script: "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js",
-			More:  []string{"resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js", "resources/app.asar.unpacked/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"},
-			Names: []string{"DeepSeek Harness"}, Find: "node_modules/@deepseek-ai/dsh/lib/bin.js"},
+			Names: []string{"DeepSeek Harness"}},
 	}},
 	{Name: "codebuddy", Command: "codebuddy", Args: []string{"--acp"}},
 	{Name: "grok", Command: "grok", Args: []string{"--no-auto-update", "agent", "stdio"}, Auth: []string{"cached_token", "xai.api_key"}},
