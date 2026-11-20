@@ -142,7 +142,9 @@ export function watch() {
         createConnectTransport({ baseUrl: "http://aided", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }),
       );
       try {
-        for await (const m of local.watch({})) {
+        // This process's pid: when aided saves power (no window, nothing running), the app's processes give back
+        // their idle memory with its own (internal/owner AppHeader, docs/resident.md §1.2).
+        for await (const m of local.watch({}, { headers: { "aide-app-pid": String(process.pid) } })) {
           const before = w;
           w = applyWatch(w, m);
           world.status = w.status ?? null;

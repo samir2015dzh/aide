@@ -202,7 +202,8 @@ export function toolSummary(s: string, sessionId: string): string {
 export function phaseText(s: Session): string {
   switch (s.status) {
     case SessionStatus.QUEUED:
-      return t("status.queued");
+      // Kept queued while the machine is short of memory (docs/resident.md §3).
+      return t(s.progress?.phase === "queued_low_memory" ? "status.queuedLowMemory" : "status.queued");
     case SessionStatus.PREPARING:
       return t("phase.preparing");
     case SessionStatus.WAITING_INPUT:

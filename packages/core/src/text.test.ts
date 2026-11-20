@@ -69,6 +69,9 @@ describe("text", () => {
     progressOf(s).phase = "running_shell";
     expect(phaseText(s)).toBe("执行 go test ./...");
     expect(phaseText(session("q", SessionStatus.QUEUED))).toBe("排队中");
+    const held = session("m", SessionStatus.QUEUED);
+    progressOf(held).phase = "queued_low_memory";
+    expect(phaseText(held)).toBe("排队中 · 系统内存不足，内存释放后自动开始");
   });
 
   test("a tool with nothing after its name", () => {
