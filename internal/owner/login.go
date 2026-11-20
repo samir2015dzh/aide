@@ -39,6 +39,7 @@ func (o *Owner) Setup(ctx context.Context, req *localv1.SetupRequest) (*localv1.
 	}
 	res, err := o.publicClient(relayURL).SetUp(ctx, &relayv1.SetUpRequest{SetupCode: req.SetupCode, Account: req.Account, Password: req.Password, Joiner: j})
 	if err != nil {
+		closeMachine(nk)
 		return nil, err
 	}
 	if err := o.loggedIn(ctx, relayURL, res, j, device, nk, req.LocalMachineName); err != nil {
@@ -63,12 +64,22 @@ func (o *Owner) LogIn(ctx context.Context, req *localv1.LogInRequest) (*localv1.
 	}
 	res, err := machine.LogInTo(ctx, o.cfg.HTTPClient, relayURL, req.Account, req.Password, j)
 	if err != nil {
+		// Refused (a wrong password, say): the machine opened for its key is
+		// let go of, or the next try finds its data directory in use.
+		closeMachine(nk)
 		return nil, err
 	}
 	if err := o.loggedIn(ctx, relayURL, res, j, device, nk, req.LocalMachineName); err != nil {
 		return nil, err
 	}
 	return &localv1.LogInResponse{OwnerId: res.OwnerId}, nil
+}
+
+// closeMachine closes n, the machine joiner opened, if it did.
+func closeMachine(n *machine.Machine) {
+	if n != nil {
+		n.Close()
+	}
 }
 
 // serverOwner is the owner of the server typed, "" if it can't be told.

@@ -355,3 +355,32 @@ func TestMachineNameAfterRelayRestart(t *testing.T) {
 		}
 	}
 }
+
+// TestLogInAgainAfterAWrongPassword: a device that runs a machine, refused
+// for a wrong password, logs in with the right one at once: the machine
+// opened for the first try was let go of (its data directory not left in
+// use).
+func TestLogInAgainAfterAWrongPassword(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	w := newOwnerMac(t, nil, &localv1.GrantSpec{})
+	ctx := context.Background()
+	home, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, _ := w.otherMac("mac2", nil)
+	req := &localv1.LogInRequest{RelayUrl: home.RelayUrl, Account: testAccount, Password: "not the password", Label: "mac2", Platform: "macos", LocalMachineName: "mac2"}
+	if _, err := c.LogIn(ctx, req); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("a wrong password: %v", err)
+	}
+	req.Password = testPassword
+	if _, err := c.LogIn(ctx, req); err != nil {
+		t.Fatalf("the right password after a wrong one: %v", err)
+	}
+	eventually(t, time.Minute, "mac2's machine online", func() bool {
+		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+		return err == nil && slices.ContainsFunc(res.Machines, func(m *localv1.Machine) bool { return m.MachineName == "mac2" && m.Online })
+	})
+}
