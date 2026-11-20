@@ -1,6 +1,6 @@
 # Onboarding without a Mac
 
-> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** machines, agents and devices now log in with the server, the account and the password; there are no pairing codes to scan or type, no approval on another device, no Linux trusted device with a passphrase. What this page says of pairing and approving describes the flow before.
+> **Superseded (2026-11-20) by [accounts.md](accounts.md):** machines, agents and devices now log in with the server, the account and the password, and the server signs them in at once. No longer: pairing codes and QR codes to scan or type, verification codes and the two digits, approval on another device (Face ID, Touch ID, a PIN), connection addresses with `/o_…` as the way in, `aided pair` and `aided device join`, `aided approve`, and the Linux trusted device with a passphrase (§9). The install command now takes the server and asks for the account and password (README, [hermeshd.md](hermeshd.md)). What this page says of pairing, approving and trusted devices describes the flow before.
 
 > Status: designed 2026-10-28; the owner took every recommendation in §12
 > the same day. Built the same day, all seven steps of §10 with the tests

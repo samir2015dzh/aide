@@ -7,9 +7,11 @@ Status: built, 2026-10-21 (self-hosted relay: `hermesh-relay serve --mcp`; the h
 The MCP gateway lets AI agent products that only speak remote MCP (Claude.ai,
 ChatGPT, Cursor, Claude Code over HTTP, ...) use Hermesh: list your machines,
 start Claude Code or Codex sessions on them, follow and steer those sessions.
-The agent product connects to one URL, is sent to a sign-in and consent page
-the first time, and the owner approves the connection with Touch ID on their
-Mac — then, or later if the Mac isn't set up yet.
+The agent product connects to one URL and is sent to a consent page the
+first time, where the owner logs in with their account and password: the
+server signs the connection's grant (`relay.IssueGrant`) and the app is
+connected at once, with nothing to approve on another device
+([accounts.md](accounts.md) §3).
 
 The gateway is a server component in this repository, next to the relay. A
 relay server embeds it the way the hosted center embeds the relay: the hosted
@@ -296,26 +298,21 @@ gateway fetches the document when it first sees the URL and on cache expiry:
    session it redirects to sign-in with `next=/oauth/consent?id=…`. Signing
    in for the first time creates the account, as everywhere else. Self-hosted:
    the relay's one owner.
-5. **Consent page** (§5.6): who asks, what it will be able to do, Connect or
-   Cancel. Cancel redirects with `error=access_denied`.
-6. **Connect** creates the MCP connection: the gateway generates the client
-   key, seals it, and stores the connection in state `awaiting_setup` (the
-   account has no owner yet) or `awaiting_approval`. In `awaiting_approval`
-   it submits the pairing request now if the owner's Mac is online (§5.7).
-7. **Finish on the page.**
-   - If the owner's Mac is online, the page shows "Approve on your Mac" with
-     the pairing code the Mac shows and waits up to its 10 minutes; Touch ID
-     there makes the connection `active` before the agent product even gets
-     its code. A "Finish later" button stops waiting.
-   - Otherwise (no Mac set up, or Mac offline), and after "Finish later", the
-     page shows what is missing and how to fix it (§5.7), with
-     "Continue to Claude".
+5. **Consent page** (§5.6): who asks, what it will be able to do, the
+   account and password, Connect or Cancel. Cancel redirects with
+   `error=access_denied`.
+6. **Connect** checks the account and password with the server and creates
+   the MCP connection: the gateway generates the client key, seals it, and
+   the server signs its grant at once (`relay.IssueGrant`): the connection
+   is `active`. A wrong password shows the page again with the error; a
+   server not set up yet says so.
+7. **Finish on the page**: "Connected", then back to the app.
 8. **Redirect** to `redirect_uri?code=…&state=…&iss=<Issuer>`. The code:
    256 bits, single use, 60 s, bound to the connection, `client_id`,
    `redirect_uri`, `code_challenge` and `resource`.
 
-The authorization always completes once the person clicks Connect; whether
-the owner has approved yet only changes what the tools can do.
+The authorization completes once the person connects with the right
+account and password.
 
 ### 5.5 Token endpoint
 
@@ -358,18 +355,21 @@ Errors are RFC 6749 codes (`invalid_grant`, `invalid_client`,
 - The product name, and its client id host with "verified" or "unverified".
 - The redirect URI's host, in full; a warning when every redirect URI is
   loopback ("any program on that computer could claim to be this app").
-- The account it connects to (masked email).
-- In plain words what it will be able to do once approved on the Mac: see
-  your machines, projects and sessions; start sessions with Claude Code or
-  Codex and talk to them — with the reminder that those agents run with full
-  permissions on the projects you choose.
+- "Log in with your Aide account to connect it", and in plain words what it
+  will be able to do once connected: see your machines, projects and
+  sessions; start sessions with Claude Code or Codex and talk to them — with
+  the reminder that those agents run with full permissions on the projects.
 - The custodian sentence from §4.1.
-- Which step comes next: "Approve on your Mac" when the owner's Mac is
-  online, otherwise what §5.7 says is missing.
+- The account and password fields, Cancel and Connect.
 - `frame-ancestors 'none'`; actions are same-origin POSTs bound to the
   authorization id and the browser cookie.
 
 ### 5.7 Connecting before the owner can approve
+
+> **Gone (2026-11-20):** a connection is made with the account and password
+> and is `active` at once; `awaiting_setup` and `awaiting_approval` and the
+> approval request below no longer happen (a server not set up yet refuses
+> the connection). This section is the design before.
 
 A connection can be made while nothing on the owner's side is ready. Its
 state says what is missing, and it moves on by itself:

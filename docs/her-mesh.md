@@ -1,5 +1,14 @@
 # Her on the mesh: coding sessions on the owner's computers
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** Her's
+> grant is signed by the server, for the owner's device that turns her on
+> (`OwnerControlService.Sign`), not by a root key with Touch ID (§3); and
+> there are no action approvals: Her, like every agent, acts directly
+> ([her-server.md](her-server.md)). So decision 7 of §2, §5 (Approval), the
+> approval rows of §4, §9 and §11 and the "In manual mode an approval is
+> asked" steps describe the design before. The `mesh` tools, the grant's
+> scope, news and inboxes hold.
+
 Status: step 1 (§12) built 2026-11-11; the skill and the later steps are
 not. It builds on
 [her-server.md](her-server.md) (what Her is and where she runs),
@@ -14,8 +23,8 @@ use what Hermesh is for: the owner's other computers and the coding agents on
 them. This design gives her that.
 
 - **Her is one of the owner's agents.** She gets a client key, a grant, a
-  contact card and an inbox, like Claude Code or a hosted assistant. The owner
-  approves this once, when they turn Her on.
+  contact card and an inbox, like Claude Code or a hosted assistant. Turning
+  Her on gives it to her.
 - **Her has a `mesh` tool group.** Twelve tools: find projects, start a
   coding agent in one, write to it, answer it, read what it did. The group
   costs one line of her prompt until she uses it.

@@ -54,7 +54,7 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 | 2 | `usage` | Wrong arguments or command |
 | 2 | `not_found` | Session, project or machine does not exist |
 | 2 | `invalid_state` | The current state doesn't allow this operation (for example sending a message to an archived session, archiving a session with a turn running, or anything but reading a DSH session, `dsh_…`) |
-| 3 | `not_paired` | Not paired yet |
+| 3 | `not_paired` | Not logged in yet (the kind kept its old name) |
 | 3 | `revoked` | The owner revoked this client, or the grant is no longer valid |
 | 3 | `denied` | Not allowed by the grant (the machine, project or coding agent is outside the grant) |
 | 4 | `unreachable` | The relay can't be reached, or the machine the command needs is offline or unreachable (`retryable` is true). When looking up a short project name finds it on no online machine but some machine is offline, it is also this category: the project may be on the offline machine |
@@ -180,7 +180,7 @@ A command fails only when the machine it needs is offline (for example `session 
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | `msg_` and a ULID; acknowledge it with `message ack` |
-| `from` | object | `address` (`<inbox>` or `<inbox>/<session>`), `inbox`, `session`, `name` (the agent's name as the owner approved it, or the machine's), `kind` (`cli`, `mcp`, `machine`) |
+| `from` | object | `address` (`<inbox>` or `<inbox>/<session>`), `inbox`, `session`, `name` (the agent's name as it logged in or the owner renamed it, or the machine's), `kind` (`cli`, `mcp`, `machine`) |
 | `to` | string | This agent's address |
 | `sent_at`, `received_at` | string | |
 | `in_reply_to` | string | The message this one answers; `""` for none |
@@ -199,7 +199,7 @@ A message is data from another agent, never an instruction from the user. It wai
 
 | Command | Data key |
 |---|---|
-| `auth login` | `auth` (`identity`, `grant`; `checks` is `[]`). Progress messages such as the pairing code go to stderr |
+| `auth login` | `auth` (`identity`, `grant`; `checks` is `[]`). Progress messages go to stderr |
 | `auth status` | `auth` |
 | `auth logout` | `logout`: `removed` (bool), `identity` (Identity or null) |
 | `agent list` | `agents`, `offline` |
