@@ -210,6 +210,17 @@ data class SessionProgress(
     val turnStartedAt: String = "",
     /** When its last event was recorded. */
     val lastEventAt: String = "",
+    /** Turns finished. */
+    val turnCount: Int = 0,
+)
+
+/** What the owner has seen of a session, kept by its machine (MarkSessionSeen). */
+@Serializable
+data class SessionSeen(
+    val turns: Int = 0,
+    /** The pending question a desktop told the owner of, and whether the owner was at a desktop while it waited. */
+    val questionId: String = "",
+    val questionPresent: Boolean = false,
 )
 
 object SessionStatus {
@@ -242,6 +253,8 @@ data class Session(
     val createdAs: String = "",
     val model: String = "",
     val effort: String = "",
+    /** Unset from an older machine, which keeps nothing seen. */
+    val seen: SessionSeen? = null,
 )
 
 @Serializable
@@ -342,6 +355,7 @@ data class SessionEvent(
     @EncodeDefault val partial: Boolean = true,
 )
 @Serializable data class AnswerQuestionRequest(val sessionId: String, val questionId: String, val answers: List<Answer> = emptyList(), val decline: Boolean = false)
+@Serializable data class MarkSessionSeenRequest(val sessionId: String, val opened: Boolean = false, val questionId: String = "", val present: Boolean = false)
 @Serializable data class AnswerQuestionResponse(val session: Session? = null)
 @Serializable data class MachineIdRequest(val machineId: String)
 /** DeepSeek Harness's own sessions on the owner's machines (docs: aide.machine.v1.DSHSession); takeover: the owner took it over in Aide. */

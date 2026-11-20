@@ -1,12 +1,14 @@
 package io.aide.android
 
 import io.aide.android.api.Client
+import io.aide.android.api.Failure
 import io.aide.android.api.Machine
 import io.aide.android.api.Question
 import io.aide.android.api.QuestionItem
 import io.aide.android.api.QuestionOption
 import io.aide.android.api.Session
 import io.aide.android.api.SessionProgress
+import io.aide.android.api.SessionSeen
 import io.aide.android.api.SessionStatus
 import io.aide.android.api.WatchResponse
 import io.aide.android.api.Answer
@@ -17,6 +19,7 @@ import io.aide.android.model.buildAnswers
 import io.aide.android.model.choose
 import io.aide.android.model.loginError
 import io.aide.android.model.newLoginProblem
+import io.aide.android.model.openedNews
 import io.aide.android.model.plainHttp
 import io.aide.android.model.serverURL
 import org.junit.Assert.assertEquals
@@ -70,6 +73,28 @@ class WorldTest {
         assertEquals("Her", w.senderName(asking.copy(createdBy = "c_her")))
         assertEquals("You", w.senderName(asking.copy(createdBy = "owner")))
         assertEquals("Disconnected agent", w.senderName(asking.copy(createdBy = "c_gone")))
+    }
+
+    // Needs you (a question, a failure), new results not opened yet, at work, the rest; an unopened result stays
+    // with the new ones while its machine is away, and leaves them once opened.
+    @Test fun unopenedResults() {
+        val news = s("n", SessionStatus.IDLE, "2026-01-01T00:00:04Z").copy(progress = SessionProgress(turnCount = 2), seen = SessionSeen(turns = 1))
+        val opened = s("o", SessionStatus.IDLE, "2026-01-01T00:00:03Z").copy(progress = SessionProgress(turnCount = 2), seen = SessionSeen(turns = 2))
+        val failed = s("f", SessionStatus.IDLE, "2026-01-01T00:00:02Z").copy(progress = SessionProgress(turnCount = 2, lastFailure = Failure(kind = "FAILURE_KIND_NETWORK")), seen = SessionSeen(turns = 1))
+        val running = s("r", SessionStatus.RUNNING, "2026-01-01T00:00:01Z").copy(progress = SessionProgress(turnCount = 2), seen = SessionSeen(turns = 1))
+        val w = World(sessions = listOf(news, opened, failed, running).associateBy { it.sessionId })
+        val b = w.buckets
+        assertEquals(listOf("f"), b.needsYou.map { it.sessionId })
+        assertEquals(listOf("n"), b.unseen.map { it.sessionId })
+        assertEquals(listOf("r"), b.inProgress.map { it.sessionId })
+        assertEquals(listOf("o"), b.recent.map { it.sessionId })
+        assertEquals("2/", openedNews(news))
+        assertEquals("", openedNews(opened))
+        val away = World(machines = listOf(Machine("m_vps", "vps", unreachable = "offline")), sessions = mapOf("n" to news.copy(machineId = "m_vps")))
+        assertEquals(listOf("n"), away.buckets.unseen.map { it.sessionId })
+        assertEquals("", openedNews(away.shown(away.sessions["n"]!!)))
+        val seen = w.copy(sessions = w.sessions + ("n" to news.copy(seen = SessionSeen(turns = 2))))
+        assertEquals(setOf("o", "n"), seen.buckets.recent.map { it.sessionId }.toSet())
     }
 
     // A session whose machine can't be read is neither at work nor asking: its state is unknown, its time kept,

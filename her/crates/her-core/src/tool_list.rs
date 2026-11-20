@@ -178,7 +178,7 @@ fn entry(
         },
         kind: match tool.kind() {
             ToolKind::ReadOnly => ToolEntryKind::ReadOnly,
-            ToolKind::Mutating => ToolEntryKind::Mutating,
+            ToolKind::Concurrent | ToolKind::Mutating => ToolEntryKind::Mutating,
         },
         loaded,
         available,

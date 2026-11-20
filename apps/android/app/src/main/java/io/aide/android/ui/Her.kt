@@ -178,6 +178,7 @@ private fun HerRoutines(panel: HerPanel) {
                 Text(
                     listOfNotNull(
                         r.schedule.takeIf { it.isNotEmpty() },
+                        if (r.patrol) t("patrol: only looks", "只读巡查") else null,
                         when (r.state) { "paused" -> t("paused", "已暂停"); "finished" -> t("finished", "已结束"); else -> null },
                         if (r.running) t("running", "运行中") else null,
                         r.nextRun?.let { t("next ", "下次 ") + it.take(16).replace('T', ' ') },

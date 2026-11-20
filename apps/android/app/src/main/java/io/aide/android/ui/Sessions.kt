@@ -63,6 +63,7 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
                 }
             }
             section(t("Needs You", "需要你处理"), b.needsYou, world, open, Warning)
+            section(t("New Results", "有新结果未看"), b.unseen, world, open, null)
             section(t("In Progress", "进行中"), b.inProgress, world, open, null)
             section(t("Recent", "最近"), b.recent, world, open, Color.Gray)
             if (world.sessions.isEmpty() && world.watched) {

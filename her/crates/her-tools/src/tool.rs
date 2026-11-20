@@ -25,9 +25,10 @@ pub trait Tool: Send + Sync + 'static {
     /// Name, description and JSON Schema of the parameters.
     fn spec(&self) -> &ToolSpec;
 
-    /// Read-only tools may run in parallel; mutating tools run exclusively.
+    /// Read-only tools may run in parallel; mutating tools run exclusively. A tool that does
+    /// not say is taken to change something: a patrol run never calls it (docs/her-patrol.md).
     fn kind(&self) -> ToolKind {
-        ToolKind::ReadOnly
+        ToolKind::Mutating
     }
 
     /// The kind of one call. Differs from [`Tool::kind`] only for tools that run another
@@ -137,7 +138,11 @@ pub enum ToolOrigin {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolKind {
+    /// Only looks: changes nothing anywhere. It runs beside other calls.
     ReadOnly,
+    /// Acts, such as on other agents or towards the user, but on nothing the other calls read
+    /// or write: it runs beside them all the same.
+    Concurrent,
     Mutating,
 }
 

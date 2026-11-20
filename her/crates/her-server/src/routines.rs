@@ -97,6 +97,9 @@ CREATE TABLE routine_runs (
 CREATE INDEX runs_by_routine ON routine_runs(routine_id, id DESC);
 ";
 
+/// A routine can be a patrol, whose runs only look (docs/her-patrol.md).
+pub(crate) const SCHEMA_V4: &str = "ALTER TABLE routines ADD COLUMN patrol INTEGER NOT NULL DEFAULT 0;";
+
 /// The longest the clock goes unread. Timers stand still while macOS sleeps, so waiting for the
 /// next run alone would be late by however long the computer slept (routine-design D-421).
 const CHECK_EVERY: Duration = Duration::from_secs(30);
@@ -162,6 +165,8 @@ struct Routine {
     schedule: String,
     when: String,
     enabled: bool,
+    /// Its runs only look (docs/her-patrol.md).
+    patrol: bool,
     created_at: String,
     /// Dealt with up to here: nothing at or before it comes due. Moved on to now when the
     /// schedule changes or the routine resumes, so that what passed meanwhile is not made up.
@@ -212,6 +217,7 @@ impl Routine {
             name: self.name.clone(),
             when: self.when.clone(),
             state: self.state(),
+            patrol: self.patrol,
             running: self.running.is_some(),
             next_run: self.upcoming(now, local).first().copied().map(stamp),
             last_run: self.last_run.as_ref().map(|(_, brief)| brief.clone()),
@@ -336,6 +342,7 @@ fn routine_from(row: &Row<'_>, now: Timestamp) -> rusqlite::Result<Routine> {
         schedule: row.get("schedule")?,
         when: row.get("when_text")?,
         enabled: row.get("enabled")?,
+        patrol: row.get("patrol")?,
         created_at: row.get("created_at")?,
         last_slot: last_slot.unwrap_or(updated_at).parse().unwrap_or(now),
         failures: row.get("failures")?,
@@ -393,9 +400,9 @@ fn insert_routine(conn: &Connection, routine: &Routine, at: &str) -> rusqlite::R
     loop {
         let id = new_routine_id();
         let inserted = conn.execute(
-            "INSERT INTO routines (id, bot_id, name, prompt, schedule, when_text, enabled, created_at, updated_at, last_slot)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7, ?8)",
-            params![id, routine.bot, routine.name, routine.prompt, routine.schedule, routine.when, at, stamp(routine.last_slot)],
+            "INSERT INTO routines (id, bot_id, name, prompt, schedule, when_text, enabled, created_at, updated_at, last_slot, patrol)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7, ?8, ?9)",
+            params![id, routine.bot, routine.name, routine.prompt, routine.schedule, routine.when, at, stamp(routine.last_slot), routine.patrol],
         );
         match inserted {
             Ok(_) => return Ok(id),
@@ -408,7 +415,7 @@ fn insert_routine(conn: &Connection, routine: &Routine, at: &str) -> rusqlite::R
 fn save_definition(conn: &Connection, routine: &Routine, at: &str) -> rusqlite::Result<()> {
     conn.execute(
         "UPDATE routines SET name = ?2, prompt = ?3, schedule = ?4, when_text = ?5, enabled = ?6, updated_at = ?7, last_slot = ?8,
-         finished_at = CASE WHEN ?9 THEN COALESCE(finished_at, ?7) END WHERE id = ?1",
+         finished_at = CASE WHEN ?9 THEN COALESCE(finished_at, ?7) END, patrol = ?10 WHERE id = ?1",
         params![
             routine.id,
             routine.name,
@@ -418,7 +425,8 @@ fn save_definition(conn: &Connection, routine: &Routine, at: &str) -> rusqlite::
             routine.enabled,
             at,
             stamp(routine.last_slot),
-            routine.finished
+            routine.finished,
+            routine.patrol
         ],
     )?;
     Ok(())
@@ -832,6 +840,7 @@ impl Routines {
             routine.last_run = Some((run_id.clone(), RoutineRunBrief { started: started.clone(), outcome: None, delivered: None }));
         });
         self.show(&routine.bot);
+        let patrol = routine.patrol.then(|| self.patrol_notes(&routine.bot, &routine.id));
         Ok(Fire {
             run: RoutineRun {
                 id: run_id,
@@ -842,11 +851,21 @@ impl Routines {
                 now: moment_text(now, local),
                 late: now.duration_since(slot) > LATE_AFTER,
                 report_failure: routine.failures == 0,
+                patrol,
             },
             bot: routine.bot,
             stop,
             manual,
         })
+    }
+
+    /// A patrol's notes folder, made for its run: the one place the run writes.
+    fn patrol_notes(&self, bot: &str, routine: &str) -> PathBuf {
+        let dir = self.home.bot_patrol_dir(bot, routine);
+        if let Err(err) = std::fs::create_dir_all(&dir) {
+            tracing::warn!(routine, "cannot make the patrol's notes folder {}: {err}", dir.display());
+        }
+        dir
     }
 
     /// Carries a run out in the background and saves what it came to.
@@ -1119,6 +1138,7 @@ impl Routines {
             schedule: schedule.stored(&local),
             when: new.when,
             enabled: true,
+            patrol: new.patrol,
             created_at: stamp(now),
             last_slot: now,
             failures: 0,
@@ -1156,6 +1176,9 @@ impl Routines {
         }
         if let Some(when) = change.when {
             routine.when = when;
+        }
+        if let Some(patrol) = change.patrol {
+            routine.patrol = patrol;
         }
         self.save(routine, now, &local, bot).await
     }
@@ -1231,6 +1254,7 @@ impl Routines {
         Ok(ToolDetail {
             saved: routine.saved(now, &local),
             state: routine.state(),
+            patrol: routine.patrol,
             prompt: routine.prompt,
             schedule: routine.schedule,
             recent: runs
@@ -1438,6 +1462,13 @@ impl Server {
         self.routines().set_enabled_at(bot, id, enabled, Timestamp::now()).await.map(|_| ()).map_err(RoutineError::for_client)
     }
 
+    /// Makes a routine a patrol, whose runs only look, or a routine like any other (docs/her-patrol.md).
+    pub async fn bots_routine_set_patrol(&self, bot: &str, id: &str, patrol: bool) -> Result<(), RpcError> {
+        self.bot_exists(bot)?;
+        let change = RoutineChange { patrol: Some(patrol), ..RoutineChange::default() };
+        self.routines().update_at(bot, id, change, Timestamp::now()).await.map(|_| ()).map_err(RoutineError::for_client)
+    }
+
     pub async fn bots_routine_run_now(&self, bot: &str, id: &str) -> Result<(), RpcError> {
         self.bot_exists(bot)?;
         self.routines().run_now_at(bot, id, Timestamp::now()).await.map_err(RoutineError::for_client)
@@ -1486,6 +1517,7 @@ mod tests {
             prompt: "Do it.".into(),
             schedule: schedule.into(),
             when: "说好的时间".into(),
+            patrol: false,
         }
     }
 
@@ -1741,6 +1773,41 @@ mod tests {
         let fires = check(&second, "2026-11-05T09:10:00Z").await;
         assert_eq!(fires.len(), 1);
         assert_eq!(fires[0].run.routine_id, hourly.id);
+    }
+
+    /// A patrol stays one across a restart, its runs get their notes folder, and the panel's
+    /// switch turns it back into an ordinary routine (docs/her-patrol.md).
+    #[tokio::test]
+    async fn a_patrol_keeps_its_notes_folder_and_its_switch() {
+        let dir = tempfile::tempdir().unwrap();
+        let first = routines(&dir).await;
+        let saved = first.create_at("b1", NewRoutine { patrol: true, ..new("巡查", "0 * * * *") }, at("2026-11-05T00:30:00Z")).await.unwrap();
+        let plain = first.create_at("b1", new("每小时", "0 * * * *"), at("2026-11-05T00:30:00Z")).await.unwrap();
+        let local = TimeZone::system();
+        assert!(first.find("b1", &saved.id).unwrap().summary(at(LOCAL), &local).patrol);
+        assert!(!first.find("b1", &plain.id).unwrap().summary(at(LOCAL), &local).patrol);
+        {
+            let mut state = first.state.lock();
+            state.store = Store::Off;
+            state._lock = None;
+        }
+        drop(first);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let second = routines(&dir).await;
+        let fires = check(&second, "2026-11-05T01:00:00Z").await;
+        let notes = |id: &str| fires.iter().find(|fire| fire.run.routine_id == id).unwrap().run.patrol.clone();
+        let folder = notes(&saved.id).expect("a patrol's run");
+        assert_eq!(folder, second.home.bot_patrol_dir("b1", &saved.id));
+        assert!(folder.is_dir(), "made for the run");
+        assert_eq!(notes(&plain.id), None);
+
+        let change = RoutineChange { patrol: Some(false), ..Default::default() };
+        second.update_at("b1", &saved.id, change, at("2026-11-05T01:10:00Z")).await.unwrap();
+        assert!(!second.find("b1", &saved.id).unwrap().patrol);
+        let row = saved.id.clone();
+        let kept: bool = second.db().unwrap().call(move |conn| conn.query_row("SELECT patrol FROM routines WHERE id = ?1", [row], |r| r.get(0))).await.unwrap();
+        assert!(!kept, "written down");
     }
 
     /// When the file cannot be used, routines say so and nothing else changes.

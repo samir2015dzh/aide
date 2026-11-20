@@ -570,6 +570,7 @@ impl AgentTree {
             config: self.deps.config.clone(),
             system: root.system.clone(),
             locks: root.locks.clone(),
+            patrol: None,
         }
     }
 

@@ -18,6 +18,7 @@ use crate::image::ImageFormat;
 use crate::text;
 use crate::tool::ToolCtx;
 use crate::tool::ToolError;
+use crate::tool::ToolKind;
 use crate::tool::ToolOutput;
 use crate::truncate::bytes_for_tokens;
 use crate::truncate::format_size;
@@ -56,6 +57,10 @@ impl TypedTool for ReadTool {
     const DESCRIPTION: &'static str = "Read a file from the workspace. Text output is limited to 2000 lines or \
         10000 tokens; use offset and limit to read a large file in parts. Images (png, jpeg, gif, webp) are \
         returned as images when the model accepts them.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         &["Use read to view files instead of running cat, head or tail in bash."]

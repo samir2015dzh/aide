@@ -144,6 +144,10 @@ impl TypedTool for DocxRead {
         changes. With `from`: paragraphs in full (text with tracked changes applied, style, list, table cell), the comments \
         anchored in them and the tracked changes in them, each with its number.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -226,6 +230,10 @@ impl TypedTool for DocxFind {
     const DESCRIPTION: &'static str = "Find text in a Word document (.docx) as it is now: each match with its paragraph id and \
         the words around it.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -270,6 +278,10 @@ impl TypedTool for DocxView {
     const NAME: &'static str = "docx_view";
     const DESCRIPTION: &'static str = "Look at a page of a Word document (.docx) as an image, unsaved edits included: its layout, \
         tables, pictures and tracked changes as Word shows them.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES

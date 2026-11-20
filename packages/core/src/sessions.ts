@@ -3,6 +3,7 @@ import { FailureKind, SessionStatus, type Question, type Session, type SessionCu
 import { codingAgentTitle } from "./agents";
 import { isYesterday, sameDay, withinWeek } from "./calendar";
 import { t } from "./i18n";
+import { isUnseen } from "./states";
 import { trimWhitespace } from "./text";
 
 // What the main window shows about sessions (the list, search, the
@@ -39,6 +40,11 @@ export function isFailed(s: Session): boolean {
   );
 }
 
+/** Finished well, its result not opened by the owner yet (done_unseen). */
+export function isDoneUnseen(s: Session): boolean {
+  return s.status === SessionStatus.IDLE && s.progress?.lastFailure === undefined && isUnseen(s);
+}
+
 export function isActive(s: Session): boolean {
   return (
     s.status === SessionStatus.QUEUED || s.status === SessionStatus.PREPARING || s.status === SessionStatus.RUNNING
@@ -65,6 +71,18 @@ export function createdDate(s: Session): Date {
 /** The question the agent waits on, if any. */
 export function pendingQuestion(s: Session): Question | undefined {
   return s.status === SessionStatus.WAITING_INPUT ? s.progress?.pendingQuestion : undefined;
+}
+
+/**
+ * What a page showing s, in front of the owner, has to tell its machine (MarkSessionSeen, opened): a key that
+ * changes with what is new to the owner (a finished turn not opened, a question the owner was not marked at), or ""
+ * when nothing is (or its machine keeps nothing seen, or its state is not known now).
+ */
+export function openedNews(s: Session): string {
+  if (s.seen === undefined || s.status === SessionStatus.UNSPECIFIED) return "";
+  const q = pendingQuestion(s);
+  const asks = q !== undefined && !(s.seen.questionId === q.questionId && s.seen.questionPresent);
+  return isUnseen(s) || asks ? `${s.progress?.turnCount ?? 0}/${asks ? q.questionId : ""}` : "";
 }
 
 /** The turn in progress, or the last one (turn_count counts finished ones). */
@@ -148,27 +166,29 @@ export function sessionView(v: Partial<SessionView> = {}): SessionView {
 }
 
 /** A section's key: a state or a day (titled by bucketTitle), who sent the work (a client id, or "owner"), a project, a coding agent, a machine id, or "archived". */
-export type SessionBucket = "attention" | "active" | "done" | "today" | "yesterday" | "week" | "earlier" | "archived";
+export type SessionBucket = "attention" | "unseen" | "active" | "done" | "today" | "yesterday" | "week" | "earlier" | "archived";
 
 /** A section of the list, by its title. */
 export function bucketTitle(b: SessionBucket): string {
   return t(`bucket.${b}`);
 }
 
-const statusOrder: SessionBucket[] = ["attention", "active", "done"];
+const statusOrder: SessionBucket[] = ["attention", "unseen", "active", "done"];
 const dayOrder: SessionBucket[] = ["today", "yesterday", "week", "earlier"];
 
 /**
- * Needs the owner, runs, or is done. One whose state is not known now (its machine is lost: withKnownState) stays
- * with what it last was at, in progress or done, never needing the owner, who can do nothing about it until it is
- * back (docs/session-states.md §5).
+ * Needs the owner, has a result the owner has not opened, runs, or is done. One whose state is not known now (its
+ * machine is lost: withKnownState) stays with what it last was at, in progress, unopened or done, never needing the
+ * owner, who can do nothing about it until it is back (docs/session-states.md §5). An unopened result stays until the
+ * owner opens it.
  */
 export function statusOf(s: Session, lastKnown?: (id: string) => Session | undefined): SessionBucket {
   if (s.status === SessionStatus.UNSPECIFIED) {
     const was = lastKnown?.(s.sessionId);
-    return was && (isActive(was) || was.status === SessionStatus.WAITING_INPUT) ? "active" : "done";
+    if (was && (isActive(was) || was.status === SessionStatus.WAITING_INPUT)) return "active";
+    return s.progress?.lastFailure === undefined && isUnseen(s) ? "unseen" : "done";
   }
-  return needsAttention(s) ? "attention" : isActive(s) ? "active" : "done";
+  return needsAttention(s) ? "attention" : isDoneUnseen(s) ? "unseen" : isActive(s) ? "active" : "done";
 }
 
 /** The day it was last active; "week" is the six days before today, not the calendar week. */
@@ -185,7 +205,7 @@ export interface SessionSection {
 
 /**
  * The list as the view lays it out, each section sorted by last activity.
- * States keep their order (needs you, running, done); days follow the sort;
+ * States keep their order (needs you, unopened results, running, done); days follow the sort;
  * projects and coding agents go by name, machines in the order given
  * (unknown ones last); senders (docs/her-team.md §14.2) are Her (the client
  * ids in `her`), then the agents by their latest session, then the owner.
@@ -268,7 +288,7 @@ export function searchSessions(
   text: (s: Session) => string,
 ): Session[] {
   const q = trimWhitespace(query).toLowerCase();
-  const rank = (s: Session) => (needsAttention(s) ? 0 : isActive(s) ? 1 : 2);
+  const rank = (s: Session) => (needsAttention(s) ? 0 : isDoneUnseen(s) ? 1 : isActive(s) ? 2 : 3);
   return sessions
     .filter(
       (s) =>

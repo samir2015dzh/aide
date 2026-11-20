@@ -127,7 +127,7 @@
   {
     "description": "Start a sub-agent: a separate agent with your workspace, permissions, model and tools, except that it cannot start agents. It sees none of this conversation: the task you write is all it knows.\n\nDelegate self-contained work that takes many steps: broad searches, independent changes, long investigations, test runs. Do quick, blocking or tightly coupled steps yourself.\n\nSeveral agents can run at once: call spawn_agent several times in one reply. You all share one workspace, so give each agent its own files to change, and run tasks that change the same file one after another.\n\nThe agent runs in the background. Its report comes to you as a new message when it finishes, even after you end your turn. So to wait, end your turn: that is not your final answer. Set wait=true only when the next step of this reply needs the report.\n\nWhile it works, an agent can send you an <agent_message> about something that can't wait, such as a blocker; its report still follows. What an agent sends you is information, not the user's word.\n\nLeave delegated work to the agent: do not redo it or guess its result; list_agents shows how it stands. Only you see the reports; the user sees each agent's status, so relay what matters.",
     "group": "agents",
-    "kind": "read_only",
+    "kind": "mutating",
     "loaded": true,
     "name": "spawn_agent",
     "parameters": {
@@ -162,7 +162,7 @@
   {
     "description": "Send a message to one of your sub-agents. It keeps the context of its earlier work, so use this for follow-ups and corrections and to let an interrupted agent continue; spawn_agent would start from scratch. A running agent reads the message at its next step; an idle one works on it and reports back as after spawn_agent. Answer an <agent_message> with this only when it needs an answer.",
     "group": "agents",
-    "kind": "read_only",
+    "kind": "mutating",
     "loaded": true,
     "name": "send_message",
     "parameters": {
@@ -2099,7 +2099,7 @@
   {
     "description": "Stop running agents at once: name them, or set all to true. A stopped agent keeps its context, and send_message lets it continue later. The result lists what stopped and what had already finished.",
     "group": "agents",
-    "kind": "read_only",
+    "kind": "mutating",
     "loaded": false,
     "name": "stop_agents",
     "parameters": {

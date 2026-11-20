@@ -734,6 +734,16 @@ func (l *localService) RenameSession(ctx context.Context, req *localv1.RenameSes
 	return sessionResponse(l.o().RenameSession(ctx, req.SessionId, req.Title))
 }
 
+func (l *localService) MarkSessionSeen(ctx context.Context, req *sessionv1.MarkSessionSeenRequest) (*localv1.SessionResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return sessionResponse(m.MarkSeen(ctx, req))
+	}
+	return sessionResponse(l.o().MarkSessionSeen(ctx, req))
+}
+
 func (l *localService) UnarchiveSession(ctx context.Context, req *localv1.UnarchiveSessionRequest) (*localv1.SessionResponse, error) {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err != nil {

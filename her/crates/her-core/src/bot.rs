@@ -14,6 +14,7 @@ use her_tools::ToolCategory;
 use her_tools::ToolCtx;
 use her_tools::ToolDescription;
 use her_tools::ToolError;
+use her_tools::ToolKind;
 use her_tools::ToolOutput;
 use her_tools::Typed;
 use her_tools::TypedTool;
@@ -397,6 +398,10 @@ impl TypedTool for SendToUser {
     const NAME: &'static str = SEND_TO_USER;
     const DESCRIPTION: &'static str = "Send a message to the user. It is the only way they see anything from you: each call \
         shows up as one message, all at once.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
 
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         let first = args

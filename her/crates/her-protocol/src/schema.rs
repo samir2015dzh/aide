@@ -331,6 +331,7 @@ pub fn document() -> Value {
         (method::BOTS_ROUTINE_RUNS, Some(name::<bot::BotRoutineRunsParams>(g)), name::<bot::BotRoutineRunsResult>(g)),
         (method::BOTS_ROUTINE_RUN, Some(name::<bot::BotRoutineRunParams>(g)), name::<bot::BotRoutineRunResult>(g)),
         (method::BOTS_ROUTINE_SET_ENABLED, Some(name::<bot::BotRoutineSetEnabledParams>(g)), name::<api::Empty>(g)),
+        (method::BOTS_ROUTINE_SET_PATROL, Some(name::<bot::BotRoutineSetPatrolParams>(g)), name::<api::Empty>(g)),
         (method::BOTS_ROUTINE_RUN_NOW, Some(name::<bot::BotRoutineParams>(g)), name::<api::Empty>(g)),
         (method::BOTS_ROUTINE_STOP, Some(name::<bot::BotRoutineParams>(g)), name::<api::Empty>(g)),
         (method::BOTS_ROUTINE_DELETE, Some(name::<bot::BotRoutineParams>(g)), name::<api::Empty>(g)),

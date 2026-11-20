@@ -41,6 +41,9 @@ pub struct SessionView {
     /// (docs/her-memory.md §6). `None` in every other session, the bot's sub-agents and its
     /// routines' runs too.
     pub memory_dir: Option<PathBuf>,
+    /// A patrol run (docs/her-patrol.md): its notes folder (canonical), the one place it writes.
+    /// It only looks otherwise. `None` in every other session.
+    pub patrol: Option<PathBuf>,
     /// The `[browser]` policy: domain lists and configured sites.
     pub browser: Arc<her_browser::policy::SitePolicy>,
     /// The `[desktop]` settings: which apps are denied.

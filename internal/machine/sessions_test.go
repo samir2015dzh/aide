@@ -846,7 +846,12 @@ func TestDeleteSession(t *testing.T) {
 		}
 		return sessions, turns
 	}
+	// busy's turn start is counted once the writer stores it, a moment after
+	// it shows running.
 	beforeSessions, beforeTurns := countToday()
+	for deadline := time.Now().Add(10 * time.Second); beforeSessions != 2 && time.Now().Before(deadline); beforeSessions, beforeTurns = countToday() {
+		time.Sleep(20 * time.Millisecond)
+	}
 	wctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	watched := make(chan *sessionv1.WatchSessionsResponse, 100)
