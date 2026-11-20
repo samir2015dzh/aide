@@ -41,6 +41,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 	"github.com/samir2015dzh/aide/internal/provider/codex"
 	"github.com/samir2015dzh/aide/internal/provider/fake"
+	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/internal/service"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/internal/spawn"
@@ -184,6 +185,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 			defer stop()
 			openLogFile(dataDir)
 			log := logger(verbose)
+			resident.SetMemoryLimit(log)
 			if n := rlimit.RaiseNoFile(); n > 0 { // Windows has no such limit
 				log.Info("open file limit", "soft", n)
 			}
