@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 
 	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
 	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
@@ -45,7 +47,6 @@ func TestHerCommandsAreSignedOnly(t *testing.T) {
 	defer n.Close()
 	for _, cmd := range []*identityv1.AdminCommand{
 		setHer(true),
-		{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: "b", PermissionMode: "bypass-permissions"}}},
 		{Command: &identityv1.AdminCommand_SetHerCommandConnector{SetHerCommandConnector: &identityv1.SetHerCommandConnector{Name: "x", Command: "sh"}}},
 	} {
 		if _, err := n.ApplySettings(context.Background(), cmd); connect.CodeOf(err) != connect.CodePermissionDenied {
@@ -68,6 +69,17 @@ func TestUnknownAdminCommand(t *testing.T) {
 	if _, err := n.execAdmin(ctx, &identityv1.AdminCommand{}); connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("an unknown command: %v", err)
 	}
+	// An older device's set_her_assistant_mode (field 17, gone with Her's
+	// permission modes) is one this version doesn't know.
+	var old identityv1.AdminCommand
+	raw := protowire.AppendTag(nil, 17, protowire.BytesType)
+	raw = protowire.AppendBytes(raw, protowire.AppendString(protowire.AppendTag(nil, 1, protowire.BytesType), "b"))
+	if err := proto.Unmarshal(raw, &old); err != nil || old.Command != nil {
+		t.Fatalf("set_her_assistant_mode decoded: %v, %v", old.Command, err)
+	}
+	if _, err := n.execAdmin(ctx, &old); connect.CodeOf(err) != connect.CodeUnimplemented {
+		t.Fatalf("set_her_assistant_mode: %v", err)
+	}
 	n.Close()
 
 	n, err := Open(Config{DataDir: t.TempDir(), Providers: map[string]provider.Provider{}, TestBeforeHer: true})
@@ -80,7 +92,7 @@ func TestUnknownAdminCommand(t *testing.T) {
 	}
 	for _, cmd := range []*identityv1.AdminCommand{
 		setHer(true),
-		{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: "b", PermissionMode: "bypass-permissions"}}},
+		{Command: &identityv1.AdminCommand_SetHerCommandConnector{SetHerCommandConnector: &identityv1.SetHerCommandConnector{Name: "x", Command: "sh"}}},
 	} {
 		if _, err := n.execAdmin(ctx, cmd); connect.CodeOf(err) != connect.CodeInvalidArgument || err.Error() != "invalid_argument: unknown admin command" {
 			t.Errorf("%T: %v", cmd.Command, err)
@@ -323,10 +335,6 @@ func TestHerInProcess(t *testing.T) {
 		return st.Latest.GetText() == "hello" && st.Latest.GetKind() == machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE && st.Unread > 0
 	})
 
-	if _, err := n.execAdmin(ctx, &identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerAssistantMode{
-		SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: bot, PermissionMode: "bypass-permissions"}}}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := n.execAdmin(ctx, &identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerCommandConnector{
 		SetHerCommandConnector: &identityv1.SetHerCommandConnector{Name: "notes", Command: "/bin/cat"}}}); err != nil {
 		t.Fatal(err)

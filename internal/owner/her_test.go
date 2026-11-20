@@ -155,8 +155,8 @@ func (h *herSide) prompts(t *testing.T) []string {
 		var p struct {
 			SessionID string `json:"session_id"`
 			Op        struct {
-				Type, Mode string
-				Input      []struct{ Type, Text string }
+				Type  string
+				Input []struct{ Type, Text string }
 			}
 		}
 		if method != "session/op" || json.Unmarshal([]byte(params), &p) != nil {
@@ -165,7 +165,7 @@ func (h *herSide) prompts(t *testing.T) []string {
 		if p.Op.Type == "prompt" && len(p.Op.Input) == 1 && p.Op.Input[0].Type == "text" {
 			out = append(out, p.SessionID+": "+p.Op.Input[0].Text)
 		} else {
-			out = append(out, p.SessionID+": "+p.Op.Type+" "+p.Op.Mode)
+			out = append(out, p.SessionID+": "+p.Op.Type)
 		}
 	}
 	return out
@@ -462,24 +462,13 @@ func TestHerFiles(t *testing.T) {
 	}
 }
 
-// An assistant's mode goes on its conversation, unsigned, full access too:
-// the owner chose it. Turning Her on and connectors started as commands are
-// signed by the root key, and never sent unsigned.
-func TestHerAssistantModeAndSignedCommands(t *testing.T) {
+// Turning Her on and connectors started as commands are signed by the root
+// key, and never sent unsigned. (Her has no assistant modes to set: she runs
+// actions without asking, docs/her-server.md §0.)
+func TestHerSignedCommands(t *testing.T) {
 	h := &herSide{}
 	_, o, _, _ := herOwner(t, h)
 	ctx := context.Background()
-	for _, mode := range []string{"accept-edits", "bypass-permissions"} {
-		if err := o.SetHerAssistantMode(ctx, "m_1", "b1", mode); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if got := h.prompts(t); !equal(got, []string{"conv-b1: set_permission_mode accept-edits", "conv-b1: set_permission_mode bypass-permissions"}) {
-		t.Fatalf("handed %q", got)
-	}
-	if err := o.SetHerAssistantMode(ctx, "m_1", "b1", "yolo"); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("an unknown mode: %v", err)
-	}
 
 	k, _ := identity.GenerateKey()
 	o.herInfo = func(context.Context, string) (*machinev1.MachineStatus, error) {
@@ -520,7 +509,7 @@ func TestHerAssistantModeAndSignedCommands(t *testing.T) {
 			t.Fatalf("%s: %v", c.name, err)
 		}
 	}
-	if got := h.prompts(t); len(got) != 2 {
+	if got := h.prompts(t); len(got) != 0 {
 		t.Fatalf("sent unsigned: %q", got)
 	}
 	if err := o.SetHer(ctx, "m_1", true, true); connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -592,10 +581,8 @@ func TestHerOnAMachineOnly(t *testing.T) {
 		}
 	}
 	// The rest goes to its own machine, in process: not running here.
-	for _, mode := range []string{"manual", "bypass-permissions"} {
-		if err := o.SetHerAssistantMode(ctx, "m_1", "b1", mode); connect.CodeOf(err) != connect.CodeUnavailable {
-			t.Errorf("%s: %v", mode, err)
-		}
+	if _, err := o.HerCall(ctx, "m_1", &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}}); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Errorf("a call: %v", err)
 	}
 }
 
@@ -978,7 +965,6 @@ func TestHerWrites(t *testing.T) {
 		localv1connect.LocalServiceDeleteHerWaitingProcedure:       false,
 		localv1connect.LocalServiceGetHerConversationProcedure:     false,
 		localv1connect.LocalServiceSetHerProcedure:                 true,
-		localv1connect.LocalServiceSetHerAssistantModeProcedure:    true,
 		localv1connect.LocalServiceSetHerCommandConnectorProcedure: true,
 		localv1connect.LocalServiceAddProjectProcedure:             true,
 	} {

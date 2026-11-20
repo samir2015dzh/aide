@@ -157,8 +157,6 @@ answered:
 	call(t, h, "", "models/list", nil)
 	_, err := h.Call(ctx, &herv1.CallRequest{ConnectionId: "gone", Request: &herv1.Request{Method: "models/list"}})
 	code(t, err, connect.CodeNotFound)
-	// Her has no permission modes: SetHerAssistantMode's way is gone.
-	code(t, h.AssistantMode(ctx, botID, "bypass-permissions"), connect.CodeUnimplemented)
 
 	// SetHerCommandConnector's way: added, changed, removed.
 	servers := func() map[string]map[string]any {
