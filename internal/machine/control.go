@@ -21,6 +21,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/localipc"
 	"github.com/samir2015dzh/aide/internal/paths"
 	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
@@ -64,6 +65,11 @@ func (n *Machine) serveControl(ctx context.Context) {
 	mux.HandleFunc("GET /check", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(n.Check(r.Context()))
 	})
+	// What power saving does now (docs/resident.md §2.3), for scripts: cheaper than /check.
+	mux.HandleFunc("GET /power", func(w http.ResponseWriter, r *http.Request) {
+		st, _ := resident.Current()
+		json.NewEncoder(w).Encode(st)
+	})
 	mux.HandleFunc("GET /her-data", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(n.herDataKept())
 	})
@@ -84,11 +90,12 @@ type Check struct {
 	Agents                                      map[string]provider.Info
 	Busy                                        int                  // sessions a restart would stop, Her's work among them
 	Her                                         *machinev1.HerStatus // as aided last saw her
+	Power                                       *resident.State      `json:",omitempty"` // the running aided's power saving
 }
 
 func (n *Machine) Check(ctx context.Context) Check {
 	return Check{MachineID: n.MachineID(), Name: n.Name(), OwnerID: n.OwnerID(), RelayURL: n.RelayURL(), Version: Version,
-		Paired: n.Paired(), Connected: n.Connected(), Agents: n.Discover(ctx), Busy: n.Busy(), Her: n.herStatus()}
+		Paired: n.Paired(), Connected: n.Connected(), Agents: n.Discover(ctx), Busy: n.Busy(), Her: n.herStatus(), Power: power()}
 }
 
 // Busy counts the sessions a restart would stop: queued, preparing,
@@ -97,6 +104,17 @@ func (n *Machine) Check(ctx context.Context) Check {
 func (n *Machine) Busy() int {
 	return n.sessions.Running() + int(n.sessions.counts[sessionv1.SessionStatus_SESSION_STATUS_QUEUED].Load()) + n.her.Busy()
 }
+
+// power is this process's power saving, when it runs one (aided run).
+func power() *resident.State {
+	if st, ok := resident.Current(); ok {
+		return &st
+	}
+	return nil
+}
+
+// HerPid is her's process while she runs, else 0.
+func (n *Machine) HerPid() int { return n.her.Pid() }
 
 // ApplyLocal applies a project change from this machine's own user: adding
 // or removing a project, nothing else.

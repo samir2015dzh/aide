@@ -15,6 +15,8 @@ import (
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/resident"
 )
 
 // ServeLocal serves LocalService on a local endpoint that only the same
@@ -44,7 +46,33 @@ func (d *Device) ServeLocal(ctx context.Context, sockPath string) error {
 func (d *Device) LocalHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle(localv1connect.NewLocalServiceHandler(&localService{d: d}, connect.WithInterceptors(connect.UnaryInterceptorFunc(d.kickAfterWrites))))
-	return mux
+	return viewers(mux)
+}
+
+// ViewerHeader marks the calls of a window of the app (the desktop app's
+// gateway sets it; its main process's own Watch, for notifications and the
+// notification area, has none): while one holds a stream open, aided does
+// not save power (internal/resident).
+const ViewerHeader = "Aide-Viewer"
+
+func viewers(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get(ViewerHeader) != "" {
+			defer resident.Viewing()()
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// LocalMachine is this device's own machine while it runs, else nil.
+func (d *Device) LocalMachine() *machine.Machine {
+	o := d.owner()
+	if o == nil {
+		return nil
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.localMachine
 }
 
 // kickAfterWrites tells the screens (Watch) to look again after a call that

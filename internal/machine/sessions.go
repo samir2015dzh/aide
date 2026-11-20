@@ -28,6 +28,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
@@ -1445,6 +1446,8 @@ func (s *Sessions) dispatch() {
 		return
 	}
 	slices.SortFunc(queued, func(a, b *live) int { return a.queuedAt.Compare(b.queuedAt) })
+	// Out of power saving before anything starts (internal/resident).
+	resident.Wake("a session starts")
 	for _, l := range queued {
 		if limited && running >= s.limits.MaxConcurrent {
 			return
