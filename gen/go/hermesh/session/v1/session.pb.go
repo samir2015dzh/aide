@@ -997,8 +997,9 @@ type Notice struct {
 	DiffStat *DiffStat `protobuf:"bytes,13,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
 	// kind "her": what an assistant of Her's on the machine (machine names
 	// it) has for the owner, as HerLatest says it: "message", "question" (it
-	// asks the owner to choose) or "approval" (it waits for an approval or a
-	// secure card), and its first words.
+	// asks the owner to choose) or "approval" (a secure card waits for the
+	// owner: Her runs actions without asking, so nothing else waits; the
+	// name is kept for the apps that read it), and its first words.
 	HerKind       string `protobuf:"bytes,18,opt,name=her_kind,json=herKind,proto3" json:"her_kind,omitempty"`
 	MachineId     string `protobuf:"bytes,19,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	BotId         string `protobuf:"bytes,20,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`

@@ -211,7 +211,7 @@ message HerStatus {
   bool model_ready = 4;
   // Why this machine can't run Her ("windows", "no her"), or empty.
   string unsupported = 5;
-  // Messages and approval requests the owner has not looked at, over all
+  // Messages and secure cards the owner has not looked at, over all
   // assistants, as her counts them (bots/read).
   uint32 unread = 6;
   // The newest message from an assistant, for a notification.
@@ -255,7 +255,9 @@ enum HerLatestKind {
   HER_LATEST_KIND_MESSAGE = 1;
   // It asks the owner to choose.
   HER_LATEST_KIND_QUESTION = 2;
-  // It waits for an approval.
+  // A secure card waits for the owner: a secret to enter or a connector to
+  // sign in to. Her runs actions without asking, so nothing else waits; the
+  // name is from when she asked first, and is kept.
   HER_LATEST_KIND_APPROVAL = 3;
 }
 

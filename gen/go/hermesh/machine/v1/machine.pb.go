@@ -32,7 +32,9 @@ const (
 	HerLatestKind_HER_LATEST_KIND_MESSAGE     HerLatestKind = 1
 	// It asks the owner to choose.
 	HerLatestKind_HER_LATEST_KIND_QUESTION HerLatestKind = 2
-	// It waits for an approval.
+	// A secure card waits for the owner: a secret to enter or a connector to
+	// sign in to. Her runs actions without asking, so nothing else waits; the
+	// name is from when she asked first, and is kept.
 	HerLatestKind_HER_LATEST_KIND_APPROVAL HerLatestKind = 3
 )
 
@@ -1429,7 +1431,7 @@ type HerStatus struct {
 	ModelReady bool `protobuf:"varint,4,opt,name=model_ready,json=modelReady,proto3" json:"model_ready,omitempty"`
 	// Why this machine can't run Her ("windows", "no her"), or empty.
 	Unsupported string `protobuf:"bytes,5,opt,name=unsupported,proto3" json:"unsupported,omitempty"`
-	// Messages and approval requests the owner has not looked at, over all
+	// Messages and secure cards the owner has not looked at, over all
 	// assistants, as her counts them (bots/read).
 	Unread uint32 `protobuf:"varint,6,opt,name=unread,proto3" json:"unread,omitempty"`
 	// The newest message from an assistant, for a notification.

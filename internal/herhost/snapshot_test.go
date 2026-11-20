@@ -20,7 +20,7 @@ func bots(t *testing.T, rows string) []bot {
 
 // The unread count is over every assistant; the newest message is an
 // assistant's (never the owner's own), first by time, then whatever changes
-// last; an approval waiting is the newest when it comes; a rename follows;
+// last; a secure card waiting is the newest when it comes; a rename follows;
 // a deleted assistant's message gives way to the newest left.
 func TestSnapshot(t *testing.T) {
 	s := newSnapshot("0.2.0", nil, bots(t, `[
@@ -34,7 +34,7 @@ func TestSnapshot(t *testing.T) {
 			t.Fatalf("latest %v, want %s %s %q %v", l, id, name, text, kind)
 		}
 	}
-	msg, approval := machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE, machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL
+	msg, card := machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE, machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL
 	if s.unread() != 3 {
 		t.Fatalf("unread %d", s.unread())
 	}
@@ -51,16 +51,16 @@ func TestSnapshot(t *testing.T) {
 		t.Fatalf("unread %d", s.unread())
 	}
 
-	waiting := `{"id":"w","name":"Writer","unread":3,"waiting":"Run rm -rf build","last":{"from":"bot","text":"newer","ts":"2026-11-08T10:00:00Z"}}`
+	waiting := `{"id":"w","name":"Writer","unread":3,"waiting":"Sign in to GitHub","last":{"from":"bot","text":"newer","ts":"2026-11-08T10:00:00Z"}}`
 	s.changed(bots(t, `[`+waiting+`]`), nil, now)
-	latest("w", "Writer", "Run rm -rf build", approval)
+	latest("w", "Writer", "Sign in to GitHub", card)
 	if !s.latest.At.AsTime().Equal(now) {
-		t.Fatalf("an approval's time is when it came: %v", s.latest.At.AsTime())
+		t.Fatalf("a card's time is when it came: %v", s.latest.At.AsTime())
 	}
 	s.changed(bots(t, `[`+strings.Replace(waiting, "Writer", "Editor", 1)+`]`), nil, now)
-	latest("w", "Editor", "Run rm -rf build", approval)
+	latest("w", "Editor", "Sign in to GitHub", card)
 	s.changed(bots(t, `[{"id":"q","name":"Quiet","last":{"from":"user","text":"hello?","ts":"2026-11-08T12:00:00Z"}}]`), nil, now)
-	latest("w", "Editor", "Run rm -rf build", approval)
+	latest("w", "Editor", "Sign in to GitHub", card)
 
 	s.changed(nil, []string{"w"}, now)
 	latest("her", "Her", strings.Repeat("字", 200), msg)
@@ -87,8 +87,9 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
-// A secure card open waits for the owner as an approval does (her's
-// BotSummary.waiting: Her's words with it, else its title): it is the newest
+// A secure card open waits for the owner (her's BotSummary.waiting: Her's
+// words with it, else its title; HER_LATEST_KIND_APPROVAL names it, the
+// only thing that waits since Her runs actions without asking): it is the newest
 // while it waits, another assistant changing meanwhile included; once it
 // ends, the newest message is again, until Her says how it went.
 func TestSnapshotCard(t *testing.T) {
@@ -101,7 +102,7 @@ func TestSnapshotCard(t *testing.T) {
 			t.Fatalf("latest %v, want %s %q %v", l, id, text, kind)
 		}
 	}
-	msg, approval := machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE, machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL
+	msg, card := machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE, machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL
 	now := time.Now()
 	said := `"last":{"from":"bot","text":"I need Notion for this.","ts":"2026-11-09T10:00:00Z"}`
 
@@ -109,9 +110,9 @@ func TestSnapshotCard(t *testing.T) {
 	s.changed(bots(t, `[{"id":"her","name":"Her","unread":1,"typing":true,`+said+`}]`), nil, now)
 	latest("her", "I need Notion for this.", msg)
 	s.changed(bots(t, `[{"id":"her","name":"Her","unread":1,"waiting":"I need Notion for this.",`+said+`}]`), nil, now)
-	latest("her", "I need Notion for this.", approval)
+	latest("her", "I need Notion for this.", card)
 	s.changed(bots(t, `[{"id":"w","name":"Writer","unread":1,"last":{"from":"bot","text":"draft ready","ts":"2026-11-09T08:00:00Z"}}]`), nil, now)
-	latest("her", "I need Notion for this.", approval)
+	latest("her", "I need Notion for this.", card)
 
 	// It ends: no longer waiting.
 	s.changed(bots(t, `[{"id":"her","name":"Her","unread":1,`+said+`}]`), nil, now)
@@ -119,7 +120,7 @@ func TestSnapshotCard(t *testing.T) {
 
 	// A card without words waits by its title, until Her says how it went.
 	s.changed(bots(t, `[{"id":"her","name":"Her","unread":1,"waiting":"Connect Notion",`+said+`}]`), nil, now)
-	latest("her", "Connect Notion", approval)
+	latest("her", "Connect Notion", card)
 	s.changed(bots(t, `[{"id":"her","name":"Her","unread":2,"last":{"from":"bot","text":"Notion is connected.","ts":"2026-11-09T10:05:00Z"}}]`), nil, now)
 	latest("her", "Notion is connected.", msg)
 }
@@ -151,7 +152,7 @@ func TestSnapshotQuestion(t *testing.T) {
 }
 
 // What the owner's devices are told of, as notices.ts herNotices tells it on
-// the Mac: an assistant's new message, question or approval waiting, as the
+// the Mac: an assistant's new message, question or secure card waiting, as the
 // unread count grows; not her first snapshot, the owner's own message, the
 // same newest again, a rename, what was read meanwhile, a muted assistant,
 // nor a newest that comes back.
@@ -169,7 +170,7 @@ func TestSnapshotNews(t *testing.T) {
 			t.Fatalf("news %v after %s, want %q %v", n, rows, want, kind)
 		}
 	}
-	msg, question, approval := machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE, machinev1.HerLatestKind_HER_LATEST_KIND_QUESTION, machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL
+	msg, question, card := machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE, machinev1.HerLatestKind_HER_LATEST_KIND_QUESTION, machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL
 
 	news(first, "", 0)
 	reply := `"last":{"from":"bot","text":"Three things today.","ts":"2026-11-09T10:00:00Z"}`
@@ -178,8 +179,8 @@ func TestSnapshotNews(t *testing.T) {
 	news(`[{"id":"her","name":"Her","unread":2,"last":{"from":"user","text":"thanks","ts":"2026-11-09T10:01:00Z"}}]`, "", 0)
 	news(`[{"id":"her","name":"Her","unread":3,"last":{"from":"bot","text":"Send it now?","question":true,"ts":"2026-11-09T10:02:00Z"}}]`, "Send it now?", question)
 	asked := `"last":{"from":"bot","text":"Send it now?","question":true,"ts":"2026-11-09T10:02:00Z"}`
-	news(`[{"id":"her","name":"Her","unread":4,"waiting":"touch sent.txt",`+asked+`}]`, "touch sent.txt", approval)
-	// Approved: the question is the newest again, and was told already.
+	news(`[{"id":"her","name":"Her","unread":4,"waiting":"Connect GitHub",`+asked+`}]`, "Connect GitHub", card)
+	// The card done: the question is the newest again, and was told already.
 	news(`[{"id":"her","name":"Her","unread":4,`+asked+`}]`, "", 0)
 	news(`[{"id":"her","name":"Herself","unread":4,`+asked+`}]`, "", 0)
 	// Read on a device meanwhile: what comes with fewer unread is no news.
@@ -194,8 +195,8 @@ func TestSnapshotNews(t *testing.T) {
 	}
 }
 
-// Assistants at work, whose work an update waits for: a turn (an approval
-// waiting is in one), sub-agents, a routine's run; none once it is done.
+// Assistants at work, whose work an update waits for: a turn (a secure
+// card waiting is in one), sub-agents, a routine's run; none once it is done.
 func TestSnapshotBusy(t *testing.T) {
 	s := newSnapshot("0.2.0", nil, bots(t, `[{"id":"her","name":"Her"},{"id":"w","name":"Writer","routines":[{"id":"r","running":false}]}]`))
 	busy := func(rows string, want int) {

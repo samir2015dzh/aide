@@ -360,8 +360,9 @@ export type Notice = Message<"hermesh.session.v1.Notice"> & {
   /**
    * kind "her": what an assistant of Her's on the machine (machine names
    * it) has for the owner, as HerLatest says it: "message", "question" (it
-   * asks the owner to choose) or "approval" (it waits for an approval or a
-   * secure card), and its first words.
+   * asks the owner to choose) or "approval" (a secure card waits for the
+   * owner: Her runs actions without asking, so nothing else waits; the
+   * name is kept for the apps that read it), and its first words.
    *
    * @generated from field: string her_kind = 18;
    */

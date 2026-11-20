@@ -619,7 +619,7 @@ export type HerStatus = Message<"hermesh.machine.v1.HerStatus"> & {
   unsupported: string;
 
   /**
-   * Messages and approval requests the owner has not looked at, over all
+   * Messages and secure cards the owner has not looked at, over all
    * assistants, as her counts them (bots/read).
    *
    * @generated from field: uint32 unread = 6;
@@ -2353,7 +2353,9 @@ export enum HerLatestKind {
   QUESTION = 2,
 
   /**
-   * It waits for an approval.
+   * A secure card waits for the owner: a secret to enter or a connector to
+   * sign in to. Her runs actions without asking, so nothing else waits; the
+   * name is from when she asked first, and is kept.
    *
    * @generated from enum value: HER_LATEST_KIND_APPROVAL = 3;
    */

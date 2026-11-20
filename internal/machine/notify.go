@@ -156,8 +156,9 @@ func (n *Machine) sessionNotice(s noticeSession, e *sessionv1.SessionEvent) {
 }
 
 // herNotice tells the owner's devices of what Her's newest became
-// (herhost.Config.Notice): her reply, a question, or what waits for the
-// owner.
+// (herhost.Config.Notice): her reply, a question, or a secure card waiting
+// for the owner (her kind "approval", the name the apps read for it: Her
+// runs actions without asking, so nothing else waits).
 func (n *Machine) herNotice(l *machinev1.HerLatest) {
 	nt := &sessionv1.Notice{Kind: "her", At: l.At, HerKind: "message", MachineId: n.machineID, BotId: l.BotId, BotName: l.BotName, Text: l.Text}
 	switch l.Kind {
