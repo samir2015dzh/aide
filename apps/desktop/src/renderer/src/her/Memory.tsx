@@ -4,11 +4,12 @@ import type { BotMemoryPage, BotMemoryResult, BotSummary } from "@aide/her-proto
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { errorText, useStore } from "../store";
-import { herAnswers, needsUpdate } from "../skew";
+import { herAnswers, herHas, needsUpdate, type HerHas } from "../skew";
 import { Tile } from "./Composer";
 import { useHer } from "./context";
 import { useSaveFile, type FileScope } from "./Messages";
 import { FilePreview, previews } from "./preview/FilePreview";
+import { HerUnavailable } from "./Unavailable";
 
 // What an assistant keeps in its memory (docs/her-memory.md), in the place its settings take. MEMORY.md
 // is shown as written, as Markdown, whatever form the memory takes: the assistant writes it, and how is
@@ -19,9 +20,10 @@ import { FilePreview, previews } from "./preview/FilePreview";
  * `reload` is called (after it was cleared), and when the machine's methods or her connection change
  * (her restarted, updated); null until then.
  * `older`: the machine's Aide is older than this app and has no memory to show (docs/version-skew.md
- * §6.2), as it says or as its answer showed; once it is updated, the memory is read by itself.
+ * §6.2), as it says or as its answer showed; once it is updated, the memory is read by itself. `has`
+ * tells that apart from her not running there (herHas).
  */
-export function useMemory(bot: BotSummary): { memory: BotMemoryResult | null; error: string | null; older: boolean; reload: () => void } {
+export function useMemory(bot: BotSummary): { memory: BotMemoryResult | null; error: string | null; older: boolean; has: HerHas; reload: () => void } {
   const her = useHer();
   const answers = herAnswers(her.machine, "bots/memory");
   const [memory, setMemory] = useState<BotMemoryResult | null>(null);
@@ -41,15 +43,15 @@ export function useMemory(bot: BotSummary): { memory: BotMemoryResult | null; er
       live = false;
     };
   }, [bot.id, last, round, answers, connection]);
-  return { memory, error, older: answers === false || lacks, reload: () => setRound((n) => n + 1) };
+  const has = herHas(her.machine, "bots/memory", lacks);
+  return { memory, error, older: has === "older", has, reload: () => setRound((n) => n + 1) };
 }
 
 export const isEmpty = (m: BotMemoryResult) => m.text.trim() === "" && (m.pages ?? []).length === 0;
 
 export function MemoryPage({ bot, files, onBack, onClose }: { bot: BotSummary; files: FileScope; onBack: () => void; onClose: () => void }) {
   const { t } = useTranslation("her");
-  const { t: tc } = useTranslation("common");
-  const { memory, error, older, reload } = useMemory(bot);
+  const { memory, error, has, reload } = useMemory(bot);
   const her = useHer();
   const st = useStore();
   // The memory goes to the trash, and the assistant stops remembering at once; the chat stays. At the page's foot,
@@ -77,13 +79,8 @@ export function MemoryPage({ bot, files, onBack, onClose }: { bot: BotSummary; f
         </button>
       </div>
       <div className="her-panel-body">
-        {older && !memory && (
-          <div className="rtn-empty" data-testid="needs-update">
-            <b>{tc("needsUpdate.title")}</b>
-            {tc("needsUpdate.body", { machine: her.machine.machineName })}
-          </div>
-        )}
-        {error && !memory && !older && <p className="set-note">{t("memory.failed", { error })}</p>}
+        {!memory && <HerUnavailable machine={her.machine} has={has} />}
+        {error && !memory && (has === "yes" || has === "unknown") && <p className="set-note">{t("memory.failed", { error })}</p>}
         {memory && isEmpty(memory) && (
           <div className="rtn-empty">
             <b>{t("memory.emptyTitle")}</b>

@@ -27,12 +27,11 @@
     "offline": "离线",
     "unsupported": "不能运行 Her：{{detail}}",
     "newServer": "新的服务器",
-    "newServerDesc": "在上面安装 Aide 并配对，和添加机器一样",
+    "newServerDesc": "在上面安装 Aide 并登录你的账号，和添加机器一样",
     "add": "添加…",
     "turnOn": "开启 Her",
-    "signer": "在签名窗口里确认，在 {{name}} 上开启 Her。",
     "turningOn": "正在开启 Her…",
-    "paired": "刚刚配对",
+    "paired": "刚刚加入",
     "notNow": "以后再说"
   },
   "grant": {

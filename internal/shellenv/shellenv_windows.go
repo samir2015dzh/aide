@@ -6,11 +6,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
+
+// refreshAfter is how long the PATH read from the registry is kept: a CLI
+// installed after aided started (its installer puts its folder on the
+// user's PATH) is found without restarting aided.
+const refreshAfter = 30 * time.Second
 
 // tempVars name the temp folder in a child's environment.
 var tempVars = []string{"TEMP", "TMP"}
@@ -46,7 +52,12 @@ func resolve() (string, []string, string, bool) {
 	parts = append(parts, filepath.SplitList(os.Getenv("PATH"))...)
 	home, _ := os.UserHomeDir()
 	local, roaming := os.Getenv("LOCALAPPDATA"), os.Getenv("APPDATA")
-	for _, d := range [][2]string{{home, `.local\bin`}, {local, `Microsoft\WindowsApps`}, {local, `Microsoft\WinGet\Links`}, {roaming, "npm"}} {
+	// The folders the usual installers put a user's tools in, where their
+	// own PATH entry may be missing: Claude Code's, winget's, npm's, bun's,
+	// Volta's, pnpm's, mise's shims and Scoop's shims.
+	for _, d := range [][2]string{{home, `.local\bin`}, {local, `Microsoft\WindowsApps`}, {local, `Microsoft\WinGet\Links`}, {roaming, "npm"},
+		{os.Getenv("BUN_INSTALL"), "bin"}, {home, `.bun\bin`}, {local, `Volta\bin`}, {local, "pnpm"}, {local, `mise\shims`},
+		{os.Getenv("SCOOP"), "shims"}, {home, `scoop\shims`}} {
 		if d[0] != "" {
 			parts = append(parts, filepath.Join(d[0], d[1]))
 		}

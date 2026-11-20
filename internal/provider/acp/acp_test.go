@@ -569,3 +569,125 @@ func TestDesktopAppCLIAsar(t *testing.T) {
 		t.Fatalf("command: %q %q %q", bin, pre, env)
 	}
 }
+
+// DSH Desktop installed in a folder of the user's choosing, which Windows
+// records (2026-11-20: installed and in use, and not found in the two
+// folders looked in): found where Windows says, with either of its program
+// names.
+func TestDesktopAppWhereWindowsSays(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	t.Setenv("ProgramFiles", t.TempDir())
+	app := filepath.Join(t.TempDir(), "D", "Tools", "DSH")
+	a := App{Bundle: "Fake Harness", Exec: "Fake Harness.exe", Script: "resources/app.asar/dsh/lib/bin.js",
+		Windows: provider.WindowsApp{Names: []string{"Fake Harness"}, Exes: []string{"Fake Harness.exe", "Fake Desktop.exe"}}}
+	asar := filepath.Join(app, "resources", "app.asar")
+	os.MkdirAll(filepath.Dir(asar), 0o755)
+	os.WriteFile(asar, nil, 0o644)
+	exe := filepath.Join(app, "Fake Desktop.exe")
+	os.WriteFile(exe, nil, 0o755)
+	was := windowsAppDirs
+	t.Cleanup(func() { windowsAppDirs = was })
+	var asked provider.WindowsApp
+	windowsAppDirs = func(w provider.WindowsApp) []string {
+		asked = w
+		return []string{filepath.Join(t.TempDir(), "elsewhere"), app}
+	}
+	p := &Provider{Agent: Agent{Name: "fake", Command: "aide-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
+	bin, pre, env := p.command()
+	if bin != exe || len(pre) != 1 || pre[0] != filepath.Join(app, a.Script) || len(env) != 1 {
+		t.Fatalf("command: %q %q %q", bin, pre, env)
+	}
+	if len(asked.Exes) != 2 || asked.Names[0] != "Fake Harness" {
+		t.Fatalf("asked Windows for %+v", asked)
+	}
+	// Not there, or its script missing: not found.
+	windowsAppDirs = func(provider.WindowsApp) []string { return []string{t.TempDir()} }
+	if bin, _, _ := p.command(); bin != "" {
+		t.Fatalf("found %q in a folder without the app", bin)
+	}
+}
+
+// The app's code unpacked (resources\app, not app.asar: DeepSeek Harness in
+// a folder of the owner's choosing, 2026-11-20), in app.asar.unpacked, or
+// moved within it: its CLI's script is found by the same package path, and
+// another package's bin.js beside it is not taken for it.
+func TestDesktopAppScriptHoweverPacked(t *testing.T) {
+	const script = "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"
+	write := func(t *testing.T, p string) {
+		t.Helper()
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, nil, 0o755)
+	}
+	for _, c := range []struct{ name, at string }{
+		{"unpacked", "resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+		{"asar.unpacked", "resources/app.asar.unpacked/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+		{"moved", "resources/app/harness/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			app := t.TempDir()
+			write(t, filepath.Join(app, "resources/app/dsh/node_modules/@deepseek-ai/cordis/bin.js"))
+			want := filepath.Join(app, filepath.FromSlash(c.at))
+			write(t, want)
+			if got := appScript(app, script); got != want {
+				t.Fatalf("got %q, want %q", got, want)
+			}
+		})
+	}
+	t.Run("none", func(t *testing.T) {
+		app := t.TempDir()
+		write(t, filepath.Join(app, "resources/app/dsh/node_modules/@deepseek-ai/cordis/bin.js"))
+		if got := appScript(app, script); got != "" {
+			t.Fatalf("got %q", got)
+		}
+	})
+	// The app is where Windows says, its CLI not in it (a build that keeps
+	// it elsewhere): the agent says the app is there without its CLI, with
+	// the app's folder, not that nothing was found.
+	t.Run("app without its CLI", func(t *testing.T) {
+		t.Setenv("LOCALAPPDATA", t.TempDir())
+		t.Setenv("ProgramFiles", t.TempDir())
+		app := filepath.Join(t.TempDir(), "DSH")
+		write(t, filepath.Join(app, "DeepSeek Harness.exe"))
+		was := windowsAppDirs
+		t.Cleanup(func() { windowsAppDirs = was })
+		windowsAppDirs = func(provider.WindowsApp) []string { return []string{app} }
+		var dsh Agent
+		for _, a := range Agents {
+			if a.Name == "deepseek" {
+				dsh = a
+			}
+		}
+		dsh.Command = "aide-no-such-agent"
+		p := &Provider{Agent: dsh, PathEnv: t.TempDir()}
+		if info := p.Discover(context.Background()); info.Problem != provider.ProblemAppWithoutCLI || info.Detail != "DeepSeek Harness ("+app+")" {
+			t.Fatalf("info: %+v", info)
+		}
+		windowsAppDirs = func(provider.WindowsApp) []string { return nil }
+		if info := p.Discover(context.Background()); info.Problem != provider.ProblemNotFound {
+			t.Fatalf("no app: %+v", info)
+		}
+	})
+	t.Run("found where Windows says", func(t *testing.T) {
+		t.Setenv("LOCALAPPDATA", t.TempDir())
+		t.Setenv("ProgramFiles", t.TempDir())
+		app := filepath.Join(t.TempDir(), "DSH")
+		exe := filepath.Join(app, "DeepSeek Harness.exe")
+		write(t, exe)
+		bin := filepath.Join(app, "resources/app/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js")
+		write(t, bin)
+		was := windowsAppDirs
+		t.Cleanup(func() { windowsAppDirs = was })
+		windowsAppDirs = func(provider.WindowsApp) []string { return []string{app} }
+		var dsh Agent
+		for _, a := range Agents {
+			if a.Name == "deepseek" {
+				dsh = a
+			}
+		}
+		dsh.Command = "aide-no-such-agent"
+		p := &Provider{Agent: dsh, PathEnv: t.TempDir()}
+		if got, pre, _ := p.command(); got != exe || len(pre) != 1 || pre[0] != bin {
+			t.Fatalf("command: %q %q", got, pre)
+		}
+	})
+}

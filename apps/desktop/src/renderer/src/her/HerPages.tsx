@@ -5,7 +5,7 @@ import type { BrowserStatus, ChatGptStatus, ModelsListResult, ProviderSummary, S
 import type { SessionView } from "@aide/her-client";
 import { agoText } from "@aide/core";
 import { Icon } from "../icons";
-import { herAnswers } from "../skew";
+import { herAnswers, herHas } from "../skew";
 import { errorText, useNow, useStore } from "../store";
 import type { SendOp } from "./op";
 import {
@@ -33,6 +33,7 @@ import {
 import { useHer } from "./context";
 import { reachable } from "./environments";
 import { ModelRows } from "./menus";
+import { HerUnavailable } from "./Unavailable";
 
 // The pages Her's page opens beside the conversation (docs/her-panel-demo.html), each with a way back to it: her
 // model with the environment's model sign-ins and providers, a provider's models, her environment with its storage,
@@ -83,18 +84,14 @@ function useRead<T>(read: (() => Promise<T>) | null, events: string[]): { value:
   return { value, error, again };
 }
 
-/** A page's body while her is not read yet, has failed, or is too old to answer. */
-function Waiting({ error, method }: { error: string | null; method: string }) {
-  const { t: tc } = useTranslation("common");
+/**
+ * A page's body while her is not read yet, has failed, or can't answer: her off or not running on the
+ * machine, or the machine too old (herHas; an error that says so counts).
+ */
+function Waiting({ error, method, lacked = false }: { error: string | null; method: string; lacked?: boolean }) {
   const her = useHer();
-  if (herAnswers(her.machine, method) === false) {
-    return (
-      <div className="rtn-empty" data-testid="needs-update">
-        <b>{tc("needsUpdate.title")}</b>
-        {tc("needsUpdate.body", { machine: her.machine.machineName })}
-      </div>
-    );
-  }
+  const has = herHas(her.machine, method, lacked);
+  if (has === "older" || has === "off" || has === "notRunning") return <HerUnavailable machine={her.machine} has={has} />;
   return error ? <p className="set-note">{error}</p> : <div className="rtn-empty"><span className="mini-spin" /></div>;
 }
 
