@@ -595,3 +595,45 @@ func TestDesktopAppWhereWindowsSays(t *testing.T) {
 		t.Fatalf("command: %q %q %q", bin, pre, env)
 	}
 }
+
+// DeepSeek Harness on alexwork (Muse's sample, 2026-11-20), as the general
+// rule finds it: installed on another drive (its uninstall entry says
+// where), the app unpacked in resources\app rather than in an .asar; and a
+// layout no known place names, found by dsh's own entry point (Find), not
+// another package's bin.js.
+func TestDesktopAppUnpacked(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	t.Setenv("ProgramFiles", t.TempDir())
+	var deepseek Agent
+	for _, a := range Agents {
+		if a.Name == "deepseek" {
+			deepseek = a
+		}
+	}
+	dir := filepath.Join(t.TempDir(), "DSH")
+	exe := filepath.Join(dir, "DeepSeek Harness.exe")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(exe, nil, 0o755)
+	put := func(parts ...string) string {
+		p := filepath.Join(append([]string{dir, "resources"}, parts...)...)
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, nil, 0o644)
+		return p
+	}
+	put("app", "dsh", "node_modules", "@deepseek-ai", "cordis", "bin.js")
+	defer provider.UseAppSources([]provider.InstalledApp{{DisplayName: "DeepSeek Harness", InstallLocation: dir}}, nil)()
+	deepseek.Command = "aide-no-such-agent"
+	p := &Provider{Agent: deepseek, PathEnv: t.TempDir()}
+	if info := p.Discover(context.Background()); info.Problem != provider.ProblemAppWithoutCLI || info.Detail != "DeepSeek Harness" {
+		t.Fatalf("with only another package's bin.js: %+v", info)
+	}
+	want := put("app", "dsh", "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js")
+	if bin, pre, _ := p.command(); bin != exe || len(pre) != 1 || pre[0] != want {
+		t.Fatalf("unpacked: %q %q, want %q", bin, pre, want)
+	}
+	os.RemoveAll(filepath.Join(dir, "resources"))
+	odd := put("app", "vendor", "runtime", "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js")
+	if bin, pre, _ := p.command(); bin != exe || len(pre) != 1 || pre[0] != odd {
+		t.Fatalf("another layout: %q %q, want %q", bin, pre, odd)
+	}
+}

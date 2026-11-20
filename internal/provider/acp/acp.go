@@ -72,6 +72,11 @@ type App struct {
 	// installed elsewhere than the default, or running, it is found where
 	// Windows says it is (provider.AppDirs).
 	Names []string
+	// Find, when no known place has the script, is its path's end
+	// ("node_modules/@deepseek-ai/dsh/lib/bin.js"), looked for in the app's
+	// resources folder (an unpacked app tree, not inside an .asar) a few
+	// levels down: a build that lays it out another way still runs.
+	Find string
 }
 
 type Provider struct {
@@ -149,12 +154,47 @@ func (p *Provider) appCommand(dirs []string) (bin string, pre, env []string, fou
 					return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}, ""
 				}
 			}
+			if script := findScript(filepath.Join(app, "resources"), a.Find, 8); script != "" {
+				return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}, ""
+			}
 			if found == "" {
 				found = strings.TrimSuffix(filepath.Base(a.Exec), filepath.Ext(a.Exec))
 			}
 		}
 	}
 	return "", nil, nil, found
+}
+
+// findScript is the file under root, at most depth levels down, whose path
+// ends with end ("" when none, or no end): the shallowest, the first in
+// name order among equals.
+func findScript(root, end string, depth int) string {
+	if end == "" {
+		return ""
+	}
+	parts := strings.Split(filepath.ToSlash(end), "/")
+	base := strings.Count(filepath.ToSlash(filepath.Clean(root)), "/")
+	var found string
+	filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if found != "" {
+			return filepath.SkipAll
+		}
+		if err != nil {
+			return nil // unreadable: what else there is is still looked at
+		}
+		if d.IsDir() {
+			if strings.Count(filepath.ToSlash(p), "/")-base >= depth {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		got := strings.Split(filepath.ToSlash(p), "/")
+		if len(got) >= len(parts) && slices.EqualFunc(got[len(got)-len(parts):], parts, strings.EqualFold) {
+			found = p
+		}
+		return nil
+	})
+	return found
 }
 
 // scriptThere: the script is on disk, or inside an .asar archive, which

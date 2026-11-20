@@ -67,8 +67,9 @@ func desktopCLI(home string) string {
 //
 //   - the one running now (a Code session open in the app): a claude.exe
 //     under a claude-code folder, whatever the layout around it;
-//   - the newest under one of the app's data folders (windowsUserData), at
-//     claude-code\<version>\claude.exe or a <build-id> folder deeper;
+//   - the newest under one of the app's data folders (windowsUserData, any
+//     Claude* folder), at [<a folder or two>\]claude-code\<version>\
+//     [<build-id>\]claude.exe;
 //   - the newest under the app's own install folder, where the offline
 //     installer keeps it (claude-code\<version>\[<build-id>\]claude.exe at
 //     most a few levels down).
@@ -86,8 +87,7 @@ func windowsDesktopCLI(appData, localAppData string) string {
 	}
 	var dirs []string
 	for _, userData := range windowsUserData(appData, localAppData) {
-		d, _ := filepath.Glob(filepath.Join(userData, "claude-code", "*"))
-		dirs = append(dirs, d...)
+		dirs = append(dirs, claudeCodeVersions(userData, 3)...)
 	}
 	if p := newestCLI(dirs); p != "" {
 		return p
@@ -160,43 +160,55 @@ func windowsAppDirs(localAppData string) []string {
 	if localAppData != "" {
 		dirs = append(dirs, filepath.Join(localAppData, "AnthropicClaude"))
 	}
+	// The app running now (an MSIX package's is under WindowsApps, which no
+	// list names): its package folder, above its app folder.
+	for _, exe := range provider.RunningPrograms("claude.exe") {
+		if !inClaudeCode(exe) {
+			dirs = append(dirs, filepath.Dir(filepath.Dir(exe)))
+		}
+	}
 	return dirs
 }
 
 // windowsUserData are where the Claude desktop app may keep its data on
-// Windows: %APPDATA%\Claude (the classic installer's, and the MSIX
-// package's, which writes there unvirtualized), %LOCALAPPDATA%\Claude,
-// the MSIX package's redirected copies (%LOCALAPPDATA%\Packages\Claude_*\
-// LocalCache\Roaming|Local\Claude) and in 3p mode Claude-3p in each of them.
+// Windows: every folder named Claude* (Claude, Claude-3p, Claude-Data, …:
+// builds and install kinds name it differently, so no one name is relied
+// on) in %APPDATA%, in %LOCALAPPDATA%, and in the MSIX package's redirected
+// copies of both (%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming|
+// Local). Its claude-code folder may be a level or two below it (Claude-Data
+// keeps one per package: Claude-Data\claude_<package id>\claude-code).
 func windowsUserData(appData, localAppData string) []string {
-	var dirs []string
-	names := []string{"Claude", "Claude-3p"}
+	var roots []string
 	if appData != "" {
-		for _, n := range names {
-			dirs = append(dirs, filepath.Join(appData, n))
-		}
+		roots = append(roots, appData)
 	}
 	if localAppData != "" {
-		for _, n := range names {
-			dirs = append(dirs, filepath.Join(localAppData, n))
-		}
+		roots = append(roots, localAppData)
 		pkgs, _ := filepath.Glob(filepath.Join(localAppData, "Packages", "Claude_*"))
 		for _, p := range pkgs {
-			for _, under := range []string{"Roaming", "Local"} {
-				for _, n := range names {
-					dirs = append(dirs, filepath.Join(p, "LocalCache", under, n))
-				}
+			roots = append(roots, filepath.Join(p, "LocalCache", "Roaming"), filepath.Join(p, "LocalCache", "Local"))
+		}
+	}
+	var dirs []string
+	for _, r := range roots {
+		entries, _ := os.ReadDir(r)
+		for _, e := range entries {
+			if e.IsDir() && len(e.Name()) >= 6 && strings.EqualFold(e.Name()[:6], "claude") {
+				dirs = append(dirs, filepath.Join(r, e.Name()))
 			}
 		}
 	}
 	return dirs
 }
 
-// windowsApp: the Claude desktop app is installed on Windows (its data
-// folder is there) though it has not fetched Claude Code yet.
+// windowsApp: the Claude desktop app is installed on Windows (a data
+// folder of its is there, or it runs) though no Claude Code of its was found.
 func windowsApp(appData, localAppData string) bool {
-	for _, d := range windowsUserData(appData, localAppData) {
-		if st, err := os.Stat(d); err == nil && st.IsDir() {
+	if len(windowsUserData(appData, localAppData)) > 0 {
+		return true
+	}
+	for _, exe := range provider.RunningPrograms("claude.exe") {
+		if !inClaudeCode(exe) {
 			return true
 		}
 	}
