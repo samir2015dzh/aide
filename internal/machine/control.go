@@ -25,7 +25,7 @@ import (
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
-// The control socket lets `aided project …` and `aided roots …` change a
+// The control socket lets `aided project …`, `aided roots …` and `aided config …` change a
 // running machine's projects and workspace roots, `aided doctor` and
 // `status` ask it how it is, and `uninstall` and `erase` whether Her's
 // data is kept (the machine holds its data directory). Projects are the machine's own settings: whoever has a
@@ -61,6 +61,22 @@ func (n *Machine) serveControl(ctx context.Context) {
 		}
 		b, _ := protojson.Marshal(res)
 		w.Write(b)
+	})
+	mux.HandleFunc("GET /config", func(w http.ResponseWriter, r *http.Request) {
+		c, err := n.ExportConfig()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(c)
+	})
+	mux.HandleFunc("POST /config", func(w http.ResponseWriter, r *http.Request) {
+		var c ConfigFile
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&c); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		json.NewEncoder(w).Encode(n.ApplyConfig(r.Context(), c, r.URL.Query().Get("dry_run") == "1"))
 	})
 	mux.HandleFunc("GET /roots", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(n.Roots())

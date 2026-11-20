@@ -38,7 +38,7 @@ func TestEraseOwnerStore(t *testing.T) {
 	if id, _ := st.OwnerID(); id != "" {
 		t.Fatalf("still set up for %q", id)
 	}
-	if code, err := st.SetupCode(); err != nil || code == "" {
+	if code, _, err := st.SetupCode(time.Now(), 0); err != nil || code == "" {
 		t.Fatalf("no new setup code: %q %v", code, err)
 	}
 	if w, _ := st.WaitingMessages(owner, "c_1"); len(w) != 0 {
