@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 
@@ -59,9 +60,54 @@ func viewers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(ViewerHeader) != "" {
 			defer resident.Viewing()()
+			defer windowViewing()()
+			r = r.WithContext(context.WithValue(r.Context(), viewerKey{}, true))
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+type viewerKey struct{}
+
+// fromWindow says whether a call is a window's (ViewerHeader).
+func fromWindow(ctx context.Context) bool { return ctx.Value(viewerKey{}) != nil }
+
+// windows counts the calls of windows in flight; arrived is closed when the
+// first one comes (docs/resident.md §4: what runs only for a window looking
+// runs at once, then at its pace).
+var windows struct {
+	mu      sync.Mutex
+	n       int
+	arrived chan struct{}
+}
+
+func windowViewing() (done func()) {
+	windows.mu.Lock()
+	windows.n++
+	if windows.n == 1 && windows.arrived != nil {
+		close(windows.arrived)
+		windows.arrived = nil
+	}
+	windows.mu.Unlock()
+	return func() {
+		windows.mu.Lock()
+		windows.n--
+		windows.mu.Unlock()
+	}
+}
+
+// windowLooking says whether a window holds a call open now, and gives a
+// channel closed once one does, when none does.
+func windowLooking() (bool, <-chan struct{}) {
+	windows.mu.Lock()
+	defer windows.mu.Unlock()
+	if windows.n > 0 {
+		return true, nil
+	}
+	if windows.arrived == nil {
+		windows.arrived = make(chan struct{})
+	}
+	return false, windows.arrived
 }
 
 // LocalMachine is this device's own machine while it runs, else nil.

@@ -128,7 +128,7 @@ type Sessions struct {
 	// with dispatchMu) looks again.
 	memoryLow func() (bool, string)
 	memRetry  *time.Timer
-	w          *writer
+	w         *writer
 	// counts tracks live sessions per status so hot paths never scan.
 	counts [10]atomic.Int64
 	// watchers are the WatchSessions streams.

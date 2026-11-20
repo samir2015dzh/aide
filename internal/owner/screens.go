@@ -20,8 +20,16 @@ import (
 // changes, and what is read in process (the status, this device's own
 // machine) is compared every screenTick. Sessions come as their changes.
 
-// screenTick: how often what is read in process is compared.
-const screenTick = time.Second
+// screenTick: how often what is read in process is compared, for a window;
+// backgroundTick for another watch (the desktop app's main process, which
+// keeps one for notifications and the notification area while no window is
+// open): changes of the relay connection, of the replica and writes are
+// sent at once either way (kicks), the ticks catch what is read in process
+// (this device's own machine) and nothing tells of (docs/resident.md §4).
+const (
+	screenTick     = time.Second
+	backgroundTick = 5 * time.Second
+)
 
 // errNewRound: the profile, or what it is (set up, signed out, a machine
 // only), changed; the screen gets everything again.
@@ -125,7 +133,11 @@ func (l *localService) watchRound(ctx context.Context, send func(*localv1.WatchR
 	if err := send(first); err != nil {
 		return err
 	}
-	tick := time.NewTicker(screenTick)
+	every := backgroundTick
+	if fromWindow(ctx) {
+		every = screenTick
+	}
+	tick := time.NewTicker(every)
 	defer tick.Stop()
 	for {
 		var out *localv1.WatchResponse
