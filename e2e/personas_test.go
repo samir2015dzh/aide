@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -123,7 +124,14 @@ func TestPersonas(t *testing.T) {
 
 	// The phone (the core the Android app runs) has the same contact, and
 	// its message goes on in the same session.
-	core, err := mobile.Start(t.TempDir(), slog.Default())
+	// Its data outside t.TempDir: the core has no Close, and its lock stays
+	// held until the process ends (Windows can't remove a held file).
+	phoneDir, err := os.MkdirTemp("", "aide-phone-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(phoneDir) })
+	core, err := mobile.Start(phoneDir, slog.Default())
 	if err != nil {
 		t.Fatal(err)
 	}
