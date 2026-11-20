@@ -9,8 +9,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
 )
 
 // The ops channel (docs/machine-ops.md): one-shot commands on a machine,

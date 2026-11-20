@@ -2,10 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { cli, fixture, launch, onWindows, sessionList, snap } from "./app";
 
 // A session's two-part state (docs/session-states.md) as the app shows it: a
-// turn on work-mac quiet past the stall limit (5 s here, HERMESH_STALL_AFTER)
+// turn on work-mac quiet past the stall limit (5 s here, AIDE_STALL_AFTER)
 // reads stalled; work-mac frozen, it reads lost, last known running, never
 // running; work-mac back, it reads as it is, and its page keeps when work-mac
-// was out of touch. The pictures go to the delivery record (HERMESH_SCREENS).
+// was out of touch. The pictures go to the delivery record (AIDE_SCREENS).
 
 async function open(page: Page, title: string) {
   await (await sessionList(page)).getByText(title, { exact: true }).click();
@@ -17,7 +17,7 @@ test("a quiet turn reads stalled; its machine gone, lost, never running; back, a
   test.setTimeout(5 * 60_000);
   await cli("session", "start", "--project", "work-mac/billing", "--agent", "gemini", "--title", "长任务", "--prompt", "sleep 10m");
   // In Chinese, as the owner reads it (Linux takes the test override, as Windows does).
-  const { app, page } = await launch(fixture.socket, { env: { HERMESH_TEST_LANGUAGES: "zh-Hans" } });
+  const { app, page } = await launch(fixture.socket, { env: { AIDE_TEST_LANGUAGES: "zh-Hans" } });
   await open(page, "长任务");
   const row = (await sessionList(page)).locator(".srow", { hasText: "长任务" });
   const bar = page.locator(".cbar");

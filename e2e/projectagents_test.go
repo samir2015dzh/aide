@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestProjectAgents: the owner sets a project up for some coding agents.
@@ -20,7 +20,7 @@ func TestProjectAgents(t *testing.T) {
 		t.Skip("e2e")
 	}
 	fake := filepath.Join(binaries(t), "fakeacp")
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "HERMESH_CURSOR_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "AIDE_CURSOR_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini", "cursor"}})
 	ctx := context.Background()
 	ms, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})

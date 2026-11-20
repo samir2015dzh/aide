@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
-import { ClientSchema, MachineSchema, ProjectRefSchema, ProjectSchema, WatchResponseSchema, type WatchResponse } from "@hermesh/proto/local";
-import { SessionStatus } from "@hermesh/proto/session";
+import { ClientSchema, MachineSchema, ProjectRefSchema, ProjectSchema, WatchResponseSchema, type WatchResponse } from "@aide/proto/local";
+import { SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import { isActive, needsAttention } from "./sessions";
 import { applyWatch, emptyWorld, stateKnown, unreachableMachines, withKnownState } from "./world";

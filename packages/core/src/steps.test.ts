@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { ToolCallSchema } from "@hermesh/proto/session";
+import { ToolCallSchema } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import { groupSteps, replyEnds, stepSummary, toolObject, toolVerb, turnTimeLine } from "./steps";
 import type { TranscriptItem } from "./transcript";

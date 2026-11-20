@@ -5,7 +5,6 @@ use her_llm::ThinkingLevel;
 use her_protocol::CommandRule;
 use her_protocol::McpExposure;
 use her_protocol::McpServerConfig;
-use her_protocol::PermissionMode;
 use her_protocol::customize::ConfigLayer;
 use std::collections::BTreeMap;
 use her_tools::OutputLimits;
@@ -19,8 +18,6 @@ use std::time::Duration;
 pub struct ConfigFile {
     pub model: Option<String>,
     pub thinking: Option<ThinkingLevel>,
-    #[serde(alias = "approval_mode")]
-    pub permission_mode: Option<PermissionMode>,
     pub max_turns: Option<u32>,
     pub extra_writable_roots: Option<Vec<PathBuf>>,
     pub system_prompt_file: Option<PathBuf>,
@@ -83,9 +80,9 @@ pub struct McpFile {
 /// `[browser]`: the browser tools (docs/kernel/browser-design.md §10).
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct BrowserFile {
-    /// Whether Hermesh controls browsers at all (browser-design §10.1).
+    /// Whether Aide controls browsers at all (browser-design §10.1).
     pub enabled: Option<bool>,
-    /// The user's own browser through the Hermesh extension (§8.4): connected for the agent.
+    /// The user's own browser through the Aide extension (§8.4): connected for the agent.
     pub extension: Option<bool>,
     /// Where pages open when a call names no browser: `builtin` or `yours`.
     pub default: Option<String>,
@@ -116,10 +113,10 @@ pub enum DefaultBrowser {
 /// `[browser]` with its defaults applied.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrowserSettings {
-    /// Whether Hermesh controls browsers (`browser.enabled`); `None` when not set: on where a
+    /// Whether Aide controls browsers (`browser.enabled`); `None` when not set: on where a
     /// desktop app shows browsers or the user's own browser is connected (browser-design §10.1).
     pub enabled: Option<bool>,
-    /// The user's own browser, through the Hermesh extension (`browser.extension`).
+    /// The user's own browser, through the Aide extension (`browser.extension`).
     pub extension: bool,
     /// Where pages open when a call names no browser, while both are on.
     pub default: DefaultBrowser,
@@ -206,7 +203,7 @@ impl BrowserSettings {
         })
     }
 
-    /// Whether Hermesh controls browsers, given whether a desktop app shows them.
+    /// Whether Aide controls browsers, given whether a desktop app shows them.
     pub fn control_on(&self, embedded: bool) -> bool {
         self.enabled.unwrap_or(embedded || self.extension)
     }
@@ -286,7 +283,7 @@ impl DesktopSettings {
 
     /// Whether the computer use tools are on, `app` saying whether the desktop app is connected.
     /// `HER_DESKTOP=on` turns them on where nothing is set: a host that runs her on a Mac, where
-    /// macOS asks the owner for the permissions first (Hermesh, docs/her-server.md §4.4), or on a
+    /// macOS asks the owner for the permissions first (Aide, docs/her-server.md §4.4), or on a
     /// Linux computer, where it counts only while someone is logged in to its desktop: a server
     /// has no apps to use.
     pub fn on(&self, app: bool) -> bool {
@@ -521,7 +518,6 @@ pub struct Config {
     /// model is assumed when nothing is set up.
     pub model: Option<String>,
     pub thinking: ThinkingLevel,
-    pub permission_mode: PermissionMode,
     pub max_turns: u32,
     pub extra_writable_roots: Vec<PathBuf>,
     pub system_prompt_file: Option<PathBuf>,
@@ -627,7 +623,6 @@ impl Config {
         Ok(Self {
             model: file.model,
             thinking: file.thinking.unwrap_or_default(),
-            permission_mode: file.permission_mode.unwrap_or_default(),
             max_turns: file.max_turns.unwrap_or(0),
             extra_writable_roots: file.extra_writable_roots.unwrap_or_default(),
             system_prompt_file: file.system_prompt_file,
@@ -839,7 +834,6 @@ pub fn load_layers_with(
                 project_file.display()
             ));
         }
-        strip_mcp_approval(&mut table, project_file, &mut warnings);
         note_mcp_servers(&table, "project config", &mut mcp_sources);
         note_origins(&table, "", ConfigLayer::Project, &mut origins);
         merge_tables(&mut merged, table, "");
@@ -853,7 +847,6 @@ pub fn load_layers_with(
         if let Some(project_root) = files.project_root {
             anchor_skill_paths(&mut table, project_root);
         }
-        strip_mcp_approval(&mut table, user_project, &mut warnings);
         note_mcp_servers(&table, "personal project config", &mut mcp_sources);
         note_origins(&table, "", ConfigLayer::UserProject, &mut origins);
         merge_tables(&mut merged, table, "");
@@ -968,7 +961,7 @@ pub fn check_file(text: &str, path: &Path) -> Result<toml::Table, ConfigError> {
 }
 
 /// Reads one layer's file. A key this version does not know is a warning, not a failure: a newer
-/// her or Hermesh may have written it, and every command, `her doctor` included, should still
+/// her or Aide may have written it, and every command, `her doctor` included, should still
 /// run. A value it cannot read stays an error, and so does anything unknown in `rules`: a safety
 /// rule must not quietly go missing.
 fn read_table(path: &Path) -> Result<toml::Table, ConfigError> {
@@ -980,13 +973,6 @@ fn read_table(path: &Path) -> Result<toml::Table, ConfigError> {
         path: path.display().to_string(),
         message: e.to_string(),
     })?;
-    // One name would quietly replace the other once the old one is migrated.
-    if table.contains_key("permission_mode") && table.contains_key("approval_mode") {
-        return Err(ConfigError::Parse {
-            path: path.display().to_string(),
-            message: "permission_mode and approval_mode are the same setting: keep permission_mode".to_string(),
-        });
-    }
     Ok(table)
 }
 
@@ -1117,18 +1103,34 @@ pub fn merge_all(tables: impl IntoIterator<Item = toml::Table>) -> toml::Table {
     merged
 }
 
-/// Renames settings from before the permission modes were renamed, and the byte limit of tool
-/// results from before it was counted in tokens, with a warning.
+/// Drops the settings of the approvals her no longer has, and renames the byte limit of tool
+/// results from before it was counted in tokens, with a warning. Her runs every action without
+/// asking: permission modes, rules that allow or ask, and trusting an MCP server are gone; deny
+/// rules stay.
 fn migrate_legacy(table: &mut toml::Table, source: &str, warnings: &mut Vec<String>) {
-    if let Some(value) = table.remove("approval_mode") {
-        warnings.push(format!("`approval_mode` is now called `permission_mode` ({source})"));
-        table.entry("permission_mode").or_insert(value);
+    for key in ["permission_mode", "approval_mode"] {
+        if table.remove(key).is_some() {
+            warnings.push(format!("ignored `{key}` ({source}): her runs every action without asking"));
+        }
     }
-    if let Some(toml::Value::String(name)) = table.get_mut("permission_mode")
-        && let Some(mode) = PermissionMode::from_legacy(name)
-    {
-        warnings.push(format!("permission mode '{name}' is now called '{mode}' ({source})"));
-        *name = mode.to_string();
+    if let Some(toml::Value::Array(rules)) = table.get_mut("rules") {
+        let before = rules.len();
+        rules.retain(|rule| !matches!(rule.get("decision").and_then(toml::Value::as_str), Some("allow" | "ask")));
+        if rules.len() != before {
+            warnings.push(format!(
+                "ignored {} rule(s) that allow or ask ({source}): her runs every action without asking; only deny rules apply",
+                before - rules.len()
+            ));
+        }
+    }
+    if let Some(toml::Value::Table(servers)) = table.get_mut("mcp_servers") {
+        for (name, server) in servers.iter_mut() {
+            if let toml::Value::Table(server) = server
+                && server.remove("approval").is_some()
+            {
+                warnings.push(format!("ignored mcp_servers.{name}.approval ({source}): her runs every tool without asking"));
+            }
+        }
     }
     if let Some(toml::Value::Table(tools)) = table.get_mut("tools")
         && let Some(toml::Value::Table(limits)) = tools.get_mut("limits")
@@ -1273,25 +1275,9 @@ fn tighten_web_search(table: &mut toml::Table) -> Vec<String> {
     dropped
 }
 
-/// Trusting a server for good is for the user's own file: a repository could otherwise switch off
-/// the questions about the tools it brings.
-fn strip_mcp_approval(table: &mut toml::Table, file: &Path, warnings: &mut Vec<String>) {
-    let Some(toml::Value::Table(servers)) = table.get_mut("mcp_servers") else { return };
-    for (name, server) in servers.iter_mut() {
-        if let toml::Value::Table(server) = server
-            && server.remove("approval").is_some()
-        {
-            warnings.push(format!(
-                "ignored mcp_servers.{name}.approval in {}: it counts only in ~/.her/config.toml",
-                file.display()
-            ));
-        }
-    }
-}
-
 pub(crate) fn strip_untrusted(table: &mut toml::Table) -> Vec<String> {
     let mut removed = Vec::new();
-    for key in ["permission_mode", "approval_mode", "extra_writable_roots", "system_prompt_file", "bot_prompt_file"] {
+    for key in ["extra_writable_roots", "system_prompt_file", "bot_prompt_file"] {
         if table.remove(key).is_some() {
             removed.push(key.to_string());
         }
@@ -1318,13 +1304,6 @@ pub(crate) fn strip_untrusted(table: &mut toml::Table) -> Vec<String> {
     {
         removed.push("mcp.project_json".to_string());
     }
-    if let Some(toml::Value::Array(rules)) = table.get_mut("rules") {
-        let before = rules.len();
-        rules.retain(|rule| rule.get("decision").and_then(toml::Value::as_str) != Some("allow"));
-        if rules.len() != before {
-            removed.push("allow rules".to_string());
-        }
-    }
     removed
 }
 
@@ -1349,7 +1328,6 @@ mod tests {
     fn defaults_are_sensible() {
         let config = Config::default();
         assert_eq!(config.model, None, "no model is assumed");
-        assert_eq!(config.permission_mode, PermissionMode::Manual);
         assert_eq!(config.enabled_tools, vec!["read", "write", "edit", "bash"]);
         assert_eq!(config.bash_default_timeout, Duration::from_secs(120));
     }
@@ -1361,7 +1339,7 @@ mod tests {
         let project = dir.path().join("project.toml");
         std::fs::write(
             &user,
-            "model = \"deepseek/deepseek-v4-pro\"\n[[rules]]\nprefix = [\"git\", \"push\"]\ndecision = \"ask\"\n",
+            "model = \"deepseek/deepseek-v4-pro\"\n[[rules]]\nprefix = [\"git\", \"push\"]\ndecision = \"deny\"\n",
         )
         .unwrap();
         std::fs::write(
@@ -1374,22 +1352,20 @@ mod tests {
         let config = loaded.config;
         assert_eq!(config.model.as_deref(), Some("deepseek/deepseek-v4-pro"));
         assert_eq!(config.thinking, ThinkingLevel::Low);
-        assert_eq!(config.permission_mode, PermissionMode::Manual, "untrusted project cannot loosen approvals");
         assert_eq!(config.bash_shell, None);
         assert_eq!(config.max_turns, 7);
         assert_eq!(config.enabled_tools, vec!["read"]);
         let prefixes: Vec<String> = config.rules.iter().map(|r| r.prefix.join(" ")).collect();
         assert_eq!(prefixes, vec!["git push", "curl"]);
-        assert_eq!(loaded.warnings.len(), 1);
+        assert_eq!(loaded.warnings.len(), 3, "{:?}", loaded.warnings);
 
         let trusted = load(&user, Some(&project), true, &[]).unwrap();
-        assert_eq!(trusted.config.permission_mode, PermissionMode::BypassPermissions);
         assert_eq!(
             trusted.warnings,
             vec![
-                format!("`approval_mode` is now called `permission_mode` ({})", project.display()),
+                format!("ignored `approval_mode` ({}): her runs every action without asking", project.display()),
                 format!(
-                    "permission mode 'full-auto' is now called 'bypass-permissions' ({})",
+                    "ignored 1 rule(s) that allow or ask ({}): her runs every action without asking; only deny rules apply",
                     project.display()
                 ),
             ]
@@ -1398,7 +1374,7 @@ mod tests {
 
     #[test]
     fn no_client_metadata_document_unless_configured() {
-        // The fork publishes none, and upstream's at hermesh.io is not its to depend on.
+        // The fork publishes none, and upstream's at aide.io is not its to depend on.
         let dir = tempfile::tempdir().unwrap();
         let user = dir.path().join("user.toml");
         std::fs::write(&user, "").unwrap();
@@ -1610,24 +1586,26 @@ mod tests {
         assert!(load(&user, None, true, &["desktop.apps.x=\"all\"".into()]).is_err());
     }
 
+    /// Approvals are gone: what configured them is dropped with a warning, never an error, and
+    /// deny rules stay.
     #[test]
-    fn permission_mode_names() {
+    fn approval_settings_are_dropped() {
         let dir = tempfile::tempdir().unwrap();
         let user = dir.path().join("config.toml");
-        std::fs::write(&user, "permission_mode = \"accept-edits\"\n").unwrap();
-        let loaded = load(&user, None, false, &[]).unwrap();
-        assert_eq!(loaded.config.permission_mode, PermissionMode::AcceptEdits);
-        assert!(loaded.warnings.is_empty());
-
-        let legacy = load(&user, None, false, &["approval_mode=ask".into()]).unwrap();
-        assert_eq!(legacy.config.permission_mode, PermissionMode::Manual);
-        assert_eq!(legacy.warnings.len(), 2, "{:?}", legacy.warnings);
-
-        std::fs::write(&user, "permission_mode = \"plan\"\n").unwrap();
-        let err = load(&user, None, false, &[]).err().unwrap().to_string();
-        assert!(err.contains("not available yet") && err.contains("config.toml"), "{err}");
-        std::fs::write(&user, "permission_mode = \"manual\"\napproval_mode = \"ask\"\n").unwrap();
-        assert!(load(&user, None, false, &[]).is_err(), "both names at once");
+        std::fs::write(
+            &user,
+            "permission_mode = \"accept-edits\"\napproval_mode = \"ask\"\n\
+             [[rules]]\nprefix = [\"git\", \"push\"]\ndecision = \"ask\"\n\
+             [[rules]]\nprefix = [\"cargo\"]\ndecision = \"allow\"\n\
+             [[rules]]\nprefix = [\"curl\"]\ndecision = \"deny\"\n\
+             [mcp_servers.gh]\nurl = \"https://example.com/mcp\"\napproval = \"never\"\n",
+        )
+        .unwrap();
+        let loaded = load(&user, None, false, &["permission_mode=bypass-permissions".into()]).unwrap();
+        let prefixes: Vec<String> = loaded.config.rules.iter().map(|r| r.prefix.join(" ")).collect();
+        assert_eq!(prefixes, vec!["curl"]);
+        assert_eq!(loaded.warnings.len(), 5, "{:?}", loaded.warnings);
+        assert!(loaded.warnings.iter().all(|w| w.contains("without asking")), "{:?}", loaded.warnings);
     }
 
     #[test]
@@ -1719,10 +1697,10 @@ mod tests {
     #[test]
     fn what_stays_an_error() {
         // A value this version cannot read: it must not guess.
-        let (_dir, path) = with_user_file("permission_mode = \"plan\"\n");
+        let (_dir, path) = with_user_file("thinking = \"loud\"\n");
         assert!(load(&path, None, false, &[]).is_err());
         // Anything unknown in a safety rule.
-        let (_dir, path) = with_user_file("[[rules]]\nprefix = [\"git\"]\ndecision = \"ask\"\nonly_on = \"fridays\"\n");
+        let (_dir, path) = with_user_file("[[rules]]\nprefix = [\"git\"]\ndecision = \"deny\"\nonly_on = \"fridays\"\n");
         assert!(load(&path, None, false, &[]).is_err());
         // A key typed on the command line.
         let error = load(Path::new("/nonexistent"), None, false, &["thinkng=low".into()]).err().expect("rejected");

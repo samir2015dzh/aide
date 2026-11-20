@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // TestOwnMacWithoutRelay: what concerns the trusted device's own Mac goes
@@ -22,7 +22,7 @@ func TestOwnMacWithoutRelay(t *testing.T) {
 		t.Skip("e2e")
 	}
 	fake := filepath.Join(binaries(t), "fakeacp")
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini"}})
 	s, r := w.startSession(2*time.Minute, "--agent", "gemini", "--wait", "--prompt", "ask 选哪个颜色|红,蓝")
 	if s.SessionID == "" {

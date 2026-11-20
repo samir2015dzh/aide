@@ -3,7 +3,7 @@ package mcpgw
 import (
 	"testing"
 
-	"github.com/hermeshai/hermesh/internal/cli"
+	"github.com/samir2015dzh/aide/internal/cli"
 )
 
 func TestAdvertisedWaitLimits(t *testing.T) {

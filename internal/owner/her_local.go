@@ -6,8 +6,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // Her (docs/her-server.md): LocalService's calls for Her on the owner's
@@ -20,13 +20,6 @@ func (l *localService) SetHer(ctx context.Context, req *localv1.SetHerRequest) (
 		return nil, err
 	}
 	return &localv1.SetHerResponse{}, nil
-}
-
-func (l *localService) SetHerAssistantMode(ctx context.Context, req *localv1.SetHerAssistantModeRequest) (*localv1.SetHerAssistantModeResponse, error) {
-	if err := l.o().SetHerAssistantMode(ctx, req.MachineId, req.BotId, req.PermissionMode); err != nil {
-		return nil, err
-	}
-	return &localv1.SetHerAssistantModeResponse{}, nil
 }
 
 func (l *localService) SetHerCommandConnector(ctx context.Context, req *localv1.SetHerCommandConnectorRequest) (*localv1.SetHerCommandConnectorResponse, error) {

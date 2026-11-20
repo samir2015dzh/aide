@@ -2,6 +2,7 @@ package mcpgw
 
 import (
 	"context"
+	"crypto/x509"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -14,9 +15,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/relay"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/relay"
 )
 
 type bearer struct{ token string }
@@ -47,8 +48,9 @@ func TestConnectionsKeepTheirPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	device, _ := identity.Sign(&identityv1.OwnerDeviceCert{OwnerId: ownerID, DevicePublicKey: rootPub, Label: "test-mac"}, root)
-	if err := st.SaveClaim(ownerID, chain, device); err != nil {
+	// The root key is the server's own, as on a server set up with an account.
+	der, _ := x509.MarshalPKCS8PrivateKey(root.Key)
+	if err := st.SaveSetup(ownerID, chain, der, relay.NewAccount("owner", "correct horse battery")); err != nil {
 		t.Fatal(err)
 	}
 	st.Close()
@@ -69,7 +71,7 @@ func TestConnectionsKeepTheirPeers(t *testing.T) {
 		})
 	})
 
-	// A connection, approved by the owner.
+	// A connection, made with the owner's account.
 	redirect := "http://127.0.0.1/callback"
 	client := f.register(redirect)
 	code := f.browser().consentCode(client, redirect)
@@ -83,27 +85,21 @@ func TestConnectionsKeepTheirPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := f.g.key(conn)
-	if err != nil {
-		t.Fatal(err)
+	// Its grant, which the server signed when the owner logged in on the
+	// consent page; re-issued below one version up.
+	first := &identityv1.Signed{}
+	issued := &identityv1.Grant{}
+	if proto.Unmarshal(conn.Grant, first) != nil || identity.Unverified(first, issued) != nil {
+		t.Fatal("the connection has no grant")
 	}
 	grant := func(version uint64) (*identityv1.Grant, *identityv1.Signed) {
-		pub := identity.MarshalPublicKey(key.Public())
-		g := &identityv1.Grant{OwnerId: ownerID, GrantId: "g_test", Version: version, ClientId: identity.ClientID(pub), ClientPublicKey: pub,
-			ClientLabel: "Test (127.0.0.1)", MachineIds: []string{"*"}, ProjectIds: []string{"*"}, Agents: []string{"*"},
-			ExpiresAt: timestamppb.New(time.Now().Add(time.Hour))}
+		g := proto.Clone(issued).(*identityv1.Grant)
+		g.Version = version
 		s, err := identity.Sign(g, root)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return g, s
-	}
-	_, g1 := grant(1)
-	conn.State, conn.OwnerID, conn.GrantID, conn.ApprovedAt = StateActive, ownerID, "g_test", f.clock.now()
-	conn.Grant, _ = proto.Marshal(g1)
-	conn.RootChain, _ = proto.Marshal(chain)
-	if err := f.g.db.PutConnection(ctx, conn); err != nil {
-		t.Fatal(err)
 	}
 
 	mc := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)
@@ -166,7 +162,7 @@ func TestConnectionsKeepTheirPeers(t *testing.T) {
 	if err := r.Backend().PutGrant(ownerID, g2, s2); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.ApplyRevocations(ownerID, &identityv1.RevocationList{MinGrantVersions: map[string]uint64{"g_test": 2}}); err != nil {
+	if err := r.ApplyRevocations(ownerID, &identityv1.RevocationList{MinGrantVersions: map[string]uint64{issued.GrantId: 2}}); err != nil {
 		t.Fatal(err)
 	}
 	until("the relay to drop the old grant's connection", func() bool { return !online() })

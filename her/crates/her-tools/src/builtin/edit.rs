@@ -87,10 +87,6 @@ impl TypedTool for EditTool {
         repair(args)
     }
 
-    async fn check(&self, args: &EditArgs, ctx: &ToolCtx) -> Result<(), ToolError> {
-        plan(args, ctx).await.map(drop)
-    }
-
     async fn run(&self, args: EditArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
         let path = ctx.env.resolve(&args.path);
         // One change to a file at a time, also across sessions that share it (sub-agents).
@@ -144,7 +140,7 @@ async fn plan(args: &EditArgs, ctx: &ToolCtx) -> Result<Plan, ToolError> {
         Ok(meta) if meta.readonly => return Err(ToolError::Failed(format!("{display} is read-only."))),
         Ok(_) => {}
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
-            // Edit does not switch to another path itself: the call was approved for this one.
+            // Edit does not switch to another path itself: the call named this one.
             let hint = match find_path_variant(ctx.env.as_ref(), &args.path).await {
                 Some(other) => format!(" Did you mean {}?", other.display()),
                 None => " Use write to create a new file.".to_string(),
@@ -929,25 +925,23 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn check_finds_every_problem_without_writing() {
+    async fn edit_finds_every_problem_without_writing() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("f.txt");
         std::fs::write(&path, "x\nx\ny\n").unwrap();
         let tool = Typed::new(EditTool);
         let ctx = test_ctx(dir.path());
         let call = |old: &str| json!({"path": "f.txt", "edits": [{"old_text": old, "new_text": "z"}]});
-        let ambiguous = tool.check(&call("x"), &ctx).await.unwrap_err();
+        let ambiguous = tool.execute(call("x"), ctx.clone()).await.unwrap_err();
         assert!(ambiguous.to_string().contains("matches 2 times"), "{ambiguous}");
-        let missing = tool.check(&call("w"), &ctx).await.unwrap_err();
+        let missing = tool.execute(call("w"), ctx.clone()).await.unwrap_err();
         assert!(missing.to_string().contains("was not found"), "{missing}");
         let other = |path: &str| json!({"path": path, "edits": [{"old_text": "x", "new_text": "z"}]});
-        assert!(tool.check(&other("nope.txt"), &ctx).await.unwrap_err().to_string().contains("File not found"));
-        assert!(tool.check(&other("."), &ctx).await.unwrap_err().to_string().ends_with("is a directory."));
+        assert!(tool.execute(other("nope.txt"), ctx.clone()).await.unwrap_err().to_string().contains("File not found"));
+        assert!(tool.execute(other("."), ctx.clone()).await.unwrap_err().to_string().ends_with("is a directory."));
         std::fs::write(dir.path().join("bin"), [b'x', 0xff, 0xfe]).unwrap();
-        let binary = tool.check(&other("bin"), &ctx).await.unwrap_err();
+        let binary = tool.execute(other("bin"), ctx.clone()).await.unwrap_err();
         assert!(binary.to_string().ends_with("is not valid UTF-8 text."), "{binary}");
-        tool.check(&call("y"), &ctx).await.unwrap();
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), "x\nx\ny\n", "check never writes");
         tool.execute(call("y"), ctx.clone()).await.unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "x\nx\nz\n");
         // The edit recorded the version it wrote: write may replace the file without a read.
@@ -999,7 +993,7 @@ mod tests {
         let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).unwrap();
         assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o644) }, 0);
         let expected = format!("{} is not a regular file; it cannot be edited.", fifo.display());
-        assert_eq!(error(tool.check(&call("pipe"), &ctx).await.unwrap_err()), expected);
+        assert_eq!(error(tool.execute(call("pipe"), ctx.clone()).await.unwrap_err()), expected);
         assert_eq!(error(tool.execute(call("pipe"), ctx.clone()).await.unwrap_err()), expected);
 
         // Root may write anything.
@@ -1008,17 +1002,17 @@ mod tests {
             std::fs::write(&locked, "a").unwrap();
             std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o444)).unwrap();
             let expected = format!("{} is read-only.", locked.display());
-            assert_eq!(error(tool.check(&call("locked.txt"), &ctx).await.unwrap_err()), expected);
+            assert_eq!(error(tool.execute(call("locked.txt"), ctx.clone()).await.unwrap_err()), expected);
             assert_eq!(std::fs::read_to_string(&locked).unwrap(), "a");
         }
 
         // A path that does not exist, when a variant of it does: a hint, not a silent switch.
         let real = dir.path().join("Screenshot 1.06.07\u{202F}PM.txt");
         std::fs::write(&real, "a").unwrap();
-        let err = error(tool.check(&call("@Screenshot 1.06.07 PM.txt"), &ctx).await.unwrap_err());
+        let err = error(tool.execute(call("@Screenshot 1.06.07 PM.txt"), ctx.clone()).await.unwrap_err());
         assert!(err.ends_with(&format!("Did you mean {}?", real.display())), "{err}");
         assert_eq!(std::fs::read_to_string(&real).unwrap(), "a");
-        let err = error(tool.check(&call("nothing.txt"), &ctx).await.unwrap_err());
+        let err = error(tool.execute(call("nothing.txt"), ctx.clone()).await.unwrap_err());
         assert!(err.ends_with("Use write to create a new file."), "{err}");
     }
 

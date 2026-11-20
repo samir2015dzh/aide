@@ -21,9 +21,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // The ops channel (docs/machine-ops.md): an agent whose grant has

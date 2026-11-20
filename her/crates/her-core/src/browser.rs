@@ -27,7 +27,6 @@ use her_browser::session::SnapshotMode;
 use her_browser::session::SnapshotRequest;
 use her_browser::session::WaitFor;
 use her_llm::UserContent;
-use her_protocol::SiteGrant;
 use her_tools::Authority;
 use her_tools::Environment;
 use her_tools::PageTarget;
@@ -82,7 +81,7 @@ const MAX_STEPS: usize = 20;
 pub(crate) enum Which {
     /// The built-in browser: a profile of its own, without the user's sign-ins.
     Builtin,
-    /// The user's own browser, through the Hermesh extension, with their real sign-ins.
+    /// The user's own browser, through the Aide extension, with their real sign-ins.
     Yours,
 }
 
@@ -173,8 +172,8 @@ fn step_tools(both: bool) -> Vec<Arc<dyn Tool>> {
     ]
 }
 
-/// The approval policy's verdict on what a call does, without asking anyone: how a batch
-/// judges its steps after the first (§12.1).
+/// The tool policy's verdict on what a call does: how a batch judges its steps after the
+/// first (§12.1).
 pub(crate) type Judge = Arc<dyn Fn(Vec<Authority>) -> futures::future::BoxFuture<'static, Gate> + Send + Sync>;
 
 /// What a session's browser tools need: the process's pool and the session's `[browser]`
@@ -188,9 +187,6 @@ pub(crate) struct BrowserHandle {
     policy: Arc<Mutex<Arc<SitePolicy>>>,
     downloads: PathBuf,
     roots: Vec<PathBuf>,
-    /// The session's site grants, so navigations the page makes may reach a private site
-    /// the user allowed. Kept current by the session.
-    grants: Arc<Mutex<Vec<SiteGrant>>>,
     /// One browser start at a time for the session.
     starting: tokio::sync::Mutex<()>,
     /// The main session's id: the desktop app shows the tabs in its window.
@@ -241,7 +237,6 @@ impl BrowserHandle {
         embedded: bool,
         downloads: PathBuf,
         roots: Vec<PathBuf>,
-        grants: Vec<SiteGrant>,
         label: String,
     ) -> Self {
         let mut browsers = Browsers {
@@ -257,7 +252,6 @@ impl BrowserHandle {
             state: Mutex::new(browsers),
             downloads,
             roots,
-            grants: Arc::new(Mutex::new(grants)),
             starting: tokio::sync::Mutex::new(()),
             label,
             yours_numbers: Mutex::new(None),
@@ -267,10 +261,6 @@ impl BrowserHandle {
 
     pub(crate) fn set_judge(&self, judge: Judge) {
         let _ = self.judge.set(judge);
-    }
-
-    pub(crate) fn set_grants(&self, grants: Vec<SiteGrant>) {
-        *self.grants.lock() = grants;
     }
 
     /// New `[browser]` settings (connectors-entry-design §9.4). Returns the browsers whose
@@ -334,7 +324,6 @@ pub(crate) fn task_ended(state: &her_tools::SessionState) {
 struct KernelGuard {
     policy: Arc<Mutex<Arc<SitePolicy>>>,
     roots: Vec<PathBuf>,
-    grants: Arc<Mutex<Vec<SiteGrant>>>,
 }
 
 impl KernelGuard {
@@ -342,12 +331,10 @@ impl KernelGuard {
         self.policy.lock().clone()
     }
 
+    /// A private site a page may reach by itself: one kept in `[browser.sites]`. The model's own
+    /// navigations reach any site that is not refused.
     fn private_allowed(&self, origin: &str) -> bool {
-        self.grants
-            .lock()
-            .iter()
-            .any(|g| g.origin == origin && g.authority != her_protocol::GrantAuthority::Script)
-            || matches!(self.policy().site(origin), Some(SiteLevel::Navigate | SiteLevel::Act))
+        matches!(self.policy().site(origin), Some(SiteLevel::Navigate | SiteLevel::Act))
     }
 }
 
@@ -512,7 +499,6 @@ async fn start(ctx: &ToolCtx, which: Which) -> Result<(Arc<BrowserSession>, Opti
     let guard = Arc::new(KernelGuard {
         policy: handle.policy.clone(),
         roots: handle.roots.clone(),
-        grants: handle.grants.clone(),
     });
     let session = Arc::new(BrowserSession::new(
         browser,
@@ -542,8 +528,8 @@ async fn browser(ctx: &ToolCtx, which: Which) -> Result<(Arc<BrowserSession>, Op
     Ok(started)
 }
 
-/// The page the call was approved for (§7.4), and its browser.
-fn approved(ctx: &ToolCtx) -> Option<(her_browser::session::PageTarget, Which)> {
+/// The page the call was judged for (§7.4), and its browser.
+fn judged_page(ctx: &ToolCtx) -> Option<(her_browser::session::PageTarget, Which)> {
     ctx.authorities.iter().find_map(|authority| match authority {
         Authority::Act { origin, target, own, .. }
         | Authority::Upload { origin, target, own, .. }
@@ -668,7 +654,8 @@ impl TypedTool for BrowserNavigate {
              changing account settings or permissions, or submitting forms with personal information. Typing \
              passwords, ID or card numbers into a page counts as sending them to the site: ask first. A general \
              request such as \"fill in this form\" does not cover these steps.",
-            "Leave CAPTCHAs and sign-in pages to the user: browser_wait with user hands them the page.",
+            "Leave CAPTCHAs and sign-in pages to the user: say what they need to do in the page and end your turn; \
+             go on when they say they are done.",
             "Work from browser_snapshot and refs; use screenshots to check how a page looks, and coordinates only \
              when the snapshot has no element for what you need.",
         ]
@@ -896,7 +883,7 @@ impl TypedTool for BrowserAct {
     const DESCRIPTION: &'static str = "Act on the page: click, dblclick, hover, fill, type, press, select, check, \
         uncheck, scroll or upload, on an element by its ref from the latest snapshot. press, type and scroll without \
         a ref go to the focused element or the page. Coordinates (x, y) are a fallback for what the snapshot cannot \
-        name. The result says what changed on the page. If the page changed since the call was approved, nothing \
+        name. The result says what changed on the page. If the page changed since the call was made, nothing \
         is sent: take a snapshot and try again.";
 
     fn kind(&self) -> ToolKind {
@@ -949,7 +936,7 @@ impl TypedTool for BrowserAct {
 
     async fn run(&self, args: ActArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
         let action = args.action(ctx.env.as_ref())?;
-        let (page, which) = approved(&ctx).ok_or_else(|| ToolError::Failed("the call has no approved page".into()))?;
+        let (page, which) = judged_page(&ctx).ok_or_else(|| ToolError::Failed("the call has no page to act on".into()))?;
         let session = in_use(&ctx, which).await?;
         let changed = || {
             let now = session
@@ -971,7 +958,7 @@ impl TypedTool for BrowserAct {
                 })
             }
             (None, Some((x, y))) => {
-                // The point must still lead into the frame that was approved (D-182).
+                // The point must still lead into the frame that was judged (D-182).
                 let frame = session.frame_at(Some(&page.tab), x, y).await.map_err(failed)?;
                 if frame != page {
                     return Err(changed());
@@ -1019,10 +1006,6 @@ impl TypedTool for BrowserScreenshot {
             title: "screenshot the page".into(),
             locations: Vec::new(),
         }
-    }
-
-    async fn check(&self, _args: &ScreenshotArgs, ctx: &ToolCtx) -> Result<(), ToolError> {
-        no_images(ctx)
     }
 
     async fn run(&self, args: ScreenshotArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
@@ -1092,10 +1075,6 @@ pub(crate) struct WaitArgs {
     /// Without a condition: wait this long. With one: give up after this long. At most 60; default 10.
     #[serde(default)]
     seconds: Option<f64>,
-    /// What only the user can do in the page, such as "sign in to example.com": they are asked,
-    /// and the call returns when they are done, with the page as it is then.
-    #[serde(default)]
-    user: Option<String>,
     /// Tab id; the current tab by default.
     #[serde(default)]
     tab: Option<String>,
@@ -1109,21 +1088,14 @@ impl TypedTool for BrowserWait {
     const NAME: &'static str = "browser_wait";
     const DESCRIPTION: &'static str = "Wait for text to appear or disappear, the URL to change, or the network to go \
         quiet; or wait a fixed number of seconds. Actions already wait for the page to settle, so use this only for \
-        what happens later. With user, it hands the page to the user for what only they can do.";
+        what happens later.";
 
     async fn authorities(&self, args: &WaitArgs, ctx: &ToolCtx) -> Result<Vec<Authority>, ToolError> {
-        let Some(what) = &args.user else {
-            return observe(ctx, args.tab.as_deref(), args.tab.as_deref()).await;
-        };
-        let which = pick(ctx, None, args.tab.as_deref())?;
-        // A page to hand over.
-        ensure(ctx, which).await?.page(args.tab.as_deref()).map_err(failed)?;
-        Ok(vec![Authority::UserStep { what: what.clone(), own: which.own() }])
+        observe(ctx, args.tab.as_deref(), args.tab.as_deref()).await
     }
 
     fn describe(&self, args: &Value, _env: &dyn Environment) -> ToolDescription {
         let title = match (str_arg(args, "text"), str_arg(args, "text_gone"), str_arg(args, "url")) {
-            _ if str_arg(args, "user").is_some() => format!("wait for you to {}", str_arg(args, "user").unwrap_or_default()),
             (Some(text), _, _) => format!("wait for \"{text}\""),
             (_, Some(text), _) => format!("wait for \"{text}\" to go"),
             (_, _, Some(url)) => format!("wait for the URL to contain {url}"),
@@ -1138,22 +1110,6 @@ impl TypedTool for BrowserWait {
 
     async fn run(&self, args: WaitArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
         let session = in_use(&ctx, pick(&ctx, None, args.tab.as_deref())?).await?;
-        if args.user.is_some() {
-            // The user said they are done: the page as it is now, once it has settled.
-            let settling = session.wait(args.tab.as_deref(), &WaitFor::NetworkIdle, Duration::from_secs(5));
-            tokio::select! {
-                settled = settling => { settled.map_err(failed)?; }
-                _ = ctx.cancel.cancelled() => return Err(ToolError::Cancelled),
-            }
-            let report = session
-                .snapshot(&SnapshotRequest {
-                    tab: args.tab,
-                    ..SnapshotRequest::default()
-                })
-                .await
-                .map_err(failed)?;
-            return Ok(output(report, Some("The user says they are done.")));
-        }
         let conditions = [args.text.is_some(), args.text_gone.is_some(), args.url.is_some(), args.network_idle];
         if conditions.iter().filter(|c| **c).count() > 1 {
             return Err(ToolError::InvalidArgs("wait for one condition at a time".into()));
@@ -1454,7 +1410,7 @@ impl TypedTool for BrowserEval {
     }
 
     async fn run(&self, args: EvalArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
-        let (page, which) = approved(&ctx).ok_or_else(|| ToolError::Failed("the call has no approved page".into()))?;
+        let (page, which) = judged_page(&ctx).ok_or_else(|| ToolError::Failed("the call has no page to act on".into()))?;
         let session = in_use(&ctx, which).await?;
         let report = session.eval(&page, &args.expression).await.map_err(failed)?;
         Ok(output(report, None))
@@ -1465,7 +1421,7 @@ impl TypedTool for BrowserEval {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub(crate) struct BatchArgs {
-    /// The steps, run in order; the batch stops at the first that fails or needs approval.
+    /// The steps, run in order; the batch stops at the first that fails or is refused.
     steps: Vec<BatchStep>,
 }
 
@@ -1520,9 +1476,8 @@ impl TypedTool for BrowserBatch {
     type Args = BatchArgs;
     const NAME: &'static str = "browser_batch";
     const DESCRIPTION: &'static str = "Run several browser tool calls in one go, in order, such as filling a form and \
-        submitting it. Only the first step is approved up front; each later step runs only if it needs no approval \
-        (its site is allowed already), and the batch stops at the first step that fails or needs approval: then call \
-        that step on its own. The result has each step's result. Use refs from a snapshot taken before the batch, or \
+        submitting it. Each step is checked when it comes, and the batch stops at the first step that fails or is \
+        refused. The result has each step's result. Use refs from a snapshot taken before the batch, or \
         from an earlier step's result only if no navigation came in between.";
 
     fn kind(&self) -> ToolKind {
@@ -1563,7 +1518,7 @@ impl TypedTool for BrowserBatch {
             if ctx.cancel.is_cancelled() {
                 return Err(ToolError::Cancelled);
             }
-            // The first step was approved with the batch; the others pass the gates now.
+            // The first step was judged with the batch; the others pass the gates now.
             let authorities: Arc<[Authority]> = if i == 0 {
                 ctx.authorities.clone()
             } else {
@@ -1587,12 +1542,6 @@ impl TypedTool for BrowserBatch {
                         Gate::Allow => {}
                         Gate::Deny(reason) => {
                             stopped = Some(format!("Step {n} ({name}) was refused: {reason}"));
-                            break;
-                        }
-                        Gate::Ask { summary, .. } => {
-                            stopped = Some(format!(
-                                "Step {n} ({name}) needs approval ({summary}), which a batch does not ask for. Call it on its own."
-                            ));
                             break;
                         }
                     }
@@ -1692,16 +1641,11 @@ mod tests {
         let guard = KernelGuard {
             policy: Arc::new(Mutex::new(Arc::new(policy))),
             roots: vec![dir.path().to_path_buf()],
-            grants: Arc::new(Mutex::new(vec![SiteGrant {
-                authority: her_protocol::GrantAuthority::Navigate,
-                origin: "http://192.168.0.9".into(),
-            }])),
         };
         let url = |s: &str| Url::parse(s).unwrap();
         assert!(guard.check_request(&url("https://www.evil.test/")).await.is_err());
         assert!(guard.check_request(&url("http://169.254.169.254/")).await.is_err());
         assert!(guard.check_request(&url("http://192.168.0.7/")).await.is_err());
-        assert!(guard.check_request(&url("http://192.168.0.9/")).await.is_ok(), "granted");
         assert!(guard.check_request(&url("file:///etc/hosts")).await.is_err());
         assert!(guard.check_request(&url("http://localhost:3000/")).await.is_ok());
         // DNS rebinding: a public name that answers from a private address.

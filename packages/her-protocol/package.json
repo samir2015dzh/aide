@@ -1,5 +1,5 @@
 {
-  "name": "@hermesh/her-protocol",
+  "name": "@aide/her-protocol",
   "private": true,
   "type": "module",
   "description": "TypeScript types of the her native protocol, generated from the kernel schema",

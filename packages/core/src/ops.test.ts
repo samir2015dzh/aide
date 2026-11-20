@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { ExecOutcome, ExecRecordSchema } from "@hermesh/proto/machine";
+import { ExecOutcome, ExecRecordSchema } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
 import { opsMillis, opsResult } from "./ops";
 

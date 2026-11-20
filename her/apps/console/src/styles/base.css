@@ -1,6 +1,6 @@
 /* The Mac app's look (apps/desktop/src/renderer/src/styles/app.css): its tokens in light and
    dark, its typefaces, and the controls every page draws with. The brand's colours, curves
-   and spacing scale (--accent, --ease-out, --sp-1…5) come from @hermesh/ui/brand.css. */
+   and spacing scale (--accent, --ease-out, --sp-1…5) come from @aide/ui/brand.css. */
 
 @font-face {
   font-family: "Google Sans Flex";

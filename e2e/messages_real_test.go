@@ -12,28 +12,28 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
-// Messages with the real Claude Code (HERMESH_REAL_CLI=1; it costs tokens).
+// Messages with the real Claude Code (AIDE_REAL_CLI=1; it costs tokens).
 
 func realAgents(t *testing.T) {
 	t.Helper()
-	if testing.Short() || os.Getenv("HERMESH_REAL_CLI") != "1" {
-		t.Skip("real Claude Code only: HERMESH_REAL_CLI=1")
+	if testing.Short() || os.Getenv("AIDE_REAL_CLI") != "1" {
+		t.Skip("real Claude Code only: AIDE_REAL_CLI=1")
 	}
 	if _, err := exec.LookPath("claude"); err != nil {
 		t.Skip("claude not installed")
 	}
 }
 
-// TestRealSessionWrites: Claude Code in a Hermesh session writes to the
-// agent that started it, with the message_send tool Hermesh gives it.
+// TestRealSessionWrites: Claude Code in an Aide session writes to the
+// agent that started it, with the message_send tool Aide gives it.
 func TestRealSessionWrites(t *testing.T) {
 	realAgents(t)
 	w := newOwnerMac(t, []string{"PATH=" + os.Getenv("PATH")}, &localv1.GrantSpec{})
 	s, r := w.startSession(4*time.Minute, "--agent", "claude", "--model", "haiku", "--wait", "--prompt",
-		"Use the message_send tool (from the hermesh MCP server) to send the agent that started this session the message: pong. Then reply with just: done")
+		"Use the message_send tool (from the aide MCP server) to send the agent that started this session the message: pong. Then reply with just: done")
 	if r.code != 0 {
 		t.Fatalf("start: %+v", r)
 	}
@@ -49,15 +49,15 @@ func TestRealSessionWrites(t *testing.T) {
 }
 
 // TestRealClaudeInbox: a Claude Code conversation on the user's computer,
-// with Hermesh's hooks, gets a message addressed to it through its own
+// with Aide's hooks, gets a message addressed to it through its own
 // inbox socket, and an idle conversation answers it in a new turn.
 func TestRealClaudeInbox(t *testing.T) {
 	realAgents(t)
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	helper := w.addAgent("helper", &localv1.GrantSpec{})
-	hermesh := filepath.Join(w.bin, "hermesh")
+	aide := filepath.Join(w.bin, "aide")
 	hooks, _ := json.Marshal(map[string]any{"hooks": map[string]any{"SessionStart": []any{map[string]any{"hooks": []any{
-		map[string]any{"type": "command", "command": strconv.Quote(hermesh) + " message hook claude"}}}}}})
+		map[string]any{"type": "command", "command": strconv.Quote(aide) + " message hook claude"}}}}}})
 	cmd := exec.Command("claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--model", "haiku",
 		"--settings", string(hooks))
 	cmd.Dir = t.TempDir()

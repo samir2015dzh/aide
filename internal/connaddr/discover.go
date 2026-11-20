@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/brandenv"
 )
 
 // ErrNoServer is what pairing or logging in says when no one typed where:
@@ -21,7 +21,7 @@ import (
 var ErrNoServer = errors.New("which server? give your server's address (relay.example.com) or a connection address (relay.example.com/o_…), or set $AIDE_SERVER")
 
 // Center picks the server URL or connection address to pair with: the
-// argument, else $HERMESH_CENTER, else $HERMESH_SERVER (as Server reads it).
+// argument, else $AIDE_CENTER, else $AIDE_SERVER (as Server reads it).
 // "" when none is given: the caller asks for one (ErrNoServer). Nothing
 // falls back to a hosted center.
 func Center(arg string) string {
@@ -37,7 +37,7 @@ func Center(arg string) string {
 // DiscoveryPath is where a hosted center says where its devices connect
 // (machines, agents and signers), which can differ from the console's own
 // address: {"connect_url": "https://connect.example.com"}.
-const DiscoveryPath = "/.well-known/hermesh.json"
+const DiscoveryPath = "/.well-known/aide.json"
 
 // Discover returns the connect URL the center at base publishes, or base
 // itself when it publishes none (a self-hosted relay). The center is not
@@ -80,7 +80,7 @@ func Discover(ctx context.Context, hc *http.Client, base string) (string, error)
 
 // Server picks the server to log in to with a password: the argument (a
 // server's address, or a connection address, whose owner part is not
-// needed), else $HERMESH_SERVER, as a URL. "" when neither is given: no
+// needed), else $AIDE_SERVER, as a URL. "" when neither is given: no
 // build names a default server (it is given to others), the person types
 // theirs.
 func Server(arg string) string {

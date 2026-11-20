@@ -1,26 +1,23 @@
 package relay
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"net"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 func errf(code connect.Code, msg string) error { return connect.NewError(code, errors.New(msg)) }
 
 // ---------------------------------------------------------------------------
-// Public API: info, claim, pairing rendezvous.
+// Public API: info, setting up and logging in (account.go), erase acks.
 
 type publicService struct{ s *Server }
 
@@ -68,39 +65,6 @@ func (p *publicService) AckErase(ctx context.Context, req *relayv1.AckEraseReque
 	return &relayv1.AckEraseResponse{}, nil
 }
 
-func (p *publicService) Claim(ctx context.Context, req *relayv1.ClaimRequest) (*relayv1.ClaimResponse, error) {
-	s := p.s
-	if s.singleOwner() != "" {
-		return nil, errf(connect.CodeAlreadyExists, "relay already claimed")
-	}
-	code, err := s.sqlite.ClaimCode()
-	if err != nil {
-		return nil, err
-	}
-	if !constantTimeEqual(strings.ToUpper(strings.TrimSpace(req.ClaimCode)), code) {
-		return nil, errf(connect.CodePermissionDenied, "wrong claim code")
-	}
-	ownerID := identity.ChainOwner(req.RootChain)
-	t := identity.NewTrust(ownerID)
-	if _, err := t.AcceptRootChain(req.RootChain); err != nil {
-		return nil, errf(connect.CodeInvalidArgument, err.Error())
-	}
-	if _, _, err := t.VerifyDeviceCert(req.DeviceCert); err != nil {
-		return nil, errf(connect.CodeInvalidArgument, err.Error())
-	}
-	if err := s.sqlite.SaveClaim(ownerID, req.RootChain, req.DeviceCert); err != nil {
-		return nil, err
-	}
-	s.mu.Lock()
-	s.single = ownerID
-	s.mu.Unlock()
-	if _, err := s.tenantFor(ownerID); err != nil {
-		return nil, err
-	}
-	s.log.Info("relay claimed", "owner", ownerID)
-	return &relayv1.ClaimResponse{RelayId: s.relayID}, nil
-}
-
 func clientIP(addr string) string {
 	if h, _, err := net.SplitHostPort(addr); err == nil {
 		return h
@@ -108,150 +72,6 @@ func clientIP(addr string) string {
 	return addr
 }
 
-func (p *publicService) SubmitPairing(ctx context.Context, req *relayv1.SubmitPairingRequest) (*relayv1.SubmitPairingResponse, error) {
-	s := p.s
-	ip := ""
-	if ci, ok := connect.CallInfoForHandlerContext(ctx); ok {
-		ip = clientIP(ci.Peer().Addr)
-	}
-	if !s.limiter.Allow(ip) {
-		return nil, errf(connect.CodeResourceExhausted, "too many pairing requests")
-	}
-	return s.submitPairing(req.Request, false)
-}
-
-// SubmitCustodialPairing submits, from the embedding server's own MCP
-// gateway, a client pairing request whose key that server holds: the
-// request names its custodian, which a request from the network may not.
-func (s *Server) SubmitCustodialPairing(request *identityv1.Signed) (string, time.Time, error) {
-	res, err := s.submitPairing(request, true)
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	return res.Code, res.ExpiresAt.AsTime(), nil
-}
-
-func (s *Server) submitPairing(request *identityv1.Signed, custodial bool) (*relayv1.SubmitPairingResponse, error) {
-	pr := &identityv1.PairingRequest{}
-	if _, err := identity.SelfSigned(request, pr, func(m *identityv1.PairingRequest) []byte { return m.SubjectPublicKey }); err != nil {
-		return nil, errf(connect.CodeInvalidArgument, "bad pairing request: "+err.Error())
-	}
-	switch {
-	case !custodial && pr.Custodian != "":
-		return nil, errf(connect.CodeInvalidArgument, "a pairing request from the network cannot name a custodian")
-	case custodial && (pr.Custodian == "" || pr.Kind != identityv1.PairingKind_PAIRING_KIND_CLIENT || pr.OwnerId == ""):
-		return nil, errf(connect.CodeInvalidArgument, "a custodial pairing request is a client's, for a named owner, with its custodian")
-	}
-	switch {
-	case s.singleOwner() == "":
-		return nil, errf(connect.CodeFailedPrecondition, "relay is not claimed yet")
-	case pr.OwnerId != s.singleOwner():
-		return nil, errf(connect.CodeInvalidArgument, "pairing request is for a different owner")
-	}
-	switch pr.Kind {
-	case identityv1.PairingKind_PAIRING_KIND_MACHINE, identityv1.PairingKind_PAIRING_KIND_CLIENT:
-	case identityv1.PairingKind_PAIRING_KIND_DEVICE:
-	default:
-		return nil, errf(connect.CodeInvalidArgument, "bad pairing kind")
-	}
-	if len(pr.Label) > 64 || len(pr.Hostname) > 255 || len(pr.Platform) > 64 {
-		return nil, errf(connect.CodeInvalidArgument, "pairing request fields too long")
-	}
-	now := time.Now()
-	s.store.PurgePairings(now)
-	code := identity.PairingCode(pr.Kind, pr.SubjectPublicKey)
-	existing, err := s.store.GetPairing(code)
-	if err != nil {
-		return nil, err
-	}
-	if existing == nil {
-		if n, _ := s.store.PendingPairings(now); n >= s.cfg.MaxPendingPairings {
-			return nil, errf(connect.CodeResourceExhausted, "too many pending pairing requests")
-		}
-		if pr.OwnerId != "" {
-			if codes, _ := s.store.OwnerPendingPairings(pr.OwnerId, now); len(codes) >= s.cfg.MaxOwnerPendingPairings {
-				return nil, errf(connect.CodeResourceExhausted, "too many pending pairing requests for this owner; ask the owner to answer them first")
-			}
-		}
-	}
-	exp := now.Add(s.cfg.PairingTTL)
-	if existing != nil && existing.Result != nil {
-		// Re-running the command keeps a completed request.
-		exp = existing.ExpiresAt
-	} else if err := s.store.PutPairing(&Pairing{Code: code, Kind: pr.Kind, Request: request, OwnerID: pr.OwnerId, ExpiresAt: exp}); err != nil {
-		return nil, err
-	} else if existing == nil {
-		go s.notifyPairing(pr.OwnerId, code, pr)
-		s.wakeOwnerID(pr.OwnerId)
-	}
-	return &relayv1.SubmitPairingResponse{Code: code, ExpiresAt: timestamppb.New(exp)}, nil
-}
-
-func (p *publicService) WaitPairing(ctx context.Context, req *relayv1.WaitPairingRequest) (*relayv1.WaitPairingResponse, error) {
-	s := p.s
-	code := identity.NormalizePairingCode(req.Code)
-	deadline := time.Now().Add(25 * time.Second)
-	for {
-		row, err := s.store.GetPairing(code)
-		if err != nil {
-			return nil, err
-		}
-		if row == nil {
-			return &relayv1.WaitPairingResponse{Expired: true}, nil
-		}
-		owner := s.pairingOwner(row)
-		if row.Result != nil {
-			t, err := s.tenantFor(owner)
-			if err != nil {
-				return nil, err
-			}
-			// A device that joined finds its key in the chain itself.
-			creds := &identityv1.Credentials{RootChain: t.trust.RootChain()}
-			switch row.Kind {
-			case identityv1.PairingKind_PAIRING_KIND_MACHINE:
-				creds.Subject = &identityv1.Credentials_MachineCert{MachineCert: row.Result}
-			case identityv1.PairingKind_PAIRING_KIND_CLIENT:
-				creds.Subject = &identityv1.Credentials_Grant{Grant: row.Result}
-			}
-			return &relayv1.WaitPairingResponse{Done: true, Credentials: creds}, nil
-		}
-		if time.Now().After(row.ExpiresAt) {
-			return &relayv1.WaitPairingResponse{Expired: true}, nil
-		}
-		if time.Now().After(deadline) {
-			return &relayv1.WaitPairingResponse{}, nil
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(300 * time.Millisecond):
-		}
-	}
-}
-
-// PairingResult is what became of a pairing request: the signed credential
-// once the owner approved it, expired once it is gone or past its time
-// (neither: still waiting).
-func (s *Server) PairingResult(code string) (credential *identityv1.Signed, expired bool, err error) {
-	row, err := s.store.GetPairing(identity.NormalizePairingCode(code))
-	switch {
-	case err != nil:
-		return nil, false, err
-	case row == nil:
-		return nil, true, nil
-	case row.Result != nil:
-		return row.Result, false, nil
-	}
-	return nil, time.Now().After(row.ExpiresAt), nil
-}
-
-// Pairing returns the pairing request with this code as the relay stores it
-// (whether answered or past its time), nil if there is none.
-func (s *Server) Pairing(code string) (*Pairing, error) {
-	return s.store.GetPairing(identity.NormalizePairingCode(code))
-}
-
-// RootChain is the owner's current root chain as this relay knows it.
 func (s *Server) RootChain(ownerID string) (*identityv1.RootChain, error) {
 	t, err := s.tenantFor(ownerID)
 	if err != nil {
@@ -259,29 +79,6 @@ func (s *Server) RootChain(ownerID string) (*identityv1.RootChain, error) {
 	}
 	return t.trust.RootChain(), nil
 }
-
-// pairingOwner is the owner a pairing is bound to.
-func (s *Server) pairingOwner(p *Pairing) string {
-	if p.OwnerID == "" {
-		return s.singleOwner() // rows from before owners were stored
-	}
-	return p.OwnerID
-}
-
-// pendingPairing returns an unanswered, unexpired pairing request.
-func (s *Server) pendingPairing(code string) (*Pairing, error) {
-	row, err := s.store.GetPairing(identity.NormalizePairingCode(code))
-	if err != nil {
-		return nil, err
-	}
-	if row == nil || row.Result != nil || time.Now().After(row.ExpiresAt) {
-		return nil, nil
-	}
-	return row, nil
-}
-
-// ---------------------------------------------------------------------------
-// Machine control.
 
 type machineControl struct{ s *Server }
 
@@ -380,118 +177,10 @@ func (c *clientControl) GetLatestGrant(ctx context.Context, _ *relayv1.GetLatest
 }
 
 // ---------------------------------------------------------------------------
-// Owner control. Everything the owner publishes is verified against the
-// owner trust, so a stolen device key cannot mint credentials either.
+// Owner control: what the owner's devices ask; the server signs for them
+// (account.go).
 
 type ownerControl struct{ s *Server }
-
-// ownPairing returns a pending pairing bound to the calling owner.
-func (o *ownerControl) ownPairing(ctx context.Context, code string) (*tenant, *Pairing, error) {
-	p := peerFrom(ctx)
-	row, err := o.s.store.GetPairing(identity.NormalizePairingCode(code))
-	if err != nil {
-		return nil, nil, err
-	}
-	if row == nil || time.Now().After(row.ExpiresAt) || o.s.pairingOwner(row) != p.t.ownerID {
-		return nil, nil, errf(connect.CodeNotFound, "no pending pairing request with this code (it may have expired)")
-	}
-	return p.t, row, nil
-}
-
-func (o *ownerControl) GetPairingRequest(ctx context.Context, req *relayv1.GetPairingRequestRequest) (*relayv1.GetPairingRequestResponse, error) {
-	_, row, err := o.ownPairing(ctx, req.Code)
-	if err != nil {
-		return nil, err
-	}
-	if row.Result != nil {
-		return nil, errf(connect.CodeAlreadyExists, "this pairing code has already been used")
-	}
-	return &relayv1.GetPairingRequestResponse{Request: row.Request, ExpiresAt: timestamppb.New(row.ExpiresAt)}, nil
-}
-
-func (o *ownerControl) ListPairingRequests(ctx context.Context, _ *relayv1.ListPairingRequestsRequest) (*relayv1.ListPairingRequestsResponse, error) {
-	pairings, err := o.s.pendingPairings(peerFrom(ctx).t)
-	if err != nil {
-		return nil, err
-	}
-	return &relayv1.ListPairingRequestsResponse{Pairings: pairings}, nil
-}
-
-func (o *ownerControl) ClaimPairingRequest(ctx context.Context, req *relayv1.ClaimPairingRequestRequest) (*relayv1.ClaimPairingRequestResponse, error) {
-	code := identity.NormalizePairingCode(req.Code)
-	_, row, err := o.ownPairing(ctx, code)
-	if err != nil {
-		return nil, err
-	}
-	if row.Result != nil {
-		return nil, errf(connect.CodeAlreadyExists, "this pairing code has already been used")
-	}
-	return &relayv1.ClaimPairingRequestResponse{Request: row.Request, ExpiresAt: timestamppb.New(row.ExpiresAt)}, nil
-}
-
-func (o *ownerControl) CompletePairing(ctx context.Context, req *relayv1.CompletePairingRequest) (*relayv1.CompletePairingResponse, error) {
-	t, row, err := o.ownPairing(ctx, req.Code)
-	if err != nil {
-		return nil, err
-	}
-	return &relayv1.CompletePairingResponse{}, o.s.completePairing(t, row, req.Credential)
-}
-
-// completePairing completes a pending request with the credential an
-// owner signed: the owner's device (CompletePairing), or a client that
-// logged in with the password (Login).
-func (s *Server) completePairing(t *tenant, row *Pairing, credential *identityv1.Signed) error {
-	if row.Result != nil {
-		return errf(connect.CodeNotFound, "pairing request not pending")
-	}
-	pr := &identityv1.PairingRequest{}
-	if err := identity.Unverified(row.Request, pr); err != nil {
-		return err
-	}
-	switch row.Kind {
-	case identityv1.PairingKind_PAIRING_KIND_MACHINE:
-		nc, _, err := t.trust.VerifyMachineCert(credential)
-		if err != nil {
-			return errf(connect.CodeInvalidArgument, err.Error())
-		}
-		if !bytes.Equal(nc.MachinePublicKey, pr.SubjectPublicKey) {
-			return errf(connect.CodeInvalidArgument, "machine cert is for a different key")
-		}
-		if err := s.store.PutMachineCert(t.ownerID, nc.MachineId, credential); err != nil {
-			return err
-		}
-	case identityv1.PairingKind_PAIRING_KIND_CLIENT:
-		g, _, err := t.trust.VerifyGrant(credential, time.Now())
-		if err != nil {
-			return errf(connect.CodeInvalidArgument, err.Error())
-		}
-		if !bytes.Equal(g.ClientPublicKey, pr.SubjectPublicKey) {
-			return errf(connect.CodeInvalidArgument, "grant is for a different key")
-		}
-		if err := s.store.PutGrant(t.ownerID, g, credential); err != nil {
-			return err
-		}
-		defer s.pushGrants(t)
-	case identityv1.PairingKind_PAIRING_KIND_DEVICE:
-		// The device's root key is in the chain the approving device
-		// published first; the credential is that chain's newest cert.
-		chain := t.trust.RootChain().GetCerts()
-		if len(chain) == 0 || !bytes.Equal(chain[len(chain)-1].GetBody(), credential.GetBody()) {
-			return errf(connect.CodeInvalidArgument, "publish the root chain with the device first")
-		}
-		in := false
-		for _, rk := range t.trust.Root().GetRootKeys() {
-			in = in || bytes.Equal(rk.PublicKey, pr.SubjectPublicKey)
-		}
-		if !in {
-			return errf(connect.CodeInvalidArgument, "the root cert does not list this device")
-		}
-	default:
-		return errf(connect.CodeInvalidArgument, "bad pairing kind")
-	}
-	defer s.wakeOwner(t)
-	return s.store.CompletePairing(row.Code, credential)
-}
 
 func (o *ownerControl) ListMachines(ctx context.Context, req *relayv1.ListMachinesRequest) (*relayv1.ListMachinesResponse, error) {
 	t := peerFrom(ctx).t
@@ -569,8 +258,8 @@ func (o *ownerControl) EraseOwner(ctx context.Context, req *relayv1.EraseOwnerRe
 	return &relayv1.EraseOwnerResponse{}, nil
 }
 
-// GetAccount answers that the relay has no account: the owner is just the
-// one who claimed it.
+// GetAccount answers with no account picture: a server of one's own has
+// none (GetLogin names the account).
 func (o *ownerControl) GetAccount(context.Context, *relayv1.GetAccountRequest) (*relayv1.GetAccountResponse, error) {
 	return &relayv1.GetAccountResponse{}, nil
 }
@@ -588,11 +277,4 @@ var errRemoteDesktop = errf(connect.CodeUnimplemented, "remote desktop was remov
 
 func (o *ownerControl) GetMCP(context.Context, *relayv1.GetMCPRequest) (*relayv1.GetMCPResponse, error) {
 	return &relayv1.GetMCPResponse{Url: o.s.cfg.MCPURL}, nil
-}
-
-func (o *ownerControl) PublishRootChain(ctx context.Context, req *relayv1.PublishRootChainRequest) (*relayv1.PublishRootChainResponse, error) {
-	if err := o.s.acceptRootChain(peerFrom(ctx).t, req.RootChain); err != nil {
-		return nil, errf(connect.CodeInvalidArgument, err.Error())
-	}
-	return &relayv1.PublishRootChainResponse{}, nil
 }

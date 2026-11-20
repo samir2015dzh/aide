@@ -10,16 +10,16 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider/acp/dshnative"
-	"github.com/hermeshai/hermesh/internal/shellenv"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider/acp/dshnative"
+	"github.com/samir2015dzh/aide/internal/shellenv"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // DeepSeek Harness's own sessions (dshnative): those the owner opened in
-// DSH Desktop, or another tool started, beside the ones Hermesh started.
+// DSH Desktop, or another tool started, beside the ones Aide started.
 // The owner reads them, and sends messages to those they take over
 // (dshtakeover.go).
 
@@ -90,11 +90,11 @@ func (n *Machine) dshVisible(p *Principal) (func(cwd string) bool, error) {
 }
 
 // DSHSessions lists the DSH sessions in the DSH home this machine's agents
-// use, but those Hermesh started: by the DSH session id each recorded
+// use, but those Aide started: by the DSH session id each recorded
 // (provider_ref), and by the folder, a session's worktree (where an
-// earlier DSH session of a session Hermesh started again, or deleted,
+// earlier DSH session of a session Aide started again, or deleted,
 // worked).
-// The owner also learns the state of the Hermesh bridge plugin.
+// The owner also learns the state of the Aide bridge plugin.
 func (n *Machine) DSHSessions(ctx context.Context) (*machinev1.ListDSHSessionsResponse, error) {
 	res, err := n.dshSessions(func(string) bool { return true })
 	if err != nil {

@@ -24,9 +24,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // Agent describes how to start one ACP agent.
@@ -326,7 +326,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		return fail(provider.Fail(sessionv1.FailureKind_FAILURE_KIND_RESUME_REJECTED, "the agent cannot resume sessions"))
 	}
 	if p.Name() == "antigravity" {
-		// A saved auto-edit/YOLO mode must not bypass Hermesh's gate, including
+		// A saved auto-edit/YOLO mode must not bypass Aide's gate, including
 		// when resuming a session whose mode was changed in another client.
 		if _, err := s.call(ctx, "session/set_mode", map[string]any{"sessionId": s.sessionID, "modeId": "default"}); err != nil {
 			return fail(fmt.Errorf("set permission mode: %w", err))
@@ -356,13 +356,13 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	return s, nil
 }
 
-// initializeParams are what Hermesh says of itself in initialize.
+// initializeParams are what Aide says of itself in initialize.
 var initializeParams = map[string]any{"protocolVersion": 1,
 	"clientCapabilities": map[string]any{"fs": map[string]any{"readTextFile": false, "writeTextFile": false}, "terminal": false,
 		// Questions as forms (elicitation/create); agents without it
 		// turn their ask-the-user tools off.
 		"elicitation": map[string]any{"form": map[string]any{}}},
-	"clientInfo": map[string]any{"name": "hermesh", "version": "0.1.0"}}
+	"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"}}
 
 // sessionConfig is what an ACP session says of its configuration
 // (session/new, /resume, /load and session/set_config_option results): its

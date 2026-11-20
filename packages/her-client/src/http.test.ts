@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PROTOCOL_VERSION } from "@hermesh/her-protocol";
+import { PROTOCOL_VERSION } from "@aide/her-protocol";
 import { httpTransport } from "./http.ts";
 import { RpcClient, RpcError } from "./rpc.ts";
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestCLIOutputContract holds every command's JSON to docs/cli-output.md:
@@ -19,8 +19,8 @@ func TestCLIOutputContract(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--retry-delay", "50ms")
-	bin := filepath.Join(w.bin, "hermesh")
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--retry-delay", "50ms")
+	bin := filepath.Join(w.bin, "aide")
 	kinds := map[int][]string{1: {"internal"}, 2: {"usage", "not_found", "invalid_state"}, 3: {"not_paired", "revoked", "denied"}, 4: {"unreachable"},
 		5: {"archived", "auth", "quota", "context_overflow", "model_unavailable", "invalid_request", "refused", "limit_reached", "resume_rejected", "timeout", "start_failed", "base_ref_unavailable", "interrupted", "unknown"},
 		6: {"wait_timeout"}, 7: {"rate_limit", "provider_error", "network", "agent_crashed", "stalled", "busy"}, 8: {"needs_input"}}
@@ -86,8 +86,8 @@ func TestCLIOutputContract(t *testing.T) {
 	env := w.cliEnv
 
 	doc(env, 0, "version")
-	if r := run(t, append(env, "HERMESH_OUTPUT=json"), time.Minute, bin, "version"); !strings.HasPrefix(r.stdout, "{") {
-		t.Fatalf("HERMESH_OUTPUT=json: %q", r.stdout)
+	if r := run(t, append(env, "AIDE_OUTPUT=json"), time.Minute, bin, "version"); !strings.HasPrefix(r.stdout, "{") {
+		t.Fatalf("AIDE_OUTPUT=json: %q", r.stdout)
 	}
 	if r := run(t, env, time.Minute, bin, "version", "-o", "yaml"); r.code != 2 {
 		t.Fatalf("-o yaml: %+v", r)

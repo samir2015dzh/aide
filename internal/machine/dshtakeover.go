@@ -12,14 +12,14 @@ import (
 	"connectrpc.com/connect"
 	"github.com/oklog/ulid/v2"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider/acp/dshnative"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider/acp/dshnative"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // Taking over a DSH session (docs/dsh-takeover.md): the owner turns it on
 // for one of DSH's own sessions, then sends it messages and stops its turn
-// through the Hermesh bridge plugin in DSH Desktop (dshnative.Bridge),
+// through the Aide bridge plugin in DSH Desktop (dshnative.Bridge),
 // which hands them to the DSH Host that owns the session. Nothing here
 // writes DSH's files or takes a session's lock. Every call to the bridge
 // has a deadline, and every refusal says what to do: nothing is left
@@ -81,8 +81,8 @@ func (s *adminService) InterruptDSHSession(ctx context.Context, req *machinev1.I
 	return s.n.InterruptDSHSession(ctx, req)
 }
 
-// dshOwnSession is a DSH session of the owner's that Hermesh did not start
-// (those Hermesh started take messages as its own sessions do), in home.
+// dshOwnSession is a DSH session of the owner's that Aide did not start
+// (those Aide started take messages as its own sessions do), in home.
 func (n *Machine) dshOwnSession(home, id string) (*machinev1.DSHSession, error) {
 	s, _, err := dshnative.Read(home, id)
 	if err == nil {
@@ -100,7 +100,7 @@ func (n *Machine) dshOwnSession(home, id string) (*machinev1.DSHSession, error) 
 	return s, err
 }
 
-// SetDSHTakeover turns takeover of a DSH session on or off: Hermesh's own
+// SetDSHTakeover turns takeover of a DSH session on or off: Aide's own
 // setting; DSH is not told.
 func (n *Machine) SetDSHTakeover(req *machinev1.SetDSHTakeoverRequest) (*machinev1.SetDSHTakeoverResponse, error) {
 	home, err := dshnative.Home(shellenv.Environ())

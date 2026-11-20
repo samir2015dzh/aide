@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { openCallTransport, RpcClient, RpcError } from "@hermesh/her-client";
-import type { CallResponse, OpenEvent } from "@hermesh/proto/her";
+import { openCallTransport, RpcClient, RpcError } from "@aide/her-client";
+import type { CallResponse, OpenEvent } from "@aide/proto/her";
 import { callResult, herAdapter, jsonBytes, type HerLocal } from "./adapter.ts";
 
 const text = (b: Uint8Array) => new TextDecoder().decode(b);
 
-/** hermeshd's LocalService as a test plays it: what each Her call was asked, and a stream the test feeds. */
-function hermeshd() {
+/** aided's LocalService as a test plays it: what each Her call was asked, and a stream the test feeds. */
+function aided() {
   const opened: { machineId: string; setup: { method: string; params: string }[]; signal: AbortSignal }[] = [];
   const calls: { machineId: string; connectionId: string; method: string; params: unknown }[] = [];
   const queue: OpenEvent[] = [];
@@ -43,7 +43,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 const response = (result: unknown) => ({ result: jsonBytes(result) }) as never;
 
 test("a conversation opens on its machine with bots/open in the setup, and its snapshot comes before its events", async () => {
-  const h = hermeshd();
+  const h = aided();
   const order: string[] = [];
   const rpc = new RpcClient(
     openCallTransport(herAdapter(h.local, "m_mini"), {
@@ -61,7 +61,7 @@ test("a conversation opens on its machine with bots/open in the setup, and its s
 });
 
 test("a request goes as HerCall on the connection the stream named, its JSON both ways", async () => {
-  const h = hermeshd();
+  const h = aided();
   h.answerWith((method) => ({ response: method === "models/list" ? response({ models: [], providers: [{ id: "deepseek" }] }) : response({}) }) as unknown as CallResponse);
   const rpc = new RpcClient(openCallTransport(herAdapter(h.local, "m_cloud")));
   h.push({ case: "opened", value: { connectionId: "c7", responses: [] } as never });
@@ -70,8 +70,8 @@ test("a request goes as HerCall on the connection the stream named, its JSON bot
   assert.deepEqual(h.calls, [{ machineId: "m_cloud", connectionId: "c7", method: "models/list", params: {} }]);
 });
 
-test("her's error comes back with its kind; hermeshd's own refusal fails just that request", async () => {
-  const h = hermeshd();
+test("her's error comes back with its kind; aided's own refusal fails just that request", async () => {
+  const h = aided();
   h.answerWith((method) => {
     if (method === "doc/open") throw new Error("[permission_denied] doc/open is not forwarded");
     return { response: { result: new Uint8Array(), error: { code: -32040, message: "bot b9 not found", data: jsonBytes({ kind: "bot_not_found" }) } } } as unknown as CallResponse;
@@ -90,7 +90,7 @@ test("an answer with nothing in it is an empty result, and one missing is an err
 });
 
 test("closing the transport ends the stream", async () => {
-  const h = hermeshd();
+  const h = aided();
   const transport = openCallTransport(herAdapter(h.local, "m1"));
   transport.close();
   await settle();

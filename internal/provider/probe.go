@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // Problem is why an agent is not available: not found, or found but unable

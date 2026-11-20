@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Failure explains why a turn or a session start failed.

@@ -1,5 +1,5 @@
-import { RpcError } from "@hermesh/her-client";
-import type { ProviderSummary, TokenPlanSummary } from "@hermesh/her-protocol";
+import { RpcError } from "@aide/her-client";
+import type { ProviderSummary, TokenPlanSummary } from "@aide/her-protocol";
 
 // Her's onboarding while the environment shown has no model that works (docs/her-server.md
 // §9.2): Her speaks first, but no model can speak yet, so the app writes every message on

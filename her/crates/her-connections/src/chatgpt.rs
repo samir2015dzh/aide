@@ -888,7 +888,7 @@ impl ChatGpt {
                 if revoked {
                     "ChatGPT sign-in cancelled"
                 } else {
-                    "ChatGPT sign-in cancelled. Remote revocation was not confirmed; remove Aide (Hermesh before it was renamed) in ChatGPT settings."
+                    "ChatGPT sign-in cancelled. Remote revocation was not confirmed; remove Aide (Aide before it was renamed) in ChatGPT settings."
                 },
             ));
         }
@@ -1116,7 +1116,7 @@ impl ChatGpt {
         let mut status = self.status()?;
         if revoke_failed {
             status.message = Some(
-                "Disconnected locally. Remote revocation failed; remove Aide (Hermesh before it was renamed) in ChatGPT settings to revoke the grant."
+                "Disconnected locally. Remote revocation failed; remove Aide (Aide before it was renamed) in ChatGPT settings to revoke the grant."
                     .into(),
             );
         }

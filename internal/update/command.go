@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/service"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/service"
 )
 
-// Run is `hermeshd update` and `hermesh update`: it updates the programs
+// Run is `aided update` and `aide update`: it updates the programs
 // in the running one's folder and restarts the service, asking first when
 // that stops a session (yes: it does not ask). check only says whether a
 // newer version exists.
@@ -80,12 +80,12 @@ func Run(ctx context.Context, in io.Reader, out io.Writer, dataDir string, check
 		}
 		return errors.New("the service did not come back on the new version; see `aided service status` and its log")
 	case machineUp:
-		fmt.Fprintln(out, "hermeshd runs by hand here: restart it to use the new version.")
+		fmt.Fprintln(out, "aided runs by hand here: restart it to use the new version.")
 	}
 	return nil
 }
 
-// Auto is `hermeshd update auto [on|off]`.
+// Auto is `aided update auto [on|off]`.
 func Auto(out io.Writer, dataDir, arg string) error {
 	switch arg {
 	case "on", "off":
@@ -104,7 +104,7 @@ func Auto(out io.Writer, dataDir, arg string) error {
 	return nil
 }
 
-// Line is how updates are, for `hermeshd status`.
+// Line is how updates are, for `aided status`.
 func Line(dataDir string) string {
 	s := Load(dataDir)
 	line := "automatic"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { McpProbeResult } from "@hermesh/her-protocol";
+import type { McpProbeResult } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { secretish, type Row } from "./detect";
 import { splitCommand } from "./model";

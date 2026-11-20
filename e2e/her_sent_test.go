@@ -8,15 +8,16 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestHerDeliveries: the files Her sent are listed apart from her
 // conversation (docs/her-deliverables.md §4.2–§4.4), through this Mac's
-// hermeshd: the machine says it answers the two requests; a file sent,
+// aided: the machine says it answers the two requests; a file sent,
 // changed and sent again is one file with two versions, each with the copy
 // to read; her row counts the files the owner has not seen, until the list
 // was seen. A file a routine made is the routine's (§4.11): the list shows one
@@ -85,7 +86,7 @@ func TestHerDeliveries(t *testing.T) {
 		t.Fatalf("before anything was sent: %+v", l)
 	}
 
-	stream, op, session := openAssistant(t, ctx, env)
+	stream, _, _ := openAssistant(t, ctx, env)
 	defer stream.Close()
 	send := func(path string) {
 		t.Helper()
@@ -164,20 +165,15 @@ func TestHerDeliveries(t *testing.T) {
 	}
 
 	// A routine that makes a file each run, sent on by Her when its report
-	// wakes her: the routine's, by the run that wrote it. Her changes files
-	// without asking, so that a run, which cannot ask, can write; making the
-	// routine is asked about, and the owner says yes.
-	if _, err := env.c.SetHerAssistantMode(ctx, &localv1.SetHerAssistantModeRequest{MachineId: env.machine, BotId: env.bot.ID, PermissionMode: "accept-edits"}); err != nil {
-		t.Fatal(err)
-	}
+	// wakes her: the routine's, by the run that wrote it. Her makes the
+	// routine, and its run writes the file, without asking anyone.
 	res, err := env.c.HerSend(ctx, &localv1.HerSendRequest{MachineId: env.machine, BotId: env.bot.ID, Text: "[[mock:routine_file:Morning brief|in 2s|brief.md]] Every morning, a brief."})
 	if err != nil || !res.Delivered {
 		t.Fatalf("HerSend: %v %v", res, err)
 	}
 	untilEvent(t, stream, "the brief sent on", func(e herEvent) bool {
-		if e.Type == "approval_requested" && e.Name == "manage_routine" {
-			herCall(t, env, op.ConnectionId, "session/op", map[string]any{"session_id": session,
-				"op": map[string]any{"type": "approval", "call_id": e.CallID, "decision": map[string]string{"type": "approve"}}})
+		if strings.Contains(e.Type, "approval") {
+			t.Fatalf("Her asked the owner: %+v", e)
 		}
 		return e.Type == "tool_completed" && e.Result.ToolName == "send_to_user" && !e.Result.IsError && sentFile(e.Result.Details, "brief.md")
 	})
@@ -237,7 +233,7 @@ func sentFile(details json.RawMessage, name string) bool {
 }
 
 // TestHerSentCopies: her keeps a copy of each file Her sends, as it was when
-// she sent it (docs/her-deliverables.md §4.1), and this Mac's hermeshd brings
+// she sent it (docs/her-deliverables.md §4.1), and this Mac's aided brings
 // a copy down like a file of the assistant's folder. A file changed on the
 // machine and sent again: each message names its own copy, and each comes
 // down as it was sent, while the file itself comes down as it is now. A file

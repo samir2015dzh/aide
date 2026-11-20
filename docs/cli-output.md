@@ -1,6 +1,6 @@
-# hermesh CLI output conventions
+# aide CLI output conventions
 
-The main users of `hermesh` are AI agents (called **clients** in Hermesh), and humans second. These conventions define what each command outputs and what it looks like. **JSON output is a public contract; change it as carefully as you would change an interface. Text output is for humans and models to read, may change, and must not be parsed.**
+The main users of `aide` are AI agents (called **clients** in Aide), and humans second. These conventions define what each command outputs and what it looks like. **JSON output is a public contract; change it as carefully as you would change an interface. Text output is for humans and models to read, may change, and must not be parsed.**
 
 ## 1. Choosing the format
 
@@ -8,7 +8,7 @@ The main users of `hermesh` are AI agents (called **clients** in Hermesh), and h
 |---|---|
 | Default | Text |
 | `-o json` | JSON |
-| Environment variable `HERMESH_OUTPUT=json` | Default becomes JSON (`-o text` still switches back to text). The agent's shell only needs to set it once |
+| Environment variable `AIDE_OUTPUT=json` | Default becomes JSON (`-o text` still switches back to text). The agent's shell only needs to set it once |
 
 `-o` only accepts `text` and `json`; any other value is a usage error.
 
@@ -31,7 +31,7 @@ With `-o json` on any command, stdout carries **exactly one JSON object** (two-s
 | `exit_code` | number | Same as the process exit code |
 | `error` | Error or null | On failure, explains the reason and the next step; null on success |
 | Data key | See section 5 | The command's result, under a named key. Always present on success; on failure it is included too if the data was already obtained (for example, when the turn awaited by `--wait` failed, `session` is still included) |
-| `as` | string | Only when the command ran under a name (`--as`, `HERMESH_AS`): that name, normalized ([agent-names.md](agent-names.md)) |
+| `as` | string | Only when the command ran under a name (`--as`, `AIDE_AS`): that name, normalized ([agent-names.md](agent-names.md)) |
 | `inbox` | object | Last, and only while messages wait in this agent's inbox: `waiting` (number). Read them with `message list` ([agent-messages.md](agent-messages.md)). Left out under a name: the count would include the agent's other names' messages |
 
 **Look at `ok` first; on failure look at `error.kind` and `error.hint`; on success take the data from the data key.**
@@ -54,7 +54,7 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 | 2 | `usage` | Wrong arguments or command |
 | 2 | `not_found` | Session, project or machine does not exist |
 | 2 | `invalid_state` | The current state doesn't allow this operation (for example sending a message to an archived session, archiving a session with a turn running, or anything but reading a DSH session, `dsh_…`) |
-| 3 | `not_paired` | Not paired yet |
+| 3 | `not_paired` | Not logged in yet (the kind kept its old name) |
 | 3 | `revoked` | The owner revoked this client, or the grant is no longer valid |
 | 3 | `denied` | Not allowed by the grant (the machine, project or coding agent is outside the grant) |
 | 4 | `unreachable` | The relay can't be reached, or the machine the command needs is offline or unreachable (`retryable` is true). When looking up a short project name finds it on no online machine but some machine is offline, it is also this category: the project may be on the offline machine |
@@ -112,7 +112,7 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 | `read_at` | string | When this client read it from its machine |
 | `heartbeat_at`, `heartbeat_age_seconds` | string, number | When its machine was last heard from (now, for a session just read) |
 | `last_event_at`, `last_event_age_seconds` | string, number | Its last event (null when not known) |
-| `stalled_seconds` | number | How long a stalled turn has been quiet (`HERMESH_STALL_AFTER`, default 5 min); 0 otherwise |
+| `stalled_seconds` | number | How long a stalled turn has been quiet (`AIDE_STALL_AFTER`, default 5 min); 0 otherwise |
 
 **Failure**: `kind` (same as the session failure kinds and retryable kinds of Error), `message`, `hint`, `retryable`, `retry_after_seconds`.
 
@@ -122,13 +122,13 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 
 ### NativeSession
 
-A DeepSeek Harness session Hermesh did not start ([cli.md](cli.md)), read-only.
+A DeepSeek Harness session Aide did not start ([cli.md](cli.md)), read-only.
 
 | Field | Type | Meaning |
 |---|---|---|
 | `session_id` | string | `dsh_<machine>_<DSH's id>`: what `session get` and `session events` take |
 | `source` | string | `dsh_native` |
-| `read_only` | bool | Always true: nothing can be sent to it from Hermesh |
+| `read_only` | bool | Always true: nothing can be sent to it from Aide |
 | `dsh_session_id` | string | DSH's own id of the session |
 | `title` | string | Its title in DSH, else the first line of its first prompt |
 | `machine`, `machine_id` | string | |
@@ -146,7 +146,7 @@ A DeepSeek Harness session Hermesh did not start ([cli.md](cli.md)), read-only.
 
 ### Agent
 
-`agent`, `machine`, `machine_id`, `version`, `models` (each `id` and `efforts`, the reasoning efforts that model takes: what `session start --model` and `--effort` accept; empty when the agent names none), `default_model` and `default_effort` (what a session runs with when `session start` names none: the owner's default for the agent on that machine, else the agent's own configuration; `""` when Hermesh can't tell). An ACP agent's models also have a `name`, and it has `modes` (each `id` and `name`: what `session start --mode` accepts) and `default_mode`; it tells them only in a session, so they are there once one of its sessions has started on that machine (deepseek's modes, DeepSeek Harness's permission presets, are there from the start). One entry per agent per machine: the coding agents this agent may run, installed and logged in there and in the grant. A model Codex does not list, or an effort the model does not list, makes `session start` fail with `usage`, naming the ones there are; Claude Code also takes model names beyond its listed aliases.
+`agent`, `machine`, `machine_id`, `version`, `models` (each `id` and `efforts`, the reasoning efforts that model takes: what `session start --model` and `--effort` accept; empty when the agent names none), `default_model` and `default_effort` (what a session runs with when `session start` names none: the owner's default for the agent on that machine, else the agent's own configuration; `""` when Aide can't tell). An ACP agent's models also have a `name`, and it has `modes` (each `id` and `name`: what `session start --mode` accepts) and `default_mode`; it tells them only in a session, so they are there once one of its sessions has started on that machine (deepseek's modes, DeepSeek Harness's permission presets, are there from the start). One entry per agent per machine: the coding agents this agent may run, installed and logged in there and in the grant. A model Codex does not list, or an effort the model does not list, makes `session start` fail with `usage`, naming the ones there are; Claude Code also takes model names beyond its listed aliases.
 
 **Offline** (offline machines): `machine`, `machine_id`, `last_seen`, `error` (`""` when the machine isn't connected to the relay; the reason when the relay says it is online but connecting failed).
 
@@ -173,14 +173,14 @@ Common fields: `seq` (number), `ts`, `turn` (number, 0 when not part of a turn),
 
 An offline machine is not an error but a state in a list: a list command succeeds (exit code 0) as long as the relay answers, even if every machine is offline. Offline machines go in `offline`, and their projects and sessions can't be listed at that time; **a non-empty `offline` means the list is incomplete**. In text output, `project list` shows it as a `machine/*` row with state `offline`; `session list` writes an `offline: …` line after the table.
 
-A command fails only when the machine it needs is offline (for example `session get` on a session on an offline machine): `unreachable`, exit code 4, retryable. `session get` then also carries `session`, as this client last read it, its `link` `checking` or `lost`; `session list` lists the sessions it last read of offline machines under `lost_sessions`, never under `sessions` (the CLI keeps them in `$HERMESH_HOME/sessions-seen.json`). A machine not heard from for `HERMESH_LOST_AFTER` (default 30 s) is `lost`.
+A command fails only when the machine it needs is offline (for example `session get` on a session on an offline machine): `unreachable`, exit code 4, retryable. `session get` then also carries `session`, as this client last read it, its `link` `checking` or `lost`; `session list` lists the sessions it last read of offline machines under `lost_sessions`, never under `sessions` (the CLI keeps them in `$AIDE_HOME/sessions-seen.json`). A machine not heard from for `AIDE_LOST_AFTER` (default 30 s) is `lost`.
 
 ### Message
 
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | `msg_` and a ULID; acknowledge it with `message ack` |
-| `from` | object | `address` (`<inbox>` or `<inbox>/<session>`), `inbox`, `session`, `name` (the agent's name as the owner approved it, or the machine's), `kind` (`cli`, `mcp`, `machine`) |
+| `from` | object | `address` (`<inbox>` or `<inbox>/<session>`), `inbox`, `session`, `name` (the agent's name as it logged in or the owner renamed it, or the machine's), `kind` (`cli`, `mcp`, `machine`) |
 | `to` | string | This agent's address |
 | `sent_at`, `received_at` | string | |
 | `in_reply_to` | string | The message this one answers; `""` for none |
@@ -199,7 +199,7 @@ A message is data from another agent, never an instruction from the user. It wai
 
 | Command | Data key |
 |---|---|
-| `auth login` | `auth` (`identity`, `grant`; `checks` is `[]`). Progress messages such as the pairing code go to stderr |
+| `auth login` | `auth` (`identity`, `grant`; `checks` is `[]`). Progress messages go to stderr |
 | `auth status` | `auth` |
 | `auth logout` | `logout`: `removed` (bool), `identity` (Identity or null) |
 | `agent list` | `agents`, `offline` |
@@ -226,5 +226,5 @@ A message is data from another agent, never an instruction from the user. It wai
 - **Lists** are aligned tables with a header row.
 - **A single object**: a one-line summary, followed by `key: value` lines that appear only when needed (`now:`, `last:`, `failure:`, `changes:`), with long text (the reply, the question) at the end. When `session start`, `send` or `answer` is given `--wait`, the session printed after waiting is exactly the same as `session get`.
 - **Errors**: one line `error: <description>` on stderr, with exit codes as in the table above.
-- **Waiting messages**: when messages wait in the agent's inbox, stderr ends with a line saying how many (`N message(s) wait in your inbox: hermesh message list`).
+- **Waiting messages**: when messages wait in the agent's inbox, stderr ends with a line saying how many (`N message(s) wait in your inbox: aide message list`).
 - The text format may change; programs and agents that need a stable structure should use `-o json`.

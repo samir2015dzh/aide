@@ -29,7 +29,7 @@ fn commands_in(text: &str) -> Vec<String> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_documented_commands_run() {
     let docs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/cli");
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let program = PathBuf::from(env!("CARGO_BIN_EXE_her"));
     let bin = program.parent().unwrap();
     let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());

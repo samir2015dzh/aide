@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
-// TestLinuxHerPDF (HERMESH_DOCKER=1, HERMESH_HER_PDF_LINUX=<a folder>) is Her
+// TestLinuxHerPDF (AIDE_DOCKER=1, AIDE_HER_PDF_LINUX=<a folder>) is Her
 // reading a PDF on a Linux server (docs/linux.md §4), where her is static
 // and cannot load PDFium itself. The folder holds what a release carries
 // for it: her-doc-worker, her PDF worker for Linux linked against glibc
@@ -26,12 +26,12 @@ import (
 // the owner sent her: the mock model has her open it, and what she read is
 // the PDF's own line.
 func TestLinuxHerPDF(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") != "1" {
-		t.Skip("set HERMESH_DOCKER=1")
+	if os.Getenv("AIDE_DOCKER") != "1" {
+		t.Skip("set AIDE_DOCKER=1")
 	}
-	dir := os.Getenv("HERMESH_HER_PDF_LINUX")
+	dir := os.Getenv("AIDE_HER_PDF_LINUX")
 	if dir == "" {
-		t.Skip("set HERMESH_HER_PDF_LINUX to a folder with her-doc-worker and libpdfium.so for Linux")
+		t.Skip("set AIDE_HER_PDF_LINUX to a folder with her-doc-worker and libpdfium.so for Linux")
 	}
 	var archive bytes.Buffer
 	zw := gzip.NewWriter(&archive)
@@ -49,7 +49,7 @@ func TestLinuxHerPDF(t *testing.T) {
 		t.Fatal("her-pdf archive")
 	}
 	asset := "her-pdf-linux-" + runtime.GOARCH + ".tar.gz"
-	c, id, _, sh, out := linuxHerMachine(t, "hermesh-e2e-linux-server:1", linuxServerImage, "pdf-1", map[string][]byte{asset: archive.Bytes()}, "")
+	c, id, _, sh, out := linuxHerMachine(t, "aide-e2e-linux-server:1", linuxServerImage, "pdf-1", map[string][]byte{asset: archive.Bytes()}, "")
 	if !strings.Contains(out, "› downloading "+asset) {
 		t.Fatalf("install:\n%s", out)
 	}

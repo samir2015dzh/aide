@@ -12,11 +12,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
-// HerService (proto/hermesh/her/v1/her.proto) on her: each Open stream is a
+// HerService (proto/aide/her/v1/her.proto) on her: each Open stream is a
 // connection of its own, which Calls and the console's requests may name.
 
 // Open opens a connection, sends its setup requests, then sends the
@@ -124,34 +124,6 @@ func (h *Host) Call(ctx context.Context, req *herv1.CallRequest) (*herv1.CallRes
 	return &herv1.CallResponse{Response: res}, nil
 }
 
-// AssistantMode sets how freely an assistant acts (SetHerAssistantMode):
-// on a connection of its own, the assistant's conversation is opened and
-// its permission mode set.
-func (h *Host) AssistantMode(ctx context.Context, botID, mode string) error {
-	switch mode {
-	case "manual", "accept-edits", "bypass-permissions":
-	default:
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown permission mode %q (manual, accept-edits or bypass-permissions)", mode))
-	}
-	c, err := h.dial(ctx, false)
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	params, _ := json.Marshal(map[string]any{"bot_id": botID, "history_limit": 0})
-	res, err := c.call(ctx, "bots/open", params)
-	if err := answered("bots/open", res, err); err != nil {
-		return err
-	}
-	var open struct {
-		SessionID string `json:"session_id"`
-	}
-	json.Unmarshal(res.Result, &open)
-	params, _ = json.Marshal(map[string]any{"session_id": open.SessionID, "op": map[string]string{"type": "set_permission_mode", "mode": mode}})
-	res, err = c.call(ctx, "session/op", params)
-	return answered("session/op", res, err)
-}
-
 // connectorName is a name her takes for an MCP server.
 var connectorName = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
 
@@ -253,7 +225,7 @@ func (h *Host) lost(ctx context.Context, err error) error {
 	return connect.NewError(connect.CodeUnavailable, fmt.Errorf("lost her: %w", err))
 }
 
-// answered is what a request of hermeshd's own came back with, as an error.
+// answered is what a request of aided's own came back with, as an error.
 func answered(method string, res *herv1.Response, err error) error {
 	switch {
 	case err != nil:

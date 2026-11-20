@@ -1,7 +1,7 @@
-import type { BrowserStatus, ConfigEdit, ExtensionProblem, ExtensionStatus } from "@hermesh/her-protocol";
+import type { BrowserStatus, ConfigEdit, ExtensionProblem, ExtensionStatus } from "@aide/her-protocol";
 
 // The owner's own Chrome in the console's Browser section, without words: where it stands, from browser/status and `[browser]`.
-// On the Mac or Linux computer Her runs on, hermeshd registers her as the Hermesh extension's host while Her is on;
+// On the Mac or Linux computer Her runs on, aided registers her as the Aide extension's host while Her is on;
 // the extension connects once Chrome has it, and Her uses it once `browser.extension` is on.
 
 /** `[browser]` as this section reads it (config/read): whether Her uses the owner's Chrome, null when not set. */
@@ -46,11 +46,11 @@ export function herSystem(status: BrowserStatus | null): HerSystem {
   return status?.os === "linux" ? "linux" : "macos";
 }
 
-/** The folder to load the extension from until it is in the store: hermeshd keeps the extension
+/** The folder to load the extension from until it is in the store: aided keeps the extension
  * there (internal/herhost/extension.go, ExtensionFolder). */
 export const extensionFolder: Record<HerSystem, string> = {
-  macos: "~/Library/Application Support/Hermesh/Chrome Extension",
-  linux: "~/.local/share/hermesh/chrome-extension",
+  macos: "~/Library/Application Support/Aide/Chrome Extension",
+  linux: "~/.local/share/aide/chrome-extension",
 };
 
 /** `[browser]` as the page's first rows read it: browser control turned on or off in so many words

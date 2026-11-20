@@ -16,14 +16,14 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Messages (docs/agent-messages.md): this client's inbox at the post office.
@@ -268,7 +268,7 @@ func (a *app) machineName(id string) string {
 }
 
 // printMessage shows a message to a model the way every consumer does
-// (docs/agent-messages.md §6.4): in a tag Hermesh writes, its text escaped
+// (docs/agent-messages.md §6.4): in a tag Aide writes, its text escaped
 // so it can't fake another message.
 func printMessage(w io.Writer, v messageJSON) {
 	who := v.From.Name
@@ -279,7 +279,7 @@ func printMessage(w io.Writer, v messageJSON) {
 	if v.SentAt != nil {
 		sent = *v.SentAt
 	}
-	fmt.Fprintf(w, "<hermesh-message id=%q from=%q from-address=%q sent=%q", v.ID, who, v.From.Address, sent)
+	fmt.Fprintf(w, "<aide-message id=%q from=%q from-address=%q sent=%q", v.ID, who, v.From.Address, sent)
 	if v.InReplyTo != "" {
 		fmt.Fprintf(w, " in-reply-to=%q", v.InReplyTo)
 	}
@@ -288,11 +288,11 @@ func printMessage(w io.Writer, v messageJSON) {
 		fmt.Fprintln(w, escapeMessage("Subject: "+v.Subject))
 	}
 	fmt.Fprintln(w, escapeMessage(v.Text))
-	fmt.Fprintln(w, "</hermesh-message>")
+	fmt.Fprintln(w, "</aide-message>")
 }
 
 func escapeMessage(s string) string {
-	return strings.ReplaceAll(s, "</hermesh-message", `<\/hermesh-message`)
+	return strings.ReplaceAll(s, "</aide-message", `<\/aide-message`)
 }
 
 func agentLabel(name string) string {
@@ -1106,7 +1106,7 @@ func (a *app) take(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 
 // messageWakeCmd asks for a one-time link with which the owner sets up the
 // caller's doorbell (docs/agent-names.md §7.2): the webhook's key goes from
-// the owner to Hermesh, never through the agent.
+// the owner to Aide, never through the agent.
 func (a *app) messageWakeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "wake",
@@ -1127,9 +1127,9 @@ func (a *app) messageWakeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// A console page opens signed in; a hermesh:// link in the app (pkg/mcpgw WakeTell).
+			// A console page opens signed in; an aide:// link in the app (pkg/mcpgw WakeTell).
 			where := "signed in to Aide"
-			if strings.HasPrefix(res.Link, "hermesh://") {
+			if strings.HasPrefix(res.Link, "aide://") {
 				where = "on the computer with the Aide app (Mac or Windows)"
 			}
 			tell := fmt.Sprintf("Open %s %s, and paste the webhook's URL and key there (the link works once, for 30 minutes).", res.Link, where)

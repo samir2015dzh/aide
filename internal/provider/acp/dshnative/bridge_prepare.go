@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	dshbridge "github.com/hermeshai/hermesh/apps/dsh-bridge"
+	dshbridge "github.com/samir2015dzh/aide/apps/dsh-bridge"
 )
 
 // Installing the bridge plugin is DSH's own job: its plugin manager (DSH
 // Desktop › Plugins) checks the plugin against the running DSH, restores
 // the profile when an install fails, keeps a plugin that won't load from
-// taking the Host down, and turns it off or removes it. Hermesh prepares
+// taking the Host down, and turns it off or removes it. Aide prepares
 // for it: it backs up DSH's configuration, then writes the plugin's
 // package where it stays (docs/dsh-takeover.md §4).
 
@@ -91,7 +91,7 @@ func PrepareBridge(home string, now time.Time) (*Prepared, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.Package = filepath.Join(dir, "hermesh-dsh-bridge-"+p.Version+".tgz")
+	p.Package = filepath.Join(dir, "aide-dsh-bridge-"+p.Version+".tgz")
 	tmp := p.Package + ".tmp"
 	if err := os.WriteFile(tmp, tgz, 0o644); err != nil {
 		return nil, err

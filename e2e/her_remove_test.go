@@ -5,31 +5,29 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
-// Removing a machine that runs Her, and `hermeshd uninstall` and `erase`
-// where Her was on (docs/her-server.md §5.6). On the hermeshd that
+// Removing a machine that runs Her, and `aided uninstall` and `erase`
+// where Her was on (docs/her-server.md §5.6). On the aided that
 // newHerEnvironment starts on this computer: her home is looked at here.
 
 // herServer is env's machine as its own user reaches it on this computer:
-// hermeshd, its data directory, and its environment for the commands run
+// aided, its data directory, and its environment for the commands run
 // there, her home among it.
 func herServer(t *testing.T, env *herEnvironment) (daemon, data string, cli []string) {
 	t.Helper()
 	her, _ := herBinaries(t)
-	return filepath.Join(env.w.bin, "hermeshd"+exe), filepath.Join(env.w.tmp, "her-server"),
-		[]string{"HERMESH_HER_BIN=" + her, "HER_HOME=" + env.home, "HER_CREDENTIAL_STORE=file"}
+	return filepath.Join(env.w.bin, "aided"+exe), filepath.Join(env.w.tmp, "her-server"),
+		[]string{"AIDE_HER_BIN=" + her, "HER_HOME=" + env.home, "HER_CREDENTIAL_STORE=file"}
 }
 
 func skipHerInDocker(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") == "1" {
+	if os.Getenv("AIDE_DOCKER") == "1" {
 		t.Skip("her's home is looked at on this computer")
 	}
 }
@@ -56,7 +54,7 @@ func TestHerRemoveMachineErasesHerData(t *testing.T) {
 
 // TestHerRemovedMachineKeepsHerData: removed without erasing her data, the
 // machine, still running and now refused by the server, turns Her off by
-// itself, as `hermeshd status` there shows, her home staying. `hermeshd
+// itself, as `aided status` there shows, her home staying. `aided
 // erase --yes` then keeps it too, and says where it is.
 func TestHerRemovedMachineKeepsHerData(t *testing.T) {
 	skipHerInDocker(t)
@@ -94,7 +92,7 @@ func TestHerRemovedMachineKeepsHerData(t *testing.T) {
 	}
 }
 
-// TestHerUninstallErasesHerData: `hermeshd uninstall --yes --erase-her` on
+// TestHerUninstallErasesHerData: `aided uninstall --yes --erase-her` on
 // a server where Her runs, stopped first: it says Her's data goes, and her
 // home goes with the machine, which its owner's devices stop listing.
 func TestHerUninstallErasesHerData(t *testing.T) {
@@ -104,19 +102,19 @@ func TestHerUninstallErasesHerData(t *testing.T) {
 	}
 	env := newHerEnvironment(t)
 	daemon, data, cli := herServer(t, env)
-	// A copy, in a home of the test's: uninstall removes the hermeshd it
+	// A copy, in a home of the test's: uninstall removes the aided it
 	// runs as, and the CLI's settings in that home.
 	home := t.TempDir()
 	b, err := os.ReadFile(daemon)
 	if err != nil {
 		t.Fatal(err)
 	}
-	daemon = filepath.Join(home, ".local", "bin", "hermeshd"+exe)
+	daemon = filepath.Join(home, ".local", "bin", "aided"+exe)
 	os.MkdirAll(filepath.Dir(daemon), 0o755)
 	if err := os.WriteFile(daemon, b, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cli = append(cli, "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "HERMESH_HOME="+filepath.Join(home, ".config", "hermesh"))
+	cli = append(cli, "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "AIDE_HOME="+filepath.Join(home, ".config", "aide"))
 
 	takeOffline(t, env) // as a person stops `aided run`
 	r := run(t, cli, time.Minute, daemon, "uninstall", "--yes", "--erase-her", "--data-dir", data)
@@ -132,10 +130,9 @@ func TestHerUninstallErasesHerData(t *testing.T) {
 	eventually(t, 30*time.Second, "the machine gone from the owner's machines", func() bool { return listedMachine(t, env.c, env.machine) == nil })
 }
 
-// TestHerRemoveDeviceErasesHerData: removing a trusted device whose own
-// machine runs Her, with "Also erase Her's data" (RemoveDevice erase_her):
-// one approval signs both, her home there is gone, and the device with its
-// machine.
+// TestHerRemoveDeviceErasesHerData: signing out a device whose own machine
+// runs Her, with "Also erase Her's data" (RemoveDevice erase_her): her home
+// there is gone, and the device with its machine.
 func TestHerRemoveDeviceErasesHerData(t *testing.T) {
 	skipHerInDocker(t)
 	her, mockBin := herBinaries(t)
@@ -145,29 +142,15 @@ func TestHerRemoveDeviceErasesHerData(t *testing.T) {
 	t.Cleanup(w.owner.stop)
 	ctx := context.Background()
 
-	// mac2: a second trusted device, running Her on its own machine.
+	// mac2: a second device of the owner's, running Her on its own machine.
 	home := herHome(t, mock.models)
 	_, sock := w.otherMac("mac2", herEnv(her, console, home, mock.base))
-	root2, _ := identity.GenerateKey()
-	app2 := newTestApp(t, sock, root2)
+	app2 := newTestApp(t, sock)
 	st, _ := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
-	join, err := app2.client.RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: st.RelayUrl, OwnerId: st.OwnerId,
-		RootPublicKey: rootPub(root2), RootLabel: "mac2", RootPlatform: "macos"})
-	if err != nil {
+	if _, err := app2.client.LogIn(ctx, &localv1.LogInRequest{RelayUrl: st.RelayUrl, Account: testAccount, Password: testPassword, Label: "mac2", Platform: "macos"}); err != nil {
 		t.Fatal(err)
 	}
-	var approval *localv1.ApproveDevicePairingResponse
-	eventually(t, 15*time.Second, "mac2's request on the Mac", func() bool {
-		approval, err = w.app.client.ApproveDevicePairing(ctx, &localv1.ApproveDevicePairingRequest{Code: join.Code})
-		return err == nil
-	})
-	eventually(t, time.Minute, "the approval reaches mac2", func() bool {
-		r, err := app2.client.WaitJoin(ctx, &localv1.WaitJoinRequest{Code: join.Code})
-		return err == nil && r.Done
-	})
-	if _, err := app2.client.ConfirmJoin(ctx, &localv1.ConfirmJoinRequest{Code: join.Code, Accept: true, MatchCode: approval.MatchCode}); err != nil {
-		t.Fatal(err)
-	}
+	st2, _ := app2.client.GetStatus(ctx, &localv1.GetStatusRequest{})
 	mac2, err := app2.client.SetLocalMachine(ctx, &localv1.SetLocalMachineRequest{Enabled: true, MachineName: "mac2"})
 	if err != nil {
 		t.Fatal(err)
@@ -181,12 +164,8 @@ func TestHerRemoveDeviceErasesHerData(t *testing.T) {
 		t.Fatalf("her assistants on mac2: %v", err)
 	}
 
-	before := len(w.app.signedTypes())
-	if _, err := w.app.client.RemoveDevice(ctx, &localv1.RemoveDeviceRequest{KeyId: identity.KeyID(root2.Public()), EraseHer: true}); err != nil {
+	if _, err := w.app.client.RemoveDevice(ctx, &localv1.RemoveDeviceRequest{KeyId: st2.DeviceKeyId, EraseHer: true}); err != nil {
 		t.Fatal(err)
-	}
-	if got := w.app.signedTypes()[before:]; !slices.Contains(got, "hermesh.identity.v1.AdminCommand") || !slices.Contains(got, "hermesh.identity.v1.RootCert") {
-		t.Fatalf("removing signed %v", got)
 	}
 	if _, err := os.Stat(home); !os.IsNotExist(err) {
 		t.Fatalf("her home on the removed device's machine: %v", err)

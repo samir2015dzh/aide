@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"io/fs"
 	"net"
 	"os"
@@ -14,19 +15,34 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
-// The Hermesh bridge plugin in DSH Desktop (apps/dsh-bridge,
+// The Aide bridge plugin in DSH Desktop (apps/dsh-bridge,
 // docs/dsh-takeover.md): it hands the owner's messages to the DSH Host that
-// owns a session, in-process, so Hermesh never writes a DSH session itself.
+// owns a session, in-process, so Aide never writes a DSH session itself.
 // It publishes where it listens, and a token, in BridgeDir(home)/bridge.json.
 
 // BridgeProtocol is the protocol version this client speaks.
 const BridgeProtocol = 1
 
-// BridgeDir is where the bridge of the DSH home meets hermeshd.
-func BridgeDir(home string) string { return filepath.Join(home, "hermesh-bridge") }
+// BridgeDir is where the bridge of the DSH home meets aided.
+func BridgeDir(home string) string { return filepath.Join(home, "aide-bridge") }
+
+// rendezvousFile is the bridge's bridge.json: the plugin's, or while only
+// that one exists, the one of the plugin installed before the rename
+// (internal/legacy), which runs until DSH Desktop has the new one.
+func rendezvousFile(home string) string {
+	f := filepath.Join(BridgeDir(home), "bridge.json")
+	if _, err := os.Stat(f); err != nil {
+		if old := filepath.Join(home, legacy.DSHBridgeDir, "bridge.json"); fileExists(old) {
+			return old
+		}
+	}
+	return f
+}
+
+func fileExists(path string) bool { _, err := os.Stat(path); return err == nil }
 
 var (
 	// ErrBridgeNotInstalled: no bridge has ever run in this DSH home.
@@ -79,7 +95,7 @@ type rendezvous struct {
 // ctx (give it a deadline: a bridge that does not answer is reported as not
 // running). The bridge must have a session controller to be of use.
 func DialBridge(ctx context.Context, home string) (*Bridge, error) {
-	b, err := os.ReadFile(filepath.Join(BridgeDir(home), "bridge.json"))
+	b, err := os.ReadFile(rendezvousFile(home))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, ErrBridgeNotInstalled
 	}

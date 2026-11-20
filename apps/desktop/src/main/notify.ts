@@ -1,8 +1,8 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { applyWatch, emptyWorld, filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshots, pairingNotice, withKnownState, type HerSnapshot, type NoticeSnapshot } from "@hermesh/core";
-import { LocalService, type Client, type GetStatusResponse, type Machine, type PairingDetails } from "@hermesh/proto/local";
-import type { Session } from "@hermesh/proto/session";
+import { applyWatch, emptyWorld, filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshots, withKnownState, type HerSnapshot, type NoticeSnapshot } from "@aide/core";
+import { LocalService, type Client, type GetStatusResponse, type Machine } from "@aide/proto/local";
+import type { Session } from "@aide/proto/session";
 import { app, nativeTheme, Notification } from "electron";
 import fs from "node:fs";
 import path from "node:path";
@@ -13,19 +13,18 @@ import { socketPath } from "./paths";
 import { mainWindow } from "./windows";
 
 // What reaches the owner while no window may be open: the main process
-// follows hermeshd itself (LocalService.Watch: everything once, then each
+// follows aided itself (LocalService.Watch: everything once, then each
 // change, no polling), posts notifications for what changed, and keeps what
 // it saw for the menu bar.
 
 export type World = {
-  /** null: hermeshd cannot be reached. */
+  /** null: aided cannot be reached. */
   status: GetStatusResponse | null;
   sessions: Session[];
   clients: Client[];
   machines: Machine[];
-  pairings: PairingDetails[];
 };
-export const world: World = { status: null, sessions: [], clients: [], machines: [], pairings: [] };
+export const world: World = { status: null, sessions: [], clients: [], machines: [] };
 export const worldListeners = new Set<() => void>();
 const changed = () => worldListeners.forEach((f) => f());
 
@@ -131,32 +130,16 @@ function noticeHer() {
   herSeen = herSnapshots(world.machines);
 }
 
-// Every pending request is notified (it cannot be switched off), and
-// withdrawn once it is gone: answered here or elsewhere, or expired.
-const pairingId = (code: string) => `pairing-${code}`;
-let notifiedPairings = new Set<string>();
-
-function noticePairings() {
-  const now = new Set(world.pairings.map((p) => p.code));
-  for (const p of world.pairings) {
-    if (notifiedPairings.has(p.code)) continue;
-    const n = pairingNotice(p);
-    post(pairingId(p.code), n.title, n.body, `pairing:${p.code}`);
-  }
-  for (const code of notifiedPairings) if (!now.has(code)) withdraw(pairingId(code));
-  notifiedPairings = now;
-}
-
-// --- Following hermeshd ---
+// --- Following aided ---
 
 export function watch() {
   (async () => {
     for (;;) {
       let w = emptyWorld;
-      // Where hermeshd is now: a pipe's name changes each time it starts (Windows).
+      // Where aided is now: a pipe's name changes each time it starts (Windows).
       const local = createClient(
         LocalService,
-        createConnectTransport({ baseUrl: "http://hermeshd", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }),
+        createConnectTransport({ baseUrl: "http://aided", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }),
       );
       try {
         for await (const m of local.watch({})) {
@@ -166,16 +149,14 @@ export function watch() {
           world.clients = w.clients;
           world.machines = w.machines;
           world.sessions = withKnownState(w.sessions, w.machines);
-          world.pairings = world.status?.initialized ? w.pairings : [];
           if (w.sessions !== before.sessions || w.machines !== before.machines) noticeSessions();
           if (w.machines !== before.machines) noticeHer();
-          if (w.pairings !== before.pairings) noticePairings();
           if (w !== before) changed();
         }
       } catch (e) {
-        console.warn("hermeshd watch:", e);
+        console.warn("aided watch:", e);
       }
-      // hermeshd restarted, or this watch fell behind: watched again.
+      // aided restarted, or this watch fell behind: watched again.
       if (world.status !== null) {
         world.status = null;
         changed();

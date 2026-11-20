@@ -54,11 +54,11 @@ mod tests {
 
     #[test]
     fn the_same_service_under_other_spellings() {
-        let one = identity(&url("https://mcp.hermesh.io/mcp")).unwrap();
-        assert_eq!(identity(&url("HTTPS://MCP.Hermesh.io:443/mcp/")).unwrap(), one);
-        assert_eq!(identity(&url("https://mcp.hermesh.io/mcp#x")).unwrap(), one);
-        assert_ne!(identity(&url("https://mcp.hermesh.io/mcp?team=b")).unwrap(), one);
-        assert_ne!(identity(&url("https://mcp.hermesh.io/sse")).unwrap(), one);
+        let one = identity(&url("https://mcp.aide.io/mcp")).unwrap();
+        assert_eq!(identity(&url("HTTPS://MCP.Aide.io:443/mcp/")).unwrap(), one);
+        assert_eq!(identity(&url("https://mcp.aide.io/mcp#x")).unwrap(), one);
+        assert_ne!(identity(&url("https://mcp.aide.io/mcp?team=b")).unwrap(), one);
+        assert_ne!(identity(&url("https://mcp.aide.io/sse")).unwrap(), one);
         let npx = |args: &[&str]| McpServerConfig { name: "b".into(), command: Some("npx".into()), args: args.iter().map(|s| s.to_string()).collect(), ..Default::default() };
         assert_eq!(identity(&npx(&["-y", "@acme/server"])), identity(&npx(&["@acme/server"])));
         assert_ne!(identity(&npx(&["@acme/server"])), identity(&npx(&["@acme/other"])));

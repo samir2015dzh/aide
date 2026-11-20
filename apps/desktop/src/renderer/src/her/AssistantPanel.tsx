@@ -1,22 +1,20 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { routineDot, type SessionView } from "@hermesh/her-client";
-import type { AvatarHue, AvatarInput, BotSummary, McpServerView, ModelsListResult, PermissionMode } from "@hermesh/her-protocol";
+import { routineDot, type SessionView } from "@aide/her-client";
+import type { AvatarHue, AvatarInput, BotSummary, McpServerView, ModelsListResult } from "@aide/her-protocol";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { herAnswers } from "../skew";
 import { useStore } from "../store";
-import type { SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import { BotAvatar } from "./Avatar";
 import { useHer } from "./context";
-import { modelTitle, permissionDesc, permissionTitle, thinkingTitle } from "./format";
+import { modelTitle, thinkingTitle } from "./format";
 import { GrantLine } from "./GrantLine";
 import { isEmpty, MemoryPage, useMemory } from "./Memory";
 import { MenuButton, MenuItem } from "./menus";
 import type { FileScope } from "./Messages";
 import { AvatarChoices, NAME_MAX, pickPicture } from "./sheets";
-
-const modes: PermissionMode[] = ["manual", "accept-edits", "bypass-permissions"];
 
 /** The three tabs of Her's page. */
 export type HerTab = "work" | "abilities" | "settings";
@@ -40,7 +38,7 @@ function rememberedTab(): HerTab {
  * Her's page, beside the conversation (docs/her-panel-demo.html): her avatar and name, changed where they are, and
  * three tabs, one kind of thing in each. Work: the files she sent and her scheduled tasks (Progress is a button of her top).
  * Abilities: what she remembers, her skills, the apps and services she is connected to, web search and the browsers.
- * Settings: her model, what she may do without asking (full access is signed, docs/her-server.md §8), whether she
+ * Settings: her model (she runs every action without asking, docs/her-server.md §8), whether she
  * alerts, her environment, and clearing her conversation. Each card is only a way in, with at most a word of how it
  * stands; what it holds is on the page it opens here, beside the conversation, with a way back.
  */
@@ -102,7 +100,6 @@ export function AssistantPanel({ bot, view, op, files, onClose }: { bot: BotSumm
                       <Icon name="chevR" />
                     </span>
                   </button>
-                  {view && <PermissionRow bot={bot} mode={view.info.permission_mode} />}
                   <div className="frow">
                     <span className="fl">{t("panel.muted")}</span>
                     <div className="fv">
@@ -116,7 +113,7 @@ export function AssistantPanel({ bot, view, op, files, onClose }: { bot: BotSumm
                     </div>
                   </div>
                 </div>
-                <p className="set-note">{view ? t("panel.permissionNote", { desc: permissionDesc(view.info.permission_mode) }) : t("panel.mutedNote")}</p>
+                <p className="set-note">{view ? t("panel.actsNote") : t("panel.mutedNote")}</p>
                 <GrantLine m={her.machine} />
               </section>
               <section className="fgroup">
@@ -425,26 +422,3 @@ function NameField({ initial, className, end }: { initial: string; className: st
   );
 }
 
-/**
- * What this assistant may do without asking, as a row of her Settings tab. Asking more is set at once; full access
- * asks first (AccessSheet). What it starts follows it, and the note under the group says so.
- */
-function PermissionRow({ bot, mode }: { bot: BotSummary; mode: PermissionMode }) {
-  const { t } = useTranslation("her");
-  const her = useHer();
-  const choose = (m: PermissionMode) => {
-    if (m === mode) return;
-    if (m === "bypass-permissions") return her.setSheet({ kind: "access", bot });
-    void her.run(() => local.setHerAssistantMode({ machineId: her.machine.machineId, botId: bot.id, permissionMode: m }));
-  };
-  return (
-    <div className="frow">
-      <span className="fl">{t("panel.permissionMode")}</span>
-      <div className="fv">
-        <MenuButton className="mb" align="right" below title={t("panel.permissionMode")} label={<><span className="lbl strong">{permissionTitle(mode)}</span><Icon name="chevD" /></>}>
-          {(close) => modes.map((m) => <MenuItem key={m} checked={m === mode} label={permissionTitle(m)} desc={permissionDesc(m)} onClick={() => (close(), choose(m))} />)}
-        </MenuButton>
-      </div>
-    </div>
-  );
-}

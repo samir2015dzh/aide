@@ -84,29 +84,7 @@ pub struct McpServerConfig {
     /// The first request always waits for this server, and a task fails without it.
     #[serde(default, skip_serializing_if = "is_false")]
     pub required: bool,
-    /// `never`: its tools run without asking in every permission mode. Taken only from the
-    /// user's own configuration file.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub approval: Option<McpApproval>,
-    /// A project defines it, so what it says about its own tools is not taken at its word. Worked
-    /// out when the configuration is read; no file sets it.
-    #[serde(skip)]
-    pub project_defined: bool,
-}
-
-/// How much a server's tools are trusted to run unasked.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum McpApproval {
-    Never,
-}
-
-impl McpServerConfig {
-    /// Whether a tool of this server runs without asking in the modes that ask. `read_only` is
-    /// the tool's `readOnlyHint`, which is the server's own claim.
-    pub fn runs_unasked(&self, read_only: bool) -> bool {
-        self.approval == Some(McpApproval::Never) || (read_only && !self.project_defined)
-    }
+    // What a server says of its own tools changes nothing: her asks nobody before a call.
 }
 
 fn is_false(value: &bool) -> bool {

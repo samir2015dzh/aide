@@ -13,12 +13,12 @@ keeps a log of every call, refused ones too, which the owner sees.**
 - `Grant.machine_exec` (identity.v1) is a scope of its own: **off** for every
   grant until the owner turns on **Run commands** for that agent in the app
   (Settings → Access → the agent; on the iPhone, Grants → the agent). It is
-  signed into the grant like the rest of its scope (one Touch ID, Windows
-  Hello or Face ID, `UpdateClient`), so the signer shows it ("Run commands: may also run shell commands directly on these
-  machines"); turning it off is the same, and takes effect as soon as the
+  signed into the grant like the rest of its scope (`UpdateClient`; the
+  server signs the new grant version for the device, [accounts.md](accounts.md) §1);
+  turning it off is the same, and takes effect as soon as the
   machines see the new grant version.
 - It covers the machines the grant covers. Projects and coding agents don't
-  limit it: a command runs as the user hermeshd runs as, anywhere that user
+  limit it: a command runs as the user aided runs as, anywhere that user
   may go.
 - Sessions don't need it, and having it changes nothing about sessions.
   Her's grant never has it.
@@ -57,7 +57,7 @@ reason). The output is kept nowhere. The owner's devices read it with
 
 ## 4. For agents
 
-- CLI: `hermesh machine exec <machine> [--workdir DIR] [--timeout 60s] -- <command…>`
+- CLI: `aide machine exec <machine> [--workdir DIR] [--timeout 60s] -- <command…>`
   (or `--command "…"`). Exit code 0 when the command exited 0, 5
   (`command_failed`) otherwise, 6 (`timeout`) when it was ended, 3 (`denied`)
   when refused. With `-o json`, the `exec` object ([cli-output.md](cli-output.md) §5).

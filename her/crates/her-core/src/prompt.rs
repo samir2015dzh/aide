@@ -317,7 +317,7 @@ mod tests {
     fn base_prompt_says_not_to_work_around_refusals() {
         let text = with_shared(BASE_PROMPT).split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(text.contains(
-            "When a tool call is denied or not approved, do not retry it or get the same effect another way, \
+            "When a tool call is denied, do not retry it or get the same effect another way, \
              such as a different command, a script or another tool."
         ));
     }

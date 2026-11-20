@@ -1,14 +1,8 @@
 // What the extension's page says for a state of the worker: one line, at most one sentence more,
 // and at most one thing to do (your-browser-design §3). Names are message names of _locales.
 
-/** A session the user has to do something for. */
-export const isWaiting = (session) => !!session.handoff || session.state === "awaiting_approval";
-
 function connected(state) {
   if (!state.inUse) return { dot: "", title: "statusStandby", hint: "hintStandby", action: { label: "useThis", do: "use_this" } };
-  const waiting = state.sessions.filter(isWaiting).length;
-  if (waiting === 1) return { dot: "warn", title: "waitingOne" };
-  if (waiting > 1) return { dot: "warn", title: "waiting", count: waiting };
   return { dot: "on", title: "statusConnected" };
 }
 
@@ -37,13 +31,13 @@ export function headline(state) {
   }
 }
 
-/** The conversations to list: only a working connection can act on them, and who waits comes first. */
+/** The conversations to list: only a working connection can act on them. */
 export function listed(state) {
   if (state?.host !== "connected") return [];
-  return [...state.sessions.filter(isWaiting), ...state.sessions.filter((s) => !isWaiting(s))];
+  return state.sessions;
 }
 
-/** Handing over a tab is the quiet thing to offer: not while anything else asks for the user. */
+/** Handing over a tab is what to offer, on a working connection in use. */
 export function offersTab(state) {
-  return state?.host === "connected" && state.inUse && state.offerable && !state.sessions.some(isWaiting);
+  return state?.host === "connected" && state.inUse && state.offerable;
 }

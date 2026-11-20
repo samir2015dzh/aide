@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // The owner's own Chrome (her's `her browser extension`, in
 // her/crates/her-cli/src/cmd_browser.rs): while Her is on, the Chromium
-// browsers installed here start this her as the Hermesh extension's native
+// browsers installed here start this her as the Aide extension's native
 // host, for this her's home and socket. Registered again at every Start, so
 // the browsers follow her when an update moved it; taken back by Off.
 
@@ -41,18 +41,18 @@ func (h *Host) extension(ctx context.Context, args ...string) {
 }
 
 // ExtensionFolder is where the console's guide has the owner load the
-// Hermesh extension from (her/apps/console/src/yours/YourBrowser.tsx), kept
+// Aide extension from (her/apps/console/src/yours/YourBrowser.tsx), kept
 // the same at every Start, so an update reaches Chrome once it reloads the
 // extension. The extension's manifest carries its key, so its ID doesn't
 // depend on the folder.
 func ExtensionFolder(home string) string {
 	switch runtime.GOOS {
 	case "darwin":
-		return filepath.Join(home, "Library", "Application Support", "Hermesh", "Chrome Extension")
+		return filepath.Join(home, "Library", "Application Support", "Aide", "Chrome Extension")
 	case "windows":
-		return filepath.Join(home, "AppData", "Local", "Hermesh", "Chrome Extension")
+		return filepath.Join(home, "AppData", "Local", "Aide", "Chrome Extension")
 	}
-	return filepath.Join(home, ".local", "share", "hermesh", "chrome-extension")
+	return filepath.Join(home, ".local", "share", "aide", "chrome-extension")
 }
 
 // registerExtension has the browsers here start her as the extension's

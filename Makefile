@@ -19,10 +19,10 @@ test:
 test-app:
 	pnpm install --frozen-lockfile
 	pnpm -r typecheck
-	pnpm --filter @hermesh/core test
-	pnpm --filter @hermesh/her-protocol test
-	pnpm --filter @hermesh/her-client test
-	pnpm --filter @hermesh/desktop test
+	pnpm --filter @aide/core test
+	pnpm --filter @aide/her-protocol test
+	pnpm --filter @aide/her-client test
+	pnpm --filter @aide/desktop test
 
 # End-to-end with real binaries and scripted agents.
 e2e:
@@ -30,12 +30,12 @@ e2e:
 
 # End-to-end with this machine's real Claude Code and Codex (costs tokens).
 e2e-real:
-	HERMESH_REAL_CLI=1 go test ./e2e/ ./internal/provider/providertest/ -count=1 -v -timeout 30m
+	AIDE_REAL_CLI=1 go test ./e2e/ ./internal/provider/providertest/ -count=1 -v -timeout 30m
 
 # Real Codex under injected faults: killed processes, relay restart,
 # provider outage, missing login, concurrency, agent git rewrites.
 e2e-chaos:
-	HERMESH_CHAOS=1 go test ./e2e/ -run TestChaos -count=1 -v -timeout 90m
+	AIDE_CHAOS=1 go test ./e2e/ -run TestChaos -count=1 -v -timeout 90m
 
 build:
 	mkdir -p bin

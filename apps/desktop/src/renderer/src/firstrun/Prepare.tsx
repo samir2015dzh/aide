@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import { codingAgentIds } from "@hermesh/core";
-import { AgentLogo, Mark } from "@hermesh/ui";
+import { codingAgentIds } from "@aide/core";
+import { AgentLogo, Mark } from "@aide/ui";
 import { AgentList, AgentPage, projectsFor, ready, sortAgents } from "../AgentList";
 import { useCheckAgents } from "../agents";
 import { Icon } from "../icons";
@@ -9,7 +9,7 @@ import { useStore } from "../store";
 import { Frame, StepIcon } from "./Frame";
 import { setProgress, useProgress } from "./progress";
 
-// "Check and Manage Available Agents": every coding agent Hermesh supports, what this Mac
+// "Check and Manage Available Agents": every coding agent Aide supports, what this Mac
 // has of each (version, logged in), each installed one opening its page: its
 // default model and the projects it may work in (AgentList and AgentPage, as
 // settings shows a machine's too). Nothing there must be set to go on. Opening the
@@ -73,7 +73,7 @@ export function Prepare() {
   );
 }
 
-/** Looking for the agents: the mark at work, and every agent Hermesh supports lit in turn. */
+/** Looking for the agents: the mark at work, and every agent Aide supports lit in turn. */
 function Searching() {
   const { t } = useTranslation("firstrun");
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { BotMemoryPage, BotMemoryResult, BotSummary } from "@hermesh/her-protocol";
+import type { BotMemoryPage, BotMemoryResult, BotSummary } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { errorText, useStore } from "../store";
@@ -18,7 +18,7 @@ import { FilePreview, previews } from "./preview/FilePreview";
  * The memory as bots/memory gives it, read again whenever the assistant's last message changes, when
  * `reload` is called (after it was cleared), and when the machine's methods or her connection change
  * (her restarted, updated); null until then.
- * `older`: the machine's Hermesh is older than this app and has no memory to show (docs/version-skew.md
+ * `older`: the machine's Aide is older than this app and has no memory to show (docs/version-skew.md
  * §6.2), as it says or as its answer showed; once it is updated, the memory is read by itself.
  */
 export function useMemory(bot: BotSummary): { memory: BotMemoryResult | null; error: string | null; older: boolean; reload: () => void } {

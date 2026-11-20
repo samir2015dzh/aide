@@ -12,32 +12,18 @@ import (
 	"sync"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/internal/herhost"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/internal/herhost"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
-
-// maxSessions is how many of her sessions the link remembers.
-const maxSessions = 500
 
 // TakesMessages is how Her's inbox says it takes messages: the news of her
 // own sessions, and nothing from agents (docs/her-mesh.md §6.6). Senders
 // read it from her registration and don't write to her.
 const TakesMessages = "her"
-
-// session is what the link keeps of a session Her started, to tell the
-// owner what a later write to it is about.
-type session struct {
-	// Project is the address she started it with (a GitHub repository's:
-	// startArgs.target), which the owner's "don't ask again" names.
-	Project string    `json:"project"`
-	Title   string    `json:"title"`
-	Agent   string    `json:"agent"`
-	At      time.Time `json:"at"`
-}
 
 // state is what the link keeps on disk.
 type state struct {
@@ -45,8 +31,7 @@ type state struct {
 	// messages.
 	Registered string `json:"registered,omitempty"`
 	// Names are the names her assistants run commands as, by name: their ids.
-	Names    map[string]string  `json:"names,omitempty"`
-	Sessions map[string]session `json:"sessions,omitempty"`
+	Names map[string]string `json:"names,omitempty"`
 }
 
 // Link is a machine's HerLink.
@@ -61,14 +46,11 @@ type Link struct {
 
 // New is machine.Config.NewHerLink.
 func New(cfg machine.HerLinkConfig) machine.HerLink {
-	l := &Link{cfg: cfg, cmds: commands(), st: state{Names: map[string]string{}, Sessions: map[string]session{}}}
+	l := &Link{cfg: cfg, cmds: commands(), st: state{Names: map[string]string{}}}
 	if b, err := os.ReadFile(l.path()); err == nil {
 		json.Unmarshal(b, &l.st)
 		if l.st.Names == nil {
 			l.st.Names = map[string]string{}
-		}
-		if l.st.Sessions == nil {
-			l.st.Sessions = map[string]session{}
 		}
 	}
 	return l
@@ -173,7 +155,7 @@ func (l *Link) arguments(t tool, bot, callID string, raw json.RawMessage) ([]str
 		if p, _ := values["prompt"].(string); strings.TrimSpace(p) == "" {
 			return nil, fmt.Errorf("prompt is required")
 		}
-		// The owner approves a repository's session on the computer named.
+		// A repository's session is cloned on the computer named.
 		if r, _ := values["repo"].(string); r != "" {
 			if m, _ := values["machine"].(string); m == "" {
 				return nil, fmt.Errorf("machine is required with repo: the computer to clone it on, by its name in project_list")
@@ -214,9 +196,6 @@ func (l *Link) Call(ctx context.Context, bot, callID, name string, raw json.RawM
 		return failure("revoked", "Her has no access to the user's computers now"), nil, true
 	}
 	doc, code := cli.Exec(ctx, opts, args)
-	if code == 0 && t.name == "session_start" {
-		l.remember(raw, doc)
-	}
 	if code != 0 && errorKind(doc) == "revoked" {
 		l.cfg.Revoked()
 	}
@@ -266,124 +245,6 @@ func errorKind(doc []byte) string {
 	}
 	json.Unmarshal(doc, &d)
 	return d.Error.Kind
-}
-
-// remember keeps the session a session_start made.
-func (l *Link) remember(raw json.RawMessage, doc []byte) {
-	var args startArgs
-	var d struct {
-		Session struct {
-			ID    string `json:"session_id"`
-			Title string `json:"title"`
-			Agent string `json:"agent"`
-		} `json:"session"`
-	}
-	json.Unmarshal(raw, &args)
-	if json.Unmarshal(doc, &d) != nil || d.Session.ID == "" {
-		return
-	}
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if len(l.st.Sessions) >= maxSessions {
-		oldest, at := "", time.Now()
-		for id, s := range l.st.Sessions {
-			if s.At.Before(at) {
-				oldest, at = id, s.At
-			}
-		}
-		delete(l.st.Sessions, oldest)
-	}
-	_, address := args.target()
-	l.st.Sessions[d.Session.ID] = session{Project: address, Title: d.Session.Title, Agent: d.Session.Agent, At: time.Now()}
-	l.saveLocked()
-}
-
-// startArgs are where a session_start works.
-type startArgs struct {
-	Project string `json:"project"`
-	Repo    string `json:"repo"`
-	Branch  string `json:"branch"`
-	Machine string `json:"machine"`
-}
-
-// target is where the session works, as the owner reads it, and the
-// address the owner's "don't ask again" keeps for it. A GitHub
-// repository's is the project its clone is kept as on the computer named,
-// <machine>/github.<owner>.<repo>: however the repository is written, a
-// rule for it covers that repository there and nothing else, and it is the
-// address of the sessions started there by project. A repository the
-// machine would refuse, or one without a computer, has none.
-func (a startArgs) target() (where, address string) {
-	if a.Repo == "" {
-		return a.Project, a.Project
-	}
-	repo, project, err := machine.GitHubRepo(a.Repo)
-	if err != nil {
-		return "GitHub " + a.Repo, ""
-	}
-	where = "GitHub " + repo + ", its default branch"
-	if a.Branch != "" {
-		where = "GitHub " + repo + ", branch " + a.Branch
-	}
-	if a.Machine == "" {
-		return where, ""
-	}
-	return where + ", on " + a.Machine, a.Machine + "/" + project
-}
-
-// Describe says what a call that writes would do, for the owner's
-// approval, and the rule "don't ask again" would keep: the project. A
-// write to a session she did not start has no rule, and is asked each time,
-// and so is every push.
-func (l *Link) Describe(_ context.Context, _, name string, raw json.RawMessage) (string, []string) {
-	var a struct {
-		startArgs
-		Prompt    string   `json:"prompt"`
-		Agent     string   `json:"agent"`
-		SessionID string   `json:"session_id"`
-		Message   string   `json:"message"`
-		Choose    []string `json:"choose"`
-		Text      string   `json:"text"`
-		Item      []string `json:"item"`
-		Decline   bool     `json:"decline"`
-	}
-	json.Unmarshal(raw, &a)
-	if name == "session_start" {
-		where, address := a.target()
-		return fmt.Sprintf("Start %s in %s\n\n%s", agentName(a.Agent), where, a.Prompt), rule(address)
-	}
-	_, id, ok := strings.Cut(a.SessionID, "/")
-	if !ok {
-		id = a.SessionID
-	}
-	l.mu.Lock()
-	s, known := l.st.Sessions[id]
-	l.mu.Unlock()
-	where := "session " + a.SessionID
-	var words []string
-	if known {
-		where = fmt.Sprintf("%q (%s, %s)", s.Title, agentName(s.Agent), s.Project)
-		words = rule(s.Project)
-	}
-	if name == "session_send" {
-		return fmt.Sprintf("Write to %s\n\n%s", where, a.Message), words
-	}
-	if name == "session_push" {
-		return fmt.Sprintf("Push the branch of %s to its remote\n\nIts computer pushes it to the project's origin with its own git login, without force.", where), nil
-	}
-	answer := strings.Join(append(append(a.Choose, a.Item...), a.Text), "\n")
-	if a.Decline {
-		answer = "(nobody will answer: go on alone)"
-	}
-	return fmt.Sprintf("Answer the question in %s\n\n%s", where, strings.TrimSpace(answer)), words
-}
-
-// rule is what the owner's "don't ask again" keeps for a project.
-func rule(project string) []string {
-	if project == "" {
-		return nil
-	}
-	return []string{"mesh", project}
 }
 
 // Render is the news of one of her sessions as her reads it, and the

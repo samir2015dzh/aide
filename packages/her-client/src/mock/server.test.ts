@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Event, Op, SessionSnapshot, SessionSummary } from "@hermesh/her-protocol";
+import type { Event, Op, SessionSnapshot, SessionSummary } from "@aide/her-protocol";
 import { RpcClient } from "../rpc.ts";
 import { applyEvent, fromSnapshot, statusOf, type SessionView } from "../session.ts";
 import { conversation } from "../steps.ts";
@@ -30,8 +30,7 @@ test("the demo lists sessions in every state, newest first", async () => {
 test("a snapshot taken at any point, with the events after it, rebuilds what a client that saw every event has", async () => {
   const server = new MockServer({ speed: 400 });
   const watcher = client(server);
-  // Full auto: the demo's reply asks before its edit in the other modes.
-  const { session_id, snapshot } = await watcher.request("session/new", { cwd: "/tmp/demo", permission_mode: "bypass-permissions" });
+  const { session_id, snapshot } = await watcher.request("session/new", { cwd: "/tmp/demo" });
   let full = fromSnapshot(snapshot);
   const done = new Promise<void>((resolve) => {
     watcher.on("session/event", ({ event }) => {
@@ -58,7 +57,7 @@ test("a snapshot taken at any point, with the events after it, rebuilds what a c
   assert.equal(statusOf(full), "idle");
 });
 
-test("an approval waits, and the task goes on once approved", async () => {
+test("a task with a command in it runs to its end without asking", async () => {
   const server = new MockServer({ speed: 300 });
   const rpc = client(server);
   const { sessions } = await rpc.request("sessions/subscribe", {});
@@ -68,7 +67,6 @@ test("an approval waits, and the task goes on once approved", async () => {
   const ended = new Promise<void>((resolve) =>
     rpc.on("session/event", ({ event }) => {
       v = applyEvent(v, event as Event);
-      if (event.type === "approval_requested") void rpc.request("session/op", { session_id: asking.session_id, op: { type: "approval", call_id: event.call_id, decision: { type: "approve" } } });
       if (event.type === "task_completed") resolve();
     }),
   );
@@ -97,7 +95,7 @@ test("an interrupt ends the task, keeping what was written", async () => {
 test("input sent while the task runs waits in the queue and joins under its id: steering at the next step, a follow-up when the task would end", async () => {
   const server = new MockServer({ speed: 50 });
   const rpc = client(server);
-  const { session_id, snapshot } = await rpc.request("session/new", { cwd: "/tmp/demo", permission_mode: "bypass-permissions" });
+  const { session_id, snapshot } = await rpc.request("session/new", { cwd: "/tmp/demo" });
   let v = fromSnapshot(snapshot);
   const queues: string[][] = [];
   const idle = new Promise<void>((resolve) =>
@@ -132,7 +130,7 @@ test("a stop hands what waits back, steering first, and a withdrawn message neve
   const asking = new Promise<void>((resolve) => (asked = resolve));
   rpc.on("session/event", ({ event }) => {
     v = applyEvent(v, event as Event);
-    if (event.type === "approval_requested") asked();
+    if (event.type === "tool_running") asked();
   });
   const op = (o: Op) => rpc.request("session/op", { session_id, op: o });
   await op({ type: "prompt", input: [{ type: "text", text: "hi" }] });
@@ -158,7 +156,7 @@ test("a resend stops the task, hands back what waits and goes back; a later atta
   rpc.on("session/event", ({ event }) => {
     v = applyEvent(v, event as Event);
     kinds.push(event.type);
-    if (event.type === "approval_requested") asked();
+    if (event.type === "tool_running") asked();
   });
   const op = (o: Op) => rpc.request("session/op", { session_id, op: o });
   await op({ type: "prompt", input: [{ type: "text", text: "hi" }] });

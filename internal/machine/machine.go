@@ -1,4 +1,4 @@
-// Package machine implements the execution-machine role of hermeshd: it pairs
+// Package machine implements the execution-machine role of aided: it pairs
 // with the owner, keeps an outbound connection to the relay, terminates
 // end-to-end tunnels and runs coding-agent sessions.
 package machine
@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -21,19 +22,19 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/flock"
-	"github.com/hermeshai/hermesh/internal/herhost"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
-	"github.com/hermeshai/hermesh/internal/provider/claude"
-	"github.com/hermeshai/hermesh/internal/provider/codex"
-	"github.com/hermeshai/hermesh/internal/shellenv"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/herhost"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
+	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/provider/codex"
+	"github.com/samir2015dzh/aide/internal/shellenv"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Version is set at build time.
@@ -54,12 +55,12 @@ type Config struct {
 	// has none; HerConsole is the folder of her's console.
 	HerBin, HerConsole string
 	// HerExtensionHost: while Her is on, the browsers here start her for the
-	// Hermesh extension, which lends her the owner's own Chrome.
+	// Aide extension, which lends her the owner's own Chrome.
 	HerExtensionHost bool
 	// NewHerLink makes Her's link to the mesh (internal/herlink, which is
 	// above this package); nil: Her has no mesh tools.
 	NewHerLink func(HerLinkConfig) HerLink
-	// TestBeforeHer makes this machine act as a hermeshd from before Her
+	// TestBeforeHer makes this machine act as an aided from before Her
 	// (before 0.1.5), for the end-to-end tests of an app newer than its
 	// machine (docs/version-skew.md §6.7): its status carries no Her, and
 	// Her's admin commands are unknown, answered as that version did.
@@ -146,7 +147,7 @@ type Machine struct {
 	// herData: Her was on here once and her home is still there (HerStatus.data).
 	herData bool
 	// mesh is Her as one of the owner's agents (her_mesh.go).
-	mesh herMesh
+	mesh herOnMesh
 	// directPort is the ephemeral TCP port of serveDirect when listening.
 	directPort atomic.Int32
 	// offers are what ACP agents' sessions offered (defaults.go).
@@ -188,7 +189,7 @@ func Open(cfg Config) (*Machine, error) {
 	if err != nil {
 		return nil, err
 	}
-	st, err := OpenStore(filepath.Join(cfg.DataDir, "hermeshd.db"))
+	st, err := OpenStore(filepath.Join(cfg.DataDir, "aided.db"))
 	if err != nil {
 		lock.Release()
 		return nil, err
@@ -201,8 +202,8 @@ func Open(cfg Config) (*Machine, error) {
 		infos: map[string]provider.Info{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	n.her = herhost.New(herhost.Config{Bin: cfg.HerBin, ConsoleDir: cfg.HerConsole, Socket: paths.Her(cfg.DataDir), Env: shellenv.Environ,
-		Version: Version, Logger: n.log, ExtensionHost: cfg.HerExtensionHost, Notice: n.herNotice, Mesh: n.herMeshNow})
-	n.openHerMesh()
+		Version: Version, Logger: n.log, ExtensionHost: cfg.HerExtensionHost, Notice: n.herNotice, Mesh: n.herOnMeshNow})
+	n.openHerOnMesh()
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
 	}
@@ -515,7 +516,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 // Run serves until ctx is done.
 func (n *Machine) Run(ctx context.Context) error {
 	if !n.Paired() {
-		return errors.New("this machine is not paired yet; run `aided pair <connection address>`")
+		return errors.New("this machine is not logged in yet; run `aided login <server>`")
 	}
 	if err := n.sessions.Recover(); err != nil {
 		return err
@@ -527,7 +528,7 @@ func (n *Machine) Run(ctx context.Context) error {
 	go n.serveLocal(ctx)
 	go n.serveDirect(ctx)
 	n.startHer()
-	n.log.Info("hermeshd machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
+	n.log.Info("aided machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
 	n.runLink(ctx)
 	n.mu.Lock()
 	erased := n.erased
@@ -555,7 +556,8 @@ func (n *Machine) applyRevocations(r *identityv1.RevocationList) {
 	n.revocations = cur
 	var close []*tunnel
 	for t := range n.tunnels {
-		if t.principal.Kind == PrincipalClient && n.grantProblemLocked(t.principal.Grant) != nil {
+		if t.principal.Kind == PrincipalClient && n.grantProblemLocked(t.principal.Grant) != nil ||
+			t.principal.DeviceKey != "" && slices.Contains(cur.RevokedDeviceKeys, t.principal.DeviceKey) {
 			close = append(close, t)
 		}
 	}
@@ -570,7 +572,15 @@ func (n *Machine) applyRevocations(r *identityv1.RevocationList) {
 		}
 	}
 	n.checkHerGrant()
-	n.audit.Log(AuditRecord{Kind: "revocations", Detail: fmt.Sprintf("grants=%v machines=%v min=%v", cur.RevokedGrantIds, cur.RevokedMachineIds, cur.MinGrantVersions)})
+	n.audit.Log(AuditRecord{Kind: "revocations", Detail: fmt.Sprintf("grants=%v machines=%v devices=%v min=%v", cur.RevokedGrantIds, cur.RevokedMachineIds, cur.RevokedDeviceKeys, cur.MinGrantVersions)})
+}
+
+// deviceSignedOut tells whether the owner's device with this device key
+// id was signed out.
+func (n *Machine) deviceSignedOut(keyID string) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return slices.Contains(n.revocations.GetRevokedDeviceKeys(), keyID)
 }
 
 func (n *Machine) clientsForGrant(grantID string) []string {
@@ -606,6 +616,7 @@ func mergeRevocations(cur, in *identityv1.RevocationList) {
 	}
 	add(&cur.RevokedGrantIds, in.RevokedGrantIds)
 	add(&cur.RevokedMachineIds, in.RevokedMachineIds)
+	add(&cur.RevokedDeviceKeys, in.RevokedDeviceKeys)
 	if cur.MinGrantVersions == nil {
 		cur.MinGrantVersions = map[string]uint64{}
 	}

@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { DiffStatSchema, FailureKind, FailureSchema, SessionCursorSchema, SessionStatus, UsageSchema, type Session } from "@hermesh/proto/session";
+import { DiffStatSchema, FailureKind, FailureSchema, SessionCursorSchema, SessionStatus, UsageSchema, type Session } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import {
   createdDate,

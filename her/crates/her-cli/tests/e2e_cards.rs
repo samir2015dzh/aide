@@ -272,7 +272,7 @@ fn files(dir: &Path) -> Vec<(PathBuf, String)> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn her_connects_an_oauth_connector_on_a_card() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["Card", "CardsAnswerResult", "Event", "BotsChangedParams"]);
     let mock = oauth_server().await;
     let mut her = her(&env).await;
@@ -344,7 +344,7 @@ async fn her_connects_an_oauth_connector_on_a_card() {
 /// (docs/her-connectors-demo.html).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn connectors_changed_on_the_page_reach_the_open_conversation() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let mock = her_mock::mcp::serve_http("127.0.0.1:0", McpTestOptions::default()).await.unwrap();
     let mut her = her(&env).await;
     let write = |key: &str, value: Value| json!({"layer": "user", "edits": [{"key_path": key, "value": value, "merge": "replace"}]});
@@ -369,7 +369,7 @@ async fn connectors_changed_on_the_page_reach_the_open_conversation() {
 /// makes it work again in the same conversation (docs/her-connectors-demo.html).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn an_oauth_connector_added_and_signed_in_again_on_the_page() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let mock = oauth_server().await;
     let mut her = her(&env).await;
     let server = json!({"url": mock.url(), "auth": "oauth"});
@@ -414,7 +414,7 @@ async fn an_oauth_connector_added_and_signed_in_again_on_the_page() {
 async fn a_token_goes_through_the_card_and_nowhere_else() {
     const TOKEN: &str = "tok-7f3k9q2m8z";
     const WRONG: &str = "tok-wrong-4j8s";
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let mock = her_mock::mcp::serve_http("127.0.0.1:0", McpTestOptions { auth: McpTestAuth::Token(TOKEN.into()), ..Default::default() }).await.unwrap();
     let mut her = her(&env).await;
 
@@ -457,7 +457,7 @@ async fn a_token_goes_through_the_card_and_nowhere_else() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_declined_card_takes_back_what_it_wrote() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let mock = oauth_server().await;
     let mut her = her(&env).await;
 

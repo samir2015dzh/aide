@@ -1,8 +1,7 @@
 import { create } from "@bufbuild/protobuf";
-import { PairingKind } from "@hermesh/proto/identity";
-import type { Machine, PairingDetails } from "@hermesh/proto/local";
-import { HerLatestKind, type HerLatest } from "@hermesh/proto/machine";
-import { FailureSchema, SessionStatus, type Session } from "@hermesh/proto/session";
+import type { Machine } from "@aide/proto/local";
+import { HerLatestKind, type HerLatest } from "@aide/proto/machine";
+import { FailureSchema, SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
 import { dateOf, displayTitle, isFailed, pendingQuestion } from "./sessions";
@@ -192,26 +191,4 @@ export function herNotices(previous: ReadonlyMap<string, HerSnapshot>, machines:
     });
   }
   return out;
-}
-
-/** A pending pairing request, as the menu bar and its notification name it. */
-export function pairingTitle(p: PairingDetails): string {
-  switch (p.kind) {
-    case PairingKind.MACHINE:
-      return t("pairing.machine", { label: p.label });
-    case PairingKind.DEVICE:
-      return t("pairing.device", { label: p.label });
-    default:
-      return t("pairing.client", { label: p.label });
-  }
-}
-
-/** The code the owner checks against the requester's (its pairing code when there is no verification code). */
-export function pairingCheckCode(p: PairingDetails): string {
-  return p.verificationCode || p.code;
-}
-
-/** The notification of a pending pairing request. */
-export function pairingNotice(p: PairingDetails): { title: string; body: string } {
-  return { title: pairingTitle(p), body: t("pairing.body", { code: pairingCheckCode(p) }) };
 }

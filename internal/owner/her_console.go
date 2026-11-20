@@ -18,12 +18,12 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
 // The console (docs/her-server.md §5.3): served to this device's apps on
 // 127.0.0.1, under a token only they are told, as the machine's
-// /her/console/…; but for what the page can't do, which this hermeshd does
+// /her/console/…; but for what the page can't do, which this aided does
 // for it here: catching a sign-in's redirect (§5.4) and asking this
 // device's signer.
 
@@ -173,7 +173,7 @@ func (s *herSignin) ended() bool {
 }
 
 // ServeHTTP takes the browser's visit to the redirect, keeps what it
-// brought, tells the person to go back to Hermesh, and stops listening.
+// brought, tells the person to go back to Aide, and stops listening.
 func (s *herSignin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || r.URL.Path != s.path {
 		http.NotFound(w, r)
@@ -298,7 +298,8 @@ func (c *herConsole) pollSignin(w http.ResponseWriter, r *http.Request, id strin
 
 // ---------------------------------------------------------------------------
 // The console can't sign: a connector started as a command goes through
-// here, which asks this device's signer, as SetHerCommandConnector does.
+// here, which has the server sign it for this device, as
+// SetHerCommandConnector does.
 //
 //	POST <base>command-connector {"name", "command", "args", "env", "remove"}
 //	     → {} once applied, or a short text saying why not
@@ -327,12 +328,9 @@ func (o *Owner) consoleCommandConnector(w http.ResponseWriter, r *http.Request, 
 // consoleError is how the console is told why a call failed: an HTTP
 // status, and a short text.
 func consoleError(err error) (int, string) {
-	if errors.Is(err, ErrSigningRejected) {
-		return http.StatusForbidden, err.Error()
-	}
 	ce := new(connect.Error)
 	if !errors.As(err, &ce) {
-		return http.StatusInternalServerError, err.Error() // as the signer timing out
+		return http.StatusInternalServerError, err.Error()
 	}
 	switch ce.Code() {
 	case connect.CodeInvalidArgument:

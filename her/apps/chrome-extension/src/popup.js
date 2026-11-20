@@ -1,8 +1,8 @@
 // The extension's page, from its toolbar icon (your-browser-design §3): one line on how things
 // stand, what to do about it if anything, and the conversations with tabs here. The worker holds
-// the state and says when it changes; details are in Hermesh's settings.
+// the state and says when it changes; details are in Aide's settings.
 
-import { headline, isWaiting, listed, offersTab } from "./panel.js";
+import { headline, listed, offersTab } from "./panel.js";
 
 const msg = (name, ...args) => chrome.i18n.getMessage(name, args.map(String)) || name;
 const root = document.getElementById("root");
@@ -72,25 +72,22 @@ function spinner() {
 }
 
 function sessionGlyph(s) {
-  if (isWaiting(s)) return glyph("", dot("warn"));
   return s.state === "running" ? glyph("", spinner()) : glyph("done", icon("check"));
 }
 
 function sessionLine(s) {
-  if (s.handoff) return s.handoff;
-  if (s.state === "awaiting_approval") return msg("approval");
   const tabs = s.tabs === 1 ? msg("oneTab") : msg("tabs", s.tabs);
   return `${s.state === "running" ? msg("working") : msg("finished")} · ${tabs}`;
 }
 
 function session(s) {
-  const text = el("span", { className: "text" }, el("b", { textContent: s.title }), el("span", { className: s.handoff ? "line whole" : "line", textContent: sessionLine(s) }));
+  const text = el("span", { className: "text" }, el("b", { textContent: s.title }), el("span", { className: "line", textContent: sessionLine(s) }));
   const row = el("div", { className: "row" }, el("button", { className: "open", title: msg("back"), onclick: closing({ do: "back", session: s.id }) }, sessionGlyph(s), text, icon("chevron", "arrow")));
-  if (s.state === "running" && !s.handoff) {
+  if (s.state === "running") {
     const stop = msg("stop");
     row.append(el("button", { className: "stop", title: stop, ariaLabel: stop, onclick: () => act({ do: "stop", session: s.id }) }, icon("stop")));
   }
-  return s.handoff ? [row, primary(msg("done"), () => act({ do: "done", session: s.id }))] : [row];
+  return [row];
 }
 
 /** A newer drawing that finishes first wins. */

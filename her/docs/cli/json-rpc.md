@@ -26,8 +26,9 @@ ssh host her serve --stdio
 2. `session/new` with `{"cwd": "/abs/path"}` gives a `session_id` and a snapshot. Events follow as `session/event` notifications.
 3. `session/op` with `{"session_id": …, "op": {"type": "prompt", "input": [{"type": "text", "text": "…"}]}}`.
 4. Read events. `message_delta` carries the reply as it comes; `tool_started`, `tool_completed` the tools; `task_completed`, `task_failed` or `task_interrupted` the end; `idle` means nothing is left to do.
-5. On `approval_requested`, answer with `session/op`: `{"type": "approval", "call_id": …, "decision": {"type": "approve"}}`. Other decisions: `approve_for_session`, `deny`, `abort`.
-6. `session/close`.
+5. `session/close`.
+
+her runs every tool call without asking: there are no approvals to answer. A call a deny rule refuses comes back as a `tool_completed` whose result says `Tool call denied: …`.
 
 Every event has a growing `seq`, and `session/attach` gives a snapshot to continue from. `$/cancel_request` cancels a request.
 

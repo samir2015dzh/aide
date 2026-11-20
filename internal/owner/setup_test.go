@@ -10,21 +10,21 @@ import (
 
 	"connectrpc.com/connect"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // A network that blocks the relay (here: a proxy answering 403, to every
-// request or only to the WebSocket) fails setting up and joining before the
-// signer is asked for anything, so no Touch ID is spent on it, and says so
-// in the form the apps recognise.
-func TestBlockedRelayFailsBeforeTouchID(t *testing.T) {
+// request or only to the WebSocket) fails setting up and logging in before
+// the password is sent anywhere, and says so in the form the apps
+// recognise.
+func TestBlockedRelayFailsFirst(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		passes string // the one path the proxy lets through
 		detail string
 	}{
 		{"everything blocked", "", "403 Forbidden"},
-		{"WebSocket blocked", "/hermesh.relay.v1.RelayPublicService/GetInfo", "403"},
+		{"WebSocket blocked", "/aide.relay.v1.RelayPublicService/GetInfo", "403"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,18 +43,16 @@ func TestBlockedRelayFailsBeforeTouchID(t *testing.T) {
 			}
 			t.Cleanup(d.Close)
 			o := d.owner()
-			asked, stop := o.hub.watch(false)
-			defer stop()
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			host := strings.TrimPrefix(proxy.URL, "http://")
 			for _, call := range []func() error{
 				func() error {
-					_, err := o.Setup(ctx, &localv1.SetupRequest{RelayUrl: proxy.URL, ClaimCode: "ABCD", RootLabel: "Mac"})
+					_, err := o.Setup(ctx, &localv1.SetupRequest{RelayUrl: proxy.URL, SetupCode: "ABCD", Account: "a", Password: "correct horse", Label: "pc"})
 					return err
 				},
 				func() error {
-					_, err := o.RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: proxy.URL, OwnerId: "o_x", RootLabel: "Mac"})
+					_, err := o.LogIn(ctx, &localv1.LogInRequest{RelayUrl: proxy.URL, Account: "a", Password: "correct horse", Label: "pc"})
 					return err
 				},
 			} {
@@ -63,11 +61,6 @@ func TestBlockedRelayFailsBeforeTouchID(t *testing.T) {
 					!strings.Contains(err.Error(), tc.detail) {
 					t.Fatalf("got %v, want relay unreachable (%s): …%s", err, host, tc.detail)
 				}
-			}
-			select {
-			case r := <-asked:
-				t.Fatalf("the signer was asked: %v", r)
-			default:
 			}
 		})
 	}
@@ -88,42 +81,5 @@ func TestNormalizeRelayURL(t *testing.T) {
 		if got := normalizeRelayURL(in); got != want {
 			t.Errorf("normalizeRelayURL(%q) = %q, want %q", in, got, want)
 		}
-	}
-}
-
-// The status tells whether a signer watches and whether one waits on the
-// owner; ShowSigner reaches only the signers that asked for it.
-func TestSignerState(t *testing.T) {
-	h := newSignHub()
-	if st := h.state(); st.Connected || st.Busy {
-		t.Fatalf("no signer: %v", st)
-	}
-	plain, stopPlain := h.watch(false)
-	defer stopPlain()
-	shows, stopShows := h.watch(true)
-	defer stopShows()
-	if st := h.state(); !st.Connected || st.Busy {
-		t.Fatalf("watching: %v", st)
-	}
-	h.mu.Lock()
-	h.post(&localv1.SigningRequest{RequestId: "r1", Type: "hermesh.identity.v1.Grant"})
-	h.mu.Unlock()
-	if st := h.state(); !st.Busy {
-		t.Fatalf("a request waits: %v", st)
-	}
-	<-plain
-	<-shows
-	h.show()
-	if r := <-shows; !r.Show {
-		t.Fatalf("show: %v", r)
-	}
-	select {
-	case r := <-plain:
-		t.Fatalf("a signer that didn't ask was shown: %v", r)
-	default:
-	}
-	h.complete(&localv1.CompleteSigningRequestRequest{RequestId: "r1", Rejected: true})
-	if st := h.state(); st.Busy {
-		t.Fatalf("answered: %v", st)
 	}
 }

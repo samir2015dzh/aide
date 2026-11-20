@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/spawn"
+	"github.com/samir2015dzh/aide/internal/spawn"
 )
 
 // setGroup puts the child in a process group of its own, so that the

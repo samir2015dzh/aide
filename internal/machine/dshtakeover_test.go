@@ -15,13 +15,13 @@ import (
 
 	"connectrpc.com/connect"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/provider/acp/dshnative"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/provider/acp/dshnative"
 )
 
-// fakeBridge speaks the Hermesh bridge plugin's protocol (apps/dsh-bridge)
+// fakeBridge speaks the Aide bridge plugin's protocol (apps/dsh-bridge)
 // for a DSH home, as the plugin in DSH Desktop would.
 type fakeBridge struct {
 	mu       sync.Mutex
@@ -122,7 +122,7 @@ func (f *fakeBridge) serve(c net.Conn) {
 func codeOf(err error) connect.Code { return connect.CodeOf(err) }
 
 // Taking over a DSH session: off until the owner turns it on; then the
-// message goes to the bridge in queue mode under a hermesh- request id;
+// message goes to the bridge in queue mode under an aide- request id;
 // every way it can't go says so, with nothing sent.
 func TestDSHTakeover(t *testing.T) {
 	home := t.TempDir()
@@ -163,7 +163,7 @@ func TestDSHTakeover(t *testing.T) {
 		t.Fatalf("listed with the bridge: %v", l)
 	}
 	r, err := send("继续", "")
-	if err != nil || !strings.HasPrefix(r.RequestId, "hermesh-") {
+	if err != nil || !strings.HasPrefix(r.RequestId, "aide-") {
 		t.Fatalf("sent: %v %v", r, err)
 	}
 	if len(b.prompts) != 1 || b.prompts[0]["text"] != "继续" || b.prompts[0]["requestId"] != r.RequestId || b.prompts[0]["sessionId"] != "owners" {
@@ -173,7 +173,7 @@ func TestDSHTakeover(t *testing.T) {
 	if r2, err := send("继续", r.RequestId); err != nil || r2.RequestId != r.RequestId {
 		t.Fatalf("retry: %v %v", r2, err)
 	}
-	for _, bad := range []string{"other-1", "hermesh-UPPER", "hermesh-" + strings.Repeat("a", 65)} {
+	for _, bad := range []string{"other-1", "aide-UPPER", "aide-" + strings.Repeat("a", 65)} {
 		if _, err := send("x", bad); codeOf(err) != connect.CodeInvalidArgument {
 			t.Errorf("request id %q: %v", bad, err)
 		}
@@ -225,9 +225,9 @@ func TestDSHTakeover(t *testing.T) {
 	}
 }
 
-// A session Hermesh started is not taken over: it takes messages as any
-// of Hermesh's sessions do.
-func TestDSHTakeoverNotOfHermeshSessions(t *testing.T) {
+// A session Aide started is not taken over: it takes messages as any
+// of Aide's sessions do.
+func TestDSHTakeoverNotOfAideSessions(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("DSH_HOME", home)
 	h := newHarness(t, Limits{})
@@ -235,7 +235,7 @@ func TestDSHTakeoverNotOfHermeshSessions(t *testing.T) {
 	ref := h.wait(id, sessionv1.SessionStatus_SESSION_STATUS_IDLE).ProviderSessionRef
 	writeDSHSession(t, home, ref, "/somewhere", 1)
 	if _, err := h.n.SetDSHTakeover(&machinev1.SetDSHTakeoverRequest{SessionId: ref, On: true}); codeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("taking over Hermesh's own: %v", err)
+		t.Fatalf("taking over Aide's own: %v", err)
 	}
 }
 

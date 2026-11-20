@@ -1,5 +1,5 @@
-// Package dshbridge carries the Hermesh bridge plugin for DSH Desktop
-// (this folder's npm package, built into lib/) inside hermeshd, which
+// Package dshbridge carries the Aide bridge plugin for DSH Desktop
+// (this folder's npm package, built into lib/) inside aided, which
 // writes it out as an npm tarball for DSH's plugin manager to install
 // (docs/dsh-takeover.md).
 package dshbridge

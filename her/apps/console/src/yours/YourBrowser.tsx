@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { RpcClient } from "@hermesh/her-client";
-import type { BrowserSetupPlace, ExtensionProblem, ExtensionStatus } from "@hermesh/her-protocol";
+import type { RpcClient } from "@aide/her-client";
+import type { BrowserSetupPlace, ExtensionProblem, ExtensionStatus } from "@aide/her-protocol";
 import type { BrowserState } from "./useBrowser";
 import { browserName, defaultEdits, extensionEdits, extensionFolder, herSystem, yours, yoursConfig, type HerSystem } from "./yours";
 import "./yours.css";
 
 // The console's Browser section, its first part: whether the owner's own Chrome, on the Mac or Linux computer Her runs on, is connected
-// through the Hermesh extension and used by Her, with the one thing to do about it: connect it
+// through the Aide extension and used by Her, with the one thing to do about it: connect it
 // (a guide: add the extension, then wait for it to connect, then use it), use it, stop using it,
 // or pick which of several to use. Links open with window.open: the console may be on another
 // device than that computer. The site permissions are the section's other part, below it on the

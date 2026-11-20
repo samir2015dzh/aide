@@ -14,7 +14,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("HERMESH_SPAWN_HELPER_TEST") == "1" {
+	if os.Getenv("AIDE_SPAWN_HELPER_TEST") == "1" {
 		Serve(os.NewFile(3, "helper"))
 		os.Exit(0)
 	}
@@ -24,9 +24,9 @@ func TestMain(m *testing.M) {
 func startTestHelper(t *testing.T) *Helper {
 	t.Helper()
 	exe, _ := os.Executable()
-	os.Setenv("HERMESH_SPAWN_HELPER_TEST", "1")
+	os.Setenv("AIDE_SPAWN_HELPER_TEST", "1")
 	h, err := StartHelper(exe)
-	os.Unsetenv("HERMESH_SPAWN_HELPER_TEST")
+	os.Unsetenv("AIDE_SPAWN_HELPER_TEST")
 	if err != nil {
 		t.Fatal(err)
 	}

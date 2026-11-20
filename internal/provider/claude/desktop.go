@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // The Claude desktop app lists on its Code page only the Claude Code
 // sessions it has a record of, one file per session in an index of its own;
-// a session Claude Code ran without it (here: every Hermesh session) has a
-// transcript in ~/.claude/projects but no record. Hermesh writes one for
+// a session Claude Code ran without it (here: every Aide session) has a
+// transcript in ~/.claude/projects but no record. Aide writes one for
 // each new session, so the owner finds it there too.
 //
 // Everything assumed about that index is in this file. The format is the
@@ -34,9 +34,9 @@ import (
 //
 // Claude Code lets a second process resume a session another one runs
 // (anthropics/claude-code#75761; #69364: from 2.1.280 a resume is refused
-// only while a non-interactive process holds it), so the app and Hermesh
+// only while a non-interactive process holds it), so the app and Aide
 // could both write one transcript: the owner goes on with a listed session
-// in the app only once Hermesh is done with it, and its title says who
+// in the app only once Aide is done with it, and its title says who
 // runs it.
 
 // desktopIndexes are where the desktop app may keep its index:
@@ -88,7 +88,7 @@ type desktopRecord struct {
 	Title       string `json:"title"`
 	TitleSource string `json:"titleSource"`
 	// The app's own permission mode: the owner's settings apply when he
-	// goes on with the session there, not Hermesh's.
+	// goes on with the session there, not Aide's.
 	PermissionMode           string `json:"permissionMode"`
 	RemoteMcpServersConfig   []any  `json:"remoteMcpServersConfig"`
 	AlwaysAllowedReasons     []any  `json:"alwaysAllowedReasons"`
@@ -103,7 +103,7 @@ func newDesktopRecord(cliSessionID, cwd, title string, now time.Time) desktopRec
 }
 
 // desktopTitle names a session so the owner tells it from his own:
-// project · who started it via Hermesh · the session's title.
+// project · who started it via Aide · the session's title.
 func desktopTitle(project, requester, title string) string {
 	who := "Aide"
 	if requester != "" {
@@ -130,7 +130,7 @@ func writeDesktopRecord(dir string, r desktopRecord) (string, error) {
 		return "", err
 	}
 	path := filepath.Join(dir, r.SessionID+".json")
-	tmp, err := os.CreateTemp(dir, ".hermesh-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".aide-*.tmp")
 	if err != nil {
 		return "", err
 	}
@@ -149,7 +149,7 @@ func writeDesktopRecord(dir string, r desktopRecord) (string, error) {
 }
 
 // desktopEntry is how a new session is to be listed: as the session id
-// Hermesh gave it, in its directory, under title.
+// Aide gave it, in its directory, under title.
 type desktopEntry struct{ id, workDir, title string }
 
 // listInDesktop records a new Claude Code session in the desktop app's

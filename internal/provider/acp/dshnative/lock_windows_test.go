@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 var createSemaphore = windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateSemaphoreW")

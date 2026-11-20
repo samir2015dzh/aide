@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { McpServerView } from "@hermesh/her-protocol";
+import type { McpServerView } from "@aide/her-protocol";
 import { PageTop } from "../components";
 import { Icon } from "../icons";
 import { AddConnector } from "./AddConnector";

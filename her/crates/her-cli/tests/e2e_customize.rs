@@ -80,7 +80,7 @@ async fn skill_state(env: &TestEnv, cwd: &Path, name: &str) -> String {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_command_line_adds_switches_and_removes_skills_and_servers() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let work = project(&env, "repo");
     let download = write_skill(&env.workspace("downloads"), "weekly", "Weekly report.");
     let from = download.to_str().unwrap();
@@ -179,7 +179,7 @@ fn error_kind(err: &her_rpc::RpcError) -> &str {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_page_manages_configuration_skills_and_servers_through_the_service() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&[
         "ConfigReadResult",
         "ConfigWriteResult",
@@ -327,7 +327,7 @@ async fn the_page_manages_configuration_skills_and_servers_through_the_service()
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_session_records_its_servers_for_the_page() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let work = project(&env, "repo");
     std::fs::write(
         env.home.path().join("config.toml"),
@@ -344,7 +344,7 @@ async fn a_session_records_its_servers_for_the_page() {
     let created = client.request("session/new", json!({"cwd": work})).await.unwrap();
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let turn = common::native_prompt(&client, &mut events, &session, "[[mock:mcp:vault:Orion]] go", false).await;
+    let turn = common::native_prompt(&client, &mut events, &session, "[[mock:mcp:vault:Orion]] go").await;
     assert_eq!(turn.end["type"], "task_completed", "{:#?}", turn.events);
 
     // An open session's view comes first; the cache keeps it for later.

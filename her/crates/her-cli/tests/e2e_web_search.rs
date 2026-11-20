@@ -15,7 +15,7 @@ use std::path::PathBuf;
 
 /// A home whose search services are the mock's, with more configuration in `[web_search]`.
 async fn search_env(web_search: &str) -> TestEnv {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let file = env.home.path().join("config.toml");
     let mut config = std::fs::read_to_string(&file).unwrap();
     config.push_str(&format!("\n[web_search]\n{web_search}\n{}", env.mock.search_endpoints_toml()));
@@ -49,7 +49,7 @@ async fn the_first_usable_service_answers_and_when_it_fails_the_next() {
     let env = search_env("").await;
     let events = exec(&env, "[[mock:web_search:贵州茅台 三季报]] 查一下", &[]).await;
 
-    // Found with tool_search, run with call_tool, shown by its query, no approval even in manual.
+    // Found with tool_search, run with call_tool, shown by its query.
     let started: Vec<&Value> = events.iter().filter(|e| e["type"] == "tool_started").collect();
     assert_eq!(started.iter().filter_map(|e| e["name"].as_str()).collect::<Vec<_>>(), ["tool_search", "call_tool"]);
     assert_eq!(started[1]["title"], "贵州茅台 三季报");
@@ -311,7 +311,7 @@ async fn the_settings_methods_and_an_open_session_agree() {
         let completed: Vec<&Value> = turn.events.iter().filter(|e| e["type"] == "tool_completed").collect();
         completed.last().unwrap()["result"]["details"]["source"].as_str().map(String::from)
     };
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:web_search:一]] 查", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:web_search:一]] 查").await;
     assert_eq!(source_of(&turn).as_deref(), Some("exa"));
     client.request("config/write", json!({"layer": "user", "edits": [{"key_path": "web_search.disabled", "value": ["exa"]}]})).await.unwrap();
     let status = client.request("web_search/status", json!({})).await.unwrap();
@@ -328,7 +328,7 @@ async fn the_settings_methods_and_an_open_session_agree() {
     let mut gone = false;
     for _ in 0..50 {
         let before = env.mock.search_calls().len();
-        native_prompt(&client, &mut events, &session, "[[mock:web_search:关了]] 查", true).await;
+        native_prompt(&client, &mut events, &session, "[[mock:web_search:关了]] 查").await;
         if env.mock.search_calls().len() == before {
             gone = true;
             break;
@@ -351,7 +351,7 @@ async fn the_settings_methods_and_an_open_session_agree() {
 /// returns, at their next step.
 async fn wait_for_source(client: &her_rpc::Client, events: &mut tokio::sync::mpsc::UnboundedReceiver<her_rpc::Incoming>, session: &str, service: &str) -> bool {
     for _ in 0..50 {
-        let turn = native_prompt(client, events, session, "[[mock:web_search:再查]] 查", true).await;
+        let turn = native_prompt(client, events, session, "[[mock:web_search:再查]] 查").await;
         let completed: Vec<&Value> = turn.events.iter().filter(|e| e["type"] == "tool_completed").collect();
         if completed.last().is_some_and(|e| e["result"]["details"]["source"] == service) {
             return true;

@@ -9,6 +9,6 @@ import { preferences } from "./notify";
 
 export function chooseLanguage() {
   // Test runs on Windows, which has no -AppleLanguages, name the system's languages instead.
-  const system = !app.isPackaged && process.env.HERMESH_TEST_LANGUAGES ? process.env.HERMESH_TEST_LANGUAGES.split(",") : app.getPreferredSystemLanguages();
+  const system = !app.isPackaged && process.env.AIDE_TEST_LANGUAGES ? process.env.AIDE_TEST_LANGUAGES.split(",") : app.getPreferredSystemLanguages();
   setLanguage(resolveLanguage(preferences().language, system));
 }

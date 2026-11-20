@@ -19,31 +19,31 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestUserJourney walks the P1 acceptance scenarios with real binaries:
-// relay, the owner daemon (driven like Hermesh.app over its Unix socket),
+// relay, the owner daemon (driven like Aide.app over its Unix socket),
 // a separate execution machine and the agent CLI.
 //
-// By default the coding agents are scripted fakes. With HERMESH_REAL_CLI=1
+// By default the coding agents are scripted fakes. With AIDE_REAL_CLI=1
 // the machines run this computer's real Claude Code and Codex.
 func TestUserJourney(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	real := os.Getenv("HERMESH_REAL_CLI") == "1"
+	real := os.Getenv("AIDE_REAL_CLI") == "1"
 	bin := binaries(t)
-	relayBin, daemonBin, cliBin := filepath.Join(bin, "hermesh-relay"), filepath.Join(bin, "hermeshd"), filepath.Join(bin, "hermesh")
+	relayBin, daemonBin, cliBin := filepath.Join(bin, "aide-relay"), filepath.Join(bin, "aided"), filepath.Join(bin, "aide")
 	tmp := t.TempDir()
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	var agentEnv []string
 	if !real {
-		agentEnv = []string{"HERMESH_FAKE_PROVIDERS=1"}
+		agentEnv = []string{"AIDE_FAKE_PROVIDERS=1"}
 	} else {
 		agentEnv = []string{"PATH=" + os.Getenv("PATH") + ":/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin"}
 	}
@@ -64,12 +64,12 @@ func TestUserJourney(t *testing.T) {
 	relay := start(t, "relay", nil, relayBin, "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	logs = append(logs, relay)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "claim-code", "--data-dir", relayData).stdout)
-	if len(claim) != 19 {
-		t.Fatalf("claim code %q", claim)
+	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "setup-code", "--data-dir", relayData).stdout)
+	if len(setupCode) != 19 {
+		t.Fatalf("setup code %q", setupCode)
 	}
 
-	// --- Owner Mac: hermeshd --owner + the "app" ---------------------------
+	// --- Owner Mac: aided --owner + the "app" ---------------------------
 	ownerData := filepath.Join(tmp, "owner-mac")
 	sock := filepath.Join(sockDir, "o.sock")
 	startOwner := func(dataDir string) *proc {
@@ -78,18 +78,14 @@ func TestUserJourney(t *testing.T) {
 		return p
 	}
 	ownerProc := startOwner(ownerData)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: relayURL, ClaimCode: claim, RootPublicKey: rootPub(root), RootLabel: "test-mac", RootPlatform: "macos"})
+	app := newTestApp(t, sock)
+	// The server keeps the account; the setup code is good once.
+	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: relayURL, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"})
 	if err != nil {
 		t.Fatalf("setup: %v\n%s", err, ownerProc.output())
 	}
-	if setup.OwnerId != identity.OwnerID(rootPub(root)) {
-		t.Fatalf("owner %s is not named by the first device's key", setup.OwnerId)
-	}
-	addr := setup.ConnectAddress
-	t.Logf("connect address %s", addr)
-	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: relayURL, ClaimCode: claim, RootPublicKey: rootPub(root)}); err == nil {
+	addr := relayURL // the server is all a machine or an agent is given
+	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: relayURL, SetupCode: setupCode, Account: "x", Password: "another password"}); err == nil {
 		t.Fatal("second setup must fail")
 	}
 
@@ -98,26 +94,15 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("local machine: %v\n%s", err, ownerProc.output())
 	}
 
-	// --- A2: pair a separate machine with the pairing code ----------------
+	// --- A2: a separate machine logs in with the account ---------------
 	n1Data := filepath.Join(tmp, "vps-1")
-	pairProc := start(t, "pair", agentEnv, daemonBin, "pair", addr, "--name", "my vps", "--no-service", "--data-dir", n1Data)
-	code := pairProc.pairingCode(t)
-	details, err := app.client.LookupPairing(ctx, &localv1.LookupPairingRequest{Code: strings.ToLower(code)})
-	if err != nil {
-		t.Fatal(err)
+	login := run(t, append(slices.Clone(agentEnv), "AIDE_ACCOUNT="+testAccount, "AIDE_PASSWORD=wrong password"), 30*time.Second, daemonBin, "login", addr, "--name", "vps-1", "--no-service", "--data-dir", n1Data)
+	if login.code == 0 || !strings.Contains(login.stderr, "wrong account or password") {
+		t.Fatalf("a wrong password: %+v", login)
 	}
-	if details.Details.Kind != identityv1.PairingKind_PAIRING_KIND_MACHINE || details.Details.Label != "my vps" {
-		t.Fatalf("pairing details %+v", details.Details)
-	}
-	// A self-hosted relay lists it to the signer too.
-	if l, err := app.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{}); err != nil || len(l.Pairings) != 1 || l.Pairings[0].Code != code {
-		t.Fatalf("pending requests on the relay: %v %v", l, err)
-	}
-	if _, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
-	if c := pairProc.wait(t, 30*time.Second); c != 0 {
-		t.Fatalf("pair exited %d:\n%s", c, pairProc.output())
+	if login = run(t, append(slices.Clone(agentEnv), loginEnv()...), 30*time.Second, daemonBin, "login", addr, "--name", "vps-1", "--no-service", "--data-dir", n1Data); login.code != 0 ||
+		!strings.Contains(login.stdout, "Logged in as") || strings.Contains(login.stdout+login.stderr, "airing code") {
+		t.Fatalf("aided login: %+v", login)
 	}
 	startMachine1 := func() *proc {
 		p := start(t, "vps-1", agentEnv, daemonBin, "run", "--data-dir", n1Data)
@@ -133,8 +118,7 @@ func TestUserJourney(t *testing.T) {
 		}
 		online := 0
 		for _, n := range res.Machines {
-			// Online, and calling itself by its name: vps-1 asked as "my vps"
-			// and is named at approval, which reaches it once it connects.
+			// Online, and calling itself by its name, as it logged in.
 			if n.Online && n.Status != nil && n.Status.Name == n.MachineName {
 				online++
 			}
@@ -152,16 +136,12 @@ func TestUserJourney(t *testing.T) {
 	// --- Projects ------------------------------------------------------------
 	repo1 := gitRepo(t, map[string]string{"README.md": "# demo on vps\n"})
 	repo2 := gitRepo(t, map[string]string{"README.md": "# demo on mac\n"})
-	// Projects are settings, not permissions: no Touch ID (nothing signed).
-	before := len(app.signedTypes())
+	// Projects are settings, not permissions: nothing is signed.
 	for _, p := range []*localv1.AddProjectRequest{{MachineId: vps1.MachineId, ProjectId: "demo", Path: repo1, Description: "Demo web app (the VPS copy)"},
 		{MachineId: localMachine.MachineId, ProjectId: "demo", Path: repo2, Description: "Demo web app"}} {
 		if _, err := app.client.AddProject(ctx, p); err != nil {
 			t.Fatalf("add project: %v", err)
 		}
-	}
-	if got := app.signedTypes()[before:]; len(got) != 0 {
-		t.Fatalf("adding projects signed %v", got)
 	}
 	if _, err := app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: vps1.MachineId, ProjectId: "bad", Path: tmp, Workspace: identityv1.Workspace_WORKSPACE_WORKTREE}); err == nil {
 		t.Fatal("a worktree project without git accepted")
@@ -187,27 +167,43 @@ func TestUserJourney(t *testing.T) {
 		}
 	}
 
-	// --- A3: agent pairing via `hermesh auth login` ------------------------------
+	// --- A3: an agent logs in with `aide auth login` -------------------------
 	grokHome := filepath.Join(tmp, "grok")
-	grokEnv := []string{"HERMESH_HOME=" + grokHome}
+	grokEnv := []string{"AIDE_HOME=" + grokHome}
 	cli := func(env []string, timeout time.Duration, args ...string) result {
 		return run(t, env, timeout, cliBin, args...)
 	}
+	// Logged in with the account, an agent may use everything; a narrower
+	// scope is the owner's to set afterwards, if any.
 	pairClient := func(env []string, name string, spec *localv1.GrantSpec) {
-		login := start(t, "login "+name, env, cliBin, "auth", "login", addr, "--name", name)
-		code := login.pairingCode(t)
-		if _, err := app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: code, Spec: spec}); err != nil {
+		login := run(t, append(slices.Clone(env), loginEnv()...), 30*time.Second, cliBin, "auth", "login", addr, "--name", name)
+		if login.code != 0 || !strings.Contains(login.stdout, "Logged in") {
+			t.Fatalf("login %s: %+v", name, login)
+		}
+		if proto.Equal(spec, &localv1.GrantSpec{}) {
+			return
+		}
+		spec = proto.Clone(spec).(*localv1.GrantSpec)
+		if spec.Label == "" {
+			spec.Label = name
+		}
+		// The Mac learns of it from the server's watch.
+		var grant string
+		eventually(t, 30*time.Second, "the agent "+name+" listed", func() bool {
+			cs, err := app.client.ListClients(ctx, &localv1.ListClientsRequest{})
+			for _, c := range cs.GetClients() {
+				if err == nil && c.Label == name {
+					grant = c.GrantId
+				}
+			}
+			return grant != ""
+		})
+		if _, err := app.client.UpdateClient(ctx, &localv1.UpdateClientRequest{GrantId: grant, Spec: spec}); err != nil {
 			t.Fatal(err)
-		}
-		if c := login.wait(t, 30*time.Second); c != 0 {
-			t.Fatalf("login exited %d:\n%s", c, login.output())
-		}
-		if !strings.Contains(login.output(), "Paired") {
-			t.Fatalf("login output: %s", login.output())
 		}
 	}
 	pairClient(grokEnv, "grok", &localv1.GrantSpec{})
-	if r := cli(grokEnv, 20*time.Second, "auth", "login", addr); !strings.Contains(r.stdout, "Already paired") {
+	if r := cli(grokEnv, 20*time.Second, "auth", "login", addr); !strings.Contains(r.stdout, "Already logged in") {
 		t.Fatalf("re-login: %+v", r)
 	}
 	if fi, err := os.Stat(filepath.Join(grokHome, "client.key")); err != nil || runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600 {
@@ -242,9 +238,8 @@ func TestUserJourney(t *testing.T) {
 		ps["vps-1/demo"]["active_sessions"] != float64(0) || ps["vps-1/demo"]["running_sessions"] != nil {
 		t.Fatalf("projects json: %v", ps)
 	}
-	// A machine's name is a setting: renaming signs nothing, the agent sees
-	// the new name (from the machine itself) and the old one is gone.
-	renameFrom := len(app.signedTypes())
+	// A machine's name is a setting: the agent sees the new name (from the
+	// machine itself) and the old one is gone.
 	if _, err := app.client.RenameMachine(ctx, &localv1.RenameMachineRequest{MachineId: vps1.MachineId, MachineName: "vps-one"}); err != nil {
 		t.Fatal(err)
 	}
@@ -264,9 +259,6 @@ func TestUserJourney(t *testing.T) {
 	}
 	if listed(grokEnv)["vps-1/demo"] == nil {
 		t.Fatal("a refused rename changed the name")
-	}
-	if got := app.signedTypes()[renameFrom:]; len(got) != 0 {
-		t.Fatalf("renaming signed %v", got)
 	}
 	// A name on several machines is picked by its address; the error lists them.
 	if r := cli(grokEnv, 30*time.Second, "session", "start", "--project", "demo", "--prompt", "x"); r.code != 2 ||
@@ -312,7 +304,7 @@ func TestUserJourney(t *testing.T) {
 		model = []string{"--model", "haiku"}
 	}
 	start1 := cli(grokEnv, 6*time.Minute, append([]string{"session", "start", "--project", "vps-1/demo", "--agent", "claude", "--wait", "-o", "json",
-		"--idempotency-key", "e2e-s1", "--prompt", prompt("say working\nwrite hello.txt hello from hermesh", "Create a file hello.txt containing exactly: hello from hermesh. Then reply: done")}, model...)...)
+		"--idempotency-key", "e2e-s1", "--prompt", prompt("say working\nwrite hello.txt hello from aide", "Create a file hello.txt containing exactly: hello from aide. Then reply: done")}, model...)...)
 	if start1.code != 0 {
 		t.Fatalf("claude session: %+v", start1)
 	}
@@ -325,7 +317,7 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("session after wait: %s", start1.stdout)
 	}
 	diff := cli(grokEnv, 30*time.Second, "session", "diff", s1.SessionID)
-	if diff.code != 0 || !strings.Contains(diff.stdout, "hello.txt") || !strings.Contains(diff.stdout, "+hello from hermesh") {
+	if diff.code != 0 || !strings.Contains(diff.stdout, "hello.txt") || !strings.Contains(diff.stdout, "+hello from aide") {
 		t.Fatalf("diff: %+v", diff)
 	}
 	if b, _ := os.ReadFile(filepath.Join(repo1, "hello.txt")); len(b) != 0 {
@@ -565,7 +557,7 @@ func TestUserJourney(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(inPlaceRepo, "feature.txt")); r.code != 0 || !strings.Contains(string(b), "from codex") {
 		t.Fatalf("in-place codex session: %+v, feature.txt %q", r, b)
 	}
-	if h := gitIn(t, inPlaceRepo, "rev-parse", "HEAD"); h != headBefore || gitIn(t, inPlaceRepo, "branch", "--list", "hermesh/*") != "" ||
+	if h := gitIn(t, inPlaceRepo, "rev-parse", "HEAD"); h != headBefore || gitIn(t, inPlaceRepo, "branch", "--list", "aide/*") != "" ||
 		!strings.Contains(gitIn(t, inPlaceRepo, "status", "--porcelain"), "?? feature.txt") {
 		t.Fatalf("in-place git repo: HEAD %s (was %s), branches %q", h, headBefore, gitIn(t, inPlaceRepo, "branch", "--list"))
 	}
@@ -680,10 +672,10 @@ func TestUserJourney(t *testing.T) {
 
 	// A10 prep: a second agent that will survive losing the first Mac untouched.
 	scoutHome := filepath.Join(tmp, "scout")
-	scoutEnv := []string{"HERMESH_HOME=" + scoutHome}
+	scoutEnv := []string{"AIDE_HOME=" + scoutHome}
 	pairClient(scoutEnv, "scout", &localv1.GrantSpec{MachineIds: []string{vps1.MachineId}, Agents: []string{"claude"}})
 	// An agent granted no project that exists sees an empty list that says what to do.
-	idleEnv := []string{"HERMESH_HOME=" + filepath.Join(tmp, "idle")}
+	idleEnv := []string{"AIDE_HOME=" + filepath.Join(tmp, "idle")}
 	pairClient(idleEnv, "idle", &localv1.GrantSpec{ProjectIds: []string{"nothing-here"}})
 	if r := cli(idleEnv, 30*time.Second, "project", "list"); r.code != 0 || !strings.Contains(r.stdout, "ask the owner") {
 		t.Fatalf("empty project list: %+v", r)
@@ -707,77 +699,36 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("revoked agent still works: %+v", r)
 	}
 
-	// A10: a second Mac joins, approved on the first (docs/trusted-devices.md
-	// 4.2). Then the first is lost and removed from the second (4.3): the
-	// machine and the agents keep working, the first Mac's own machine goes.
+	// A10: a second computer logs in with the account, no one approving
+	// (docs/accounts.md). Then the first is lost and signed out from the
+	// second: the machine and the agents keep working, the first
+	// computer's own machine goes.
 	sock2 := filepath.Join(sockDir, "o2.sock")
 	owner2 := start(t, "owner second-mac", agentEnv, daemonBin, "run", "--owner", "--data-dir", filepath.Join(tmp, "second-mac"), "--socket", sock2)
 	logs = append(logs, owner2)
-	root2, _ := identity.GenerateKey()
-	app2 := newTestApp(t, sock2, root2)
-	join, err := app2.client.RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: relayURL, OwnerId: setup.OwnerId,
-		RootPublicKey: rootPub(root2), RootLabel: "second-mac", RootPlatform: "macos"})
-	if err != nil {
-		t.Fatalf("request join: %v\n%s", err, owner2.output())
+	app2 := newTestApp(t, sock2)
+	if _, err := app2.client.LogIn(ctx, &localv1.LogInRequest{RelayUrl: relayURL, Account: testAccount, Password: "wrong password", Label: "second-mac"}); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("a wrong password: %v", err)
 	}
-	var asked *localv1.PairingDetails
-	eventually(t, 15*time.Second, "join request on the first Mac", func() bool {
-		res, err := app.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		for _, p := range res.GetPairings() {
-			if p.Kind == identityv1.PairingKind_PAIRING_KIND_DEVICE {
-				asked = p
-			}
-		}
-		return err == nil && asked != nil
-	})
-	if asked.Code != join.Code || asked.VerificationCode != join.VerificationCode || asked.Label != "second-mac" {
-		t.Fatalf("the first Mac shows %+v; the second asked %+v", asked, join)
-	}
-	if _, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: join.Code}); err == nil {
-		t.Fatal("a device was approved as a machine")
-	}
-	approval, err := app.client.ApproveDevicePairing(ctx, &localv1.ApproveDevicePairingRequest{Code: join.Code})
-	if err != nil || len(approval.GetMatchCode()) != 2 {
-		t.Fatalf("approve device: %v %v", approval, err)
-	}
-	var joined *localv1.WaitJoinResponse
-	eventually(t, 60*time.Second, "approval reaches the second Mac", func() bool {
-		joined, err = app2.client.WaitJoin(ctx, &localv1.WaitJoinRequest{Code: join.Code})
-		return err == nil && joined.Done
-	})
-	if joined.ApprovedBy != "test-mac" || len(joined.Devices) != 2 {
-		t.Fatalf("join result: %+v", joined)
-	}
-	if st, _ := app2.client.GetStatus(ctx, &localv1.GetStatusRequest{}); st.GetInitialized() {
-		t.Fatal("the second Mac kept the owner before the person confirmed")
-	}
-	// The person types the two digits the first Mac shows; a wrong number
-	// is refused.
-	wrong := "00"
-	if approval.MatchCode == wrong {
-		wrong = "01"
-	}
-	if _, err := app2.client.ConfirmJoin(ctx, &localv1.ConfirmJoinRequest{Code: join.Code, Accept: true, MatchCode: wrong}); err == nil {
-		t.Fatal("a wrong number was accepted")
-	}
-	if _, err := app2.client.ConfirmJoin(ctx, &localv1.ConfirmJoinRequest{Code: join.Code, Accept: true, MatchCode: approval.MatchCode}); err != nil {
-		t.Fatal(err)
+	if _, err := app2.client.LogIn(ctx, &localv1.LogInRequest{RelayUrl: relayURL, Account: testAccount, Password: testPassword, Label: "second-mac", Platform: "macos"}); err != nil {
+		t.Fatalf("log in: %v\n%s", err, owner2.output())
 	}
 	st2, err := app2.client.GetStatus(ctx, &localv1.GetStatusRequest{})
-	if err != nil || !st2.Initialized || st2.OwnerId != setup.OwnerId || st2.DeviceKeyId != identity.KeyID(root2.Public()) {
+	if err != nil || !st2.Initialized || st2.OwnerId != setup.OwnerId || st2.DeviceKeyId == "" {
 		t.Fatalf("second Mac status: %v %v", st2, err)
 	}
-	devices, err := app2.client.ListDevices(ctx, &localv1.ListDevicesRequest{})
-	if err != nil || len(devices.Devices) != 2 {
-		t.Fatalf("devices: %v %v", devices, err)
-	}
 	var first *localv1.Device
-	for _, d := range devices.Devices {
-		if !d.ThisDevice {
-			first = d
+	eventually(t, 30*time.Second, "both computers among the devices", func() bool {
+		devices, err := app2.client.ListDevices(ctx, &localv1.ListDevicesRequest{})
+		first = nil
+		for _, d := range devices.GetDevices() {
+			if !d.ThisDevice {
+				first = d
+			}
 		}
-	}
-	if first == nil || first.Label != "test-mac" || first.MachineId != localMachine.MachineId {
+		return err == nil && len(devices.Devices) == 2 && first != nil && first.MachineId != ""
+	})
+	if first.Label != "test-mac" || first.MachineId != localMachine.MachineId {
 		t.Fatalf("the first Mac as the second sees it: %+v (its machine %s)", first, localMachine.MachineId)
 	}
 	if _, err := app2.client.RemoveDevice(ctx, &localv1.RemoveDeviceRequest{KeyId: st2.DeviceKeyId}); err == nil {
@@ -791,20 +742,18 @@ func TestUserJourney(t *testing.T) {
 	if err != nil {
 		t.Fatalf("remove device: %v\n%s", err, owner2.output())
 	}
-	// vps-1 re-issued (the first Mac's own machine is revoked instead);
-	// scout's and idle's grants re-issued (grok's was revoked).
-	if removed.ReissuedMachines != 1 || removed.ReissuedGrants != 2 {
+	// The server signed everything: nothing to sign again.
+	if removed.ReissuedMachines != 0 || removed.ReissuedGrants != 0 {
 		t.Fatalf("remove result: %+v", removed)
 	}
-	eventually(t, 30*time.Second, "vps-1 trusts the second Mac", func() bool {
+	eventually(t, 30*time.Second, "vps-1 answers the second Mac", func() bool {
 		res, err := app2.client.ListProjects(ctx, &localv1.ListProjectsRequest{MachineId: vps1.MachineId})
 		return err == nil && len(res.Projects) == 2 // demo and notes
 	})
 	if ms, _ := app2.client.ListMachines(ctx, &localv1.ListMachinesRequest{}); slices.ContainsFunc(ms.GetMachines(), func(m *localv1.Machine) bool { return m.MachineId == localMachine.MachineId }) {
 		t.Fatal("the removed Mac's own machine is still listed")
 	}
-	// vps-1 reconnects with its re-issued cert; the agent sees it back before starting.
-	eventually(t, time.Minute, "the agent sees vps-1 again", func() bool {
+	eventually(t, time.Minute, "the agent sees vps-1", func() bool {
 		r := cli(scoutEnv, 30*time.Second, "project", "list")
 		return r.code == 0 && strings.Contains(r.stdout, "vps-1/demo")
 	})
@@ -814,9 +763,9 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("agent after the first Mac was removed: %+v\nvps-1:\n%s", scout, machine1.output())
 	}
 
-	// The first Mac comes back: refused, it learns it was removed and resets.
+	// The first Mac comes back: refused, it learns it was signed out and resets.
 	ownerProc = startOwner(ownerData)
-	app = newTestApp(t, sock, root)
+	app = newTestApp(t, sock)
 	eventually(t, 60*time.Second, "the first Mac knows it was removed", func() bool {
 		st, err := app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
 		return err == nil && st.Removed
@@ -828,9 +777,8 @@ func TestUserJourney(t *testing.T) {
 		t.Fatal("still set up after leaving")
 	}
 	if _, err := app2.client.Leave(ctx, &localv1.LeaveRequest{}); err == nil {
-		t.Fatal("a device that is still trusted left")
+		t.Fatal("a device still logged in left")
 	}
-	t.Logf("signed by the second Mac: %v", app2.signedTypes())
 }
 
 func writePNG(t *testing.T, path string, c color.RGBA) {

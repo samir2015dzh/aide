@@ -47,7 +47,7 @@ async fn a_case_runs_through_her_exec_and_is_judged_by_what_the_site_received() 
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     }
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let cases = env.workspace("cases");
     // The mock navigates to the page, clicks its first button and reports the click.
     let pass = write_case(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { BotSummary } from "@hermesh/her-protocol";
+import type { BotSummary } from "@aide/her-protocol";
 import { badgeCount, botAlerts, sessionAlerts, targetOf, type AlertSession } from "./alerts.ts";
 
 const bot = (over: Partial<BotSummary> = {}): BotSummary => ({ id: "b", name: "小研", avatar: { kind: "mono", hue: "slate" }, created_at: "2026-11-04T00:00:00Z", ...over });
@@ -47,16 +47,16 @@ test("a message that is only marks still says something", () => {
   assert.equal((c.alerts[0] as { text: string }).text, "**");
 });
 
-test("an approval is a alert, gone when answered, replaced by the next", () => {
-  const asked = botAlerts(bot(), bot({ waiting: "运行 ls" }));
-  assert.deepEqual(kinds(asked), ["bot_approval"]);
-  assert.equal(asked.alerts[0]!.id, "bot:b:approval");
-  const answered = botAlerts(bot({ waiting: "运行 ls" }), bot());
-  assert.deepEqual(answered.clear, ["bot:b:approval"]);
+test("a secure card waiting is an alert, gone when answered, replaced by the next", () => {
+  const asked = botAlerts(bot(), bot({ waiting: "连接 Notion" }));
+  assert.deepEqual(kinds(asked), ["bot_card"]);
+  assert.equal(asked.alerts[0]!.id, "bot:b:card");
+  const answered = botAlerts(bot({ waiting: "连接 Notion" }), bot());
+  assert.deepEqual(answered.clear, ["bot:b:card"]);
   assert.deepEqual(kinds(answered), []);
-  const next = botAlerts(bot({ waiting: "运行 ls" }), bot({ waiting: "写文件" }));
-  assert.deepEqual(kinds(next), ["bot_approval"]);
-  assert.deepEqual(next.clear, ["bot:b:approval"]);
+  const next = botAlerts(bot({ waiting: "连接 Notion" }), bot({ waiting: "连接 GitHub" }));
+  assert.deepEqual(kinds(next), ["bot_card"]);
+  assert.deepEqual(next.clear, ["bot:b:card"]);
 });
 
 test("a failure out of work is a alert; an old one found on loading is not", () => {
@@ -76,47 +76,38 @@ test("reading clears what the bot has showing", () => {
 });
 
 test("a muted bot alerts about nothing, but what it had showing still goes", () => {
-  const c = botAlerts(bot({ unread: 1, waiting: "运行 ls", muted: true }), bot({ muted: true, last: said("一"), failed: false }));
+  const c = botAlerts(bot({ unread: 1, waiting: "连接 Notion", muted: true }), bot({ muted: true, last: said("一"), failed: false }));
   assert.deepEqual(kinds(c), []);
   assert.deepEqual(c.clearGroups, ["bot:b"]);
-  assert.deepEqual(c.clear, ["bot:b:approval"]);
+  assert.deepEqual(c.clear, ["bot:b:card"]);
   assert.deepEqual(kinds(botAlerts(bot({ typing: true, muted: true }), bot({ failed: true, muted: true }))), []);
 });
 
-test("a session: waiting, failing and ending are alerts", () => {
-  assert.deepEqual(kinds(sessionAlerts(session("running"), session("awaiting_approval"))), ["session_approval"]);
+test("a session: failing and ending are alerts; nothing waits for the owner", () => {
   assert.deepEqual(kinds(sessionAlerts(session("running"), session("failed"))), ["session_failed"]);
-  assert.deepEqual(kinds(sessionAlerts(session("awaiting_approval"), session("failed"))), ["session_failed"]);
   assert.deepEqual(kinds(sessionAlerts(session("running"), session("idle"))), ["session_ended"]);
   assert.equal((sessionAlerts(session("running"), session("idle")).alerts[0] as { title: string }).title, "修登录");
 });
 
-test("a session first seen waiting is news; first seen otherwise is not", () => {
-  assert.deepEqual(kinds(sessionAlerts(undefined, session("awaiting_approval"))), ["session_approval"]);
+test("a session first seen is no news", () => {
+  assert.deepEqual(kinds(sessionAlerts(undefined, session("running"))), []);
   assert.deepEqual(kinds(sessionAlerts(undefined, session("idle"))), []);
   assert.deepEqual(kinds(sessionAlerts(undefined, session("failed"))), []);
 });
 
-test("an approval refused with the task stopped is not called an ending", () => {
-  const c = sessionAlerts(session("awaiting_approval"), session("idle"));
-  assert.deepEqual(kinds(c), []);
-  assert.deepEqual(c.clear, ["session:s:approval"]);
-});
-
 test("a session working again takes down what it said about the last task", () => {
   assert.deepEqual(sessionAlerts(session("idle"), session("running")).clear, ["session:s:ended"]);
-  assert.deepEqual(sessionAlerts(session("awaiting_approval"), session("running")).clear, ["session:s:approval", "session:s:ended"]);
 });
 
 test("an archived session alerts about nothing and the same state repeats nothing", () => {
   assert.deepEqual(kinds(sessionAlerts(session("running", true), session("idle", true))), []);
-  assert.deepEqual(kinds(sessionAlerts(session("awaiting_approval"), session("awaiting_approval"))), []);
+  assert.deepEqual(kinds(sessionAlerts(session("running"), session("running"))), []);
 });
 
-test("the icon's number leaves muted bots and archived sessions out", () => {
+test("the icon's number counts what unmuted bots said; sessions never wait for the owner", () => {
   const bots = [bot({ unread: 2 }), bot({ id: "m", unread: 5, muted: true }), bot({ id: "z" })];
-  const sessions = [session("awaiting_approval"), session("awaiting_approval", true), session("running")];
-  assert.equal(badgeCount(bots, sessions), 3);
+  const sessions = [session("failed"), session("idle", true), session("running")];
+  assert.equal(badgeCount(bots, sessions), 2);
   assert.equal(badgeCount([], []), 0);
 });
 

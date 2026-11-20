@@ -17,28 +17,30 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1/machinev1connect"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/session/v1/sessionv1connect"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/owner"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/fake"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/relay"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/session/v1/sessionv1connect"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/owner"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/fake"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/relay"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // world is an in-process deployment: relay, owner (driven like the app),
-// two machines and one paired agent. The tests then act as a compromised
-// relay (A7, §3.8 of the design).
+// two machines and one agent, all logged in with the owner's account. The
+// tests then act as whatever stands between them without the server's key:
+// a relay that lost it, or anything on the path (docs/accounts.md §7). A
+// relay that has its key is the owner, by the owner's choice: nothing
+// here guards against that one.
 type world struct {
 	relay     *relay.Server
 	relayURL  string
@@ -64,7 +66,7 @@ func newWorld(t *testing.T, opts ...func(*machine.Config)) *world {
 	}
 	hs := httptest.NewServer(rs.Handler())
 	t.Cleanup(func() { hs.Close(); rs.Close() })
-	claim, _ := rs.ClaimCode()
+	setupCode, _ := rs.SetupCode()
 
 	o, err := owner.Open(owner.Config{DataDir: filepath.Join(tmp, "owner"), Logger: quiet})
 	if err != nil {
@@ -76,16 +78,13 @@ func newWorld(t *testing.T, opts ...func(*machine.Config)) *world {
 	sock := filepath.Join(sockDir, "o.sock")
 	go o.Run(ctx)
 	go o.ServeLocal(ctx, sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: hs.URL, ClaimCode: claim, RootPublicKey: rootPub(root), RootLabel: "mac"})
+	app := newTestApp(t, sock)
+	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: hs.URL, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "mac"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := &world{relay: rs, relayURL: hs.URL, app: app, ownerID: setup.OwnerId}
-	addr := setup.ConnectAddress
-	_, ownerID, _ := connaddr.Parse(addr)
-	w.trust = identity.NewTrust(ownerID)
+	w.trust = identity.NewTrust(setup.OwnerId)
 
 	for i, name := range []string{"alpha", "beta"} {
 		cfg := machine.Config{DataDir: filepath.Join(tmp, name), Logger: quiet,
@@ -106,15 +105,7 @@ func newWorld(t *testing.T, opts ...func(*machine.Config)) *world {
 			}
 			n.Close()
 		})
-		var out bytes.Buffer
-		done := make(chan error, 1)
-		go func() { done <- n.Pair(ctx, addr, name, &syncWriter{w: &out}) }()
-		eventually(t, 10*time.Second, "pairing code", func() bool { return codeRE.MatchString(syncRead(&out)) })
-		code := codeRE.FindStringSubmatch(syncRead(&out))[1]
-		if _, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: name}); err != nil {
-			t.Fatal(err)
-		}
-		if err := <-done; err != nil {
+		if err := n.LogIn(ctx, hs.URL, testAccount, testPassword, name, io.Discard); err != nil {
 			t.Fatal(err)
 		}
 		ran = make(chan struct{})
@@ -145,28 +136,17 @@ func newWorld(t *testing.T, opts ...func(*machine.Config)) *world {
 		}
 	}
 
-	// Pair an agent.
+	// An agent logs in.
 	w.agentKey, _ = identity.GenerateKey()
-	pr := &identityv1.PairingRequest{Kind: identityv1.PairingKind_PAIRING_KIND_CLIENT, SubjectPublicKey: identity.MarshalPublicKey(w.agentKey.Public()),
-		Label: "agent", OwnerId: ownerID, CreatedAt: timestamppb.Now()}
-	var out bytes.Buffer
-	done := make(chan *identityv1.Credentials, 1)
-	go func() {
-		c, _, err := machine.PairWithRelay(ctx, http.DefaultClient, hs.URL, pr, w.agentKey, &syncWriter{w: &out})
-		if err != nil {
-			t.Error(err)
-		}
-		done <- c
-	}()
-	eventually(t, 10*time.Second, "agent code", func() bool { return codeRE.MatchString(syncRead(&out)) })
-	if _, err := app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: codeRE.FindStringSubmatch(syncRead(&out))[1], Spec: &localv1.GrantSpec{}}); err != nil {
+	res, err := machine.LogInTo(ctx, http.DefaultClient, hs.URL, testAccount, testPassword, &relayv1.Joiner{Kind: relayv1.JoinKind_JOIN_KIND_AGENT,
+		PublicKey: identity.MarshalPublicKey(w.agentKey.Public()), Label: "agent"})
+	if err != nil {
 		t.Fatal(err)
 	}
-	creds := <-done
-	if _, err := w.trust.AcceptRootChain(creds.RootChain); err != nil {
+	if _, err := w.trust.AcceptRootChain(res.RootChain); err != nil {
 		t.Fatal(err)
 	}
-	w.grant, w.rootChain = creds.GetGrant(), creds.RootChain
+	w.grant, w.rootChain = res.Credential, res.RootChain
 	return w
 }
 
@@ -187,6 +167,16 @@ func syncRead(b *bytes.Buffer) string {
 	bufMu.Lock()
 	defer bufMu.Unlock()
 	return b.String()
+}
+
+// serverKey is the server's own key, which signs for the owner.
+func (w *world) serverKey(t *testing.T) *identity.SoftwareKey {
+	t.Helper()
+	k, err := w.relay.Store().ServerKey()
+	if err != nil || k == nil {
+		t.Fatalf("the server's key: %v", err)
+	}
+	return k
 }
 
 func (w *world) agentCreds(grant *identityv1.Signed) func() *identityv1.Credentials {
@@ -348,32 +338,6 @@ func TestEvilRelay(t *testing.T) {
 		}
 	})
 
-	t.Run("swapped pairing key is caught by the owner", func(t *testing.T) {
-		victim, _ := identity.GenerateKey()
-		evil, _ := identity.GenerateKey()
-		code := identity.PairingCode(identityv1.PairingKind_PAIRING_KIND_CLIENT, identity.MarshalPublicKey(victim.Public()))
-		pr := &identityv1.PairingRequest{Kind: identityv1.PairingKind_PAIRING_KIND_CLIENT, SubjectPublicKey: identity.MarshalPublicKey(evil.Public()),
-			Label: "victim", OwnerId: w.ownerID, CreatedAt: timestamppb.Now()}
-		signed, _ := identity.Sign(pr, evil)
-		w.relay.Store().PutPairing(&relay.Pairing{Code: code, Kind: pr.Kind, Request: signed, OwnerID: w.ownerID, ExpiresAt: time.Now().Add(5 * time.Minute)})
-		if _, err := w.app.client.LookupPairing(ctx, &localv1.LookupPairingRequest{Code: code}); err == nil || !strings.Contains(err.Error(), "does not match") {
-			t.Fatalf("lookup err = %v", err)
-		}
-		if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: code, Spec: &localv1.GrantSpec{}}); err == nil {
-			t.Fatal("approved a swapped key")
-		}
-	})
-
-	t.Run("a fake owner handed out at pairing is rejected", func(t *testing.T) {
-		evil, _ := identity.GenerateKey()
-		evilRoot := &identityv1.RootCert{OwnerId: identity.OwnerID(identity.MarshalPublicKey(evil.Public())), Version: 1,
-			RootKeys: []*identityv1.RootKey{{PublicKey: identity.MarshalPublicKey(evil.Public())}}}
-		s, _ := identity.Sign(evilRoot, evil)
-		if _, err := identity.NewTrust(w.ownerID).AcceptRootChain(&identityv1.RootChain{Certs: []*identityv1.Signed{s}}); err == nil {
-			t.Fatal("agent trusted a different owner")
-		}
-	})
-
 	t.Run("forged admin command is rejected", func(t *testing.T) {
 		evil, _ := identity.GenerateKey()
 		cmd := &identityv1.AdminCommand{OwnerId: w.ownerID, CommandId: "x", TargetMachineId: alpha.MachineID(), ExpiresAt: timestamppb.New(time.Now().Add(time.Minute)),
@@ -424,10 +388,15 @@ func TestEvilRelay(t *testing.T) {
 		}
 	})
 
-	t.Run("relay cannot claim to be the owner without the root key", func(t *testing.T) {
+	t.Run("a server set up is not set up again, nor logged in to without the password", func(t *testing.T) {
 		cl := relayv1connect.NewRelayPublicServiceClient(http.DefaultClient, w.relayURL)
-		if _, err := cl.Claim(ctx, &relayv1.ClaimRequest{ClaimCode: "x"}); err == nil {
-			t.Fatal("re-claim succeeded")
+		k, _ := identity.GenerateKey()
+		j := &relayv1.Joiner{Kind: relayv1.JoinKind_JOIN_KIND_DEVICE, PublicKey: identity.MarshalPublicKey(k.Public())}
+		if _, err := cl.SetUp(ctx, &relayv1.SetUpRequest{SetupCode: "x", Account: "evil", Password: "evil password", Joiner: j}); err == nil {
+			t.Fatal("set up again")
+		}
+		if _, err := cl.LogIn(ctx, &relayv1.LogInRequest{Account: testAccount, Password: "not the password", Joiner: j}); err == nil {
+			t.Fatal("logged in with a wrong password")
 		}
 	})
 }

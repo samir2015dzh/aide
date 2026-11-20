@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // The reply streams as drafts (item/agentMessage/delta, as the app-server

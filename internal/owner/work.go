@@ -12,10 +12,10 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/workstats"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/workstats"
 )
 
 // Work counts (docs/work-stats.md §6, §7): this device keeps a copy of

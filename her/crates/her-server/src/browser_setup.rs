@@ -1,4 +1,4 @@
-//! `browser/open_setup`: what adding the Hermesh extension by hand takes, opened on the computer
+//! `browser/open_setup`: what adding the Aide extension by hand takes, opened on the computer
 //! her runs on, for the console's guide (her/apps/console/src/yours/YourBrowser.tsx). The console
 //! may be on another device, so it cannot open these itself.
 
@@ -52,14 +52,14 @@ fn mac_browser(app: &str) -> Option<&str> {
     (app.ends_with(".app") && MAC_BROWSERS.contains(&name)).then_some(app)
 }
 
-/// Where hermeshd keeps the extension (internal/herhost/extension.go, ExtensionFolder).
+/// Where aided keeps the extension (internal/herhost/extension.go, ExtensionFolder).
 fn extension_folder(home: &Path) -> PathBuf {
     if cfg!(target_os = "macos") {
-        home.join("Library/Application Support/Hermesh/Chrome Extension")
+        home.join("Library/Application Support/Aide/Chrome Extension")
     } else if cfg!(windows) {
-        home.join(r"AppData\Local\Hermesh\Chrome Extension")
+        home.join(r"AppData\Local\Aide\Chrome Extension")
     } else {
-        home.join(".local/share/hermesh/chrome-extension")
+        home.join(".local/share/aide/chrome-extension")
     }
 }
 

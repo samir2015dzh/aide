@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { Client, Wake } from "@hermesh/proto/local";
-import { agoText, dateOf } from "@hermesh/core";
-import { agentName } from "@hermesh/ui";
+import type { Client, Wake } from "@aide/proto/local";
+import { agoText, dateOf } from "@aide/core";
+import { agentName } from "@aide/ui";
 import { local } from "../api";
 import { GrantAvatar } from "../components";
 import { wakeReason } from "../sheets/Wake";
@@ -12,7 +12,7 @@ import { GoRow } from "./common";
 
 /**
  * An agent's doorbells (docs/agent-names.md §7), on its Access page: the
- * webhook Hermesh calls to wake the agent when messages wait for it, and, for
+ * webhook Aide calls to wake the agent when messages wait for it, and, for
  * a connection several bots share, one per bot. Only an agent that can be
  * woken asks for one (its wake link opens the setup), so the group shows
  * only once it has one. A relay without the MCP gateway keeps none.
@@ -30,7 +30,7 @@ export function Wakes({ c }: { c: Client }) {
     );
   }, [c.clientId]);
   // Again whenever a sheet closes (one may have changed them), and whenever
-  // hermeshd is back: an app just updated talks to the previous version's,
+  // aided is back: an app just updated talks to the previous version's,
   // which keeps none, until it restarts it.
   const up = !!st.status;
   useEffect(() => {

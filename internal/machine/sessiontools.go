@@ -17,19 +17,19 @@ import (
 	"github.com/oklog/ulid/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
-// The sessions' own tools (docs/agent-messages.md §7.4). hermeshd listens
+// The sessions' own tools (docs/agent-messages.md §7.4). aided listens
 // on a Unix socket only its user can reach; each session's coding agent
-// starts `hermeshd message-mcp` with a token naming its session, and writes
-// to the owner's agents through it: hermeshd signs each message with the
+// starts `aided message-mcp` with a token naming its session, and writes
+// to the owner's agents through it: aided signs each message with the
 // machine key, from the session, and records it in the conversation.
 
 // sessionTools is the socket and the sessions' tokens.
@@ -85,12 +85,11 @@ func (n *Machine) mcpServers(sessionID string) []provider.MCPServer {
 		}
 		n.tools.tokens[token], n.tools.byID[sessionID] = sessionID, token
 	}
-	return []provider.MCPServer{{Name: "hermesh", Command: exe, Args: []string{"message-mcp"},
-		Env: map[string]string{ // both names: an agent from before the rename reads the old (brandenv)
-			"AIDE_TOOLS_SOCKET": n.tools.path, "AIDE_TOOLS_TOKEN": token, "HERMESH_TOOLS_SOCKET": n.tools.path, "HERMESH_TOOLS_TOKEN": token}}}
+	return []provider.MCPServer{{Name: "aide", Command: exe, Args: []string{"message-mcp"},
+		Env: map[string]string{"AIDE_TOOLS_SOCKET": n.tools.path, "AIDE_TOOLS_TOKEN": token}}}
 }
 
-// ToolRequest is what `hermeshd message-mcp` asks of hermeshd.
+// ToolRequest is what `aided message-mcp` asks of aided.
 type ToolRequest struct {
 	Token   string `json:"token"`
 	To      string `json:"to,omitempty"`

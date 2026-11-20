@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
-import { codingAgentTitle, displayTitle, isActive, isFailed, liveByAgent, teamState } from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+import { SessionStatus, type Session } from "@aide/proto/session";
+import { codingAgentTitle, displayTitle, isActive, isFailed, liveByAgent, teamState } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { Cat } from "./her/Cat";
 import { unreadCount } from "./her/environments";
 import { Icon } from "./icons";

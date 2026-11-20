@@ -320,12 +320,6 @@
       "stone": "Grey"
     }
   },
-  "access": {
-    "title": "Give “{{name}}” full access?",
-    "body": "It acts on {{environment}} without asking you, and so do the agents and scheduled tasks it starts. Her reads web pages and messages from anyone, so turn this on only if you trust everything on that machine to it.",
-    "button": "Turn On Full Access",
-    "done": "{{name}} has full access"
-  },
   "menu": {
     "rename": "Rename"
   },
@@ -354,8 +348,6 @@
     "close": "Close",
     "avatar": "Change Avatar",
     "nameHint": "Double-click to rename",
-    "permissionMode": "Permission mode",
-    "permissionNote": "{{desc}}. The agents and scheduled tasks Her starts run with it too, while you are away as well. Full access is confirmed with Touch ID.",
     "muted": "Mute",
     "mutedNote": "No notifications from it, on any device. Unread still shows in the list.",
     "connectors": "Connectors",
@@ -367,39 +359,8 @@
     "memoryNone": "Nothing yet",
     "clear": "Clear Chat",
     "clearMemory": "Clear Memory",
-    "permissionNote_win": "{{desc}}. The agents and scheduled tasks Her starts run with it too, while you are away as well. Full access is confirmed with Windows Hello.",
-    "turnOff": "Turn Off Her on {{machine}}…"
-  },
-  "approval": {
-    "label": "Waiting for your approval",
-    "agent": "Sub-agent · {{name}}",
-    "queue": "{{n}} of {{total}}",
-    "runCommand": "Run this command?",
-    "useTool": "{{verb}} {{object}}?",
-    "once": "Allow",
-    "session": "Allow for This Conversation",
-    "sessionDesc": "Calls like this one won't ask again in this conversation",
-    "sessionRule": "Commands starting with “{{rule}}” won't ask again in this conversation",
-    "project": "Don't ask again for {{project}}",
-    "siteQuestion": "Allow Her to use {{site}}?",
-    "siteOnce": "Allow Once",
-    "siteAlways": "Always Allow This Site",
-    "siteAlwaysDesc": "Browsing and acting on this site won't ask again; kept in this environment",
-    "siteEvery": "Allow All Sites",
-    "siteEveryDesc": "Browsing and acting on any public site won't ask again (private network addresses still do); kept in this environment. Risk: a page with injected instructions could get Her to act on sites it is signed in to.",
-    "scriptQuestion": "Run a script on {{site}}?",
-    "grantScript": "Allow Scripts on This Site for This Conversation",
-    "grantScriptDesc": "Scripts on {{site}} won't ask again in this conversation",
-    "grantApp": "Allow {{app}} for This Conversation",
-    "grantAppDesc": "Won't ask again for this app in this conversation",
-    "denyWhy": "Deny…",
-    "deny": "Deny",
-    "cancel": "Cancel",
-    "feedback": "Tell Her why, or what to do instead (optional)",
-    "more_one": "{{count}} more line",
-    "more_other": "{{count}} more lines",
-    "remember": "Remember",
-    "rememberDesc": "Also keep this permission in the environment's settings, so later conversations don't ask"
+    "turnOff": "Turn Off Her on {{machine}}…",
+    "actsNote": "Her acts without asking: there are no approvals. The agents and scheduled tasks she starts do too, while you are away as well."
   },
   "fail": {
     "theProvider": "the provider",
@@ -447,20 +408,6 @@
     "retryable": "Retry in a moment.",
     "unknown": "Retry, or look at the details.",
     "no_reply": "The model ended its turn without sending you anything. Retry, or try another model."
-  },
-  "permission": {
-    "manual": {
-      "title": "Ask Permissions",
-      "desc": "Asks before changing files or running commands"
-    },
-    "accept-edits": {
-      "title": "Accept Edits",
-      "desc": "Changes files in its folder without asking; asks before commands"
-    },
-    "bypass-permissions": {
-      "title": "Full Access",
-      "desc": "Runs everything without asking, except deny rules, ask rules and deleting critical paths"
-    }
   },
   "thinking": {
     "default": "Default",
@@ -518,7 +465,6 @@
       "done": "Denied"
     },
     "cancelled": "Not run",
-    "awaiting": "Needs approval:",
     "thought": "Thought",
     "thinkingHidden": "The provider keeps this reasoning private",
     "count": {
@@ -655,7 +601,6 @@
     "state": {
       "starting": "Starting",
       "running": "In progress",
-      "waiting": "Needs your approval",
       "done": "Done",
       "failed": "Failed",
       "stopped": "Stopped"
@@ -676,7 +621,6 @@
     "sentBy": "Sent out by <b>{{name}}</b>",
     "working": "The sub-agent is working",
     "doneLine": "Done; its last words went back to {{name}} as its report",
-    "waitingBehind": "Another approval is ahead of this one; it shows here when its turn comes.",
     "failedHere": "It failed, and stopped here",
     "interrupted": "This round was interrupted",
     "gone": "This record is gone",
@@ -686,7 +630,6 @@
       "now": "Now",
       "earlier": "Earlier"
     },
-    "review": "Review",
     "files_one": "{{count}} file",
     "files_other": "{{count}} files",
     "fromYou": "You {{time}} · {{text}}",
@@ -898,7 +841,7 @@
       "off": "Not connected"
     },
     "control": "Allow Her to Control Browsers",
-    "controlNote": "Her opens web pages and acts in them. Which sites she may use without asking is below.",
+    "controlNote": "Her opens web pages and acts in them without asking. Sites she may not use are below.",
     "builtin": "Built-in Browser",
     "yoursName": "{{name}} (Your Browser)",
     "defaultNote": "When the agent doesn’t name a browser, new pages open here.",

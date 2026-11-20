@@ -26,12 +26,6 @@ fn check(incoming: &Incoming) {
         "session/update" => {
             conforms::<acp::SessionNotification>(incoming.params(), "session/update");
         }
-        "session/request_permission" => {
-            conforms::<acp::RequestPermissionRequest>(incoming.params(), "session/request_permission");
-        }
-        "$/cancel_request" => {
-            conforms::<acp::CancelRequestNotification>(incoming.params(), "$/cancel_request");
-        }
         other => panic!("unexpected message from the agent: {other}"),
     }
 }
@@ -79,7 +73,6 @@ async fn commands_after_open(rx: &mut IncomingRx, session: &str) -> (Vec<Value>,
 struct Turn {
     updates: Vec<Value>,
     text: String,
-    permissions: usize,
 }
 
 impl Turn {
@@ -88,8 +81,9 @@ impl Turn {
     }
 }
 
-/// Sends a prompt and handles updates and permission requests until the response arrives.
-async fn prompt(client: &Client, rx: &mut IncomingRx, session: &str, text: &str, option: &str) -> (Turn, Result<Value, RpcError>) {
+/// Sends a prompt and handles updates until the response arrives. Her never asks the client for
+/// permission: a request from her fails the check.
+async fn prompt(client: &Client, rx: &mut IncomingRx, session: &str, text: &str) -> (Turn, Result<Value, RpcError>) {
     let request = {
         let client = client.clone();
         let params = json!({"sessionId": session, "prompt": [{"type": "text", "text": text}]});
@@ -102,14 +96,14 @@ async fn prompt(client: &Client, rx: &mut IncomingRx, session: &str, text: &str,
             done = &mut request => break done.expect("prompt task"),
             incoming = rx.recv() => {
                 let incoming = incoming.expect("connection closed");
-                handle(client, &incoming, &mut turn, option);
+                handle(&incoming, &mut turn);
             }
             _ = tokio::time::sleep(common::WAIT) => panic!("prompt timed out"),
         }
     };
     // Updates precede the response, so whatever is queued now belongs to this turn.
     while let Ok(incoming) = rx.try_recv() {
-        handle(client, &incoming, &mut turn, option);
+        handle(&incoming, &mut turn);
     }
     if let Ok(value) = &result {
         conforms::<acp::PromptResponse>(value, "session/prompt result");
@@ -117,13 +111,9 @@ async fn prompt(client: &Client, rx: &mut IncomingRx, session: &str, text: &str,
     (turn, result)
 }
 
-fn handle(client: &Client, incoming: &Incoming, turn: &mut Turn, option: &str) {
+fn handle(incoming: &Incoming, turn: &mut Turn) {
     check(incoming);
     match incoming {
-        Incoming::Request { id, method, .. } if method == "session/request_permission" => {
-            turn.permissions += 1;
-            client.respond(id, json!({"outcome": {"outcome": "selected", "optionId": option}}));
-        }
         Incoming::Notification { method, params, .. } if method == "session/update" => {
             let update = params["update"].clone();
             if update["sessionUpdate"] == "agent_message_chunk" {
@@ -137,13 +127,13 @@ fn handle(client: &Client, incoming: &Incoming, turn: &mut Turn, option: &str) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_prompt_at_the_size_limit_goes_through_and_one_over_it_gets_its_answer() {
-    let env = TestEnv::new("manual", "[server]\nmax_frame_bytes = 65536\n").await;
+    let env = TestEnv::new("[server]\nmax_frame_bytes = 65536\n").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     init(&client).await;
     let cwd = env.workspace("acp");
     let (session, _, _) = new_session(&client, &mut rx, &cwd).await;
 
-    let (turn, result) = prompt(&client, &mut rx, &session, &"x".repeat(65_000), "approve").await;
+    let (turn, result) = prompt(&client, &mut rx, &session, &"x".repeat(65_000)).await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
     assert!(!turn.text.is_empty());
 
@@ -154,27 +144,26 @@ async fn a_prompt_at_the_size_limit_goes_through_and_one_over_it_gets_its_answer
     assert!(err.message.contains("65536"), "{}", err.message);
 
     // The session goes on.
-    let (_, result) = prompt(&client, &mut rx, &session, "again", "approve").await;
+    let (_, result) = prompt(&client, &mut rx, &session, "again").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
     drop(client);
     assert_eq!(common::exit_code(&mut child).await, 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn acp_runs_tools_with_permissions() {
-    let env = TestEnv::new("manual", "").await;
+async fn acp_runs_tools_without_asking() {
+    let env = TestEnv::new("").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     let init = init(&client).await;
     assert_eq!(init["agentCapabilities"]["loadSession"], true);
     let cwd = env.workspace("acp");
     let (session, created, _) = new_session(&client, &mut rx, &cwd).await;
     let options = created["configOptions"].as_array().unwrap();
-    assert_eq!(options.len(), 3);
+    assert_eq!(options.len(), 2, "model and thinking; no permission modes");
     assert_eq!(options[0]["currentValue"], "mock/mock-1");
 
-    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:files]] go", "approve_for_session").await;
+    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:files]] go").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
-    assert_eq!(turn.permissions, 1);
     let calls: Vec<&Value> = turn.updates.iter().filter(|u| u["sessionUpdate"] == "tool_call").collect();
     assert_eq!(calls.len(), 3);
     assert_eq!(calls[0]["kind"], "edit");
@@ -195,59 +184,27 @@ async fn acp_runs_tools_with_permissions() {
     assert_eq!(turn.text, "files done");
     assert_eq!(std::fs::read_to_string(cwd.join("notes.txt")).unwrap(), "gamma\nbeta\n");
 
-    // "Always" for a file change switched the session to accept-edits, where `touch` in the
-    // workspace no longer asks. A new session (manual) checks a denied permission: the call
-    // fails and the task still ends normally.
-    let cwd = env.workspace("acp-deny");
+    // A command runs at once too.
+    let cwd = env.workspace("acp-command");
     let (session, _, _) = new_session(&client, &mut rx, &cwd).await;
-    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:bash:touch denied.txt]] go", "deny").await;
+    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:bash:touch made.txt]] go").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
-    assert_eq!(turn.permissions, 1);
-    assert!(turn.updates.iter().any(|u| u["sessionUpdate"] == "tool_call_update" && u["status"] == "failed"));
-    assert!(!cwd.join("denied.txt").exists());
+    assert!(!turn.updates.iter().any(|u| u["sessionUpdate"] == "tool_call_update" && u["status"] == "failed"));
+    assert!(cwd.join("made.txt").exists());
 
     drop(client);
     assert_eq!(common::exit_code(&mut child).await, 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn acp_asks_the_client_what_a_sub_agent_asks() {
-    let env = TestEnv::new("manual", "").await;
+async fn acp_sub_agents_run_without_asking() {
+    let env = TestEnv::new("").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     init(&client).await;
     let cwd = env.workspace("acp");
     let (session, _, _) = new_session(&client, &mut rx, &cwd).await;
-
-    // The prompt is answered once the sub-agent is done, so the question comes before that.
-    let request = {
-        let client = client.clone();
-        let params = json!({"sessionId": session, "prompt": [{"type": "text", "text": "[[mock:delegate:touch made.txt]] run it"}]});
-        tokio::spawn(async move { client.request("session/prompt", params).await })
-    };
-    let mut asked = None;
-    let mut request = Box::pin(request);
-    let result = loop {
-        tokio::select! {
-            done = &mut request => break done.expect("prompt task"),
-            incoming = rx.recv() => {
-                let incoming = incoming.expect("connection closed");
-                check(&incoming);
-                if let Incoming::Request { id, method, params, .. } = &incoming && method == "session/request_permission" {
-                    assert!(asked.is_none(), "one question");
-                    assert!(!cwd.join("made.txt").exists());
-                    asked = Some(params.clone());
-                    client.respond(id, json!({"outcome": {"outcome": "selected", "optionId": "approve"}}));
-                }
-            }
-            _ = tokio::time::sleep(common::WAIT) => panic!("prompt timed out"),
-        }
-    };
+    let (_, result) = prompt(&client, &mut rx, &session, "[[mock:delegate:touch made.txt]] run it").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
-    let asked: Value = asked.expect("the client was asked");
-    let tool = &asked["toolCall"];
-    // Who asks shows, and its id is apart from the session's calls.
-    assert!(tool["toolCallId"].as_str().unwrap().starts_with("agent-"), "{tool}");
-    assert_eq!(tool["title"], "运行 touch made.txt: touch made.txt");
     assert!(cwd.join("made.txt").exists());
     drop(client);
     common::exit_code(&mut child).await;
@@ -255,26 +212,29 @@ async fn acp_asks_the_client_what_a_sub_agent_asks() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn acp_settings_cancellation_and_busy_prompts() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     init(&client).await;
     let (session, _, _) = new_session(&client, &mut rx, &env.workspace("cancel")).await;
 
     let result = client
-        .request("session/set_config_option", json!({"sessionId": session, "configId": "permission_mode", "value": "bypass-permissions"}))
+        .request("session/set_config_option", json!({"sessionId": session, "configId": "thinking", "value": "default"}))
         .await
         .unwrap();
     conforms::<acp::SetSessionConfigOptionResponse>(&result, "set_config_option result");
-    assert_eq!(result["configOptions"][2]["id"], "permission_mode");
-    assert_eq!(result["configOptions"][2]["currentValue"], "bypass-permissions");
+    assert_eq!(result["configOptions"][1]["id"], "thinking");
+    assert_eq!(result["configOptions"][1]["currentValue"], "default");
+    let gone = client
+        .request("session/set_config_option", json!({"sessionId": session, "configId": "permission_mode", "value": "manual"}))
+        .await;
+    assert!(gone.is_err(), "no permission modes: {gone:?}");
     let update = next(&mut rx).await;
     check(&update);
     assert_eq!(update.params()["update"]["sessionUpdate"], "config_option_update");
 
-    // bypass-permissions: no permission request for a command.
-    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:bash:touch made.txt]] go", "deny").await;
+    // No permission request for a command.
+    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:bash:touch made.txt]] go").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
-    assert_eq!(turn.permissions, 0);
     assert!(turn.kinds().contains(&"tool_call"));
 
     // Cancel a slow reply after its first chunk; a second prompt meanwhile is refused.
@@ -303,7 +263,7 @@ async fn acp_settings_cancellation_and_busy_prompts() {
     }
 
     // The session works again after the cancellation.
-    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:echo]] again", "deny").await;
+    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:echo]] again").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
     assert_eq!(turn.text, "echo: again");
 
@@ -313,12 +273,12 @@ async fn acp_settings_cancellation_and_busy_prompts() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn acp_lists_loads_resumes_and_deletes_sessions() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     init(&client).await;
     let cwd = env.workspace("history");
     let (session, _, _) = new_session(&client, &mut rx, &cwd).await;
-    let (_, result) = prompt(&client, &mut rx, &session, "[[mock:bash:echo history]] remember this", "deny").await;
+    let (_, result) = prompt(&client, &mut rx, &session, "[[mock:bash:echo history]] remember this").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
     let result = client.request("session/close", json!({"sessionId": session})).await.unwrap();
     conforms::<acp::CloseSessionResponse>(&result, "session/close result");
@@ -334,17 +294,10 @@ async fn acp_lists_loads_resumes_and_deletes_sessions() {
         .await
         .unwrap();
     conforms::<acp::LoadSessionResponse>(&loaded, "session/load result");
-    // The replay came before the reply; the commands and live notices (the bypass-permissions
-    // warning of the resumed session) follow it, in either order.
-    let is_bypass = |n: &Value| n["sessionUpdate"] == "notice" && n["title"].as_str().unwrap_or("").contains("bypass-permissions");
+    // The replay came before the reply; the commands and live notices follow it.
     let (commands, before) = commands_after_open(&mut rx, &session).await;
     assert_eq!(commands[0]["name"], "compact");
-    let (mut notices, replayed): (Vec<Value>, Vec<Value>) = before.into_iter().partition(|u| u["sessionUpdate"] == "notice");
-    while !notices.iter().any(is_bypass) {
-        let incoming = next(&mut rx).await;
-        check(&incoming);
-        notices.push(incoming.params()["update"].clone());
-    }
+    let (_notices, replayed): (Vec<Value>, Vec<Value>) = before.into_iter().partition(|u| u["sessionUpdate"] == "notice");
     let kinds: Vec<&str> = replayed.iter().filter_map(|u| u["sessionUpdate"].as_str()).collect();
     assert_eq!(kinds.first(), Some(&"user_message_chunk"));
     assert!(kinds.contains(&"tool_call"));
@@ -368,7 +321,7 @@ async fn acp_lists_loads_resumes_and_deletes_sessions() {
         assert_eq!(incoming.params()["update"]["sessionUpdate"], "notice", "resume does not replay");
     }
     assert!(before.iter().all(|u| u["sessionUpdate"] == "notice"), "resume does not replay: {before:?}");
-    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:echo]] continued", "deny").await;
+    let (turn, result) = prompt(&client, &mut rx, &session, "[[mock:echo]] continued").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
     assert_eq!(turn.text, "echo: continued");
 
@@ -384,7 +337,7 @@ async fn acp_lists_loads_resumes_and_deletes_sessions() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn acp_announces_commands_and_runs_skills() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let skill = env.home.path().join("skills/gen-report");
     std::fs::create_dir_all(skill.join("scripts")).unwrap();
     std::fs::write(
@@ -415,14 +368,13 @@ async fn acp_announces_commands_and_runs_skills() {
 
     // `/skill:name` anywhere brings each skill's instructions with the message; `/compact` compacts.
     let typed = "请用 /skill:gen-report [[mock:invoked]] 整理本周进展，再按 /skill:commit-style 写提交信息";
-    let (turn, result) = prompt(&client, &mut rx, &session, typed, "approve").await;
+    let (turn, result) = prompt(&client, &mut rx, &session, typed).await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
     assert_eq!(turn.text, "invoked done");
-    assert_eq!(turn.permissions, 1, "only the script asks");
     assert_eq!(std::fs::read_to_string(cwd.join("report.md")).unwrap(), "WEEKLY-REPORT\n");
-    let (turn, _) = prompt(&client, &mut rx, &session, "[[mock:context]]", "deny").await;
+    let (turn, _) = prompt(&client, &mut rx, &session, "[[mock:context]]").await;
     assert_eq!(turn.text, "skills in context: gen-report, commit-style");
-    let (_, result) = prompt(&client, &mut rx, &session, "/compact", "deny").await;
+    let (_, result) = prompt(&client, &mut rx, &session, "/compact").await;
     assert_eq!(result.unwrap()["stopReason"], "end_turn");
 
     // The replay shows what the user typed, not the instructions.
@@ -442,7 +394,7 @@ async fn acp_announces_commands_and_runs_skills() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn acp_rejects_what_it_does_not_support() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     let err = client.request("session/list", json!({})).await.unwrap_err();
     assert_eq!(err.kind(), Some("not_initialized"));

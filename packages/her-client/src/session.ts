@@ -1,7 +1,7 @@
 import type {
-  AgentSnapshot, AgentStatus, ContextReport, Delta, ErrorInfo, Event, Location, PartialBlock, PartialMessage, PendingApproval, PermissionMode, QueuedInput,
+  AgentSnapshot, AgentStatus, ContextReport, Delta, ErrorInfo, Event, Location, PartialBlock, PartialMessage, QueuedInput,
   SessionInfo, SessionSnapshot, TaskEndItem, ThinkingLevel, ToolCategory, TranscriptItem, TranscriptPage, UsageTotals, UserMessage, WarningCode,
-} from "@hermesh/her-protocol";
+} from "@aide/her-protocol";
 import { addTotals, usageTokens } from "./text.ts";
 
 // A session as the window knows it: the snapshot it attached with, and every
@@ -50,8 +50,8 @@ export interface LiveTool {
   title: string;
   args: Record<string, unknown>;
   locations?: Location[];
-  /** pending: before tool_running (preflight, or waiting its turn); denied: refused, no result yet. */
-  phase: "pending" | "awaiting_approval" | "running" | "denied";
+  /** pending: before tool_running (preflight, or waiting its turn). Nobody is asked about a call. */
+  phase: "pending" | "running";
   /** The latest progress output. */
   progress: string;
 }
@@ -63,15 +63,13 @@ export interface LiveTask {
   started: number;
   streaming?: PartialMessage;
   tools: LiveTool[];
-  /** In the order they were asked. */
-  approvals: PendingApproval[];
   retry?: { attempt: number; delay_ms: number; error: ErrorInfo; at: number };
   compacting?: string;
   /** This task's usage so far, from its finished turns. */
   usage: UsageTotals;
 }
 
-export type SessionStatus = "idle" | "running" | "awaiting_approval" | "failed";
+export type SessionStatus = "idle" | "running" | "failed";
 
 /**
  * A sub-agent of the session: what agent_started and agent_status said, and
@@ -140,23 +138,8 @@ export interface SessionView {
 const progressTail = 16 * 1024;
 
 export function statusOf(v: SessionView): SessionStatus {
-  if (pendingApproval(v)) return "awaiting_approval";
   if (v.live) return "running";
   return v.failure ? "failed" : "idle";
-}
-
-/**
- * What waits for the owner: the session's own question or, while the session itself may be idle,
- * a sub-agent's, which its own session holds. her asks them one at a time.
- */
-export function pendingApproval(v: SessionView): { approval: PendingApproval; agent?: AgentView } | null {
-  const own = v.live?.approvals[0];
-  if (own) return { approval: own };
-  for (const agent of runningAgents(v)) {
-    const approval = agent.view.live?.approvals[0];
-    if (approval) return { approval, agent };
-  }
-  return null;
 }
 
 /** The state a snapshot describes. */
@@ -170,9 +153,7 @@ export function fromSnapshot(s: SessionSnapshot): SessionView {
   const a = s.active_task;
   let live: LiveTask | null = null;
   if (a) {
-    const approvals = a.approvals ?? [];
     const tools = a.tools ?? [];
-    const asked = new Set(approvals.map((x) => x.call_id));
     for (const t of tools) descriptions[t.call_id] = { category: t.category, title: t.title };
     live = {
       task_id: a.task_id,
@@ -181,10 +162,9 @@ export function fromSnapshot(s: SessionSnapshot): SessionView {
       streaming: a.streaming ?? undefined,
       tools: tools.map((t) => ({
         call_id: t.call_id, name: t.name, category: t.category, title: t.title, args: argsOf(t.args),
-        phase: asked.has(t.call_id) ? "awaiting_approval" : t.running ? "running" : "pending",
+        phase: t.running ? "running" : "pending",
         progress: t.progress_tail ?? "",
       })),
-      approvals,
       usage: { per_model: {} },
     };
   }
@@ -293,8 +273,8 @@ function withTool(v: SessionView, callId: string, f: (t: LiveTool) => LiveTool):
   return withLive(v, (live) => ({ ...live, tools: live.tools.map((t) => (t.call_id === callId ? f(t) : t)) }));
 }
 
-function settings(info: SessionInfo, model: string, thinking: ThinkingLevel, permission_mode: PermissionMode, context_window: number): SessionInfo {
-  return { ...info, model, thinking, permission_mode, context_window: context_window || info.context_window };
+function settings(info: SessionInfo, model: string, thinking: ThinkingLevel, context_window: number): SessionInfo {
+  return { ...info, model, thinking, context_window: context_window || info.context_window };
 }
 
 /** A tool call's arguments as an object (they always are one; the schema calls them any JSON). */
@@ -319,7 +299,7 @@ function step(v: SessionView, e: Event): SessionView {
   }
   switch (e.type) {
     case "session_started":
-      return { ...v, info: { ...settings(v.info, e.model, e.thinking, e.permission_mode, e.context_window), cwd: e.cwd, session_file: e.session_file } };
+      return { ...v, info: { ...settings(v.info, e.model, e.thinking, e.context_window), cwd: e.cwd, session_file: e.session_file } };
     case "title_changed":
       return { ...v, info: { ...v.info, title: e.title } };
     case "archived_changed":
@@ -328,7 +308,7 @@ function step(v: SessionView, e: Event): SessionView {
       return {
         ...v,
         failure: undefined,
-        live: { task_id: e.task_id, turn: 0, started: e.ts, tools: [], approvals: [], usage: { per_model: {} } },
+        live: { task_id: e.task_id, turn: 0, started: e.ts, tools: [], usage: { per_model: {} } },
       };
     case "turn_started":
       return withLive(v, (live) => ({ ...live, turn: e.turn, retry: undefined }));
@@ -377,16 +357,6 @@ function step(v: SessionView, e: Event): SessionView {
       const next = { ...v, descriptions: { ...v.descriptions, [e.call_id]: d } };
       return withLive(next, (live) => ({ ...live, tools: [...live.tools.filter((t) => t.call_id !== e.call_id), tool] }));
     }
-    case "approval_requested": {
-      const { type: _, ...asked } = e;
-      const next = withLive(v, (live) => ({ ...live, approvals: [...live.approvals.filter((a) => a.call_id !== e.call_id), withoutEventFields(asked)] }));
-      return withTool(next, e.call_id, (t) => ({ ...t, phase: "awaiting_approval" }));
-    }
-    case "approval_resolved": {
-      const refused = e.decision.type === "deny" || e.decision.type === "abort";
-      const next = withLive(v, (live) => ({ ...live, approvals: live.approvals.filter((a) => a.call_id !== e.call_id) }));
-      return withTool(next, e.call_id, (t) => ({ ...t, phase: refused ? "denied" : "pending" }));
-    }
     case "tool_running":
       return withTool(v, e.call_id, (t) => ({ ...t, phase: "running" }));
     case "tool_progress":
@@ -412,10 +382,7 @@ function step(v: SessionView, e: Event): SessionView {
     case "task_interrupted":
       return { ...endTask(v, { type: "task_end", task_id: e.task_id, outcome: "interrupted", usage: e.usage, ts: e.ts }), returned: e.returned_input, queued: [] };
     case "settings_changed": {
-      const info = settings(v.info, e.model, e.thinking, e.permission_mode, e.context_window);
-      // Out of bypass-permissions, its warning no longer holds.
-      const notices = info.permission_mode === "bypass-permissions" ? v.notices : v.notices.filter((n) => n.code !== "bypass_permissions");
-      return { ...v, info, notices: notices.length === v.notices.length ? v.notices : notices };
+      return { ...v, info: settings(v.info, e.model, e.thinking, e.context_window) };
     }
     case "context_reported": {
       const note: NoteEntry = { type: "note", note: "context", tokens: e.report.usage.tokens, window: e.report.usage.window, ts: e.ts };
@@ -455,12 +422,6 @@ function step(v: SessionView, e: Event): SessionView {
     default:
       return v; // A newer kernel's event: ignored (technical-design §8.4).
   }
-}
-
-/** approval_requested without seq and ts: the fields a pending approval has. */
-function withoutEventFields(e: PendingApproval & { seq?: number; ts?: number }): PendingApproval {
-  const { seq: _s, ts: _t, ...rest } = e;
-  return rest;
 }
 
 function withAgent(v: SessionView, id: string, f: (a: AgentView) => AgentView): SessionView {

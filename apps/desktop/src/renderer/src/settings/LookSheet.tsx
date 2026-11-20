@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Client } from "@hermesh/proto/local";
-import { agentName, grantColor, iconApps, type GrantLook } from "@hermesh/ui";
+import type { Client } from "@aide/proto/local";
+import { agentName, grantColor, iconApps, type GrantLook } from "@aide/ui";
 import { local } from "../api";
 import { grantFace } from "../components";
 import type { Store } from "../store";

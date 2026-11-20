@@ -1,4 +1,4 @@
-// Package cli implements the `hermesh` command, which clients (usually AI
+// Package cli implements the `aide` command, which clients (usually AI
 // agents) use to run coding agents on the owner's machines.
 package cli
 
@@ -16,18 +16,18 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/internal/brandenv"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/connaddr"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
-// state is persisted in $HERMESH_HOME/state.json (0600). It holds only
+// state is persisted in $AIDE_HOME/state.json (0600). It holds only
 // public objects; the private key lives next to it in client.key.
 type state struct {
 	RelayURL  string `json:"relay_url"`
@@ -92,7 +92,7 @@ func homeDir() string {
 	} else if h, _ := os.UserHomeDir(); h != "" {
 		cfg = filepath.Join(h, ".config")
 	}
-	return filepath.Join(cfg, "hermesh")
+	return filepath.Join(cfg, "aide")
 }
 
 func (a *app) keyPath() string   { return filepath.Join(a.home, "client.key") }
@@ -107,8 +107,8 @@ func (a *app) loadKey() error {
 	return nil
 }
 
-var errNotLoggedIn error = &exitError{code: exitDenied, kind: "not_paired", err: errors.New("not paired yet"),
-	hint: "run `aide auth login <your server’s connection address>` and have the owner approve the request it shows in Aide on one of their trusted devices (computer or phone), or log in with --account"}
+var errNotLoggedIn error = &exitError{code: exitDenied, kind: "not_paired", err: errors.New("not logged in yet"),
+	hint: "run `aide auth login <your server> --account <account>`: it logs in with the owner's account and password"}
 
 // load reads state and verifies the stored grant against the stored root.
 func (a *app) load() error {
@@ -429,8 +429,8 @@ func (a *app) refused(err error) error {
 		if _, ferr := a.forget(); ferr != nil {
 			return ferr
 		}
-		return &exitError{code: exitDenied, kind: "revoked", err: fmt.Errorf("%w: the owner erased everything; this computer's pairing is erased", err),
-			hint: "run `aide auth login <address>` to pair with an owner again"}
+		return &exitError{code: exitDenied, kind: "revoked", err: fmt.Errorf("%w: the owner erased everything; this computer's login is erased", err),
+			hint: "run `aide auth login <server>` to log in to an owner again"}
 	}
 	return &exitError{code: exitDenied, kind: "revoked", err: err, hint: fmt.Sprintf("run `aide auth login %s` to ask the owner again", a.address())}
 }

@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hermeshai/hermesh/internal/provider/codex/codextest"
+	"github.com/samir2015dzh/aide/internal/provider/codex/codextest"
 )
 
-// Real Codex runs (HERMESH_REAL_CLI, HERMESH_CHAOS) must not write threads
+// Real Codex runs (AIDE_REAL_CLI, AIDE_CHAOS) must not write threads
 // or trusted projects into the user's own Codex state.
 func TestMain(m *testing.M) {
 	cleanup, err := codextest.IsolateHome()
@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 	// These tests' agents stand for agents on other computers, though they
 	// run on this one beside the machines: they reach them through the
 	// relay. TestLocalAgent turns the local way on for its own.
-	os.Setenv("HERMESH_LOCAL", "off")
+	os.Setenv("AIDE_LOCAL", "off")
 	code := m.Run()
 	cleanup()
 	os.Exit(code)

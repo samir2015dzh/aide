@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // A failure kind or status newer than this build (a newer machine's) reads

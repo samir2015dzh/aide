@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestAgentDrivesCLI runs the CLI the way an agent's harness does: stdin is
@@ -24,12 +24,12 @@ func TestAgentDrivesCLI(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--retry-delay", "50ms")
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--retry-delay", "50ms")
 	agent := func(stdin string, timeout time.Duration, args ...string) result {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, filepath.Join(w.bin, "hermesh"), args...)
+		cmd := exec.CommandContext(ctx, filepath.Join(w.bin, "aide"), args...)
 		cmd.Env = append(os.Environ(), w.cliEnv...)
 		var so, se bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &so, &se
@@ -44,7 +44,7 @@ func TestAgentDrivesCLI(t *testing.T) {
 		cmd.Wait()
 		in.Close()
 		if ctx.Err() != nil {
-			t.Fatalf("hermesh %v hung (stdin open)\nstdout:%s\nstderr:%s", args, so.String(), se.String())
+			t.Fatalf("aide %v hung (stdin open)\nstdout:%s\nstderr:%s", args, so.String(), se.String())
 		}
 		return result{stdout: so.String(), stderr: se.String(), code: cmd.ProcessState.ExitCode()}
 	}

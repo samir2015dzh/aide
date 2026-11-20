@@ -15,17 +15,17 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
-// The control socket lets `hermeshd project …` change a running machine's
-// projects, `hermeshd doctor` and `status` ask it how it is, and
+// The control socket lets `aided project …` change a running machine's
+// projects, `aided doctor` and `status` ask it how it is, and
 // `uninstall` and `erase` whether Her's data is kept (the machine holds its
 // data directory). Projects are the machine's own settings: whoever has a
 // shell as this user can do as much already, so only this user may connect.
@@ -76,14 +76,14 @@ func (n *Machine) serveControl(ctx context.Context) {
 	srv.Serve(ln)
 }
 
-// Check is how this machine is, for `hermeshd doctor`, `status` and
+// Check is how this machine is, for `aided doctor`, `status` and
 // `update`; its coding agents are looked at now.
 type Check struct {
 	MachineID, Name, OwnerID, RelayURL, Version string
 	Paired, Connected                           bool
 	Agents                                      map[string]provider.Info
 	Busy                                        int                  // sessions a restart would stop, Her's work among them
-	Her                                         *machinev1.HerStatus // as hermeshd last saw her
+	Her                                         *machinev1.HerStatus // as aided last saw her
 }
 
 func (n *Machine) Check(ctx context.Context) Check {

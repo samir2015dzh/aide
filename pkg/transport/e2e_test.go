@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // silent is a tunnel whose far end says nothing, and whose Close leaves a

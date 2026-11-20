@@ -1,4 +1,4 @@
-import type { Machine } from "@hermesh/proto/local";
+import type { Machine } from "@aide/proto/local";
 
 // Her's environments as the Mac app shows them (docs/her-server.md §9): the
 // machines Her is on for, each as its Machine.her last said, and the machines
@@ -68,7 +68,7 @@ export type Choice<M> = { machine: M; why: null | "windows" | "needsUpdate" | "o
 
 /**
  * Where Her can run (docs/her-server.md §9.2): this Mac, then the other
- * machines of the owner, those online first. A machine whose Hermesh is from
+ * machines of the owner, those online first. A machine whose Aide is from
  * before Her (it answers, without Her in its status: "needsUpdate",
  * docs/version-skew.md §6.7), or a PC's from before her ran on Windows
  * ("windows"), shows, not to be chosen until it is updated; a machine offline

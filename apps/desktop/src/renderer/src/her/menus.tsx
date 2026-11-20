@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { modelGroups } from "@hermesh/her-client";
-import type { ModelsListResult, ThinkingLevel } from "@hermesh/her-protocol";
+import { modelGroups } from "@aide/her-client";
+import type { ModelsListResult, ThinkingLevel } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { useStore } from "../store";
 import { useHer } from "./context";

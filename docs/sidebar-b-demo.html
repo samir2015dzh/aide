@@ -371,33 +371,33 @@ new URLSearchParams(location.hash.slice(1)).forEach((v, k) => k in S && (S[k] = 
 // Example sessions. s: wait, fail, run or done; m: the machine; p: the project; by: who sent it; d: the day; at: the row's time.
 const M = "这台 Mac";
 const live3 = [
-  { t: "升级 Electron 并跑通端到端测试", a: "codex", s: "wait", m: M, p: "hermesh", by: "Her", d: "today", at: "12:04" },
-  { t: "修复配对码过期后的提示", a: "claude", s: "run", m: M, p: "hermesh", by: "Her", d: "today", at: "3:12" },
-  { t: "补上会话列表按机器分组的测试", a: "codex", s: "run", m: "devbox", p: "hermesh", by: "Her", d: "today", at: "0:47" },
+  { t: "升级 Electron 并跑通端到端测试", a: "codex", s: "wait", m: M, p: "aide", by: "Her", d: "today", at: "12:04" },
+  { t: "修复配对码过期后的提示", a: "claude", s: "run", m: M, p: "aide", by: "Her", d: "today", at: "3:12" },
+  { t: "补上会话列表按机器分组的测试", a: "codex", s: "run", m: "devbox", p: "aide", by: "Her", d: "today", at: "0:47" },
 ];
 const live14 = [
   live3[0],
   { t: "确认是否删除旧的迁移脚本", a: "claude", s: "wait", m: "devbox", p: "relay", by: "Her", d: "today", at: "11:52" },
-  { t: "iPhone 端到端测试在模拟器上跑不起来", a: "claude", s: "fail", m: M, p: "hermesh", by: "你", d: "today", at: "11:30" },
+  { t: "iPhone 端到端测试在模拟器上跑不起来", a: "claude", s: "fail", m: M, p: "aide", by: "你", d: "today", at: "11:30" },
   live3[1], live3[2],
-  { t: "整理 docs 里过期的设计稿", a: "gemini", s: "run", m: M, p: "hermesh", by: "Her", d: "today", at: "5:20" },
-  { t: "给 Windows 安装包加签名校验", a: "codex", s: "run", m: "devbox", p: "hermesh", by: "Her", d: "today", at: "8:03" },
+  { t: "整理 docs 里过期的设计稿", a: "gemini", s: "run", m: M, p: "aide", by: "Her", d: "today", at: "5:20" },
+  { t: "给 Windows 安装包加签名校验", a: "codex", s: "run", m: "devbox", p: "aide", by: "Her", d: "today", at: "8:03" },
   { t: "排查中继重连后会话状态不同步", a: "claude", s: "run", m: "devbox", p: "relay", by: "Grok", d: "today", at: "14:41" },
-  { t: "把模型目录的缓存改成按机器保存", a: "claude", s: "run", m: M, p: "hermesh", by: "Her", d: "today", at: "2:15" },
+  { t: "把模型目录的缓存改成按机器保存", a: "claude", s: "run", m: M, p: "aide", by: "Her", d: "today", at: "2:15" },
   { t: "更新 README 的安装步骤", a: "cursor", s: "run", m: M, p: "website", by: "你", d: "today", at: "1:09" },
-  { t: "给定时任务加失败重试", a: "codex", s: "run", m: M, p: "hermesh", by: "Her", d: "today", at: "6:38" },
-  { t: "精简首次运行的引导文案", a: "gemini", s: "run", m: M, p: "hermesh", by: "Her", d: "today", at: "0:22" },
-  { t: "检查 Linux 桌面镜像的字体", a: "claude", s: "run", m: "devbox", p: "hermesh", by: "Her", d: "today", at: "4:50" },
+  { t: "给定时任务加失败重试", a: "codex", s: "run", m: M, p: "aide", by: "Her", d: "today", at: "6:38" },
+  { t: "精简首次运行的引导文案", a: "gemini", s: "run", m: M, p: "aide", by: "Her", d: "today", at: "0:22" },
+  { t: "检查 Linux 桌面镜像的字体", a: "claude", s: "run", m: "devbox", p: "aide", by: "Her", d: "today", at: "4:50" },
   { t: "合并主分支并解决冲突", a: "codex", s: "run", m: "devbox", p: "relay", by: "Her", d: "today", at: "0:05" },
 ];
 const done = [
-  { t: "把首次运行的文案换成正式术语", a: "claude", s: "done", m: M, p: "hermesh", by: "Her", d: "today", at: "10:26" },
-  { t: "给 Her 的文件页加搜索", a: "codex", s: "done", m: M, p: "hermesh", by: "Her", d: "today", at: "09:40" },
-  { t: "修复 iPhone 抽屉在横屏下的宽度", a: "claude", s: "done", m: M, p: "hermesh", by: "你", d: "today", at: "09:12" },
+  { t: "把首次运行的文案换成正式术语", a: "claude", s: "done", m: M, p: "aide", by: "Her", d: "today", at: "10:26" },
+  { t: "给 Her 的文件页加搜索", a: "codex", s: "done", m: M, p: "aide", by: "Her", d: "today", at: "09:40" },
+  { t: "修复 iPhone 抽屉在横屏下的宽度", a: "claude", s: "done", m: M, p: "aide", by: "你", d: "today", at: "09:12" },
   { t: "更新依赖并跑一遍测试", a: "codex", s: "done", m: "devbox", p: "relay", by: "Her", d: "yesterday", at: "昨天" },
   { t: "整理发布说明", a: "gemini", s: "done", m: M, p: "website", by: "你", d: "yesterday", at: "昨天" },
-  { t: "调研 Linux 下的屏幕控制方案", a: "claude", s: "done", m: "devbox", p: "hermesh", by: "Grok", d: "week", at: "周五" },
-  { t: "清理没用到的图标", a: "cursor", s: "done", m: "Mac mini", p: "hermesh", by: "你", d: "week", at: "周四" },
+  { t: "调研 Linux 下的屏幕控制方案", a: "claude", s: "done", m: "devbox", p: "aide", by: "Grok", d: "week", at: "周五" },
+  { t: "清理没用到的图标", a: "cursor", s: "done", m: "Mac mini", p: "aide", by: "你", d: "week", at: "周四" },
   { t: "给中继加连接数统计", a: "codex", s: "done", m: "devbox", p: "relay", by: "Her", d: "earlier", at: "11月3日" },
 ];
 const WORLD = { fresh: [], quiet: done, usual: [...live3, ...done], many: [...live14, ...done] };
@@ -421,7 +421,7 @@ function sections(list, group) {
 
 const fig = (title, inner, cap) => `<div class="fig"><b>${title}</b>${inner}<p class="cap">${cap}</p></div>`;
 const crop = (h, inner, cls = "", w = 318) => `<div class="crop ${cls}" style="height:${h}px;width:${w}px"><div class="tl"><i></i><i></i><i></i></div>${inner}<div class="pg"><i style="width:70%"></i><i></i><i style="width:85%"></i></div></div>`;
-const foot = `<div class="acct"><div class="side-foot"><span class="av">H</span><span class="who"><b>Hermesh</b><span>已连接</span></span>${ic("chevD")}</div></div>`;
+const foot = `<div class="acct"><div class="side-foot"><span class="av">H</span><span class="who"><b>Aide</b><span>已连接</span></span>${ic("chevD")}</div></div>`;
 const navMarks = (list) => `${list.some((x) => x.s === "wait") ? `<i class="dot-w"></i>` : ""}${list.some((x) => x.s === "run") ? `<i class="ring"></i>` : ""}`;
 
 function side(list, { group = S.group, meta = S.meta === "1", sel = "", her = true, menu = false, shut = [] } = {}) {
@@ -467,7 +467,7 @@ function drawer(list) {
   const rows = !list.length
     ? `<div class="dhint"><b>还没有会话</b>交给 Her 一件事，她派给 Agent 的会话会显示在这里。</div>`
     : sections(list, S.group).map(([title, ss, always]) => `<div class="dh">${title}</div>${ss.length ? ss.map((s) => dr(lgo(s.a), meta ? `${s.t}<small>${s.by} → ${SHORT[s.a]} · ${s.p}</small>` : s.t, mark(s.s), meta ? "sm two" : "sm")).join("") : always ? `<div class="dnone">暂时没有</div>` : ""}`).join("");
-  return phone(`${page}<div class="shade"></div><div class="drawer"><div class="dhead"><span class="wm">Hermesh</span><span class="glass">${ic("search")}</span></div>
+  return phone(`${page}<div class="shade"></div><div class="drawer"><div class="dhead"><span class="wm">Aide</span><span class="glass">${ic("search")}</span></div>
     <div class="drows scrolls">${dr(ic("her"), "Her", "", "sel")}${dr(ic("grid"), "概览", navMarks(list))}
       <div class="dsep"></div><div class="dlh">会话${ic("filter")}</div>${rows}</div>
     <div class="dfoot float"><span class="apic"><span>H</span></span></div></div>`);

@@ -26,10 +26,10 @@ A key cannot be typed into ACP's own flow; the terminal method handles that.
 
 ## What it does and does not
 
-Sessions can be listed, loaded, resumed, closed and deleted. Model, thinking level and permission mode are configuration options. Images and embedded context reach the model. `/compact` and `/skill:name` are in the command list. Edits show as diffs, and approvals ask in the editor.
+Sessions can be listed, loaded, resumed, closed and deleted. Model and thinking level are configuration options. Images and embedded context reach the model. `/compact` and `/skill:name` are in the command list. Edits show as diffs. her runs tool calls without asking, so it never sends `session/request_permission`.
 
 Files and commands run locally, not through the editor, so **the model does not see unsaved changes** in the editor.
 
-Set defaults with `-c`: `her -c permission_mode=accept-edits acp`.
+Set defaults with `-c`: `her -c thinking=low acp`.
 
 **State:** tested against the official ACP schema. Not yet tried in a real editor.

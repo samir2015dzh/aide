@@ -111,13 +111,8 @@ impl Workspace {
                     mcp_sources.entry(server.name.clone()).or_default().insert(0, ".mcp.json".to_string());
                 }
             }
-            let (mut servers, problems) = mcp::merge_servers(&config.mcp_servers, project_json, &[]);
+            let (servers, problems) = mcp::merge_servers(&config.mcp_servers, project_json, &[]);
             warnings.extend(problems);
-            for server in &mut servers {
-                server.project_defined = mcp_sources
-                    .get(&server.name)
-                    .is_some_and(|layers| layers.iter().any(|layer| layer == ".mcp.json" || layer == "project config"));
-            }
             servers
         } else {
             Vec::new()

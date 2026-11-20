@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { botChat } from "@hermesh/her-client";
+import { botChat } from "@aide/her-client";
 import { keptFrom } from "./kept.ts";
 
 const bytes = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -11,7 +11,7 @@ const usage = { input: 1, output: 1, cache_read: 0, cache_write: 0, cost: { curr
 /** Her, as bots/subscribe listed the assistants last, busy then. */
 const her = { id: "her", name: "Her", default: true, typing: true, agents_working: 2, avatar: { kind: "mark" }, created_at: "2026-11-01T00:00:00Z" };
 
-/** Her's conversation as hermeshd keeps it (internal/owner/her_conversation.go): what the page shows of it, no earlier history. */
+/** Her's conversation as aided keeps it (internal/owner/her_conversation.go): what the page shows of it, no earlier history. */
 const conversation = {
   session: { session_id: "conv-her", archived: false, context_window: 200000, cwd: "/her", model: "mock/mock-1", permission_mode: "manual", session_file: "s.jsonl", thinking: "medium" },
   last_seq: 9,
@@ -30,7 +30,7 @@ const conversation = {
   usage: { per_model: {} },
 };
 
-test("what hermeshd keeps shows as the conversation was: the owner's words and what Her sent, nothing earlier, Her at work no more", () => {
+test("what aided keeps shows as the conversation was: the owner's words and what Her sent, nothing earlier, Her at work no more", () => {
   const kept = keptFrom({ bot: bytes(her), snapshot: bytes(conversation) });
   assert.ok(kept?.view);
   assert.deepEqual(

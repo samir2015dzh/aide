@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import type { BrowserStatus, ChatGptStatus, ModelsListResult, ProviderSummary, SkillsFilesResult, SkillsListResult, StorageUsage, WebSearchSource, WebSearchStatus } from "@hermesh/her-protocol";
-import type { SessionView } from "@hermesh/her-client";
-import { agoText } from "@hermesh/core";
+import type { BrowserStatus, ChatGptStatus, ModelsListResult, ProviderSummary, SkillsFilesResult, SkillsListResult, StorageUsage, WebSearchSource, WebSearchStatus } from "@aide/her-protocol";
+import type { SessionView } from "@aide/her-client";
+import { agoText } from "@aide/core";
 import { Icon } from "../icons";
 import { herAnswers } from "../skew";
 import { errorText, useNow, useStore } from "../store";
-import type { SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import {
   allSitesEdits,
   brokenSkills,
@@ -154,7 +154,7 @@ export function ModelPage({ view, op, onBack, onClose }: { view: SessionView | n
   const gptModels = models.models.filter((m) => m.provider === status?.connection?.provider_id);
   const signIn = () => {
     setSigningIn(true);
-    const ended = window.hermesh ? window.hermesh.signInHerChatGpt(her.machine.machineId) : Promise.reject(new Error("no bridge"));
+    const ended = window.aide ? window.aide.signInHerChatGpt(her.machine.machineId) : Promise.reject(new Error("no bridge"));
     ended.then(
       (r) => r.state === "connected" && st.show(t("hp.chatgptSignedIn")),
       (e: unknown) => st.show(errorText(e)),
@@ -214,7 +214,7 @@ export function ModelPage({ view, op, onBack, onClose }: { view: SessionView | n
                   </span>
                 </span>
                 {signingIn ? (
-                  <button className="btn" onClick={() => window.hermesh?.cancelHerChatGpt(her.machine.machineId)}>
+                  <button className="btn" onClick={() => window.aide?.cancelHerChatGpt(her.machine.machineId)}>
                     {t("sheet.cancel")}
                   </button>
                 ) : ready ? (

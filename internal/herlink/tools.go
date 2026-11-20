@@ -7,8 +7,8 @@ package herlink
 import (
 	"slices"
 
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/internal/herhost"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/internal/herhost"
 )
 
 // Summary is the group's line in her catalog: always in her context, so it
@@ -65,7 +65,7 @@ var tools = []tool{
 	{name: "work_summary", cmd: "work", desc: "What the coding agents on the user's computers did over the last days: sessions at work, how many are done, turns, failed turns, tokens and time, by coding agent and by who sent the work (the user, you, or another agent). Use it when the user asks what the team or their agents did. The app shows the numbers as a card above your reply: say in words what stands out, not every number."},
 }
 
-// hidden are the CLI's parameters she doesn't see: hermeshd sets `as` and
+// hidden are the CLI's parameters she doesn't see: aided sets `as` and
 // the idempotency key, she never waits, and the rest are for messages to
 // agents.
 var hidden = []string{"as", "idempotency_key", "wait", "timeout", "subject", "reply_to"}

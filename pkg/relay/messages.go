@@ -11,9 +11,9 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // The post office (docs/agent-messages.md §5): the owner's agents and
@@ -417,7 +417,7 @@ func (o *ownerControl) PublishCards(ctx context.Context, req *relayv1.PublishCar
 	p := peerFrom(ctx)
 	t := p.t
 	if p.deviceCert == nil {
-		return nil, errf(connect.CodePermissionDenied, "only a trusted device signs cards")
+		return nil, errf(connect.CodePermissionDenied, "only one of the owner's devices signs cards")
 	}
 	live := o.s.liveClients(t)
 	for _, card := range req.Cards {

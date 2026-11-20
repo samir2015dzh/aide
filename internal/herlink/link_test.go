@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/internal/machine"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/internal/machine"
 )
 
 func testLink(t *testing.T) *Link {
@@ -20,7 +20,7 @@ func testLink(t *testing.T) *Link {
 }
 
 // Her's tools are CLI commands under her own names, without the parameters
-// hermeshd sets for her, and the catalog line fits what the catalog keeps.
+// aided sets for her, and the catalog line fits what the catalog keeps.
 func TestToolsAreTheCLIs(t *testing.T) {
 	if n := len(Summary); n > 250 {
 		t.Errorf("the catalog line has %d characters; the catalog keeps 250", n)
@@ -154,84 +154,6 @@ func TestArguments(t *testing.T) {
 	bot, _, _, ok := l.Render(&inboxv1.Message{To: &inboxv1.Address{Session: "bot-1"}, SessionNews: &inboxv1.SessionNews{Kind: "turn_done"}})
 	if !ok || bot != "Bot 1" {
 		t.Errorf("news for bot-1 goes to %q", bot)
-	}
-}
-
-func TestDescribe(t *testing.T) {
-	l := testLink(t)
-	summary, rule := l.Describe(nil, "b", "session_start", json.RawMessage(`{"project":"mini/app","prompt":"fix the test","agent":"codex"}`))
-	if summary != "Start Codex in mini/app\n\nfix the test" || !slices.Equal(rule, []string{"mesh", "mini/app"}) {
-		t.Errorf("start: %q %v", summary, rule)
-	}
-	// A session she did not start: no rule, so it is asked each time.
-	summary, rule = l.Describe(nil, "b", "session_send", json.RawMessage(`{"session_id":"s_other","message":"hello"}`))
-	if summary != "Write to session s_other\n\nhello" || rule != nil {
-		t.Errorf("unknown session: %q %v", summary, rule)
-	}
-	l.remember(json.RawMessage(`{"project":"mini/app"}`), []byte(`{"ok":true,"session":{"session_id":"s_mine","title":"Fix the test","agent":"codex"}}`))
-	summary, rule = l.Describe(nil, "b", "session_send", json.RawMessage(`{"session_id":"s_mine","message":"hello"}`))
-	if summary != "Write to \"Fix the test\" (Codex, mini/app)\n\nhello" || !slices.Equal(rule, []string{"mesh", "mini/app"}) {
-		t.Errorf("her session: %q %v", summary, rule)
-	}
-	summary, _ = l.Describe(nil, "b", "session_answer", json.RawMessage(`{"session_id":"s_mine","choose":["main"]}`))
-	if summary != "Answer the question in \"Fix the test\" (Codex, mini/app)\n\nmain" {
-		t.Errorf("answer: %q", summary)
-	}
-	// What it remembers is kept across starts.
-	again := New(machine.HerLinkConfig{DataDir: l.cfg.DataDir}).(*Link)
-	if _, rule := again.Describe(nil, "b", "session_send", json.RawMessage(`{"session_id":"s_mine","message":"x"}`)); rule == nil {
-		t.Error("the session was forgotten")
-	}
-	// A push is asked each time, even in a project the owner remembered.
-	summary, rule = l.Describe(nil, "b", "session_push", json.RawMessage(`{"session_id":"s_mine"}`))
-	if summary != "Push the branch of \"Fix the test\" (Codex, mini/app) to its remote\n\nIts computer pushes it to the project's origin with its own git login, without force." || rule != nil {
-		t.Errorf("push: %q %v", summary, rule)
-	}
-}
-
-// A session in a GitHub repository: the approval names the repository, the
-// branch and the computer, and "don't ask again" keeps the project its clone
-// is on that computer, however the repository is written.
-func TestDescribeRepo(t *testing.T) {
-	l := testLink(t)
-	start := func(args string) (string, []string) {
-		return l.Describe(nil, "b", "session_start", json.RawMessage(args))
-	}
-	summary, rule := start(`{"repo":"Acme/Widget","branch":"feature","machine":"mini","prompt":"fix the test"}`)
-	if summary != "Start Claude Code in GitHub Acme/Widget, branch feature, on mini\n\nfix the test" || !slices.Equal(rule, []string{"mesh", "mini/github.acme.widget"}) {
-		t.Errorf("start: %q %v", summary, rule)
-	}
-	for _, repo := range []string{"https://github.com/acme/widget.git", "git@github.com:acme/widget.git", "github.com/ACME/widget"} {
-		if _, r := start(`{"repo":"` + repo + `","machine":"mini","prompt":"x"}`); !slices.Equal(r, rule) {
-			t.Errorf("%s: %v", repo, r)
-		}
-	}
-	// The same project as a start by its address once cloned; not another
-	// repository's, nor the same one on another computer.
-	if _, r := start(`{"project":"mini/github.acme.widget","prompt":"x"}`); !slices.Equal(r, rule) {
-		t.Errorf("by project: %v", r)
-	}
-	for _, other := range []string{`{"repo":"acme/widget-2","machine":"mini"}`, `{"repo":"acme/widget","machine":"studio"}`} {
-		if _, r := start(other); slices.Equal(r, rule) {
-			t.Errorf("%s has the rule of acme/widget on mini", other)
-		}
-	}
-	summary, _ = start(`{"repo":"acme/widget","machine":"mini","agent":"codex","prompt":"x"}`)
-	if summary != "Start Codex in GitHub acme/widget, its default branch, on mini\n\nx" {
-		t.Errorf("default branch: %q", summary)
-	}
-	// Without a computer, or with what the machine would refuse: asked, and
-	// never remembered.
-	for _, args := range []string{`{"repo":"acme/widget","prompt":"x"}`, `{"repo":"https://tok@github.com/acme/widget","machine":"mini","prompt":"x"}`, `{"repo":"not a repo","machine":"mini","prompt":"x"}`} {
-		if summary, r := start(args); r != nil || !strings.HasPrefix(summary, "Start Claude Code in GitHub ") {
-			t.Errorf("%s: %q %v", args, summary, r)
-		}
-	}
-	// Writes to the session keep its project's rule.
-	l.remember(json.RawMessage(`{"repo":"https://github.com/acme/widget","machine":"mini"}`), []byte(`{"ok":true,"session":{"session_id":"s_repo","title":"Fix it","agent":"claude"}}`))
-	summary, r := l.Describe(nil, "b", "session_send", json.RawMessage(`{"session_id":"s_repo","message":"more"}`))
-	if summary != "Write to \"Fix it\" (Claude Code, mini/github.acme.widget)\n\nmore" || !slices.Equal(r, rule) {
-		t.Errorf("send: %q %v", summary, r)
 	}
 }
 

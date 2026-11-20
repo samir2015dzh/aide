@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toolObject, toolOutput, type Step, type ToolView, type WorkItem } from "@hermesh/her-client";
+import { toolObject, toolOutput, type Step, type ToolView, type WorkItem } from "@aide/her-client";
 import { Code } from "../session/Code";
 import { Markdown } from "../session/Markdown";
 import { Icon } from "../icons";

@@ -1,41 +1,32 @@
 # Permissions
 
-**her has no operating-system sandbox.** A command it runs can do what you can do. What stands in the way is below; decide how much you need.
+**her runs actions without asking.** There are no action approvals: no permission modes, no questions before a command, a file change, a tool from an MCP server, a browser step or a desktop app. A call runs unless something below refuses it, and nothing ever waits for an answer.
 
-## Permission modes
+**her has no operating-system sandbox.** A command it runs can do what you can do. Run it where that is what you want, and use the refusals below for what must never happen.
 
-| Mode | What runs without asking |
-|---|---|
-| `manual` (default) | Reading, and commands known to only read |
-| `accept-edits` | Also file changes and simple file commands inside the workspace |
-| `bypass-permissions` | Everything, protected paths included. Only in a container or a throwaway machine |
+## What refuses an action
 
-Deny and ask rules apply in every mode.
+- **Deny rules** you write. They see every command a line may run: behind `sudo`, `env` or `xargs`, inside `sh -c`, `eval`, `trap` and `find -exec`, under an absolute path and past git's global options.
+- **Deleting a critical path**: the file system root, a top-level directory, the home directory, or the workspace and the folders that hold it.
+- **Another bot's memory**: only the bot itself writes it.
+- **The browser and desktop settings**: `[browser.sites]` entries set to `deny`, denied domains, cloud metadata addresses, scripts while `browser.script_enabled` is off, and apps set to `deny` under `[desktop.apps]`.
 
-Set it for one run with `--permission-mode`, inside a conversation with `/permissions`, for good with `her config set permission_mode accept-edits`. Nothing else saves it: run flags are for that run.
+A refused call comes back to the model as `Tool call denied: …`, and the task goes on.
 
-## Rules
+## Deny rules
 
 ```toml
 [[rules]]
 prefix = ["git", "push"]
-decision = "ask"
+decision = "deny"
 reason = "Pushing is shared"
-
-[[rules]]
-prefix = ["cargo", "test"]
-decision = "allow"
 
 [[rules]]
 prefix = ["mcp__mail__send"]
 decision = "deny"
 ```
 
-`prefix` matches a command's first words, or the full name of an MCP tool. `decision` is `allow`, `ask` or `deny`. In a conversation, answering `a` keeps a rule for the session.
-
-## The workspace and protected paths
-
-File changes outside the project's folder ask, whatever the mode but `bypass-permissions`; `--add-dir` adds folders. `.git`, shell profiles and her's own settings are protected: changing them asks even in `accept-edits`.
+`prefix` matches a command's first words, or the full name of an MCP tool. `decision` is `deny`, the only one there is. Rules that said `allow` or `ask`, and the old `permission_mode`, `approval_mode` and `mcp_servers.<name>.approval` settings, are ignored with a warning.
 
 ## Trusting a project
 
@@ -43,10 +34,6 @@ A project's `.mcp.json`, and the settings in its `.her/config.toml` that decide 
 
 `AGENTS.md` and a project's Skills are always read. A repository can use them to try to influence the model, so read what you clone.
 
-## When nobody can approve
-
-`her exec` without a terminal cannot ask, so what would ask is refused, and the task exits 3 once it has finished. Set a mode or a rule. See [scripting](scripting.md).
-
 ## An agent running her
 
-`her config set` and `unset` refuse settings about permissions while `AI_AGENT` is set, and say to run them in a terminal. This is one more step, not a boundary.
+`her config set` and `unset` refuse settings about what the agent may do (rules, tools, MCP servers, the browser and desktop settings) while `AI_AGENT` is set, and say to run them in a terminal. This is one more step, not a boundary.

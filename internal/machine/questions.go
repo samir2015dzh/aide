@@ -9,8 +9,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // DefaultQuestionTimeout is how long a question waits for an answer when
@@ -74,7 +74,7 @@ func (s *Sessions) ask(l *live, ps provider.Session, pq *provider.Question) {
 	s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_QuestionAsked{QuestionAsked: &sessionv1.QuestionAsked{Question: q}}})
 	s.audit.Log(AuditRecord{Kind: "session.question", Subject: by, Session: id, Action: q.QuestionId, Decision: "ask", Detail: questionDetail(q)})
 	if timeout == 0 {
-		s.reply(l, w, provider.Reply{Declined: true, Message: noAnswerersPrompt}, sessionv1.QuestionResolution_QUESTION_RESOLUTION_TIMED_OUT, "hermesh", nil)
+		s.reply(l, w, provider.Reply{Declined: true, Message: noAnswerersPrompt}, sessionv1.QuestionResolution_QUESTION_RESOLUTION_TIMED_OUT, "aide", nil)
 		return
 	}
 	l.mu.Lock()
@@ -150,7 +150,7 @@ func (s *Sessions) expireQuestions(l *live, now time.Time) {
 	l.mu.Unlock()
 	for _, w := range due {
 		s.reply(l, w, provider.Reply{Declined: true, Message: fmt.Sprintf(noAnswerMessage, timeout)},
-			sessionv1.QuestionResolution_QUESTION_RESOLUTION_TIMED_OUT, "hermesh", nil)
+			sessionv1.QuestionResolution_QUESTION_RESOLUTION_TIMED_OUT, "aide", nil)
 	}
 }
 

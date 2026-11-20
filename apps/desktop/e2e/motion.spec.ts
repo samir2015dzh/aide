@@ -148,7 +148,7 @@ test("what comes in goes the way it came, quicker, and takes no input meanwhile:
   const { app, page } = await launch();
   await expect(await sessionList(page)).toBeVisible();
   const command = (c: string) =>
-    (app as ElectronApplication).evaluate((_, c) => (globalThis as unknown as { hermeshTest: { mainWindow(): { webContents: { send(ch: string, c: string): void } } } }).hermeshTest.mainWindow().webContents.send("command", c), c);
+    (app as ElectronApplication).evaluate((_, c) => (globalThis as unknown as { aideTest: { mainWindow(): { webContents: { send(ch: string, c: string): void } } } }).aideTest.mainWindow().webContents.send("command", c), c);
 
   // A sheet's copy brings a toast; it goes on its own after a while.
   await command("addMachine");

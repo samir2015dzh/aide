@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { GrantSpecSchema, type Client, type GrantSpec, type Project } from "@hermesh/proto/local";
+import { GrantSpecSchema, type Client, type GrantSpec, type Project } from "@aide/proto/local";
 
 /**
  * A personal agent's scope, as edited in the approval window and the

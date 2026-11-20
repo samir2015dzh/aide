@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { MailInfo, RoutineRunInfo, RoutineSummary } from "@hermesh/her-protocol";
+import type { MailInfo, RoutineRunInfo, RoutineSummary } from "@aide/her-protocol";
 import { botChat } from "./botChat.ts";
 import { routineDot, routineGroups, routineLine, runLate, runRows, runTook } from "./routines.ts";
 import { conversation, reportBody } from "./steps.ts";
@@ -61,7 +61,7 @@ function chat(items: unknown[]): SessionView {
 /** A session's snapshot with these transcript items. */
 function snapshotOf(items: unknown[]) {
   return {
-    session: { session_id: "s", cwd: "/", session_file: "/s.jsonl", model: "m", thinking: "off", permission_mode: "manual", context_window: 1, archived: false },
+    session: { session_id: "s", cwd: "/", session_file: "/s.jsonl", model: "m", thinking: "off", context_window: 1, archived: false },
     last_seq: 0,
     transcript: { items: items as never },
     usage: { per_model: {} },

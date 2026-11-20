@@ -11,13 +11,13 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/hermeshai/hermesh/internal/spawn"
+	"github.com/samir2015dzh/aide/internal/spawn"
 )
 
 // Each agent runs in a job object of its own (docs/windows.md §4.3). It
 // starts suspended and joins its job before it runs, so none of its
 // descendants ever runs outside the job. Ending the job ends them all, and
-// so does hermeshd's exit: its jobs' last handles close.
+// so does aided's exit: its jobs' last handles close.
 
 // jobs holds the job of each process tree this daemon runs, by the pid of
 // its first process (the "pgid" the shared code passes around).

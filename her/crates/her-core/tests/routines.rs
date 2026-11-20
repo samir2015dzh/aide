@@ -36,7 +36,6 @@ use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::MailKind;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::bot::RoutineOutcome;
 use her_protocol::bot::RoutineState;
 use her_tools::BashTool;
@@ -80,7 +79,7 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome, host: Option<Arc<dy
     }
 }
 
-async fn bot_with(mode: PermissionMode, interactive: bool, scripts: Vec<Script>, host: Option<Arc<dyn RoutineHost>>) -> Harness {
+async fn bot_with(scripts: Vec<Script>, host: Option<Arc<dyn RoutineHost>>) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let home = HerHome::new(dunce::canonicalize(dir.path()).unwrap().join("home"));
     home.ensure().unwrap();
@@ -94,13 +93,10 @@ async fn bot_with(mode: PermissionMode, interactive: bool, scripts: Vec<Script>,
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: folder.clone(),
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: interactive,
         bot: Some(BotIdentity {
             id: "b1".into(),
             name: "研究员".into(),
@@ -111,7 +107,7 @@ async fn bot_with(mode: PermissionMode, interactive: bool, scripts: Vec<Script>,
 }
 
 async fn bot(scripts: Vec<Script>) -> Harness {
-    bot_with(PermissionMode::BypassPermissions, true, scripts, None).await
+    bot_with(scripts, None).await
 }
 
 fn a_run() -> RoutineRun {
@@ -372,12 +368,11 @@ async fn closing_the_session_stops_a_run() {
     assert_eq!(outcome(rx).await.outcome, RoutineOutcome::Interrupted);
 }
 
-/// What needs approval is refused at once: nobody is there, and no window opens (routine-design §10).
+/// A run does what it does without asking anyone: nobody is asked, and no window opens
+/// (routine-design §10).
 #[tokio::test]
-async fn a_run_is_refused_what_needs_approval() {
+async fn a_run_acts_without_asking() {
     let mut h = bot_with(
-        PermissionMode::Manual,
-        true,
         vec![
             Script::tool_call("c1", "bash", json!({ "command": "touch made-by-run" })),
             Script::text("NOTHING_TO_REPORT 没有写成：需要批准。"),
@@ -389,11 +384,11 @@ async fn a_run_is_refused_what_needs_approval() {
     assert_eq!(ended.outcome, RoutineOutcome::Quiet);
     let requests = h.api.requests();
     let Some(Message::ToolResult(result)) = requests[1].messages.last() else {
-        panic!("the refused call's result")
+        panic!("the call's result")
     };
-    assert!(result.text_content().contains("nobody can approve it"), "{}", result.text_content());
-    assert!(!h.home.bot_files_dir("b1").join("made-by-run").exists());
-    assert!(!drain(&mut h.kernel).await.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. } | EventMsg::AgentEvent { .. })));
+    assert!(!result.is_error, "{}", result.text_content());
+    assert!(h.home.bot_files_dir("b1").join("made-by-run").exists(), "the command ran");
+    assert!(!drain(&mut h.kernel).await.iter().any(|e| matches!(e.msg, EventMsg::AgentEvent { .. })));
 }
 
 /// A late run is told so.
@@ -750,7 +745,7 @@ async fn manage_routine_goes_to_the_service_and_tells_the_next_runs() {
         Script::tool_call("c6", "manage_routine", json!({ "action": "delete", "id": "r_new" })),
         send_last("c7", "好了。"),
     ];
-    let mut h = bot_with(PermissionMode::BypassPermissions, true, scripts, Some(host.clone())).await;
+    let mut h = bot_with(scripts, Some(host.clone())).await;
     let result = h.kernel.run(prompt("每天 8 点提醒我喝水")).await.unwrap();
     let all = results(&result.events, "manage_routine");
     assert_eq!(all[0].0, "Saved routine \"喝水\" (id r_new). Next runs in local time: Fri Nov 6 08:00, Sat Nov 7 08:00, Sun Nov 8 08:00.");
@@ -788,7 +783,7 @@ async fn manage_routine_explains_what_it_cannot_do() {
         Script::tool_call("c5", "manage_routine", json!({ "action": "list" })),
         send_last("c6", "好了。"),
     ];
-    let mut h = bot_with(PermissionMode::BypassPermissions, true, scripts, Some(host.clone())).await;
+    let mut h = bot_with(scripts, Some(host.clone())).await;
     let result = h.kernel.run(prompt("试试")).await.unwrap();
     let all = results(&result.events, "manage_routine");
     assert!(all.iter().all(|r| r.1), "{all:?}");
@@ -811,32 +806,27 @@ async fn manage_routine_explains_what_it_cannot_do() {
     assert!(all[0].1 && all[0].0.contains("That time has already passed: it is now Thu 2026-11-05 22:14."), "{all:?}");
 }
 
-/// Writes ask where other changes ask, in words a person reads; reading never asks.
+/// Reading and changing routines both run without asking; the title says the call in words.
 #[tokio::test]
-async fn changing_routines_follows_the_permission_mode() {
+async fn changing_routines_runs_without_asking() {
     let host = Arc::new(FakeHost::default());
     let scripts = vec![
         Script::tool_call("c1", "manage_routine", json!({ "action": "get", "id": "r_1" })),
         Script::tool_call("c2", "manage_routine", json!({ "action": "create", "name": "喝水", "prompt": "x", "schedule": "0 8 * * *", "when": "每天 8 点" })),
         send_last("c3", "好了。"),
     ];
-    let mut h = bot_with(PermissionMode::Manual, true, scripts, Some(host.clone())).await;
+    let mut h = bot_with(scripts, Some(host.clone())).await;
     h.kernel.submit(Op::prompt("每天 8 点提醒我喝水")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let asked = events.iter().find_map(|e| match &e.msg {
-        EventMsg::ApprovalRequested { name, summary, call_id, .. } => Some((name.clone(), summary.clone(), call_id.clone())),
-        _ => None,
-    });
-    let (name, summary, call_id) = asked.unwrap();
-    assert_eq!(name, "manage_routine");
-    assert_eq!(summary, "create routine \"喝水\": 每天 8 点");
-    assert_eq!(host.calls.lock().len(), 1, "the read went through without asking");
-    h.kernel
-        .submit(Op::Approval { call_id, decision: her_protocol::ApprovalDecision::Approve })
-        .await
-        .unwrap();
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert_eq!(host.calls.lock().len(), 2);
+    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
+    let titles: Vec<String> = events
+        .iter()
+        .filter_map(|e| match &e.msg {
+            EventMsg::ToolStarted { name, title, .. } if name == "manage_routine" => Some(title.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(titles[1], "create routine \"喝水\": 每天 8 点");
+    assert_eq!(host.calls.lock().len(), 2, "both calls went through without asking");
 }
 
 /// Without the service there is nothing to manage, and the model hears why.

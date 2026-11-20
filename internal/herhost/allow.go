@@ -11,7 +11,7 @@ import (
 // allowed are the methods of her's protocol that the owner's devices may
 // call, on HerService and on the console's routes alike (docs/her-server.md
 // §6.1). Anything else is refused as unimplemented: a device newer than this
-// hermeshd tells it from a refusal (docs/version-skew.md §6.3).
+// aided tells it from a refusal (docs/version-skew.md §6.3).
 var allowed = map[string]bool{}
 
 func init() {
@@ -71,13 +71,13 @@ var commandKeys = map[string]bool{"command": true, "args": true, "env": true, "e
 // (her-core config.rs, ConfigFile). It is a list of what may, not of what
 // may not: most of her's settings decide what runs and how freely (tools.*,
 // rules, extra_writable_roots, the prompt files, agents, desktop, mcp,
-// skills.paths, a browser's executable, a connector's command or approval),
+// skills.paths, a browser's executable, a connector's command),
 // and a setting her adds later must not slip through. A key maps to what may
 // be written in it, nil to anything; "*" stands for any key.
 var writable = node{
 	"web_search": nil,
 	// browser.extension: whether Her uses the owner's own Chrome, which only
-	// connects once the owner has added the Hermesh extension to it by hand
+	// connects once the owner has added the Aide extension to it by hand
 	// on that Mac; that step is the decision, so no root key is asked.
 	"browser": {"enabled": nil, "default": nil, "sites": nil, "extension": nil},
 	// Connectors by address.

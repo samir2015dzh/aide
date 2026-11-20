@@ -25,6 +25,14 @@ jobs:
           ls "$SDK"/ndk >/dev/null 2>&1 || yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724"
       - name: build and test
         run: VERSION="0.0.0-${GITHUB_SHA::8}" apps/android/scripts/build.sh
+      # The installed identity, read back from the APK itself (io.aide.android;
+      # the debug build adds .debug).
+      - name: the APK's application id
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          AAPT2="$(ls -d "$SDK"/build-tools/*/aapt2 | sort -V | tail -1)"
+          "$AAPT2" dump badging apps/android/build/*.apk | head -1 | tee badging.txt
+          grep -q "^package: name='io.aide.android.debug'" badging.txt
       - uses: actions/upload-artifact@v4
         with:
           name: aide-android-debug

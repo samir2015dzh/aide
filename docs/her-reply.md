@@ -19,9 +19,9 @@ selected in one. Once the reply is sent:
    words. It says which earlier words the message replies to, and carries
    those words. Her needs no new tool, and the kernel `her` does not change.
 
-One place writes the block: the core on the device (`hermeshd`, or the
+One place writes the block: the core on the device (`aided`, or the
 iPhone's core) puts it together when it delivers the message. Two places
-read it: `her-client` (the Mac) and `HermeshHer` (the iPhone) turn it back
+read it: `her-client` (the Mac) and `AideHer` (the iPhone) turn it back
 into the quote.
 
 ## 1. Before
@@ -197,7 +197,7 @@ the composer (a reply and words) → HerSend (reply) → the outbox, HerWaiting 
   → herDeliver: the words, the reply block, the pictures, the attached files → her's session/op
 ```
 
-The protocol (`proto/hermesh/local/v1/local.proto`): `HerReply { ref, own,
+The protocol (`proto/aide/local/v1/local.proto`): `HerReply { ref, own,
 text, partial }`, as `HerSendRequest.reply` and `HerWaiting.reply`; and
 `GetStatusResponse.abilities`, which says `her_reply`.
 
@@ -217,7 +217,7 @@ The kernel `her` is unchanged, but for one more case in its tests.
   text block that is such a block from its first character to its last.
   `userText()` gives it as `reply`, and keeps it out of `text`. `botChat`'s
   `user` item carries it.
-- **The iPhone** (`packages/HermeshKit/Sources/HermeshHer/Chat.swift`):
+- **The iPhone** (`packages/AideKit/Sources/AideHer/Chat.swift`):
   `herReply(_:)` reads the same. A row (`HerItem`) carries it as `reply`.
 
 Only a block of its own that is one whole counts. The same sentence typed
@@ -246,7 +246,7 @@ The three (Go writes; TypeScript and Swift read) run the same cases,
 | `Views/Her/HerConversation.swift` | A row says how its message is replied to; the owner's bubble quotes; a tap on a quote brings the message into view (the run's code, now shared); the sheet |
 | `Views/Her/HerComposer.swift` | The bar above the words |
 | `Views/Her/HerChat.swift` | `HerDraft.reply`; `deliver` hands it to `HerSend`; Edit and what a task hands back put it back; `revealMessage` |
-| `HermeshHer` (`Chat.swift`, `Kept.swift`, `Session.swift`) | `HerReply`, `herReply`, `herQuote`, `herPlainText`, `herReturnedReply`; a row and an outgoing message carry the reply |
+| `AideHer` (`Chat.swift`, `Kept.swift`, `Session.swift`) | `HerReply`, `herReply`, `herQuote`, `herPlainText`, `herReturnedReply`; a row and an outgoing message carry the reply |
 | `Localizable.xcstrings`, `Haptic.swift` | The words; the tap of a swipe that went far enough |
 
 ### 4.6 Different versions
@@ -258,7 +258,7 @@ screen, and what is missing reads.
 |---|---|
 | The machine's `her` is older | Nothing: the kernel need not know the block |
 | Another device's app is older | That message shows its words, then `<resource …>`, `Replying to this earlier message of yours …` and the quoted lines after `> `. Not pretty, but it reads, and it becomes a quote once the app is updated |
-| The Mac app is updated and its own `hermeshd` has not restarted yet | An older core does not know `reply` and would drop it without a word. version-skew.md §6.1 left a list of `hermeshd`'s own abilities for the first feature that needs one: this is it. The core's status says `her_reply`. Without it, Reply stays where it is and says Hermesh is finishing an update, instead of sending a message that lost what it replies to. The iPhone's core is part of its app, and is never behind it |
+| The Mac app is updated and its own `aided` has not restarted yet | An older core does not know `reply` and would drop it without a word. version-skew.md §6.1 left a list of `aided`'s own abilities for the first feature that needs one: this is it. The core's status says `her_reply`. Without it, Reply stays where it is and says Aide is finishing an update, instead of sending a message that lost what it replies to. The iPhone's core is part of its app, and is never behind it |
 
 ### 4.7 Safety
 
@@ -278,10 +278,10 @@ screen, and what is missing reads.
 | The core (Go, `internal/owner/her_test.go`) | `TestHerReplyBlock`: the shared cases, a long quote cut, line ends, a reply that names nothing. `TestHerSendReplies`: the order of the blocks (words, reply, attached files), a reply alone refused, and a message that waits for the machine goes with its reply |
 | The kernel (Rust, `commands.rs`) | A `/skill:` mention quoted in the block loads nothing and warns of nothing |
 | The Mac's reading (`her-client`) | The shared cases both ways; a quote, not words, in `userText`, in the conversation's steps and in `botChat`, sent or still queued |
-| The iPhone's reading (`HermeshHerTests`) | The shared cases; rows, queued ones too; the outbox; `herQuote`, `herPlainText`, what a task hands back |
-| End to end, the core (`e2e`, `TestHerReply`) | The real `hermeshd` and `her` with her-mock as the model: the status says `her_reply`, and the model's prompt has the owner's words, then the block |
+| The iPhone's reading (`AideHerTests`) | The shared cases; rows, queued ones too; the outbox; `herQuote`, `herPlainText`, what a task hands back |
+| End to end, the core (`e2e`, `TestHerReply`) | The real `aided` and `her` with her-mock as the model: the status says `her_reply`, and the model's prompt has the owner's words, then the block |
 | End to end, the Mac (`TestDesktopHerReply`, `apps/desktop/e2e/her-reply.spec.ts`) | The app against the real `her`: Reply from a message's buttons, Esc, the quote in the bubble, what Her was told; words selected with the mouse and the pill; a selection across two messages; the quote brings the message into view; a reply to the owner's own message |
-| End to end, the iPhone (`TestIPhone` with `HERMESH_IPHONE_GREP=testHerReplying`) | The app in the Simulator against the real `her`: the menu, the bar and ×, the quote, what Her was told; Select Text and Reply in the edit menu; the swipe; the quote brings the message into view |
+| End to end, the iPhone (`TestIPhone` with `AIDE_IPHONE_GREP=testHerReplying`) | The app in the Simulator against the real `her`: the menu, the bar and ×, the quote, what Her was told; Select Text and Reply in the edit menu; the swipe; the quote brings the message into view |
 
 her-mock sends back the prompt it got (`[[mock:send]]`), so what the model
 was told shows in Her's answer, in all three end-to-end tests.
@@ -293,7 +293,7 @@ browser tasks, and it has no place for a conversation yet.
 
 ```
 1. The core: the protocol, HerSend, herDeliver, the outbox, abilities  → Go unit tests, TestHerReply
-2. Reading: her-client, HermeshHer, the shared cases                  → the three run the same cases
+2. Reading: her-client, AideHer, the shared cases                  → the three run the same cases
 3. The Mac: Reply, the bar, the quote, bringing a message into view    → TestDesktopHerReply
 4. The Mac: the pill over a selection                                  → TestDesktopHerReply
 5. The iPhone: the menu, the bar, the quote, bringing into view        → testHerReplying
@@ -320,13 +320,13 @@ Built as §4 to §6 say. What ran on the owner's Mac, all passing:
   for Windows, `gofmt`, `buf lint`.
 - `pnpm -r typecheck`, and the tests of `her-client` (153), the desktop app
   (127) and `core` (80).
-- `swift test` in `packages/HermeshKit` (51 in `HermeshHerTests`).
+- `swift test` in `packages/AideKit` (51 in `AideHerTests`).
 - `cargo test -p her-core --lib commands::`.
 - `go test ./e2e -run 'TestHerReply$'`.
 - `go test ./e2e -run 'TestDesktopHerReply$|TestDesktopHer$'`: the new
   story, and Her's long one, which is as it was.
-- `HERMESH_IPHONE_E2E=1 HERMESH_IPHONE_GREP=testHerReplying go test ./e2e -run 'TestIPhone$'`,
-  on an iPhone 17 Pro Simulator named with `HERMESH_IPHONE_SIMULATOR`.
+- `AIDE_IPHONE_E2E=1 AIDE_IPHONE_GREP=testHerReplying go test ./e2e -run 'TestIPhone$'`,
+  on an iPhone 17 Pro Simulator named with `AIDE_IPHONE_SIMULATOR`.
 
 Not run: the rest of `make e2e`, the iPhone's long stories (`testHer`,
 `testTheIPhoneApp`), and anything on Windows or Linux.
@@ -347,7 +347,7 @@ What the work turned up:
   leaves the block out.
 - **TestIPhone's own Simulator can't be made on this Mac:** it picks the
   newest "iPhone N Pro" (18 here), and the installed runtime is iOS 26.0.
-  Not changed here; `HERMESH_IPHONE_SIMULATOR` names one that works.
+  Not changed here; `AIDE_IPHONE_SIMULATOR` names one that works.
 
 ## 9. Not in this version
 

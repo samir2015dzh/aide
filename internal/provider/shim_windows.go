@@ -11,10 +11,10 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
-// hideWindow keeps a console program from opening a window: hermeshdw has
+// hideWindow keeps a console program from opening a window: aidedw has
 // no console for it to share.
 func hideWindow(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NO_WINDOW}

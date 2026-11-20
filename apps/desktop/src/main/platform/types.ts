@@ -1,5 +1,5 @@
 import type { BrowserWindow, BrowserWindowConstructorOptions, Rectangle } from "electron";
-import type { LoginItem, SignerUnlock, TerminalCommand } from "../../shared/bridge";
+import type { LoginItem, TerminalCommand } from "../../shared/bridge";
 
 /** The kinds of window, for their frames. */
 export type WindowKind = "main" | "onboarding" | "settings" | "auxiliary" | "panel";
@@ -11,7 +11,7 @@ export type WindowKind = "main" | "onboarding" | "settings" | "auxiliary" | "pan
 export interface Platform {
   /** The pages' data-platform token. */
   token: "mac" | "win";
-  /** The installed app runs hermeshd itself; development and test runs use a daemon of their own. */
+  /** The installed app runs aided itself; development and test runs use a daemon of their own. */
   installed: boolean;
   /** The window's material shows through the sidebar: macOS's vibrancy, Windows 11's Mica. */
   material: boolean;
@@ -19,13 +19,13 @@ export interface Platform {
   settle(): Promise<boolean>;
   /** The installer started this run to set the app up or remove it (Windows): it does that and quits. */
   installerEvent(): boolean;
-  /** Takes hermesh:// links (sign-in, join and wake). */
+  /** Takes aide:// links (sign-in, join and wake). */
   registerLinks(): void;
-  /** Makes hermeshd start by itself, and start now if it does not run. */
+  /** Makes aided start by itself, and start now if it does not run. */
   registerDaemon(): void;
-  /** Restarts hermeshd (after an update brought another version). */
+  /** Restarts aided (after an update brought another version). */
   restartDaemon(why: string): void;
-  /** The owner turned hermeshd's start off in the system's settings. */
+  /** The owner turned aided's start off in the system's settings. */
   daemonNeedsApproval(): boolean;
   /** Opening the app at login. */
   loginItem(): LoginItem | Promise<LoginItem>;
@@ -34,22 +34,6 @@ export interface Platform {
   openedAtLogin(): boolean;
   /** The system's settings for what starts at login. */
   openLoginItems(): void;
-  /** The signer's program and the arguments for the app's language, where it is the app's child (macOS). */
-  signer(language: string): { bin: string; args: string[] } | undefined;
-  /** Before hermeshd asks for a new root key: the signer is there (Windows sets it up, with one UAC prompt). */
-  readySigner(): Promise<void>;
-  /** The installed signer's version, when the app carries a newer one (Windows: the signer is a copy in Program Files). */
-  signerUpdate(): Promise<string | undefined>;
-  /** Sets the app's signer up over the installed one (Windows: one UAC prompt). */
-  updateSigner(): Promise<void>;
-  /** How the signer unlocks the root key keyId for each approval (Windows: Windows Hello or a passphrase); undefined where there is no choice. */
-  signerUnlock(keyId: string): Promise<SignerUnlock | undefined>;
-  /** Switches that, once the owner confirms the way it is now (Windows: one UAC prompt, then the signer's own window); false when nothing changed. */
-  setSignerUnlock(keyId: string, mode: SignerUnlock): Promise<boolean>;
-  /** With the signer set up, programs become administrator here without asking (Windows' UAC off or set to Never notify), and so can approve. */
-  elevatesSilently(): Promise<boolean>;
-  /** The system's settings for that (User Account Control). */
-  openElevationSettings(): void;
   /** Runs one of a fixed set of commands in a terminal window of the system's. */
   runInTerminal(c: TerminalCommand, command: string): void;
   /** Opens a folder in the system's file browser (Finder, File Explorer) or a terminal there; anything but a folder, not at all. */

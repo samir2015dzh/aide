@@ -6,7 +6,7 @@ const base = "http://127.0.0.1:53111/her/m_1/4f2a/";
 const redirect = "http://127.0.0.1:53999/auth/callback";
 
 /**
- * This computer's hermeshd and her on the environment, as a test plays them: the catcher answers
+ * This computer's aided and her on the environment, as a test plays them: the catcher answers
  * each poll with the next of `polls` (a thrown error is a request that failed on the way), her
  * answers each method with `answers`; what was asked and opened is kept.
  */
@@ -20,7 +20,7 @@ function world(polls: (object | Error)[], answers: Record<string, unknown> = {})
     if (init?.method === "POST") return Response.json({ id: "c1", redirect_uri: redirect });
     const next = polls.shift();
     if (next === undefined) {
-      // Nothing more: the poll waits, as hermeshd's does, until the sign-in is stopped.
+      // Nothing more: the poll waits, as aided's does, until the sign-in is stopped.
       return new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)));
     }
     if (next instanceof Error) throw next;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mark } from "@hermesh/ui";
+import { Mark } from "@aide/ui";
 import { AskSheet, ToastView } from "./components";
 import { ConnectorsPage } from "./customize/Connectors";
 import { SkillsPage } from "./customize/Skills";

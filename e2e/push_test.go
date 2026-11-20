@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -15,11 +16,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // spooled is one notification the relay handed to the push service (its
@@ -35,10 +36,10 @@ type spooled struct {
 			InterruptionLevel string            `json:"interruption-level"`
 			ThreadID          string            `json:"thread-id"`
 		} `json:"aps"`
-		Hermesh struct {
+		Aide struct {
 			N string `json:"n"`
 			K string `json:"k"`
-		} `json:"hermesh"`
+		} `json:"aide"`
 	} `json:"payload"`
 }
 
@@ -74,7 +75,7 @@ func TestPushNotices(t *testing.T) {
 		t.Skip("e2e")
 	}
 	fake := filepath.Join(binaries(t), "fakeacp")
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini"}}, "--retry-delay", "0") // its rate limit fails at once
 	// A push service the relay doesn't know (Mi Push, given up) is refused.
 	if _, err := w.app.client.RegisterPush(context.Background(), &localv1.RegisterPushRequest{Token: "regid", Environment: "production",
@@ -113,7 +114,7 @@ func TestPushNotices(t *testing.T) {
 		if s.Token != "abc123" || s.Environment != "development" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.Alert["loc-key"] != "notice.body" {
 			t.Fatalf("payload: %+v", s)
 		}
-		sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+		sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 		n := &sessionv1.Notice{}
 		if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 			t.Fatalf("open notice: %v", err)
@@ -186,14 +187,6 @@ func TestPushNotices(t *testing.T) {
 		}
 	}
 
-	// A request to connect, from the relay itself, with the code to compare.
-	login := start(t, "login", []string{"HERMESH_HOME=" + filepath.Join(t.TempDir(), "agent2")}, filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", "Cursor")
-	code := login.pairingCode(t)
-	p := waitFor("pairing")
-	if p.PairingKind != identityv1.PairingKind_PAIRING_KIND_CLIENT || p.PairingLabel != "Cursor" || p.PairingCode != code || p.VerificationCode == "" {
-		t.Fatalf("pairing notice: %+v", p)
-	}
-
 	// Stopping: an empty token. Nothing more is sent (once what was under
 	// way is delivered).
 	time.Sleep(time.Second)
@@ -216,10 +209,10 @@ func mustGlob(dir string) []string {
 
 // TestPushHerNotices: Her on the owner Mac's own machine tells a device
 // registered for "her" what the Mac app's notifications tell
-// (notices.ts herNotices): her reply, a question she asks and an approval
-// she waits for, one sealed notice each, which only the device opens. A
-// muted assistant tells nothing, nor does unmuting it, nor her starting
-// again with what she had.
+// (notices.ts herNotices): her reply, a question she asks and the words of
+// a secure card she waits on, one sealed notice each, which only the device
+// opens. A muted assistant tells nothing, nor does unmuting it, nor her
+// starting again with what she had.
 func TestPushHerNotices(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -262,11 +255,11 @@ func TestPushHerNotices(t *testing.T) {
 		t.Helper()
 		for _, s := range readSpool(t, spool, seen) {
 			// Sent at once, as the owner waits for her; but not time-sensitive, which would break through Focus.
-			if s.Token != "abc123" || s.Payload.Hermesh.K != "her" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.ThreadID == "" ||
+			if s.Token != "abc123" || s.Payload.Aide.K != "her" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.ThreadID == "" ||
 				!s.Urgent || s.Payload.Aps.InterruptionLevel != "active" {
 				t.Fatalf("payload: %+v", s)
 			}
-			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 			n := &sessionv1.Notice{}
 			if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 				t.Fatalf("open notice: %v", err)
@@ -326,24 +319,39 @@ func TestPushHerNotices(t *testing.T) {
 	send("[[mock:ask:先发给谁？|财务|所有人]] 然后呢")
 	one("question", "先发给谁？")
 
-	// This Mac's hermeshd starting again, and her with it: what she had
+	// This Mac's aided starting again, and her with it: what she had
 	// before is no news.
 	w.restartOwner(false)
 	c = w.app.client
 	eventually(t, 2*time.Minute, "her running again", func() bool { return listedMachine(t, c, mac).GetHer().GetRunning() })
 	none("a notice for what her had before she started")
 
-	// An approval: asking before each command, she waits for the owner.
-	if _, err := c.SetHerAssistantMode(ctx, &localv1.SetHerAssistantModeRequest{MachineId: mac, BotId: bot.ID, PermissionMode: "manual"}); err != nil {
-		t.Fatal(err)
-	}
-	send("[[mock:bash:touch 批准.txt]] 建个文件")
-	one("approval", "touch 批准.txt")
+	// A secure card: what still waits for the owner, since she runs actions
+	// without asking. A connector to sign in to, her-mock's
+	// her-mcp-server with OAuth.
+	tracker := start(t, "tracker", nil, herMCPServer(t), "--http", "127.0.0.1:0", "--oauth", "--name", "tracker")
+	var address string
+	eventually(t, 20*time.Second, "the tracker's address", func() bool {
+		address = regexp.MustCompile(`http://\S+/mcp`).FindString(tracker.output())
+		return address != ""
+	})
+	// Her's words with the card come as her message, and the card waiting
+	// by them is that message again: no second notice (notices.ts
+	// herNotices; herhost's TestSnapshotNews). The machine's status says it
+	// waits.
+	const words = "这件事要用到它，请在卡片上确认。"
+	send("[[mock:connect:tracker|" + address + "]] 接上我的 tracker")
+	one("message", words)
+	eventually(t, 30*time.Second, "the card waiting, in the machine's status", func() bool {
+		l := listedMachine(t, c, mac).GetHer().GetLatest()
+		return l.GetBotId() == bot.ID && l.GetKind() == machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL && l.GetText() == words
+	})
+	none("a second notice for the card waiting")
 
 	// The push service got none of it in the clear.
 	for _, f := range mustGlob(spool) {
 		raw, _ := os.ReadFile(f)
-		for _, s := range []string{"早上好", "静音", "先发给谁", "批准", bot.ID, mac} {
+		for _, s := range []string{"早上好", "静音", "先发给谁", "请在卡片上确认", bot.ID, mac} {
 			if strings.Contains(string(raw), s) {
 				t.Fatalf("%q in the push payload: %s", s, raw)
 			}
@@ -363,7 +371,7 @@ func TestPushNoticeWaitsForRelay(t *testing.T) {
 	// tests that are, after the rest of the suite.
 	t.Parallel()
 	fake := filepath.Join(binaries(t), "fakeacp")
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini"}})
 	spool := filepath.Join(t.TempDir(), "push")
 	w.relayArgs = append(w.relayArgs, "--push-spool", spool)
@@ -417,7 +425,7 @@ func TestPushNoticeWaitsForRelay(t *testing.T) {
 	var got []*sessionv1.Notice
 	read := func() {
 		for _, s := range readSpool(t, spool, seen) {
-			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 			n := &sessionv1.Notice{}
 			if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 				t.Fatalf("open notice: %v", err)

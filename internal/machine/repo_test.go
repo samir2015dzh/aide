@@ -9,8 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 func TestParseGitHubRepo(t *testing.T) {
@@ -35,7 +35,7 @@ func TestParseGitHubRepo(t *testing.T) {
 			t.Errorf("%q: %+v", in, got)
 		}
 	}
-	// Hermesh keeps no credentials, not even ones written into a URL.
+	// Aide keeps no credentials, not even ones written into a URL.
 	if _, err := parseGitHubRepo("https://x-access-token:ghp_secret@github.com/acme/widget.git"); err == nil || strings.Contains(err.Error(), "ghp_secret") {
 		t.Errorf("a URL with credentials: %v", err)
 	}
@@ -52,10 +52,10 @@ func TestGitHubNames(t *testing.T) {
 	if got := r.cloneDir("/data"); got != filepath.Join("/data", "repos", "github.com", "acme", "widget.js") {
 		t.Errorf("cloneDir: %s", got)
 	}
-	if got := pullRequestURL(r, "main", "hermesh/s_1"); got != "https://github.com/Acme/Widget.js/compare/main...hermesh/s_1?expand=1" {
+	if got := pullRequestURL(r, "main", "aide/s_1"); got != "https://github.com/Acme/Widget.js/compare/main...aide/s_1?expand=1" {
 		t.Errorf("pullRequestURL: %s", got)
 	}
-	if got := pullRequestURL(r, "", "hermesh/s_1"); got != "https://github.com/Acme/Widget.js/compare/hermesh/s_1?expand=1" {
+	if got := pullRequestURL(r, "", "aide/s_1"); got != "https://github.com/Acme/Widget.js/compare/aide/s_1?expand=1" {
 		t.Errorf("pullRequestURL without a base: %s", got)
 	}
 }
@@ -137,7 +137,7 @@ func TestRepoSession(t *testing.T) {
 	}
 	// Nothing went up by itself.
 	bare := filepath.Join(gh, "acme", "widget.git")
-	if out := gitOut(t, bare, "branch", "--list", "hermesh/*"); strings.TrimSpace(out) != "" {
+	if out := gitOut(t, bare, "branch", "--list", "aide/*"); strings.TrimSpace(out) != "" {
 		t.Fatalf("pushed unasked: %s", out)
 	}
 
@@ -200,7 +200,7 @@ func TestRepoSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	branch := "hermesh/" + s.SessionId
+	branch := "aide/" + s.SessionId
 	if res.Branch != branch || res.PullRequestUrl != "https://github.com/acme/widget/compare/main..."+branch+"?expand=1" {
 		t.Fatalf("pushed: %+v", res)
 	}
@@ -240,7 +240,7 @@ func TestPushProjectSession(t *testing.T) {
 	if err != nil || res.PullRequestUrl != "" {
 		t.Fatalf("pushed: %+v, %v", res, err)
 	}
-	if got := gitOut(t, bare, "show", "hermesh/"+id+":x.txt"); got != "x\n" {
+	if got := gitOut(t, bare, "show", "aide/"+id+":x.txt"); got != "x\n" {
 		t.Fatalf("the pushed branch: %q", got)
 	}
 }

@@ -1,4 +1,4 @@
-import type { Cost, Usage, UsageTotals } from "@hermesh/her-protocol";
+import type { Cost, Usage, UsageTotals } from "@aide/her-protocol";
 import { pad2 } from "./calendar.ts";
 
 // Numbers as the window shows them. Words are the app's (its language);

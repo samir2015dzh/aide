@@ -3,7 +3,7 @@
 ## Install
 
 ```bash
-curl -fsSL https://github.com/hermeshai/her-releases/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh
 ```
 
 It checks the download's SHA-256 and puts `her` in `~/.local/bin`; `--dir` or `HER_INSTALL_DIR` picks another folder, `--version V` a version. Run it again to upgrade, or run `her upgrade`.
@@ -11,7 +11,7 @@ It checks the download's SHA-256 and puts `her` in `~/.local/bin`; `--dir` or `H
 With Homebrew:
 
 ```bash
-brew install hermeshai/tap/her
+brew install samir2015dzh/tap/her
 ```
 
 To check a download by hand, compare it with `SHA256SUMS` from the same release.
@@ -49,7 +49,7 @@ Or start a conversation with `her`, or with its first message: `her "fix the fai
 | Up | History; with messages waiting, take the last one back |
 | Ctrl+C | Stop the task; twice to quit |
 
-`/help` lists the commands: `/model`, `/permissions`, `/rewind`, `/resume`, `/compact` and others. Anything else that starts with a slash goes to the model as it is.
+`/help` lists the commands: `/model`, `/thinking`, `/rewind`, `/resume`, `/compact` and others. Anything else that starts with a slash goes to the model as it is.
 
 ## Look around
 
@@ -66,12 +66,4 @@ Continue the last session here with `her resume`, or `her exec --resume last "NE
 
 ## Permissions
 
-By default her asks before changing anything. Change that for one run with `--permission-mode accept-edits`, or keep it:
-
-<!-- doc-test: run -->
-```bash
-her config set permission_mode accept-edits
-her config unset permission_mode
-```
-
-See [permissions.md](permissions.md).
+her runs actions without asking: there are no approvals and no permission modes. Deny rules, and a few refusals built in (deleting the workspace or your home directory, for one), are what stops an action. See [permissions.md](permissions.md).

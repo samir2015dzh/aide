@@ -1,4 +1,4 @@
-import type { CustomModel, ProviderSummary, ProvidersSaveParams } from "@hermesh/her-protocol";
+import type { CustomModel, ProviderSummary, ProvidersSaveParams } from "@aide/her-protocol";
 
 // A provider of one's own as the form holds it (CustomProvider.tsx): an OpenAI- or
 // Anthropic-compatible service at an address, its key, and the models chosen from its list or

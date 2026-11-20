@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { agoText, dateOf } from "@hermesh/core";
+import { agoText, dateOf } from "@aide/core";
 import { Icon } from "./icons";
 import { Attention } from "./overview/Attention";
 import { LinkMap } from "./overview/Map";

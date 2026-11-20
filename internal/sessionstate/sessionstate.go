@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Limits are the two limits states are worked out with.
@@ -37,14 +37,14 @@ const (
 // Default is the default limits.
 func Default() Limits { return Limits{LostAfter: DefaultLostAfter, StallAfter: DefaultStallAfter} }
 
-// FromEnv is the default limits, less those HERMESH_LOST_AFTER and
-// HERMESH_STALL_AFTER set (a Go duration, "90s", or seconds, "90").
+// FromEnv is the default limits, less those AIDE_LOST_AFTER and
+// AIDE_STALL_AFTER set (a Go duration, "90s", or seconds, "90").
 func FromEnv() Limits {
 	l := Default()
-	if d, ok := envDuration("HERMESH_LOST_AFTER"); ok {
+	if d, ok := envDuration("AIDE_LOST_AFTER"); ok {
 		l.LostAfter = d
 	}
-	if d, ok := envDuration("HERMESH_STALL_AFTER"); ok {
+	if d, ok := envDuration("AIDE_STALL_AFTER"); ok {
 		l.StallAfter = d
 	}
 	return l

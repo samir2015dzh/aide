@@ -1,4 +1,4 @@
-import type { SessionView } from "@hermesh/her-client";
+import type { SessionView } from "@aide/her-client";
 
 // Secure cards (docs/her-secure-cards.md §3, §4): what her made for the owner to answer, as
 // send_to_user's result carries it, how each stands, and the answer that goes back. Read by their

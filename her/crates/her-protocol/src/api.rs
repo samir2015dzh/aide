@@ -22,10 +22,7 @@ use crate::event::MailInfo;
 pub use crate::event::QueuedInput;
 use crate::event::SkillUse;
 use crate::event::ToolCategory;
-use crate::op::CommandRule;
 use crate::op::Op;
-use crate::op::PermissionMode;
-use crate::op::SiteGrant;
 use her_llm::Timestamp;
 
 /// Method names.
@@ -212,9 +209,6 @@ pub mod method {
     /// deferred tools and runs them. A later host replaces the one before it, calling it again
     /// replaces the group, no tools removes it, and the host leaves with its connection.
     pub const MESH_HOST: &str = "mesh/host";
-    /// Server request to the `mesh/host` connection, before the user is asked to approve a call
-    /// that writes: what the call would do.
-    pub const MESH_DESCRIBE: &str = "mesh/describe";
     /// Server request to the `mesh/host` connection: run one tool of the group.
     pub const MESH_CALL: &str = "mesh/call";
     /// From the `mesh/host` connection: news for a bot's conversation, which wakes it. It answers
@@ -301,7 +295,6 @@ pub mod error_code {
     pub const SESSION_NOT_LOADED: i64 = -32012;
     pub const NOT_ATTACHED: i64 = -32013;
     pub const PROMPT_IN_PROGRESS: i64 = -32014;
-    pub const APPROVAL_NOT_PENDING: i64 = -32015;
     pub const SERVER_FULL: i64 = -32016;
     pub const OVERLOADED: i64 = -32017;
     pub const UNSUPPORTED_CONTENT: i64 = -32018;
@@ -380,7 +373,6 @@ pub mod error_code {
         (SESSION_NOT_LOADED, "session_not_loaded"),
         (NOT_ATTACHED, "not_attached"),
         (PROMPT_IN_PROGRESS, "prompt_in_progress"),
-        (APPROVAL_NOT_PENDING, "approval_not_pending"),
         (SERVER_FULL, "server_full"),
         (OVERLOADED, "overloaded"),
         (UNSUPPORTED_CONTENT, "unsupported_content"),
@@ -460,31 +452,9 @@ pub struct MeshTool {
     pub description: String,
     /// JSON Schema of its arguments.
     pub parameters: Value,
-    /// It changes something: a call goes through the approval policy. One that only reads runs
-    /// in every mode.
+    /// It changes something: such calls run one at a time, never beside another call.
     #[serde(default)]
     pub writes: bool,
-}
-
-/// Parameters of `mesh/describe`, a request from the kernel to the `mesh/host` connection.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct MeshDescribeParams {
-    /// The bot whose conversation makes the call.
-    pub bot: String,
-    /// The tool.
-    pub name: String,
-    pub arguments: Value,
-}
-
-/// The result of `mesh/describe`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct MeshDescribeResult {
-    /// What the call would do, in words for the user who approves it.
-    pub summary: String,
-    /// The words of the rule that covers the call: an allow rule with them lets it run unasked,
-    /// and approving for the session keeps one. None: every such call is asked about.
-    #[serde(default)]
-    pub rule: Option<Vec<String>>,
 }
 
 /// Parameters of `mesh/call`, a request from the kernel to the `mesh/host` connection.
@@ -567,7 +537,7 @@ pub struct BrowserHostParams {
     /// The browser the host is in, as it names itself: "Google Chrome 141.0.7390.54".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub browser: Option<String>,
-    /// The Hermesh extension's version, for an extension host.
+    /// The Aide extension's version, for an extension host.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extension_version: Option<String>,
     /// The bridge versions the extension speaks (browser-design D-219). An extension host
@@ -595,7 +565,7 @@ pub struct BridgeRange {
 pub enum ExtensionProblem {
     /// The extension is older than this her can drive; the store updates it by itself.
     UpdateExtension,
-    /// The extension is newer than this her; update Hermesh.
+    /// The extension is newer than this her; update Aide.
     UpdateHer,
 }
 
@@ -611,7 +581,7 @@ pub struct BrowserHostResult {
     pub problem: Option<ExtensionProblem>,
 }
 
-/// The user's own browser, lent through the Hermesh extension (browser-design §8.4).
+/// The user's own browser, lent through the Aide extension (browser-design §8.4).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ExtensionStatus {
     /// "Google Chrome 141.0.7390.54", when the extension said.
@@ -698,7 +668,7 @@ pub struct DesktopStatus {
 }
 
 /// A system permission as agent-desktop finds it from inside her. macOS asks it of the process
-/// it holds responsible for her: the terminal app, or hermeshd when Hermesh runs her.
+/// it holds responsible for her: the terminal app, or aided when Aide runs her.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DesktopPermission {
@@ -817,8 +787,6 @@ pub enum ExtensionMessage {
     Revoked { sessions: Vec<String> },
     /// The user asked to go back to a conversation.
     OpenSession { session_id: String },
-    /// The user did what the session waits for in the page.
-    Done { session_id: String },
     /// The user stopped a session's task from the extension.
     Stop { session_id: String },
     /// The user offered a tab of their own to a conversation.
@@ -832,9 +800,6 @@ pub enum ExtensionMessage {
 pub struct ExtensionSession {
     pub title: String,
     pub state: SessionState,
-    /// What it waits for the user to do in the page.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub handoff: Option<String>,
     /// How the user's latest message starts: the task its tabs are for.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub task: Option<String>,
@@ -1029,12 +994,6 @@ pub struct SessionNewParams {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking: Option<ThinkingLevel>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "approval_mode"
-    )]
-    pub permission_mode: Option<PermissionMode>,
     #[serde(default)]
     pub events: EventFilter,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1057,12 +1016,6 @@ pub struct SessionResumeParams {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking: Option<ThinkingLevel>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "approval_mode"
-    )]
-    pub permission_mode: Option<PermissionMode>,
     #[serde(default)]
     pub events: EventFilter,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1167,8 +1120,6 @@ pub enum SessionState {
     #[default]
     Idle,
     Running,
-    /// A task waits for an approval.
-    AwaitingApproval,
     /// The last task failed.
     Failed,
 }
@@ -1294,8 +1245,6 @@ pub struct SessionInfo {
     pub session_file: PathBuf,
     pub model: String,
     pub thinking: ThinkingLevel,
-    #[serde(alias = "approval_mode")]
-    pub permission_mode: PermissionMode,
     pub context_window: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
@@ -1361,8 +1310,6 @@ pub struct ActiveTask {
     /// Tool calls that have not completed.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tools: Vec<ToolState>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub approvals: Vec<PendingApproval>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -1414,25 +1361,6 @@ pub struct ToolState {
     pub progress_tail: String,
 }
 
-/// Same fields as the `approval_requested` event.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct PendingApproval {
-    pub call_id: String,
-    pub name: String,
-    pub args: Value,
-    pub summary: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub proposed_rule: Option<CommandRule>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub proposed_mode: Option<PermissionMode>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub proposed_grants: Vec<SiteGrant>,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub own_browser: bool,
-}
-
 // ---- Resources and models ----
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1471,7 +1399,6 @@ pub struct SessionDefaults {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     pub thinking: ThinkingLevel,
-    pub permission_mode: PermissionMode,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1992,9 +1919,9 @@ mod tests {
     #[test]
     fn ops_travel_unchanged_inside_session_op() {
         let params: SessionOpParams =
-            serde_json::from_str(r#"{"session_id":"s","op":{"type":"approval","call_id":"c1","decision":{"type":"approve"}}}"#)
+            serde_json::from_str(r#"{"session_id":"s","op":{"type":"set_title","title":"t"}}"#)
                 .unwrap();
-        assert!(matches!(params.op, Op::Approval { .. }));
+        assert!(matches!(params.op, Op::SetTitle { .. }));
     }
 }
 

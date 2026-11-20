@@ -14,8 +14,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/oklog/ulid/v2"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 const (
@@ -41,7 +41,7 @@ type message struct {
 	by, conv, byName string
 	// quiet: an agent's message, recorded as MessageReceived when it
 	// arrived; its turn records no UserMessage for it. answer is what of
-	// it answers a question: its text without the words Hermesh puts
+	// it answers a question: its text without the words Aide puts
 	// around it. events, for one joined from quiet and other messages,
 	// are what its turn records of the others.
 	quiet  bool

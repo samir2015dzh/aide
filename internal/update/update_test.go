@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"io"
 	"log/slog"
 	"net/http"
@@ -112,8 +113,8 @@ func consoleArchive(t *testing.T, folder, index string) []byte {
 	return b.Bytes()
 }
 
-// hermesh is the agent CLI among Programs.
-var hermesh = map[bool]string{true: "hermesh.exe", false: "hermesh"}[runtime.GOOS == "windows"]
+// aide is the agent CLI among Programs.
+var aide = map[bool]string{true: "aide.exe", false: "aide"}[runtime.GOOS == "windows"]
 
 func (r *release) sign() {
 	var sums strings.Builder
@@ -222,34 +223,25 @@ func TestInstall(t *testing.T) {
 			t.Errorf("%s's new left behind", name)
 		}
 	}
-	// The names since the rename, made beside programs that had none (RENAME-AIDE.md B1, B2).
-	for old, alias := range aliases {
-		if runtime.GOOS == "windows" {
-			old, alias = old+".exe", alias+".exe"
-		}
-		if b, _ := os.ReadFile(filepath.Join(dir, alias)); !strings.Contains(string(b), "0.2.0") {
-			t.Errorf("%s, for %s: %.40q", alias, old, b)
-		}
-		if target, err := os.Readlink(filepath.Join(dir, alias)); runtime.GOOS != "windows" && target != old {
-			t.Errorf("%s links to %q (%v), not %s", alias, target, err, old)
+	// No program's name from before the rename is made where there was none.
+	for _, name := range Programs {
+		if old := legacyOf(name); old != "" {
+			if _, err := os.Lstat(filepath.Join(dir, old)); err == nil {
+				t.Errorf("%s made beside %s", old, name)
+			}
 		}
 	}
 
 	// Only the programs there: an agent CLI alone.
 	cli := t.TempDir()
-	os.WriteFile(filepath.Join(cli, hermesh), fakeProgram(t, "0.1.0"), 0o755)
-	if names, err := Install(context.Background(), t.TempDir(), cli, rel); err != nil || strings.Join(names, " ") != hermesh {
+	os.WriteFile(filepath.Join(cli, aide), fakeProgram(t, "0.1.0"), 0o755)
+	if names, err := Install(context.Background(), t.TempDir(), cli, rel); err != nil || strings.Join(names, " ") != aide {
 		t.Errorf("CLI only: %v %v", names, err)
 	}
 
 	// A release without her and its console, as before them: the others
 	// go, they stay.
 	r.publish("0.3.0")
-	defer func() { // the aliases follow
-		if b, _ := os.ReadFile(filepath.Join(dir, aliases["hermeshd"]+filepath.Ext(Programs[0]))); !strings.Contains(string(b), "0.3.0") {
-			t.Errorf("aided after the next update: %.40q", b)
-		}
-	}()
 	delete(r.files, asset("her"))
 	delete(r.files, herConsoleAsset)
 	r.sign()
@@ -268,7 +260,7 @@ func TestInstall(t *testing.T) {
 // nothing.
 func TestInstallRefuses(t *testing.T) {
 	r := newRelease(t)
-	cli := asset(hermesh)
+	cli := asset(aide)
 	changes := map[string]func(){
 		"checksum": func() { r.files[cli] = append(fakeProgram(t, "0.2.0"), ' ') },
 		"start as": func() {
@@ -319,21 +311,21 @@ func TestDirRefusesTheApp(t *testing.T) {
 		// The Windows app's programs, in the folder install.ps1 uses.
 		local := t.TempDir()
 		t.Setenv("LOCALAPPDATA", local)
-		os.MkdirAll(filepath.Join(local, "HermeshApp"), 0o755)
-		os.WriteFile(filepath.Join(local, "HermeshApp", "Update.exe"), nil, 0o755)
-		executable = func() (string, error) { return filepath.Join(local, "Programs", "Hermesh", "bin", "hermeshd.exe"), nil }
+		os.MkdirAll(filepath.Join(local, "AideApp"), 0o755)
+		os.WriteFile(filepath.Join(local, "AideApp", "Update.exe"), nil, 0o755)
+		executable = func() (string, error) { return filepath.Join(local, "Programs", "Aide", "bin", "aided.exe"), nil }
 		t.Cleanup(func() { executable = os.Executable })
-		os.MkdirAll(filepath.Join(local, "Programs", "Hermesh", "bin"), 0o755)
-		os.WriteFile(filepath.Join(local, "Programs", "Hermesh", "bin", "hermeshd.exe"), nil, 0o755)
+		os.MkdirAll(filepath.Join(local, "Programs", "Aide", "bin"), 0o755)
+		os.WriteFile(filepath.Join(local, "Programs", "Aide", "bin", "aided.exe"), nil, 0o755)
 		if _, err := Dir(); err == nil || !strings.Contains(err.Error(), "the Aide app") {
 			t.Errorf("%v", err)
 		}
 		return
 	}
-	app := filepath.Join(t.TempDir(), "Hermesh.app", "Contents", "Resources")
+	app := filepath.Join(t.TempDir(), "Aide.app", "Contents", "Resources")
 	os.MkdirAll(app, 0o755)
-	os.WriteFile(filepath.Join(app, "hermeshd"), nil, 0o755)
-	executable = func() (string, error) { return filepath.Join(app, "hermeshd"), nil }
+	os.WriteFile(filepath.Join(app, "aided"), nil, 0o755)
+	executable = func() (string, error) { return filepath.Join(app, "aided"), nil }
 	t.Cleanup(func() { executable = os.Executable })
 	if _, err := Dir(); err == nil || !strings.Contains(err.Error(), "the Aide app") {
 		t.Errorf("%v", err)
@@ -453,5 +445,55 @@ func testInstallHerFolder(t *testing.T, folder string) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(previousPath(dir, folder), "program")); string(b) != "0.1.0" {
 		t.Errorf("the previous the program is %q", b)
+	}
+}
+
+// An installation from before the rename: its programs under their old
+// names, the new names links to them (Windows: copies), and its service
+// running the old name. The update writes the programs under their new names
+// and keeps the old ones as links to them (copies), up to date.
+func TestInstallOverAnInstallationFromBeforeTheRename(t *testing.T) {
+	r := newRelease(t)
+	r.publish("0.2.0")
+	rel, _ := Latest(context.Background())
+	dir := t.TempDir()
+	exe := filepath.Ext(Programs[0])
+	for _, name := range Programs {
+		old := legacyOf(name)
+		if old == "" {
+			os.WriteFile(filepath.Join(dir, name), fakeProgram(t, "0.1.0"), 0o755)
+			continue
+		}
+		os.WriteFile(filepath.Join(dir, old), fakeProgram(t, "0.1.0"), 0o755)
+		if runtime.GOOS == "windows" {
+			os.WriteFile(filepath.Join(dir, name), fakeProgram(t, "0.1.0"), 0o755)
+		} else {
+			os.Symlink(old, filepath.Join(dir, name))
+		}
+	}
+	if _, err := Install(context.Background(), t.TempDir(), dir, rel); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range Programs {
+		fi, err := os.Lstat(filepath.Join(dir, name))
+		if err != nil || fi.Mode()&os.ModeSymlink != 0 {
+			t.Errorf("%s is not the program itself: %v %v", name, fi, err)
+		}
+		if b, _ := os.ReadFile(filepath.Join(dir, name)); !strings.Contains(string(b), "0.2.0") {
+			t.Errorf("%s: %.40q", name, b)
+		}
+		old := legacyOf(name)
+		if old == "" {
+			continue
+		}
+		if b, _ := os.ReadFile(filepath.Join(dir, old)); !strings.Contains(string(b), "0.2.0") {
+			t.Errorf("%s, the old name of %s: %.40q", old, name, b)
+		}
+		if target, err := os.Readlink(filepath.Join(dir, old)); runtime.GOOS != "windows" && target != name {
+			t.Errorf("%s links to %q (%v), not %s", old, target, err, name)
+		}
+	}
+	if legacyOf("aided"+exe) != legacy.Daemon+exe {
+		t.Errorf("aided's old name: %q", legacyOf("aided"+exe))
 	}
 }

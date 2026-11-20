@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { BusyAgent } from "@hermesh/her-client";
+import type { BusyAgent } from "@aide/her-client";
 import { Icon } from "../icons";
 import { useNow, useStore } from "../store";
 import { useHer } from "./context";

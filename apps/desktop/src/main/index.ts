@@ -9,7 +9,6 @@ import { setAppMenu } from "./menu";
 import { applyAppearance, posted, watch } from "./notify";
 import { dataDir, socketPath } from "./paths";
 import { platform } from "./platform";
-import { keepSignerRunning } from "./signer";
 import { receiveLink } from "./links";
 import { showTray, trayState } from "./tray";
 import { startUpdater } from "./updater";
@@ -19,10 +18,10 @@ const rendererDir = path.join(import.meta.dirname, "../renderer");
 // pdf.js (a PDF over the window) decodes some images with WebAssembly and draws some through blob: URLs.
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 
-// The window profile lives in a folder of its own inside Hermesh's data
-// directory (Electron's default would be that directory itself, hermeshd's).
+// The window profile lives in a folder of its own inside Aide's data
+// directory (Electron's default would be that directory itself, aided's).
 // Tests run each instance with its own profile (and so its own single-instance lock).
-app.setPath("userData", !app.isPackaged && process.env.HERMESH_USER_DATA ? process.env.HERMESH_USER_DATA : path.join(dataDir(), "desktop"));
+app.setPath("userData", !app.isPackaged && process.env.AIDE_USER_DATA ? process.env.AIDE_USER_DATA : path.join(dataDir(), "desktop"));
 chooseLanguage();
 if (platform.token === "win") useWindowsWords();
 
@@ -42,7 +41,7 @@ function serve() {
     : {};
   protocol.handle("app", async (req) => {
     const url = new URL(req.url);
-    if (url.host !== "hermesh") return new Response("not found", { status: 404 });
+    if (url.host !== "aide") return new Response("not found", { status: 404 });
     if (url.pathname.startsWith("/api/")) return forward(req, url.pathname.slice(4), socketPath(), cors);
     if (devURL) return new Response("not found", { status: 404 });
     // Static files of the renderer, never outside its directory.
@@ -55,10 +54,10 @@ function serve() {
   });
 }
 
-// hermesh:// links (wake links; any other brings the app forward): macOS hands them to the running app;
+// aide:// links (wake links; any other brings the app forward): macOS hands them to the running app;
 // Windows and Linux start a second instance with the link as an argument.
 // Only the installed app takes the scheme, not development and test runs.
-const linkArg = (argv: string[]) => argv.find((a) => a.startsWith("hermesh://"));
+const linkArg = (argv: string[]) => argv.find((a) => a.startsWith("aide://"));
 let started = false;
 const pendingLinks: string[] = [];
 function openLink(url: string) {
@@ -86,8 +85,6 @@ app.whenReady().then(async () => {
   platform.registerDaemon();
   setAppMenu();
   watch();
-  const stopSigner = keepSignerRunning(socketPath());
-  app.on("will-quit", stopSigner);
   // The page keeps its layout in localStorage, which Chromium writes to disk a moment later: what
   // changed just before quitting (the info card hidden, say) is written now, not lost.
   app.on("will-quit", () => session.defaultSession.flushStorageData());
@@ -101,8 +98,8 @@ app.whenReady().then(async () => {
   app.on("activate", () => showMain());
 });
 
-// Hermesh stays in the menu bar or the notification area: notifications come from here.
+// Aide stays in the menu bar or the notification area: notifications come from here.
 app.on("window-all-closed", () => {});
 
 // For end-to-end tests (evaluated in the main process by Playwright).
-Object.assign(globalThis, { hermeshTest: { openUpstream, forwardedCalls, mainWindow, notifications: () => posted, tray: trayState } });
+Object.assign(globalThis, { aideTest: { openUpstream, forwardedCalls, mainWindow, notifications: () => posted, tray: trayState } });

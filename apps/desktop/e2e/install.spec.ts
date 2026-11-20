@@ -20,7 +20,7 @@ test("outside Applications, installation precedes windows, links and background 
   expect(dialog.defaultId).toBe(0);
   expect(dialog.cancelId).toBe(1);
   await app.evaluate(({ app }) => {
-    app.emit("open-url", { preventDefault() {} }, "hermesh://join?owner=o_" + "a".repeat(24));
+    app.emit("open-url", { preventDefault() {} }, "aide://join?owner=o_" + "a".repeat(24));
     app.emit("second-instance", {}, []);
   });
   expect(app.windows()).toHaveLength(0);
@@ -58,7 +58,7 @@ for (const move of ["cancel", "error"] as const) {
   });
 }
 
-test("hermeshd of another version: once no session is busy, launchd loads its job again from the plist now in the bundle, without blocking on its exit", async () => {
+test("aided of another version: once no session is busy, launchd loads its job again from the plist now in the bundle, without blocking on its exit", async () => {
   const app = await installer(true);
   const page = await app.firstWindow();
   await expect((await sessionList(page))).toContainText("写 hello");
@@ -80,8 +80,8 @@ test("hermeshd of another version: once no session is busy, launchd loads its jo
   // A kickstart would run the new binary under the plist launchd loaded. Registering again blocks while the old process exits, so the app waits for that first.
   expect(launchctl.map(([verb]) => verb)).toEqual(["bootout", "print", "print"]);
   expect(new Set(launchctl.map(([, job]) => job)).size).toBe(1);
-  expect(launchctl[0][1]).toMatch(/^gui\/\d+\/com\.hermesh\.app\.daemon$/);
-  expect(loginItems[1]).toEqual({ type: "agentService", serviceName: "com.hermesh.app.daemon.plist", openAtLogin: true });
+  expect(launchctl[0][1]).toMatch(/^gui\/\d+\/com\.aide\.app\.daemon$/);
+  expect(loginItems[1]).toEqual({ type: "agentService", serviceName: "com.aide.app.daemon.plist", openAtLogin: true });
 });
 
 test("from Applications the app starts normally; update errors explain recovery and fold technical details", async () => {
@@ -90,8 +90,8 @@ test("from Applications the app starts normally; update errors explain recovery 
   await expect((await sessionList(page))).toContainText("写 hello");
   expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.dialogs)).toEqual([]);
   expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.loginItems)).toHaveLength(1);
-  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.protocols)).toEqual(["hermesh"]);
-  const [updates] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openUpdates(true))]);
+  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.protocols)).toEqual(["aide"]);
+  const [updates] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openUpdates(true))]);
   const status = updates.getByRole("status", { name: "更新状态" });
   await expect(status).toContainText("已是最新版本");
 
@@ -117,7 +117,7 @@ test("from Applications the app starts normally; update errors explain recovery 
     await expect(updates.locator(".upd-raw")).toHaveCount(0);
   }
   await app.evaluate(() => { (globalThis as unknown as Hook).installTest.feedFails = true; });
-  await updates.evaluate(() => window.hermesh?.checkForUpdates());
+  await updates.evaluate(() => window.aide?.checkForUpdates());
   await expect(updates.getByText("没能检查更新，请检查网络连接。", { exact: true })).toBeVisible();
   await expect(updates.locator(".upd-raw")).not.toBeVisible();
   const details = updates.locator("summary", { hasText: "技术详情" });

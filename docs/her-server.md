@@ -7,11 +7,11 @@ The kernel is in [her/](../her/README.md).
 
 ## 0. Summary
 
-Her is the agent built into Hermesh. It runs on **Her Servers**: macOS or
+Her is the agent built into Aide. It runs on **Her Servers**: macOS or
 Linux machines the owner turns Her on for. Each Her Server is a
 self-contained **environment**, with its own **assistants**, conversations,
 model logins, connectors and skills, all managed in that environment's own
-web **console**. The Hermesh apps only converse. They have one entry, **Her**
+web **console**. The Aide apps only converse. They have one entry, **Her**
 (so named in every language), where the owner picks an environment
 and talks with Her, the way one picks where a session runs in Claude: her holds more
 assistants, but the apps show Her alone for now (§9.1). Everything
@@ -25,15 +25,23 @@ The decisions:
 2. **One or more Her Servers per owner**, each self-contained, picked in the
    app as an environment. Nothing is shared or synced between them.
 3. **Each server has its own console.** A Her Server's console manages its
-   environment. The relay's console (hermesh.io, on the official service)
+   environment. The relay's console (aide.io, on the official service)
    manages the relay. They are never merged.
-4. **hermeshd runs her** (`her serve --listen unix://…`), opens a her
+4. **aided runs her** (`her serve --listen unix://…`), opens a her
    connection for each client stream and forwards her's own JSON-RPC, with an
-   allowlist by caller. Hermesh adds file transfer, the
+   allowlist by caller. Aide adds file transfer, the
    console's HTTP and Her's status.
 5. **Keys decide.** Only the owner's trusted devices reach Her. Actions
    that need the root key are signed in the apps, with Touch ID.
-6. **Coding agents and the rest of Hermesh don't change.**
+6. **Her runs actions without asking.** There are no action approvals
+   (decided 2026-11-20): no permission modes, no approval window, no
+   question before a command, a file change, a connector's tool, a browser
+   step or a desktop app. A call runs unless a deny rule or one of her's
+   built-in refusals stops it (deleting the workspace or the home folder,
+   another bot's memory, a site or app the configuration denies). Secure
+   cards stay: they are how the owner enters a secret or signs in to a
+   connector, not approvals of an action.
+7. **Coding agents and the rest of Aide don't change.**
 
 ## 1. Names
 
@@ -41,14 +49,14 @@ The decisions:
 |---|---|---|
 | Owner | The person, identified by the root chain of their trusted devices (`owner_id`), not by an account | |
 | Trusted device | One of the owner's devices with a root key in its Secure Enclave: the Mac app, the iPhone app. It approves, signs and reads | |
-| Machine | A computer paired to the owner, running hermeshd's machine role, with a machine certificate | Its name: the hostname by default, renamable |
-| Relay | The service every device and machine dials out to: admission, routing of tunnels, the post office, notices. The official one at hermesh.io, or a self-hosted one | "Official service" or "your own server" (自己的服务器), as today |
-| hermeshd | Hermesh's daemon. The owner role runs on trusted devices (built into the Mac app, and a library, `hermesh-mobile`, in the iPhone app). The machine role runs on every machine | |
+| Machine | A computer paired to the owner, running aided's machine role, with a machine certificate | Its name: the hostname by default, renamable |
+| Relay | The service every device and machine dials out to: admission, routing of tunnels, the post office, notices. The official one at aide.io, or a self-hosted one | "Official service" or "your own server" (自己的服务器), as today |
+| aided | Aide's daemon. The owner role runs on trusted devices (built into the Mac app, and a library, `aide-mobile`, in the iPhone app). The machine role runs on every machine | |
 | her | The agent kernel, a Rust program ([her/](../her/README.md)) | |
 | Her | The agent, and the default assistant of every Her Server | Her |
-| Her Server | A machine Her is turned on for, where hermeshd runs her. A role, not a program or a kind of hardware | Shown as an environment |
+| Her Server | A machine Her is turned on for, where aided runs her. A role, not a program or a kind of hardware | Shown as an environment |
 | Environment | A Her Server as the apps show it | The machine's name, such as "Mac mini" |
-| Assistant | A named bot on a Her Server (her's `bots/*`). It has its own conversation, memory, folder, routines, model, thinking level and approval mode, and shares its environment's logins, connectors and skills. The apps show one for now, Her | Assistant (助手) |
+| Assistant | A named bot on a Her Server (her's `bots/*`). It has its own conversation, memory, folder, routines, model and thinking level, and shares its environment's logins, connectors and skills. The apps show one for now, Her | Assistant (助手) |
 | Conversation | An assistant's one ongoing chat: a her session | |
 | Sub-agent | A worker an assistant starts for part of a task. Never listed | Progress lines |
 | Routine | Instructions an assistant runs on a schedule | Routine (定时任务) |
@@ -64,7 +72,7 @@ The decisions:
 | Agent | A coding agent, or a connected AI with a grant, as today. Can't reach Her in this version | As today |
 
 The apps never call an environment a "server": Chinese already uses 服务器
-for the self-hosted Hermesh service, and many owners will run both on one
+for the self-hosted Aide service, and many owners will run both on one
 cloud machine. "Agent" stays the word for coding agents and connected AIs,
 so Her's bots are "assistants" (助手).
 
@@ -113,20 +121,20 @@ never collides with the first.
 ```mermaid
 flowchart TB
     subgraph Devices["Owner's trusted devices"]
-        MacApp["Mac app<br/>Her entry, console view<br/>hermeshd owner role"]
+        MacApp["Mac app<br/>Her entry, console view<br/>aided owner role"]
         PhoneApp["iPhone app<br/>Her entry, console view<br/>owner role library"]
     end
-    subgraph RelayBox["Relay: hermesh.io or self-hosted"]
+    subgraph RelayBox["Relay: aide.io or self-hosted"]
         Route["admission; tunnels<br/>passed through unread"]
         PostOffice["post office"]
         NoticeOut["notices"]
     end
     subgraph Servers["Her Servers"]
         subgraph HS1["Mac mini, macOS"]
-            D1["hermeshd machine role"] --> K1["her serve"]
+            D1["aided machine role"] --> K1["her serve"]
         end
         subgraph HS2["Cloud machine, Linux"]
-            D2["hermeshd machine role"] --> K2["her serve"]
+            D2["aided machine role"] --> K2["her serve"]
         end
     end
     subgraph Outside["Services on the internet"]
@@ -151,7 +159,7 @@ flowchart TB
   ([technical-design.md](technical-design.md) §3.7). The relay forwards
   bytes it can't read.
 - **On the same Mac.** A Mac app on a Mac that is a Her Server reaches her
-  in process through its own hermeshd, never through the relay.
+  in process through its own aided, never through the relay.
 - **Models and connectors.** Her calls model providers and remote connectors
   straight from the Her Server, over that machine's own internet connection.
   The relay is not on that path.
@@ -165,19 +173,19 @@ flowchart TB
 
 | Machine | Runs | Her role |
 |---|---|---|
-| Mac with the Mac app | The app; hermeshd with the owner role and the machine role; her when Her is on for this Mac | Client, and optionally a Her Server |
-| Mac that is only a machine ([trusted-devices.md](trusted-devices.md) §4.7) | The app in machine-only mode, hermeshd's machine role; her when Her is on | Optionally a Her Server |
-| Linux machine | hermeshd as a systemd user unit; her when Her is on | Optionally a Her Server |
-| PC with the Windows app, or that is only a machine | The app, hermeshd; her when Her is on for this PC ([windows.md](windows.md) §15) | Client with the app, and optionally a Her Server |
+| Mac with the Mac app | The app; aided with the owner role and the machine role; her when Her is on for this Mac | Client, and optionally a Her Server |
+| Mac that is only a machine ([trusted-devices.md](trusted-devices.md) §4.7) | The app in machine-only mode, aided's machine role; her when Her is on | Optionally a Her Server |
+| Linux machine | aided as a systemd user unit; her when Her is on | Optionally a Her Server |
+| PC with the Windows app, or that is only a machine | The app, aided; her when Her is on for this PC ([windows.md](windows.md) §15) | Client with the app, and optionally a Her Server |
 | iPhone | The app, with the owner role as a library | Client only |
-| Relay host | `hermesh-relay`; on the official service also the hermesh.io console (in hermesh-cloud) | None |
+| Relay host | `aide-relay`; on the official service also the aide.io console (in aide-cloud) | None |
 
 ### 4.2 Inside a Her Server
 
 ```mermaid
 flowchart TB
     Tunnel["tunnel server, internal/machine"]
-    subgraph Host["Her host in hermeshd, new: internal/herhost"]
+    subgraph Host["Her host in aided, new: internal/herhost"]
         ConsoleHTTP["console HTTP"]
         Gate["allowlist by caller"]
         Files["file transfer"]
@@ -210,8 +218,8 @@ flowchart TB
     Files --> Home
 ```
 
-The Her host also turns her's notifications (a reply, a question, an
-approval waiting) into notices sealed to the owner's phones (§5.1).
+The Her host also turns her's notifications (a reply, a question, a secure
+card waiting) into notices sealed to the owner's phones (§5.1).
 
 ### 4.3 Code modules
 
@@ -224,17 +232,17 @@ flowchart TB
     subgraph ClientPkgs["Client packages"]
         CorePkg["packages/core"]
         HerTS["packages/her, new<br/>TypeScript types from her's schema"]
-        Kit["packages/HermeshKit<br/>with HerProtocol, new"]
+        Kit["packages/AideKit<br/>with HerProtocol, new"]
     end
     subgraph GoLayer["Go"]
-        Hermeshd["cmd/hermeshd"]
-        Mobile["cmd/hermesh-mobile"]
+        Aided["cmd/aided"]
+        Mobile["cmd/aide-mobile"]
         Machine["internal/machine"]
         Owner["internal/owner<br/>with a Her client and cache, new"]
         HerHost["internal/herhost, new"]
         Peer["internal/peer"]
-        Proto["proto/hermesh<br/>with her/v1, new"]
-        RelayCmd["cmd/hermesh-relay"]
+        Proto["proto/aide<br/>with her/v1, new"]
+        RelayCmd["cmd/aide-relay"]
     end
     subgraph RustLayer["her"]
         HerBin["her: her-cli"]
@@ -243,11 +251,11 @@ flowchart TB
     end
     Desktop --> CorePkg
     Desktop --> HerTS
-    Desktop -->|"LocalService"| Hermeshd
+    Desktop -->|"LocalService"| Aided
     IOS --> Kit
     Kit -->|"LocalService"| Mobile
-    Hermeshd --> Machine
-    Hermeshd --> Owner
+    Aided --> Machine
+    Aided --> Owner
     Mobile --> Owner
     Machine --> HerHost
     Machine --> Proto
@@ -263,15 +271,15 @@ flowchart TB
 
 Rules that keep the parts apart:
 
-- **Go never links Rust.** hermeshd talks to her only as a child process,
+- **Go never links Rust.** aided talks to her only as a child process,
   over JSON-RPC on a Unix socket only it can open. her stays buildable and testable on its own
   (`cargo test` in her/).
 - **The apps never talk to her directly.** They always go through their
-  owner-role hermeshd (LocalService), which goes in process or through a
+  owner-role aided (LocalService), which goes in process or through a
   tunnel.
 - **her's protocol is the one contract for Her.** The apps' and the
-  console's types are generated from `schema.json`. Hermesh's protobuf
-  carries only Hermesh's own things: machines, presence, whether Her is on,
+  console's types are generated from `schema.json`. Aide's protobuf
+  carries only Aide's own things: machines, presence, whether Her is on,
   and the tunnel's Her service.
 - **The console ships with her, not with the apps.** A new her brings its
   own console, so no app can be out of step with a setting.
@@ -282,36 +290,36 @@ her's desktop tools (`cua_*`) run `agent-desktop`, which reads and operates
 other apps through macOS's Accessibility API and takes screenshots of their
 windows. macOS grants both to the process it holds responsible for
 agent-desktop. launchd makes each job its own responsible process and
-children inherit it, so on a Mac Her Server that is **hermeshd**, the
-LaunchAgent: not Hermesh.app, her or agent-desktop. Checked on macOS 27.2:
+children inherit it, so on a Mac Her Server that is **aided**, the
+LaunchAgent: not Aide.app, her or agent-desktop. Checked on macOS 27.2:
 the LaunchAgent is its own responsible process, and tccd's log attributes
-agent-desktop, started by her started by Hermesh 0.1.4's hermeshd, to
-hermeshd.
+agent-desktop, started by her started by Aide 0.1.4's aided, to
+aided.
 
 What the owner allows, in System Settings › Privacy & Security, once per
 Mac:
 
 | Permission | Needed for | Switch on | Listed as |
 |---|---|---|---|
-| Accessibility (Device Control and Data Access from macOS 27) | every desktop tool but `cua_apps` | **hermeshd** | the program itself, `Hermesh.app/Contents/Helpers/hermeshd`, held to its identifier and Hermesh's team, so updates keep it |
-| Screen & System Audio Recording | `cua_screenshot` and acting at a point of one | **Hermesh** | the app: for this permission macOS gives a helper inside an app the app's switch |
+| Accessibility (Device Control and Data Access from macOS 27) | every desktop tool but `cua_apps` | **aided** | the program itself, `Aide.app/Contents/Helpers/aided`, held to its identifier and Aide's team, so updates keep it |
+| Screen & System Audio Recording | `cua_screenshot` and acting at a point of one | **Aide** | the app: for this permission macOS gives a helper inside an app the app's switch |
 
-- The first check under hermeshd lists hermeshd under Accessibility,
-  switched off, without a prompt. Hermesh is listed under Screen Recording
+- The first check under aided lists aided under Accessibility,
+  switched off, without a prompt. Aide is listed under Screen Recording
   once the app tried to capture, which the Mac app does when the owner asks.
   A grant counts from the next call; nothing restarts.
 - agent-desktop serves each `--session` namespace from one background
   process, whoever started it, and keeps it some minutes after the last call.
   macOS holds the process that started it responsible for it, and once that
   process is gone, agent-desktop itself. her names its namespaces after its
-  own process, so it never reaches one left from before hermeshd restarted.
+  own process, so it never reaches one left from before aided restarted.
 - her's tool results say what to switch on. `desktop/status` reports both
   permissions as agent-desktop finds them from inside her, which nothing
-  else can: the app's own checks answer for Hermesh.app. The Mac app shows
+  else can: the app's own checks answer for Aide.app. The Mac app shows
   them under Computer use (§9.1).
 - On another Mac that is a Her Server, the owner switches them on at that
   Mac.
-- Computer use is on by default on a Mac Her Server: hermeshd starts her
+- Computer use is on by default on a Mac Her Server: aided starts her
   with `HER_DESKTOP=on`, so her's tools are on unless the owner's
   configuration sets `[desktop] enabled = false`. Nothing works until the
   owner switches the two permissions on, and Her asks once per app and
@@ -326,9 +334,9 @@ Mac:
 sequenceDiagram
     actor U as Owner
     participant App as Mac app, Her entry
-    participant O as hermeshd, owner role
+    participant O as aided, owner role
     participant R as Relay
-    participant M as hermeshd, Her Server
+    participant M as aided, Her Server
     participant H as her
     participant P as Model provider
     U->>App: writes a message
@@ -339,15 +347,16 @@ sequenceDiagram
     M->>H: session/op
     H->>P: model request
     P-->>H: reply, streamed
-    H-->>M: events: steps, send_to_user, approvals
+    H-->>M: events: steps, send_to_user, secure cards
     M-->>O: HerOpen events, through the relay
     O-->>App: events, and the environment's cache is updated
     M->>R: notice sealed to each phone that asked
     R->>R: hands it to Apple's push service
 ```
 
-An approval works the same way back: the app answers with `session/op`
-(approval), which takes the same path to her.
+Her asks nobody before an action, so nothing comes back for a step: the
+steps run as they come. A secure card's answer (`cards/answer`) takes the
+same path to her.
 
 ### 5.2 Turning Her on for a machine
 
@@ -358,7 +367,7 @@ sequenceDiagram
     actor U as Owner
     participant App as Mac app
     participant S as Signer, Touch ID
-    participant M as hermeshd, chosen machine
+    participant M as aided, chosen machine
     participant H as her
     U->>App: picks a machine to run Her
     App->>S: AdminCommand SetHer enabled
@@ -379,8 +388,8 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant W as Console window in the Mac app
-    participant O as hermeshd, owner role
-    participant M as hermeshd, Her Server
+    participant O as aided, owner role
+    participant M as aided, Her Server
     participant H as her
     W->>O: GET the local console address, with its token
     O->>M: HTTP under /her/console/, through the tunnel
@@ -392,7 +401,7 @@ sequenceDiagram
     H-->>W: result, the same way back
 ```
 
-The owner-role hermeshd serves the console to the Mac app on a loopback
+The owner-role aided serves the console to the Mac app on a loopback
 address guarded by a token it hands the app. The iPhone app loads it in a
 web view through a URL scheme handler of its own. Either way, the console
 acts as the device that opened it: no password, no open port.
@@ -428,8 +437,8 @@ this is needed.
 ```mermaid
 sequenceDiagram
     participant App as App
-    participant O as hermeshd, owner role
-    participant M as hermeshd, Her Server
+    participant O as aided, owner role
+    participant M as aided, Her Server
     participant H as her
     App->>O: HerSend, while the environment is offline
     O->>O: keeps the message on this device
@@ -442,7 +451,7 @@ sequenceDiagram
 
 The device that wrote a message keeps it (`HerSend`, `ListHerWaiting`) and
 delivers it once the machine answers again. Its files go by their path on
-the device; a pasted picture, which has none, is kept by hermeshd with the
+the device; a pasted picture, which has none, is kept by aided with the
 message, uploaded as a file too, and deleted once the message is delivered
 or dropped. The relay's post office
 ([agent-messages.md](agent-messages.md) §5) would deliver it even after the
@@ -521,7 +530,7 @@ chain, in the same approval, and the machine gets it before it is revoked. A
 machine that finds itself removed (the relay refuses it as no longer its
 owner's) turns Her off by itself, keeping her data.
 
-**On the command line.** `hermeshd uninstall` and `hermeshd erase`, on a
+**On the command line.** `aided uninstall` and `aided erase`, on a
 machine where Her was on and her data is still there
 (`machine.HerData`, asking the running machine on its control socket when
 its service runs), ask "Also delete Her's data in <her home>? [y/N]";
@@ -540,22 +549,22 @@ or to use Erase Everything.
 | Methods | Used by | Owner's devices | Agents |
 |---|---|---|---|
 | `bots/*`: assistants, their memory, routines, unread marks | Her entry | Allowed | No |
-| `session/op` and session events: prompts, approvals, answers, stopping | Her entry | Allowed | No |
+| `session/op` and session events: prompts, answers, stopping | Her entry | Allowed | No |
 | `models/list` | Her entry, console | Allowed | No |
 | `desktop/status`: whether computer use can work there (§4.4) | Her entry | Allowed | No |
 | `config/*`, `connections/*`, `credentials/*`, `mcp/*`, `skills/*`, `web_search/*`, `browser/allow`, `browser/status`, `browser/use_extension`, `browser/open_setup`, `storage/usage`, `providers/*` (a model service of the owner's own) | Console | Allowed | No |
-| `doc/*`, `deck/*`, `docx/*` and the other `browser/*` methods: desktop document panels and a built-in browser, which Hermesh does not have | Nobody | Not forwarded | No |
+| `doc/*`, `deck/*`, `docx/*` and the other `browser/*` methods: desktop document panels and a built-in browser, which Aide does not have | Nobody | Not forwarded | No |
 
 Types are in [schema.json](../her/crates/her-protocol/schema.json), and the
 reference is [protocol-reference.md](../her/docs/cli/protocol-reference.md).
 Declaring them again in protobuf would make a second contract to keep in
-step, so hermeshd forwards them.
+step, so aided forwards them.
 
-### 6.2 Additions to Hermesh's protocol
+### 6.2 Additions to Aide's protocol
 
 The protos are the contract; this is their outline.
 
-- [her/v1/her.proto](../proto/hermesh/her/v1/her.proto): `HerService`,
+- [her/v1/her.proto](../proto/aide/her/v1/her.proto): `HerService`,
   served by a machine to the owner's devices only.
   - `Open` opens a her connection, runs its setup requests (such as
     `bots/subscribe` or `bots/open`), then streams her's notifications on it.
@@ -565,16 +574,16 @@ The protos are the contract; this is their outline.
   - The console is plain HTTP on the same tunnel connection: its files under
     `/her/console/`, server-sent events at `/her/console/events`, and
     JSON-RPC requests at `/her/console/rpc`.
-- [identity.proto](../proto/hermesh/identity/v1/identity.proto): three
+- [identity.proto](../proto/aide/identity/v1/identity.proto): three
   root-signed `AdminCommand`s. `SetHer` turns Her on or off for a machine, and erases her data if asked (§5.6);
-  `SetHerAssistantMode` sets an assistant's permission mode, the only way to
-  reach `bypass-permissions`; `SetHerCommandConnector` manages connectors
-  started as commands.
-- [machine.proto](../proto/hermesh/machine/v1/machine.proto): `HerStatus` in
+  `SetHerAssistantMode` set an assistant's permission mode, which her no
+  longer has: Her runs actions without asking, and the command is to be
+  removed; `SetHerCommandConnector` manages connectors started as commands.
+- [machine.proto](../proto/aide/machine/v1/machine.proto): `HerStatus` in
   `MachineStatus`. Besides enabled, running, version, a ready model and
   errors, it carries the unread count and the newest message, so the
   sidebar and notifications need no stream of their own. Agents never get it.
-- [local.proto](../proto/hermesh/local/v1/local.proto): `Machine.her` keeps
+- [local.proto](../proto/aide/local/v1/local.proto): `Machine.her` keeps
   each machine's Her as last seen, so an offline environment stays listed.
   LocalService gains `SetHer`, `SetHerAssistantMode`,
   `SetHerCommandConnector`, `HerOpen`, `HerCall`, `HerSend`,
@@ -585,8 +594,8 @@ The protos are the contract; this is their outline.
 ### 6.3 Changes in her
 
 1. **Assistants.** Rename the default bot to Her (today `HerBot` in
-   [bots.rs](../her/crates/her-server/src/bots.rs)). New assistants ask
-   before risky steps instead of starting with full access.
+   [bots.rs](../her/crates/her-server/src/bots.rs)). Assistants run
+   their actions without asking: her has no action approvals (2026-11-20).
 2. **Remote sign-in.** `chatgpt/login` and `mcp/login` take an optional
    `redirect_uri` on the client's device (loopback only) and return the
    authorization request without listening. `chatgpt/complete` and
@@ -597,33 +606,33 @@ The protos are the contract; this is their outline.
    uploaded into the assistant's folder, and the message names them.
    `skills/install` installs from an uploaded archive.
 4. **The console.** A web app in `her/apps/console`, released with her.
-5. **Updates.** Inside Hermesh nothing calls `her upgrade`: hermeshd ships
+5. **Updates.** Inside Aide nothing calls `her upgrade`: aided ships
    her and updates it.
 
 ### 6.4 Packaging and updates
 
-- **macOS**: her sits inside the Mac app's bundle beside hermeshd, in
+- **macOS**: her sits inside the Mac app's bundle beside aided, in
   `Contents/Helpers`, and its console in `Contents/Resources/console`.
-- **Linux**: a Hermesh release carries her for Linux, `her-linux-amd64` and
+- **Linux**: an Aide release carries her for Linux, `her-linux-amd64` and
   `her-linux-arm64`, built static with musl and without local-accounts, as
   the Mac app's, and the console, `her-console.tar.gz`, all in the signed
   checksum list with the other programs. On a machine (not `--cli` or
-  `--device`), `install.sh` puts her beside hermeshd in `~/.local/bin` and
-  the console in `her-console/` there, where hermeshd finds them. With them
+  `--device`), `install.sh` puts her beside aided in `~/.local/bin` and
+  the console in `her-console/` there, where aided finds them. With them
   goes `her-computer-linux-<arch>.tar.gz`, agent-desktop for Linux, into
   `her-computer/`, where her finds it for computer use on a computer with a
   desktop ([linux.md](linux.md) §5).
-- **One version.** hermeshd's self-update, `hermeshd update` and the
+- **One version.** aided's self-update, `aided update` and the
   background updater ([machine-updates.md](machine-updates.md)), replaces
-  hermeshd, hermesh, her and the console together from one release, and
-  hermeshd starting again starts her again. It waits while Her's assistants
+  aided, aide, her and the console together from one release, and
+  aided starting again starts her again. It waits while Her's assistants
   are at work (a turn, sub-agents, a routine's run), as for sessions. A
   machine installed before her shipped gets it by running the install
   command again; until then it shows as unable to run Her.
-- **Started only when needed.** hermeshd starts her only on a machine Her
+- **Started only when needed.** aided starts her only on a machine Her
   is on for, as the machine's user, so her's home is that user's `~/.her`.
-  `hermeshd doctor` and `status` say whether her is installed, its version,
-  and whether Her is on and running; `hermeshd uninstall` removes her and
+  `aided doctor` and `status` say whether her is installed, its version,
+  and whether Her is on and running; `aided uninstall` removes her and
   the console, and leaves `~/.her`.
 - **PDFs on Linux.** The static her cannot load PDFium, so a release also
   carries `her-pdf-linux-<arch>.tar.gz`: her PDF worker, linked against
@@ -641,13 +650,13 @@ The protos are the contract; this is their outline.
   in `browser/status` which program it would start (`program`: one
   installed there, else her's own from `her browser install`) and whether
   with a window (`window`: there is a display); without a display, as on a
-  server, it runs headless. On a Linux computer with a desktop, hermeshd
+  server, it runs headless. On a Linux computer with a desktop, aided
   often starts before anyone logs in, and her with it, without a `DISPLAY`
   of their own: her then takes the desktop session's from the user's
   systemd (`systemctl --user show-environment`), each time it is asked. The page names the program, and where there is
   none says to install Google Chrome there, with the commands on Linux.
 - **The owner's own Chrome, on a Mac or a Linux machine.** While Her is on,
-  hermeshd registers the her it ships as the Hermesh extension's native host
+  aided registers the her it ships as the Aide extension's native host
   for the Chromium browsers installed (`her browser extension install
   --socket` with her's socket), again at every start so it follows her after
   an update, and takes it back when Her is turned off. The extension then
@@ -655,12 +664,12 @@ The protos are the contract; this is their outline.
   (her/apps/chrome-extension). Chrome and her are on the same computer: a
   server with no desktop has no Chrome of the owner's to lend.
   - On a Mac, the app ships the extension in
-    `Contents/Resources/chrome-extension`, and at every start hermeshd
-    copies it to `~/Library/Application Support/Hermesh/Chrome Extension`,
+    `Contents/Resources/chrome-extension`, and at every start aided
+    copies it to `~/Library/Application Support/Aide/Chrome Extension`,
     unless the copy is the same already.
   - On Linux no app is around her, so her carries the extension itself, and
-    at every start hermeshd has her write it to
-    `~/.local/share/hermesh/chrome-extension` (`--folder`), unless it is
+    at every start aided has her write it to
+    `~/.local/share/aide/chrome-extension` (`--folder`), unless it is
     there already.
   - The console's guide has the owner load it from that folder, until it is
     in the Chrome Web Store. her tells the console which system it runs on
@@ -668,7 +677,7 @@ The protos are the contract; this is their outline.
     and how to paste it. The manifest carries the extension's key, so its
     ID doesn't depend on the folder.
   - A browser installed after Her was turned on is registered at
-    hermeshd's next start. Chromium from snap or Flatpak keeps its hosts
+    aided's next start. Chromium from snap or Flatpak keeps its hosts
     elsewhere and isn't registered.
 
 ## 7. Data
@@ -682,7 +691,7 @@ The protos are the contract; this is their outline.
 | Messages written while a Her Server is offline | Delivered when it is back | Kept on the device that wrote them, shown as waiting | Nothing |
 | Presence | | | Online or offline, name, version |
 
-The owner-role hermeshd keeps each environment's recent messages in its
+The owner-role aided keeps each environment's recent messages in its
 `owner.db`, so the Her entry opens at once and an offline environment still
 shows what was said, after a restart too. For each machine it keeps Her, as
 `bots/subscribe` and `bots/changed` last listed the assistants, and the end
@@ -691,7 +700,7 @@ That is its last 100 messages: the owner's, the reports delivered into it
 by sub-agents and routines, and Her's, holding only the calls that sent the
 owner something (`send_to_user`, `manage_routine`); with those calls'
 results and how each task ended. Her's own steps and earlier history are
-left out. hermeshd takes it from the `HerOpen` streams it passes on while
+left out. aided takes it from the `HerOpen` streams it passes on while
 the entry follows them (`bots/open`'s snapshot, then the conversation's
 events), so her is asked nothing more, and serves it as
 `GetHerConversation`. What Her says while no window follows the
@@ -741,10 +750,10 @@ nothing there.
 
 **Accounts.**
 
-- On the official relay the owner signs in to hermesh.io. The account lets
+- On the official relay the owner signs in to aide.io. The account lets
   the relay put the owner's devices and machines together, and lets a new
   device find its owner. It is not a key.
-- With a self-hosted relay there is no hermesh.io account: devices join with
+- With a self-hosted relay there is no aide.io account: devices join with
   the connection address.
 - A Her Server goes by keys alone, so it works the same with either relay.
 
@@ -754,17 +763,17 @@ permissions do ([trusted-devices.md](trusted-devices.md) §4.6):
 - turning Her on or off for a machine;
 - adding a connector started as a command on the Her Server.
 
-Everything else in the Her entry and the console uses the device key,
-switching an assistant to full access included: the owner chooses it, on a
-sheet that says what it means (decided 2026-11-09). A
+Everything else in the Her entry and the console uses the device key. There
+is no full-access switch to sign: Her runs every action without asking
+(decided 2026-11-20). A
 console never signs: it asks, and the app's signer shows exactly what will
 be signed. Letting Her use the owner's own Chrome is one of these: it
-connects only after the owner adds the Hermesh extension to that Chrome by
+connects only after the owner adds the Aide extension to that Chrome by
 hand on the Mac, and that step is the decision.
 
 **How a console is reached**, in this order:
 
-1. From the Hermesh app, through the tunnel (§5.3). This is the first step.
+1. From the Aide app, through the tunnel (§5.3). This is the first step.
 2. Later: any browser, approved by a trusted device that scans a code the
    page shows, for a limited time.
 3. Later: from the internet without the app. The relay forwards the
@@ -805,7 +814,7 @@ What the page has, for that one assistant:
 - the conversation: messages, files, questions with buttons, the last
   bubble while it works, messages sent in a row, its steps, the moving
   avatar;
-- the approval window and the input box;
+- the input box (no approval window: Her runs actions without asking);
 - the blank page, where Her greets;
 - Her's settings;
 - menus, unread marks and alerts;
@@ -827,19 +836,20 @@ What changes, because Her may run on another computer than the app:
 - **Models.** Her picks only from the models its environment can already
   use. Adding a key or a login is in the console, and the model menu links
   there.
-- **Permissions.** Her asks before risky steps; full access is the owner's
-  choice, confirmed once on a sheet. Full access is never the default, because a Her Server reads web pages and
-  messages from anyone.
+- **Permissions.** Her runs actions without asking: there are no action
+  approvals and no permission modes. Deny rules and her's built-in refusals
+  are what stops an action, and a Her Server reads web pages and messages
+  from anyone, so it is a machine where that is acceptable.
 - **Files.** Her's files are on its Her Server: the app previews or saves
   them through the tunnel, and files dragged into a conversation are
   uploaded there.
 - **What was said, kept.** The page opens with Her and Her's conversation
   as this device keeps them (§7) until her answers, and shows them while the
   environment is offline, under the line of §9.3, after the app restarts
-  too. That copy is read-only: questions and approvals wait for the
+  too. That copy is read-only: questions and secure cards wait for the
   machine, and what the owner writes waits on the device (§5.5).
 - **Not carried over**: the switch between bot mode and session mode (the
-  apps have Hermesh's own sessions), the list of assistants and making
+  apps have Aide's own sessions), the list of assistants and making
   them, the built-in browser (Her browses on its Her Server), and the
   document panels beside the conversation.
 
@@ -889,7 +899,7 @@ While no machine runs Her, the Her entry shows the first run:
 1. **Choose where Her runs.** The choices are this Mac (Her goes offline
    while the Mac sleeps), a Mac or Linux machine already paired, or a new
    server (an install command, paired as Add Machine does; once paired, it
-   comes first, marked as just paired). A PC whose Hermesh is from before
+   comes first, marked as just paired). A PC whose Aide is from before
    her ran on Windows is shown as needing an update. Touch ID turns Her on
    there.
 2. **Connect a model**, in the conversation: Her speaks first (the app
@@ -917,7 +927,7 @@ While no machine runs Her, the Her entry shows the first run:
 The same design, written in Swift.
 
 - The console opens in a web view.
-- Notices cover Her's replies, questions and approvals, with actions.
+- Notices cover Her's replies, questions and secure cards, with actions.
 - Sign-ins catch their callback in the app.
 - Files come from the Files app or the share sheet.
 
@@ -933,12 +943,12 @@ Sections:
 | Connectors | MCP servers: add by address, sign in, see their tools; connectors started as commands need Touch ID |
 | Skills | Installed skills: turn on or off, add by upload, remove, read |
 | Web search | The search provider and its key |
-| Browser | Whether the owner's own Chrome, on the computer Her runs on, is connected through the Hermesh extension, and used; the built-in browser, on or off, and the Chrome it starts; the sites Her may open without asking |
+| Browser | Whether the owner's own Chrome, on the computer Her runs on, is connected through the Aide extension, and used; the built-in browser, on or off, and the Chrome it starts; the sites Her may open without asking |
 | Storage | Where Her's data is on that computer, that it is the only copy, and how much of each kind there is (§7). Only to read |
 
 There is no overview, no defaults for new assistants and no instructions for
 all of them: the apps show Her alone, whose model, thinking and permissions
-are in Her's own settings in the app, and hermeshd refuses those settings
+are in Her's own settings in the app, and aided refuses those settings
 from the console. Exporting an environment's data, with backup and restore,
 is phase 4.
 
@@ -949,7 +959,7 @@ through the real apps and the relay.
 
 ### Phase 1: Her in two environments, from the Mac app
 
-1. hermeshd ships her on macOS and Linux, runs it when Her is on, and
+1. aided ships her on macOS and Linux, runs it when Her is on, and
    reports `HerStatus`.
 2. Turning Her on or off for a machine (`SetHer`, Touch ID), from the first
    run, "Add environment" and Settings → Machines.
@@ -959,13 +969,13 @@ through the real apps and the relay.
    sign-in on a Mac Her Server).
 5. The Mac app's Her entry, with Her alone (§9.1):
    - the environment switcher, beside Her's name;
-   - the conversation: messages, questions, the approval window, steps,
+   - the conversation: messages, questions, steps,
      the busy state, the input box, unread marks;
    - Her's settings;
    - the first run.
 6. Offline handling: cached conversations, messages kept on the device
    until the machine is back, macOS notifications. The cached conversations
-   are built: the owner-role hermeshd keeps each environment's (§7), and the
+   are built: the owner-role aided keeps each environment's (§7), and the
    Mac app shows them until her answers and while the machine is offline.
 7. her: the default assistant named Her; new assistants ask by default.
 
@@ -976,7 +986,7 @@ Test: this Mac and a Linux cloud machine as two environments.
 - Talk to Her in each, and switch between them.
 - Take the Linux machine offline, write to it, bring it back, and get the
   reply.
-- Switching an assistant to full access asks the owner to confirm it.
+- Her runs a step without asking anyone, and the conversation shows it as it runs.
 
 ### Phase 2: everything an environment can do
 
@@ -998,8 +1008,8 @@ Test, on the Linux environment:
 
 1. The Her entry in Swift.
 2. The console in a web view.
-3. Notices for Her's replies, questions and approvals. The notices are
-   built, without actions yet: the Her Server's hermeshd seals a notice of
+3. Notices for Her's replies, questions and secure cards. The notices are
+   built, without actions yet: the Her Server's aided seals a notice of
    kind `her` to each iPhone that asked for it whenever the Mac app would
    notify (`HerStatus.latest` new, unread grown, the assistant not muted),
    and the app words it as the Mac does.
@@ -1008,13 +1018,13 @@ Test, on the Linux environment:
 Test, from the iPhone alone:
 
 - Talk to both environments.
-- Answer an approval from a notification.
+- Answer a question from a notification.
 - Change an assistant's model.
 - Open the console.
 
 ### Phase 4: Her Servers anyone can set up
 
-1. A Linux install command that sets up hermeshd with her and pairs the
+1. A Linux install command that sets up aided with her and pairs the
    machine, as Add Machine does. Built (§6.4), with updates and uninstall;
    `TestLinuxHer` is its test, on a fresh Ubuntu server in Docker.
 2. Export and backup of an environment, and restoring it on the same
@@ -1032,11 +1042,11 @@ Test:
 ## 12. Not doing now
 
 - Her working on the owner's other machines (starting coding sessions,
-  reading files there) through Hermesh's tools.
+  reading files there) through Aide's tools.
 - Environments talking to each other, sharing settings, or moving a
   conversation between them. Copying one environment's settings into a new
   one, secrets left out, may come later.
-- Hermesh running Her for its users.
+- Aide running Her for its users.
 - Sharing Her with other people, such as a family or a team.
 - The console from the internet without the app (§8).
 - A console for the self-hosted relay.
@@ -1058,8 +1068,8 @@ Test:
 | Shape | Why not |
 |---|---|
 | Her on every machine, by itself | Every machine needs a setup nobody asked for |
-| The relay stores conversations and settings, as Claude's Remote Control keeps transcripts on Anthropic's servers | In plaintext it breaks Hermesh's promise that the relay sees no content. Encrypted, it needs an account-wide data key, rotation when a device is removed, and a recovery key |
-| Hermesh runs Her for its users | Hermesh would see everything, and would carry the compute, the isolation between users and the liability |
+| The relay stores conversations and settings, as Claude's Remote Control keeps transcripts on Anthropic's servers | In plaintext it breaks Aide's promise that the relay sees no content. Encrypted, it needs an account-wide data key, rotation when a device is removed, and a recovery key |
+| Aide runs Her for its users | Aide would see everything, and would carry the compute, the isolation between users and the liability |
 | Her's settings inside the apps | Every new setting waits for the Mac, iPhone and Windows releases; an older app can't show a newer server's settings; the same screens are written once per app |
 | A second contract for Her in protobuf | Some sixty of her's methods declared twice, kept in step by hand |
 | **Her Servers the owner chooses, each with its own console; the apps only converse** | Chosen. Each environment is set up on its own, with its own model login, and work at night needs a machine that stays on |

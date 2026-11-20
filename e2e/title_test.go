@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestSessionTitles: a personal agent names a session with --title, or the
@@ -16,7 +16,7 @@ func TestSessionTitles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
 	ownerTitles := func() map[string]string {
 		res, err := w.app.client.ListSessions(ctx, &localv1.ListSessionsRequest{})

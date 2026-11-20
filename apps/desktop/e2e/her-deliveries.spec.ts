@@ -124,13 +124,12 @@ test("Her: the files she sent, listed apart, each version as sent, and the way b
   // run, and Her sends it on when its report wakes her. The filter by Close lists the sources, the latest first;
   // choosing the task shows its files only, as the bar under the tabs says, until it is cleared.
   await panel.getByRole("button", { name: "关闭" }).click();
-  // The brief is there for her to send whether or not the run, which cannot ask, may write it.
+  // The brief is there for her to send wherever the run writes its own copy.
   fs.writeFileSync(path.join(folder, "早报.md"), "# 每日早报\n");
+  // Her makes the task at once, without asking (docs/her-server.md §0): no approval card, and its run sends the brief.
   await send("[[mock:routine_file:每日早报|in 2s|早报.md]] 每天早上发我早报");
-  const approval = page.getByRole("region", { name: "等你批准" });
-  await expect(approval).toContainText("每日早报", { timeout: 60_000 });
-  await approval.getByRole("button", { name: /^允许/ }).click();
   await expect(log.getByRole("button", { name: "查看 早报.md" })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole("region", { name: "等你批准" })).toHaveCount(0);
   await openHerPage();
   await button.click();
   const rows = panel.getByTestId("her-file-row");

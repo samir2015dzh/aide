@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { botWorking, routineDot } from "@hermesh/her-client";
+import { botWorking, routineDot } from "@aide/her-client";
 import { Icon } from "../icons";
 import { Avatar, BotAvatar } from "./Avatar";
 import { useHer } from "./context";

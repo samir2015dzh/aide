@@ -3,11 +3,11 @@ import { test } from "node:test";
 import { botChat } from "./botChat.ts";
 import { fromSnapshot, type SessionView } from "./session.ts";
 
-// Her's cards (docs/her-team.md §4.4, §6.3, §14.3), by the same rules as HermeshKit's ChatTests.
+// Her's cards (docs/her-team.md §4.4, §6.3, §14.3), by the same rules as AideKit's ChatTests.
 
 function chat(items: unknown[]): SessionView {
   return fromSnapshot({
-    session: { session_id: "s", cwd: "/", session_file: "/s.jsonl", model: "m", thinking: "off", permission_mode: "manual", context_window: 1, archived: false },
+    session: { session_id: "s", cwd: "/", session_file: "/s.jsonl", model: "m", thinking: "off", context_window: 1, archived: false },
     last_seq: 0,
     transcript: { items: items as never },
     usage: { per_model: {} },
@@ -30,11 +30,11 @@ test("a session Her started is a card where she started it", () => {
   const items = botChat(
     chat([
       user(1000, "fix the relay test"),
-      assistant(2000, [{ id: "c1", name: "send_to_user", args: { text: "Starting Claude Code." } }, { id: "c2", name: "call_tool", args: { name: "session_start", arguments: { project: "mini/hermesh" } } }], 500),
+      assistant(2000, [{ id: "c1", name: "send_to_user", args: { text: "Starting Claude Code." } }, { id: "c2", name: "call_tool", args: { name: "session_start", arguments: { project: "mini/aide" } } }], 500),
       result("c1", "send_to_user"),
       result("c2", "call_tool", { text: doc }),
       assistant(3000, [
-        { id: "c3", name: "session_start", args: { project: "mini/hermesh" } },
+        { id: "c3", name: "session_start", args: { project: "mini/aide" } },
         { id: "c4", name: "session_start", args: {} },
         { id: "c5", name: "session_send", args: { session_id: "s_ab_12" } },
         { id: "c6", name: "session_start", args: {} },

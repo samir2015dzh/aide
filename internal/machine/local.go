@@ -11,13 +11,13 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/workstats"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/workstats"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Local is how the app on a Mac that is only a machine of its owner (not
@@ -349,12 +349,6 @@ func retiredKeys(dataDir string) []identity.Signer {
 		}
 	}
 	return keys
-}
-
-// SignPairingRequest signs pr with this machine's key, for a pairing the
-// caller drives itself (the app's join as a machine only).
-func (n *Machine) SignPairingRequest(pr *identityv1.PairingRequest) (*identityv1.Signed, error) {
-	return identity.Sign(pr, n.key)
 }
 
 // Refused reports whether the relay refused this machine the last time it

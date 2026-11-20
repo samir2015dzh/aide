@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // Exercise exactly the agent-list/session CLI used by coding_agent_list through
@@ -31,7 +31,7 @@ func TestAntigravityModelCatalogs(t *testing.T) {
 			os.WriteFile(filepath.Join(home, "antigravity-acp", "settings.json"), []byte(`{"auth":{"type":"oauth-personal"}}`), 0o600)
 			log := filepath.Join(t.TempDir(), "methods")
 			env := []string{"GEMINI_HOME=" + home, "FAKE_ACP_STATE=" + state, "FAKE_ACP_LOG=" + log,
-				"HERMESH_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_CONFIG=1",
+				"AIDE_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_CONFIG=1",
 				"FAKE_ACP_OPTIONS=" + tc.options, "FAKE_ACP_MODELS=" + tc.models, "FAKE_ACP_OPTIONS_ERROR=" + tc.failure}
 			w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"antigravity"}})
 			type catalog struct {
@@ -141,20 +141,20 @@ func TestAntigravityModelCatalogDesktop(t *testing.T) {
 	os.Mkdir(filepath.Join(home, "antigravity-acp"), 0o700)
 	os.WriteFile(filepath.Join(home, "antigravity-acp", "settings.json"), []byte(`{"auth":{"type":"oauth-personal"}}`), 0o600)
 	w := newOwnerMac(t, []string{"GEMINI_HOME=" + home, "FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=small,large",
-		"HERMESH_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp")}, &localv1.GrantSpec{Agents: []string{"antigravity"}})
+		"AIDE_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp")}, &localv1.GrantSpec{Agents: []string{"antigravity"}})
 	s, r := w.startSession(time.Minute, "--agent", "antigravity", "--model", "large", "--wait", "--prompt", "say observed")
 	if r.code != 0 {
 		t.Fatalf("fake session: %+v", r)
 	}
 	out := filepath.Join(t.TempDir(), "app")
-	if r := run(t, []string{"HERMESH_DESKTOP_OUT=" + out, "VERSION=0.1.0-rc7"}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
+	if r := run(t, []string{"AIDE_DESKTOP_OUT=" + out, "VERSION=0.1.0-rc7"}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
 		t.Fatalf("build: %+v", r)
 	}
-	f := desktopFixture{Socket: w.sock, Sessions: map[string]string{"observed": s.SessionID}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv}
+	f := desktopFixture{Socket: w.sock, Sessions: map[string]string{"observed": s.SessionID}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv}
 	file := filepath.Join(t.TempDir(), "fixture.json")
 	b, _ := json.Marshal(f)
 	os.WriteFile(file, b, 0o600)
-	env := []string{"HERMESH_E2E_FIXTURE=" + file, "HERMESH_DESKTOP_OUT=" + out, "HERMESH_PW_OUT=" + filepath.Join(t.TempDir(), "results"), "HERMESH_MODEL_CATALOG_TEST=1"}
+	env := []string{"AIDE_E2E_FIXTURE=" + file, "AIDE_DESKTOP_OUT=" + out, "AIDE_PW_OUT=" + filepath.Join(t.TempDir(), "results"), "AIDE_MODEL_CATALOG_TEST=1"}
 	if r := run(t, env, 3*time.Minute, "pnpm", "--dir", dir, "exec", "playwright", "test", "model-catalogs.spec.ts"); r.code != 0 {
 		t.Fatalf("playwright: %+v", r)
 	}

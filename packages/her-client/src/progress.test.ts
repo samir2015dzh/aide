@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantContent, Event, EventMsg, SessionInfo, Usage, UsageTotals } from "@hermesh/her-protocol";
+import type { AssistantContent, Event, EventMsg, SessionInfo, Usage, UsageTotals } from "@aide/her-protocol";
 import { agentCalls, agentElapsed, agentPost, agentState, agentTitles, agentTokens, findAgentTask, progressGroups, stepsOf } from "./progress.ts";
 import { agentHistoryCursor, applyEvents, fromSnapshot, withAgentHistory, type SessionView } from "./session.ts";
 
 // The Progress page's groups and cards (docs/her-team.md §15): what the owner said, and under it the
 // sub-agents and coding sessions the bot started for it, each as it stands now.
 
-const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const usage: Usage = { input: 100, output: 20, cache_read: 0, cache_write: 0, cost: { currency: "USD", input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } };
 const totals: UsageTotals = { per_model: { "p/m": usage } };
 
@@ -111,13 +111,8 @@ test("a post says how its agent stands: starting, at work on a call, asking, don
   assert.equal(agentElapsed(launch().agent!, launch().agent!.since + 4200), 4200);
   assert.equal(agentCalls(launch().agent!), 1);
 
-  v = play([inner("ag1", 6, { type: "approval_requested", call_id: "k1", name: "read", args: {}, summary: "读取 a.csv\n在项目外" })], v);
-  assert.equal(agentState(launch()), "waiting");
-  assert.equal(agentPost(launch()).words, "读取 a.csv");
-
   v = play(
     [
-      inner("ag1", 7, { type: "approval_resolved", call_id: "k1", decision: { type: "approve" } }),
       inner("ag1", 8, { type: "tool_completed", call_id: "k1", result: { call_id: "k1", tool_name: "read", content: [{ type: "text", text: "wau" }], is_error: false, ts: 3 } }),
       inner("ag1", 9, assistant("x3", [{ type: "text", text: "**周活** 多了 12%。\n表在附件里。" }])),
       inner("ag1", 10, { type: "task_completed", task_id: "x", usage: totals, reason: "done", ts: 40_000 } as EventMsg),

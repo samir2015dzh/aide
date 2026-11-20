@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -31,7 +32,7 @@ const secretStore = "Windows DPAPI"
 
 // secretEntropy binds the sealed values to this use: another program of
 // the same user calling CryptUnprotectData without it opens nothing.
-var secretEntropy = []byte("hermesh custom agent environment")
+var secretEntropy = []byte(legacy.AgentSecretEntropy)
 
 func blob(b []byte) *windows.DataBlob {
 	if len(b) == 0 {

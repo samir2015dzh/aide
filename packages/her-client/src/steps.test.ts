@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantContent, Event, EventMsg, SessionInfo, Usage } from "@hermesh/her-protocol";
+import type { AssistantContent, Event, EventMsg, SessionInfo, Usage } from "@aide/her-protocol";
 import { applyEvents, callTarget, fromSnapshot, type SessionView } from "./session.ts";
-import { approvalPreview, attachedBlock, docQuoteBlock, docViewingBlock, presentationViewingBlock, sheetViewingBlock, webCommentBlock, conversation, describe, settledSteps, withStreaming, toolObject, userText, workSummary } from "./steps.ts";
+import { attachedBlock, docQuoteBlock, docViewingBlock, presentationViewingBlock, sheetViewingBlock, webCommentBlock, conversation, describe, settledSteps, withStreaming, toolObject, userText, workSummary } from "./steps.ts";
 import { clockText, costText, tokensText } from "./text.ts";
 
-const info: SessionInfo = { session_id: "s", cwd: "/w/app", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/w/app", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const usage: Usage = { input: 1, output: 1, cache_read: 0, cache_write: 0, cost: { currency: "USD", input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } };
 
 function play(msgs: EventMsg[]): SessionView {
@@ -102,23 +102,6 @@ test("the built-in tools are described from their arguments, paths relative to t
   assert.equal(toolObject({ name: "bash", title: "read me", category: "execute" }), "read me");
 });
 
-test("an approval previews the command, the change, or what is written", () => {
-  assert.deepEqual(approvalPreview("bash", { command: "rm -rf build" }, "x"), { kind: "command", text: "rm -rf build" });
-  assert.deepEqual(approvalPreview("edit", { path: "a", edits: [{ old_text: "x\ny\n", new_text: "z" }] }, ""), {
-    kind: "diff",
-    lines: [{ sign: "-", text: "x" }, { sign: "-", text: "y" }, { sign: "+", text: "z" }],
-    more: 0,
-  });
-  const long = approvalPreview("write", { path: "a", content: "1\n2\n3\n4" }, "", 3);
-  assert.deepEqual(long, { kind: "content", lines: ["1", "2", "3"], more: 1 });
-  assert.deepEqual(approvalPreview("fetch", { url: "u" }, "fetch u"), { kind: "args", text: "fetch u" });
-  assert.deepEqual(approvalPreview("browser_eval", { expression: "document.title" }, "run a script on https://a.example"), {
-    kind: "content",
-    lines: ["document.title"],
-    more: 0,
-  });
-});
-
 test("a message's attached files go to the model as a block of paths and come back as files, not words", () => {
   const content = [{ type: "text", text: "look at these" }, { type: "image", mime_type: "image/png", data: "AAAA" }, attachedBlock(["/w/a.rs", "/w/docs/"])] as const;
   assert.deepEqual(userText([...content]), { text: "look at these", files: ["/w/a.rs", "/w/docs/"], comments: [], quotes: [], tabs: [] });
@@ -161,14 +144,11 @@ test("numbers as the window shows them", () => {
   assert.equal(costText({ currency: "USD", total: 0.004 }), "$0.0040");
 });
 
-test("a coded warning becomes a notice, the latest per code, and leaving bypass-permissions drops its notice", () => {
-  const bypass: EventMsg = { type: "warning", message: "Permission mode bypass-permissions: …", code: "bypass_permissions" };
-  const mode = (permission_mode: "manual" | "bypass-permissions"): EventMsg => ({ type: "settings_changed", model: "p/m", thinking: "off", permission_mode, context_window: 1000 });
-  const v = play([bypass, { type: "warning", message: "nothing to compact" }, bypass]);
-  assert.deepEqual(v.notices.map((n) => [n.code, n.ts]), [["bypass_permissions", 1002]]);
+test("a coded warning becomes a notice, the latest per code", () => {
+  const waiting: EventMsg = { type: "warning", message: "MCP servers not ready: vault", code: "mcp_servers_not_ready" };
+  const v = play([waiting, { type: "warning", message: "nothing to compact" }, waiting]);
+  assert.deepEqual(v.notices.map((n) => [n.code, n.ts]), [["mcp_servers_not_ready", 1002]]);
   assert.deepEqual(v.entries.map((e) => (e.type === "note" && e.note === "warning" ? e.message : e.type)), ["nothing to compact"]);
-  assert.equal(play([bypass, mode("bypass-permissions")]).notices.length, 1);
-  assert.deepEqual(play([bypass, mode("manual")]).notices, []);
 });
 
 test("a call through call_tool is told as the tool it runs", () => {

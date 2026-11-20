@@ -12,14 +12,14 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // A session can start in a GitHub repository instead of a project
 // (StartSessionRequest.repo): the machine clones it into its data folder
-// with its own git credentials (Hermesh keeps none), keeps the clone as a
+// with its own git credentials (Aide keeps none), keeps the clone as a
 // worktree project, and fetches it again for each session started there.
 
 // githubRepo is a GitHub repository a session names.
@@ -84,17 +84,6 @@ func parseGitHubRepo(s string) (githubRepo, error) {
 // in lower case as GitHub compares names (an owner has no dot, so no two
 // repositories share one).
 func (r githubRepo) projectID() string { return strings.ToLower("github." + r.Owner + "." + r.Name) }
-
-// GitHubRepo reads a repository as StartSessionRequest.repo takes it, and
-// returns it as owner/repo and the project its clone is kept as: what Her's
-// approval names and remembers (internal/herlink).
-func GitHubRepo(s string) (repo, projectID string, err error) {
-	r, err := parseGitHubRepo(s)
-	if err != nil {
-		return "", "", err
-	}
-	return r.String(), r.projectID(), nil
-}
 
 // cloneDir is where the machine keeps its clone.
 func (r githubRepo) cloneDir(dataDir string) string {
@@ -197,7 +186,7 @@ func (s *Sessions) fetchRepo(ctx context.Context, l *live, dir string) error {
 
 // Push pushes the session's branch, as its last finished turn left it, to
 // its repository's remote origin under the same name, with the machine's
-// own git login: the one way Hermesh pushes, and only when asked. It is
+// own git login: the one way Aide pushes, and only when asked. It is
 // never forced.
 func (s *Sessions) Push(ctx context.Context, p *Principal, id string) (*sessionv1.PushSessionResponse, error) {
 	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)

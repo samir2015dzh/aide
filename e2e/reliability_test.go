@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestReliability walks the failure paths an agent meets in practice, with
@@ -17,7 +17,7 @@ func TestReliability(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--idle-timeout", "1500ms", "--retry-delay", "50ms")
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--idle-timeout", "1500ms", "--retry-delay", "50ms")
 
 	s, r := w.startSession(time.Minute, "--agent", "claude", "--wait", "--prompt", "say hello")
 	if r.code != 0 || s.Status != "idle" || s.Ref == "" {
@@ -85,7 +85,7 @@ func TestReliability(t *testing.T) {
 	if c := waiter.wait(t, 2*time.Minute); c != 7 {
 		t.Fatalf("waiting CLI exited %d:\n%s", c, waiter.output())
 	}
-	if g := w.get(id); g.Status != "crashed" || g.LastFailure == nil || !strings.Contains(g.LastFailure.Message, "hermeshd restarted") {
+	if g := w.get(id); g.Status != "crashed" || g.LastFailure == nil || !strings.Contains(g.LastFailure.Message, "aided restarted") {
 		t.Fatalf("after the restart: %+v", g)
 	}
 	if r := w.cli(time.Minute, "session", "send", id, "--wait", "--message", "say back again"); r.code != 0 || !strings.Contains(r.stdout, "back again") {
@@ -95,7 +95,7 @@ func TestReliability(t *testing.T) {
 
 // start2 starts the agent CLI in the background.
 func start2(t *testing.T, w *ownerMac, args ...string) *proc {
-	p := start(t, "waiting cli", w.cliEnv, filepath.Join(w.bin, "hermesh"), args...)
+	p := start(t, "waiting cli", w.cliEnv, filepath.Join(w.bin, "aide"), args...)
 	w.logs = append(w.logs, p)
 	return p
 }

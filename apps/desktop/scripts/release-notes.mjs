@@ -22,6 +22,6 @@ if (problem) {
   process.exit(1);
 }
 process.stdout.write(releaseBody(enNotes, zhNotes, version, { en: enUpdates, "zh-CN": zhUpdates }, {
-  command: "curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh",
-  image: `hermeshai/hermesh-relay:v${version}`,
+  command: "curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh",
+  image: `ghcr.io/samir2015dzh/aide-relay:v${version}`,
 }));

@@ -1,17 +1,13 @@
-//! One batch of tool calls: sequential preflight (argument repair, lookup, hooks, checks,
-//! approval), concurrent execution, results in call order.
+//! One batch of tool calls: sequential preflight (argument repair, lookup, hooks), concurrent
+//! execution, results in call order. Nobody is asked before a call: what no hook refuses runs.
 
 use her_llm::JsonText;
 use her_llm::ToolCall;
 use her_llm::ToolResultMessage;
 use her_llm::UserContent;
 use her_llm::now_ms;
-use her_protocol::ApprovalDecision;
-use her_protocol::CommandRule;
 use her_protocol::EventMsg;
 use her_protocol::Location;
-use her_protocol::PermissionMode;
-use her_protocol::SiteGrant;
 use her_protocol::ToolCategory;
 use her_tools::Authority;
 use her_tools::ProgressSink;
@@ -25,19 +21,12 @@ use her_tools::cap_result;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
-use tokio::sync::OwnedMutexGuard;
-use tokio::sync::oneshot;
 
 use crate::context::NOT_EXECUTED;
 use crate::hooks::Gate;
 use crate::session::Session;
 use crate::task::TaskCtx;
 
-pub(crate) const NO_APPROVER: &str = "This tool call needs approval, but nobody can approve it in this \
-    non-interactive run. Do not retry it; tell the user what you wanted to do instead.";
-/// The same for a sub-agent: its parent decides what to do instead.
-pub(crate) const SUB_AGENT_NO_APPROVER: &str = "This tool call needs approval, but nobody can approve it in this \
-    non-interactive run. Do not retry it or work around it; list it in your report so your parent can handle it.";
 pub(crate) const TRUNCATED_CALL: &str = "The response hit the output token limit, so the arguments may be \
     incomplete. Re-issue the tool call.";
 /// How long a cancelled tool may take to stop on its own.
@@ -45,16 +34,8 @@ const CANCEL_GRACE: Duration = Duration::from_secs(3);
 
 enum Prepared {
     Done(Arc<ToolResultMessage>),
-    /// With what the call was approved to do, for the tool to hold execution to.
+    /// With what the call was judged to do, for the tool to hold execution to.
     Run(Arc<dyn Tool>, ToolCall, Arc<[Authority]>),
-}
-
-enum Approval {
-    Granted,
-    Denied(Option<String>),
-    /// Carries the reason the call needed approval.
-    NoApprover(Option<String>),
-    Aborted,
 }
 
 pub(crate) async fn execute_batch(
@@ -65,10 +46,6 @@ pub(crate) async fn execute_batch(
     let mut prepared = Vec::with_capacity(calls.len());
     // Every call of a batch is looked up in the same registry.
     let tools = session.tools();
-    // Set once a call is going to run before the rest of the batch. A check sees the state
-    // before the batch, which a call that runs first may change (a read, too: write checks what
-    // was read), so from then on checks could refuse calls that would succeed.
-    let mut runs_before = false;
     for mut call in calls {
         let tool = session.tool(&tools, &call.name);
         if let Some(tool) = &tool
@@ -108,67 +85,21 @@ pub(crate) async fn execute_batch(
                 continue;
             }
         };
-        let Some((verdict, _asking)) = judge(session, task, &call, tool.as_ref(), &authorities).await else {
-            prepared.push(Prepared::Done(immediate(session, &call, NOT_EXECUTED)));
-            continue;
+        // Judging may look up a site's address: a stop does not wait for it.
+        let turn = task.turn();
+        let verdict = tokio::select! {
+            biased;
+            _ = turn.cancelled() => {
+                prepared.push(Prepared::Done(immediate(session, &call, NOT_EXECUTED)));
+                continue;
+            }
+            verdict = gate(session, &call, tool.as_ref(), &authorities) => verdict,
         };
         match verdict {
-            Gate::Allow => {
-                runs_before = true;
-                prepared.push(Prepared::Run(tool, call, authorities));
-            }
+            Gate::Allow => prepared.push(Prepared::Run(tool, call, authorities)),
             Gate::Deny(reason) => {
                 let text = format!("Tool call denied: {reason}");
                 prepared.push(Prepared::Done(immediate(session, &call, &text)));
-            }
-            Gate::Ask {
-                summary,
-                reason,
-                proposed_rule,
-                proposed_mode,
-                proposed_grants,
-                own_browser,
-            } => {
-                // Nobody should be asked about a call that cannot succeed.
-                if !runs_before && let Err(err) = check(session, task, tool.as_ref(), &call).await {
-                    let text = match err {
-                        ToolError::Cancelled => NOT_EXECUTED.to_string(),
-                        err => err.to_string(),
-                    };
-                    prepared.push(Prepared::Done(immediate(session, &call, &text)));
-                    continue;
-                }
-                let proposal = Proposal {
-                    rule: proposed_rule,
-                    mode: proposed_mode,
-                    grants: proposed_grants,
-                    own_browser,
-                };
-                match request_approval(session, task, &call, summary, reason, proposal).await {
-                    Approval::Granted => {
-                        runs_before = true;
-                        prepared.push(Prepared::Run(tool, call, authorities));
-                    }
-                    Approval::Denied(feedback) => {
-                        let mut text = "The user denied this tool call.".to_string();
-                        if let Some(feedback) = feedback.filter(|f| !f.trim().is_empty()) {
-                            text.push_str(&format!(" Feedback: {feedback}"));
-                        }
-                        prepared.push(Prepared::Done(immediate(session, &call, &text)));
-                    }
-                    Approval::NoApprover(reason) => {
-                        let base = if session.sub_agent { SUB_AGENT_NO_APPROVER } else { NO_APPROVER };
-                        let text = match reason {
-                            Some(reason) => format!("{base} Why it needs approval: {reason}"),
-                            None => base.to_string(),
-                        };
-                        prepared.push(Prepared::Done(immediate(session, &call, &text)));
-                    }
-                    Approval::Aborted => {
-                        task.cancel.cancel();
-                        prepared.push(Prepared::Done(immediate(session, &call, NOT_EXECUTED)));
-                    }
-                }
             }
         }
     }
@@ -236,116 +167,6 @@ async fn gate(session: &Session, call: &ToolCall, tool: &dyn Tool, authorities: 
         }
     }
     Gate::Allow
-}
-
-/// The verdict on a call and, when it has to ask, its turn to: the whole tree asks the user one
-/// question at a time (subagent-design §10.1). A call that had to wait is judged again, as an
-/// answer given meanwhile may settle it. `None` when the turn ended while it waited.
-async fn judge(
-    session: &Session,
-    task: &TaskCtx,
-    call: &ToolCall,
-    tool: &dyn Tool,
-    authorities: &[Authority],
-) -> Option<(Gate, Option<OwnedMutexGuard<()>>)> {
-    let turn = task.turn();
-    // A gate may ask a tool's host what the call would do: a stop does not wait for its answer.
-    let verdict = tokio::select! {
-        biased;
-        _ = turn.cancelled() => return None,
-        verdict = gate(session, call, tool, authorities) => verdict,
-    };
-    if !matches!(verdict, Gate::Ask { .. }) || !session.interactive_approvals {
-        return Some((verdict, None));
-    }
-    if let Ok(asking) = session.approval_line.clone().try_lock_owned() {
-        return Some((verdict, Some(asking)));
-    }
-    let asking = tokio::select! {
-        biased;
-        _ = turn.cancelled() => return None,
-        asking = session.approval_line.clone().lock_owned() => asking,
-    };
-    session.follow_main();
-    let verdict = gate(session, call, tool, authorities).await;
-    Some((verdict, Some(asking)))
-}
-
-/// What approving for the session would keep, and where the call works.
-struct Proposal {
-    rule: Option<CommandRule>,
-    mode: Option<PermissionMode>,
-    grants: Vec<SiteGrant>,
-    own_browser: bool,
-}
-
-async fn request_approval(
-    session: &Session,
-    task: &TaskCtx,
-    call: &ToolCall,
-    summary: String,
-    reason: Option<String>,
-    proposal: Proposal,
-) -> Approval {
-    if !session.interactive_approvals {
-        session.emit(EventMsg::ApprovalRefused {
-            call_id: call.id.clone(),
-            name: call.name.clone(),
-            summary,
-            reason: reason.clone(),
-        });
-        return Approval::NoApprover(reason);
-    }
-    let (tx, rx) = oneshot::channel();
-    session.state.lock().pending_approvals.insert(call.id.clone(), tx);
-    session.emit(EventMsg::ApprovalRequested {
-        call_id: call.id.clone(),
-        name: call.name.clone(),
-        args: call.arguments.to_value(),
-        summary,
-        reason,
-        proposed_rule: proposal.rule.clone(),
-        proposed_mode: proposal.mode,
-        proposed_grants: proposal.grants.clone(),
-        own_browser: proposal.own_browser,
-    });
-    let decision = tokio::select! {
-        decision = rx => decision.unwrap_or(ApprovalDecision::Abort),
-        _ = task.cancel.cancelled() => ApprovalDecision::Abort,
-    };
-    session.state.lock().pending_approvals.remove(&call.id);
-    session.emit(EventMsg::ApprovalResolved {
-        call_id: call.id.clone(),
-        decision: decision.clone(),
-    });
-    match decision {
-        ApprovalDecision::Approve => Approval::Granted,
-        ApprovalDecision::ApproveForSession { grant, persist } => {
-            // What is kept is the main session's: the whole tree follows it.
-            let main = session.main_session();
-            let keeper = main.as_deref().unwrap_or(session);
-            // With nothing proposed, this approves the call only.
-            if let Some(rule) = proposal.rule {
-                keeper.add_session_rule(rule);
-            }
-            if let Some(mode) = proposal.mode {
-                keeper.set_permission_mode(mode);
-            }
-            // Only a grant that was proposed: a client cannot name a wider one. An index out
-            // of range keeps nothing beyond this call.
-            if let Some(grant) = proposal.grants.into_iter().nth(grant.unwrap_or(0)) {
-                if persist {
-                    keeper.remember_site(&grant);
-                }
-                keeper.add_site_grant(grant);
-            }
-            // The call goes on now, before the change reaches a sub-agent by itself.
-            session.follow_main();
-            Approval::Granted
-        }
-        ApprovalDecision::Deny { feedback } => Approval::Denied(feedback),
-        ApprovalDecision::Abort => Approval::Aborted,
-    }
 }
 
 fn immediate(session: &Session, call: &ToolCall, text: &str) -> Arc<ToolResultMessage> {
@@ -456,12 +277,6 @@ fn tool_ctx(session: &Session, task: &TaskCtx, call: &ToolCall, authorities: Arc
         session_state: session.tool_state.clone(),
         authorities,
     }
-}
-
-/// The tool's own check of a call that is about to be put to the user.
-async fn check(session: &Session, task: &TaskCtx, tool: &dyn Tool, call: &ToolCall) -> Result<(), ToolError> {
-    let ctx = tool_ctx(session, task, call, Arc::from([]));
-    until_cancelled(task, tool.check(&call.arguments.to_value(), &ctx)).await
 }
 
 async fn execute(tool: &dyn Tool, call: &ToolCall, ctx: ToolCtx, task: &TaskCtx) -> Result<ToolOutput, ToolError> {

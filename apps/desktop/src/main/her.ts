@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { LocalService } from "@hermesh/proto/local";
+import { LocalService } from "@aide/proto/local";
 import { app, shell } from "electron";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -10,17 +10,17 @@ import { consoleURL, opensOutside } from "../shared/herConsole";
 import { connectorPage, signInChatGpt, signInConnector, type ChatGptSignIn, type ConnectorSignIn, type SignInDeps } from "../shared/herSignin";
 import { socketPath } from "./paths";
 
-// What the main process asks hermeshd for Her itself, never for the page: a
+// What the main process asks aided for Her itself, never for the page: a
 // console's address (its window is the main process's), a file of an
 // assistant's saved where the person looks for downloads, a sign-in to
 // ChatGPT or to a connector, whose redirect comes back to this computer.
 
-/** hermeshd's LocalService, where it is now (a pipe's name changes each time it starts on Windows). */
+/** aided's LocalService, where it is now (a pipe's name changes each time it starts on Windows). */
 function localService() {
-  return createClient(LocalService, createConnectTransport({ baseUrl: "http://hermeshd", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }));
+  return createClient(LocalService, createConnectTransport({ baseUrl: "http://aided", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }));
 }
 
-/** A machine's console, served by this computer's hermeshd on 127.0.0.1 with a token in its path. */
+/** A machine's console, served by this computer's aided on 127.0.0.1 with a token in its path. */
 export async function herConsoleURL(machineId: string): Promise<string> {
   return (await localService().getHerConsole({ machineId })).url;
 }
@@ -38,7 +38,7 @@ function cached(machineId: string, sha: string | undefined, name: string): strin
 }
 const exists = (p: string | null) => (p ? fs.access(p).then(() => true, () => false) : Promise.resolve(false));
 
-/** `name` in `dir`, or with a number added while that is taken ("pic 2.png"), as hermeshd names a download. */
+/** `name` in `dir`, or with a number added while that is taken ("pic 2.png"), as aided names a download. */
 async function freeName(dir: string, name: string): Promise<string> {
   const ext = path.extname(name), stem = name.slice(0, name.length - ext.length);
   for (let n = 1; ; n++) {
@@ -70,7 +70,7 @@ export async function saveHerFile(machineId: string, botId: string, file: string
 export async function readHerFile(machineId: string, botId: string, file: string, sha?: string): Promise<Uint8Array> {
   const kept = cached(machineId, sha, file);
   if (kept && (await exists(kept))) return new Uint8Array(await fs.readFile(kept));
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "hermesh-preview-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "aide-preview-"));
   try {
     const r = await localService().herDownload({ machineId, botId, path: file, localDir: dir });
     const bytes = new Uint8Array(await fs.readFile(r.localPath));
@@ -135,7 +135,7 @@ function reopen(key: string) {
 
 // Development builds only: her's ChatGPT fixture, a loopback address, stands in for OpenAI (as her takes
 // HER_TEST_CHATGPT_BASE only as a debug build).
-const testChatGpt = !app.isPackaged ? process.env.HERMESH_TEST_CHATGPT_BASE : undefined;
+const testChatGpt = !app.isPackaged ? process.env.AIDE_TEST_CHATGPT_BASE : undefined;
 
 /** Signs in to ChatGPT for a machine's Her (shared/herSignin.ts): only an https page goes to the browser. */
 export function signInHerChatGpt(machineId: string): Promise<ChatGptSignIn> {

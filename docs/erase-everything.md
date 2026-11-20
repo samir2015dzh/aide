@@ -1,12 +1,22 @@
 # Erase everything: one approval, every device back to its first run
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the
+> erase order is signed by the server for the device that asks
+> (`OwnerControlService.Sign`, `EraseOrder.by`), with no Touch ID or Face
+> ID; there are no trusted devices, only the owner's devices, and no Linux
+> trusted device (`aided device erase-everything` is gone). A server
+> erased prints a new setup code (`aide-relay setup-code`); machines log in
+> again with `aided login <server>`, agents with `aide auth login <server>`,
+> devices with 登录, rather than pairing. What erasing reaches and keeps
+> holds.
+
 Status: agreed 2026-10-28 (§8), built (§6). One action, **Erase
 Everything** (全部清空), which first says exactly what it erases.
 
 ## 1. The ask
 
 The owner wants one action, approved once, that takes every device of
-theirs back to how it was before Hermesh was set up there, online or not:
+theirs back to how it was before Aide was set up there, online or not:
 trusted devices (Macs, iPhones), machines (a VPS, a machine-only Mac),
 agents (the CLI on a computer, connectors in Claude, Grok and the like), and
 the account on the center. Then each kind of first run can be tried again
@@ -32,7 +42,7 @@ a machine's pairing, an agent's connecting.
 
 What is missing: starting it from a device, devices that act on it by
 themselves (now each removed device waits for a tap on `Leave`), offline
-devices doing it when they come back, and clearing what Hermesh keeps on
+devices doing it when they come back, and clearing what Aide keeps on
 each device besides its keys (sessions, projects, the apps' settings).
 
 ## 3. Design
@@ -44,7 +54,7 @@ erases (§3.6), and approves once (Touch ID, Face ID). The device signs, with
 its root key, an **erase order**:
 
 ```proto
-// hermesh.identity.v1
+// aide.identity.v1
 message EraseOrder {
   string owner_id = 1;
   string erase_id = 2;                     // random, names this erase
@@ -84,7 +94,7 @@ owner's devices their account (`OwnerControl.GetAccount`), as no device
 keeps it.
 
 A self-hosted relay does the same and becomes unclaimed again, with a new
-claim code (`hermesh-relay claim-code`, as at its first start).
+claim code (`aide-relay claim-code`, as at its first start).
 
 ### 3.3 Each kind of device
 
@@ -93,17 +103,17 @@ it has it (§3.4), then erases:
 
 | Device | What it erases |
 |---|---|
-| Trusted device (Mac app) | `Leave`, without asking (the owner forgotten, the root key deleted), then the profile's directory, its own machine's sessions, projects list and the worktrees Hermesh made, Her's data if Her was ever on there ([her-server.md](her-server.md) §5.6), and the app's settings (first-run steps, window, notification choices). The app opens on its first run |
+| Trusted device (Mac app) | `Leave`, without asking (the owner forgotten, the root key deleted), then the profile's directory, its own machine's sessions, projects list and the worktrees Aide made, Her's data if Her was ever on there ([her-server.md](her-server.md) §5.6), and the app's settings (first-run steps, window, notification choices). The app opens on its first run |
 | Trusted device (iPhone) | The same `Leave`, its push registration (ending with the owner), the cached world and the app's settings. It opens on its first run |
-| Machine (VPS, Linux, machine-only Mac) | Its key, owner, sessions, projects list, Hermesh's worktrees, and Her's data if Her was ever on there: it is a newly installed machine, waiting to be paired |
-| Agent (CLI) | Its key and grant files (`hermesh auth logout`) |
+| Machine (VPS, Linux, machine-only Mac) | Its key, owner, sessions, projects list, Aide's worktrees, and Her's data if Her was ever on there: it is a newly installed machine, waiting to be paired |
+| Agent (CLI) | Its key and grant files (`aide auth logout`) |
 | Agent (connector) | Its connection at the gateway, and its OAuth registration and consent: connecting again starts from the consent page |
 | Center account | The owner and everything under it (machines, grants, messages, doorbells, push targets); every browser signed out |
 
 Never touched, and the sheet says so: the projects' own directories and
 repositories (a worktree's branch stays in its repository); a worktree with
 uncommitted changes, moved (`git worktree move`) to `kept-worktrees/` in
-Hermesh's data directory and named afterwards; other profiles on a device
+Aide's data directory and named afterwards; other profiles on a device
 (another owner's); the account itself and how the person signs in; and what
 the operating system keeps (notification permission, login items).
 
@@ -129,9 +139,9 @@ there:
 
 - a trusted device (Mac, iPhone, machine-only Mac) shows that it is no
   longer in the account, and Set Up This Mac Again (`Leave`);
-- a machine logs how to pair it again, and `hermeshd pair <address>` pairs
+- a machine logs how to pair it again, and `aided pair <address>` pairs
   it with the new owner as it is: its old owner is gone from the server;
-- an agent is refused as revoked, and `hermesh auth login <address>` pairs
+- an agent is refused as revoked, and `aide auth login <address>` pairs
   it with the new owner as it is.
 
 So there is nothing to take back, and no order waiting for anyone: what
@@ -150,7 +160,7 @@ world the app already has, by name, not only counts:
    - trusted devices: signed out of the account, their keys, sessions and
      settings erased;
    - machines: unpaired, their projects list, sessions and the worktrees
-     Hermesh made erased;
+     Aide made erased;
    - agents: disconnected; a CLI's pairing files and a connector's consent
      erased;
    - the account (its email): unlinked, its messages, wake-ups and
@@ -161,7 +171,7 @@ world the app already has, by name, not only counts:
    sign in, system permissions. And: this cannot be undone.
 3. **Type the account's email** (a self-hosted relay's address) to enable
    the red button, then Touch ID or Face ID, whose prompt names it ("Erase
-   Hermesh on 6 devices").
+   Aide on 6 devices").
 4. **Progress**: each one ticked as it reports, for up to 15 seconds; then
    this device erases itself and opens on its first run, saying once what
    was done ("5 erased; yee-ipad will be when it connects").
@@ -171,26 +181,26 @@ unchanged: it signs nothing, so it erases nothing on a device.
 
 ### 3.6 From a terminal, and for testing first runs
 
-- `hermeshd erase` erases this computer only: its machine, unpaired (the
+- `aided erase` erases this computer only: its machine, unpaired (the
   server drops it from its owner's list when it can be reached), its
-  projects list, sessions and the worktrees Hermesh made (those with
+  projects list, sessions and the worktrees Aide made (those with
   uncommitted changes kept); its service, when one runs it, taken away. It
-  asks first (`--yes` for scripts), refuses while `hermeshd run` holds the
+  asks first (`--yes` for scripts), refuses while `aided run` holds the
   machine, and on a trusted device points to the next command.
-- `hermeshd uninstall` goes further on a Linux or macOS command-line
-  install: it erases as `hermeshd erase` does, then removes the data
-  directory, the CLI's settings and the programs ([hermeshd.md](hermeshd.md)).
-- `hermeshd device erase-everything` is Erase Everything on a trusted
+- `aided uninstall` goes further on a Linux or macOS command-line
+  install: it erases as `aided erase` does, then removes the data
+  directory, the CLI's settings and the programs ([aided.md](aided.md)).
+- `aided device erase-everything` is Erase Everything on a trusted
   device without an app (a Linux trusted device): the same list of what it
   erases and what stays, the account's email (or the server's address)
   typed, the order signed with the device's passphrase (`internal/preview`
   shows its card), each one ticked as it reports, then this computer.
-- What the operating system keeps is not Hermesh's to erase. For a first
+- What the operating system keeps is not Aide's to erase. For a first
   run as people meet it: on a Mac, notifications in System Settings ›
   Notifications and the login item in System Settings › General › Login
   Items (`sfltool resetbtm` clears every login item's approval); on the
   iPhone, deleting the app; in the Simulator, `xcrun simctl privacy
-  <device> reset all io.hermesh.ios`.
+  <device> reset all io.aide.ios`.
 
 ## 4. What an attacker can do
 
@@ -214,7 +224,7 @@ unchanged: it signs nothing, so it erases nothing on a device.
 ## 6. Steps
 
 1. Done: the order, the relay's `EraseOwner` and tombstone, `AckErase`;
-   machines, CLI agents and trusted devices acting on it (hermeshd's local
+   machines, CLI agents and trusted devices acting on it (aided's local
    API: `EraseEverything`, `EraseStatus`, `FinishErase`, and
    `GetStatus.erased` on the first run that follows); the signers' card.
    e2e `TestEraseEverything`: a second trusted device, a machine-only Mac,
@@ -230,13 +240,13 @@ unchanged: it signs nothing, so it erases nothing on a device.
    start again with the next sign-in. If the app never asks `FinishErase`
    (its window closed), the device erases itself two minutes after the
    order. e2e: the desktop's onboarding spec, `TestIPhoneFirstRun`.
-3. Done: the center (hermesh-cloud `center/erase.go`): the order kept 10
+3. Done: the center (aide-cloud `center/erase.go`): the order kept 10
    minutes in Postgres, the owner forgotten (shared with start over, which
    now drops doorbells and inboxes too), every browser signed out, the mail,
    the account's email for the apps. Cloud e2e `TestEraseEverything`;
    `TestHostedMCP` checks start over drops the bot's doorbell.
-4. Done: `hermeshd erase` (e2e `TestEraseThisMachine`) and `hermeshd
-   device erase-everything` (hermesh-cloud `TestLinuxTrustedDevice`), the
+4. Done: `aided erase` (e2e `TestEraseThisMachine`) and `aided
+   device erase-everything` (aide-cloud `TestLinuxTrustedDevice`), the
    notes above. The e2e tests erase the real way (the order, signed) where
    they test it; no helper erases a world for the first-run tests, which
    start from a fresh one.
@@ -247,7 +257,7 @@ unchanged: it signs nothing, so it erases nothing on a device.
   the Mac; the online ones erase within seconds, the offline ones when
   they connect; every app opens on its first run; the account signs in to
   no owner.
-- A machine keeps no Hermesh data but the projects' directories; a
+- A machine keeps no Aide data but the projects' directories; a
   worktree with changes is kept and named.
 - A relay that sends a forged or another owner's order erases nothing.
 - A device back after the 10 minutes is refused and offered `Leave`; a

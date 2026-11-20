@@ -5,7 +5,7 @@ import path from "node:path";
 import { startStandIn, type StandIn } from "../scripts/stand-in.ts";
 import { zip } from "./zip.ts";
 
-// The console as the owner uses it, in a headless browser, against hermeshd's routes (the
+// The console as the owner uses it, in a headless browser, against aided's routes (the
 // stand-in) and a real her: a model from an API key, a connector by address with its tools, a
 // skill uploaded and turned off, a web search key, a site allowed. What the page says is checked,
 // and what her wrote in its files.
@@ -178,16 +178,16 @@ test("an environment set up from its console", async ({ page }) => {
     const guide = page.getByRole("dialog", { name: "Connect Your Chrome" });
     await expect(guide).toContainText(`Add the Aide extension to Chrome on the ${linux ? "Linux computer" : "Mac"} Her runs on.`);
     await expect(guide).toContainText(linux ? "press Ctrl+L" : "press ⇧⌘G");
-    await expect(guide.locator("code").last()).toHaveText(linux ? "~/.local/share/hermesh/chrome-extension" : "~/Library/Application Support/Hermesh/Chrome Extension");
+    await expect(guide.locator("code").last()).toHaveText(linux ? "~/.local/share/aide/chrome-extension" : "~/Library/Application Support/Aide/Chrome Extension");
     // Its two places open on that computer at a click: the extensions page, in the default browser
     // (Google Chrome, as the stand-in's osascript says), and the extension's folder.
     await guide.getByRole("button", { name: "Open", exact: true }).click();
     await expect.poll(() => site.opened()).toContain(linux ? "google-chrome chrome://extensions" : "open -a /Applications/Google Chrome.app chrome://extensions");
     const reveal = guide.getByRole("button", { name: "Show Folder" });
     await reveal.click();
-    // hermeshd puts the extension there when it starts; here nothing has yet.
+    // aided puts the extension there when it starts; here nothing has yet.
     await expect(guide.locator(".set-note.warn")).toContainText("the Aide extension is not in");
-    const folder = path.join(site.home, "user", linux ? ".local/share/hermesh/chrome-extension" : "Library/Application Support/Hermesh/Chrome Extension");
+    const folder = path.join(site.home, "user", linux ? ".local/share/aide/chrome-extension" : "Library/Application Support/Aide/Chrome Extension");
     mkdirSync(folder, { recursive: true });
     writeFileSync(path.join(folder, "manifest.json"), "{}");
     await reveal.click();

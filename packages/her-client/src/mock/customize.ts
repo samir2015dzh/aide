@@ -3,17 +3,17 @@ import type {
   McpProbeParams, McpProbeResult, McpProbeStep, McpServerView, McpToolSummary,
   McpToolsResult, SkillEntry, SkillsFilesResult, SkillsInstallParams, SkillsReadResult, SkillsInstallResult, SkillsListResult, SkillsSetEnabledResult,
   WebSearchNeeds, WebSearchSetKeyResult, WebSearchSource, WebSearchStatus, WebSearchTestResult,
-} from "@hermesh/her-protocol";
+} from "@aide/her-protocol";
 
 // The 自定义 page's side of the mock (customize-design §10.8): skills, MCP servers, the
 // configuration's layers and the keychain, with the prototype's data
 // (docs/desktop/customize-demo.html). Changes tell every connection, as her does.
 
 const home = "/Users/demo";
-const project = "/Users/demo/code/hermesh";
+const project = "/Users/demo/code/aide";
 const files: Record<"user" | "user_project" | "project", string> = {
   user: `${home}/.her/config.toml`,
-  user_project: `${home}/.her/projects/hermesh-3fa81c02/config.toml`,
+  user_project: `${home}/.her/projects/aide-3fa81c02/config.toml`,
   project: `${project}/.her/config.toml`,
 };
 
@@ -401,7 +401,7 @@ export class CustomizeMock {
   private static logos: Record<string, string> = {
     "mcp.linear.app": svgLogo("#5e6ad2", "M6 18 18 6M6 12l6-6M12 18l6-6"),
     "api.githubcopilot.com": svgLogo("#1f2328", "M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10"),
-    "mcp.hermesh.io": svgLogo("#0f9f6e", "M7 6v12M17 6v12M7 12h10"),
+    "mcp.aide.io": svgLogo("#0f9f6e", "M7 6v12M17 6v12M7 12h10"),
   };
 
   private static logoOf(config: Record<string, unknown>): string | undefined {
@@ -513,7 +513,7 @@ export class CustomizeMock {
     set({ id: "connect", state: "ok", detail: "the server requires authorization", http_status: 401 });
     set({ id: "resource", state: "running" });
     await sleep(700);
-    const issuer = /hermesh/.test(host) ? "https://hermesh.io" : /linear/.test(host) ? "https://mcp.linear.app" : /github/.test(host) ? "https://github.com/login/oauth" : null;
+    const issuer = /aide/.test(host) ? "https://aide.io" : /linear/.test(host) ? "https://mcp.linear.app" : /github/.test(host) ? "https://github.com/login/oauth" : null;
     if (!issuer) {
       set({ id: "resource", state: "skipped", detail: "no OAuth settings published; it probably takes an API key" });
       set({ id: "auth_server", state: "skipped" });

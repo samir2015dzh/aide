@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyEvents, botChat, fromSnapshot } from "@hermesh/her-client";
-import type { Event, SessionSnapshot } from "@hermesh/her-protocol";
+import { applyEvents, botChat, fromSnapshot } from "@aide/her-client";
+import type { Event, SessionSnapshot } from "@aide/her-protocol";
 import { cardNow, cardOf, cardShown, connectBody, filled, toolCount, type Card } from "./cards.ts";
 
 const usage = { input: 1, output: 1, cache_read: 0, cache_write: 0, cost: { currency: "USD", input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } };
@@ -53,7 +53,7 @@ test("a card is read from what send_to_user's result carries; one that isn't a c
 /** Her's conversation with the card shown, as a snapshot gives it, with `later` after it in its history. */
 function conversation(later: object[] = []): SessionSnapshot {
   return {
-    session: { session_id: "conv-her", archived: false, context_window: 200000, cwd: "/her", model: "mock/mock-1", permission_mode: "manual", session_file: "s.jsonl", thinking: "medium" },
+    session: { session_id: "conv-her", archived: false, context_window: 200000, cwd: "/her", model: "mock/mock-1", session_file: "s.jsonl", thinking: "medium" },
     last_seq: 4,
     transcript: {
       items: [

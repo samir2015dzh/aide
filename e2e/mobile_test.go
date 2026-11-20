@@ -20,11 +20,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/mobile"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/mobile"
 )
 
 // TestMobileCoreProcess is the iPhone app's process in the tests that start
@@ -32,7 +31,7 @@ import (
 // paused and resumed by lines on stdin as the app does when it leaves the
 // front and comes back, and told the same way that its network changed.
 func TestMobileCoreProcess(t *testing.T) {
-	dir := os.Getenv("HERMESH_TEST_MOBILE_CORE")
+	dir := os.Getenv("AIDE_TEST_MOBILE_CORE")
 	if dir == "" {
 		t.Skip("only as a mobile core's process")
 	}
@@ -72,12 +71,11 @@ type mobileCore struct {
 	port, token string
 }
 
-// startMobileCore starts the app's core with its data in dir, and plays its
-// signer with root.
-func startMobileCore(t *testing.T, dir string, root *identity.SoftwareKey) *mobileCore {
+// startMobileCore starts the app's core with its data in dir.
+func startMobileCore(t *testing.T, dir string) *mobileCore {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run", "^TestMobileCoreProcess$")
-	cmd.Env = append(os.Environ(), "HERMESH_TEST_MOBILE_CORE="+dir)
+	cmd.Env = append(os.Environ(), "AIDE_TEST_MOBILE_CORE="+dir)
 	stdin, _ := cmd.StdinPipe()
 	stdout, _ := cmd.StdoutPipe()
 	logf, err := os.CreateTemp(t.TempDir(), "core-*.log")
@@ -118,11 +116,7 @@ func startMobileCore(t *testing.T, dir string, root *identity.SoftwareKey) *mobi
 	m.port, m.token = port, token
 	hc := &http.Client{Transport: &bearer{token: token, next: http.DefaultTransport}}
 	m.client = localv1connect.NewLocalServiceClient(hc, "http://127.0.0.1:"+port)
-	m.app = &testApp{t: t, client: m.client, root: root, keys: map[string]*identity.SoftwareKey{identity.KeyID(root.Public()): root}}
-	ctx, cancel := context.WithCancel(context.Background())
-	m.app.cancel = cancel
-	t.Cleanup(cancel)
-	go m.app.signLoop(ctx)
+	m.app = &testApp{t: t, client: m.client, cancel: func() {}}
 	return m
 }
 
@@ -225,32 +219,15 @@ func (p *cutProxy) setCut(cut bool) {
 	p.cut = cut
 }
 
-// joinMobile makes the core at dir one of w's trusted devices, approved on
-// w's Mac, as the iPhone joins; it reaches the relay at relayURL.
-func joinMobile(t *testing.T, w *ownerMac, relayURL, dir string, root *identity.SoftwareKey) *mobileCore {
+// joinMobile makes the core at dir one of w's devices, logged in with the
+// account and password, as the phone logs in; it reaches the relay at
+// relayURL.
+func joinMobile(t *testing.T, w *ownerMac, relayURL, dir string) *mobileCore {
 	t.Helper()
-	ctx := context.Background()
-	st, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := startMobileCore(t, dir, root)
-	join, err := m.client.RequestJoin(ctx, &localv1.RequestJoinRequest{RelayUrl: relayURL, OwnerId: st.OwnerId,
-		RootPublicKey: rootPub(root), RootLabel: "test-iphone", RootPlatform: "ios"})
-	if err != nil {
-		t.Fatalf("request join: %v", err)
-	}
-	var approval *localv1.ApproveDevicePairingResponse
-	eventually(t, 30*time.Second, "the iPhone's request approved on the Mac", func() bool {
-		approval, err = w.app.client.ApproveDevicePairing(ctx, &localv1.ApproveDevicePairingRequest{Code: join.Code})
-		return err == nil
-	})
-	eventually(t, 60*time.Second, "the approval reaches the iPhone", func() bool {
-		r, err := m.client.WaitJoin(ctx, &localv1.WaitJoinRequest{Code: join.Code})
-		return err == nil && r.Done
-	})
-	if _, err := m.client.ConfirmJoin(ctx, &localv1.ConfirmJoinRequest{Code: join.Code, Accept: true, MatchCode: approval.MatchCode}); err != nil {
-		t.Fatal(err)
+	m := startMobileCore(t, dir)
+	if _, err := m.client.LogIn(context.Background(), &localv1.LogInRequest{RelayUrl: relayURL, Account: testAccount, Password: testPassword,
+		Label: "test-iphone", Platform: "ios"}); err != nil {
+		t.Fatalf("log in: %v", err)
 	}
 	return m
 }
@@ -284,7 +261,7 @@ func TestMobileNetwork(t *testing.T) {
 	}
 	const oneWay = 150 * time.Millisecond
 	rtt := 2 * oneWay
-	w := newFarOwnerMac(t, oneWay, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newFarOwnerMac(t, oneWay, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	var script strings.Builder
 	for i := range 120 {
 		fmt.Fprintf(&script, "say step %d: looking at the next part of the change, which is long enough to read like a real reply\n", i)
@@ -314,11 +291,10 @@ func TestMobileNetwork(t *testing.T) {
 	}
 	network, phoneRelay := newCutProxy(t, strings.TrimPrefix(st.RelayUrl, "http://"), 2*rtt)
 	dir := t.TempDir()
-	root, _ := identity.GenerateKey()
-	joinMobile(t, w, "http://"+phoneRelay, dir, root).kill()
+	joinMobile(t, w, "http://"+phoneRelay, dir).kill()
 
 	// Launch: the app starts its core and asks for the status, then watches.
-	m := startMobileCore(t, dir, root)
+	m := startMobileCore(t, dir)
 	st, err = m.client.GetStatus(ctx, &localv1.GetStatusRequest{})
 	if err != nil || !st.Initialized {
 		t.Fatalf("status: %v %v", st, err)
@@ -500,7 +476,7 @@ func TestMobileNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 	sessions--
-	m = startMobileCore(t, dir, root)
+	m = startMobileCore(t, dir)
 	launched := time.Now()
 	scr.mu.Lock()
 	resets = scr.resets

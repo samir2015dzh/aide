@@ -1,6 +1,6 @@
 //! `desktop/status`: whether computer use can work where her runs. The permissions are asked by
 //! running agent-desktop as the desktop tools do, so they are those of the process macOS holds
-//! responsible for her: hermeshd when Hermesh runs her (docs/her-server.md §4.4), which nothing
+//! responsible for her: aided when Aide runs her (docs/her-server.md §4.4), which nothing
 //! outside her could ask.
 
 use her_desktop::Permission;

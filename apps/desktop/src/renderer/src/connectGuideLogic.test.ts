@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AgentStatus, CustomAgent } from "@hermesh/proto/machine";
+import type { AgentStatus, CustomAgent } from "@aide/proto/machine";
 import { agentOf, detect, fixes, formOf, formProblem, joinArgs, looksSecret, splitArgs, terminalCommand } from "./connectGuideLogic.ts";
 
 const status = (o: Partial<AgentStatus>) => ({ name: "x", available: false, loggedIn: false, checking: false, problem: 0, detail: "", ...o }) as AgentStatus;

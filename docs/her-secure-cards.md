@@ -1,5 +1,12 @@
 # Secure cards: when Her needs something only the owner can give
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** Her's
+> approvals are gone ([her-server.md](her-server.md)), so what this page says
+> is "already covered by her's approvals" no longer is; there are no
+> trusted devices, only the owner's devices, which reach Her; and nothing is
+> signed with Touch ID (the later `root_sign` kind would be signed by the
+> server for the device). Cards themselves hold.
+
 Status: step 1 (cards and connectors, §7) built 2026-11-09; step 2 and later
 are not. It builds on
 [her-server.md](her-server.md): the console (§10), security (§8) and the
@@ -41,13 +48,12 @@ Others do the same:
 - Grok Bot's cards are mostly a connector's authorization, and a site's
   sign-in it fills in for the user.
 
-**Already covered without cards**, by her's approvals:
-
-- a risky command or file write;
-- a browser step on a site Her may not act on yet (the approval offers the
-  site's permission);
-- a step only the owner can do in a page Her's Mac shows, with
-  `browser_wait` `user`.
+**Not cards, and not asked at all.** Her runs actions without asking
+(decided 2026-11-20): a command, a file write, a browser step on any site
+run at once. A step only the owner can do in a page (a sign-in, a CAPTCHA)
+is said in her reply, and she goes on when the owner says it is done. Secure
+cards are not approvals of an action: they are how the owner gives what only
+they have, a secret or a sign-in, and they stay.
 
 ## 2. How Her asks
 
@@ -117,9 +123,8 @@ Others do the same:
   > {type: "card", card: "c_12"}: that ends your turn, and you hear how it
   > went.
 
-- **They `run_unasked`:** they change nothing, so her's approval layer has
-  nothing to ask. The card is the only way a change happens, in every
-  permission mode, full access included.
+- **They change nothing by themselves:** the card is the only way a change
+  happens, and it waits for the owner's answer on the card.
 
 ### 2.3 Why not a CLI or an MCP server
 
@@ -180,18 +185,18 @@ Later kinds, on the same envelope: `takeover` (the owner works Her's
 browser for a step, from any device) and `root_sign` (a connector started
 as a command, or one of her's curated connectors, signed with Touch ID).
 For each, her adds a builder and an answer handler, and the apps add a
-renderer. An app that doesn't know a kind shows "Update Hermesh to answer
+renderer. An app that doesn't know a kind shows "Update Aide to answer
 this card", and nothing else.
 
 ### 3.3 Answering
 
 - **One method for every kind:** `cards/answer {session_id, card_id, answer}`
   on her-server.
-  - hermeshd lets only the owner's devices call it
+  - aided lets only the owner's devices call it
     (internal/herhost/allow.go). Agents and MCP clients never.
   - It arrives as a HerCall over the end-to-end tunnel, so the relay sees
     nothing.
-- **hermeshd checks each op an answer carries** with the same `check` the
+- **aided checks each op an answer carries** with the same `check` the
   console's calls go through. A card can never change more than the
   owner's device could in the console.
 - **her compares the answer with the card it keeps:** the same `ops` with
@@ -235,8 +240,8 @@ this card", and nothing else.
 | Session events | `card_changed {card_id, state, note}`: open, working, retry (with the reason), done, declined, expired, replaced |
 | her-server methods | `cards/answer` |
 | Session history | The entry `CardResolved` |
-| hermeshd allowlist | `cards/answer` from owner devices only, each of its `ops` checked as a console call |
-| HerStatus | While a card waits, her's `BotSummary.waiting` is Her's `text`, else the card's title; hermeshd shows it as the newest, so a device notifies |
+| aided allowlist | `cards/answer` from owner devices only, each of its `ops` checked as a console call |
+| HerStatus | While a card waits, her's `BotSummary.waiting` is Her's `text`, else the card's title; aided shows it as the newest, so a device notifies |
 
 ## 4. The cards in the Mac app
 
@@ -261,7 +266,7 @@ this card", and nothing else.
 ## 5. Permissions
 
 Seeing the tools gives no power: they only prepare cards. Power is in
-answering one, which only the owner's devices can, within what hermeshd
+answering one, which only the owner's devices can, within what aided
 allows.
 
 ### 5.1 Who sees the tools
@@ -298,10 +303,10 @@ be led to ask for a card nobody wanted. Against that:
 
 ### 5.4 Who decides
 
-- Only the owner's trusted devices reach Her (her-server.md §8), so only
+- Only the owner's devices reach Her (her-server.md §8), so only
   they can call `cards/answer`. Agents can't reach Her at all: not through
   hosted MCP, not through agent messages.
-- hermeshd checks every op against its allowlist of console calls and its
+- aided checks every op against its allowlist of console calls and its
   positive list of writable settings. A setting her adds later can't slip
   through a card.
 - Permission modes don't apply: the tools change nothing, so even full
@@ -315,7 +320,7 @@ A connector, asked for by the owner:
 sequenceDiagram
     participant M as Model
     participant H as her (Her Server)
-    participant D as hermeshd (tunnel)
+    participant D as aided (tunnel)
     participant A as Owner's Mac app
     A->>H: "Sum up this week's tasks in Notion"
     M->>H: call_tool connector_connect {name: notion, url: https://mcp.notion.com/mcp}
@@ -361,7 +366,7 @@ transcript. A test searches the session files and the logs for them.
      `CardResolved`, expiry, and open cards found again after a restart.
    - The `connectors` group: `connector_status`, `connector_connect`, and
      the `connect` card; an expired sign-in's error naming the way back.
-   - hermeshd: the allowlist and HerStatus.
+   - aided: the allowlist and HerStatus.
    - Mac app: the card, sharing the onboarding's masked field.
 2. **Sign-ins on websites:** `ask_owner`, the `site_login` card, and filled
    fields masked in snapshots, in the built-in browser and the owner's

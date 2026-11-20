@@ -14,12 +14,12 @@ import (
 	"github.com/coder/websocket"
 	"github.com/hashicorp/yamux"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type bufConn struct {
@@ -32,7 +32,7 @@ func (c bufConn) Read(p []byte) (int, error) { return c.r.Read(p) }
 // admittingRelay admits every peer and keeps its connection open.
 func admittingRelay(t *testing.T) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 		if err != nil {
 			return
 		}

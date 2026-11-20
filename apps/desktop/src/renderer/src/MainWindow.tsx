@@ -1,11 +1,10 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { parseAppLink } from "@hermesh/core";
-import { agentName } from "@hermesh/ui";
+import { parseAppLink } from "@aide/core";
+import { agentName } from "@aide/ui";
 import { local } from "./api";
 import { Overview } from "./Overview";
 import { DSHSessions } from "./dsh/DSHSessions";
-import { RequestCards } from "./RequestCards";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -26,7 +25,7 @@ export function MainWindow() {
   useCommands();
   // The window's material shows through the sidebar, macOS's or Windows 11's (the first-run pages stay opaque).
   useEffect(() => {
-    if (!window.hermesh?.material) return;
+    if (!window.aide?.material) return;
     document.documentElement.classList.add("vibrant");
     return () => document.documentElement.classList.remove("vibrant");
   }, []);
@@ -41,19 +40,19 @@ export function MainWindow() {
   const { set } = st;
   useEffect(
     () =>
-      window.hermesh?.onCommand((c) => {
+      window.aide?.onCommand((c) => {
         if (c.startsWith("searchGrant:")) set({ searching: true, searchFor: { grant: c.slice("searchGrant:".length) } });
         if (c.startsWith("searchMachine:")) set({ searching: true, searchFor: { machine: c.slice("searchMachine:".length) } });
       }),
     [set],
   );
-  // An agent's wake link (hermesh://wake?code=…, docs/agent-names.md §7.2): its setup, at the routine's URL and key.
+  // An agent's wake link (aide://wake?code=…, docs/agent-names.md §7.2): its setup, at the routine's URL and key.
   const clients = useRef(st.clients);
   clients.current = st.clients;
   const { show } = st;
   useEffect(
     () =>
-      window.hermesh?.onLink((url) => {
+      window.aide?.onLink((url) => {
         const l = parseAppLink(url);
         if (l?.kind !== "wake") return;
         local.openWakeLink({ code: l.code }).then((o) => {
@@ -97,7 +96,6 @@ export function MainWindow() {
         ) : (
           <Overview />
         )}
-        <RequestCards />
       </section>
       {search.shown !== null && <SearchPalette key={search.shown} leaving={search.leaving} />}
       <SheetHost />
@@ -117,7 +115,7 @@ export function AppMenuButton() {
       title={t("window.menu")}
       onClick={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
-        window.hermesh?.showAppMenu(r.left, r.bottom + 4);
+        window.aide?.showAppMenu(r.left, r.bottom + 4);
       }}
     >
       <Icon name="menu" />

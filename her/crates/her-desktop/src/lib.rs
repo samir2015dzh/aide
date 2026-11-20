@@ -2,7 +2,7 @@
 //! (https://github.com/vercel-labs/agent-desktop): it reads an app's window through the OS
 //! accessibility tree and acts on elements by ref, without moving the pointer or taking focus.
 //! Each call runs the CLI once and reads its one JSON envelope. Independent of the kernel; the
-//! tools and their approval live in her-core.
+//! tools and the policy that may refuse them live in her-core.
 
 use serde_json::Value;
 use std::path::Path;
@@ -71,8 +71,8 @@ impl DesktopError {
     }
 }
 
-/// Where the CLI is: `configured`, else the copy beside her (Hermesh.app's
-/// `Contents/MacOS`; on Linux in `her-computer/` there, where Hermesh's install puts it), else
+/// Where the CLI is: `configured`, else the copy beside her (Aide.app's
+/// `Contents/MacOS`; on Linux in `her-computer/` there, where Aide's install puts it), else
 /// her's own copy in `$HER_HOME/desktop/bin`, else `PATH`.
 pub fn locate(configured: Option<&Path>) -> Result<PathBuf, DesktopError> {
     let beside = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf));
@@ -159,7 +159,7 @@ fn timeout_for(args: &[String]) -> Duration {
 }
 
 /// A system permission as the CLI finds it where it runs: macOS grants it to the process it holds
-/// responsible for the CLI, such as the terminal app, or hermeshd when Hermesh runs her.
+/// responsible for the CLI, such as the terminal app, or aided when Aide runs her.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Permission {
     Granted,
@@ -291,10 +291,10 @@ fn without_cli(text: &str) -> Option<String> {
 }
 
 // macOS asks these of the process it holds responsible for her: the terminal app, or, when
-// Hermesh runs her, hermeshd, its LaunchAgent, whose Screen Recording switch is the Hermesh app's
+// Aide runs her, aided, its LaunchAgent, whose Screen Recording switch is the Aide app's
 // (docs/her-server.md §4.4).
 const ACCESSIBILITY_HINT: &str = "The user has to allow it in System Settings › Privacy & Security › Accessibility \
-    (Device Control and Data Access on macOS 27 and later), by switching on the program that runs her: hermeshd \
+    (Device Control and Data Access on macOS 27 and later), by switching on the program that runs her: aided \
     when Aide runs her, else the terminal app. Tell the user and stop; do not retry until they say it is done.";
 
 const SCREEN_RECORDING_HINT: &str = "The user has to allow it in System Settings › Privacy & Security › Screen & \
@@ -652,12 +652,12 @@ mod tests {
         let err = parse_envelope(denied).unwrap_err().to_string();
         assert!(err.starts_with("PERM_DENIED: Accessibility permission not granted The user has to allow it"), "{err}");
         assert!(err.contains("Privacy & Security › Accessibility (Device Control and Data Access"), "{err}");
-        assert!(err.contains("program that runs her: hermeshd when Aide runs her"), "{err}");
+        assert!(err.contains("program that runs her: aided when Aide runs her"), "{err}");
         assert!(!err.contains("--guide"), "the model is not sent to run the CLI's guide: {err}");
         let no_screen = r#"{"error":{"code":"PERM_DENIED","message":"Screen Recording permission not granted","suggestion":"Grant Screen Recording permission and retry"},"ok":false}"#;
         let err = parse_envelope(no_screen).unwrap_err().to_string();
         assert!(err.contains("Screen & System Audio Recording, by switching on the app that runs her: Aide when"), "{err}");
-        assert!(err.contains("cua_snapshot") && !err.contains("hermeshd"), "Screen Recording is the Aide app's switch: {err}");
+        assert!(err.contains("cua_snapshot") && !err.contains("aided"), "Screen Recording is the Aide app's switch: {err}");
     }
 
     #[test]

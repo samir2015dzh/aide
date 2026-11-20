@@ -147,27 +147,9 @@ fn ctx(dir: &Path) -> ToolCtx {
     }
 }
 
-/// A call as the kernel makes it: arguments repaired, then a mutating tool checked before it
-/// runs. A refusal by `check` must be the refusal of the run, and `check` must leave the file
-/// alone.
+/// A call as the kernel makes it: arguments repaired, then run.
 pub async fn call(tool: &dyn Tool, args: Value, ctx: &ToolCtx) -> Result<ToolOutput, ToolError> {
     let args = tool.prepare_arguments(args);
-    if tool.kind() == her_tools::ToolKind::Mutating {
-        let target = args.get("path").and_then(Value::as_str).map(|p| ctx.env.resolve(p));
-        let before = target.as_deref().map(state);
-        let checked = tool.check(&args, ctx).await;
-        if let Some(target) = &target {
-            assert_eq!(Some(state(target)), before, "check changed {}", target.display());
-        }
-        let result = tool.execute(args.clone(), ctx.clone()).await;
-        if let Err(refused) = &checked {
-            match &result {
-                Ok(out) => panic!("check refused {args} ({refused}) but the run succeeded: {}", text(out)),
-                Err(err) => assert_eq!(refused.to_string(), err.to_string(), "check and run of {args}"),
-            }
-        }
-        return result;
-    }
     tool.execute(args, ctx.clone()).await
 }
 

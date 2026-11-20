@@ -1,6 +1,5 @@
 //! `her`: command-line front end of the kernel.
 
-mod approval_prompt;
 #[cfg(test)]
 mod cli_shape;
 mod cmd_browser;
@@ -29,7 +28,6 @@ use clap::FromArgMatches;
 use clap::Parser;
 use clap::Subcommand;
 use her_llm::ThinkingLevel;
-use her_protocol::PermissionMode;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -392,12 +390,12 @@ enum BrowserCommand {
     /// Download Chrome for Testing into ~/.her/browser/chromium, for machines without Chrome,
     /// Edge or Chromium (used only when none is installed)
     Install,
-    /// Let the agent use your own Chrome through the Hermesh extension
+    /// Let the agent use your own Chrome through the Aide extension
     Extension {
         #[command(subcommand)]
         command: ExtensionCommand,
     },
-    /// The Native Messaging host that Chrome starts for the Hermesh extension
+    /// The Native Messaging host that Chrome starts for the Aide extension
     #[command(hide = true)]
     NativeHost {
         /// The her service's socket, when it is not $HER_HOME/run/her.sock
@@ -424,7 +422,7 @@ enum ExtensionCommand {
         /// $HER_HOME/run/her.sock (a service started with --listen unix://PATH)
         #[arg(long, value_name = "PATH")]
         socket: Option<PathBuf>,
-        /// Also write the Hermesh extension to this folder, to add to Chrome with "Load unpacked"
+        /// Also write the Aide extension to this folder, to add to Chrome with "Load unpacked"
         #[arg(long, value_name = "DIR")]
         folder: Option<PathBuf>,
     },
@@ -763,13 +761,12 @@ pub struct RunArgs {
     /// minimal, low, medium, high, xhigh, max
     #[arg(long)]
     pub thinking: Option<ThinkingLevel>,
-    /// Permission mode: manual (ask before changes), accept-edits (file changes in the
-    /// workspace run without asking) or bypass-permissions (everything runs without asking)
-    #[arg(long, alias = "approval", value_name = "MODE", value_parser = parse_permission_mode, overrides_with = "dangerously_skip_permissions")]
-    pub permission_mode: Option<ModeArg>,
-    /// Same as --permission-mode bypass-permissions: every action runs without asking,
-    /// including changes to .git and shell profiles. Use only in an isolated environment
-    #[arg(long, overrides_with = "permission_mode")]
+    /// Gone: her runs every action without asking. Taken and ignored with a warning, so that
+    /// scripts written for earlier versions keep working.
+    #[arg(long, alias = "approval", value_name = "MODE", hide = true)]
+    pub permission_mode: Option<String>,
+    /// Gone, as `--permission-mode`.
+    #[arg(long, hide = true)]
     pub dangerously_skip_permissions: bool,
     /// Stop a task after this many turns
     #[arg(long)]
@@ -794,7 +791,7 @@ pub struct ExecArgs {
     /// Same as --output json
     #[arg(long, overrides_with = "output")]
     pub json: bool,
-    /// Read operations (JSON lines) from stdin, e.g. approvals
+    /// Read operations (JSON lines) from stdin, e.g. steering input or an interrupt
     #[arg(long)]
     pub ops_stdin: bool,
     /// Attach an image: png, jpeg, gif or webp (repeatable)
@@ -812,17 +809,6 @@ pub enum OutputFormat {
     StreamJson,
 }
 
-/// A `--permission-mode` value, with a notice when it uses a name from before the rename.
-#[derive(Clone, Debug)]
-pub struct ModeArg {
-    pub mode: PermissionMode,
-    pub notice: Option<String>,
-}
-
-fn parse_permission_mode(name: &str) -> Result<ModeArg, String> {
-    PermissionMode::parse_with_notice(name).map(|(mode, notice)| ModeArg { mode, notice })
-}
-
 impl ExecArgs {
     pub fn format(&self) -> OutputFormat {
         if self.json { OutputFormat::Json } else { self.output }
@@ -830,17 +816,12 @@ impl ExecArgs {
 }
 
 impl RunArgs {
-    /// The mode chosen on the command line, if any.
-    pub fn permission_mode(&self) -> Option<PermissionMode> {
-        if self.dangerously_skip_permissions {
-            return Some(PermissionMode::BypassPermissions);
-        }
-        self.permission_mode.as_ref().map(|arg| arg.mode)
-    }
-
     /// Warnings about the arguments themselves.
     pub fn warnings(&self) -> impl Iterator<Item = String> + '_ {
-        self.permission_mode.iter().filter_map(|arg| arg.notice.clone())
+        let gone = |flag: &str| format!("{flag} is ignored: her runs every action without asking");
+        let mode = self.permission_mode.as_ref().map(|_| gone("--permission-mode"));
+        let skip = self.dangerously_skip_permissions.then(|| gone("--dangerously-skip-permissions"));
+        mode.into_iter().chain(skip)
     }
 }
 

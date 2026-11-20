@@ -20,9 +20,9 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/sessionstate"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/sessionstate"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // field is one key of a JSON object, in order.
@@ -380,7 +380,7 @@ func seconds(d time.Duration) *int64 {
 }
 
 // cliLimits are the limits states are worked out with: the defaults, or
-// HERMESH_LOST_AFTER and HERMESH_STALL_AFTER.
+// AIDE_LOST_AFTER and AIDE_STALL_AFTER.
 var cliLimits = sync.OnceValue(sessionstate.FromEnv)
 
 // eventView is an event as the contract shows it: common fields, then

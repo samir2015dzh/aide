@@ -1,86 +1,46 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { TFunction } from "i18next";
 import { Trans, useTranslation } from "react-i18next";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { parseConnectAddress, rootPlatform } from "@hermesh/core";
-import { Mark } from "@hermesh/ui";
+import { rootPlatform } from "@aide/core";
+import { Mark } from "@aide/ui";
 import { local } from "../api";
-import { CodeTiles } from "../components";
 import { Icon } from "../icons";
 import { errorText, save, useStore } from "../store";
 import { i18n } from "../../../shared/i18n";
 import { Frame, StepIcon } from "./Frame";
 import { setProgress } from "./progress";
 
-// Before this computer belongs to an owner: the welcome, logging in with an
-// account and password, a self-hosted relay or joining an owner, and the
-// authorization page before its first Touch ID (docs/trusted-devices.md
-// 4.1–4.2). Every way starts with the address of the owner's own server,
-// typed: no build names one and there is no official service to fall back
-// to (owner's ruling of 2026-11-19).
+// Before this computer belongs to an owner: the welcome, logging in with the
+// server, account and password, or setting a new server up with its setup
+// code, then the page saying what this computer will do (docs/accounts.md).
+// No other device approves, and there is no code to compare. Every way
+// starts with the owner's own server, typed: no build names one.
 
-/**
- * What this computer is about to become, shown on the authorization page;
- * nothing happens before Continue. typed: the person typed the owner's
- * connection address.
- */
+/** What this computer is about to log in with, shown on the authorization page; nothing happens before Continue. */
 type How =
-  | { kind: "selfHosted"; relay: string; claim: string }
-  | { kind: "join"; owner: string; relay: string; typed: boolean }
-  | { kind: "password"; server: string; account: string; password: string };
+  | { kind: "login"; server: string; account: string; password: string }
+  | { kind: "setUp"; server: string; code: string; account: string; password: string };
 
-type Page =
-  | { kind: "welcome" }
-  | { kind: "selfHosted" }
-  | { kind: "password" }
-  | { kind: "joinAddress" }
-  | { kind: "authorize"; how: How }
-  | { kind: "join"; owner: string; relay: string; machine: boolean; trusted: boolean; typed: boolean };
+type Page = { kind: "welcome" } | { kind: "login" } | { kind: "setUp" } | { kind: "authorize"; how: How };
 
-const bridge = () => window.hermesh!;
+const bridge = () => window.aide!;
 
 export function SignIn() {
   const [page, setPage] = useState<Page>({ kind: "welcome" });
-  const [relay, setRelay] = useState("");
-  const [claim, setClaim] = useState("");
-
   const welcome = () => setPage({ kind: "welcome" });
   switch (page.kind) {
     case "welcome":
-      return <Welcome selfHosted={() => setPage({ kind: "selfHosted" })} password={() => setPage({ kind: "password" })} />;
-    case "password":
-      return <Password back={welcome} next={(how) => setPage({ kind: "authorize", how })} />;
-    case "selfHosted":
-      return (
-        <SelfHosted
-          relay={relay}
-          claim={claim}
-          set={(r, c) => (setRelay(r), setClaim(c))}
-          back={welcome}
-          next={() => setPage({ kind: "authorize", how: { kind: "selfHosted", relay: relay.trim(), claim: claim.trim() } })}
-          join={() => setPage({ kind: "joinAddress" })}
-        />
-      );
-    case "joinAddress":
-      return <JoinAddress back={() => setPage({ kind: "selfHosted" })} next={(owner, at) => setPage({ kind: "authorize", how: { kind: "join", owner, relay: at, typed: true } })} />;
+      return <Welcome setUp={() => setPage({ kind: "setUp" })} login={() => setPage({ kind: "login" })} />;
+    case "login":
+      return <Login back={welcome} next={(how) => setPage({ kind: "authorize", how })} />;
+    case "setUp":
+      return <SetUp back={welcome} next={(how) => setPage({ kind: "authorize", how })} />;
     case "authorize":
-      return (
-        <Authorize
-          how={page.how}
-          cancel={() => {
-            setPage(page.how.kind === "selfHosted" ? { kind: "selfHosted" } : page.how.kind === "password" ? { kind: "password" } : { kind: "welcome" });
-          }}
-          join={(machine, trusted) =>
-            page.how.kind === "join" && setPage({ kind: "join", owner: page.how.owner, relay: page.how.relay, machine, trusted, typed: page.how.typed })
-          }
-        />
-      );
-    case "join":
-      return <Join owner={page.owner} relay={page.relay} machine={page.machine} trusted={page.trusted} typed={page.typed} cancel={welcome} />;
+      return <Authorize how={page.how} cancel={() => setPage({ kind: page.how.kind })} />;
   }
 }
 
-function Welcome({ selfHosted, password }: { selfHosted: () => void; password: () => void }) {
+function Welcome({ setUp, login }: { setUp: () => void; login: () => void }) {
   const { t } = useTranslation("firstrun");
   return (
     <Frame>
@@ -94,12 +54,12 @@ function Welcome({ selfHosted, password }: { selfHosted: () => void; password: (
         <p className="lede">
           <Trans t={t} i18nKey="welcome.lede" components={{ br: <br /> }} />
         </p>
-        <button className="btn primary lg cta" onClick={password}>
+        <button className="btn primary lg cta" onClick={login}>
           {t("password.start")}
         </button>
       </div>
       <div className="center-line">
-        <button className="link" onClick={selfHosted}>
+        <button className="link" onClick={setUp}>
           {t("welcome.selfHosted")}
         </button>
       </div>
@@ -110,7 +70,6 @@ function Welcome({ selfHosted, password }: { selfHosted: () => void; password: (
     </Frame>
   );
 }
-
 /**
  * Once, after this Mac erased everything (or was erased from another device):
  * what was done, who erases next time it connects, and the worktrees kept.
@@ -162,125 +121,126 @@ function ErasedNote() {
   );
 }
 
-/**
- * Logging in with the owner's account and password (docs/password-login.md):
- * no other device approves, no codes or digits. The server is typed (the
- * last one typed is kept): there is no default.
- */
-function Password({ back, next }: { back: () => void; next: (how: How) => void }) {
+
+/** The last server typed, kept for next time: there is no default. */
+function lastServer(): string {
+  try {
+    return localStorage.getItem("loginServer") ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function keepServer(server: string) {
+  try {
+    localStorage.setItem("loginServer", server);
+  } catch {
+    // Typed again next time.
+  }
+}
+
+/** Logging in with the owner's server, account and password. */
+function Login({ back, next }: { back: () => void; next: (how: How) => void }) {
   const { t } = useTranslation("firstrun");
-  const [server, setServer] = useState(() => {
-    try {
-      return localStorage.getItem("loginServer") ?? "";
-    } catch {
-      return "";
-    }
-  });
+  const [server, setServer] = useState(lastServer);
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const ok = server.trim() !== "" && account.trim() !== "" && password !== "";
-  const go = () => {
-    try {
-      localStorage.setItem("loginServer", server.trim());
-    } catch {
-      // Typed again next time.
-    }
-    next({ kind: "password", server: server.trim(), account: account.trim(), password });
-  };
+  const go = () => (keepServer(server.trim()), next({ kind: "login", server: server.trim(), account: account.trim(), password }));
   return (
-    <Frame
-      foot={
-        <>
-          <span className="note" />
-          <button className="btn" onClick={back}>
-            {t("back")}
-          </button>
-          <button className="btn primary" disabled={!ok} onClick={go}>
-            {t("continue")}
-          </button>
-        </>
-      }
-    >
+    <Frame foot={<Foot back={back} ok={ok} go={go} />}>
       <StepIcon name="key" />
       <h2 className="ob-h">{t("password.title")}</h2>
       <p className="ob-p">{t("password.body")}</p>
       <form className="fgroup ob-form" onSubmit={(e) => (e.preventDefault(), ok && go())}>
-        <div className="frow">
-          <label htmlFor="server">{t("password.server")}</label>
-          <span className="fv">
-            <input id="server" className="field" placeholder="relay.example.com" value={server} onChange={(e) => setServer(e.target.value)} autoFocus={server === ""} />
-          </span>
-        </div>
-        <div className="frow">
-          <label htmlFor="account">{t("password.account")}</label>
-          <span className="fv">
-            <input id="account" className="field" autoComplete="username" value={account} onChange={(e) => setAccount(e.target.value)} autoFocus={server !== ""} />
-          </span>
-        </div>
-        <div className="frow">
-          <label htmlFor="password">{t("password.password")}</label>
-          <span className="fv">
-            <input id="password" className="field" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </span>
-        </div>
+        <Field id="server" label={t("password.server")} placeholder="relay.example.com" value={server} set={setServer} autoFocus={server === ""} />
+        <Field id="account" label={t("password.account")} autoComplete="username" value={account} set={setAccount} autoFocus={server !== ""} />
+        <Field id="password" label={t("password.password")} type="password" autoComplete="current-password" value={password} set={setPassword} />
         <button type="submit" hidden />
       </form>
-      {plainHTTP(server) && (
-        <p className="ob-warn" role="note">
-          <Icon name="warn" />
-          {t("selfHosted.plain")}
-        </p>
-      )}
+      {plainHTTP(server) && <PlainWarning />}
     </Frame>
   );
 }
 
-/** A relay of one's own (hermesh-relay): its address and claim code. */
-function SelfHosted(p: { relay: string; claim: string; set: (relay: string, claim: string) => void; back: () => void; next: () => void; join: () => void }) {
+/** A new server of one's own (aide-relay): its address, the setup code it printed, and the account it will keep. */
+function SetUp({ back, next }: { back: () => void; next: (how: How) => void }) {
   const { t } = useTranslation("firstrun");
-  const ok = p.relay.trim() !== "" && p.claim.trim() !== "";
+  const [server, setServer] = useState("");
+  const [code, setCode] = useState("");
+  const [account, setAccount] = useState("");
+  const [password, setPassword] = useState("");
+  const ok = server.trim() !== "" && code.trim() !== "" && account.trim() !== "" && password.length >= 8;
+  const go = () => (keepServer(server.trim()), next({ kind: "setUp", server: server.trim(), code: code.trim(), account: account.trim(), password }));
   return (
-    <Frame
-      foot={
-        <>
-          <span className="note" />
-          <button className="btn" onClick={p.back}>
-            {t("back")}
-          </button>
-          <button className="btn primary" disabled={!ok} onClick={p.next}>
-            {t("continue")}
-          </button>
-        </>
-      }
-    >
+    <Frame foot={<Foot back={back} ok={ok} go={go} />}>
       <StepIcon name="server" />
-      <h2 className="ob-h">{t("selfHosted.title")}</h2>
-      <p className="ob-p">{t("selfHosted.body")}</p>
-      <form className="fgroup ob-form" onSubmit={(e) => (e.preventDefault(), ok && p.next())}>
-        <div className="frow">
-          <label htmlFor="relay">{t("selfHosted.address")}</label>
-          <span className="fv">
-            <input id="relay" className="field" placeholder="relay.example.com" value={p.relay} onChange={(e) => p.set(e.target.value, p.claim)} autoFocus />
-          </span>
-        </div>
-        <div className="frow">
-          <label htmlFor="claim">{t("selfHosted.claim")}</label>
-          <span className="fv">
-            <input id="claim" className="field mono" placeholder="XXXX-XXXX-XXXX-XXXX" value={p.claim} onChange={(e) => p.set(p.relay, e.target.value)} />
-          </span>
-        </div>
+      <h2 className="ob-h">{t("setUp.title")}</h2>
+      <p className="ob-p">{t("setUp.body")}</p>
+      <form className="fgroup ob-form" onSubmit={(e) => (e.preventDefault(), ok && go())}>
+        <Field id="relay" label={t("setUp.address")} placeholder="relay.example.com" value={server} set={setServer} autoFocus />
+        <Field id="code" label={t("setUp.code")} mono placeholder="XXXX-XXXX-XXXX-XXXX" value={code} set={setCode} />
+        <Field id="account" label={t("setUp.account")} autoComplete="username" value={account} set={setAccount} />
+        <Field id="password" label={t("setUp.password")} type="password" autoComplete="new-password" value={password} set={setPassword} />
         <button type="submit" hidden />
       </form>
-      {plainHTTP(p.relay) && (
-        <p className="ob-warn" role="note">
-          <Icon name="warn" />
-          {t("selfHosted.plain")}
-        </p>
-      )}
-      <p className="ob-alt">
-        <Trans t={t} i18nKey="selfHosted.join" components={{ join: <button className="link" onClick={p.join} /> }} />
-      </p>
+      {plainHTTP(server) && <PlainWarning />}
     </Frame>
+  );
+}
+
+function Foot({ back, ok, go }: { back: () => void; ok: boolean; go: () => void }) {
+  const { t } = useTranslation("firstrun");
+  return (
+    <>
+      <span className="note" />
+      <button className="btn" onClick={back}>
+        {t("back")}
+      </button>
+      <button className="btn primary" disabled={!ok} onClick={go}>
+        {t("continue")}
+      </button>
+    </>
+  );
+}
+
+function Field(p: {
+  id: string;
+  label: string;
+  value: string;
+  set: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoComplete?: string;
+  autoFocus?: boolean;
+  mono?: boolean;
+}) {
+  return (
+    <div className="frow">
+      <label htmlFor={p.id}>{p.label}</label>
+      <span className="fv">
+        <input
+          id={p.id}
+          className={p.mono ? "field mono" : "field"}
+          type={p.type}
+          placeholder={p.placeholder}
+          autoComplete={p.autoComplete}
+          value={p.value}
+          onChange={(e) => p.set(e.target.value)}
+          autoFocus={p.autoFocus}
+        />
+      </span>
+    </div>
+  );
+}
+
+function PlainWarning() {
+  const { t } = useTranslation("firstrun");
+  return (
+    <p className="ob-warn" role="note">
+      <Icon name="warn" />
+      {t("setUp.plain")}
+    </p>
   );
 }
 
@@ -300,85 +260,39 @@ function plainHTTP(address: string): boolean {
   return !(h === "localhost" || h.startsWith("127.") || h === "::1");
 }
 
-/** Another device of an owner: the owner's connection address, then the same join as from the console. */
-function JoinAddress({ back, next }: { back: () => void; next: (owner: string, relay: string) => void }) {
-  const { t } = useTranslation("firstrun");
-  const [address, setAddress] = useState("");
-  const [error, setError] = useState("");
-  const go = () => {
-    const a = parseConnectAddress(address);
-    if (!a) return setError(t("joinAddress.invalid"));
-    next(a.owner, a.relay);
-  };
-  return (
-    <Frame
-      foot={
-        <>
-          {error ? <Problem text={error} /> : <span className="note" />}
-          <button className="btn" onClick={back}>
-            {t("back")}
-          </button>
-          <button className="btn primary" disabled={address.trim() === ""} onClick={go}>
-            {t("continue")}
-          </button>
-        </>
-      }
-    >
-      <StepIcon name="devices" />
-      <h2 className="ob-h">{t("joinAddress.title")}</h2>
-      <p className="ob-p">{t("joinAddress.body")}</p>
-      <form className="fgroup ob-form" onSubmit={(e) => (e.preventDefault(), address.trim() && go())}>
-        <div className="frow">
-          <label htmlFor="address">{t("joinAddress.address")}</label>
-          <span className="fv">
-            <input id="address" className="field mono" placeholder="relay.example.com/o_xxxxxxxx" value={address} onChange={(e) => (setAddress(e.target.value), setError(""))} autoFocus />
-          </span>
-        </div>
-      </form>
-    </Frame>
-  );
-}
-
 /**
- * Before this computer's first Touch ID: what it will do, row by row.
- * Working here and reminders are on unless the person turns them off.
+ * Before logging in: what this computer will do, row by row. Being one of
+ * the owner's devices is on unless the person turns it off (logging in, not
+ * setting up): then it is a machine only. Working here and reminders are on
+ * unless turned off.
  */
-function Authorize({ how, cancel, join }: { how: How; cancel: () => void; join: (machine: boolean, trusted: boolean) => void }) {
+function Authorize({ how, cancel }: { how: How; cancel: () => void }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
-  // Joining, this Mac may be a machine only (a work Mac): then sharing its agents is what it is for.
-  const [trusted, setTrusted] = useState(true);
+  const [device, setDevice] = useState(true);
   const [share, setShare] = useState(true);
-  const machine = share || !trusted;
+  const machine = share || !device;
   const [remind, setRemind] = useState(true);
   const [busy, setBusy] = useState(false);
   const [trouble, setTrouble] = useState<Trouble | null>(null);
-  const joining = how.kind === "join";
 
   const go = async () => {
     // Reminders: start with the login session (in the menu bar) and notify.
     for (const k of ["openAtLogin", "notifyQuestion", "notifyFailed"]) save(k, remind);
-    (window.hermesh as { setLoginItem?: (on: boolean) => void } | undefined)?.setLoginItem?.(remind);
-    if (how.kind === "join") return join(machine, trusted);
+    (window.aide as { setLoginItem?: (on: boolean) => void } | undefined)?.setLoginItem?.(remind);
     setBusy(true);
-    // The pages after this one, before hermeshd says it is set up (so the main window never flashes).
-    setProgress(machine ? { step: "prepare" } : { step: "agent" });
+    // The pages after this one, before aided says it is set up (so the main window never flashes).
+    setProgress(!device ? null : machine ? { step: "prepare" } : { step: "agent" });
     try {
-      if (how.kind === "password") {
-        const name = await bridge().computerName();
-        await bridge().readySigner();
-        await local.passwordLogin({
-          relayUrl: how.server,
-          account: how.account,
-          password: how.password,
-          rootLabel: name,
-          rootPlatform: rootPlatform(bridge().platform),
-          localMachineName: machine ? name : "",
-        });
+      const name = await bridge().computerName();
+      const platform = rootPlatform(bridge().platform);
+      const localMachineName = machine ? name : "";
+      if (how.kind === "setUp") {
+        await local.setup({ relayUrl: how.server, setupCode: how.code, account: how.account, password: how.password, label: name, platform, localMachineName });
+      } else if (!device) {
+        await local.logIn({ relayUrl: how.server, account: how.account, password: how.password, label: name, platform, machineOnly: true });
       } else {
-        const name = await bridge().computerName();
-        await bridge().readySigner();
-        await local.setup({ relayUrl: how.relay, claimCode: how.claim, rootLabel: name, rootPlatform: rootPlatform(bridge().platform), localMachineName: machine ? name : "" });
+        await local.logIn({ relayUrl: how.server, account: how.account, password: how.password, label: name, platform, localMachineName });
       }
       await st.refresh();
     } catch (e) {
@@ -393,7 +307,7 @@ function Authorize({ how, cancel, join }: { how: How; cancel: () => void; join: 
       sheet={trouble && <TroubleSheet trouble={trouble} close={() => setTrouble(null)} />}
       foot={
         <>
-          <span className="note">{joining ? t(trusted ? "authorize.joinNote" : "authorize.machineOnlyNote") : ""}</span>
+          <span className="note" />
           <button className="btn" onClick={cancel} disabled={busy}>
             {t("cancel")}
           </button>
@@ -404,18 +318,18 @@ function Authorize({ how, cancel, join }: { how: How; cancel: () => void; join: 
       }
     >
       <StepIcon name="key" />
-      <h2 className="ob-h">{joining ? t("authorize.titleJoin") : t("authorize.titleTrust")}</h2>
+      <h2 className="ob-h">{t("authorize.title")}</h2>
       <p className="ob-p">{t("authorize.body")}</p>
       <div className="perm">
         <div className="prow">
           <span className="pi">
-            <Icon name="key" />
+            <Icon name="devices" />
           </span>
           <div className="pt">
-            <b>{t("authorize.trusted")}</b>
-            <span>{t(trusted ? "authorize.trustedBody" : "authorize.trustedOff")}</span>
+            <b>{t("authorize.device")}</b>
+            <span>{t(device ? "authorize.deviceBody" : "authorize.deviceOff")}</span>
           </div>
-          {joining ? <Switch on={trusted} set={setTrusted} label={t("authorize.trusted")} disabled={busy} /> : <span className="req">{t("authorize.required")}</span>}
+          {how.kind === "login" ? <Switch on={device} set={setDevice} label={t("authorize.device")} disabled={busy} /> : <span className="req">{t("authorize.required")}</span>}
         </div>
         <div className="prow">
           <span className="pi">
@@ -423,9 +337,9 @@ function Authorize({ how, cancel, join }: { how: How; cancel: () => void; join: 
           </span>
           <div className="pt">
             <b>{t("authorize.share")}</b>
-            <span>{t(trusted ? "authorize.shareBody" : "authorize.shareBodyMachine")}</span>
+            <span>{t(device ? "authorize.shareBody" : "authorize.shareBodyMachine")}</span>
           </div>
-          {trusted ? <Switch on={share} set={setShare} label={t("authorize.share")} disabled={busy} /> : <span className="req">{t("authorize.required")}</span>}
+          {device ? <Switch on={share} set={setShare} label={t("authorize.share")} disabled={busy} /> : <span className="req">{t("authorize.required")}</span>}
         </div>
         <div className="prow">
           <span className="pi">
@@ -433,7 +347,7 @@ function Authorize({ how, cancel, join }: { how: How; cancel: () => void; join: 
           </span>
           <div className="pt">
             <b>{t("authorize.remind")}</b>
-            <span>{t(trusted ? "authorize.remindBody" : "authorize.remindBodyMachine")}</span>
+            <span>{t(device ? "authorize.remindBody" : "authorize.remindBodyMachine")}</span>
           </div>
           <Switch on={remind} set={setRemind} label={t("authorize.remind")} disabled={busy} />
         </div>
@@ -446,145 +360,62 @@ function Switch({ on, set, label, disabled }: { on: boolean; set: (on: boolean) 
   return <button className={`sw ${on ? "on" : ""}`} role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => set(!on)} />;
 }
 
-type JoinState =
-  | { s: "asking" }
-  | { s: "waiting"; code: string; verification: string }
-  | { s: "approved"; code: string; by: string }
-  | { s: "failed"; trouble: Trouble; shown: boolean };
-
 /**
- * Joining an owner as another trusted device (docs/trusted-devices.md 4.2):
- * ask (one Touch ID: the new key signs the request), show the verification
- * code to compare on a device the owner has, then take the two digits that
- * device shows once it approved. Not trusted: as a machine only, with no
- * Touch ID here, and no digits when the person typed the connection address
- * (typed). relay: where devices connect, from the connection address typed
- * (or this machine only's own, becoming a trusted device).
+ * A machine only becoming one of the owner's devices too: the account and
+ * password again, on the server it already uses; its machine stays.
  */
-export function Join(p: { owner: string; relay: string; machine: boolean; trusted?: boolean; typed?: boolean; cancel: () => void }) {
-  const { owner, relay, machine, trusted = true, typed = false, cancel } = p;
+export function Upgrade({ relay, cancel }: { relay: string; cancel: () => void }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
-  const [state, setState] = useState<JoinState>({ s: "asking" });
-  const [digits, setDigits] = useState("");
-  const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
-  const code = state.s === "waiting" || state.s === "approved" ? state.code : "";
-  const codeRef = useRef("");
-  codeRef.current = code;
-
-  useEffect(() => {
-    const abort = new AbortController();
-    const signal = abort.signal;
-    (async () => {
-      try {
-        const name = await bridge().computerName();
-        const relayUrl = relay;
-        const platform = rootPlatform(bridge().platform);
-        if (trusted) await bridge().readySigner();
-        const res = await local.requestJoin(
-          trusted
-            ? { relayUrl, ownerId: owner, rootLabel: name, rootPlatform: platform, localMachineName: machine ? name : "" }
-            : { relayUrl, ownerId: owner, rootLabel: name, rootPlatform: platform, machineOnly: true, ownerTyped: typed },
-          { signal },
-        );
-        setState({ s: "waiting", code: res.code, verification: res.verificationCode });
-        for (;;) {
-          const w = await local.waitJoin({ code: res.code }, { signal });
-          if (w.done && !w.matchRequired) return await finish(res.code, "");
-          if (w.done) return setState({ s: "approved", code: res.code, by: w.approvedBy });
-          if (w.expired) throw new Error(t("join.expired"));
-        }
-      } catch (e) {
-        if (!signal.aborted) setState({ s: "failed", trouble: troubleOf(t, e, t("join.failed")), shown: true });
-      }
-    })();
-    return () => abort.abort();
-  }, [owner, relay, machine, trusted, typed, attempt]);
-
-  // Keeps the owner: the digits typed (none when not asked for).
-  const finish = async (code: string, matchCode: string) => {
-    // A trusted device that is a machine too sets this Mac up next; a machine only is done.
-    setProgress(trusted && machine ? { step: "prepare", joined: true } : null);
+  const [account, setAccount] = useState(st.status?.account ?? "");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [trouble, setTrouble] = useState<Trouble | null>(null);
+  const ok = account.trim() !== "" && password !== "" && !busy;
+  const go = async () => {
+    setBusy(true);
+    setProgress({ step: "prepare", joined: true });
     try {
-      await local.confirmJoin({ code, accept: true, matchCode });
+      const name = await bridge().computerName();
+      await local.logIn({ relayUrl: relay, account: account.trim(), password, label: name, platform: rootPlatform(bridge().platform), localMachineName: name });
       await st.refresh();
+      st.set({ upgrading: false });
     } catch (e) {
       setProgress(null);
-      throw e;
+      setTrouble(troubleOf(t, e, t("authorize.failed")));
+      setBusy(false);
     }
   };
-  const confirm = async (accept: boolean) => {
-    setError("");
-    try {
-      if (!accept) return (await local.confirmJoin({ code, accept: false }), cancel());
-      await finish(code, digits);
-    } catch (e) {
-      if (e instanceof ConnectError && e.code === Code.InvalidArgument) setError(t("join.wrongDigits"));
-      else setState({ s: "failed", trouble: troubleOf(t, e, t("join.failed")), shown: true });
-    }
-  };
-  const stop = () => {
-    if (codeRef.current) local.confirmJoin({ code: codeRef.current, accept: false }).catch(() => {});
-    cancel();
-  };
-
   return (
-    <Frame sheet={state.s === "failed" && state.shown && <TroubleSheet trouble={state.trouble} close={() => setState({ ...state, shown: false })} />}>
-      <div className="status">
-        <Mark size={64} variant={state.s === "failed" ? undefined : state.s === "approved" ? "lock" : state.s === "asking" ? "seq" : "wait"} />
-        <h2 className="ob-h">{state.s === "approved" ? t("join.titleDigits") : t("join.titleApprove")}</h2>
-        {state.s === "asking" && <p className="ob-p">{t("join.asking")}</p>}
-        {state.s === "waiting" && (
-          <>
-            <p className="ob-p">{t(trusted ? "join.waiting" : "join.waitingMachine")}</p>
-            <CodeTiles code={state.verification} hint={t("join.codeHint")} />
-          </>
-        )}
-        {state.s === "approved" && (
-          <>
-            <p className="ob-p">{t("join.approved", { name: state.by })}</p>
-            <input
-              className="field join-digits"
-              aria-label={t("join.digits")}
-              inputMode="numeric"
-              placeholder="00"
-              value={digits}
-              onChange={(e) => (setDigits(e.target.value.replace(/\D/g, "").slice(0, 2)), setError(""))}
-              onKeyDown={(e) => e.key === "Enter" && digits.length === 2 && confirm(true)}
-              autoFocus
-            />
-            {error && <Problem text={error} />}
-            <div className="status-actions">
-              <button className="btn" onClick={() => confirm(false)}>
-                {t("join.notMe")}
-              </button>
-              <button className="btn primary" disabled={digits.length !== 2} onClick={() => confirm(true)}>
-                {t("join.join")}
-              </button>
-            </div>
-            {/* An approving device too old to know about machines only shows no digits. */}
-            <p className="status-note">{t(trusted ? "join.notMeNote" : "join.notMeNoteMachine")}</p>
-          </>
-        )}
-        {state.s === "failed" && (
-          <>
-            <button className="btn primary" onClick={() => (setState({ s: "asking" }), setAttempt((n) => n + 1))}>
-              {t("join.retry")}
-            </button>
-          </>
-        )}
-        <button className="link status-cancel" onClick={stop}>
-          {t("cancel")}
-        </button>
-      </div>
+    <Frame
+      sheet={trouble && <TroubleSheet trouble={trouble} close={() => setTrouble(null)} />}
+      foot={
+        <>
+          <span className="note" />
+          <button className="btn" onClick={cancel} disabled={busy}>
+            {t("cancel")}
+          </button>
+          <button className="btn primary" disabled={!ok} onClick={go}>
+            {busy ? t("authorize.settingUp") : t("continue")}
+          </button>
+        </>
+      }
+    >
+      <StepIcon name="devices" />
+      <h2 className="ob-h">{t("password.title")}</h2>
+      <p className="ob-p">{t("password.body")}</p>
+      <form className="fgroup ob-form" onSubmit={(e) => (e.preventDefault(), ok && go())}>
+        <Field id="account" label={t("password.account")} autoComplete="username" value={account} set={setAccount} autoFocus={account === ""} />
+        <Field id="password" label={t("password.password")} type="password" autoComplete="current-password" value={password} set={setPassword} autoFocus={account !== ""} />
+        <button type="submit" hidden />
+      </form>
     </Frame>
   );
 }
 
 /**
- * This computer is no longer one of the owner's trusted devices: another
- * removed it, or the account started over. Or, a machine only, its owner
+ * This computer is no longer one of the owner's devices: another signed it
+ * out, or the account started over. Or, a machine only, its owner
  * removed it.
  */
 export function Removed() {
@@ -616,15 +447,13 @@ export function Removed() {
 type Trouble = { title: string; message: string; detail?: string };
 
 /**
- * e said for the person. hermeshd checks the relay before any Touch ID and
+ * e said for the person. aided checks the server before logging in and
  * says "relay unreachable (host): reason" when this network can't reach it.
  */
 function troubleOf(t: TFunction<"firstrun">, e: unknown, title: string): Trouble {
   const text = errorText(e);
   const m = /^relay unreachable \(([^)]+)\): (.*)$/s.exec(text);
   if (m) return { title: t("unreachable.title"), message: t("unreachable.body", { host: m[1] }), detail: m[2] };
-  // hermeshd's ErrSigningRejected: the signer said why, in its own window.
-  if (text.includes("the owner declined to sign")) return { title, message: t("declined") };
   return { title, message: text };
 }
 

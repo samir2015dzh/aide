@@ -15,16 +15,16 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1/machinev1connect"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/internal/herhost/hertest"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/internal/herhost/hertest"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // TestHer: Her on one of the owner's machines, reached as the owner's
@@ -47,11 +47,11 @@ func TestHer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// An owner's device: a key of its own certified by the root key, as the
-	// apps' are; its tunnel to alpha goes through the relay.
+	// An owner's device: a key of its own certified by the server's key, as
+	// the apps' are once logged in; its tunnel to alpha goes through the relay.
 	dev, _ := identity.GenerateKey()
 	cert, err := identity.Sign(&identityv1.OwnerDeviceCert{OwnerId: w.ownerID, DevicePublicKey: identity.MarshalPublicKey(dev.Public()),
-		Label: "test device", IssuedAt: timestamppb.Now()}, w.app.root)
+		Label: "test device", IssuedAt: timestamppb.Now()}, w.serverKey(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestHer(t *testing.T) {
 	}
 	apply := func(c *identityv1.AdminCommand) {
 		t.Helper()
-		signed, err := identity.Sign(command(c), w.app.root)
+		signed, err := identity.Sign(command(c), w.serverKey(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -175,21 +175,21 @@ func TestHer(t *testing.T) {
 		return st.Latest.GetText() == "hello" && st.Latest.GetBotId() == bot && st.Latest.GetKind() == machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE && st.Unread > 0
 	})
 
-	// What only the root key may do; an assistant's full access is the
-	// owner's choice on any of their devices, and older ones sign it. A
+	// What only the root key may do. A
 	// method the gate doesn't open at all is unimplemented, as one this
-	// hermeshd doesn't know (docs/version-skew.md §6.3).
+	// aided doesn't know (docs/version-skew.md §6.3).
 	_, err = call("", "server/shutdown", ``)
 	if connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("server/shutdown not refused as unimplemented: %v", err)
 	}
 	_, err = call("", "config/write", `{"layer":"user","edits":[{"key_path":"mcp_servers.notes","value":{"command":"/bin/cat"}}]}`)
 	refused(err)
-	apply(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: bot, PermissionMode: "bypass-permissions"}}})
 	apply(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerCommandConnector{SetHerCommandConnector: &identityv1.SetHerCommandConnector{Name: "notes", Command: "/bin/cat"}}})
+	// Her has no modes to set: she runs actions without asking, and her
+	// conversation says no permission mode.
 	result, err = call("", "bots/open", `{"bot_id":"`+bot+`","history_limit":0}`)
-	if err != nil || !strings.Contains(string(result), `"permission_mode":"bypass-permissions"`) {
-		t.Fatalf("the assistant's mode: %s %v", result, err)
+	if err != nil || strings.Contains(string(result), "permission_mode") {
+		t.Fatalf("the assistant's conversation: %s %v", result, err)
 	}
 	if result, err = call("", "config/read", `{}`); err != nil || !strings.Contains(string(result), `"/bin/cat"`) {
 		t.Fatalf("the connector: %s %v", result, err)

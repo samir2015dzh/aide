@@ -10,7 +10,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::AsyncBufReadExt;
-use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
 
 fn write(path: &Path, text: &str) {
@@ -51,33 +50,25 @@ fn install_skills(env: &TestEnv, work: &Path) -> PathBuf {
     skill
 }
 
-/// Runs `her exec --output stream-json --ops-stdin` in `cwd`, approving every request; returns the exit
-/// code, the events and how many approvals were asked for.
-async fn exec_approving(env: &TestEnv, cwd: &Path, args: &[&str]) -> (i32, Vec<Value>, Vec<Value>) {
-    let mut all = vec!["exec", "--output", "stream-json", "--ops-stdin"];
+/// Runs `her exec --output stream-json` in `cwd`; returns the exit code and the events. Nothing
+/// is asked: every call runs.
+async fn exec_events(env: &TestEnv, cwd: &Path, args: &[&str]) -> (i32, Vec<Value>) {
+    let mut all = vec!["exec", "--output", "stream-json"];
     all.extend_from_slice(args);
     let mut child = env
         .her_in(cwd, &all)
-        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
-    let mut stdin = child.stdin.take().unwrap();
     let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
     let mut events = Vec::new();
-    let mut approvals = Vec::new();
     while let Some(line) = lines.next_line().await.unwrap() {
         let event: Value = serde_json::from_str(&line).unwrap();
-        if event["type"] == "approval_requested" {
-            approvals.push(event.clone());
-            let op = json!({"type": "approval", "call_id": event["call_id"], "decision": {"type": "approve"}});
-            stdin.write_all(format!("{op}\n").as_bytes()).await.unwrap();
-            stdin.flush().await.unwrap();
-        }
+        assert!(!event["type"].as_str().unwrap_or("").starts_with("approval"), "{event}");
         events.push(event);
     }
-    (common::exit_code(&mut child).await, events, approvals)
+    (common::exit_code(&mut child).await, events)
 }
 
 fn of_type<'a>(events: &'a [Value], kind: &str) -> Vec<&'a Value> {
@@ -95,16 +86,15 @@ fn logged_system_prompt(file: &str) -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn exec_follows_a_skill_from_the_catalog() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
     let skill = install_skills(&env, &work);
 
-    let (code, events, approvals) =
-        exec_approving(&env, &work, &["[[mock:skill:gen-report]] write this week's report"]).await;
+    let (code, events) = exec_events(&env, &work, &["[[mock:skill:gen-report]] write this week's report"]).await;
     assert_eq!(code, 0, "{events:#?}");
 
-    // The model read the SKILL.md and its reference, then ran the script: three tools, and
-    // only the script needed an approval, even though manual mode asks for any change.
+    // The model read the SKILL.md and its reference, then ran the script: three tools, none
+    // asked about.
     let started = of_type(&events, "tool_started");
     let calls: Vec<(String, String)> = started
         .iter()
@@ -118,8 +108,6 @@ async fn exec_follows_a_skill_from_the_catalog() {
     assert!(calls[1].1.contains("references/format.md"));
     assert_eq!(calls[2].0, "bash");
     assert!(calls[2].1.contains(&slashed(&skill.join("scripts/gen.sh"))), "{calls:?}");
-    assert_eq!(approvals.len(), 1);
-    assert_eq!(approvals[0]["call_id"], started[2]["call_id"], "the script asked, the reads did not");
     let results = of_type(&events, "tool_completed");
     assert!(results[0]["result"]["content"][0]["text"].as_str().unwrap().contains("# Weekly report"));
     assert!(results[1]["result"]["content"][0]["text"].as_str().unwrap().contains("WEEKLY-REPORT"));
@@ -155,11 +143,11 @@ async fn exec_follows_a_skill_from_the_catalog() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn skills_can_be_turned_off_or_disabled() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
     install_skills(&env, &work);
 
-    let (code, events, _) = exec_approving(
+    let (code, events) = exec_events(
         &env,
         &work,
         &["-c", "skills.enabled=false", "[[mock:skill:gen-report]] write the report"],
@@ -169,7 +157,7 @@ async fn skills_can_be_turned_off_or_disabled() {
     assert_eq!(of_type(&events, "task_completed")[0]["last_message"], "no skill named gen-report");
     assert!(of_type(&events, "warning").is_empty(), "nothing is scanned when turned off");
 
-    let (code, events, _) = exec_approving(
+    let (code, events) = exec_events(
         &env,
         &work,
         &["-c", "skills.disabled=[\"gen-report\"]", "[[mock:skill:gen-report]] write the report"],
@@ -182,7 +170,7 @@ async fn skills_can_be_turned_off_or_disabled() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_skills_command_lists_layers_shadows_and_problems() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
     let skill = install_skills(&env, &work);
 
@@ -272,12 +260,12 @@ async fn the_skills_command_lists_layers_shadows_and_problems() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn exec_runs_a_skill_the_user_mentions() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
     let skill = install_skills(&env, &work);
     let typed = "请用 /skill:gen-report [[mock:invoked]] 写本周的报告";
 
-    let (code, events, approvals) = exec_approving(&env, &work, &[typed]).await;
+    let (code, events) = exec_events(&env, &work, &[typed]).await;
     assert_eq!(code, 0, "{events:#?}");
     // The instructions came with the message: no read of SKILL.md, straight to the steps.
     let calls: Vec<(String, String)> = of_type(&events, "tool_started")
@@ -290,7 +278,6 @@ async fn exec_runs_a_skill_the_user_mentions() {
     assert!(calls[0].1.contains(&slashed(&skill.join("references/format.md"))), "{calls:?}");
     assert_eq!(calls[1].0, "bash");
     assert!(calls[1].1.contains(&slashed(&skill.join("scripts/gen.sh"))), "{calls:?}");
-    assert_eq!(approvals.len(), 1, "only the script asks");
     assert_eq!(std::fs::read_to_string(work.join("report.md")).unwrap(), "WEEKLY-REPORT from the skill\n");
     assert_eq!(of_type(&events, "task_completed")[0]["last_message"], "invoked done");
 
@@ -311,14 +298,14 @@ async fn exec_runs_a_skill_the_user_mentions() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn exec_loads_only_what_is_mentioned_explicitly() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
     install_skills(&env, &work);
     write(
         &env.home.path().join("skills/commit-style/SKILL.md"),
         "---\nname: commit-style\ndescription: Commit messages.\n---\nTag it.\n",
     );
-    let (code, events, _) = exec_approving(
+    let (code, events) = exec_events(
         &env,
         &work,
         &["[[mock:context]] /skill:gen-report 和 /skill:commit-style，另外 /gen-report、`/skill:lint`、src/skill:lint 都不算"],
@@ -330,7 +317,7 @@ async fn exec_loads_only_what_is_mentioned_explicitly() {
         "skills in context: gen-report, commit-style",
         "two blocks, in the order of the mentions"
     );
-    let (code, events, _) = exec_approving(&env, &work, &["[[mock:context]] /skill:gen-reprot"]).await;
+    let (code, events) = exec_events(&env, &work, &["[[mock:context]] /skill:gen-reprot"]).await;
     assert_eq!(code, 0);
     assert_eq!(of_type(&events, "task_completed")[0]["last_message"], "skills in context: none");
     let warnings: Vec<&str> = of_type(&events, "warning").iter().filter_map(|w| w["message"].as_str()).collect();
@@ -339,15 +326,15 @@ async fn exec_loads_only_what_is_mentioned_explicitly() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_skill_in_use_survives_compaction() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
     install_skills(&env, &work);
-    let (code, events, _) = exec_approving(&env, &work, &["[[mock:skill:gen-report]] write this week's report"]).await;
+    let (code, events) = exec_events(&env, &work, &["[[mock:skill:gen-report]] write this week's report"]).await;
     assert_eq!(code, 0, "{events:#?}");
     let session_id = of_type(&events, "session_started")[0]["session_id"].as_str().unwrap().to_string();
     let session_file = of_type(&events, "session_started")[0]["session_file"].as_str().unwrap().to_string();
 
-    let (code, events, _) = exec_approving(&env, &work, &["--resume", &session_id, "/compact"]).await;
+    let (code, events) = exec_events(&env, &work, &["--resume", &session_id, "/compact"]).await;
     assert_eq!(code, 0, "{events:#?}");
     let completed = of_type(&events, "compaction_completed");
     assert_eq!(completed.len(), 1);
@@ -361,16 +348,16 @@ async fn a_skill_in_use_survives_compaction() {
     assert!(entry["skills"][0]["content"].as_str().unwrap().contains("# Weekly report"));
 
     // The model sees the instructions once after the compaction, and resume brings them back.
-    let (code, events, _) = exec_approving(&env, &work, &["--resume", &session_id, "[[mock:context]]"]).await;
+    let (code, events) = exec_events(&env, &work, &["--resume", &session_id, "[[mock:context]]"]).await;
     assert_eq!(code, 0);
     assert_eq!(of_type(&events, "task_completed")[0]["last_message"], "skills in context: gen-report");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn slash_compact_ends_even_with_nothing_to_compact() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let work = env.workspace("project");
-    let (code, events, _) = exec_approving(&env, &work, &["/compact"]).await;
+    let (code, events) = exec_events(&env, &work, &["/compact"]).await;
     assert_eq!(code, 0);
     let warnings: Vec<&str> = of_type(&events, "warning").iter().filter_map(|w| w["message"].as_str()).collect();
     assert_eq!(warnings, vec!["nothing to compact"]);

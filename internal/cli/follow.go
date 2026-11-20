@@ -5,13 +5,13 @@ import (
 	"errors"
 	"net/http"
 
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Follow takes the messages of opts.Identity's inbox for a caller that
-// holds an agent's credentials and takes its messages itself (hermeshd for
+// holds an agent's credentials and takes its messages itself (aided for
 // Her, docs/her-mesh.md §6.1): those that waited, then each as it arrives.
 // take says what became of a message ("handled", "held" or "refused"; ""
 // leaves it waiting), and the post office is told. A message that doesn't

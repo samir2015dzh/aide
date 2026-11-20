@@ -6,7 +6,7 @@ name: release
 #   3. promoted by hand (promote.yml) once it has been tried: the latest
 #      release, which every machine, Windows app and install command then takes.
 # A failed run leaves a draft, and the latest release as it was.
-# This fork (Aide, developed in samir2015dzh/hermesh; its releases stay there,
+# This fork (Aide, developed in samir2015dzh/aide; its releases stay there,
 # where every installed version looks) releases what its owner uses: a tag builds
 # the programs (binaries), the Windows app for x64, the Android app and their
 # notes, signed with the fork's own release key (scripts/release-pubkey.pem).
@@ -129,7 +129,7 @@ jobs:
           name: her-doc-worker-linux-${{ matrix.arch }}
           path: her-doc-worker-linux-${{ matrix.arch }}
           if-no-files-found: error
-  # her for Windows, which install.ps1 puts beside hermeshd on a PC that is
+  # her for Windows, which install.ps1 puts beside aided on a PC that is
   # only a machine (the app carries its own): built as her's releases are,
   # with MSVC, for x64 alone (the fork has no Windows on Arm). The binaries job signs it.
   her-windows:
@@ -180,7 +180,7 @@ jobs:
         with:
           node-version: 24
       - name: her console
-        run: corepack enable && pnpm install --frozen-lockfile --filter "@hermesh/her-console..." && pnpm --dir her/apps/console build
+        run: corepack enable && pnpm install --frozen-lockfile --filter "@aide/her-console..." && pnpm --dir her/apps/console build
       - uses: actions/download-artifact@v4
         with:
           pattern: her-*
@@ -261,7 +261,7 @@ jobs:
         run: |
           umask 077
           printf '%s\n' "$RELEASE_SIGNING_KEY" > "$RUNNER_TEMP/release.key"
-          VERSION="${GITHUB_REF_NAME#v}" HERMESH_ARCH=${{ matrix.arch }} RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/release.key" node apps/desktop/scripts/package-win.mjs
+          VERSION="${GITHUB_REF_NAME#v}" AIDE_ARCH=${{ matrix.arch }} RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/release.key" node apps/desktop/scripts/package-win.mjs
           rm -f "$RUNNER_TEMP/release.key"
       - name: check the installer
         if: matrix.arch == 'x64'

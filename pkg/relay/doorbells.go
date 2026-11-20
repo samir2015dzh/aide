@@ -6,7 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 )
 
 // Doorbells are the webhooks rung when messages wait for an address
@@ -54,7 +54,7 @@ var errNoDoorbells = errf(connect.CodeUnimplemented, "this relay keeps no doorbe
 func (o *ownerControl) ownerDoorbells(ctx context.Context) (Doorbells, string, error) {
 	p := peerFrom(ctx)
 	if p.deviceCert == nil {
-		return nil, "", errf(connect.CodePermissionDenied, "only a trusted device sets up doorbells")
+		return nil, "", errf(connect.CodePermissionDenied, "only one of the owner's devices sets up doorbells")
 	}
 	d := o.s.doorbellService()
 	if d == nil {

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Audit is an append-only, hash-chained JSONL log. Every 100 records the
@@ -99,7 +100,7 @@ func (a *Audit) Log(r AuditRecord) {
 		return
 	}
 	if a.seq%100 == 0 && a.signer != nil {
-		sig, err := a.signer.SignMessage([]byte("hermesh-audit-v1\x00" + a.prev))
+		sig, err := a.signer.SignMessage([]byte(legacy.Audit + a.prev))
 		if err == nil {
 			a.appendLocked(AuditRecord{Kind: "checkpoint", Sig: base64.StdEncoding.EncodeToString(sig)})
 		}
@@ -165,7 +166,7 @@ func VerifyAudit(dir string, keys ...identity.Signer) (records int, err error) {
 			if r.Kind == "checkpoint" && len(keys) > 0 {
 				sig, _ := base64.StdEncoding.DecodeString(r.Sig)
 				if !slices.ContainsFunc(keys, func(k identity.Signer) bool {
-					return identity.VerifyRaw(k.Public(), []byte("hermesh-audit-v1\x00"+r.Prev), sig) == nil
+					return identity.VerifyRaw(k.Public(), []byte(legacy.Audit+r.Prev), sig) == nil
 				}) {
 					f.Close()
 					return records, errors.New("bad checkpoint signature at seq " + fmt.Sprint(r.Seq))

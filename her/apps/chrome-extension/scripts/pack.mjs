@@ -1,5 +1,5 @@
 // Packs the extension for the Chrome Web Store (browser-design D-219):
-// her/apps/chrome-extension/dist/hermesh-extension-<version>.zip, holding what loads (manifest.json,
+// her/apps/chrome-extension/dist/aide-extension-<version>.zip, holding what loads (manifest.json,
 // src/, icons/, _locales/) without tests, types or the manifest's "key", which the store does not take.
 //
 //   node her/apps/chrome-extension/scripts/pack.mjs [--key path/to/key.pem]
@@ -43,7 +43,7 @@ for (const dir of ["src", "icons", "_locales"]) {
 }
 if (key) fs.copyFileSync(path.resolve(key), path.join(stage, "key.pem"));
 
-const zip = path.join(dist, `hermesh-extension-${manifest.version}.zip`);
+const zip = path.join(dist, `aide-extension-${manifest.version}.zip`);
 fs.rmSync(zip, { force: true });
 execFileSync("zip", ["-r", "-X", "-q", zip, "."], { cwd: stage, stdio: "inherit" });
 fs.rmSync(stage, { recursive: true, force: true });

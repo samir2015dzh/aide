@@ -1,4 +1,4 @@
-import type { ErrorInfo } from "@hermesh/her-protocol";
+import type { ErrorInfo } from "@aide/her-protocol";
 import { callTarget, runningAgents, type SessionView } from "./session.ts";
 import { conversation, detailsOf, userText, type ReplyQuote, type ToolView, type WorkItem } from "./steps.ts";
 import { baseName } from "./text.ts";
@@ -10,8 +10,7 @@ import { baseName } from "./text.ts";
 // coding session it started and for the team's work it counted
 // (docs/her-team.md §4.4, §6.3, §14.3), and failures, in the order they were
 // sent.
-// What the bot did and wrote for itself does not show. An approval is no part of it:
-// it pops up above the composer, as on a session's page.
+// What the bot did and wrote for itself does not show.
 
 export const SEND_TO_USER = "send_to_user";
 export const MANAGE_ROUTINE = "manage_routine";
@@ -193,7 +192,7 @@ const record = (v: unknown): Record<string, unknown> | null => (v && typeof v ==
 
 /**
  * The session a session_start call started, itself or through call_tool: from its result's details, or else from
- * its text, the command's document (a Her Server on an older hermeshd sends no details). A call that failed, was
+ * its text, the command's document (a Her Server on an older aided sends no details). A call that failed, was
  * refused or never ran started none.
  */
 export function startedSession(item: WorkItem): StartedSession | null {
@@ -342,21 +341,18 @@ export function imageRatio(f: Pick<BotFile, "width" | "height">, alone: boolean)
   return alone ? clamp(own, 0.5, 4) : clamp(own, 0.75, 2);
 }
 
-/** A sub-agent the busy bubble names: its id, to open its record, and what it is called (as an approval names it). */
+/** A sub-agent the busy bubble names: its id, to open its record, and what it is called. */
 export interface BusyAgent {
   id: string;
   name: string;
 }
 
 /**
- * Who the busy bubble names (docs/her-team.md §15.6): the bot, while it answers, and its sub-agents at work that wait
- * for nobody, the one that started last first. Only who, never what they are doing. Null when nothing is at work, and
- * while the bot waits for the owner: an approval in the composer's place says so.
+ * Who the busy bubble names (docs/her-team.md §15.6): the bot, while it answers, and its sub-agents at work, the one
+ * that started last first. Only who, never what they are doing. Null when nothing is at work.
  */
 export function busyBubble(v: SessionView): { her: boolean; agents: BusyAgent[] } | null {
-  if (v.live?.approvals.length) return null;
   const agents = runningAgents(v)
-    .filter((a) => !a.view.live?.approvals.length)
     .sort((a, b) => b.since - a.since)
     .map((a) => ({ id: a.id, name: a.description || a.name }));
   return v.live || agents.length ? { her: !!v.live, agents } : null;

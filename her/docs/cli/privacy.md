@@ -10,7 +10,7 @@
 | MCP servers and where they sign in | If you configured them | Do not configure them |
 | GitHub (the release repository) | `her upgrade`, `her install`; the interactive mode looks for a new release once a day | `update.check = false` |
 | Google's Chrome for Testing address | `her install browser` | Do not install it |
-| What the model runs or opens | Commands and web pages, under your permission mode and site permissions | [permissions](permissions.md) |
+| What the model runs or opens | Commands and web pages, without asking, unless a deny rule or `[browser.sites]` refuses them | [permissions](permissions.md) |
 
 `her exec`, `her serve` and `her acp` never look for updates.
 
@@ -26,7 +26,7 @@ Everything is under `~/.her` (`HER_HOME` moves it):
 | `history.jsonl` | What you typed in conversations; `history.enabled = false` turns it off |
 | `addons/`, `browser/`, `desktop/` | Components |
 | `logs/` | Logs |
-| `.her-home` | Says her made this folder, when she made it or found it empty: Hermesh erases her data by deleting such a folder whole, and leaves one without it alone |
+| `.her-home` | Says her made this folder, when she made it or found it empty: Aide erases her data by deleting such a folder whole, and leaves one without it alone |
 
 Keys are in the macOS keychain, or in a 0600 file on Linux and with `HER_CREDENTIAL_STORE=file`. Commands the model runs do not get provider keys in their environment unless `tools.bash.pass_provider_keys` says so.
 

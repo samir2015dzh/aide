@@ -1,6 +1,6 @@
 import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
-import type { GetStatusResponse, Machine } from "@hermesh/proto/local";
-import { FailureKind, SessionLink, SessionState, SessionStatus, type Session } from "@hermesh/proto/session";
+import type { GetStatusResponse, Machine } from "@aide/proto/local";
+import { FailureKind, SessionLink, SessionState, SessionStatus, type Session } from "@aide/proto/session";
 import { t } from "./i18n";
 
 // What every screen says of a session (docs/session-states.md): what it is

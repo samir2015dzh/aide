@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,30 +18,31 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/emptypb"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/paths"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/paths"
 )
 
 // Her on the owner's machines (docs/her-server.md), as the Mac app uses it:
 // her with a home of its own, and her-mock as its model service.
 
-// herBinaries are her and her-mock for this computer: HERMESH_HER_BIN, as
+// herBinaries are her and her-mock for this computer: AIDE_HER_BIN, as
 // internal/herhost's tests take it, else the debug build in her/target; and
-// HERMESH_HER_MOCK, else the her-mock beside that her.
+// AIDE_HER_MOCK, else the her-mock beside that her.
 func herBinaries(t *testing.T) (her, mock string) {
 	t.Helper()
-	her = herBinary(t, "HERMESH_HER_BIN", "her")
-	mock = os.Getenv("HERMESH_HER_MOCK")
+	her = herBinary(t, "AIDE_HER_BIN", "her")
+	mock = os.Getenv("AIDE_HER_MOCK")
 	if mock == "" {
 		mock = filepath.Join(filepath.Dir(her), "her-mock"+exe)
 	}
 	if _, err := os.Stat(mock); err != nil {
-		t.Skipf("no her-mock (%v): build her (cargo build in her/) or set HERMESH_HER_MOCK", err)
+		t.Skipf("no her-mock (%v): build her (cargo build in her/) or set AIDE_HER_MOCK", err)
 	}
 	return her, mock
 }
@@ -91,12 +93,12 @@ func herHome(t *testing.T, models string) string {
 	return home
 }
 
-// herConsole is a console's files: $HERMESH_HER_CONSOLE, such as the real
+// herConsole is a console's files: $AIDE_HER_CONSOLE, such as the real
 // one built (her/apps/console/dist), else an index.html that says it is the
 // test's.
 func herConsole(t *testing.T) string {
 	t.Helper()
-	if dir := os.Getenv("HERMESH_HER_CONSOLE"); dir != "" {
+	if dir := os.Getenv("AIDE_HER_CONSOLE"); dir != "" {
 		return dir
 	}
 	dir := t.TempDir()
@@ -106,11 +108,11 @@ func herConsole(t *testing.T) string {
 	return dir
 }
 
-// herEnv is what a hermeshd needs to run her: her, the console, and
+// herEnv is what an aided needs to run her: her, the console, and
 // her's own settings for a test (her home, credentials in a file, no
 // browser, English, the mock's model catalog).
 func herEnv(her, console, home, mockBase string) []string {
-	return []string{"HERMESH_HER_BIN=" + her, "HERMESH_HER_CONSOLE=" + console, "HER_HOME=" + home, "HER_CREDENTIAL_STORE=file",
+	return []string{"AIDE_HER_BIN=" + her, "AIDE_HER_CONSOLE=" + console, "HER_HOME=" + home, "HER_CREDENTIAL_STORE=file",
 		"HER_NO_BROWSER=1", "HER_LANG=en", "HER_MODEL_CATALOG_URL=" + mockBase + "/catalog/api.json"}
 }
 
@@ -327,7 +329,7 @@ func firstString(doc []byte, prefix string) (string, bool) {
 // TestHerOnThisMac turns Her on for the owner Mac's own machine and uses
 // her as the Mac app does, in process: a message and her reply, files both
 // ways, the console with its JSON-RPC and a sign-in coming back to this Mac,
-// what the machine refuses, and her stopping with this Mac's hermeshd.
+// what the machine refuses, and her stopping with this Mac's aided.
 func TestHerOnThisMac(t *testing.T) {
 	her, mockBin := herBinaries(t)
 	mock := startHerMock(t, mockBin)
@@ -339,7 +341,7 @@ func TestHerOnThisMac(t *testing.T) {
 	ctx := context.Background()
 	mac := localMachine(t, c)
 
-	// The console's address, from this Mac's own hermeshd: a sign-in's
+	// The console's address, from this Mac's own aided: a sign-in's
 	// redirect comes back to it, as the browser brings it.
 	con, err := c.GetHerConsole(ctx, &localv1.GetHerConsoleRequest{MachineId: mac})
 	if err != nil {
@@ -394,22 +396,25 @@ func TestHerOnThisMac(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("doc/open: %v", err)
 	}
-	// An assistant's mode, full access too, goes unsigned: the owner chose it.
-	for _, mode := range []string{"accept-edits", "bypass-permissions", "manual"} {
-		if _, err := c.SetHerAssistantMode(ctx, &localv1.SetHerAssistantModeRequest{MachineId: mac, BotId: bot.ID, PermissionMode: mode}); err != nil {
-			t.Fatalf("%s: %v", mode, err)
-		}
+	// Her has no assistant modes (she runs actions without asking): an older
+	// app's SetHerAssistantMode is a call this aided doesn't have.
+	hc := &http.Client{Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return localipc.Dial(ctx, w.sock)
+	}}}
+	old := connect.NewClient[emptypb.Empty, emptypb.Empty](hc, "http://local/aide.local.v1.LocalService/SetHerAssistantMode")
+	if _, err := old.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{})); connect.CodeOf(err) != connect.CodeUnimplemented {
+		t.Fatalf("SetHerAssistantMode: %v", err)
 	}
 
 	// A connector started as a command, from the console, which can't sign:
-	// this Mac's hermeshd asks its signer.
+	// this Mac's aided asks its signer.
 	for _, body := range []string{`{"name":"e2e-echo","command":"/bin/echo","args":["hi"]}`, `{"name":"e2e-echo","remove":true}`} {
 		if code, text := httpDo(t, http.MethodPost, con.Url+"command-connector", body); code != 200 {
 			t.Fatalf("command connector %s: %d %s", body, code, text)
 		}
 	}
 
-	// This Mac's hermeshd stops as its service does (the app quitting, an
+	// This Mac's aided stops as its service does (the app quitting, an
 	// update), and her stops with it.
 	cur, _ := os.ReadFile(filepath.Join(w.tmp, "owner-mac", "owner", "current"))
 	sock := paths.Her(filepath.Join(w.tmp, "owner-mac", "owner", "profiles", string(cur), "machine"))
@@ -424,7 +429,7 @@ func TestHerOnThisMac(t *testing.T) {
 		t.Fatalf("her does not answer at %s", sock)
 	}
 	w.owner.stop()
-	eventually(t, 5*time.Second, "her stopped with this Mac's hermeshd", func() bool { return !answers() })
+	eventually(t, 5*time.Second, "her stopped with this Mac's aided", func() bool { return !answers() })
 }
 
 // TestHerTurnedOff turns Her off on the owner Mac's own machine as the apps
@@ -546,23 +551,23 @@ func httpDo(t *testing.T, method, url, body string) (int, string) {
 	return resp.StatusCode, string(b)
 }
 
-// herLinuxBinary is HERMESH_HER_LINUX, a Linux build of her for a container
+// herLinuxBinary is AIDE_HER_LINUX, a Linux build of her for a container
 // (alpine), static with musl; the test is skipped without it, or without
-// HERMESH_DOCKER=1.
+// AIDE_DOCKER=1.
 func herLinuxBinary(t *testing.T) string {
 	t.Helper()
-	if os.Getenv("HERMESH_DOCKER") != "1" {
-		t.Skip("set HERMESH_DOCKER=1")
+	if os.Getenv("AIDE_DOCKER") != "1" {
+		t.Skip("set AIDE_DOCKER=1")
 	}
-	her := os.Getenv("HERMESH_HER_LINUX")
+	her := os.Getenv("AIDE_HER_LINUX")
 	if _, err := os.Stat(her); her == "" || err != nil {
-		t.Skip("set HERMESH_HER_LINUX to a Linux build of her")
+		t.Skip("set AIDE_HER_LINUX to a Linux build of her")
 	}
 	return her
 }
 
 // startLinuxHer starts a Linux machine in Docker, standing in for a cloud
-// server, and pairs it to the owner Mac as linux-her: its hermeshd,
+// server, and pairs it to the owner Mac as linux-her: its aided,
 // cross-compiled, and her, with her's home at /data/her and the mock
 // reached as the container reaches this computer (host.docker.internal).
 // dockerArgs go to docker run. It returns the machine's id and its
@@ -571,22 +576,22 @@ func startLinuxHer(t *testing.T, w *ownerMac, her string, mock *herMock, console
 	t.Helper()
 	tmp := t.TempDir()
 	linuxBin := filepath.Join(tmp, "linux")
-	build := exec.Command("go", "build", "-o", filepath.Join(linuxBin, "hermeshd"), "./cmd/hermeshd")
+	build := exec.Command("go", "build", "-o", filepath.Join(linuxBin, "aided"), "./cmd/aided")
 	build.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("%v %s", err, out)
 	}
 	linuxHome := herHome(t, strings.ReplaceAll(mock.models, "127.0.0.1", "host.docker.internal"))
 	mockForLinux := strings.Replace(mock.base, "127.0.0.1", "host.docker.internal", 1)
-	name := fmt.Sprintf("hermesh-her-e2e-%d", time.Now().UnixNano())
+	name := fmt.Sprintf("aide-her-e2e-%d", time.Now().UnixNano())
 	script := strings.Join([]string{
 		"mkdir -p /data/her && cp /herinit/* /data/her/",
-		"/opt/hermesh/hermeshd pair " + strings.Replace(w.addr, "127.0.0.1", "host.docker.internal", 1) + " --name linux-her --no-service --data-dir /data",
-		"exec /opt/hermesh/hermeshd run --data-dir /data",
+		"/opt/aide/aided login " + strings.Replace(w.addr, "127.0.0.1", "host.docker.internal", 1) + " --name linux-her --no-service --data-dir /data",
+		"exec /opt/aide/aided run --data-dir /data",
 	}, " && ")
 	args := []string{"run", "--rm", "-d", "--name", name, "--add-host", "host.docker.internal:host-gateway",
-		"-v", linuxBin + ":/opt/hermesh:ro", "-v", her + ":/opt/her/her:ro", "-v", console + ":/opt/her/console:ro", "-v", linuxHome + ":/herinit:ro"}
-	for _, e := range herEnv("/opt/her/her", "/opt/her/console", "/data/her", mockForLinux) {
+		"-v", linuxBin + ":/opt/aide:ro", "-v", her + ":/opt/her/her:ro", "-v", console + ":/opt/her/console:ro", "-v", linuxHome + ":/herinit:ro"}
+	for _, e := range append(herEnv("/opt/her/her", "/opt/her/console", "/data/her", mockForLinux), loginEnv()...) {
 		args = append(args, "-e", e)
 	}
 	args = append(args, dockerArgs...)
@@ -600,31 +605,23 @@ func startLinuxHer(t *testing.T, w *ownerMac, her string, mock *herMock, console
 			t.Logf("==== linux machine ====\n%s", logs())
 		}
 	})
-	var code string
-	eventually(t, 90*time.Second, "linux pairing code", func() bool {
-		m := codeRE.FindStringSubmatch(logs())
-		if m != nil {
-			code = m[1]
-		}
-		return m != nil
+	eventually(t, 90*time.Second, "the linux machine logged in", func() bool {
+		machineID = loggedInMachine(logs())
+		return machineID != ""
 	})
 	c := w.app.client
-	approved, err := c.ApproveMachinePairing(context.Background(), &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "linux-her"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	eventually(t, 60*time.Second, "linux machine online", func() bool {
-		m := listedMachine(t, c, approved.MachineId)
+		m := listedMachine(t, c, machineID)
 		return m != nil && m.Online && m.Status != nil
 	})
-	return approved.MachineId, name
+	return machineID, name
 }
 
 // TestHerTwoEnvironments has Her on this Mac and on a Linux machine in
 // Docker (standing in for a cloud server), talks to each, then writes to
 // the Linux one while it is frozen: the message waits on this device, and
 // arrives, answered, once the machine is back (docs/her-server.md §11,
-// phase 1). HERMESH_DOCKER=1, and HERMESH_HER_LINUX (herLinuxBinary).
+// phase 1). AIDE_DOCKER=1, and AIDE_HER_LINUX (herLinuxBinary).
 func TestHerTwoEnvironments(t *testing.T) {
 	herLinux := herLinuxBinary(t)
 	her, mockBin := herBinaries(t)
@@ -709,7 +706,7 @@ func TestHerTwoEnvironments(t *testing.T) {
 // restartHerWithout has the owner Mac's her act as if it lacked methods
 // (HER_TEST_WITHOUT, read when her starts; "no-list" also leaves her methods
 // unlisted, as a her from before the list: docs/version-skew.md §8), and
-// restarts her as an update does: her stops, and hermeshd starts the program
+// restarts her as an update does: her stops, and aided starts the program
 // anew. It returns once the new her serves.
 func restartHerWithout(w *ownerMac, methods []string) error {
 	var file, bin string
@@ -717,7 +714,7 @@ func restartHerWithout(w *ownerMac, methods []string) error {
 		if v, ok := strings.CutPrefix(kv, "HER_TEST_WITHOUT="); ok {
 			file = v
 		}
-		if v, ok := strings.CutPrefix(kv, "HERMESH_HER_BIN="); ok {
+		if v, ok := strings.CutPrefix(kv, "AIDE_HER_BIN="); ok {
 			bin = v
 		}
 	}
@@ -762,7 +759,7 @@ func restartHerWithout(w *ownerMac, methods []string) error {
 }
 
 // TestHerReply sends Her a message that replies to a part of what she said
-// (docs/her-reply.md), as the apps do through HerSend: this Mac's hermeshd
+// (docs/her-reply.md), as the apps do through HerSend: this Mac's aided
 // says it can, and her model is told what the owner wrote, then what it
 // replies to. her-mock sends back the prompt it got.
 func TestHerReply(t *testing.T) {
@@ -775,7 +772,7 @@ func TestHerReply(t *testing.T) {
 	defer cancel()
 	mac := localMachine(t, c)
 	if st, err := c.GetStatus(ctx, &localv1.GetStatusRequest{}); err != nil || !strings.Contains(strings.Join(st.Abilities, " "), "her_reply") {
-		t.Fatalf("what this hermeshd can do: %v %v", st.GetAbilities(), err)
+		t.Fatalf("what this aided can do: %v %v", st.GetAbilities(), err)
 	}
 	turnHerOn(t, c, mac)
 	bot := defaultBot(t, c, mac)

@@ -1,5 +1,5 @@
 // PDFium (https://github.com/bblanchon/pdfium-binaries), the library her's document worker loads
-// (her/crates/her-docs), as Hermesh.app carries it in Contents/Frameworks: one pinned release,
+// (her/crates/her-docs), as Aide.app carries it in Contents/Frameworks: one pinned release,
 // each archive checked against its sha256, kept between builds in node_modules/.cache.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-/** The release Hermesh ships (its VERSION: 156.0.8076.0, as her's CI tests against); a new one needs the archives' digests from `gh release view`. */
+/** The release Aide ships (its VERSION: 156.0.8076.0, as her's CI tests against); a new one needs the archives' digests from `gh release view`. */
 export const pdfiumRelease = {
   tag: "chromium/8076",
   sha256: {
@@ -15,7 +15,7 @@ export const pdfiumRelease = {
     x64: "40865f34642c34d82cc336132df9e0347133f4692cd46776647af160f9a5cca9",
     "win-arm64": "ab7c45c25fc8456fd9b94666ce3dd27a940f4984f54b328f012468f869d34346",
     "win-x64": "808d36da9bc5a3104315fb307c80998121f565ee53953633bf33e80d7429e5ac",
-    // Linux's, which Hermesh's release carries beside her PDF worker (docs/linux.md §4).
+    // Linux's, which Aide's release carries beside her PDF worker (docs/linux.md §4).
     "linux-arm64": "d7247b33ae5545615a5e877235dd97afc879e3a8805689684f528cae3339d352",
     "linux-x64": "d9d67bc40af03aef4fe28a60b19b1086f28ace019c8c9caf19cb7fe3d14ceca3",
   },

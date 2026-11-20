@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { consoleURL, inConsole, opensOutside } from "./herConsole.ts";
 
-test("a console's address is http on 127.0.0.1 with a port, as hermeshd gives it; nothing else opens", () => {
+test("a console's address is http on 127.0.0.1 with a port, as aided gives it; nothing else opens", () => {
   assert.equal(consoleURL("http://127.0.0.1:53111/her/m_1/4f2a/")?.href, "http://127.0.0.1:53111/her/m_1/4f2a/");
   for (const bad of [
     "https://127.0.0.1:53111/her/m_1/t/",

@@ -19,16 +19,16 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/internal/brandenv"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/internal/update"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/update"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Exit codes are part of the agent-facing contract.
@@ -43,7 +43,7 @@ const (
 	// provider error, crash, stall); sending the message again may succeed.
 	exitRetryable = 7
 	// The agent asked a question and waits for an answer
-	// (`hermesh session answer`, or a message with `session send`).
+	// (`aide session answer`, or a message with `session send`).
 	exitNeedsInput = 8
 	exitGeneric    = 1
 )
@@ -104,8 +104,8 @@ func exitCode(err error) int {
 
 // Main runs the CLI and returns the process exit code.
 func Main(args []string, stdout, stderr io.Writer) int {
-	// HERMESH_LINK=off: every command connects by itself (link.go).
-	// HERMESH_LOCAL=off: a machine on this computer is reached through the
+	// AIDE_LINK=off: every command connects by itself (link.go).
+	// AIDE_LOCAL=off: a machine on this computer is reached through the
 	// relay as any other (local.go).
 	a := &app{hc: http.DefaultClient, link: brandenv.Get("LINK") != "off", local: brandenv.Get("LOCAL") != "off"}
 	defaultOutput := "text"
@@ -123,7 +123,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 
 // root is the command tree, run by a.
 func (a *app) root(defaultOutput string) *cobra.Command {
-	root := &cobra.Command{Use: "hermesh", Short: "Drive Claude Code, Codex and other coding agents on your owner's machines through Aide",
+	root := &cobra.Command{Use: "aide", Short: "Drive Claude Code, Codex and other coding agents on your owner's machines through Aide",
 		SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().StringVarP(&a.output, "output", "o", defaultOutput, "output format: text (to read) or json (one document, see docs/cli-output.md); AIDE_OUTPUT=json makes json the default")
 	root.PersistentFlags().StringVar(&a.as, "as", "", asHelp)
@@ -148,7 +148,7 @@ func (a *app) root(defaultOutput string) *cobra.Command {
 		a.home = paths.CLIHome()
 		return nil
 	}
-	// `hermesh login` was the command before `auth login`; installs and
+	// `aide login` was the command before `auth login`; installs and
 	// copied instructions may still use it.
 	login := a.loginCmd()
 	login.Hidden = true
@@ -163,7 +163,7 @@ func (a *app) root(defaultOutput string) *cobra.Command {
 	return root
 }
 
-// updateCmd is `hermesh update`, the same as `hermeshd update`
+// updateCmd is `aide update`, the same as `aided update`
 // (docs/machine-updates.md).
 func (a *app) updateCmd() *cobra.Command {
 	var check, yes bool

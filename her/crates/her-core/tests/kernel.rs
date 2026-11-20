@@ -18,11 +18,9 @@ use her_llm::ThinkingLevel;
 use her_llm::UserContent;
 use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
-use her_protocol::ApprovalDecision;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::PromptMode;
 use her_protocol::QueuedInput;
 use her_llm::ToolSpec;
@@ -73,19 +71,17 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome) -> KernelDeps {
     }
 }
 
-async fn harness(mode: PermissionMode, interactive: bool, scripts: Vec<Script>) -> Harness {
-    harness_with(Config::default(), mode, interactive, scripts).await
+async fn harness(scripts: Vec<Script>) -> Harness {
+    harness_with(Config::default(), scripts).await
 }
 
-async fn harness_with(config: Config, mode: PermissionMode, interactive: bool, scripts: Vec<Script>) -> Harness {
-    start(config, mode, interactive, scripts, Vec::new()).await
+async fn harness_with(config: Config, scripts: Vec<Script>) -> Harness {
+    start(config, scripts, Vec::new()).await
 }
 
 /// A harness whose registry has `extra` tools after the built-in ones.
 async fn start(
     config: Config,
-    mode: PermissionMode,
-    interactive: bool,
     scripts: Vec<Script>,
     extra: Vec<Arc<dyn Tool>>,
 ) -> Harness {
@@ -101,13 +97,10 @@ async fn start(
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: work.clone(),
         home: home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: interactive,
         bot: None,
     };
     let mut deps = deps(&api, &work, &home);
@@ -164,8 +157,6 @@ fn tool_results(context: &her_llm::Context) -> Vec<String> {
 #[tokio::test]
 async fn writes_a_file_then_answers() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::tool_call("call_1", "write", json!({"path": "hello.txt", "content": "hi"})),
             Script::text("done").with_usage(100, 10),
@@ -226,152 +217,37 @@ async fn writes_a_file_then_answers() {
     assert_eq!(usage.tokens().input, 100);
 }
 
+/// Her asks nobody before an action: commands and file changes run at once, protected-looking
+/// paths included, and no question is ever put to the user.
 #[tokio::test]
-async fn asks_for_approval_and_applies_decisions() {
-    let mut h = harness(
-        PermissionMode::Manual,
-        true,
-        vec![
-            Script::tool_call("call_1", "bash", json!({"command": "touch approved.txt"})),
-            Script::tool_call("call_2", "bash", json!({"command": "touch denied.txt"})),
-            Script::text("ok"),
-        ],
-    )
+async fn actions_run_without_asking() {
+    let mut h = harness(vec![
+        Script::tool_call("call_1", "bash", json!({"command": "touch made.txt"})),
+        Script::tool_call("call_2", "write", json!({"path": "a.txt", "content": "a"})),
+        Script::tool_call("call_3", "bash", json!({"command": "mkdir -p out && touch out/c.txt"})),
+        Script::tool_call("call_4", "write", json!({"path": ".git/config", "content": "x"})),
+        Script::text("ok"),
+    ])
     .await;
-    h.kernel.submit(Op::prompt("touch two files")).await.unwrap();
-
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let EventMsg::ApprovalRequested { call_id, summary, proposed_rule, .. } = &events.last().unwrap().msg else {
-        panic!()
-    };
-    assert_eq!(summary, "touch approved.txt");
-    assert_eq!(proposed_rule.as_ref().unwrap().prefix, vec!["touch", "approved.txt"]);
-    h.kernel
-        .submit(Op::Approval {
-            call_id: call_id.clone(),
-            decision: ApprovalDecision::Approve,
-        })
-        .await
-        .unwrap();
-
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let EventMsg::ApprovalRequested { call_id, .. } = &events.last().unwrap().msg else {
-        panic!()
-    };
-    h.kernel
-        .submit(Op::Approval {
-            call_id: call_id.clone(),
-            decision: ApprovalDecision::Deny {
-                feedback: Some("not this one".into()),
-            },
-        })
-        .await
-        .unwrap();
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-
-    assert!(h.work.join("approved.txt").exists());
-    assert!(!h.work.join("denied.txt").exists());
-    let last_request = h.api.requests().pop().unwrap();
-    let results = tool_results(&last_request);
-    assert!(results[0].starts_with("Exit code: 0"));
-    assert_eq!(results[1], "The user denied this tool call. Feedback: not this one");
-}
-
-#[tokio::test]
-async fn without_an_approver_ask_means_deny() {
-    let mut h = harness(
-        PermissionMode::Manual,
-        false,
-        vec![
-            Script::tool_call("call_1", "bash", json!({"command": "touch x.txt"})),
-            Script::text("understood"),
-        ],
-    )
-    .await;
-    let result = h.kernel.run(prompt("touch x")).await.unwrap();
+    let result = h.kernel.run(prompt("make files")).await.unwrap();
     assert!(matches!(result.end, TaskEnd::Completed { .. }));
-    assert!(!h.work.join("x.txt").exists());
-    assert!(!result.events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })));
-    let results = tool_results(&h.api.requests()[1]);
-    assert!(results[0].contains("nobody can approve it"));
+    for file in ["made.txt", "a.txt", "out/c.txt"] {
+        assert!(h.work.join(file).exists(), "{file}");
+    }
+    assert_eq!(std::fs::read_to_string(h.work.join(".git/config")).unwrap(), "x");
+    let results = tool_results(&h.api.requests().pop().unwrap());
+    assert!(results.iter().all(|r| !r.contains("denied")), "{results:?}");
 }
 
+/// Deleting the workspace, or what holds it, is refused, not asked about.
 #[tokio::test]
-async fn approving_an_edit_for_the_session_switches_to_accept_edits() {
-    let mut h = harness(
-        PermissionMode::Manual,
-        true,
-        vec![
-            Script::tool_call("call_1", "write", json!({"path": "a.txt", "content": "a"})),
-            Script::tool_call("call_2", "write", json!({"path": "b.txt", "content": "b"})),
-            Script::tool_call("call_3", "bash", json!({"command": "mkdir -p out && touch out/c.txt"})),
-            Script::text("ok"),
-        ],
-    )
-    .await;
-    h.kernel.submit(Op::prompt("write files")).await.unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    let EventMsg::ApprovalRequested {
-        call_id,
-        proposed_rule,
-        proposed_mode,
-        ..
-    } = &events.last().unwrap().msg
-    else {
-        panic!()
-    };
-    assert_eq!(*proposed_rule, None);
-    assert_eq!(*proposed_mode, Some(PermissionMode::AcceptEdits));
-    h.kernel
-        .submit(Op::Approval {
-            call_id: call_id.clone(),
-            decision: ApprovalDecision::ApproveForSession { grant: None, persist: false },
-        })
-        .await
-        .unwrap();
-    let events = until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(events.iter().any(|e| matches!(
-        e.msg,
-        EventMsg::SettingsChanged {
-            permission_mode: PermissionMode::AcceptEdits,
-            ..
-        }
-    )));
-    // The later write and the file-system command run without asking.
-    assert!(!events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })));
-    assert!(h.work.join("b.txt").exists());
-    assert!(h.work.join("out/c.txt").exists());
-    let session_file = h.kernel.session_file().to_path_buf();
-    h.kernel.shutdown().await;
-    let log = std::fs::read_to_string(session_file).unwrap();
-    assert!(log.contains(r#""permission_mode":"accept-edits""#));
-}
-
-#[tokio::test]
-async fn bypass_warns_and_still_stops_critical_deletions() {
-    let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
-        vec![
-            Script::tool_call("call_1", "bash", json!({"command": "rm -r .."})),
-            Script::tool_call("call_2", "write", json!({"path": ".git/config", "content": "x"})),
-            Script::text("stopped"),
-        ],
-    )
-    .await;
+async fn critical_deletions_are_refused() {
+    let mut h = harness(vec![Script::tool_call("call_1", "bash", json!({"command": "rm -r .."})), Script::text("stopped")]).await;
     let result = h.kernel.run(prompt("clean up")).await.unwrap();
     assert!(matches!(result.end, TaskEnd::Completed { .. }));
-    assert!(result.events.iter().any(|e| match &e.msg {
-        EventMsg::Warning { message, code } => {
-            message.contains("bypass-permissions") && *code == Some(her_protocol::WarningCode::BypassPermissions)
-        }
-        _ => false,
-    }));
     assert!(h.work.exists());
     let results = tool_results(&h.api.requests()[1]);
-    assert!(results[0].contains("nobody can approve it"), "{}", results[0]);
-    // Protected paths are not protected in this mode.
-    assert_eq!(std::fs::read_to_string(h.work.join(".git/config")).unwrap(), "x");
+    assert!(results[0].starts_with("Tool call denied: Deleting `..` would remove"), "{}", results[0]);
 }
 
 #[tokio::test]
@@ -388,7 +264,7 @@ async fn critical_deletions_are_found_behind_cd_and_scripts() {
         .map(|(i, command)| Script::tool_call(format!("call_{i}"), "bash", json!({ "command": command })))
         .chain([Script::text("stopped")])
         .collect();
-    let mut h = harness(PermissionMode::BypassPermissions, false, scripts).await;
+    let mut h = harness(scripts).await;
     std::fs::write(h.work.join("keep.txt"), "still here").unwrap();
     let result = h.kernel.run(prompt("clean everything")).await.unwrap();
     assert!(matches!(result.end, TaskEnd::Completed { .. }));
@@ -396,8 +272,7 @@ async fn critical_deletions_are_found_behind_cd_and_scripts() {
     let requests = h.api.requests();
     for (i, command) in commands.iter().enumerate() {
         let result = tool_results(&requests[i + 1]).pop().unwrap();
-        assert!(result.contains("nobody can approve it"), "{command}: {result}");
-        assert!(result.contains("Why it needs approval: Deleting"), "{command}: {result}");
+        assert!(result.starts_with("Tool call denied: Deleting"), "{command}: {result}");
     }
 }
 
@@ -416,7 +291,7 @@ async fn deny_rules_cannot_be_dodged() {
         .map(|(i, command)| Script::tool_call(format!("call_{i}"), "bash", json!({ "command": command })))
         .chain([Script::text("ok")])
         .collect();
-    let mut h = harness_with(config, PermissionMode::BypassPermissions, false, scripts).await;
+    let mut h = harness_with(config, scripts).await;
     h.kernel.run(prompt("push it")).await.unwrap();
     let requests = h.api.requests();
     for (i, command) in commands.iter().enumerate() {
@@ -429,40 +304,8 @@ async fn deny_rules_cannot_be_dodged() {
 }
 
 #[tokio::test]
-async fn always_allow_is_not_offered_for_inline_code() {
-    let mut h = harness(
-        PermissionMode::Manual,
-        true,
-        vec![
-            Script::tool_call("call_1", "bash", json!({"command": "python3 -c 'print(1)'"})),
-            Script::tool_call("call_2", "bash", json!({"command": "cd sub && npm run build"})),
-            Script::text("ok"),
-        ],
-    )
-    .await;
-    h.kernel.submit(Op::prompt("run things")).await.unwrap();
-    let mut offered = Vec::new();
-    for _ in 0..2 {
-        let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-        let EventMsg::ApprovalRequested { call_id, proposed_rule, .. } = &events.last().unwrap().msg else {
-            panic!()
-        };
-        offered.push(proposed_rule.as_ref().map(|rule| rule.prefix.join(" ")));
-        h.kernel
-            .submit(Op::Approval {
-                call_id: call_id.clone(),
-                decision: ApprovalDecision::Deny { feedback: None },
-            })
-            .await
-            .unwrap();
-    }
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert_eq!(offered, vec![None, Some("npm run build".to_string())]);
-}
-
-#[tokio::test]
 async fn a_session_log_is_created_once_the_session_does_something() {
-    let mut h = harness(PermissionMode::Manual, false, vec![Script::text("hi")]).await;
+    let mut h = harness(vec![Script::text("hi")]).await;
     let file = h.kernel.session_file().to_path_buf();
     tokio::time::sleep(Duration::from_millis(50)).await;
     assert!(!file.exists(), "starting a session writes no file");
@@ -477,7 +320,7 @@ async fn a_session_log_is_created_once_the_session_does_something() {
     assert!(kinds.iter().any(|k| k == "message"));
 
     // A session that does nothing still leaves a log when it closes.
-    let idle = harness(PermissionMode::Manual, false, vec![]).await;
+    let idle = harness(vec![]).await;
     let idle_file = idle.kernel.session_file().to_path_buf();
     idle.kernel.shutdown().await;
     let log = std::fs::read_to_string(&idle_file).unwrap();
@@ -485,10 +328,8 @@ async fn a_session_log_is_created_once_the_session_does_something() {
 }
 
 #[tokio::test]
-async fn read_only_commands_and_reads_skip_approval() {
+async fn read_only_commands_and_reads_run() {
     let mut h = harness(
-        PermissionMode::Manual,
-        true,
         vec![
             Script::tool_call("call_1", "bash", json!({"command": "ls -a"}))
                 .then_tool_call("call_2", "read", json!({"path": "notes.txt"})),
@@ -499,7 +340,6 @@ async fn read_only_commands_and_reads_skip_approval() {
     std::fs::write(h.work.join("notes.txt"), "remember the milk").unwrap();
     let result = h.kernel.run(prompt("look around")).await.unwrap();
     assert!(matches!(result.end, TaskEnd::Completed { .. }));
-    assert!(!result.events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })));
     let results = tool_results(&h.api.requests()[1]);
     assert!(results[0].contains("notes.txt"));
     assert!(results[1].contains("remember the milk"));
@@ -508,8 +348,6 @@ async fn read_only_commands_and_reads_skip_approval() {
 #[tokio::test]
 async fn interrupting_a_running_tool_keeps_history_valid_and_resumes() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::tool_call("call_1", "bash", json!({"command": "sleep 30"}))],
     )
     .await;
@@ -536,12 +374,9 @@ async fn interrupting_a_running_tool_keeps_history_valid_and_resumes() {
         session: SessionRef::Id(her_core::short_id(&session_id).to_string()),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&api, &h.work, &h.home)).await.unwrap();
@@ -583,8 +418,6 @@ async fn interrupting_a_running_tool_keeps_history_valid_and_resumes() {
 #[tokio::test]
 async fn interrupting_while_streaming_keeps_partial_text() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::text("partial answer").then_sleep(Duration::from_secs(30)).then_text("never")],
     )
     .await;
@@ -608,8 +441,6 @@ async fn interrupting_while_streaming_keeps_partial_text() {
 #[tokio::test]
 async fn steering_input_joins_at_the_next_turn() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::tool_call("call_1", "bash", json!({"command": "sleep 1"})),
             Script::text("saw both"),
@@ -633,8 +464,6 @@ async fn steering_input_joins_at_the_next_turn() {
 #[tokio::test]
 async fn model_failures_fail_the_task() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::fail(ErrorKind::Auth, "bad key")],
     )
     .await;
@@ -655,7 +484,7 @@ async fn a_reply_cut_off_is_asked_again_and_only_the_new_one_stays() {
         steps: vec![ScriptStep::Text("half a re".into()), ScriptStep::Fail(ErrorKind::Network, "stream interrupted".into())],
         ..Default::default()
     };
-    let mut h = harness(PermissionMode::BypassPermissions, false, vec![cut_off, Script::text("the whole reply")]).await;
+    let mut h = harness(vec![cut_off, Script::text("the whole reply")]).await;
     h.kernel.submit(Op::prompt("hi")).await.unwrap();
     let events = until(&mut h.kernel, |m| m.is_task_end()).await;
     assert!(matches!(events.last().unwrap().msg, EventMsg::TaskCompleted { .. }));
@@ -682,8 +511,6 @@ async fn a_reply_cut_off_is_asked_again_and_only_the_new_one_stays() {
 #[tokio::test]
 async fn bad_tool_calls_become_error_results() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::tool_call("call_1", "nope", json!({})).then_tool_call("call_2", "read", json!({"path": 5})),
             Script::text("sorry"),
@@ -703,8 +530,6 @@ async fn bad_tool_calls_become_error_results() {
 #[tokio::test]
 async fn follow_up_runs_after_the_task_would_end() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::text("one").then_sleep(Duration::from_millis(300)),
             Script::text("two"),
@@ -779,8 +604,6 @@ fn user_texts(context: &her_llm::Context) -> Vec<String> {
 #[tokio::test]
 async fn queued_input_joins_under_its_id_steering_first() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::tool_call("call_1", "bash", json!({"command": "sleep 1"})),
             Script::text("one"),
@@ -823,8 +646,6 @@ fn named(text: &str, id: &str) -> Op {
 #[tokio::test]
 async fn a_prompt_given_an_id_is_taken_once() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::tool_call("call_1", "bash", json!({"command": "sleep 1"})), Script::text("one"), Script::text("two")],
     )
     .await;
@@ -867,8 +688,6 @@ async fn a_prompt_given_an_id_is_taken_once() {
 #[tokio::test]
 async fn withdrawn_input_never_joins() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::tool_call("call_1", "bash", json!({"command": "sleep 1"})), Script::text("done")],
     )
     .await;
@@ -893,8 +712,6 @@ async fn withdrawn_input_never_joins() {
 #[tokio::test]
 async fn a_follow_up_made_steering_joins_at_the_next_turn() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::tool_call("call_1", "bash", json!({"command": "sleep 1"})), Script::text("done")],
     )
     .await;
@@ -920,8 +737,6 @@ async fn a_follow_up_made_steering_joins_at_the_next_turn() {
 #[tokio::test]
 async fn steer_now_ends_a_running_command_and_the_task_goes_on() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::tool_call("call_1", "bash", json!({"command": "sleep 30"})), Script::text("changed course")],
     )
     .await;
@@ -944,8 +759,6 @@ async fn steer_now_ends_a_running_command_and_the_task_goes_on() {
 #[tokio::test]
 async fn steer_now_ends_a_reply_being_written() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::text("partial").then_sleep(Duration::from_secs(30)).then_text("never"),
             Script::text("after"),
@@ -972,8 +785,6 @@ async fn steer_now_ends_a_reply_being_written() {
 #[tokio::test]
 async fn steer_now_without_steering_input_changes_nothing() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![Script::text("a").then_sleep(Duration::from_millis(400)).then_text("b")],
     )
     .await;
@@ -996,8 +807,6 @@ async fn steer_now_without_steering_input_changes_nothing() {
 #[tokio::test]
 async fn a_failed_task_hands_waiting_input_back() {
     let mut h = harness(
-        PermissionMode::BypassPermissions,
-        false,
         vec![
             Script::tool_call("call_1", "bash", json!({"command": "sleep 1"})),
             Script::fail(ErrorKind::Auth, "bad key"),
@@ -1021,7 +830,7 @@ async fn a_failed_task_hands_waiting_input_back() {
 /// Input sent in a burst, some of it as tasks end: one task at a time, each input once, in order.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_burst_of_input_goes_in_once_each_in_order() {
-    let mut h = harness(PermissionMode::BypassPermissions, false, Vec::new()).await;
+    let mut h = harness(Vec::new()).await;
     h.api.respond_with(|_| Some(Script::text("ok")));
     let sent: Vec<String> = (0..40).map(|i| format!("p{i}")).collect();
     for (i, text) in sent.iter().enumerate() {
@@ -1052,18 +861,17 @@ async fn a_burst_of_input_goes_in_once_each_in_order() {
     assert_eq!(joined, sent);
 }
 
-/// A file-changing tool for kernel tests: it records the arguments it runs with, its check can
-/// fail, and it can hang without looking at the cancellation token.
+/// A file-changing tool for kernel tests: it records the arguments it runs with, and it can hang
+/// without looking at the cancellation token.
 struct Probe {
     spec: ToolSpec,
-    check_error: Option<&'static str>,
     hang: bool,
     ran: Arc<Mutex<Vec<Value>>>,
 }
 
 impl Probe {
     /// The tool, and the arguments of the calls it ran.
-    fn build(check_error: Option<&'static str>, hang: bool) -> (Arc<dyn Tool>, Arc<Mutex<Vec<Value>>>) {
+    fn build(hang: bool) -> (Arc<dyn Tool>, Arc<Mutex<Vec<Value>>>) {
         let ran = Arc::new(Mutex::new(Vec::new()));
         let probe = Probe {
             spec: ToolSpec {
@@ -1071,7 +879,6 @@ impl Probe {
                 description: "Probes.".into(),
                 parameters: json!({"type": "object", "properties": {}}),
             },
-            check_error,
             hang,
             ran: ran.clone(),
         };
@@ -1097,13 +904,6 @@ impl Tool for Probe {
         args
     }
 
-    async fn check(&self, _args: &Value, _ctx: &ToolCtx) -> Result<(), ToolError> {
-        match self.check_error {
-            Some(problem) => Err(ToolError::Failed(problem.into())),
-            None => Ok(()),
-        }
-    }
-
     async fn execute(&self, args: Value, _ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
         self.ran.lock().unwrap().push(args);
         if self.hang {
@@ -1114,57 +914,10 @@ impl Tool for Probe {
 }
 
 #[tokio::test]
-async fn calls_that_cannot_succeed_are_not_put_to_the_user() {
-    let (probe, ran) = Probe::build(Some("The file is gone."), false);
-    let scripts = vec![Script::tool_call("call_1", "probe", json!({})), Script::text("ok")];
-    let mut h = start(Config::default(), PermissionMode::Manual, true, scripts, vec![probe]).await;
-    h.kernel.submit(Op::prompt("probe it")).await.unwrap();
-    let events = until(&mut h.kernel, |m| {
-        matches!(m, EventMsg::ApprovalRequested { .. }) || m.is_task_end()
-    })
-    .await;
-    assert!(matches!(events.last().unwrap().msg, EventMsg::TaskCompleted { .. }));
-    assert!(ran.lock().unwrap().is_empty());
-    assert_eq!(tool_results(&h.api.requests()[1]), vec!["The file is gone."]);
-}
-
-#[tokio::test]
-async fn no_checks_after_a_call_that_runs_first() {
-    // The write and the read run before the probe, which is therefore not judged on the state
-    // before them.
-    let (probe, ran) = Probe::build(Some("The file is gone."), false);
-    let scripts = vec![
-        Script::tool_call("call_1", "write", json!({"path": "a.txt", "content": "a"}))
-            .then_tool_call("call_2", "probe", json!({}))
-            .then_tool_call("call_3", "read", json!({"path": "a.txt"}))
-            .then_tool_call("call_4", "probe", json!({})),
-        Script::text("ok"),
-    ];
-    let mut h = start(Config::default(), PermissionMode::Manual, true, scripts, vec![probe]).await;
-    h.kernel.submit(Op::prompt("go")).await.unwrap();
-    for _ in 0..3 {
-        let events = until(&mut h.kernel, |m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-        let EventMsg::ApprovalRequested { call_id, .. } = &events.last().unwrap().msg else {
-            panic!()
-        };
-        h.kernel
-            .submit(Op::Approval {
-                call_id: call_id.clone(),
-                decision: ApprovalDecision::Approve,
-            })
-            .await
-            .unwrap();
-    }
-    until(&mut h.kernel, |m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(h.work.join("a.txt").exists());
-    assert_eq!(ran.lock().unwrap().len(), 2);
-}
-
-#[tokio::test]
 async fn arguments_are_repaired_before_anything_sees_them() {
-    let (probe, ran) = Probe::build(None, false);
+    let (probe, ran) = Probe::build(false);
     let scripts = vec![Script::tool_call("call_1", "probe", json!({"items": "[1, 2]"})), Script::text("ok")];
-    let mut h = start(Config::default(), PermissionMode::BypassPermissions, false, scripts, vec![probe]).await;
+    let mut h = start(Config::default(), scripts, vec![probe]).await;
     let result = h.kernel.run(prompt("probe it")).await.unwrap();
     let started = result
         .events
@@ -1180,9 +933,9 @@ async fn arguments_are_repaired_before_anything_sees_them() {
 
 #[tokio::test]
 async fn a_tool_that_ignores_cancellation_cannot_hold_the_session() {
-    let (probe, ran) = Probe::build(None, true);
+    let (probe, ran) = Probe::build(true);
     let scripts = vec![Script::tool_call("call_1", "probe", json!({})), Script::text("unused")];
-    let mut h = start(Config::default(), PermissionMode::BypassPermissions, false, scripts, vec![probe]).await;
+    let mut h = start(Config::default(), scripts, vec![probe]).await;
     h.kernel.submit(Op::prompt("hang")).await.unwrap();
     until(&mut h.kernel, |m| matches!(m, EventMsg::ToolRunning { .. })).await;
     assert_eq!(ran.lock().unwrap().len(), 1);
@@ -1199,7 +952,7 @@ async fn a_tool_that_ignores_cancellation_cannot_hold_the_session() {
 
 #[tokio::test]
 async fn a_session_whose_provider_was_removed_resumes_on_the_configured_model() {
-    let mut h = harness(PermissionMode::BypassPermissions, false, vec![Script::text("hi")]).await;
+    let mut h = harness(vec![Script::text("hi")]).await;
     h.kernel.run(prompt("hello")).await.unwrap();
     let session_id = h.kernel.session_id().to_string();
     h.kernel.shutdown().await;
@@ -1219,12 +972,9 @@ async fn a_session_whose_provider_was_removed_resumes_on_the_configured_model() 
         session: SessionRef::Id(her_core::short_id(&session_id).to_string()),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps).await.unwrap();
@@ -1276,12 +1026,9 @@ async fn resumed(home: &HerHome, work: &Path, session_id: &str, api: &Arc<Script
         session: SessionRef::Id(her_core::short_id(session_id).to_string()),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     Kernel::resume(options, deps(api, work, home)).await.unwrap()
@@ -1293,7 +1040,7 @@ fn date_update(day: chrono::NaiveDate) -> String {
 
 #[tokio::test]
 async fn a_session_continued_on_a_later_day_is_told_the_date_once() {
-    let mut h = harness(PermissionMode::BypassPermissions, false, vec![Script::text("first")]).await;
+    let mut h = harness(vec![Script::text("first")]).await;
     h.kernel.run(prompt("hello")).await.unwrap();
     // Started today: the system prompt has the date, with its weekday, and nothing is added.
     let first = &h.api.requests()[0];
@@ -1331,7 +1078,7 @@ async fn a_session_continued_on_a_later_day_is_told_the_date_once() {
 
 #[tokio::test]
 async fn a_sub_agent_of_an_older_session_is_told_the_date_first() {
-    let mut h = harness(PermissionMode::BypassPermissions, false, vec![Script::text("first")]).await;
+    let mut h = harness(vec![Script::text("first")]).await;
     h.kernel.run(prompt("hello")).await.unwrap();
     let session_id = h.kernel.session_id().to_string();
     h.kernel.shutdown().await;

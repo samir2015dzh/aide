@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // TestSessionLifecycle: a session never ends by itself. A turn can be
@@ -21,7 +21,7 @@ func TestSessionLifecycle(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
 	cli := func(args ...string) result { return w.cli(time.Minute, args...) }
 	status := func(id string) string {
@@ -36,7 +36,7 @@ func TestSessionLifecycle(t *testing.T) {
 
 	// Interrupt: a waiting caller learns who stopped the turn; the session is
 	// idle and the next message goes on in the same agent conversation.
-	waiter := start(t, "waiter", w.cliEnv, filepath.Join(w.bin, "hermesh"), "session", "send", id, "--wait", "--message", "sleep 60s\nsay late")
+	waiter := start(t, "waiter", w.cliEnv, filepath.Join(w.bin, "aide"), "session", "send", id, "--wait", "--message", "sleep 60s\nsay late")
 	eventually(t, 30*time.Second, "turn running", func() bool { return status(id) == "running" })
 	r = cli("session", "interrupt", id)
 	if r.code != 0 {
@@ -93,7 +93,7 @@ func TestSessionLifecycle(t *testing.T) {
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
 		t.Fatalf("temporary directory after archive: %v", err)
 	}
-	if out, err := exec.Command("git", "-C", w.repo, "show", "hermesh/"+id+":one.txt").Output(); err != nil || string(out) != "first\n" {
+	if out, err := exec.Command("git", "-C", w.repo, "show", "aide/"+id+":one.txt").Output(); err != nil || string(out) != "first\n" {
 		t.Fatalf("the session branch keeps its work: %q %v", out, err)
 	}
 	if d := cli("session", "diff", id); d.code != 0 || !strings.Contains(d.stdout, "+first") {

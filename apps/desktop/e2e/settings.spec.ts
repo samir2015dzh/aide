@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { codingAgentIds, codingAgentTitle } from "@hermesh/ui/agents";
+import { codingAgentIds, codingAgentTitle } from "@aide/ui/agents";
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -11,7 +11,7 @@ import { answerMenu, cli, fixture, gitRepo, launch, onWindows, pickAnswers, snap
 // Settings, for what is set up once and changed rarely.
 
 async function openSettings(app: ElectronApplication, page: Page, tab?: string): Promise<Page> {
-  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.hermesh?.openSettings(t), tab)]);
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.aide?.openSettings(t), tab)]);
   await win.waitForLoadState();
   return win;
 }
@@ -19,7 +19,7 @@ async function openSettings(app: ElectronApplication, page: Page, tab?: string):
 async function api<T = Record<string, never>>(page: Page, method: string, body: object = {}): Promise<T> {
   return page.evaluate(
     async ([m, b]) => {
-      const r = await fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+      const r = await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
       return r.json();
     },
     [method, body] as const,
@@ -36,19 +36,18 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   const settings = await openSettings(app, page);
   await expect(nav(settings, "通用")).toHaveAttribute("aria-current", "page");
   const general = page_(settings, "通用");
-  await expect(general.getByRole("switch", { name: "连接请求" })).toHaveAttribute("aria-checked", "true");
   await expect(general.getByRole("switch", { name: "新任务" })).toHaveAttribute("aria-checked", "true");
   const login = general.getByRole("switch", { name: "登录时打开 Aide" });
   await expect(login).toHaveAttribute("aria-checked", "false");
   await login.click();
   await expect(login).toHaveAttribute("aria-checked", "true");
-  expect((await page.evaluate(() => window.hermesh?.loginItem()))?.on).toBe(true);
+  expect((await page.evaluate(() => window.aide?.loginItem()))?.on).toBe(true);
   const turnDone = general.getByRole("switch", { name: "一轮完成" });
   await expect(turnDone).toHaveAttribute("aria-checked", "false");
   await turnDone.click();
   await expect(turnDone).toHaveAttribute("aria-checked", "true");
   // Kept by the main process, which posts the notifications.
-  expect((await page.evaluate(() => window.hermesh?.getPreferences()))?.notifyTurnDone).toBe(true);
+  expect((await page.evaluate(() => window.aide?.getPreferences()))?.notifyTurnDone).toBe(true);
   await snap(settings, "settings-general");
 
   await nav(settings, "授权").click();
@@ -61,9 +60,9 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   await expect(bot).toContainText("长期有效");
   await snap(settings, "settings-grants");
 
-  // Adding happens in a sheet over the settings window: the first run's connect page.
+  // Adding happens in a sheet over the settings window: the first run's assistants.
   await grants.getByRole("button", { name: "连接 agent…" }).click();
-  await expect(settings.getByRole("dialog", { name: "连接你的 Agent" })).toBeVisible();
+  await expect(settings.getByRole("dialog", { name: "连接助手" })).toBeVisible();
   await settings.keyboard.press("Escape");
   await expect(settings.getByRole("dialog")).toHaveCount(0);
 
@@ -184,10 +183,10 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/hook`;
   const { app, page } = await launch();
-  // The bot asks to be woken (message wake); its owner opens the link it gives, as macOS hands the app a hermesh:// link.
+  // The bot asks to be woken (message wake); its owner opens the link it gives, as macOS hands the app an aide:// link.
   const askedLink = async (...as: string[]) => {
     const link: string = JSON.parse(await cli(...as, "message", "wake", "-o", "json")).wake.link;
-    expect(link).toMatch(/^hermesh:\/\/wake\?code=/);
+    expect(link).toMatch(/^aide:\/\/wake\?code=/);
     await app.evaluate(({ app }, l) => app.emit("open-url", { preventDefault() {} }, l), link);
   };
   try {
@@ -224,7 +223,7 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
     await dialog.getByRole("button", { name: "叫醒一次试试" }).click();
     await expect(dialog).toContainText("设置好了");
     await expect(dialog).toContainText("以后有新消息，Aide 都会这样叫醒它");
-    expect(calls.map((c) => c.type)).toEqual(["hermesh.check", "hermesh.check"]);
+    expect(calls.map((c) => c.type)).toEqual(["aide.check", "aide.check"]);
     await snap(page, "main-wake-ok");
     await dialog.getByRole("button", { name: "完成" }).click();
 
@@ -237,7 +236,7 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
     // A message for a bot of it without a doorbell of its own wakes it, naming
     // the bot and nothing more.
     await cli("message", "send", "--to", "bot/Tech Demos", "--message", "the review is ready");
-    await expect.poll(() => calls.find((c) => c.type === "hermesh.message")?.as, { timeout: 30_000 }).toBe("tech-demos");
+    await expect.poll(() => calls.find((c) => c.type === "aide.message")?.as, { timeout: 30_000 }).toBe("tech-demos");
     expect(calls.map((c) => c.raw).join()).not.toContain("the review is ready");
 
     // Its rings, newest first; then it stops, and the group goes with it.
@@ -268,7 +267,7 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
   }
 });
 
-test("an app just updated finds the previous hermeshd, which keeps no doorbells; once that is restarted, the agent's page has them", async () => {
+test("an app just updated finds the previous aided, which keeps no doorbells; once that is restarted, the agent's page has them", async () => {
   test.skip(onWindows, "its proxy listens on a Unix socket");
   // The daemon through a proxy: first as the previous version (no
   // ListWakes), then, its connections dropped as a restart drops them, as
@@ -464,30 +463,31 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
   await app.close();
 });
 
-test("settings 账号与设备 shows the identity, the trusted devices and, folded, the addresses", async () => {
+test("settings 账号与设备 shows the identity, the devices logged in, the account and, folded, the addresses", async () => {
   const { app, page } = await launch();
   const status = await page.evaluate(() =>
-    fetch("app://hermesh/api/hermesh.local.v1.LocalService/GetStatus", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.json()),
+    fetch("app://aide/api/aide.local.v1.LocalService/GetStatus", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.json()),
   );
   const settings = await openSettings(app, page, "account");
   const panel = page_(settings, "账号与设备");
-  const devices = panel.getByRole("list", { name: "可信设备" });
+  const devices = panel.getByRole("list", { name: "你的设备" });
   await expect(devices).toContainText("test-mac");
   await expect(devices).toContainText(thisComputer);
-  await expect(devices.getByRole("button", { name: "移除…" })).toHaveCount(0);
+  await expect(devices.getByRole("button", { name: "登出" })).toHaveCount(0); // never itself
+  await expect(panel).toContainText(`账号 ${status.account}`);
   await expect(panel).not.toContainText(status.ownerId);
   await snap(settings, "settings-account");
 
   await devices.getByRole("button", { name: "添加设备…" }).click();
-  await expect(settings.getByRole("dialog", { name: "添加可信设备" })).toBeVisible();
+  await expect(settings.getByRole("dialog", { name: "添加设备" })).toBeVisible();
   await settings.keyboard.press("Escape");
   await expect(settings.getByRole("dialog")).toHaveCount(0);
 
   await panel.getByRole("button", { name: "高级" }).click();
   await expect(panel).toContainText(status.ownerId);
   await expect(panel).toContainText("已连接");
-  await expect(panel).toContainText(`aided pair ${status.connectAddress}`);
-  await expect(panel).toContainText(`aide auth login ${status.connectAddress}`);
+  await expect(panel).toContainText(`aided login ${status.relayUrl} --account ${status.account}`);
+  await expect(panel).toContainText(`aide auth login ${status.relayUrl} --account ${status.account}`);
   await panel.getByRole("button", { name: "拷贝身份 ID" }).click();
   await expect(settings.getByRole("status")).toContainText("已拷贝");
   expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(status.ownerId);
@@ -497,17 +497,17 @@ test("settings 账号与设备 shows the identity, the trusted devices and, fold
   await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(status.mcpUrl);
   await snap(settings, "settings-account-advanced");
 
-  // Still a trusted device: signing out only explains how.
+  // Still logged in: signing out only explains how.
   await panel.getByRole("button", { name: "退出登录…" }).click();
-  const dialog = settings.getByRole("dialog", { name: onWindows ? "让这台电脑退出登录？" : "让这台 Mac 退出登录？" });
-  await expect(dialog).toContainText("先在你的另一台可信设备上");
+  const dialog = settings.getByRole("dialog", { name: "让这台电脑退出登录？" });
+  await expect(dialog).toContainText("请在你的另一台设备上");
   await dialog.getByRole("button", { name: "好" }).click();
   await expect(dialog).toBeHidden();
 
-  // Another page opens in the same window; the old 可信设备 link lands here too.
-  await page.evaluate(() => window.hermesh?.openSettings("general"));
+  // Another page opens in the same window; the old 可信设备 page's link lands here too.
+  await page.evaluate(() => window.aide?.openSettings("general"));
   await expect(nav(settings, "通用")).toHaveAttribute("aria-current", "page");
-  await page.evaluate(() => window.hermesh?.openSettings("devices"));
+  await page.evaluate(() => window.aide?.openSettings("devices"));
   await expect(nav(settings, "账号与设备")).toHaveAttribute("aria-current", "page");
   expect(app.windows()).toHaveLength(2);
   await Promise.all([settings.waitForEvent("close"), settings.keyboard.down("Escape")]); // closes the window

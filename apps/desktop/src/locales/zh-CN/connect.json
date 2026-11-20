@@ -2,8 +2,8 @@
   "title": "连接你的 Agent",
   "lede": "每个 Agent 的连接方式不一样。选一个，按它的步骤来。Agent 装在哪台电脑上，Aide 就在哪台电脑上运行它；你在这里、在手机上，或者通过你的助手给它派任务。",
   "lines": {
-    "deepseek": "DeepSeek（DSH）",
-    "claude": "Claude",
+    "deepseek": "DSH（DeepSeek Harness）",
+    "claude": "Claude Desktop",
     "codex": "Codex",
     "custom": "其他 Agent",
     "assistants": "助手"
@@ -56,7 +56,7 @@
     "needsProject": "先添加一个项目：测试任务要在项目里进行。"
   },
   "deepseek": {
-    "intro": "DeepSeek Harness（DSH）是 DeepSeek 的编码 Agent。Aide 运行你电脑上装的 DSH：DeepSeek Harness 桌面应用里自带的那个，或者 dsh 命令。",
+    "intro": "DSH 指 DeepSeek Harness 桌面应用，DeepSeek 的编码 Agent。Aide 运行你电脑上装的 DSH：桌面应用里自带的那个，或者 dsh 命令。",
     "need1": "运行它的电脑上装好 DeepSeek Harness：DSH 桌面应用（装在默认位置），或者 dsh 命令。",
     "need2": "DSH 已经配好你的 DeepSeek 账号或 API 密钥：先打开 DSH 发一条消息，确认它能回答。",
     "need3": "那台电脑上打开了 Aide，并登录了你的账号（这台电脑已经登录）。",
@@ -75,24 +75,24 @@
     "openSessions": "打开 DeepSeek 会话"
   },
   "claude": {
-    "intro": "这里的 Claude 指 Claude Code，Anthropic 的编码 Agent。装了 Claude 桌面应用就不用另装：Aide 会用这个应用自己下载的 Claude Code。",
-    "need1": "装好并登录了 Claude 桌面应用，或者单独装了 Claude Code。",
-    "need2": "用 Claude 桌面应用的话：打开它的 Code 标签页，在那里开一个简短的会话。这样它才会下载 Aide 要运行的 Claude Code。",
-    "need3": "Claude Code 已登录（Claude 订阅或 API 密钥）。",
-    "step1": "在上面选装了 Claude 的电脑（默认就是这台）。",
+    "intro": "Claude 指 Claude Desktop，Anthropic 的桌面应用。Aide 运行 Claude Desktop 在 Code 标签页里用的 Claude Code，不用另装。",
+    "need1": "装好 Claude Desktop 并登录你的 Claude 账号（单独装的 Claude Code 也行）。",
+    "need2": "打开 Claude Desktop 的 Code 标签页，在那里开一个简短的会话：这样它才会下载 Aide 要运行的 Claude Code。",
+    "need3": "Claude Code 已登录（Claude 订阅或 API 密钥）：在 Code 标签页里能正常回答就说明已登录。",
+    "step1": "在上面选装了 Claude Desktop 的电脑（默认就是这台）。",
     "step2": "看「状态」：应该显示「已检测到」。如果没有，按下面的清单逐项检查，然后点「重新检查」。",
     "step3": "如果 Claude Code 还没有项目，点「添加项目…」，选一个允许它工作的文件夹。",
     "step4": "点「运行测试」。Claude Code 会回答一个简短的问题。",
     "step5": "点「开始测试任务」。一个真正的任务会开始，并在 Aide 里打开。",
-    "fixInstall": "从 claude.ai/download 装好 Claude 桌面应用并登录（或者单独装 Claude Code）。",
-    "fixWhere": "已经装了 Claude 应用？打开它的 Code 标签页，开一个简短的会话：应用只有这时才会下载 Claude Code。",
-    "fixCodeTab": "Claude 应用还没有下载 Claude Code。打开 Claude 应用并登录，进入 Code 标签页，在那里开一个简短的会话。",
+    "fixInstall": "从 claude.ai/download 装好 Claude Desktop 并登录（或者单独装 Claude Code）。",
+    "fixWhere": "已经装了 Claude Desktop？打开它的 Code 标签页，开一个简短的会话：应用只有这时才会下载 Claude Code。",
+    "fixCodeTab": "Claude Desktop 还没有下载 Claude Code。打开 Claude Desktop 并登录，进入 Code 标签页，在那里开一个简短的会话。",
     "fixSignIn": "给 Claude Code 登录一次：打开终端（Windows 上是 PowerShell），粘贴下面的命令回车，然后输入 /login，按浏览器里的提示操作。",
     "testFailedHint": "如果原因是没登录，按上面「状态」里的说明给 Claude Code 登录，再测试一次。",
     "where1": "你在 Aide 里用 Claude 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。",
-    "where2": "Claude 应用重启后，它的 Code 标签页里也会列出这些任务，前提是你自己在那里开过会话。微软应用商店版的 Claude 应用不会列出。",
-    "where3": "要在 Claude 应用里接着做，等 Aide 用完再继续：它的标题结尾写着是谁「via Aide」开的。",
-    "assistant": "想让 Claude 应用的聊天去给你的 Agent 派任务？那是另一种连接：见上面的「助手」。"
+    "where2": "Claude Desktop 重启后，它的 Code 标签页里也会列出这些任务，前提是你自己在那里开过会话。微软应用商店版的 Claude Desktop 不会列出。",
+    "where3": "要在 Claude Desktop 里接着做，等 Aide 用完再继续：它的标题结尾写着是谁「via Aide」开的。",
+    "assistant": "想让 Claude Desktop 的聊天给你的 Agent 派任务？那是另一种连接：见上面「助手」里的 Claude。"
   },
   "codex": {
     "intro": "Codex 是 OpenAI 的编码 Agent。Aide 运行你电脑上装的 codex 命令。",
@@ -173,10 +173,22 @@
     }
   },
   "assistants": {
-    "intro": "Muse、Grok Bot、ChatGPT、Claude 应用、OpenClaw 这样的助手不在你的电脑上运行：它们给上面的编码 Agent 派任务。连接一个，让它可以这样做。"
-  },
-  "notice": {
-    "request": "{{name}} 请求连接。",
-    "review": "查看"
+    "intro": "Muse、Grok Bot、ChatGPT、Claude Desktop 的聊天、OpenClaw 这样的助手不在你的电脑上运行：它们给上面的编码 Agent 派任务。它用你的 Aide 账号和密码登录，登录后马上就能用，不需要你批准。",
+    "pick": "选择助手",
+    "name": "名称",
+    "mcp1": "在 {{app}} 里添加自定义连接器（Claude Desktop：设置 › 连接器 › 添加自定义连接器），把下面的网址粘贴进去。",
+    "mcp2": "{{app}} 会打开 Aide 服务器的登录页：输入你的 Aide 账号和密码，点「连接」。",
+    "mcp3": "连接后它会出现在这里，也会列在 设置 › 访问 里。",
+    "cli1": "复制下面的消息，把里面的 {{password}} 换成你的 Aide 密码，发给 {{name}}。",
+    "cli2": "{{name}} 照着消息装好 Aide 命令行并登录：不用你批准，也没有码要核对。",
+    "cli3": "登录后它会出现在这里，也会列在 设置 › 访问 里。",
+    "noMCP": "你的服务器没有提供 MCP 地址（需要配好域名和 HTTPS）。先给服务器配好 HTTPS，或者让这个助手改用命令行连接（选「其他 Agent」）。",
+    "copy": "复制",
+    "copied": "已复制",
+    "password": "拿到你密码的任何人都能登录你的账号，并在你的电脑上运行任务。只发给你信任的助手；不想再让它用时，在 设置 › 访问 里登出它，或者改密码（所有助手都会被登出）。",
+    "waiting": "等待 {{name}} 登录…",
+    "connected": "{{name}} 已连接",
+    "connectedBody": "它现在可以在你所有机器的项目里开始任务，只看得到它自己开的任务，直到你登出它。",
+    "scope": "调整它能用什么…"
   }
 }

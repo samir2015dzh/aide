@@ -29,7 +29,7 @@ pub(crate) fn her_home() -> Option<std::path::PathBuf> {
     }
 }
 
-/// Where the `pdf` component may be: `her-pdf/` beside the program, where Hermesh's install puts
+/// Where the `pdf` component may be: `her-pdf/` beside the program, where Aide's install puts
 /// it on Linux with her from the same release (docs/linux.md §4), then this version's own in
 /// her's home (`her install pdf`). Another version's is not used: the worker and the program
 /// that talks to it are released together.

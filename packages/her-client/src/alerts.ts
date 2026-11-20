@@ -1,4 +1,4 @@
-import type { BotSummary, SessionState, SessionSummary } from "@hermesh/her-protocol";
+import type { BotSummary, SessionState, SessionSummary } from "@aide/her-protocol";
 import { lastText } from "./bots.ts";
 import { displayTitle } from "./sessions.ts";
 
@@ -17,9 +17,9 @@ export type Alert = {
 } & (
   /** text is empty for files alone: images counts them, file names the first other one. */
   | { kind: "bot_message"; text: string; name: string; images?: number; file?: string }
-  | { kind: "bot_approval"; text: string; name: string }
+  /** A secure card waits for the owner: her asks nobody to approve an action, so nothing else does. */
+  | { kind: "bot_card"; text: string; name: string }
   | { kind: "bot_failed"; name: string }
-  | { kind: "session_approval"; title: string }
   | { kind: "session_failed"; title: string }
   | { kind: "session_ended"; title: string }
 );
@@ -58,7 +58,7 @@ export const deletedSessionGroup = sessionGroup;
  */
 export function botAlerts(before: BotSummary | undefined, after: BotSummary): AlertChange {
   const group = botGroup(after.id);
-  const approval = `${group}:approval`;
+  const card = `${group}:card`;
   const failed = `${group}:failed`;
   const alerts: Alert[] = [];
   const clear: string[] = [];
@@ -73,8 +73,8 @@ export function botAlerts(before: BotSummary | undefined, after: BotSummary): Al
     alerts.push({ kind: "bot_message", id: `${group}:${last.ts}:${hash(said(last)!)}`, group, name: after.name, text: text || last.text.trim(), ...(last.images ? { images: last.images } : {}), ...(last.file ? { file: last.file } : {}) });
   }
   if (after.waiting !== before?.waiting) {
-    if (before?.waiting) clear.push(approval);
-    if (after.waiting) alerts.push({ kind: "bot_approval", id: approval, group, name: after.name, text: after.waiting });
+    if (before?.waiting) clear.push(card);
+    if (after.waiting) alerts.push({ kind: "bot_card", id: card, group, name: after.name, text: after.waiting });
   }
   // A failure comes out of work. A conversation loading with an old failure in it is no news.
   if (after.failed && !before?.failed && before?.typing) alerts.push({ kind: "bot_failed", id: failed, group, name: after.name });
@@ -87,19 +87,16 @@ export function botAlerts(before: BotSummary | undefined, after: BotSummary): Al
 /** A session's row changing. Sessions have no unread count: what they show goes when it no longer holds. */
 export function sessionAlerts(before: AlertSession | undefined, after: AlertSession): AlertChange {
   const group = sessionGroup(after.session_id);
-  const approval = `${group}:approval`;
   const ended = `${group}:ended`;
   const alerts: Alert[] = [];
   const clear: string[] = [];
   const state = after.state;
   const was = before?.state;
   if (state !== was) {
-    if (was === "awaiting_approval") clear.push(approval);
-    if (state === "running" || state === "awaiting_approval") clear.push(ended);
+    if (state === "running") clear.push(ended);
     if (!after.archived) {
       const title = displayTitle(after);
-      if (state === "awaiting_approval") alerts.push({ kind: "session_approval", id: approval, group, title });
-      if (state === "failed" && (was === "running" || was === "awaiting_approval")) alerts.push({ kind: "session_failed", id: ended, group, title });
+      if (state === "failed" && was === "running") alerts.push({ kind: "session_failed", id: ended, group, title });
       if (state === "idle" && was === "running") alerts.push({ kind: "session_ended", id: ended, group, title });
     }
   }
@@ -107,12 +104,11 @@ export function sessionAlerts(before: AlertSession | undefined, after: AlertSess
 }
 
 /**
- * The number on the app's icon: what the owner has not seen from bots they did not mute (a bot's
- * approvals count in its unread), and the sessions waiting for them.
+ * The number on the app's icon: what the owner has not seen from bots they did not mute. Sessions
+ * never wait for the owner: her asks nobody before an action.
  */
-export function badgeCount(bots: Iterable<BotSummary>, sessions: Iterable<AlertSession>): number {
+export function badgeCount(bots: Iterable<BotSummary>, _sessions: Iterable<AlertSession>): number {
   let count = 0;
   for (const b of bots) if (!b.muted) count += b.unread ?? 0;
-  for (const s of sessions) if (s.state === "awaiting_approval" && !s.archived) count += 1;
   return count;
 }

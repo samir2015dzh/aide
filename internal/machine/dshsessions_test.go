@@ -12,9 +12,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // writeDSHSession writes an uncompressed DSH session log with n turns of
@@ -41,7 +41,7 @@ func writeDSHSession(t *testing.T, home, id, cwd string, turns int) {
 }
 
 // The DSH sessions listed are the owner's own: not those of this machine's
-// sessions, by the id Hermesh recorded or by their worktree.
+// sessions, by the id Aide recorded or by their worktree.
 func TestDSHSessions(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("DSH_HOME", home)
@@ -91,7 +91,7 @@ func TestDSHSessions(t *testing.T) {
 // An agent sees the DSH sessions as it sees sessions it did not start:
 // with a grant that sees all of them, in the projects it covers (every
 // folder with all projects); none with one that sees its own. Never those
-// Hermesh started.
+// Aide started.
 func TestDSHSessionsForAgents(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("DSH_HOME", home)

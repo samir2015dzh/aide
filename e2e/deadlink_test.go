@@ -5,12 +5,13 @@ package e2e
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // procNamed is the process w started last under name.
@@ -87,7 +88,7 @@ func TestMachineBackAfterDeadLink(t *testing.T) {
 	// Mostly waiting (for pings to go unanswered): it runs beside the other
 	// tests that are, after the rest of the suite.
 	t.Parallel()
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -97,11 +98,8 @@ func TestMachineBackAfterDeadLink(t *testing.T) {
 	}
 	// The machine reaches the relay over a network of its own.
 	network, relay := newCutProxy(t, strings.TrimPrefix(st.RelayUrl, "http://"), 0)
-	daemon, data := filepath.Join(w.bin, "hermeshd"), filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", env, daemon, "pair", "http://"+relay+"/"+st.OwnerId, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	daemon, data := filepath.Join(w.bin, "aided"), filepath.Join(w.tmp, "vps-1")
+	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", "http://"+relay+"/"+st.OwnerId, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}

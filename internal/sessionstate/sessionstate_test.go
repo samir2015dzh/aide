@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // cases is testdata/cases.json: the table every end is checked against
@@ -110,13 +110,13 @@ func TestText(t *testing.T) {
 }
 
 func TestFromEnv(t *testing.T) {
-	t.Setenv("HERMESH_LOST_AFTER", "90")
-	t.Setenv("HERMESH_STALL_AFTER", "10m")
+	t.Setenv("AIDE_LOST_AFTER", "90")
+	t.Setenv("AIDE_STALL_AFTER", "10m")
 	if l := FromEnv(); l.LostAfter != 90*time.Second || l.StallAfter != 10*time.Minute {
 		t.Fatalf("%+v", l)
 	}
-	t.Setenv("HERMESH_LOST_AFTER", "nonsense")
-	t.Setenv("HERMESH_STALL_AFTER", "-5")
+	t.Setenv("AIDE_LOST_AFTER", "nonsense")
+	t.Setenv("AIDE_STALL_AFTER", "-5")
 	if l := FromEnv(); l != Default() {
 		t.Fatalf("bad values keep the defaults: %+v", l)
 	}

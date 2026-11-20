@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"os"
 	"os/exec"
 	"os/user"
@@ -16,19 +17,41 @@ import (
 	"time"
 )
 
-func launchdPlist() string {
+// label is the LaunchAgent's label: its old one while that is installed.
+func label() string {
+	if exists(plistFor(legacy.LaunchAgent)) {
+		return legacy.LaunchAgent
+	}
+	return newLabel
+}
+
+func plistFor(label string) string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, "Library", "LaunchAgents", label+".plist")
 }
 
-func systemdUnit() string {
+func launchdPlist() string { return plistFor(label()) }
+
+// unit is the systemd user unit's name: its old one while that is installed.
+func unit() string {
+	if exists(unitFor(legacy.SystemdUnit)) {
+		return legacy.SystemdUnit
+	}
+	return newUnit
+}
+
+func unitFor(name string) string {
 	cfg := os.Getenv("XDG_CONFIG_HOME")
 	if cfg == "" {
 		home, _ := os.UserHomeDir()
 		cfg = filepath.Join(home, ".config")
 	}
-	return filepath.Join(cfg, "systemd", "user", "hermeshd.service")
+	return filepath.Join(cfg, "systemd", "user", name)
 }
+
+func systemdUnit() string { return unitFor(unit()) }
+
+func exists(path string) bool { _, err := os.Stat(path); return err == nil }
 
 // Install writes and loads the service definition running `bin run`, with
 // args before its data directory (a trusted device: --owner --no-machine).
@@ -43,13 +66,13 @@ func Install(bin, dataDir, logDir string, args ...string) error {
 			return err
 		}
 		domain := fmt.Sprintf("gui/%d", os.Getuid())
-		exec.Command("launchctl", "bootout", domain+"/"+label).Run()
+		exec.Command("launchctl", "bootout", domain+"/"+label()).Run()
 		if out, err := exec.Command("launchctl", "bootstrap", domain, path).CombinedOutput(); err != nil {
 			return fmt.Errorf("launchctl bootstrap: %v: %s", err, out)
 		}
 		return nil
 	case "linux":
-		unit := unitText(bin, dataDir, args)
+		text := unitText(bin, dataDir, args)
 		// Lingering first: it starts the user's systemd, which a session
 		// opened with su lacks, and keeps it running after logout.
 		lingerErr := enableLinger()
@@ -61,18 +84,18 @@ func Install(bin, dataDir, logDir string, args ...string) error {
 		}
 		path := systemdUnit()
 		os.MkdirAll(filepath.Dir(path), 0o755)
-		if err := os.WriteFile(path, []byte(unit), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 			return err
 		}
 		// enable and start, not enable --now: that needs systemd 220, and
 		// Synology DSM 7 has 219.
-		for _, args := range [][]string{{"--user", "daemon-reload"}, {"--user", "enable", "hermeshd.service"}, {"--user", "start", "hermeshd.service"}} {
+		for _, args := range [][]string{{"--user", "daemon-reload"}, {"--user", "enable", unit()}, {"--user", "start", unit()}} {
 			if out, err := exec.Command("systemctl", args...).CombinedOutput(); err != nil {
 				return fmt.Errorf("systemctl %s: %v: %s", strings.Join(args, " "), err, bytes.TrimSpace(out))
 			}
 		}
 		if lingerErr != nil {
-			fmt.Fprintln(os.Stderr, "note: could not enable lingering; run `sudo loginctl enable-linger "+userName()+"` so hermeshd keeps running after you log out")
+			fmt.Fprintln(os.Stderr, "note: could not enable lingering; run `sudo loginctl enable-linger "+userName()+"` so aided keeps running after you log out")
 		}
 		return nil
 	}
@@ -82,13 +105,13 @@ func Install(bin, dataDir, logDir string, args ...string) error {
 func Uninstall() error {
 	switch runtime.GOOS {
 	case "darwin":
-		exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run()
+		exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), label())).Run()
 		os.Remove(launchdPlist())
 		return nil
 	case "linux":
 		userBus()
-		exec.Command("systemctl", "--user", "stop", "hermeshd.service").Run()
-		exec.Command("systemctl", "--user", "disable", "hermeshd.service").Run()
+		exec.Command("systemctl", "--user", "stop", unit()).Run()
+		exec.Command("systemctl", "--user", "disable", unit()).Run()
 		os.Remove(systemdUnit())
 		exec.Command("systemctl", "--user", "daemon-reload").Run()
 		return nil
@@ -100,13 +123,13 @@ func Uninstall() error {
 func Restart() error {
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run()
+		return exec.Command("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/%s", os.Getuid(), label())).Run()
 	case "linux":
 		if err := userBus(); err != nil {
 			return err
 		}
-		if out, err := exec.Command("systemctl", "--user", "restart", "hermeshd.service").CombinedOutput(); err != nil {
-			return fmt.Errorf("systemctl --user restart hermeshd: %v: %s", err, out)
+		if out, err := exec.Command("systemctl", "--user", "restart", unit()).CombinedOutput(); err != nil {
+			return fmt.Errorf("systemctl --user restart %s: %v: %s", unit(), err, out)
 		}
 		return nil
 	}
@@ -168,12 +191,12 @@ func userBus() error {
 func Running() bool {
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run() == nil
+		return exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/%s", os.Getuid(), label())).Run() == nil
 	case "linux":
 		if userBus() != nil {
 			return false
 		}
-		return exec.Command("systemctl", "--user", "is-active", "--quiet", "hermeshd.service").Run() == nil
+		return exec.Command("systemctl", "--user", "is-active", "--quiet", unit()).Run() == nil
 	}
 	return false
 }
@@ -185,7 +208,7 @@ func AtBoot() bool {
 	case "darwin":
 		return Installed() // a LaunchAgent: at login
 	case "linux":
-		if userBus() != nil || exec.Command("systemctl", "--user", "is-enabled", "--quiet", "hermeshd.service").Run() != nil {
+		if userBus() != nil || exec.Command("systemctl", "--user", "is-enabled", "--quiet", unit()).Run() != nil {
 			return false
 		}
 		out, err := exec.Command("loginctl", "show-user", userName(), "--property=Linger").Output()
@@ -204,7 +227,7 @@ func Installed() bool {
 }
 
 // plistText is the launchd job Install writes. It is Interactive, as the Mac
-// app's own job is, because git and the agents hermeshd starts inherit it and
+// app's own job is, because git and the agents aided starts inherit it and
 // do what the person asked for: launchd's other types hold them back
 // (docs/technical-design.md §6.1).
 func plistText(bin, dataDir, logDir string, args []string) string {
@@ -222,7 +245,7 @@ func plistText(bin, dataDir, logDir string, args []string) string {
   <key>StandardErrorPath</key><string>%s</string>
 </dict>
 </plist>
-`, label, xmlEscape(bin), plistArgs(args), xmlEscape(dataDir), xmlEscape(filepath.Join(logDir, "hermeshd.log")), xmlEscape(filepath.Join(logDir, "hermeshd.log")))
+`, label(), xmlEscape(bin), plistArgs(args), xmlEscape(dataDir), xmlEscape(filepath.Join(logDir, "aided.log")), xmlEscape(filepath.Join(logDir, "aided.log")))
 }
 
 // unitText is the systemd unit Install writes.
@@ -268,7 +291,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
   launchctl bootstrap "$1" "$3" && exit 0
   sleep 1
 done
-exit 1`, "sh", fmt.Sprintf("gui/%d", os.Getuid()), label, path)
+exit 1`, "sh", fmt.Sprintf("gui/%d", os.Getuid()), label(), path)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
 		return false, err
@@ -281,7 +304,7 @@ exit 1`, "sh", fmt.Sprintf("gui/%d", os.Getuid()), label, path)
 func Supervised(dataDir string) bool {
 	switch runtime.GOOS {
 	case "darwin":
-		return os.Getenv("XPC_SERVICE_NAME") == label && InstalledFor(dataDir)
+		return os.Getenv("XPC_SERVICE_NAME") == label() && InstalledFor(dataDir)
 	case "linux":
 		return os.Getenv("INVOCATION_ID") != "" && InstalledFor(dataDir)
 	}
@@ -329,7 +352,7 @@ func RunInBackground(bin, dataDir string) (int, error) {
 	return pid, nil
 }
 
-// Supervise is for Windows: launchd and systemd keep hermeshd running.
+// Supervise is for Windows: launchd and systemd keep aided running.
 func Supervise(dataDir, exe string, args []string) error {
-	return errors.New("--supervise is for Windows; launchd and systemd keep hermeshd running here")
+	return errors.New("--supervise is for Windows; launchd and systemd keep aided running here")
 }

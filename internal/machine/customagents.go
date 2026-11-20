@@ -15,10 +15,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // Custom agents: coding agents the owner added on this machine, ACP agents
@@ -413,7 +413,7 @@ func (n *Machine) TestCustomAgent(ctx context.Context, def *machinev1.CustomAgen
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp("", "hermesh-test-")
+	dir, err := os.MkdirTemp("", "aide-test-")
 	if err != nil {
 		return nil, err
 	}

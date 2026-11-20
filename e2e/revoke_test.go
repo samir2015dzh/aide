@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestRevokedAgentsLeaveTheList: a revoked personal agent disappears from
@@ -19,7 +19,7 @@ func TestRevokedAgentsLeaveTheList(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}) // "bot": every machine
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}) // "bot": every machine
 	ctx := context.Background()
 	ms, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
 	if err != nil || len(ms.Machines) != 1 {
@@ -27,17 +27,10 @@ func TestRevokedAgentsLeaveTheList(t *testing.T) {
 	}
 	mac := ms.Machines[0].MachineId
 	other := "m_" + strings.Repeat("b", 24) // a machine that is not removed
-	env := func(name string) []string { return []string{"HERMESH_HOME=" + filepath.Join(w.tmp, name)} }
+	env := func(name string) []string { return []string{"AIDE_HOME=" + filepath.Join(w.tmp, name)} }
 	pair := func(name string, machines ...string) {
 		t.Helper()
-		login := start(t, "login "+name, env(name), filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", name)
-		if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t),
-			Spec: &localv1.GrantSpec{MachineIds: machines}}); err != nil {
-			t.Fatal(err)
-		}
-		if c := login.wait(t, 30*time.Second); c != 0 {
-			t.Fatalf("login %s: %s", name, login.output())
-		}
+		w.loginAgent(env(name), name, &localv1.GrantSpec{MachineIds: machines})
 	}
 	pair("only-mac", mac)
 	pair("mac-and-other", mac, other)
@@ -57,7 +50,7 @@ func TestRevokedAgentsLeaveTheList(t *testing.T) {
 	refused := func(name string, e []string) {
 		t.Helper()
 		eventually(t, 30*time.Second, name+" refused as revoked", func() bool {
-			r := run(t, e, 30*time.Second, filepath.Join(w.bin, "hermesh"), "project", "list")
+			r := run(t, e, 30*time.Second, filepath.Join(w.bin, "aide"), "project", "list")
 			return r.code == 3 && strings.Contains(r.stderr, "aide auth login")
 		})
 	}

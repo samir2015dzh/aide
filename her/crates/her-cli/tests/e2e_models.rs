@@ -25,7 +25,7 @@ fn model(models: &Value, id: &str) -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_new_key_brings_the_providers_models_and_the_menu_follows_the_user() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["ModelsListResult", "AuthSetResult", "ModelsRefreshResult"]);
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
@@ -116,7 +116,7 @@ async fn a_new_key_brings_the_providers_models_and_the_menu_follows_the_user() {
     let session = created["session_id"].as_str().unwrap().to_string();
     assert_eq!(created["snapshot"]["session"]["model"], "deepseek/mock-2");
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "hello", false).await;
+    let turn = native_prompt(&client, &mut events, &session, "hello").await;
     assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.end);
 
     // The command line sees the same models and changes the same menu.
@@ -142,7 +142,7 @@ async fn a_new_key_brings_the_providers_models_and_the_menu_follows_the_user() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn without_network_nothing_is_asked_in_the_background() {
-    let env = TestEnv::new("manual", "[models]\nnetwork = false\n").await;
+    let env = TestEnv::new("[models]\nnetwork = false\n").await;
     let (_child, client, _incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     client.request("models/list", json!({})).await.unwrap();
@@ -172,7 +172,7 @@ async fn next_thinking(events: &mut tokio::sync::mpsc::UnboundedReceiver<her_rpc
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_thinking_level_follows_the_model_and_is_remembered() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -229,7 +229,7 @@ async fn the_thinking_level_follows_the_model_and_is_remembered() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn token_plans_save_independently_and_do_not_change_session_defaults() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let path = env.home.path().join("models.toml");
     let mut config = std::fs::read_to_string(&path).unwrap();
     // All endpoints used by this test are local; the regular API provider stays unconnected.
@@ -269,7 +269,7 @@ async fn token_plans_save_independently_and_do_not_change_session_defaults() {
     let created = client.request("session/new", json!({"cwd": cwd, "model": "bailian-token-plan/mock-2"})).await.unwrap();
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "hello", false).await;
+    let turn = native_prompt(&client, &mut events, &session, "hello").await;
     assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.end);
 
     client.request("auth/set", json!({"provider": "zhipu-coding-plan", "api_key": "sk-glm-replacement-test"})).await.unwrap();
@@ -288,7 +288,7 @@ async fn request_of(env: &TestEnv, client: &her_rpc::Client, demux: &Demux, mode
     assert_eq!(created["snapshot"]["session"]["thinking"], thinking, "{model} offers it");
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(client, &mut events, &session, "hello", false).await;
+    let turn = native_prompt(client, &mut events, &session, "hello").await;
     assert_eq!(turn.end["type"], "task_completed", "{model}: {:?}", turn.end);
     env.mock.stats().chat_controls().last().cloned().unwrap()
 }
@@ -302,7 +302,7 @@ fn sent(request: &Value) -> Value {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn each_channel_describes_its_models_and_sends_the_levels_it_offers() {
     // The compiled-in catalog: the mock's would empty what these channels borrow from.
-    let env = TestEnv::new("manual", "[models]\nnetwork = false\n").await;
+    let env = TestEnv::new("[models]\nnetwork = false\n").await;
     let path = env.home.path().join("models.toml");
     let mut config = std::fs::read_to_string(&path).unwrap();
     for (provider, route) in [("bailian-token-plan", "bailian"), ("tencent-token-plan", "tencent"), ("zhipu-coding-plan", "zhipu")] {
@@ -378,7 +378,7 @@ async fn listing(client: &her_rpc::Client) -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_service_of_ones_own_is_added_used_changed_and_removed() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["ModelsListResult", "ProvidersModelsResult", "ProvidersSaveResult"]);
     let models_file = env.home.path().join("models.toml");
     let written = std::fs::read_to_string(&models_file).unwrap();
@@ -435,7 +435,7 @@ async fn a_service_of_ones_own_is_added_used_changed_and_removed() {
     let created = client.request("session/new", json!({"cwd": cwd, "model": "magpie-gateway/mock-2"})).await.unwrap();
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "hello", false).await;
+    let turn = native_prompt(&client, &mut events, &session, "hello").await;
     assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.end);
     assert_eq!(env.mock.stats().chat_authorization().as_deref(), Some("Bearer sk-gateway"));
     assert_eq!(env.mock.stats().chat_controls().last().unwrap()["model"], "mock-2");

@@ -2,8 +2,8 @@
 //! (her-desktop). Like the browser tools they hold no session: the program and the session's
 //! namespace come from the `DesktopHandle` the kernel put into the session's state. Apart from
 //! listing apps, every call names the app it reads or acts on in `authorities()`, resolved to
-//! its bundle id; approval asks once per app and session (site_policy), and `execute` uses
-//! only the app that was approved.
+//! its bundle id; the policy refuses an app denied under `[desktop.apps]` (site_policy), and
+//! `execute` uses only the app that was judged.
 //!
 //! Two ways to act: by ref, through the accessibility API, without moving the pointer; and,
 //! for apps that draw their own interface and show nothing through accessibility, physically,
@@ -61,7 +61,7 @@ const LAUNCH_TIMEOUT_MS: u64 = 20_000;
 const PASTE_SETTLE: Duration = Duration::from_millis(300);
 
 /// One snapshot taken in a session: the app as the model named it, as the app calls itself,
-/// and the key it was approved under.
+/// and the key it is known under.
 #[derive(Clone, Debug)]
 struct Snap {
     asked: String,
@@ -196,7 +196,7 @@ fn same_app(a: &str, b: &str) -> bool {
     a.trim().eq_ignore_ascii_case(b.trim())
 }
 
-/// The key an app is approved under: its bundle id, or its name when it has none. Apps with
+/// The key an app is known under: its bundle id, or its name when it has none. Apps with
 /// windows win over background processes of the same name.
 fn app_key(apps: &Value, app: &str) -> Option<String> {
     let list = apps.get("apps").and_then(Value::as_array)?;
@@ -226,15 +226,15 @@ async fn resolve(ctx: &ToolCtx, app: &str) -> Result<String, ToolError> {
     Ok(key)
 }
 
-/// The app the call was approved for.
-fn approved(ctx: &ToolCtx) -> Result<String, ToolError> {
+/// The app the call was judged for.
+fn judged_app(ctx: &ToolCtx) -> Result<String, ToolError> {
     ctx.authorities
         .iter()
         .find_map(|a| match a {
             Authority::AppObserve { app } | Authority::AppAct { app, .. } => Some(app.clone()),
             _ => None,
         })
-        .ok_or_else(|| ToolError::Failed("the call was not approved for an app".into()))
+        .ok_or_else(|| ToolError::Failed("the call names no app".into()))
 }
 
 fn handle(ctx: &ToolCtx) -> Result<Arc<DesktopHandle>, ToolError> {
@@ -412,7 +412,7 @@ pub(crate) struct LaunchArgs {
 
 struct DesktopLaunch;
 
-/// An app that is not running yet, as approvals know apps: its bundle id when the model gave
+/// An app that is not running yet, as the policy knows apps: its bundle id when the model gave
 /// one, or when an installed app has that name; else the name.
 async fn installed_key(app: &str) -> String {
     let app = app.trim();
@@ -467,7 +467,7 @@ impl TypedTool for DesktopLaunch {
     }
 
     async fn run(&self, args: LaunchArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
-        let key = approved(&ctx)?;
+        let key = judged_app(&ctx)?;
         let launch = vec![key.clone(), "--activate".into(), "--timeout".into(), LAUNCH_TIMEOUT_MS.to_string()];
         run(&ctx, "launch", launch).await?;
         // A name may stand for the bundle id the app turns out to have.
@@ -540,7 +540,7 @@ impl TypedTool for DesktopSnapshot {
     }
 
     async fn run(&self, args: SnapshotArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
-        let key = approved(&ctx)?;
+        let key = judged_app(&ctx)?;
         let mut cli_args = vec!["--app".into(), key.clone(), "--compact".into()];
         if !args.all {
             cli_args.push("-i".into());
@@ -843,7 +843,7 @@ impl TypedTool for DesktopAct {
     }
 
     async fn run(&self, args: ActArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
-        let key = approved(&ctx)?;
+        let key = judged_app(&ctx)?;
         if !args.action.physical() {
             let data = run(&ctx, args.action.command(), args.ref_args()).await?;
             return Ok(ToolOutput {
@@ -1177,17 +1177,12 @@ impl TypedTool for DesktopScreenshot {
         }
     }
 
-    async fn check(&self, _args: &ScreenshotArgs, ctx: &ToolCtx) -> Result<(), ToolError> {
-        handle(ctx)?.cli()?;
-        if ctx.model_accepts_images {
-            Ok(())
-        } else {
-            Err(ToolError::Failed("This model cannot see images. Use cua_snapshot instead.".into()))
-        }
-    }
-
     async fn run(&self, args: ScreenshotArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
-        let key = approved(&ctx)?;
+        handle(&ctx)?.cli()?;
+        if !ctx.model_accepts_images {
+            return Err(ToolError::Failed("This model cannot see images. Use cua_snapshot instead.".into()));
+        }
+        let key = judged_app(&ctx)?;
         let handle = handle(&ctx)?;
         let found = windows(&ctx, &key).await?;
         let window = pick_window(&found, args.window_id.as_deref(), false, &args.app)?;
@@ -1351,7 +1346,7 @@ mod tests {
     }
 
     #[test]
-    fn approvals_name_the_app() {
+    fn titles_name_the_app() {
         let env = her_tools::LocalEnvironment::new(std::env::temp_dir());
         let title = |args: Value| DesktopAct.describe(&args, &env).title;
         assert_eq!(title(json!({"app": "文本编辑", "action": "type", "ref": "@s1:e2", "text": "hi"})), "type @s1:e2 \"hi\" in 文本编辑");

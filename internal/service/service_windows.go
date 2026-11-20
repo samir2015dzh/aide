@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode/utf16"
@@ -15,37 +17,50 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/hermeshai/hermesh/internal/brandenv"
-	"github.com/hermeshai/hermesh/internal/flock"
+	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/flock"
 )
 
-// On Windows hermeshd runs from a Task Scheduler task of this user's, at
+// On Windows aided runs from a Task Scheduler task of this user's, at
 // logon, so no administrator is needed (docs/windows.md §4.4). The task
-// runs hermeshdw.exe, hermeshd's windowless twin (a console program
+// runs aidedw.exe, aided's windowless twin (a console program
 // started at logon would open a console window), with --supervise: Task
 // Scheduler restarts a task that fails to start, not a program that exits,
 // so the supervisor restarts the daemon itself.
 
-// taskName is this user's task: tasks share one namespace per computer.
+// taskName is this user's task: tasks share one namespace per computer. An
+// installation from before the rename keeps its task's name while it has
+// that task (internal/legacy).
 func taskName() string {
-	u := strings.Map(func(r rune) rune {
-		if strings.ContainsRune(`\/:*?"<>|`, r) {
-			return '_'
+	taskOnce.Do(func() {
+		u := strings.Map(func(r rune) rune {
+			if strings.ContainsRune(`\/:*?"<>|`, r) {
+				return '_'
+			}
+			return r
+		}, os.Getenv("USERNAME"))
+		task = newTask + " (" + u + ")"
+		if old := legacy.LogonTask + " (" + u + ")"; schtasks("/Query", "/TN", old) == nil {
+			task = old
 		}
-		return r
-	}, os.Getenv("USERNAME"))
-	return "Hermesh (" + u + ")"
+	})
+	return task
 }
+
+var (
+	taskOnce sync.Once
+	task     string
+)
 
 // definition is where Install keeps the task it registered.
 func definition() string {
 	dir, _ := os.UserCacheDir() // %LocalAppData%
-	return filepath.Join(dir, "Hermesh", "service", "hermeshd.xml")
+	return filepath.Join(dir, "Aide", "service", "aided.xml")
 }
 
-// windowless is hermeshdw.exe next to bin, when there is one.
+// windowless is aidedw.exe next to bin, when there is one.
 func windowless(bin string) string {
-	w := filepath.Join(filepath.Dir(bin), "hermeshdw.exe")
+	w := filepath.Join(filepath.Dir(bin), "aidedw.exe")
 	if _, err := os.Stat(w); err == nil {
 		return w
 	}
@@ -115,7 +130,7 @@ func AtBoot() bool { return Installed() }
 func Installed() bool { return schtasks("/Query", "/TN", taskName()) == nil }
 
 // supervisorEnv marks a daemon its supervisor started: the logon task's.
-const supervisorEnv = "SUPERVISED" // AIDE_ or HERMESH_ (brandenv): a supervisor from before the rename sets the old name
+const supervisorEnv = "SUPERVISED" // AIDE_SUPERVISED, or the old prefix's (brandenv): a supervisor from before the rename sets that
 
 // Supervised reports whether this process is the installed service's
 // daemon for dataDir, which its supervisor starts again when it exits

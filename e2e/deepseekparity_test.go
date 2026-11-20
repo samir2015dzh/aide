@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // TestDeepSeekParity walks what an agent does with DeepSeek Harness through
-// Hermesh (what Agents Anywhere did, WO #9) with the deepseek ACP agent,
+// Aide (what Agents Anywhere did, WO #9) with the deepseek ACP agent,
 // played by a scripted agent that speaks real ACP and, like DSH's `acp`
 // profile, resumes and closes sessions: the machine is online for the agent
 // and the owner's app; a session starts on machine/project with a prompt;
@@ -27,7 +27,7 @@ func TestDeepSeekParity(t *testing.T) {
 		t.Skip("e2e")
 	}
 	state := t.TempDir()
-	w := newOwnerMac(t, []string{"HERMESH_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + state,
+	w := newOwnerMac(t, []string{"AIDE_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + state,
 		"FAKE_ACP_RESUME=resume", "FAKE_ACP_CLOSE=1"}, &localv1.GrantSpec{Agents: []string{"deepseek"}})
 	ctx := context.Background()
 

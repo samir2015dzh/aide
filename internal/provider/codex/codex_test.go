@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Values from the app-server schema (codex app-server generate-json-schema,

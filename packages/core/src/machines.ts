@@ -1,4 +1,4 @@
-import type { AgentStatus } from "@hermesh/proto/machine";
+import type { AgentStatus } from "@aide/proto/machine";
 
 const osTitles: Record<string, string> = { darwin: "macOS", macos: "macOS", linux: "Linux", windows: "Windows", ios: "iOS" };
 
@@ -24,7 +24,7 @@ export function folderName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() ?? "";
 }
 
-/** The coding agents Hermesh helps install: shown even when missing. */
+/** The coding agents Aide helps install: shown even when missing. */
 const suggestedAgents = ["claude", "codex"];
 
 /**

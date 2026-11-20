@@ -41,7 +41,7 @@ fn through(env: &TestEnv, proxy: &str, args: &[&str]) -> tokio::process::Command
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn scripts_and_looking_around_go_nowhere_but_the_model() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (proxy, seen) = recording_proxy();
     for args in [
         &["exec", "say hi"][..],
@@ -63,7 +63,7 @@ async fn scripts_and_looking_around_go_nowhere_but_the_model() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn an_editor_session_looks_for_no_updates() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (proxy, seen) = recording_proxy();
     let mut command = through(&env, &proxy, &["acp"]);
     command.stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::null());
@@ -81,7 +81,7 @@ async fn an_editor_session_looks_for_no_updates() {
 /// providers it has keys for, nothing else.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_service_goes_only_where_the_list_says() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (proxy, seen) = recording_proxy();
     let mut command = through(&env, &proxy, &["serve", "--stdio"]);
     command.stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());

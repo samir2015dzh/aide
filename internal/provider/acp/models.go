@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 const modelCatalogTTL = 5 * time.Minute
@@ -31,7 +31,7 @@ func modelHash(s string) string {
 }
 
 // Never inspect credentials or private caches. Scope by runtime installation
-// and non-secret routing configuration. An account changed outside Hermesh in
+// and non-secret routing configuration. An account changed outside Aide in
 // the same configuration directory cannot be detected here; these are dated
 // observations, never an account-validity claim, and never persisted to disk.
 func modelContext(bin string, env []string) string {
@@ -198,7 +198,7 @@ func (p *Provider) discoverModels(ctx context.Context, bin string, pre, env []st
 				ObservedAt: time.Now(), ExpiresAt: time.Now().Add(modelCatalogTTL)})
 		}
 	}()
-	dir, err := os.MkdirTemp("", "hermesh-acp-models-")
+	dir, err := os.MkdirTemp("", "aide-acp-models-")
 	if err != nil {
 		return
 	}
@@ -215,7 +215,7 @@ func (p *Provider) discoverModels(ctx context.Context, bin string, pre, env []st
 		}}
 	go s.read()
 	res, err := s.call(ctx, "initialize", map[string]any{"protocolVersion": 1,
-		"clientInfo": map[string]any{"name": "hermesh", "version": "0.1.0"}, "clientCapabilities": map[string]any{}})
+		"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"}, "clientCapabilities": map[string]any{}})
 	var init struct {
 		ProtocolVersion   int `json:"protocolVersion"`
 		AgentCapabilities struct {

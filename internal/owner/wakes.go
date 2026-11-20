@@ -6,9 +6,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
 )
 
 // Doorbells (docs/agent-names.md §7): a trusted device sets up, for the
@@ -21,7 +21,7 @@ func (o *Owner) wakeControl(ctx context.Context) (relayv1connect.OwnerControlSer
 		return nil, err
 	}
 	if o.machineOnly() {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("this computer approves nothing: set doorbells up on a trusted device"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("this computer is only a machine: set doorbells up on one of your devices"))
 	}
 	c, _, err := o.control(ctx)
 	return c, err

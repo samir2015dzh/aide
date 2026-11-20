@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import type { DeliveriesListResult, DeliveriesSourcesResult, DeliveryKind, DeliverySourceFilter } from "@hermesh/her-protocol";
+import type { DeliveriesListResult, DeliveriesSourcesResult, DeliveryKind, DeliverySourceFilter } from "@aide/her-protocol";
 import { deliveryDay, deliveryFile, deliveryQuote, fromSource, groupDeliveries, isMediaKind, isNewDelivery, joinDeliveries, onlyDeliveries, sameSource, sourceCount, sourceGroups } from "./deliveries.ts";
 
-// The cases HermeshHer runs too, so both apps read the list the same way.
+// The cases AideHer runs too, so both apps read the list the same way.
 type Case = {
   now: string;
   offset_minutes: number;

@@ -14,11 +14,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::op::ApprovalDecision;
-use crate::op::CommandRule;
-use crate::op::PermissionMode;
 use crate::op::PromptMode;
-use crate::op::SiteGrant;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Event {
@@ -41,8 +37,6 @@ pub enum EventMsg {
         session_file: PathBuf,
         #[serde(default)]
         thinking: ThinkingLevel,
-        #[serde(default, alias = "approval_mode")]
-        permission_mode: PermissionMode,
         #[serde(default)]
         context_window: u64,
         /// Totals recorded in the log so far; zero for a new session.
@@ -108,7 +102,7 @@ pub enum EventMsg {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         locations: Vec<Location>,
     },
-    /// The call passed preflight and approval and is now executing.
+    /// The call passed preflight and is now executing.
     ToolRunning {
         call_id: String,
     },
@@ -120,34 +114,6 @@ pub enum EventMsg {
         call_id: String,
         /// Shared with the history; the JSON is the plain message.
         result: Arc<ToolResultMessage>,
-    },
-    ApprovalRequested {
-        call_id: String,
-        name: String,
-        args: Value,
-        summary: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        reason: Option<String>,
-        /// Command prefix that `approve_for_session` allows from then on.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        proposed_rule: Option<CommandRule>,
-        /// Mode that `approve_for_session` switches the session to. With none of this,
-        /// `proposed_rule` and `proposed_grants`, approving for the session approves this
-        /// call only.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        proposed_mode: Option<PermissionMode>,
-        /// Site permissions that `approve_for_session` may keep; its `grant` picks one, the
-        /// first by default.
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        proposed_grants: Vec<SiteGrant>,
-        /// The call works in the user's own browser, with their real sign-ins, rather than
-        /// the built-in one (connectors-entry-design §3.4): clients say so.
-        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-        own_browser: bool,
-    },
-    ApprovalResolved {
-        call_id: String,
-        decision: ApprovalDecision,
     },
     CompactionStarted {
         reason: CompactionReason,
@@ -221,8 +187,6 @@ pub enum EventMsg {
     SettingsChanged {
         model: String,
         thinking: ThinkingLevel,
-        #[serde(alias = "approval_mode")]
-        permission_mode: PermissionMode,
         #[serde(default)]
         context_window: u64,
     },
@@ -233,15 +197,6 @@ pub enum EventMsg {
     /// The session was archived or brought back (`set_archived`).
     ArchivedChanged {
         archived: bool,
-    },
-    /// A call that needs approval was refused because nothing here can give it: a run without a
-    /// person, such as `her exec` in a script.
-    ApprovalRefused {
-        call_id: String,
-        name: String,
-        summary: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        reason: Option<String>,
     },
     Warning {
         message: String,
@@ -383,8 +338,6 @@ pub enum ContextPartKind {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum WarningCode {
-    /// The session runs in bypass-permissions: sent when it starts, resumes or switches into it.
-    BypassPermissions,
     /// MCP servers that were not ready for the session's first request. A client that shows
     /// `mcp_server_status` already has this.
     McpServersNotReady,

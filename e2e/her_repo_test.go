@@ -5,22 +5,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Her starts a coding agent in a GitHub repository the owner never cloned
-// or added, on the computer she names: the owner is asked in words that
-// name the repository, the branch and the computer, and "don't ask again"
-// covers that repository there and nothing else. What the machine says of a
-// repository it can't reach, or a branch it lacks, reaches her as it said
-// it. Her branch goes to GitHub only when she pushes it, and every push is
-// asked.
+// or added, on the computer she names, without asking (docs/her-mesh.md
+// §5). What the machine says of a repository it can't reach, or a branch it
+// lacks, reaches her as it said it. Her branch goes to GitHub only when she
+// pushes it, and her push runs without asking too.
 func TestHerRepoSession(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -70,12 +67,8 @@ func TestHerRepoSession(t *testing.T) {
 	}
 
 	// The repository's feature branch, on the owner's Mac.
-	asked, said := tellHer(t, env, meshCall("session_start", map[string]any{"repo": "https://github.com/acme/widget", "branch": "feature", "machine": "owner-mac",
-		"prompt": "sleep 4s\nwrite made.txt by her session\nsay built it"}), "approve_for_session", "mesh ")
-	if len(asked) != 1 || asked[0].Summary != "Start Claude Code in GitHub acme/widget, branch feature, on owner-mac\n\nsleep 4s\nwrite made.txt by her session\nsay built it" ||
-		asked[0].ProposedRule == nil || !slices.Equal(asked[0].ProposedRule.Prefix, []string{"mesh", "owner-mac/github.acme.widget"}) {
-		t.Fatalf("the approval: %+v", asked)
-	}
+	said := tellHer(t, env, meshCall("session_start", map[string]any{"repo": "https://github.com/acme/widget", "branch": "feature", "machine": "owner-mac",
+		"prompt": "sleep 4s\nwrite made.txt by her session\nsay built it"}), "mesh ")
 	first := sessionID.FindString(said)
 	if !strings.HasPrefix(said, "mesh done") || first == "" {
 		t.Fatalf("session_start: %s", said)
@@ -87,33 +80,29 @@ func TestHerRepoSession(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(w.worktree(first), "feature.txt")); err != nil {
 		t.Fatalf("the worktree is not on feature: %v", err)
 	}
-	if strings.TrimSpace(gitOut(t, bare, "branch", "--list", "hermesh/*")) != "" {
+	if strings.TrimSpace(gitOut(t, bare, "branch", "--list", "aide/*")) != "" {
 		t.Fatal("pushed unasked")
 	}
 
-	// "Don't ask again" was for that repository on that computer: a start
-	// there by the project its clone is now asks nothing, and nor does one
-	// on a branch GitHub lacks, which fails with the machine's words.
-	asked, said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/github.acme.widget", "prompt": "sleep 4s\nsay again"}), "approve", "mesh ")
-	if len(asked) != 0 || !strings.HasPrefix(said, "mesh done") {
-		t.Fatalf("a start in the clone's project: asked %+v, said %s", asked, said)
+	// A start by the project its clone is now runs there; one on a branch
+	// GitHub lacks fails with the machine's words.
+	said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/github.acme.widget", "prompt": "sleep 4s\nsay again"}), "mesh ")
+	if !strings.HasPrefix(said, "mesh done") {
+		t.Fatalf("a start in the clone's project: %s", said)
 	}
 	herSaid(t, env, "news of the second turn", `kind="turn_done"`, sessionID.FindString(said))
 	before := len(sessions())
-	asked, said = tellHer(t, env, meshCall("session_start", map[string]any{"repo": "acme/widget", "branch": "gone", "machine": "owner-mac", "prompt": "say never"}), "approve", "mesh ")
-	if len(asked) != 0 || !strings.HasPrefix(said, "mesh failed") || !strings.Contains(said, "GitHub repository acme/widget has no branch") {
-		t.Fatalf("a missing branch: asked %+v, said %s", asked, said)
+	said = tellHer(t, env, meshCall("session_start", map[string]any{"repo": "acme/widget", "branch": "gone", "machine": "owner-mac", "prompt": "say never"}), "mesh ")
+	if !strings.HasPrefix(said, "mesh failed") || !strings.Contains(said, "GitHub repository acme/widget has no branch") {
+		t.Fatalf("a missing branch: %s", said)
 	}
-	// Another repository asks, for its own rule; one the machine can't reach
-	// fails with why.
-	asked, said = tellHer(t, env, meshCall("session_start", map[string]any{"repo": "acme/private", "machine": "owner-mac", "prompt": "say never"}), "approve", "mesh ")
-	if len(asked) != 1 || asked[0].Summary != "Start Claude Code in GitHub acme/private, its default branch, on owner-mac\n\nsay never" ||
-		asked[0].ProposedRule == nil || !slices.Equal(asked[0].ProposedRule.Prefix, []string{"mesh", "owner-mac/github.acme.private"}) ||
-		!strings.HasPrefix(said, "mesh failed") || !strings.Contains(said, "this machine cannot reach GitHub repository acme/private with its own git login") {
-		t.Fatalf("an unreachable repository: asked %+v, said %s", asked, said)
+	// A repository the machine can't reach fails with why.
+	said = tellHer(t, env, meshCall("session_start", map[string]any{"repo": "acme/private", "machine": "owner-mac", "prompt": "say never"}), "mesh ")
+	if !strings.HasPrefix(said, "mesh failed") || !strings.Contains(said, "this machine cannot reach GitHub repository acme/private with its own git login") {
+		t.Fatalf("an unreachable repository: %s", said)
 	}
 	// A repository without a computer: she is told to name one.
-	if _, said = tellHer(t, env, meshCall("session_start", map[string]any{"repo": "acme/widget", "prompt": "say never"}), "approve", "mesh "); !strings.HasPrefix(said, "mesh failed") ||
+	if said = tellHer(t, env, meshCall("session_start", map[string]any{"repo": "acme/widget", "prompt": "say never"}), "mesh "); !strings.HasPrefix(said, "mesh failed") ||
 		!strings.Contains(said, "machine is required with repo") {
 		t.Fatalf("no computer: %s", said)
 	}
@@ -121,13 +110,10 @@ func TestHerRepoSession(t *testing.T) {
 		t.Fatalf("a failed start made a session: %d, then %d", before, after)
 	}
 
-	// Her pushes her session's branch, asked though the project is
-	// remembered, and gets the page for its pull request.
-	asked, said = tellHer(t, env, meshCall("session_push", map[string]any{"session_id": first}), "approve", "mesh ")
-	if len(asked) != 1 || !strings.HasPrefix(asked[0].Summary, `Push the branch of "sleep 4s" (Claude Code, owner-mac/github.acme.widget) to its remote`) || asked[0].ProposedRule != nil {
-		t.Fatalf("the push's approval: %+v", asked)
-	}
-	branch := "hermesh/" + first
+	// Her pushes her session's branch, unasked as the rest, and gets the
+	// page for its pull request.
+	said = tellHer(t, env, meshCall("session_push", map[string]any{"session_id": first}), "mesh ")
+	branch := "aide/" + first
 	if !strings.HasPrefix(said, "mesh done") || !strings.Contains(said, "https://github.com/acme/widget/compare/feature..."+branch+"?expand=1") {
 		t.Fatalf("session_push: %s", said)
 	}

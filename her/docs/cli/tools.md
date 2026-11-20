@@ -42,12 +42,7 @@ her mcp add files -- npx some-mcp-server
 
 `her mcp` lists them, `get` shows one with its tools, `list --check` connects to each. `enable`, `disable`, `remove`, `login` and `logout` do what they say. `--global` (the default), `--local` and `--project` say which file.
 
-**Approvals.** A server's tools ask before running in `manual` and `accept-edits`, unless the tool says it only reads and the server is your own; a server a project brings is not taken at its word. To trust a server completely, write this in `~/.her/config.toml` (it counts nowhere else):
-
-```toml
-[mcp_servers.docs]
-approval = "never"
-```
+**No approvals.** A server's tools run without asking, like every other tool. A deny rule with the tool's full name, such as `mcp__mail__send`, stops one ([permissions](permissions.md)).
 
 ## Skills
 

@@ -21,9 +21,9 @@ Ten minutes later the Mac's app updated, and the same screen worked.
 
 | Side | How it updates | Behind for |
 |---|---|---|
-| iPhone app (and its core, `cmd/hermesh-mobile`) | TestFlight or the App Store, when the owner allows it | Days |
-| Mac app (with its `hermeshd`, `her` and signer) | Squirrel.Mac on quit or restart ([desktop-app.md](desktop-app.md) §6.5) | Hours to days |
-| A Mac app's own `hermeshd` | Restarted by the new app, after any running session ends (desktop-app.md §6.5) | Minutes, or until a session ends |
+| iPhone app (and its core, `cmd/aide-mobile`) | TestFlight or the App Store, when the owner allows it | Days |
+| Mac app (with its `aided`, `her` and, before 2026-11-20, its signer) | Squirrel.Mac on quit or restart ([desktop-app.md](desktop-app.md) §6.5) | Hours to days |
+| A Mac app's own `aided` | Restarted by the new app, after any running session ends (desktop-app.md §6.5) | Minutes, or until a session ends |
 | Machines from `install.sh` | Every 6 hours, after their sessions end ([machine-updates.md](machine-updates.md)) | Up to a day, or for good when automatic updates are off |
 
 Version skew therefore goes both ways: a device can be newer than a machine,
@@ -37,15 +37,15 @@ A device reaches a machine's abilities through three hops, and each one says
 | Hop | What a missing ability looks like | Where it comes from |
 |---|---|---|
 | `her` | JSON-RPC `-32601`, `kind: method_not_found`, "unknown method 'x'" | `her-rpc` `RpcError::method_not_found` |
-| `hermeshd`'s gate for her (`internal/herhost/allow.go`) | Connect `permission_denied`, "her's "x" is not open to the owner's devices" | An older `hermeshd` whose list lacks a newer method |
-| `hermeshd`'s own services | Connect `unimplemented` | A service or method this version lacks |
+| `aided`'s gate for her (`internal/herhost/allow.go`) | Connect `permission_denied`, "her's "x" is not open to the owner's devices" | An older `aided` whose list lacks a newer method |
+| `aided`'s own services | Connect `unimplemented` | A service or method this version lacks |
 
 What the devices do with these:
 
 - **Handled in four places only:** the folder browser (`unimplemented` → "too
   old to browse its folders"), the iPhone's and the desktop's doorbells
   (`unimplemented` → hidden), and a secure card the app can't show ("Update
-  Hermesh to answer this request", the reverse case).
+  Aide to answer this request", the reverse case).
 - **Everywhere else the message is shown as it came.** The iPhone calls 17 of
   her's methods and the desktop calls 24, across memory, routines, cards,
   sign-ins, connectors, the browser and conversations. Through its core, the
@@ -78,7 +78,7 @@ What the devices do with these:
 1. **Ask what it can do, not what version it is.** Abilities are discovered,
    never inferred from a version number.
 2. **Derived, not kept by hand.** What a machine says it can do comes from
-   what it actually serves: her's dispatch table, `hermeshd`'s gate list and
+   what it actually serves: her's dispatch table, `aided`'s gate list and
    its registered handlers. It can't drift from the code.
 3. **Missing is a state, not an error.** The state names the machine, says
    which side is behind and what it is missing, and offers the one thing to
@@ -99,7 +99,7 @@ What the devices do with these:
   and most of `deck/*`). A test (`initialize_lists_what_it_answers`) checks
   the list is exact both ways: every method listed is dispatched, and every
   other request of the schema is an unknown method.
-- **hermeshd:** `HerStatus.methods` is what the owner's devices may call
+- **aided:** `HerStatus.methods` is what the owner's devices may call
   there: her's `methods` that its gate (`internal/herhost/allow.go`) lets
   through. It travels with the machine's status to the devices, and the
   owner's device keeps it with the rest of `Machine.her`.
@@ -107,22 +107,22 @@ What the devices do with these:
   machine is too old to list its methods. The gate then lets the call through
   and the safety net (§6.3) catches what is missing. Every machine updated
   after this ships lists them.
-- **Not listed:** hermeshd's own RPCs. No feature gates on one yet, and the
+- **Not listed:** aided's own RPCs. No feature gates on one yet, and the
   safety net covers them; a list comes when a feature needs it, derived from
-  the handlers hermeshd registers, not kept by hand.
+  the handlers aided registers, not kept by hand.
 
 ### 6.2 One gate in each client
 
 - **The check:** `herAnswers(machine.her, "bots/memory")` gives true, false or
   unknown (nil on the iPhone, undefined on the desktop). Unknown is taken as
-  yes. It lives in HermeshHer (`Environment.swift`) and in the desktop's
+  yes. It lives in AideHer (`Environment.swift`) and in the desktop's
   `skew.ts`.
 - **What false looks like:**
   - The entry point stays visible, with a "需更新" mark. Tapping it explains
     instead of failing; Clear Memory says the same instead of asking to
     confirm. Hiding it would leave the owner wondering where the feature went.
-  - The screen shows the Needs Update view: "需要更新 Hermesh", the machine
-    named, and that the page loads by itself once Hermesh there is updated
+  - The screen shows the Needs Update view: "需要更新 Aide", the machine
+    named, and that the page loads by itself once Aide there is updated
     (`NeedsUpdateView` on the iPhone; on the desktop, the memory panel).
 - **Built for an assistant's memory,** the feature that showed the problem.
   Routines and cards need no gate: they only appear when the machine's her
@@ -134,14 +134,14 @@ Each of these means the machine is older than the app:
 
 - her's `method_not_found`;
 - `unimplemented` from a machine's RPC;
-- `unimplemented` from hermeshd's gate, for a method not on its list. Until
+- `unimplemented` from aided's gate, for a method not on its list. Until
   now the gate answered `permission_denied`; that is kept for refusals by
   policy, such as a connector started as a command, or a card's op off the
   list. The console's HTTP route answers 501.
 
-Where the error is made, the text becomes "那台电脑上的 Hermesh 版本较旧，还没有这项功能。
-在那台电脑上更新 Hermesh 后再试。" in place of the transport's words. On the
-iPhone, that is `APIError.received` (HermeshKit) and `HerRPCError` (HermeshHer).
+Where the error is made, the text becomes "那台电脑上的 Aide 版本较旧，还没有这项功能。
+在那台电脑上更新 Aide 后再试。" in place of the transport's words. On the
+iPhone, that is `APIError.received` (AideKit) and `HerRPCError` (AideHer).
 On the desktop, it is `errorText`, through `needsUpdate` in `skew.ts`. Every
 screen and toast that shows an error reads right, gated or not. The codes
 stay, for the screens that act on them: the folder browser and the doorbells.
@@ -150,16 +150,16 @@ stay, for the screens that act on them: the folder browser and the doorbells.
 
 | Behind | The owner sees | The action |
 |---|---|---|
-| A Mac with the app | "<Mac> 上的 Hermesh 需要更新才能使用记忆" | Today: open Hermesh on that Mac (it updates on restart). Later: Update Now from the device (machine-updates.md §8) |
-| A Mac with the app, the new version installed, its `hermeshd` waiting for a session to end | "<Mac> 已下载新版本，当前会话结束后自动完成更新" | None needed. It shows progress, so it doesn't read as a failure |
-| A machine from `install.sh` | The same wording | The command sheet that exists (`MachinesView` "Update Hermesh") |
+| A Mac with the app | "<Mac> 上的 Aide 需要更新才能使用记忆" | Today: open Aide on that Mac (it updates on restart). Later: Update Now from the device (machine-updates.md §8) |
+| A Mac with the app, the new version installed, its `aided` waiting for a session to end | "<Mac> 已下载新版本，当前会话结束后自动完成更新" | None needed. It shows progress, so it doesn't read as a failure |
+| A machine from `install.sh` | The same wording | The command sheet that exists (`MachinesView` "Update Aide") |
 | This app | "此 App 需要更新" | The App Store or TestFlight page; on a Mac, its updater |
 
 The waiting row is not built. On a Mac with the app, it is the new app that
-waits for sessions to end before restarting `hermeshd`
-(desktop-app.md §6.5). Meanwhile the old `hermeshd` answers the devices, and
+waits for sessions to end before restarting `aided`
+(desktop-app.md §6.5). Meanwhile the old `aided` answers the devices, and
 it can't know an update is waiting. The new app would have to tell it, and
-an old `hermeshd` has no call for that. For a machine installed with
+an old `aided` has no call for that. For a machine installed with
 `install.sh`, its own updater knows (machine-updates.md §3.1), so it could
 report this.
 
@@ -186,30 +186,30 @@ cancellation, and never once her restarted.
 
 ### 6.7 A machine from before Her
 
-The case: an iPhone turning Her on for a machine whose `hermeshd` was 0.1.4
-or older. Face ID signed `SetHer`, and the machine answered
+The case: an iPhone turning Her on for a machine whose `aided` was 0.1.4
+or older. Face ID signed `SetHer` (the server signs it since 2026-11-20, [accounts.md](accounts.md)), and the machine answered
 `invalid_argument` "unknown admin command", shown as it came. `SetHer` and
 `MachineStatus.her` both came in 0.1.5 (6093c626, a4422506), and every
-`hermeshd` since sends `her` in its status. So a machine that answered,
+`aided` since sends `her` in its status. So a machine that answered,
 without `her` in its status, can't run Her until it is updated. That comes
 from what it serves, not from its version number (§5.1).
 
 - **Where Her runs** (the iPhone's `herChoices`, the desktop's, and the
   desktop's switch in Settings › Machines): such a machine stays listed,
-  saying "这台电脑上的 Hermesh 版本较旧，在那里更新后才能运行 Her", and can't
+  saying "这台电脑上的 Aide 版本较旧，在那里更新后才能运行 Her", and can't
   be chosen. What else a machine says of Her (`unsupported`) is read from its
   status too: `Machine.her` is kept only once Her was on there, so a machine
   Her was never on has none. Updated, its status has `her`, and the row offers
   Her by itself. A machine whose status hasn't come yet is unknown, and may be
   chosen, as §6.2 has it.
-- **Before Face ID:** turning Her on asks the machine for its status first
+- **Before signing:** turning Her on asks the machine for its status first
   (`Owner.SetHer`). One from before Her answers `unimplemented`, and one that
   can't be reached `unavailable`, with no signature asked for.
 - **The safety net:** a command a machine doesn't know is `unimplemented`
   from now on. Machines up to 0.1.5 said `invalid_argument` "unknown admin
   command"; the owner's devices take that answer as `unimplemented` too, so
   §6.3's text shows in its place.
-- **Tests:** `HERMESH_TEST_BEFORE_HER=1` makes a `hermeshd` act as 0.1.4: no
+- **Tests:** `AIDE_TEST_BEFORE_HER=1` makes a `aided` act as 0.1.4: no
   `her` in its status, and her commands answered as 0.1.4 did.
   `TestHerOnAMachineFromBeforeHer` (through LocalService),
   `TestDesktopHerBeforeHer` (`her-before.spec.ts`) and the iPhone's
@@ -232,7 +232,7 @@ from what it serves, not from its version number (§5.1).
 
 - **Unit tests:**
   - her: the list is exact both ways (`e2e_native.rs`).
-  - hermeshd:
+  - aided:
     - `HerStatus.methods` from a real her: `bots/memory` listed,
       `server/shutdown` not (`TestHost`);
     - the gate list ∩ her's methods, with nil staying nil (`TestOpenTo`);
@@ -245,7 +245,7 @@ from what it serves, not from its version number (§5.1).
   her only) names a file of methods her acts as if it lacked. Its line
   `no-list` makes her list none, as a her from before the list. her reads the
   file when it starts. The tests restart her by `server/shutdown`, and
-  hermeshd starts it again, as after an update. Three phases:
+  aided starts it again, as after an update. Three phases:
   - a her from before the list, without `bots/memory`: opening the memory
     shows the Needs Update view naming the machine, never "unknown method";
   - one that lists its methods without it: the row shows "需更新", and Clear

@@ -1,8 +1,8 @@
 {
-  "name": "@hermesh/her-console",
+  "name": "@aide/her-console",
   "private": true,
   "type": "module",
-  "description": "Her's console: the web pages that manage one Her Server, served by hermeshd at /her/console/ (docs/her-server.md §10)",
+  "description": "Her's console: the web pages that manage one Her Server, served by aided at /her/console/ (docs/her-server.md §10)",
   "scripts": {
     "build": "vite build",
     "dev": "node scripts/dev-server.ts",
@@ -11,9 +11,9 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@hermesh/her-client": "workspace:*",
-    "@hermesh/her-protocol": "workspace:*",
-    "@hermesh/ui": "workspace:*",
+    "@aide/her-client": "workspace:*",
+    "@aide/her-protocol": "workspace:*",
+    "@aide/ui": "workspace:*",
     "i18next": "26.4.2",
     "react": "19.3.1",
     "react-dom": "19.3.1",

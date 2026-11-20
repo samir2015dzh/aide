@@ -7,13 +7,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // TestAuth walks an agent's pairing over its life with real binaries:
@@ -24,9 +24,9 @@ func TestAuth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
-	bin := filepath.Join(w.bin, "hermesh")
+	bin := filepath.Join(w.bin, "aide")
 	cli := func(env []string, args ...string) result { return run(t, env, time.Minute, bin, args...) }
 	has := func(r result, what string, want ...string) {
 		t.Helper()
@@ -37,14 +37,14 @@ func TestAuth(t *testing.T) {
 		}
 	}
 	home := filepath.Join(w.tmp, "agent")
-	fresh := []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "fresh")}
+	fresh := []string{"AIDE_HOME=" + filepath.Join(w.tmp, "fresh")}
 
 	// Not paired: status says so and how to pair; logout has nothing to do.
 	r := cli(fresh, "auth", "status")
 	if r.code != 3 {
 		t.Fatalf("status, not paired: %+v", r)
 	}
-	has(r, "status, not paired", "✗ identity", "not paired", "aide auth login", "- relay")
+	has(r, "status, not logged in", "✗ identity", "not logged in", "aide auth login", "- relay")
 	st := jsonDoc(t, cli(fresh, "auth", "status", "-o", "json"))
 	if st["ok"] != false || check(st, "identity") != "fail" || check(st, "relay") != "skipped" {
 		t.Fatalf("status json, not paired: %v", st)
@@ -52,7 +52,7 @@ func TestAuth(t *testing.T) {
 	if r := cli(fresh, "auth", "logout"); r.code != 0 {
 		t.Fatalf("logout, not paired: %+v", r)
 	} else {
-		has(r, "logout, not paired", "Not paired")
+		has(r, "logout, not logged in", "Not logged in")
 	}
 	if r := cli(fresh, "auth", "login", w.addr, "--name", strings.Repeat("x", 65)); r.code != 2 {
 		t.Fatalf("long name: %+v", r)
@@ -78,9 +78,9 @@ func TestAuth(t *testing.T) {
 	if r.code != 0 || strings.Contains(r.stdout, "Pairing code") {
 		t.Fatalf("login again: %+v", r)
 	}
-	has(r, "login again", "Already paired")
+	has(r, "login again", "Already logged in")
 	// The old spelling still works but is not offered; whoami and --force are gone.
-	if r := cli(w.cliEnv, "login", w.addr); r.code != 0 || !strings.Contains(r.stdout, "Already paired") {
+	if r := cli(w.cliEnv, "login", w.addr); r.code != 0 || !strings.Contains(r.stdout, "Already logged in") {
 		t.Fatalf("old login: %+v", r)
 	}
 	help := cli(w.cliEnv, "--help")
@@ -167,10 +167,7 @@ func TestAuth(t *testing.T) {
 		t.Fatalf("machines, revoked: %+v", r)
 	}
 	// Asking again needs no flag: login sees the revocation and pairs anew.
-	login := start(t, "login again", w.cliEnv, bin, "auth", "login", w.addr)
-	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: login.pairingCode(t), Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
+	login := start(t, "login again", append(slices.Clone(w.cliEnv), loginEnv()...), bin, "auth", "login", w.addr)
 	if c := login.wait(t, 30*time.Second); c != 0 || !strings.Contains(login.output(), "aide project list") {
 		t.Fatalf("login after revocation: %s", login.output())
 	}
@@ -183,13 +180,12 @@ func TestAuth(t *testing.T) {
 		t.Fatalf("status after pairing again: %+v", r)
 	}
 
-	// Another owner's address is refused while paired with this one.
-	relayURL, _, _ := connaddr.Parse(w.addr)
-	r = cli(w.cliEnv, "auth", "login", connaddr.Format(relayURL, "o_"+strings.Repeat("a", 24)))
+	// Another server is refused while logged in to this one.
+	r = cli(w.cliEnv, "auth", "login", "http://127.0.0.1:1")
 	if r.code != 2 {
-		t.Fatalf("login, other owner: %+v", r)
+		t.Fatalf("login, other server: %+v", r)
 	}
-	has(r, "login, other owner", "already paired", "aide auth logout")
+	has(r, "login, other server", "already logged in", "aide auth logout")
 
 	// Logout forgets the key and the grant, and says the owner still lists
 	// the agent until they revoke it.

@@ -15,10 +15,10 @@ import (
 	"github.com/coder/websocket"
 	"github.com/hashicorp/yamux"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 type grants struct {
@@ -46,7 +46,7 @@ func fakeRelay(t *testing.T, ok bool, pipelined chan<- bool) string {
 // to the peer that often (it opens streams), as one busy with tunnels does.
 func fakeRelayWith(t *testing.T, ok bool, pipelined chan<- bool, chatter time.Duration) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 		if err != nil {
 			return
 		}
@@ -333,7 +333,7 @@ func TestDialRetriesTransientHandshakeDrop(t *testing.T) {
 				}
 			}
 		}
-		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 		if err != nil {
 			return
 		}

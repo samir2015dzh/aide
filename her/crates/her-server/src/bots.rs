@@ -13,7 +13,6 @@ use her_core::Workspace;
 use her_llm::ThinkingLevel;
 use her_protocol::Event;
 use her_protocol::EventMsg;
-use her_protocol::PermissionMode;
 use her_protocol::api::SessionInfo;
 use her_protocol::api::SessionState;
 use her_protocol::api::method;
@@ -83,8 +82,6 @@ struct BotFile {
     model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     thinking: Option<ThinkingLevel>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    permission_mode: Option<PermissionMode>,
     /// The list's row, kept for when the conversation is not loaded.
     #[serde(default)]
     summary: Kept,
@@ -351,21 +348,12 @@ impl Registry {
                     bot.file.summary.unread += 1;
                     kept = true;
                 }
-                EventMsg::ApprovalRequested { .. } => {
-                    bot.file.summary.unread += 1;
-                    kept = true;
-                }
-                // What a sub-agent asks counts like the bot's own.
-                EventMsg::AgentEvent { event, .. } if matches!(event.msg, EventMsg::ApprovalRequested { .. }) => {
-                    bot.file.summary.unread += 1;
-                    kept = true;
-                }
                 _ => {}
             }
             bot.typing = mirror.busy();
             bot.agents_working = mirror.agents_working();
-            // A secure card waits for the owner as an approval does.
-            bot.waiting = mirror.first_approval().or(mirror.first_card()).map(str::to_string);
+            // A secure card is all that waits for the owner: her runs actions without asking.
+            bot.waiting = mirror.first_card().map(str::to_string);
             bot.failed = mirror.state() == SessionState::Failed;
             (kept || before != (bot.typing, bot.agents_working, bot.waiting.clone(), bot.failed), kept)
         };
@@ -628,7 +616,7 @@ impl Server {
         let _opening = registry.opening.lock().await;
         let (session, name, start) = {
             let (registry, id) = (registry.clone(), id.to_string());
-            tokio::task::spawn_blocking(move || registry.with_bot(&id, |b| (b.file.session_id.clone(), b.file.name.clone(), (b.file.model.clone(), b.file.thinking, b.file.permission_mode))))
+            tokio::task::spawn_blocking(move || registry.with_bot(&id, |b| (b.file.session_id.clone(), b.file.name.clone(), (b.file.model.clone(), b.file.thinking))))
                 .await
                 .map_err(|e| RpcError::internal(e.to_string()))??
         };
@@ -650,7 +638,7 @@ impl Server {
     }
 
     /// Starts a bot's conversation in its folder.
-    async fn start_bot_session(&self, id: &str, name: String, (model, thinking, permission_mode): (Option<String>, Option<ThinkingLevel>, Option<PermissionMode>), attach: Option<AttachRequest>) -> Result<String, RpcError> {
+    async fn start_bot_session(&self, id: &str, name: String, (model, thinking): (Option<String>, Option<ThinkingLevel>), attach: Option<AttachRequest>) -> Result<String, RpcError> {
         self.make_room().await?;
         let folder = self.0.home.bot_files_dir(id);
         std::fs::create_dir_all(&folder).map_err(|e| RpcError::internal(format!("cannot create {}: {e}", folder.display())))?;
@@ -669,13 +657,10 @@ impl Server {
         let options = StartOptions {
             model,
             thinking: thinking.unwrap_or(workspace.config.thinking),
-            permission_mode: permission_mode.unwrap_or(workspace.config.permission_mode),
             cwd: workspace.cwd.clone(),
             home: self.0.home.clone(),
             project_root: None,
-            trusted: workspace.trusted,
             config: Arc::new(workspace.config),
-            interactive_approvals: true,
             bot: Some(BotIdentity { id: id.to_string(), name }),
         };
         let kernel = her_core::Kernel::start(options, deps).await.map_err(|e| errors::from_kernel(e, "new"))?;
@@ -705,7 +690,6 @@ impl Server {
             if let Some(info) = settings {
                 bot.file.model = Some(info.model);
                 bot.file.thinking = Some(info.thinking);
-                bot.file.permission_mode = Some(info.permission_mode);
             }
             bot.file.summary = Kept::default();
             bot.file.session_id.take()
@@ -819,7 +803,6 @@ fn new_file(name: String, avatar: Avatar, default: bool) -> BotFile {
         session_id: None,
         model: None,
         thinking: None,
-        permission_mode: None,
         summary: Kept::default(),
     }
 }

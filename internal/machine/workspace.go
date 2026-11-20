@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/shellenv"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	"github.com/samir2015dzh/aide/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/shellenv"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Workspace manages one git worktree per session.
@@ -187,7 +188,7 @@ func (w *Workspace) Path(sessionID string) string { return filepath.Join(w.root,
 // thrash the CPU and slow the daemon's own RPCs.
 var (
 	gitSem   = make(chan struct{}, max(2, runtime.NumCPU()))
-	mGitWait = metrics.Default.Histogram("hermesh_machine_git_wait_seconds")
+	mGitWait = metrics.Default.Histogram("aide_machine_git_wait_seconds")
 )
 
 // readRef reads a loose ref straight from the repository (saving a git
@@ -266,7 +267,7 @@ func (w *Workspace) Create(ctx context.Context, repo, baseRef, sessionID string)
 		return "", "", fmt.Errorf("resolve base ref %q: %w", baseRef, err)
 	}
 	base = strings.TrimSpace(base)
-	branch = "hermesh/" + sessionID
+	branch = sessionBranchPrefix + sessionID
 	if err := os.MkdirAll(w.root, 0o700); err != nil {
 		return "", "", err
 	}
@@ -280,6 +281,24 @@ func (w *Workspace) Create(ctx context.Context, repo, baseRef, sessionID string)
 	}
 	base, err = resolveRef(ctx, repo, "refs/heads/"+branch)
 	return base, branch, err
+}
+
+// sessionBranchPrefix starts a session's branch: aide/<session>.
+const sessionBranchPrefix = "aide/"
+
+// sessionBranch is the session's branch in repo: aide/<session>, or the
+// branch a session started before the rename has (internal/legacy), while
+// only that one exists.
+func sessionBranch(ctx context.Context, repo, sessionID string) string {
+	branch := sessionBranchPrefix + sessionID
+	if _, err := resolveRef(ctx, repo, "refs/heads/"+branch); err == nil {
+		return branch
+	}
+	old := legacy.Branch + sessionID
+	if _, err := resolveRef(ctx, repo, "refs/heads/"+old); err == nil {
+		return old
+	}
+	return branch
 }
 
 // FetchRef fetches a base ref the local repository lacks from its remotes,
@@ -421,7 +440,7 @@ func (w *Workspace) Restore(ctx context.Context, repo, sessionID string) error {
 	if err := os.MkdirAll(w.root, 0o700); err != nil {
 		return err
 	}
-	branch := "hermesh/" + sessionID
+	branch := sessionBranch(ctx, repo, sessionID)
 	// A removed directory may still be registered with git. Prune its stale
 	// metadata before either checkout path tries to register it again.
 	w.Prune(ctx, repo)
@@ -571,8 +590,8 @@ func (w *Workspace) Snapshot(ctx context.Context, repo, sessionID string, turn u
 	if _, err := git(ctx, wt, "add", "-A"); err != nil {
 		return "", nil, err
 	}
-	msg := fmt.Sprintf("hermesh %s turn %d", sessionID, turn)
-	out, err := git(ctx, wt, "-c", "user.name=Aide", "-c", "user.email=hermesh@localhost", "commit", "--no-verify", "-m", msg)
+	msg := fmt.Sprintf("aide %s turn %d", sessionID, turn)
+	out, err := git(ctx, wt, "-c", "user.name=Aide", "-c", "user.email=aide@localhost", "commit", "--no-verify", "-m", msg)
 	stat := &sessionv1.DiffStat{}
 	if err != nil {
 		if !strings.Contains(out+err.Error(), "nothing to commit") {
@@ -581,7 +600,7 @@ func (w *Workspace) Snapshot(ctx context.Context, repo, sessionID string, turn u
 	} else {
 		stat = parseShortstat(out)
 	}
-	branch := "refs/heads/hermesh/" + sessionID
+	branch := "refs/heads/" + sessionBranch(ctx, repo, sessionID)
 	head, err := resolveRef(ctx, repo, branch)
 	if err != nil {
 		return "", nil, err
@@ -599,7 +618,7 @@ func (w *Workspace) Snapshot(ctx context.Context, repo, sessionID string, turn u
 			return "", nil, err
 		}
 		if trees := strings.Fields(out); len(trees) == 2 && trees[0] != trees[1] {
-			c, err := git(ctx, wt, "-c", "user.name=Aide", "-c", "user.email=hermesh@localhost", "commit-tree", trees[0], "-p", head, "-m", msg+" (from "+short(cur)+")")
+			c, err := git(ctx, wt, "-c", "user.name=Aide", "-c", "user.email=aide@localhost", "commit-tree", trees[0], "-p", head, "-m", msg+" (from "+short(cur)+")")
 			if err != nil {
 				return "", nil, err
 			}
@@ -819,7 +838,7 @@ func gitHistogram(args []string) *metrics.Histogram {
 	if h, ok := gitHists.Load(sub); ok {
 		return h.(*metrics.Histogram)
 	}
-	h := metrics.Default.Histogram(`hermesh_machine_git_seconds{cmd="` + sub + `"}`)
+	h := metrics.Default.Histogram(`aide_machine_git_seconds{cmd="` + sub + `"}`)
 	gitHists.Store(sub, h)
 	return h
 }

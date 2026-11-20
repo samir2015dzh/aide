@@ -1,12 +1,11 @@
 import { useEffect, useRef } from "react";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
-import { displayTitle, isActive, isArchivable, isInterruptible, needsAttention, pendingQuestion } from "@hermesh/core";
+import { SessionStatus, type Session } from "@aide/proto/session";
+import { displayTitle, isActive, isArchivable, isInterruptible, needsAttention, pendingQuestion } from "@aide/core";
 import type { Command, MenuState } from "../../shared/bridge";
 import { i18n } from "../../shared/i18n";
 import { local } from "./api";
 import { layoutOf, setCard, setSidebar } from "./layout";
 import { copySessionId, focusAnswer, interrupt } from "./session/actions";
-import { frontRequest } from "./RequestCards";
 import { archive, grantLabel, listSections } from "./Sidebar";
 import { useStore, type Store } from "./store";
 
@@ -17,7 +16,7 @@ export function useCommands() {
   const st = useStore();
   const latest = useRef(st);
   latest.current = st;
-  useEffect(() => window.hermesh?.onCommand((c) => run(latest.current, c)), []);
+  useEffect(() => window.aide?.onCommand((c) => run(latest.current, c)), []);
 
   const s = selected(st);
   const state: MenuState = {
@@ -39,8 +38,8 @@ export function useCommands() {
     undo: st.toast?.undo !== undefined,
   };
   const key = JSON.stringify(state);
-  useEffect(() => window.hermesh?.setMenuState(JSON.parse(key)), [key]);
-  useEffect(() => () => window.hermesh?.setMenuState({ main: false, her: false, session: null, sidebar: true, undo: false }), []);
+  useEffect(() => window.aide?.setMenuState(JSON.parse(key)), [key]);
+  useEffect(() => () => window.aide?.setMenuState({ main: false, her: false, session: null, sidebar: true, undo: false }), []);
 }
 
 function selected(st: Store): Session | undefined {
@@ -68,7 +67,6 @@ function run(st: Store, c: Command) {
     case "newSession":
     case "addMachine":
     case "addProject":
-    case "enterCode":
       return st.set({ sheet: { kind: c } });
     case "answer":
       if (!s || !pendingQuestion(s)) return;
@@ -92,8 +90,6 @@ function run(st: Store, c: Command) {
   switch (verb) {
     case "open":
       return open(st, arg);
-    case "pairing":
-      return frontRequest(st, arg);
     case "her":
       // A notification's: the Her entry, in its environment.
       return st.set({ selection: { kind: "her", machine: arg } });

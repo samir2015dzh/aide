@@ -38,14 +38,13 @@ func TestCheck(t *testing.T) {
 		{"a session of its own", "session/new", `{"cwd":"/"}`, connect.CodeUnimplemented},
 		{"a document panel", "doc/open", `{}`, connect.CodeUnimplemented},
 		{"the rest of browser/*", "browser/reveal", `{}`, connect.CodeUnimplemented},
-		{"initialize is hermeshd's", "initialize", `{"protocol_version":2}`, connect.CodeUnimplemented},
+		{"initialize is aided's", "initialize", `{"protocol_version":2}`, connect.CodeUnimplemented},
 		{"an unknown method", "bots/everything", ``, connect.CodeUnimplemented},
 		{"no method", "", ``, connect.CodeUnimplemented},
 		{"params that are not JSON", "bots/open", `{"bot_id":`, connect.CodeInvalidArgument},
 
-		{"asking first", "session/op", `{"session_id":"s","op":{"type":"set_permission_mode","mode":"manual"}}`, 0},
-		{"accepting edits", "session/op", `{"session_id":"s","op":{"type":"set_permission_mode","mode":"accept-edits"}}`, 0},
-		{"full access", "session/op", `{"session_id":"s","op":{"type":"set_permission_mode","mode":"bypass-permissions"}}`, 0},
+		{"a prompt", "session/op", `{"session_id":"s","op":{"type":"prompt","input":[{"type":"text","text":"hi"}]}}`, 0},
+		{"a title", "session/op", `{"session_id":"s","op":{"type":"set_title","title":"t"}}`, 0},
 
 		{"probing a server by address", "mcp/probe", `{"probe_id":"p","server":{"url":"https://example.com/mcp"}}`, 0},
 		{"probing a command, which starts it", "mcp/probe", `{"probe_id":"p","server":{"command":"sh","args":["-c","id"]}}`, connect.CodePermissionDenied},
@@ -92,8 +91,6 @@ func TestConfigWrite(t *testing.T) {
 		// apps show Her alone, whose settings are her own.
 		{"the default model", write(`{"key_path":"model","value":"openai/gpt-5"}`), no},
 		{"the default thinking", write(`{"key_path":"thinking","value":"high"}`), no},
-		{"asking first by default", write(`{"key_path":"permission_mode","value":"manual"}`), no},
-		{"the old key, asking", write(`{"key_path":"approval_mode","value":"ask"}`), no},
 		{"instructions", write(`{"key_path":"instructions.extra","value":"Answer in French."}`), no},
 		{"bash's shell", write(`{"key_path":"tools.bash.shell","value":"/tmp/evil"}`), no},
 		{"bash", write(`{"key_path":"tools.bash","value":{"pass_provider_keys":true}}`), no},
@@ -114,9 +111,9 @@ func TestConfigWrite(t *testing.T) {
 		{"a browser program", write(`{"key_path":"browser.executable","value":"/tmp/evil"}`), no},
 		{"the browser replaced, dropping its limits", write(`{"key_path":"browser","value":{"sites":{}}}`), no},
 		{"the browser removed", write(`{"key_path":"browser","value":null}`), no},
-		{"a connector approved for good", write(`{"key_path":"mcp_servers.gh.approval","value":"never"}`), no},
-		{"a connector approved for good, whole", write(`{"key_path":"mcp_servers.gh","value":{"url":"https://x","approval":"never"}}`), no},
-		{"a connector approved for good, among all", write(`{"key_path":"mcp_servers","value":{"gh":{"url":"https://x","approval":"never"}}}`), no},
+		{"a connector's old approval", write(`{"key_path":"mcp_servers.gh.approval","value":"never"}`), no},
+		{"a connector's old approval, whole", write(`{"key_path":"mcp_servers.gh","value":{"url":"https://x","approval":"never"}}`), no},
+		{"a connector's old approval, among all", write(`{"key_path":"mcp_servers","value":{"gh":{"url":"https://x","approval":"never"}}}`), no},
 		{"a connector started as a command", write(`{"key_path":"mcp_servers.fs","value":{"command":"sh","args":["-c","id"]}}`), no},
 		{"a command upserted", write(`{"key_path":"mcp_servers.fs","merge":"upsert","value":{"args":["--evil"]}}`), no},
 		{"a command's key", write(`{"key_path":"mcp_servers.fs.command","value":"sh"}`), no},
@@ -124,12 +121,14 @@ func TestConfigWrite(t *testing.T) {
 		{"a command behind quotes", write(`{"key_path":"\"mcp_servers\".\"fs\".command","value":"sh"}`), no},
 		{"a curated connector", write(`{"key_path":"mcp_servers.gh.connector","value":"github"}`), no},
 		{"a command after a harmless edit", write(`{"key_path":"web_search.enabled","value":true}`, `{"key_path":"mcp_servers.fs.cwd","value":"/"}`), no},
-		{"full access by default", write(`{"key_path":"permission_mode","value":"bypass-permissions"}`), no},
-		{"full access by default, old key", write(`{"key_path":"approval_mode","value":"full-auto"}`), no},
-		{"full access in a project's layer", `{"layer":"user_project","cwd":"/p","edits":[{"key_path":"permission_mode","value":"bypass-permissions"}]}`, no},
-		{"full access in a table of its own", write(`{"key_path":"bots.b1.permission_mode","value":"bypass-permissions"}`), no},
-		{"full access inside a table written", write(`{"key_path":"projects.p","merge":"upsert","value":{"permission_mode":"bypass-permissions"}}`), no},
-		{"full access in a list of tables", write(`{"key_path":"profiles","value":[{"name":"x","permission_mode":"bypass-permissions"}]}`), no},
+		// Settings her has no more (she runs actions without asking,
+		// docs/her-server.md §0): not the console's either.
+		{"a permission mode", write(`{"key_path":"permission_mode","value":"bypass-permissions"}`), no},
+		{"a permission mode, old key", write(`{"key_path":"approval_mode","value":"full-auto"}`), no},
+		{"a permission mode in a project's layer", `{"layer":"user_project","cwd":"/p","edits":[{"key_path":"permission_mode","value":"manual"}]}`, no},
+		{"a permission mode in a table of its own", write(`{"key_path":"bots.b1.permission_mode","value":"bypass-permissions"}`), no},
+		{"a permission mode inside a table written", write(`{"key_path":"projects.p","merge":"upsert","value":{"permission_mode":"bypass-permissions"}}`), no},
+		{"a permission mode in a list of tables", write(`{"key_path":"profiles","value":[{"name":"x","permission_mode":"bypass-permissions"}]}`), no},
 		{"hooks", write(`{"key_path":"hooks.pre_tool","value":["/tmp/hook"]}`), no},
 		{"a setting her has not yet", write(`{"key_path":"sandbox","value":"off"}`), no},
 		{"a key path her refuses", write(`{"key_path":"mcp_servers..fs","value":1}`), connect.CodeInvalidArgument},
@@ -195,11 +194,11 @@ func TestCardsAnswer(t *testing.T) {
 // What is looked into is what goes to her: params are decoded once and
 // encoded again, so a duplicate key reaches her as the value checked.
 func TestCheckSendsWhatItChecked(t *testing.T) {
-	params, err := check("session/op", []byte(`{"session_id":"s","op":{"type":"set_permission_mode","mode":"bypass-permissions","mode":"manual"}}`))
+	params, err := check("session/op", []byte(`{"session_id":"s","op":{"type":"set_title","title":"first","title":"second"}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(params), `"mode"`) != 1 || !strings.Contains(string(params), `"mode":"manual"`) {
+	if strings.Count(string(params), `"title"`) != 1 || !strings.Contains(string(params), `"title":"second"`) {
 		t.Fatalf("sent %s", params)
 	}
 	// Others go as they came, numbers whole.

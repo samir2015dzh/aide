@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { deliveryQuote, fromSource, groupDeliveries, isMediaKind, isNewDelivery, joinDeliveries, onlyDeliveries, readSent, sameSource, sourceCount, sourceGroups } from "@hermesh/her-client";
-import type { BotSummary, DeliveredFile, DeliveriesListResult, DeliveriesSourcesResult, Delivery, DeliverySourceCount, DeliverySourceFilter } from "@hermesh/her-protocol";
+import { deliveryQuote, fromSource, groupDeliveries, isMediaKind, isNewDelivery, joinDeliveries, onlyDeliveries, readSent, sameSource, sourceCount, sourceGroups } from "@aide/her-client";
+import type { BotSummary, DeliveredFile, DeliveriesListResult, DeliveriesSourcesResult, Delivery, DeliverySourceCount, DeliverySourceFilter } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { Dialog } from "../session/markdown/Dialog";
@@ -48,7 +48,7 @@ function shows(f: DeliveredFile): Shows {
 
 /** A file of a version, read whole: from this Mac's copy when it has one, then the copy her kept, then where it is. */
 function readVersion(machineId: string, botId: string, f: DeliveredFile, v: Delivery): Promise<Uint8Array> {
-  const app = window.hermesh;
+  const app = window.aide;
   if (!app) return Promise.reject(new Error("no app"));
   return readSent({ path: f.path, snapshot: v.snapshot ?? undefined }, (p) => app.readHerFile(machineId, botId, p, v.sha256 ?? undefined));
 }
@@ -126,7 +126,7 @@ export function DeliveriesPanel({ bot, kept, onBack, onClose }: { bot: BotSummar
   useEffect(() => {
     if (online || shaList.length === 0) return;
     let live = true;
-    window.hermesh?.herFilesKept(machine.machineId, shaList).then((have) => live && setOnMac(new Set(have)), () => {});
+    window.aide?.herFilesKept(machine.machineId, shaList).then((have) => live && setOnMac(new Set(have)), () => {});
     return () => {
       live = false;
     };
@@ -179,7 +179,7 @@ export function DeliveriesPanel({ bot, kept, onBack, onClose }: { bot: BotSummar
     },
     download: (f: DeliveredFile, version = 0) => {
       const v = f.versions[version];
-      const app = window.hermesh;
+      const app = window.aide;
       if (!v || !app) return;
       if (!canOpen(f, v)) return st.show(t("files.needsMachine", { name: machine.machineName }));
       readSent({ path: f.path, snapshot: v.snapshot ?? undefined }, (p) => app.saveHerFile(machine.machineId, bot.id, p, v.sha256 ?? undefined)).then(

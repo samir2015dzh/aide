@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
-  agentBrief, agentCalls, agentElapsed, agentHistoryCursor, agentPost, agentState, agentTaskOf, agentTitles, agentTokens, messageBody, pendingApproval, progressGroups, stepsOf,
+  agentBrief, agentCalls, agentElapsed, agentHistoryCursor, agentPost, agentState, agentTaskOf, agentTitles, agentTokens, messageBody, progressGroups, stepsOf,
   toolObject, toolOutput, type AgentLaunch, type AgentPost, type AgentState, type AgentView, type ProgressGroup, type ProgressTask, type SessionView, type Step, type WorkItem,
-} from "@hermesh/her-client";
-import type { BotSummary } from "@hermesh/her-protocol";
-import { clockText, elapsedSeconds, listTime, tokensText, turnTimeLine } from "@hermesh/core";
+} from "@aide/her-client";
+import type { BotSummary } from "@aide/her-protocol";
+import { clockText, elapsedSeconds, listTime, tokensText, turnTimeLine } from "@aide/core";
 import { Icon } from "../icons";
 import { layoutOf, setCard } from "../layout";
 import { keys, ownKeys } from "../platform";
@@ -14,7 +14,7 @@ import { ContentScope } from "../session/scope";
 import { useRowState } from "../session/useRowState";
 import type { VirtualRow } from "../session/useVirtualRows";
 import { useNow, useStore, type ProgressTaskRef } from "../store";
-import { Approval, type SendOp } from "./Approval";
+import type { SendOp } from "./op";
 import { Cat } from "./Cat";
 import type { Conversation as Conv } from "./connection";
 import { useHer } from "./context";
@@ -32,8 +32,8 @@ import "./progress.css";
 type Stand = AgentState;
 
 const atWork = (s: Stand) => s === "running" || s === "starting";
-/** It waits for the owner, or could not go on: the posts that carry a mark, above the rest. */
-const needsOwner = (s: Stand) => s === "waiting" || s === "failed";
+/** It could not go on: the posts that carry a mark, above the rest. Nothing waits for the owner. */
+const needsOwner = (s: Stand) => s === "failed";
 const parentTime = (g: ProgressGroup) => (g.parent.kind === "earlier" ? 0 : g.parent.ts);
 
 /** A piece of work as the feed shows it: the work, what set it off, how it stands, and what its post says (read once, here). */
@@ -183,7 +183,7 @@ function PostView({ post: p, onSource }: { post: Post; onSource: (key: string) =
   const { t } = useTranslation(["her", "common"]);
   const go = useOpen();
   const worked = useWorked();
-  const now = useNow(atWork(p.stand) || p.stand === "waiting" ? 10_000 : 60_000);
+  const now = useNow(atWork(p.stand) ? 10_000 : 60_000);
   const ref = refOf(p.task);
   const open = () => ref && go.task(ref);
   const since = p.task.launch.agent?.since ?? p.at;
@@ -194,14 +194,14 @@ function PostView({ post: p, onSource }: { post: Post; onSource: (key: string) =
     <article className="pf-p" aria-label={p.title}>
       <button className="pf-main" disabled={!ref} onClick={open} aria-label={[p.title, stateWord, words].filter(Boolean).join(" · ")}>
         <span className="pf-t">
-          {needsOwner(p.stand) && <i className={p.stand === "waiting" ? "dot-w" : "dot-f"} aria-hidden="true" />}
+          {needsOwner(p.stand) && <i className="dot-f" aria-hidden="true" />}
           <b>{p.title}</b>
         </span>
         {words && <span className="pf-w">{words}</span>}
       </button>
       <Piece post={p} open={open} />
       <div className="pf-foot">
-        {atWork(p.stand) || p.stand === "waiting" ? (
+        {atWork(p.stand) ? (
           <span className={`pf-time ${atWork(p.stand) ? "live" : ""}`}>{worked(now.getTime() - since)}</span>
         ) : (
           <span className="pf-time">{listTime(new Date(p.at), now)}</span>
@@ -234,13 +234,6 @@ function Piece({ post: p, open }: { post: Post; open: () => void }) {
             <span className="pf-step">{t("progress.thinking")}</span>
           )}
         </button>
-      );
-    case "waiting":
-      return (
-        <div className="pf-well pf-ask">
-          <span>{t("progress.state.waiting")}</span>
-          <button className="btn primary" onClick={open}>{t("progress.review")}</button>
-        </div>
       );
     case "done":
       if (!post.files.length) return null;
@@ -382,8 +375,6 @@ function SibMark({ stand }: { stand: Stand }) {
     case "starting":
     case "running":
       return <span className="busy" aria-hidden="true"><i /></span>;
-    case "waiting":
-      return <i className="dot-w" aria-hidden="true" />;
     case "done":
       return <Icon name="check" className="tm-ok sm" />;
     case "failed":
@@ -519,8 +510,6 @@ function AgentChat({ bot, launch, agent: a, title, conv, op }: { bot: BotSummary
     if (await op({ type: "agent_interrupt", agent: a.id })) st.show(t("progress.stopSent", { title }));
     setBusy(false);
   };
-  const asking = conv.view && conv.rpc ? pendingApproval(conv.view) : null;
-  const mine = asking?.agent?.id === a.id;
   const row = (r: AgentRow): ReactNode => {
     switch (r.kind) {
       case "brief":
@@ -546,7 +535,6 @@ function AgentChat({ bot, launch, agent: a, title, conv, op }: { bot: BotSummary
       row={row}
       foot={
         <>
-          {stand === "waiting" && !mine && <div className="tnote">{t("progress.waitingBehind")}</div>}
           {stand === "failed" && <FailCard headline={t("progress.failedHere")} hints={[]} message={a.error?.message ?? ""} />}
           {stand === "stopped" && <div className="tnote">{t("progress.state.stopped")}</div>}
           {stand === "done" && <DoneLine text={t("progress.doneLine", { name: bot.name })} />}
@@ -555,8 +543,8 @@ function AgentChat({ bot, launch, agent: a, title, conv, op }: { bot: BotSummary
       control={
         running
           ? (onHeight) => (
-              <ControlBar panel={mine && conv.view && <Approval key={asking!.approval.call_id} view={conv.view} op={op} />} onHeight={onHeight}>
-                <AgentLive agent={a} waiting={stand === "waiting"} />
+              <ControlBar onHeight={onHeight}>
+                <AgentLive agent={a} />
                 {conv.rpc && (
                   <>
                     <span className="ctl-sep" />
@@ -574,18 +562,10 @@ function AgentChat({ bot, launch, agent: a, title, conv, op }: { bot: BotSummary
   );
 }
 
-/** What runs now, in the control bar: the sub-agent at work and for how long, or that it waits for the owner. */
-function AgentLive({ agent: a, waiting }: { agent: AgentView; waiting: boolean }) {
+/** What runs now, in the control bar: the sub-agent at work and for how long. */
+function AgentLive({ agent: a }: { agent: AgentView }) {
   const { t } = useTranslation("her");
   const now = useNow(1000);
-  if (waiting) {
-    return (
-      <>
-        <i className="dot-w" aria-hidden="true" />
-        <b>{t("progress.state.waiting")}</b>
-      </>
-    );
-  }
   return (
     <>
       <span className="live-logo pt-cat" aria-hidden="true"><Cat small /></span>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ChatGptStatus } from "@hermesh/her-protocol";
+import type { ChatGptStatus } from "@aide/her-protocol";
 import { errorText } from "../format";
 import { useHer } from "../her";
 import { openPage, signInRemotely } from "../signin";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantContent, BotSummary, Event, EventMsg, SessionInfo, Usage } from "@hermesh/her-protocol";
+import type { AssistantContent, BotSummary, Event, EventMsg, SessionInfo, Usage } from "@aide/her-protocol";
 import { applyEvents, fromSnapshot, type SessionView } from "./session.ts";
 import { attention, botLine, initialOf, lastText, mergeBots, plain, searchBots, sortBots } from "./bots.ts";
 import { botChat, busyBubble, imageRatio, imageRows, readSent } from "./botChat.ts";
@@ -19,12 +19,12 @@ test("pinned bots first, then the latest message; busy ones keep their place", (
   const merged = mergeBots(list, [bot("a", { last: { from: "bot", text: "new", ts: at(9) } }), bot("e")], ["d"]);
   assert.deepEqual(sortBots(merged).map((b) => b.id), ["c", "a", "b", "e"]);
   assert.deepEqual(attention(merged), { unread: false, waiting: false });
-  assert.deepEqual(attention([bot("x", { unread: 2 }), bot("y", { waiting: "rm -rf build" })]), { unread: true, waiting: true });
+  assert.deepEqual(attention([bot("x", { unread: 2 }), bot("y", { waiting: "连接 Notion" })]), { unread: true, waiting: true });
 });
 
-test("a row's second line: an approval, then sub-agents, then answering, then the last message", () => {
+test("a row's second line: a secure card, then sub-agents, then answering, then the last message", () => {
   const last = { from: "user" as const, text: "看看这个\nAttached files:\n/Users/me/报告.pdf\n/Users/me/data.xlsx", ts: at(1) };
-  assert.deepEqual(botLine(bot("a", { waiting: "重启 nginx", agents_working: 2, typing: true, last })), { kind: "waiting", text: "重启 nginx" });
+  assert.deepEqual(botLine(bot("a", { waiting: "连接 Notion", agents_working: 2, typing: true, last })), { kind: "waiting", text: "连接 Notion" });
   assert.deepEqual(botLine(bot("a", { agents_working: 2, typing: true, last })), { kind: "agents", count: 2 });
   assert.deepEqual(botLine(bot("a", { typing: true, last })), { kind: "typing" });
   assert.deepEqual(botLine(bot("a", { last })), { kind: "last", from: "user", text: "看看这个", images: 0, files: ["报告.pdf", "data.xlsx"] });
@@ -41,7 +41,7 @@ test("a row's second line: an approval, then sub-agents, then answering, then th
 
 // ---- the conversation ----
 
-const info: SessionInfo = { session_id: "s", cwd: "/home/.her/bots/b/files", session_file: "/f.jsonl", model: "p/m", thinking: "off", permission_mode: "manual", context_window: 1000, archived: false };
+const info: SessionInfo = { session_id: "s", cwd: "/home/.her/bots/b/files", session_file: "/f.jsonl", model: "p/m", thinking: "off", context_window: 1000, archived: false };
 const usage: Usage = { input: 1, output: 1, cache_read: 0, cache_write: 0, cost: { currency: "USD", input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } };
 
 function play(msgs: EventMsg[]): SessionView {
@@ -150,7 +150,7 @@ test("a message sent while the bot answered keeps its place, whether queued or i
   );
 });
 
-test("a failed, refused or cancelled send shows nothing; an approval is no part of the conversation", () => {
+test("a failed, refused or cancelled send shows nothing", () => {
   const v = play([
     { type: "task_started", task_id: "t1" },
     user("u1", "nginx 挂了", 10_000),
@@ -158,17 +158,14 @@ test("a failed, refused or cancelled send shows nothing; an approval is no part 
     started("c1"),
     started("c2"),
     started("c3", "bash", { command: "systemctl restart nginx" }),
-    { type: "approval_requested", call_id: "c3", name: "bash", args: { command: "systemctl restart nginx" }, summary: "systemctl restart nginx" },
   ]);
   const items = botChat(v);
-  // The send that waits for the approval with the rest of its batch shows already.
+  // The send that runs with the rest of its batch shows already.
   assert.deepEqual(items.map((i) => i.kind), ["user", "bot"]);
-  assert.equal(busyBubble(v), null, "waiting for the owner is not being busy");
   const failed = applyEvents(v, [
     { seq: 20, ts: 0, ...done("c1", "send_to_user", "invalid arguments: text must not be empty", true) } as Event,
-    { seq: 21, ts: 0, type: "approval_resolved", call_id: "c3", decision: { type: "deny" } } as Event,
     { seq: 22, ts: 0, ...done("c2") } as Event,
-    { seq: 23, ts: 0, ...done("c3", "bash", "The user denied this tool call.", true) } as Event,
+    { seq: 23, ts: 0, ...done("c3", "bash", "Tool call denied: The command is blocked by the rule `systemctl`", true) } as Event,
     { seq: 24, ts: 30_000, type: "task_failed", task_id: "t1", error: { kind: "rate_limited", message: "slow down", retryable: true }, usage: { per_model: {} } } as Event,
   ]);
   const after = botChat(failed);
@@ -206,10 +203,6 @@ test("the busy bubble names who is at work, never what: the bot while it answers
     { seq: 25, ts: 0, type: "agent_event", agent_id: "g2", event: { seq: 1, ts: 0, type: "task_started", task_id: "g-t2" } } as Event,
   ]);
   assert.deepEqual(busyBubble(two)?.agents, [{ id: "g2", name: "writer" }, { id: "g1", name: "调研更新方案" }], "the latest first; a nameless one by its handle");
-  const asking = applyEvents(two, [
-    { seq: 26, ts: 0, type: "agent_event", agent_id: "g2", event: { seq: 2, ts: 0, type: "approval_requested", call_id: "g-c2", name: "bash", args: { command: "rm -rf build" }, summary: "rm -rf build" } } as Event,
-  ]);
-  assert.deepEqual(busyBubble(asking)?.agents.map((a) => a.id), ["g1"], "one waiting for the owner is not at work");
   const over = applyEvents(after, [{ seq: 24, ts: 1, type: "agent_status", agent_id: "g1", status: "completed", summary: "查完了" } as Event]);
   assert.equal(busyBubble(over), null, "nothing at work, no bubble");
 });

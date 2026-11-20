@@ -29,7 +29,7 @@ export function createCodeHighlighter() {
     // A per-line timeout can return a partial grammar state during cold regex
     // compilation, coloring subsequent lines as strings/comments. The host's
     // 2.5s worker watchdog provides a hard budget and plain-text fallback instead.
-    const options = { lang, themes: { light: "hermesh-light", dark: "hermesh-dark" }, defaultColor: false as const, tokenizeTimeLimit: 0 };
+    const options = { lang, themes: { light: "aide-light", dark: "aide-dark" }, defaultColor: false as const, tokenizeTimeLimit: 0 };
     let tokens = old?.tokens ?? [];
     let state = old?.state;
     if (end > start) {

@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // place is a project on a machine: one entry of the list an agent picks

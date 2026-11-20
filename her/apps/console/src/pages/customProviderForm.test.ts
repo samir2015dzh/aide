@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ProviderSummary } from "@hermesh/her-protocol";
+import type { ProviderSummary } from "@aide/her-protocol";
 import { customProviders, formOf, limit, problem, saveParams, toggle } from "./customProviderForm.ts";
 
 // A provider of one's own as the form holds it, and what providers/save is sent.

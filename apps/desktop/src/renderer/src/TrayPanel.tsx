@@ -2,13 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TrayAction, TrayView } from "../../shared/bridge";
 import { i18n } from "../../shared/i18n";
-import { Mark } from "@hermesh/ui";
+import { Mark } from "@aide/ui";
 import { Icon } from "./icons";
 import { platform } from "./platform";
 import "./tray.css";
 
 /**
- * The menu bar panel (#tray): Hermesh and whether agents can reach this Mac,
+ * The menu bar panel (#tray): Aide and whether agents can reach this Mac,
  * how many sessions need the owner and how many run (each opens the first
  * one), the device operating this Mac's screen while one does, with Stop,
  * then the main window, settings and quit. The main process works out
@@ -20,18 +20,18 @@ export function TrayPanel() {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (platform === "mac") document.documentElement.classList.add("vibrant");
-    window.hermesh?.trayView().then(setV);
-    return window.hermesh?.onTrayView(setV);
+    window.aide?.trayView().then(setV);
+    return window.aide?.onTrayView(setV);
   }, []);
   // The window takes the panel's height.
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => window.hermesh?.traySize(el.offsetHeight));
+    const ro = new ResizeObserver(() => window.aide?.traySize(el.offsetHeight));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const go = (a: TrayAction) => window.hermesh?.trayAction(a);
+  const go = (a: TrayAction) => window.aide?.trayAction(a);
   const ok = v?.state === "ok";
   const ready = v?.state === "ok" || v?.state === "down";
   return (

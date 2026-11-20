@@ -1,8 +1,8 @@
-import type { ChatGptStatus, McpLoginResult } from "@hermesh/her-protocol";
+import type { ChatGptStatus, McpLoginResult } from "@aide/her-protocol";
 
 // Signing in for an environment's Her from the Mac app (docs/her-server.md §5.4): to ChatGPT, or
 // to a connector a secure card connects (docs/her-secure-cards.md §4), as the console does
-// (her/apps/console/src/signin.ts), but in the main process: this computer's hermeshd catches the
+// (her/apps/console/src/signin.ts), but in the main process: this computer's aided catches the
 // browser's redirect on 127.0.0.1 (the console's device-side routes, internal/owner/her_console.go),
 // her on the Her Server makes the authorization request and keeps the PKCE verifier, the browser
 // opens it, and what the redirect carried goes back to her, who exchanges it and keeps the tokens

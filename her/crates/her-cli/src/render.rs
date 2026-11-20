@@ -152,7 +152,7 @@ impl Renderer {
                     return;
                 }
                 // These arrive on their own, not because of the reply: they wait for its line to end.
-                if matches!(msg, EventMsg::ApprovalRefused { .. } | EventMsg::McpServerStatus { .. }) {
+                if matches!(msg, EventMsg::McpServerStatus { .. }) {
                     for line in lines {
                         self.status_line(line);
                     }
@@ -219,9 +219,6 @@ pub fn status_lines(style: &Style, msg: &EventMsg) -> Vec<String> {
         ))],
         // Shown by the server status lines already.
         EventMsg::Warning { code: Some(WarningCode::McpServersNotReady), .. } => Vec::new(),
-        EventMsg::ApprovalRefused { name, summary, .. } => {
-            vec![style.yellow(&format!("refused {name}: {summary} (nothing here can approve it)"))]
-        }
         EventMsg::Warning { message, .. } => vec![style.yellow(&format!("warning: {message}"))],
         EventMsg::McpServerStatus { server, state, tools, error, elapsed_ms } => {
             let elapsed = elapsed_ms.map(|ms| format!(", {ms} ms")).unwrap_or_default();

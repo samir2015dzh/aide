@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
-import { codingAgentTitle, displayTitle } from "@hermesh/core";
-import { kindNamed, Mark, personalAgents } from "@hermesh/ui";
+import { codingAgentTitle, displayTitle } from "@aide/core";
+import { kindNamed, Mark, personalAgents } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { PersonalAgentIcon } from "../components";
 import { Icon } from "../icons";
@@ -14,7 +14,7 @@ import { setProgress } from "./progress";
  * The first run's last page: the agent just connected, one thing to send it
  * that shows the whole way works (a coding agent saying hello in a project
  * it was given), then its first session as soon as it starts (the window
- * opens on it), or Continue to Hermesh.
+ * opens on it), or Continue to Aide.
  */
 export function FirstTask({ agent }: { agent: string }) {
   const { t } = useTranslation("firstrun");
@@ -83,9 +83,13 @@ function helloPrompt(st: ReturnType<typeof useStore>, granted: string[], granted
   const local = st.machines.find((m) => m.local);
   const ready = (local?.status?.agents ?? []).filter((a) => a.available && a.loggedIn).map((a) => a.name);
   const agents = granted.filter((a) => a !== "*");
-  const coder = (agents.length > 0 ? agents : ready).find((a) => ready.includes(a)) ?? agents[0] ?? ready[0];
-  const projects = st.projects.filter((p) => p.machineId === local?.machineId && (!coder || p.agents.length === 0 || p.agents.includes(coder)));
   const allowed = grantedProjects.filter((p) => p !== "*");
+  // One with a project here it may use first: an assistant logged in may use every coding agent and project.
+  const hasProject = (a: string) =>
+    st.projects.some((p) => p.machineId === local?.machineId && (p.agents.length === 0 || p.agents.includes(a)) && (allowed.length === 0 || allowed.includes(p.projectId)));
+  const pool = (agents.length > 0 ? agents : ready).filter((a) => ready.includes(a));
+  const coder = pool.find(hasProject) ?? pool[0] ?? agents[0] ?? ready[0];
+  const projects = st.projects.filter((p) => p.machineId === local?.machineId && (!coder || p.agents.length === 0 || p.agents.includes(coder)));
   const project = (allowed.length > 0 ? projects.find((p) => allowed.includes(p.projectId)) : projects[0])?.projectId ?? allowed[0];
   const who = coder ? codingAgentTitle(coder) : i18n.t("firstrun:firstTask.codingAgent");
   return project ? i18n.t("firstrun:firstTask.promptInProject", { project, agent: who }) : i18n.t("firstrun:firstTask.prompt", { agent: who });

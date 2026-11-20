@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // TestSlowStart: on a machine too busy to start sessions at their usual
@@ -37,7 +37,7 @@ login) echo "Logged in using ChatGPT";;
    FAKE_CODEX_FAIL_START=`+dir+`/fail exec `+filepath.Join(binaries(t), "fakecodex")+` "$@";;
 esac
 `), 0o755)
-	w := newOwnerMac(t, []string{"HERMESH_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
+	w := newOwnerMac(t, []string{"AIDE_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
 	eventually(t, 30*time.Second, "codex checked", func() bool {
 		res, err := w.app.client.ListMachines(context.Background(), &localv1.ListMachinesRequest{})
 		if err != nil || len(res.Machines) == 0 {
@@ -96,7 +96,7 @@ esac
 		if _, err := os.Stat(w.worktree(s.SessionID)); !os.IsNotExist(err) {
 			t.Fatalf("half checkout left at %s", w.worktree(s.SessionID))
 		}
-		if err := exec.Command("git", "-C", w.repo, "rev-parse", "--verify", "-q", "hermesh/"+s.SessionID).Run(); err == nil {
+		if err := exec.Command("git", "-C", w.repo, "rev-parse", "--verify", "-q", "aide/"+s.SessionID).Run(); err == nil {
 			t.Fatal("its branch was left behind")
 		}
 		os.Remove(filepath.Join(dir, "stall"))
@@ -142,7 +142,7 @@ esac
 			}
 			eventually(t, 30*time.Second, "a notice of the failed start", func() bool {
 				for _, s := range readSpool(t, spool, seen) {
-					sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+					sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 					n := &sessionv1.Notice{}
 					if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 						t.Fatalf("open notice: %v", err)

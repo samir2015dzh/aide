@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hermeshai/hermesh/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/brandenv"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
 )
 
 // An opt-in log of what agent products send with their MCP calls, to learn
 // what tells one caller from another (several Grok bots share a connection:
-// docs/agent-messages.md §6.3). HERMESH_MCP_TRACE lists the connection,
+// docs/agent-messages.md §6.3). AIDE_MCP_TRACE lists the connection,
 // account or owner ids whose requests are logged. It never logs the token,
 // cookies, client addresses or tool arguments.
 
@@ -35,7 +35,7 @@ type rpcTrace struct {
 	} `json:"params"`
 }
 
-// trace logs the MCP requests of the connections HERMESH_MCP_TRACE names.
+// trace logs the MCP requests of the connections AIDE_MCP_TRACE names.
 func (g *Gateway) trace(next http.Handler) http.Handler {
 	ids := map[string]bool{}
 	for _, id := range strings.Split(brandenv.Get("MCP_TRACE"), ",") {

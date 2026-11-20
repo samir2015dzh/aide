@@ -316,12 +316,6 @@
       "stone": "烟灰"
     }
   },
-  "access": {
-    "title": "让「{{name}}」完全访问？",
-    "body": "它在 {{environment}} 上做任何事都不再问你，它创建的智能体和定时任务也一样。Her 会读网页和别人发来的消息，所以只在你放心把那台机器上的一切交给它时开启。",
-    "button": "开启完全访问",
-    "done": "{{name}} 已开启完全访问"
-  },
   "menu": {
     "rename": "重命名"
   },
@@ -350,8 +344,6 @@
     "close": "关闭",
     "avatar": "更换头像",
     "nameHint": "双击修改名字",
-    "permissionMode": "权限模式",
-    "permissionNote": "{{desc}}。Her 创建的智能体和定时任务也按这个权限运行，你不在时也一样。完全访问要用 Touch ID 确认。",
     "muted": "免打扰",
     "mutedNote": "所有设备都不发它的通知。列表里的未读照常显示。",
     "connectors": "连接器",
@@ -361,38 +353,8 @@
     "memoryNone": "还没有",
     "clear": "清空聊天记录",
     "clearMemory": "清空记忆",
-    "permissionNote_win": "{{desc}}。Her 创建的智能体和定时任务也按这个权限运行，你不在时也一样。完全访问要用 Windows Hello 确认。",
-    "turnOff": "在 {{machine}} 上关闭 Her…"
-  },
-  "approval": {
-    "label": "等你批准",
-    "agent": "子智能体 · {{name}}",
-    "queue": "第 {{n}} / {{total}} 项",
-    "runCommand": "运行这条命令？",
-    "useTool": "{{verb}} {{object}}？",
-    "once": "允许",
-    "session": "本次对话都允许",
-    "sessionDesc": "这段对话里同类的调用不再询问",
-    "sessionRule": "这段对话里以「{{rule}}」开头的命令不再询问",
-    "project": "{{project}} 不再询问",
-    "siteQuestion": "允许 Her 使用 {{site}}？",
-    "siteOnce": "允许一次",
-    "siteAlways": "始终允许此网站",
-    "siteAlwaysDesc": "在这个网站上浏览和操作都不再询问，记在这个环境里",
-    "siteEvery": "允许所有网站",
-    "siteEveryDesc": "在任何公网网站上浏览和操作都不再询问（内网地址除外），记在这个环境里。风险：被注入指令的网页可能诱导 Her 在它登录的网站上操作。",
-    "scriptQuestion": "在 {{site}} 上运行脚本？",
-    "grantScript": "本次对话允许这个网站运行脚本",
-    "grantScriptDesc": "这段对话里在 {{site}} 上运行脚本不再询问",
-    "grantApp": "本次对话允许使用 {{app}}",
-    "grantAppDesc": "这段对话里对这个应用不再询问",
-    "denyWhy": "拒绝…",
-    "deny": "拒绝",
-    "cancel": "取消",
-    "feedback": "告诉 Her 为什么拒绝，或者应该怎么做（可选）",
-    "more_other": "还有 {{count}} 行",
-    "remember": "记住",
-    "rememberDesc": "同时记在这个环境的设置里，以后的对话也不再询问"
+    "turnOff": "在 {{machine}} 上关闭 Her…",
+    "actsNote": "Her 直接执行，不会停下来请你批准。她创建的智能体和定时任务也一样，你不在时也是。"
   },
   "fail": {
     "theProvider": "服务商",
@@ -439,20 +401,6 @@
     "retryable": "稍等片刻再重试。",
     "unknown": "重试，或者看看详情。",
     "no_reply": "模型结束了这一轮，但没有发消息给你。可以重试，或者换个模型。"
-  },
-  "permission": {
-    "manual": {
-      "title": "询问权限",
-      "desc": "修改文件、运行命令前都先问你"
-    },
-    "accept-edits": {
-      "title": "自动接受编辑",
-      "desc": "它文件夹里的修改直接执行，运行命令前先问你"
-    },
-    "bypass-permissions": {
-      "title": "完全访问",
-      "desc": "除拒绝规则、询问规则和删除关键路径外，一律直接执行"
-    }
   },
   "thinking": {
     "default": "默认",
@@ -510,7 +458,6 @@
       "done": "已拒绝"
     },
     "cancelled": "未执行",
-    "awaiting": "待批准",
     "thought": "思考",
     "thinkingHidden": "服务商没有公开这段推理",
     "count": {
@@ -632,7 +579,6 @@
     "state": {
       "starting": "正在启动",
       "running": "进行中",
-      "waiting": "等你批准",
       "done": "已完成",
       "failed": "没办成",
       "stopped": "已停下"
@@ -652,7 +598,6 @@
     "sentBy": "由 <b>{{name}}</b> 派出",
     "working": "子智能体正在工作",
     "doneLine": "已办完，最后这段话已交回给 {{name}}",
-    "waitingBehind": "前面还有一项在等你批准，轮到它时会出现在这里。",
     "failedHere": "没办成，停在了这里",
     "interrupted": "这一轮被打断了",
     "gone": "这一路的记录不在了",
@@ -662,7 +607,6 @@
       "now": "现在",
       "earlier": "早些时候"
     },
-    "review": "去批准",
     "files_other": "{{count}} 个文件",
     "fromYou": "你 {{time}} · {{text}}",
     "fromSaid": "来自你的一句话",
@@ -867,7 +811,7 @@
       "off": "未连接"
     },
     "control": "允许 Her 控制浏览器",
-    "controlNote": "Her 打开网页并在里面操作。哪些网站不用问你，见下方的网站权限。",
+    "controlNote": "Her 打开网页并在里面操作，不会先问你。不让她用的网站见下方的网站权限。",
     "builtin": "内置浏览器",
     "yoursName": "{{name}}（你的浏览器）",
     "defaultNote": "智能体没有指定浏览器时，新网页在这里打开。",

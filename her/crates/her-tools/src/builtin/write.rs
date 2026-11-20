@@ -54,10 +54,6 @@ impl TypedTool for WriteTool {
         repair_arguments(args)
     }
 
-    async fn check(&self, args: &WriteArgs, ctx: &ToolCtx) -> Result<(), ToolError> {
-        validate(&ctx.env.resolve(&args.path), ctx).await.map(|_| ())
-    }
-
     async fn run(&self, args: WriteArgs, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {
         let path = ctx.env.resolve(&args.path);
         let display = path.display().to_string();
@@ -268,8 +264,10 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
     use std::path::PathBuf;
 
+    /// What `run` checks before it writes anything.
     async fn check(args: Value, ctx: &ToolCtx) -> Result<(), ToolError> {
-        Typed::new(WriteTool).check(&args, ctx).await
+        let args: WriteArgs = serde_json::from_value(args).unwrap();
+        validate(&ctx.env.resolve(&args.path), ctx).await.map(|_| ())
     }
 
     /// Records the file as read, as `read` would, without depending on how `read` shows it.

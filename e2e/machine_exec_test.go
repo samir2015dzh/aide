@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // TestMachineExec walks the ops channel (WO #6, docs/machine-ops.md) with
@@ -25,11 +25,11 @@ func TestMachineExec(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
-	bin := filepath.Join(w.bin, "hermesh")
+	bin := filepath.Join(w.bin, "aide")
 	// Through the relay, not this computer's own endpoint.
-	env := append(w.cliEnv, "HERMESH_LOCAL=off")
+	env := append(w.cliEnv, "AIDE_LOCAL=off")
 	cli := func(args ...string) result { return run(t, env, time.Minute, bin, args...) }
 	toErr := "echo err >&2"
 	if runtime.GOOS == "windows" {

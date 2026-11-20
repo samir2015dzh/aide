@@ -310,7 +310,7 @@ const of = (w, m, a) => w.sessions.filter((s) => s.m === m && s.a === a);
 
 // ---------- Mac ----------
 const crop = (h, inner) => `<div class="crop" style="height:${h}px"><div class="tl"><i></i><i></i><i></i></div>${inner}<div class="pg"><i style="width:70%"></i><i></i><i style="width:85%"></i></div></div>`;
-const foot = (w, counted) => `<div class="acct"><div class="side-foot"><span class="av">H</span><span class="who"><b>Hermesh</b><span>${counted ? `已连接 · ${w.online} 台机器在线` : "已连接"}</span></span>${ic("chevD")}</div></div>`;
+const foot = (w, counted) => `<div class="acct"><div class="side-foot"><span class="av">H</span><span class="who"><b>Aide</b><span>${counted ? `已连接 · ${w.online} 台机器在线` : "已连接"}</span></span>${ic("chevD")}</div></div>`;
 
 function macNow(w) {
   const marks = (list) => { const wait = list.some((s) => s.wait), run = list.filter((s) => !s.wait).length;
@@ -374,7 +374,7 @@ const phone = (inner) => `<div class="ph"><div class="phone"><div class="scr"><d
 const herPage = (lead) => `<div class="ipage"><div class="ibar">${lead}<span class="icap">Her</span><span class="itrail">${ic("tray")}${ic("pulse")}${ic("clock")}</span></div>
   <div class="ichat"><i class="me"></i><i class="l"></i><i></i><i class="me"></i><i class="l"></i></div><div class="icomp">消息</div></div>`;
 const drawer = (rows) => `${herPage(`<span class="glass">${ic("menu")}</span>`)}<div class="shade"></div><div class="drawer">
-  <div class="dhead"><span class="wm">Hermesh</span><span class="glass">${ic("search")}</span></div><div class="drows">${rows}</div>
+  <div class="dhead"><span class="wm">Aide</span><span class="glass">${ic("search")}</span></div><div class="drows">${rows}</div>
   <div class="dfoot"><span class="apic"><span>H</span></span></div></div>`;
 const dr = (icon, t, tail = "", cls = "") => `<div class="dr ${cls}"><span class="ico">${icon}</span><span class="t">${t}</span>${tail ? `<span class="marks">${tail}</span>` : ""}</div>`;
 
@@ -427,13 +427,13 @@ function settings() {
   const mi = (icon, t, k = "", cls = "") => `<div class="mi ${cls}">${ic(icon)}<span>${t}</span>${k ? `<span class="kbd">${k}</span>` : ""}</div>`;
   const mac = `<div><div class="crop" style="height:300px;align-items:stretch"><aside class="side" style="justify-content:flex-end">
     <div class="acct"><div class="acct-menu">${mi("key", "连接 agent…", "⇧⌘N")}${mi("laptop", "添加机器…")}${mi("link", "输入配对码…", "⇧⌘P")}<div class="msep"></div>${mi("gear", "设置…", "⌘,", "hot")}${mi("user", "账号…")}</div>
-    <div class="side-foot" style="background:var(--fill2)"><span class="av">H</span><span class="who"><b>Hermesh</b><span>已连接</span></span>${ic("chevD")}</div></div></aside><div class="pg"></div></div>
+    <div class="side-foot" style="background:var(--fill2)"><span class="av">H</span><span class="who"><b>Aide</b><span>已连接</span></span>${ic("chevD")}</div></div></aside><div class="pg"></div></div>
     <div class="path"><span>设置…</span>${ic("chevR")}<span>机器</span>${ic("chevR")}<span>这台 Mac</span>${ic("chevR")}<span>Claude Code</span></div>
     <p class="cap" style="max-width:318px">Mac：账号菜单不变。机器和 Agent 的设置本来就在“设置 › 机器”里，侧边栏的机器行去掉后，这是唯一的入口。</p></div>`;
   const go = `<span class="v">${ic("chevR")}</span>`;
   const ios = `<div><div class="ph"><div class="phone"><div class="scr"><div class="sbar"><span>9:41</span><i></i></div><div class="sheet">
     <div class="shead">账号与设备<span class="glass">${ic("x")}</span></div>
-    <div class="sec" style="margin-top:14px"><div>Hermesh 服务<span class="v">已连接</span></div></div>
+    <div class="sec" style="margin-top:14px"><div>Aide 服务<span class="v">已连接</span></div></div>
     <div class="sec"><div>机器<span class="v"><span class="moved">移到这里</span>${ic("chevR")}</span></div><div>连接的 Agent<span class="v"><span class="moved">移到这里</span>${ic("chevR")}</span></div></div>
     <div class="sech">外观</div><div class="sec"><div class="appr"><span class="on">跟随系统</span><span>浅色</span><span>深色</span></div></div>
     <div class="sec"><div>通知<span class="v">打开${ic("chevR")}</span></div></div>

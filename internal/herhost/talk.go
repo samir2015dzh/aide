@@ -8,15 +8,14 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/oklog/ulid/v2"
 )
 
-// Talk is Her's conversation in a terminal (hermeshd her, docs/linux.md
+// Talk is Her's conversation in a terminal (aided her, docs/linux.md
 // §8), on the her this machine runs, at sock: what Her sends shows as it
-// comes, each line read from in goes to her, and an approval she asks for
-// is asked in the terminal. It ends when in does, or ctx.
+// comes and each line read from in goes to her. Her runs actions without
+// asking, so nothing is asked in the terminal. It ends when in does, or ctx.
 func Talk(ctx context.Context, sock, version string, in io.Reader, out io.Writer) error {
 	c, err := dial(ctx, sock, version, true)
 	if err != nil {
@@ -99,11 +98,9 @@ func Talk(ctx context.Context, sock, version string, in io.Reader, out io.Writer
 			}
 			var p struct {
 				Event struct {
-					Type    string          `json:"type"`
-					Name    string          `json:"name"`
-					CallID  string          `json:"call_id"`
-					Summary string          `json:"summary"`
-					Args    json.RawMessage `json:"args"`
+					Type string          `json:"type"`
+					Name string          `json:"name"`
+					Args json.RawMessage `json:"args"`
 				} `json:"event"`
 			}
 			if json.Unmarshal(n.params, &p) != nil {
@@ -120,22 +117,6 @@ func Talk(ctx context.Context, sock, version string, in io.Reader, out io.Writer
 					fmt.Fprintf(out, "\r%s: %s\n", name, a.Text)
 				} else {
 					fmt.Fprintf(out, "\r  · %s\n", e.Name)
-				}
-			case "approval_requested":
-				fmt.Fprintf(out, "\r%s asks: %s. Allow? [y/N] ", name, e.Summary)
-				var answer string
-				select {
-				case answer = <-lines:
-				case <-time.After(10 * time.Minute):
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-				decision := "deny"
-				if a := strings.ToLower(strings.TrimSpace(answer)); a == "y" || a == "yes" {
-					decision = "approve"
-				}
-				if err := op(map[string]any{"type": "approval", "call_id": e.CallID, "decision": map[string]string{"type": decision}}); err != nil {
-					fmt.Fprintf(out, "✗ %v\n", err)
 				}
 			case "task_completed", "task_failed":
 				if busy {

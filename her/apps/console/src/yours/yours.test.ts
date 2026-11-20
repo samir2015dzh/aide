@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { BrowserStatus, ExtensionStatus } from "@hermesh/her-protocol";
+import type { BrowserStatus, ExtensionStatus } from "@aide/her-protocol";
 import { browserName, builtin, builtinConfig, controlConfig, controlEdits, controlOn, defaultBrowser, defaultEdits, extensionEdits, extensionFolder, herSystem, programName, yours, yoursConfig } from "./yours.ts";
 
 // What the Browser section makes of browser/status and `[browser]`.
@@ -31,9 +31,9 @@ test("the guide goes by the system her says it runs on", () => {
   assert.equal(herSystem(status({ os: "macos" })), "macos");
   assert.equal(herSystem(status()), "macos", "a her that names no system");
   assert.equal(herSystem(null), "macos");
-  // hermeshd's ExtensionFolder, for each.
-  assert.equal(extensionFolder.linux, "~/.local/share/hermesh/chrome-extension");
-  assert.equal(extensionFolder.macos, "~/Library/Application Support/Hermesh/Chrome Extension");
+  // aided's ExtensionFolder, for each.
+  assert.equal(extensionFolder.linux, "~/.local/share/aide/chrome-extension");
+  assert.equal(extensionFolder.macos, "~/Library/Application Support/Aide/Chrome Extension");
 });
 
 test("what to choose from, and why a host was refused", () => {

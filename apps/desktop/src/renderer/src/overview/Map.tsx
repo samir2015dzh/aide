@@ -1,18 +1,18 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { Client, Machine, QueryWorkResponse } from "@hermesh/proto/local";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
-import { agoText, codingAgentTitle, createdDate, dateOf, isActive, isFailed, longLived, monthDay, sameDay, todayStats, tokensText, usageYear } from "@hermesh/core";
-import { AgentLogo, agentName, grantColor, Mark, type GrantLook } from "@hermesh/ui";
+import type { Client, Machine, QueryWorkResponse } from "@aide/proto/local";
+import { SessionStatus, type Session } from "@aide/proto/session";
+import { agoText, codingAgentTitle, createdDate, dateOf, isActive, isFailed, longLived, monthDay, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
+import { AgentLogo, agentName, grantColor, Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { grantFace } from "../components";
 import { problemShort, problemsOf, severe } from "../health";
 import { Icon } from "../icons";
-import { hostOf } from "../sheets/Pairing";
+import { hostOf } from "../sheets/common";
 import { useStore, type Store } from "../store";
 
 // "Connections": who may use this computer (grants: a personal agent connects only
-// while it runs a command, so they are never drawn offline), Hermesh in the middle, the
+// while it runs a command, so they are never drawn offline), Aide in the middle, the
 // machines, and their projects; each session that is live runs along its
 // grant → machine → project path. On a machine only it is this Mac's: the
 // grants that cover it, this Mac in the middle, its projects; one that never
@@ -606,8 +606,8 @@ function ClientCard({ c, now, style, ref, onMouseEnter, onMouseLeave }: {
 
 /** A machine node's context menu: its settings (a click on it drills down). */
 async function machineMenu(m: Machine) {
-  const id = await window.hermesh?.popupMenu([{ id: "settings", label: i18n.t("overview:map.machineSettings") }]);
-  if (id === "settings") window.hermesh?.openSettings(`machines/${m.machineId}`);
+  const id = await window.aide?.popupMenu([{ id: "settings", label: i18n.t("overview:map.machineSettings") }]);
+  if (id === "settings") window.aide?.openSettings(`machines/${m.machineId}`);
 }
 
 /** Offline, or how many of its sessions run now. */

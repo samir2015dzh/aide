@@ -23,8 +23,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestWindowsUpdate is docs/machine-updates.md §7 on a Windows machine
@@ -35,7 +34,7 @@ import (
 //  2. B is published: the machine finds it, installs it beside its
 //     running programs, and its supervisor starts B;
 //  3. with automatic updates off, C is published: nothing happens until
-//     `hermeshd update --yes`, which installs C and restarts the task.
+//     `aided update --yes`, which installs C and restarts the task.
 func TestWindowsUpdate(t *testing.T) {
 	bin := binaries(t)
 	tmp := t.TempDir()
@@ -79,15 +78,15 @@ func TestWindowsUpdate(t *testing.T) {
 		os.MkdirAll(dir, 0o755)
 		// As scripts/release.sh builds a release, but naming the test's
 		// releases and key.
-		ldflags := "-X github.com/hermeshai/hermesh/internal/machine.Version=" + v +
-			" -X github.com/hermeshai/hermesh/internal/update.releases=" + releasesURL +
-			" -X github.com/hermeshai/hermesh/internal/update.publicKey=" + base64.StdEncoding.EncodeToString(der) +
-			" -X github.com/hermeshai/hermesh/internal/update.testInterval=2s"
+		ldflags := "-X github.com/samir2015dzh/aide/internal/machine.Version=" + v +
+			" -X github.com/samir2015dzh/aide/internal/update.releases=" + releasesURL +
+			" -X github.com/samir2015dzh/aide/internal/update.publicKey=" + base64.StdEncoding.EncodeToString(der) +
+			" -X github.com/samir2015dzh/aide/internal/update.testInterval=2s"
 		var sums bytes.Buffer
 		for _, b := range []struct{ name, cmd, flags string }{
-			{"hermeshd", "./cmd/hermeshd", ""},
-			{"hermeshdw", "./cmd/hermeshd", " -H windowsgui"},
-			{"hermesh", "./cmd/hermesh", ""},
+			{"aided", "./cmd/aided", ""},
+			{"aidedw", "./cmd/aided", " -H windowsgui"},
+			{"aide", "./cmd/aide", ""},
 		} {
 			asset := b.name + "-windows-" + runtime.GOARCH + ".exe"
 			cmd := exec.Command("go", "build", "-ldflags", ldflags+b.flags, "-o", filepath.Join(dir, asset), b.cmd)
@@ -107,7 +106,7 @@ func TestWindowsUpdate(t *testing.T) {
 			"version":           []byte(v + "\n"),
 			"checksums.txt":     sums.Bytes(),
 			"checksums.txt.sig": sig,
-			"install.ps1":       bytes.Replace(script, []byte("__HERMESH_RELEASE_PUBKEY__"), []byte(pub), 1),
+			"install.ps1":       bytes.Replace(script, []byte("__AIDE_RELEASE_PUBKEY__"), []byte(pub), 1),
 		} {
 			os.WriteFile(filepath.Join(dir, name), body, 0o644)
 		}
@@ -117,50 +116,42 @@ func TestWindowsUpdate(t *testing.T) {
 	// The owner, on a relay here.
 	port := freePort(t)
 	relayData := filepath.Join(tmp, "relay")
-	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	relay := start(t, "relay", nil, filepath.Join(bin, "aide-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "claim-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sock := filepath.Join(tmp, "o.sock")
-	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), ClaimCode: claim, RootPublicKey: rootPub(root)})
-	if err != nil {
+	start(t, "owner", nil, filepath.Join(bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
+	app := newTestApp(t, sock)
+	server := fmt.Sprintf("http://127.0.0.1:%d", port)
+	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: server, SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-pc", Platform: "windows"}); err != nil {
 		t.Fatal(err)
 	}
 
 	// 1. install.ps1, as a person runs it: A, with its logon task.
 	binDir, data := filepath.Join(tmp, "bin"), filepath.Join(tmp, "machine")
-	env := []string{"HERMESH_DOWNLOAD_BASE=" + releasesURL + "/latest/download", "HERMESH_BIN_DIR=" + binDir, "HERMESH_NO_PATH=1", "HERMESH_DATA_DIR=" + data}
-	hermeshd := filepath.Join(binDir, "hermeshd.exe")
+	env := append([]string{"AIDE_DOWNLOAD_BASE=" + releasesURL + "/latest/download", "AIDE_BIN_DIR=" + binDir, "AIDE_NO_PATH=1", "AIDE_DATA_DIR=" + data}, loginEnv()...)
+	aided := filepath.Join(binDir, "aided.exe")
 	t.Cleanup(func() {
 		if t.Failed() {
-			log, _ := os.ReadFile(filepath.Join(data, "logs", "hermeshd.log"))
+			log, _ := os.ReadFile(filepath.Join(data, "logs", "aided.log"))
 			t.Logf("==== the machine's log ====\n%s", log)
 		}
-		exec.Command(hermeshd, "service", "uninstall").Run()
+		exec.Command(aided, "service", "uninstall").Run()
 	})
 	installScript := filepath.Join(tmp, "releases", "0.0.1", "install.ps1")
-	install := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installScript, setup.ConnectAddress, "-Name", "win-1")
+	install := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installScript, server, "-Name", "win-1")
 	install.Env = append(os.Environ(), env...)
 	var installOut syncBuffer
 	install.Stdout, install.Stderr = &installOut, &installOut
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 2*time.Minute, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(installOut.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
-	})
-	approved, err := app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "win-1"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil {
 		t.Fatalf("install: %v\n%s", err, installOut.String())
+	}
+	machineID := loggedInMachine(installOut.String())
+	if machineID == "" {
+		t.Fatalf("install logged no machine in:\n%s", installOut.String())
 	}
 	machineVersion := func() string {
 		res, err := app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
@@ -168,7 +159,7 @@ func TestWindowsUpdate(t *testing.T) {
 			return ""
 		}
 		for _, m := range res.Machines {
-			if m.MachineId == approved.MachineId && m.Online && m.Status != nil {
+			if m.MachineId == machineID && m.Online && m.Status != nil {
 				return m.Status.Version
 			}
 		}
@@ -179,15 +170,15 @@ func TestWindowsUpdate(t *testing.T) {
 	// 2. B: the machine updates itself, and its supervisor starts B.
 	publish("0.0.2")
 	eventually(t, 2*time.Minute, "the machine on 0.0.2", func() bool { return machineVersion() == "0.0.2" })
-	if r := run(t, nil, time.Minute, filepath.Join(binDir, "hermesh.exe"), "version"); strings.TrimSpace(r.stdout) != "0.0.2" {
-		t.Errorf("hermesh after the update: %+v", r)
+	if r := run(t, nil, time.Minute, filepath.Join(binDir, "aide.exe"), "version"); strings.TrimSpace(r.stdout) != "0.0.2" {
+		t.Errorf("aide after the update: %+v", r)
 	}
-	if _, err := os.Stat(filepath.Join(binDir, ".hermeshd.previous.exe")); err != nil {
-		t.Errorf("the previous hermeshd: %v", err)
+	if _, err := os.Stat(filepath.Join(binDir, ".aided.previous.exe")); err != nil {
+		t.Errorf("the previous aided: %v", err)
 	}
 
 	// 3. Automatic updates off.
-	if r := run(t, env, time.Minute, hermeshd, "update", "auto", "off"); r.code != 0 || !strings.Contains(r.stdout, "off") {
+	if r := run(t, env, time.Minute, aided, "update", "auto", "off"); r.code != 0 || !strings.Contains(r.stdout, "off") {
 		t.Fatalf("auto off: %+v", r)
 	}
 	publish("0.0.3")
@@ -195,10 +186,10 @@ func TestWindowsUpdate(t *testing.T) {
 	if v := machineVersion(); v != "0.0.2" {
 		t.Fatalf("updated to %q with automatic updates off", v)
 	}
-	if r := run(t, env, time.Minute, hermeshd, "update", "--check"); !strings.Contains(r.stdout, "0.0.3 is available") {
+	if r := run(t, env, time.Minute, aided, "update", "--check"); !strings.Contains(r.stdout, "0.0.3 is available") {
 		t.Errorf("--check: %+v", r)
 	}
-	if r := run(t, env, 2*time.Minute, hermeshd, "update", "--yes"); r.code != 0 || !strings.Contains(r.stdout, "the service restarted on 0.0.3") {
+	if r := run(t, env, 2*time.Minute, aided, "update", "--yes"); r.code != 0 || !strings.Contains(r.stdout, "the service restarted on 0.0.3") {
 		t.Fatalf("update: %+v", r)
 	}
 	eventually(t, 60*time.Second, "the machine on 0.0.3", func() bool { return machineVersion() == "0.0.3" })

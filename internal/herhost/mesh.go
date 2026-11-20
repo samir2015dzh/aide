@@ -8,19 +8,16 @@ import (
 	"slices"
 )
 
-// The mesh host (docs/her-mesh.md §4.1): hermeshd offers Her's own
-// conversation a group of tools, runs them for her, says what a write would
-// do before the owner is asked, and puts the news of her sessions into her
+// The mesh host (docs/her-mesh.md §4.1): aided offers Her's own
+// conversation a group of tools, runs them for her without anyone being
+// asked (docs/her-mesh.md §5), and puts the news of her sessions into her
 // conversation.
 
-// Mesh is what serves her's mesh tools: Her's use of Hermesh as one of the
+// Mesh is what serves her's mesh tools: Her's use of Aide as one of the
 // owner's agents (internal/herlink).
 type Mesh interface {
 	// Group is the group her is offered; nil while Her has no grant.
 	Group() *MeshGroup
-	// Describe says what a call that writes would do, for the owner, and
-	// the rule that "don't ask again" would keep (nil: none).
-	Describe(ctx context.Context, bot, name string, args json.RawMessage) (summary string, rule []string)
 	// Call runs one tool and returns its JSON document, and what the apps
 	// read of the result beside it (nil: nothing; docs/her-team.md §6.2).
 	Call(ctx context.Context, bot, callID, name string, args json.RawMessage) (output string, details any, isError bool)
@@ -141,9 +138,6 @@ func (h *Host) serveMesh(ctx context.Context, method string, params json.RawMess
 		return nil, err
 	}
 	switch method {
-	case "mesh/describe":
-		summary, rule := m.Describe(ctx, p.Bot, p.Name, p.Arguments)
-		return map[string]any{"summary": summary, "rule": rule}, nil
 	case "mesh/call":
 		out, details, isErr := m.Call(ctx, p.Bot, p.CallID, p.Name, p.Arguments)
 		res := map[string]any{"output": out, "is_error": isErr}

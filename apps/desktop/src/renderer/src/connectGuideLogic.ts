@@ -1,4 +1,4 @@
-import type { AgentProblem, AgentStatus, CustomAgent } from "@hermesh/proto/machine";
+import type { AgentProblem, AgentStatus, CustomAgent } from "@aide/proto/machine";
 
 // The Connect guide's logic (ConnectGuide.tsx): a separate line for each
 // coding agent the owner connects (DeepSeek Harness, Claude, Codex) and one
@@ -25,7 +25,7 @@ export type Detected =
   | "ready"
   /** Found, not signed in. */
   | "signIn"
-  /** Its desktop app is there, not the command Hermesh runs. */
+  /** Its desktop app is there, not the command Aide runs. */
   | "appOnly"
   /** Found, but it can't run (AgentStatus.detail says why). */
   | "broken"
@@ -81,10 +81,10 @@ export type EnvRow = { name: string; value: string; secret: boolean; saved?: boo
 
 export type CustomForm = { name: string; command: string; args: string; env: EnvRow[]; dir: string };
 
-/** Named like a key, a token or a password: the machine keeps its value in its credential store (as hermeshd's looksSecret). */
+/** Named like a key, a token or a password: the machine keeps its value in its credential store (as aided's looksSecret). */
 export const looksSecret = (name: string) => /KEY|TOKEN|SECRET|PASSW|CREDENTIAL|AUTH|COOKIE|PRIVATE/i.test(name);
 
-/** The built-in agents' names, which a custom agent can't take (as hermeshd's AgentNames). */
+/** The built-in agents' names, which a custom agent can't take (as aided's AgentNames). */
 export function nameProblem(name: string, builtIn: readonly string[]): "name" | "builtIn" | null {
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(name)) return "name";
   return builtIn.includes(name) || name === "fake" ? "builtIn" : null;

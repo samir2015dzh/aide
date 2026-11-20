@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // QuarterSeconds is the length of the buckets work is counted in: every time

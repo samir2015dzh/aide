@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
-import { PROTOCOL_VERSION, type Event } from "@hermesh/her-protocol";
+import { PROTOCOL_VERSION, type Event } from "@aide/her-protocol";
 import { botChat } from "./botChat.ts";
 import { httpTransport } from "./http.ts";
 import { MockServer, type Connection } from "./mock/server.ts";
@@ -10,8 +10,8 @@ import { RpcClient, RpcError } from "./rpc.ts";
 import { applyEvent, fromSnapshot } from "./session.ts";
 
 // The console's way to her end to end: httpTransport with the platform's own EventSource
-// and fetch (node --experimental-eventsource), over real HTTP, to a stand-in for hermeshd's
-// console endpoints (proto/hermesh/her/v1/her.proto), with the mock her behind it.
+// and fetch (node --experimental-eventsource), over real HTTP, to a stand-in for aided's
+// console endpoints (proto/aide/her/v1/her.proto), with the mock her behind it.
 
 async function body(req: IncomingMessage): Promise<string> {
   let text = "";
@@ -20,9 +20,9 @@ async function body(req: IncomingMessage): Promise<string> {
 }
 
 /**
- * hermeshd's console HTTP in front of `her`: each GET of `events` is a connection of its own,
+ * aided's console HTTP in front of `her`: each GET of `events` is a connection of its own,
  * initialized, then its notifications as events; a POST to `rpc` goes on the connection
- * `Her-Connection` names, under an id of hermeshd's, and its answer comes back under the
+ * `Her-Connection` names, under an id of aided's, and its answer comes back under the
  * request's.
  */
 async function consoleSite(her: MockServer) {
@@ -54,7 +54,7 @@ async function consoleSite(her: MockServer) {
         c.conn.close();
         open.delete(id);
       });
-      await forward(c, { method: "initialize", params: { protocol_version: PROTOCOL_VERSION, client_info: { name: "hermeshd" } } });
+      await forward(c, { method: "initialize", params: { protocol_version: PROTOCOL_VERSION, client_info: { name: "aided" } } });
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
       res.write(`event: opened\ndata: ${JSON.stringify({ connection_id: id })}\n\n`);
       return;

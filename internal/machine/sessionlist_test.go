@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Pages of sessions come newest first, without gaps or repeats, across

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { McpProbeResult, McpProbeStep, McpProbeStepId, McpServerConfig } from "@hermesh/her-protocol";
+import type { McpProbeResult, McpProbeStep, McpProbeStepId, McpServerConfig } from "@aide/her-protocol";
 import { Dialog } from "../components";
 import { errorText } from "../format";
 import { useHer } from "../her";

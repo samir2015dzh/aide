@@ -20,9 +20,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/internal/herhost/hertest"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/internal/herhost/hertest"
 )
 
 // startHost runs a Host on a private her until it answers.
@@ -157,28 +157,6 @@ answered:
 	call(t, h, "", "models/list", nil)
 	_, err := h.Call(ctx, &herv1.CallRequest{ConnectionId: "gone", Request: &herv1.Request{Method: "models/list"}})
 	code(t, err, connect.CodeNotFound)
-	// Full access, as the owner's devices set it: on the conversation.
-	if _, err := h.Call(ctx, &herv1.CallRequest{ConnectionId: opened.ConnectionId, Request: &herv1.Request{Method: "session/op",
-		Params: []byte(`{"session_id":"` + open.SessionID + `","op":{"type":"set_permission_mode","mode":"bypass-permissions"}}`)}}); err != nil {
-		t.Fatal(err)
-	}
-
-	// SetHerAssistantMode's way, which older devices sign.
-	if err := h.AssistantMode(ctx, botID, "bypass-permissions"); err != nil {
-		t.Fatal(err)
-	}
-	var snap struct {
-		Snapshot struct {
-			Session struct {
-				PermissionMode string `json:"permission_mode"`
-			} `json:"session"`
-		} `json:"snapshot"`
-	}
-	json.Unmarshal(call(t, h, "", "bots/open", map[string]any{"bot_id": botID, "history_limit": 0}), &snap)
-	if snap.Snapshot.Session.PermissionMode != "bypass-permissions" {
-		t.Fatalf("mode %q", snap.Snapshot.Session.PermissionMode)
-	}
-	code(t, h.AssistantMode(ctx, botID, "full-auto"), connect.CodeInvalidArgument)
 
 	// SetHerCommandConnector's way: added, changed, removed.
 	servers := func() map[string]map[string]any {
@@ -245,7 +223,7 @@ answered:
 	code(t, err, connect.CodeFailedPrecondition)
 }
 
-// A her an earlier hermeshd left running on the socket is stopped, so that
+// A her an earlier aided left running on the socket is stopped, so that
 // the new one can listen there.
 func TestHostStopsAStaleHer(t *testing.T) {
 	bin := hertest.Bin(t)
@@ -296,7 +274,7 @@ func TestHostSaysWhyHerFails(t *testing.T) {
 }
 
 // On a Mac and on Linux her runs with computer use on unless the owner's
-// configuration turns it off (HER_DESKTOP=on); hermeshd's own HER_DESKTOP
+// configuration turns it off (HER_DESKTOP=on); aided's own HER_DESKTOP
 // wins.
 func TestHostTurnsComputerUseOn(t *testing.T) {
 	bin := filepath.Join(t.TempDir(), "her")

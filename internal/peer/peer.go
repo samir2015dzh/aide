@@ -12,13 +12,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1/machinev1connect"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/session/v1/sessionv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/session/v1/sessionv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type Dialer struct {

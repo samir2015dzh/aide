@@ -1,38 +1,29 @@
 package owner
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"runtime"
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
-// A Mac can join its owner as a machine only, not as a trusted device (a
-// work Mac, say): it holds no root key, approves nothing and sees only its
-// own projects and sessions, which it settles as the owner would (answer,
-// stop, archive). Its machine asks to join like any other and is
-// approved on a trusted device. When the owner id came from the center (the
-// person signed in, rather than typing the connection address), the person
-// then types here the two digits the approving device shows, computed from
-// the machine cert it signed: a center that handed the request to another
-// owner cannot make the person's own device show them.
+// A computer can log in as a machine only, not as one of the owner's
+// devices (a work computer, say): it sees only its own projects and
+// sessions, which it settles as the owner would (answer, stop, archive).
+// It logs in like any machine (logInAsMachine), with the account and
+// password.
 
 const kMachineOnly = "machine_only"
 
@@ -54,104 +45,6 @@ func (o *Owner) onlyMachine() (l *machine.Local, ok bool, err error) {
 		return nil, true, connect.NewError(connect.CodeUnavailable, errors.New("this computer's machine is not running"))
 	}
 	return n.Local(), true, nil
-}
-
-// requestMachineJoin is RequestJoin for a machine only: this device's
-// machine signs its own pairing request, pinned to the owner.
-func (o *Owner) requestMachineJoin(ctx context.Context, req *localv1.RequestJoinRequest) (*localv1.RequestJoinResponse, error) {
-	if o.machineOnly() {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("this computer is already a machine of an owner"))
-	}
-	relayURL := normalizeRelayURL(req.RelayUrl)
-	n, err := o.openLocalMachine()
-	if err != nil {
-		return nil, err
-	}
-	defer n.Close()
-	label := req.RootLabel
-	if label == "" {
-		label = machine.HostLabel("")
-	}
-	for len(label) > 64 { // what a relay accepts
-		_, size := utf8.DecodeLastRuneInString(label)
-		label = label[:len(label)-size]
-	}
-	host, _ := os.Hostname()
-	spki := n.PublicKeySPKI()
-	signed, err := n.SignPairingRequest(&identityv1.PairingRequest{Kind: identityv1.PairingKind_PAIRING_KIND_MACHINE, SubjectPublicKey: spki,
-		Label: label, Hostname: host, Platform: runtime.GOOS + "/" + runtime.GOARCH, OwnerId: req.OwnerId, CreatedAt: timestamppb.Now(),
-		ConfirmMatch: !req.OwnerTyped})
-	if err != nil {
-		return nil, err
-	}
-	res, err := o.publicClient(relayURL).SubmitPairing(ctx, &relayv1.SubmitPairingRequest{Request: signed})
-	if err != nil {
-		return nil, err
-	}
-	o.mu.Lock()
-	o.join = &pendingJoin{code: res.Code, relayURL: relayURL, ownerID: req.OwnerId, account: req.Account, rootPub: spki, machineName: label,
-		machineOnly: true, match: !req.OwnerTyped}
-	o.mu.Unlock()
-	return &localv1.RequestJoinResponse{Code: res.Code, ExpiresAt: res.ExpiresAt,
-		VerificationCode: identity.VerificationCode(identityv1.PairingKind_PAIRING_KIND_MACHINE, spki, req.OwnerId)}, nil
-}
-
-// waitMachineJoin checks the credentials a trusted device issued: a chain
-// of the owner asked for, and a machine cert for this machine's key.
-func (o *Owner) waitMachineJoin(j *pendingJoin, creds *identityv1.Credentials) (*localv1.WaitJoinResponse, error) {
-	trust := identity.NewTrust(j.ownerID)
-	if _, err := trust.AcceptRootChain(creds.GetRootChain()); err != nil {
-		return nil, fmt.Errorf("the approval does not check out: %w", err)
-	}
-	cert := creds.GetMachineCert()
-	_, pub, err := trust.VerifyMachineCert(cert)
-	if err != nil {
-		return nil, fmt.Errorf("the approval does not check out: %w", err)
-	}
-	if !bytes.Equal(identity.MarshalPublicKey(pub), j.rootPub) {
-		return nil, errors.New("the approval is for another machine")
-	}
-	o.mu.Lock()
-	j.chain, j.machineCert = creds.GetRootChain(), cert
-	o.mu.Unlock()
-	res := &localv1.WaitJoinResponse{Done: true, MatchRequired: j.match}
-	for _, rk := range trust.Root().RootKeys {
-		pub, _ := identity.ParsePublicKey(rk.PublicKey)
-		if identity.KeyID(pub) == cert.SignerKeyId {
-			res.ApprovedBy = rk.Label
-		}
-		res.Devices = append(res.Devices, &localv1.Device{KeyId: identity.KeyID(pub), Label: rk.Label, Platform: rk.Platform})
-	}
-	return res, nil
-}
-
-// confirmMachineJoin installs the machine cert and starts the machine.
-func (o *Owner) confirmMachineJoin(ctx context.Context, j *pendingJoin) (*localv1.ConfirmJoinResponse, error) {
-	n, err := o.openLocalMachine()
-	if err != nil {
-		return nil, err
-	}
-	err = n.Install(j.ownerID, j.relayURL, j.chain, j.machineCert)
-	if err == nil {
-		err = n.SetName(j.machineName)
-	}
-	n.Close()
-	if err != nil {
-		return nil, err
-	}
-	if err := o.st.set(kMachineOnly, []byte("1")); err != nil {
-		return nil, err
-	}
-	if err := o.st.set(kAccount, []byte(j.account)); err != nil {
-		return nil, err
-	}
-	o.mu.Lock()
-	o.join, o.account = nil, j.account
-	o.mu.Unlock()
-	if err := o.startLocalMachine(); err != nil {
-		return nil, err
-	}
-	return &localv1.ConfirmJoinResponse{OwnerId: j.ownerID, ConnectAddress: connaddr.Format(j.relayURL, j.ownerID)}, nil
 }
 
 // rebindLocalMachine publishes the cert that makes this device's running

@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Identity is a client's credentials kept by the caller rather than in
@@ -53,7 +53,7 @@ type ExecOptions struct {
 	InboxRegistered func(takes string)
 }
 
-// Exec runs one command (args without "hermesh", e.g. "session", "get",
+// Exec runs one command (args without "aide", e.g. "session", "get",
 // "s_..."), for opts.Identity, with JSON output: it returns the command's
 // document (docs/cli-output.md) and its exit code.
 func Exec(ctx context.Context, opts ExecOptions, args []string) ([]byte, int) {

@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import { Trans, useTranslation } from "react-i18next";
-import type { McpServerView } from "@hermesh/her-protocol";
+import type { McpServerView } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { brokenSkills, isCommand, statusOf, type SkillGroup, type SkillItem } from "./model";
 import { MoreButton, Section, ServerTile, SkillTile, Status, Switch, type MenuItem } from "./parts";

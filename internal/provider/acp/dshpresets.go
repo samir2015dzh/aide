@@ -10,7 +10,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // DeepSeek Harness's permission presets (read-only, workspace-write,
@@ -19,7 +19,7 @@ import (
 // preset its process's configuration names for new sessions (the
 // permission row's defaultPreset, @deepseek-ai/dsh-permission-presets),
 // when it is created, and keeps it in its own log (resumed, it has it
-// still). Hermesh starts one dsh process per session, so it starts a new
+// still). Aide starts one dsh process per session, so it starts a new
 // session's process with a --patch overlay naming the chosen preset: no
 // other session, and none of the owner's DSH configuration, changes.
 // The overlay replaces the permission row's whole config, so it is that

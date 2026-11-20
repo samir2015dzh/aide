@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // Login runs only the ACP authentication handshake, without creating a session
@@ -30,7 +30,7 @@ func (p *Provider) Login(ctx context.Context, method string, output io.Writer) e
 	done := make(chan error, 1)
 	go func() {
 		res, err := s.call(ctx, "initialize", map[string]any{"protocolVersion": 1,
-			"clientInfo": map[string]any{"name": "hermesh", "version": "0.1.0"}, "clientCapabilities": map[string]any{}})
+			"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"}, "clientCapabilities": map[string]any{}})
 		if err == nil {
 			var init struct {
 				AuthMethods []struct {

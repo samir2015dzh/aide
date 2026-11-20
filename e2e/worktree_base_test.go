@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // A release tag pushed after the project was cloned: the session fetches
@@ -21,7 +21,7 @@ func TestMissingBaseRefRetry(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	remote := filepath.Join(t.TempDir(), "upstream.git")
 	gitOut(t, w.repo, "clone", "--bare", w.repo, remote)
 	gitOut(t, w.repo, "remote", "add", "upstream", remote)
@@ -73,7 +73,7 @@ func TestMissingBaseRefRetry(t *testing.T) {
 			if s.Ref != "" || !strings.Contains(s.LastFailure.Hint, "project's remote") || !strings.Contains(s.LastFailure.Hint, "same session") {
 				t.Fatalf("agent started or recovery advice missing: %+v", s)
 			}
-			branch := "refs/heads/hermesh/" + s.SessionID
+			branch := "refs/heads/aide/" + s.SessionID
 			assertMissing := func() {
 				t.Helper()
 				if _, err := os.Stat(w.worktree(s.SessionID)); !os.IsNotExist(err) {

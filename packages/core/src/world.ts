@@ -1,10 +1,10 @@
-import type { Client, Device, GetStatusResponse, Machine, PairingDetails, Project, Unreachable, WatchResponse } from "@hermesh/proto/local";
-import { SessionLink, SessionStatus, type Session, type SessionCursor } from "@hermesh/proto/session";
+import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, WatchResponse } from "@aide/proto/local";
+import { SessionLink, SessionStatus, type Session, type SessionCursor } from "@aide/proto/session";
 import { mergeSessions, relistedCursor } from "./sessions";
 import { defaultStateLimits, livenessOf, sessionStateOf, type StateLimits } from "./states";
 
 /**
- * What a screen knows of the owner's world, as hermeshd's LocalService.Watch
+ * What a screen knows of the owner's world, as aided's LocalService.Watch
  * pushes it (docs/state-sync.md): no screen polls. Sessions also hold the
  * older pages a list loaded.
  */
@@ -15,7 +15,6 @@ export type World = {
   clients: Client[];
   devices: Device[];
   projects: Project[];
-  pairings: PairingDetails[];
   sessions: Session[];
   /** The first message arrived. */
   loaded: boolean;
@@ -25,7 +24,7 @@ export type World = {
   workVersion: number;
 };
 
-export const emptyWorld: World = { machines: [], clients: [], devices: [], projects: [], pairings: [], sessions: [], loaded: false, workVersion: 0 };
+export const emptyWorld: World = { machines: [], clients: [], devices: [], projects: [], sessions: [], loaded: false, workVersion: 0 };
 
 /** Replaces each item that changed (by key) where it was, adds new ones, and drops those removed; list itself when nothing changed. */
 function upsert<T>(list: T[], changed: T[], removed: string[], key: (x: T) => string): T[] {
@@ -58,7 +57,6 @@ export function applyWatch(w: World, m: WatchResponse): World {
     clients: upsert(base.clients, m.clients, m.removedGrantIds, (x) => x.grantId),
     devices: upsert(base.devices, m.devices, m.removedDeviceKeyIds, (x) => x.keyId),
     projects: upsert(base.projects, m.projects, m.removedProjects.map(projectKey), projectKey),
-    pairings: upsert(base.pairings, m.pairings, m.removedPairingCodes, (x) => x.code),
     sessions: mergeSessions(base.sessions, m.sessions, m.deletedSessionIds),
     loaded: true,
   };
@@ -71,7 +69,7 @@ export function applyWatch(w: World, m: WatchResponse): World {
 
 /** The machines whose sessions and projects cannot be read now. */
 export function unreachableMachines(machines: Machine[]): Unreachable[] {
-  return machines.filter((m) => m.unreachable !== "").map((m) => ({ $typeName: "hermesh.local.v1.Unreachable", machineId: m.machineId, machineName: m.machineName, error: m.unreachable }) as Unreachable);
+  return machines.filter((m) => m.unreachable !== "").map((m) => ({ $typeName: "aide.local.v1.Unreachable", machineId: m.machineId, machineName: m.machineName, error: m.unreachable }) as Unreachable);
 }
 
 /**

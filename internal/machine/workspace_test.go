@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
 func testRepo(t *testing.T, extraConfig ...string) string {
@@ -71,7 +71,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 				go func(id string) {
 					defer wg.Done()
 					base, branch, err := w.Create(ctx, repo, "", id)
-					if err != nil || len(base) != 40 || branch != "hermesh/"+id {
+					if err != nil || len(base) != 40 || branch != "aide/"+id {
 						t.Errorf("create %s: %q %q %v", id, base, branch, err)
 					}
 				}(id)
@@ -79,7 +79,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 			wg.Wait()
 			list := gitOut(t, repo, "worktree", "list", "--porcelain")
 			for _, id := range ids {
-				if !strings.Contains(list, "branch refs/heads/hermesh/"+id+"\n") {
+				if !strings.Contains(list, "branch refs/heads/aide/"+id+"\n") {
 					t.Fatalf("git does not list %s:\n%s", id, list)
 				}
 			}
@@ -96,12 +96,12 @@ func TestWorktreeLifecycle(t *testing.T) {
 			if err != nil || stat.FilesChanged != 1 || head == "" {
 				t.Fatalf("snapshot: %q %v %v", head, stat, err)
 			}
-			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "hermesh/s_1")); got != head {
+			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "aide/s_1")); got != head {
 				t.Fatalf("branch at %s, snapshot %s", got, head)
 			}
 			// prune keeps live worktrees
 			gitOut(t, repo, "worktree", "prune")
-			if !strings.Contains(gitOut(t, repo, "worktree", "list", "--porcelain"), "branch refs/heads/hermesh/s_1\n") {
+			if !strings.Contains(gitOut(t, repo, "worktree", "list", "--porcelain"), "branch refs/heads/aide/s_1\n") {
 				t.Fatal("prune dropped a live worktree")
 			}
 			for _, id := range ids {
@@ -109,13 +109,13 @@ func TestWorktreeLifecycle(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if list := gitOut(t, repo, "worktree", "list", "--porcelain"); strings.Contains(list, "hermesh/") {
+			if list := gitOut(t, repo, "worktree", "list", "--porcelain"); strings.Contains(list, "aide/") {
 				t.Fatalf("removed worktrees still listed:\n%s", list)
 			}
 			if _, err := os.Stat(wt); !os.IsNotExist(err) {
 				t.Fatal("worktree directory left behind")
 			}
-			gitOut(t, repo, "rev-parse", "--verify", "hermesh/s_1") // branch kept
+			gitOut(t, repo, "rev-parse", "--verify", "aide/s_1") // branch kept
 			// other bases: a branch name, a commit id, a tag; bad refs fail cleanly
 			first := strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD"))
 			gitOut(t, repo, "tag", "v1")
@@ -161,7 +161,7 @@ func TestWorktreeBaseValidation(t *testing.T) {
 				if _, err := os.Stat(w.root); !os.IsNotExist(err) {
 					t.Fatalf("failed validation created the worktree root: %v", err)
 				}
-				if _, err := os.Stat(filepath.Join(repo, ".git", "refs", "heads", "hermesh", "s_bad")); !os.IsNotExist(err) {
+				if _, err := os.Stat(filepath.Join(repo, ".git", "refs", "heads", "aide", "s_bad")); !os.IsNotExist(err) {
 					t.Fatalf("failed validation left a branch: %v", err)
 				}
 			}
@@ -285,15 +285,15 @@ func TestWorktreePinsBaseCommit(t *testing.T) {
 			gitOut(t, repo, "branch", "moving", first)
 			gitOut(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--allow-empty", "-m", "next")
 			next := strings.TrimSpace(gitOut(t, repo, "rev-parse", "HEAD"))
-			t.Setenv("HERMESH_TEST_GIT", realGit)
-			t.Setenv("HERMESH_TEST_NEXT_COMMIT", next)
+			t.Setenv("AIDE_TEST_GIT", realGit)
+			t.Setenv("AIDE_TEST_NEXT_COMMIT", next)
 			wrapper := filepath.Join(t.TempDir(), "git")
 			if err := os.WriteFile(wrapper, []byte(`#!/bin/sh
-"$HERMESH_TEST_GIT" "$@"
+"$AIDE_TEST_GIT" "$@"
 result=$?
 for arg in "$@"; do
   if [ "$arg" = 'moving^{commit}' ] && [ "$result" = 0 ]; then
-    "$HERMESH_TEST_GIT" update-ref refs/heads/moving "$HERMESH_TEST_NEXT_COMMIT" || exit 1
+    "$AIDE_TEST_GIT" update-ref refs/heads/moving "$AIDE_TEST_NEXT_COMMIT" || exit 1
   fi
 done
 exit "$result"
@@ -344,7 +344,7 @@ func TestStoppedCheckoutLeavesNothing(t *testing.T) {
 			if list := gitOut(t, repo, "worktree", "list", "--porcelain"); strings.Contains(list, "s_1") {
 				t.Fatalf("git still lists it:\n%s", list)
 			}
-			if out, err := exec.Command("git", "-C", repo, "rev-parse", "--verify", "-q", "hermesh/s_1").Output(); err == nil {
+			if out, err := exec.Command("git", "-C", repo, "rev-parse", "--verify", "-q", "aide/s_1").Output(); err == nil {
 				t.Fatalf("branch left behind at %s", out)
 			}
 			gitOut(t, repo, "config", "filter.slow.smudge", "cat")
@@ -363,7 +363,7 @@ func TestStoppedCheckoutLeavesNothing(t *testing.T) {
 func TestKilledCheckoutLeavesNoLock(t *testing.T) {
 	repo := testRepo(t)
 	w := NewWorkspace(filepath.Join(t.TempDir(), "worktrees"))
-	lock := filepath.Join(repo, ".git", "refs", "heads", "hermesh", "s_1.lock")
+	lock := filepath.Join(repo, ".git", "refs", "heads", "aide", "s_1.lock")
 	os.MkdirAll(filepath.Dir(lock), 0o755)
 	os.WriteFile(lock, nil, 0o644)
 	if _, _, err := w.Create(context.Background(), repo, "", "s_1"); err == nil || !strings.Contains(err.Error(), ".lock") {
@@ -407,7 +407,7 @@ func TestStoppedRestoreKeepsBranch(t *testing.T) {
 			if w.Exists("s_1") {
 				t.Fatal("half checkout left behind")
 			}
-			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "hermesh/s_1")); got != head {
+			if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "aide/s_1")); got != head {
 				t.Fatalf("restore changed the branch: %s, want %s", got, head)
 			}
 			gitOut(t, repo, "config", "filter.slow.smudge", "cat")
@@ -438,7 +438,7 @@ func TestSnapshotFollowsAgentBranchSwitch(t *testing.T) {
 	if err != nil || stat.FilesChanged != 1 {
 		t.Fatalf("snapshot: %v %v", stat, err)
 	}
-	if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "hermesh/s_1")); got != head {
+	if got := strings.TrimSpace(gitOut(t, repo, "rev-parse", "aide/s_1")); got != head {
 		t.Fatalf("branch at %s, snapshot %s", got, head)
 	}
 	if b := gitOut(t, repo, "show", head+":y.txt"); strings.TrimSpace(b) != "two" {

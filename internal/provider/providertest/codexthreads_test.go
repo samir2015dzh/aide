@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/codex"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/codex"
 )
 
 // threadName reads a thread's name from Codex's own app server, as the
@@ -62,8 +62,8 @@ func threadName(t *testing.T, bin, ref string) string {
 // unarchives (twice is no error), and an archived thread still resumes
 // with its conversation.
 func TestCodexThreadTitleAndArchive(t *testing.T) {
-	if os.Getenv("HERMESH_REAL_CLI") != "1" {
-		t.Skip("real Codex: HERMESH_REAL_CLI=1")
+	if os.Getenv("AIDE_REAL_CLI") != "1" {
+		t.Skip("real Codex: AIDE_REAL_CLI=1")
 	}
 	p := &codex.Provider{PathEnv: os.Getenv("PATH")}
 	info := p.Discover(context.Background())
@@ -116,8 +116,8 @@ func TestCodexThreadTitleAndArchive(t *testing.T) {
 // Codex app does once the user opens it there), a resume goes on in a copy
 // that has the conversation, says so, and resumes like any thread later.
 func TestCodexThreadOpenElsewhere(t *testing.T) {
-	if os.Getenv("HERMESH_REAL_CLI") != "1" {
-		t.Skip("real Codex: HERMESH_REAL_CLI=1")
+	if os.Getenv("AIDE_REAL_CLI") != "1" {
+		t.Skip("real Codex: AIDE_REAL_CLI=1")
 	}
 	p := &codex.Provider{PathEnv: os.Getenv("PATH")}
 	if info := p.Discover(context.Background()); !info.Available || !info.LoggedIn {

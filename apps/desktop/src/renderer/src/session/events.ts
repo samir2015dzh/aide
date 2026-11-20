@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { EventView, type SessionEvent } from "@hermesh/proto/session";
+import { EventView, type SessionEvent } from "@aide/proto/session";
 import { local } from "../api";
 import { followAgainIn } from "./retry";
 

@@ -5,14 +5,13 @@ import { headline, listed, offersTab } from "./panel.js";
 
 const state = (over = {}) => ({ host: "connected", inUse: true, stuck: false, sessions: [], offerable: true, ...over });
 const running = { id: "a", title: "A", state: "running", tabs: 1 };
-const approval = { id: "b", title: "B", state: "awaiting_approval", tabs: 1 };
-const handoff = { id: "c", title: "C", state: "awaiting_approval", handoff: "sign in", tabs: 1 };
+const finished = { id: "b", title: "B", state: "idle", tabs: 1 };
 
 test("every state says one thing and asks at most one", () => {
   const states = [
     state(),
     state({ inUse: false }),
-    state({ sessions: [approval] }),
+    state({ sessions: [running, finished] }),
     state({ host: "connecting" }),
     state({ host: "connecting", stuck: true }),
     state({ host: "not_open" }),
@@ -57,26 +56,24 @@ test("the update asked for is of the side that is too old", () => {
   assert.equal(headline(state({ host: "outdated" })).action.do, "update", "an older host does not say");
 });
 
-test("the top counts who waits", () => {
+test("connected, whatever the conversations do: Her asks nothing of the user here", () => {
   assert.equal(headline(state({ sessions: [running] })).title, "statusConnected");
-  assert.equal(headline(state({ sessions: [running, handoff] })).title, "waitingOne");
-  assert.deepEqual(headline(state({ sessions: [approval, handoff] })), { dot: "warn", title: "waiting", count: 2 });
+  assert.equal(headline(state({ sessions: [running, finished] })).title, "statusConnected");
 });
 
-test("standing by comes before who waits: the choice of browser decides the rest", () => {
-  assert.equal(headline(state({ inUse: false, sessions: [approval] })).action.do, "use_this");
+test("standing by: the choice of browser decides the rest", () => {
+  assert.equal(headline(state({ inUse: false, sessions: [running] })).action.do, "use_this");
 });
 
-test("conversations show on a working connection, who waits first", () => {
-  assert.deepEqual(listed(state({ sessions: [running, handoff] })).map((s) => s.id), ["c", "a"]);
+test("conversations show on a working connection", () => {
+  assert.deepEqual(listed(state({ sessions: [running, finished] })).map((s) => s.id), ["a", "b"]);
   for (const host of ["connecting", "not_open", "missing", "outdated"]) {
     assert.deepEqual(listed(state({ host, sessions: [running] })), [], host);
   }
 });
 
-test("a tab is offered only when nothing else asks for the user", () => {
+test("a tab is offered on a working connection in use", () => {
   assert.equal(offersTab(state({ sessions: [running] })), true);
-  assert.equal(offersTab(state({ sessions: [handoff] })), false);
   assert.equal(offersTab(state({ offerable: false })), false);
   assert.equal(offersTab(state({ inUse: false })), false);
   assert.equal(offersTab(state({ host: "not_open" })), false);

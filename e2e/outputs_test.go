@@ -12,9 +12,9 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // fakeOutput is what the fake agent's "output n" prints.

@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { ModelSummary } from "@hermesh/her-protocol";
+import type { ModelSummary } from "@aide/her-protocol";
 import { Dialog } from "../components";
 import { agoText, errorText, priceText, tokensText } from "../format";
 import { useHer } from "../her";

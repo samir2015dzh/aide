@@ -8,20 +8,20 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestAppPreview sets up sessions in every state the app's sessions page
 // shows, with this computer's real Claude Code and Codex, then keeps them
-// up for HERMESH_APP_PREVIEW seconds so a dev build of the desktop app can
+// up for AIDE_APP_PREVIEW seconds so a dev build of the desktop app can
 // be looked at against them:
 //
-//	HERMESH_APP_PREVIEW=900 go test ./e2e -run TestAppPreview -v -timeout 30m
-//	HERMESH_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
+//	AIDE_APP_PREVIEW=900 go test ./e2e -run TestAppPreview -v -timeout 30m
+//	AIDE_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
 func TestAppPreview(t *testing.T) {
-	secs, _ := strconv.Atoi(os.Getenv("HERMESH_APP_PREVIEW"))
+	secs, _ := strconv.Atoi(os.Getenv("AIDE_APP_PREVIEW"))
 	if secs <= 0 {
-		t.Skip("set HERMESH_APP_PREVIEW=<seconds>")
+		t.Skip("set AIDE_APP_PREVIEW=<seconds>")
 	}
 	env := []string{"PATH=" + os.Getenv("PATH") + ":/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin"}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"claude", "codex"}})
@@ -48,7 +48,7 @@ func TestAppPreview(t *testing.T) {
 		t.Fatalf("archive: %+v", a)
 	}
 
-	t.Logf("sessions ready; open the app with:\nHERMESH_SOCKET=%s pnpm --dir apps/desktop dev", w.sock)
+	t.Logf("sessions ready; open the app with:\nAIDE_SOCKET=%s pnpm --dir apps/desktop dev", w.sock)
 	time.Sleep(time.Duration(secs) * time.Second)
 	if t.Failed() || strings.Contains(w.owner.output(), "panic") {
 		t.Log(w.owner.output())

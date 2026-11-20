@@ -607,7 +607,7 @@ function iAdd(){
       body=`<div class="sec" style="margin-top:8px"><div class="card"><div class="row tall">${logo(sentry,36)}<div class="k">sentry<div class="sub">https://mcp.sentry.dev/mcp · 可流式 HTTP</div></div><button class="pillbtn" data-set="add:address">修改</button></div></div></div>
         <div class="sec"><div class="hd">鉴权</div><div class="card">
           <div class="row"><span class="k">方式</span><span class="v" style="color:var(--i-tint)">用账号登录<span class="chip det">检测到</span> ⌃</span></div></div>
-          <div class="ft"><span style="color:var(--i-tint)">服务器要求登录，支持自动登记应用。</span> 添加后在这台 iPhone 的浏览器里用你的 Sentry 账号登录；令牌只存在 Mac mini 上，不经过 Hermesh 服务器。</div></div>
+          <div class="ft"><span style="color:var(--i-tint)">服务器要求登录，支持自动登记应用。</span> 添加后在这台 iPhone 的浏览器里用你的 Sentry 账号登录；令牌只存在 Mac mini 上，不经过 Aide 服务器。</div></div>
         <div class="sec"><div class="card"><div class="row"><span class="k">高级选项</span><span class="v" style="font-size:15px">自动 · 可流式 HTTP</span><span class="chev">›</span></div></div>
           <div class="ft">只添加你信任的连接器：Her 会按它说的去做。</div></div>
         <div style="position:absolute;left:0;right:0;bottom:28px"><button class="bigbtn" data-set="add:waiting">添加并登录</button></div>`;
@@ -678,7 +678,7 @@ function mFrame(main, overlay){
   return `<div class="mac"><div class="mside"><div class="lights"><i></i><i></i><i></i></div>
     <button class="it">${I.grid}概览</button><button class="it">${I.search}搜索</button><button class="it on" data-go="chat">${I.heart}Her</button>
     <div class="gh">会话</div>
-    <div class="ses"><i></i>hermesh · 修复 relay 重连</div><div class="ses"><i style="background:var(--warn)"></i>finxwork · 表格导出</div><div class="ses"><i style="background:var(--l4)"></i>Her 的 PR 汇总</div>
+    <div class="ses"><i></i>aide · 修复 relay 重连</div><div class="ses"><i style="background:var(--warn)"></i>finxwork · 表格导出</div><div class="ses"><i style="background:var(--l4)"></i>Her 的 PR 汇总</div>
     </div><div class="mmain">${main}</div>${overlay||""}${S.toast?`<div class="mtoast">${S.toast}</div>`:""}</div>`;
 }
 function mTop(settingsOn){
@@ -794,7 +794,7 @@ function mAddSheet(){
     case "settings":
       body=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">${logo(sentry,28,7)}<b>sentry</b><span style="color:var(--l3);font-family:var(--mono);font-size:12px;flex:1">https://mcp.sentry.dev/mcp</span><button class="mbtn sm" data-set="add:address">修改</button></div>
         <div class="fhd">鉴权</div><div class="fgroup"><div class="frow"><span>方式</span><span class="popup">用账号登录 <span class="mchip rec">检测到</span> ⌃</span></div></div>
-        <div class="fnote"><span style="color:var(--accent)">服务器要求登录，支持自动登记应用。</span> 添加后在这台 Mac 的浏览器里用你的 Sentry 账号登录；令牌只存在 Mac mini 上，不经过 Hermesh 服务器。</div>
+        <div class="fnote"><span style="color:var(--accent)">服务器要求登录，支持自动登记应用。</span> 添加后在这台 Mac 的浏览器里用你的 Sentry 账号登录；令牌只存在 Mac mini 上，不经过 Aide 服务器。</div>
         <div class="fgroup"><div class="frow"><span>高级选项</span><span class="v">自动 · 可流式 HTTP ›</span></div></div><div class="fnote">只添加你信任的连接器：Her 会按它说的去做。</div>`;
       foot=`<button class="mbtn" data-set="add:address">返回</button><button class="mbtn p" data-set="add:waiting">添加并登录</button>`; break;
     case "waiting":

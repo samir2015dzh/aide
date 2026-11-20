@@ -168,7 +168,7 @@ fn has_event_handler(text: &str) -> bool {
 }
 
 /// First labels that only say which part of a company's site a host is, so the company's own
-/// site may stand for it: `mcp.hermesh.io` → `hermesh.io`. Any other host keeps to itself:
+/// site may stand for it: `mcp.aide.io` → `aide.io`. Any other host keeps to itself:
 /// the parent of `my-tools.vercel.app` is a hosting platform, not the service's brand.
 const SERVICE_LABELS: [&str; 8] = ["mcp", "api", "www", "server", "servers", "gateway", "app", "sse"];
 
@@ -729,8 +729,8 @@ mod tests {
 
     #[test]
     fn sites_are_the_server_and_its_company() {
-        let url = Url::parse("https://mcp.hermesh.io/mcp").unwrap();
-        assert_eq!(sites(Some(&url), None), vec!["mcp.hermesh.io", "hermesh.io", "www.hermesh.io"]);
+        let url = Url::parse("https://mcp.aide.io/mcp").unwrap();
+        assert_eq!(sites(Some(&url), None), vec!["mcp.aide.io", "aide.io", "www.aide.io"]);
         let uk = Url::parse("https://api.shop.co.uk/mcp").unwrap();
         assert_eq!(sites(Some(&uk), None)[1], "shop.co.uk");
         let local = Url::parse("http://127.0.0.1:3000/mcp").unwrap();

@@ -4,7 +4,6 @@
 use her_core::Kernel;
 use her_core::skills::SkillRef;
 use her_llm::Timestamp;
-use her_protocol::ApprovalDecision;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::Op;
@@ -16,7 +15,6 @@ use her_protocol::api::SessionSnapshot;
 use her_protocol::api::TranscriptItem;
 use her_protocol::api::TranscriptPage;
 use her_rpc::RpcError;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicBool;
@@ -205,40 +203,9 @@ pub struct HubShared {
     pub idle_since: AtomicU64,
     /// Each MCP server's latest status in this session, for the 自定义 page (`mcp/list`).
     pub mcp: parking_lot::Mutex<std::collections::BTreeMap<String, her_protocol::McpServerInfo>>,
-    /// The approval that waits for the user to do something in a page.
-    pub handoff: parking_lot::Mutex<Option<Handoff>>,
     /// How the user's latest message starts: the task its tab group in their browser is named for.
     pub task: parking_lot::Mutex<Option<String>>,
     done: watch::Receiver<bool>,
-}
-
-/// An approval that waits for the user to do something in a page.
-pub struct Handoff {
-    /// The sub-agent that asks, if one does.
-    pub agent: Option<String>,
-    pub call_id: String,
-    /// What the user is asked to do.
-    pub what: String,
-}
-
-impl Handoff {
-    /// What says the user did it.
-    pub fn done(&self) -> Op {
-        let (call_id, decision) = (self.call_id.clone(), ApprovalDecision::Approve);
-        match &self.agent {
-            Some(agent) => Op::AgentApproval { agent: agent.clone(), call_id, decision },
-            None => Op::Approval { call_id, decision },
-        }
-    }
-}
-
-/// An approval among those answered. Sessions choose their call ids apart from each other, so a
-/// sub-agent's goes by its id too.
-fn answered_key(agent: Option<&str>, call_id: &str) -> String {
-    match agent {
-        Some(agent) => format!("{agent}/{call_id}"),
-        None => call_id.to_string(),
-    }
 }
 
 /// Milliseconds since the first call, plus one, so that 0 can mean "in use".
@@ -282,8 +249,6 @@ struct Hub {
     ops: mpsc::Sender<Op>,
     mirror: SessionMirror,
     subscribers: Vec<Subscriber>,
-    /// Approvals forwarded to the kernel and not yet confirmed by `approval_resolved`.
-    answered: HashSet<String>,
     control: mpsc::Receiver<Box<HubCmd>>,
     control_open: bool,
     idle_after: Option<Duration>,
@@ -325,7 +290,6 @@ pub(crate) fn spawn(
         summary: parking_lot::Mutex::new(summary_of(&mirror, &base, true, 0)),
         idle_since: AtomicU64::new(0),
         mcp: parking_lot::Mutex::new(std::collections::BTreeMap::new()),
-        handoff: parking_lot::Mutex::new(None),
         task: parking_lot::Mutex::new(mirror.last_user_text().map(|text| preview(&text))),
         done: done_rx,
     });
@@ -335,7 +299,6 @@ pub(crate) fn spawn(
         kernel: Some(kernel),
         mirror,
         subscribers: Vec::new(),
-        answered: HashSet::new(),
         control,
         control_open: true,
         idle_after,
@@ -406,32 +369,6 @@ impl Hub {
             routines.on_event(id, &event);
             deliveries.on_event(id, &event, &self.mirror);
         }
-        // The session's approvals, and a sub-agent's as its `agent_event` carries them.
-        let (agent, asked) = match &event.msg {
-            EventMsg::AgentEvent { agent_id, event } => (Some(agent_id.as_str()), &event.msg),
-            msg => (None, msg),
-        };
-        match asked {
-            EventMsg::ApprovalRequested { call_id, name, args, .. } => {
-                // The browser's tools are deferred: the model runs them through `call_tool`.
-                let (name, args) = if name == "call_tool" { (args.get("name").and_then(|v| v.as_str()).unwrap_or_default(), args.get("arguments")) } else { (name.as_str(), Some(args)) };
-                if let Some(what) = args.and_then(|a| a.get("user")).and_then(|v| v.as_str()).filter(|_| name == "browser_wait") {
-                    *self.shared.handoff.lock() = Some(Handoff {
-                        agent: agent.map(str::to_string),
-                        call_id: call_id.clone(),
-                        what: what.to_string(),
-                    });
-                }
-            }
-            EventMsg::ApprovalResolved { call_id, .. } => {
-                self.answered.remove(&answered_key(agent, call_id));
-                let mut handoff = self.shared.handoff.lock();
-                if handoff.as_ref().is_some_and(|h| &h.call_id == call_id && h.agent.as_deref() == agent) {
-                    *handoff = None;
-                }
-            }
-            _ => {}
-        }
         match &event.msg {
             EventMsg::McpServerStatus { server, state, tools, error, .. } => {
                 self.shared.mcp.lock().insert(
@@ -486,15 +423,11 @@ impl Hub {
         match msg {
             EventMsg::SessionStarted { .. }
             | EventMsg::TaskStarted { .. }
-            | EventMsg::ApprovalRequested { .. }
-            | EventMsg::ApprovalResolved { .. }
             | EventMsg::SettingsChanged { .. }
             | EventMsg::TitleChanged { .. }
             | EventMsg::ArchivedChanged { .. }
             | EventMsg::Idle => true,
             msg if msg.is_task_end() => true,
-            // What a sub-agent asks shows in the list like the session's own.
-            EventMsg::AgentEvent { event, .. } => matches!(event.msg, EventMsg::ApprovalRequested { .. } | EventMsg::ApprovalResolved { .. }),
             // Back before the first message: the one that takes its place becomes the preview.
             EventMsg::SessionRewound { .. } => {
                 if !self.mirror.has_user_message() {
@@ -721,24 +654,6 @@ impl Hub {
             Op::Shutdown => {
                 self.close_reason = DetachReason::Closed;
                 self.begin_close(None);
-                return Ok(());
-            }
-            Op::Approval { call_id, .. } => {
-                if !self.mirror.approval_pending(call_id) || self.answered.contains(call_id) {
-                    return Err(errors::approval_not_pending(call_id));
-                }
-                let call_id = call_id.clone();
-                self.forward(op)?;
-                self.answered.insert(call_id);
-                return Ok(());
-            }
-            Op::AgentApproval { agent, call_id, .. } => {
-                let key = answered_key(Some(agent), call_id);
-                if !self.mirror.agent_approval_pending(agent, call_id) || self.answered.contains(&key) {
-                    return Err(errors::approval_not_pending(call_id));
-                }
-                self.forward(op)?;
-                self.answered.insert(key);
                 return Ok(());
             }
             _ => {}

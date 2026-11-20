@@ -34,7 +34,7 @@ jobs:
         run: make e2e
         env:
           # Race-detector binaries on one runner: a data race fails the test.
-          HERMESH_E2E_RACE: '1'
+          AIDE_E2E_RACE: '1'
       # The desktop app's and Her's TypeScript: types and unit tests (they ran on
       # the macOS app job, gone with the Mac app). After the end-to-end tests:
       # with pnpm here, TestDesktop would run, and Electron's sandbox can't on
@@ -47,11 +47,11 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
           pnpm -r typecheck
-          pnpm --filter @hermesh/core test
-          pnpm --filter @hermesh/her-protocol test
-          pnpm --filter @hermesh/her-client test
-          pnpm --filter @hermesh/desktop test
-          pnpm --filter @hermesh/dsh-bridge test
+          pnpm --filter @aide/core test
+          pnpm --filter @aide/her-protocol test
+          pnpm --filter @aide/her-client test
+          pnpm --filter @aide/desktop test
+          pnpm --filter @aide/dsh-bridge test
   # Windows (docs/windows.md): what is ported so far.
   windows:
     runs-on: windows-latest
@@ -64,17 +64,8 @@ jobs:
         run: go vet ./...
       - name: unit tests
         run: go test ./cmd/... ./internal/... ./pkg/... -count=1
-        env:
-          HERMESH_PANEL_SHOTS: ${{ runner.temp }}/panel
-      # The signer's panel as the tests drew it, to look at against its design.
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: signer-panel
-          path: ${{ runner.temp }}/panel
-          if-no-files-found: ignore
-      - name: install.ps1 and the signer
-        run: go test ./e2e -run '^(TestWindowsInstall|TestWindowsSigner)$' -count=1 -v
+      - name: install.ps1
+        run: go test ./e2e -run '^TestWindowsInstall$' -count=1 -v
   # The end-to-end suite on Windows, being ported (docs/windows.md, W1): its
   # failures do not fail the run yet.
   windows-e2e:
@@ -97,7 +88,7 @@ jobs:
           cargo build --manifest-path her/Cargo.toml -p her-cli -p her-mock
       - name: end-to-end (scripted agents)
         run: go test ./e2e -count=1 -timeout 30m
-  # The desktop app (Electron) and the macOS signer: types, unit tests, and
+  # The desktop app (Electron): types, unit tests, and
   # their end-to-end tests driving the real app against the real daemon.
   # The desktop app on Windows (docs/windows.md, W2): its end-to-end spec
   # against the real daemon, then the package, installed in Developer Mode
@@ -133,7 +124,7 @@ jobs:
       - name: package
         run: node apps/desktop/scripts/package-win.mjs
         env:
-          HERMESH_HER_PROFILE: release
+          AIDE_HER_PROFILE: release
       - name: install it, open it, uninstall it
         shell: pwsh
         run: apps/desktop/scripts/check-windows-setup.ps1 dist/Aide-windows-x64-setup.exe
@@ -143,11 +134,11 @@ jobs:
         run: |
           openssl ecparam -name prime256v1 -genkey -noout -out "$RUNNER_TEMP/test.key"
           openssl ec -in "$RUNNER_TEMP/test.key" -pubout -out "$RUNNER_TEMP/test.pub"
-          export HERMESH_UPDATE_FEED=http://127.0.0.1:8765 HERMESH_RELEASE_URL=http://127.0.0.1:8765
-          export HERMESH_RELEASE_PUBKEY_FILE="$RUNNER_TEMP/test.pub" RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/test.key"
-          export HERMESH_HER_PROFILE=release
-          VERSION=0.0.1 HERMESH_DIST=dist/older node apps/desktop/scripts/package-win.mjs
-          VERSION=0.0.2 HERMESH_DIST=dist/newer node apps/desktop/scripts/package-win.mjs
+          export AIDE_UPDATE_FEED=http://127.0.0.1:8765 AIDE_RELEASE_URL=http://127.0.0.1:8765
+          export AIDE_RELEASE_PUBKEY_FILE="$RUNNER_TEMP/test.pub" RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/test.key"
+          export AIDE_HER_PROFILE=release
+          VERSION=0.0.1 AIDE_DIST=dist/older node apps/desktop/scripts/package-win.mjs
+          VERSION=0.0.2 AIDE_DIST=dist/newer node apps/desktop/scripts/package-win.mjs
           pwsh -File apps/desktop/scripts/check-windows-update.ps1 dist/older/Aide-windows-x64-setup.exe dist/newer 0.0.2
       - uses: actions/upload-artifact@v4
         with:

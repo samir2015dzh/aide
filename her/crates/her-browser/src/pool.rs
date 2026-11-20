@@ -568,7 +568,7 @@ fn own_display() -> bool {
 
 /// The desktop session's display on Linux, and what else names that session, for a program this
 /// process starts there (a browser, agent-desktop), when this process's own environment names
-/// no display: a service of the user's often starts before anyone logs in (hermeshd, with
+/// no display: a service of the user's often starts before anyone logs in (aided, with
 /// lingering on), and her with it. The desktops put theirs in the user's systemd once someone
 /// logs in.
 /// Empty when this process has a display, when nobody is logged in to a desktop, and on other

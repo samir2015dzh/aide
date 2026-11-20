@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ToolResult } from "@hermesh/proto/session";
+import type { ToolResult } from "@aide/proto/session";
 import { local } from "../api";
 
 /** Whole outputs read lately, so a row opened again shows at once. */

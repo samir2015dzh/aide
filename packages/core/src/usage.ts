@@ -1,5 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
-import { WorkBucket, WorkDimension, type QueryWorkRequestSchema, type QueryWorkResponse } from "@hermesh/proto/local";
+import { WorkBucket, WorkDimension, type QueryWorkRequestSchema, type QueryWorkResponse } from "@aide/proto/local";
 
 // The usage heatmap: a year of days by week (columns) and weekday (rows,
 // Sunday first), each day's tokens and a level of 0 (none) to 4, and the

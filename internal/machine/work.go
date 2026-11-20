@@ -10,9 +10,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/workstats"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/workstats"
 )
 
 // Work counts (docs/work-stats.md §5): the work of this machine's sessions,
@@ -571,7 +571,7 @@ func (s *Store) pruneWork(now time.Time) error {
 	return err
 }
 
-// CountWork keeps the counts current while hermeshd runs: at each quarter
+// CountWork keeps the counts current while aided runs: at each quarter
 // hour it marks the sessions with a turn in progress at work in the new
 // quarter, and once a day forgets old counts.
 func (s *Sessions) CountWork(ctx context.Context) {

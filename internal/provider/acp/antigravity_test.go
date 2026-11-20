@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 func TestAntigravityDiscovery(t *testing.T) {

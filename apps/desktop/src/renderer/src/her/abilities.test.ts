@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { BrowserStatus, ProviderSummary, SkillEntry, WebSearchStatus } from "@hermesh/her-protocol";
+import type { BrowserStatus, ProviderSummary, SkillEntry, WebSearchStatus } from "@aide/her-protocol";
 import { allSitesEdits, browsers, brokenSkills, bySize, chromeName, extensionEdits, providers, searchMoved, searchSwitchEdits, siteEdits, siteOrigin, skillItems } from "./abilities.ts";
 
 function skill(name: string, o: Partial<SkillEntry> = {}): SkillEntry {

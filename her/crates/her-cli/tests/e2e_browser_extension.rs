@@ -1,4 +1,4 @@
-//! End-to-end: the user's own Chrome through the Hermesh extension (browser-design §8.4).
+//! End-to-end: the user's own Chrome through the Aide extension (browser-design §8.4).
 //! A real Chrome loads apps/chrome-extension, starts the real `her browser native-host`
 //! through the manifest that `her browser extension install` wrote, and that host lends the
 //! browser to a real `her serve`, whose session (driven by the mock model) opens a page and
@@ -84,7 +84,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
         return;
     };
     // Only the user's own browser: there is no desktop app, so the built-in one stays off.
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let profile = env.work().join("chrome-profile");
     let socket = env.home.path().join("run").join("her.sock");
 
@@ -110,7 +110,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
     let new = client.request("session/new", json!({"cwd": cwd})).await.unwrap();
     let session = new["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let missing = native_prompt(&client, &mut events, &session, "[[mock:browser:http://127.0.0.1:9/]] open it", true).await;
+    let missing = native_prompt(&client, &mut events, &session, "[[mock:browser:http://127.0.0.1:9/]] open it").await;
     let results = serde_json::to_string(&missing.events).unwrap();
     assert!(results.contains("extension is not connected"), "{results}");
 
@@ -122,7 +122,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
         .unwrap();
     assert!(installed.status.success(), "{}", String::from_utf8_lossy(&installed.stderr));
     let manifest: Value =
-        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.hermesh.browser.json")).unwrap())
+        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.aide.browser.json")).unwrap())
             .unwrap();
     assert_eq!(manifest["allowed_origins"], json!([format!("chrome-extension://{EXTENSION_ID}/")]));
 
@@ -165,7 +165,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
          <button onclick=\"document.body.insertAdjacentHTML('beforeend','<p>clicked it</p>')\">Go</button>",
     )
     .await;
-    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:browser:{page}]] open it"), true).await;
+    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:browser:{page}]] open it")).await;
     assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.events);
     assert!(turn.text.contains("clicked it"), "{}", turn.text);
     let opened = turn
@@ -199,7 +199,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
     // The service hands the new settings to the session a moment after the write: until then
     // the session has the user's browser alone, and the tabs say so.
     for _ in 0..50 {
-        let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:browsers:{builtin_page} {yours_page}]] both"), true).await;
+        let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:browsers:{builtin_page} {yours_page}]] both")).await;
         if turn.text.contains("in the built-in browser") {
             both = Some(turn);
             break;
@@ -230,7 +230,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
     let default_page = serve_page("<title>Default</title><h1>Where the default sends it</h1>").await;
     let mut opened = false;
     for _ in 0..50 {
-        let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:default_browser:{default_page}]] default"), true).await;
+        let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:default_browser:{default_page}]] default")).await;
         assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.events);
         if pages(&chrome).await.contains(&default_page) {
             opened = true;
@@ -288,7 +288,7 @@ async fn hello(env: &TestEnv, hello: Value) -> (tokio::process::Child, Value) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_extension_and_her_agree_on_a_bridge_version_or_say_which_to_update() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("her.sock");
     let mut service = env
         .her(&["serve", "--listen", &format!("unix://{}", socket.display())])
@@ -340,12 +340,12 @@ async fn the_extension_and_her_agree_on_a_bridge_version_or_say_which_to_update(
     let _ = tokio::time::timeout(Duration::from_secs(20), service.wait()).await;
 }
 
-/// A service on a socket of its own, as Hermesh runs her: the host that `install --socket`
+/// A service on a socket of its own, as Aide runs her: the host that `install --socket`
 /// registered, started as Chrome starts it (the manifest's program, with the extension's origin
 /// and none of our environment), reaches that service. Nothing listens on the home's socket.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_host_registered_for_a_socket_of_its_own_reaches_that_service() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let profile = env.work().join("chrome-profile");
     let sockets = tempfile::tempdir().unwrap();
     let socket = sockets.path().join("her.sock");
@@ -356,7 +356,7 @@ async fn a_host_registered_for_a_socket_of_its_own_reaches_that_service() {
         .unwrap();
     assert!(installed.status.success(), "{}", String::from_utf8_lossy(&installed.stderr));
     let manifest: Value =
-        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.hermesh.browser.json")).unwrap()).unwrap();
+        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.aide.browser.json")).unwrap()).unwrap();
     let launcher = manifest["path"].as_str().unwrap().to_string();
     assert!(std::fs::read_to_string(&launcher).unwrap().contains(&format!("--socket '{}'", socket.display())));
 
@@ -407,10 +407,10 @@ async fn chrome_loads_the_extension_her_wrote_and_it_connects() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
-    let folder = env.work().join("share").join("hermesh").join("chrome-extension");
+    let folder = env.work().join("share").join("aide").join("chrome-extension");
     let (mut service, client, _demux) = serve(&env, &socket, None).await;
     let installed = env
         .her(&["browser", "extension", "install", "--user-data-dir", profile.to_str().unwrap(), "--folder", folder.to_str().unwrap()])
@@ -431,7 +431,7 @@ async fn chrome_loads_the_extension_her_wrote_and_it_connects() {
     let _ = tokio::time::timeout(Duration::from_secs(20), service.wait()).await;
 }
 
-/// her as Hermesh runs it on a machine, with no desktop app: the built-in browser stays off
+/// her as Aide runs it on a machine, with no desktop app: the built-in browser stays off
 /// until the console's switch turns it on (`browser.enabled = true`, through config/write), and
 /// then a session opens a page in a Chrome of her own, here without a window, as on a server
 /// without a display. browser/status names the program, for the console to show. The switch
@@ -442,7 +442,7 @@ async fn the_consoles_switch_turns_the_built_in_browser_on_and_a_session_uses_it
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nheadless = true\n").await;
+    let env = TestEnv::new("[browser]\nheadless = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let (mut service, client, demux) = serve(&env, &socket, None).await;
     let status = client.request("browser/status", json!({})).await.unwrap();
@@ -459,7 +459,7 @@ async fn the_consoles_switch_turns_the_built_in_browser_on_and_a_session_uses_it
     let created = client.request("session/new", json!({"cwd": cwd})).await.unwrap();
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let off = native_prompt(&client, &mut events, &session, &prompt, true).await;
+    let off = native_prompt(&client, &mut events, &session, &prompt).await;
     assert!(!off.text.contains("clicked it"), "{}", off.text);
 
     // The console's switch, on.
@@ -468,7 +468,7 @@ async fn the_consoles_switch_turns_the_built_in_browser_on_and_a_session_uses_it
     let created = client.request("session/new", json!({"cwd": cwd})).await.unwrap();
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let on = native_prompt(&client, &mut events, &session, &prompt, true).await;
+    let on = native_prompt(&client, &mut events, &session, &prompt).await;
     assert_eq!(on.end["type"], "task_completed", "{:?}", on.events);
     assert!(on.text.contains("clicked it"), "{}", on.text);
     let opened = tool_results(&on);
@@ -491,9 +491,7 @@ async fn the_default_falls_back_to_the_built_in_browser_until_the_users_connects
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     }
-    let env = TestEnv::new(
-        "bypass-permissions",
-        "[browser]\nheadless = true\nenabled = true\nextension = true\ndefault = \"yours\"\n",
+    let env = TestEnv::new("[browser]\nheadless = true\nenabled = true\nextension = true\ndefault = \"yours\"\n",
     )
     .await;
     let socket = env.home.path().join("run").join("her.sock");
@@ -504,7 +502,7 @@ async fn the_default_falls_back_to_the_built_in_browser_until_the_users_connects
     let mut events = demux.subscribe(&session);
     let turn = tokio::time::timeout(
         Duration::from_secs(60),
-        native_prompt(&client, &mut events, &session, &format!("[[mock:default_browser:{page}]] default"), true),
+        native_prompt(&client, &mut events, &session, &format!("[[mock:default_browser:{page}]] default")),
     )
     .await
     .expect("the page opened without waiting for the user's browser");
@@ -518,7 +516,7 @@ async fn the_default_falls_back_to_the_built_in_browser_until_the_users_connects
     let _ = tokio::time::timeout(Duration::from_secs(20), service.wait()).await;
 }
 
-/// her on a Linux computer with a desktop, started as Hermesh starts it there: by a service of
+/// her on a Linux computer with a desktop, started as Aide starts it there: by a service of
 /// the user's that began at boot, before anyone logged in, so her's own environment names no
 /// display. Once someone logs in to the desktop, which puts its display in the user's systemd,
 /// the built-in browser has a window to show, without her starting again.
@@ -526,7 +524,7 @@ async fn the_default_falls_back_to_the_built_in_browser_until_the_users_connects
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_built_in_browser_gets_a_window_once_someone_logs_in_to_the_desktop() {
     use std::os::unix::fs::PermissionsExt as _;
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     // The user's systemd, standing in: its environment is the file beside it.
     let bin = env.home.path().join("bin");
     std::fs::create_dir_all(&bin).unwrap();
@@ -774,7 +772,7 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let (mut service, client, demux) = serve(&env, &socket, None).await;
@@ -797,7 +795,7 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
 
     // A task opens a page. When it ends, the tab stays, with the session, and the debugger lets
     // go, so Chrome's bar goes.
-    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open"), true).await;
+    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open")).await;
     assert_eq!(turn.end["type"], "task_completed", "{:?}", turn.events);
     assert!(turn.text.contains("Kept in the user's Chrome"), "{}", turn.text);
     let now = status_until(&client, "the tab, let go", |s| s["tabs"][&session][0]["url"] == page.as_str() && s["tabs"][&session][0].get("attached").is_none()).await;
@@ -811,7 +809,7 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
     assert_eq!(attached_now(chrome.clone(), page.clone()).await, Some(false), "the debugger let go");
 
     // The next task finds it, under the same number, and is told that refs are gone.
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     let results = tool_results(&turn);
     assert!(results.contains("Kept in the user's Chrome"), "{results}");
     assert!(results.contains("still open"), "{results}");
@@ -826,7 +824,7 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
     status_until(&client, "the extension back", |s| s["extension"]["in_use"] == true && s["tabs"][&session][0]["url"] == page.as_str()).await;
     eprintln!("the extension was back {} ms after its host died", died.elapsed().as_millis());
     assert!(died.elapsed() < Duration::from_secs(10), "{:?}", died.elapsed());
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     assert!(tool_results(&turn).contains("Kept in the user's Chrome"), "{}", tool_results(&turn));
 
     // The app asks to see the tab: it comes to the front in its window.
@@ -846,72 +844,18 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
     let tab = worker(&chrome, &format!("chrome.tabs.query({{url: {}}}).then(t => t[0].id)", json!(page))).await;
     worker(&chrome, &format!("chrome.debugger.onDetach.dispatch({{tabId: {tab}}}, 'canceled_by_user')")).await;
     status_until(&client, "the session revoked", |s| s["revoked"][0] == session.as_str()).await;
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     assert!(tool_results(&turn).contains("took back control"), "{}", tool_results(&turn));
     client.request("browser/allow", json!({"session_id": session})).await.unwrap();
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     assert!(tool_results(&turn).contains("Kept in the user's Chrome"), "{}", tool_results(&turn));
 
-    // The extension's page: a task hands the page to the user, who says they are done there.
+    // The extension's page.
     let origin = format!("chrome-extension://{EXTENSION_ID}");
     let opened = chrome.send(None, "Target.createTarget", json!({"url": format!("{origin}/src/popup.html"), "background": true})).await.unwrap();
     let popup = opened["targetId"].as_str().unwrap().to_string();
     // A new target starts on a blank document: its page comes next.
     tokio::time::sleep(Duration::from_secs(1)).await;
-    let op = json!({"session_id": session, "op": {"type": "prompt", "input": [{"type": "text", "text": "[[mock:handoff:sign in]] your turn"}]}});
-    client.request("session/op", op).await.unwrap();
-    loop {
-        let incoming = common::recv(&mut events).await;
-        let event = incoming.params()["event"].clone();
-        if event["type"] == "approval_requested" {
-            assert_eq!(event["own_browser"], true, "{event}");
-            assert_eq!(event["summary"], "sign in", "{event}");
-            assert_eq!(event["name"], "call_tool", "as a model runs the browser's tools: {event}");
-            break;
-        }
-    }
-    let waits = status_until(&client, "the session told to the extension", |_| true).await;
-    assert!(waits["tabs"][&session].is_array(), "{waits}");
-    let mut state = Value::Null;
-    for _ in 0..50 {
-        state = evaluate_in(&chrome, &popup, "chrome.runtime.sendMessage({get: 'state'})").await;
-        if state["sessions"][0]["handoff"] == "sign in" {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
-    assert_eq!(state["sessions"][0]["handoff"], "sign in", "{state}");
-    assert_eq!(state["sessions"][0]["state"], "awaiting_approval", "{state}");
-    assert_eq!(state["host"], "connected", "{state}");
-    // The page was opened before the task asked: it says so by itself, and its button does it.
-    let mut shown = Value::Null;
-    for _ in 0..50 {
-        shown = evaluate_in(
-            &chrome,
-            &popup,
-            "({head: document.querySelector('.head')?.textContent === chrome.i18n.getMessage('waitingOne'), what: document.querySelector('.line.whole')?.textContent, done: document.querySelector('button.primary')?.textContent === chrome.i18n.getMessage('done')})",
-        )
-        .await;
-        if shown == json!({"head": true, "what": "sign in", "done": true}) {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
-    assert_eq!(shown, json!({"head": true, "what": "sign in", "done": true}));
-    evaluate_in(&chrome, &popup, "document.querySelector('button.primary').click()").await;
-    let mut said = String::new();
-    loop {
-        let incoming = common::recv(&mut events).await;
-        let event = incoming.params()["event"].clone();
-        if event["type"] == "message_delta" {
-            said.push_str(event["delta"]["text"].as_str().unwrap_or(""));
-        }
-        if event["type"] == "task_completed" {
-            break;
-        }
-        assert_ne!(event["type"], "task_failed", "{event}");
-    }
-    assert!(said.contains("handoff done") && said.contains("The user says they are done") && said.contains("Kept in the user's Chrome"), "{said}");
 
     // Another connection follows: the user offers a tab of their own from the extension, and the
     // app gives it to the session.
@@ -935,7 +879,7 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
     assert_eq!(offered["title"], "Mine", "{offered}");
     client.request("browser/assign_tab", json!({"target_id": offered["target_id"], "session_id": session})).await.unwrap();
     status_until(&client, "the offered tab", |s| s["tabs"][&session].as_array().is_some_and(|t| t.iter().any(|t| t["title"] == "Mine"))).await;
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_tabs:]] list", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_tabs:]] list").await;
     let listed = tool_results(&turn);
     assert!(listed.contains("Mine") && listed.contains("Kept"), "{listed}");
     assert!(listed.contains("tab y1") && listed.contains("tab y2"), "both, numbered: {listed}");
@@ -957,7 +901,7 @@ async fn the_agent_lets_go_of_its_tabs_and_finds_them_again() {
     assert!(!urls.contains(&page) && !urls.contains(&mine), "{urls:?}");
 
     // The session is deleted: its tabs stay open, and are the user's now, out of its group.
-    native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open"), true).await;
+    native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open")).await;
     status_until(&client, "the tab, let go", |s| s["tabs"][&session][0]["url"] == page.as_str() && s["tabs"][&session][0].get("attached").is_none()).await;
     let group = format!("chrome.tabs.query({{url: {}}}).then(t => t[0].groupId)", json!(page));
     assert_ne!(worker(&chrome, &group).await, -1, "in a group while the session has it");
@@ -1002,7 +946,7 @@ async fn the_extensions_page_says_what_is_wrong_and_what_to_do() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let profile = env.work().join("chrome-profile");
     let installed = env
         .her(&["browser", "extension", "install", "--user-data-dir", profile.to_str().unwrap()])
@@ -1011,11 +955,11 @@ async fn the_extensions_page_says_what_is_wrong_and_what_to_do() {
         .unwrap();
     assert!(installed.status.success(), "{}", String::from_utf8_lossy(&installed.stderr));
     let manifest: Value =
-        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.hermesh.browser.json")).unwrap()).unwrap();
+        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.aide.browser.json")).unwrap()).unwrap();
     let script = std::path::PathBuf::from(manifest["path"].as_str().unwrap());
     let working = std::fs::read(&script).unwrap();
 
-    // No service runs: the host starts and says Hermesh is not open, which is not a problem.
+    // No service runs: the host starts and says Aide is not open, which is not a problem.
     let (chrome, chrome_process) = chrome_with_extension(&env, &profile, &chrome_exe).await;
     let opened = chrome.send(None, "Target.createTarget", json!({"url": format!("chrome-extension://{EXTENSION_ID}/src/popup.html"), "background": true})).await.unwrap();
     let popup = opened["targetId"].as_str().unwrap().to_string();
@@ -1055,7 +999,7 @@ async fn replacing_the_program_restarts_the_host_by_itself() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let usual = env.her(&[]).as_std().get_program().to_owned();
@@ -1084,7 +1028,7 @@ async fn replacing_the_program_restarts_the_host_by_itself() {
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
     let page = serve_page("<title>Through it</title><h1>Still here after the update</h1>").await;
-    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open"), true).await;
+    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open")).await;
     assert!(turn.text.contains("Still here after the update"), "{}", turn.text);
 
     // The update: the old service stops, the launcher points at the new program, and the new
@@ -1107,7 +1051,7 @@ async fn replacing_the_program_restarts_the_host_by_itself() {
     // The session comes back and finds its tab.
     client.request("session/resume", json!({"session_id": session})).await.unwrap();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     assert!(tool_results(&turn).contains("Still here after the update"), "{}", tool_results(&turn));
     assert!(pages(&chrome).await.contains(&page));
 
@@ -1117,7 +1061,7 @@ async fn replacing_the_program_restarts_the_host_by_itself() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_refused_host_exits_and_several_extensions_stay_apart() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("her.sock");
     let (mut service, client, _demux) = serve(&env, &socket, None).await;
     let hello_as = |instance: &str, account: &str| json!({"browser": "Google Chrome 141", "extension_version": "0.2.0", "bridge": {"min": 1, "max": 2}, "instance": instance, "account": account});
@@ -1182,7 +1126,7 @@ async fn a_refused_host_exits_and_several_extensions_stay_apart() {
 /// A host only waits for the service: it does not keep it running after the app quit.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn an_extension_host_does_not_keep_the_service_running() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("her.sock");
     let mut service = env.her(&["serve", "--listen", &format!("unix://{}", socket.display()), "--idle-exit", "1"]).spawn().unwrap();
     for _ in 0..1200 {
@@ -1209,7 +1153,7 @@ async fn the_service_stopping_leaves_the_tabs_with_their_session() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let (mut service, client, demux) = serve(&env, &socket, None).await;
@@ -1222,7 +1166,7 @@ async fn the_service_stopping_leaves_the_tabs_with_their_session() {
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
     let page = serve_page("<title>Through it</title><h1>Still here after the restart</h1>").await;
-    native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open"), true).await;
+    native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open")).await;
 
     service.kill().await.unwrap();
     let _ = service.wait().await;
@@ -1234,7 +1178,7 @@ async fn the_service_stopping_leaves_the_tabs_with_their_session() {
 
     client.request("session/resume", json!({"session_id": session})).await.unwrap();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     let results = tool_results(&turn);
     assert!(results.contains("Still here after the restart") && results.contains("still open"), "{results}");
     assert!(pages(&chrome).await.contains(&page));
@@ -1251,7 +1195,7 @@ async fn a_connection_lost_during_a_call_says_it_may_have_happened() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let (mut service, client, demux) = serve(&env, &socket, None).await;
@@ -1288,14 +1232,14 @@ async fn a_connection_lost_during_a_call_says_it_may_have_happened() {
 /// user, who can say not this time; with nobody to tell, and no browser ever seen, it says so.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_task_waits_for_the_users_browser_while_someone_can_tell_them() {
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let (mut service, client, demux) = serve_unwatched(&env, &socket, None).await;
     let cwd = env.workspace("ext");
     let created = client.request("session/new", json!({"cwd": cwd})).await.unwrap();
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours:http://127.0.0.1:9/]] open", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours:http://127.0.0.1:9/]] open").await;
     assert!(tool_results(&turn).contains("is not connected"), "{}", tool_results(&turn));
 
     // Now the client follows the browsers: the same call waits, and the user is the one to end it.
@@ -1322,7 +1266,7 @@ async fn a_new_build_in_the_folder_reloads_the_extension_once_nothing_is_in_use(
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let folder = copy_extension(&env, "extension");
@@ -1338,7 +1282,7 @@ async fn a_new_build_in_the_folder_reloads_the_extension_once_nothing_is_in_use(
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
     let page = serve_page("<title>Kept</title><h1>Kept across the update</h1>").await;
-    native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open"), true).await;
+    native_prompt(&client, &mut events, &session, &format!("[[mock:yours:{page}]] open")).await;
     status_until(&client, "the tab, let go", |s| s["tabs"][&session][0].get("attached").is_none() && s["tabs"][&session][0]["url"] == page.as_str()).await;
     // Marks this worker; a new one does not have it.
     worker(&chrome, "globalThis.herBefore = true").await;
@@ -1371,7 +1315,7 @@ async fn a_new_build_in_the_folder_reloads_the_extension_once_nothing_is_in_use(
     eprintln!("reloaded {} ms after the task ended", waited.elapsed().as_millis());
     status_until(&client, "the extension back, with the tab", |s| s["extension"]["in_use"] == true && s["tabs"][&session][0]["url"] == page.as_str()).await;
     assert_eq!(worker(&chrome, "chrome.storage.local.get('herCarried').then(v => v.herCarried === undefined)").await, true);
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_read:y1]] read").await;
     assert!(tool_results(&turn).contains("Kept across the update"), "{}", tool_results(&turn));
 
     client.request("server/shutdown", json!({})).await.unwrap();
@@ -1386,7 +1330,7 @@ async fn new_code_under_an_older_manifest_reloads_into_the_new_one() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let folder = copy_extension(&env, "extension");
@@ -1438,7 +1382,7 @@ async fn a_sub_agents_tabs_stay_with_the_conversation() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let (mut service, client, demux) = serve(&env, &socket, None).await;
@@ -1452,13 +1396,13 @@ async fn a_sub_agents_tabs_stay_with_the_conversation() {
     let mut events = demux.subscribe(&session);
     let page = serve_page("<title>From the agent</title><h1>Opened by a sub-agent</h1>").await;
 
-    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:yours_agent:{page}]] delegate"), true).await;
+    let turn = native_prompt(&client, &mut events, &session, &format!("[[mock:yours_agent:{page}]] delegate")).await;
     assert!(turn.text.contains("Opened by a sub-agent"), "{}", turn.text);
     let now = status_until(&client, "the tab, let go, under the conversation", |s| s["tabs"][&session][0]["url"] == page.as_str() && s["tabs"][&session][0].get("attached").is_none()).await;
     assert_eq!(now["tabs"].as_object().unwrap().len(), 1, "{now}");
     assert!(pages(&chrome).await.contains(&page));
 
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_tabs:]] list", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:yours_tabs:]] list").await;
     assert!(tool_results(&turn).contains("From the agent"), "{}", tool_results(&turn));
 
     client.request("server/shutdown", json!({})).await.unwrap();
@@ -1485,7 +1429,7 @@ async fn a_tab_group_is_named_for_the_users_latest_words() {
         eprintln!("no Chromium-family browser installed; skipping");
         return;
     };
-    let env = TestEnv::new("bypass-permissions", "[browser]\nextension = true\n").await;
+    let env = TestEnv::new("[browser]\nextension = true\n").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
     let (mut service, client, demux) = serve(&env, &socket, None).await;
@@ -1500,9 +1444,9 @@ async fn a_tab_group_is_named_for_the_users_latest_words() {
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
     let page = serve_page("<title>Flights</title><h1>Flights</h1>").await;
-    native_prompt(&client, &mut events, &session, &format!("查一下去东京的机票\n[[mock:yours:{page}]]"), true).await;
+    native_prompt(&client, &mut events, &session, &format!("查一下去东京的机票\n[[mock:yours:{page}]]")).await;
     group_named(&chrome, &page, "查一下去东京的机票").await;
-    native_prompt(&client, &mut events, &session, "再看看那边的酒店\n[[mock:yours_read:y1]]", true).await;
+    native_prompt(&client, &mut events, &session, "再看看那边的酒店\n[[mock:yours_read:y1]]").await;
     group_named(&chrome, &page, "再看看那边的酒店").await;
 
     // So does the group of a conversation with an assistant, which the session list leaves out.
@@ -1511,9 +1455,9 @@ async fn a_tab_group_is_named_for_the_users_latest_words() {
     let chat = opened["session_id"].as_str().unwrap().to_string();
     let mut chat_events = demux.subscribe(&chat);
     let other = serve_page("<title>Weather</title><h1>Weather</h1>").await;
-    native_prompt(&client, &mut chat_events, &chat, &format!("明天天气怎么样\n[[mock:yours:{other}]]"), true).await;
+    native_prompt(&client, &mut chat_events, &chat, &format!("明天天气怎么样\n[[mock:yours:{other}]]")).await;
     group_named(&chrome, &other, "明天天气怎么样").await;
-    native_prompt(&client, &mut chat_events, &chat, "那后天呢\n[[mock:yours_read:y1]]", true).await;
+    native_prompt(&client, &mut chat_events, &chat, "那后天呢\n[[mock:yours_read:y1]]").await;
     group_named(&chrome, &other, "那后天呢").await;
     group_named(&chrome, &page, "再看看那边的酒店").await;
 

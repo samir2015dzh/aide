@@ -1,7 +1,7 @@
 // The console's routes beside her's JSON-RPC, served next to the console's files, so they are
-// addressed relative to the page: a file goes up to the Her Server (hermeshd on the machine);
+// addressed relative to the page: a file goes up to the Her Server (aided on the machine);
 // a sign-in's redirect is caught on the owner's device, and a connector started as a command
-// is signed there (hermeshd on the device, docs/her-server.md §5.4, §8).
+// is signed there (aided on the device, docs/her-server.md §5.4, §8).
 
 /** Why a route said no: the text it answered, or the `error` of its JSON. */
 async function refusal(r: Response): Promise<Error> {

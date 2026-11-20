@@ -1,6 +1,6 @@
 //! `deck_edit` and `deck_save` (presentation-deck-edit §5): an agent's changes to a deck the
 //! kernel holds, made at once as one step the user can take back, and saving the file. Whether
-//! the user is asked first is the approval policy's, as for `doc_edit`.
+//! nobody is asked first, as for `doc_edit`.
 //!
 //! [`DeckOp`] is the agent's vocabulary. Each op becomes one engine `ProposalEdit`, resolved
 //! against the deck as it is now: text is found by its words, not by offsets, and positions

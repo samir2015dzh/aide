@@ -1,11 +1,11 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { SessionLink, SessionStatus, type Session } from "@hermesh/proto/session";
+import { SessionLink, SessionStatus, type Session } from "@aide/proto/session";
 import {
   bucketTitle, clockText, elapsedSeconds, codingAgentShort, codingAgentTitle, createdDate, dateOf, displayTitle, isActive, isArchivable, isFailed, listTime,
   durationText, sessionSections, statusTitle, t as coreT, teamState, updatedDate, type SessionBucket, type SessionSection, type SessionView,
-} from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+} from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { i18n } from "../../shared/i18n";
 import { UpdateReminder } from "./update";
 import { local } from "./api";
@@ -16,7 +16,7 @@ import { unreadCount } from "./her/environments";
 import { expiringClients } from "./overview/Attention";
 import { keys, ownKeys } from "./platform";
 import { useNow, useStore, type Store } from "./store";
-import { StateText, useStateView } from "./components";
+import { ConnectLink, StateText, useStateView } from "./components";
 
 export function grantLabel(st: Store, s: Session): string {
   if (s.createdBy === "owner") return i18n.t("common:sidebar.you");
@@ -118,6 +118,13 @@ export function Sidebar() {
             <span>{t("sidebar.dsh")}</span>
           </button>
         )}
+        {/* How DSH, Claude Desktop and the others connect: the Connect guide (Settings › Connect). */}
+        {!st.status?.machineOnly && (
+          <button className="nav-i" onClick={() => window.aide?.openSettings("connect")}>
+            <Icon name="link" />
+            <span>{t("sidebar.connect")}</span>
+          </button>
+        )}
       </nav>
       <div className="side-h">
         <span>{t("sidebar.sessions")}</span>
@@ -160,8 +167,8 @@ function HerItem() {
 
 /** What the overview's marks say: something needs the owner, and how many sessions run. */
 export function overviewMarks(st: Store, now: Date) {
-  const team = teamState(st.sessions, st.pairings.length);
-  return { waits: team.waiting.length + st.pairings.length + expiringClients(st, now).length, running: team.running.length };
+  const team = teamState(st.sessions);
+  return { waits: team.waiting.length + expiringClients(st, now).length, running: team.running.length };
 }
 
 /** The overview (⌘1): an orange dot when something needs the owner, a ring while anything runs. */
@@ -252,6 +259,7 @@ function Sessions({ now }: { now: Date }) {
           <div className="side-empty">
             <b>{t("sidebar.emptyTitle")}</b>
             {t(st.status?.machineOnly ? "sidebar.emptyMachine" : "sidebar.emptyBody")}
+            {!st.status?.machineOnly && <ConnectLink>{t("sidebar.howToConnect")}</ConnectLink>}
           </div>
         ) : (
           <div className="endrow">
@@ -265,7 +273,7 @@ function Sessions({ now }: { now: Date }) {
   );
 }
 
-type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "enterCode"; icon: string; shortcut?: string } | null;
+type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect"; icon: string; shortcut?: string } | null;
 
 /**
  * The account menu, from the avatar at the sidebar's foot: it opens upward, as wide as the foot, with what adds
@@ -288,7 +296,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     : [
         { id: "newGrant", icon: "key", shortcut: keys("Shift+CmdOrCtrl+N") },
         { id: "addMachine", icon: "laptop" },
-        { id: "enterCode", icon: "link", shortcut: keys("Shift+CmdOrCtrl+P") },
+        { id: "connect", icon: "link" },
         null,
         { id: "settings", icon: "gear", shortcut: keys("CmdOrCtrl+,") },
         { id: "account", icon: "user" },
@@ -307,8 +315,9 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   }, [open]);
   const choose = (id: NonNullable<AccountItem>["id"]) => {
     setOpen(false);
-    if (id === "settings") window.hermesh?.openSettings();
-    else if (id === "account") window.hermesh?.openSettings("account");
+    if (id === "settings") window.aide?.openSettings();
+    else if (id === "account") window.aide?.openSettings("account");
+    else if (id === "connect") window.aide?.openSettings("connect");
     else st.set({ sheet: { kind: id } });
   };
   // The keyboard, as in a native menu: arrows move, Esc closes back to the avatar.
@@ -345,12 +354,12 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
       )}
       <button className="side-foot" ref={foot} aria-label={t("sidebar.account")} title={compact ? t("sidebar.account") : undefined} aria-haspopup="menu" aria-expanded={!!open} onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}>
         <span className="av" aria-hidden="true">
-          {(window.hermesh?.userName ?? "H").slice(0, 1).toUpperCase()}
+          {(window.aide?.userName ?? "H").slice(0, 1).toUpperCase()}
         </span>
         {/* The rail has room for the avatar alone; a dot on it when not connected. */}
         {compact ? (!st.status?.relayConnected && <i className="dotc" aria-hidden="true" />) : <>
         <span className="who">
-          <b>{window.hermesh?.userName ?? "Aide"}</b>
+          <b>{window.aide?.userName ?? "Aide"}</b>
           <span>
             {/* A dot only when it is worth noticing: not connected. */}
             {!st.status?.relayConnected && <i className="dotc" />}
@@ -425,7 +434,7 @@ export const SessionRow = memo(function SessionRow({ s, sel, sender, meta, renam
 /** The session's context menu (native): open, rename, archive, copy its id, delete. */
 async function sessionMenu(st: Store, s: Session) {
   const archived = s.status === SessionStatus.ARCHIVED;
-  const id = await window.hermesh?.popupMenu([
+  const id = await window.aide?.popupMenu([
     { id: "open", label: i18n.t("common:sessionMenu.open") },
     { separator: true },
     { id: "rename", label: i18n.t("common:sessionMenu.rename") },

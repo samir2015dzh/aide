@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -16,9 +17,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/relay"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/relay"
 )
 
 func TestToolsAreTheCommands(t *testing.T) {
@@ -179,8 +180,9 @@ func TestPeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	device, _ := identity.Sign(&identityv1.OwnerDeviceCert{OwnerId: ownerID, DevicePublicKey: rootPub, Label: "test-mac"}, root)
-	if err := st.SaveClaim(ownerID, chain, device); err != nil {
+	// The root key is the server's own, as on a server set up with an account.
+	der, _ := x509.MarshalPKCS8PrivateKey(root.Key)
+	if err := st.SaveSetup(ownerID, chain, der, relay.NewAccount("owner", "correct horse battery")); err != nil {
 		t.Fatal(err)
 	}
 	st.Close()

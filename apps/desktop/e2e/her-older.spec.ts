@@ -6,9 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import { fixture, launch, snap } from "./app";
 
-// A Mac whose Hermesh is older than the app (docs/version-skew.md §8): this Mac's her acts as if it
+// A Mac whose Aide is older than the app (docs/version-skew.md §8): this Mac's her acts as if it
 // lacked bots/memory (HER_TEST_WITHOUT). Run by TestDesktopHerOlder. First a her from before her listed
-// her methods: opening the memory says Hermesh there needs an update, never her's "unknown method". Then
+// her methods: opening the memory says Aide there needs an update, never her's "unknown method". Then
 // one that lists them, without bots/memory: the row says so before it is opened. Then her has it, and the
 // open page loads the memory by itself.
 
@@ -21,7 +21,7 @@ function herSocket(): string {
   return sock;
 }
 
-/** Restarts this Mac's her as an update does: it stops, and hermeshd starts the program anew. */
+/** Restarts this Mac's her as an update does: it stops, and aided starts the program anew. */
 async function restartHer(without: string) {
   fs.writeFileSync(fixture.herWithout!, without);
   const sock = herSocket();

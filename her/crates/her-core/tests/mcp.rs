@@ -28,7 +28,6 @@ use her_protocol::McpExposure;
 use her_protocol::McpServerConfig;
 use her_protocol::McpServerState;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
 use her_tools::builtin_registry;
@@ -92,24 +91,14 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome, servers: Vec<McpSer
     }
 }
 
-/// Most tests are about what the tools do, not whether they may: those that ask get `manual` by
-/// setting it.
-fn config_mode(config: &Config) -> PermissionMode {
-    if config.permission_mode == PermissionMode::Manual { PermissionMode::BypassPermissions } else { config.permission_mode }
-}
-
 fn start_options(work: &Path, home: &HerHome, config: Config) -> StartOptions {
     StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        // Without anyone to approve; the tools below that are not read-only would be refused.
-        permission_mode: config_mode(&config),
         cwd: work.to_path_buf(),
         home: home.clone(),
         config: Arc::new(config),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot: None,
     }
 }
@@ -333,7 +322,6 @@ async fn deferred_tools_are_searched_and_called_without_changing_the_request() {
     assert!(search.contains("\"Text to repeat\""), "the schema comes with it: {search}");
     assert_eq!(tool_results(&requests[2])[1], "echo: hi");
 
-    assert!(events.iter().all(|e| !matches!(e, EventMsg::ApprovalRequested { .. })), "a tool that says it only reads is not asked about");
     let started = events
         .iter()
         .find_map(|e| match e {
@@ -613,12 +601,9 @@ async fn resumed_sessions_reconnect_and_keep_one_prompt_entry() {
         session: SessionRef::Path(session),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: h.home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let mut kernel = Kernel::resume(options, deps(&api, &h.work, &h.home, vec![config])).await.unwrap();
@@ -629,13 +614,12 @@ async fn resumed_sessions_reconnect_and_keep_one_prompt_entry() {
     let _ = kernel.shutdown().await;
 }
 
-/// A run under `mode`: the model calls `tool` through `call_tool`. Returns whether it ran.
-async fn runs_without_a_person(mode: PermissionMode, configure: impl FnOnce(&mut McpServerConfig), tool: &str, args: Value, rules: Vec<her_protocol::CommandRule>) -> (bool, Vec<EventMsg>) {
+/// The model calls `tool` through `call_tool`. Returns whether it ran.
+async fn runs(tool: &str, args: Value, rules: Vec<her_protocol::CommandRule>) -> (bool, Vec<EventMsg>) {
     let server = test_server(McpTestOptions::default()).await;
-    let mut config = http_config("test", &server);
-    configure(&mut config);
+    let config = http_config("test", &server);
     let mut h = Harness::start_with(
-        Config { permission_mode: mode, rules, ..Config::default() },
+        Config { rules, ..Config::default() },
         vec![config],
         Some(server),
         |api| {
@@ -646,34 +630,19 @@ async fn runs_without_a_person(mode: PermissionMode, configure: impl FnOnce(&mut
     )
     .await;
     let (_, events) = h.run("go").await;
-    let refused = events.iter().any(|e| matches!(e, EventMsg::ApprovalRefused { .. }));
-    (!refused, events)
+    let denied = format!("{events:?}").contains("Tool call denied");
+    (!denied, events)
 }
 
-/// standalone-cli-design §8.5.
+/// Tools from servers run without asking, whatever they may change; only a deny rule that
+/// names one stops it.
 #[tokio::test]
-async fn tools_from_servers_are_asked_about_unless_they_only_read_or_the_user_trusts_them() {
+async fn tools_from_servers_run_without_asking_unless_a_rule_denies_them() {
     let add = json!({ "a": 1, "b": 2 });
     let echo = json!({ "text": "hi" });
-    let manual = PermissionMode::AcceptEdits;
-    // Nobody can approve here, so asking is refusing.
-    assert!(!runs_without_a_person(manual, |_| {}, "mcp__test__add", add.clone(), vec![]).await.0, "a tool that may change things is asked about");
-    assert!(runs_without_a_person(manual, |_| {}, "mcp__test__echo", echo.clone(), vec![]).await.0, "one that says it only reads is not");
-    assert!(
-        !runs_without_a_person(manual, |c| c.project_defined = true, "mcp__test__echo", echo.clone(), vec![]).await.0,
-        "a project's server is not taken at its word"
-    );
-    assert!(
-        runs_without_a_person(manual, |c| c.approval = Some(her_protocol::McpApproval::Never), "mcp__test__add", add.clone(), vec![]).await.0,
-        "the user trusts this server"
-    );
-    assert!(runs_without_a_person(PermissionMode::BypassPermissions, |_| {}, "mcp__test__add", add.clone(), vec![]).await.0, "every action runs");
-    let allow = her_protocol::CommandRule { prefix: vec!["mcp__test__add".into()], decision: her_protocol::RuleDecision::Allow, reason: None };
-    assert!(runs_without_a_person(manual, |_| {}, "mcp__test__add", add.clone(), vec![allow]).await.0, "a rule names the tool");
+    assert!(runs("mcp__test__add", add.clone(), vec![]).await.0, "a tool that may change things runs");
+    assert!(runs("mcp__test__echo", echo.clone(), vec![]).await.0, "one that only reads runs");
     let deny = her_protocol::CommandRule { prefix: vec!["mcp__test__echo".into()], decision: her_protocol::RuleDecision::Deny, reason: None };
-    let (_, events) = runs_without_a_person(PermissionMode::BypassPermissions, |_| {}, "mcp__test__echo", echo, vec![deny]).await;
-    assert!(
-        format!("{events:?}").contains("blocked by the rule"),
-        "a rule that forbids it holds in every mode: {events:?}"
-    );
+    let (ran, events) = runs("mcp__test__echo", echo, vec![deny]).await;
+    assert!(!ran && format!("{events:?}").contains("blocked by the rule"), "a rule that forbids it holds: {events:?}");
 }

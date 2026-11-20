@@ -91,7 +91,6 @@ pub fn models(
     let defaults = SessionDefaults {
         model: rt.config.model.clone(),
         thinking: rt.config.thinking,
-        permission_mode: rt.config.permission_mode,
     };
     if let Some(action) = action {
         let (reference, shown) = match &action {
@@ -403,7 +402,6 @@ pub fn status(overrides: &[String], as_json: bool) -> anyhow::Result<u8> {
             auth
         }),
         "thinking": rt.config.thinking,
-        "permission_mode": rt.config.permission_mode,
         "tools": rt.config.enabled_tools,
         "deferred_tools": tools.1,
         "mcp_servers": rt.mcp_servers.iter().filter(|s| s.is_enabled()).map(|s| s.name.as_str()).collect::<Vec<_>>(),
@@ -489,7 +487,6 @@ pub fn status(overrides: &[String], as_json: bool) -> anyhow::Result<u8> {
         ("model", model_line),
         ("credentials", credentials),
         ("thinking", text(&info["thinking"])),
-        ("permissions", text(&info["permission_mode"])),
         ("tools", tools_line(&tools)),
         ("mcp servers", mcp_line(rt)),
         ("skills", skills_line),

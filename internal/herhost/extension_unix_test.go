@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/herhost/hertest"
+	"github.com/samir2015dzh/aide/internal/herhost/hertest"
 )
 
 const extensionOrigin = "chrome-extension://igeolfcjdhlfopmimahmhleloehmfkdc/"
@@ -27,7 +27,7 @@ const extensionOrigin = "chrome-extension://igeolfcjdhlfopmimahmhleloehmfkdc/"
 // With ExtensionHost, Start registers her with the browsers, for her's home
 // and this socket, before her starts, and has her write the extension it
 // carries where the guide says, as no app ships one beside this her;
-// hermeshd stopping keeps that, and Her off takes it back. Without, the
+// aided stopping keeps that, and Her off takes it back. Without, the
 // browsers are never touched.
 func TestExtensionHost(t *testing.T) {
 	t.Setenv("HER_HOME", "/hers")
@@ -65,7 +65,7 @@ func TestExtensionHost(t *testing.T) {
 // test's) has a manifest whose program, started as Chrome starts a host,
 // reaches that her. The console, through its routes as its Browser section
 // uses them, hears browser/changed, sees the extension in browser/status,
-// picks it and has Her use it. hermeshd stopping keeps the host; Her off
+// picks it and has Her use it. aided stopping keeps the host; Her off
 // takes it away.
 func TestExtensionHostReachesHer(t *testing.T) {
 	bin := hertest.Bin(t)
@@ -84,7 +84,7 @@ func TestExtensionHostReachesHer(t *testing.T) {
 	t.Cleanup(h.Stop)
 	eventually(t, func() bool { return h.Status().Running })
 
-	manifestPath := filepath.Join(chrome, "NativeMessagingHosts", "com.hermesh.browser.json")
+	manifestPath := filepath.Join(chrome, "NativeMessagingHosts", "com.aide.browser.json")
 	b, err := os.ReadFile(manifestPath)
 	if err != nil {
 		t.Fatal(err)
@@ -177,7 +177,7 @@ func TestExtensionHostReachesHer(t *testing.T) {
 
 	h.Stop()
 	if _, err := os.Stat(manifestPath); err != nil {
-		t.Fatalf("hermeshd stopping took the host away: %v", err)
+		t.Fatalf("aided stopping took the host away: %v", err)
 	}
 	h.Start()
 	eventually(t, func() bool { return h.Status().Running })

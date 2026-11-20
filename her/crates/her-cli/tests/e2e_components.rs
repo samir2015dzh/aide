@@ -1,6 +1,6 @@
 //! `her install` and `her upgrade` against a local release: a signed manifest and archives.
 
-// her's own releases have no build for Windows, where Hermesh brings what they would.
+// her's own releases have no build for Windows, where Aide brings what they would.
 #![cfg(unix)]
 
 mod common;
@@ -120,7 +120,7 @@ async fn run(env: &TestEnv, releases: &Releases, args: &[&str]) -> (i32, String,
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_component_installs_from_a_signed_release_and_uninstalls() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let releases = Releases::start();
     let pdf = archive(&[("libpdfium.test", b"library", 0o644)]);
     publish(&releases, VERSION, None, Some(&pdf), &key());
@@ -144,7 +144,7 @@ async fn a_component_installs_from_a_signed_release_and_uninstalls() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn nothing_installs_without_the_right_signature_or_the_right_file() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let releases = Releases::start();
     let pdf = archive(&[("libpdfium.test", b"library", 0o644)]);
     let stranger = Ed25519KeyPair::from_seed_unchecked(&[9; 32]).unwrap();
@@ -171,7 +171,7 @@ async fn nothing_installs_without_the_right_signature_or_the_right_file() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn upgrade_replaces_the_program_and_its_components() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let releases = Releases::start();
     let new_program = b"#!/bin/sh\necho new her\n";
     let main = archive(&[("her", new_program, 0o755)]);

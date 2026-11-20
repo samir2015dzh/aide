@@ -1,7 +1,7 @@
-import type { CallAdapter, CallResult } from "@hermesh/her-client";
-import type { CallResponse, OpenEvent, Response } from "@hermesh/proto/her";
+import type { CallAdapter, CallResult } from "@aide/her-client";
+import type { CallResponse, OpenEvent, Response } from "@aide/proto/her";
 
-// her's connections on a machine, through hermeshd's LocalService (HerOpen,
+// her's connections on a machine, through aided's LocalService (HerOpen,
 // HerCall): her's own JSON-RPC as bytes inside, which openCallTransport turns
 // into the pipe an RpcClient reads (docs/her-server.md §6).
 
@@ -30,7 +30,7 @@ export function callResult(r: Response | undefined): CallResult {
   return { result: fromBytes(r.result) ?? {} };
 }
 
-/** Connections to her on one machine. hermeshd's own refusals (off the allowlist, her not running) throw. */
+/** Connections to her on one machine. aided's own refusals (off the allowlist, her not running) throw. */
 export function herAdapter(local: HerLocal, machineId: string): CallAdapter {
   return {
     async *open(signal, setup) {

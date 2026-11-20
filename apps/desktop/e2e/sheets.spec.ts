@@ -5,65 +5,69 @@ import os from "node:os";
 import path from "node:path";
 import { fixture, launch, snap, sessionList } from "./app";
 
-// The sheets over the main window: adding a project, connecting an agent,
-// adding a machine with its pairing code, and approving a request from a
-// notification. Approvals go through the Go test signer, which says yes.
+// The sheets over the main window: adding a project, connecting an
+// assistant, which logs in with the account itself and shows there at once,
+// and adding a machine, which shows there once it logged in; then what an
+// agent may use, changed from settings (docs/accounts.md).
 
-/** What the app menu, the menu bar and notifications send the page (e.g. 文件 › 连接 agent…). */
+/** The account and password the fixture's owner was set up with (the Go harness's test account). */
+const password = "correct horse battery";
+
+/** What the app menu, the menu bar and notifications send the page (e.g. 文件 › 连接助手…). */
 async function command(app: ElectronApplication, page: Page, c: string) {
   await expect((await sessionList(page))).toBeVisible();
-  type Main = { hermeshTest: { mainWindow(): { webContents: { send(channel: string, c: string): void } } } };
-  await app.evaluate((_, c) => (globalThis as unknown as Main).hermeshTest.mainWindow().webContents.send("command", c), c);
+  type Main = { aideTest: { mainWindow(): { webContents: { send(channel: string, c: string): void } } } };
+  await app.evaluate((_, c) => (globalThis as unknown as Main).aideTest.mainWindow().webContents.send("command", c), c);
 }
 
-/** hermeshd's local API, as the page reaches it. */
+/** aided's local API, as the page reaches it. */
 async function api<T = Record<string, never>>(page: Page, method: string, body: object = {}): Promise<T> {
   return page.evaluate(
     async ([m, b]) => {
-      const r = await fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+      const r = await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
       return r.json();
     },
     [method, body] as const,
   );
 }
 
-type Status = { connectAddress: string; localMachineId: string };
-type Client = { grantId: string; grantVersion: string; label: string; expiresAt: string; spec: { machineIds: string[]; projectIds: string[]; agents: string[] } };
+type Status = { relayUrl: string; account: string; localMachineId: string };
+type Client = { grantId: string; grantVersion: string; label: string; expiresAt?: string; spec: { machineIds: string[]; projectIds: string[]; agents: string[] } };
 
 const running = new Set<ChildProcess>();
 test.afterEach(() => running.forEach((p) => p.kill())); // a failed test leaves no login waiting
 
-/** Runs a Hermesh binary in the background; code resolves to its pairing code, exit to its exit code. */
+/** Runs an Aide binary in the background with the account's password; exit resolves to its exit code. */
 function background(bin: string, args: string[], env: Record<string, string> = {}) {
-  const p = spawn(bin, args, { env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+  const p = spawn(bin, args, { env: { ...process.env, AIDE_PASSWORD: password, ...env }, stdio: ["ignore", "pipe", "pipe"] });
   running.add(p);
   p.on("exit", () => running.delete(p));
   let out = "";
-  const code = new Promise<string>((resolve, reject) => {
-    const read = (b: Buffer) => {
-      out += b.toString();
-      const m = out.match(/Pairing code: ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})/);
-      if (m) resolve(m[1]);
-    };
-    p.stdout.on("data", read);
-    p.stderr.on("data", read);
-    p.on("exit", () => reject(new Error(`${path.basename(bin)} exited before showing a pairing code:\n${out}`)));
-  });
-  code.catch(() => {});
+  p.stdout.on("data", (b: Buffer) => (out += b));
+  p.stderr.on("data", (b: Buffer) => (out += b));
   const exit = new Promise<number>((resolve) => p.on("exit", (c) => resolve(c ?? -1)));
-  return { code, exit, output: () => out };
+  return { exit, output: () => out };
 }
 
-/** The agent CLI as a new agent on this computer: its own home, so it pairs anew. */
+/** The agent CLI as a new agent on this computer: its own home, so it logs in anew. */
 function newAgent() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "hmagent-"));
   return {
-    login: (address: string, name: string) => background(fixture.cli, ["auth", "login", address, "--name", name], { HERMESH_HOME: home }),
+    login: (st: Status, name: string) => background(fixture.cli, ["auth", "login", st.relayUrl, "--account", st.account, "--name", name], { AIDE_HOME: home }),
     run: (...args: string[]) =>
       new Promise<string>((resolve, reject) =>
-        execFile(fixture.cli, args, { env: { ...process.env, HERMESH_HOME: home } }, (err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout))),
+        execFile(fixture.cli, args, { env: { ...process.env, AIDE_HOME: home } }, (err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout))),
       ),
   };
+}
+
+/** An agent logged in, waited for: its grant. */
+async function loggedIn(page: Page, st: Status, name: string): Promise<Client> {
+  const login = newAgent().login(st, name);
+  expect(await login.exit, login.output()).toBe(0);
+  let grant: Client | undefined;
+  await expect.poll(async () => (grant = (await api<{ clients: Client[] }>(page, "ListClients")).clients.find((c) => c.label === name))).toBeTruthy();
+  return grant!;
 }
 
 test("adding a project: a folder on this Mac becomes a project", async () => {
@@ -94,85 +98,78 @@ test("adding a project: a folder on this Mac becomes a project", async () => {
   await app.close();
 });
 
-test("connecting an agent: the message to send, its request, what it may use, approved", async () => {
+test("connecting an assistant: the message to send, it logs in with the account itself and shows as connected; what it may use, changed there", async () => {
   const name = `Agent ${process.pid}`; // its own, also when run again against the same daemon
   const { app, page } = await launch();
   const st = await api<Status>(page, "GetStatus");
   await command(app, page, "newGrant");
-  const sheet = page.getByRole("dialog", { name: "连接你的 Agent" });
+  const sheet = page.getByRole("dialog", { name: "连接助手" });
   await expect(sheet).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
-  // As in the first run: the apps in a row, the first one picked, its message below.
+  // As in the first run: the assistants in a row, the first one picked, its message below.
   await command(app, page, "newGrant");
   await expect(sheet.getByRole("radio", { name: "Grok Bot" })).toHaveAttribute("aria-checked", "true");
   await expect(sheet).toContainText('--name "Grok Bot"');
   await snap(page, "sheet-new-grant");
   await sheet.getByRole("radio", { name: "其他 Agent" }).click();
 
-  await sheet.getByLabel("它叫什么").fill(name);
-  await expect(sheet).toContainText(`aide auth login ${st.connectAddress} --name "${name}"`);
-  await sheet.getByRole("button", { name: "拷贝" }).click();
-  await expect(sheet.getByRole("button", { name: "已拷贝" })).toBeVisible();
-  await expect(sheet).toContainText(`等 ${name} 运行这段话里的命令`);
+  await sheet.getByLabel("名称").fill(name);
+  // The server and the account; the password is for the owner to fill in, never in it.
+  await expect(sheet.locator(".msgbox")).toContainText(`aide auth login ${st.relayUrl} --account ${st.account} --name "${name}"`);
+  await expect(sheet.locator(".msgbox")).not.toContainText(password);
+  await sheet.getByRole("button", { name: "复制" }).click();
+  await expect(sheet.getByRole("button", { name: "已复制" })).toBeVisible();
+  await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toContain(`--name "${name}"`);
+  await expect(sheet).toContainText(`等待 ${name} 登录…`);
   await snap(page, "sheet-connect-copy");
-  await sheet.getByRole("radio", { name: "Grok Bot" }).click();
 
-  // The agent runs the command it was sent; its request comes to this page, whichever agent is picked.
+  // The agent runs the command it was sent: nothing to approve, the sheet says it is connected.
   const agent = newAgent();
-  const login = agent.login(st.connectAddress, name);
-  await expect(sheet.getByText(`「${name}」能用什么`)).toBeVisible({ timeout: 30_000 });
-  await expect(sheet).toContainText(`核对码`);
+  const login = agent.login(st, name);
+  await expect(sheet.getByText(`${name} 已连接`)).toBeVisible({ timeout: 30_000 });
+  expect(await login.exit, login.output()).toBe(0);
+  await expect(sheet.getByRole("button", { name: "完成" })).toBeVisible();
+  await snap(page, "sheet-connect-done");
+  // Every machine, project and coding agent, until signed out.
+  const grant = async () => (await api<{ clients: Client[] }>(page, "ListClients")).clients.find((x) => x.label === name)!;
+  expect((await grant()).spec).toMatchObject({ machineIds: ["*"], projectIds: ["*"], agents: ["*"] });
 
-  const projects = sheet.getByRole("group", { name: "项目" });
-  await projects.getByRole("button", { name: "修改" }).click();
+  // What it may use, narrowed from there.
+  await sheet.getByRole("button", { name: "调整它能用什么…" }).click();
+  const scope = page.getByRole("dialog", { name: `修改「${name}」能用什么` });
+  const projects = scope.getByRole("group", { name: "项目" });
   await projects.getByRole("checkbox", { name: "所有项目（包括以后添加的）" }).setChecked(false);
   for (const box of await projects.getByRole("checkbox").all()) {
     const text = (await box.textContent()) ?? "";
     if (!text.includes("所有项目")) await box.setChecked(text.includes("/ demo"));
   }
   await projects.getByRole("button", { name: "好" }).click();
-  const agents = sheet.getByRole("group", { name: "编码 agent" });
+  const agents = scope.getByRole("group", { name: "编码 agent" });
   await agents.getByRole("button", { name: "修改" }).click();
   const allAgents = agents.getByRole("checkbox", { name: "所有编码 agent（包括以后安装的）" });
-  await expect(allAgents).toBeChecked(); // the default
+  await expect(allAgents).toBeChecked();
   await allAgents.setChecked(false);
   await agents.getByRole("checkbox", { name: "Gemini CLI" }).setChecked(true);
-  await sheet.getByRole("group", { name: "有效期" }).getByRole("button", { name: "30 天" }).click();
   await agents.getByRole("button", { name: "好" }).click();
+  await scope.getByRole("group", { name: "有效期" }).getByRole("button", { name: "30 天" }).click();
   await expect(projects).toContainText("owner-mac 上的 demo");
   await expect(agents).toContainText("Gemini CLI");
   await expect(agents).not.toContainText("Codex");
   await snap(page, "sheet-connect-scope");
-  await expect(sheet.locator(".sheet-foot")).toHaveCount(1);
-  for (const name of ["拒绝", "取消", "批准"]) await expect(sheet.locator(".sheet-foot").getByRole("button", { name, exact: true })).toBeVisible();
-  const actionRows = await sheet.getByRole("button", { name: /^(拒绝|取消|批准)$/ }).evaluateAll((buttons) => buttons.map((b) => b.getBoundingClientRect().top));
-  expect(Math.max(...actionRows) - Math.min(...actionRows)).toBeLessThanOrEqual(1);
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(980, 620));
-  await expect(sheet.getByRole("button", { name: "批准", exact: true })).toBeInViewport();
-  expect(await sheet.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
-  await snap(page, "sheet-connect-scope-compact");
-  await page.emulateMedia({ colorScheme: "dark" });
-  await snap(page, "sheet-connect-scope-dark");
+  await scope.getByRole("button", { name: "保存" }).click();
+  await expect(page.getByRole("status").filter({ hasText: `「${name}」已按新设置工作` })).toBeVisible({ timeout: 30_000 });
+  await expect(scope).toBeHidden();
 
-  await sheet.getByRole("button", { name: "批准" }).click(); // the signer asks the owner, and says yes
-  await expect(sheet.getByText(`「${name}」已连接`)).toBeVisible({ timeout: 30_000 });
-  await snap(page, "sheet-connect-done");
-  expect(await login.exit, login.output()).toBe(0);
-
-  const { clients } = await api<{ clients: Client[] }>(page, "ListClients");
-  const c = clients.find((x) => x.label === name);
-  expect(c?.spec).toMatchObject({ machineIds: [st.localMachineId], projectIds: ["demo"], agents: ["gemini"] });
-  expect((Date.parse(c!.expiresAt) - Date.now()) / 86_400_000).toBeCloseTo(30, 0);
+  const c = await grant();
+  expect(c.spec).toMatchObject({ machineIds: [st.localMachineId], projectIds: ["demo"], agents: ["gemini"] });
+  expect((Date.parse(c.expiresAt!) - Date.now()) / 86_400_000).toBeCloseTo(30, 0);
   const list = await agent.run("project", "list");
   expect(list.match(/^owner-mac\/\S+/gm)).toEqual(["owner-mac/demo"]); // the agent sees only what it was given
-
-  await sheet.getByRole("button", { name: "完成" }).click();
-  await expect(sheet).toBeHidden();
   await app.close();
 });
 
-test("adding a machine: its system, then the app or a command (Linux: the command only), then the code it shows, approved here", async () => {
+test("adding a machine: its system, then the app or a command (Linux: the command only), with the server and the account; it shows once it logged in", async () => {
   const name = `build-${process.pid}`;
   const { app, page } = await launch();
   const st = await api<Status>(page, "GetStatus");
@@ -182,183 +179,72 @@ test("adding a machine: its system, then the app or a command (Linux: the comman
   const how = sheet.getByRole("group", { name: "安装方式" });
   const viaApp = how.getByRole("button", { name: "安装应用" });
   const viaCommand = how.getByRole("button", { name: "终端命令" });
+  const install = `curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | AIDE_ACCOUNT='${st.account}' sh -s -- ${st.relayUrl}`;
 
-  // A Mac, by default with the app: opened there, then joined to this server.
+  // A Mac, by default with the app: opened there, then logged in to this server with the account, as a machine only.
   await expect(sheet.getByRole("button", { name: "Mac", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(viaApp).toHaveAttribute("aria-pressed", "true");
-  await expect(sheet).toContainText("在那台 Mac 上打开github.com/samir2015dzh/hermesh/releases/latest");
-  await expect(sheet).toContainText(`安装后打开，加入${st.connectAddress}`);
+  await expect(sheet).toContainText("在那台 Mac 上打开github.com/samir2015dzh/aide/releases/latest");
+  await expect(sheet).toContainText(`服务器填${st.relayUrl}`);
+  await expect(sheet).toContainText(`账号填${st.account}`);
   await expect(sheet).not.toContainText("install.sh");
   await snap(page, "sheet-add-machine");
   await viaCommand.click();
   await expect(sheet).toContainText("终端 · 用你平时写代码的用户");
-  await expect(sheet).toContainText(`install.sh | sh -s -- ${st.connectAddress}`);
+  await expect(sheet).toContainText(install);
+  await expect(sheet).toContainText("命令会在那台机器上问你的密码：密码不会出现在命令里。");
 
   // A Windows PC: the app, or install.ps1 in PowerShell.
   await sheet.getByRole("button", { name: "Windows" }).click();
   await expect(sheet).toContainText("PowerShell · 用你平时写代码的用户");
-  await expect(sheet).toContainText(`(irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) ${st.connectAddress}`);
+  await expect(sheet).toContainText(`$env:AIDE_ACCOUNT='${st.account}'; & ([scriptblock]::Create((irm https://github.com/samir2015dzh/aide/releases/latest/download/install.ps1))) ${st.relayUrl}`);
   await snap(page, "sheet-add-machine-windows");
   await viaApp.click();
-  await expect(sheet).toContainText("在那台电脑上打开github.com/samir2015dzh/hermesh/releases/latest");
+  await expect(sheet).toContainText("在那台电脑上打开github.com/samir2015dzh/aide/releases/latest");
 
   // Linux has no app: the command, whatever was picked before.
   await sheet.getByRole("button", { name: "Linux" }).click();
   await expect(viaApp).toBeDisabled();
   await expect(viaApp).toContainText("暂无");
   await expect(viaCommand).toHaveAttribute("aria-pressed", "true");
-  await expect(sheet).toContainText(`install.sh | sh -s -- ${st.connectAddress}`);
+  await expect(sheet).toContainText(install);
   await snap(page, "sheet-add-machine-linux");
 
   // Copy puts the whole command on the clipboard.
   await sheet.getByRole("button", { name: "拷贝" }).click();
-  await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(`curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- ${st.connectAddress}`);
+  await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(install);
+  await expect(sheet).toContainText("等它登录…");
 
-  await sheet.getByRole("button", { name: "输入配对码…" }).click();
-  await expect(sheet.getByRole("heading", { name: "输入配对码" })).toBeVisible();
-
+  // The machine logs in with the account and password (aided login, as the install script runs it), and runs (its
+  // background service would): the sheet says so, by the name it gave itself.
+  const aided = path.join(path.dirname(fixture.cli), "aided");
   const data = fs.mkdtempSync(path.join(os.tmpdir(), "hmmachine-"));
-  const pair = background(path.join(path.dirname(fixture.cli), "hermeshd"), ["pair", st.connectAddress, "--name", "box", "--no-service", "--data-dir", data]);
-  await sheet.getByRole("textbox", { name: "配对码" }).fill((await pair.code).toLowerCase());
-  await snap(page, "sheet-enter-code");
-  await sheet.getByRole("button", { name: "查找" }).click();
-
-  await expect(sheet.getByRole("heading", { name: "一台自称「box」的机器想加入" })).toBeVisible();
-  // The code entered binds its key: no verification code to compare.
-  await expect(sheet).toContainText("你输入的配对码与它的密钥相符");
-  await expect(sheet).not.toContainText("核对码");
-  await sheet.getByLabel("机器名").fill(name);
-  await snap(page, "sheet-pairing-machine");
-  await sheet.getByRole("button", { name: "批准" }).click();
-  await expect(page.getByRole("status").filter({ hasText: `「${name}」已加入，去设置里给它加项目` })).toBeVisible();
+  const login = background(aided, ["login", st.relayUrl, "--account", st.account, "--name", name, "--no-service", "--data-dir", data]);
+  expect(await login.exit, login.output()).toBe(0);
+  background(aided, ["run", "--data-dir", data]); // stopped after the test
+  await expect(sheet).toContainText(`「${name}」已添加`, { timeout: 30_000 });
+  await snap(page, "sheet-add-machine-added");
+  await sheet.getByRole("button", { name: "完成" }).click();
   await expect(sheet).toBeHidden();
-  expect(await pair.exit, pair.output()).toBe(0);
   const { machines } = await api<{ machines: { machineId: string; machineName: string }[] }>(page, "ListMachines");
   const m = machines.find((x) => x.machineName === name);
   expect(m).toBeTruthy();
-  await api(page, "RemoveMachine", { machineId: m!.machineId }); // it never runs; the other tests' world stays as it was
+  await api(page, "RemoveMachine", { machineId: m!.machineId }); // the other tests' world stays as it was
   await app.close();
 });
 
-test("in settings: two machines ask at once, one at a time; a notification's click opens it there", async () => {
-  const { app, page } = await launch();
-  const st = await api<Status>(page, "GetStatus");
-  const before = new Set((await api<{ machines: { machineId: string }[] }>(page, "ListMachines")).machines.map((m) => m.machineId));
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("machines"))]);
-  await settings.waitForLoadState();
-  await settings.getByRole("button", { name: "添加机器…" }).click();
-  const sheet = settings.getByRole("dialog");
-  await expect(sheet.getByRole("heading", { name: "添加机器" })).toBeVisible();
-
-  const names = [`box-a-${process.pid}`, `box-b-${process.pid}`];
-  const pairs = names.map((n) =>
-    background(path.join(path.dirname(fixture.cli), "hermeshd"), ["pair", st.connectAddress, "--name", n, "--no-service", "--data-dir", fs.mkdtempSync(path.join(os.tmpdir(), "hmmachine-"))]),
-  );
-  await Promise.all(pairs.map((p) => p.code));
-  const heading = sheet.getByRole("heading", { name: /^一台自称「box-[ab]-\d+」的机器想加入$/ });
-  await expect(heading).toBeVisible({ timeout: 30_000 });
-
-  // The other one's notification, clicked: it opens in settings, not in the main window.
-  const shown = (await heading.textContent())!.includes(names[0]) ? 0 : 1;
-  const other = names[1 - shown];
-  type Hook = { hermeshTest: { notifications(): { title: string; click(): void }[] } };
-  await expect
-    .poll(() => app.evaluate(() => (globalThis as unknown as Hook).hermeshTest.notifications().map((n) => n.title)), { timeout: 30_000 })
-    .toContain(`机器「${other}」想加入`);
-  await app.evaluate((_, t) => (globalThis as unknown as Hook).hermeshTest.notifications().find((n) => n.title === t)?.click(), `机器「${other}」想加入`);
-  await expect(sheet.getByRole("heading", { name: `一台自称「${other}」的机器想加入` })).toBeVisible();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-
-  // Approved, the other follows; approved too, the sheet closes.
-  await sheet.getByRole("button", { name: "批准" }).click();
-  await expect(settings.getByRole("status").filter({ hasText: `「${other}」已加入` })).toBeVisible({ timeout: 30_000 });
-  await expect(sheet.getByRole("heading", { name: `一台自称「${names[shown]}」的机器想加入` })).toBeVisible();
-  await sheet.getByRole("button", { name: "批准" }).click();
-  await expect(sheet).toBeHidden({ timeout: 30_000 });
-  for (const p of pairs) expect(await p.exit, p.output()).toBe(0);
-  // Both joined (each names itself once it connects; these never run).
-  const { machines } = await api<{ machines: { machineId: string }[] }>(page, "ListMachines");
-  const added = machines.filter((m) => !before.has(m.machineId));
-  expect(added).toHaveLength(2);
-  for (const m of added) await api(page, "RemoveMachine", { machineId: m.machineId }); // the other tests' world stays as it was
-  await app.close();
-});
-
-test("requests wait as cards at the bottom right: a notification brings its own forward, Deny puts it off, View opens it", async () => {
-  const name = `Asker ${process.pid}`;
-  const other = `Other ${process.pid}`;
-  const { app, page } = await launch();
-  const st = await api<Status>(page, "GetStatus");
-  const login = newAgent().login(st.connectAddress, name);
-  const code = await login.code;
-  const card = page.getByRole("region", { name: "待你批准" });
-  // The overview lists it under 需要你处理; elsewhere, a card.
-  await expect(page.getByRole("region", { name: "需要你处理" })).toContainText(`「${name}」想连接你的电脑`, { timeout: 30_000 });
-  await expect(card).toHaveCount(0);
-  await (await sessionList(page)).getByText("跑很久", { exact: true }).click();
-  // Nothing in the way: a card, no sheet.
-  await expect(card).toContainText(`「${name}」想连接你的电脑`, { timeout: 30_000 });
-  await expect(card).toContainText("核对码");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await snap(page, "request-card");
-
-  // A second one stacks under it; its notification brings it forward.
-  const second = newAgent().login(st.connectAddress, other);
-  const otherCode = await second.code;
-  await expect(card).toContainText("1 / 2", { timeout: 30_000 });
-  await command(app, page, `pairing:${otherCode}`);
-  await expect(card).toContainText(`「${other}」想连接你的电脑`);
-  await card.getByRole("button", { name: "拒绝" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "先不处理" })).toBeVisible();
-  await expect(card).toContainText(`「${name}」想连接你的电脑`);
-  await expect(card).not.toContainText("1 / 2");
-
-  // Put off too, then back from its notification, viewed and approved.
-  await card.getByRole("button", { name: "拒绝" }).click();
-  await expect(card).toBeHidden();
-  await command(app, page, `pairing:${code}`);
-  await card.getByRole("button", { name: "查看…" }).click();
-  const sheet = page.getByRole("dialog", { name: `「${name}」想连接你的电脑` });
-  await expect(sheet.getByText(`「${name}」能用什么`)).toBeVisible();
-  await expect(card).toBeHidden();
-  await snap(page, "sheet-pairing-agent");
-  await sheet.getByRole("button", { name: "批准" }).click();
-  await expect(page.getByRole("status").filter({ hasText: `「${name}」已连接` })).toBeVisible();
-  expect(await login.exit, login.output()).toBe(0);
-  // The other one too, then cut off: the other tests' world stays as it was.
-  await command(app, page, `pairing:${otherCode}`);
-  await card.getByRole("button", { name: "查看…" }).click();
-  await page.getByRole("dialog", { name: `「${other}」想连接你的电脑` }).getByRole("button", { name: "批准" }).click();
-  expect(await second.exit, second.output()).toBe(0);
-  for (const c of (await api<{ clients: { grantId: string; label: string }[] }>(page, "ListClients")).clients) {
-    if (c.label === name || c.label === other) await api(page, "RevokeClient", { grantId: c.grantId });
-  }
-  await app.close();
-});
-
-test("a hosted agent shows its app's icon only when it signs in from the app's own domain", async () => {
+test("a hosted agent shows its app's icon only when it logs in from the app's own domain", async () => {
   // A connection to the hosted MCP gateway is named "Name (host)"; any app can call itself Muse.
   const muse = `Muse (a${process.pid}.meta.ai)`;
   const impostor = `Muse (meta.ai.p${process.pid}.example)`;
   const { app, page } = await launch();
   const st = await api<Status>(page, "GetStatus");
-  for (const [name, icon] of [[muse, ".pa-who img"], [impostor, ".pa-who .pa-icon.other"]]) {
-    await command(app, page, "newGrant");
-    const sheet = page.getByRole("dialog", { name: "连接你的 Agent" });
-    const login = newAgent().login(st.connectAddress, name);
-    await expect(sheet.getByText(`「${name}」能用什么`)).toBeVisible({ timeout: 30_000 });
-    await expect(sheet.locator(icon)).toBeVisible();
-    await sheet.getByRole("button", { name: "批准" }).click();
-    await expect(sheet.getByText(`「${name}」已连接`)).toBeVisible({ timeout: 30_000 });
-    expect(await login.exit, login.output()).toBe(0);
-    await sheet.getByRole("button", { name: "完成" }).click();
-    await expect(sheet).toBeHidden();
-  }
+  for (const name of [muse, impostor]) await loggedIn(page, st, name);
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("grants"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   const grants = settings.getByRole("list", { name: "授权" }).getByRole("button");
-  // The app by its own name, with its icon; the impostor keeps where it signed in, and a letter.
+  // The app by its own name, with its icon; the impostor keeps where it logged in, and a letter.
   await expect(grants.filter({ has: settings.locator(".fn", { hasText: /^Muse$/ }) }).first().locator("img")).toBeVisible();
   await expect(grants.filter({ hasText: impostor }).locator(".av")).toHaveText("M");
   await app.close();
@@ -368,13 +254,10 @@ test("renaming an agent from settings keeps what it may use and until when; a kn
   const name = `Renamer ${process.pid}`;
   const { app, page } = await launch();
   const st = await api<Status>(page, "GetStatus");
-  const login = newAgent().login(st.connectAddress, name);
-  await api(page, "ApproveClientPairing", { code: await login.code, spec: { machineIds: [st.localMachineId], projectIds: ["demo"], agents: ["gemini"], ttlDays: 7 } });
-  expect(await login.exit, login.output()).toBe(0);
+  const before = await loggedIn(page, st, name);
   const clients = async () => (await api<{ clients: Client[] }>(page, "ListClients")).clients;
-  const before = (await clients()).find((c) => c.label === name)!;
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("grants"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: new RegExp(name) }).click();
   const panel = settings.getByRole("main", { name: "授权" });
@@ -388,14 +271,14 @@ test("renaming an agent from settings keeps what it may use and until when; a kn
   await panel.getByRole("button", { name: "名字和图标…" }).click();
   await expect(sheet.getByRole("textbox", { name: "名字" })).toHaveValue(name);
   await sheet.getByRole("textbox", { name: "名字" }).fill("Grok Bot");
-  await sheet.getByRole("button", { name: "存储" }).click(); // the signer asks, and says yes
+  await sheet.getByRole("button", { name: "存储" }).click(); // the server signs it for this device
   await expect(sheet).toBeHidden();
   await expect(panel.locator(".dhero b")).toHaveText("Grok Bot");
   await expect(panel.locator(".dhero img")).toBeVisible(); // Grok Bot's icon
   const after = (await clients()).find((c) => c.grantId === before.grantId)!;
   expect(after.label).toBe("Grok Bot");
   expect(after.expiresAt).toEqual(before.expiresAt);
-  expect(after.spec).toMatchObject({ projectIds: ["demo"], agents: ["gemini"] });
+  expect(after.spec).toMatchObject({ ...before.spec, label: "Grok Bot" });
   await snap(settings, "settings-grant-renamed");
   await app.close();
 });
@@ -404,32 +287,35 @@ test("changing what an agent may use, and renewing it, from settings", async () 
   const name = `Changer ${process.pid}`;
   const { app, page } = await launch();
   const st = await api<Status>(page, "GetStatus");
-  const login = newAgent().login(st.connectAddress, name);
-  const spec = { machineIds: [st.localMachineId], projectIds: ["demo"], agents: ["gemini"], ttlDays: 7 };
-  await api(page, "ApproveClientPairing", { code: await login.code, spec });
-  expect(await login.exit, login.output()).toBe(0);
+  await loggedIn(page, st, name);
   const grant = async () => (await api<{ clients: Client[] }>(page, "ListClients")).clients.find((c) => c.label === name)!;
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("grants"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: new RegExp(name) }).click();
   const panel = settings.getByRole("main", { name: "授权" });
   await panel.getByRole("button", { name: "修改范围…" }).click();
   const sheet = settings.getByRole("dialog", { name: `修改「${name}」能用什么` });
-  await expect(sheet.getByRole("group", { name: "项目" })).toContainText("owner-mac 上的 demo");
-  await expect(sheet.getByRole("group", { name: "有效期" }).getByRole("button", { name: "30 天" })).toHaveAttribute("aria-pressed", "true");
-  await sheet.getByRole("checkbox", { name: "所有项目（包括以后添加的）" }).setChecked(true);
+  // As it logged in: everything, long-lived.
+  await expect(sheet.getByRole("group", { name: "项目" })).toContainText("所有项目（包括以后添加的）");
+  await expect(sheet.getByRole("group", { name: "有效期" }).getByRole("button", { name: "长期" })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("checkbox", { name: "所有项目（包括以后添加的）" }).setChecked(false);
+  for (const box of await sheet.getByRole("group", { name: "项目" }).getByRole("checkbox").all()) {
+    const text = (await box.textContent()) ?? "";
+    if (!text.includes("所有项目")) await box.setChecked(text.includes("/ demo"));
+  }
+  await sheet.getByRole("group", { name: "有效期" }).getByRole("button", { name: "30 天" }).click();
   await snap(settings, "sheet-scope");
-  await sheet.getByRole("button", { name: "保存并确认" }).click(); // the signer asks, and says yes
+  await sheet.getByRole("button", { name: "保存" }).click();
   await expect(settings.getByRole("status").filter({ hasText: `「${name}」已按新设置工作` })).toBeVisible();
   await expect(sheet).toBeHidden();
-  expect((await grant()).spec).toMatchObject({ machineIds: ["*"], projectIds: ["*"], agents: ["gemini"] });
+  expect((await grant()).spec).toMatchObject({ machineIds: [st.localMachineId], projectIds: ["demo"], agents: ["*"] });
 
   await panel.getByRole("button", { name: "续期…" }).click();
   const renew = settings.getByRole("dialog", { name: `续期「${name}」的授权` });
   await renew.getByRole("button", { name: "90 天" }).click();
-  await renew.getByRole("button", { name: "保存并确认" }).click();
+  await renew.getByRole("button", { name: "保存" }).click();
   await expect(renew).toBeHidden();
-  await expect.poll(async () => Math.round((Date.parse((await grant()).expiresAt) - Date.now()) / 86_400_000)).toBe(90);
+  await expect.poll(async () => Math.round((Date.parse((await grant()).expiresAt!) - Date.now()) / 86_400_000)).toBe(90);
   await app.close();
 });

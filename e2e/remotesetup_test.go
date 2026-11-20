@@ -4,11 +4,12 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestRemoteMachineSetup: what a trusted device does to set up a machine it
@@ -23,7 +24,7 @@ func TestRemoteMachineSetup(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	ctx := context.Background()
 
@@ -35,12 +36,9 @@ func TestRemoteMachineSetup(t *testing.T) {
 	gitRepoAt(t, filepath.Join(home, "code", "node_modules", "dep"), map[string]string{"x": "y"})
 	gitRepoAt(t, filepath.Join(home, "a", "b", "c", "deep"), map[string]string{"x": "y"})
 	vpsEnv := append(homeEnv(home), env...)
-	daemon := filepath.Join(w.bin, "hermeshd")
+	daemon := filepath.Join(w.bin, "aided")
 	data := filepath.Join(w.tmp, "vps-1")
-	pair := start(t, "pair", vpsEnv, daemon, "pair", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
-	if _, err := w.app.client.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: pair.pairingCode(t), MachineName: "vps-1"}); err != nil {
-		t.Fatal(err)
-	}
+	pair := start(t, "pair", append(slices.Clone(vpsEnv), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}
@@ -62,10 +60,10 @@ func TestRemoteMachineSetup(t *testing.T) {
 	// doctor and status in its shell ask the running machine (it holds its
 	// data directory).
 	doc := run(t, vpsEnv, 60*time.Second, daemon, "doctor", "--data-dir", data)
-	if !strings.Contains(doc.stdout, `paired       yes, as "vps-1"`) || !strings.Contains(doc.stdout, "relay        connected") || !strings.Contains(doc.stdout, "claude") {
+	if !strings.Contains(doc.stdout, `logged in    yes, as "vps-1"`) || !strings.Contains(doc.stdout, "relay        connected") || !strings.Contains(doc.stdout, "claude") {
 		t.Fatalf("doctor while it runs: %+v", doc)
 	}
-	if st := run(t, vpsEnv, 60*time.Second, daemon, "status", "--data-dir", data); st.code != 0 || !strings.Contains(st.stdout, `paired as "vps-1"`) || !strings.Contains(st.stdout, "connected") {
+	if st := run(t, vpsEnv, 60*time.Second, daemon, "status", "--data-dir", data); st.code != 0 || !strings.Contains(st.stdout, `logged in as "vps-1"`) || !strings.Contains(st.stdout, "connected") {
 		t.Fatalf("status while it runs: %+v", st)
 	}
 

@@ -59,7 +59,7 @@ async function client(r: Rendezvous) {
 }
 
 async function started(host: Host, promptTimeoutMs = 2000) {
-  const home = join(mkdtempSync(join(tmpdir(), "hmbridge-")), "hermesh-bridge");
+  const home = join(mkdtempSync(join(tmpdir(), "hmbridge-")), "aide-bridge");
   const server = new BridgeServer(host, { home, version: "0.1.0-test", promptTimeoutMs });
   const r = await server.start();
   return { server, r, home };
@@ -100,8 +100,8 @@ test("hello, state, prompt in queue order with its request id, cancel", async ()
   assert.deepEqual(hello.services, { sessionController: true, agents: true });
   assert.deepEqual((await c.call("state", { sessionId: "s_live" })).result, { live: true, status: "running" });
   assert.deepEqual((await c.call("state", { sessionId: "s_cold" })).result, { live: false, status: "" });
-  assert.deepEqual((await c.call("prompt", { sessionId: "s_live", requestId: "hermesh-01", text: "继续" })).result, { accepted: true });
-  assert.deepEqual(host.prompts, [{ sessionId: "s_live", requestId: "hermesh-01", text: "继续" }]);
+  assert.deepEqual((await c.call("prompt", { sessionId: "s_live", requestId: "aide-01", text: "继续" })).result, { accepted: true });
+  assert.deepEqual(host.prompts, [{ sessionId: "s_live", requestId: "aide-01", text: "继续" }]);
   assert.deepEqual((await c.call("cancel", { sessionId: "s_live" })).result, { cancelled: true });
   assert.deepEqual((await c.call("cancel", { sessionId: "s_cold" })).result, { cancelled: false });
   assert.deepEqual(host.cancelled, ["s_live"]);
@@ -135,7 +135,7 @@ test("a Host that never answers fails the prompt as a timeout, not a silent hang
   const { server, r } = await started(host, 200);
   const c = await client(r);
   const t0 = Date.now();
-  const res = await c.call("prompt", { sessionId: "s_live", requestId: "hermesh-02", text: "hi" });
+  const res = await c.call("prompt", { sessionId: "s_live", requestId: "aide-02", text: "hi" });
   assert.equal((res.error as { code: string }).code, "timeout");
   assert.ok(Date.now() - t0 < 2000);
   c.close();
@@ -147,7 +147,7 @@ test("DSH's refusal comes back with its code", async () => {
   host.fail = new BridgeError("busy", "session/agent-busy: busy");
   const { server, r } = await started(host);
   const c = await client(r);
-  assert.deepEqual((await c.call("prompt", { sessionId: "s_live", requestId: "hermesh-03", text: "hi" })).error, { code: "busy", message: "session/agent-busy: busy" });
+  assert.deepEqual((await c.call("prompt", { sessionId: "s_live", requestId: "aide-03", text: "hi" })).error, { code: "busy", message: "session/agent-busy: busy" });
   c.close();
   await server.close();
 });
@@ -168,8 +168,8 @@ test("DshHost: queue mode with the request id, DSH's error codes, cancel only a 
   };
   const host = new DshHost({ get: (n) => services[n] });
   assert.deepEqual(host.services(), { sessionController: true, agents: true });
-  await host.prompt("s1", "hermesh-x", "hello", new AbortController().signal);
-  assert.deepEqual(calls, [{ sessionId: "s1", requestId: "hermesh-x", mode: "queue", content: [{ type: "text", text: "hello" }] }]);
+  await host.prompt("s1", "aide-x", "hello", new AbortController().signal);
+  assert.deepEqual(calls, [{ sessionId: "s1", requestId: "aide-x", mode: "queue", content: [{ type: "text", text: "hello" }] }]);
   assert.equal(flushed, 1);
   assert.deepEqual(host.state("s1"), { live: true, status: "running" });
   assert.deepEqual(host.state("s2"), { live: false, status: "" });
@@ -186,9 +186,9 @@ test("DshHost: queue mode with the request id, DSH's error codes, cancel only a 
   await assert.rejects(none.prompt("s1", "r", "x", new AbortController().signal), (e: BridgeError) => e.code === "unavailable");
 });
 
-test("the bridge's folder follows DSH_HOME as hermeshd reads it", () => {
-  assert.equal(bridgeHome({ DSH_HOME: "/srv/dsh" }), join("/srv/dsh", "hermesh-bridge"));
-  assert.match(bridgeHome({}), /\.dsh[\\/]hermesh-bridge$/);
-  assert.match(bridgeHome({ DSH_HOME: "  " }), /\.dsh[\\/]hermesh-bridge$/);
-  assert.match(bridgeHome({ DSH_HOME: "~/other" }), /other[\\/]hermesh-bridge$/);
+test("the bridge's folder follows DSH_HOME as aided reads it", () => {
+  assert.equal(bridgeHome({ DSH_HOME: "/srv/dsh" }), join("/srv/dsh", "aide-bridge"));
+  assert.match(bridgeHome({}), /\.dsh[\\/]aide-bridge$/);
+  assert.match(bridgeHome({ DSH_HOME: "  " }), /\.dsh[\\/]aide-bridge$/);
+  assert.match(bridgeHome({ DSH_HOME: "~/other" }), /other[\\/]aide-bridge$/);
 });

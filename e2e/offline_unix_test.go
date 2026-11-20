@@ -12,21 +12,21 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/sessionstate"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/sessionstate"
 )
 
 // TestSessionsOfAnOfflineMachine: a session's machine drops in the middle
 // of a turn: it loses its network (frozen: it answers nothing), and later
-// its hermeshd stops. While it is away nothing shows its session as at
+// its aided stops. While it is away nothing shows its session as at
 // work (docs/session-states.md): within the lost limit of its last
 // heartbeat, the owner's screens hold the session as it last was, its
 // machine's heartbeat time with it, and work it out as lost (last known
 // running); the agent's CLI lists it under lost_sessions, lost, with its
 // heartbeat's age, and session get fails as unreachable with the session as
 // last read, lost. Once the machine is back every one of them shows the
-// session as it is now, by itself: its turn done, or, where hermeshd
+// session as it is now, by itself: its turn done, or, where aided
 // stopped, crashed; and the screens keep the time it was lost. Before it
 // drops, a turn quiet past the stall limit reads stalled.
 func TestSessionsOfAnOfflineMachine(t *testing.T) {
@@ -34,7 +34,7 @@ func TestSessionsOfAnOfflineMachine(t *testing.T) {
 		t.Skip("e2e")
 	}
 	w, vpsID, restart := farOwnerWithVPS(t, 0)
-	vps := w.logs[len(w.logs)-1] // the vps-1 hermeshd farOwnerWithVPS started
+	vps := w.logs[len(w.logs)-1] // the vps-1 aided farOwnerWithVPS started
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if _, err := w.app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: vpsID, ProjectId: "demo", Path: gitRepo(t, map[string]string{"README.md": "# vps\n"})}); err != nil {
@@ -168,7 +168,7 @@ func TestSessionsOfAnOfflineMachine(t *testing.T) {
 	scr.mu.Unlock()
 	// Quiet past a (short) stall limit: stalled, to the CLI and the screen.
 	time.Sleep(6 * time.Second)
-	stalled := firstSession(run(t, append(slices.Clone(w.cliEnv), "HERMESH_STALL_AFTER=5"), time.Minute, filepath.Join(w.bin, "hermesh"), "session", "get", s.SessionID, "-o", "json").stdout)
+	stalled := firstSession(run(t, append(slices.Clone(w.cliEnv), "AIDE_STALL_AFTER=5"), time.Minute, filepath.Join(w.bin, "aide"), "session", "get", s.SessionID, "-o", "json").stdout)
 	if stalled.State != "running" || stalled.Link != "stalled" || stalled.StalledFor < 5 || stalled.LastEventAt == nil || stalled.Stale {
 		t.Fatalf("a quiet turn, stall limit 5s: %+v", stalled)
 	}
@@ -179,7 +179,7 @@ func TestSessionsOfAnOfflineMachine(t *testing.T) {
 		t.Fatalf("under the default stall limit, live")
 	}
 	t.Logf("quiet turn, stall limit 5s: %q", stalled.StateText)
-	if r := run(t, append(slices.Clone(w.cliEnv), "HERMESH_STALL_AFTER=5"), time.Minute, filepath.Join(w.bin, "hermesh"), "session", "list"); r.code == 0 {
+	if r := run(t, append(slices.Clone(w.cliEnv), "AIDE_STALL_AFTER=5"), time.Minute, filepath.Join(w.bin, "aide"), "session", "list"); r.code == 0 {
 		t.Logf("session list, stall limit 5s:\n%s", r.stdout)
 	}
 	vps.cmd.Process.Signal(syscall.SIGSTOP)
@@ -205,7 +205,7 @@ func TestSessionsOfAnOfflineMachine(t *testing.T) {
 	})
 	back()
 
-	// hermeshd stops in the middle of a turn, and starts again.
+	// aided stops in the middle of a turn, and starts again.
 	s, r = w.startSession(time.Minute, "--project", "vps-1/demo", "--prompt", "sleep 10m")
 	if s.SessionID == "" {
 		t.Fatalf("start: %+v", r)

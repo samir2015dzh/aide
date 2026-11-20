@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 type Provider struct {
@@ -184,14 +184,14 @@ var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 func Args(spec provider.StartSpec) []string {
 	// --replay-user-messages echoes each message when the agent takes it
 	// (isReplay), which tells whether steered input is still waiting.
-	// --permission-prompt-tool stdio makes Hermesh the permission host:
+	// --permission-prompt-tool stdio makes Aide the permission host:
 	// without one Claude offers no AskUserQuestion in -p mode. Anything
 	// else that would prompt is denied, as with --permission-prompts none.
 	// --include-partial-messages streams the reply as it is written
 	// (stream_event lines), for drafts.
 	// crossSessionInbound refuse shuts Claude Code's own inbox: a message
 	// posted there by another session, or by anything holding the session's
-	// token, would start a turn Hermesh never asked for. --settings outranks
+	// token, would start a turn Aide never asked for. --settings outranks
 	// the user's and the project's settings.
 	args := []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--replay-user-messages",
 		"--include-partial-messages", "--permission-prompt-tool", "stdio", "--dangerously-skip-permissions",
@@ -236,7 +236,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	}
 	// Read before writing: Claude may fill stdout before it reads stdin.
 	go s.read()
-	init := map[string]any{"type": "control_request", "request_id": "hermesh-init",
+	init := map[string]any{"type": "control_request", "request_id": "aide-init",
 		"request": map[string]any{"subtype": "initialize",
 			"hooks": map[string]any{"PreToolUse": []any{map[string]any{"matcher": nil, "hookCallbackIds": []string{"gate"}}}}}}
 	if err := s.write(init); err != nil {
@@ -387,7 +387,7 @@ func (s *session) writeUser(in provider.Input) error {
 func (s *session) Interrupt(ctx context.Context) error {
 	s.mu.Lock()
 	s.reqSeq++
-	id := fmt.Sprintf("hermesh-int-%d", s.reqSeq)
+	id := fmt.Sprintf("aide-int-%d", s.reqSeq)
 	s.mu.Unlock()
 	return s.write(map[string]any{"type": "control_request", "request_id": id, "request": map[string]any{"subtype": "interrupt"}})
 }

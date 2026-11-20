@@ -1,5 +1,5 @@
 import { demoTokenPlans } from "./token-plans.ts";
-import type { ModelsListResult, ModelSummary, PermissionMode, ProviderSummary, SkillsListResult, SkillUse, ThinkingLevel } from "@hermesh/her-protocol";
+import type { ModelsListResult, ModelSummary, ProviderSummary, SkillsListResult, SkillUse, ThinkingLevel } from "@aide/her-protocol";
 import { skillMentions } from "../mentions.ts";
 import type { TaskScript } from "./script.ts";
 import { snake } from "./snake.ts";
@@ -11,10 +11,10 @@ const min = 60_000;
 const hour = 60 * min;
 const day = 24 * hour;
 
-export const root = snake.cwd.replace(/\/hermesh\/her\/examples\/snake-game$/, "");
+export const root = snake.cwd.replace(/\/aide\/her\/examples\/snake-game$/, "");
 export const projects = {
-  her: `${root}/hermesh/her`,
-  hermesh: `${root}/hermesh`,
+  her: `${root}/aide/her`,
+  aide: `${root}/aide`,
   playground: `${root}/playground`,
 };
 
@@ -30,7 +30,6 @@ export interface DemoSession {
   cwd: string;
   model: string;
   thinking: ThinkingLevel;
-  permission_mode: PermissionMode;
   /** Started without a project: `cwd` is the folder made for it. */
   no_project?: boolean;
   /** A title of its own (P3); without one the list shows the first message. */
@@ -106,7 +105,6 @@ const cleanup: TaskScript = {
           args: { command: "rm -rf ~/.her/tmp/0193f0c2 ~/.her/tmp/0193e1a7 ~/.her/tmp/0193d4b9" },
           output: "Exit code: 0\nDuration: 0.1s\nOutput:\n",
           ms: 300,
-          approval: { summary: "rm -rf ~/.her/tmp/0193f0c2 ~/.her/tmp/0193e1a7 ~/.her/tmp/0193d4b9", reason: "这条命令会删除文件，不在只读命令的范围内" },
         },
       ],
     },
@@ -130,11 +128,11 @@ const readme: TaskScript = {
   turns: [
     {
       say: "先看现在的 README。",
-      tools: [{ name: "read", args: { path: `${projects.hermesh}/README.md` }, output: "# Aide\n\nLet your agents hand work to Claude Code on your computer.\n…", ms: 200 }],
+      tools: [{ name: "read", args: { path: `${projects.aide}/README.md` }, output: "# Aide\n\nLet your agents hand work to Claude Code on your computer.\n…", ms: 200 }],
     },
     {
       say: "安装说明分散在三处，我把它们合并成一节，并按平台分开写。",
-      tools: [{ name: "edit", args: { path: `${projects.hermesh}/README.md`, edits: [{ old_text: "## Install", new_text: "## 安装\n\n### macOS\n…" }] }, output: `Edited ${projects.hermesh}/README.md`, ms: 200 }],
+      tools: [{ name: "edit", args: { path: `${projects.aide}/README.md`, edits: [{ old_text: "## Install", new_text: "## 安装\n\n### macOS\n…" }] }, output: `Edited ${projects.aide}/README.md`, ms: 200 }],
     },
     { say: "改好了：安装说明合并成「安装」一节，分 macOS 和 Linux 两小节，命令都能直接复制运行。" },
   ],
@@ -187,7 +185,6 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.her,
       model: "deepseek/deepseek-flash",
       thinking: "default",
-      permission_mode: "accept-edits",
       ago: 3 * min,
       history: [],
       live: { prompt: "给 her-llm 加一个 Gemini 的线协议适配器，参照 anthropic.rs 的写法，加上回放测试。", script: gemini, played: 1 },
@@ -197,7 +194,6 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.her,
       model: "deepseek/deepseek-flash",
       thinking: "low",
-      permission_mode: "manual",
       title: "清理会话的临时输出",
       ago: 9 * min,
       history: [],
@@ -208,17 +204,15 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.her,
       model: "deepseek/deepseek-flash",
       thinking: "high",
-      permission_mode: "manual",
       title: "评审上下文压缩方案",
       ago: 40 * min,
       history: [{ prompt: "评审一下 docs/context-management.md 的压缩方案，重点看失败处理和多次压缩。", script: review }],
     },
     {
       id: "0193e2c4-7f1a-7d38-a2b6-5e4f3c2d1b0a",
-      cwd: projects.hermesh,
+      cwd: projects.aide,
       model: "anthropic/claude-sonnet-5-5",
       thinking: "off",
-      permission_mode: "accept-edits",
       title: "整理 README 的安装说明",
       ago: 1 * day + 3 * hour,
       history: [{ prompt: "README 里的安装说明太散了，整理成一节，按平台分开。", script: readme }],
@@ -229,7 +223,6 @@ export function demoSessions(): DemoSession[] {
       no_project: true,
       model: "deepseek/deepseek-pro",
       thinking: "high",
-      permission_mode: "manual",
       title: "解释一下推理模式",
       ago: 2 * day + 4 * hour,
       history: [{ prompt: "推理模式和普通模式有什么区别？什么时候该开？", script: reasoning }],
@@ -239,7 +232,6 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.her,
       model: "deepseek/deepseek-flash",
       thinking: "default",
-      permission_mode: "manual",
       title: "排查启动慢的原因",
       ago: 3 * day + 2 * hour,
       history: [{ prompt: "感觉 her 启动有点慢，帮我查一下慢在哪里。", script: startup }],
@@ -249,7 +241,6 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.her,
       model: "deepseek/deepseek-flash",
       thinking: "default",
-      permission_mode: "manual",
       title: "重写 bash 工具的超时处理",
       ago: 4 * day + 5 * hour,
       history: [{ prompt: "bash 工具超时后，子进程有时还活着。改成超时杀整个进程组。", script: timeout, interrupted: true }],
@@ -259,7 +250,6 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.her,
       model: "deepseek/deepseek-flash",
       thinking: "default",
-      permission_mode: "accept-edits",
       title: "会话日志格式升级到 v2",
       ago: 12 * day,
       history: [{ prompt: "会话日志要升级到 v2，看看需要改哪些地方，要不要迁移旧文件。", script: migrate }],
@@ -269,7 +259,6 @@ export function demoSessions(): DemoSession[] {
       cwd: projects.playground,
       model: "deepseek/deepseek-pro",
       thinking: "max",
-      permission_mode: "manual",
       title: "试用 DeepSeek 推理模式",
       archived: true,
       ago: 20 * day,
@@ -304,19 +293,18 @@ export function replyScript(prompt: string): TaskScript {
             args: { path: "NOTES.md", edits: [{ old_text: "## 待办\n", new_text: `## 待办\n\n- ${topic}\n` }] },
             output: "Edited NOTES.md",
             ms: 200,
-            approval: { summary: "edit NOTES.md", reason: "要修改项目里的文件" },
           },
         ],
       },
       {
         think: "结构清楚了。这是演示环境，没有连接真实内核，给出一个说明即可。",
-        say: `这是 **Aide 的演示数据**：界面已经可以使用，但还没有连接 her 内核，所以这里的回复是预先写好的。\n\n连接内核之后，你发出的「${topic}」会交给 her 处理：\n\n1. 读取项目的指令文件和相关代码；\n2. 按审批模式执行工具调用，需要时在下方请你批准；\n3. 把结果写回这里。\n\n\`\`\`bash\n# 内核就绪后，桌面端会自动拉起常驻服务\nher serve --listen unix://\n\`\`\``,
+        say: `这是 **Aide 的演示数据**：界面已经可以使用，但还没有连接 her 内核，所以这里的回复是预先写好的。\n\n连接内核之后，你发出的「${topic}」会交给 her 处理：\n\n1. 读取项目的指令文件和相关代码；\n2. 直接执行需要的工具调用，不用你逐项批准；\n3. 把结果写回这里。\n\n\`\`\`bash\n# 内核就绪后，桌面端会自动拉起常驻服务\nher serve --listen unix://\n\`\`\``,
       },
     ],
   };
 }
 
-/** A message about a website opens it in the user's own browser, which asks first. */
+/** A message about a website opens it in the user's own browser. */
 export function wantsSite(text: string): boolean {
   return /cloudflare|网站|website/i.test(text);
 }
@@ -333,19 +321,10 @@ export function siteScript(): TaskScript {
             args: { url, browser: "yours" },
             output: "Opened Cloudflare | Web Performance & Security",
             ms: 600,
-            approval: {
-              summary: `open ${url}`,
-              reason: "First use of https://dash.cloudflare.com in this session. It is in the user's own browser, with their real sign-ins.",
-              grants: [
-                { authority: "act", origin: "https://dash.cloudflare.com" },
-                { authority: "act", origin: "*" },
-              ],
-              own_browser: true,
-            },
           },
         ],
       },
-      { say: "控制台已经打开，账户首页列出了 hermesh.io 的流量概览。" },
+      { say: "控制台已经打开，账户首页列出了 aide.io 的流量概览。" },
     ],
   };
 }
@@ -364,7 +343,7 @@ const demoSkillList: { name: string; description: string; hint?: string; scope: 
 ];
 
 const skillPath = (s: (typeof demoSkillList)[number]) =>
-  s.scope === "project" ? `/Users/demo/code/hermesh/.agents/skills/${s.name}/SKILL.md` : `/Users/demo/.her/skills/${s.name}/SKILL.md`;
+  s.scope === "project" ? `/Users/demo/code/aide/.agents/skills/${s.name}/SKILL.md` : `/Users/demo/.her/skills/${s.name}/SKILL.md`;
 
 /** The demo's `skills/list`, for a session or a folder alike. */
 export function demoSkills(): SkillsListResult {
@@ -465,6 +444,6 @@ export function demoModels(stored: ReadonlySet<string> = new Set(), selection: D
   return {
     models,
     providers,
-    defaults: { model: "deepseek/deepseek-flash", thinking: "default", permission_mode: "manual" },
+    defaults: { model: "deepseek/deepseek-flash", thinking: "default" },
   };
 }

@@ -35,7 +35,7 @@ async fn new_session(client: &Client, cwd: &Path) -> (String, Value) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn stdio_runs_a_full_session() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&[
         "InitializeResult",
         "SessionNewResult",
@@ -67,10 +67,10 @@ async fn stdio_runs_a_full_session() {
     assert_eq!(list["sessions"][0]["session_id"], json!(session));
     assert_eq!(list["sessions"][0]["loaded"], true);
 
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:files]] go", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:files]] go").await;
     assert_eq!(turn.end["type"], "task_completed");
     assert_eq!(turn.end["reason"], "done");
-    assert_eq!(turn.approvals, 1);
+    assert!(turn.types().iter().all(|t| !t.starts_with("approval")), "nothing is asked");
     assert_eq!(turn.events[0]["type"], "session_started", "the creator sees every event");
     assert_increasing(&turn.events);
     let titles: Vec<&str> = turn
@@ -86,7 +86,7 @@ async fn stdio_runs_a_full_session() {
     }
 
     // A second prompt in the same session, then the history pages.
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:think]] second", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:think]] second").await;
     assert_eq!(turn.text, "Thought it through.");
     for event in &turn.events {
         schema.check("Event", event);
@@ -115,12 +115,12 @@ async fn stdio_runs_a_full_session() {
     let models = client.request("models/list", json!({})).await.unwrap();
     schema.check("ModelsListResult", &models);
     assert!(models["models"].as_array().unwrap().iter().any(|m| m["id"] == "mock/mock-1"));
-    let err = client
+    // Approvals are gone: there is no op to answer one.
+    let gone = client
         .request("session/op", json!({"session_id": session, "op": {"type": "approval", "call_id": "nope",
             "decision": {"type": "approve"}}}))
-        .await
-        .unwrap_err();
-    assert_eq!(err.kind(), Some("approval_not_pending"));
+        .await;
+    assert!(gone.is_err(), "{gone:?}");
 
     client.request("session/close", json!({"session_id": session})).await.unwrap();
     let err = client
@@ -136,7 +136,7 @@ async fn stdio_runs_a_full_session() {
     let resumed = client.request("session/resume", json!({"session_id": session})).await.unwrap();
     schema.check("SnapshotResult", &resumed);
     assert!(resumed["snapshot"]["transcript"]["items"].as_array().unwrap().len() >= 8);
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:bash:echo third]] go", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:bash:echo third]] go").await;
     assert_eq!(turn.text, "bash done");
     for event in &turn.events {
         schema.check("Event", event);
@@ -148,25 +148,9 @@ async fn stdio_runs_a_full_session() {
     assert_eq!(common::exit_code(&mut child).await, 0);
 }
 
-/// The next thing a sub-agent asks, as its `agent_event`.
-async fn until_asked(events: &mut tokio::sync::mpsc::UnboundedReceiver<her_rpc::Incoming>) -> Value {
-    loop {
-        let incoming = recv(events).await;
-        if incoming.method() != "session/event" {
-            continue;
-        }
-        let event = incoming.params()["event"].clone();
-        if event["type"] == "agent_event" && event["event"]["type"] == "approval_requested" {
-            return event;
-        }
-        assert_ne!(event["type"], "idle", "ended without asking");
-    }
-}
-
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn the_clients_of_a_session_answer_what_its_sub_agents_ask() {
-    let env = TestEnv::new("manual", "").await;
-    let schema = SchemaCheck::new(&["SnapshotResult", "Event"]);
+async fn a_sessions_sub_agents_run_their_commands_without_asking() {
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -175,32 +159,6 @@ async fn the_clients_of_a_session_answer_what_its_sub_agents_ask() {
     let mut events = demux.subscribe(&session);
     let op = json!({"session_id": session, "op": {"type": "prompt", "input": [{"type": "text", "text": "[[mock:delegate:touch a.txt|touch b.txt]] run them"}]}});
     client.request("session/op", op).await.unwrap();
-
-    let first = until_asked(&mut events).await;
-    schema.check("Event", &first);
-    let answer = |asked: &Value, decision: Value| json!({"session_id": session, "op": {"type": "agent_approval", "agent": asked["agent_id"], "call_id": asked["event"]["call_id"], "decision": decision}});
-
-    // A client that comes now sees it in the snapshot, under the sub-agent; the list says the
-    // session waits for the user.
-    let attach = client.request("session/attach", json!({"session_id": session})).await.unwrap();
-    schema.check("SnapshotResult", &attach);
-    let asking = attach["snapshot"]["agents"].as_array().unwrap().iter().find(|a| a["agent_id"] == first["agent_id"]).unwrap();
-    assert_eq!(asking["active_task"]["approvals"][0]["call_id"], first["event"]["call_id"]);
-    let list = client.request("session/list", json!({})).await.unwrap();
-    assert_eq!(list["sessions"][0]["state"], "awaiting_approval");
-
-    // The session's own approval op is not the way, and the first answer counts.
-    let own = json!({"session_id": session, "op": {"type": "approval", "call_id": first["event"]["call_id"], "decision": {"type": "approve"}}});
-    let err = client.request("session/op", own).await.unwrap_err();
-    assert_eq!(err.kind(), Some("approval_not_pending"));
-    client.request("session/op", answer(&first, json!({"type": "approve"}))).await.unwrap();
-    let err = client.request("session/op", answer(&first, json!({"type": "approve"}))).await.unwrap_err();
-    assert_eq!(err.kind(), Some("approval_not_pending"));
-
-    // One question at a time: the other sub-agent asks now.
-    let second = until_asked(&mut events).await;
-    assert_ne!(second["agent_id"], first["agent_id"]);
-    client.request("session/op", answer(&second, json!({"type": "approve"}))).await.unwrap();
     loop {
         let incoming = recv(&mut events).await;
         if incoming.method() == "session/event" && incoming.params()["event"]["type"] == "idle" {
@@ -214,7 +172,7 @@ async fn the_clients_of_a_session_answer_what_its_sub_agents_ask() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_session_without_a_project_works_in_a_folder_of_its_own() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -228,7 +186,7 @@ async fn a_session_without_a_project_works_in_a_folder_of_its_own() {
     let (other, _) = new_session(&client, &project).await;
 
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:files]] go", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:files]] go").await;
     assert_eq!(turn.end["reason"], "done");
     assert_eq!(std::fs::read_to_string(cwd.join("notes.txt")).unwrap(), "gamma\nbeta\n");
     let flags = |list: &Value| -> Vec<(String, bool)> {
@@ -256,7 +214,7 @@ async fn a_session_without_a_project_works_in_a_folder_of_its_own() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn stdio_rejects_bad_input_and_keeps_going() {
-    let env = TestEnv::new("manual", "[server]\nmax_frame_bytes = 65536\n").await;
+    let env = TestEnv::new("[server]\nmax_frame_bytes = 65536\n").await;
     let (mut child, client, _incoming) = env.spawn_rpc(&["serve"]);
     let err = client.request("session/list", json!({})).await.unwrap_err();
     assert_eq!(err.kind(), Some("not_initialized"));
@@ -286,7 +244,7 @@ async fn stdio_rejects_bad_input_and_keeps_going() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_request_over_the_limit_gets_its_answer() {
-    let env = TestEnv::new("manual", "[server]\nmax_frame_bytes = 65536\n").await;
+    let env = TestEnv::new("[server]\nmax_frame_bytes = 65536\n").await;
     let (mut child, client, _incoming) = env.spawn_rpc(&["serve"]);
     native_init(&client).await;
     let padded = |bytes: usize| json!({"padding": "x".repeat(bytes)});
@@ -348,7 +306,7 @@ where
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_line_without_end_is_answered_on_every_transport() {
-    let env = TestEnv::new("manual", "[server]\nmax_frame_bytes = 65536\n").await;
+    let env = TestEnv::new("[server]\nmax_frame_bytes = 65536\n").await;
     let native = json!({"protocol_version": 2, "client_info": {"name": "e2e"}});
     let acp = json!({"protocolVersion": 1, "clientCapabilities": {}});
     for (args, initialize) in [(["serve"], native.clone()), (["acp"], acp)] {
@@ -378,7 +336,7 @@ async fn resident_mib(pid: u32) -> u64 {
 #[cfg(unix)]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn endless_input_is_answered_and_stays_bounded() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     for args in [["acp"], ["serve"]] {
         let zero = std::fs::File::open("/dev/zero").unwrap();
         let mut child = env.her(&args).stdin(Stdio::from(zero)).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().unwrap();
@@ -418,7 +376,7 @@ fn names(list: &Value, field: &str) -> Vec<String> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn skills_list_reports_a_session_and_a_directory() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["SkillsListResult", "ContextReport"]);
     let report = env.home.path().join("skills").join("gen-report").join("SKILL.md");
     write_file(&report, "---\nname: gen-report\ndescription: Weekly report.\nargument-hint: \"[week]\"\n---\nbody\n");
@@ -474,7 +432,7 @@ async fn skills_list_reports_a_session_and_a_directory() {
 
     // `/skill:name` and `/compact` through session/op, as in every front end.
     let typed = "this week, please: /skill:gen-report [[mock:invoked]], then /skill:lint";
-    let turn = native_prompt(&client, &mut events, &session, typed, true).await;
+    let turn = native_prompt(&client, &mut events, &session, typed).await;
     assert_eq!(turn.text, "invoked done");
     let user = turn
         .events
@@ -490,7 +448,7 @@ async fn skills_list_reports_a_session_and_a_directory() {
     let items = attached["snapshot"]["transcript"]["items"].as_array().unwrap();
     let item = items.iter().find(|i| i["message"]["role"] == "user").unwrap();
     assert_eq!((&item["message"]["content"][0]["text"], &item["skills"]), (&json!(typed), &user["skills"]));
-    let turn = native_prompt(&client, &mut events, &session, "/compact", true).await;
+    let turn = native_prompt(&client, &mut events, &session, "/compact").await;
     assert_eq!(turn.end["type"], "task_completed");
     let compacted = turn.events.iter().find(|e| e["type"] == "compaction_completed").unwrap();
     assert_eq!(compacted["kept_skills"], json!(["lint", "gen-report"]), "mentioned last, used last");
@@ -539,7 +497,7 @@ async fn wait_for_socket(path: &Path) {
 /// socket raised SIGPIPE, which her's default for commands made fatal.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn clients_gone_before_their_answers_leave_the_service_up() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("t.sock");
     let url = format!("unix://{}", socket.display());
     let mut service = env.her(&["serve", "--listen", &url]).spawn().unwrap();
@@ -563,7 +521,7 @@ async fn clients_gone_before_their_answers_leave_the_service_up() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn unix_service_shares_sessions_between_clients() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("t.sock");
     let url = format!("unix://{}", socket.display());
     let mut service = env.her(&["serve", "--listen", &url]).spawn().unwrap();
@@ -583,43 +541,19 @@ async fn unix_service_shares_sessions_between_clients() {
         "input": [{"type": "text", "text": "[[mock:bash:touch shared.txt]] run"}]}}))
         .await
         .unwrap();
-    let call_id = loop {
+    loop {
         let msg = recv(&mut a_events).await;
-        let event = &msg.params()["event"];
-        if event["type"] == "approval_requested" {
-            break event["call_id"].as_str().unwrap().to_string();
-        }
-    };
-
-    // Client B attaches mid-task: the snapshot shows the pending approval, and B answers it.
-    let (b, b_in) = connect(&socket).await;
-    let b_demux = Demux::spawn(b_in);
-    let attach = b.request("session/attach", json!({"session_id": session})).await.unwrap();
-    let pending = &attach["snapshot"]["active_task"]["approvals"];
-    assert_eq!(pending[0]["call_id"], json!(call_id));
-    let mut b_events = b_demux.subscribe(&session);
-    b.request("session/op", json!({"session_id": session, "op": {"type": "approval", "call_id": call_id,
-        "decision": {"type": "approve"}}}))
-        .await
-        .unwrap();
-    let late = a
-        .request("session/op", json!({"session_id": session, "op": {"type": "approval", "call_id": call_id,
-            "decision": {"type": "deny"}}}))
-        .await
-        .unwrap_err();
-    assert_eq!(late.kind(), Some("approval_not_pending"));
-    for events in [&mut a_events, &mut b_events] {
-        loop {
-            let msg = recv(events).await;
-            let event = &msg.params()["event"];
-            if event["type"] == "approval_resolved" {
-                assert_eq!(event["decision"]["type"], "approve");
-            }
-            if event["type"] == "task_completed" {
-                break;
-            }
+        if msg.params()["event"]["type"] == "task_completed" {
+            break;
         }
     }
+    assert!(cwd.join("shared.txt").exists(), "the command ran without asking");
+
+    // Client B attaches: it sees the session as it is and works with it.
+    let (b, b_in) = connect(&socket).await;
+    let b_demux = Demux::spawn(b_in);
+    b.request("session/attach", json!({"session_id": session})).await.unwrap();
+    let mut b_events = b_demux.subscribe(&session);
 
     // A leaves; the session stays loaded and B keeps working with it.
     drop(a);
@@ -635,7 +569,7 @@ async fn unix_service_shares_sessions_between_clients() {
     })
     .await
     .expect("A's connection is removed before it reconnects");
-    let turn = native_prompt(&b, &mut b_events, &session, "[[mock:echo]] after a left", true).await;
+    let turn = native_prompt(&b, &mut b_events, &session, "[[mock:echo]] after a left").await;
     assert_eq!(turn.text, "echo: after a left");
 
     // A comes back and catches up from a snapshot.
@@ -659,13 +593,13 @@ async fn unix_service_shares_sessions_between_clients() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_session_is_open_in_one_process_at_a_time() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (mut first, a, a_in) = env.spawn_rpc(&["serve"]);
     native_init(&a).await;
     let demux = Demux::spawn(a_in);
     let (session, _) = new_session(&a, &env.workspace("locked")).await;
     let mut events = demux.subscribe(&session);
-    native_prompt(&a, &mut events, &session, "[[mock:echo]] hold", false).await;
+    native_prompt(&a, &mut events, &session, "[[mock:echo]] hold").await;
 
     let (mut second, b, _b_in) = env.spawn_rpc(&["serve"]);
     native_init(&b).await;
@@ -769,7 +703,7 @@ fn texts_of(snapshot: &Value) -> Vec<String> {
 /// later and the session list agree with them, and so does the log once the session is reopened.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn every_client_and_every_list_go_back_with_a_resend() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["Event", "InitializeResult", "SnapshotResult", "SessionsChangedParams"]);
     let socket = env.home.path().join("run").join("r.sock");
     let url = format!("unix://{}", socket.display());
@@ -794,9 +728,9 @@ async fn every_client_and_every_list_go_back_with_a_resend() {
     let cwd = env.workspace("back");
     let (session, _) = new_session(&a, &cwd).await;
     let mut a_events = a_demux.subscribe(&session);
-    let first = native_prompt(&a, &mut a_events, &session, "[[mock:echo]] first", true).await;
+    let first = native_prompt(&a, &mut a_events, &session, "[[mock:echo]] first").await;
     let first_id = sent_id(&first.events);
-    let second = native_prompt(&a, &mut a_events, &session, "[[mock:echo]] second", true).await;
+    let second = native_prompt(&a, &mut a_events, &session, "[[mock:echo]] second").await;
     let second_id = sent_id(&second.events);
     changes_until(&mut watch_in, &session, |s| s["state"] == "idle" && s["preview"] == "[[mock:echo]] first").await;
 
@@ -914,7 +848,7 @@ async fn every_client_and_every_list_go_back_with_a_resend() {
 /// record, follow the session list, run a task, rename, archive, resume, save a key, delete.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_desktop_flow_over_the_socket() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let schema = SchemaCheck::new(&["SessionListResult", "SessionsChangedParams", "ModelsListResult", "SnapshotResult"]);
     let socket = env.home.path().join("run").join("her.sock");
     let url = format!("unix://{}", socket.display());
@@ -948,11 +882,11 @@ async fn the_desktop_flow_over_the_socket() {
     let cwd = env.workspace("desk");
     let (session, _) = new_session(&a, &cwd).await;
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&a, &mut events, &session, "[[mock:bash:touch d.txt]] make the file", true).await;
+    let turn = native_prompt(&a, &mut events, &session, "[[mock:bash:touch d.txt]] make the file").await;
     assert_eq!(turn.end["type"], "task_completed");
     let rows = changes_until(&mut watch_in, &session, |s| s["state"] == "idle" && s["preview"].is_string()).await;
     let states: Vec<&str> = rows.iter().map(|s| s["state"].as_str().unwrap()).collect();
-    assert!(states.contains(&"running") && states.contains(&"awaiting_approval"), "{states:?}");
+    assert!(states.contains(&"running") && !states.contains(&"awaiting_approval"), "{states:?}");
     let last = rows.last().unwrap();
     assert_eq!(last["preview"], "[[mock:bash:touch d.txt]] make the file");
     assert_eq!(last["model"], "mock/mock-1");
@@ -1015,7 +949,7 @@ async fn the_desktop_flow_over_the_socket() {
     let models = watch.request("models/list", json!({})).await.unwrap();
     schema.check("ModelsListResult", &models);
     assert_eq!(models["defaults"]["model"], "mock/mock-1");
-    assert_eq!(models["defaults"]["permission_mode"], "manual");
+    assert!(models["defaults"].get("permission_mode").is_none());
     let provider = |models: &Value, id: &str| {
         models["providers"].as_array().unwrap().iter().find(|p| p["id"] == id).cloned().unwrap()
     };
@@ -1075,7 +1009,7 @@ async fn wait_loaded(client: &Client, expected: &[(&str, bool)]) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_full_server_unloads_the_session_unused_the_longest() {
-    let env = TestEnv::new("bypass-permissions", "[server]\nmax_sessions = 3\n").await;
+    let env = TestEnv::new("[server]\nmax_sessions = 3\n").await;
     let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -1084,7 +1018,7 @@ async fn a_full_server_unloads_the_session_unused_the_longest() {
     let (b, _) = new_session(&client, &cwd).await;
     let (c, _) = new_session(&client, &cwd).await;
     let mut b_events = demux.subscribe(&b);
-    let turn = native_prompt(&client, &mut b_events, &b, "[[mock:echo]] keep me", true).await;
+    let turn = native_prompt(&client, &mut b_events, &b, "[[mock:echo]] keep me").await;
     assert_eq!(turn.text, "echo: keep me");
 
     // A client is attached to every session: no room.
@@ -1127,7 +1061,7 @@ async fn a_full_server_unloads_the_session_unused_the_longest() {
 /// that last used it opens on the configured model.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_model_whose_connection_is_gone_is_reported_as_unavailable() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let connection = "35e57942-0000-4000-8000-000000000001";
     // Written before provider IDs were kept: its models are published as `local-<connection_id>`.
     std::fs::create_dir_all(env.home.path().join("connections")).unwrap();
@@ -1172,7 +1106,7 @@ async fn a_model_whose_connection_is_gone_is_reported_as_unavailable() {
 /// the schema is.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn initialize_lists_what_it_answers() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, _incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     let init = client
         .request("initialize", json!({"protocol_version": 2, "client_info": {"name": "e2e"}}))
@@ -1205,7 +1139,7 @@ async fn initialize_lists_what_it_answers() {
 /// once the session was loaded again from its log, and an id that can't be one is refused.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_prompt_sent_again_by_its_id_is_taken_once() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);

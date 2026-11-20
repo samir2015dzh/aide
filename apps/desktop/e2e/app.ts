@@ -10,12 +10,13 @@ export type Fixture = {
   sessions: Record<string, string>;
   cli: string;
   cliEnv: string[];
-  /** Owner daemons nobody has set up yet (first-run tests; each can be set up once). */
+  /**
+   * Owner daemons nobody has set up yet, each with a relay of its own not set up either (first-run tests): claimCode
+   * is that relay's setup code, which sets it up once.
+   */
   fresh: { socket: string; relayURL: string; claimCode: string; gate?: string }[];
   /** A second Mac's daemon (its process group), a machine only with a session on it; 0 when none. */
   otherMac: number;
-  /** On Windows, the folder of an older signer, as if set up. */
-  oldSigner?: string;
   /** A connector's service that signs in with OAuth, for Her to ask for on a secure card (TestDesktopHer). */
   connector?: string;
   /** This Mac's her home, to change a file Her sent as her model would (TestDesktopHerDeliveries). */
@@ -30,11 +31,11 @@ export type Fixture = {
   github: string;
   /**
    * old-box, a machine from before Her (TestDesktopHerBeforeHer): the file that says so while it holds 1, and the
-   * start of its hermeshd's command line, for the spec to stop it so that it starts again as it is now.
+   * start of its aided's command line, for the spec to stop it so that it starts again as it is now.
    */
   beforeHer?: string;
   beforeHerDaemon?: string;
-  /** The dsh spec: the stand-in DSH Host running the Hermesh bridge plugin (0 when none). */
+  /** The dsh spec: the stand-in DSH Host running the Aide bridge plugin (0 when none). */
   dshHost?: number;
   /** Its DSH home. */
   dshHome?: string;
@@ -43,13 +44,13 @@ export type Fixture = {
 /** Loaded first in every launch: the app's windows open without taking focus. */
 export const background = path.join(import.meta.dirname, "background.cjs");
 
-export const fixture: Fixture = JSON.parse(fs.readFileSync(process.env.HERMESH_E2E_FIXTURE ?? "", "utf8"));
+export const fixture: Fixture = JSON.parse(fs.readFileSync(process.env.AIDE_E2E_FIXTURE ?? "", "utf8"));
 
 /**
  * Starts the built app (pnpm build) against the fixture's daemon (or the one
  * at socket), with a new profile unless given one. The app follows the
  * system's languages, which macOS lets a single run override
- * (-AppleLanguages; on Windows the app reads HERMESH_TEST_LANGUAGES); the
+ * (-AppleLanguages; elsewhere the app reads AIDE_TEST_LANGUAGES); the
  * tests read the app in Chinese unless they ask for other languages
  * (language.spec.ts).
  */
@@ -63,13 +64,13 @@ export async function launch(
 ): Promise<{ app: ElectronApplication; page: Page }> {
   const languages = o.systemLanguages ?? ["zh-Hans"];
   const app = await electron.launch({
-    args: ["-r", background, path.join(process.env.HERMESH_DESKTOP_OUT || path.join(import.meta.dirname, "..", "out"), "main", "index.js"), "-AppleLanguages", `(${languages.join(", ")})`, ...(o.args ?? [])],
+    args: ["-r", background, path.join(process.env.AIDE_DESKTOP_OUT || path.join(import.meta.dirname, "..", "out"), "main", "index.js"), "-AppleLanguages", `(${languages.join(", ")})`, ...(o.args ?? [])],
     // Its own profile, so app instances of parallel runs don't meet.
     env: {
       ...process.env,
-      HERMESH_SOCKET: socket,
-      ...(process.platform === "win32" ? { HERMESH_TEST_LANGUAGES: languages.join(",") } : {}),
-      HERMESH_USER_DATA: o.profile ?? fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-")),
+      AIDE_SOCKET: socket,
+      ...(process.platform !== "darwin" ? { AIDE_TEST_LANGUAGES: languages.join(",") } : {}),
+      AIDE_USER_DATA: o.profile ?? fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-")),
       ...o.env,
     },
     ...(o.systemColors ? { colorScheme: null } : o.dark ? { colorScheme: "dark" as const } : {}),
@@ -108,9 +109,9 @@ export function sys(mac: string, elsewhere?: string): string {
   return elsewhere ?? mac.replaceAll("这台 Mac ", "这台电脑").replaceAll("这台 Mac", "这台电脑").replaceAll("公司的 Mac", "公司的电脑");
 }
 
-/** With HERMESH_SCREENS=<dir>, saves a screenshot of the page there (for looking at against the design). */
+/** With AIDE_SCREENS=<dir>, saves a screenshot of the page there (for looking at against the design). */
 export async function snap(page: Page, name: string): Promise<void> {
-  const dir = process.env.HERMESH_SCREENS;
+  const dir = process.env.AIDE_SCREENS;
   if (!dir) return;
   fs.mkdirSync(dir, { recursive: true });
   await page.waitForTimeout(300);
@@ -119,7 +120,7 @@ export async function snap(page: Page, name: string): Promise<void> {
 
 /** A git repository named name, for a project. */
 export function gitRepo(name: string): string {
-  // The long path, as hermeshd reports it (Windows' temp folder may come as a short 8.3 one).
+  // The long path, as aided reports it (Windows' temp folder may come as a short 8.3 one).
   const dir = path.join(fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "hmrepo-"))), name);
   fs.mkdirSync(dir);
   fs.writeFileSync(path.join(dir, "README.md"), `# ${name}\n`);

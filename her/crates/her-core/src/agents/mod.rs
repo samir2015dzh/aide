@@ -20,12 +20,10 @@ use her_llm::UsageTotals;
 use her_llm::UserContent;
 use her_protocol::AgentRef;
 use her_protocol::AgentStatus;
-use her_protocol::CommandRule;
 use her_protocol::ErrorInfo;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::PromptMode;
 use her_tools::Environment;
 use her_tools::ToolError;
@@ -102,11 +100,10 @@ pub(crate) struct ChildDeps {
     pub(crate) tools: Arc<ToolRegistry>,
     pub(crate) env: Arc<dyn Environment>,
     pub(crate) store: Arc<dyn SessionStore>,
-    /// Extra hooks; the approval policy is added for every session.
+    /// Extra hooks; the tool policy is added for every session.
     pub(crate) hooks: Vec<Arc<dyn Hooks>>,
     pub(crate) home: HerHome,
     pub(crate) config: Arc<Config>,
-    pub(crate) trusted: bool,
     /// The main session's MCP servers; sub-agents use the same connections.
     pub(crate) mcp: Option<Arc<crate::mcp::McpManager>>,
     /// The main session's browsers: a sub-agent has its own tabs in the same browser.
@@ -190,8 +187,6 @@ pub(super) struct Progress {
     last: Instant,
     /// Its latest tool calls, oldest first.
     steps: VecDeque<String>,
-    /// What it waits for the user to approve.
-    asking: Option<String>,
     /// The start of what it last wrote in this round of work, which nobody sees until it reports.
     said: Option<String>,
 }
@@ -203,7 +198,6 @@ impl Progress {
             since: now,
             last: now,
             steps: VecDeque::new(),
-            asking: None,
             said: None,
         }
     }
@@ -225,8 +219,6 @@ impl Progress {
                 }
                 self.steps.push_back(step_line(title));
             }
-            EventMsg::ApprovalRequested { summary, .. } => self.asking = Some(step_line(summary)),
-            EventMsg::ApprovalResolved { .. } => self.asking = None,
             EventMsg::MessageCompleted {
                 message: Message::Assistant(reply),
                 ..
@@ -327,25 +319,6 @@ impl AgentTree {
         state.in_flight = state.in_flight.saturating_sub(1);
     }
 
-    /// Sub-agents judge tool calls by the main session's current permissions.
-    pub(crate) fn share_permissions(&self, mode: PermissionMode, rules: Vec<CommandRule>, grants: Vec<her_protocol::SiteGrant>) {
-        let state = self.state.lock();
-        for agent in state.agents.iter().filter(|a| a.status != AgentStatus::Closed) {
-            let _ = agent.internal.send(Box::new(Internal::Permissions {
-                mode,
-                rules: rules.clone(),
-                grants: grants.clone(),
-            }));
-        }
-        for internal in state.runs.iter().filter_map(|run| run.internal.as_ref()) {
-            let _ = internal.send(Box::new(Internal::Permissions {
-                mode,
-                rules: rules.clone(),
-                grants: grants.clone(),
-            }));
-        }
-    }
-
     /// The agents started in the part of the conversation a `resend` took back: they stop, their
     /// sessions close, and they leave the tree, so that their names are free again and whatever
     /// they were about to report is dropped.
@@ -392,16 +365,6 @@ impl AgentTree {
         true
     }
 
-    /// The user's answer to what agent `agent` asks. False when there is no such agent.
-    pub(crate) fn answer(&self, agent: &str, call_id: &str, decision: her_protocol::ApprovalDecision) -> bool {
-        let state = self.state.lock();
-        let Some(agent) = state.agents.iter().find(|a| a.id == agent) else {
-            return false;
-        };
-        send_now(&agent.ops, Op::Approval { call_id: call_id.to_string(), decision });
-        true
-    }
-
     /// How the agents stand, the ones named or all of them (`list_agents`). `caller` is the
     /// sub-agent asking, which is also told about the main agent and which of them it is.
     pub(crate) fn list(&self, names: Option<&[String]>, caller: Option<&str>) -> String {
@@ -419,12 +382,11 @@ impl AgentTree {
             }
             let progress = agent.progress.lock();
             let mut line = if agent.status == AgentStatus::Running {
-                let mut line = format!("{label}: running for {}", mail::duration(progress.since.elapsed()));
-                match &progress.asking {
-                    Some(what) => line.push_str(&format!(", waiting for the user to approve: {what}")),
-                    None => line.push_str(&format!(", last activity {} ago", mail::duration(progress.last.elapsed()))),
-                }
-                line
+                format!(
+                    "{label}: running for {}, last activity {} ago",
+                    mail::duration(progress.since.elapsed()),
+                    mail::duration(progress.last.elapsed())
+                )
             } else {
                 format!("{label}: {}, {} ago", agent.status.as_str(), mail::duration(progress.last.elapsed()))
             };
@@ -573,7 +535,7 @@ impl AgentTree {
 
     /// What a new session of the tree starts from: the main session's current settings. A bot's
     /// start from a session's prompt, not the bot's (bot-design §2.3).
-    fn child_launch(&self, root: &Arc<Session>, header: SessionHeader, interactive_approvals: bool) -> ChildLaunch {
+    fn child_launch(&self, root: &Arc<Session>, header: SessionHeader) -> ChildLaunch {
         let state = root.state.lock();
         let (system_prompt, base_prompt) = match &state.sub_agent_prompt {
             Some(prompt) => (crate::mcp::compose(prompt, state.mcp_section.as_deref()).into(), prompt.clone()),
@@ -589,9 +551,6 @@ impl AgentTree {
             skills: state.skills.clone(),
             model: state.model.clone(),
             thinking: state.thinking,
-            permission_mode: state.permission_mode,
-            session_rules: state.session_rules.clone(),
-            site_grants: state.site_grants.clone(),
             deps: KernelDeps {
                 llm: self.deps.llm.clone(),
                 tools: self.deps.tools.clone(),
@@ -610,10 +569,6 @@ impl AgentTree {
             home: self.deps.home.clone(),
             config: self.deps.config.clone(),
             system: root.system.clone(),
-            trusted: self.deps.trusted,
-            interactive_approvals,
-            main: Arc::downgrade(root),
-            approval_line: root.approval_line.clone(),
             locks: root.locks.clone(),
         }
     }
@@ -642,7 +597,7 @@ impl AgentTree {
             parent_task,
             routine: None,
         });
-        let kernel = kernel::start_child(self.child_launch(&root, header, root.interactive_approvals))
+        let kernel = kernel::start_child(self.child_launch(&root, header))
             .map_err(|err| ToolError::Failed(format!("cannot start the agent: {err}")))?;
         let session_file: PathBuf = kernel.session_file().to_path_buf();
         let ops = kernel.op_sender();
@@ -1131,8 +1086,6 @@ fn followed(msg: &EventMsg) -> bool {
             | EventMsg::ToolStarted { .. }
             | EventMsg::ToolRunning { .. }
             | EventMsg::ToolCompleted { .. }
-            | EventMsg::ApprovalRequested { .. }
-            | EventMsg::ApprovalResolved { .. }
             | EventMsg::CompactionStarted { .. }
             | EventMsg::CompactionCompleted { .. }
             | EventMsg::CompactionFailed { .. }

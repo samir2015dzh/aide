@@ -1,5 +1,5 @@
 import type { AgentView, NoteEntry, SessionView } from "./session.ts";
-import type { AgentStatus, AssistantContent, MailInfo, TaskEndItem, ToolCategory, ToolResultMessage, UsageTotals, UserContent } from "@hermesh/her-protocol";
+import type { AgentStatus, AssistantContent, MailInfo, TaskEndItem, ToolCategory, ToolResultMessage, UsageTotals, UserContent } from "@aide/her-protocol";
 import { argsOf, callTarget, type ToolDescription } from "./session.ts";
 import { addTotals } from "./text.ts";
 
@@ -18,9 +18,10 @@ export interface ToolView {
   args: Record<string, unknown>;
   /**
    * streaming: the model is still writing its arguments; pending: waiting
-   * for preflight or its turn; cancelled: the task ended without running it.
+   * for preflight or its turn; denied: the policy refused it (a deny rule); cancelled: the task
+   * ended without running it. Nobody is asked about a call.
    */
-  state: "streaming" | "pending" | "awaiting_approval" | "running" | "done" | "failed" | "denied" | "cancelled";
+  state: "streaming" | "pending" | "running" | "done" | "failed" | "denied" | "cancelled";
   result?: ToolResultMessage;
   /** Output so far, while it runs. */
   progress?: string;
@@ -112,8 +113,8 @@ export function settledSteps(v: SessionView): Step[] {
     const r = results.get(call.id);
     const l = live.get(call.id);
     const state: ToolView["state"] = r
-      ? r.is_error ? (l?.phase === "denied" || deniedText(r) ? "denied" : "failed") : "done"
-      : l ? (l.phase === "denied" ? "denied" : l.phase)
+      ? r.is_error ? (deniedText(r) ? "denied" : "failed") : "done"
+      : l ? l.phase
       : open ? "pending" : "cancelled";
     return { call_id: call.id, name: call.name, category: d.category, title: d.title, args: call.arguments, state, result: r, progress: l?.progress };
   };
@@ -345,13 +346,13 @@ export function agentTaskOf(v: SessionView, a: AgentView): string {
 }
 
 function isLive(it: WorkItem): boolean {
-  return it.kind === "thinking" ? it.live : ["streaming", "pending", "awaiting_approval", "running"].includes(it.tool.state);
+  return it.kind === "thinking" ? it.live : ["streaming", "pending", "running"].includes(it.tool.state);
 }
 
 /** A refusal's result: the kernel answers a denied call with an error result. */
 function deniedText(r: ToolResultMessage): boolean {
   const t = r.content.find((c) => c.type === "text");
-  return t?.type === "text" && /^(denied|rejected) by (the )?user/i.test(t.text);
+  return t?.type === "text" && /^tool call denied/i.test(t.text);
 }
 
 /**
@@ -564,7 +565,7 @@ export type ReplyQuote = { ref: string; own: boolean; text: string; partial: boo
 const replyShape = /^<resource uri="her-reply:([A-Za-z0-9_:.-]{1,128})">\nReplying to this earlier message of (yours|mine), quoted in (part|full):\n((?:>(?: [^\n]*)?\n)+)<\/resource>$/;
 
 /**
- * The reply a text block tells her of, as hermeshd writes it after the owner's words (its replyBlock, §4.1): the
+ * The reply a text block tells her of, as aided writes it after the owner's words (its replyBlock, §4.1): the
  * window shows it as a quote. Null for any other text; both run the cases in internal/owner/testdata/her_reply.json.
  */
 export function replyOf(text: string): ReplyQuote | null {
@@ -612,41 +613,6 @@ export function changesFilesAfter(v: SessionView, messageId: string): boolean {
   const at = v.entries.findIndex((e) => e.type === "message" && e.message_id === messageId);
   if (at < 0) return false;
   return v.entries.slice(at + 1).some((e) => e.type === "message" && e.message.role === "assistant" && e.message.content.some((c) => c.type === "tool_call" && changes(c.name, c.arguments)));
-}
-
-/** What an approval shows of the call it asks about: the command, the change, or the arguments. */
-export type ApprovalPreview =
-  | { kind: "command"; text: string }
-  | { kind: "diff"; lines: { sign: "+" | "-"; text: string }[]; more: number }
-  | { kind: "content"; lines: string[]; more: number }
-  | { kind: "args"; text: string };
-
-/**
- * The preview of a call waiting for approval, from her's built-in tools'
- * arguments: bash's command; edit's replacements as removed and added
- * lines; write's first lines; any other tool's arguments as JSON. Long
- * ones are cut at `max` lines, with how many more there were.
- */
-export function approvalPreview(name: string, args: Record<string, unknown>, summary: string, max = 12): ApprovalPreview {
-  const str = (v: unknown) => (typeof v === "string" ? v : "");
-  // A text's lines; the newline that ends its last line starts no line of its own.
-  const lines = (s: string) => s.replace(/\n$/, "").split("\n");
-  if (name === "bash") return { kind: "command", text: str(args.command) || summary };
-  if (name === "edit" && Array.isArray(args.edits)) {
-    const all: { sign: "+" | "-"; text: string }[] = [];
-    for (const e of args.edits as { old_text?: unknown; new_text?: unknown }[]) {
-      for (const text of lines(str(e.old_text))) all.push({ sign: "-", text });
-      for (const text of lines(str(e.new_text))) all.push({ sign: "+", text });
-    }
-    return { kind: "diff", lines: all.slice(0, max), more: Math.max(0, all.length - max) };
-  }
-  // A file's content, or a page script: what the question is about.
-  const text = name === "write" ? args.content : name === "browser_eval" ? args.expression : undefined;
-  if (typeof text === "string") {
-    const all = lines(text);
-    return { kind: "content", lines: all.slice(0, max), more: Math.max(0, all.length - max) };
-  }
-  return { kind: "args", text: summary || JSON.stringify(args, null, 2) };
 }
 
 /** A tool's output as text: its result's text, or what it printed so far. */

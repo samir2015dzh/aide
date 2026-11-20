@@ -10,7 +10,7 @@ use tokio::io::AsyncWriteExt as _;
 
 /// A home with no model configured, and DeepSeek's address at the mock.
 async fn bare() -> TestEnv {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     std::fs::write(env.home.path().join("config.toml"), "").unwrap();
     let base = env.mock.base_url();
     std::fs::write(
@@ -134,7 +134,7 @@ async fn a_service_of_ones_own() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn models_check_tries_the_model() {
-    let env = TestEnv::new("manual", "").await;
+    let env = TestEnv::new("").await;
     let out = env.her(&["models", "check", "--json"]).output().await.unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", String::from_utf8_lossy(&out.stderr));
     let report: Value = serde_json::from_slice(&out.stdout).unwrap();

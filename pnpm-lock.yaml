@@ -22,19 +22,19 @@ importers:
       '@connectrpc/connect-web':
         specifier: 2.2.0
         version: 2.2.0(@bufbuild/protobuf@2.16.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.16.0))
-      '@hermesh/core':
+      '@aide/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@hermesh/her-client':
+      '@aide/her-client':
         specifier: workspace:*
         version: link:../../packages/her-client
-      '@hermesh/her-protocol':
+      '@aide/her-protocol':
         specifier: workspace:*
         version: link:../../packages/her-protocol
-      '@hermesh/proto':
+      '@aide/proto':
         specifier: workspace:*
         version: link:../../packages/proto
-      '@hermesh/ui':
+      '@aide/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       i18next:
@@ -164,13 +164,13 @@ importers:
 
   her/apps/console:
     dependencies:
-      '@hermesh/her-client':
+      '@aide/her-client':
         specifier: workspace:*
         version: link:../../../packages/her-client
-      '@hermesh/her-protocol':
+      '@aide/her-protocol':
         specifier: workspace:*
         version: link:../../../packages/her-protocol
-      '@hermesh/ui':
+      '@aide/ui':
         specifier: workspace:*
         version: link:../../../packages/ui
       i18next:
@@ -219,10 +219,10 @@ importers:
       '@bufbuild/protobuf':
         specifier: 2.16.0
         version: 2.16.0
-      '@hermesh/proto':
+      '@aide/proto':
         specifier: workspace:*
         version: link:../proto
-      '@hermesh/ui':
+      '@aide/ui':
         specifier: workspace:*
         version: link:../ui
       i18next:
@@ -238,7 +238,7 @@ importers:
 
   packages/her-client:
     dependencies:
-      '@hermesh/her-protocol':
+      '@aide/her-protocol':
         specifier: workspace:*
         version: link:../her-protocol
     devDependencies:

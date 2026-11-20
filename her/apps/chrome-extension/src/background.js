@@ -1,7 +1,7 @@
 import { ExtensionBrowser } from "./browser.js";
 import { bridge } from "./methods.js";
 
-// The Hermesh extension (browser-design §8.4): a Native Messaging port to `her browser
+// The Aide extension (browser-design §8.4): a Native Messaging port to `her browser
 // native-host`, which relays to the her service, and an ExtensionBrowser for each browser
 // the kernel starts on it. A new stream number is a new browser; the one before is let go.
 // The open port keeps this worker alive; an alarm brings it back if Chrome stopped it.
@@ -10,14 +10,14 @@ import { bridge } from "./methods.js";
 // and when a connection drops, and finds it here again by its session. The service hears of
 // every change, so the app can show a session's tabs whoever holds them.
 //
-// The store updates this extension apart from Hermesh, so the hello says which bridge
+// The store updates this extension apart from Aide, so the hello says which bridge
 // versions it speaks (D-219): `bridge` from methods.js, down to BRIDGE_MIN, the oldest whose
-// frames and commands it still handles. Keep BRIDGE_MIN low: a Hermesh app updates later
+// frames and commands it still handles. Keep BRIDGE_MIN low: an Aide app updates later
 // than its extension. A kept-alive worker never takes an update by itself; it reloads for
 // one while the agent has no tab here. Loaded from its folder, the app's update changes the
 // files under it: the same reload, once the files are seen to differ.
 
-const HOST = "com.hermesh.browser";
+const HOST = "com.aide.browser";
 const PROTOCOL = "1.3";
 const BRIDGE_MIN = 1;
 const GROUP_TITLE = "Aide";
@@ -60,7 +60,7 @@ const lastUsed = new Map();
 const groups = new Map();
 /** Tabs the user offered to a conversation, not given to a session yet. */
 const offered = new Set();
-/** What the service says about the sessions with tabs here. @type {Record<string, {title: string, state: string, handoff?: string, task?: string}>} */
+/** What the service says about the sessions with tabs here. @type {Record<string, {title: string, state: string, task?: string}>} */
 let sessions = {};
 /** The window the agent's tabs open in: its own, so the user's tabs are never taken. */
 let windowId = null;
@@ -166,10 +166,10 @@ function groupLook(session) {
   const known = sessions[session];
   // Named for the task at hand, which a long conversation changes: the user's latest words.
   const title = (known?.task || known?.title || GROUP_TITLE).slice(0, TITLE_CHARS);
-  const waiting = known?.state === "awaiting_approval";
-  // Orange asks for the user, blue is at work, grey has finished: the tabs stay theirs.
-  const color = waiting ? "orange" : known?.state === "running" ? "blue" : "grey";
-  return { title: waiting ? msg("groupWaiting", title) : title, color };
+  // Blue is at work, grey has finished: the tabs stay theirs. Her asks nothing of the user here:
+  // she runs her tools without asking.
+  const color = known?.state === "running" ? "blue" : "grey";
+  return { title, color };
 }
 
 async function group(tabId, label) {
@@ -346,12 +346,11 @@ function timeConnecting() {
   }
 }
 
-/** Only what asks something of the user shows on the icon: Hermesh not being open is fine. */
+/** Only what needs the user shows on the icon: Aide not being open is fine. */
 function show() {
   timeConnecting();
-  const waiting = Object.values(sessions).filter((s) => s.state === "awaiting_approval").length;
-  const text = waiting > 0 ? String(waiting) : hostState === "outdated" || stuck ? "!" : "";
-  const title = waiting > 0 ? msg("titleWaiting") : msg({
+  const text = hostState === "outdated" || stuck ? "!" : "";
+  const title = msg({
     connected: inUse ? "titleConnected" : "titleStandby",
     connecting: stuck ? "titleStuck" : "titleConnecting",
     not_open: "titleNotOpen",
@@ -417,7 +416,7 @@ function onMessage(message) {
     if (message.status === "outdated") {
       hostState = "outdated";
       tooOld = message.update ?? null;
-      // Too old for this Hermesh: ask the store now rather than within hours.
+      // Too old for this Aide: ask the store now rather than within hours.
       if (message.update === "extension") chrome.runtime.requestUpdateCheck?.().catch(() => {});
     } else if (message.status === "connected") {
       hostState = "connected";
@@ -468,7 +467,7 @@ async function instance() {
   return id;
 }
 
-/** Tells the host which browser this is, so Hermesh can show it. */
+/** Tells the host which browser this is, so Aide can show it. */
 async function hello() {
   let browser = navigator.userAgent;
   try {
@@ -542,7 +541,6 @@ async function pageState() {
     id,
     title: sessions[id]?.title || GROUP_TITLE,
     state: sessions[id]?.state ?? "idle",
-    handoff: sessions[id]?.handoff,
     tabs: tabs.released(id).length,
   }));
   return {
@@ -561,9 +559,6 @@ function pageAction(action) {
     case "back":
       postControl({ kind: "open_app" });
       postControl({ kind: "open_session", session_id: action.session });
-      break;
-    case "done":
-      postControl({ kind: "done", session_id: action.session });
       break;
     case "stop":
       postControl({ kind: "stop", session_id: action.session });

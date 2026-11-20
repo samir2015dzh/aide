@@ -15,8 +15,8 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // t0 is when the fixtures' sessions start.
@@ -166,9 +166,9 @@ func TestListAndRead(t *testing.T) {
 	f.Write(torn[:len(torn)-3])
 	f.Close()
 
-	// A subagent's session, and one Hermesh started: not listed.
+	// A subagent's session, and one Aide started: not listed.
 	writeSession(t, home, map[string]any{"id": "sub", "cwd": "/home/alex/app", "origin": "subagent", "parentSession": "0f3b-owner"}, true, conversation(0, 1, "x", "y"))
-	writeSession(t, home, map[string]any{"id": "hermesh-ref", "cwd": "/home/alex/app"}, true, conversation(0, 1, "x", "y"))
+	writeSession(t, home, map[string]any{"id": "aide-ref", "cwd": "/home/alex/app"}, true, conversation(0, 1, "x", "y"))
 	// Archived, its title only in DSH's projection cache, a turn left open.
 	writeSession(t, home, map[string]any{"id": "archived_1"}, true, events(0, ev("turn/start", map[string]any{"turn": 1}), userMsg("Old work")))
 	os.MkdirAll(filepath.Join(home, "storages", "session_projcache", "sessions"), 0o700)
@@ -187,7 +187,7 @@ func TestListAndRead(t *testing.T) {
 	f.Close()
 
 	before := snapshot(t, home)
-	list, err := List(home, func(id, cwd string) bool { return id == "hermesh-ref" })
+	list, err := List(home, func(id, cwd string) bool { return id == "aide-ref" })
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,7 +3,7 @@ package mcpgw
 import (
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/cli"
+	"github.com/samir2015dzh/aide/internal/cli"
 )
 
 // Each connection keeps its relay connection, its tunnels to machines and

@@ -1,5 +1,12 @@
 # Her and her team: one product from Her and the mesh
 
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** agents
+> and Her act directly, with no action approvals ([her-server.md](her-server.md)),
+> and agents connect by logging in, with no pairing sheet. What this page
+> says of approvals (the "Approval" paragraphs, an approval in the bar or the
+> record, "needs your approval", their tests) and of requests to connect
+> that wait describes the apps before.
+
 Status: stage 1 built on the iPhone 2026-11-13, with acceptance results
 updated 2026-11-14 (§13); stage 2 (§6) decided 2026-11-14 (all three, B1,
 B3 then B2), designed in §6.1 to §6.5 and built 2026-11-15 (§6.6). The
@@ -41,7 +48,7 @@ report.
 
 **What it costs.** Stage 1, which is the whole agreed interaction, changes
 **the iPhone app and the shared Swift package only**: every piece of data
-it shows is already on the phone (§5). No change to hermeshd, the Her
+it shows is already on the phone (§5). No change to aided, the Her
 kernel, the relay, the center or any protocol file. Three things that go
 further need the backend and are stage 2 (§6): Her answering a session she
 did not start, Her's numbers as a card, and a sturdier link from Her's tool
@@ -86,7 +93,7 @@ Read from the code on 2026-11-13.
 | What a running session does now | `progress.current_tool`, `phase`, `turn_started_at` (basic view; `last_message_excerpt` is not) | `session.proto` |
 | A machine's coding agents | `Machine.status.agents` | `machine.proto` |
 | Counts by range, by client and agent | `QueryWork` with `group_by` client and agent; `WorkCard`, `FlowCard` | `local.proto`, `OverviewView.swift` |
-| Her's tool calls and their results | `HerEntry.assistant(calls:)` and `.result(text:)` reach the phone; rows are made only for `send_to_user` | `HermeshHer/Session.swift`, `Chat.swift` |
+| Her's tool calls and their results | `HerEntry.assistant(calls:)` and `.result(text:)` reach the phone; rows are made only for `send_to_user` | `AideHer/Session.swift`, `Chat.swift` |
 | The result of Her's `session_start` | The CLI's JSON document, unchanged, with `session.session_id` | [her-mesh.md](her-mesh.md) §4.5, [cli-output.md](cli-output.md) |
 | All sessions, grouped, with archive | `SessionsView` | `SessionsView.swift` |
 | One machine's or one grant's sessions | `ScopedSessionsView` with `SessionFilter` (grant, project, agent, machine) | `SessionsView.swift`, `Sessions.swift` |
@@ -274,9 +281,9 @@ and long-press. It stops being a root page and is pushed from Work.
 an agent together; only the route is new.
 
 **One change to the row**, everywhere `SessionRow` is used: the second
-line reads "Grok → Codex · hermesh" where it reads "Grok · Codex · hermesh"
+line reads "Grok → Codex · aide" where it reads "Grok · Codex · aide"
 today. The arrow says who sent the work to whom, which is the point of the
-whole design. Her's sessions read "Her → Claude Code · hermesh".
+whole design. Her's sessions read "Her → Claude Code · aide".
 
 ### 4.8 A session's page
 
@@ -324,7 +331,7 @@ Every row is stage 1.
 | Session page: who asked each turn | `turn_started.asker` | yes | shared Swift package (`Transcript`) |
 
 **Not touched in stage 1:** `proto/`, `internal/`, `cmd/`, `her/`, the
-relay, the center (hermesh-cloud), the hosted MCP, the console, push
+relay, the center (aide-cloud), the hosted MCP, the console, push
 notifications.
 
 Because nothing on a machine changes, the design works with machines on
@@ -338,7 +345,7 @@ None of this blocks stage 1. Each is its own decision.
 |---|---|---|---|---|
 | B1 | Her answers, writes to, or stops a session she did not start ("tell Codex: pnpm") | A grant controls only its own sessions ([her-mesh.md](her-mesh.md) §15, question 4) | The machine's rule gains an exception for the grant that carries `her_machine_id`. No protocol change. Machines on an older version still refuse | `internal/machine` |
 | B2 | "What did the team do today?" answered with a card of numbers | Her has `session_list` and can answer in words today. She has no counts, and a result can't carry a card | A `work` command in the CLI and a `work_summary` tool in the `mesh` group; machines serve `PullWork` to a client (the read rule is written for it, only owner devices call it today); B3 for the card | `internal/cli`, `internal/herhost`, `internal/machine` |
-| B3 | A mesh tool's result carries data for the apps | `MeshCallResult` is text and an error flag. The app parses the text for the session id, which holds as long as the CLI's document does | `MeshCallResult` gains `details`; the kernel passes it to the tool result's `details`, which the apps already read for files and cards; hermeshd fills it for `session_start` | `her/crates/her-protocol`, `her/crates/her-core/src/mesh.rs`, `internal/herhost/mesh.go` |
+| B3 | A mesh tool's result carries data for the apps | `MeshCallResult` is text and an error flag. The app parses the text for the session id, which holds as long as the CLI's document does | `MeshCallResult` gains `details`; the kernel passes it to the tool result's `details`, which the apps already read for files and cards; aided fills it for `session_start` | `her/crates/her-protocol`, `her/crates/her-core/src/mesh.rs`, `internal/herhost/mesh.go` |
 
 B3 is worth doing only if B2 is, or if parsing proves fragile. A test in
 stage 1 holds the contract meanwhile (§9).
@@ -375,10 +382,9 @@ so its news comes to her (machines already write news to the turn's asker,
 [her-mesh.md](her-mesh.md) §6.1). An answer does not: the turn's news
 still goes to whoever asked for it, and to the session's creator.
 
-**Approval.** Unchanged. A write or an answer to a session she did not
-start has no "don't ask again" rule and is asked every time
-([her-mesh.md](her-mesh.md) §5). Interrupt and archive run unasked, as for
-her own.
+**Approval.** None: Her runs actions without asking (decided 2026-11-20,
+[her-mesh.md](her-mesh.md) §5). A write or an answer to a session she did
+not start runs at once, as interrupting and archiving do.
 
 **Words.** The tools stop saying "of yours" (`session_answer`,
 `session_interrupt`, `session_archive`, `session_unarchive`,
@@ -397,17 +403,17 @@ session may change it"), and Her says so. Nothing changes on the phone.
   hands it to the tool result (`ToolOutput::with_details`); `call_tool`
   already passes a deferred tool's details through. A host that sends
   none changes nothing.
-- hermeshd's `Mesh.Call` returns details beside the text. `herlink` fills
+- aided's `Mesh.Call` returns details beside the text. `herlink` fills
   them for `session_start`, `{"session": {session_id, title, agent,
   machine, machine_id, project}}`, and for `work_summary`, `{"work": …}`
   (§6.3).
 - The app takes Her's session card from `details.session` first and keeps
-  reading the text when there are none: a Her Server on an older hermeshd.
+  reading the text when there are none: a Her Server on an older aided.
   Details are not cut, as a long text result is.
 
 ### 6.3 B2: what the team did, as numbers and a card
 
-**The CLI.** `hermesh work [--days N] [--machine M] [--time-zone TZ]`.
+**The CLI.** `aide work [--days N] [--machine M] [--time-zone TZ]`.
 It pulls each reachable machine's counts with `PullWork` (from the range's
 first hour, page by page) and adds them up as `QueryWork` does on an
 owner device ([work-stats.md](work-stats.md) §7). Machines already serve
@@ -465,10 +471,10 @@ their logos. A tap opens Work.
 | `her/crates/her-protocol` | `MeshCallResult.details`; schema |
 | `her/crates/her-core/src/mesh.rs` | Passes the details to the tool result |
 | `internal/herhost/mesh.go` | `Mesh.Call` returns details; `mesh/call` sends them |
-| `internal/cli` | `hermesh work` |
+| `internal/cli` | `aide work` |
 | `internal/herlink` | Details for `session_start` and `work_summary`; the new tool; B1's words |
-| `packages/HermeshKit/Sources/HermeshHer/Chat.swift` | Session row from details; the work row |
-| `apps/ios/Hermesh/Views/Her/HerConversation.swift` | The work card |
+| `packages/AideKit/Sources/AideHer/Chat.swift` | Session row from details; the work row |
+| `apps/ios/Aide/Views/Her/HerConversation.swift` | The work card |
 | `docs/her-mesh.md`, `docs/cli.md`, `docs/cli-output.md` | The rule, the tool, the command |
 
 ### 6.5 Tests (stage 2)
@@ -482,7 +488,7 @@ their logos. A tap opens Work.
 - **B2, unit** (`internal/cli`): adding up pages from two machines over a
   range, by agent and client, with a session in both halves of the range
   counted once.
-- **End to end** (`TestHerMesh`, real hermeshd and Her, scripted coding
+- **End to end** (`TestHerOnTheMesh`, real aided and Her, scripted coding
   agents): `session_start`'s result carries `details.session`; another
   agent (the test's CLI) starts a session that asks, and Her answers it
   with `session_answer`, then stops another of its sessions with
@@ -502,14 +508,14 @@ Passed:
 - `cargo test -p her-protocol` (the schema regenerated),
   `-p her-core --test mesh`, `-p her-server mesh_host`; the TypeScript
   types regenerated from the schema.
-- `swift test --package-path packages/HermeshKit --filter ChatTests`: the
+- `swift test --package-path packages/AideKit --filter ChatTests`: the
   session card from details and from text, and the work card.
-- `HERMESH_FAKE_PROVIDERS=1 HERMESH_HER_BIN=… go test ./e2e -run
-  '^TestHerMesh$'`: real hermeshd and Her with scripted coding agents;
+- `AIDE_FAKE_PROVIDERS=1 AIDE_HER_BIN=… go test ./e2e -run
+  '^TestHerOnTheMesh$'`: real aided and Her with scripted coding agents;
   `details.session` on `session_start`; Her answers the test CLI's
   session (asked first) and stops another of its sessions (unasked);
   `work_summary` counts both, Her's marked `you`.
-- `TestIPhone` with `HERMESH_IPHONE_GREP=testHerTeam`, iOS 27.2: the
+- `TestIPhone` with `AIDE_IPHONE_GREP=testHerTeam`, iOS 27.2: the
   stage 1 team flow, then Her's work card, which opens Work. The card's
   screenshot was inspected: Chinese words, counts, agents and senders fit
   the phone.
@@ -523,8 +529,8 @@ was unreachable from the machine.
 
 | Module | Change |
 |---|---|
-| `packages/HermeshKit/Sources/HermeshHer/Chat.swift` | `HerItem` gains a session row; `herChat` makes it from `session_start` calls |
-| `packages/HermeshKit/Sources/HermeshSessions` | The team's state as one pure function (what waits, what runs, what failed, which words); who asked each turn in `Transcript` |
+| `packages/AideKit/Sources/AideHer/Chat.swift` | `HerItem` gains a session row; `herChat` makes it from `session_start` calls |
+| `packages/AideKit/Sources/AideSessions` | The team's state as one pure function (what waits, what runs, what failed, which words); who asked each turn in `Transcript` |
 | `Model/AppModel.swift` | `Root`: `overview` becomes `work`, `grants`, `machines` and `sessions` stay reachable as pushed pages; `Route` gains all sessions and machine-and-agent sessions; the start page rule; "Not Now" |
 | `Views/Main/DrawerView.swift` | The new menu (§4.5); the session lists go |
 | `Views/Main/OverviewView.swift` | Work (§4.6); `SessionRow`'s second line |
@@ -593,7 +599,7 @@ and the banner brings the first run back. Tests that find sessions by
 `drawer-session-…`, and those that open Her's settings by `her-name`, are
 moved to the new places.
 
-End to end (`TestIPhone` with `HERMESH_IPHONE_GREP=testHer`, real hermeshd
+End to end (`TestIPhone` with `AIDE_IPHONE_GREP=testHer`, real aided
 and Her with scripted model and coding agents): ask Her to start a
 session; the card appears and reaches Done; a second client starts a
 session that asks a question; the tag says it waits; answer in the panel;
@@ -705,37 +711,37 @@ change alone is not claimed to resolve every animation wait.
 
 Passed:
 
-- `swift test --package-path packages/HermeshKit`: 81 tests, including the
+- `swift test --package-path packages/AideKit`: 81 tests, including the
   quick-choice regression (observed failing before the fix).
-- `HERMESH_FAKE_PROVIDERS=1 HERMESH_HER_BIN=… go test ./e2e -run
-  '^TestHerMesh$' -count=1 -v -timeout 15m`: the real Her/mesh contract with
+- `AIDE_FAKE_PROVIDERS=1 AIDE_HER_BIN=… go test ./e2e -run
+  '^TestHerOnTheMesh$' -count=1 -v -timeout 15m`: the real Her/mesh contract with
   scripted coding agents.
-- `DuoUITests/testWalk`, with `TEST_RUNNER_HERMESH_DUO_SHOTS` and
-  `TEST_RUNNER_HERMESH_DUO_POSE=open`: upright and landscape, including
-  sidebar resizing and hide/show. Result: `/tmp/hermesh-team-duo-3.xcresult`.
-- `HERMESH_IPHONE_E2E=1 go test ./e2e -run '^TestIPhoneFirstRun$'
+- `DuoUITests/testWalk`, with `TEST_RUNNER_AIDE_DUO_SHOTS` and
+  `TEST_RUNNER_AIDE_DUO_POSE=open`: upright and landscape, including
+  sidebar resizing and hide/show. Result: `/tmp/aide-team-duo-3.xcresult`.
+- `AIDE_IPHONE_E2E=1 go test ./e2e -run '^TestIPhoneFirstRun$'
   -count=1 -v -timeout 45m`: claim a server, no-machine Work start page,
   defer/resume the guide, pair a machine and an agent, run the first task,
   reconnect and erase the isolated test owner. Result:
-  `/tmp/hermesh-team-first-run.xcresult`.
-- `TestIPhone` with `HERMESH_IPHONE_GREP=testHerTeam`, iOS 27.2:
+  `/tmp/aide-team-first-run.xcresult`.
+- `TestIPhone` with `AIDE_IPHONE_GREP=testHerTeam`, iOS 27.2:
   settings-return sending, both panel dismissal gestures, quick answering,
   the completed session card and its Her sender, enabled-Her restart and
-  the dark panel. Result: `/tmp/hermesh-team-her-focused-2.xcresult`.
+  the dark panel. Result: `/tmp/aide-team-her-focused-2.xcresult`.
   The light/dark panel and completed-card screenshots were inspected;
   Chinese text renders correctly and the controls fit the phone.
-- `TestIPhone` with `HERMESH_IPHONE_GREP=testHer`, iOS 26: the complete
+- `TestIPhone` with `AIDE_IPHONE_GREP=testHer`, iOS 26: the complete
   Her flow, including onboarding, Chinese input, settings, memory, files,
   approval, team/card/restart, offline recovery, history and data erasure.
-  Result: `/tmp/hermesh-team-her-ios26-3.xcresult`.
-- `TestIPhone` with `HERMESH_IPHONE_GREP=testSearchAndConnectivity`,
+  Result: `/tmp/aide-team-her-ios26-3.xcresult`.
+- `TestIPhone` with `AIDE_IPHONE_GREP=testSearchAndConnectivity`,
   iOS 27.2: search, the centered loader, machine and relay offline recovery,
   foreground continuity and notification answering. Result:
-  `/tmp/hermesh-team-connectivity-2.xcresult`.
+  `/tmp/aide-team-connectivity-2.xcresult`.
 - Default `TestIPhone`, iOS 27.2: the complete mesh app flow, from joining,
   Work and session operations through grants, machines, appearance,
   search, offline recovery and notification answering. Result:
-  `/tmp/hermesh-team-iphone-8.xcresult`.
+  `/tmp/aide-team-iphone-8.xcresult`.
 
 Manual Simulator checks covered the team menu, machine/agent scoping,
 quick answering, Her's Not Now entry, account appearance, and a session
@@ -747,9 +753,9 @@ The installed iOS 26 runtime renders Chinese as missing-glyph boxes,
 including in the system keyboard. Its UI assertions can check behaviour,
 but its screenshots are not evidence of Chinese typography or layout.
 
-For Her's full flow use `HERMESH_IPHONE_GREP=testHer`; `testHerTeam` is the
+For Her's full flow use `AIDE_IPHONE_GREP=testHer`; `testHerTeam` is the
 focused team/settings-return/start-page/dark-appearance regression. Both
-need `HERMESH_IPHONE_E2E=1` and a built `HERMESH_HER_BIN`. The default
+need `AIDE_IPHONE_E2E=1` and a built `AIDE_HER_BIN`. The default
 `TestIPhone` runs the mesh app flow, not either Her test.
 
 ## 14. The Mac app
@@ -794,7 +800,7 @@ sidebar lists the sessions itself.
 | | Connected agents, on one line each | Its sessions | A request to connect that waits has an orange dot and opens the pairing sheet |
 | Foot | The account menu, as today | | |
 
-- **Grouping.** `sessionGroupings` in `@hermesh/core` gains `sender`, and
+- **Grouping.** `sessionGroupings` in `@aide/core` gains `sender`, and
   it is the default view for a list that has never been set. A section is
   "Sent by Her", "Sent by Grok", "Sent by you"; the order is Her, then the
   agents by their latest session, then the owner. The other groupings stay
@@ -810,7 +816,7 @@ sidebar lists the sessions itself.
 - **Narrow windows** give way in order: the info card, then the sidebar
   shrinks to its rail, then the list beside a session (the list alone
   stays: it is the page).
-- **Rows** read "Grok → Codex · hermesh" (§4.7).
+- **Rows** read "Grok → Codex · aide" (§4.7).
 - **Her's own grant** is not among the connected agents; she is the first
   row.
 
@@ -850,20 +856,20 @@ Mac; Work then opens, with the "Her isn't on" banner.
 ### 14.6 Shared code
 
 The team's state (§4.2) is a pure function in Swift today
-(`HermeshSessions/Team.swift`). It is written again in TypeScript in
-`@hermesh/core`, with the same table of tests, so the tag, the panel and
+(`AideSessions/Team.swift`). It is written again in TypeScript in
+`@aide/core`, with the same table of tests, so the tag, the panel and
 the sidebar's marks say the same on both apps.
 
 ### 14.7 Steps
 
-1. `@hermesh/core`: the team's state and the `sender` grouping; `botChat`:
+1. `@aide/core`: the team's state and the `sender` grouping; `botChat`:
    session and work rows. → unit tests.
 2. The sidebar (§14.2) and the start page. → Playwright.
 3. The tag and the team panel. → Playwright.
 4. The cards in Her's conversation. → Playwright.
 5. Work's lists; Not Now. → Playwright.
-6. Words in English and Chinese; end to end with real hermeshd and Her
-   (the desktop's e2e, as `TestHerMesh` drives the iPhone's); every
+6. Words in English and Chinese; end to end with real aided and Her
+   (the desktop's e2e, as `TestHerOnTheMesh` drives the iPhone's); every
    control walked in light and dark.
 
 No backend change: everything the Mac shows is already in its store, as it
@@ -871,7 +877,7 @@ was for the iPhone (§5).
 
 ### 14.8 As built, 2026-11-15
 
-A clickable demo came first and was agreed: [Hermesh Mac · Her and her
+A clickable demo came first and was agreed: [Aide Mac · Her and her
 team](https://claude.ai/artifact/HBcQMpfA1H6YH53bCJ2TBx). The owner asked to
 keep Work's link map ("链路") as it is. Built as §14.1 to §14.7, with these
 choices:
@@ -897,13 +903,13 @@ choices:
   (`e2e/sessions.ts`), which opens All Sessions when its column is not
   showing.
 
-Shared code: `teamState` and `quickChoice` in `@hermesh/core` (the same
+Shared code: `teamState` and `quickChoice` in `@aide/core` (the same
 table as `Team.swift`), the `sender` grouping, and the session and work
-rows in `@hermesh/her-client`'s `botChat` (the same rules as `Chat.swift`).
+rows in `@aide/her-client`'s `botChat` (the same rules as `Chat.swift`).
 
 Passed, 2026-11-15:
 
-- Unit: `@hermesh/core` (80, with `team.test.ts`), `@hermesh/her-client`
+- Unit: `@aide/core` (80, with `team.test.ts`), `@aide/her-client`
   (146, with `team.test.ts`), the desktop app (124, with `start.test.ts`
   and the list column's cases in `layout.test.ts`);
   the desktop typecheck, its e2e specs included.
@@ -915,8 +921,8 @@ Passed, 2026-11-15:
   (`frame.spec.ts` checks the narrow-window order at 1440, 1300, 1000 and
   900 px, and the rail kept from page to page; `team.spec.ts` the rail's
   places, marks and hover words).
-- `HERMESH_HER_BIN=… go test ./e2e -run '^TestDesktopHer$'`: real
-  hermeshd and her with her-mock and scripted coding agents on this Mac:
+- `AIDE_HER_BIN=… go test ./e2e -run '^TestDesktopHer$'`: real
+  aided and her with her-mock and scripted coding agents on this Mac:
   the capsule opens the team panel and Esc closes it; Her starts a session
   after the owner's approval; its card in her conversation reaches Done,
   the panel lists it under Just Finished as "Her → Claude · demo", and the
@@ -961,7 +967,7 @@ Decided by the owner on 2026-11-15, on the demo's board A2.
 
 ## 15. Progress
 
-Decided by the owner on 2026-11-15, on a clickable demo ([Hermesh ·
+Decided by the owner on 2026-11-15, on a clickable demo ([Aide ·
 进展](https://claude.ai/artifact/QHG99cUAwDCFf3fbpsggBT)), and built the same
 day on the Mac and the iPhone. Her hands work out to sub-agents of her own
 (`spawn_agent`). Her conversation says little of them, and should: Progress
@@ -1064,7 +1070,7 @@ Nothing new is asked of her. The conversation the Her page follows
 (`bots/open`, then `session/event`) already carries every sub-agent's own
 session: the snapshot's `agents`, then each `agent_event`. The groups, the
 cards and the record are pure functions of that state: `progress.ts` in
-`@hermesh/her-client` and `Progress.swift` in `HermeshHer`, with the same
+`@aide/her-client` and `Progress.swift` in `AideHer`, with the same
 tests. A view's steps are worked out once (it is replaced, never changed).
 
 - **One connection.** On the Mac, Progress is the Her page's own component:
@@ -1075,7 +1081,7 @@ tests. A view's steps are worked out once (it is replaced, never changed).
 - **Rows as they show.** The Mac's record draws only the rows near what is
   in sight, as a session's conversation does (`ChatFrame`); the iPhone's
   is a plain stack, as a session's is.
-- **Offline.** What hermeshd keeps of Her's conversation has no agents: the
+- **Offline.** What aided keeps of Her's conversation has no agents: the
   page then says the work shows once the machine is back.
 
 ### 15.4 A long record
@@ -1091,11 +1097,11 @@ kind; the apps tell by the `/` and do not read on with it.
 ### 15.5 Tests
 
 - `cargo test -p her-server --lib mirror`: an agent's history by its cursor.
-- `@hermesh/her-client` `progress.test.ts`, and `ProgressTests.swift` in
-  `HermeshHerTests`: groups, card states and posts (what they say, the call
+- `@aide/her-client` `progress.test.ts`, and `ProgressTests.swift` in
+  `AideHerTests`: groups, card states and posts (what they say, the call
   under way, the files written), tokens and times, the
   record's steps, agents of earlier pages and their cursor, a routine's run.
-- `go test ./e2e -run '^TestDesktopHerProgress$'`: real hermeshd and her
+- `go test ./e2e -run '^TestDesktopHerProgress$'`: real aided and her
   with her-mock, the Mac app: the entry appears with Her; an empty page; a
   sub-agent's post under Needs you, what set it off from its ⓘ, Review to
   its record read as a session (Her's words in a bubble, the info card with
@@ -1107,7 +1113,7 @@ kind; the apps tell by the `/` and do not read on with it.
   record; two at work, the bubble's menu of them; Her answering, "Typing…"
   and never her call (§15.6); a coding session she starts, a card in her
   conversation and no post.
-- `HERMESH_IPHONE_E2E=1 HERMESH_IPHONE_GREP=testHerProgress go test ./e2e
+- `AIDE_IPHONE_E2E=1 AIDE_IPHONE_GREP=testHerProgress go test ./e2e
   -run '^TestIPhone$'`: the same story on the iPhone's feed: the post under
   Needs you, its ⓘ's sheet with the owner's words and Her's, Review to
   the record (what Her asked as a bubble, the approval at the bottom, its
@@ -1150,7 +1156,7 @@ menu (the system's on the iPhone, the app's on the Mac) lists them, each
 opening its record, then "See All in Progress".
 
 It is read from the task's live state and its sub-agents' alone
-(her-client's `busyBubble`, HermeshHer's `herBusyBubble`): who, not their
+(her-client's `busyBubble`, AideHer's `herBusyBubble`): who, not their
 calls; nothing more is asked of her, nor kept.
 
 ## 16. The sidebar, again
@@ -1239,13 +1245,13 @@ the expanded sidebar alone 832 px.
 
 ### 16.5 Tests
 
-- Units: `liveByAgent` and `alwaysActive` in `@hermesh/core` and
-  HermeshSessions; the layouts (`layout.test.ts`, `LayoutTests`).
+- Units: `liveByAgent` and `alwaysActive` in `@aide/core` and
+  AideSessions; the layouts (`layout.test.ts`, `LayoutTests`).
 - Mac (`apps/desktop/e2e`): `frame.spec.ts` (groups, rhythm, rows and
   marks, view menu, collapse, row menu, narrow window), `team.spec.ts`
   (places, marks, no map, the rail and its agent menu),
   `sessionlist.spec.ts`, `onboarding.spec.ts` (both empty states).
-- iPhone (`HermeshUITests`): `menu()` and `viewMenu()` in
+- iPhone (`AideUITests`): `menu()` and `viewMenu()` in
   `testTheIPhoneApp`, `DemoUITests.testReviewHerAndHerTeam`,
   `WideUITests.testTheMenuBesideThePage`.
 

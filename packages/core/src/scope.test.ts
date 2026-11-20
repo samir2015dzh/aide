@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { ClientSchema, ProjectSchema } from "@hermesh/proto/local";
+import { ClientSchema, ProjectSchema } from "@aide/proto/local";
 import { describe, expect, test } from "vitest";
 import { defaultScope, longLived, scopeComplete, scopeOfClient, scopeSpec } from "./scope";
 

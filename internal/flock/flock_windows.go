@@ -29,7 +29,7 @@ func Acquire(dir string) (*Lock, error) {
 		}
 		if tries == 0 {
 			f.Close()
-			return nil, fmt.Errorf("another hermeshd is already using %s", dir)
+			return nil, fmt.Errorf("another aided is already using %s", dir)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

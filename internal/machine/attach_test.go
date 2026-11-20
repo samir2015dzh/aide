@@ -13,7 +13,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 func pngBytes(t *testing.T) []byte {
@@ -110,14 +110,14 @@ func TestAttachmentLimits(t *testing.T) {
 // A message joined from an agent's (recorded when it arrived) and the
 // creator's own records only the creator's, once.
 func TestJoinRecordsEachMessageOnce(t *testing.T) {
-	letter := message{text: "[Hermesh] A message from helper.\n\nlook at the logs", quiet: true, answer: "look at the logs"}
+	letter := message{text: "[Aide] A message from helper.\n\nlook at the logs", quiet: true, answer: "look at the logs"}
 	own := message{text: "and the tests"}
 	for _, j := range []message{letter.join(own), own.join(letter)} {
 		ev := j.userEvents()
 		if len(ev) != 1 || ev[0].GetUserMessage().GetText() != "and the tests" {
 			t.Fatalf("recorded: %v", ev)
 		}
-		if !strings.Contains(j.answerText(), "look at the logs") || !strings.Contains(j.answerText(), "and the tests") || strings.Contains(j.answerText(), "[Hermesh]") {
+		if !strings.Contains(j.answerText(), "look at the logs") || !strings.Contains(j.answerText(), "and the tests") || strings.Contains(j.answerText(), "[Aide]") {
 			t.Fatalf("its answer: %q", j.answerText())
 		}
 	}

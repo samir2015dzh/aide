@@ -1,20 +1,20 @@
-// Taking over a DSH session from Hermesh (docs/dsh-takeover.md): the parts
+// Taking over a DSH session from Aide (docs/dsh-takeover.md): the parts
 // of the page that decide, without React.
 
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { DSHBridge } from "@hermesh/proto/machine";
+import type { DSHBridge } from "@aide/proto/machine";
 
-// DSHBridgeState's values (proto/hermesh/machine/v1/machine.proto), by number: the enum isn't
+// DSHBridgeState's values (proto/aide/machine/v1/machine.proto), by number: the enum isn't
 // imported, so that node --test loads this file as the other page logic.
 const NOT_INSTALLED = 1;
 const NOT_RUNNING = 2;
 const RUNNING = 3;
 const INCOMPATIBLE = 4;
 
-/** A message's id for DSH ("hermesh-" + 26 lowercase letters and digits), which drops a second one with it. */
+/** A message's id for DSH ("aide-" + 26 lowercase letters and digits), which drops a second one with it. */
 export function newRequestId(random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))): string {
   const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
-  return "hermesh-" + Array.from(random(26), (b) => alphabet[b % alphabet.length]).join("");
+  return "aide-" + Array.from(random(26), (b) => alphabet[b % alphabet.length]).join("");
 }
 
 /**

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { HerWaiting } from "@hermesh/proto/local";
+import type { HerWaiting } from "@aide/proto/local";
 import { outboxFor, splitAttached, stillSending } from "./waiting.ts";
 
 const waiting = (id: string, bot: string, text: string, at: number, o: { paths?: string[]; error?: string } = {}) =>

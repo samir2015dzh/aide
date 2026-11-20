@@ -4,6 +4,7 @@ import (
 	"crypto/ecdh"
 	"crypto/hpke"
 	"errors"
+	"github.com/samir2015dzh/aide/internal/legacy"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -12,7 +13,7 @@ import (
 // (identity.v1.PushRegistration.notice_public_key) with HPKE, so the relay
 // and the push service only carry ciphertext. The iPhone opens them with
 // CryptoKit's HPKE using the same suite.
-var noticeInfo = []byte("hermesh-notice-v1")
+var noticeInfo = []byte(legacy.Notice)
 
 func noticeSuite() (hpke.KEM, hpke.KDF, hpke.AEAD) {
 	return hpke.DHKEM(ecdh.X25519()), hpke.HKDFSHA256(), hpke.AES128GCM()

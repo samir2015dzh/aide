@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // A coding agent that never answers (a stand-in for Claude Code stuck while
@@ -24,7 +24,7 @@ func TestStallSaysWhatTheAgentWasDoing(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows lists no programs")
 	}
-	marker := fmt.Sprintf("hermesh-stall-%d", time.Now().UnixNano())
+	marker := fmt.Sprintf("aide-stall-%d", time.Now().UnixNano())
 	claude := filepath.Join(t.TempDir(), "claude")
 	script := `#!/bin/sh
 case "$1" in
@@ -38,7 +38,7 @@ wait
 	if err := os.WriteFile(claude, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	w := newOwnerMac(t, []string{"HERMESH_CLAUDE_BIN=" + claude}, &localv1.GrantSpec{}, "--idle-timeout", "2s")
+	w := newOwnerMac(t, []string{"AIDE_CLAUDE_BIN=" + claude}, &localv1.GrantSpec{}, "--idle-timeout", "2s")
 
 	s, r := w.startSession(2*time.Minute, "--agent", "claude", "--wait", "--prompt", "hello")
 	if r.code != 7 || s.LastFailure == nil || s.LastFailure.Kind != "stalled" {

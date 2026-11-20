@@ -15,11 +15,11 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/herhost"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/herhost"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Her on the mesh (docs/her-mesh.md): Her is one of the owner's agents.
@@ -89,8 +89,8 @@ type herNews struct {
 	Text     string `json:"text"`
 }
 
-// herMesh is the machine's state of Her as an agent.
-type herMesh struct {
+// herOnMesh is the machine's state of Her as an agent.
+type herOnMesh struct {
 	key   *identity.SoftwareKey
 	inbox []byte
 	link  HerLink
@@ -101,8 +101,8 @@ type herMesh struct {
 	kick   chan struct{}      // news waits
 }
 
-// openHerMesh makes Her's keys and her link, on a machine that can run her.
-func (n *Machine) openHerMesh() {
+// openHerOnMesh makes Her's keys and her link, on a machine that can run her.
+func (n *Machine) openHerOnMesh() {
 	n.mesh.kick = make(chan struct{}, 1)
 	if n.herUnsupported() != "" {
 		return
@@ -286,9 +286,9 @@ func (n *Machine) herCredentials() *HerCredentials {
 	return &HerCredentials{RelayURL: n.relayURL, OwnerID: n.ownerID, Key: n.mesh.key, RootChain: n.trust.RootChain(), Grant: n.mesh.signed, InboxKey: n.mesh.inbox}
 }
 
-// herMeshNow is what serves her's mesh tools: her link, while Her is on
+// herOnMeshNow is what serves her's mesh tools: her link, while Her is on
 // and holds a grant.
-func (n *Machine) herMeshNow() herhost.Mesh {
+func (n *Machine) herOnMeshNow() herhost.Mesh {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.mesh.link == nil || n.mesh.grant == nil || !n.herOn {
@@ -314,7 +314,7 @@ func (n *Machine) startHerLink() {
 	n.her.MeshChanged()
 }
 
-// stopHerLink stops following her inbox (Her turned off, or hermeshd
+// stopHerLink stops following her inbox (Her turned off, or aided
 // stopping); her grant stays.
 func (n *Machine) stopHerLink() {
 	n.mu.Lock()

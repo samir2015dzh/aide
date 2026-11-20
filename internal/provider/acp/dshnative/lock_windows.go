@@ -18,7 +18,7 @@ var openSemaphore = windows.NewLazySystemDLL("kernel32.dll").NewProc("OpenSemaph
 // of the lock path in lower case>, that exists only while a process holds
 // a handle to it: the probe asks whether it exists (OpenSemaphoreW) and
 // closes what it opened at once, without waiting on it, so its count never
-// changes. Local\ names are per logon session: hermeshd sees the
+// changes. Local\ names are per logon session: aided sees the
 // semaphores of DSH processes in its own.
 func lockProbe() func(dir string) (held, known bool) {
 	return func(dir string) (bool, bool) {

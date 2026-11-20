@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { RpcError, conversation, routineGroups, routineLine, runLate, runRows, runTime, runTook, totals, viewOfRun, type RunRow, type SessionView } from "@hermesh/her-client";
-import type { BotRoutineRunResult, BotSummary, RoutineDetail, RoutineRunInfo, RoutineSummary, SessionInfo } from "@hermesh/her-protocol";
+import { RpcError, conversation, routineGroups, routineLine, runLate, runRows, runTime, runTook, totals, viewOfRun, type RunRow, type SessionView } from "@aide/her-client";
+import type { BotRoutineRunResult, BotSummary, RoutineDetail, RoutineRunInfo, RoutineSummary, SessionInfo } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { useNow, useStore } from "../store";
@@ -497,4 +497,4 @@ function RunResult({ run, relaying, onShowBubble }: { run: RoutineRunInfo; relay
 }
 
 /** For a run's steps while the assistant's conversation is still loading: nothing shown depends on it. */
-const NO_INFO: SessionInfo = { session_id: "", cwd: "", session_file: "", model: "", thinking: "off", permission_mode: "manual", context_window: 0, archived: false };
+const NO_INFO: SessionInfo = { session_id: "", cwd: "", session_file: "", model: "", thinking: "off", context_window: 0, archived: false };

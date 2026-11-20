@@ -6,10 +6,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-// The shared Go core (cmd/hermesh-mobile/android), built by gomobile before
+// The shared Go core (cmd/aide-mobile/android), built by gomobile before
 // each build as Xcode builds the iPhone's (scripts/build-core.sh skips when
 // nothing changed). -PskipCore builds with the library already there.
-val coreAar = rootProject.file("build/core/hermeshcore.aar")
+val coreAar = rootProject.file("build/core/aidecore.aar")
 val buildCore by tasks.registering(Exec::class) {
     description = "Builds the shared Go core with gomobile"
     commandLine(rootProject.file("scripts/build-core.sh").absolutePath)
@@ -17,13 +17,12 @@ val buildCore by tasks.registering(Exec::class) {
 }
 
 android {
-    namespace = "io.hermesh.android"
+    namespace = "io.aide.android"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.hermesh.android"
-        // Android 11: Keystore keys bound to biometrics or the screen lock
-        // (setUserAuthenticationParameters), BiometricPrompt with both.
+        applicationId = "io.aide.android"
+        // Android 11, as the core is built for (build-core.sh -androidapi 30).
         minSdk = 30
         targetSdk = 35
         versionCode = 1
@@ -79,11 +78,9 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.fragment:fragment-ktx:1.8.8")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-process:2.9.2")
-    implementation("androidx.biometric:biometric:1.1.0")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")

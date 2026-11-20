@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { Machine } from "@hermesh/proto/local";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
-import { clockText, elapsedSeconds, createdDate, dateOf, displayTitle, failureTitle, isActive, isFailed } from "@hermesh/core";
-import { grantColor, Mark, type GrantLook } from "@hermesh/ui";
+import type { Machine } from "@aide/proto/local";
+import { SessionStatus, type Session } from "@aide/proto/session";
+import { clockText, elapsedSeconds, createdDate, dateOf, displayTitle, failureTitle, isActive, isFailed } from "@aide/core";
+import { grantColor, Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { grantFace, StatusDot } from "../components";
 import { Icon } from "../icons";
@@ -38,7 +38,7 @@ export function Working({ pick, onClear }: { pick: string; onClear: () => void }
         {running > 0 && !pick && <span className="n">{t("runningCount", { count: running })}</span>}
         {pick && <Condition pick={pick} count={cards.length} onClear={onClear} />}
         {/* A machine only has no grants to manage. */}
-        {!st.status?.machineOnly && <button className="link" onClick={() => window.hermesh?.openSettings("grants")}>{t("working.manageAccess")}</button>}
+        {!st.status?.machineOnly && <button className="link" onClick={() => window.aide?.openSettings("grants")}>{t("working.manageAccess")}</button>}
       </div>
       {live.length === 0 ? (
         <div className="card"><Idle /></div>

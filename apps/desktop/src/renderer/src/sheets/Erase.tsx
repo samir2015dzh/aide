@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { EraseItem } from "@hermesh/proto/local";
-import { agentName } from "@hermesh/ui";
+import type { EraseItem } from "@aide/proto/local";
+import { agentName } from "@aide/ui";
 import { local } from "../api";
 import { GrantAvatar } from "../components";
 import { Icon } from "../icons";
 import { errorText, useStore } from "../store";
-import { ErrorLine, SignerWaiting, useAction } from "./common";
+import { ErrorLine, Working, useAction } from "./common";
 
 // Erase Everything (docs/erase-everything.md): what it erases, by name, and
 // what stays, confirmed by typing the account's email (a server of one's
@@ -70,7 +70,7 @@ function Confirm({ started }: { started: (id: string, items: EraseItem[]) => voi
         <Trans t={t} i18nKey="erase.confirm" values={{ text: expected }} components={{ b: <b className="sel-text" /> }} />
       </label>
       <input id="erase-confirm" className="field" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} disabled={busy} />
-      {busy && <SignerWaiting detail={t("erase.approve")} />}
+      {busy && <Working />}
       <ErrorLine text={loadError || error} />
       <div className="sheet-foot">
         <button className="btn" onClick={() => st.set({ sheet: null })} disabled={busy}>{t("cancel")}</button>

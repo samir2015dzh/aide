@@ -1,14 +1,12 @@
 //! The `mesh` group: tools that a host outside the kernel gives a bot's own conversation and runs
 //! for it. The kernel has no words of its own for them: the group's line in the catalog, its
-//! guidelines and its tools' definitions are the host's, and so is what the user reads when a
-//! call that writes asks for approval. The service's side is behind [`MeshHost`].
+//! guidelines and its tools' definitions are the host's. Its calls run without asking anyone.
+//! The service's side is behind [`MeshHost`].
 
 use async_trait::async_trait;
 use her_llm::ToolSpec;
 use her_protocol::api::MeshCallResult;
-use her_protocol::api::MeshDescribeResult;
 use her_protocol::api::MeshHostParams;
-use her_tools::ApprovalWords;
 use her_tools::Tool;
 use her_tools::ToolCtx;
 use her_tools::ToolError;
@@ -30,8 +28,6 @@ pub trait MeshHost: Send + Sync + 'static {
     /// The group as its host gives it now, none while no host offers tools; with a number that
     /// changes whenever the group does.
     fn group(&self) -> (u64, Option<Arc<MeshHostParams>>);
-    /// What a call that writes would do, as `mesh/describe` answers.
-    async fn describe(&self, name: &str, arguments: &Value) -> Result<MeshDescribeResult, String>;
     /// Runs one tool, as `mesh/call` does.
     async fn call(&self, call_id: &str, name: &str, arguments: Value) -> Result<MeshCallResult, String>;
 }
@@ -73,8 +69,7 @@ impl MeshLink {
     }
 }
 
-/// One of the host's tools. One that writes is a change the approval policy asks about, in the
-/// host's words; one that only reads runs in every mode.
+/// One of the host's tools. One that writes runs on its own, never beside another call.
 struct MeshTool {
     spec: ToolSpec,
     writes: bool,
@@ -89,12 +84,6 @@ impl Tool for MeshTool {
 
     fn kind(&self) -> ToolKind {
         if self.writes { ToolKind::Mutating } else { ToolKind::ReadOnly }
-    }
-
-    async fn approval_words(&self, args: &Value) -> Option<ApprovalWords> {
-        let described = self.host.describe(&self.spec.name, args).await.ok()?;
-        // A rule without words would never match.
-        Some(ApprovalWords { summary: described.summary, rule: described.rule.filter(|rule| !rule.is_empty()) })
     }
 
     async fn execute(&self, args: Value, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {

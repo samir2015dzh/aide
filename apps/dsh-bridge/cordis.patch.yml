@@ -1,4 +1,4 @@
 - insert:
-    - id: hermesh-dsh-bridge
-      name: '@hermesh/dsh-bridge'
+    - id: aide-dsh-bridge
+      name: '@aide/dsh-bridge'
       config: {}

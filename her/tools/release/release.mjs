@@ -9,7 +9,7 @@
 //   pnpm release:cli --linux-host HOST   run the smoke test of a Linux build there too
 //
 // Needs: gh signed in with write access to the releases repository, notary credentials
-// (HERMESH_NOTARY_*, as for the app), the signing key in the keychain, cargo-zigbuild and zig for
+// (AIDE_NOTARY_*, as for the app), the signing key in the keychain, cargo-zigbuild and zig for
 // Linux, a clean working tree, LICENSE, and what changed in crates/her-cli/releases/<version>.md.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -22,8 +22,8 @@ import { pdfiumLibraryFor, pdfiumLibrary } from "../../apps/desktop/scripts/pdfi
 import { notices } from "./notices.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const REPO = "hermeshai/her-releases";
-const TAP = "hermeshai/homebrew-tap";
+const REPO = "samir2015dzh/aide";
+const TAP = "samir2015dzh/homebrew-tap";
 const RELEASES = `https://github.com/${REPO}/releases`;
 const KEYCHAIN = ["-a", "her", "-s", "her-release-signing"];
 const ALL = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"];
@@ -78,8 +78,8 @@ const notes = path.join(root, "crates/her-cli/releases", `${version}.md`);
 ready(fs.existsSync(notes) && fs.readFileSync(notes, "utf8").trim() !== "", `write what changed in ${path.relative(root, notes)}`);
 ready(!run("git", ["status", "--porcelain"], { cwd: root }), "the working tree has changes: a release is built from a commit");
 ready(fs.existsSync(path.join(root, "LICENSE")), "there is no LICENSE: the licence is the owner's decision (standalone-cli-design §18.5)");
-const notarize = process.env.HERMESH_NOTARY_PROFILE;
-if (targets.some(IS_MAC)) ready(Boolean(notarize), "no notary credentials: set HERMESH_NOTARY_PROFILE");
+const notarize = process.env.AIDE_NOTARY_PROFILE;
+if (targets.some(IS_MAC)) ready(Boolean(notarize), "no notary credentials: set AIDE_NOTARY_PROFILE");
 let seed;
 try {
   seed = run("security", ["find-generic-password", ...KEYCHAIN, "-w"]);

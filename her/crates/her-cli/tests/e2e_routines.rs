@@ -136,7 +136,7 @@ fn logs(home: &Path) -> Vec<String> {
 /// Said in the chat, kept in the file, run at its time, and told by the bot in its own message.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_routine_said_in_the_chat_runs_at_its_time_and_the_bot_tells_the_user() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     let init = client.request("initialize", json!({"protocol_version": 2, "client_info": {"name": "e2e"}})).await.unwrap();
     assert_eq!(init["capabilities"]["routines"], true);
@@ -226,7 +226,7 @@ async fn a_routine_said_in_the_chat_runs_at_its_time_and_the_bot_tells_the_user(
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_files_a_routine_made_are_its_whenever_the_bot_sends_them() {
     // Files changed without asking, as a run cannot ask: it writes in the bot's folder.
-    let env = TestEnv::new("accept-edits", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     client.request("initialize", json!({"protocol_version": 2, "client_info": {"name": "e2e"}})).await.unwrap();
     let mut wire = route(incoming);
@@ -235,14 +235,8 @@ async fn the_files_a_routine_made_are_its_whenever_the_bot_sends_them() {
     let session = open(&client, &bot).await;
 
     say(&client, &session, "[[mock:routine_file:早报|in 2s|brief.md]]").await;
-    // Making a routine is asked about; the owner says yes.
-    let asked = until_event(&mut wire, |e| e["type"] == "approval_requested" || ended(e)).await;
-    let mut events = asked.clone();
-    if let Some(ask) = asked.last().filter(|e| e["type"] == "approval_requested") {
-        let approve = json!({"session_id": session, "op": {"type": "approval", "call_id": ask["call_id"], "decision": {"type": "approve"}}});
-        client.request("session/op", approve).await.expect("approved");
-        events = until_event(&mut wire, ended).await;
-    }
+    // Making a routine runs without asking.
+    let events = until_event(&mut wire, ended).await;
     let change = events.iter().find(|e| e["type"] == "tool_completed" && e["result"]["tool_name"] == "manage_routine").expect("made");
     let routine_id = change["result"]["details"]["routine_id"].as_str().unwrap().to_string();
 
@@ -309,7 +303,7 @@ async fn the_files_a_routine_made_are_its_whenever_the_bot_sends_them() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_run_with_nothing_to_tell_stays_out_of_the_chat() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -337,7 +331,7 @@ async fn a_run_with_nothing_to_tell_stays_out_of_the_chat() {
 /// A run in progress shows in the row, cannot be started twice and can be stopped.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_run_under_way_shows_and_can_be_stopped() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -361,7 +355,7 @@ async fn a_run_under_way_shows_and_can_be_stopped() {
 /// Nobody has the conversation open: it is loaded for the run, and the row follows.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_routine_runs_in_a_conversation_that_is_not_loaded() {
-    let env = TestEnv::new("bypass-permissions", "[server]\nidle_session_secs = 1\n").await;
+    let env = TestEnv::new("[server]\nidle_session_secs = 1\n").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -390,7 +384,7 @@ async fn a_routine_runs_in_a_conversation_that_is_not_loaded() {
 /// goes when it has gone unused for its idle time (routine-design §5.5, §7.2).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_conversation_stays_loaded_for_a_run_and_no_longer() {
-    let env = TestEnv::new("bypass-permissions", "[server]\nidle_session_secs = 1\n").await;
+    let env = TestEnv::new("[server]\nidle_session_secs = 1\n").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -417,7 +411,7 @@ async fn a_conversation_stays_loaded_for_a_run_and_no_longer() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_run_cut_off_by_the_service_ending_is_not_run_again() {
     for crash in [false, true] {
-        let env = TestEnv::new("bypass-permissions", "").await;
+        let env = TestEnv::new("").await;
         let (bot, id, mut child) = {
             let (child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
             native_init(&client).await;
@@ -453,7 +447,7 @@ async fn a_run_cut_off_by_the_service_ending_is_not_run_again() {
 /// a time that passed while it was down, it does once.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn routines_outlive_the_service() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (id, one_off, bot, mut child) = {
         let (child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
         native_init(&client).await;
@@ -494,7 +488,7 @@ async fn until_row_or(wire: &mut Wire, bot: &str, row: &Value, want: impl Fn(&Va
 /// A file that cannot be read costs the routines and nothing else, and is left as it is.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_damaged_database_costs_only_the_routines() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let path = env.home.path().join("her.db");
     let junk = b"this is not a database, though it is long enough to look at it".repeat(100);
     std::fs::write(&path, &junk).unwrap();
@@ -523,7 +517,7 @@ async fn a_damaged_database_costs_only_the_routines() {
 /// From the panel: off and on, gone; the model hears each as a new list.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_panel_changes_a_routine_and_the_model_hears_of_it() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -556,7 +550,7 @@ async fn the_panel_changes_a_routine_and_the_model_hears_of_it() {
 /// routine, and only for its own bot.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_deleted_routines_run_still_opens_from_the_chat() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -600,7 +594,7 @@ async fn a_deleted_routines_run_still_opens_from_the_chat() {
 /// A new conversation keeps its bot's routines; a deleted bot takes them along.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn routines_belong_to_the_bot_not_the_conversation() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let mut wire = route(incoming);
@@ -649,7 +643,7 @@ async fn still_up(child: &mut Child, wait: Duration) -> bool {
 /// (routine-design §7.1).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_service_stays_up_for_an_enabled_routine() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("t.sock");
     let url = format!("unix://{}", socket.display());
     let mut service = env.her(&["serve", "--listen", &url, "--idle-exit", "1"]).spawn().unwrap();

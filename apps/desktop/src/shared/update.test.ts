@@ -29,7 +29,7 @@ test("the feed is Squirrel.Mac's JSON format for one release", () => {
         updateTo: {
           version: "0.3.0",
           name: "0.3.0",
-          notes: "https://github.com/samir2015dzh/hermesh/releases/tag/v0.3.0",
+          notes: "https://github.com/samir2015dzh/aide/releases/tag/v0.3.0",
           pub_date: "2026-10-19T08:00:00Z",
           url: "https://example.com/Aide-macos-arm64.zip",
         },
@@ -94,8 +94,8 @@ test("localized history includes skipped versions, with the current release firs
   const catalog = releaseCatalog(source, source, "0.1.0-rc8");
   assert.deepEqual(catalog.map((n) => n.version), ["0.1.0-rc8", "0.1.0-rc7"]);
   const feed = releaseFeed({ version: "0.1.0-rc8", url: "https://example.com/app.zip", date: new Date(), notes: catalog });
-  assert.deepEqual(feedNotes(feed.hermeshNotes), catalog);
-  assert.equal(feed.releases[0].updateTo.notes, "https://github.com/samir2015dzh/hermesh/releases/tag/v0.1.0-rc8");
+  assert.deepEqual(feedNotes(feed.aideNotes), catalog);
+  assert.equal(feed.releases[0].updateTo.notes, "https://github.com/samir2015dzh/aide/releases/tag/v0.1.0-rc8");
   assert.deepEqual(feedNotes([{ version: "0.1.0", summary: { en: summary } }, null, { version: "wrong" }]), []);
   assert.deepEqual(feedNotes(undefined), []);
   assert.deepEqual(feedNotes([{ version: "0.1.0", summary: { en: { improvements: ["a".repeat(1001)], fixes: [] }, "zh-CN": summary } }]), []);

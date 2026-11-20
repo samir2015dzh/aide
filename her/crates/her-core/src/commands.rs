@@ -371,7 +371,7 @@ mod tests {
         let (loaded, _) = prompt(resolve(&input, &skills, &OutputLimits::default()));
         assert_eq!(loaded.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["gen-report"]);
 
-        // What a message replies to comes as a resource (hermesh docs/her-reply.md §4.1): a mention quoted there
+        // What a message replies to comes as a resource (aide docs/her-reply.md §4.1): a mention quoted there
         // is not the owner's, whether or not a skill has the name.
         let input = vec![
             UserContent::Text {

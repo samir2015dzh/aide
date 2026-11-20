@@ -1,7 +1,7 @@
 import { browserMethods, pageMethods } from "./methods.js";
 
 // The browser end of the kernel's CDP stream, shared by the desktop app's embedded browser
-// (apps/desktop/src/main/browser/shim.ts) and the Hermesh extension (browser.js), so the
+// (apps/desktop/src/main/browser/shim.ts) and the Aide extension (browser.js), so the
 // two answer the kernel the same way (browser-design §8.3.2, §8.4). A page's debugger only
 // knows its own page, so the browser-level Target and Browser commands her-browser sends are
 // answered here (D-210); page-level ones go to the page's debugger, and only those on the

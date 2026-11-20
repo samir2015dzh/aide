@@ -1,11 +1,11 @@
 //! The user's own Chrome (browser-design §8.4): `her browser native-host`, which Chrome
-//! starts for the Hermesh extension, and `her browser extension install`, which tells
+//! starts for the Aide extension, and `her browser extension install`, which tells
 //! Chrome where that host is.
 //!
 //! The host relays between two framings. Chrome speaks Native Messaging on stdin and stdout:
 //! a 4-byte length in native byte order, then that much JSON. The her service speaks the
 //! native protocol on its Unix socket (`$HER_HOME/run/her.sock`, or the one `--socket` names,
-//! as for the her that Hermesh runs on its own socket): the host calls `browser/host {kind: "extension"}` and
+//! as for the her that Aide runs on its own socket): the host calls `browser/host {kind: "extension"}` and
 //! then carries CDP in `browser/cdp` notifications, as the desktop app does. To the extension
 //! it sends `{stream, data}` (one CDP message of the browser numbered `stream`, as a JSON
 //! object), or `{stream, part, more}` pieces of one that is over Chrome's 1 MB limit (parts of
@@ -38,8 +38,8 @@ use tokio::sync::mpsc;
 use crate::setup;
 
 /// The Native Messaging host's name, as the manifest and the extension call it.
-pub const HOST_NAME: &str = "com.hermesh.browser";
-/// The Hermesh extension's ID, fixed by the `key` in its manifest.json.
+pub const HOST_NAME: &str = "com.aide.browser";
+/// The Aide extension's ID, fixed by the `key` in its manifest.json.
 pub const EXTENSION_ID: &str = "igeolfcjdhlfopmimahmhleloehmfkdc";
 /// The extension's ID in the Chrome Web Store, once published, when the store gave it
 /// another ID than [`EXTENSION_ID`] (it keeps that one only when the first upload carried
@@ -436,7 +436,7 @@ macro_rules! extension_file {
     };
 }
 
-/// The Hermesh extension as Chrome loads it (apps/chrome-extension, without its tests and
+/// The Aide extension as Chrome loads it (apps/chrome-extension, without its tests and
 /// types): her carries the one that speaks its bridge versions, for where no app brings it.
 /// The manifest keeps its `key`, so loaded from a folder it has [`EXTENSION_ID`].
 const EXTENSION_FILES: &[(&str, &[u8])] = &[
@@ -481,7 +481,7 @@ pub(crate) fn place_extension(folder: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The origins that may start the host: the Hermesh extension's, the store's, and the ones
+/// The origins that may start the host: the Aide extension's, the store's, and the ones
 /// given.
 pub(crate) fn allowed_origins(extension_ids: &[String]) -> anyhow::Result<Vec<String>> {
     let mut ids: Vec<&str> = vec![EXTENSION_ID];
@@ -772,12 +772,12 @@ mod tests {
     fn the_launcher_quotes_its_paths() {
         let script = launcher_script(Path::new("/Apps/Her Work/her"), Path::new("/Users/o'brien/.her"), None);
         assert!(script.contains("HER_HOME='/Users/o'\\''brien/.her' exec '/Apps/Her Work/her' browser native-host \"$@\""), "{script}");
-        // Hermesh's her listens in its own folder, which has a space on a Mac.
-        let socket = Path::new("/Users/o'brien/Library/Application Support/Hermesh/machine/her/her.sock");
-        let script = launcher_script(Path::new("/Apps/Hermesh.app/Contents/Helpers/her"), Path::new("/Users/o'brien/.her"), Some(socket));
+        // Aide's her listens in its own folder, which has a space on a Mac.
+        let socket = Path::new("/Users/o'brien/Library/Application Support/Aide/machine/her/her.sock");
+        let script = launcher_script(Path::new("/Apps/Aide.app/Contents/Helpers/her"), Path::new("/Users/o'brien/.her"), Some(socket));
         assert!(
             script.contains(
-                "exec '/Apps/Hermesh.app/Contents/Helpers/her' browser native-host --socket '/Users/o'\\''brien/Library/Application Support/Hermesh/machine/her/her.sock' \"$@\""
+                "exec '/Apps/Aide.app/Contents/Helpers/her' browser native-host --socket '/Users/o'\\''brien/Library/Application Support/Aide/machine/her/her.sock' \"$@\""
             ),
             "{script}"
         );

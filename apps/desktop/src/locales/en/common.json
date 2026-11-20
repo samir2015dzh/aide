@@ -19,13 +19,11 @@
     "queued": "Queued",
     "running": "Running"
   },
-  "codeTiles": {
-    "label": "Verification code"
-  },
   "personal": {
     "other": "Other Agent",
-    "connectMessage": "Please connect yourself to my computer (Aide):\n1. Install: curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli\n2. Sign in: ~/.local/bin/aide auth login {{address}} --name \"{{name}}\"\n3. Tell me the verification code shown on screen. Once I confirm it on my computer, you’re ready.\nThen use aide project list to see the projects you can use, aide session start --project {{project}} --prompt \"…\" to start working, and aide --help for every command.",
-    "projectArg": "project"
+    "connectMessage": "Please connect yourself to my computer (Aide):\n1. Install: curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- --cli\n2. Log in: AIDE_PASSWORD='{{password}}' ~/.local/bin/aide auth login {{server}} --account {{account}} --name \"{{name}}\"\nThen you’re ready. Use aide project list to see the projects you can use, aide session start --project {{project}} --prompt \"…\" to start working, and aide --help for every command.",
+    "projectArg": "project",
+    "passwordArg": "password"
   },
   "sidebar": {
     "label": "Sidebar",
@@ -56,19 +54,20 @@
     "sentBy": "Sent by {{name}}",
     "running_one": "{{count}} working",
     "running_other": "{{count}} working",
-    "pairing": "Request to connect",
     "sentByYou": "Sent by You",
     "newSession": "New Task",
     "dsh": "DeepSeek Sessions",
     "searchHint": "Search tasks, machines, agents",
-    "machinesOnline": "{{online}}/{{total}} machines online"
+    "machinesOnline": "{{online}}/{{total}} machines online",
+    "connect": "Connect Agents",
+    "howToConnect": "How to Connect DSH, Claude Desktop…"
   },
   "accountMenu": {
     "settings": "Settings…",
-    "newGrant": "Connect Agent…",
+    "newGrant": "Connect Assistant…",
     "addMachine": "Add Machine…",
-    "enterCode": "Enter Pairing Code…",
-    "account": "Account…"
+    "account": "Account…",
+    "connect": "Connect DSH, Claude Desktop…"
   },
   "sessionMenu": {
     "open": "Open",
@@ -259,7 +258,7 @@
       "incompatible": "The Aide plugin in DSH Desktop can't be used.",
       "unknown": "Not known yet whether the Aide plugin in DSH Desktop runs."
     },
-    "viaHermesh": "Sent from Aide",
+    "viaAide": "Sent from Aide",
     "notSent": "Not sent: {{reason}}",
     "install": {
       "title": "Install the Aide plugin",

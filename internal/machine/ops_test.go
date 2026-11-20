@@ -15,14 +15,14 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 func opsMachine(t *testing.T) *Machine {
 	t.Helper()
 	dir := t.TempDir()
-	st, err := OpenStore(filepath.Join(dir, "hermeshd.db"))
+	st, err := OpenStore(filepath.Join(dir, "aided.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

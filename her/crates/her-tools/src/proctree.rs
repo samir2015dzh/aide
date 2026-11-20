@@ -29,7 +29,7 @@ impl ProcessTree {
         }
         #[cfg(windows)]
         {
-            // A console no window shows: her may have none to share (started by hermeshd).
+            // A console no window shows: her may have none to share (started by aided).
             command.creation_flags(job::CREATE_SUSPENDED | job::CREATE_NO_WINDOW);
             let mut child = command.spawn()?;
             match job::Job::holding(&child) {

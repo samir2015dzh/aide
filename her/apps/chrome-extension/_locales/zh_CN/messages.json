@@ -41,17 +41,11 @@
   "working": {
     "message": "工作中"
   },
-  "approval": {
-    "message": "等你在 Aide 里批准"
-  },
   "finished": {
     "message": "任务已结束"
   },
   "back": {
     "message": "回到对话"
-  },
-  "done": {
-    "message": "我处理好了"
   },
   "stop": {
     "message": "停止"
@@ -61,9 +55,6 @@
   },
   "offerNote": {
     "message": "Her 将能读取和操作这个标签页。"
-  },
-  "groupWaiting": {
-    "message": "等你 · $1"
   },
   "titleConnected": {
     "message": "Aide：已连接"
@@ -82,9 +73,6 @@
   },
   "titleOutdated": {
     "message": "Aide：需要更新"
-  },
-  "titleWaiting": {
-    "message": "Her 在等你"
   },
   "statusStuck": {
     "message": "连不上 Her"
@@ -109,12 +97,6 @@
   },
   "update": {
     "message": "更新扩展"
-  },
-  "waitingOne": {
-    "message": "有 1 件事等你"
-  },
-  "waiting": {
-    "message": "有 $1 件事等你"
   },
   "titleStuck": {
     "message": "Aide：连不上"

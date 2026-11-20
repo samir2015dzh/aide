@@ -8,8 +8,7 @@
   "add": {
     "newGrant": "连接 agent…",
     "addMachine": "添加机器…",
-    "addProject": "添加项目…",
-    "enterCode": "输入配对码…"
+    "addProject": "添加项目…"
   },
   "unreachable": {
     "offline": "<b>{{name}} 离线了</b>，它上面的任务暂时看不到",
@@ -21,19 +20,9 @@
   },
   "attention": {
     "title": "需要你处理",
-    "pairingDetail": "{{device}} · 核对码 <code>{{code}}</code>",
-    "verify": "核对",
-    "review": "查看",
     "expires_other": "「{{label}}」的授权 {{count}} 天后到期",
     "expiresDetail": "到期后它就不能再用你的机器，正在跑的任务会被打断",
     "renew": "续期…",
-    "pairingDevice": "「{{label}}」想成为你的可信设备",
-    "pairingClient": "「{{label}}」想连接你的电脑",
-    "pairingMachine": "一台自称「{{label}}」的机器想加入",
-    "signer": "Aide 签名器有新版本",
-    "signerDetail": "这台电脑装的是 {{version}}。更新后它才能签下新版 Aide 的请求；Windows 会请你允许一次",
-    "updateSigner": "更新…",
-    "signerUpdated": "签名器已更新",
     "open": "打开"
   },
   "map": {
@@ -113,7 +102,7 @@
     "here": "在这台 Mac",
     "here_win": "在这台电脑",
     "seen_other": "今天 {{count}} 个任务 · 最近一次 {{ago}}",
-    "revokeElsewhere": "撤销它的授权，要到你的可信设备上。"
+    "revokeElsewhere": "要登出它，到 设置 › 访问。"
   },
   "tiles": {
     "label": "一览",

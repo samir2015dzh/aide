@@ -10,8 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // The owner starts sessions from the app, as its New Session sheet does:
@@ -28,7 +28,7 @@ func TestOwnerSessions(t *testing.T) {
 		t.Skip("e2e")
 	}
 	gh := t.TempDir()
-	env := append([]string{"HERMESH_FAKE_PROVIDERS=1"}, githubEnv(gh)...)
+	env := append([]string{"AIDE_FAKE_PROVIDERS=1"}, githubEnv(gh)...)
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	ctx := context.Background()
 	app := w.app.client
@@ -52,7 +52,7 @@ func TestOwnerSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	other, _ := w.otherMac("work-mac", env)
-	far := w.joinTyped(other, home, "work-mac").LocalMachineId
+	far := w.logInMachineOnly(other, home, "work-mac").LocalMachineId
 	if _, err := other.AddProject(ctx, &localv1.AddProjectRequest{MachineId: far, ProjectId: "billing", Path: gitRepo(t, map[string]string{"README.md": "# billing\n"})}); err != nil {
 		t.Fatal(err)
 	}

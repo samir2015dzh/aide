@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
 // fakeHer listens on a socket like her: each connection answers initialize,

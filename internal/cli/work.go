@@ -13,13 +13,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/internal/workstats"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/workstats"
 )
 
-// `hermesh work` (docs/her-team.md §6.3): what the coding agents did over
+// `aide work` (docs/her-team.md §6.3): what the coding agents did over
 // the last days, from each reachable machine's work counts (PullWork,
 // docs/work-stats.md), added up here as an owner device's QueryWork does.
 

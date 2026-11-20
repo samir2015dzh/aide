@@ -1,5 +1,5 @@
-import type { Machine } from "@hermesh/proto/local";
-import { MachineProblemKind, type MachineProblem } from "@hermesh/proto/machine";
+import type { Machine } from "@aide/proto/local";
+import { MachineProblemKind, type MachineProblem } from "@aide/proto/machine";
 import { i18n } from "../../shared/i18n";
 import { Icon } from "./icons";
 
@@ -79,7 +79,7 @@ export function Problems({ m }: { m: Machine }) {
             <p>{problemBody(p)}</p>
             {opensActivityMonitor(m, p) && (
               <div className="health-acts">
-                <button className="btn sm" onClick={() => window.hermesh?.openActivityMonitor()}>{i18n.t("common:health.openActivityMonitor")}</button>
+                <button className="btn sm" onClick={() => window.aide?.openActivityMonitor()}>{i18n.t("common:health.openActivityMonitor")}</button>
               </div>
             )}
           </div>

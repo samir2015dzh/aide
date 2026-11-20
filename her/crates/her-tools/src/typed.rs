@@ -54,12 +54,6 @@ pub trait TypedTool: Send + Sync + 'static {
         args
     }
 
-    /// See [`Tool::check`]. Arguments that do not deserialize fail before this is called.
-    async fn check(&self, args: &Self::Args, ctx: &ToolCtx) -> Result<(), ToolError> {
-        let _ = (args, ctx);
-        Ok(())
-    }
-
     async fn run(&self, args: Self::Args, ctx: ToolCtx) -> Result<ToolOutput, ToolError>;
 }
 
@@ -121,11 +115,6 @@ impl<T: TypedTool> Tool for Typed<T> {
 
     fn prepare_arguments(&self, args: Value) -> Value {
         self.inner.prepare_arguments(args)
-    }
-
-    async fn check(&self, args: &Value, ctx: &ToolCtx) -> Result<(), ToolError> {
-        let args = parse_args::<T>(args.clone())?;
-        self.inner.check(&args, ctx).await
     }
 
     async fn execute(&self, args: Value, ctx: ToolCtx) -> Result<ToolOutput, ToolError> {

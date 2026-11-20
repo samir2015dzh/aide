@@ -289,7 +289,7 @@ func (g *Gateway) issueTokens(w http.ResponseWriter, r *http.Request, conn *Conn
 			return
 		}
 	}
-	// The app is still there: a connection waiting for approval lives on.
+	// The app is still there.
 	g.touch(ctx, conn)
 	w.Header().Set("Pragma", "no-cache")
 	writeJSON(w, http.StatusOK, map[string]any{

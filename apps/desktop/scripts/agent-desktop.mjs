@@ -1,5 +1,5 @@
 // agent-desktop (https://github.com/vercel-labs/agent-desktop), the program her's desktop tools
-// run (her/crates/her-desktop), as Hermesh.app carries it in Contents/Helpers beside her: one
+// run (her/crates/her-desktop), as Aide.app carries it in Contents/Helpers beside her: one
 // pinned npm release, checked against the registry's integrity and each binary's own sha256, kept
 // between builds in node_modules/.cache. The package's postinstall never runs: only its prebuilt
 // binaries are taken.
@@ -9,7 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-/** The release Hermesh ships; a new one needs its `npm view agent-desktop@<v> dist.integrity`. */
+/** The release Aide ships; a new one needs its `npm view agent-desktop@<v> dist.integrity`. */
 export const agentDesktopRelease = {
   version: "1.0.2",
   integrity: "sha512-k2Qi3f0y1U60YaJOw1dob3EO55P/DuH4HK3WKdI9sMZLjVxpGZAzuG50rIWuIqS0JIVy07g+0pp9Of2JDjTX0w==",
@@ -18,7 +18,7 @@ export const agentDesktopRelease = {
 /** The program and the helper it starts, which must stay beside it, by the names they are installed under. */
 export const agentDesktopFiles = ["agent-desktop", "agent-desktop-macos-helper"];
 
-/** The same for Linux, where Hermesh's release carries them for her (docs/linux.md §5): the program and its clipboard helper. */
+/** The same for Linux, where Aide's release carries them for her (docs/linux.md §5): the program and its clipboard helper. */
 export const agentDesktopLinuxFiles = ["agent-desktop", "agent-desktop-linux-clipboard-owner"];
 
 /** `sha512-…` of `file`, as npm writes integrity. */

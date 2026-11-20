@@ -11,11 +11,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
 )
 
-// DeepSeek Harness's own sessions on the machines, those Hermesh did not
+// DeepSeek Harness's own sessions on the machines, those Aide did not
 // start (docs/cli.md): an agent whose grant sees sessions it did not start
 // lists and reads them; nothing more. Their ids here are dsh_, the
 // machine's part of a session id, and DSH's own id, so they are addressed

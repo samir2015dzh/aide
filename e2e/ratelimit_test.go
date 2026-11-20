@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestRateLimitRetry: Codex stops a turn on a model at capacity and does
@@ -31,7 +31,7 @@ login) echo "Logged in using ChatGPT";;
 *) FAKE_CODEX_OVERLOADED=`+busy+` FAKE_CODEX_LOG=`+threads+` exec `+filepath.Join(binaries(t), "fakecodex")+` "$@";;
 esac
 `), 0o755)
-	w := newOwnerMac(t, []string{"HERMESH_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}}, "--retry-delay", "300ms")
+	w := newOwnerMac(t, []string{"AIDE_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}}, "--retry-delay", "300ms")
 
 	type event struct {
 		Turn    int

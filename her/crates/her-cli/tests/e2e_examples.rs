@@ -33,22 +33,22 @@ fn run(env: &TestEnv, interpreter: &str, script: &str, prompt: &str) -> Option<(
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_python_example_gets_a_reply_and_answers_an_approval() {
-    let env = TestEnv::new("manual", "").await;
+async fn the_python_example_gets_a_reply_and_shows_the_tools_it_runs() {
+    let env = TestEnv::new("").await;
     let Some((reply, _)) = run(&env, "python3", "minimal.py", "say hi") else { return };
     assert_eq!(reply.trim(), "Hello from mock.");
     let Some((reply, log)) = run(&env, "python3", "minimal.py", "[[mock:files]] go") else { return };
     assert!(reply.contains("files done"), "{reply}");
-    assert!(log.contains("approving: write notes.txt"), "{log}");
+    assert!(log.contains("running: write"), "{log}");
     assert_eq!(std::fs::read_to_string(env.work.path().join("notes.txt")).unwrap(), "gamma\nbeta\n");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_node_example_gets_a_reply_and_answers_an_approval() {
-    let env = TestEnv::new("manual", "").await;
+async fn the_node_example_gets_a_reply_and_shows_the_tools_it_runs() {
+    let env = TestEnv::new("").await;
     let Some((reply, _)) = run(&env, "node", "minimal.mjs", "say hi") else { return };
     assert_eq!(reply.trim(), "Hello from mock.");
     let Some((reply, log)) = run(&env, "node", "minimal.mjs", "[[mock:files]] go") else { return };
     assert!(reply.contains("files done"), "{reply}");
-    assert!(log.contains("approving: write notes.txt"), "{log}");
+    assert!(log.contains("running: write"), "{log}");
 }

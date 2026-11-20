@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestAgentsCheckedOnDemand: this Mac's coding agents are checked (each CLI
@@ -33,7 +33,7 @@ func TestAgentsCheckedOnDemand(t *testing.T) {
 		os.Rename(codex+".new", codex)
 	}
 	write(false)
-	w := newOwnerMac(t, []string{"HERMESH_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
+	w := newOwnerMac(t, []string{"AIDE_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
 	ctx := context.Background()
 	loggedIn := func() (bool, bool) {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})

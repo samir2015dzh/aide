@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // TestAgentDefaults: the owner sets, from the app, the model, reasoning
@@ -19,7 +19,7 @@ import (
 // a session without a model gets them, passed to Codex for that session
 // alone; one naming a model gets that model. The app shows the models Codex
 // offers and Codex's own configuration (what following it means), which
-// Hermesh never changes; cleared, sessions follow it again. Each session
+// Aide never changes; cleared, sessions follow it again. Each session
 // shows the app the model and effort it runs with, as Codex answered.
 func TestAgentDefaults(t *testing.T) {
 	unixOnly(t, "its fake codex is a shell script")
@@ -36,7 +36,7 @@ login) echo "Logged in using ChatGPT";;
 *) FAKE_CODEX_LOG=`+log+` FAKE_CODEX_CONFIG='{"model":"gpt-fake-big","model_reasoning_effort":"high","service_tier":"priority"}' exec `+filepath.Join(binaries(t), "fakecodex")+` "$@";;
 esac
 `), 0o755)
-	w := newOwnerMac(t, []string{"HERMESH_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
+	w := newOwnerMac(t, []string{"AIDE_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
 	ctx := context.Background()
 	status := func() (string, *machinev1.AgentStatus) {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})

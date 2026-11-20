@@ -19,34 +19,34 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
-// TestLinuxHer (HERMESH_DOCKER=1) is the first step of phase 4 of
+// TestLinuxHer (AIDE_DOCKER=1) is the first step of phase 4 of
 // docs/her-server.md (§11): a fresh Ubuntu server with systemd becomes an
 // environment with the install command, run as root, and stays one across
 // an update. Two signed releases A < B carry her and her console:
 //
-//  1. the install command installs hermeshd, hermesh, her and the console
+//  1. the install command installs aided, aide, her and the console
 //     from A, and pairs the machine;
 //  2. the owner turns Her on there (SetHer, signed by the test's signer):
-//     hermeshd finds her and its console beside itself, with no
-//     HERMESH_HER_BIN or HERMESH_HER_CONSOLE, and Her answers, her-mock its
+//     aided finds her and its console beside itself, with no
+//     AIDE_HER_BIN or AIDE_HER_CONSOLE, and Her answers, her-mock its
 //     model;
 //  3. B is published while Her is at work: the machine waits for her, then
-//     updates hermeshd, her and the console together, and Her answers on B;
-//  4. `hermeshd uninstall` removes her and the console, and leaves ~/.her.
+//     updates aided, her and the console together, and Her answers on B;
+//  4. `aided uninstall` removes her and the console, and leaves ~/.her.
 //
 // The releases also carry her PDF component (docs/linux.md §4), which the
 // install command puts in her-pdf/ beside her, an update replaces with her,
 // and uninstalling removes.
 //
-// The releases' her is HERMESH_HER_LINUX, else built in Docker (linuxHer).
+// The releases' her is AIDE_HER_LINUX, else built in Docker (linuxHer).
 func TestLinuxHer(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") != "1" {
-		t.Skip("set HERMESH_DOCKER=1")
+	if os.Getenv("AIDE_DOCKER") != "1" {
+		t.Skip("set AIDE_DOCKER=1")
 	}
-	mock := startHerMock(t, herBinary(t, "HERMESH_HER_MOCK", "her-mock"))
+	mock := startHerMock(t, herBinary(t, "AIDE_HER_MOCK", "her-mock"))
 	her, err := os.ReadFile(linuxHer(t))
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestLinuxHer(t *testing.T) {
 	}
 	releases.publish("0.0.1")
 
-	name, sh := startLinuxServer(t, "hermesh-her", "her-1")
+	name, sh := startLinuxServer(t, "aide-her", "her-1")
 	put := func(path, content string) {
 		t.Helper()
 		cmd := exec.Command("docker", "exec", "-i", name, "sh", "-c", `mkdir -p "$(dirname "$1")" && cat > "$1"`, "sh", path)
@@ -81,7 +81,7 @@ func TestLinuxHer(t *testing.T) {
 	// console, and her's settings for a test in the service's environment.
 	put("/root/.her/models.toml", strings.ReplaceAll(mock.models, "127.0.0.1", "host.docker.internal"))
 	put("/root/.her/config.toml", "model = \"mock/mock-1\"\n")
-	put("/root/.config/systemd/user/hermeshd.service.d/her.conf", "[Service]\nEnvironment=HER_NO_BROWSER=1 HER_LANG=en HER_MODEL_CATALOG_URL="+
+	put("/root/.config/systemd/user/aided.service.d/her.conf", "[Service]\nEnvironment=HER_NO_BROWSER=1 HER_LANG=en HER_MODEL_CATALOG_URL="+
 		strings.Replace(mock.base, "127.0.0.1", "host.docker.internal", 1)+"/catalog/api.json\n")
 
 	// 1. The install command, as root without a terminal.
@@ -91,17 +91,11 @@ func TestLinuxHer(t *testing.T) {
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 2*time.Minute, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(out.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
+	var machineID string
+	eventually(t, 2*time.Minute, "the machine logged in", func() bool {
+		machineID = loggedInMachine(out.String())
+		return machineID != ""
 	})
-	approved, err := c.ApproveMachinePairing(ctx, &localv1.ApproveMachinePairingRequest{Code: code, MachineName: "her-1"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil || !strings.Contains(out.String(), "› downloading "+herAsset) || !strings.Contains(out.String(), "✓ Background service on") ||
 		!strings.Contains(out.String(), "then talk to her there or here: aided her") {
 		t.Fatalf("install: %v\n%s", err, out.String())
@@ -114,7 +108,7 @@ func TestLinuxHer(t *testing.T) {
 		}
 	}
 	pdf("the PDF worker of 0.0.1")
-	id := approved.MachineId
+	id := machineID
 	machineVersion := func() string {
 		if m := listedMachine(t, c, id); m != nil && m.Online && m.Status != nil {
 			return m.Status.Version
@@ -125,22 +119,22 @@ func TestLinuxHer(t *testing.T) {
 	status := func(want string) {
 		t.Helper()
 		eventually(t, time.Minute, "status: "+want, func() bool {
-			s, _ := sh("/root/.local/bin/hermeshd status")
+			s, _ := sh("/root/.local/bin/aided status")
 			return strings.Contains(s, want)
 		})
 	}
 	status("her          0.2.0, off")
 
 	// 2. Her on: she answers, and her console is A's. A Chrome the owner
-	// has used on this machine starts her as the Hermesh extension's host,
+	// has used on this machine starts her as the Aide extension's host,
 	// and the extension her carries is where the console's guide says.
 	if _, err := sh("mkdir -p /root/.config/google-chrome"); err != nil {
 		t.Fatal(err)
 	}
 	turnHerOn(t, c, id)
 	eventually(t, time.Minute, "her registered with Chrome, and the extension in its folder", func() bool {
-		host, _ := sh("cat /root/.config/google-chrome/NativeMessagingHosts/com.hermesh.browser.json")
-		extension, _ := sh("cat /root/.local/share/hermesh/chrome-extension/manifest.json")
+		host, _ := sh("cat /root/.config/google-chrome/NativeMessagingHosts/com.aide.browser.json")
+		extension, _ := sh("cat /root/.local/share/aide/chrome-extension/manifest.json")
 		return strings.Contains(host, "/root/.her/browser/native-host") && strings.Contains(extension, `"name": "Aide"`)
 	})
 	if s, err := sh("cat /root/.her/browser/native-host"); err != nil || !strings.Contains(s, "/root/.local/bin/her' browser native-host --socket ") {
@@ -160,8 +154,8 @@ func TestLinuxHer(t *testing.T) {
 	}
 	console("the console of 0.0.1")
 	status("her          0.2.0, on, running")
-	if env, _ := sh(`tr '\0' '\n' < /proc/$(pgrep -o -x hermeshd)/environ | grep HERMESH_HER`); env != "" {
-		t.Fatalf("hermeshd runs with %s", env)
+	if env, _ := sh(`tr '\0' '\n' < /proc/$(pgrep -o -x aided)/environ | grep AIDE_HER`); env != "" {
+		t.Fatalf("aided runs with %s", env)
 	}
 
 	// 3. B while Her is at work, for half a minute: the machine waits.
@@ -175,7 +169,7 @@ func TestLinuxHer(t *testing.T) {
 	eventually(t, 30*time.Second, "Her at work", typing)
 	releases.publish("0.0.2")
 	eventually(t, 30*time.Second, "the machine finds 0.0.2", func() bool {
-		s, _ := sh("cat /root/.local/share/hermesh/update/update.json")
+		s, _ := sh("cat /root/.local/share/aide/update/update.json")
 		return strings.Contains(s, `"available": "0.0.2"`)
 	})
 	time.Sleep(5 * time.Second) // more checks, while she works
@@ -196,12 +190,12 @@ func TestLinuxHer(t *testing.T) {
 	console("the console of 0.0.2")
 
 	// 4. Uninstalled: her goes, her data stays.
-	s, err := sh("XDG_RUNTIME_DIR=/run/user/0 USER=root /root/.local/bin/hermeshd uninstall --yes 2>&1")
-	if err != nil || !strings.Contains(s, "/root/.local/bin/hermeshd, /root/.local/bin/her, /root/.local/bin/her-console") ||
+	s, err := sh("XDG_RUNTIME_DIR=/run/user/0 USER=root /root/.local/bin/aided uninstall --yes 2>&1")
+	if err != nil || !strings.Contains(s, "/root/.local/bin/aided, /root/.local/bin/her, /root/.local/bin/her-console") ||
 		!strings.Contains(s, "Her's assistants, conversations and settings, in /root/.her") || !strings.Contains(s, "✓ Aide is uninstalled for root.") {
 		t.Fatalf("uninstall: %v\n%s", err, s)
 	}
-	if left, _ := sh("pgrep -l her; ls -d /root/.local/bin/her /root/.local/bin/her-console /root/.local/bin/her-pdf /root/.config/google-chrome/NativeMessagingHosts/* /root/.local/share/hermesh/chrome-extension 2>/dev/null"); left != "" {
+	if left, _ := sh("pgrep -l her; ls -d /root/.local/bin/her /root/.local/bin/her-console /root/.local/bin/her-pdf /root/.config/google-chrome/NativeMessagingHosts/* /root/.local/share/aide/chrome-extension 2>/dev/null"); left != "" {
 		t.Errorf("left after uninstalling:\n%s", left)
 	}
 	if _, err := sh("test -f /root/.her/models.toml"); err != nil {
@@ -247,12 +241,12 @@ func herPDFArchive(t *testing.T, text string) []byte {
 }
 
 // linuxHer is her for Linux on this computer's architecture, as a release
-// carries it: HERMESH_HER_LINUX, else built in Docker as the release
+// carries it: AIDE_HER_LINUX, else built in Docker as the release
 // workflow builds it, unoptimized and stripped, with cargo's caches kept in
 // Docker volumes for the next run.
 func linuxHer(t *testing.T) string {
 	t.Helper()
-	if her := os.Getenv("HERMESH_HER_LINUX"); her != "" {
+	if her := os.Getenv("AIDE_HER_LINUX"); her != "" {
 		return her
 	}
 	toml, err := os.ReadFile("her/rust-toolchain.toml")
@@ -264,8 +258,8 @@ func linuxHer(t *testing.T) string {
 	src, _ := filepath.Abs("her")
 	out := t.TempDir()
 	start := time.Now()
-	build := exec.Command("docker", "run", "--rm", "-v", src+":/src:ro", "-v", out+":/out", "-v", "hermesh-e2e-her-target:/target",
-		"-v", "hermesh-e2e-cargo-registry:/usr/local/cargo/registry", "-v", "hermesh-e2e-cargo-git:/usr/local/cargo/git",
+	build := exec.Command("docker", "run", "--rm", "-v", src+":/src:ro", "-v", out+":/out", "-v", "aide-e2e-her-target:/target",
+		"-v", "aide-e2e-cargo-registry:/usr/local/cargo/registry", "-v", "aide-e2e-cargo-git:/usr/local/cargo/git",
 		"-e", "CARGO_TARGET_DIR=/target", "-e", fmt.Sprintf("RUSTUP_TOOLCHAIN=%s-%s", toolchain, triple), "-w", "/src", fmt.Sprintf("rust:%s-alpine", toolchain),
 		"sh", "-c", "apk add --no-cache build-base perl linux-headers git >/dev/null && cargo build --locked -p her-cli --bin her --no-default-features && strip -o /out/her /target/debug/her")
 	if b, err := build.CombinedOutput(); err != nil {

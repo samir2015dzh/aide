@@ -31,7 +31,7 @@ export function useComputerUse(machineId: string): DesktopStatus | null {
 /** The permissions computer use needs on this Mac, each allowed or a button to its pane; nothing while her can't say. */
 export function ComputerUse({ machineId }: { machineId: string }) {
   const { t } = useTranslation("computer");
-  const view = computerUseView(useComputerUse(machineId), window.hermesh?.macos ?? 0);
+  const view = computerUseView(useComputerUse(machineId), window.aide?.macos ?? 0);
   if (view.kind === "none") return null;
   const note = view.kind === "missing" ? "" : !view.enabled ? t("off") : view.rows.some((r) => !r.granted) ? t("note") : t("intro");
   return (
@@ -52,7 +52,7 @@ export function ComputerUse({ machineId }: { machineId: string }) {
               {r.granted ? (
                 <span className="cu-state">{t("granted")}</span>
               ) : (
-                <button className="btn" onClick={() => window.hermesh?.openComputerPermission(r.kind)}>
+                <button className="btn" onClick={() => window.aide?.openComputerPermission(r.kind)}>
                   {t("open")}
                 </button>
               )}

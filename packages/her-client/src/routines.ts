@@ -1,4 +1,4 @@
-import type { RoutineRunInfo, RoutineSummary, SessionInfo, TranscriptItem } from "@hermesh/her-protocol";
+import type { RoutineRunInfo, RoutineSummary, SessionInfo, TranscriptItem } from "@aide/her-protocol";
 import { fromSnapshot, type SessionView } from "./session.ts";
 
 // What the routines panel works out (docs/desktop/bot-mode-design.md §6.21),

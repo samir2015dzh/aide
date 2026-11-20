@@ -1,5 +1,5 @@
 import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
-import { FailureKind, SessionStatus, type Question, type Session, type SessionCursor } from "@hermesh/proto/session";
+import { FailureKind, SessionStatus, type Question, type Session, type SessionCursor } from "@aide/proto/session";
 import { codingAgentTitle } from "./agents";
 import { isYesterday, sameDay, withinWeek } from "./calendar";
 import { t } from "./i18n";

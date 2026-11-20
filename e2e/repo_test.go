@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // A coding agent starts a session in a GitHub repository the owner never
@@ -26,7 +26,7 @@ func TestRepoSessions(t *testing.T) {
 		t.Skip("e2e")
 	}
 	gh := t.TempDir()
-	w := newOwnerMac(t, append([]string{"HERMESH_FAKE_PROVIDERS=1"}, githubEnv(gh)...), &localv1.GrantSpec{})
+	w := newOwnerMac(t, append([]string{"AIDE_FAKE_PROVIDERS=1"}, githubEnv(gh)...), &localv1.GrantSpec{})
 	ctx := context.Background()
 
 	// On GitHub: acme/widget, with main and a feature branch.
@@ -66,7 +66,7 @@ func TestRepoSessions(t *testing.T) {
 	if r.code != 0 || s.Status != "idle" || s.Result != "done in the repo" {
 		t.Fatalf("start in acme/widget: %+v\n%s", s, r.stdout+r.stderr)
 	}
-	if s.Repo != "acme/widget" || s.RepoBranch != "main" || s.ProjectID != "github.acme.widget" || s.Branch != "hermesh/"+s.SessionID {
+	if s.Repo != "acme/widget" || s.RepoBranch != "main" || s.ProjectID != "github.acme.widget" || s.Branch != "aide/"+s.SessionID {
 		t.Fatalf("where it works: %+v", s)
 	}
 	if !strings.Contains(r.stderr, "(GitHub acme/widget, branch main)") {
@@ -76,7 +76,7 @@ func TestRepoSessions(t *testing.T) {
 	if b, err := os.ReadFile(filepath.Join(w.worktree(s.SessionID), "README.md")); err != nil || strings.ReplaceAll(string(b), "\r\n", "\n") != "# widget\n" {
 		t.Fatalf("the worktree is not GitHub's main: %q, %v", b, err)
 	}
-	if strings.TrimSpace(gitOut(t, bare, "branch", "--list", "hermesh/*")) != "" {
+	if strings.TrimSpace(gitOut(t, bare, "branch", "--list", "aide/*")) != "" {
 		t.Fatal("pushed unasked")
 	}
 	// The owner's app sees the session, and where it came from.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RpcError } from "@hermesh/her-client";
-import type { ConfigEdit, ConfigReadResult, McpCheckResult, McpListResult, McpServerView, SkillsListResult } from "@hermesh/her-protocol";
+import { RpcError } from "@aide/her-client";
+import type { ConfigEdit, ConfigReadResult, McpCheckResult, McpListResult, McpServerView, SkillsListResult } from "@aide/her-protocol";
 import { errorText } from "../format";
 import { TOAST_MS, useHer } from "../her";
 import { i18n } from "../i18n";

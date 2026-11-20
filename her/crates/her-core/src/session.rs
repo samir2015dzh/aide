@@ -9,15 +9,11 @@ use her_llm::Usage;
 use her_llm::UsageTotals;
 use her_llm::UserMessage;
 use her_llm::now_ms;
-use her_protocol::ApprovalDecision;
-use her_protocol::CommandRule;
 use her_protocol::EventMsg;
 use her_protocol::MailInfo;
 use her_protocol::MailKind;
-use her_protocol::PermissionMode;
 use her_protocol::PromptMode;
 use her_protocol::QueuedInput;
-use her_protocol::SiteGrant;
 use her_protocol::SkillUse;
 use her_protocol::WarningCode;
 use her_tools::Environment;
@@ -30,7 +26,6 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::Weak;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::oneshot;
@@ -99,10 +94,6 @@ pub(crate) struct SessionState {
     pub(crate) skills: Arc<[SkillRef]>,
     pub(crate) model: Arc<Model>,
     pub(crate) thinking: ThinkingLevel,
-    pub(crate) permission_mode: PermissionMode,
-    pub(crate) session_rules: Vec<CommandRule>,
-    /// Site permissions from "approve for this session"; in memory only, like the rules.
-    pub(crate) site_grants: Vec<SiteGrant>,
     pub(crate) active_task: Option<ActiveTask>,
     pub(crate) steer: VecDeque<Input>,
     pub(crate) follow_up: VecDeque<Input>,
@@ -111,7 +102,6 @@ pub(crate) struct SessionState {
     pub(crate) taken_inputs: HashSet<String>,
     /// Goes ahead when the running task has ended.
     pub(crate) pending_resend: Option<Resend>,
-    pub(crate) pending_approvals: HashMap<String, oneshot::Sender<ApprovalDecision>>,
     pub(crate) pending_model: Option<(Arc<Model>, ThinkingLevel)>,
     pub(crate) usage: UsageTotals,
     pub(crate) next_task_no: u32,
@@ -168,7 +158,6 @@ impl SessionState {
         system_prompt: Arc<str>,
         model: Arc<Model>,
         thinking: ThinkingLevel,
-        permission_mode: PermissionMode,
     ) -> Self {
         Self {
             history,
@@ -179,15 +168,11 @@ impl SessionState {
             skills: Arc::from([]),
             model,
             thinking,
-            permission_mode,
-            session_rules: Vec::new(),
-            site_grants: Vec::new(),
             active_task: None,
             steer: VecDeque::new(),
             follow_up: VecDeque::new(),
             taken_inputs: HashSet::new(),
             pending_resend: None,
-            pending_approvals: HashMap::new(),
             pending_model: None,
             usage: UsageTotals::default(),
             next_task_no: 0,
@@ -266,12 +251,6 @@ pub(crate) enum Internal {
     Mail(Mail),
     /// How one of its cards ended.
     Card(Box<CardResolvedEntry>),
-    /// The main session's permissions changed; a sub-agent takes them over.
-    Permissions {
-        mode: PermissionMode,
-        rules: Vec<CommandRule>,
-        grants: Vec<SiteGrant>,
-    },
 }
 
 pub(crate) struct Session {
@@ -324,14 +303,8 @@ pub(crate) struct Session {
     pub(crate) request_estimates: Mutex<Vec<(her_llm::Message, u64)>>,
     /// her's data directory, canonical.
     pub(crate) data_dir: PathBuf,
-    /// See [`SessionView::own_folder`].
-    pub(crate) own_folder: Option<PathBuf>,
-    /// See [`SessionView::skill_roots`].
-    pub(crate) skill_roots: Arc<[PathBuf]>,
     /// See [`SessionView::memory_dir`].
     pub(crate) memory_dir: Option<PathBuf>,
-    pub(crate) trusted: bool,
-    pub(crate) interactive_approvals: bool,
     /// One lock per file, shared with the sub-agents: changes to a file never interleave.
     pub(crate) locks: Arc<PathLocks>,
     /// The sub-agents of a main session. `None` for a sub-agent, which cannot start any.
@@ -340,11 +313,6 @@ pub(crate) struct Session {
     pub(crate) sub_agent: bool,
     /// What it can do about other agents.
     pub(crate) agent_role: crate::deferred::AgentRole,
-    /// A sub-agent's main session, which holds the permissions the whole tree follows.
-    pub(crate) main: Option<Weak<Session>>,
-    /// Shared with the sub-agents: whoever holds it may ask the user, so that the tree asks one
-    /// question at a time. Fair: they ask in the order they came.
-    pub(crate) approval_line: Arc<tokio::sync::Mutex<()>>,
     /// What the kernel's tools keep for this session: its sub-agents, its browser.
     pub(crate) tool_state: Arc<her_tools::SessionState>,
     /// Bumped whenever input is queued during a task; tools waiting for a sub-agent watch it.
@@ -378,15 +346,6 @@ impl Session {
         let message = message.into();
         tracing::warn!(session = %self.id, "{message}");
         self.emit(EventMsg::Warning { message, code: None });
-    }
-
-    /// The bypass-permissions warning, sent when the session starts, resumes or switches into it.
-    pub(crate) fn warn_bypass(&self) {
-        tracing::warn!(session = %self.id, "{BYPASS_WARNING}");
-        self.emit(EventMsg::Warning {
-            message: BYPASS_WARNING.to_string(),
-            code: Some(WarningCode::BypassPermissions),
-        });
     }
 
     pub(crate) fn allocate_id(&self) -> String {
@@ -791,10 +750,9 @@ impl Session {
     }
 
     /// `steer_now`: ends the running turn so that waiting steering input joins the history now.
-    /// Not while an approval waits: answering it goes first, and the input follows.
     pub(crate) fn steer_now(&self) {
         let state = self.state.lock();
-        if state.steer.is_empty() || !state.pending_approvals.is_empty() {
+        if state.steer.is_empty() {
             return;
         }
         if let Some(task) = &state.active_task {
@@ -834,18 +792,11 @@ impl Session {
     }
 
     pub(crate) fn view(&self) -> SessionView {
-        let state = self.state.lock();
         SessionView {
-            permission_mode: state.permission_mode,
-            config_rules: self.config.rules.clone(),
-            session_rules: state.session_rules.clone(),
-            trusted: self.trusted,
+            rules: self.config.rules.clone(),
             env: self.env.clone(),
             data_dir: self.data_dir.clone(),
-            own_folder: self.own_folder.clone(),
-            skill_roots: self.skill_roots.clone(),
             memory_dir: self.memory_dir.clone(),
-            site_grants: state.site_grants.clone(),
             browser: self.system.get().browser.policy.clone(),
             desktop: self.system.get().desktop.clone(),
         }
@@ -869,38 +820,14 @@ impl Session {
         }
     }
 
-    /// `agent_approval`: the user's answer to what a sub-agent asks.
-    pub(crate) fn answer_agent(&self, agent: &str, call_id: &str, decision: ApprovalDecision) {
-        let sent = self.agents.as_ref().is_some_and(|tree| tree.answer(agent, call_id, decision));
-        if !sent {
-            self.warn(format!("no sub-agent \"{agent}\" to answer"));
-        }
-    }
-
-    pub(crate) fn resolve_approval(&self, call_id: &str, decision: ApprovalDecision) {
-        let sender = self.state.lock().pending_approvals.remove(call_id);
-        match sender {
-            Some(tx) => {
-                let _ = tx.send(decision);
-            }
-            None => self.warn(format!("no approval is pending for call {call_id}")),
-        }
-    }
-
     pub(crate) fn emit_settings(&self) {
-        let (model, thinking, permission_mode, context_window) = {
+        let (model, thinking, context_window) = {
             let state = self.state.lock();
-            (
-                state.model.reference(),
-                state.thinking,
-                state.permission_mode,
-                u64::from(state.model.context_window),
-            )
+            (state.model.reference(), state.thinking, u64::from(state.model.context_window))
         };
         self.emit(EventMsg::SettingsChanged {
             model,
             thinking,
-            permission_mode,
             context_window,
         });
     }
@@ -914,7 +841,6 @@ impl Session {
         self.record(EntryKind::Settings {
             model: Some(model.reference()),
             thinking: Some(thinking),
-            permission_mode: None,
         });
         self.emit_settings();
     }
@@ -961,102 +887,6 @@ impl Session {
         }
     }
 
-    pub(crate) fn set_permission_mode(&self, mode: PermissionMode) {
-        let previous = std::mem::replace(&mut self.state.lock().permission_mode, mode);
-        self.record(EntryKind::Settings {
-            model: None,
-            thinking: None,
-            permission_mode: Some(mode),
-        });
-        self.emit_settings();
-        if mode == PermissionMode::BypassPermissions && previous != mode {
-            self.warn_bypass();
-        }
-        self.share_permissions();
-    }
-
-    /// A rule from "approve for this session".
-    pub(crate) fn add_session_rule(&self, rule: CommandRule) {
-        self.state.lock().session_rules.push(rule);
-        self.share_permissions();
-    }
-
-    /// A site permission from "approve for this session".
-    pub(crate) fn add_site_grant(&self, grant: SiteGrant) {
-        {
-            let mut state = self.state.lock();
-            if !state.site_grants.contains(&grant) {
-                state.site_grants.push(grant);
-            }
-        }
-        self.sync_browser_grants();
-        self.share_permissions();
-    }
-
-    /// "Always allow": the grant goes into the user's configuration as well (D-197). A
-    /// failure to write is a warning; the grant still holds for the session.
-    pub(crate) fn remember_site(&self, grant: &SiteGrant) {
-        let file = self.data_dir.join("config.toml");
-        if let Err(err) = crate::site_policy::remember(&file, grant) {
-            self.emit(EventMsg::Warning {
-                message: format!("could not save the site permission in {}: {err}", file.display()),
-                code: None,
-            });
-        }
-    }
-
-    /// Navigations the page makes may reach the private sites the session allowed.
-    fn sync_browser_grants(&self) {
-        if let Some(browser) = self.tool_state.get::<crate::browser::BrowserHandle>() {
-            browser.set_grants(self.state.lock().site_grants.clone());
-        }
-    }
-
-    fn permissions(&self) -> (PermissionMode, Vec<CommandRule>, Vec<SiteGrant>) {
-        let state = self.state.lock();
-        (state.permission_mode, state.session_rules.clone(), state.site_grants.clone())
-    }
-
-    /// Sub-agents always judge tool calls by the main session's current permissions.
-    fn share_permissions(&self) {
-        if let Some(tree) = &self.agents {
-            let (mode, rules, grants) = self.permissions();
-            tree.share_permissions(mode, rules, grants);
-        }
-    }
-
-    /// A sub-agent's main session, while it runs.
-    pub(crate) fn main_session(&self) -> Option<Arc<Session>> {
-        self.main.as_ref().and_then(Weak::upgrade)
-    }
-
-    /// A sub-agent takes over the main session's permissions now, not when they arrive.
-    pub(crate) fn follow_main(&self) {
-        if let Some(main) = self.main_session() {
-            let (mode, rules, grants) = main.permissions();
-            self.apply_permissions(mode, rules, grants);
-        }
-    }
-
-    /// A sub-agent takes over the main session's permissions.
-    pub(crate) fn apply_permissions(&self, mode: PermissionMode, rules: Vec<CommandRule>, grants: Vec<SiteGrant>) {
-        let changed = {
-            let mut state = self.state.lock();
-            state.session_rules = rules;
-            state.site_grants = grants;
-            std::mem::replace(&mut state.permission_mode, mode) != mode
-        };
-        self.sync_browser_grants();
-        if changed {
-            self.record(EntryKind::Settings {
-                model: None,
-                thinking: None,
-                permission_mode: Some(mode),
-            });
-            self.emit_settings();
-        }
-    }
-
     /// Names the session. Allowed while a task runs: it only adds a log entry.
     pub(crate) fn set_title(&self, title: &str) {
         let Some(title) = clean_title(title) else {
@@ -1089,9 +919,3 @@ pub fn clean_title(title: &str) -> Option<String> {
     let cut: String = line.chars().take(MAX_TITLE_CHARS).collect();
     (!cut.is_empty()).then_some(cut)
 }
-
-/// Shown whenever a session starts, resumes or switches into bypass-permissions.
-const BYPASS_WARNING: &str = "Permission mode bypass-permissions: tools run without asking, \
-    including changes to protected files such as .git and shell profiles and to files outside the \
-    workspace. Only deny rules, ask rules and deleting critical paths still stop an action. Use it \
-    only in an isolated environment such as a container or a throwaway checkout.";

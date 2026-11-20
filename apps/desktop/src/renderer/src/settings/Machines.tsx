@@ -1,9 +1,10 @@
+import { ConnectLink } from "../components";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { Machine } from "@hermesh/proto/local";
-import { SessionStatus } from "@hermesh/proto/session";
-import { agoText, dateOf, isActive, platformTitle } from "@hermesh/core";
-import { Mark } from "@hermesh/ui";
+import type { Machine } from "@aide/proto/local";
+import { SessionStatus } from "@aide/proto/session";
+import { agoText, dateOf, isActive, platformTitle } from "@aide/core";
+import { Mark } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { AgentList, AgentPage, sortAgents } from "../AgentList";
 import { useCheckAgents } from "../agents";
@@ -73,7 +74,11 @@ export function Machines({ open, select, ask }: { open: string; select: (id: str
             </GoRow>
           );
         })}
-        {st.machines.length === 0 && <div className="frow muted">{t("machines.none")}</div>}
+        {st.machines.length === 0 && (
+          <div className="frow muted">
+            {t("machines.none")} <ConnectLink>{t("machines.howToConnect")}</ConnectLink>
+          </div>
+        )}
       </div>
       <div className="set-acts">
         <button className="btn" onClick={() => st.set({ sheet: { kind: "addMachine" } })}>{t("machines.add")}</button>
@@ -82,11 +87,11 @@ export function Machines({ open, select, ask }: { open: string; select: (id: str
   );
 }
 
-/** Sharing this Mac's coding agents: Hermesh runs them as the owner would, never reading their keys. */
+/** Sharing this Mac's coding agents: Aide runs them as the owner would, never reading their keys. */
 function ShareRow() {
   const { t } = useTranslation("settings");
   const st = useStore();
-  // The switch's new state while hermeshd (and, to turn it on, the signer) works on it.
+  // The switch's new state while aided (and, to turn it on, the signer) works on it.
   const [pending, setPending] = useState<boolean | null>(null);
   const on = pending ?? st.status?.localMachineEnabled ?? false;
   const set = async (v: boolean) => {
@@ -109,14 +114,14 @@ function ShareRow() {
 function HerRow({ m }: { m: Machine }) {
   const { t } = useTranslation("settings");
   const st = useStore();
-  // The switch's new state while hermeshd and the signer work on it.
+  // The switch's new state while aided and the signer work on it.
   const [pending, setPending] = useState<boolean | null>(null);
   const on = pending ?? m.her?.enabled ?? false;
   // What it says of Her while it answers (Machine.her is kept only once Her was on there); none in its status:
-  // its Hermesh is from before Her (docs/version-skew.md §6.7).
+  // its Aide is from before Her (docs/version-skew.md §6.7).
   const beforeHer = !!m.status && !m.status.her;
   const unsupported = beforeHer ? "" : ((m.status ? m.status.her?.unsupported : m.her?.unsupported) ?? "");
-  // A PC whose Hermesh is from before her ran on Windows.
+  // A PC whose Aide is from before her ran on Windows.
   const windows = unsupported === "windows";
   const set = async (v: boolean) => {
     if (!v) return st.set({ sheet: { kind: "herOff", machineId: m.machineId, machineName: m.machineName } });
@@ -152,7 +157,7 @@ function HerRow({ m }: { m: Machine }) {
   );
 }
 
-/** A machine name as hermeshd's machine.CleanName makes it: lowercase letters, digits and -, at most 63 bytes; "" when nothing is left. */
+/** A machine name as aided's machine.CleanName makes it: lowercase letters, digits and -, at most 63 bytes; "" when nothing is left. */
 export function cleanName(s: string): string {
   let n = s.trim().toLowerCase();
   if (n.endsWith(".local")) n = n.slice(0, -".local".length);
@@ -179,7 +184,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
         value: m.machineName,
         button: t("machines.renameButton"),
         run: (name) => st.run(() => local.renameMachine({ machineId: m.machineId, machineName: name })),
-        // What hermeshd keeps of the name (machine.CleanName): said before saving, not found out after.
+        // What aided keeps of the name (machine.CleanName): said before saving, not found out after.
         hint: (typed) => {
           const name = cleanName(typed);
           if (!typed.trim() || name === typed.trim()) return undefined;
@@ -265,7 +270,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
           </SRow>
           <div className="frow">
             <span style={{ flex: 1 }}>{t("machines.running", { count: running(st, m.machineId) })}</span>
-            <button className="btn sm" onClick={() => (window.hermesh?.showInMain({ machine: m.machineId }), window.close())}>
+            <button className="btn sm" onClick={() => (window.aide?.showInMain({ machine: m.machineId }), window.close())}>
               {t("showInMain")}
             </button>
           </div>
@@ -281,7 +286,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
           <GrantLine m={m} />
         </div>
       )}
-      {/* What macOS lets Her's desktop tools do here: the Mac's permissions (macOS checks hermeshd), not an assistant's. */}
+      {/* What macOS lets Her's desktop tools do here: the Mac's permissions (macOS checks aided), not an assistant's. */}
       {m.local && m.her?.enabled && <ComputerUse machineId={m.machineId} />}
       <div className="set-acts">
         <button className="btn" onClick={rename}>{t("machines.rename")}</button>
@@ -293,7 +298,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
       </div>
       {device && (
         <p className="set-note">
-          <Trans t={t} i18nKey="machines.deviceNote" values={{ name: device.label }} components={{ go: <button className="link" onClick={() => window.hermesh?.openSettings("account")} /> }} />
+          <Trans t={t} i18nKey="machines.deviceNote" values={{ name: device.label }} components={{ go: <button className="link" onClick={() => window.aide?.openSettings("account")} /> }} />
         </p>
       )}
     </div>

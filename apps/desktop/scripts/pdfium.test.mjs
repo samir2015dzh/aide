@@ -7,7 +7,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { pdfiumFor, pdfiumLibrary, pdfiumLibraryIn } from "./pdfium.mjs";
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "hermesh-pdfium-"));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "aide-pdfium-"));
 
 /** An archive laid out like the release's, and its sha256. */
 function fakeArchive() {

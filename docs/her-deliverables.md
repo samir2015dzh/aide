@@ -33,7 +33,7 @@ from Her's page:
 
 Three places change. The kernel `her` copies the file as `send_to_user`
 runs. `her-server` records each delivery in `her.db` and answers two new
-requests. `hermeshd` lets a download read the copies and keeps the first
+requests. `aided` lets a download read the copies and keeps the first
 page for offline. The Mac and the iPhone each get the entry, the list and
 the two actions.
 
@@ -144,7 +144,7 @@ The prototype is the reference; this section states the rules.
 | Nothing sent yet | "The files Her sends you are kept here", and what that means |
 | No match | "Nothing found", and that names and Her's words are both searched |
 | The machine is offline | The list as this device last had it, under a line that says so. Files opened before open from this device; the rest are dimmed, and a tap says they need the machine |
-| The machine's Hermesh is older | The entry shows with the "需更新" mark, and its page is the Needs Update view (version-skew.md §6.2) |
+| The machine's Aide is older | The entry shows with the "需更新" mark, and its page is the Needs Update view (version-skew.md §6.2) |
 | A file with no copy | It opens from its path, as today. If the path is gone, the row says the file is no longer on the machine |
 
 ### 3.5 By source (2026-11-16)
@@ -181,7 +181,7 @@ Her calls send_to_user {type: attachment, files}
   → bots/changed reaches the devices: the entry shows the count, an open list reads again
 
 The list:  deliveries/list  → her-server → her.db
-A file:    HerDownload {path: the copy}  → hermeshd → bots/<id>/sent/…
+A file:    HerDownload {path: the copy}  → aided → bots/<id>/sent/…
 ```
 
 ### 4.1 The copy
@@ -339,7 +339,7 @@ params  { bot_id, seq }      -- the highest seq the list showed
 It never lowers the mark, nor moves it past the latest send: a send made
 later is new whatever a client passed.
 
-### 4.4 hermeshd
+### 4.4 aided
 
 | File | What changes |
 |---|---|
@@ -366,8 +366,8 @@ later is new whatever a client passed.
 
 | File | What changes |
 |---|---|
-| `HermeshHer/Deliveries.swift` (new) | The same as `deliveries.ts`, with the same cases in its tests (`DeliveriesTests.swift`) |
-| `HermeshHer/Chat.swift`, `Environment.swift`, `Kept.swift` | `HerFile.snapshot`; the row's `newDeliveries` and `deliveriesLatest`; the first page kept |
+| `AideHer/Deliveries.swift` (new) | The same as `deliveries.ts`, with the same cases in its tests (`DeliveriesTests.swift`) |
+| `AideHer/Chat.swift`, `Environment.swift`, `Kept.swift` | `HerFile.snapshot`; the row's `newDeliveries` and `deliveriesLatest`; the first page kept |
 | `Views/Her/HerFilesPage.swift` (new) | The page, its rows and versions, the grid of pictures, the menu of a row, and a version on a page of its own with Her's words, Show in Conversation and Reply under it |
 | `Views/Her/HerView.swift`, `Model/AppModel.swift`, `Views/Main/MainView.swift` | The button beside the menu button (in the system's bar when the bars are on the side); the route `.herFiles` |
 | `Views/Her/HerChat.swift` | `download` reads the copy, and keeps a file Her sent by its `sha256` in Caches (`Her Files/…`); `reveal(message:)` reads earlier history until the conversation holds the message |
@@ -406,7 +406,7 @@ it from the log would write it early and mark it seen.
 One rule for opening, in both clients: the copy when the entry has one;
 if the machine answers not found or refused, the path.
 
-`her` and its `hermeshd` ship in one package, so a machine that makes
+`her` and its `aided` ship in one package, so a machine that makes
 copies also serves them.
 
 ### 4.9 Storage, and when things go
@@ -474,7 +474,7 @@ to ask, makes no files; what its report woke is still its by rule 2.
 by its id and its name now, sessions by their name (each session is new, its
 name stays), and how many of them are pictures, video or audio, so a tab
 shows its own count. `deliveries/list` takes `source` (`conversation`,
-`routine` with `id`, `session` with `name`). hermeshd keeps only the page
+`routine` with `id`, `session` with `name`). aided keeps only the page
 that has no filter at all, `media` and `source` included.
 
 Records written before this keep the source the first rule gave them.
@@ -486,11 +486,11 @@ Records written before this keep the source the first rule gave them.
 | The kernel (`her-core/tests/bot.rs`) | A sent file has a copy with its content and name, read-only, and the result names it. The file changed and sent again: two copies, each as sent. The same content twice: one copy. Over the limit, or `sent/` not writable: sent without a copy. A file outside her folder is copied |
 | her-server (`deliveries.rs`) | A `ToolCompleted` writes rows once, and twice changes nothing. Paging by file. Folding versions. `query` and `kind`. The source after a routine's report, cleared by the owner's message. The count of new files, and `seen`. `bots/delete` removes the rows. The backfill from a log, run twice |
 | her-server (`db.rs`) | The second step applies to a database of the first, with its routines intact |
-| hermeshd (`herhost/files_test.go`, `allow_test.go`) | `Download` serves `sent/`, still refuses what is outside both folders, and a symlink out of `sent/`. The gate lets the two requests through |
+| aided (`herhost/files_test.go`, `allow_test.go`) | `Download` serves `sent/`, still refuses what is outside both folders, and a symlink out of `sent/`. The gate lets the two requests through |
 | The core (`internal/owner`) | The first page is kept and served by `GetHerConversation`; a page with `before` or `query` is not kept; it goes with the conversation's copy |
 | The Mac's reading (`her-client`) | Shared cases with the iPhone: grouping by time and source, new rows, kinds, a file with and without a copy |
-| The iPhone's reading (`HermeshHerTests`) | The same cases |
-| End to end, the core (`e2e`, `TestHerDeliveries`) | The real `hermeshd` and `her`, her-mock as the model: she sends a file, changes it, sends it again; `deliveries/list` has one file with two versions; each copy downloads with its own content; the status lists the methods |
+| The iPhone's reading (`AideHerTests`) | The same cases |
+| End to end, the core (`e2e`, `TestHerDeliveries`) | The real `aided` and `her`, her-mock as the model: she sends a file, changes it, sends it again; `deliveries/list` has one file with two versions; each copy downloads with its own content; the status lists the methods |
 | End to end, the Mac (`apps/desktop/e2e/her-deliveries.spec.ts`) | The button's count; the panel; search and a filter; versions; opening an earlier version shows the earlier content; Show in Conversation marks the message; Reply quotes the file and Her's answer is a new version, counted at the button |
 | End to end, the iPhone (`TestIPhone`, `testHerDeliveries`) | The same path in the Simulator: the button, the page, a version, Show in Conversation, Reply; the list while the machine is offline |
 
@@ -502,9 +502,9 @@ sends from outside, through the machine's disk.
 
 ```
 1. The kernel: the copy, the result's fields                       → her-core tests
-2. hermeshd: Download serves sent/; clients open by the copy       → herhost tests; old messages open as sent
+2. aided: Download serves sent/; clients open by the copy       → herhost tests; old messages open as sent
 3. her-server: the tables, writing, the two requests, the count    → deliveries.rs tests, TestHerDeliveries
-4. Reading: her-client, HermeshHer, the shared cases               → both run the same cases
+4. Reading: her-client, AideHer, the shared cases               → both run the same cases
 5. The Mac: the button, the panel, opening, the two actions        → her-deliveries.spec.ts
 6. The iPhone: the button, the page, opening, the two actions      → testHerDeliveries
 7. Offline: the kept first page, files kept by sha256              → the core's tests, the iPhone's offline case
@@ -522,16 +522,16 @@ Steps 1 and 2 are worth shipping alone: they fix the two faults of §1.
 | `internal/herhost/files.go` | `Download` serves `bots/<id>/sent` too (`sentCopy`), itself inside the assistant's folder |
 | `packages/her-client/src/botChat.ts` | `BotFile.snapshot`; `readSent`, the one rule of §4.8 |
 | `apps/desktop/.../her/Messages.tsx`, `preview/FilePreview.tsx` | Pictures, previews and Save read through `readSent` |
-| `HermeshHer/Chat.swift` | `HerFile.snapshot` and `source` |
+| `AideHer/Chat.swift` | `HerFile.snapshot` and `source` |
 | `apps/ios/.../Her/HerChat.swift`, `HerConversation.swift` | `loadPicture`, `download` and `openHerFile` read the copy, then the path; pictures are kept by what they read |
 | `docs/her-server.md` §7 | `sent/` in what `~/.her` holds |
 
 Tests: the kernel's (`a_sent_file_is_kept_as_it_was_when_sent`,
 `a_file_outside_the_folder_is_kept_too`,
 `a_file_that_cannot_be_copied_is_sent_without_a_copy`);
-`TestDownloadSentCopy`; her-client's and HermeshHer's reading of
+`TestDownloadSentCopy`; her-client's and AideHer's reading of
 `snapshot`; and `TestHerSentCopies` (`e2e/her_sent_test.go`), the real
-`hermeshd` and `her` with her-mock: a file sent, changed and sent again
+`aided` and `her` with her-mock: a file sent, changed and sent again
 comes down from each message's copy as it was sent, and a file outside the
 assistant's folder comes down by its copy.
 
@@ -560,7 +560,7 @@ new tables); the gate's `TestOpenTo`; her's own end to end
 (`the_files_a_bot_sent_are_listed_with_their_versions_and_counted_until_seen`
 in `her-cli/tests/e2e_bots.rs`: `her serve` and the mock model, the row's
 count over `bots/changed`, the list still there after `bots/clear`); and
-`TestHerDeliveries` (`e2e/her_sent_test.go`): the real `hermeshd` and
+`TestHerDeliveries` (`e2e/her_sent_test.go`): the real `aided` and
 `her`, the status lists the two requests, a file sent, changed and sent
 again is one file with two versions that come down as sent, and the row
 counts until `deliveries/seen`.
@@ -586,9 +586,9 @@ Tests, beyond §6.1 and §6.2:
 | `storage.rs` | The copies are a part of their own |
 | `her-cli/tests/e2e_bots.rs` | `files_sent_before_there_was_a_record_are_read_from_the_logs`: `her serve` without a database; the next send reads the log; a cleared conversation's file is not read |
 | `internal/owner` | `TestHerDeliveriesKept`: the first page kept, not a later page, a search, a filter or another assistant's; `seen` moved, never back; kept over a restart; forgotten with Her |
-| her-client, HermeshHer | The shared cases (`testdata/deliveries.json`): grouping by time in local time and by source, what is new, what to read, the quote, pages joined; the row's two fields |
+| her-client, AideHer | The shared cases (`testdata/deliveries.json`): grouping by time in local time and by source, what is new, what to read, the quote, pages joined; the row's two fields |
 | `TestHerDeliveries` | Now also: this Mac's copy of the first page, with `seen` moved. It caught a race first: a send's backfill read the log after the next send, wrote that one early and marked it seen; the backfill now reads only what came before (§4.7) |
-| `TestDesktopHerDeliveries` (`apps/desktop/e2e/her-deliveries.spec.ts`) | The real `hermeshd` and `her` with her-mock: the button counts one new file over two sends of it; the panel lists it once, new, with two versions; each opens as it was sent; Show in Conversation marks its message; Reply quotes it and Her is told the file; search, kinds and grouping; closed, the list is seen and the next file alone is new |
+| `TestDesktopHerDeliveries` (`apps/desktop/e2e/her-deliveries.spec.ts`) | The real `aided` and `her` with her-mock: the button counts one new file over two sends of it; the panel lists it once, new, with two versions; each opens as it was sent; Show in Conversation marks its message; Reply quotes it and Her is told the file; search, kinds and grouping; closed, the list is seen and the next file alone is new |
 | `TestIPhone`, `testHerDeliveries` | The same path in the Simulator; leaving the page is having seen it (the count clears); and the Mac taken offline: the list as last seen, and a version opened before opens from the iPhone. It found two faults of the page's "seen": what the list showed was read only when it changed, so a page that opened on the copy the iPhone kept read nothing (now read from its first showing); and `deliveries/seen` went on the environment's connection, which the page holds and lets go of as it leaves (now on a connection of its own, `HerChat.seeDeliveries`) |
 
 With a real model (2026-11-16): this repository's `her serve` on a her home
@@ -612,13 +612,13 @@ folder, so a copy that was removed is not found, and the client's rule
 
 §4.11 in her-server (`deliveries.rs`: `SCHEMA_V3`, `source_of` following sub-agents back, `run_files` and
 `run_ended`, `sources`, `list`'s `source`), her-core (`bot::written_since`), her-protocol
-(`DeliverySourceFilter`, `deliveries/sources`), hermeshd (allowed; the page kept only without any filter), the
+(`DeliverySourceFilter`, `deliveries/sources`), aided (allowed; the page kept only without any filter), the
 shared cases (`testdata/deliveries.json`), the Mac's menu and the iPhone's sheet (§3.5), and her-mock's
 `write` and `routine_file`.
 
 Tests: `deliveries.rs` (a sub-agent's work traced back, a run's content claimed whenever sent, the filter, the
 sources); her-cli `e2e_routines` (a routine's run writes a file, sent on and asked for again: the routine's
-both times); `TestHerDeliveries` through hermeshd; the Mac's `her-deliveries.spec.ts` and the iPhone's
+both times); `TestHerDeliveries` through aided; the Mac's `her-deliveries.spec.ts` and the iPhone's
 `testHerDeliveries` (the filter, chosen and cleared). With GPT-6.1-Sol, in a kept test home with full access
 (`~/.her-test`): the owner's file is the conversation's; a one-off routine's brief is the routine's with its run,
 when its report woke Her and when the owner asked for it again; the sources and one source's files are right.

@@ -1,4 +1,4 @@
-//! Conservative shell command analysis for the permission policy.
+//! Conservative shell command analysis for the tool policy: deny rules and critical deletions.
 //!
 //! [`analyze`] finds every simple command a command line may run, including those behind
 //! wrappers such as `sudo` or `xargs` and inside `sh -c`, `eval`, `trap` and `find -exec`
@@ -186,50 +186,6 @@ pub fn rule_matches(rule: &CommandRule, words: &[String]) -> bool {
 
 pub fn first_match<'a>(rules: &'a [CommandRule], words: &[String], decision: RuleDecision) -> Option<&'a CommandRule> {
     rules.iter().find(|r| r.decision == decision && rule_matches(r, words))
-}
-
-const FIND_UNSAFE: &[&str] = &[
-    "-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0", "-fprintf", "-fls",
-];
-
-/// Commands that only read. Kept deliberately short; anything not listed needs approval.
-/// `cd` changes nothing by itself; the analysis follows it for the commands after it.
-pub fn is_read_only(words: &[String], trusted: bool) -> bool {
-    let Some(name) = words.first() else {
-        return false;
-    };
-    if name.contains('/') {
-        return false; // ./ls could be anything
-    }
-    let args = &words[1..];
-    match name.as_str() {
-        "ls" | "pwd" | "cat" | "head" | "tail" | "wc" | "file" | "stat" | "du" | "echo" | "which" | "basename"
-        | "dirname" | "realpath" | "uname" | "grep" | "cd" | "pushd" | "popd" => true,
-        "date" => args.iter().all(|a| a.starts_with('+') || a == "-u" || a == "-R"),
-        "tree" => !args.iter().any(|a| a.starts_with("-o")),
-        "rg" => !args
-            .iter()
-            .any(|a| a == "--pre" || a.starts_with("--pre=") || a == "-z" || a == "--search-zip"),
-        "find" => !args.iter().any(|a| FIND_UNSAFE.contains(&a.as_str())),
-        "git" => trusted && git_read_only(args),
-        _ => false,
-    }
-}
-
-fn git_read_only(args: &[String]) -> bool {
-    let Some(sub) = args.first() else {
-        return false;
-    };
-    if args.iter().any(|a| a.starts_with("--output") || a == "--ext-diff") {
-        return false;
-    }
-    match sub.as_str() {
-        "status" | "diff" | "log" | "show" | "rev-parse" | "ls-files" | "blame" => true,
-        "branch" => args[1..]
-            .iter()
-            .all(|a| matches!(a.as_str(), "-a" | "-r" | "-v" | "-vv" | "--list" | "--show-current")),
-        _ => false,
-    }
 }
 
 /// The program's name without its directory: `/usr/bin/git` gives `git`.
@@ -930,116 +886,6 @@ fn selects_by_name(expression: &[String]) -> bool {
     })
 }
 
-/// A `mkdir`, `touch`, `cp` or `mv` with only options that do not change where it writes.
-#[derive(Debug, PartialEq, Eq)]
-pub struct FileCommand {
-    pub name: String,
-    pub operands: Vec<String>,
-}
-
-pub fn file_command(words: &[String]) -> Option<FileCommand> {
-    let (name, rest) = words.split_first()?;
-    let (short, long): (&str, &[&str]) = match name.as_str() {
-        "mkdir" => ("pv", &["--parents", "--verbose"]),
-        "touch" => ("acm", &["--no-create"]),
-        "cp" => (
-            "RrafinpvLPH",
-            &["--recursive", "--archive", "--force", "--interactive", "--no-clobber", "--verbose"],
-        ),
-        "mv" => ("finv", &["--force", "--interactive", "--no-clobber", "--verbose"]),
-        _ => return None,
-    };
-    let mut operands = Vec::new();
-    let mut options_done = false;
-    for word in rest {
-        if options_done || !word.starts_with('-') || word.len() == 1 {
-            operands.push(word.clone());
-        } else if word == "--" {
-            options_done = true;
-        } else if word.starts_with("--") {
-            if !long.contains(&word.as_str()) {
-                return None;
-            }
-        } else if !word[1..].chars().all(|c| short.contains(c)) {
-            return None;
-        }
-    }
-    (!operands.is_empty()).then(|| FileCommand {
-        name: name.clone(),
-        operands,
-    })
-}
-
-const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh", "mksh", "ash", "fish", "csh", "tcsh"];
-const INTERPRETERS: &[&str] = &[
-    "python", "python2", "python3", "pypy", "pypy3", "py", "node", "nodejs", "deno", "bun", "ruby", "perl",
-    "php", "lua", "luajit", "Rscript", "julia", "osascript", "pwsh", "powershell",
-];
-/// Commands that start a package given as the second word: `npx create-vite`.
-const LAUNCHERS: &[&str] = &["npx", "pnpx", "bunx", "uvx"];
-/// Commands whose second word is a verb and whose third word is what runs: `npm run build`.
-const RUNNERS: &[(&str, &[&str])] = &[
-    ("npm", &["run", "run-script", "exec", "x"]),
-    ("pnpm", &["run", "exec", "dlx"]),
-    ("yarn", &["run", "exec", "dlx"]),
-    ("bun", &["run", "x", "exec"]),
-    ("deno", &["run", "task"]),
-    ("uv", &["run"]),
-    ("pipx", &["run"]),
-    ("poetry", &["run"]),
-    ("pipenv", &["run"]),
-    ("pdm", &["run"]),
-    ("hatch", &["run"]),
-    ("go", &["run"]),
-];
-/// Commands no rule is proposed for: they run other commands, delete files, or are `find`,
-/// whose `-exec` and `-delete` a rule could not tell apart.
-const NEVER_PROPOSED: &[&str] = &[
-    "sudo", "doas", "su", "env", "xargs", "eval", "exec", "command", "builtin", "nohup", "nice", "time",
-    "timeout", "watch", "stdbuf", "busybox", "toybox", "chroot", "nsenter", "source", ".", "trap", "rm",
-    "rmdir", "find",
-];
-
-/// The rule offered as "always allow in this session" for one simple command: normally its
-/// first two words, such as `cargo test`. `None` when every such rule would also allow
-/// arbitrary code: inline code for a shell or interpreter (`python3 -c`), wrappers, deletion.
-/// Runners get their third word too: `npm run build`, `python3 -m pytest`.
-pub fn propose_rule(words: &[String]) -> Option<CommandRule> {
-    let name = program_name(words.first()?);
-    let second = words.get(1).map(String::as_str);
-    let third = words.get(2).map(String::as_str);
-    let plain = |word: Option<&str>| word.is_some_and(|w| !w.starts_with('-'));
-    let len = if NEVER_PROPOSED.contains(&name) {
-        return None;
-    } else if let Some((_, verbs)) = RUNNERS.iter().find(|(runner, _)| *runner == name)
-        && second.is_some_and(|s| verbs.contains(&s))
-    {
-        if !plain(third) {
-            return None;
-        }
-        3
-    } else if INTERPRETERS.contains(&name) {
-        match second {
-            Some("-m") if plain(third) => 3,
-            Some("eval" | "repl") => return None,
-            _ if plain(second) => 2,
-            _ => return None,
-        }
-    } else if SHELLS.contains(&name) || LAUNCHERS.contains(&name) || name == "git" {
-        if !plain(second) {
-            return None;
-        }
-        2
-    } else {
-        2
-    };
-    Some(CommandRule {
-        prefix: words.iter().take(len).cloned().collect(),
-        decision: RuleDecision::Allow,
-        reason: None,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1077,28 +923,6 @@ mod tests {
             assert_eq!(parse_command(cmd), Parsed::Complex, "{cmd}");
         }
     }
-
-    #[test]
-    fn read_only_list_is_conservative() {
-        assert!(is_read_only(&words("ls -la"), false));
-        assert!(is_read_only(&words("rg -n foo src"), false));
-        assert!(!is_read_only(&words("rg --pre cat foo"), false));
-        assert!(!is_read_only(&words("find . -name x -delete"), false));
-        assert!(is_read_only(&words("find . -name *.rs"), false));
-        assert!(!is_read_only(&words("./ls"), false));
-        assert!(!is_read_only(&words("rm -rf x"), false));
-        assert!(!is_read_only(&words("git status"), false), "git only in trusted projects");
-        assert!(is_read_only(&words("git status"), true));
-        assert!(!is_read_only(&words("git -c core.pager=x log"), true));
-        assert!(!is_read_only(&words("git branch -D main"), true));
-        assert!(is_read_only(&words("git branch -a"), true));
-        assert!(!is_read_only(&words("git diff --output=x"), true));
-        assert!(!is_read_only(&words("date 0101"), false));
-        assert!(is_read_only(&words("cd .."), false));
-        assert!(is_read_only(&words("pushd src"), false));
-    }
-
-    // ---- analysis ----
 
     const CWD: &str = "/work/proj";
     const HOME: &str = "/home/me";
@@ -1342,78 +1166,5 @@ mod tests {
             vec!["git -C .. -c a=b --no-pager --git-dir=x push -f", "git push -f"]
         );
         assert_eq!(forms("env A=1 /bin/rm -rf x"), vec!["env A=1 /bin/rm -rf x", "/bin/rm -rf x", "rm -rf x"]);
-    }
-
-    #[test]
-    fn file_commands_with_plain_options() {
-        let operands = |s: &str| file_command(&words(s)).map(|c| c.operands);
-        assert_eq!(operands("mkdir -p a/b c"), Some(words("a/b c")));
-        assert_eq!(operands("touch x"), Some(words("x")));
-        assert_eq!(operands("cp -rv src dst"), Some(words("src dst")));
-        assert_eq!(operands("mv -- -a b"), Some(words("-a b")));
-        assert_eq!(operands("mkdir -m 700 x"), None);
-        assert_eq!(operands("cp -t dst src"), None);
-        assert_eq!(operands("mv --target-directory=d x"), None);
-        assert_eq!(operands("touch -r ref x"), None);
-        assert_eq!(operands("cp -s a b"), None);
-        assert_eq!(operands("mkdir"), None);
-        assert_eq!(operands("rm x"), None);
-        assert_eq!(operands("./mkdir x"), None);
-        assert_eq!(file_command(&words("cp a b")).unwrap().name, "cp");
-    }
-
-    fn proposal(command: &str) -> Option<String> {
-        propose_rule(&words(command)).map(|rule| rule.prefix.join(" "))
-    }
-
-    #[test]
-    fn proposes_narrow_prefixes_only() {
-        assert_eq!(proposal("cargo test --release").as_deref(), Some("cargo test"));
-        assert_eq!(proposal("make").as_deref(), Some("make"));
-        assert_eq!(proposal("git push origin main").as_deref(), Some("git push"));
-        assert_eq!(proposal("npm install").as_deref(), Some("npm install"));
-        assert_eq!(proposal("npm run build -- --watch").as_deref(), Some("npm run build"));
-        assert_eq!(proposal("pnpm exec vitest").as_deref(), Some("pnpm exec vitest"));
-        assert_eq!(proposal("uv run pytest -x").as_deref(), Some("uv run pytest"));
-        assert_eq!(proposal("go run ./cmd/x").as_deref(), Some("go run ./cmd/x"));
-        assert_eq!(proposal("python3 build.py --fast").as_deref(), Some("python3 build.py"));
-        assert_eq!(proposal("python3 -m pytest -x").as_deref(), Some("python3 -m pytest"));
-        assert_eq!(proposal("node server.js").as_deref(), Some("node server.js"));
-        assert_eq!(proposal("bash scripts/check.sh").as_deref(), Some("bash scripts/check.sh"));
-        assert_eq!(proposal("deno fmt").as_deref(), Some("deno fmt"));
-        assert_eq!(proposal("npx create-vite app").as_deref(), Some("npx create-vite"));
-        for broad in [
-            "python3 -c print(1)",
-            "python3",
-            "python -",
-            "python3 -m",
-            "/usr/bin/python3 -c x",
-            "node -e x",
-            "perl -e x",
-            "ruby -e x",
-            "deno eval x",
-            "bun -e x",
-            "bash -lc x",
-            "sh -c x",
-            "zsh",
-            "npm run",
-            "npm run --silent",
-            "pnpm dlx",
-            "npx -y pkg",
-            "git -c core.pager=x log",
-            "git -C .. push",
-            "git",
-            "sudo apt install x",
-            "env FOO=1 make",
-            "xargs rm",
-            "eval x",
-            "rm -rf build",
-            "rmdir x",
-            "find . -delete",
-            "timeout 5 cargo test",
-            "source env.sh",
-        ] {
-            assert_eq!(proposal(broad), None, "{broad}");
-        }
     }
 }

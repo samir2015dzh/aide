@@ -9,27 +9,24 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Her on the mesh (docs/her-mesh.md), as the owner meets it: turning Her on
 // makes her one of their agents; asked in her conversation, she starts a
-// coding agent on another of their machines, with their approval; when its
+// coding agent on another of their machines, without asking (she runs
+// actions without asking, docs/her-mesh.md §5); when its
 // turn ends, asks or fails she is woken in that conversation without having
 // looked; no other agent can write to her; turning her off ends it.
 
 // meshEvent is what these tests read of her's session events.
 type meshEvent struct {
-	Type         string `json:"type"`
-	CallID       string `json:"call_id"`
-	Name         string `json:"name"`
-	Summary      string `json:"summary"`
-	ProposedRule *struct {
-		Prefix []string `json:"prefix"`
-	} `json:"proposed_rule"`
-	Args struct {
+	Type   string `json:"type"`
+	CallID string `json:"call_id"`
+	Name   string `json:"name"`
+	Args   struct {
 		Text string `json:"text"`
 	} `json:"args"`
 	// tool_completed: what the apps read of the result (docs/her-team.md §6.2).
@@ -39,27 +36,29 @@ type meshEvent struct {
 	} `json:"result"`
 }
 
-// tellHer sends Her a message, answers each approval she asks for with
-// decision ("approve", "approve_for_session"), and waits until she sends
-// the owner a message with want in it. It returns the approvals she asked
-// for and what she sent.
-func tellHer(t *testing.T, env *herEnvironment, text, decision, want string) (asked []meshEvent, said string) {
+// tellHer sends Her a message that has her-mock make one mesh call
+// (meshCall), and waits until she sends the owner a message with want in
+// it, which it returns. Her runs actions without asking (docs/her-mesh.md
+// §5): the call runs at once, writes too, and nothing in her conversation
+// waits for the owner meanwhile.
+func tellHer(t *testing.T, env *herEnvironment, text, want string) (said string) {
 	t.Helper()
-	asked, said, _ = tellHerDetails(t, env, text, decision, want)
-	return asked, said
+	said, _ = tellHerDetails(t, env, text, want)
+	return said
 }
 
 // tellHerDetails is tellHer, with the details of the last mesh call's
 // result.
-func tellHerDetails(t *testing.T, env *herEnvironment, text, decision, want string) (asked []meshEvent, said string, details json.RawMessage) {
+func tellHerDetails(t *testing.T, env *herEnvironment, text, want string) (said string, details json.RawMessage) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	stream, op, session := openAssistant(t, ctx, env)
+	stream, _, _ := openAssistant(t, ctx, env)
 	defer stream.Close()
 	if res, err := env.c.HerSend(ctx, &localv1.HerSendRequest{MachineId: env.machine, BotId: env.bot.ID, Text: text}); err != nil || !res.Delivered {
 		t.Fatalf("HerSend: %v %v", res, err)
 	}
+	ran := false
 	for stream.Receive() {
 		n := stream.Msg().GetNotification()
 		if n.GetMethod() != "session/event" {
@@ -72,20 +71,21 @@ func tellHerDetails(t *testing.T, env *herEnvironment, text, decision, want stri
 			continue
 		}
 		switch e := p.Event; {
-		case e.Type == "approval_requested":
-			asked = append(asked, e)
-			herCall(t, env, op.ConnectionId, "session/op", map[string]any{"session_id": session,
-				"op": map[string]any{"type": "approval", "call_id": e.CallID, "decision": map[string]string{"type": decision}}})
+		case strings.Contains(e.Type, "approval"):
+			t.Fatalf("Her asked the owner before acting: %+v", e)
 		case e.Type == "tool_completed" && e.Result.ToolName == "call_tool":
-			details = e.Result.Details
+			ran, details = true, e.Result.Details
 		case e.Type == "tool_started" && e.Name == "send_to_user" && strings.Contains(e.Args.Text, want):
-			return asked, e.Args.Text, details
+			if !ran {
+				t.Fatalf("Her said %q before her mesh call ran", e.Args.Text)
+			}
+			return e.Args.Text, details
 		case e.Type == "tool_started" && e.Name == "send_to_user":
 			said = e.Args.Text
 		}
 	}
 	t.Fatalf("Her never said %q (she said %q, the mesh call's details %s): %v", want, said, details, stream.Err())
-	return nil, "", nil
+	return "", nil
 }
 
 // meshCall is a message that has her-mock run one mesh tool.
@@ -164,7 +164,7 @@ func herClient(t *testing.T, env *herEnvironment) *localv1.Client {
 	return nil
 }
 
-func TestHerMesh(t *testing.T) {
+func TestHerOnTheMesh(t *testing.T) {
 	env := newHerEnvironment(t)
 	w, c, ctx := env.w, env.c, context.Background()
 	onMesh := func() bool { return listedMachine(t, c, env.machine).GetHer().GetMesh() }
@@ -185,13 +185,8 @@ func TestHerMesh(t *testing.T) {
 	}
 
 	// She starts a coding agent on the owner's Mac, another machine than
-	// hers. In her default mode the owner is asked first, in words that name
-	// the agent, the project and the prompt.
-	asked, said, details := tellHerDetails(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "sleep 4s\nsay built it"}), "approve_for_session", "mesh ")
-	if len(asked) != 1 || asked[0].Summary != "Start Claude Code in owner-mac/demo\n\nsleep 4s\nsay built it" ||
-		asked[0].ProposedRule == nil || !slices.Equal(asked[0].ProposedRule.Prefix, []string{"mesh", "owner-mac/demo"}) {
-		t.Fatalf("the approval: %+v", asked)
-	}
+	// hers, at once: nobody is asked first.
+	said, details := tellHerDetails(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "sleep 4s\nsay built it"}), "mesh ")
 	first := sessionID.FindString(said)
 	if !strings.HasPrefix(said, "mesh done") || first == "" {
 		t.Fatalf("session_start: %s", said)
@@ -239,40 +234,39 @@ func TestHerMesh(t *testing.T) {
 	// of it.
 	herSaid(t, env, "news of the turn's end", `<session_news`, `kind="turn_done"`, first)
 
-	// "Don't ask again" was for that project: a second start there asks
-	// nothing, one elsewhere asks.
-	asked, said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "sleep 4s\nsay built it again"}), "approve", "mesh ")
-	if len(asked) != 0 || !strings.HasPrefix(said, "mesh done") {
-		t.Fatalf("a second start in the project: asked %+v, said %s", asked, said)
+	// A second start runs as the first did; one in a project the owner's Mac
+	// doesn't have runs too, and the machine refuses it.
+	said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "sleep 4s\nsay built it again"}), "mesh ")
+	if !strings.HasPrefix(said, "mesh done") {
+		t.Fatalf("a second start in the project: %s", said)
 	}
 	herSaid(t, env, "news of the second turn", `kind="turn_done"`, sessionID.FindString(said))
-	if asked, said := tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/elsewhere", "prompt": "say no"}), "approve", "mesh "); len(asked) != 1 ||
-		!strings.Contains(asked[0].Summary, "owner-mac/elsewhere") || !strings.HasPrefix(said, "mesh failed") {
-		t.Fatalf("a start in another project: asked %+v, said %s", asked, said)
+	if said := tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/elsewhere", "prompt": "say no"}), "mesh "); !strings.HasPrefix(said, "mesh failed") || !strings.Contains(said, "elsewhere") {
+		t.Fatalf("a start in another project: %s", said)
 	}
 
 	// A session that asks: the question wakes her, and her answer reaches it.
-	_, said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "sleep 4s\nask Color|Which color?|Red,Blue\nsleep 4s\nsay done"}), "approve", "mesh done")
+	said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "sleep 4s\nask Color|Which color?|Red,Blue\nsleep 4s\nsay done"}), "mesh done")
 	asking := sessionID.FindString(said)
 	herSaid(t, env, "news of the question", `kind="question"`, asking, "Which color?", "1. Red")
-	if asked, said := tellHer(t, env, meshCall("session_answer", map[string]any{"session_id": asking, "choose": []string{"Red"}}), "approve", "mesh "); len(asked) != 0 || !strings.HasPrefix(said, "mesh done") {
-		t.Fatalf("her answer: asked %+v, said %s", asked, said)
+	if said := tellHer(t, env, meshCall("session_answer", map[string]any{"session_id": asking, "choose": []string{"Red"}}), "mesh "); !strings.HasPrefix(said, "mesh done") {
+		t.Fatalf("her answer: %s", said)
 	}
 	herSaid(t, env, "news of the turn after her answer", `kind="turn_done"`, asking)
 
-	// Reading needs no approval, and she sees the sessions others started.
-	if asked, said := tellHer(t, env, meshCall("session_list", map[string]any{}), "approve", "mesh "); len(asked) != 0 || !strings.Contains(said, first) {
-		t.Fatalf("session_list: asked %+v, said %s", asked, said)
+	// She reads the sessions, those others started too.
+	if said := tellHer(t, env, meshCall("session_list", map[string]any{}), "mesh "); !strings.Contains(said, first) {
+		t.Fatalf("session_list: %s", said)
 	}
 
 	// A session another agent started (the CLI here): she answers its
-	// question, asked first since it is not hers, and stops another of its
-	// sessions (docs/her-team.md §6.1).
+	// question, though it is not hers, without asking either, and stops
+	// another of its sessions (docs/her-team.md §6.1).
 	theirs := startedBy(t, w, "sleep 3s\nask Size|Which size?|S,M\nsay size chosen")
 	eventually(t, time.Minute, "the agent's session waits", func() bool { return cliStatus(t, w, theirs) == "waiting_input" })
-	asked, said = tellHer(t, env, meshCall("session_answer", map[string]any{"session_id": theirs, "choose": []string{"M"}}), "approve", "mesh ")
-	if len(asked) != 1 || !strings.Contains(asked[0].Summary, "Answer the question in session "+theirs) || !strings.HasPrefix(said, "mesh done") {
-		t.Fatalf("her answer to the agent's session: asked %+v, said %s", asked, said)
+	said = tellHer(t, env, meshCall("session_answer", map[string]any{"session_id": theirs, "choose": []string{"M"}}), "mesh ")
+	if !strings.HasPrefix(said, "mesh done") {
+		t.Fatalf("her answer to the agent's session: %s", said)
 	}
 	eventually(t, time.Minute, "the agent's session goes on with her answer", func() bool {
 		r := w.cli(30*time.Second, "session", "get", theirs, "-o", "json")
@@ -281,15 +275,15 @@ func TestHerMesh(t *testing.T) {
 	})
 	busy := startedBy(t, w, "sleep 120s\nsay never")
 	eventually(t, time.Minute, "the agent's other session runs", func() bool { return cliStatus(t, w, busy) == "running" })
-	if asked, said := tellHer(t, env, meshCall("session_interrupt", map[string]any{"session_id": busy}), "approve", "mesh "); len(asked) != 0 || !strings.HasPrefix(said, "mesh done") {
-		t.Fatalf("her stop of the agent's session: asked %+v, said %s", asked, said)
+	if said := tellHer(t, env, meshCall("session_interrupt", map[string]any{"session_id": busy}), "mesh "); !strings.HasPrefix(said, "mesh done") {
+		t.Fatalf("her stop of the agent's session: %s", said)
 	}
 	eventually(t, time.Minute, "the agent's session stopped", func() bool { return cliStatus(t, w, busy) == "idle" })
 
 	// What the team did today: her sessions and the agent's, with her own
 	// marked; the numbers come as details for the app's card too
 	// (docs/her-team.md §6.3).
-	asked, said, details = tellHerDetails(t, env, meshCall("work_summary", map[string]any{}), "approve", "mesh ")
+	said, details = tellHerDetails(t, env, meshCall("work_summary", map[string]any{}), "mesh ")
 	var work struct {
 		Work struct {
 			Sessions uint32   `json:"sessions"`
@@ -306,8 +300,8 @@ func TestHerMesh(t *testing.T) {
 			} `json:"by_client"`
 		} `json:"work"`
 	}
-	if len(asked) != 0 || !strings.HasPrefix(said, "mesh done") || json.Unmarshal(details, &work) != nil {
-		t.Fatalf("work_summary: asked %+v, said %s, details %s", asked, said, details)
+	if !strings.HasPrefix(said, "mesh done") || json.Unmarshal(details, &work) != nil {
+		t.Fatalf("work_summary: said %s, details %s", said, details)
 	}
 	mine, theirsCount := uint32(0), uint32(0)
 	for _, c := range work.Work.ByClient {
@@ -338,7 +332,7 @@ func TestHerMesh(t *testing.T) {
 	if _, err := c.AddProject(ctx, &localv1.AddProjectRequest{MachineId: env.machine, ProjectId: "local", Path: repo}); err != nil {
 		t.Fatal(err)
 	}
-	_, said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "her-server/local", "prompt": "sleep 5s\nsay late news"}), "approve", "mesh done")
+	said = tellHer(t, env, meshCall("session_start", map[string]any{"project": "her-server/local", "prompt": "sleep 5s\nsay late news"}), "mesh done")
 	local := sessionID.FindString(said)
 	w.relay.stop()
 	time.Sleep(40 * time.Second)
@@ -386,7 +380,7 @@ func TestHerMesh(t *testing.T) {
 	// (Once the owner's Mac is back at the relay, which went away above:
 	// until then the relay doesn't know its name.)
 	eventually(t, 2*time.Minute, "a start with the new grant", func() bool {
-		_, said := tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "say back"}), "approve", "mesh ")
+		said := tellHer(t, env, meshCall("session_start", map[string]any{"project": "owner-mac/demo", "prompt": "say back"}), "mesh ")
 		if !strings.HasPrefix(said, "mesh done") && !strings.Contains(said, `no machine \"owner-mac\"`) {
 			t.Fatalf("a start with the new grant: %s", said)
 		}

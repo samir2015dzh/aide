@@ -186,7 +186,7 @@ mod tests {
     fn github_signs_in_with_hers_when_the_build_has_its_secret() {
         let built_with_secret = option_env!("HER_GITHUB_OAUTH_CLIENT_SECRET").is_some_and(|s| !s.is_empty());
         let expected = built_with_secret.then_some(McpOAuthClientKind::Builtin);
-        assert_eq!(choose_kind(false, &github(), Some("https://hermesh.io/oauth/client.json"), None), expected);
+        assert_eq!(choose_kind(false, &github(), Some("https://aide.io/oauth/client.json"), None), expected);
         assert_eq!(builtin("https://github.com/login/oauth").map(|(id, _)| id), built_with_secret.then_some("Ov23liCY8iwmJDRtTvvD"));
         // The user's own client still comes first, and other providers have no built-in one.
         assert_eq!(choose_kind(true, &github(), None, None), Some(McpOAuthClientKind::Own));

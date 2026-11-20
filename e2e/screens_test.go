@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestScreens takes the screenshots of the website's download page
-// (hermesh-cloud web/console/src/components/download-shots): the desktop
+// (aide-cloud web/console/src/components/download-shots): the desktop
 // app in a demo world, in Chinese and in English, dark.
-// HERMESH_SCREENS_OUT=<dir> runs it; the pictures land in <dir>/<lang>/.
+// AIDE_SCREENS_OUT=<dir> runs it; the pictures land in <dir>/<lang>/.
 func TestScreens(t *testing.T) {
-	out := os.Getenv("HERMESH_SCREENS_OUT")
+	out := os.Getenv("AIDE_SCREENS_OUT")
 	if testing.Short() || out == "" {
-		t.Skip("set HERMESH_SCREENS_OUT=<dir> to take the download page's screenshots")
+		t.Skip("set AIDE_SCREENS_OUT=<dir> to take the download page's screenshots")
 	}
 	dir, _ := filepath.Abs(filepath.Join("apps", "desktop"))
 	app := filepath.Join(t.TempDir(), "app")
-	if r := run(t, []string{"HERMESH_DESKTOP_OUT=" + app}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
+	if r := run(t, []string{"AIDE_DESKTOP_OUT=" + app}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
 		t.Fatalf("build: %+v", r)
 	}
 	for _, lang := range []string{"zh", "en"} {
@@ -32,8 +32,8 @@ func TestScreens(t *testing.T) {
 			file := filepath.Join(t.TempDir(), "fixture.json")
 			b, _ := json.Marshal(f)
 			os.WriteFile(file, b, 0o644)
-			env := []string{"HERMESH_E2E_FIXTURE=" + file, "HERMESH_DESKTOP_OUT=" + app, "HERMESH_PW_OUT=" + filepath.Join(t.TempDir(), "results"),
-				"HERMESH_SCREENS_DEMO=" + lang, "HERMESH_SCREENS=" + filepath.Join(out, lang)}
+			env := []string{"AIDE_E2E_FIXTURE=" + file, "AIDE_DESKTOP_OUT=" + app, "AIDE_PW_OUT=" + filepath.Join(t.TempDir(), "results"),
+				"AIDE_SCREENS_DEMO=" + lang, "AIDE_SCREENS=" + filepath.Join(out, lang)}
 			if r := run(t, env, 10*time.Minute, "pnpm", "--dir", dir, "exec", "playwright", "test", "screens.spec.ts"); r.code != 0 {
 				t.Fatalf("playwright:\n%s\n%s", r.stdout, r.stderr)
 			}
@@ -49,7 +49,7 @@ type demoText struct {
 // demoSession is a session an agent starts: its title, who (an agent's
 // name), where, with which coding agent, what the agent asks, and the
 // script the scripted provider plays for it (internal/provider/fake,
-// HERMESH_FAKE_SCRIPTS). wait: it ends before the next starts.
+// AIDE_FAKE_SCRIPTS). wait: it ends before the next starts.
 type demoSession struct {
 	title, prompt, by, project, agent, script string
 	wait                                      bool
@@ -67,7 +67,7 @@ func demoWorld(t *testing.T, text demoText) desktopFixture {
 	file := filepath.Join(t.TempDir(), "scripts.json")
 	b, _ := json.Marshal(scripts)
 	os.WriteFile(file, b, 0o644)
-	env := []string{"HERMESH_FAKE_PROVIDERS=1", "HERMESH_FAKE_SCRIPTS=" + file}
+	env := []string{"AIDE_FAKE_PROVIDERS=1", "AIDE_FAKE_SCRIPTS=" + file}
 	grant := &localv1.GrantSpec{Agents: []string{"claude", "codex"}}
 	w := newOwnerMac(t, env, grant)
 	home, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
@@ -89,7 +89,7 @@ func demoWorld(t *testing.T, text demoText) desktopFixture {
 		}
 	}
 	mini, _ := w.otherMac("mac-mini", env)
-	st := w.joinTyped(mini, home, "mac-mini")
+	st := w.logInMachineOnly(mini, home, "mac-mini")
 	if _, err := mini.AddProject(ctx, &localv1.AddProjectRequest{MachineId: st.LocalMachineId, ProjectId: "ios-app", Path: gitRepo(t, map[string]string{"README.md": "# ios-app\n"})}); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func demoWorld(t *testing.T, text demoText) desktopFixture {
 	}
 	agents := map[string][]string{"Grok Bot": w.cliEnv, "Muse": w.addAgent("Muse", grant)}
 
-	f := desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv, owner: w}
+	f := desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv, owner: w}
 	by := map[string][]string{} // each session's agent, who sees it
 	for _, s := range text.sessions {
 		args := []string{"session", "start", "-o", "json", "--project", s.project, "--agent", s.agent, "--title", s.title, "--prompt", s.prompt}

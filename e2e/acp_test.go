@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
 )
 
 // TestACPAgents drives ACP agents (Gemini and Cursor, played by a scripted
@@ -32,7 +32,7 @@ func TestACPAgents(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The owner grants this agent Gemini and Cursor only.
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "HERMESH_CURSOR_BIN=" + cursor, "FAKE_ACP_STATE=" + filepath.Join(scripts, "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "AIDE_CURSOR_BIN=" + cursor, "FAKE_ACP_STATE=" + filepath.Join(scripts, "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini", "cursor"}})
 	cli := w.cli
 
@@ -130,8 +130,8 @@ func TestAntigravityACP(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			var env []string
 			if real {
-				if os.Getenv("HERMESH_REAL_CLI") != "1" {
-					t.Skip("set HERMESH_REAL_CLI=1")
+				if os.Getenv("AIDE_REAL_CLI") != "1" {
+					t.Skip("set AIDE_REAL_CLI=1")
 				}
 				for _, p := range acp.Providers("") {
 					if p.Name() == "antigravity" {
@@ -139,14 +139,14 @@ func TestAntigravityACP(t *testing.T) {
 						if !i.Available || !i.LoggedIn {
 							t.Skipf("Antigravity ACP not ready: %+v", i)
 						}
-						env = append(env, "HERMESH_ANTIGRAVITY_BIN="+i.Binary)
+						env = append(env, "AIDE_ANTIGRAVITY_BIN="+i.Binary)
 					}
 				}
 			} else {
 				gemini := t.TempDir()
 				os.Mkdir(filepath.Join(gemini, "antigravity-acp"), 0o700)
 				os.WriteFile(filepath.Join(gemini, "antigravity-acp", "settings.json"), []byte(`{"auth":{"type":"oauth-personal"}}`), 0o600)
-				env = []string{"GEMINI_HOME=" + gemini, "HERMESH_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp"),
+				env = []string{"GEMINI_HOME=" + gemini, "AIDE_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp"),
 					"FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_RESUME=resume", "FAKE_ACP_REQUIRE_MODE=1"}
 			}
 			w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"antigravity"}})
@@ -190,7 +190,7 @@ func TestAntigravityACP(t *testing.T) {
 }
 
 // TestDeepSeekFromDesktopApp: someone with only the DSH Desktop app (no
-// `dsh` on PATH) can use DeepSeek Harness: hermeshd runs the dsh the app
+// `dsh` on PATH) can use DeepSeek Harness: aided runs the dsh the app
 // keeps, as the app does (its executable as Node on its CLI script).
 func TestDeepSeekFromDesktopApp(t *testing.T) {
 	unixOnly(t, "it reads a macOS app bundle")
@@ -225,7 +225,7 @@ func TestDeepSeekFromDesktopApp(t *testing.T) {
 }
 
 // TestCodeBuddy: CodeBuddy Code installed as its npm package puts
-// `codebuddy` on PATH; hermeshd finds it there and starts it as an ACP agent.
+// `codebuddy` on PATH; aided finds it there and starts it as an ACP agent.
 func TestCodeBuddy(t *testing.T) {
 	unixOnly(t, "its fake CodeBuddy is a shell script")
 	if testing.Short() {

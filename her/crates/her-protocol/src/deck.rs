@@ -888,7 +888,7 @@ pub struct ChartStyle {
 
 // ---- slides, motion, theme ----
 
-/// Transitions Hermesh writes; others the file has are kept and shown by name.
+/// Transitions Aide writes; others the file has are kept and shown by name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TransitionKind {
@@ -924,7 +924,7 @@ pub enum AnimationClass {
     Exit,
 }
 
-/// The effects Hermesh writes; the file's others are kept and listed by their preset id.
+/// The effects Aide writes; the file's others are kept and listed by their preset id.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AnimationEffect {
@@ -1630,7 +1630,7 @@ pub enum SlideChangeKind {
     Moved,
 }
 
-/// What a batch or proposal does to one slide, for the canvas markers and the approval card.
+/// What a batch or proposal does to one slide, for the canvas markers.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SlideChangeSummary {
     pub slide_id: String,
@@ -1659,7 +1659,7 @@ pub enum DeckEditFailureCode {
     ContentMismatch,
     /// Two ops write the same text or object.
     OverlappingSteps,
-    /// Not something Hermesh can do to this content (or this build); say so, or suggest
+    /// Not something Aide can do to this content (or this build); say so, or suggest
     /// PowerPoint.
     Unsupported,
     InvalidStep,

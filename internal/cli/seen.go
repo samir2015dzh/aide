@@ -9,12 +9,12 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
 )
 
 // The sessions this client last read of each machine, kept in
-// $HERMESH_HOME/sessions-seen.json: while a machine cannot be read, session
+// $AIDE_HOME/sessions-seen.json: while a machine cannot be read, session
 // list and get say what was last known of its sessions, marked lost
 // (docs/session-states.md §6), rather than nothing.
 

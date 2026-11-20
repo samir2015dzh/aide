@@ -1,4 +1,4 @@
-import { SessionStatus } from "@hermesh/proto/session";
+import { SessionStatus } from "@aide/proto/session";
 import { app, autoUpdater, BrowserWindow, net, powerMonitor } from "electron";
 import { createHash, verify } from "node:crypto";
 import fs from "node:fs";
@@ -11,7 +11,6 @@ import { feedNotes, nextCheckDelay, nextUpdate, releaseCatalog, squirrelFailure,
 import { command } from "./ipc";
 import { world, worldListeners } from "./notify";
 import { platform } from "./platform";
-import { showSigner, signerBusy, signerListeners } from "./signer";
 import { showUpdates } from "./windows";
 
 // Squirrel.Mac verifies the Developer ID signature and installs on quit. The
@@ -20,10 +19,10 @@ import { showUpdates } from "./windows";
 // package from a folder of the app's beside the running version, which the
 // next start runs (docs/windows.md §6.2). All checks are quiet; opening the
 // update window is always a deliberate user action.
-declare const __HERMESH_UPDATE_FEED__: string;
-declare const __HERMESH_RELEASE_VERSION__: string;
-declare const __HERMESH_RELEASE_PUBKEY__: string;
-const feedURL = `${__HERMESH_UPDATE_FEED__ || "https://github.com/samir2015dzh/hermesh/releases/latest/download"}/RELEASES-${process.platform}-${process.arch}.json`;
+declare const __AIDE_UPDATE_FEED__: string;
+declare const __AIDE_RELEASE_VERSION__: string;
+declare const __AIDE_RELEASE_PUBKEY__: string;
+const feedURL = `${__AIDE_UPDATE_FEED__ || "https://github.com/samir2015dzh/aide/releases/latest/download"}/RELEASES-${process.platform}-${process.arch}.json`;
 // The Windows app installed by its Setup.exe only (not development and test runs).
 const supported = app.isPackaged && (platform.token === "mac" || platform.installed);
 /** The Windows feed's package: where, its SHA-256, and Squirrel's RELEASES line for it. */
@@ -31,7 +30,7 @@ type WindowsPackage = { url: string; sha256: string; releases: string };
 let windowsPackage: WindowsPackage | undefined;
 let update: Update = { state: supported ? "idle" : "unsupported" };
 export const updateListeners = new Set<() => void>();
-const bundled = releaseCatalog(enNotes, zhNotes, __HERMESH_RELEASE_VERSION__);
+const bundled = releaseCatalog(enNotes, zhNotes, __AIDE_RELEASE_VERSION__);
 let notes: ReleaseNote[] = bundled;
 
 type Settings = {
@@ -88,8 +87,7 @@ export function snooze() {
 export function updateInfo(): UpdateInfo {
   const p = prefs();
   return { version: app.getVersion(), autoDownload: p.autoDownload, checkedAt: p.checkedAt,
-    attemptedAt: p.attemptedAt, snoozedVersion: p.snoozedVersion, snoozedUntil: p.snoozedUntil,
-    approvalPending: signerBusy() || world.pairings.length > 0, notes, update };
+    attemptedAt: p.attemptedAt, snoozedVersion: p.snoozedVersion, snoozedUntil: p.snoozedUntil, notes, update };
 }
 function apply(e: UpdateEvent): Update {
   update = nextUpdate(update, e);
@@ -125,13 +123,7 @@ function failed(reason: "network" | "location" | "download", message: string) {
 }
 
 export function startUpdater() {
-  let pending = updateInfo().approvalPending;
-  worldListeners.add(() => {
-    restartStaleDaemon();
-    const next = updateInfo().approvalPending;
-    if (pending !== next) { pending = next; changed(); }
-  });
-  signerListeners.add(changed);
+  worldListeners.add(restartStaleDaemon);
   if (!supported) return;
   // Windows: set to the downloaded package's folder (startDownload).
   if (platform.token === "mac") {
@@ -174,7 +166,7 @@ export async function check() {
     const feed = body ? JSON.parse(body) : { currentRelease: "" };
     if (typeof feed.currentRelease !== "string") throw new Error("Invalid update feed: currentRelease is missing");
     if (platform.token === "win") windowsPackage = feed.package;
-    const remoteNotes = feedNotes(feed.hermeshNotes);
+    const remoteNotes = feedNotes(feed.aideNotes);
     notes = [...remoteNotes, ...bundled.filter((n) => !remoteNotes.some((r) => r.version === n.version))];
     prefs().checkedAt = Date.now();
     const next = apply({ type: "feed", latest: feed.currentRelease, current: app.getVersion(), autoDownload: prefs().autoDownload });
@@ -204,7 +196,7 @@ function startDownload() {
 async function verifyFeed(body: string) {
   const res = await net.fetch(`${feedURL}.sig`, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
   if (!res.ok) throw new Error(`${feedURL}.sig: HTTP ${res.status}`);
-  if (!verify("sha256", Buffer.from(body), __HERMESH_RELEASE_PUBKEY__, Buffer.from(await res.arrayBuffer()))) {
+  if (!verify("sha256", Buffer.from(body), __AIDE_RELEASE_PUBKEY__, Buffer.from(await res.arrayBuffer()))) {
     throw new Error("The update feed is not signed by the release key");
   }
 }
@@ -241,20 +233,15 @@ export function openUpdates(manual = false) {
   showUpdates();
   if (manual || update.state === "idle") void check();
 }
-export function returnToApproval() {
-  if (signerBusy()) showSigner();
-  else if (world.pairings[0]) command(`pairing:${world.pairings[0].code}`);
-}
 /** Recheck the live guard even when Restart to Update came from a native menu. */
 export function install() {
   if (update.state !== "ready") return;
-  if (updateInfo().approvalPending) { showUpdates(); changed(); return; }
   autoUpdater.quitAndInstall();
 }
 
-// --- hermeshd after an update ---
+// --- aided after an update ---
 
-// hermeshd is a LaunchAgent and keeps running while the app is replaced,
+// aided is a LaunchAgent and keeps running while the app is replaced,
 // so a new app may find the previous version's daemon: restart it, once,
 // to run the binary and plist now in the bundle. Not during a turn on this Mac: the
 // restart would end it (the sessions themselves survive), so it waits for
@@ -263,7 +250,6 @@ export function install() {
 let daemonRestart: "no" | "soon" | "done" = "no";
 
 function staleDaemon(): string | undefined {
-  if (signerBusy() || world.pairings.length > 0) return undefined;
   const st = world.status;
   if (!st?.version || st.version === app.getVersion()) return undefined;
   const busy = world.sessions.some(
@@ -279,7 +265,7 @@ function restartStaleDaemon() {
   daemonRestart = "soon";
   setTimeout(() => {
     const v = staleDaemon();
-    if (v) platform.restartDaemon(`hermeshd ${v} with Aide ${app.getVersion()}`);
+    if (v) platform.restartDaemon(`aided ${v} with Aide ${app.getVersion()}`);
     daemonRestart = v ? "done" : "no";
   }, 30_000);
 }

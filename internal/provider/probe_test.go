@@ -29,8 +29,8 @@ func TestProbeTellsWhyAnAgentCannotRun(t *testing.T) {
 		{"fails", "#!/bin/sh\necho 'config.toml: bad value' >&2\nexit 1\n", ProblemFailed, "config.toml: bad value"},
 		{"silent", "#!/bin/sh\nexit 3\n", ProblemFailed, "exit status 3"},
 		{"forks", "#!/bin/sh\necho \"$0: fork: Resource temporarily unavailable\" >&2\nexit 128\n", ProblemNoProcesses, filepath.Join(dir, "forks") + ": fork: Resource temporarily unavailable"},
-		{"node", "#!/usr/bin/env hermesh-no-such-runtime\n", ProblemMissingRuntime, "hermesh-no-such-runtime"},
-		{"interpreter", "#!/hermesh/no/such/node\n", ProblemMissingRuntime, "node"},
+		{"node", "#!/usr/bin/env aide-no-such-runtime\n", ProblemMissingRuntime, "aide-no-such-runtime"},
+		{"interpreter", "#!/aide/no/such/node\n", ProblemMissingRuntime, "node"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -53,9 +53,9 @@ func TestProbeTellsWhyAnAgentCannotRun(t *testing.T) {
 // installed by npm need.
 func TestProbeEnvCarriesThePath(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "hermesh-runtime"), []byte("#!/bin/sh\necho ran\n"), 0o755)
+	os.WriteFile(filepath.Join(dir, "aide-runtime"), []byte("#!/bin/sh\necho ran\n"), 0o755)
 	agent := filepath.Join(dir, "agent")
-	os.WriteFile(agent, []byte("#!/usr/bin/env hermesh-runtime\n"), 0o755)
+	os.WriteFile(agent, []byte("#!/usr/bin/env aide-runtime\n"), 0o755)
 	if out, p, d := Probe(context.Background(), ProbeEnv(dir+":/usr/bin:/bin"), agent, "--version"); p != ProblemNone || string(out) != "ran\n" {
 		t.Fatalf("got %v %q %q", p, d, out)
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
 // An endpoint takes this user's connections, tells who is at the other end,

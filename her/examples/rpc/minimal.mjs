@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Drives her over its JSON-RPC protocol: start a session, send a task, answer its approvals,
-// print the reply. Needs nothing but Node and her.
+// Drives her over its JSON-RPC protocol: start a session, send a task, show the tools it runs
+// (her asks nobody before an action), print the reply. Needs nothing but Node and her.
 //
 //     node minimal.mjs "fix the failing test"
 //     node minimal.mjs "fix the failing test" /path/to/her
@@ -40,11 +40,8 @@ lines.on("line", (line) => {
   const event = message.params.event;
   if (event.type === "message_delta" && event.delta.type === "text") {
     reply.push(event.delta.text);
-  } else if (event.type === "approval_requested") {
-    // A real client would ask someone. This one says yes to everything.
-    console.error(`approving: ${event.summary}`);
-    const op = { type: "approval", call_id: event.call_id, decision: { type: "approve" } };
-    call("session/op", { session_id: message.params.session_id, op }).catch(finished.reject);
+  } else if (event.type === "tool_started") {
+    console.error(`running: ${event.title}`);
   } else if (event.type === "task_failed") {
     finished.reject(new Error(event.error.message));
   } else if (event.type === "idle") {

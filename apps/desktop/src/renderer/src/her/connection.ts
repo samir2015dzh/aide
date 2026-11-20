@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { agentHistoryCursor, applyEvents, fromSnapshot, mergeBots, openCallTransport, RpcClient, RpcError, sortBots, withAgentHistory, withHistory, type SessionView } from "@hermesh/her-client";
-import type { BotSummary, Event, EventClass, ModelsListResult, SessionNewResult } from "@hermesh/her-protocol";
-import type { HerWaiting, Machine } from "@hermesh/proto/local";
+import { agentHistoryCursor, applyEvents, fromSnapshot, mergeBots, openCallTransport, RpcClient, RpcError, sortBots, withAgentHistory, withHistory, type SessionView } from "@aide/her-client";
+import type { BotSummary, Event, EventClass, ModelsListResult, SessionNewResult } from "@aide/her-protocol";
+import type { HerWaiting, Machine } from "@aide/proto/local";
 import { local } from "../api";
 import { errorText } from "../store";
 import { herAdapter } from "./adapter";
@@ -298,7 +298,7 @@ export function useConversation(machine: Machine, bot: BotSummary | undefined, s
 }
 
 /**
- * What hermeshd keeps of the environment's Her (kept.ts), asked for when the
+ * What aided keeps of the environment's Her (kept.ts), asked for when the
  * page shows the environment: what the page shows while the environment has
  * nothing of its own yet, such as after the app restarted.
  */

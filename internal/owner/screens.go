@@ -9,8 +9,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // LocalService.Watch: what the screens show, pushed (docs/state-sync.md
@@ -171,7 +171,6 @@ type shown struct {
 	clients  kept[*localv1.Client]
 	devices  kept[*localv1.Device]
 	projects kept[*localv1.Project]
-	pairings kept[*localv1.PairingDetails]
 	work     uint64
 }
 
@@ -209,9 +208,6 @@ func (w *shown) diff(ctx context.Context, l *localService, o *Owner, mode string
 	if mode == "owner" {
 		if r, err := l.ListDevices(ctx, &localv1.ListDevicesRequest{}); err == nil {
 			out.Devices, out.RemovedDeviceKeyIds = w.devices.diff(r.Devices, func(d *localv1.Device) string { return d.KeyId })
-		}
-		if r, err := l.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{}); err == nil {
-			out.Pairings, out.RemovedPairingCodes = w.pairings.diff(r.Pairings, func(p *localv1.PairingDetails) string { return p.Code })
 		}
 	}
 	return out

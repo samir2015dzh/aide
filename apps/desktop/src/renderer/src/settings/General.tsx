@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { pickLanguage } from "@hermesh/core";
+import { pickLanguage } from "@aide/core";
 import type { Appearance, LoginItem, Preferences } from "../../../shared/bridge";
 import { languages, resolveLanguage, type LanguageChoice } from "../../../shared/i18n";
 import { useUpdate } from "../update";
@@ -17,12 +17,12 @@ export function General() {
   const [login, setLogin] = useState<LoginItem>();
 
   useEffect(() => {
-    window.hermesh?.getPreferences().then(setPrefs);
-    window.hermesh?.loginItem().then(setLogin);
+    window.aide?.getPreferences().then(setPrefs);
+    window.aide?.loginItem().then(setLogin);
   }, []);
   const pref = (k: Flag, title: string, desc?: string) => (
     <SRow title={title} desc={desc}>
-      <Switch on={prefs?.[k] ?? false} label={title} disabled={!prefs} set={(on) => window.hermesh?.setPreferences({ [k]: on }).then(setPrefs)} />
+      <Switch on={prefs?.[k] ?? false} label={title} disabled={!prefs} set={(on) => window.aide?.setPreferences({ [k]: on }).then(setPrefs)} />
     </SRow>
   );
 
@@ -38,7 +38,7 @@ export function General() {
                 className={prefs?.appearance === a ? "on" : ""}
                 aria-pressed={prefs?.appearance === a}
                 disabled={!prefs}
-                onClick={() => window.hermesh?.setPreferences({ appearance: a }).then(setPrefs)}
+                onClick={() => window.aide?.setPreferences({ appearance: a }).then(setPrefs)}
               >
                 {t(`appearance.${a}`)}
               </button>
@@ -58,22 +58,19 @@ export function General() {
                 {login?.needsApproval && (
                   <>
                     {" "}{t("general.loginItemsApproval")}{" "}
-                    <button className="link" onClick={() => window.hermesh?.openLoginItems()}>{t("general.openSystemSettings")}</button>
+                    <button className="link" onClick={() => window.aide?.openLoginItems()}>{t("general.openSystemSettings")}</button>
                   </>
                 )}
               </>
             }
           >
-            <Switch on={login?.on ?? false} label={t("general.openAtLogin")} disabled={!login} set={(on) => window.hermesh?.setLoginItem(on).then(setLogin)} />
+            <Switch on={login?.on ?? false} label={t("general.openAtLogin")} disabled={!login} set={(on) => window.aide?.setLoginItem(on).then(setLogin)} />
           </SRow>
         </div>
       </div>
       <div>
         <div className="fhead">{t("general.notifications")}</div>
         <div className="fgroup">
-          <SRow title={t("general.connectionRequests")} desc={t("general.connectionRequestsDesc")}>
-            <Switch on label={t("general.connectionRequests")} disabled />
-          </SRow>
           {pref("notifyStarted", t("general.sessionStarted"))}
           {pref("notifyQuestion", t("general.agentQuestions"), t("general.agentQuestionsDesc"))}
           {pref("notifyFailed", t("general.sessionFailed"))}
@@ -98,7 +95,7 @@ export function General() {
  */
 function Language({ prefs, setPrefs }: { prefs?: Preferences; setPrefs: (p: Preferences) => void }) {
   const { t } = useTranslation("settings");
-  const running = window.hermesh?.language;
+  const running = window.aide?.language;
   const system = pickLanguage(navigator.languages);
   const restart = prefs && running && resolveLanguage(prefs.language, navigator.languages) !== running;
   return (
@@ -110,7 +107,7 @@ function Language({ prefs, setPrefs }: { prefs?: Preferences; setPrefs: (p: Pref
             restart && (
               <>
                 {t("language.restartHint")}{" "}
-                <button className="link" onClick={() => window.hermesh?.relaunch()}>{t("language.restartNow")}</button>
+                <button className="link" onClick={() => window.aide?.relaunch()}>{t("language.restartNow")}</button>
               </>
             )
           }
@@ -120,7 +117,7 @@ function Language({ prefs, setPrefs }: { prefs?: Preferences; setPrefs: (p: Pref
             aria-label={t("language.title")}
             value={prefs?.language ?? "system"}
             disabled={!prefs}
-            onChange={(e) => window.hermesh?.setPreferences({ language: e.target.value as LanguageChoice }).then(setPrefs)}
+            onChange={(e) => window.aide?.setPreferences({ language: e.target.value as LanguageChoice }).then(setPrefs)}
           >
             <option value="system">{t("language.system", { name: t(`language.names.${system}`) })}</option>
             {languages.map((l) => (
@@ -139,7 +136,7 @@ function Updates() {
   const info = useUpdate();
   return <div><div className="fhead">{t("update.title")}</div><div className="fgroup">
     <SRow title={t("update.autoDownload")} desc={t("update.autoDownloadDesc")}>
-      <Switch label={t("update.autoDownload")} on={info?.autoDownload ?? true} disabled={!info || info.update.state === "unsupported"} set={(on) => { void window.hermesh?.setAutoDownload(on); }} />
+      <Switch label={t("update.autoDownload")} on={info?.autoDownload ?? true} disabled={!info || info.update.state === "unsupported"} set={(on) => { void window.aide?.setAutoDownload(on); }} />
     </SRow>
   </div></div>;
 }

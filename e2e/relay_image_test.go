@@ -12,8 +12,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestRelayImage runs the relay image as the README says, a volume of its
@@ -29,15 +28,15 @@ import (
 //     would, and is shown the same MCP address as mcp-url prints;
 //     restarted, it keeps its owner and that address.
 //
-// HERMESH_DOCKER=1.
+// AIDE_DOCKER=1.
 func TestRelayImage(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") != "1" {
-		t.Skip("set HERMESH_DOCKER=1")
+	if os.Getenv("AIDE_DOCKER") != "1" {
+		t.Skip("set AIDE_DOCKER=1")
 	}
 	bin := binaries(t)
 	ctx := context.Background()
 	id := fmt.Sprint(time.Now().UnixNano())
-	image := "hermesh-relay:e2e-" + id
+	image := "aide-relay:e2e-" + id
 	if out, err := exec.Command("docker", "build", "-q", "-f", filepath.Join("deploy", "relay", "Dockerfile"), "-t", image, ".").CombinedOutput(); err != nil {
 		t.Fatalf("docker build: %v %s", err, out)
 	}
@@ -69,9 +68,9 @@ func TestRelayImage(t *testing.T) {
 
 	// With a domain.
 	web, tls := freePort(t), freePort(t)
-	relay("hermesh-e2e-domain-"+id, []string{fmt.Sprintf("127.0.0.1:%d:80", web), fmt.Sprintf("127.0.0.1:%d:443", tls)},
-		"HERMESH_RELAY_DOMAIN=relay.example.test", "HERMESH_RELAY_MCP=1")
-	if u := docker("exec", "hermesh-e2e-domain-"+id, "hermesh-relay", "mcp-url"); !regexp.MustCompile(`^https://relay\.example\.test/mcp/[0-9a-z]{26}$`).MatchString(u) {
+	relay("aide-e2e-domain-"+id, []string{fmt.Sprintf("127.0.0.1:%d:80", web), fmt.Sprintf("127.0.0.1:%d:443", tls)},
+		"AIDE_RELAY_DOMAIN=relay.example.test", "AIDE_RELAY_MCP=1")
+	if u := docker("exec", "aide-e2e-domain-"+id, "aide-relay", "mcp-url"); !regexp.MustCompile(`^https://relay\.example\.test/mcp/[0-9a-z]{26}$`).MatchString(u) {
 		t.Fatalf("mcp-url with a domain: %q", u)
 	}
 	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -89,8 +88,8 @@ func TestRelayImage(t *testing.T) {
 	// Behind a proxy.
 	port := freePort(t)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
-	name := "hermesh-e2e-proxied-" + id
-	relay(name, []string{fmt.Sprintf("127.0.0.1:%d:8080", port)}, "HERMESH_RELAY_PUBLIC_URL="+base, "HERMESH_RELAY_MCP=1")
+	name := "aide-e2e-proxied-" + id
+	relay(name, []string{fmt.Sprintf("127.0.0.1:%d:8080", port)}, "AIDE_RELAY_PUBLIC_URL="+base, "AIDE_RELAY_MCP=1")
 	if !strings.Contains(docker("logs", name), "Plain HTTP, not encrypted on the way") {
 		t.Fatalf("no word on plain HTTP in the log:\n%s", docker("logs", name))
 	}
@@ -98,17 +97,16 @@ func TestRelayImage(t *testing.T) {
 	if m == nil {
 		t.Fatalf("no claim code in the log:\n%s", docker("logs", name))
 	}
-	if c := docker("exec", name, "hermesh-relay", "claim-code"); c != m[1] {
+	if c := docker("exec", name, "aide-relay", "setup-code"); c != m[1] {
 		t.Fatalf("claim-code %q, the log's %q", c, m[1])
 	}
-	mcpURL := docker("exec", name, "hermesh-relay", "mcp-url")
+	mcpURL := docker("exec", name, "aide-relay", "mcp-url")
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
-	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(t.TempDir(), "owner"), "--socket", sock)
-	root, _ := identity.GenerateKey()
-	app := newTestApp(t, sock, root)
-	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: strings.TrimPrefix(base, "http://"), ClaimCode: m[1], RootPublicKey: rootPub(root), RootLabel: "test-mac", RootPlatform: "macos"}); err != nil {
+	start(t, "owner", nil, filepath.Join(bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(t.TempDir(), "owner"), "--socket", sock)
+	app := newTestApp(t, sock)
+	if _, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: strings.TrimPrefix(base, "http://"), SetupCode: m[1], Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"}); err != nil {
 		t.Fatalf("setup: %v\n%s", err, docker("logs", name))
 	}
 	if got := mcpAddress(t, app); got != mcpURL {
@@ -116,10 +114,10 @@ func TestRelayImage(t *testing.T) {
 	}
 
 	docker("restart", name)
-	if c := docker("exec", name, "hermesh-relay", "claim-code"); c != "already claimed" {
+	if c := docker("exec", name, "aide-relay", "setup-code"); c != "already claimed" {
 		t.Fatalf("claim-code after a restart: %q", c)
 	}
-	if u := docker("exec", name, "hermesh-relay", "mcp-url"); u != mcpURL {
+	if u := docker("exec", name, "aide-relay", "mcp-url"); u != mcpURL {
 		t.Fatalf("mcp-url after a restart %q, before %q", u, mcpURL)
 	}
 	eventually(t, 30*time.Second, "the owner back on the relay", func() bool {

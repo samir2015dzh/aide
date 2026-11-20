@@ -15,10 +15,10 @@ import (
 	"github.com/hashicorp/yamux"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 func TestDirectAddrsPersistAcrossReopen(t *testing.T) {
@@ -148,7 +148,7 @@ func TestRelayPrewarmsDirect(t *testing.T) {
 			return
 		}
 		relayAt.Store(time.Now().UnixNano())
-		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 		if err != nil {
 			return
 		}

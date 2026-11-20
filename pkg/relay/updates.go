@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 )
 
 // updates is what a machine's WatchUpdates stream has yet to send. Each

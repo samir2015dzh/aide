@@ -17,20 +17,18 @@ import (
 	"connectrpc.com/connect"
 	"github.com/oklog/ulid/v2"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/flock"
-	"github.com/hermeshai/hermesh/internal/netif"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/netif"
 )
 
-// Device is the owner role on one device, for every owner it set up or
-// joined (docs/trusted-devices.md 4.8). Each has a profile: a directory of
-// its own (its owner.db, device key and machine) and a root key of its own
-// in the signer, which all profiles share. One profile is current at a
+// Device is the owner role on one device, for every owner it logged in to
+// (docs/accounts.md §6). Each has a profile: a directory of its own (its
+// owner.db, device key and machine). One profile is current at a
 // time: it alone runs (its relay connection and its machine), and the
 // local API acts on it.
 type Device struct {
 	cfg Config
-	hub *signHub
 
 	mu       sync.Mutex
 	profiles map[string]*Owner
@@ -59,7 +57,7 @@ func Open(cfg Config) (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	d := &Device{cfg: cfg, hub: newSignHub(), profiles: map[string]*Owner{}, lock: lock, addrs: localAddresses()}
+	d := &Device{cfg: cfg, profiles: map[string]*Owner{}, lock: lock, addrs: localAddresses()}
 	if err := d.migrate(); err != nil {
 		return nil, fmt.Errorf("moving the owner into a profile: %w", err)
 	}
@@ -131,7 +129,7 @@ func (d *Device) currentFile() string { return filepath.Join(d.cfg.DataDir, "cur
 func (d *Device) openProfile(id string) (*Owner, error) {
 	cfg := d.cfg
 	cfg.DataDir = filepath.Join(d.profilesDir(), id)
-	o, err := openProfile(cfg, d.hub)
+	o, err := openProfile(cfg)
 	if o != nil {
 		o.onErase = d.erasedBy
 	}
@@ -229,7 +227,7 @@ func (d *Device) stop() {
 // about to be suspended. Run, the next watch or list start them again;
 // Run, stopped after Pause, leaves the connection open.
 // Close lets go of the data directory: the profiles' databases and the
-// locks. hermeshd exits instead; tests and the iPhone's core close.
+// locks. aided exits instead; tests and the iPhone's core close.
 func (d *Device) Close() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -391,7 +389,7 @@ func (d *Device) Leave(ctx context.Context) error {
 	return o.Leave(ctx)
 }
 
-// checkNewOwner refuses joining an owner another profile already belongs to.
+// checkNewOwner refuses logging in to an owner another profile already belongs to.
 func (d *Device) checkNewOwner(ownerID string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()

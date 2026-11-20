@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { RpcError } from "@hermesh/her-client";
-import type { ProviderSummary } from "@hermesh/her-protocol";
+import { RpcError } from "@aide/her-client";
+import type { ProviderSummary } from "@aide/her-protocol";
 import {
   checking,
   chooseChatGpt,

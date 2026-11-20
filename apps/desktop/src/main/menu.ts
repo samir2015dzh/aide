@@ -105,7 +105,6 @@ function template(): MenuItemConstructorOptions[] {
         item("newGrant", t("file.newGrant"), "newGrant", owner, { accelerator: "Shift+CmdOrCtrl+N" }),
         item("addMachine", t("file.addMachine"), "addMachine", owner),
         item("addProject", t("file.addProject"), "addProject", main),
-        item("enterCode", t("file.enterCode"), "enterCode", owner, { accelerator: "Shift+CmdOrCtrl+P" }),
         sep,
         ...(mac ? [] : [settings, sep]),
         { role: "close", label: t("file.close") },
@@ -176,8 +175,8 @@ function template(): MenuItemConstructorOptions[] {
       role: "help",
       label: t("help.title"),
       submenu: [
-        // The releases page: the development repository is private (RENAME-AIDE.md D4).
-        { label: t("help.help"), click: () => shell.openExternal("https://github.com/samir2015dzh/hermesh/releases") },
+        // The releases page: the development repository is private.
+        { label: t("help.help"), click: () => shell.openExternal("https://github.com/samir2015dzh/aide/releases") },
         { id: "whatsNew", label: t("help.whatsNew"), click: showWhatsNew },
         { id: "shortcuts", label: t("help.shortcuts"), click: showShortcuts },
         // Windows keeps About in Help; the Microsoft Store updates the app.

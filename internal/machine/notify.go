@@ -11,13 +11,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Notices for the owner's iPhones. When a session asks something, fails or
@@ -156,8 +156,9 @@ func (n *Machine) sessionNotice(s noticeSession, e *sessionv1.SessionEvent) {
 }
 
 // herNotice tells the owner's devices of what Her's newest became
-// (herhost.Config.Notice): her reply, a question, or what waits for the
-// owner.
+// (herhost.Config.Notice): her reply, a question, or a secure card waiting
+// for the owner (her kind "approval", the name the apps read for it: Her
+// runs actions without asking, so nothing else waits).
 func (n *Machine) herNotice(l *machinev1.HerLatest) {
 	nt := &sessionv1.Notice{Kind: "her", At: l.At, HerKind: "message", MachineId: n.machineID, BotId: l.BotId, BotName: l.BotName, Text: l.Text}
 	switch l.Kind {

@@ -2,7 +2,7 @@
 //! group `deck`. The read tools read a deck the kernel holds (DeckStore) as it is now, unsaved
 //! edits included, and any other .pptx from disk through the session's environment. `deck_edit`
 //! changes the kernel's deck, opening it there when no one has, as one step the user can take
-//! back; whether it asks first is the approval policy's. `deck_save` writes the file.
+//! back; it runs without asking. `deck_save` writes the file.
 
 use async_trait::async_trait;
 use her_llm::UserContent;
@@ -626,10 +626,10 @@ mod tests {
 mod e2e {
     use super::*;
 
-    /// With `HERMESH_E2E_PPTX` set to a deck: every slide reads, draws and checks.
+    /// With `AIDE_E2E_PPTX` set to a deck: every slide reads, draws and checks.
     #[test]
     fn reads_a_real_deck() {
-        let Ok(path) = std::env::var("HERMESH_E2E_PPTX") else { return };
+        let Ok(path) = std::env::var("AIDE_E2E_PPTX") else { return };
         let deck = Deck::open(std::fs::read(path).unwrap()).unwrap();
         let outline = deck.outline().unwrap();
         let mut text = String::new();

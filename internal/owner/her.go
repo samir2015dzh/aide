@@ -23,15 +23,15 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Her (docs/her-server.md): the owner's side of Her on its machines. Every
@@ -207,7 +207,7 @@ func (r herRemote) HerConsole() http.Handler {
 // errNoRootKey refuses, on a computer that is only a machine, what only the
 // owner key of a trusted device signs.
 func errNoRootKey(what string) error {
-	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("a trusted device has to %s: this computer is only a machine, without an owner key", what))
+	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("one of your devices has to %s: this computer is only a machine", what))
 }
 
 // SetHer turns Her on or off for a machine, signed by the root key. Turned
@@ -314,7 +314,7 @@ func (o *Owner) herTurnedOff(ctx context.Context, machineID string, erase bool, 
 }
 
 // herGrant is the grant to sign for Her on a machine, from its status: nil
-// when its hermeshd keeps no key for her (it is older, or can't run her) or
+// when its aided keeps no key for her (it is older, or can't run her) or
 // she holds one.
 func herGrant(ownerID, machineID string, st *machinev1.MachineStatus) *identityv1.Grant {
 	her := st.GetHer()
@@ -344,14 +344,14 @@ func (o *Owner) herMachineStatus(ctx context.Context, machineID string) (*machin
 	return info.Status, nil
 }
 
-// errBeforeHer refuses Her on a machine whose hermeshd is from before Her
+// errBeforeHer refuses Her on a machine whose aided is from before Her
 // (its status has none): it needs an update, as unimplemented says to the
 // devices (docs/version-skew.md §6.3).
 var errBeforeHer = connect.NewError(connect.CodeUnimplemented, errors.New("Aide on this machine is from before Her: update it there, then turn Her on"))
 
 // olderMachine is a machine's answer to an admin command it doesn't know.
 // Those up to 0.1.5 said so with invalid_argument; that answer is made
-// unimplemented, as later ones give and the devices show as "update Hermesh
+// unimplemented, as later ones give and the devices show as "update Aide
 // there" (docs/version-skew.md §6.3). Any other error is as it came.
 func olderMachine(err error) error {
 	if connect.CodeOf(err) == connect.CodeInvalidArgument {
@@ -424,26 +424,6 @@ func (o *Owner) SetHerCommandConnector(ctx context.Context, machineID string, c 
 		cmd.Command = &identityv1.AdminCommand_SetHerCommandConnector{SetHerCommandConnector: c}
 	})
 	return err
-}
-
-// SetHerAssistantMode sets how freely an assistant acts, on its
-// conversation, as the apps do: full access too, as the owner chose it.
-func (o *Owner) SetHerAssistantMode(ctx context.Context, machineID, botID, mode string) error {
-	if botID == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("no assistant"))
-	}
-	switch mode {
-	case "manual", "accept-edits", "bypass-permissions":
-	default:
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown permission mode %q", mode))
-	}
-	h, err := o.herOn(ctx, machineID)
-	if err != nil {
-		return err
-	}
-	return onBot(ctx, h, botID, func(conn, session string) error {
-		return herOp(ctx, h, conn, session, map[string]any{"type": "set_permission_mode", "mode": mode})
-	})
 }
 
 // ---------------------------------------------------------------------------
@@ -829,7 +809,7 @@ const herReplyMax = 2000
 // (docs/her-reply.md §4.1): the quoted words, each line marked, in the text
 // her kernel takes as an embedded resource, so that nothing in them reads
 // as the owner's own (a /skill: mention). The apps show it as a quote, not
-// as text (her-client's replyOf, HermeshHer's). "" for a reply that names
+// as text (her-client's replyOf, AideHer's). "" for a reply that names
 // no message or quotes nothing: the message goes without it.
 func replyBlock(r *localv1.HerReply) string {
 	text := strings.TrimSpace(strings.ReplaceAll(r.GetText(), "\r\n", "\n"))

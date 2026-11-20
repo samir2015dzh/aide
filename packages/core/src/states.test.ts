@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { GetStatusResponseSchema, MachineSchema, StateLimitsSchema } from "@hermesh/proto/local";
-import { FailureKind, FailureSchema, SessionLink, SessionProgressSchema, SessionSchema, SessionState, SessionStatus } from "@hermesh/proto/session";
+import { GetStatusResponseSchema, MachineSchema, StateLimitsSchema } from "@aide/proto/local";
+import { FailureKind, FailureSchema, SessionLink, SessionProgressSchema, SessionSchema, SessionState, SessionStatus } from "@aide/proto/session";
 import cases from "../../../internal/sessionstate/testdata/cases.json" with { type: "json" };
 import { describe, expect, test } from "vitest";
 import { i18n } from "./i18n";

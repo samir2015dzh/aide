@@ -39,8 +39,8 @@ func detach(cmd *exec.Cmd) {
 // them on Windows): its bare name when the PATH finds it, else its path
 // with forward slashes, quoted only when it has a space.
 func hookCommand(exe string) string {
-	if p, err := exec.LookPath("hermesh"); err == nil && strings.EqualFold(filepath.Clean(p), filepath.Clean(exe)) {
-		return "hermesh"
+	if p, err := exec.LookPath("aide"); err == nil && strings.EqualFold(filepath.Clean(p), filepath.Clean(exe)) {
+		return "aide"
 	}
 	p := filepath.ToSlash(exe)
 	if strings.Contains(p, " ") {

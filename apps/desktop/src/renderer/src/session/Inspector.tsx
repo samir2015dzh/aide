@@ -1,9 +1,9 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { AgentModel } from "@hermesh/proto/machine";
-import type { Session } from "@hermesh/proto/session";
-import { codingAgentTitle, modelTitle } from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+import type { AgentModel } from "@aide/proto/machine";
+import type { Session } from "@aide/proto/session";
+import { codingAgentTitle, modelTitle } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { local } from "../api";
 import { GrantAvatar, PopMenu, type MenuEntry } from "../components";
 import { Icon } from "../icons";
@@ -20,7 +20,7 @@ type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean }
  * which coding agent runs it, on which machine (its settings a click away),
  * in which project (and the GitHub repository and branch it came from, for
  * a session started in one), on which branch; the project and the branch
- * open a menu to copy them, the branch's also to push it (Hermesh never
+ * open a menu to copy them, the branch's also to push it (Aide never
  * pushes unasked), and on this Mac the project's to open its folder. Under it,
  * its context: the model and reasoning effort it runs with, once known.
  */
@@ -38,13 +38,13 @@ export function Inspector({ s }: { s: Session }) {
   const [menu, setMenu] = useState<Menu>();
   const toggle = (of: Menu["of"]) => (e: MouseEvent<HTMLElement>) =>
     setMenu(menu?.of === of ? undefined : { of, anchor: e.currentTarget, keyboard: e.detail === 0 });
-  const open = (to: "files" | "terminal") => window.hermesh?.openFolder(path, to);
+  const open = (to: "files" | "terminal") => window.aide?.openFolder(path, to);
   const items: MenuEntry[] =
     menu?.of === "project"
       ? [
           { id: "copy", label: t("inspector.copyPath"), run: () => copy(st, path) },
           ...(here ? [
-            { id: "files", label: t(window.hermesh?.platform === "win32" ? "inspector.openInExplorer" : "inspector.openInFinder"), run: () => open("files") },
+            { id: "files", label: t(window.aide?.platform === "win32" ? "inspector.openInExplorer" : "inspector.openInFinder"), run: () => open("files") },
             { id: "terminal", label: t("inspector.openInTerminal"), run: () => open("terminal") },
           ] : []),
         ]
@@ -70,7 +70,7 @@ export function Inspector({ s }: { s: Session }) {
             <Icon name="laptop" />
             <span title={machine}>{machine}</span>
             {settings && (
-              <button className="tb insp-gear" aria-label={t("inspector.machineSettings")} title={t("inspector.machineSettings")} onClick={() => window.hermesh?.openSettings(`machines/${s.machineId}`)}>
+              <button className="tb insp-gear" aria-label={t("inspector.machineSettings")} title={t("inspector.machineSettings")} onClick={() => window.aide?.openSettings(`machines/${s.machineId}`)}>
                 <Icon name="gear" />
               </button>
             )}

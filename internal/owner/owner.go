@@ -1,5 +1,5 @@
-// Package owner implements the owner role of the hermeshd bundled with
-// Hermesh.app, on each of the owner's trusted devices: onboarding, devices
+// Package owner implements the owner role of the aided bundled with
+// Aide.app, on each of the owner's trusted devices: onboarding, devices
 // joining and leaving, pairing approval, grants, revocation, machine
 // administration and cross-machine session views. Anything that adds
 // permissions is signed by this device's root key, held by the app.
@@ -23,23 +23,21 @@ import (
 	"unicode"
 
 	"connectrpc.com/connect"
-	"github.com/oklog/ulid/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/internal/flock"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/internal/sessionstate"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/sessionstate"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type Config struct {
@@ -62,7 +60,6 @@ type Owner struct {
 	st  *store
 	// lock holds the profile's directory for this process.
 	lock *flock.Lock
-	hub  *signHub
 	// rep is this device's copy of the owner's world, which the List
 	// calls answer from (replica.go).
 	rep *replica
@@ -80,15 +77,11 @@ type Owner struct {
 	dialing    *relayDial   // the dial to the relay under way, if any
 	kept       *peer.Client // client, kept over a pause: not known to work yet
 	mcpURL     string       // the relay's own MCP address, with its key (GetMCP)
-	join       *pendingJoin // this device asking to join an owner
-	// byCode: machine and device requests the person looked up by their
-	// code here.
-	byCode    map[string]bool
-	pendingMu sync.Mutex // pending names (pendingNames)
-	cardsMu   sync.Mutex // one card sync at a time (cards.go)
-	removed   bool       // the relay no longer counts this device as the owner's
-	signedOut bool       // SignOut: set up, but it neither connects nor signs
-	account   string     // the account, as the center named it (display)
+	pendingMu  sync.Mutex   // pending names (pendingNames)
+	cardsMu    sync.Mutex   // one card sync at a time (cards.go)
+	removed    bool         // the relay no longer counts this device as the owner's
+	signedOut  bool         // SignOut: set up, but it neither connects nor signs
+	account    string       // the account, as the center named it (display)
 
 	localMachine *machine.Machine
 	// lastMachines: the machines as the relay last listed them, shown
@@ -125,6 +118,8 @@ type Owner struct {
 	herSeen map[string]*machinev1.HerStatus
 	// herReach, when set, is how tests reach a machine's HerService.
 	herReach func(ctx context.Context, machineID string) (herMachine, error)
+	// signHook, when set, is how tests have something signed (signRoot).
+	signHook func(ctx context.Context, msgs []proto.Message) ([]*identityv1.Signed, error)
 	// herInfo, when set, is how tests read a machine's status for Her.
 	herInfo   func(ctx context.Context, machineID string) (*machinev1.MachineStatus, error)
 	consoleMu sync.Mutex
@@ -158,8 +153,8 @@ const (
 )
 
 // openProfile opens one profile (profiles.go): cfg.DataDir is its
-// directory, and hub the device's signer, shared by its profiles.
-func openProfile(cfg Config, hub *signHub) (*Owner, error) {
+// directory.
+func openProfile(cfg Config) (*Owner, error) {
 	lock, err := flock.Acquire(cfg.DataDir)
 	if err != nil {
 		return nil, err
@@ -169,7 +164,7 @@ func openProfile(cfg Config, hub *signHub) (*Owner, error) {
 		lock.Release()
 		return nil, err
 	}
-	o := &Owner{cfg: cfg, log: cfg.Logger, st: st, lock: lock, hub: hub, herWake: make(chan struct{}, 1), limits: sessionstate.FromEnv()}
+	o := &Owner{cfg: cfg, log: cfg.Logger, st: st, lock: lock, herWake: make(chan struct{}, 1), limits: sessionstate.FromEnv()}
 	o.rep = newReplica(o)
 	return o, o.load()
 }
@@ -301,11 +296,12 @@ func (o *Owner) stayConnected(ctx context.Context) {
 			case <-done:
 			}
 			o.log.Info("owner: relay disconnected")
-			if err := c.Refused(); err == nil {
+			err := c.Refused()
+			if err == nil {
 				backoff = time.Second
 				continue
 			}
-			go o.checkRemoved() // refused after admission was pipelined: wait as for a failed dial
+			go o.checkRemoved(err) // refused after admission was pipelined: wait as for a failed dial
 		}
 		select {
 		case <-ctx.Done():
@@ -419,7 +415,7 @@ func (o *Owner) relay(ctx context.Context) (*peer.Client, error) {
 		o.mu.Unlock()
 		if err != nil {
 			if errors.Is(err, transport.ErrAdmission) {
-				go o.checkRemoved()
+				go o.checkRemoved(err)
 			}
 			w.err, w.again = connect.NewError(connect.CodeUnavailable, fmt.Errorf("relay unreachable: %w", err)), ctx.Err() != nil
 			close(w.done)
@@ -650,27 +646,6 @@ func (o *Owner) control(ctx context.Context) (relayv1connect.OwnerControlService
 	return relayv1connect.NewOwnerControlServiceClient(hc, "http://relay", transport.ClientNoCompression), c, nil
 }
 
-// rootKey parses the root public key given with Setup or RequestJoin, or,
-// when none was given, has the signer create one.
-func (o *Owner) rootKey(ctx context.Context, der []byte) (*ecdsa.PublicKey, error) {
-	if len(der) == 0 {
-		pub, _, err := o.hub.createKey(ctx)
-		return pub, err
-	}
-	pub, err := identity.ParsePublicKey(der)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("root public key: %w", err))
-	}
-	return pub, nil
-}
-
-func (o *Owner) signRoot(ctx context.Context, msgs ...proto.Message) ([]*identityv1.Signed, error) {
-	o.mu.Lock()
-	pub := o.rootPub
-	o.mu.Unlock()
-	return o.hub.signBatch(ctx, pub, msgs)
-}
-
 // ---------------------------------------------------------------------------
 // Onboarding.
 
@@ -679,7 +654,6 @@ func (o *Owner) Status() *localv1.GetStatusResponse {
 	if !st.Initialized && o.machineOnly() {
 		o.machineOnlyStatus(st)
 	}
-	st.Signer = o.hub.state()
 	st.StateLimits = o.stateLimits()
 	return st
 }
@@ -689,9 +663,6 @@ func (o *Owner) ownerStatus() *localv1.GetStatusResponse {
 	defer o.mu.Unlock()
 	st := &localv1.GetStatusResponse{Initialized: o.ownerID != "", OwnerId: o.ownerID, RelayUrl: o.relayURL, Version: machine.Version,
 		Abilities: []string{"her_reply"}}
-	if o.ownerID != "" {
-		st.ConnectAddress = connaddr.Format(o.relayURL, o.ownerID)
-	}
 	if o.client != nil {
 		select {
 		case <-o.client.Done():
@@ -716,7 +687,7 @@ func (o *Owner) ownerStatus() *localv1.GetStatusResponse {
 }
 
 // checkRelay makes sure this network reaches the relay, by HTTPS and by
-// WebSocket, before anything asks for Touch ID: a company network or proxy
+// WebSocket, before logging in: a company network or proxy
 // that blocks it fails here, with nothing created or signed.
 func (o *Owner) checkRelay(ctx context.Context, relayURL string) error {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -739,67 +710,6 @@ func (o *Owner) checkRelay(ctx context.Context, relayURL string) error {
 
 func (o *Owner) publicClient(relayURL string) relayv1connect.RelayPublicServiceClient {
 	return relayv1connect.NewRelayPublicServiceClient(o.cfg.HTTPClient, strings.TrimSuffix(relayURL, "/"))
-}
-
-// Setup makes this the owner's first trusted device: root cert v1 lists
-// its root key and names the owner, and the relay is claimed with it.
-func (o *Owner) Setup(ctx context.Context, req *localv1.SetupRequest) (*localv1.SetupResponse, error) {
-	if o.Initialized() {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already set up"))
-	}
-	if o.cfg.NoLocalMachine && req.LocalMachineName != "" {
-		return nil, errNoLocalMachine
-	}
-	relayURL := normalizeRelayURL(req.RelayUrl)
-	if err := o.checkRelay(ctx, relayURL); err != nil {
-		return nil, err
-	}
-	rootPub, err := o.rootKey(ctx, req.RootPublicKey)
-	if err != nil {
-		return nil, err
-	}
-	req.RootPublicKey = identity.MarshalPublicKey(rootPub)
-	ownerID := identity.OwnerID(req.RootPublicKey)
-	device, err := identity.GenerateKey()
-	if err != nil {
-		return nil, err
-	}
-	o.mu.Lock()
-	o.rootPub = rootPub
-	o.mu.Unlock()
-	msgs := []proto.Message{
-		&identityv1.RootCert{OwnerId: ownerID, Version: 1, IssuedAt: timestamppb.Now(),
-			RootKeys: []*identityv1.RootKey{{PublicKey: req.RootPublicKey, Label: req.RootLabel, Platform: req.RootPlatform}}},
-		deviceCert(ownerID, device, req.RootLabel)}
-	if req.LocalMachineName != "" {
-		nc, err := o.localMachineCert(ownerID, rootPub)
-		if err != nil {
-			return nil, err
-		}
-		msgs = append(msgs, nc)
-	}
-	signed, err := o.signRoot(ctx, msgs...) // one Touch ID for all of it
-	if err != nil {
-		return nil, err
-	}
-	chain := &identityv1.RootChain{Certs: signed[:1]}
-	if _, err := o.publicClient(relayURL).Claim(ctx, &relayv1.ClaimRequest{ClaimCode: req.ClaimCode, ClaimVerifier: req.ClaimVerifier, RootChain: chain, DeviceCert: signed[1]}); err != nil {
-		return nil, fmt.Errorf("claim relay: %w", err)
-	}
-	if err := o.saveIdentity(ownerID, relayURL, req.RootPublicKey, chain, device, signed[1], req.Account); err != nil {
-		return nil, err
-	}
-	if len(signed) > 2 {
-		if err := o.installLocalMachine(ctx, signed[2], req.LocalMachineName); err != nil {
-			return nil, fmt.Errorf("this computer as a machine: %w", err)
-		}
-	}
-	return &localv1.SetupResponse{OwnerId: ownerID, ConnectAddress: connaddr.Format(relayURL, ownerID)}, nil
-}
-
-// deviceCert certifies this device's device key, for its root key to sign.
-func deviceCert(ownerID string, device *identity.SoftwareKey, label string) *identityv1.OwnerDeviceCert {
-	return &identityv1.OwnerDeviceCert{OwnerId: ownerID, DevicePublicKey: identity.MarshalPublicKey(device.Public()), Label: label, IssuedAt: timestamppb.Now()}
 }
 
 func (o *Owner) saveIdentity(ownerID, relayURL string, rootPub []byte, chain *identityv1.RootChain, device *identity.SoftwareKey, deviceCert *identityv1.Signed, account string) error {
@@ -1166,208 +1076,6 @@ func (o *Owner) namePending(ctx context.Context) {
 	}
 }
 
-func (o *Owner) lookupPairing(ctx context.Context, code string) (*identityv1.PairingRequest, *localv1.PairingDetails, error) {
-	ctl, _, err := o.control(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	norm := identity.NormalizePairingCode(code)
-	// The request with this code, which the owner typed or scanned here.
-	res, err := ctl.ClaimPairingRequest(ctx, &relayv1.ClaimPairingRequestRequest{Code: norm})
-	if err != nil {
-		return nil, nil, err
-	}
-	return o.pairingDetails(norm, res.Request, res.ExpiresAt)
-}
-
-// clientConfirmed: a client request the relay's MCP gateway made after its
-// consent page. Its requester shows no verification code; there is nothing
-// to compare.
-func clientConfirmed(pr *identityv1.PairingRequest) bool {
-	return pr.Kind == identityv1.PairingKind_PAIRING_KIND_CLIENT && pr.Custodian != ""
-}
-
-// pairingDetails checks a pairing request the relay returned for code and
-// describes it for the owner.
-func (o *Owner) pairingDetails(norm string, request *identityv1.Signed, expiresAt *timestamppb.Timestamp) (*identityv1.PairingRequest, *localv1.PairingDetails, error) {
-	pr := &identityv1.PairingRequest{}
-	if _, err := identity.SelfSigned(request, pr, func(m *identityv1.PairingRequest) []byte { return m.SubjectPublicKey }); err != nil {
-		return nil, nil, connect.NewError(connect.CodeDataLoss, fmt.Errorf("pairing request signature: %w", err))
-	}
-	// The code is derived from the requester's key. If the relay swapped
-	// the key, it no longer matches what the user typed.
-	if identity.PairingCode(pr.Kind, pr.SubjectPublicKey) != norm {
-		return nil, nil, connect.NewError(connect.CodeDataLoss, errors.New("the request returned for this code does not match it; the relay may be tampering"))
-	}
-	if pr.OwnerId != o.ownerID {
-		return nil, nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("pairing request is for a different owner"))
-	}
-	d := &localv1.PairingDetails{Kind: pr.Kind, Label: pr.Label, Hostname: pr.Hostname, Platform: pr.Platform,
-		Fingerprint: identity.ShortFingerprint(pr.SubjectPublicKey), ExpiresAt: expiresAt, Code: norm,
-		VerificationCode: identity.VerificationCode(pr.Kind, pr.SubjectPublicKey, o.ownerID), Custodian: pr.Custodian,
-		Confirmed: clientConfirmed(pr)}
-	switch pr.Kind {
-	case identityv1.PairingKind_PAIRING_KIND_MACHINE:
-		d.SubjectId = identity.MachineID(pr.SubjectPublicKey)
-	case identityv1.PairingKind_PAIRING_KIND_CLIENT:
-		d.SubjectId = identity.ClientID(pr.SubjectPublicKey)
-	case identityv1.PairingKind_PAIRING_KIND_DEVICE:
-		d.SubjectId = identity.Fingerprint(pr.SubjectPublicKey)
-	}
-	return pr, d, nil
-}
-
-// LookupPairing finds the request with a code the person typed or scanned
-// here. A machine's or a device's then has nothing to compare: the code
-// comes from its key and pairingDetails checked the request against it, so
-// the relay could not have swapped the key (docs/onboarding.md §5.4, §9.5).
-func (o *Owner) LookupPairing(ctx context.Context, code string) (*localv1.PairingDetails, error) {
-	pr, d, err := o.lookupPairing(ctx, code)
-	if err == nil && (pr.Kind == identityv1.PairingKind_PAIRING_KIND_MACHINE || pr.Kind == identityv1.PairingKind_PAIRING_KIND_DEVICE) {
-		o.mu.Lock()
-		if o.byCode == nil {
-			o.byCode = map[string]bool{}
-		}
-		o.byCode[d.Code] = true
-		o.mu.Unlock()
-		d.Confirmed = true
-	}
-	return d, err
-}
-
-// ListPairingRequests returns the requests waiting for this owner, as the
-// replica last polled them, without those expired since.
-func (o *Owner) ListPairingRequests(ctx context.Context) ([]*localv1.PairingDetails, error) {
-	s, err := o.rep.use(ctx)
-	if err != nil {
-		return nil, err
-	}
-	o.rep.mu.Lock()
-	list, err := listed(&s.pairings)
-	o.rep.mu.Unlock()
-	// One the person looked up by its code here stays so (LookupPairing).
-	o.mu.Lock()
-	for _, d := range list {
-		if o.byCode[d.Code] {
-			d.Confirmed = true
-		}
-	}
-	o.mu.Unlock()
-	return slices.DeleteFunc(list, func(d *localv1.PairingDetails) bool {
-		return d.ExpiresAt != nil && d.ExpiresAt.AsTime().Before(time.Now())
-	}), err
-}
-
-// listPairingRequests asks the relay for the requests waiting for this
-// owner. One the relay tampered with is left out (and logged), not shown.
-func (o *Owner) listPairingRequests(ctx context.Context) ([]*localv1.PairingDetails, error) {
-	ctl, _, err := o.control(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res, err := ctl.ListPairingRequests(ctx, &relayv1.ListPairingRequestsRequest{})
-	if err != nil {
-		return nil, err
-	}
-	return o.pairingsFrom(res), nil
-}
-
-// pairingsFrom is the pairing requests the relay listed (ListPairingRequests,
-// or WatchOwner). One the relay tampered with is left out (and logged).
-func (o *Owner) pairingsFrom(res *relayv1.ListPairingRequestsResponse) []*localv1.PairingDetails {
-	var out []*localv1.PairingDetails
-	for _, p := range res.Pairings {
-		_, d, err := o.pairingDetails(identity.NormalizePairingCode(p.Code), p.Request, p.ExpiresAt)
-		if err != nil {
-			o.log.Warn("pending pairing request left out", "code", p.Code, "err", err)
-			continue
-		}
-		out = append(out, d)
-	}
-	return out
-}
-
-// ApproveMachinePairing certifies a machine that asked to join. It returns
-// the machine's id and, when the machine asked for them (a Mac joining as a
-// machine only, whose owner id came from the center), the two digits the
-// signer showed for the person to type there.
-func (o *Owner) ApproveMachinePairing(ctx context.Context, code, name string) (string, string, error) {
-	pr, _, err := o.lookupPairing(ctx, code)
-	if err != nil {
-		return "", "", err
-	}
-	if pr.Kind != identityv1.PairingKind_PAIRING_KIND_MACHINE {
-		return "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("this code belongs to an agent; use Add agent"))
-	}
-	// The machine names itself with the label it asked with; a different
-	// name chosen here is set on it once it connects (a setting).
-	if name = SanitizeMachineName(name); name == "machine" && pr.Label != "" {
-		name = SanitizeMachineName(pr.Label)
-	}
-	machines, err := o.ListMachines(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	machineID := identity.MachineID(pr.SubjectPublicKey)
-	taken := map[string]bool{}
-	for _, n := range machines {
-		if n.MachineId != machineID {
-			taken[n.MachineName] = true
-		}
-	}
-	if taken[name] {
-		// The name it asked with is taken (two Macs both called "MacBook
-		// Pro"): the next free one. A name chosen here must be free.
-		if name != SanitizeMachineName(pr.Label) {
-			return "", "", connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("a machine named %q already exists", name))
-		}
-		name = freeName(name, taken)
-	}
-	if name != SanitizeMachineName(pr.Label) {
-		o.setPendingName(machineID, name)
-	}
-	if pr.ConfirmMatch {
-		ctx = withShowMatch(ctx)
-	}
-	o.mu.Lock()
-	typed := o.byCode[identity.NormalizePairingCode(code)]
-	o.mu.Unlock()
-	if typed {
-		ctx = withConfirmed(ctx)
-	}
-	signed, err := o.signRoot(ctx, &identityv1.MachineCert{OwnerId: o.ownerID, MachineId: machineID, MachinePublicKey: pr.SubjectPublicKey, IssuedAt: timestamppb.Now()})
-	if err != nil {
-		return "", "", err
-	}
-	ctl, _, err := o.control(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	if _, err := ctl.CompletePairing(ctx, &relayv1.CompletePairingRequest{Code: identity.NormalizePairingCode(code), Credential: signed[0]}); err != nil {
-		return "", "", err
-	}
-	match := ""
-	if pr.ConfirmMatch {
-		match = identity.JoinMatchCode(signed[0].Body)
-	}
-	return machineID, match, nil
-}
-
-// freeName is name with the first suffix ("-2", "-3", …) not taken, within
-// a machine name's 63 bytes.
-func freeName(name string, taken map[string]bool) string {
-	for i := 2; ; i++ {
-		suffix := fmt.Sprintf("-%d", i)
-		base := name
-		if len(base)+len(suffix) > 63 {
-			base = strings.TrimRight(base[:63-len(suffix)], "-")
-		}
-		if !taken[base+suffix] {
-			return base + suffix
-		}
-	}
-}
-
 func defaultSpec(spec *localv1.GrantSpec) *localv1.GrantSpec {
 	s := proto.Clone(spec).(*localv1.GrantSpec)
 	if len(s.MachineIds) == 0 {
@@ -1401,50 +1109,6 @@ func grantFromSpec(base *identityv1.Grant, spec *localv1.GrantSpec) *identityv1.
 	}
 	return g
 }
-
-func (o *Owner) ApproveClientPairing(ctx context.Context, code string, spec *localv1.GrantSpec) (string, string, error) {
-	pr, _, err := o.lookupPairing(ctx, code)
-	if err != nil {
-		return "", "", err
-	}
-	if pr.Kind != identityv1.PairingKind_PAIRING_KIND_CLIENT {
-		return "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("this code belongs to a machine; use Add machine"))
-	}
-	if spec == nil {
-		spec = &localv1.GrantSpec{}
-	}
-	if spec.Label == "" {
-		spec.Label = pr.Label
-	}
-	// An MCP connection works for its agent product the way the owner's app
-	// does: it sees every session in its projects (and steers its own).
-	if pr.Custodian != "" && spec.TaskVisibility == identityv1.TaskVisibility_TASK_VISIBILITY_UNSPECIFIED {
-		spec.TaskVisibility = identityv1.TaskVisibility_TASK_VISIBILITY_ALL
-	}
-	base := &identityv1.Grant{OwnerId: o.ownerID, GrantId: "g_" + strings.ToLower(ulid.Make().String()), Version: 1,
-		ClientId: identity.ClientID(pr.SubjectPublicKey), ClientPublicKey: pr.SubjectPublicKey, Custodian: pr.Custodian}
-	g := grantFromSpec(base, spec)
-	if clientConfirmed(pr) {
-		ctx = withConfirmed(ctx)
-	}
-	signed, err := o.signRoot(ctx, g)
-	if err != nil {
-		return "", "", err
-	}
-	ctl, _, err := o.control(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	if _, err := ctl.CompletePairing(ctx, &relayv1.CompletePairingRequest{Code: identity.NormalizePairingCode(code), Credential: signed[0]}); err != nil {
-		return "", "", err
-	}
-	o.st.putGrant(signed[0], false)
-	go o.refreshCards()
-	return g.ClientId, g.GrantId, nil
-}
-
-// ---------------------------------------------------------------------------
-// Machines.
 
 // ListMachines lists the owner's machines as the relay knows them (see
 // machines for the list with this device's own).
@@ -1827,7 +1491,7 @@ func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.Lis
 	return out, err
 }
 
-// ListDSHSessions gathers the DeepSeek Harness sessions Hermesh did not
+// ListDSHSessions gathers the DeepSeek Harness sessions Aide did not
 // start on the machines, newest activity first.
 func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1.ListDSHSessionsResponse, error) {
 	on, off, err := o.onlineMachines(ctx, machineID)

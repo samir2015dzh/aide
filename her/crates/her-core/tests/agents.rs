@@ -21,12 +21,10 @@ use her_llm::ThinkingLevel;
 use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
 use her_protocol::AgentStatus;
-use her_protocol::ApprovalDecision;
 use her_protocol::Event;
 use her_protocol::EventMsg;
 use her_protocol::MailKind;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_protocol::TaskTrigger;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
@@ -77,7 +75,7 @@ struct Harness {
 }
 
 impl Harness {
-    async fn start(mode: PermissionMode, interactive: bool) -> Harness {
+    async fn start() -> Harness {
         let dir = tempfile::tempdir().unwrap();
         let work = dir.path().join("work");
         std::fs::create_dir_all(&work).unwrap();
@@ -91,13 +89,10 @@ impl Harness {
         let options = StartOptions {
             model: "test/scripted".into(),
             thinking: ThinkingLevel::Off,
-            permission_mode: mode,
             cwd: work.clone(),
             home: home.clone(),
             config: Arc::new(Config::default()),
             project_root: None,
-            trusted: false,
-            interactive_approvals: interactive,
             bot: None,
         };
         let kernel = Kernel::start(options, deps).await.unwrap();
@@ -229,7 +224,7 @@ fn mails(events: &[Event]) -> Vec<(String, AgentStatus)> {
 
 #[tokio::test]
 async fn a_background_agent_reports_and_wakes_the_main_agent() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "counter", "Count the files.", false));
     h.script(ROOT, Script::text("I started an agent to count the files."));
     h.script(ROOT, Script::text("The agent counted 3 files."));
@@ -299,7 +294,7 @@ async fn a_background_agent_reports_and_wakes_the_main_agent() {
 
 #[tokio::test]
 async fn a_waiting_spawn_returns_the_report_as_its_result() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "solver", "Compute the answer.", true));
     h.script(ROOT, Script::text("It is 42."));
     h.script("solver", Script::text("The answer is 42."));
@@ -316,7 +311,7 @@ async fn a_waiting_spawn_returns_the_report_as_its_result() {
 
 #[tokio::test]
 async fn waiting_spawns_in_one_reply_run_in_parallel() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(
         ROOT,
         Script::tool_call("c1", "spawn_agent", json!({ "description": "a work", "task": "a", "name": "a", "wait": true }))
@@ -340,7 +335,7 @@ async fn waiting_spawns_in_one_reply_run_in_parallel() {
 
 #[tokio::test]
 async fn a_message_to_a_running_agent_joins_its_next_turn() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "worker", "Do part a.", false));
     // Sent while the agent runs its command, so it arrives at the agent's next turn boundary.
     h.script(
@@ -370,7 +365,7 @@ async fn a_message_to_a_running_agent_joins_its_next_turn() {
 
 #[tokio::test]
 async fn an_idle_agent_takes_new_work_and_keeps_its_history() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "worker", "First job.", true));
     h.script(
         ROOT,
@@ -389,310 +384,20 @@ async fn an_idle_agent_takes_new_work_and_keeps_its_history() {
     assert_eq!(history.last().unwrap(), "Second job.");
 }
 
-/// What a sub-agent asks, as the main session's events carry it: its id and the call's.
-fn asked(msg: &EventMsg) -> Option<(String, String)> {
-    let EventMsg::AgentEvent { agent_id, event } = msg else {
-        return None;
-    };
-    let EventMsg::ApprovalRequested { call_id, .. } = &event.msg else {
-        return None;
-    };
-    Some((agent_id.clone(), call_id.clone()))
-}
-
-fn answer(asking: &(String, String), decision: ApprovalDecision) -> Op {
-    Op::AgentApproval {
-        agent: asking.0.clone(),
-        call_id: asking.1.clone(),
-        decision,
-    }
-}
-
-impl Harness {
-    /// Until a sub-agent asks: who asks, and what came until then.
-    async fn until_asked(&mut self) -> ((String, String), Vec<Event>) {
-        let events = self.until(|m| asked(m).is_some()).await;
-        (asked(&events.last().unwrap().msg).unwrap(), events)
-    }
-
-    /// The events of the next while, in which nothing is expected to end.
-    async fn for_a_while(&mut self) -> Vec<Event> {
-        let mut events = Vec::new();
-        while let Ok(Some(event)) = tokio::time::timeout(Duration::from_millis(400), self.kernel.next_event()).await {
-            events.push(event);
-        }
-        events
-    }
-}
-
+/// A sub-agent's calls run at once: nobody is asked, and the main session sees no question.
 #[tokio::test]
-async fn a_sub_agent_asks_the_user_and_goes_on() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", false));
-    h.script(ROOT, Script::text("started"));
+async fn a_sub_agents_calls_run_without_asking() {
+    let mut h = Harness::start().await;
+    h.script(ROOT, spawn("c1", "writer", "Write x.txt and y.txt.", true));
     h.script(ROOT, Script::text("it is written"));
     h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::text("wrote x.txt"));
-    h.prompt("write x").await;
-    let (asking, events) = h.until_asked().await;
-
-    // The question is the sub-agent's: the main session has none of its own.
-    assert_eq!(asking.1, "w1");
-    assert!(!events.iter().any(|e| matches!(e.msg, EventMsg::ApprovalRequested { .. })));
-    assert!(!h.work.join("x.txt").exists());
-
-    h.kernel.submit(answer(&asking, ApprovalDecision::Approve)).await.unwrap();
-    let events = h.until_idle().await;
-    assert_eq!(std::fs::read_to_string(h.work.join("x.txt")).unwrap(), "hi");
-    assert!(events.iter().any(|e| matches!(
-        &e.msg,
-        EventMsg::AgentEvent { event, .. } if matches!(event.msg, EventMsg::ApprovalResolved { .. })
-    )));
-    assert_eq!(mails(&events), [("writer".to_string(), AgentStatus::Completed)]);
-}
-
-#[tokio::test]
-async fn denying_a_sub_agents_call_refuses_that_call_and_it_goes_on() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", false));
-    h.script(ROOT, Script::text("started"));
-    h.script(ROOT, Script::text("it was refused"));
-    h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::text("The user refused x.txt."));
-    h.prompt("write x").await;
-    let (asking, _) = h.until_asked().await;
-    h.kernel
-        .submit(answer(&asking, ApprovalDecision::Deny { feedback: Some("not that file".into()) }))
-        .await
-        .unwrap();
-    let events = h.until_idle().await;
-
-    let refused = &tool_results(&h.requests("writer")[1])[0];
-    assert!(refused.contains("The user denied this tool call. Feedback: not that file"), "{refused}");
-    assert!(!h.work.join("x.txt").exists());
-    // It was not stopped: it reports as usual.
-    assert_eq!(mails(&events), [("writer".to_string(), AgentStatus::Completed)]);
-}
-
-#[tokio::test]
-async fn a_call_waiting_for_a_sub_agent_waits_for_its_question_too() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", true));
-    h.script(ROOT, Script::text("it is written"));
-    h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::text("wrote x.txt"));
-    h.prompt("write x").await;
-    let (asking, _) = h.until_asked().await;
-    h.kernel.submit(answer(&asking, ApprovalDecision::Approve)).await.unwrap();
-    h.until_idle().await;
-    assert!(tool_results(&h.requests(ROOT)[1])[0].contains("wrote x.txt"));
-}
-
-#[tokio::test]
-async fn approving_for_the_session_holds_for_the_whole_tree() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt and y.txt.", false));
-    h.script(ROOT, Script::text("started"));
-    // Woken by the report, it writes as well.
-    h.script(ROOT, Script::tool_call("r1", "write", json!({ "path": "z.txt", "content": "root" })));
-    h.script(ROOT, Script::text("all written"));
-    h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::tool_call("w2", "write", json!({ "path": "y.txt", "content": "hi" })));
+    h.script("writer", Script::tool_call("w2", "bash", json!({ "command": "echo there > y.txt" })));
     h.script("writer", Script::text("wrote both"));
     h.prompt("write them").await;
-    let (asking, _) = h.until_asked().await;
-    h.kernel
-        .submit(answer(&asking, ApprovalDecision::ApproveForSession { grant: None, persist: false }))
-        .await
-        .unwrap();
-    let events = h.until_idle().await;
-
-    // The main session changed, and nobody was asked again.
-    assert!(events.iter().any(|e| matches!(
-        e.msg,
-        EventMsg::SettingsChanged {
-            permission_mode: PermissionMode::AcceptEdits,
-            ..
-        }
-    )));
-    assert!(!events.iter().any(|e| asked(&e.msg).is_some() || matches!(e.msg, EventMsg::ApprovalRequested { .. })));
-    for file in ["x.txt", "y.txt", "z.txt"] {
-        assert!(h.work.join(file).exists(), "{file}");
-    }
-}
-
-#[tokio::test]
-async fn the_tree_asks_one_question_at_a_time() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "one", "Write a.txt.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "two work", "task": "Write b.txt.", "name": "two", "wait": false })));
-    // Later than the sub-agents' first calls, the main session has a question of its own.
-    h.script(ROOT, Script::default().then_sleep(Duration::from_millis(800)).then_tool_call("r1", "write", json!({ "path": "c.txt", "content": "root" })));
-    h.script(ROOT, Script::text("started"));
-    h.script(ROOT, Script::text("all reported"));
-    // The same call id in both: each session chooses its own.
-    for (name, file) in [("one", "a.txt"), ("two", "b.txt")] {
-        h.script(name, Script::tool_call("same", "write", json!({ "path": file, "content": name })));
-        h.script(name, Script::text("written"));
-    }
-    h.prompt("write them").await;
-    let (first, _) = h.until_asked().await;
-    let quiet = h.for_a_while().await;
-    assert!(!quiet.iter().any(|e| asked(&e.msg).is_some() || matches!(e.msg, EventMsg::ApprovalRequested { .. })), "one at a time");
-
-    h.kernel.submit(answer(&first, ApprovalDecision::Approve)).await.unwrap();
-    let (second, _) = h.until_asked().await;
-    assert_ne!(second.0, first.0);
-    let quiet = h.for_a_while().await;
-    assert!(!quiet.iter().any(|e| asked(&e.msg).is_some() || matches!(e.msg, EventMsg::ApprovalRequested { .. })), "one at a time");
-
-    // The main session asks in its turn, the last to come.
-    h.kernel.submit(answer(&second, ApprovalDecision::Approve)).await.unwrap();
-    h.until(|m| matches!(m, EventMsg::ApprovalRequested { .. })).await;
-    h.kernel
-        .submit(Op::Approval {
-            call_id: "r1".into(),
-            decision: ApprovalDecision::Approve,
-        })
-        .await
-        .unwrap();
     h.until_idle().await;
-    for file in ["a.txt", "b.txt", "c.txt"] {
-        assert!(h.work.join(file).exists(), "{file}");
-    }
-}
-
-#[tokio::test]
-async fn an_answer_settles_the_question_still_waiting_its_turn() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "one", "Write a.txt.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "two work", "task": "Write b.txt.", "name": "two", "wait": false })));
-    h.script(ROOT, Script::text("started"));
-    h.script(ROOT, Script::text("all reported"));
-    for (name, file) in [("one", "a.txt"), ("two", "b.txt")] {
-        h.script(name, Script::tool_call("same", "write", json!({ "path": file, "content": name })));
-        h.script(name, Script::text("written"));
-    }
-    h.prompt("write them").await;
-    let (first, _) = h.until_asked().await;
-    h.for_a_while().await;
-    h.kernel
-        .submit(answer(&first, ApprovalDecision::ApproveForSession { grant: None, persist: false }))
-        .await
-        .unwrap();
-    let events = h.until_idle().await;
-    assert!(!events.iter().any(|e| asked(&e.msg).is_some()), "the other no longer has to ask");
-    assert!(h.work.join("a.txt").exists() && h.work.join("b.txt").exists());
-}
-
-#[tokio::test]
-async fn stopping_a_sub_agent_ends_its_question_and_the_next_one_asks() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "one", "Write a.txt.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "two work", "task": "Write b.txt.", "name": "two", "wait": false })));
-    h.script(ROOT, Script::text("started"));
-    h.script(ROOT, Script::text("reported"));
-    for (name, file) in [("one", "a.txt"), ("two", "b.txt")] {
-        h.script(name, Script::tool_call("same", "write", json!({ "path": file, "content": name })));
-        h.script(name, Script::text("written"));
-    }
-    h.prompt("write them").await;
-    let (first, _) = h.until_asked().await;
-    h.kernel.submit(Op::AgentInterrupt { agent: first.0.clone() }).await.unwrap();
-    let (second, events) = h.until_asked().await;
-    assert_ne!(second.0, first.0);
-    assert!(events.iter().any(|e| matches!(
-        &e.msg,
-        EventMsg::AgentEvent { agent_id, event } if *agent_id == first.0
-            && matches!(event.msg, EventMsg::ApprovalResolved { decision: ApprovalDecision::Abort, .. })
-    )));
-    h.kernel.submit(answer(&second, ApprovalDecision::Approve)).await.unwrap();
-    h.until_idle().await;
-    assert_eq!(h.work.read_dir().unwrap().filter_map(|e| e.ok()).filter(|e| e.file_name().to_string_lossy().ends_with(".txt")).count(), 1);
-}
-
-#[tokio::test]
-async fn stopping_everything_ends_the_question_and_the_ones_in_line() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "one", "Write a.txt.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "two work", "task": "Write b.txt.", "name": "two", "wait": false })));
-    h.script(ROOT, Script::text("started"));
-    for (name, file) in [("one", "a.txt"), ("two", "b.txt")] {
-        h.script(name, Script::tool_call("same", "write", json!({ "path": file, "content": name })));
-    }
-    h.prompt("write them").await;
-    h.until_asked().await;
-    h.for_a_while().await;
-    h.kernel.submit(Op::Interrupt).await.unwrap();
-    let events = h.until_idle().await;
-    // The stop reaches each sub-agent in turn, so the next in line may just get to ask. Nothing
-    // stays open, and nothing ran.
-    let asked_now = events.iter().filter(|e| asked(&e.msg).is_some()).count();
-    let ended = events
-        .iter()
-        .filter(|e| matches!(&e.msg, EventMsg::AgentEvent { event, .. } if matches!(event.msg, EventMsg::ApprovalResolved { decision: ApprovalDecision::Abort, .. })))
-        .count();
-    assert_eq!(ended, asked_now + 1, "every question ended, the open one too");
-    assert!(!h.work.join("a.txt").exists() && !h.work.join("b.txt").exists());
-}
-
-#[tokio::test]
-async fn the_main_session_goes_on_while_a_sub_agent_asks() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", false));
-    h.script(ROOT, Script::text("started"));
-    h.script(ROOT, Script::text("an answer meanwhile"));
-    h.script(ROOT, Script::text("it is written"));
-    h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::text("wrote x.txt"));
-    h.prompt("write x").await;
-    // The writer's question and the end of this turn come in either order.
-    let events = h.until(|m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    let asking = match events.iter().find_map(|e| asked(&e.msg)) {
-        Some(asking) => asking,
-        None => h.until_asked().await.0,
-    };
-
-    h.prompt("something else").await;
-    let events = h.until(|m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    assert!(events.iter().any(|e| matches!(
-        &e.msg,
-        EventMsg::MessageCompleted { message: Message::Assistant(reply), .. } if reply.text() == "an answer meanwhile"
-    )));
-    assert!(!h.work.join("x.txt").exists(), "the question still waits");
-
-    h.kernel.submit(answer(&asking, ApprovalDecision::Approve)).await.unwrap();
-    h.until_idle().await;
-    assert!(h.work.join("x.txt").exists());
-}
-
-#[tokio::test]
-async fn with_nobody_to_ask_a_sub_agents_call_is_refused() {
-    let mut h = Harness::start(PermissionMode::Manual, false).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", true));
-    h.script(ROOT, Script::text("ok"));
-    h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::text("I could not write x.txt."));
-    h.prompt("write x").await;
-    let events = h.until_idle().await;
-
-    assert!(
-        !events.iter().any(|e| asked(&e.msg).is_some() || matches!(e.msg, EventMsg::ApprovalRequested { .. })),
-        "nobody is asked"
-    );
-    let refused = &tool_results(&h.requests("writer")[1])[0];
-    assert!(refused.contains("nobody can approve it") && refused.contains("list it in your report"), "{refused}");
-    assert!(!h.work.join("x.txt").exists());
-}
-
-#[tokio::test]
-async fn an_answer_for_no_such_agent_is_a_warning() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.kernel
-        .submit(Op::AgentApproval {
-            agent: "nobody".into(),
-            call_id: "c".into(),
-            decision: ApprovalDecision::Approve,
-        })
-        .await
-        .unwrap();
-    h.until(|m| matches!(m, EventMsg::Warning { message, .. } if message.contains("nobody"))).await;
+    assert_eq!(std::fs::read_to_string(h.work.join("x.txt")).unwrap(), "hi");
+    assert_eq!(std::fs::read_to_string(h.work.join("y.txt")).unwrap().trim(), "there");
+    assert!(tool_results(&h.requests(ROOT)[1])[0].contains("wrote both"));
 }
 
 /// A deferred tool of the main session, as the model runs it.
@@ -702,7 +407,7 @@ fn call_tool(id: &str, name: &str, arguments: serde_json::Value) -> Script {
 
 #[tokio::test]
 async fn list_agents_tells_how_they_stand() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     // After the agent's first step, and while it is on its next.
     h.script(ROOT, wait_for("w1", "stepped"));
@@ -729,26 +434,8 @@ async fn list_agents_tells_how_they_stand() {
 }
 
 #[tokio::test]
-async fn list_agents_says_when_an_agent_waits_for_the_user() {
-    let mut h = Harness::start(PermissionMode::Manual, true).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", false));
-    h.script(ROOT, Script::default().then_sleep(Duration::from_millis(500)).then_tool_call("c2", "list_agents", json!({})));
-    h.script(ROOT, Script::text("it needs you"));
-    h.script(ROOT, Script::text("it is written"));
-    h.script("writer", Script::tool_call("w1", "write", json!({ "path": "x.txt", "content": "hi" })));
-    h.script("writer", Script::text("wrote x.txt"));
-    h.prompt("write x").await;
-    let (asking, _) = h.until_asked().await;
-    h.until(|m| matches!(m, EventMsg::TaskCompleted { .. })).await;
-    let status = tool_results(&h.requests(ROOT)[2]).pop().unwrap();
-    assert!(status.contains("waiting for the user to approve: "), "{status}");
-    h.kernel.submit(answer(&asking, ApprovalDecision::Approve)).await.unwrap();
-    h.until_idle().await;
-}
-
-#[tokio::test]
 async fn stop_agents_stops_them_and_says_what_it_did() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "quick work", "task": "Be quick.", "name": "quick", "wait": true })));
     // Nobody is named: an error, not everything stopped.
     h.script(ROOT, call_tool("c3", "stop_agents", json!({})));
@@ -777,7 +464,7 @@ async fn stop_agents_stops_them_and_says_what_it_did() {
 /// A stopped agent keeps its session: `send_message` lets it go on (bot-turn-design §5.3).
 #[tokio::test]
 async fn a_stopped_agent_can_go_on() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     h.script(ROOT, Script::default().then_sleep(Duration::from_millis(300)).then_tool_call("c2", "stop_agents", json!({ "agents": ["slow"] })));
     h.script(ROOT, Script::text("stopped"));
@@ -801,7 +488,7 @@ async fn a_stopped_agent_can_go_on() {
 /// (agent-messaging-design §6.2).
 #[tokio::test]
 async fn a_sub_agent_can_list_the_agents_but_not_stop_them() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "looking around", "task": "Look around.", "name": "curious", "wait": true })));
     // Still at work now: the other agent's try did nothing.
     h.script(ROOT, Script::tool_call("c3", "stop_agents", json!({ "all": true })));
@@ -889,7 +576,7 @@ fn task_done(msg: &EventMsg) -> bool {
 /// report still follows (agent-messaging-design §3.1).
 #[tokio::test]
 async fn a_message_wakes_the_idle_main_agent_and_the_report_still_follows() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "sales", "Sum sales.csv by month.", false));
     h.script(ROOT, Script::text("handed over"));
     h.script(ROOT, Script::text("heard"));
@@ -933,12 +620,9 @@ async fn a_message_wakes_the_idle_main_agent_and_the_report_still_follows() {
             session: SessionRef::Id(session.clone()),
             model: None,
             thinking: None,
-            permission_mode: None,
             home: home.clone(),
             config: Arc::new(Config::default()),
             project_root: None,
-            trusted: false,
-            interactive_approvals: false,
             bot_name: None,
         };
         match Kernel::resume(options, deps(&api, &work, &home)).await {
@@ -960,7 +644,7 @@ async fn a_message_wakes_the_idle_main_agent_and_the_report_still_follows() {
 /// boundary, for one more request at most (agent-messaging-design §5.3).
 #[tokio::test]
 async fn messages_wait_for_the_boundary_of_a_busy_main_agent() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "a", "Work.", false));
     h.script(ROOT, Script::tool_call("r1", "bash", json!({ "command": "touch busy; while [ ! -f sent ]; do sleep 0.02; done" })));
     h.script(ROOT, Script::text("both heard"));
@@ -987,7 +671,7 @@ async fn messages_wait_for_the_boundary_of_a_busy_main_agent() {
 /// (agent-messaging-design §5.6).
 #[tokio::test]
 async fn a_message_does_not_end_a_wait() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "a", "Work.", true));
     h.script(ROOT, Script::text("done"));
     h.script("a", send_to("k1", "main", "halfway"));
@@ -1006,7 +690,7 @@ async fn a_message_does_not_end_a_wait() {
 /// input, as for reports (subagent-design D-46).
 #[tokio::test]
 async fn a_message_does_not_wake_a_stopped_main_agent() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "a", "Work.", false));
     h.script(ROOT, Script::tool_call("r1", "bash", json!({ "command": "touch busy; sleep 30" })));
     h.script(ROOT, Script::text("I see what it said"));
@@ -1030,7 +714,7 @@ async fn a_message_does_not_wake_a_stopped_main_agent() {
 /// Two agents at work can talk: neither stops, and nobody else is woken.
 #[tokio::test]
 async fn a_working_agent_reads_a_peers_message_at_its_next_step() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "api", "Write the API.", false).then_tool_call("c2", "spawn_agent", json!({ "description": "caller", "task": "Write the caller.", "name": "caller", "wait": false })));
     h.script(ROOT, Script::text("started"));
     h.script(ROOT, Script::text("a report"));
@@ -1059,7 +743,7 @@ async fn a_working_agent_reads_a_peers_message_at_its_next_step() {
 /// peers feel about it (agent-messaging-design §3).
 #[tokio::test]
 async fn an_idle_agent_takes_no_message_from_a_peer_but_does_from_the_main_agent() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "quick", "Be quick.", true).then_tool_call("c2", "spawn_agent", json!({ "description": "slow", "task": "Take your time.", "name": "slow", "wait": false })));
     h.script(ROOT, wait_for("c3", "slow-started"));
     h.script(ROOT, Script::tool_call("c4", "stop_agents", json!({ "agents": ["slow"] })));
@@ -1088,7 +772,7 @@ async fn an_idle_agent_takes_no_message_from_a_peer_but_does_from_the_main_agent
 
 #[tokio::test]
 async fn messages_say_what_is_wrong_with_where_they_went() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     // `main` is taken: nobody can be mistaken for the main agent.
     h.script(ROOT, spawn("c1", "main", "Work.", true).then_tool_call("c2", "send_message", json!({ "to": "main", "message": "hello" })));
     h.script(ROOT, Script::text("done"));
@@ -1116,7 +800,7 @@ async fn messages_say_what_is_wrong_with_where_they_went() {
 /// until the agent is done (bot-turn-design §4.3).
 #[tokio::test]
 async fn a_wait_ends_at_once_when_input_is_already_queued() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     // The call comes after the message.
     h.script(ROOT, Script::default().then_sleep(Duration::from_millis(600)).then_tool_call("c1", "spawn_agent", json!({ "description": "slow work", "task": "Take your time.", "name": "slow", "wait": true })));
     h.script(ROOT, Script::text("1 km is 0.62 miles"));
@@ -1141,31 +825,8 @@ async fn a_wait_ends_at_once_when_input_is_already_queued() {
 }
 
 #[tokio::test]
-async fn sub_agents_follow_the_main_sessions_permissions() {
-    let mut h = Harness::start(PermissionMode::Manual, false).await;
-    h.script(ROOT, spawn("c1", "writer", "Write x.txt.", false));
-    h.script(ROOT, Script::text("started"));
-    h.script("writer", Script::default().then_sleep(Duration::from_millis(400)).then_tool_call(
-        "w1",
-        "write",
-        json!({ "path": "x.txt", "content": "hi" }),
-    ));
-    h.script("writer", Script::text("wrote x.txt"));
-    h.prompt("write x").await;
-    h.until(|m| matches!(m, EventMsg::AgentStarted { .. })).await;
-    h.kernel
-        .submit(Op::SetPermissionMode {
-            mode: PermissionMode::AcceptEdits,
-        })
-        .await
-        .unwrap();
-    h.until_idle().await;
-    assert_eq!(std::fs::read_to_string(h.work.join("x.txt")).unwrap(), "hi");
-}
-
-#[tokio::test]
 async fn stopping_interrupts_every_agent_and_they_can_continue() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     h.script(ROOT, Script::text("It is working."));
     h.script("slow", Script::text("half way").then_sleep(Duration::from_secs(30)).then_text(" never"));
@@ -1209,7 +870,7 @@ async fn stopping_interrupts_every_agent_and_they_can_continue() {
 
 #[tokio::test]
 async fn a_working_agents_log_is_on_disk_before_its_task_ends() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     h.script(ROOT, Script::text("It is working."));
     h.script("slow", Script::text("half way").then_sleep(Duration::from_secs(30)).then_text(" never"));
@@ -1227,7 +888,7 @@ async fn a_working_agents_log_is_on_disk_before_its_task_ends() {
 
 #[tokio::test]
 async fn a_sub_agents_work_is_passed_on_to_the_main_session() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "counter", "Count the files.", false));
     h.script(ROOT, Script::text("Started."));
     h.script(ROOT, Script::text("It counted 3."));
@@ -1280,7 +941,7 @@ async fn a_sub_agents_work_is_passed_on_to_the_main_session() {
 
 #[tokio::test]
 async fn stopping_one_agent_leaves_the_others_working() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     h.script(ROOT, spawn("c2", "quick", "Be quick.", false));
     h.script(ROOT, Script::text("Both started."));
@@ -1322,7 +983,7 @@ async fn stopping_one_agent_leaves_the_others_working() {
 
 #[tokio::test]
 async fn a_report_of_an_agent_stopped_before_it_replied_is_marked_as_one() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     h.script(ROOT, Script::text("Started."));
     h.script(ROOT, Script::text("It had stopped."));
@@ -1358,7 +1019,7 @@ async fn a_report_of_an_agent_stopped_before_it_replied_is_marked_as_one() {
 
 #[tokio::test]
 async fn stopping_a_waiting_call_stops_its_agent() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", true));
     h.script("slow", Script::default().then_sleep(Duration::from_secs(30)).then_text("never"));
     h.prompt("start").await;
@@ -1378,7 +1039,7 @@ async fn stopping_a_waiting_call_stops_its_agent() {
 
 #[tokio::test]
 async fn user_input_ends_a_wait_and_the_report_arrives_by_mail() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", true));
     h.script(ROOT, Script::text("Noted."));
     h.script(ROOT, Script::text("Got the report."));
@@ -1397,7 +1058,7 @@ async fn user_input_ends_a_wait_and_the_report_arrives_by_mail() {
 
 #[tokio::test]
 async fn shutdown_closes_the_sub_agents_sessions() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "slow", "Take your time.", false));
     h.script(ROOT, Script::text("It is working."));
     h.script("slow", Script::default().then_sleep(Duration::from_secs(30)).then_text("never"));
@@ -1419,7 +1080,7 @@ async fn shutdown_closes_the_sub_agents_sessions() {
 
 #[tokio::test]
 async fn a_resumed_session_knows_its_earlier_agents_as_their_logs_left_them() {
-    let mut h = Harness::start(PermissionMode::BypassPermissions, false).await;
+    let mut h = Harness::start().await;
     h.script(ROOT, spawn("c1", "counter", "Count the files.", false));
     h.script(ROOT, spawn("c2", "slow", "Take your time.", false));
     h.script(ROOT, Script::text("Two agents work."));
@@ -1437,12 +1098,9 @@ async fn a_resumed_session_knows_its_earlier_agents_as_their_logs_left_them() {
         session: SessionRef::Id(session),
         model: None,
         thinking: None,
-        permission_mode: None,
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: false,
         bot_name: None,
     };
     let kernel = Kernel::resume(options, deps(&api, &work, &home)).await.unwrap();
@@ -1497,13 +1155,10 @@ async fn sub_agents_can_be_turned_off() {
         StartOptions {
             model: "test/scripted".into(),
             thinking: ThinkingLevel::Off,
-            permission_mode: PermissionMode::Manual,
             cwd: dir.path().to_path_buf(),
             home: home.clone(),
             config: Arc::new(config),
             project_root: None,
-            trusted: false,
-            interactive_approvals: false,
             bot: None,
         },
         KernelDeps {

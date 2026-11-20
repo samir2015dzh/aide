@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { RpcClient } from "@hermesh/her-client";
+import type { RpcClient } from "@aide/her-client";
 import { errorText } from "../store";
 import { Icon } from "../icons";
 

@@ -26,7 +26,7 @@ const clickMenu = (app: ElectronApplication, id: string) =>
 
 const tray = (app: ElectronApplication) =>
   app.evaluate(() => {
-    const t = (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray();
+    const t = (globalThis as unknown as { aideTest: Hook }).aideTest.tray();
     return { view: t.view, open: t.open, badge: t.badge };
   });
 
@@ -88,54 +88,48 @@ test("the app menu drives the main window", async () => {
 
 test("the menu bar panel counts what needs the owner and what runs; a count opens the first one", async () => {
   const { app, page } = await launch();
-  const pairings = await page.evaluate(() =>
-    fetch("app://hermesh/api/hermesh.local.v1.LocalService/ListPairingRequests", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
-      .then((r) => r.json())
-      .then((r: { pairings?: unknown[] }) => r.pairings?.length ?? 0),
-  );
-  // A question and two failures, and every pairing request; one running.
-  await expect.poll(async () => (await tray(app)).view).toMatchObject({ state: "ok", online: 1, attention: 3 + pairings, running: 1 });
+  // A question and two failures; one running.
+  await expect.poll(async () => (await tray(app)).view).toMatchObject({ state: "ok", online: 1, attention: 3, running: 1 });
   expect((await tray(app)).badge).toBe(true);
 
   // The icon opens the panel under it.
   const [win] = await Promise.all([
     app.waitForEvent("window", (w) => w.url().endsWith("#tray")),
-    app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().toggle()),
+    app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().toggle()),
   ]);
   // Another app taking focus closes it, as a menu bar panel does (the specs run side by side): opened again then.
-  const toggle = () => app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().toggle());
+  const toggle = () => app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().toggle());
   await expect.poll(async () => (await tray(app)).open || (await toggle(), false)).toBe(true);
   await expect(win.getByRole("status")).toHaveText("正常");
   await expect(win.getByText("你的 agent 能用 1 台机器")).toBeVisible();
-  await expect(win.getByRole("button", { name: `需要处理 ${3 + pairings}` })).toBeVisible();
+  await expect(win.getByRole("button", { name: "需要处理 3" })).toBeVisible();
   await expect(win.getByRole("button", { name: "进行中 1" })).toBeVisible();
   await expect(win.getByRole("button", { name: "设置" })).toBeVisible();
   await expect(win.getByRole("button", { name: "退出 Aide" })).toBeVisible();
   await snap(win, "tray-panel");
 
-  // 需要处理 opens the first thing waiting: a pairing request, else the question.
+  // 需要处理 opens the first thing waiting: the question.
   await win.getByRole("button", { name: /^需要处理/ }).click();
   await expect.poll(async () => (await tray(app)).open).toBe(false);
-  if (pairings) await expect(page.getByRole("dialog")).toBeVisible();
-  else await expect(page.getByRole("heading", { name: "选颜色" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "选颜色" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // 进行中 opens the running one.
-  await app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().toggle());
+  await app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().toggle());
   await win.getByRole("button", { name: "进行中 1" }).click();
   await expect(page.getByRole("heading", { name: "跑很久" })).toBeVisible();
 
   // 通用's switch takes the dot off the icon.
-  await page.evaluate(() => window.hermesh?.setPreferences({ menuBadge: false }));
+  await page.evaluate(() => window.aide?.setPreferences({ menuBadge: false }));
   await expect.poll(async () => (await tray(app)).badge).toBe(false);
-  expect(await page.evaluate(() => window.hermesh?.getPreferences())).toMatchObject({ menuBadge: false, notifyQuestion: true, notifyTurnDone: false });
+  expect(await page.evaluate(() => window.aide?.getPreferences())).toMatchObject({ menuBadge: false, notifyQuestion: true, notifyTurnDone: false });
   await app.close();
 });
 
 test("a question notifies, and the notification opens its session", async () => {
   const { app, page } = await launch();
   const posted = () =>
-    app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
+    app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
   // The app has just started (as after a restart, which takes its old
   // notifications away): the question still waiting is notified again; the
   // sessions that failed before are no news.
@@ -152,7 +146,7 @@ test("a question notifies, and the notification opens its session", async () => 
     await expect.poll(posted, { timeout: 30_000 }).toContainEqual({ id: `session-question-${id}`, title: "bot 在等你回答", body: "归档的：要继续吗" });
     // Clicking it opens the session (the person clicks the banner).
     await app.evaluate((_e, id) => {
-      const hook = (globalThis as unknown as { hermeshTest: Hook }).hermeshTest;
+      const hook = (globalThis as unknown as { aideTest: Hook }).aideTest;
       hook.notifications().find((n) => n.id === `session-question-${id}`)?.click();
     }, id);
     await expect(page.getByRole("heading", { name: "归档的" })).toBeVisible();
@@ -173,7 +167,7 @@ test("closing the window keeps Aide in the menu bar, without a renderer", async 
     return `${mb(metrics.reduce((n, m) => n + m.kb, 0))} MB (${metrics.map((m) => `${m.type} ${mb(m.kb)}`).join(", ")})`;
   };
   console.log(`memory with the window open: ${await memory()}`);
-  await app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.mainWindow()?.close());
+  await app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.mainWindow()?.close());
   await expect.poll(() => app.evaluate(({ app }) => app.getAppMetrics().filter((m) => m.type === "Tab").length)).toBe(0);
   await expect.poll(() => app.evaluate(({ app }) => app.dock?.isVisible())).toBe(false);
 
@@ -184,7 +178,7 @@ test("closing the window keeps Aide in the menu bar, without a renderer", async 
   // The menu bar panel opens it again; the panel itself doesn't bring the Dock icon back.
   const [panel] = await Promise.all([
     app.waitForEvent("window", (w) => w.url().endsWith("#tray")),
-    app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().toggle()),
+    app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().toggle()),
   ]);
   expect(await app.evaluate(({ app }) => app.dock?.isVisible())).toBe(false);
   const opened = app.waitForEvent("window", (w) => !w.url().endsWith("#tray"));
@@ -198,7 +192,7 @@ test("closing the window keeps Aide in the menu bar, without a renderer", async 
 test("a session an agent starts notifies, unless switched off", async () => {
   const { app, page } = await launch();
   const posted = () =>
-    app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
+    app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
   // The sessions from before the app started are no news.
   await expect.poll(posted).toEqual([{ id: `session-question-${fixture.sessions["选颜色"]}`, title: "bot 在等你回答", body: "选颜色：选哪个颜色" }]);
 
@@ -210,13 +204,13 @@ test("a session an agent starts notifies, unless switched off", async () => {
     await expect.poll(posted).toContainEqual({ id: `session-started-${id}`, title: "新会话通知", body: "bot 发起 · demo · Gemini CLI" });
     // Clicking it opens the session.
     await app.evaluate((_e, id) => {
-      const hook = (globalThis as unknown as { hermeshTest: Hook }).hermeshTest;
+      const hook = (globalThis as unknown as { aideTest: Hook }).aideTest;
       hook.notifications().find((n) => n.id === `session-started-${id}`)?.click();
     }, id);
     await expect(page.getByRole("heading", { name: "新会话通知" })).toBeVisible();
 
     // 通用's switch turns them off: the next one only shows in the list.
-    await page.evaluate(() => window.hermesh?.setPreferences({ notifyStarted: false }));
+    await page.evaluate(() => window.aide?.setPreferences({ notifyStarted: false }));
     const quiet = await start("不通知的会话");
     started.push(quiet);
     await expect((await sessionList(page))).toContainText("不通知的会话");

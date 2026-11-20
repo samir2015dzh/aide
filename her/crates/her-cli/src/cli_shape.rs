@@ -12,7 +12,6 @@ use crate::pointer;
 use crate::wants_json;
 use clap::CommandFactory;
 use clap::Parser;
-use her_protocol::PermissionMode;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -289,10 +288,11 @@ fn the_last_flag_wins() {
         exec_args(Cli::try_parse_from(line).unwrap())
     };
     assert_eq!(parse(&["-m", "a/b", "-m", "c/d"]).run.model.as_deref(), Some("c/d"));
-    let mode = |args: &[&str]| parse(args).run.permission_mode();
-    assert_eq!(mode(&["--permission-mode", "manual", "--dangerously-skip-permissions"]), Some(PermissionMode::BypassPermissions));
-    assert_eq!(mode(&["--dangerously-skip-permissions", "--permission-mode", "manual"]), Some(PermissionMode::Manual));
-    assert_eq!(mode(&["--permission-mode", "manual", "--permission-mode", "accept-edits"]), Some(PermissionMode::AcceptEdits));
+    // Gone, and only warned about: scripts written for earlier versions keep working.
+    let warned = |args: &[&str]| parse(args).run.warnings().collect::<Vec<_>>();
+    assert_eq!(warned(&["--permission-mode", "manual"]), ["--permission-mode is ignored: her runs every action without asking"]);
+    assert_eq!(warned(&["--dangerously-skip-permissions"]).len(), 1);
+    assert!(warned(&[]).is_empty());
     assert_eq!(parse(&["--json", "--output", "text"]).format(), OutputFormat::Text);
     assert_eq!(parse(&["--output", "text", "--json"]).format(), OutputFormat::Json);
     assert_eq!(parse(&["--output", "stream-json"]).format(), OutputFormat::StreamJson);

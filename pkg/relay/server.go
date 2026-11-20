@@ -1,10 +1,10 @@
-// Package relay implements hermesh-relay: admission, presence, pairing
-// rendezvous, tunnel routing and revocation fan-out. The relay is untrusted:
-// it never signs credentials, vouches for requests, serves executable code
-// or sees session contents.
+// Package relay implements aide-relay, the owner's server: the account
+// and the key that signs whoever logs in with it (account.go), admission,
+// presence, tunnel routing and revocation fan-out. It never sees session
+// contents (end to end, between the two ends) nor serves executable code.
 //
-// It serves one owner, who claims the relay with a code; that owner's live
-// state is its tenant.
+// It serves one owner, set up with a setup code; that owner's live state
+// is its tenant.
 package relay
 
 import (
@@ -31,33 +31,21 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/metrics"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/metrics"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type Config struct {
 	// DataDir holds the relay's SQLite store.
 	DataDir string
 	Logger  *slog.Logger
-	// PairingTTL defaults to 10 minutes.
-	PairingTTL time.Duration
-
 	// MCPURL is the address of this relay's own MCP gateway, with its key:
 	// told to the owner's devices alone (GetMCP).
 	MCPURL string
-	// PairingsPerMinute bounds pairing requests per client address
-	// (default 10).
-	PairingsPerMinute int
-	// MaxPendingPairings bounds unapproved pairing requests (default 20).
-	MaxPendingPairings int
-	// MaxOwnerPendingPairings bounds unapproved requests made for one owner
-	// with its connection address (default 20): the address is not secret,
-	// so a stranger could otherwise flood the owner's signer.
-	MaxOwnerPendingPairings int
 	// Pusher sends notifications to the owners' iPhones (push.go); nil
 	// sends none.
 	Pusher Pusher
@@ -69,7 +57,6 @@ type Server struct {
 	store   Backend
 	sqlite  *Store // self-hosted only
 	relayID string
-	limiter *rateLimiter
 	// noticeLimit bounds the notices each machine sends.
 	noticeLimit *rateLimiter
 	pushMem     memoryPush
@@ -78,10 +65,12 @@ type Server struct {
 	messageMem   memoryMessages
 	messageLimit *rateLimiter
 	pairLimit    *rateLimiter
-	// Logging in with a password (password.go): attempts per address, and
-	// the account's run of wrong passwords.
-	loginLimit  *rateLimiter
-	logins      loginGuard
+	// Logging in (account.go): attempts per address, and the account's run
+	// of wrong passwords.
+	loginLimit *rateLimiter
+	logins     loginGuard
+	// setupMu: one setup, account change or conversion at a time.
+	setupMu     sync.Mutex
 	messageHook func(ownerID, inbox string, ring *string)
 	ownerHook   func(ownerID string)
 	eraseHooks  []func(ownerID string)
@@ -89,10 +78,13 @@ type Server struct {
 	expiredAt   time.Time
 	stop        chan struct{}
 	stopOnce    sync.Once
+	// The connections being served: Close ends them, and waits for them
+	// (unregistering one writes to the store) before closing the store.
+	serving sync.WaitGroup
 
 	mu      sync.Mutex
 	tenants map[string]*tenant
-	// single is the claimed owner of a self-hosted relay ("" until claimed).
+	// single is the owner of the server ("" until it is set up).
 	single string
 }
 
@@ -138,20 +130,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
-	if cfg.PairingTTL == 0 {
-		cfg.PairingTTL = 10 * time.Minute
-	}
-	if cfg.MaxPendingPairings == 0 {
-		cfg.MaxPendingPairings = 20
-	}
-	if cfg.MaxOwnerPendingPairings == 0 {
-		cfg.MaxOwnerPendingPairings = 20
-	}
-	if cfg.PairingsPerMinute == 0 {
-		cfg.PairingsPerMinute = 10
-	}
 	s := &Server{cfg: cfg, log: cfg.Logger, tenants: map[string]*tenant{}, stop: make(chan struct{})}
-	s.limiter = newRateLimiter(cfg.PairingsPerMinute, time.Minute)
 	s.noticeLimit = newRateLimiter(noticesPerMinute, time.Minute)
 	s.messageLimit = newRateLimiter(messagesPerMinute, time.Minute)
 	s.pairLimit = newRateLimiter(pairPerHour, time.Hour)
@@ -190,24 +169,34 @@ func New(cfg Config) (*Server, error) {
 
 func (s *Server) Close() error {
 	s.stopOnce.Do(func() { close(s.stop) })
+	s.mu.Lock()
+	for _, t := range s.tenants {
+		for p := range t.peers {
+			if p.sess != nil {
+				p.sess.Close()
+			}
+		}
+	}
+	s.mu.Unlock()
+	s.serving.Wait()
 	return s.store.Close()
 }
 
 var (
-	mAdmission         = metrics.Default.Histogram("hermesh_relay_admission_seconds")
-	mAdmissionsOK      = metrics.Default.Counter(`hermesh_relay_admissions_total{result="ok"}`)
-	mAdmissionsRefused = metrics.Default.Counter(`hermesh_relay_admissions_total{result="refused"}`)
-	mTunnelOpen        = metrics.Default.Histogram("hermesh_relay_tunnel_open_seconds")
-	mTunnelsTotal      = metrics.Default.Counter("hermesh_relay_tunnels_total")
-	mTunnelsActive     = metrics.Default.Gauge("hermesh_relay_tunnels_active")
-	mTunnelBytes       = metrics.Default.Counter("hermesh_relay_tunnel_bytes_total")
+	mAdmission         = metrics.Default.Histogram("aide_relay_admission_seconds")
+	mAdmissionsOK      = metrics.Default.Counter(`aide_relay_admissions_total{result="ok"}`)
+	mAdmissionsRefused = metrics.Default.Counter(`aide_relay_admissions_total{result="refused"}`)
+	mTunnelOpen        = metrics.Default.Histogram("aide_relay_tunnel_open_seconds")
+	mTunnelsTotal      = metrics.Default.Counter("aide_relay_tunnels_total")
+	mTunnelsActive     = metrics.Default.Gauge("aide_relay_tunnels_active")
+	mTunnelBytes       = metrics.Default.Counter("aide_relay_tunnel_bytes_total")
 )
 
 func (s *Server) registerMetrics() {
 	for _, role := range []relayv1.Role{relayv1.Role_ROLE_MACHINE, relayv1.Role_ROLE_CLIENT, relayv1.Role_ROLE_OWNER} {
 		role := role
 		name := strings.ToLower(strings.TrimPrefix(role.String(), "ROLE_"))
-		metrics.Default.GaugeFunc(`hermesh_relay_peers{role="`+name+`"}`, func() int64 {
+		metrics.Default.GaugeFunc(`aide_relay_peers{role="`+name+`"}`, func() int64 {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			n := int64(0)
@@ -223,17 +212,9 @@ func (s *Server) registerMetrics() {
 	}
 }
 
-// ClaimCode returns the code to claim the relay, or "" when it is claimed.
-func (s *Server) ClaimCode() (string, error) {
-	if s.singleOwner() != "" {
-		return "", nil
-	}
-	return s.sqlite.ClaimCode()
-}
-
 func (s *Server) RelayID() string { return s.relayID }
 
-// SingleOwner is the owner of the claimed relay ("" before it is claimed).
+// SingleOwner is the owner of the server ("" before it is set up).
 func (s *Server) SingleOwner() string { return s.singleOwner() }
 
 func (s *Server) singleOwner() string {
@@ -362,8 +343,16 @@ func (s *Server) Mount(mux *http.ServeMux) {
 // Admission.
 
 func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
+	select {
+	case <-s.stop:
+		http.Error(w, "the relay is closing", http.StatusServiceUnavailable)
+		return
+	default:
+	}
+	s.serving.Add(1)
+	defer s.serving.Done()
 	inProcess := r.Context().Value(inProcessKey{}) != nil
-	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 	if err != nil {
 		return
 	}
@@ -505,7 +494,7 @@ func (s *Server) admit(h *relayv1.Hello, nonce []byte) (*peer, error) {
 		return nil, errErased
 	}
 	if s.sqlite != nil && s.singleOwner() == "" {
-		return nil, errors.New("relay is not claimed yet")
+		return nil, errors.New("this server is not set up yet")
 	}
 	t, err := s.loadTenant(ownerID)
 	if err != nil {
@@ -562,7 +551,7 @@ func (s *Server) admit(h *relayv1.Hello, nonce []byte) (*peer, error) {
 			return nil, err
 		}
 		if _, ok := known[sub.ID]; !ok {
-			// Machines become known through pairing (or the owner publishing
+			// Machines become known by logging in (or the owner publishing
 			// a cert); a removed machine's cert is gone. (A machine reads this
 			// text, and the other refusals that mean it is no longer its
 			// owner's: internal/machine gone.)
@@ -645,6 +634,10 @@ func isRevoked(r *identityv1.RevocationList, sub *identity.Subject) error {
 		}
 		if min := r.MinGrantVersions[sub.Grant.GrantId]; sub.Grant.Version < min {
 			return errors.New("grant superseded")
+		}
+	case identity.SubjectOwnerDevice:
+		if sub.PublicKey != nil && slices.Contains(r.RevokedDeviceKeys, identity.KeyID(sub.PublicKey)) {
+			return errors.New("this device was signed out")
 		}
 	}
 	return nil
@@ -740,10 +733,10 @@ func (s *Server) controlMux(role relayv1.Role) http.Handler {
 // owner's app costs the relay (docs/state-sync.md §8). Nothing per owner.
 var mOwnerRPCs = func() map[string]*metrics.Counter {
 	m := map[string]*metrics.Counter{}
-	methods := relayv1.File_hermesh_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
+	methods := relayv1.File_aide_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
 	for i := range methods.Len() {
 		name := string(methods.Get(i).Name())
-		m["/"+relayv1connect.OwnerControlServiceName+"/"+name] = metrics.Default.Counter(`hermesh_relay_owner_rpcs_total{method="` + name + `"}`)
+		m["/"+relayv1connect.OwnerControlServiceName+"/"+name] = metrics.Default.Counter(`aide_relay_owner_rpcs_total{method="` + name + `"}`)
 	}
 	return m
 }()
@@ -883,10 +876,8 @@ func (s *Server) applyRevocations(t *tenant, in *identityv1.RevocationList) erro
 	t.revocations = cur
 	var kick []*peer
 	for p := range t.peers {
-		if p.role != relayv1.Role_ROLE_OWNER {
-			if err := isRevoked(cur, p.subject); err != nil {
-				kick = append(kick, p)
-			}
+		if err := isRevoked(cur, p.subject); err != nil {
+			kick = append(kick, p)
 		}
 	}
 	s.mu.Unlock()
@@ -934,6 +925,7 @@ func MergeRevocations(cur, in *identityv1.RevocationList) {
 	}
 	add(&cur.RevokedGrantIds, in.RevokedGrantIds)
 	add(&cur.RevokedMachineIds, in.RevokedMachineIds)
+	add(&cur.RevokedDeviceKeys, in.RevokedDeviceKeys)
 	if cur.MinGrantVersions == nil {
 		cur.MinGrantVersions = map[string]uint64{}
 	}
@@ -1109,7 +1101,7 @@ func (s *Server) AddEraseHook(f func(ownerID string)) {
 
 // erased forgets an owner that erased everything. Its connections close a
 // moment later, so that the device that asked hears the answer first; a
-// relay is then unclaimed again. Its order goes after
+// server is then as it was before it was set up. Its order goes after
 // EraseRetention.
 func (s *Server) erased(ownerID string) {
 	s.mu.Lock()
@@ -1139,8 +1131,8 @@ func (s *Server) erased(ownerID string) {
 		for _, f := range hooks {
 			f(ownerID)
 		}
-		if code, err := s.ClaimCode(); err == nil && code != "" {
-			fmt.Fprintf(os.Stderr, "\n  This relay is not claimed any more: its owner erased everything.\n  Claim code: %s\n\n", code)
+		if code, err := s.SetupCode(); err == nil && code != "" {
+			fmt.Fprintf(os.Stderr, "\n  This server is not set up any more: its owner erased everything.\n  Setup code: %s\n\n", code)
 		}
 	})
 	// The order goes once the erase had its time: devices that connect later

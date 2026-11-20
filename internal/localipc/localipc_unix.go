@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hermeshai/hermesh/internal/peercred"
+	"github.com/samir2015dzh/aide/internal/peercred"
 )
 
 // Listen serves the Unix socket at path: 0600, in a folder made 0700 when

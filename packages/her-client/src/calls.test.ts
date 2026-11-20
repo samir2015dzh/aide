@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PROTOCOL_VERSION } from "@hermesh/her-protocol";
+import { PROTOCOL_VERSION } from "@aide/her-protocol";
 import { openCallTransport, type CallAdapter, type CallResult, type ConnectionEvent, type SetupRequest } from "./calls.ts";
 import { RpcClient, RpcError } from "./rpc.ts";
 
-/** hermeshd as the test plays it: each connection's stream, and each call, answered when the test says. */
-function hermeshd() {
+/** aided as the test plays it: each connection's stream, and each call, answered when the test says. */
+function aided() {
   const streams: { push(e: ConnectionEvent): void; end(): void; fail(e: Error): void; signal: AbortSignal; setup: SetupRequest[] }[] = [];
   const calls: { connectionId: string; method: string; params: unknown; answer(r: CallResult): void; lose(e: Error): void }[] = [];
   const adapter: CallAdapter = {
@@ -46,14 +46,14 @@ function hermeshd() {
 /** Lets what is under way run: answers, the stream's events, the client's reactions. */
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
-test("initialize is answered by the transport and never reaches hermeshd, before the connection opens or after", async () => {
-  const h = hermeshd();
+test("initialize is answered by the transport and never reaches aided, before the connection opens or after", async () => {
+  const h = aided();
   const rpc = new RpcClient(openCallTransport(h.adapter));
   const init = await rpc.request("initialize", { protocol_version: PROTOCOL_VERSION, client_info: { name: "test" } });
   assert.equal(init.protocol_version, 2);
   assert.equal(init.server_info.name, "her");
   assert.equal(init.capabilities.bots, true);
-  // A notification has no way to her through hermeshd.
+  // A notification has no way to her through aided.
   rpc.notify("$/cancel_request", { id: 1 });
   h.streams[0].push({ opened: { connectionId: "c1" } });
   await rpc.request("initialize", { protocol_version: PROTOCOL_VERSION });
@@ -62,7 +62,7 @@ test("initialize is answered by the transport and never reaches hermeshd, before
 });
 
 test("requests wait for the connection, go as calls on it, and come back under their own ids in the order they are answered", async () => {
-  const h = hermeshd();
+  const h = aided();
   const rpc = new RpcClient(openCallTransport(h.adapter));
   const list = rpc.request("bots/subscribe", {});
   const open = rpc.request("bots/open", { bot_id: "b1" });
@@ -89,7 +89,7 @@ test("requests wait for the connection, go as calls on it, and come back under t
 });
 
 test("her's errors reject with their kind, and a lost call fails only its own request", async () => {
-  const h = hermeshd();
+  const h = aided();
   const rpc = new RpcClient(openCallTransport(h.adapter));
   h.streams[0].push({ opened: { connectionId: "c1" } });
   const missing = rpc.request("bots/open", { bot_id: "b9" });
@@ -108,7 +108,7 @@ test("her's errors reject with their kind, and a lost call fails only its own re
 });
 
 test("setup requests go with the open, and their answers come before any notification: a snapshot is never behind its events", async () => {
-  const h = hermeshd();
+  const h = aided();
   const got: string[] = [];
   let id: string | null = null;
   const rpc = new RpcClient(
@@ -136,7 +136,7 @@ test("setup requests go with the open, and their answers come before any notific
 });
 
 test("without setup, onOpened hears of the connection with no answers; a failed setup request is its own answer", async () => {
-  const h = hermeshd();
+  const h = aided();
   const seen: CallResult[][] = [];
   openCallTransport(h.adapter, { onOpened: (r) => void seen.push(r) });
   assert.deepEqual(h.streams[0].setup, []);
@@ -149,7 +149,7 @@ test("without setup, onOpened hears of the connection with no answers; a failed 
 });
 
 test("the stream's notifications reach the client's listeners, in order", async () => {
-  const h = hermeshd();
+  const h = aided();
   const rpc = new RpcClient(openCallTransport(h.adapter));
   const got: string[] = [];
   rpc.on("bots/changed", (p) => void got.push(`bots/changed:${p.deleted?.join(",")}`));
@@ -162,7 +162,7 @@ test("the stream's notifications reach the client's listeners, in order", async 
 });
 
 test("when the stream ends, what waits fails, a late answer goes nowhere, and the owner reconnects on a new connection", async () => {
-  const h = hermeshd();
+  const h = aided();
   const first = openCallTransport(h.adapter);
   const lines: string[] = [];
   first.onText((text) => void lines.push(text));
@@ -190,7 +190,7 @@ test("when the stream ends, what waits fails, a late answer goes nowhere, and th
 });
 
 test("a stream that fails before it opens ends the connection, and requests waiting for it are never sent", async () => {
-  const h = hermeshd();
+  const h = aided();
   const rpc = new RpcClient(openCallTransport(h.adapter));
   const waiting = rpc.request("bots/subscribe", {});
   h.streams[0].fail(new Error("PermissionDenied"));
@@ -201,7 +201,7 @@ test("a stream that fails before it opens ends the connection, and requests wait
 });
 
 test("close ends the stream and tells of the end once, also to whoever asks later", async () => {
-  const h = hermeshd();
+  const h = aided();
   const transport = openCallTransport(h.adapter);
   let ends = 0;
   transport.onClose(() => void ends++);

@@ -1,10 +1,10 @@
-import { SessionStatus, type Question, type QuestionItem, type Session } from "@hermesh/proto/session";
+import { SessionStatus, type Question, type QuestionItem, type Session } from "@aide/proto/session";
 import { createdDate, isActive, isFailed, needsAttention, updatedDate } from "./sessions";
 
 // What the owner's agents are doing, as Her's name tag, the team panel and
 // Work show it (docs/her-team.md §4.2, §4.3, §14.6): the sessions that wait
 // for the owner, those that failed, those at work and those that are done.
-// The same rules as HermeshKit's Team.swift, so both apps say the same.
+// The same rules as AideKit's Team.swift, so both apps say the same.
 
 /** What the name tag says beside Her's name, the first that holds. */
 export type TeamTag =
@@ -31,7 +31,7 @@ export interface TeamState {
 }
 
 /** The team's state from the sessions the app holds (archived ones are no part of it) and the requests to connect. */
-export function teamState(sessions: Session[], requests: number): TeamState {
+export function teamState(sessions: Session[], requests = 0): TeamState {
   const visible = sessions.filter((s) => s.status !== SessionStatus.ARCHIVED);
   const latest = (list: Session[]) => list.sort((a, b) => updatedDate(b).getTime() - updatedDate(a).getTime());
   const waiting = latest(visible.filter((s) => s.status === SessionStatus.WAITING_INPUT));

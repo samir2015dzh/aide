@@ -1,5 +1,5 @@
-import { createdDate, isActive, needsAttention, updatedDate } from "@hermesh/core";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
+import { createdDate, isActive, needsAttention, updatedDate } from "@aide/core";
+import { SessionStatus, type Session } from "@aide/proto/session";
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, nativeTheme, screen, Tray, type NativeImage } from "electron";
 import glyph1x from "../../resources/menuBarIconTemplate.png?inline";
 import glyph2x from "../../resources/menuBarIconTemplate@2x.png?inline";
@@ -45,7 +45,7 @@ export function showTray() {
     panel.setSize(268, Math.ceil(h));
     if (panel.isVisible()) place(panel);
   });
-  // With no window open the app lives in the menu bar only (Open Hermesh at login, in the menu bar only). The panel doesn't count.
+  // With no window open the app lives in the menu bar only (Open Aide at login, in the menu bar only). The panel doesn't count.
   const watch = (w: BrowserWindow) =>
     w.on("closed", () => BrowserWindow.getAllWindows().every((x) => x === w || x === panel) && app.dock?.hide());
   BrowserWindow.getAllWindows().forEach(watch);
@@ -95,7 +95,7 @@ function view(): TrayView {
   return {
     state: !st ? "daemon" : !st.initialized && !st.machineOnly ? "setup" : st.relayConnected ? "ok" : "down",
     online: world.machines.filter((m) => m.online).length,
-    attention: attention().length + world.pairings.length,
+    attention: attention().length,
     running: running().length,
     update: u.state === "ready" ? u.version : "",
   };
@@ -150,10 +150,9 @@ function contextMenu(): Menu {
 function act(a: TrayAction) {
   panel?.hide();
   if (a === "attention") {
-    // A pairing request first (it times out), then the sessions in the sidebar's order.
-    const p = world.pairings[0];
+    // The sessions in the sidebar's order.
     const s = attention()[0];
-    return p ? command(`pairing:${p.code}`) : s ? command(`open:${s.sessionId}`) : showMain();
+    return s ? command(`open:${s.sessionId}`) : showMain();
   }
   if (a === "running") {
     const s = running()[0];

@@ -28,7 +28,7 @@ pub const ENGINE: &str = "nimbleoffice 65549f0e";
 
 /// Language PowerPoint would edit in: East Asian text with no language of its own is Chinese.
 const EAST_ASIAN_LANGUAGE: &str = "zh-CN";
-/// Author of Hermesh's edits.
+/// Author of Aide's edits.
 const AUTHOR: &str = "Aide";
 /// One CSS pixel in EMU, the unit slide sizes come in.
 const EMU_PER_PX: f32 = 9525.0;

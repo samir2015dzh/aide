@@ -1,16 +1,22 @@
-import type { GetStatusResponse } from "@hermesh/proto/local";
-import type { PersonalAgentKind } from "@hermesh/ui";
+import type { GetStatusResponse } from "@aide/proto/local";
+import type { PersonalAgentKind } from "@aide/ui";
 import { i18n } from "../../shared/i18n";
 
-/** A personal agent kind's name as the picker shows it (@hermesh/ui names Other in Chinese, for the console). */
+/** A personal agent kind's name as the picker shows it (@aide/ui names Other in Chinese, for the console). */
 export function kindName(k: PersonalAgentKind): string {
   return k.id === "other" ? i18n.t("common:personal.other") : k.name;
 }
 
 /**
- * What the owner pastes into the personal agent's chat; name is what it will
- * be called. It pairs with the connection address of the owner's server.
+ * What the owner sends the assistant, to log in with the CLI as name: the
+ * server and the account; the password is a placeholder the owner fills in.
  */
 export function connectMessage(status: GetStatusResponse | null | undefined, name: string): string {
-  return i18n.t("common:personal.connectMessage", { address: status?.connectAddress ?? "", name, project: `<${i18n.t("common:personal.projectArg")}>` });
+  return i18n.t("common:personal.connectMessage", {
+    server: status?.relayUrl ?? "",
+    account: status?.account ?? "",
+    name,
+    project: `<${i18n.t("common:personal.projectArg")}>`,
+    password: `<${i18n.t("common:personal.passwordArg")}>`,
+  });
 }

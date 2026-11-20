@@ -1,4 +1,4 @@
-import type { BrowserStatus, ConfigEdit, ProviderSummary, SkillEntry, SkillsListResult, StoragePart, WebSearchStatus } from "@hermesh/her-protocol";
+import type { BrowserStatus, ConfigEdit, ProviderSummary, SkillEntry, SkillsListResult, StoragePart, WebSearchStatus } from "@aide/her-protocol";
 
 // What Her's panel makes of the answers her environment's console also reads (docs/her-panel-demo.html,
 // docs/her-server.md §10), without words: the pages word it. Her skills by group, the writes web search's switches

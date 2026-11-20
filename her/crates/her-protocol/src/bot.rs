@@ -51,7 +51,7 @@ pub enum AvatarHue {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Avatar {
-    /// The Hermesh mark: the default bot's alone.
+    /// The Aide mark: the default bot's alone.
     Mark,
     /// A character on a colour.
     Char { shape: AvatarShape, hue: AvatarHue },
@@ -122,7 +122,7 @@ pub struct BotSummary {
     pub session_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last: Option<LastMessage>,
-    /// Messages and approval requests since the user last looked (`bots/read`).
+    /// Messages and secure cards since the user last looked (`bots/read`).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub unread: u32,
     /// It is answering: its conversation runs a task.
@@ -131,7 +131,8 @@ pub struct BotSummary {
     /// Sub-agents at work.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub agents_working: u32,
-    /// The oldest approval it waits for: what the call does.
+    /// The oldest secure card it waits on: what the card asks for. Her asks nobody to approve
+    /// an action, so nothing else waits.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub waiting: Option<String>,
     /// Its last task failed, so no message may be coming. Only while its conversation is loaded.

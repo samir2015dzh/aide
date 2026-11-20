@@ -1,20 +1,26 @@
-# Hermesh state sync: one replica per device, change feeds on every hop
+# Aide state sync: one replica per device, change feeds on every hop
+
+> **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** there
+> are no pairing requests any more: devices, machines and agents log in with
+> the account and password and the server signs them in at once. What this
+> page says of pairing requests (their lists, polls, fields and tests)
+> describes the feed before; the rest holds.
 
 Status: accepted, 2026-10-25 (decisions in §10). Built 2026-10-26, steps 1
 to 5 (§7); what the building changed is in §11. The hosted center gets
-`WatchOwner` with its own release (§10, 5); until then hermeshd polls it
+`WatchOwner` with its own release (§10, 5); until then aided polls it
 once per device.
 
 The Mac app and the iPhone app show the owner's world: machines,
 agents (clients), devices, projects, pairing requests, sessions and their
 conversations. This document replaces how that world reaches them. Today
 each screen pulls it, on timers, through the relay. After this change each
-owner device keeps one replica of it in hermeshd, every source pushes its
+owner device keeps one replica of it in aided, every source pushes its
 changes into that replica, and every screen subscribes to the replica.
 
 ## 1. Why
 
-Measured on 2026-10-25 against the real hermeshd of an owner whose 30
+Measured on 2026-10-25 against the real aided of an owner whose 30
 sessions are all on this Mac, with the hosted center about 250–300 ms away:
 
 | Call | Time | What it waits on |
@@ -40,7 +46,7 @@ Three causes, one root:
    | Menu bar only ([notify.ts](../apps/desktop/src/main/notify.ts): status, clients, machines every 3 s; pairing requests every 2 s; the session watch lists machines every 5 s) | ≈ 82 | 20 N (`GetInfo`) |
    | + main window ([store.tsx](../apps/desktop/src/renderer/src/store.tsx): pairing requests every second; machines, clients, projects, devices every 3 s, three of which list machines) | ≈ 222 | 60 N (`GetInfo` ×2, `ListProjects`) |
    | + Settings window (its own store, the same polls) | ≈ 362 | 100 N |
-   | iPhone ([AppModel.swift](../apps/ios/Hermesh/Model/AppModel.swift): pairing requests every 2 s; machines, clients, devices, status every 4 s) | ≈ 90 | — |
+   | iPhone ([AppModel.swift](../apps/ios/Aide/Model/AppModel.swift): pairing requests every 2 s; machines, clients, devices, status every 4 s) | ≈ 90 | — |
 
    The cost grows with time × screens × machines, not with what changes.
    Idle, nothing changes, and the app still makes thousands of relay calls
@@ -70,7 +76,7 @@ One pattern, applied on every hop:
 ```
 sources (unchanged)                      each owner device            screens
 relay / center ──(A) snapshot + changes──┐
-                                         ├─► replica in hermeshd ──(C) one local Watch──► Electron main,
+                                         ├─► replica in aided ──(C) one local Watch──► Electron main,
 machine (each) ──(B) snapshot + changes──┘   (in memory)                                  windows;
                  resumable, summaries only                                                the iPhone in process
 
@@ -79,7 +85,7 @@ details on demand: events by seq (BASIC view), full items by seq, older pages by
 
 Four rules:
 
-1. **One replica per device, in hermeshd.** Electron main, every window and
+1. **One replica per device, in aided.** Electron main, every window and
    the iPhone's in-process owner ([internal/mobile](../internal/mobile/mobile.go))
    read the same replica. Every `List*` answers from it and never waits on
    the relay. Writes go to their source as today; the change comes back
@@ -89,7 +95,7 @@ Four rules:
      presence and grants, pairing requests and the root chain.
    - **(B)** Each machine pushes its sessions, projects and state, and
      resumes from a token after a reconnect.
-   - **(C)** hermeshd pushes the replica to each screen.
+   - **(C)** aided pushes the replica to each screen.
 3. **Summaries in feeds, details on demand.** A `view` (as
    [AIP-157](https://google.aip.dev/157)) on session and event calls: feeds
    and lists use BASIC; whoever needs more asks for FULL. There is still one
@@ -150,7 +156,7 @@ service SessionService {
   // ReadToolOutput streams a tool's whole output, as recorded, in chunks
   // of at most 64 KiB.
   rpc ReadToolOutput(ReadToolOutputRequest) returns (stream ToolOutputChunk) {
-    option (hermesh.options.v1.access) = ACCESS_READ;
+    option (aide.options.v1.access) = ACCESS_READ;
   }
 }
 
@@ -166,7 +172,7 @@ message ToolOutputChunk {
 }
 ```
 
-UNSPECIFIED means FULL, so the CLI (`hermesh session list` shows `result`
+UNSPECIFIED means FULL, so the CLI (`aide session list` shows `result`
 and the excerpt, [session.go](../internal/cli/session.go)) and MCP see no
 change.
 
@@ -224,7 +230,7 @@ service MachineService {
   // ends. The first message comes at once, empty if nothing changed since
   // resume_token, so the caller knows the watch is in place.
   rpc Watch(WatchRequest) returns (stream WatchResponse) {
-    option (hermesh.options.v1.access) = ACCESS_READ;
+    option (aide.options.v1.access) = ACCESS_READ;
   }
 }
 
@@ -234,7 +240,7 @@ message WatchRequest {
   // A fresh start sends what ListSessions' first page holds: the newest
   // limit sessions plus every unsettled one.
   uint32 limit = 2;
-  hermesh.session.v1.SessionView view = 3;
+  aide.session.v1.SessionView view = 3;
   // The sent_at of the last message applied, as the machine sent it; unset
   // on a fresh start. If resume_token is refused, the reset also carries the
   // sessions deleted since then.
@@ -245,9 +251,9 @@ message WatchResponse {
   // Set on the first message of a fresh start, or when resume_token was
   // refused: replace everything held for this machine (§4.3 for deletions).
   bool reset = 1;
-  repeated hermesh.session.v1.Session sessions = 2;    // added or changed
+  repeated aide.session.v1.Session sessions = 2;    // added or changed
   repeated string deleted_session_ids = 3;
-  hermesh.session.v1.SessionCursor next = 4;           // with reset: where older sessions start
+  aide.session.v1.SessionCursor next = 4;           // with reset: where older sessions start
   repeated Project projects = 5;                       // added or changed (active_sessions included)
   repeated string removed_project_ids = 6;
   MachineStatus status = 7;                            // with reset, and when it changed
@@ -259,7 +265,7 @@ message WatchResponse {
 ```
 
 - **Resume tokens.** Opaque to the caller; inside, a start id (random per
-  hermeshd start) and a change counter. The machine keeps, in memory, the
+  aided start) and a change counter. The machine keeps, in memory, the
   counter value of each session's and project's last change since it
   started (a few bytes each), so any token of this start resumes; one from
   another start is refused, and a reset sent. Its state is compared each
@@ -277,7 +283,7 @@ message WatchResponse {
 - **The owner's own machine.** It is fed by the same function in process,
   never through the relay.
 
-### 3.4 (C) hermeshd → screens (local.proto)
+### 3.4 (C) aided → screens (local.proto)
 
 ```proto
 service LocalService {
@@ -306,9 +312,9 @@ message WatchResponse {
   repeated ProjectRef removed_projects = 10;
   repeated PairingDetails pairings = 11;
   repeated string removed_pairing_codes = 12;
-  repeated hermesh.session.v1.Session sessions = 13;   // BASIC
+  repeated aide.session.v1.Session sessions = 13;   // BASIC
   repeated string deleted_session_ids = 14;
-  hermesh.session.v1.SessionCursor next = 15;          // with reset: where older sessions start
+  aide.session.v1.SessionCursor next = 15;          // with reset: where older sessions start
 }
 
 message ProjectRef {
@@ -323,19 +329,19 @@ message Machine {
   string unreachable = 9;
 }
 
-message ListSessionsRequest        { ...; hermesh.session.v1.SessionView view = 4; }
-message StreamSessionEventsRequest { ...; hermesh.session.v1.EventView view = 4; }
+message ListSessionsRequest        { ...; aide.session.v1.SessionView view = 4; }
+message StreamSessionEventsRequest { ...; aide.session.v1.EventView view = 4; }
 
 message ListSessionEventsRequest {
   string session_id = 1;
   uint64 after_seq = 2;
   uint64 before_seq = 3;
   uint32 limit = 4;
-  hermesh.session.v1.EventView view = 5;
+  aide.session.v1.EventView view = 5;
 }
 
 message ListSessionEventsResponse {
-  repeated hermesh.session.v1.SessionEvent events = 1;
+  repeated aide.session.v1.SessionEvent events = 1;
 }
 ```
 
@@ -393,7 +399,7 @@ long output itself is shown as it shortened it.
 
 | Kind | Source | Kept |
 |---|---|---|
-| Status | this hermeshd | always; `relay_connected` from the connection, so `GetStatus` never dials the relay (it does today when disconnected) |
+| Status | this aided | always; `relay_connected` from the connection, so `GetStatus` never dials the relay (it does today when disconnected) |
 | Machines | (A), plus this device's own machine | all; `status` and `unreachable` from (B). This device's own machine is read in process at each call (milliseconds, no relay), never copied |
 | Agents (clients), pairing requests | (A) | all, verified as today (`VerifyGrant`, `pairingDetails`); pairing requests dropped at `expires_at` |
 | Devices | root chain from (A) + machines | derived, as `ListDevices` does today |
@@ -408,7 +414,7 @@ rest: well under a megabyte.
 ### 4.2 Lifetime
 
 Only the owner's screens call LocalService: Electron main and the windows
-on the Mac, the app itself on the iPhone (and tests). The `hermesh` CLI is
+on the Mac, the app itself on the iPhone (and tests). The `aide` CLI is
 not one of them: it is an agent, and reaches machines over the relay with
 its grant ([state.go](../internal/cli/state.go)), never through the replica.
 
@@ -420,7 +426,7 @@ today. The last subscriber leaving stops them 60 s later, not at once.
 | Case | What runs |
 |---|---|
 | Mac app running | Electron main always watches: sources run |
-| Mac app quit (hermeshd stays, as a LaunchAgent, for its machine role) | nothing calls: sources stop 60 s after main went away; no relay polling, stream or tunnel for the owner role all day |
+| Mac app quit (aided stays, as a LaunchAgent, for its machine role) | nothing calls: sources stop 60 s after main went away; no relay polling, stream or tunnel for the owner role all day |
 | A window reloads, or main's watch reconnects after an error | the gap is under 60 s: the replica stays warm, no new snapshot from every machine |
 | iPhone in the foreground / suspended | the app watches / the process is frozen; back in the foreground it watches again and the owner resumes (B) from its tokens |
 | A test or script calling `List*` without watching | the first call waits for the snapshot; calls within 60 s are answered at once |
@@ -457,7 +463,7 @@ overview's ranges from it, with no machine asked.
 
 ### 4.5 Trust
 
-The replica is in hermeshd's memory, which already sees everything today.
+The replica is in aided's memory, which already sees everything today.
 Nothing changes in who verifies what:
 - machine certificates and grants pushed by (A) are verified exactly as the
   List calls verify them;
@@ -468,7 +474,7 @@ A relay could withhold updates; it can already lie about presence today.
 
 ## 5. Older peers
 
-Fallbacks live in hermeshd's source adapters only. Screens always see the
+Fallbacks live in aided's source adapters only. Screens always see the
 same Watch.
 
 | Peer | Detected by | Fallback |
@@ -479,11 +485,11 @@ same Watch.
 | Machine without `ReadToolOutput` | `Unimplemented` | The owner serves `ReadToolOutput` from `ListEvents(after_seq: seq-1, limit: 1, view: FULL)`: the first 16 KiB, as recorded there |
 | Callers of the old LocalService calls (tests, the stand-in daemon's clients) | — | Answered from the replica |
 
-The desktop and iPhone apps ship with their own hermeshd or owner, so a
+The desktop and iPhone apps ship with their own aided or owner, so a
 screen never meets an older replica. There are no iPhone installs to keep
 working yet: the iPhone app moves to `Watch` in step 2 with no transition.
 
-The `hermesh` CLI is untouched by this design: it reaches machines as an
+The `aide` CLI is untouched by this design: it reaches machines as an
 agent with FULL views, as today (§3.1).
 
 ## 6. Screens
@@ -506,22 +512,22 @@ agent with FULL views, as today (§3.1).
   nor as needing the owner (lists, tray, notices); interrupting, answering
   and archiving are disabled with the reason. Opening one shows what the
   conversation cache holds, or says the machine cannot be reached now.
-- **iPhone.** [AppModel.swift](../apps/ios/Hermesh/Model/AppModel.swift) does
+- **iPhone.** [AppModel.swift](../apps/ios/Aide/Model/AppModel.swift) does
   the same, and its two-line preview reads `preview`. Going back to the
   foreground reconnects (C) at once; the owner resumes (B) from its tokens.
 
 ## 7. Migration
 
 Each step ships alone with unit tests and an end-to-end test (AGENTS.md
-§4). After step 2, later steps only swap a source adapter inside hermeshd;
+§4). After step 2, later steps only swap a source adapter inside aided;
 screens are not touched again.
 
 | Step | Change | What it buys | Needs |
 |---|---|---|---|
-| 1 | The replica in hermeshd, fed by today's calls (the fallback adapters of §5); `sessionWatch` becomes the machine sources; every `List*` from the replica; `GetStatus` stops dialing. **Built 2026-10-26** ([replica.go](../internal/owner/replica.go)): every list p50 60–160 µs with the relay 300 ms away, 54 relay control calls a minute with three windows polling ([replica_test.go](../e2e/replica_test.go)); `GetUsage` is still asked of the machines, its cache (§4.4) comes with step 2 | Local reads in ms; relay polls once per device (≈ 54 / min) whatever the screens | hermeshd only |
+| 1 | The replica in aided, fed by today's calls (the fallback adapters of §5); `sessionWatch` becomes the machine sources; every `List*` from the replica; `GetStatus` stops dialing. **Built 2026-10-26** ([replica.go](../internal/owner/replica.go)): every list p50 60–160 µs with the relay 300 ms away, 54 relay control calls a minute with three windows polling ([replica_test.go](../e2e/replica_test.go)); `GetUsage` is still asked of the machines, its cache (§4.4) comes with step 2 | Local reads in ms; relay polls once per device (≈ 54 / min) whatever the screens | aided only |
 | 2 | `LocalService.Watch`; Mac renderer, Mac main and iPhone follow it | No polls from any screen | step 1 |
 | 3 | Views (§3.1), whole tool outputs (§3.5), `ReadToolOutput`, `ListSessionEvents`, previews in the conversation, the conversation cache; the owner cuts payloads itself for machines that ignore views | List and conversation bytes down (≈ 220 B a session; the 421 KB session ≈ 100 KB); an opened tool output is whole up to 1 MiB | step 2; full gains on the tunnel once machines update |
-| 4 | `OwnerControlService.WatchOwner` | Relay control calls ≈ 0 while nothing changes | step 1; a center release (bump the submodule in hermesh-cloud, redeploy) |
+| 4 | `OwnerControlService.WatchOwner` | Relay control calls ≈ 0 while nothing changes | step 1; a center release (bump the submodule in aide-cloud, redeploy) |
 | 5 | `MachineService.Watch` with resume tokens | No `GetInfo`/`ListProjects` polls; reconnects without relists; deletions never missed | step 1 |
 
 Steps 3, 4 and 5 are independent of each other. All five were built on
@@ -532,15 +538,15 @@ Steps 3, 4 and 5 are independent of each other. All five were built on
 | Criterion | Target | Measured by |
 |---|---|---|
 | A list call (any `List*`, first page) | p50 ≤ 5 ms with the relay 300 ms away | Go e2e behind `delayProxy` ([latency_test.go](../e2e/latency_test.go)) |
-| Relay control calls, owner idle | step 1: ≤ 60 / min per device, the same with 1 or 3 windows; step 4: 0 besides the stream | a new relay counter `hermesh_relay_owner_rpcs_total{method}` (a process metric, nothing per owner stored); Go e2e |
-| Calls from screens to hermeshd, idle | 0 after step 2 | the gateway counts forwarded calls ([gateway.ts](../apps/desktop/src/main/gateway.ts)); desktop e2e |
+| Relay control calls, owner idle | step 1: ≤ 60 / min per device, the same with 1 or 3 windows; step 4: 0 besides the stream | a new relay counter `aide_relay_owner_rpcs_total{method}` (a process metric, nothing per owner stored); Go e2e |
+| Calls from screens to aided, idle | 0 after step 2 | the gateway counts forwarded calls ([gateway.ts](../apps/desktop/src/main/gateway.ts)); desktop e2e |
 | One more window | +0 relay calls | the same counter |
 | A BASIC session | p50 ≤ 400 B | unit test on generated sessions; checked once on real data (≈ 220 B) |
 | Opening the largest real session (421 KB today) | ≤ 110 KB over the socket | e2e with a recorded conversation of the same shape |
 | An opened tool output | whole up to 1 MiB; head and tail past that; first bytes on screen ≤ 50 ms for a local session | Go e2e with a fake agent printing 64 KiB and 3 MiB; desktop e2e opening the row |
 | Reconnect to a machine with nothing changed | one empty message, no relist | Go e2e: drop and restore the tunnel |
 | A deletion while disconnected | gone after reconnect | Go e2e |
-| Desktop smoothness | `start.ms`, `switch.session.ms`, `open.long.ms` no worse | `pnpm --filter @hermesh/desktop perf`, with the stand-in daemon serving `Watch` and a relay delay added to it |
+| Desktop smoothness | `start.ms`, `switch.session.ms`, `open.long.ms` no worse | `pnpm --filter @aide/desktop perf`, with the stand-in daemon serving `Watch` and a relay delay added to it |
 
 ## 9. Not doing (now)
 
@@ -567,8 +573,8 @@ Steps 3, 4 and 5 are independent of each other. All five were built on
    no window; the deletions since the caller's `held_at` (§3.3, §4.3).
 5. ~~Step 4 needs a center release. Do it next to the pending center
    redeploy, or on its own?~~ Decided 2026-10-25: its own release, once
-   step 4 is done and tested; until then hermeshd polls once per device.
-6. ~~Should `hermesh session list` move to BASIC?~~ Decided 2026-10-25: no.
+   step 4 is done and tested; until then aided polls once per device.
+6. ~~Should `aide session list` move to BASIC?~~ Decided 2026-10-25: no.
    Its table and `-o json` show `result`; the CLI stays out of this work.
 
 ## 11. What building it changed
@@ -592,7 +598,7 @@ Steps 3, 4 and 5 are independent of each other. All five were built on
 - **On a phone** (2026-10-27, `TestMobileNetwork`: the iPhone's core in a
   process of its own, the relay 150 ms away and the Mac as far behind it,
   the app suspended with SIGSTOP while its network goes away):
-  - hermeshd dials the relay without `o.mu`, so the status and the
+  - aided dials the relay without `o.mu`, so the status and the
     replica's lists never wait on a dial (the app's status at launch waited
     two round trips, and when the dial stalled past 10 s the app showed its
     onboarding to an owner already set up); admission is pipelined and the
@@ -620,7 +626,7 @@ Steps 3, 4 and 5 are independent of each other. All five were built on
     moment, after the app came back or went back and forth.
   - The core stops listening on its loopback port while paused: iOS may take
     a suspended app's listening socket back without a word (TN2277), and
-    then the app stayed on "Connecting to Hermesh…" until it was quit.
+    then the app stayed on "Connecting to Aide…" until it was quit.
   - The relay connection's warm handshakes are under way before the calls
     that waited for the dial wake, so they join them rather than make their
     own.

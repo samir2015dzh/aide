@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// A worktree with work in it moves out whole, whether hermeshd laid it out
+// A worktree with work in it moves out whole, whether aided laid it out
 // or git did, by the path the workspace gave it (on Windows, with
 // backslashes and maybe a short name).
 func TestMoveWorktree(t *testing.T) {

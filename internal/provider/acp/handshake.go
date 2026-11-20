@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // Greeting is what an agent said when started once for the handshake.

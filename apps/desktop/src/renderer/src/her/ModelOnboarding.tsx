@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { BotSummary } from "@hermesh/her-protocol";
+import type { BotSummary } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { herAnswers } from "../skew";
 import { errorText } from "../store";
@@ -125,7 +125,7 @@ export function Onboarding({ flow, bot }: { flow: Flow; bot: BotSummary }) {
 
   const signIn = () => {
     update(id, chooseChatGpt);
-    const ended = window.hermesh ? window.hermesh.signInHerChatGpt(id) : Promise.reject(new Error("no bridge"));
+    const ended = window.aide ? window.aide.signInHerChatGpt(id) : Promise.reject(new Error("no bridge"));
     ended.then(
       (r) => update(id, (f) => signInEnded(f, r)),
       (e: unknown) => update(id, (f) => signInEnded(f, { state: "failed", message: errorText(e) })),
@@ -133,7 +133,7 @@ export function Onboarding({ flow, bot }: { flow: Flow; bot: BotSummary }) {
   };
   const stop = () => {
     update(id, otherWay);
-    window.hermesh?.cancelHerChatGpt(id);
+    window.aide?.cancelHerChatGpt(id);
   };
   // The key goes to her (auth/set) and is let go: nothing here keeps it.
   const save = async (key: string) => {
@@ -220,7 +220,7 @@ export function Onboarding({ flow, bot }: { flow: Flow; bot: BotSummary }) {
       case "browser":
         return (
           <div className="ob-pills">
-            <button className="ob-pill" onClick={() => window.hermesh?.reopenHerChatGpt(id)}>
+            <button className="ob-pill" onClick={() => window.aide?.reopenHerChatGpt(id)}>
               {t("onboard.reopen")}
             </button>
             <button className="ob-pill" onClick={stop}>
@@ -401,7 +401,7 @@ function KeyField({ name, page, busy, onSave }: { name: string; page?: string; b
         </button>
       </form>
       {page && (
-        <button className="link ob-get" onClick={() => window.hermesh?.openExternal(page)}>
+        <button className="link ob-get" onClick={() => window.aide?.openExternal(page)}>
           {t("onboard.getKey", { provider: name })}
         </button>
       )}

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { applyWatch, emptyWorld, mergeSessions, type World } from "@hermesh/core";
-import { SessionView } from "@hermesh/proto/session";
+import { applyWatch, emptyWorld, mergeSessions, type World } from "@aide/core";
+import { SessionView } from "@aide/proto/session";
 import { local } from "./api";
 
-// What the window knows of the owner's world, as hermeshd pushes it
+// What the window knows of the owner's world, as aided pushes it
 // (LocalService.Watch, docs/state-sync.md): everything at once, then each
 // change as it happens, with no polling. The session list keeps the newest
 // page and every change, and older pages as the list scrolls to its end,
@@ -13,7 +13,7 @@ import { local } from "./api";
 export const sessionPage = 50;
 
 export type WorldState = World & {
-  /** hermeshd cannot be reached (the watch failed; it is watched again). */
+  /** aided cannot be reached (the watch failed; it is watched again). */
   down: boolean;
   loadingOlder: boolean;
 };
@@ -36,7 +36,7 @@ export function useWorld(): WorldState & { loadOlder: () => void; refreshStatus:
             });
           }
         } catch {
-          // Watched again below: hermeshd restarted, or this watch fell behind.
+          // Watched again below: aided restarted, or this watch fell behind.
           if (!signal.aborted) setState((s) => (s.down ? s : { ...s, down: true }));
         }
         await new Promise((r) => setTimeout(r, 1000));

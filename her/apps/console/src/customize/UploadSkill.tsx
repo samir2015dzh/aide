@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { SkillEntry, SkillsInstallResult } from "@hermesh/her-protocol";
+import type { SkillEntry, SkillsInstallResult } from "@aide/her-protocol";
 import { Dialog } from "../components";
 import { errorText } from "../format";
 import { useHer } from "../her";

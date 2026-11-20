@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // follow streams a session's events, drafts too when partial, until the

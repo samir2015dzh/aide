@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
 )
 
 // linuxDesktopImage is a fresh Ubuntu computer with a desktop to log in to:
@@ -28,31 +28,31 @@ RUN apt-get update && apt-get install -y -o Acquire::Retries=8 --no-install-reco
 CMD ["/sbin/init"]
 `
 
-// TestLinuxHerComputer (HERMESH_DOCKER=1) is Her's computer use on a Linux
+// TestLinuxHerComputer (AIDE_DOCKER=1) is Her's computer use on a Linux
 // computer with a desktop (docs/linux.md §5), installed as a person
 // installs it:
 //
 //  1. the install command puts agent-desktop in her-computer/ beside her,
 //     from a release that carries it;
 //  2. Her is turned on before anyone logs in to the desktop, as after a
-//     restart: hermeshd and her have no display of their own, and
+//     restart: aided and her have no display of their own, and
 //     desktop/status says computer use is off, as on a server;
 //  3. someone logs in: without her starting again, desktop/status says it is
 //     on and that agent-desktop reaches the apps, Her lists the calculator
 //     that runs there and reads its window;
-//  4. `hermeshd uninstall` removes her-computer/.
+//  4. `aided uninstall` removes her-computer/.
 //
-// The releases' her is HERMESH_HER_LINUX, else built in Docker (linuxHer);
-// agent-desktop is HERMESH_AGENT_DESKTOP_LINUX (a folder with it and its
+// The releases' her is AIDE_HER_LINUX, else built in Docker (linuxHer);
+// agent-desktop is AIDE_AGENT_DESKTOP_LINUX (a folder with it and its
 // clipboard helper), else taken from the pinned npm package, with node.
 func TestLinuxHerComputer(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") != "1" {
-		t.Skip("set HERMESH_DOCKER=1")
+	if os.Getenv("AIDE_DOCKER") != "1" {
+		t.Skip("set AIDE_DOCKER=1")
 	}
 	computer := linuxAgentDesktop(t)
 	// The calculator read without asking, as an owner allows an app in Her's
 	// settings.
-	c, id, _, sh, out := linuxHerMachine(t, "hermesh-e2e-linux-desktop:1", linuxDesktopImage, "desk-1",
+	c, id, _, sh, out := linuxHerMachine(t, "aide-e2e-linux-desktop:1", linuxDesktopImage, "desk-1",
 		map[string][]byte{"her-computer-linux-" + runtime.GOARCH + ".tar.gz": computer}, "\n[desktop.apps]\ngalculator = \"allow\"\n")
 	if !strings.Contains(out, "› downloading her-computer-linux-"+runtime.GOARCH+".tar.gz") {
 		t.Fatalf("install:\n%s", out)
@@ -110,7 +110,7 @@ wait`
 	}
 
 	// 4. Uninstalled: her-computer goes with her.
-	if s, err := sh("XDG_RUNTIME_DIR=/run/user/0 USER=root /root/.local/bin/hermeshd uninstall --yes 2>&1"); err != nil || !strings.Contains(s, "/root/.local/bin/her-computer") {
+	if s, err := sh("XDG_RUNTIME_DIR=/run/user/0 USER=root /root/.local/bin/aided uninstall --yes 2>&1"); err != nil || !strings.Contains(s, "/root/.local/bin/her-computer") {
 		t.Fatalf("uninstall: %v\n%s", err, s)
 	}
 	if left, _ := sh("ls -d /root/.local/bin/her-computer 2>/dev/null"); left != "" {
@@ -127,7 +127,7 @@ wait`
 // printed.
 func linuxHerMachine(t *testing.T, tag, dockerfile, host string, files map[string][]byte, config string) (localv1connect.LocalServiceClient, string, string, func(string) (string, error), string) {
 	t.Helper()
-	mock := startHerMock(t, herBinary(t, "HERMESH_HER_MOCK", "her-mock"))
+	mock := startHerMock(t, herBinary(t, "AIDE_HER_MOCK", "her-mock"))
 	her, err := os.ReadFile(linuxHer(t))
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func linuxHerMachine(t *testing.T, tag, dockerfile, host string, files map[strin
 	releases.add(t, "0.0.1", files)
 	releases.publish("0.0.1")
 
-	name, sh := startLinuxImage(t, tag, dockerfile, "hermesh-her-"+host, host)
+	name, sh := startLinuxImage(t, tag, dockerfile, "aide-her-"+host, host)
 	put := func(path, content string) {
 		t.Helper()
 		cmd := exec.Command("docker", "exec", "-i", name, "sh", "-c", `mkdir -p "$(dirname "$1")" && cat > "$1"`, "sh", path)
@@ -153,7 +153,7 @@ func linuxHerMachine(t *testing.T, tag, dockerfile, host string, files map[strin
 	// test in the service's environment.
 	put("/root/.her/models.toml", strings.ReplaceAll(mock.models, "127.0.0.1", "host.docker.internal"))
 	put("/root/.her/config.toml", "model = \"mock/mock-1\"\n"+config)
-	put("/root/.config/systemd/user/hermeshd.service.d/her.conf", "[Service]\nEnvironment=HER_NO_BROWSER=1 HER_LANG=en HER_MODEL_CATALOG_URL="+
+	put("/root/.config/systemd/user/aided.service.d/her.conf", "[Service]\nEnvironment=HER_NO_BROWSER=1 HER_LANG=en HER_MODEL_CATALOG_URL="+
 		strings.Replace(mock.base, "127.0.0.1", "host.docker.internal", 1)+"/catalog/api.json\n")
 
 	install := exec.Command("docker", "exec", name, "sh", "-c", releases.installCommand(strings.Replace(w.addr, "127.0.0.1", "host.docker.internal", 1)+" --name "+host))
@@ -162,35 +162,29 @@ func linuxHerMachine(t *testing.T, tag, dockerfile, host string, files map[strin
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	var code string
-	eventually(t, 2*time.Minute, "pairing code", func() bool {
-		if m := codeRE.FindStringSubmatch(out.String()); m != nil {
-			code = m[1]
-		}
-		return code != ""
+	var machineID string
+	eventually(t, 2*time.Minute, "the machine logged in", func() bool {
+		machineID = loggedInMachine(out.String())
+		return machineID != ""
 	})
-	approved, err := c.ApproveMachinePairing(context.Background(), &localv1.ApproveMachinePairingRequest{Code: code, MachineName: host})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := install.Wait(); err != nil {
 		t.Fatalf("install: %v\n%s", err, out.String())
 	}
-	turnHerOn(t, c, approved.MachineId)
-	return c, approved.MachineId, name, sh, out.String()
+	turnHerOn(t, c, machineID)
+	return c, machineID, name, sh, out.String()
 }
 
 // linuxAgentDesktop is her-computer-linux-<arch>.tar.gz as scripts/release.sh
 // makes it: agent-desktop for Linux and its clipboard helper, from the
-// folder HERMESH_AGENT_DESKTOP_LINUX names, else from the pinned npm package
+// folder AIDE_AGENT_DESKTOP_LINUX names, else from the pinned npm package
 // (apps/desktop/scripts/agent-desktop.mjs).
 func linuxAgentDesktop(t *testing.T) []byte {
 	t.Helper()
-	dir := os.Getenv("HERMESH_AGENT_DESKTOP_LINUX")
+	dir := os.Getenv("AIDE_AGENT_DESKTOP_LINUX")
 	if dir == "" {
 		node, err := exec.LookPath("node")
 		if err != nil {
-			t.Skip("no node to take agent-desktop from its npm package: set HERMESH_AGENT_DESKTOP_LINUX")
+			t.Skip("no node to take agent-desktop from its npm package: set AIDE_AGENT_DESKTOP_LINUX")
 		}
 		dir = t.TempDir()
 		arch := map[string]string{"amd64": "x64", "arm64": "arm64"}[runtime.GOARCH]

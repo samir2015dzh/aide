@@ -1,4 +1,4 @@
-import type { Methods, Notifications, RpcErrorObject, ServerRequests } from "@hermesh/her-protocol";
+import type { Methods, Notifications, RpcErrorObject, ServerRequests } from "@aide/her-protocol";
 
 // A JSON-RPC 2.0 connection to her (protocol-design §6.1–§6.2): NDJSON text
 // in and out, requests matched to their responses by id, notifications

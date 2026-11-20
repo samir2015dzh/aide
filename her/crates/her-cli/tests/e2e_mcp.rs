@@ -71,7 +71,7 @@ async fn session_file(env: &TestEnv) -> PathBuf {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn exec_finds_and_runs_a_deferred_tool() {
     // Asking is covered below; this is about finding and running.
-    let env = TestEnv::new("bypass-permissions", &server_toml("vault", 120)).await;
+    let env = TestEnv::new(&server_toml("vault", 120)).await;
     let output = env.her(&["exec", "--output", "stream-json", "[[mock:mcp:vault:Apollo]] get the code"]).output().await.unwrap();
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(output.status.code(), Some(0), "stderr: {stderr}");
@@ -117,7 +117,7 @@ async fn mcp_commands_list_check_and_get_servers() {
         "{}[mcp_servers.broken]\ncommand = \"/nonexistent/mcp-server\"\n[mcp_servers.off]\ncommand = \"x\"\nenabled = false\n",
         server_toml("docs", 0)
     );
-    let env = TestEnv::new("manual", &config).await;
+    let env = TestEnv::new(&config).await;
     let file = env.work().join("ci-mcp.json");
     let json_config = json!({"mcpServers": {
         "vault": {"command": server_bin(), "args": ["--tools", "3"], "env": {"VAULT_TOKEN": "s3cret", "REF": "${HOME}"}},
@@ -159,7 +159,7 @@ async fn mcp_commands_list_check_and_get_servers() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn native_client_brings_a_direct_server() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -172,10 +172,10 @@ async fn native_client_brings_a_direct_server() {
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
 
-    let turn = native_prompt(&client, &mut events, &session, "[[mock:mcp_direct:vault:Gemini]] go", false).await;
+    let turn = native_prompt(&client, &mut events, &session, "[[mock:mcp_direct:vault:Gemini]] go").await;
     assert_eq!(turn.end["type"], "task_completed", "{:#?}", turn.events);
     assert_eq!(turn.end["last_message"], json!(released("Gemini")));
-    assert_eq!(turn.approvals, 0);
+
     let statuses: Vec<&str> = of_type(&turn.events, "mcp_server_status").iter().filter_map(|e| e["state"].as_str()).collect();
     assert_eq!(statuses, vec!["starting", "ready"]);
     let tool = of_type(&turn.events, "tool_started")[0];
@@ -236,7 +236,7 @@ async fn acp_prompt(client: &Client, rx: &mut IncomingRx, session: &str, text: &
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn acp_client_brings_servers_for_new_and_loaded_sessions() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, mut rx) = env.spawn_rpc(&["acp"]);
     let init = client
         .request("initialize", json!({"protocolVersion": 1, "clientCapabilities": {"session": {"notices": {}}},
@@ -279,24 +279,20 @@ async fn acp_client_brings_servers_for_new_and_loaded_sessions() {
     common::exit_code(&mut child).await;
 }
 
+/// A tool that may change things runs without asking, in a script too.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn a_tool_that_may_change_things_is_refused_when_nobody_can_approve() {
-    let env = TestEnv::new("manual", &server_toml("vault", 120)).await;
-    let output = env.her(&["exec", "--json", "[[mock:mcp:vault:Apollo]] get the code"]).output().await.unwrap();
-    assert_eq!(output.status.code(), Some(3), "{}", String::from_utf8_lossy(&output.stdout));
-    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert!(result.to_string().contains("mcp__vault__"), "{result}");
-    // The user can trust the server, in their own file.
-    let trusted = format!("{}approval = \"never\"\n", server_toml("vault", 120));
-    let env = TestEnv::new("manual", &trusted).await;
+async fn a_tool_that_may_change_things_runs_without_asking() {
+    let env = TestEnv::new(&server_toml("vault", 120)).await;
     let output = env.her(&["exec", "--json", "[[mock:mcp:vault:Apollo]] get the code"]).output().await.unwrap();
     assert_eq!(output.status.code(), Some(0), "{}", String::from_utf8_lossy(&output.stdout));
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(result["final_output"].as_str().unwrap_or_default().contains("Release code for Apollo"), "{result}");
 }
 
 /// `tools/list`: the built-in tools without a session; with one, what it really has.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_tools_of_a_session_include_its_servers() {
-    let env = TestEnv::new("bypass-permissions", "").await;
+    let env = TestEnv::new("").await;
     let (mut child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
     native_init(&client).await;
     let demux = Demux::spawn(incoming);
@@ -311,7 +307,7 @@ async fn the_tools_of_a_session_include_its_servers() {
     let created = client.request("session/new", json!({"cwd": cwd, "mcp_servers": [server]})).await.expect("session/new");
     let session = created["session_id"].as_str().unwrap().to_string();
     let mut events = demux.subscribe(&session);
-    let turn = native_prompt(&client, &mut events, &session, "say hi", false).await;
+    let turn = native_prompt(&client, &mut events, &session, "say hi").await;
     assert_eq!(turn.end["type"], "task_completed");
     let listed = client.request("tools/list", json!({"session_id": session})).await.expect("tools/list");
     let tools = listed["tools"].as_array().unwrap();

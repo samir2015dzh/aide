@@ -14,15 +14,14 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
-	"github.com/hermeshai/hermesh/internal/shellenv"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // desktopFixture is what the desktop app's Playwright tests get
-// (HERMESH_E2E_FIXTURE): the owner daemon's socket, the sessions by title,
+// (AIDE_E2E_FIXTURE): the owner daemon's socket, the sessions by title,
 // and the agent CLI to change things while the app looks.
 type desktopFixture struct {
 	Socket   string            `json:"socket"`
@@ -35,9 +34,6 @@ type desktopFixture struct {
 	// The process group of a second Mac, a machine only with a finished
 	// session on it, for the spec to take offline (0 when none).
 	OtherMac int `json:"otherMac"`
-	// On Windows, the folder of an older signer, as if set up, for the app
-	// to offer its own (empty elsewhere).
-	OldSigner string `json:"oldSigner,omitempty"`
 	// The address of a connector's service that signs in with OAuth, for
 	// Her to ask for on a secure card (empty when none).
 	Connector string `json:"connector,omitempty"`
@@ -56,11 +52,11 @@ type desktopFixture struct {
 	// <github>/owner/name.git (url.insteadOf, in the daemon's environment).
 	GitHub string `json:"github"`
 	// old-box, a machine from before Her (TestDesktopHerBeforeHer): the file
-	// that says so while it holds 1, and the start of its hermeshd's command
+	// that says so while it holds 1, and the start of its aided's command
 	// line, for the spec to stop it so that it starts again as it is now.
 	BeforeHer       string `json:"beforeHer,omitempty"`
 	BeforeHerDaemon string `json:"beforeHerDaemon,omitempty"`
-	// The dsh spec: the stand-in DSH Host running the Hermesh bridge plugin,
+	// The dsh spec: the stand-in DSH Host running the Aide bridge plugin,
 	// for the spec to stop it as DSH Desktop quitting would (0 when none).
 	DSHHost int    `json:"dshHost,omitempty"`
 	DSHHome string `json:"dshHome,omitempty"`
@@ -94,14 +90,14 @@ var clipboardSpecs = map[string]bool{"health": true, "session": true, "settings"
 // the real Electron app (apps/desktop/e2e) against sessions in every state
 // the app shows, played by a scripted ACP agent through the real relay,
 // owner daemon and agent CLI. Each spec file gets a world of its own (the
-// tests change it), and they run side by side. HERMESH_DESKTOP_GREP picks
+// tests change it), and they run side by side. AIDE_DESKTOP_GREP picks
 // tests by name.
 //
-// With HERMESH_DESKTOP_PREVIEW=<seconds> it keeps one world up instead, so
+// With AIDE_DESKTOP_PREVIEW=<seconds> it keeps one world up instead, so
 // the app can be looked at against it:
 //
-//	HERMESH_DESKTOP_PREVIEW=1800 go test ./e2e -run TestDesktop -v -timeout 60m
-//	HERMESH_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
+//	AIDE_DESKTOP_PREVIEW=1800 go test ./e2e -run TestDesktop -v -timeout 60m
+//	AIDE_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
 func TestDesktop(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -109,9 +105,9 @@ func TestDesktop(t *testing.T) {
 	if _, err := exec.LookPath("pnpm"); err != nil {
 		t.Skip("pnpm not installed")
 	}
-	if secs, _ := strconv.Atoi(os.Getenv("HERMESH_DESKTOP_PREVIEW")); secs > 0 {
+	if secs, _ := strconv.Atoi(os.Getenv("AIDE_DESKTOP_PREVIEW")); secs > 0 {
 		f := desktopWorld(t, false, false, false)
-		t.Logf("sessions ready; open the app with:\nHERMESH_SOCKET=%s pnpm --dir apps/desktop dev", f.Socket)
+		t.Logf("sessions ready; open the app with:\nAIDE_SOCKET=%s pnpm --dir apps/desktop dev", f.Socket)
 		time.Sleep(time.Duration(secs) * time.Second)
 		return
 	}
@@ -119,7 +115,7 @@ func TestDesktop(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "app")
 	// The app bundles the release notes up to VERSION: the oldest release's
 	// alone, so the tests read the same history however many releases follow.
-	if r := run(t, []string{"HERMESH_DESKTOP_OUT=" + out, "VERSION=0.1.0-rc7"}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
+	if r := run(t, []string{"AIDE_DESKTOP_OUT=" + out, "VERSION=0.1.0-rc7"}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
 		t.Fatalf("build: %+v", r)
 	}
 	// Electron fetches its binary on first use; do it once, not from every spec at the same time.
@@ -149,15 +145,15 @@ func TestDesktop(t *testing.T) {
 				more = append(more, "FAKE_ACP_CONFIG=1")
 			}
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
-				more = append(more, "HERMESH_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "HERMESH_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
+				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
 			}
 			var dshHome string
 			if name == "states" { // a short stall limit, so a quiet turn reads stalled within the spec
-				more = append(more, "HERMESH_STALL_AFTER=5")
+				more = append(more, "AIDE_STALL_AFTER=5")
 			}
 			if name == "dsh" { // the owner's own DSH session, and DSH (with the Aide plugin) to take it over through
 				dshHome = dshDesktopHome(t)
-				more = append(more, "DSH_HOME="+dshHome, "HERMESH_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
+				more = append(more, "DSH_HOME="+dshHome, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}
 			f := desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
 			if name == "dsh" {
@@ -174,21 +170,14 @@ func TestDesktop(t *testing.T) {
 			if name == "newsession" { // acme/widget on its GitHub, and an agent's session there
 				repoSession(t, f)
 			}
-			if name == "windows" {
-				f.OldSigner = t.TempDir()
-				bin := filepath.Join(f.OldSigner, "hermesh-signer.exe")
-				if r := run(t, nil, 5*time.Minute, "go", "build", "-ldflags", "-X main.version=0.0.1", "-o", bin, "./cmd/hermesh-signer"); r.code != 0 {
-					t.Fatalf("an older signer: %+v", r)
-				}
-			}
 			file := filepath.Join(t.TempDir(), "fixture.json")
 			b, _ := json.Marshal(f)
 			os.WriteFile(file, b, 0o644)
 			args := []string{"--dir", dir, "exec", "playwright", "test", onlySpec(filepath.Base(spec)), "--pass-with-no-tests"}
-			if g := os.Getenv("HERMESH_DESKTOP_GREP"); g != "" {
+			if g := os.Getenv("AIDE_DESKTOP_GREP"); g != "" {
 				args = append(args, "--grep", g)
 			}
-			env := []string{"HERMESH_E2E_FIXTURE=" + file, "HERMESH_DESKTOP_OUT=" + out, "HERMESH_PW_OUT=" + filepath.Join(t.TempDir(), "results")}
+			env := []string{"AIDE_E2E_FIXTURE=" + file, "AIDE_DESKTOP_OUT=" + out, "AIDE_PW_OUT=" + filepath.Join(t.TempDir(), "results")}
 			if r := run(t, env, 10*time.Minute, "pnpm", args...); r.code != 0 {
 				t.Fatalf("playwright:\n%s\n%s", r.stdout, r.stderr)
 			} else {
@@ -202,20 +191,20 @@ func TestDesktop(t *testing.T) {
 // her.spec.ts) against her itself, with her-mock as its model service: the
 // first run on this Mac, a chat, work-mac added as a second environment,
 // given a model through Her's onboarding and switched to, and work-mac going
-// offline. It needs her built (cargo build in her/, or HERMESH_HER_BIN), so
-// it is not one of TestDesktop's specs. HERMESH_DESKTOP_GREP picks tests by
+// offline. It needs her built (cargo build in her/, or AIDE_HER_BIN), so
+// it is not one of TestDesktop's specs. AIDE_DESKTOP_GREP picks tests by
 // name.
 //
 //	go test ./e2e -run TestDesktopHer -v -timeout 30m
 //
-// With HERMESH_DESKTOP_PREVIEW=<seconds> it keeps the world up instead, for
-// a person to try the Her entry against it; HERMESH_HER_MODEL (e.g.
+// With AIDE_DESKTOP_PREVIEW=<seconds> it keeps the world up instead, for
+// a person to try the Her entry against it; AIDE_HER_MODEL (e.g.
 // deepseek/deepseek-flash) makes this Mac's her use a real model, its key
 // taken from the environment (e.g. DEEPSEEK_API_KEY), while work-mac's
 // starts with none, for the onboarding:
 //
-//	HERMESH_DESKTOP_PREVIEW=3600 go test ./e2e -run TestDesktopHer -v -timeout 70m
-//	HERMESH_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
+//	AIDE_DESKTOP_PREVIEW=3600 go test ./e2e -run TestDesktopHer -v -timeout 70m
+//	AIDE_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
 func TestDesktopHer(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -224,8 +213,8 @@ func TestDesktopHer(t *testing.T) {
 		t.Skip("pnpm not installed")
 	}
 	f := desktopHerWorld(t)
-	if secs, _ := strconv.Atoi(os.Getenv("HERMESH_DESKTOP_PREVIEW")); secs > 0 {
-		t.Logf("Her's world is ready (this Mac and work-mac, Her on for neither); open the app with:\nHERMESH_SOCKET=%s pnpm --dir apps/desktop dev", f.Socket)
+	if secs, _ := strconv.Atoi(os.Getenv("AIDE_DESKTOP_PREVIEW")); secs > 0 {
+		t.Logf("Her's world is ready (this Mac and work-mac, Her on for neither); open the app with:\nAIDE_SOCKET=%s pnpm --dir apps/desktop dev", f.Socket)
 		time.Sleep(time.Duration(secs) * time.Second)
 		return
 	}
@@ -324,7 +313,7 @@ func TestDesktopHerChatGPT(t *testing.T) {
 	}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	t.Cleanup(w.owner.stop) // stopped as a service is, so that it stops her
-	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv, ChatGPT: chatgpt, owner: w}, "her-chatgpt.spec.ts")
+	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv, ChatGPT: chatgpt, owner: w}, "her-chatgpt.spec.ts")
 }
 
 // TestDesktopHerOlder runs apps/desktop/e2e/her-older.spec.ts: this Mac's
@@ -350,13 +339,13 @@ func TestDesktopHerOlder(t *testing.T) {
 	env := append(herEnv(her, herConsole(t), herHome(t, mock.models), mock.base), "HER_TEST_WITHOUT="+without)
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	t.Cleanup(w.owner.stop) // stopped as a service is, so that it stops her
-	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv,
+	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv,
 		HerWithout: without, HerBin: her, owner: w}, "her-older.spec.ts")
 }
 
 // TestDesktopHerBeforeHer runs apps/desktop/e2e/her-before.spec.ts: old-box,
-// a second Mac whose hermeshd is from before Her while a file says so
-// (HERMESH_TEST_BEFORE_HER, docs/version-skew.md §6.7). A loop starts it
+// a second Mac whose aided is from before Her while a file says so
+// (AIDE_TEST_BEFORE_HER, docs/version-skew.md §6.7). A loop starts it
 // again when the spec stops it, as an update does, as it is then.
 //
 //	go test ./e2e -run TestDesktopHerBeforeHer -v -timeout 30m
@@ -381,21 +370,21 @@ func TestDesktopHerBeforeHer(t *testing.T) {
 	}
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
-	sock, data, bin := filepath.Join(sockDir, "o.sock"), filepath.Join(w.tmp, "old-box"), filepath.Join(w.bin, "hermeshd")
-	loop := `while :; do HERMESH_TEST_BEFORE_HER="$(cat "$1")" "$2" run --owner --data-dir "$3" --socket "$4"; sleep 0.2; done`
+	sock, data, bin := filepath.Join(sockDir, "o.sock"), filepath.Join(w.tmp, "old-box"), filepath.Join(w.bin, "aided")
+	loop := `while :; do AIDE_TEST_BEFORE_HER="$(cat "$1")" "$2" run --owner --data-dir "$3" --socket "$4"; sleep 0.2; done`
 	w.logs = append(w.logs, start(t, "owner old-box", herEnv(her, herConsole(t), t.TempDir(), mock.base), "/bin/sh", "-c", loop, "sh", flag, bin, data, sock))
-	w.joinTyped(localClient(t, sock), home, "old-box")
-	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv,
+	w.logInMachineOnly(localClient(t, sock), home, "old-box")
+	herSpec(t, desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv,
 		BeforeHer: flag, BeforeHerDaemon: bin + " run --owner --data-dir " + data, owner: w}, "her-before.spec.ts")
 }
 
 // herSpec builds the app and runs one of the Her entry's specs against f.
-// HERMESH_DESKTOP_GREP picks tests by name.
+// AIDE_DESKTOP_GREP picks tests by name.
 func herSpec(t *testing.T, f desktopFixture, spec string) {
 	t.Helper()
 	dir, _ := filepath.Abs(filepath.Join("apps", "desktop"))
 	out := filepath.Join(t.TempDir(), "app")
-	if r := run(t, []string{"HERMESH_DESKTOP_OUT=" + out, "VERSION=0.1.0-rc7"}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
+	if r := run(t, []string{"AIDE_DESKTOP_OUT=" + out, "VERSION=0.1.0-rc7"}, 5*time.Minute, "pnpm", "--dir", dir, "build"); r.code != 0 {
 		t.Fatalf("build: %+v", r)
 	}
 	if r := run(t, nil, 5*time.Minute, "node", filepath.Join(dir, "node_modules", "electron", "install.js")); r.code != 0 {
@@ -405,10 +394,10 @@ func herSpec(t *testing.T, f desktopFixture, spec string) {
 	b, _ := json.Marshal(f)
 	os.WriteFile(file, b, 0o644)
 	args := []string{"--dir", dir, "exec", "playwright", "test", onlySpec(spec)}
-	if g := os.Getenv("HERMESH_DESKTOP_GREP"); g != "" {
+	if g := os.Getenv("AIDE_DESKTOP_GREP"); g != "" {
 		args = append(args, "--grep", g)
 	}
-	env := []string{"HERMESH_E2E_FIXTURE=" + file, "HERMESH_DESKTOP_OUT=" + out, "HERMESH_PW_OUT=" + filepath.Join(t.TempDir(), "results")}
+	env := []string{"AIDE_E2E_FIXTURE=" + file, "AIDE_DESKTOP_OUT=" + out, "AIDE_PW_OUT=" + filepath.Join(t.TempDir(), "results")}
 	if r := run(t, env, 15*time.Minute, "pnpm", args...); r.code != 0 {
 		t.Fatalf("playwright:\n%s\n%s", r.stdout, r.stderr)
 	} else {
@@ -416,7 +405,7 @@ func herSpec(t *testing.T, f desktopFixture, spec string) {
 	}
 }
 
-// desktopHerWorld is an owner Mac whose hermeshd can run Her (her, her-mock
+// desktopHerWorld is an owner Mac whose aided can run Her (her, her-mock
 // serving its models, the e2e console), and work-mac, a second Mac that is a
 // machine only and can run it too, each with a home of its own for her: two
 // machines to become environments, Her on for neither yet. This Mac's her
@@ -442,7 +431,7 @@ func desktopHerWorld(t *testing.T) desktopFixture {
 	// This Mac's Her uses the owner's own Chrome, whose extension never connects here: a step that
 	// asks for it waits, and the chat says so (her.spec.ts).
 	config := "[browser]\nextension = true\n"
-	if model := os.Getenv("HERMESH_HER_MODEL"); model != "" {
+	if model := os.Getenv("AIDE_HER_MODEL"); model != "" {
 		config = fmt.Sprintf("model = %q\n\n", model) + config
 	}
 	if err := os.WriteFile(filepath.Join(macHome, "config.toml"), []byte(config), 0o600); err != nil {
@@ -453,7 +442,7 @@ func desktopHerWorld(t *testing.T) desktopFixture {
 		t.Fatal(err)
 	}
 	// Nor a key from this computer: work-mac's her has none of the provider
-	// keys, or the model, this process or the login shell (which hermeshd
+	// keys, or the model, this process or the login shell (which aided
 	// reads for her) may have.
 	workEnv := herEnv(her, console, workHome, mock.base)
 	for _, kv := range shellenv.Environ() {
@@ -462,7 +451,7 @@ func desktopHerWorld(t *testing.T) desktopFixture {
 		}
 	}
 	// Scripted coding agents on this Mac, for the sessions Her starts (docs/her-team.md §14.3).
-	w := newOwnerMac(t, append(herEnv(her, console, macHome, mock.base), "HERMESH_FAKE_PROVIDERS=1"), &localv1.GrantSpec{})
+	w := newOwnerMac(t, append(herEnv(her, console, macHome, mock.base), "AIDE_FAKE_PROVIDERS=1"), &localv1.GrantSpec{})
 	t.Cleanup(w.owner.stop) // stopped as a service is, so that it stops her
 	home, err := w.app.client.GetStatus(context.Background(), &localv1.GetStatusRequest{})
 	if err != nil {
@@ -471,13 +460,13 @@ func desktopHerWorld(t *testing.T) desktopFixture {
 	work, _ := w.otherMac("work-mac", workEnv)
 	daemon := w.logs[len(w.logs)-1] // the one otherMac started
 	t.Cleanup(daemon.stop)
-	w.joinTyped(work, home, "work-mac")
-	return desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv, OtherMac: daemon.cmd.Process.Pid, Connector: connector, HerHome: macHome, owner: w}
+	w.logInMachineOnly(work, home, "work-mac")
+	return desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv, OtherMac: daemon.cmd.Process.Pid, Connector: connector, HerHome: macHome, owner: w}
 }
 
 // desktopWorld is an owner Mac with a session in every state the app
 // shows, and (fresh) owner daemons nobody has set up yet for the first run.
-// limited: its hermeshd may start only 80 more processes than the user runs
+// limited: its aided may start only 80 more processes than the user runs
 // (health.spec.ts takes them). wake: its relay runs the MCP gateway, which
 // keeps agents' doorbells, and may call webhooks on this computer
 // (settings.spec.ts sets one up).
@@ -488,23 +477,23 @@ func desktopWorld(t *testing.T, fresh, limited, wake bool, more ...string) deskt
 	codex := filepath.Join(t.TempDir(), "codex")
 	os.WriteFile(codex, []byte(fmt.Sprintf("#!/bin/sh\ncase \"$1\" in --version) echo \"codex-cli 0.48.0\";; login) echo \"Not logged in\"; exit 1;; app-server) exec %q;; esac\n",
 		filepath.Join(binaries(t), "fakecodex"))), 0o755)
-	env := append([]string{"HERMESH_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp"), "FAKE_ACP_MODELS=gemini-3-pro"}, more...)
+	env := append([]string{"AIDE_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp"), "FAKE_ACP_MODELS=gemini-3-pro"}, more...)
 	github := t.TempDir()
 	env = append(env, githubEnv(github)...)
 	if runtime.GOOS != "windows" { // a shell script
-		env = append(env, "HERMESH_CODEX_BIN="+codex)
+		env = append(env, "AIDE_CODEX_BIN="+codex)
 	}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"gemini"}}, "--retry-delay", "0") // its rate limit fails at once
 	if wake {
 		w.relay.stop()
 		w.relayArgs = append(w.relayArgs, "--mcp")
-		w.relayEnv = []string{"HERMESH_MCP_LOCAL_WEBHOOKS=1"}
+		w.relayEnv = []string{"AIDE_MCP_LOCAL_WEBHOOKS=1"}
 		w.startRelay()
 		eventually(t, 30*time.Second, "the machine back online", func() bool {
 			return !strings.Contains(w.cli(30*time.Second, "project", "list").stdout, "offline")
 		})
 	}
-	f := desktopFixture{Socket: w.sock, Sessions: desktopSessions(t, w), CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv, GitHub: github, owner: w}
+	f := desktopFixture{Socket: w.sock, Sessions: desktopSessions(t, w), CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv, GitHub: github, owner: w}
 	if limited {
 		w.nproc = userProcesses(t) + 80
 		w.restartOwner(false)
@@ -525,9 +514,9 @@ func otherMacSession(t *testing.T, f desktopFixture) int {
 	if err != nil {
 		t.Fatal(err)
 	}
-	work, _ := w.otherMac("work-mac", []string{"HERMESH_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")})
+	work, _ := w.otherMac("work-mac", []string{"AIDE_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")})
 	daemon := w.logs[len(w.logs)-1] // the one otherMac started
-	st := w.joinTyped(work, home, "work-mac")
+	st := w.logInMachineOnly(work, home, "work-mac")
 	if _, err := work.AddProject(ctx, &localv1.AddProjectRequest{MachineId: st.LocalMachineId, ProjectId: "billing", Path: gitRepo(t, map[string]string{"README.md": "# billing\n"})}); err != nil {
 		t.Fatal(err)
 	}
@@ -636,13 +625,13 @@ func desktopSessions(t *testing.T, w *ownerMac) map[string]string {
 func newFreshOwner(t *testing.T, w *ownerMac, name string, gated, bare bool) freshOwner {
 	t.Helper()
 	tmp := t.TempDir()
-	relayBin := filepath.Join(w.bin, "hermesh-relay")
+	relayBin := filepath.Join(w.bin, "aide-relay")
 	port := freePort(t)
 	relayData := filepath.Join(tmp, "relay")
 	relay := start(t, name+" relay", nil, relayBin, "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	w.logs = append(w.logs, relay)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "claim-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, relayBin, "setup-code", "--data-dir", relayData).stdout)
 
 	stub := func(file, script string) string {
 		p := filepath.Join(tmp, file)
@@ -664,21 +653,20 @@ func newFreshOwner(t *testing.T, w *ownerMac, name string, gated, bare bool) fre
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
-	env := []string{"HERMESH_CLAUDE_BIN=" + claude, "HERMESH_CODEX_BIN=" + codex,
-		"HERMESH_GEMINI_BIN=" + gemini, "FAKE_ACP_STATE=" + filepath.Join(tmp, "fakeacp"),
-		"HERMESH_ANTIGRAVITY_BIN=" + antigravity, "GEMINI_HOME=" + filepath.Join(tmp, "gemini")}
+	env := []string{"AIDE_CLAUDE_BIN=" + claude, "AIDE_CODEX_BIN=" + codex,
+		"AIDE_GEMINI_BIN=" + gemini, "FAKE_ACP_STATE=" + filepath.Join(tmp, "fakeacp"),
+		"AIDE_ANTIGRAVITY_BIN=" + antigravity, "GEMINI_HOME=" + filepath.Join(tmp, "gemini")}
 	if bare {
 		missing := filepath.Join(tmp, "not-installed") // no such file
-		env = []string{"HERMESH_CLAUDE_BIN=" + missing, "HERMESH_CODEX_BIN=" + missing}
+		env = []string{"AIDE_CLAUDE_BIN=" + missing, "AIDE_CODEX_BIN=" + missing}
 		for _, a := range acp.Agents {
-			env = append(env, "HERMESH_"+strings.ToUpper(a.Name)+"_BIN="+missing)
+			env = append(env, "AIDE_"+strings.ToUpper(a.Name)+"_BIN="+missing)
 		}
 	}
-	owner := start(t, name+" owner", env, filepath.Join(w.bin, "hermeshd"),
+	owner := start(t, name+" owner", env, filepath.Join(w.bin, "aided"),
 		"run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
 	w.logs = append(w.logs, owner)
-	root, _ := identity.GenerateKey()
-	newTestApp(t, sock, root)
+	newTestApp(t, sock)
 	return freshOwner{Socket: sock, RelayURL: fmt.Sprintf("http://127.0.0.1:%d", port), ClaimCode: claim, Gate: gate}
 }
 

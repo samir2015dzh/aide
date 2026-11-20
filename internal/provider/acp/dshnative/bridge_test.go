@@ -7,18 +7,18 @@ import (
 	"testing"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
-// A prompt Hermesh sent through the bridge (its rpcId starts "hermesh-")
+// A prompt Aide sent through the bridge (its rpcId starts "aide-")
 // is the owner's; one typed in DSH itself, or another tool's, names no one.
-func TestUserMessageFromHermesh(t *testing.T) {
+func TestUserMessageFromAide(t *testing.T) {
 	home := t.TempDir()
-	viaHermesh := ev("user/message", map[string]any{"id": "m2", "role": "user", "content": text("from Hermesh"),
-		"source": map[string]any{"kind": "user", "rpcId": "hermesh-01abc"}}, "surfaceOp", "append")
+	viaAide := ev("user/message", map[string]any{"id": "m2", "role": "user", "content": text("from Aide"),
+		"source": map[string]any{"kind": "user", "rpcId": "aide-01abc"}}, "surfaceOp", "append")
 	viaOther := ev("user/message", map[string]any{"id": "m3", "role": "user", "content": text("from the web page"),
 		"source": map[string]any{"kind": "user", "rpcId": "web-7"}}, "surfaceOp", "append")
-	writeSession(t, home, map[string]any{"id": "s"}, true, events(0, userMsg("typed in DSH"), viaHermesh, viaOther))
+	writeSession(t, home, map[string]any{"id": "s"}, true, events(0, userMsg("typed in DSH"), viaAide, viaOther))
 	_, evs, err := Read(home, "s")
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestUserMessageFromHermesh(t *testing.T) {
 			got = append(got, m.UserMessage.Text+"|"+m.UserMessage.From)
 		}
 	}
-	want := []string{"typed in DSH|", "from Hermesh|owner", "from the web page|"}
+	want := []string{"typed in DSH|", "from Aide|owner", "from the web page|"}
 	if len(got) != len(want) {
 		t.Fatalf("%v", got)
 	}
@@ -77,10 +77,10 @@ func TestPrepareBridge(t *testing.T) {
 	if st, err := os.Stat(p.Package); err != nil || st.Size() == 0 || !strings.HasSuffix(p.Package, ".tgz") || filepath.Dir(p.Package) != BridgeDir(home) {
 		t.Fatalf("package %s: %v", p.Package, err)
 	}
-	// What DSH reads is as it was (only hermesh-bridge/ is new).
+	// What DSH reads is as it was (only aide-bridge/ is new).
 	after := snapshot(t, home)
 	for k, v := range before {
-		if k != home && after[k] != v { // the home itself gained hermesh-bridge/
+		if k != home && after[k] != v { // the home itself gained aide-bridge/
 			t.Errorf("%s changed", k)
 		}
 	}

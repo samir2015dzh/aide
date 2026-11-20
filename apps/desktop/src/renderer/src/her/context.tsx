@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
-import type { BotSummary, Methods } from "@hermesh/her-protocol";
-import type { Machine } from "@hermesh/proto/local";
+import type { BotSummary, Methods } from "@aide/her-protocol";
+import type { Machine } from "@aide/proto/local";
 import type { Environment } from "./connection";
 
 // What every part of the Her page shares: the environment shown, its
@@ -30,7 +30,7 @@ export type Panel =
   | { kind: "storage" };
 
 /** A sheet over the page: another environment, or full access for Her (signed). */
-export type HerSheet = null | { kind: "add" } | { kind: "access"; bot: BotSummary };
+export type HerSheet = null | { kind: "add" };
 
 export type Her = {
   /** The environment shown: a machine Her is on for. */

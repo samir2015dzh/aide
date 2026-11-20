@@ -27,7 +27,6 @@ use her_llm::api::scripted::Script;
 use her_llm::api::scripted::ScriptedApi;
 use her_protocol::EventMsg;
 use her_protocol::Op;
-use her_protocol::PermissionMode;
 use her_tools::BashTool;
 use her_tools::LocalEnvironment;
 use her_tools::builtin_registry;
@@ -86,12 +85,9 @@ impl Harness {
             session: SessionRef::Id(id),
             model: None,
             thinking: None,
-            permission_mode: None,
             home: self.home.clone(),
             config: Arc::new(Config::default()),
             project_root: None,
-            trusted: false,
-            interactive_approvals: true,
             bot_name: None,
         };
         self.kernel = Kernel::resume(options, deps(&self.api, &self.folder, &self.home)).await.unwrap();
@@ -143,7 +139,7 @@ fn deps(api: &Arc<ScriptedApi>, work: &Path, home: &HerHome) -> KernelDeps {
 
 /// A bot whose `MEMORY.md` holds `memory` before its conversation starts; `None` leaves it
 /// without the file and without the folder.
-async fn bot_with(mode: PermissionMode, memory: Option<&str>, scripts: Vec<Script>) -> Harness {
+async fn bot_with(memory: Option<&str>, scripts: Vec<Script>) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let home = HerHome::new(dunce::canonicalize(dir.path()).unwrap().join("home"));
     home.ensure().unwrap();
@@ -161,13 +157,10 @@ async fn bot_with(mode: PermissionMode, memory: Option<&str>, scripts: Vec<Scrip
     let options = StartOptions {
         model: "test/scripted".into(),
         thinking: ThinkingLevel::Off,
-        permission_mode: mode,
         cwd: folder.clone(),
         home: home.clone(),
         config: Arc::new(Config::default()),
         project_root: None,
-        trusted: false,
-        interactive_approvals: true,
         bot: Some(BotIdentity {
             id: "b1".into(),
             name: "研究员".into(),
@@ -178,7 +171,7 @@ async fn bot_with(mode: PermissionMode, memory: Option<&str>, scripts: Vec<Scrip
 }
 
 async fn bot(memory: Option<&str>, scripts: Vec<Script>) -> Harness {
-    bot_with(PermissionMode::BypassPermissions, memory, scripts).await
+    bot_with(memory, scripts).await
 }
 
 fn send_last(id: &str, text: &str) -> Script {
@@ -364,7 +357,7 @@ async fn a_long_file_is_cut_at_a_line_and_says_so() {
 /// change asks (§6).
 #[tokio::test]
 async fn the_bot_writes_its_memory_without_asking() {
-    let mut h = bot_with(PermissionMode::Manual, None, vec![]).await;
+    let mut h = bot_with(None, vec![]).await;
     let file = h.memory_file();
     h.api.push(Script::tool_call("c1", "write", json!({ "path": file, "content": "- 回复一律用中文。(2026-11-11)\n" })));
     h.api.push(send_last("c2", "记下了。"));

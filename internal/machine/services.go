@@ -14,10 +14,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 type sessionService struct{ n *Machine }
@@ -349,7 +349,7 @@ func (n *Machine) applyAdmin(ctx context.Context, cmd *identityv1.AdminCommand, 
 
 func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (string, error) {
 	switch cmd.Command.(type) {
-	case *identityv1.AdminCommand_SetHer, *identityv1.AdminCommand_SetHerAssistantMode, *identityv1.AdminCommand_SetHerCommandConnector:
+	case *identityv1.AdminCommand_SetHer, *identityv1.AdminCommand_SetHerCommandConnector:
 		if n.cfg.TestBeforeHer {
 			return "", connect.NewError(connect.CodeInvalidArgument, errors.New("unknown admin command")) // as 0.1.4 answered
 		}
@@ -420,7 +420,7 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		return "paused=" + v, nil
 	case *identityv1.AdminCommand_SetHer:
 		return n.setHer(c.SetHer.Enabled, c.SetHer.Erase)
-	case *identityv1.AdminCommand_SetHerAssistantMode, *identityv1.AdminCommand_SetHerCommandConnector:
+	case *identityv1.AdminCommand_SetHerCommandConnector:
 		return n.execHer(ctx, cmd)
 	}
 	return "", errUnknownAdmin

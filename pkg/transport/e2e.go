@@ -10,13 +10,13 @@ import (
 	"net"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // E2E TLS between a client (agent or owner device) and a machine, inside a
 // relay tunnel. Both sides present ephemeral self-signed certificates that
-// embed their Hermesh credentials; trust comes only from the owner anchor.
+// embed their Aide credentials; trust comes only from the owner anchor.
 
 // CredentialsFunc returns the credentials to present (they may change when
 // a grant is renewed).

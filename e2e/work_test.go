@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
 )
 
 // TestWorkOnIPhone (docs/work-stats.md): the Mac's machine counts its
@@ -23,7 +22,7 @@ func TestWorkOnIPhone(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	for i := range 3 {
 		if s, r := w.startSession(time.Minute, "--project", "demo", "--prompt", fmt.Sprintf("say %d", i), "--wait"); s.Status != "idle" {
 			t.Fatalf("session: %+v", r)
@@ -58,8 +57,7 @@ func TestWorkOnIPhone(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	root, _ := identity.GenerateKey()
-	m := joinMobile(t, w, st.RelayUrl, dir, root)
+	m := joinMobile(t, w, st.RelayUrl, dir)
 	front, leave := context.WithCancel(ctx)
 	scr := watchScreenOf(front, t, m.client)
 	var res *localv1.QueryWorkResponse

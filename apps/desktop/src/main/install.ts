@@ -3,7 +3,7 @@ import { i18n } from "../shared/i18n";
 
 // The installed app runs from the Applications folder (docs/desktop-app.md
 // §6.7). Opened anywhere else (the disk image, Downloads, where App
-// Translocation runs it from a read-only copy), it registers hermeshd's
+// Translocation runs it from a read-only copy), it registers aided's
 // LaunchAgent at a path that goes away and Squirrel cannot update it. So
 // before anything else it asks to move there: Electron copies the bundle
 // (asking for an administrator's password when the folder needs one),

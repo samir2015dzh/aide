@@ -55,7 +55,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   let { app, page } = await launch(fixture.socket, { profile });
   const posted = () =>
-    app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
+    app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
   const log = page.getByRole("log", { name: "对话" });
   const composer = page.getByRole("textbox", { name: "消息" });
   const send = async (text: string) => {
@@ -83,7 +83,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   const choices = page.getByRole("list", { name: "选择 Her 在哪里运行" });
   await expect(choices.getByRole("listitem").filter({ hasText: "work-mac" }).getByRole("button", { name: "开启 Her" })).toBeVisible({ timeout: 60_000 });
   await snap(page, "her-first-run");
-  // This Mac: the test's signer signs SetHer, as Touch ID would. Her runs there with the mock's model, and greets.
+  // This Mac: the server signs SetHer for this device, nothing to confirm. Her runs there with the mock's model, and greets.
   await choices.getByRole("listitem").filter({ hasText: "这台 Mac" }).getByRole("button", { name: "开启 Her" }).click();
   await expect(page.getByText(/^你好，我是 .+，在 .+ 上为你做事/)).toBeVisible({ timeout: 120_000 });
   // The page is the conversation with Her alone: its name at the top, no list of assistants, no environments in
@@ -105,7 +105,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // Her's page, beside the conversation, as on the iPhone (docs/her-panel-demo.html): the avatar opens it (no
   // button of its own in the bar, nor Progress, Files or Scheduled Tasks there); the capsule under it is the team's
   // name tag, which opens the team panel (docs/her-team.md §14.3). Both with the hand. Three tabs, Work first: a new
-  // assistant remembers nothing yet, has no connectors, and asks before risky steps.
+  // assistant remembers nothing yet, has no connectors, and runs every step without asking (docs/her-server.md §0).
   const avatar = page.getByRole("button", { name: "助手设置", exact: true });
   const tag = page.getByRole("button", { name: "团队：现在在做什么" });
   await expect(avatar.locator(".bav.cat-av")).toBeVisible();
@@ -127,7 +127,9 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   for (const id of ["her-skills", "her-search", "her-browser"]) await expect(settings.getByTestId(id)).toBeVisible();
   await snap(page, "her-page-abilities");
   await settings.getByRole("tab", { name: "设置" }).click();
-  await expect(settings).toContainText("询问权限");
+  // No permission mode to choose (the owner's ruling, 2026-11-20): a note says she acts without asking.
+  await expect(settings).toContainText("Her 直接执行，不会停下来请你批准。");
+  await expect(settings).not.toContainText("权限模式");
   await expect(settings.getByTestId("her-environment")).toContainText("环境");
   await snap(page, "her-page-settings");
   await avatar.click();
@@ -148,7 +150,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // The owner's bubble is a session page's: a quiet grey with the page's own words, as Grok's (the owner's ruling, 2026-11-19).
   await expect(log.locator(".um .bub").first()).toHaveCSS("background-color", "rgb(240, 240, 241)");
   await expect(log.locator(".um .bub").first()).toHaveCSS("color", "rgba(0, 0, 0, 0.9)");
-  // A message leaves the composer at once and shows once (docs/her-sending.md): it goes by its id through hermeshd,
+  // A message leaves the composer at once and shows once (docs/her-sending.md): it goes by its id through aided,
   // on this conversation's connection, and stays where it is from being sent to her having it.
   await send(mockSend("只收到一次"));
   await expect(composer).toHaveValue("", { timeout: 1_000 });
@@ -162,15 +164,16 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await expect(composer).toHaveValue("", { timeout: 1_000 });
   await expect(log.locator("[data-testid=her-sending]")).toHaveCount(0, { timeout: 30_000 });
 
+  // Her asks the owner for nothing before she acts (docs/her-server.md §0): no approval card shows, here or later.
+  const asked = page.getByRole("region", { name: "等你批准" });
+
   // A step that needs the owner's own Chrome, whose extension is not connected: it waits, and a card above the
   // composer says so. Connecting opens the console at its guide; going on without it this time lets the step go on.
+  // The site is not asked about first, though the owner's browser has their real sign-ins: it simply opens.
   await send("[[mock:yours:https://example.com/]] hi");
-  // The site asks first in the owner's own browser, whatever the mode: their sign-ins are real.
-  const asked = page.getByRole("region", { name: "等你批准" });
-  await expect(asked).toContainText("example.com", { timeout: 60_000 });
-  await asked.getByRole("button", { name: /^允许一次/ }).click();
   const chrome = page.getByRole("region", { name: "连接你的 Chrome？" });
   await expect(chrome).toBeVisible({ timeout: 60_000 });
+  await expect(asked).toHaveCount(0);
   await snap(page, "her-chrome-wait");
   const guide = app.waitForEvent("window");
   await chrome.getByRole("button", { name: "连接 Chrome…" }).click();
@@ -180,15 +183,12 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await chrome.getByRole("button", { name: "这次用内置浏览器" }).click();
   await expect(chrome).toBeHidden({ timeout: 30_000 });
 
-  // Her starts a coding session on this Mac, asked first (docs/her-team.md §14.3): a card where she started it,
-  // kept current, which the team panel lists once it is done, and which opens the session.
+  // Her starts a coding session on this Mac at once, without asking (docs/her-team.md §14.3): a card where she
+  // started it, kept current, which the team panel lists once it is done, and which opens the session.
   await send(`[[mock:mesh:session_start:${JSON.stringify({ project: "owner-mac/demo", prompt: "say 做完了", title: "Her 派的活" })}]] 开工`);
-  // Asked first, in words that name the agent and the project.
-  const approval = page.getByRole("region", { name: "等你批准" });
-  await expect(approval).toContainText("owner-mac/demo", { timeout: 60_000 });
-  await approval.getByRole("button", { name: /^允许/ }).click();
   const sessionCard = log.getByRole("button", { name: "Her 派的活" });
   await expect(sessionCard).toBeVisible({ timeout: 60_000 });
+  await expect(asked).toHaveCount(0);
   await expect(sessionCard).toContainText("Claude · owner-mac");
   await expect(sessionCard).toContainText("完成", { timeout: 60_000 });
   await snap(page, "her-session-card");
@@ -201,7 +201,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await navTo(page, /^Her/);
   await expect(sessionCard).toBeVisible();
 
-  // Her notes a rule (her-mock's remember), with no approval asked; her settings show it on the memory page,
+  // Her notes a rule (her-mock's remember), as she does everything, without asking; her settings show it on the memory page,
   // as written (a list, Markdown), and clear it there, after asking.
   await send("[[mock:remember:- 回复一律用中文。(2026-11-11)]] 以后都用中文");
   await expect(log).toContainText("记下了。", { timeout: 60_000 });
@@ -225,13 +225,12 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await settings.getByRole("button", { name: "关闭" }).click();
   await expect(settings).toBeHidden();
 
-  // A scheduled task Her makes (her-mock's routine): its message names it and opens its run. Once the task is
-  // deleted, as one that has done its job often is, the message still opens the run, the task marked as deleted.
+  // A scheduled task Her makes (her-mock's routine), made at once, without asking: its message names it and opens
+  // its run. Once the task is deleted, as one that has done its job often is, the message still opens the run, the
+  // task marked as deleted.
   await send("[[mock:routine:拉伸|in 2s|say:该起来活动一下了。]] hi");
-  // Asked first, as Her's settings ask before risky steps.
-  await expect(approval).toContainText("拉伸", { timeout: 60_000 });
-  await approval.getByRole("button", { name: /^允许/ }).click();
   await expect(log.getByRole("button", { name: /已创建定时任务「拉伸」/ })).toBeVisible({ timeout: 60_000 });
+  await expect(asked).toHaveCount(0);
   const reminder = log.locator(".bm").filter({ hasText: "该起来活动一下了。" });
   await expect(reminder).toBeVisible({ timeout: 60_000 });
   const fromTask = reminder.getByRole("button", { name: "来自定时任务「拉伸」" });
@@ -310,7 +309,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // with OAuth. Under Her's words, the card says it is an MCP connection, what Her wants to connect to, its address
   // large, what that lets Her do and to connect only what one trusts; nothing changes until the owner answers, and
   // the composer stays open meanwhile. Authorizing adds it, and its sign-in
-  // opens in the browser (here, the stand-in records it), coming back to this Mac's hermeshd, and opens again when
+  // opens in the browser (here, the stand-in records it), coming back to this Mac's aided, and opens again when
   // asked. The service approves at once: the card folds into one line with the connector's tools.
   await app.evaluate(({ shell }) => {
     const pages: string[] = [];
@@ -363,16 +362,16 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await page.getByRole("button", { name: "助手设置", exact: true }).click();
   await expect(settings).toBeHidden();
 
-  // The console, from ⋯: a window of its own at this Mac's hermeshd, which is none of the app's pages.
+  // The console, from ⋯: a window of its own at this Mac's aided, which is none of the app's pages.
   const opened = app.waitForEvent("window");
   await page.getByRole("button", { name: "更多", exact: true }).click();
   await page.getByRole("menuitem", { name: /^管理「.+」…$/ }).click();
   const consolePage = await opened;
   await consolePage.waitForLoadState("domcontentloaded");
   expect(consolePage.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/her\//);
-  // The test's console page, or the real one (HERMESH_HER_CONSOLE): served, whichever it is.
+  // The test's console page, or the real one (AIDE_HER_CONSOLE): served, whichever it is.
   expect(await consolePage.evaluate(async () => (await fetch(location.href)).status)).toBe(200);
-  expect(await consolePage.evaluate(() => typeof (window as { hermesh?: unknown }).hermesh)).toBe("undefined");
+  expect(await consolePage.evaluate(() => typeof (window as { aide?: unknown }).aide)).toBe("undefined");
   await consolePage.close();
 
   // Keep the first reply outside the final virtual window when this conversation opens again.
@@ -402,7 +401,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await snap(page, "her-onboarding");
 
   // ChatGPT: her's sign-in page opens in the browser (here, the stand-in records it), coming back to this
-  // Mac's hermeshd, and opens again when asked. Another way stops it, and Her offers the ways again.
+  // Mac's aided, and opens again when asked. Another way stops it, and Her offers the ways again.
   await app.evaluate(({ shell }) => {
     const opened: string[] = [];
     Object.assign(globalThis, { opened });
@@ -513,7 +512,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await waiting.getByRole("button", { name: "丢弃" }).click();
   await expect(waiting).toBeHidden();
 
-  // The app restarts while work-mac is away: what was said there still shows, as this Mac's hermeshd
+  // The app restarts while work-mac is away: what was said there still shows, as this Mac's aided
   // keeps it, under the same line.
   await app.close();
   ({ app, page } = await launch(fixture.socket, { profile }));
@@ -548,7 +547,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await expect(page.getByText(/^work-mac 离线 · .+在线$/)).toBeVisible({ timeout: 30_000 });
   expect(await environmentNames(page)).toEqual([]);
 
-  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("machines"))]);
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("machines"))]);
   await win.waitForLoadState();
   const machines = win.getByRole("main", { name: "机器" });
   await machines.getByRole("list", { name: "机器" }).getByRole("button").filter({ hasNotText: "work-mac" }).first().click();

@@ -29,7 +29,7 @@ function selection(): string {
 /** A menu with Copy first when text is selected; resolves to what was picked ("copySel" is handled here). */
 async function popup(st: Store, items: MenuItem[]): Promise<string | null> {
   const sel = selection();
-  const id = await window.hermesh?.popupMenu(sel ? [{ id: "copySel", label: t("content.copy") }, ...(items.length ? [{ separator: true } as const] : []), ...items] : items);
+  const id = await window.aide?.popupMenu(sel ? [{ id: "copySel", label: t("content.copy") }, ...(items.length ? [{ separator: true } as const] : []), ...items] : items);
   if (id === "copySel") copy(st, sel, t("content.copied"));
   return id ?? null;
 }

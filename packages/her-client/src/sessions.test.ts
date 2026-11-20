@@ -11,7 +11,7 @@ function session(id: string, o: Partial<ListSession> = {}): ListSession {
 
 const list: ListSession[] = [
   session("idle-old", { updated_at: at(10) }),
-  session("asks", { state: "awaiting_approval", updated_at: at(0, 9) }),
+  session("asks", { state: "failed", updated_at: at(0, 9) }),
   session("runs", { state: "running", updated_at: at(0, 14) }),
   session("failed", { state: "failed", updated_at: at(1) }),
   session("idle-new", { updated_at: at(0, 13), cwd: "/w/web" }),

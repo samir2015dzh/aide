@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/brandenv"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -24,12 +24,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/claude"
-	"github.com/hermeshai/hermesh/internal/shellenv"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/shellenv"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 type Limits struct {
@@ -74,6 +74,8 @@ type Principal struct {
 	Kind     PrincipalKind
 	ClientID string
 	Grant    *identityv1.Grant
+	// An owner device's device key id, over a tunnel (signing it out ends it).
+	DeviceKey string
 }
 
 func (p *Principal) ID() string {
@@ -191,7 +193,7 @@ type live struct {
 	asker string
 	asked []message
 	// askerConv is the conversation of the turn's asker, where its news
-	// goes (known since this hermeshd started; the creator's is the row's).
+	// goes (known since this aided started; the creator's is the row's).
 	askerConv string
 	// followUps are messages sent while the turn could not take them
 	// (starting, finishing, or an agent without mid-turn input); they
@@ -235,7 +237,7 @@ type live struct {
 }
 
 // continuityNotice tells an agent starting a fresh provider session in an
-// existing Hermesh session that the earlier conversation is gone.
+// existing Aide session that the earlier conversation is gone.
 func continuityNotice(reason string, inPlace bool) string {
 	if reason == "" {
 		reason = "the agent's session ended"
@@ -310,9 +312,9 @@ func (s *Sessions) Recover() error {
 		if r.Status != sessionv1.SessionStatus_SESSION_STATUS_IDLE && r.Status != sessionv1.SessionStatus_SESSION_STATUS_CRASHED {
 			r.Progress.PendingQuestion = nil // it went with the agent process
 			if turnActive(r.Status) || r.Status == sessionv1.SessionStatus_SESSION_STATUS_PREPARING {
-				r.Progress.LastFailure = (&provider.Failure{Kind: sessionv1.FailureKind_FAILURE_KIND_AGENT_CRASHED, Message: "hermeshd restarted during the turn"}).Proto()
+				r.Progress.LastFailure = (&provider.Failure{Kind: sessionv1.FailureKind_FAILURE_KIND_AGENT_CRASHED, Message: "aided restarted during the turn"}).Proto()
 			}
-			s.setStatus(l, sessionv1.SessionStatus_SESSION_STATUS_CRASHED, "hermeshd restarted")
+			s.setStatus(l, sessionv1.SessionStatus_SESSION_STATUS_CRASHED, "aided restarted")
 		}
 		if len(l.asked) > 0 { // messages that waited for a turn of their own
 			go s.startAsked(l)
@@ -2523,30 +2525,30 @@ func (s *Sessions) attachmentsDir(id string) string {
 }
 
 var (
-	mQueueWait       = metrics.Default.Histogram("hermesh_machine_queue_wait_seconds")
-	mWorktree        = metrics.Default.Histogram("hermesh_machine_worktree_create_seconds")
-	mProviderStart   = metrics.Default.Histogram("hermesh_machine_provider_start_seconds")
-	mFirstEvent      = metrics.Default.Histogram("hermesh_machine_first_event_seconds")
-	mTurn            = metrics.Default.Histogram("hermesh_machine_turn_seconds")
-	mSnapshot        = metrics.Default.Histogram("hermesh_machine_snapshot_seconds")
-	mSnapshotSkipped = metrics.Default.Counter("hermesh_machine_snapshot_skipped_total")
-	mEvents          = metrics.Default.Counter("hermesh_machine_events_total")
-	mProcs           = metrics.Default.Gauge("hermesh_machine_provider_processes")
-	mStartCommit     = metrics.Default.Histogram("hermesh_machine_start_commit_seconds")
-	mWatchdog        = metrics.Default.Counter("hermesh_machine_watchdog_stops_total")
+	mQueueWait       = metrics.Default.Histogram("aide_machine_queue_wait_seconds")
+	mWorktree        = metrics.Default.Histogram("aide_machine_worktree_create_seconds")
+	mProviderStart   = metrics.Default.Histogram("aide_machine_provider_start_seconds")
+	mFirstEvent      = metrics.Default.Histogram("aide_machine_first_event_seconds")
+	mTurn            = metrics.Default.Histogram("aide_machine_turn_seconds")
+	mSnapshot        = metrics.Default.Histogram("aide_machine_snapshot_seconds")
+	mSnapshotSkipped = metrics.Default.Counter("aide_machine_snapshot_skipped_total")
+	mEvents          = metrics.Default.Counter("aide_machine_events_total")
+	mProcs           = metrics.Default.Gauge("aide_machine_provider_processes")
+	mStartCommit     = metrics.Default.Histogram("aide_machine_start_commit_seconds")
+	mWatchdog        = metrics.Default.Counter("aide_machine_watchdog_stops_total")
 )
 
-var mArchived = metrics.Default.Counter("hermesh_machine_sessions_archived_total")
+var mArchived = metrics.Default.Counter("aide_machine_sessions_archived_total")
 
 // countResume counts resume attempts by outcome.
 func countResume(agent, outcome string) {
-	metrics.Default.Counter(`hermesh_machine_resume_total{agent="` + agent + `",outcome="` + outcome + `"}`).Inc()
+	metrics.Default.Counter(`aide_machine_resume_total{agent="` + agent + `",outcome="` + outcome + `"}`).Inc()
 }
 
 // countFailure counts a turn or session failure by agent and kind.
 func countFailure(agent string, k sessionv1.FailureKind) {
 	kind := strings.ToLower(strings.TrimPrefix(k.String(), "FAILURE_KIND_"))
-	metrics.Default.Counter(`hermesh_machine_turn_failures_total{agent="` + agent + `",kind="` + kind + `"}`).Inc()
+	metrics.Default.Counter(`aide_machine_turn_failures_total{agent="` + agent + `",kind="` + kind + `"}`).Inc()
 }
 
 // registerMetrics exposes live session counts per status.
@@ -2556,6 +2558,6 @@ func (s *Sessions) registerMetrics() {
 		if v == 0 || isTerminal(st) {
 			continue
 		}
-		metrics.Default.GaugeFunc(`hermesh_machine_sessions{status="`+phaseOf(st)+`"}`, func() int64 { return s.counts[v].Load() })
+		metrics.Default.GaugeFunc(`aide_machine_sessions{status="`+phaseOf(st)+`"}`, func() int64 { return s.counts[v].Load() })
 	}
 }

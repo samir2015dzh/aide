@@ -1,4 +1,4 @@
-# Hermesh desktop: smoothness, metrics and results
+# Aide desktop: smoothness, metrics and results
 
 Goal: the main window (the overview and the session page) should feel as
 smooth as the machine allows: open fast, answer every click in a frame or
@@ -12,7 +12,7 @@ Test machine: Apple Silicon MacBook Pro, 120 Hz display, macOS 27, Electron 44.
 
 ## 1. The benchmark
 
-`pnpm --filter @hermesh/desktop perf` builds the app and runs
+`pnpm --filter @aide/desktop perf` builds the app and runs
 `apps/desktop/perf/bench.spec.ts`. Results go to `apps/desktop/perf/results/<PERF_LABEL>.json`
 and to the console; `node apps/desktop/perf/compare.mjs a b` or
 `base=a1,a2,a3 new=b1,b2,b3` (medians) puts runs side by side.
@@ -23,9 +23,9 @@ and to the console; `node apps/desktop/perf/compare.mjs a b` or
   conversations of 40 turns and about 2,700 events each (one finished, one
   running). Everything is generated from a fixed seed: every run sees the
   same world.
-- **A stand-in for hermeshd** (`perf/daemon.ts`) serves that world on a Unix
+- **A stand-in for aided** (`perf/daemon.ts`) serves that world on a Unix
   socket with the calls the main window makes. While "live" it changes the
-  world as busy machines do: a running session every 100 ms (hermeshd pushes
+  world as busy machines do: a running session every 100 ms (aided pushes
   at most that often per machine) and an event every 250 ms on the running
   long conversation.
 - **The floor** (`perf/floor/`): Electron opening a window of the same kind
@@ -192,12 +192,12 @@ page changes nothing but its clocks. Both tests fail on the code before.
   apart from the clocks. Fewer moving things is the only way lower.
 - **Opening the long conversation** is dominated by streaming its 258 KB of
   events (the stand-in daemon, written in JS, is slower at this than
-  hermeshd); only a window of its rows is laid out (§7).
+  aided); only a window of its rows is laid out (§7).
 - **Memory**: the renderer's footprint is mostly allocator and V8 regions
   around a 9 MB heap; nothing grows with use. Going lower would mean V8 flags
   that trade CPU for memory.
 - **Startup**: the renderer's part is script evaluation, the first renders
-  and one round of requests to hermeshd; the rest is Electron itself
+  and one round of requests to aided; the rest is Electron itself
   (`floor.start.ms`). The largest single item is the first synchronous
   `localStorage` read (first-run progress, the info panel's visibility),
   10–55 ms depending on the disk: the renderer waits while the storage

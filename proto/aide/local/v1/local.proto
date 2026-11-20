@@ -1,0 +1,1329 @@
+syntax = "proto3";
+
+package aide.local.v1;
+
+import "google/protobuf/timestamp.proto";
+import "aide/her/v1/her.proto";
+import "aide/identity/v1/identity.proto";
+import "aide/machine/v1/machine.proto";
+import "aide/session/v1/session.proto";
+
+// LocalService is served by the aided bundled with the app over a local
+// socket. It is the only API the app uses. Anything that adds permissions
+// is signed by the server, for this device, which logged in with the
+// account and password (docs/accounts.md).
+service LocalService {
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  // Watch sends what this device knows of the owner's world (aided's
+  // replica, docs/state-sync.md), then each change, until the caller
+  // leaves: the screens follow it instead of polling the List calls, which
+  // answer from the same replica. A watcher that falls behind is ended
+  // (RESOURCE_EXHAUSTED) and should watch again.
+  rpc Watch(WatchRequest) returns (stream WatchResponse);
+
+  // Accounts (docs/trusted-devices.md 4.8): a device keeps a profile for
+  // each owner it set up or joined, each with its own root key, and uses one
+  // at a time, the current one, which every other call acts on.
+  rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
+  // Makes another profile current: the current one disconnects and its
+  // machine stops; the other connects, unless it is signed out.
+  rpc SwitchProfile(SwitchProfileRequest) returns (SwitchProfileResponse);
+  // Makes an empty profile current, to set up or join another owner.
+  rpc AddProfile(AddProfileRequest) returns (AddProfileResponse);
+  // Signs the current profile out: it disconnects and its machine stops,
+  // but it keeps its keys, so signing in again needs no other device.
+  rpc SignOut(SignOutRequest) returns (SignOutResponse);
+  // Signs the current profile in again: on a hosted center with a link
+  // code from a browser sign-in to the account that owns it.
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+
+  // Onboarding (docs/accounts.md): a new server is set up with the setup
+  // code it printed and the account and password it will keep; any other
+  // device logs in with the server, the account and the password. Either
+  // way the server signs this device in itself: no other device approves,
+  // no codes are compared.
+  rpc Setup(SetupRequest) returns (SetupResponse);
+  rpc LogIn(LogInRequest) returns (LogInResponse);
+  // The account: its name; changing it or the password needs the current
+  // password, and a new password signs out every other device and agent
+  // that logged in.
+  rpc GetLogin(GetLoginRequest) returns (GetLoginResponse);
+  rpc SetLogin(SetLoginRequest) returns (SetLoginResponse);
+
+  // The owner's devices.
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  // Signs another device out: it can no longer connect, and its own machine
+  // is removed.
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
+  // Forgets the owner on this device, after it was removed, so it can log
+  // in again: its own machine keeps its projects.
+  rpc Leave(LeaveRequest) returns (LeaveResponse);
+  // Erases Aide on every device of the owner (docs/erase-everything.md):
+  // the server signs the order and keeps it. This device keeps
+  // running until FinishErase, to show the others acking.
+  rpc EraseEverything(EraseEverythingRequest) returns (EraseEverythingResponse);
+  // How an erase stands: each device, machine and agent, and whether it
+  // acked. Without an erase id: what erasing everything would reach now.
+  rpc EraseStatus(EraseStatusRequest) returns (EraseStatusResponse);
+  // Erases this device too: the app opens on its first run.
+  rpc FinishErase(FinishEraseRequest) returns (FinishEraseResponse);
+
+  // This Mac as an execution machine.
+  rpc SetLocalMachine(SetLocalMachineRequest) returns (SetLocalMachineResponse);
+
+  // Machines.
+  rpc ListMachines(ListMachinesRequest) returns (ListMachinesResponse);
+  rpc RenameMachine(RenameMachineRequest) returns (RenameMachineResponse);
+  rpc SetMachinePaused(SetMachinePausedRequest) returns (SetMachinePausedResponse);
+  // What a coding agent's sessions on a machine run with when the client
+  // starting one names no model (a setting, no Touch ID).
+  rpc SetAgentDefaults(SetAgentDefaultsRequest) returns (SetAgentDefaultsResponse);
+  rpc RemoveMachine(RemoveMachineRequest) returns (RemoveMachineResponse);
+  // Checks this Mac's coding agents again (installed, version, signed in),
+  // in the background: they are only checked when something needs them.
+  rpc CheckAgents(CheckAgentsRequest) returns (CheckAgentsResponse);
+  // A machine's git repositories under its home folder, for Add a Project.
+  rpc ListMachineRepos(ListMachineReposRequest) returns (ListMachineReposResponse);
+  // The folders in one of a machine's folders, for Add a Project.
+  rpc ListMachineFolders(ListMachineFoldersRequest) returns (aide.machine.v1.ListFoldersResponse);
+  // One fixed turn of a coding agent on a machine (Test).
+  rpc TestMachineAgent(TestMachineAgentRequest) returns (aide.machine.v1.TestAgentResponse);
+  // The ops log: the commands agents ran, or were refused, on the
+  // machines (docs/machine-ops.md), newest first, as each machine keeps it.
+  rpc ListExecLog(ListExecLogRequest) returns (ListExecLogResponse);
+  // This Mac's diagnostics as text, for the person to copy and send when
+  // something does not work: versions, health, PATH and each coding agent.
+  // Nothing leaves the Mac unless they do.
+  rpc GetDiagnostics(GetDiagnosticsRequest) returns (GetDiagnosticsResponse);
+
+  // Her (docs/her-server.md). A machine's Her is Machine.her. Each call
+  // goes in process when the machine is this Mac, else through the tunnel.
+  // Turns Her on or off for a machine, erasing her data if asked: signed by
+  // this device's root key.
+  rpc SetHer(SetHerRequest) returns (SetHerResponse);
+  // Adds, changes or removes a connector her starts as a command on a
+  // machine: signed by the root key.
+  rpc SetHerCommandConnector(SetHerCommandConnectorRequest) returns (SetHerCommandConnectorResponse);
+  // Opens a her connection on a machine (aide.her.v1.HerService.Open).
+  rpc HerOpen(HerOpenRequest) returns (stream aide.her.v1.OpenEvent);
+  // One her request on a machine (aide.her.v1.HerService.Call).
+  rpc HerCall(HerCallRequest) returns (aide.her.v1.CallResponse);
+  // A message to an assistant: kept on this device first, then delivered,
+  // now or when the machine is back (docs/her-sending.md §4). An error: it
+  // is not kept and was not taken.
+  rpc HerSend(HerSendRequest) returns (HerSendResponse);
+  // The messages this device keeps for a machine's assistants until it is
+  // back, oldest first.
+  rpc ListHerWaiting(ListHerWaitingRequest) returns (ListHerWaitingResponse);
+  // Drops a message this device keeps, undelivered: one her keeps refusing
+  // then stops holding back that assistant's later ones.
+  rpc DeleteHerWaiting(DeleteHerWaitingRequest) returns (DeleteHerWaitingResponse);
+  // What this device keeps of a machine's Her, to show at once and while
+  // the machine is offline (docs/her-server.md §7): Her and the end of
+  // Her's conversation, as the HerOpen streams that followed them last
+  // carried them here.
+  rpc GetHerConversation(GetHerConversationRequest) returns (GetHerConversationResponse);
+  // A file on this device into an assistant's folder on a machine.
+  rpc HerUpload(HerUploadRequest) returns (HerUploadResponse);
+  // A file from an assistant's folder on a machine into a folder here.
+  rpc HerDownload(HerDownloadRequest) returns (HerDownloadResponse);
+  // The address of a machine's Her console, served by this aided on
+  // 127.0.0.1 with a token in its path.
+  rpc GetHerConsole(GetHerConsoleRequest) returns (GetHerConsoleResponse);
+  // Ends the Computer Control session on this computer's own machine, if
+  // one is under way (docs/computer-control.md §4.3): the Mac's menu bar
+  // names the device in control and offers this.
+  rpc StopScreen(StopScreenRequest) returns (StopScreenResponse);
+
+  // Projects.
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc AddProject(AddProjectRequest) returns (AddProjectResponse);
+  rpc RemoveProject(RemoveProjectRequest) returns (RemoveProjectResponse);
+
+  // Agents.
+  rpc ListClients(ListClientsRequest) returns (ListClientsResponse);
+  rpc UpdateClient(UpdateClientRequest) returns (UpdateClientResponse);
+  // Gives an agent another name: its grant signed again with that alone
+  // changed (Touch ID).
+  rpc RenameClient(RenameClientRequest) returns (RenameClientResponse);
+  rpc RevokeClient(RevokeClientRequest) returns (RevokeClientResponse);
+  // Agents' doorbells (docs/agent-names.md §7): the webhook rung when
+  // messages wait for an agent or a name under it.
+  rpc ListWakes(ListWakesRequest) returns (ListWakesResponse);
+  rpc SetWake(SetWakeRequest) returns (SetWakeResponse);
+  rpc CheckWake(CheckWakeRequest) returns (CheckWakeResponse);
+  rpc ClearWake(ClearWakeRequest) returns (ClearWakeResponse);
+  rpc OpenWakeLink(OpenWakeLinkRequest) returns (OpenWakeLinkResponse);
+
+  // Sessions (read across all reachable machines over E2E).
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  // WatchSessions pushes session changes from every reachable machine as
+  // they happen (aided keeps one SessionService.WatchSessions stream per
+  // online machine while anyone watches). A watcher that falls behind is
+  // ended (RESOURCE_EXHAUSTED) and should watch again.
+  rpc WatchSessions(WatchSessionsRequest) returns (stream WatchSessionsResponse);
+  rpc StreamSessionEvents(StreamSessionEventsRequest) returns (stream aide.session.v1.SessionEvent);
+  // A session's events by seq, as aide.session.v1.SessionService.ListEvents.
+  rpc ListSessionEvents(ListSessionEventsRequest) returns (ListSessionEventsResponse);
+  // A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
+  rpc ReadToolOutput(ReadToolOutputRequest) returns (stream aide.session.v1.ToolOutputChunk);
+  // StartSession starts a session on one of the owner's machines as the
+  // owner (created_by "owner"): any project or GitHub repository and coding
+  // agent there, as aide.session.v1.SessionService.StartSession checks
+  // them (docs/technical-design.md §3.4).
+  rpc StartSession(StartSessionRequest) returns (SessionResponse);
+  // SendMessage sends a message to a session the owner started; a session
+  // an agent started takes messages from that agent only.
+  rpc SendMessage(SendMessageRequest) returns (SessionResponse);
+  rpc InterruptSession(InterruptSessionRequest) returns (SessionResponse);
+  rpc ArchiveSession(ArchiveSessionRequest) returns (SessionResponse);
+  rpc UnarchiveSession(UnarchiveSessionRequest) returns (SessionResponse);
+  // DeleteSession and RenameSession: aide.session.v1.SessionService's.
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+  rpc RenameSession(RenameSessionRequest) returns (SessionResponse);
+  rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
+  rpc GetDiff(GetDiffRequest) returns (aide.session.v1.GetDiffResponse);
+  // aide.session.v1.SessionService.PushSession, as the owner.
+  rpc PushSession(PushSessionRequest) returns (aide.session.v1.PushSessionResponse);
+  // The DeepSeek Harness sessions Aide did not start, on the machines
+  // (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
+  // activity first. Read only.
+  rpc ListDSHSessions(ListDSHSessionsRequest) returns (ListDSHSessionsResponse);
+  // One of them and a page of its conversation
+  // (aide.machine.v1.MachineAdminService.ReadDSHSession).
+  rpc ReadDSHSession(ReadDSHSessionRequest) returns (aide.machine.v1.ReadDSHSessionResponse);
+  // Taking one over (aide.machine.v1.MachineAdminService.SetDSHTakeover,
+  // SendDSHMessage, InterruptDSHSession).
+  rpc SetDSHTakeover(SetDSHTakeoverRequest) returns (aide.machine.v1.SetDSHTakeoverResponse);
+  rpc SendDSHMessage(SendDSHMessageRequest) returns (aide.machine.v1.SendDSHMessageResponse);
+  rpc InterruptDSHSession(InterruptDSHSessionRequest) returns (aide.machine.v1.InterruptDSHSessionResponse);
+  rpc PrepareDSHBridge(PrepareDSHBridgeRequest) returns (aide.machine.v1.PrepareDSHBridgeResponse);
+  // A machine's custom agents (MachineAdminService.ListCustomAgents and
+  // the rest); this device's own machine in process.
+  rpc ListMachineCustomAgents(ListMachineCustomAgentsRequest) returns (aide.machine.v1.ListCustomAgentsResponse);
+  rpc SaveMachineCustomAgent(SaveMachineCustomAgentRequest) returns (aide.machine.v1.SaveCustomAgentResponse);
+  rpc RemoveMachineCustomAgent(RemoveMachineCustomAgentRequest) returns (aide.machine.v1.RemoveCustomAgentResponse);
+  rpc TestMachineCustomAgent(TestMachineCustomAgentRequest) returns (aide.machine.v1.TestCustomAgentResponse);
+  // QueryWork counts the work done over a range, by hour or day, from what
+  // this device holds of every machine's counts: no machine is asked
+  // (docs/work-stats.md §7).
+  rpc QueryWork(QueryWorkRequest) returns (QueryWorkResponse);
+  // Notifications while the app is not running (the iPhone): this device's
+  // push token and notice key, signed with its device key and sent to the
+  // relay, which hands them to the owner's machines.
+  rpc RegisterPush(RegisterPushRequest) returns (RegisterPushResponse);
+}
+
+message WatchRequest {}
+
+message WatchResponse {
+  // Set on the first message, which carries everything (and again when
+  // the profile changed). Replace what you hold, except sessions: merge
+  // those (a later state wins), so older pages already loaded stay.
+  bool reset = 1;
+  // With reset, and when it changed.
+  GetStatusResponse status = 2;
+  // Added or changed, and removed, of each kind.
+  repeated Machine machines = 3;
+  repeated string removed_machine_ids = 4;
+  repeated Client clients = 5;
+  repeated string removed_grant_ids = 6;
+  repeated Device devices = 7;
+  repeated string removed_device_key_ids = 8;
+  repeated Project projects = 9;
+  repeated ProjectRef removed_projects = 10;
+  reserved 11, 12;
+  reserved "pairings", "removed_pairing_codes";
+  // Sessions started or changed, each as it is now; with reset, the first
+  // page of every machine's (each one's newest and every unsettled one),
+  // also of the machines that cannot be reached now, as last known.
+  repeated aide.session.v1.Session sessions = 13;
+  repeated string deleted_session_ids = 14;
+  // With reset: where older sessions start (ListSessions before).
+  aide.session.v1.SessionCursor next = 15;
+  // Moves when this device's counts of work changed: ask QueryWork again.
+  uint64 work_version = 16;
+}
+
+message ListSessionEventsRequest {
+  string session_id = 1;
+  uint64 after_seq = 2;
+  uint64 before_seq = 3;
+  uint32 limit = 4;
+  aide.session.v1.EventView view = 5;
+}
+
+message ListSessionEventsResponse {
+  // Oldest first.
+  repeated aide.session.v1.SessionEvent events = 1;
+  bool has_more_before = 2;
+  bool has_more_after = 3;
+}
+
+message ReadToolOutputRequest {
+  string session_id = 1;
+  string call_id = 2;
+  // The seq of its ToolResult event: a machine too old for ReadToolOutput
+  // gives the output as that event recorded it.
+  uint64 seq = 3;
+}
+
+message ProjectRef {
+  string machine_id = 1;
+  string project_id = 2;
+}
+
+message RegisterPushRequest {
+  // The APNs device token, hex, or the Mi Push regId; empty stops
+  // notifications.
+  string token = 1;
+  // "production" or "development".
+  string environment = 2;
+  // X25519 public key (32 bytes) to seal notices to.
+  bytes notice_public_key = 3;
+  // "question", "failure", "turn_done" (requests to connect always come).
+  repeated string kinds = 4;
+  // "" for APNs, "mipush" for Xiaomi's Mi Push (an Android phone).
+  string service = 5;
+}
+
+message RegisterPushResponse {}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  bool initialized = 1;
+  string owner_id = 2;
+  string relay_url = 3;
+  bool relay_connected = 4;
+  bool local_machine_enabled = 5;
+  string local_machine_id = 6;
+  string local_machine_name = 7;
+  string version = 8;
+  reserved 9;
+  reserved "connect_address";
+  // The relay is a hosted center; its web console at console_url can list
+  // and revoke, while adding machines and agents happens only here.
+  bool hosted = 10;
+  string console_url = 11;
+  // This device's id among the owner's devices (Device.key_id).
+  string device_key_id = 12;
+  // This device is no longer one of the owner's trusted devices: another
+  // removed it, or the owner started over. Leave resets it.
+  // With machine_only: the relay refuses this machine (it was removed).
+  bool removed = 13;
+  // This device joined an owner as a machine only, not a trusted device:
+  // it approves nothing and sees only its own projects and sessions.
+  // initialized stays false; owner_id, relay_url and local_machine_*
+  // describe the machine.
+  bool machine_only = 14;
+  // This profile is signed out (SignOut): set up, but it neither connects
+  // nor signs until SignIn.
+  bool signed_out = 15;
+  // The account this profile belongs to, as the center named it when it
+  // was set up, joined or signed in, or since it last connected (for
+  // display only).
+  string account = 16;
+  // This device erased everything (EraseEverything, or an erase order from
+  // another): what it did, until another setup.
+  Erased erased = 17;
+  // A self-hosted relay's MCP address, with its key, to paste into agent
+  // products ("" when it serves none, and on the official service).
+  string mcp_url = 18;
+  reserved 19;
+  reserved "signer";
+  // The account's picture on the official service (GetAccount), learned
+  // each time this device connects: "" when it has none, and on a server
+  // of one's own.
+  string account_avatar_url = 20;
+  // What this core does that an app must not take for granted of an older
+  // one (docs/version-skew.md §6.1): "her_reply" (docs/her-reply.md).
+  repeated string abilities = 21;
+  // The limits sessions' states are worked out with.
+  StateLimits state_limits = 22;
+}
+
+message ListProfilesRequest {}
+
+message ListProfilesResponse {
+  // Every profile that is set up, and the current one.
+  repeated Profile profiles = 1;
+}
+
+message Profile {
+  string id = 1;
+  // Empty: not set up yet (the current profile only).
+  string owner_id = 2;
+  string relay_url = 3;
+  // As GetStatusResponse.account.
+  string account = 4;
+  bool current = 5;
+  bool signed_out = 6;
+  bool machine_only = 7;
+}
+
+message SwitchProfileRequest {
+  string id = 1;
+}
+
+message SwitchProfileResponse {}
+
+message AddProfileRequest {}
+
+message AddProfileResponse {
+  string id = 1;
+}
+
+message SignOutRequest {}
+
+message SignOutResponse {}
+
+message SignInRequest {
+  // A hosted center: the link code from the browser sign-in and its PKCE
+  // verifier. A self-hosted relay needs neither.
+  string claim_code = 1;
+  string claim_verifier = 2;
+  // As SetupRequest.account.
+  string account = 3;
+}
+
+message SignInResponse {}
+
+message SetupRequest {
+  // The new server, and the setup code it printed on its first start.
+  string relay_url = 1;
+  string setup_code = 2;
+  // The account and password it will keep, as LogInRequest's.
+  string account = 3;
+  string password = 4;
+  // This device's name and platform ("windows", "android", "linux"...).
+  string label = 5;
+  string platform = 6;
+  // Also make this device a machine with this name. Empty: not a machine.
+  string local_machine_name = 7;
+}
+
+message SetupResponse {
+  string owner_id = 1;
+}
+
+message LogInRequest {
+  // The owner's server, as typed (with or without https://; a connection
+  // address works too). Empty: $AIDE_SERVER, else refused (no build names
+  // a server).
+  string relay_url = 1;
+  string account = 2;
+  string password = 3;
+  // As in SetupRequest.
+  string label = 4;
+  string platform = 5;
+  string local_machine_name = 6;
+  // Log in as a machine only: this computer runs tasks for the owner, named
+  // label, but is not one of the owner's devices.
+  bool machine_only = 7;
+}
+
+message LogInResponse {
+  string owner_id = 1;
+}
+
+message GetLoginRequest {}
+
+message GetLoginResponse {
+  string account = 1;
+  // The server to type on a new device, computer or agent.
+  string server = 2;
+  // A password login from before accounts waits to be converted: SetLogin
+  // with its password (current_password) does it.
+  bool convert = 3;
+  // Logging in is turned off.
+  bool off = 4;
+}
+
+message SetLoginRequest {
+  string current_password = 1;
+  // Unset: kept.
+  string account = 2;
+  string new_password = 3;
+  bool off = 4;
+}
+
+message SetLoginResponse {
+  // Devices and agents signed out by a new password.
+  uint32 signed_out = 1;
+}
+
+message Device {
+  string key_id = 1;
+  string label = 2;
+  string platform = 3;
+  bool this_device = 4;
+  // The device's own machine, if it is one.
+  string machine_id = 5;
+  bool machine_online = 6;
+  // Set up before accounts: a root key of its own in the root cert.
+  bool legacy = 7;
+}
+
+message ListDevicesRequest {}
+
+message ListDevicesResponse {
+  repeated Device devices = 1;
+}
+
+message RemoveDeviceRequest {
+  string key_id = 1;
+  // Her's data on the device's own machine is erased first, while it
+  // answers (docs/her-server.md §5.6).
+  bool erase_her = 2;
+}
+
+message RemoveDeviceResponse {
+  uint32 reissued_machines = 1;
+  uint32 reissued_grants = 2;
+}
+
+message LeaveRequest {}
+
+message LeaveResponse {}
+
+message EraseEverythingRequest {}
+
+message EraseEverythingResponse {
+  string erase_id = 1;
+}
+
+message EraseStatusRequest {
+  string erase_id = 1;
+}
+
+message EraseStatusResponse {
+  // What there was when it began, and which acked.
+  repeated EraseItem items = 1;
+  // Without an erase id, on a center: the account's email, which the owner
+  // types to confirm ("" on a self-hosted relay: its address is typed).
+  string account = 2;
+}
+
+message EraseItem {
+  // "device", "machine" or "agent". A trusted device that is a machine too
+  // is one device.
+  string kind = 1;
+  string name = 2;
+  // This device.
+  bool this_device = 3;
+  bool done = 4;
+  // Online when the erase began (a machine, or a device's own machine): it
+  // erases within seconds. The others erase the next time they connect.
+  bool online = 5;
+}
+
+message FinishEraseRequest {}
+
+message FinishEraseResponse {}
+
+// What the last erase did, for the app to say once on its first run.
+message Erased {
+  string erase_id = 1;
+  google.protobuf.Timestamp at = 2;
+  // Devices, machines and agents that had not acked when this one erased:
+  // they erase the next time they connect.
+  repeated string pending = 3;
+  // Worktrees with uncommitted changes, kept.
+  repeated string kept_worktrees = 4;
+  // The trusted device that erased everything, when it was another one.
+  string by = 5;
+}
+
+message SetLocalMachineRequest {
+  bool enabled = 1;
+  string machine_name = 2;
+}
+
+message SetLocalMachineResponse {
+  string machine_id = 1;
+}
+
+message GrantSpec {
+  string label = 1;
+  repeated string machine_ids = 2;
+  repeated string project_ids = 3;
+  repeated string agents = 4;
+  reserved 5;
+  reserved "preset";
+  aide.identity.v1.TaskVisibility task_visibility = 6;
+  // How long the grant lasts, at most 90 days; 0: it doesn't expire
+  // (identity.NoExpiry), and lasts until revoked.
+  uint32 ttl_days = 7;
+  uint32 max_concurrent_sessions = 8;
+  // May run commands on its machines (identity.v1.Grant machine_exec).
+  bool machine_exec = 9;
+}
+
+
+message Machine {
+  string machine_id = 1;
+  string machine_name = 2;
+  bool online = 3;
+  google.protobuf.Timestamp last_seen = 4;
+  // Asked of the machine end to end; unset when it is offline or did not
+  // answer.
+  aide.machine.v1.MachineStatus status = 5;
+  bool local = 6;
+  // A trusted device's own machine: that device's root key id.
+  string device_key_id = 7;
+  // aided's version, as the machine last reported it to the relay.
+  string version = 8;
+  // Why its sessions and projects cannot be read now ("offline", or the
+  // error); empty while they can. Set in Watch only.
+  string unreachable = 9;
+  // Online, and its sessions and projects are being read: being connected
+  // to, or catching up after a while away. What is shown of it meanwhile
+  // is last known. Set in Watch only.
+  bool syncing = 10;
+  // Her on the machine: from its status while it answers, the last known
+  // while it is offline, so an environment stays listed
+  // (docs/her-server.md §5.5). Unset for a machine never seen running Her.
+  aide.machine.v1.HerStatus her = 11;
+  // When this device last knew the machine to be there (its heartbeat:
+  // the relay holding its connection, and its Watch answering), this
+  // device's clock. Unset for this device's own machine, which always is.
+  google.protobuf.Timestamp heard_at = 12;
+  // Since when it cannot be read (unreachable set); unset while it can.
+  google.protobuf.Timestamp unreachable_since = 13;
+  // The recent times it could not be read for at least the lost limit,
+  // oldest first (a day's worth, at most 20), kept across restarts: a
+  // session's details say it was out of touch then (docs/session-states.md
+  // §4). The one under way has no end.
+  repeated LostSpan lost_spans = 14;
+}
+
+message LostSpan {
+  google.protobuf.Timestamp from = 1;
+  // Unset while it lasts.
+  google.protobuf.Timestamp to = 2;
+}
+
+// StateLimits are the limits sessions' states are worked out with
+// (docs/session-states.md §3), as this device is set up.
+message StateLimits {
+  // A machine not heard from for this long is lost (AIDE_LOST_AFTER).
+  uint32 lost_after_seconds = 1;
+  // A running session with no event for this long is stalled
+  // (AIDE_STALL_AFTER).
+  uint32 stall_after_seconds = 2;
+}
+
+message ListMachinesRequest {}
+
+message ListMachinesResponse {
+  repeated Machine machines = 1;
+}
+
+message RenameMachineRequest {
+  string machine_id = 1;
+  string machine_name = 2;
+}
+
+message RenameMachineResponse {}
+
+message SetMachinePausedRequest {
+  string machine_id = 1;
+  bool paused = 2;
+}
+
+message SetMachinePausedResponse {}
+
+message SetAgentDefaultsRequest {
+  string machine_id = 1;
+  aide.identity.v1.AgentDefaults defaults = 2;
+}
+
+message SetAgentDefaultsResponse {}
+
+message CheckAgentsRequest {
+  // A machine of the owner to check, end to end, waiting for it; empty:
+  // this device's own machine, in the background.
+  string machine_id = 1;
+}
+
+message CheckAgentsResponse {}
+
+message ListMachineReposRequest {
+  string machine_id = 1;
+}
+
+message ListMachineReposResponse {
+  repeated aide.machine.v1.Repo repos = 1;
+}
+
+message ListMachineFoldersRequest {
+  string machine_id = 1;
+  string path = 2;
+  bool hidden = 3;
+}
+
+message TestMachineAgentRequest {
+  string machine_id = 1;
+  string agent = 2;
+}
+
+message ListMachineCustomAgentsRequest {
+  string machine_id = 1;
+}
+
+message SaveMachineCustomAgentRequest {
+  string machine_id = 1;
+  aide.machine.v1.CustomAgent agent = 2;
+}
+
+message RemoveMachineCustomAgentRequest {
+  string machine_id = 1;
+  string name = 2;
+}
+
+message TestMachineCustomAgentRequest {
+  string machine_id = 1;
+  aide.machine.v1.CustomAgent agent = 2;
+}
+
+message GetDiagnosticsRequest {}
+
+message GetDiagnosticsResponse {
+  string text = 1;
+}
+
+message RemoveMachineRequest {
+  string machine_id = 1;
+  // Her's data on the machine is erased first (SetHer erase, signed), while
+  // it answers (docs/her-server.md §5.6).
+  bool erase_her = 2;
+}
+
+message RemoveMachineResponse {}
+
+message Project {
+  string machine_id = 1;
+  string project_id = 2;
+  string default_base_ref = 3;
+  aide.identity.v1.Workspace workspace = 4;
+  string description = 5;
+  // The coding agents that may work in it; empty: all.
+  repeated string agents = 6;
+  // The project directory on the machine.
+  string path = 7;
+}
+
+message ListProjectsRequest {
+  // Empty = all reachable machines.
+  string machine_id = 1;
+}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+  repeated Unreachable unreachable = 2;
+}
+
+message AddProjectRequest {
+  string machine_id = 1;
+  string project_id = 2;
+  string path = 3;
+  string default_base_ref = 4;
+  aide.identity.v1.Workspace workspace = 5;
+  // Shown to agents choosing where to work (at most 200 characters).
+  string description = 6;
+  // The coding agents that may work in it (e.g. "claude"); empty: all.
+  repeated string agents = 7;
+}
+
+message AddProjectResponse {}
+
+message RemoveProjectRequest {
+  string machine_id = 1;
+  string project_id = 2;
+}
+
+message RemoveProjectResponse {}
+
+message Client {
+  string client_id = 1;
+  string grant_id = 2;
+  string label = 3;
+  string fingerprint = 4;
+  GrantSpec spec = 5;
+  uint64 grant_version = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  bool online = 8;
+  google.protobuf.Timestamp last_seen = 9;
+  bool revoked = 10;
+  // The server that holds this client's key (an MCP connection), "" when
+  // the client holds its own.
+  string custodian = 11;
+  // The icon the owner picked (identity.v1.Grant client_icon, client_image).
+  string icon = 12;
+  bytes image = 13;
+  // Her's own grant (identity.v1.Grant her_machine_id): the machine she
+  // runs on. It doesn't expire, and ends when Her is turned off there.
+  string her_machine_id = 14;
+}
+
+message ListClientsRequest {}
+
+message ListClientsResponse {
+  repeated Client clients = 1;
+}
+
+message UpdateClientRequest {
+  string grant_id = 1;
+  GrantSpec spec = 2;
+}
+
+message UpdateClientResponse {
+  uint64 grant_version = 1;
+  repeated MachineAck acks = 2;
+}
+
+message RenameClientRequest {
+  string grant_id = 1;
+  string label = 2;
+  // When set, the icon too (Grant client_icon), with image for "image";
+  // unset keeps the icon it has.
+  optional string icon = 3;
+  bytes image = 4;
+}
+
+message RenameClientResponse {
+  uint64 grant_version = 1;
+}
+
+message RevokeClientRequest {
+  string grant_id = 1;
+}
+
+message RevokeClientResponse {
+  repeated MachineAck acks = 1;
+}
+
+// Wake is a doorbell (relay.v1.Wake): its key is never shown again.
+message Wake {
+  string client_id = 1;
+  // "" for the agent itself.
+  string name = 2;
+  string url = 3;
+  // "on" or "broken".
+  string state = 4;
+  string reason = 5;
+  google.protobuf.Timestamp last_ring_at = 6;
+  int32 last_status = 7;
+  uint32 waiting = 8;
+  // Its last rings, newest first.
+  repeated WakeRing recent = 9;
+}
+
+message WakeRing {
+  google.protobuf.Timestamp at = 1;
+  // A try the owner asked for; else messages waited.
+  bool check = 2;
+  // The name the waiting messages were for.
+  string as = 3;
+  int32 status = 4;
+}
+
+message WakeCheck {
+  bool ok = 1;
+  int32 status = 2;
+  string reason = 3;
+}
+
+message ListWakesRequest {
+  // One agent's; empty for all.
+  string client_id = 1;
+}
+
+message ListWakesResponse {
+  repeated Wake wakes = 1;
+}
+
+message SetWakeRequest {
+  // The address, or a wake link's code naming it.
+  string client_id = 1;
+  string name = 2;
+  string code = 3;
+  string url = 4;
+  string authorization = 5;
+  // Keep it even if the check fails, marked broken.
+  bool keep = 6;
+}
+
+message SetWakeResponse {
+  Wake wake = 1;
+  WakeCheck check = 2;
+  // What signs its rings, shown this once (relay.v1.SetWakeResponse).
+  string signing_secret = 3;
+}
+
+message CheckWakeRequest {
+  string client_id = 1;
+  string name = 2;
+}
+
+message CheckWakeResponse {
+  Wake wake = 1;
+  WakeCheck check = 2;
+}
+
+message ClearWakeRequest {
+  string client_id = 1;
+  string name = 2;
+}
+
+message ClearWakeResponse {}
+
+message OpenWakeLinkRequest {
+  string code = 1;
+}
+
+message OpenWakeLinkResponse {
+  string client_id = 1;
+  string name = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message MachineAck {
+  string machine_id = 1;
+  string machine_name = 2;
+  bool ok = 3;
+  string error = 4;
+}
+
+message ListExecLogRequest {
+  // One machine (its id or name); empty: every machine that can be reached.
+  string machine_id = 1;
+}
+
+message ExecLogEntry {
+  string machine_id = 1;
+  string machine_name = 2;
+  aide.machine.v1.ExecRecord record = 3;
+}
+
+message ListExecLogResponse {
+  // Newest first.
+  repeated ExecLogEntry entries = 1;
+  repeated Unreachable unreachable = 2;
+}
+
+message Unreachable {
+  string machine_id = 1;
+  string machine_name = 2;
+  string error = 3;
+}
+
+message ListSessionsRequest {
+  string machine_id = 1;
+  // Paging across the machines, as in aide.session.v1.ListSessionsRequest:
+  // the newest limit sessions past `before` (the first page also carries
+  // every session that needs the owner or has a turn in progress). 0: all.
+  uint32 limit = 2;
+  aide.session.v1.SessionCursor before = 3;
+  // BASIC: what lists show; the first page then comes from aided's
+  // replica. Unspecified (FULL) asks the machines.
+  aide.session.v1.SessionView view = 4;
+}
+
+message ListSessionsResponse {
+  repeated aide.session.v1.Session sessions = 1;
+  repeated Unreachable unreachable = 2;
+  // Paging: where the next page starts; unset on the last page.
+  aide.session.v1.SessionCursor next = 3;
+}
+
+message WatchSessionsRequest {}
+
+message WatchSessionsResponse {
+  // Sessions started or changed, each as it is now.
+  repeated aide.session.v1.Session sessions = 1;
+  // Which machines can be reached changed (always set in the first
+  // message, sent once every online machine is watched or failed): then
+  // unreachable lists those that cannot be reached now, and sessions may
+  // have changed unseen (before this watch, or on a machine that came
+  // back), so list them again.
+  bool machines_changed = 2;
+  repeated Unreachable unreachable = 3;
+  // Sessions deleted since the last message.
+  repeated string deleted_session_ids = 4;
+}
+
+message StreamSessionEventsRequest {
+  string session_id = 1;
+  uint64 after_seq = 2;
+  bool follow = 3;
+  aide.session.v1.EventView view = 4;
+  // Also send AgentDraft events while the agent writes.
+  bool partial = 5;
+}
+
+message AnswerQuestionRequest {
+  string session_id = 1;
+  string question_id = 2;
+  repeated aide.session.v1.Answer answers = 3;
+  bool decline = 4;
+}
+
+message AnswerQuestionResponse {
+  aide.session.v1.Session session = 1;
+}
+
+message StartSessionRequest {
+  string machine_id = 1;
+  aide.session.v1.StartSessionRequest session = 2;
+}
+
+message SendMessageRequest {
+  string session_id = 1;
+  string text = 2;
+  repeated aide.session.v1.Attachment attachments = 3;
+}
+
+message InterruptSessionRequest {
+  string session_id = 1;
+}
+
+message ArchiveSessionRequest {
+  string session_id = 1;
+}
+
+message UnarchiveSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteSessionResponse {}
+
+message RenameSessionRequest {
+  string session_id = 1;
+  string title = 2;
+}
+
+message SessionResponse {
+  aide.session.v1.Session session = 1;
+}
+
+message QueryWorkRequest {
+  // An IANA time zone name: the days and hours counted are its.
+  string time_zone = 1;
+  // The first day, YYYY-MM-DD in time_zone, and how many (1 to 400).
+  string first_day = 2;
+  uint32 days = 3;
+  WorkBucket bucket = 4;
+  // What the counts are grouped by; none: everything together.
+  repeated WorkDimension group_by = 5;
+}
+
+enum WorkBucket {
+  WORK_BUCKET_UNSPECIFIED = 0;
+  WORK_BUCKET_HOUR = 1;
+  WORK_BUCKET_DAY = 2;
+}
+
+enum WorkDimension {
+  WORK_DIMENSION_UNSPECIFIED = 0;
+  // Sessions: who started them. Turns: who asked for them.
+  WORK_DIMENSION_CLIENT = 1;
+  WORK_DIMENSION_AGENT = 2;
+  WORK_DIMENSION_MACHINE = 3;
+  WORK_DIMENSION_PROJECT = 4;
+}
+
+// The dimensions asked for; the others are empty.
+message WorkGroup {
+  string client = 1;
+  string agent = 2;
+  string machine_id = 3;
+  string project_id = 4;
+}
+
+message SessionCount {
+  // From 0, the first hour or day of the range.
+  uint32 bucket = 1;
+  WorkGroup group = 2;
+  // At work (a turn in progress) in the bucket, each once.
+  uint32 sessions = 3;
+  // Of them, those done now: idle without a failure, or archived.
+  uint32 done = 4;
+}
+
+message TurnCount {
+  uint32 bucket = 1;
+  WorkGroup group = 2;
+  // Turns that ended in the bucket, of them those that failed, their
+  // tokens, and the time turns were in progress in the bucket.
+  uint32 turns = 3;
+  uint32 failed_turns = 4;
+  uint64 input_tokens = 5;
+  uint64 output_tokens = 6;
+  uint64 busy_seconds = 7;
+}
+
+// What a machine's counts include.
+message WorkSource {
+  string machine_id = 1;
+  // Its work is counted up to here (this device's clock when it last
+  // caught up); unset for this device's own machine, read as it is.
+  google.protobuf.Timestamp synced_at = 2;
+  // Caught up and followed now.
+  bool live = 3;
+  // Still taking its history.
+  bool syncing = 4;
+}
+
+message QueryWorkResponse {
+  // Per bucket, and over the whole range (each session once).
+  repeated SessionCount sessions = 1;
+  repeated SessionCount range_sessions = 2;
+  repeated TurnCount turns = 3;
+  repeated TurnCount range_turns = 4;
+  repeated WorkSource sources = 5;
+}
+
+message GetDiffRequest {
+  string session_id = 1;
+  uint32 turn = 2;
+}
+
+message PushSessionRequest {
+  string session_id = 1;
+}
+
+// Her (docs/her-server.md).
+
+message SetHerRequest {
+  string machine_id = 1;
+  bool enabled = 2;
+  // With enabled false: erase her data on the machine (docs/her-server.md §5.6).
+  bool erase = 3;
+}
+
+message SetHerResponse {}
+
+message SetHerCommandConnectorRequest {
+  string machine_id = 1;
+  aide.identity.v1.SetHerCommandConnector connector = 2;
+}
+
+message SetHerCommandConnectorResponse {}
+
+message HerOpenRequest {
+  string machine_id = 1;
+  aide.her.v1.OpenRequest open = 2;
+}
+
+message HerCallRequest {
+  string machine_id = 1;
+  aide.her.v1.CallRequest call = 2;
+}
+
+message HerSendRequest {
+  string machine_id = 1;
+  // her's bot id.
+  string bot_id = 2;
+  string text = 3;
+  // Files on this device to upload into the assistant's folder first; the
+  // message names where they landed.
+  repeated string local_paths = 4;
+  // Pictures, kept on this device with the message and deleted once it is
+  // delivered or dropped; they go to her as pictures (a kept one that is
+  // no image, as a file).
+  repeated HerPicture pictures = 5;
+  // The message's id, given when it was sent (docs/her-sending.md): it is
+  // the outbox's and her's for it, so that a send tried again is kept and
+  // taken once. Left out (an older app), this device gives one.
+  string id = 6;
+  // The conversation the app has open on the machine, when it does: the
+  // message is delivered on it (session/op), else on a connection of its
+  // own.
+  string connection_id = 7;
+  string session_id = 8;
+  // What the message replies to (docs/her-reply.md).
+  HerReply reply = 9;
+}
+
+// What a message replies to: an earlier message of the conversation, or a
+// part of one (docs/her-reply.md).
+message HerReply {
+  // The quoted message's key in the conversation: the owner's message's
+  // id, or the id of her send_to_user call. At most 128 of
+  // A-Z a-z 0-9 _ : . -
+  string ref = 1;
+  // The quoted message is the owner's own.
+  bool own = 2;
+  // The quoted words: a selection, or the message's text.
+  string text = 3;
+  // Text is a part of the message.
+  bool partial = 4;
+}
+
+message HerPicture {
+  // Its name, as pasted ("image.png").
+  string name = 1;
+  bytes data = 2;
+}
+
+message HerSendResponse {
+  // her took it; otherwise it is kept on this device as `waiting`, its
+  // error saying why it waits.
+  bool delivered = 1;
+  HerWaiting waiting = 2;
+}
+
+message ListHerWaitingRequest {
+  string machine_id = 1;
+  // Only this assistant's; empty: all of the machine's.
+  string bot_id = 2;
+}
+
+message ListHerWaitingResponse {
+  repeated HerWaiting waiting = 1;
+}
+
+message DeleteHerWaitingRequest {
+  string machine_id = 1;
+  // HerWaiting.id.
+  string id = 2;
+}
+
+message DeleteHerWaitingResponse {}
+
+// HerWaiting is a message this device keeps until its machine is back.
+message HerWaiting {
+  string id = 1;
+  string machine_id = 2;
+  string bot_id = 3;
+  string text = 4;
+  repeated string local_paths = 5;
+  google.protobuf.Timestamp created_at = 6;
+  // Why the last try failed, when one did.
+  string error = 7;
+  HerReply reply = 8;
+}
+
+message GetHerConversationRequest {
+  string machine_id = 1;
+}
+
+message GetHerConversationResponse {
+  // Her, the machine's default assistant, as bots/subscribe lists the
+  // assistants (her's BotSummary, as JSON); empty when this device keeps
+  // nothing of the machine's Her.
+  bytes bot = 1;
+  // Her's conversation as bots/open gives it (her's SessionSnapshot, as
+  // JSON), holding what the Her entry shows of its last 100 messages and
+  // no earlier history; empty when none is kept.
+  bytes snapshot = 2;
+  // The first page of the files Her sent, as deliveries/list last answered
+  // it here (her's DeliveriesListResult, as JSON), its mark of what the
+  // owner saw moved by deliveries/seen since; empty when none is kept
+  // (docs/her-deliverables.md §4.4).
+  bytes deliveries = 3;
+}
+
+message HerUploadRequest {
+  string machine_id = 1;
+  string bot_id = 2;
+  // Absolute.
+  string local_path = 3;
+}
+
+message HerUploadResponse {
+  // Where it is on the machine (aide.her.v1.UploadResponse.path).
+  string path = 1;
+}
+
+message HerDownloadRequest {
+  string machine_id = 1;
+  string bot_id = 2;
+  // On the machine: absolute, or relative to the assistant's folder.
+  string path = 3;
+  // An existing folder here, absolute; the file gets a number added when
+  // its name is taken.
+  string local_dir = 4;
+}
+
+message HerDownloadResponse {
+  string local_path = 1;
+}
+
+message StopScreenRequest {}
+
+message StopScreenResponse {}
+
+message GetHerConsoleRequest {
+  string machine_id = 1;
+}
+
+message GetHerConsoleResponse {
+  // http://127.0.0.1:<port>/her/<machine_id>/<token>/ while this aided
+  // runs; anything under it is the machine's /her/console/.
+  string url = 1;
+}
+
+message ListDSHSessionsRequest {
+  // One machine (its id or name); empty: every machine that can be reached.
+  string machine_id = 1;
+}
+
+message ListDSHSessionsResponse {
+  // Newest activity first, over all the machines.
+  repeated DSHSessionEntry sessions = 1;
+  repeated Unreachable unreachable = 2;
+  // Each machine's Aide bridge plugin in DSH Desktop, of those that
+  // answered.
+  repeated DSHBridgeEntry bridges = 3;
+}
+
+message DSHSessionEntry {
+  string machine_id = 1;
+  string machine_name = 2;
+  aide.machine.v1.DSHSession session = 3;
+}
+
+message DSHBridgeEntry {
+  string machine_id = 1;
+  aide.machine.v1.DSHBridge bridge = 2;
+}
+
+message SetDSHTakeoverRequest {
+  string machine_id = 1;
+  string session_id = 2;
+  bool on = 3;
+}
+
+message SendDSHMessageRequest {
+  string machine_id = 1;
+  string session_id = 2;
+  string text = 3;
+  string request_id = 4;
+}
+
+message InterruptDSHSessionRequest {
+  string machine_id = 1;
+  string session_id = 2;
+}
+
+message PrepareDSHBridgeRequest {
+  string machine_id = 1;
+}
+
+message ReadDSHSessionRequest {
+  // The machine (its id or name) and DSH's id of the session.
+  string machine_id = 1;
+  string session_id = 2;
+  // As aide.machine.v1.ReadDSHSessionRequest.
+  uint64 after_seq = 3;
+  uint64 before_seq = 4;
+  uint32 limit = 5;
+  aide.session.v1.EventView view = 6;
+}

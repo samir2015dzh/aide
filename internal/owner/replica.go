@@ -15,17 +15,17 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 )
 
 // replica is this device's copy of the owner's world (docs/state-sync.md):
-// the machines, agents and pairing requests as the relay lists them, and
+// the machines, agents and devices as the relay lists them, and
 // each other machine's state, projects and newest sessions, followed end to
 // end (the relay only carries the tunnel). The List calls answer from it,
 // and the LocalService.WatchSessions callers hear its session changes. Its
@@ -78,7 +78,7 @@ type sources struct {
 
 	machines polled[*localv1.Machine] // without this device's own
 	clients  polled[*localv1.Client]
-	pairings polled[*localv1.PairingDetails]
+	devices  polled[*relayv1.DeviceEntry]
 
 	feeds map[string]*feed // by machine id
 	sent  string           // the machines' state as last sent to watchers
@@ -144,9 +144,9 @@ type feed struct {
 
 const (
 	// pollMachinesEvery is how often the relay is asked for the machines
-	// and agents, and pollPairingsEvery for the pairing requests.
+	// and agents, and pollDevicesEvery for the devices.
 	pollMachinesEvery = 5 * time.Second
-	pollPairingsEvery = 2 * time.Second
+	pollDevicesEvery  = 2 * time.Second
 	// sourcesIdle: the sources stop this long after the last list call or
 	// watcher, so a window that reloads finds them warm.
 	sourcesIdle = 60 * time.Second
@@ -176,9 +176,9 @@ const (
 // How followed machines' watches started: afresh, resumed from where they
 // were, or afresh because the machine refused the token.
 var (
-	mWatchFresh   = metrics.Default.Counter(`hermesh_owner_machine_watches_total{start="fresh"}`)
-	mWatchResumed = metrics.Default.Counter(`hermesh_owner_machine_watches_total{start="resumed"}`)
-	mWatchRefused = metrics.Default.Counter(`hermesh_owner_machine_watches_total{start="refused"}`)
+	mWatchFresh   = metrics.Default.Counter(`aide_owner_machine_watches_total{start="fresh"}`)
+	mWatchResumed = metrics.Default.Counter(`aide_owner_machine_watches_total{start="resumed"}`)
+	mWatchRefused = metrics.Default.Counter(`aide_owner_machine_watches_total{start="refused"}`)
 )
 
 func newReplica(o *Owner) *replica {
@@ -290,8 +290,8 @@ func (r *replica) startLocked() *sources {
 // resumes.
 func (s *sources) adopt(h *sources) {
 	s.warm = true
-	s.machines, s.clients, s.pairings = h.machines, h.clients, h.pairings
-	s.machines.err, s.clients.err, s.pairings.err = nil, nil, nil // a poll the stop cut short
+	s.machines, s.clients, s.devices = h.machines, h.clients, h.devices
+	s.machines.err, s.clients.err, s.devices.err = nil, nil, nil // a poll the stop cut short
 	for id, f := range h.feeds {
 		s.feeds[id] = &feed{name: f.name, online: f.online, local: f.local, status: f.status, projects: f.projects, sessions: f.sessions, more: f.more,
 			token: f.token, heldAt: f.heldAt, heard: f.heard, heardAt: f.heardAt, downSince: f.downSince, relaySeen: f.relaySeen}
@@ -398,7 +398,7 @@ func (r *replica) followOwner(s *sources) {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-time.After(pollPairingsEvery):
+		case <-time.After(pollDevicesEvery):
 		}
 	}
 }
@@ -451,10 +451,6 @@ func (r *replica) watchOwner(s *sources, answer chan struct{}) (again chan struc
 			clients = r.o.keepClients(r.o.clientsFrom(u.Clients))
 			go r.o.syncCards(u.Clients.Clients)
 		}
-		var pairings []*localv1.PairingDetails
-		if u.Pairings != nil {
-			pairings = r.o.pairingsFrom(u.Pairings)
-		}
 		r.mu.Lock()
 		r.polls++
 		n := r.polls
@@ -464,8 +460,8 @@ func (r *replica) watchOwner(s *sources, answer chan struct{}) (again chan struc
 		if u.Clients != nil {
 			s.clients.set(n, clients, nil)
 		}
-		if u.Pairings != nil {
-			s.pairings.set(n, pairings, nil)
+		if u.Devices != nil {
+			s.devices.set(n, u.Devices.Devices, nil)
 		}
 		r.kickLocked()
 		r.mu.Unlock()
@@ -478,16 +474,16 @@ func (r *replica) watchOwner(s *sources, answer chan struct{}) (again chan struc
 }
 
 // pollOwner asks a relay without WatchOwner for the machines and agents
-// every pollMachinesEvery, and the pairing requests every pollPairingsEvery.
+// every pollMachinesEvery, and the devices every pollDevicesEvery.
 func (r *replica) pollOwner(s *sources) {
-	machines, pairings := time.NewTicker(pollMachinesEvery), time.NewTicker(pollPairingsEvery)
+	machines, devices := time.NewTicker(pollMachinesEvery), time.NewTicker(pollDevicesEvery)
 	defer machines.Stop()
-	defer pairings.Stop()
+	defer devices.Stop()
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-pairings.C:
+		case <-devices.C:
 			r.poll(s.ctx, s, false, true)
 		case <-machines.C:
 			r.poll(s.ctx, s, true, false)
@@ -495,9 +491,9 @@ func (r *replica) pollOwner(s *sources) {
 	}
 }
 
-// poll asks the relay for the machines and agents, or the pairing
-// requests, or both, and keeps what it answers.
-func (r *replica) poll(ctx context.Context, s *sources, machines, pairings bool) {
+// poll asks the relay for the machines and agents, or the devices, or
+// both, and keeps what it answers.
+func (r *replica) poll(ctx context.Context, s *sources, machines, devices bool) {
 	if ctx.Err() != nil {
 		return
 	}
@@ -533,11 +529,11 @@ func (r *replica) poll(ctx context.Context, s *sources, machines, pairings bool)
 			r.mu.Unlock()
 		})
 	}
-	if pairings {
+	if devices {
 		wg.Go(func() {
-			list, err := r.o.listPairingRequests(ctx)
+			list, err := r.o.relayDevices(ctx)
 			r.mu.Lock()
-			if s.pairings.set(n, list, err) {
+			if s.devices.set(n, list, err) {
 				r.kickLocked()
 			}
 			r.mu.Unlock()
@@ -858,7 +854,7 @@ func (r *replica) followSessions(ctx context.Context, s *sources, f *feed, n *pe
 	defer stream.Close()
 	if !stream.Receive() {
 		if connect.CodeOf(stream.Err()) == connect.CodeUnimplemented {
-			return errors.New("its hermeshd is too old to report session changes; update it")
+			return errors.New("its aided is too old to report session changes; update it")
 		}
 		return late(cmp.Or(stream.Err(), errors.New("stopped at once")))
 	}

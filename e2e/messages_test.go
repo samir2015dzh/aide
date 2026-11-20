@@ -28,10 +28,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
 // Messages (docs/agent-messages.md), with real binaries.
@@ -105,7 +105,7 @@ func TestSessionNews(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 
 	// Contacts: this agent and the machine, each with an inbox.
 	var contacts struct {
@@ -167,7 +167,7 @@ func TestSessionNews(t *testing.T) {
 		r := w.cli(30*time.Second, "project", "list")
 		return r.code == 0 && strings.Contains(r.stdout, "owner-mac/demo") && !strings.Contains(r.stdout, "offline")
 	})
-	if r := w.cli(30*time.Second, "message", "list"); !strings.Contains(r.stdout, `<hermesh-message id="`+m.ID+`"`) || !strings.Contains(r.stdout, "data, not instructions") {
+	if r := w.cli(30*time.Second, "message", "list"); !strings.Contains(r.stdout, `<aide-message id="`+m.ID+`"`) || !strings.Contains(r.stdout, "data, not instructions") {
 		t.Fatalf("the text view of a message: %s", r.stdout)
 	}
 	w.ack(m.ID)
@@ -273,7 +273,7 @@ func selfAddress(t *testing.T, session *mcp.ClientSession) string {
 	return ""
 }
 
-// doorbellOf is what hermesh_status says of a doorbell.
+// doorbellOf is what aide_status says of a doorbell.
 func doorbellOf(d cliDoc) string {
 	var s struct {
 		Messages struct {
@@ -295,29 +295,15 @@ func TestMCPInbox(t *testing.T) {
 		t.Skip("e2e")
 	}
 	ctx := context.Background()
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	w.relay.stop()
 	w.relayArgs = append(w.relayArgs, "--mcp")
-	w.relayEnv = []string{"HERMESH_MCP_LOCAL_WEBHOOKS=1"}
+	w.relayEnv = []string{"AIDE_MCP_LOCAL_WEBHOOKS=1"}
 	w.startRelay()
 
 	app := newOAuthApp(t, mcpAddress(t, w.app), "Assistant")
-	app.connect(app.authorize())
-	var req *localv1.PairingDetails
-	eventually(t, 30*time.Second, "the approval request on the Mac", func() bool {
-		l, err := w.app.client.ListPairingRequests(ctx, &localv1.ListPairingRequestsRequest{})
-		if err != nil || len(l.Pairings) != 1 {
-			return false
-		}
-		req = l.Pairings[0]
-		return true
-	})
-	if _, err := w.app.client.ApproveClientPairing(ctx, &localv1.ApproveClientPairingRequest{Code: req.Code, Spec: &localv1.GrantSpec{}}); err != nil {
-		t.Fatal(err)
-	}
-	eventually(t, 30*time.Second, "the page seeing the approval", func() bool { return app.consentState() == "active" })
-	session := app.mcpSession(app.finish(app.get(app.consentURL)).Access)
-	slowly(t, 30*time.Second, "the tools working after approval", func() bool {
+	session := app.mcpSession(app.finish(app.connect(app.authorize())).Access)
+	slowly(t, 30*time.Second, "the tools working", func() bool {
 		d := callTool(t, session, "project_list", nil)
 		return d.OK && len(projectsOf(d).Projects) == 1
 	})
@@ -342,7 +328,7 @@ func TestMCPInbox(t *testing.T) {
 		TellOwner string `json:"tell_owner"`
 	}
 	json.Unmarshal(d.raw, &asked)
-	code, isAppLink := strings.CutPrefix(asked.Wake.Link, "hermesh://wake?code=")
+	code, isAppLink := strings.CutPrefix(asked.Wake.Link, "aide://wake?code=")
 	if !d.OK || !isAppLink || !strings.Contains(asked.TellOwner, "Aide app") {
 		t.Fatalf("message_wake on a relay without a console: %s", d.raw)
 	}
@@ -358,12 +344,12 @@ func TestMCPInbox(t *testing.T) {
 	if err != nil || !set.Check.Ok || set.Wake.State != "on" || !strings.HasPrefix(set.SigningSecret, "whsec_") {
 		t.Fatalf("the owner's SetWake: %v %v", set, err)
 	}
-	if h.count() != 1 || !strings.Contains(string(h.rings[0].body), `"type":"hermesh.check"`) {
+	if h.count() != 1 || !strings.Contains(string(h.rings[0].body), `"type":"aide.check"`) {
 		t.Fatalf("the check must ring once, asking for nothing: %d rings", h.count())
 	}
 	h.reset()
-	if d := callTool(t, session, "hermesh_status", nil); doorbellOf(d) != "on" {
-		t.Fatalf("hermesh_status, the doorbell set: %s", d.raw)
+	if d := callTool(t, session, "aide_status", nil); doorbellOf(d) != "on" {
+		t.Fatalf("aide_status, the doorbell set: %s", d.raw)
 	}
 
 	// A turn the assistant doesn't wait on: its news rings the webhook.
@@ -382,7 +368,7 @@ func TestMCPInbox(t *testing.T) {
 	rg := h.rings[0]
 	h.mu.Unlock()
 	var body map[string]any
-	if json.Unmarshal(rg.body, &body) != nil || body["type"] != "hermesh.message" || body["waiting"] != float64(1) ||
+	if json.Unmarshal(rg.body, &body) != nil || body["type"] != "aide.message" || body["waiting"] != float64(1) ||
 		!strings.Contains(body["text"].(string), "message_list") || strings.Contains(string(rg.body), "from the mac") {
 		t.Fatalf("the ring must say only that messages wait: %s", rg.body)
 	}
@@ -423,7 +409,7 @@ func TestMCPInbox(t *testing.T) {
 	h.mu.Unlock()
 	callTool(t, session, "session_start", map[string]any{"project": "demo", "prompt": "say again"})
 	slowly(t, 2*time.Minute, "the webhook marked broken", func() bool {
-		d := callTool(t, session, "hermesh_status", nil)
+		d := callTool(t, session, "aide_status", nil)
 		return strings.Contains(string(d.raw), "the webhook answered 401")
 	})
 	d = callTool(t, session, "message_list", nil)
@@ -480,8 +466,8 @@ func TestMCPInbox(t *testing.T) {
 	if h2.count() != 1 || h.count() != rangBefore {
 		t.Fatalf("a stopped doorbell or another name's rang: %d, %d", h2.count(), h.count())
 	}
-	if d := callTool(t, session, "hermesh_status", map[string]any{"as": "tech_demos"}); doorbellOf(d) != "on" {
-		t.Fatalf("hermesh_status as Tech Demos: %s", d.raw)
+	if d := callTool(t, session, "aide_status", map[string]any{"as": "tech_demos"}); doorbellOf(d) != "on" {
+		t.Fatalf("aide_status as Tech Demos: %s", d.raw)
 	}
 }
 
@@ -493,7 +479,7 @@ func TestNames(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	helper := w.addAgent("helper", &localv1.GrantSpec{})
 	news := func(as, session, kind string) (messageDoc, bool) {
 		l, _ := w.messages(30*time.Second, "--as", as)
@@ -511,7 +497,7 @@ func TestNames(t *testing.T) {
 		t.Fatalf("start as Tech Demos: %+v", r)
 	}
 	eventually(t, 30*time.Second, "the question", func() bool { return w.get(s.SessionID).Status == "waiting_input" })
-	d, r := sendMessage(t, w, append(slices.Clone(w.cliEnv), "HERMESH_AS=Chief of Staff"), 30*time.Second,
+	d, r := sendMessage(t, w, append(slices.Clone(w.cliEnv), "AIDE_AS=Chief of Staff"), 30*time.Second,
 		"--to", s.SessionID, "--message", "say from chief")
 	if !d.OK || d.Message.Delivered != "queued" {
 		t.Fatalf("another name's message must wait for a turn of its own: %+v", r)
@@ -572,25 +558,25 @@ func TestWake(t *testing.T) {
 		t.Skip("e2e")
 	}
 	ctx := context.Background()
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	w.relay.stop()
 	w.relayArgs = append(w.relayArgs, "--mcp")
-	w.relayEnv = []string{"HERMESH_MCP_LOCAL_WEBHOOKS=1"}
+	w.relayEnv = []string{"AIDE_MCP_LOCAL_WEBHOOKS=1"}
 	w.startRelay()
 	grok := w.addAgent("grok", &localv1.GrantSpec{})
-	hermesh := filepath.Join(w.bin, "hermesh")
+	aide := filepath.Join(w.bin, "aide")
 	eventually(t, 30*time.Second, "the machine back online", func() bool {
 		return !strings.Contains(w.cli(30*time.Second, "project", "list").stdout, "offline")
 	})
 
 	// The bot asks; with no console on this relay, its link opens the app.
-	r := run(t, append(slices.Clone(grok), "HERMESH_AS=Tech Demos"), 30*time.Second, hermesh, "message", "wake", "-o", "json")
+	r := run(t, append(slices.Clone(grok), "AIDE_AS=Tech Demos"), 30*time.Second, aide, "message", "wake", "-o", "json")
 	var asked struct {
 		Wake      struct{ Link string }
 		TellOwner string `json:"tell_owner"`
 	}
 	json.Unmarshal([]byte(r.stdout), &asked)
-	code, isAppLink := strings.CutPrefix(asked.Wake.Link, "hermesh://wake?code=")
+	code, isAppLink := strings.CutPrefix(asked.Wake.Link, "aide://wake?code=")
 	if r.code != 0 || !isAppLink || !strings.Contains(asked.TellOwner, "Aide app") {
 		t.Fatalf("message wake: %+v", r)
 	}
@@ -607,17 +593,17 @@ func TestWake(t *testing.T) {
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if body.Type == "hermesh.check" {
+		if body.Type == "aide.check" {
 			tries <- body.Text
 		}
-		if body.Type == "hermesh.message" {
+		if body.Type == "aide.message" {
 			go func() {
 				// A ring for no name is for whichever name the bot goes by.
 				as := body.As
 				if as == "" {
 					as = "research"
 				}
-				out := run(t, grok, time.Minute, hermesh, "message", "list", "--as", as, "-o", "json").stdout
+				out := run(t, grok, time.Minute, aide, "message", "list", "--as", as, "-o", "json").stdout
 				runs <- woken{body.As, out}
 			}()
 		}
@@ -644,13 +630,13 @@ func TestWake(t *testing.T) {
 	if l, err := w.app.client.ListWakes(ctx, &localv1.ListWakesRequest{ClientId: grokID}); err != nil || len(l.Wakes) != 1 || l.Wakes[0].State != "on" {
 		t.Fatalf("ListWakes: %v %v", l, err)
 	}
-	if out := run(t, w.cliEnv, 30*time.Second, hermesh, "message", "contacts").stdout; !strings.Contains(out, "@tech-demos") {
+	if out := run(t, w.cliEnv, 30*time.Second, aide, "message", "contacts").stdout; !strings.Contains(out, "@tech-demos") {
 		t.Fatalf("contacts must list the woken name: %s", out)
 	}
 
 	// Tech Demos starts a session; its news rings Tech Demos's routine,
 	// which finds it.
-	if r := run(t, grok, 30*time.Second, hermesh, "--as", "tech-demos", "session", "start", "--project", "demo", "--prompt", "say built"); r.code != 0 {
+	if r := run(t, grok, 30*time.Second, aide, "--as", "tech-demos", "session", "start", "--project", "demo", "--prompt", "say built"); r.code != 0 {
 		t.Fatalf("start: %+v", r)
 	}
 	select {
@@ -662,11 +648,11 @@ func TestWake(t *testing.T) {
 		t.Fatal("Tech Demos's routine was not woken")
 	}
 	// Another name of the same bot has no doorbell: nothing rings.
-	if r := run(t, grok, 30*time.Second, hermesh, "--as", "research", "session", "start", "--project", "demo", "--prompt", "say found"); r.code != 0 {
+	if r := run(t, grok, 30*time.Second, aide, "--as", "research", "session", "start", "--project", "demo", "--prompt", "say found"); r.code != 0 {
 		t.Fatalf("start as research: %+v", r)
 	}
 	eventually(t, 30*time.Second, "Research's news", func() bool {
-		return strings.Contains(run(t, grok, 30*time.Second, hermesh, "--as", "research", "message", "list", "-o", "json").stdout, `"result": "found"`)
+		return strings.Contains(run(t, grok, 30*time.Second, aide, "--as", "research", "message", "list", "-o", "json").stdout, `"result": "found"`)
 	})
 	select {
 	case got := <-runs:
@@ -683,7 +669,7 @@ func TestWake(t *testing.T) {
 	if _, err := w.app.client.ClearWake(ctx, &localv1.ClearWakeRequest{ClientId: grokID, Name: "tech-demos"}); err != nil {
 		t.Fatal(err)
 	}
-	if out := run(t, w.cliEnv, 30*time.Second, hermesh, "message", "contacts").stdout; strings.Contains(out, "@tech-demos") {
+	if out := run(t, w.cliEnv, 30*time.Second, aide, "message", "contacts").stdout; strings.Contains(out, "@tech-demos") {
 		t.Fatalf("a cleared doorbell's name is still listed: %s", out)
 	}
 
@@ -703,7 +689,7 @@ func TestWake(t *testing.T) {
 	// Research, a name without a doorbell of its own, is woken by it, though
 	// the machine may not know of the doorbell yet (it looks again within a
 	// minute): the ring then names no one, and the bot reads its own name.
-	if r := run(t, grok, 30*time.Second, hermesh, "--as", "research", "session", "start", "--project", "demo", "--prompt", "say found again"); r.code != 0 {
+	if r := run(t, grok, 30*time.Second, aide, "--as", "research", "session", "start", "--project", "demo", "--prompt", "say found again"); r.code != 0 {
 		t.Fatalf("start as research: %+v", r)
 	}
 	select {
@@ -742,7 +728,7 @@ func TestRenameAgent(t *testing.T) {
 		t.Skip("e2e")
 	}
 	ctx := context.Background()
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	grant := func(id string) *localv1.Client {
 		l, err := w.app.client.ListClients(ctx, &localv1.ListClientsRequest{})
 		if err != nil {
@@ -851,18 +837,12 @@ func slowly(t *testing.T, timeout time.Duration, what string, cond func() bool) 
 	}
 }
 
-// addAgent pairs another agent CLI with the owner, as newOwnerMac pairs
-// "bot", and returns its environment.
+// addAgent logs another agent CLI in with the owner's account, as
+// newOwnerMac does "bot", and returns its environment.
 func (w *ownerMac) addAgent(name string, grant *localv1.GrantSpec) []string {
 	w.t.Helper()
-	env := []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent-"+name)}
-	login := start(w.t, "login "+name, env, filepath.Join(w.bin, "hermesh"), "auth", "login", w.addr, "--name", name)
-	if _, err := w.app.client.ApproveClientPairing(context.Background(), &localv1.ApproveClientPairingRequest{Code: login.pairingCode(w.t), Spec: grant}); err != nil {
-		w.t.Fatal(err)
-	}
-	if c := login.wait(w.t, 30*time.Second); c != 0 {
-		w.t.Fatalf("login %s: %s", name, login.output())
-	}
+	env := []string{"AIDE_HOME=" + filepath.Join(w.tmp, "agent-"+name)}
+	w.loginAgent(env, name, grant)
 	return env
 }
 
@@ -878,7 +858,7 @@ type sentDoc struct {
 
 func sendMessage(t *testing.T, w *ownerMac, env []string, timeout time.Duration, args ...string) (sentDoc, result) {
 	t.Helper()
-	r := run(t, env, timeout, filepath.Join(w.bin, "hermesh"), append([]string{"message", "send", "-o", "json"}, args...)...)
+	r := run(t, env, timeout, filepath.Join(w.bin, "aide"), append([]string{"message", "send", "-o", "json"}, args...)...)
 	var d sentDoc
 	json.Unmarshal([]byte(r.stdout), &d)
 	return d, r
@@ -886,7 +866,7 @@ func sendMessage(t *testing.T, w *ownerMac, env []string, timeout time.Duration,
 
 func listMessages(t *testing.T, w *ownerMac, env []string) messageList {
 	t.Helper()
-	r := run(t, env, time.Minute, filepath.Join(w.bin, "hermesh"), "message", "list", "-o", "json")
+	r := run(t, env, time.Minute, filepath.Join(w.bin, "aide"), "message", "list", "-o", "json")
 	var l messageList
 	json.Unmarshal([]byte(r.stdout), &l)
 	return l
@@ -900,7 +880,7 @@ func TestMessages(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	other := w.addAgent("helper", &localv1.GrantSpec{TaskVisibility: identityv1.TaskVisibility_TASK_VISIBILITY_ALL})
 
 	// --- Agent to agent ---------------------------------------------------
@@ -927,7 +907,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("status once read: %+v", status)
 	}
 	// The reply, which bot waits for.
-	waiting := start(t, "bot waits", w.cliEnv, filepath.Join(w.bin, "hermesh"), "message", "send", "-o", "json", "--to", "helper", "--wait", "--timeout", "60s",
+	waiting := start(t, "bot waits", w.cliEnv, filepath.Join(w.bin, "aide"), "message", "send", "-o", "json", "--to", "helper", "--wait", "--timeout", "60s",
 		"--message", "And the tag?")
 	var second string
 	slowly(t, 30*time.Second, "the second message", func() bool {
@@ -947,7 +927,7 @@ func TestMessages(t *testing.T) {
 	if !strings.Contains(waiting.output(), "release-7, tagged v7.0") {
 		t.Fatalf("bot's --wait must show the reply: %s", waiting.output())
 	}
-	if r := run(t, other, 30*time.Second, filepath.Join(w.bin, "hermesh"), "message", "ack", asked, second); r.code != 0 {
+	if r := run(t, other, 30*time.Second, filepath.Join(w.bin, "aide"), "message", "ack", asked, second); r.code != 0 {
 		t.Fatalf("ack: %+v", r)
 	}
 	json.Unmarshal([]byte(w.cli(30*time.Second, "message", "status", asked, "-o", "json").stdout), &status)
@@ -996,7 +976,7 @@ func TestMessages(t *testing.T) {
 		!strings.Contains(ev, `"to_name": "helper"`) {
 		t.Fatalf("the session records what it wrote: %s", ev)
 	}
-	run(t, other, 30*time.Second, filepath.Join(w.bin, "hermesh"), "message", "ack", toHelper.ID)
+	run(t, other, 30*time.Second, filepath.Join(w.bin, "aide"), "message", "ack", toHelper.ID)
 
 	// --- Another agent's message waits for a turn of its own -----------------
 	q, _ := w.startSession(30*time.Second, "--prompt", "ask Color|Which color?|Red,Blue\nsay done")
@@ -1065,7 +1045,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("to an offline machine: %+v", r)
 	}
 	w.startOwner()
-	w.app = newTestApp(t, w.sock, w.root)
+	w.app = newTestApp(t, w.sock)
 	eventually(t, 30*time.Second, "the machine online", func() bool {
 		return !strings.Contains(w.cli(30*time.Second, "project", "list").stdout, "offline")
 	})
@@ -1090,12 +1070,12 @@ func TestMessages(t *testing.T) {
 	}
 }
 
-// hookRun runs `hermesh message hook <agent>` as the agent does: the event
+// hookRun runs `aide message hook <agent>` as the agent does: the event
 // on stdin, its JSON on stdout.
 func hookRun(t *testing.T, w *ownerMac, env []string, agent string, in map[string]any) map[string]any {
 	t.Helper()
 	b, _ := json.Marshal(in)
-	cmd := exec.Command(filepath.Join(w.bin, "hermesh"), "message", "hook", agent)
+	cmd := exec.Command(filepath.Join(w.bin, "aide"), "message", "hook", agent)
 	cmd.Env = append(append(os.Environ(), w.cliEnv...), env...)
 	cmd.Stdin = bytes.NewReader(b)
 	out, err := cmd.Output()
@@ -1168,7 +1148,7 @@ func TestAgentsOnAComputer(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	helper := w.addAgent("helper", &localv1.GrantSpec{})
 
 	// --- Claude Code --------------------------------------------------------
@@ -1179,14 +1159,14 @@ func TestAgentsOnAComputer(t *testing.T) {
 	if ctx := additionalContext(start); !strings.Contains(ctx, "connected to Aide as bot") || !strings.Contains(ctx, "conv-1") {
 		t.Fatalf("SessionStart's context: %v", start)
 	}
-	if b, _ := os.ReadFile(envFile); !strings.Contains(string(b), `export HERMESH_AS="conv-1"`) {
+	if b, _ := os.ReadFile(envFile); !strings.Contains(string(b), `export AIDE_AS="conv-1"`) {
 		t.Fatalf("the conversation's environment: %q", b)
 	}
 	pid := filepath.Join(w.tmp, "agent", "watch-conv-1.pid")
 	eventually(t, 10*time.Second, "the watch running", func() bool { _, err := os.Stat(pid); return err == nil })
 
 	// A session this conversation starts: its news comes back to it.
-	r := run(t, append(slices.Clone(w.cliEnv), "HERMESH_AS=conv-1"), 30*time.Second, filepath.Join(w.bin, "hermesh"),
+	r := run(t, append(slices.Clone(w.cliEnv), "AIDE_AS=conv-1"), 30*time.Second, filepath.Join(w.bin, "aide"),
 		"session", "start", "--project", "demo", "--prompt", "say the build is green")
 	if r.code != 0 {
 		t.Fatalf("start: %+v", r)
@@ -1201,7 +1181,7 @@ func TestAgentsOnAComputer(t *testing.T) {
 		Message struct{ Role, Content string }
 	}
 	json.Unmarshal([]byte(posted[1]), &user)
-	if user.Type != "user" || !strings.Contains(user.Message.Content, "<hermesh-message") || !strings.Contains(user.Message.Content, "the build is green") {
+	if user.Type != "user" || !strings.Contains(user.Message.Content, "<aide-message") || !strings.Contains(user.Message.Content, "the build is green") {
 		t.Fatalf("what the watch posted: %q", posted[1])
 	}
 	if l := listMessages(t, w, w.cliEnv); len(l.Messages) != 0 {
@@ -1209,7 +1189,7 @@ func TestAgentsOnAComputer(t *testing.T) {
 	}
 	// What the session writes to the agent that started it comes back to
 	// the conversation too.
-	if r := run(t, append(slices.Clone(w.cliEnv), "HERMESH_AS=conv-1"), 30*time.Second, filepath.Join(w.bin, "hermesh"),
+	if r := run(t, append(slices.Clone(w.cliEnv), "AIDE_AS=conv-1"), 30*time.Second, filepath.Join(w.bin, "aide"),
 		"session", "start", "--project", "demo", "--prompt", "message |the tests pass"); r.code != 0 {
 		t.Fatalf("start: %+v", r)
 	}
@@ -1271,15 +1251,15 @@ func TestAgentsOnAComputer(t *testing.T) {
 		t.Fatalf("a Stop already continued must let the turn end: %v", again)
 	}
 
-	// --- Hermesh's own sessions --------------------------------------------
+	// --- Aide's own sessions --------------------------------------------
 	// Their coding agents are told so, and the hooks the user installed
 	// for Claude Code on this computer leave them alone: their machine gives
 	// them their messages.
-	es, r := w.startSession(30*time.Second, "--wait", "--prompt", "env HERMESH_SESSION")
-	if r.code != 0 || es.Result != "HERMESH_SESSION="+es.SessionID {
+	es, r := w.startSession(30*time.Second, "--wait", "--prompt", "env AIDE_SESSION")
+	if r.code != 0 || es.Result != "AIDE_SESSION="+es.SessionID {
 		t.Fatalf("a session's coding agent: %+v %+v", es, r)
 	}
-	if out := hookRun(t, w, append(slices.Clone(claudeEnv), "HERMESH_SESSION="+es.SessionID), "claude",
+	if out := hookRun(t, w, append(slices.Clone(claudeEnv), "AIDE_SESSION="+es.SessionID), "claude",
 		map[string]any{"session_id": "conv-2", "hook_event_name": "SessionStart", "source": "startup"}); out != nil {
 		t.Fatalf("the hook in an Aide session: %v", out)
 	}
@@ -1289,7 +1269,7 @@ func TestAgentsOnAComputer(t *testing.T) {
 	os.MkdirAll(filepath.Join(home, ".claude"), 0o700)
 	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"model": "opus", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "say done"}]}]}}`), 0o600)
 	for range 2 {
-		if r := run(t, append(slices.Clone(w.cliEnv), "HOME="+home), 30*time.Second, filepath.Join(w.bin, "hermesh"), "message", "hook", "claude", "--install"); r.code != 0 {
+		if r := run(t, append(slices.Clone(w.cliEnv), "HOME="+home), 30*time.Second, filepath.Join(w.bin, "aide"), "message", "hook", "claude", "--install"); r.code != 0 {
 			t.Fatalf("install: %+v", r)
 		}
 	}
@@ -1316,7 +1296,7 @@ func messageState(t *testing.T, w *ownerMac, env []string, id string) string {
 	var status struct {
 		States []struct{ ID, State string } `json:"states"`
 	}
-	json.Unmarshal([]byte(run(t, env, 30*time.Second, filepath.Join(w.bin, "hermesh"), "message", "status", id, "-o", "json").stdout), &status)
+	json.Unmarshal([]byte(run(t, env, 30*time.Second, filepath.Join(w.bin, "aide"), "message", "status", id, "-o", "json").stdout), &status)
 	if len(status.States) != 1 {
 		t.Fatalf("status of %s: %+v", id, status)
 	}
@@ -1353,7 +1333,7 @@ func contactAddress(t *testing.T, w *ownerMac, env []string, name string) string
 	var c struct {
 		Contacts []struct{ Name, Address string }
 	}
-	json.Unmarshal([]byte(run(t, env, 30*time.Second, filepath.Join(w.bin, "hermesh"), "message", "contacts", "-o", "json").stdout), &c)
+	json.Unmarshal([]byte(run(t, env, 30*time.Second, filepath.Join(w.bin, "aide"), "message", "contacts", "-o", "json").stdout), &c)
 	for _, x := range c.Contacts {
 		if x.Name == name {
 			return x.Address

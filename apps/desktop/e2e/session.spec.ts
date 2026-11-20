@@ -165,7 +165,7 @@ test("the session card floats over the conversation with what a glance needs, an
   // Its environment, one row each, under a title: who started it, with what, on which machine, in which project, on which branch
   // (a worktree session's own). No state, turns or changes: the list and the conversation say those.
   await expect(card.getByRole("heading", { name: "环境" })).toBeVisible();
-  const branch = `hermesh/${fixture.sessions["写 hello"]}`;
+  const branch = `aide/${fixture.sessions["写 hello"]}`;
   await expect(card.getByRole("listitem")).toHaveText([/bot 发起$/, "Gemini CLI 执行", thisComputer, "demo", branch]);
   await expect(card).not.toContainText("已完成");
   await expect(card).not.toContainText("轮");
@@ -257,7 +257,7 @@ test("a session in a GitHub repository says which one and from which branch; its
   await page.setViewportSize({ width: 1440, height: 800 });
   await open(page, "来自 GitHub");
   const card = page.getByRole("complementary", { name: "任务信息" });
-  const branch = `hermesh/${fixture.sessions["来自 GitHub"]}`;
+  const branch = `aide/${fixture.sessions["来自 GitHub"]}`;
   await expect(card.getByRole("listitem")).toHaveText([/bot 发起$/, "Gemini CLI 执行", thisComputer, "github.acme.widget", "GitHub 仓库 acme/widget，从 main 开始", branch]);
   const bare = path.join(fixture.github, "acme", "widget.git");
   const pushed = () => {
@@ -375,7 +375,7 @@ test("a running session shows what it does, and 打断 stops the turn", async ()
   await expect(card).not.toContainText("运行中");
   // Neither its model nor its effort known (the agent tells neither): no context card.
   await expect(page.getByRole("complementary", { name: "上下文" })).toHaveCount(0);
-  // The agent that works is shown by its own logo, not the Hermesh mark.
+  // The agent that works is shown by its own logo, not the Aide mark.
   await expect(ctl.locator(".live-logo img")).toBeVisible();
   await expect(ctl.locator(".hm-mark")).toHaveCount(0);
   // What it is doing is the running tool call in the conversation, not repeated in the bar.
@@ -459,7 +459,7 @@ test("a session's conversation appears whole as its page opens, not in pieces", 
 test("an agent's Markdown shows as GitHub shows it, without HTML, images or unsafe links", async () => {
   const reply = [
     "## 结论",
-    "见 https://hermesh.io/p/abc，然后再说。",
+    "见 https://aide.io/p/abc，然后再说。",
     "第二行",
     "",
     "| 项 | 值 |",
@@ -486,8 +486,8 @@ test("an agent's Markdown shows as GitHub shows it, without HTML, images or unsa
   await expect(md.getByRole("heading", { name: "结论" })).toBeVisible();
   // A bare link ends where the Chinese starts; a single newline breaks the line.
   await expect(md.getByRole("link")).toHaveCount(1);
-  await expect(md.getByRole("link")).toHaveText("https://hermesh.io/p/abc");
-  await expect(md.getByRole("link")).toHaveAttribute("href", "https://hermesh.io/p/abc");
+  await expect(md.getByRole("link")).toHaveText("https://aide.io/p/abc");
+  await expect(md.getByRole("link")).toHaveAttribute("href", "https://aide.io/p/abc");
   await expect(md.locator("p", { hasText: "然后再说" }).locator("br")).toHaveCount(1);
   await expect(md.getByRole("table")).toBeVisible();
   await expect(md.getByRole("columnheader", { name: "值" })).toBeVisible();

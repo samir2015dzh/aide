@@ -24,11 +24,11 @@ import (
 // TestWindowsInstall runs install.ps1 as a person would, against a release
 // signed by a key of the test's own: it installs the agents' CLI, installs
 // it again over itself, and refuses a checksum list another key signed. A
-// machine's install puts her and her console beside hermeshd.
+// machine's install puts her and her console beside aided.
 func TestWindowsInstall(t *testing.T) {
 	bin := binaries(t)
 	rel := t.TempDir()
-	prog, err := os.ReadFile(filepath.Join(bin, "hermesh.exe"))
+	prog, err := os.ReadFile(filepath.Join(bin, "aide.exe"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestWindowsInstall(t *testing.T) {
 		sum := sha256.Sum256(b)
 		list = append(list, hex.EncodeToString(sum[:])+"  "+asset+"\n"...)
 	}
-	for _, name := range []string{"hermesh", "hermeshd", "hermeshdw", "her"} {
+	for _, name := range []string{"aide", "aided", "aidedw", "her"} {
 		add(name+"-windows-"+runtime.GOARCH+".exe", prog)
 	}
 	add("her-console.tar.gz", consoleArchive(t))
@@ -62,11 +62,11 @@ func TestWindowsInstall(t *testing.T) {
 	}
 	script := filepath.Join(t.TempDir(), "install.ps1")
 	pub := strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})))
-	os.WriteFile(script, []byte(strings.Replace(string(src), "__HERMESH_RELEASE_PUBKEY__", pub, 1)), 0o644)
+	os.WriteFile(script, []byte(strings.Replace(string(src), "__AIDE_RELEASE_PUBKEY__", pub, 1)), 0o644)
 	srv := httptest.NewServer(http.FileServer(http.Dir(rel)))
 	defer srv.Close()
 	install := func(dir string, args ...string) result {
-		return run(t, []string{"HERMESH_DOWNLOAD_BASE=" + srv.URL, "HERMESH_BIN_DIR=" + dir, "HERMESH_NO_PATH=1"}, 3*time.Minute,
+		return run(t, []string{"AIDE_DOWNLOAD_BASE=" + srv.URL, "AIDE_BIN_DIR=" + dir, "AIDE_NO_PATH=1"}, 3*time.Minute,
 			"powershell", append([]string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script}, args...)...)
 	}
 
@@ -75,7 +75,7 @@ func TestWindowsInstall(t *testing.T) {
 		if r := install(dir, "-Cli"); r.code != 0 {
 			t.Fatalf("install %d: %+v", i+1, r)
 		}
-		if r := run(t, nil, time.Minute, filepath.Join(dir, "hermesh.exe"), "version"); r.code != 0 {
+		if r := run(t, nil, time.Minute, filepath.Join(dir, "aide.exe"), "version"); r.code != 0 {
 			t.Fatalf("installed CLI: %+v", r)
 		}
 	}
@@ -84,11 +84,11 @@ func TestWindowsInstall(t *testing.T) {
 		t.Fatal("the CLI's install brought her")
 	}
 
-	// A machine: hermeshd, and her with her console beside it, twice.
+	// A machine: aided, and her with her console beside it, twice.
 	dir = t.TempDir()
 	for i := 0; i < 2; i++ {
 		r := install(dir, "-Name", "test-pc")
-		for _, f := range []string{"hermeshd.exe", "hermeshdw.exe", "her.exe", filepath.Join("her-console", "index.html")} {
+		for _, f := range []string{"aided.exe", "aidedw.exe", "her.exe", filepath.Join("her-console", "index.html")} {
 			if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 				t.Fatalf("install %d of a machine: no %s: %+v", i+1, f, r)
 			}
@@ -101,7 +101,7 @@ func TestWindowsInstall(t *testing.T) {
 	if r := install(dir, "-Cli"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "verification FAILED") {
 		t.Fatalf("installed from a list another key signed: %+v", r)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "hermesh.exe")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "aide.exe")); err == nil {
 		t.Fatal("the CLI is there all the same")
 	}
 }

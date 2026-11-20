@@ -16,10 +16,10 @@ import (
 	"github.com/hashicorp/yamux"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // relayOutage keeps the first outer connection answering yamux Pings while
@@ -62,7 +62,7 @@ func relayOutage(t *testing.T) (*Dialer, string, *atomic.Int32) {
 	}
 	dials := new(atomic.Int32)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 		if err != nil {
 			return
 		}

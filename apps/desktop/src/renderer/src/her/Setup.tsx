@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { platformTitle } from "@hermesh/core";
-import type { Machine } from "@hermesh/proto/local";
-import { Mark } from "@hermesh/ui";
+import { platformTitle } from "@aide/core";
+import type { Machine } from "@aide/proto/local";
+import { Mark } from "@aide/ui";
 import { local } from "../api";
 import { Icon } from "../icons";
-import { ErrorLine, SignerWaiting, useAction } from "../sheets/common";
+import { ErrorLine, Working, useAction } from "../sheets/common";
 import { setNotNow } from "../start";
 import { useStore } from "../store";
 import { herChoices, newServer, type Choice } from "./environments";
@@ -47,7 +47,7 @@ export function Setup({ onDone, onNewServer, fresh }: { onDone: (machineId: stri
         </div>
       </div>
       <p className="her-setup-note">{t("grant.desc")}</p>
-      {act.busy && chosen && <SignerWaiting detail={t("setup.signer", { name: chosen.local ? t("setup.thisMac") : chosen.machineName })} />}
+      {act.busy && chosen && <Working />}
       <ErrorLine text={act.error} />
     </div>
   );

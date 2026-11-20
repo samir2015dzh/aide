@@ -1,4 +1,4 @@
-import type { ProviderSummary } from "@hermesh/her-protocol";
+import type { ProviderSummary } from "@aide/her-protocol";
 
 // Preview fixtures for the built-in subscription products.
 export const demoTokenPlans: ProviderSummary[] = [

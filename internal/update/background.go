@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-// Background is hermeshd's updater, for a hermeshd its service runs. Now
+// Background is aided's updater, for an aided its service runs. Now
 // and then it looks for a newer release and, once busy (the sessions a
-// restart would stop) is 0, installs it and returns true: hermeshd then
+// restart would stop) is 0, installs it and returns true: aided then
 // exits, and its service starts the new program. It returns false when ctx
 // is done.
 func Background(ctx context.Context, dataDir, current string, busy func() int, log *slog.Logger) bool {

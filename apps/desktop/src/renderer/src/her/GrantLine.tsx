@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Machine } from "@hermesh/proto/local";
+import type { Machine } from "@aide/proto/local";
 import { local } from "../api";
 import { useStore } from "../store";
 import { lacksGrant, reachable } from "./environments";
