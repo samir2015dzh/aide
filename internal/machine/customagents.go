@@ -181,7 +181,7 @@ func customProvider(a customAgent, secrets map[string]string) *acp.Provider {
 		}
 		env = append(env, e.Name+"="+v)
 	}
-	return &acp.Provider{Agent: acp.Agent{Name: a.Name, Command: a.Command, Args: a.Args, Custom: true, Env: env, Dir: a.Dir}}
+	return &acp.Provider{Agent: acp.Agent{Name: a.Name, Command: a.Command, Args: a.Args, Names: []string{a.Name}, Custom: true, Env: env, Dir: a.Dir}}
 }
 
 // provider is the coding agent by that name, built in or custom; nil when

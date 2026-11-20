@@ -19,6 +19,7 @@
   },
   "status": {
     "queued": "排队中",
+    "queuedLowMemory": "排队中 · 系统内存不足，内存释放后自动开始",
     "preparing": "准备中",
     "running": "运行中",
     "idle": "空闲",

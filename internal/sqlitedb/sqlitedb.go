@@ -107,8 +107,13 @@ func StartCheckpointer(path string, writer *sql.DB, interval time.Duration, obse
 	c := &Checkpointer{db: db, stop: make(chan struct{}), done: make(chan struct{})}
 	go func() {
 		defer close(c.done)
-		t := time.NewTicker(interval)
+		// Idle (no frame written since the last look), it looks less and
+		// less often, up to idleCheckpoint: a daemon that waits wakes for it
+		// a few times a minute, not five times a second (docs/resident.md §4).
+		wait := interval
+		t := time.NewTimer(wait)
 		defer t.Stop()
+		var last [2]int64
 		for {
 			select {
 			case <-c.stop:
@@ -121,14 +126,28 @@ func StartCheckpointer(path string, writer *sql.DB, interval time.Duration, obse
 				mode = "RESTART"
 			}
 			start := time.Now()
-			db.Exec("PRAGMA wal_checkpoint(" + mode + ")")
+			var busy int
+			var frames [2]int64 // in the WAL, and checkpointed
+			err := db.QueryRow("PRAGMA wal_checkpoint("+mode+")").Scan(&busy, &frames[0], &frames[1])
 			if observe != nil {
 				observe(time.Since(start))
 			}
+			if err == nil && busy == 0 && frames == last && frames[0] == frames[1] {
+				wait = min(2*wait, max(interval, idleCheckpoint))
+			} else {
+				wait = interval
+			}
+			last = frames
+			t.Reset(wait)
 		}
 	}()
 	return c, nil
 }
+
+// idleCheckpoint: the longest wait between checkpoints of a database that
+// nothing writes; the first write after it waits at most that long for its
+// checkpoint, the WAL keeping it meanwhile.
+const idleCheckpoint = 10 * time.Second
 
 // Close runs a final checkpoint (call it before closing the writer).
 func (c *Checkpointer) Close() error {

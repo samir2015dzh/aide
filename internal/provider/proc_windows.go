@@ -25,9 +25,11 @@ var jobs sync.Map // int → windows.Handle
 
 var ntResumeProcess = windows.NewLazySystemDLL("ntdll.dll").NewProc("NtResumeProcess")
 
-// setGroup starts the child suspended, with a console no window shows.
+// setGroup starts the child suspended, with a console no window shows, at
+// normal priority: without it a child of aided's power saving would take
+// its below normal (internal/resident), and agents never run slowed.
 func setGroup(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED | windows.CREATE_NO_WINDOW | windows.CREATE_NEW_PROCESS_GROUP}
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED | windows.CREATE_NO_WINDOW | windows.CREATE_NEW_PROCESS_GROUP | windows.NORMAL_PRIORITY_CLASS}
 }
 
 // joinGroup puts the suspended child into a new job, then lets it run.
@@ -75,6 +77,34 @@ func releaseGroup(pgid int) {
 		windows.TerminateJobObject(j.(windows.Handle), 1)
 		windows.CloseHandle(j.(windows.Handle))
 	}
+}
+
+// GroupPids lists the processes now in the job of the tree whose first
+// process is pgid: none for a tree this daemon did not start.
+func GroupPids(pgid int) []int {
+	j, ok := jobs.Load(pgid)
+	if !ok {
+		return nil
+	}
+	// JOBOBJECT_BASIC_PROCESS_ID_LIST: two DWORD counts, then the ids (ULONG_PTR).
+	const word = unsafe.Sizeof(uintptr(0))
+	for n := 64; n <= 1<<16; n *= 4 {
+		buf := make([]byte, 8+uintptr(n)*word)
+		err := windows.QueryInformationJobObject(j.(windows.Handle), windows.JobObjectBasicProcessIdList, uintptr(unsafe.Pointer(&buf[0])), uint32(len(buf)), nil)
+		if err == windows.ERROR_MORE_DATA {
+			continue
+		}
+		if err != nil {
+			return nil
+		}
+		listed := int(*(*uint32)(unsafe.Pointer(&buf[4])))
+		pids := make([]int, 0, listed)
+		for i := range min(listed, n) {
+			pids = append(pids, int(*(*uintptr)(unsafe.Pointer(&buf[8+uintptr(i)*word]))))
+		}
+		return pids
+	}
+	return nil
 }
 
 // KillGroup ends a process tree this daemon started. Stop has closed the

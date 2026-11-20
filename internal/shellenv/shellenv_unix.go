@@ -90,3 +90,7 @@ func describe(ctx context.Context, sh string, err error, stderr string) string {
 	}
 	return fmt.Sprintf("%s failed: %v", shell, err)
 }
+
+// refreshAfter: the login shell's PATH, once read, is kept (reading it
+// starts a shell).
+const refreshAfter = 0

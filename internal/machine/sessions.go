@@ -28,6 +28,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
@@ -122,7 +123,12 @@ type Sessions struct {
 	mu         sync.Mutex
 	live       map[string]*live
 	dispatchMu sync.Mutex
-	w          *writer
+	// memoryLow says whether the system is short of memory (resident.MemoryLow;
+	// tests replace it): queued sessions wait while it is, and memRetry (held
+	// with dispatchMu) looks again.
+	memoryLow func() (bool, string)
+	memRetry  *time.Timer
+	w         *writer
 	// counts tracks live sessions per status so hot paths never scan.
 	counts [10]atomic.Int64
 	// watchers are the WatchSessions streams.
@@ -180,6 +186,7 @@ type live struct {
 	pending       message // the prompt of the turn to start
 	resume        bool
 	queuedAt      time.Time
+	heldMemory    bool // queued and kept from starting while memory is low
 	awaitingFirst bool
 	tools         map[string]string
 	// The current turn: its prompt, tool calls so far, whether its process
@@ -1034,6 +1041,9 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	// The agent's temporary files go with its process; its next start makes
 	// the directory again. Attachments stay: they belong to the record.
 	os.RemoveAll(filepath.Join(s.dataDir, "sessions", id, "tmp"))
+	if err := s.st.ReleasePorts(id); err != nil {
+		s.log.Warn("archive: ports not released", "session", id, "err", err)
+	}
 	if !inPlace && s.ws.Exists(id) {
 		if proj, _ := s.st.Project(row.ProjectID); proj != nil {
 			if err := s.ws.Remove(ctx, proj.Path, id); err != nil {
@@ -1581,6 +1591,11 @@ func (s *Sessions) dispatch() {
 		return
 	}
 	slices.SortFunc(queued, func(a, b *live) int { return a.queuedAt.Compare(b.queuedAt) })
+	if s.holdForMemory(queued) {
+		return
+	}
+	// Out of power saving before anything starts (internal/resident).
+	resident.Wake("a session starts")
 	for _, l := range queued {
 		if limited && running >= s.limits.MaxConcurrent {
 			return
@@ -1591,11 +1606,58 @@ func (s *Sessions) dispatch() {
 			continue
 		}
 		mQueueWait.Since(l.queuedAt)
+		if l.heldMemory {
+			l.heldMemory = false
+			s.log.Info("memory is back: the session starts", "session", l.id, "waited", time.Since(l.queuedAt).Round(time.Second))
+		}
 		l.mu.Unlock()
 		s.setStatus(l, sessionv1.SessionStatus_SESSION_STATUS_PREPARING, "")
 		running++
 		go s.prepare(l)
 	}
+}
+
+// PhaseQueuedLowMemory is the progress phase of a session kept queued
+// while the system is short of memory (docs/resident.md §3): its status
+// stays QUEUED, and the screens say why.
+const PhaseQueuedLowMemory = "queued_low_memory"
+
+// memoryRecheck: how often memory is looked at again while sessions wait for it.
+var memoryRecheck = 5 * time.Second
+
+// holdForMemory keeps the queued sessions from starting while the system is
+// short of memory, saying so on each, and looks again within
+// memoryRecheck; it reports whether they are held. Callers hold dispatchMu.
+func (s *Sessions) holdForMemory(queued []*live) bool {
+	if s.memoryLow == nil {
+		return false
+	}
+	low, why := s.memoryLow()
+	if !low {
+		return false
+	}
+	for _, l := range queued {
+		l.mu.Lock()
+		if l.row.Status != sessionv1.SessionStatus_SESSION_STATUS_QUEUED || l.heldMemory {
+			l.mu.Unlock()
+			continue
+		}
+		l.heldMemory = true
+		l.row.Progress.Phase = PhaseQueuedLowMemory
+		l.mu.Unlock()
+		s.log.Warn("the system is short of memory: the session waits queued", "session", l.id, "memory", why)
+		s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_Status{Status: &sessionv1.StatusChanged{
+			Status: sessionv1.SessionStatus_SESSION_STATUS_QUEUED, Reason: "waiting for memory: " + why}}})
+	}
+	if s.memRetry == nil {
+		s.memRetry = time.AfterFunc(memoryRecheck, func() {
+			s.dispatchMu.Lock()
+			s.memRetry = nil
+			s.dispatchMu.Unlock()
+			s.dispatch()
+		})
+	}
+	return true
 }
 
 func (s *Sessions) prepare(l *live) {
@@ -1704,10 +1766,17 @@ func (s *Sessions) prepare(l *live) {
 	files := s.attachmentsDir(id) // also for files sent later in the session
 	os.MkdirAll(files, 0o700)
 	gate := s.gate(l)
+	env := append(shellenv.Env(tmp), brandenv.Both("SESSION", id)...)
+	if base, err := s.st.SessionPorts(id); err != nil {
+		s.log.Warn("no ports for the session", "session", id, "err", err)
+	} else {
+		env = append(env, brandenv.Prefix+"PORT_BASE="+strconv.Itoa(base), brandenv.Prefix+"PORT_COUNT="+strconv.Itoa(portBlock))
+	}
 	l.mu.Lock()
+	env = append(env, brandenv.Prefix+"WORKTREE="+l.row.Worktree)
 	spec := provider.StartSpec{WorkDir: l.row.Worktree, TempDir: tmp, Prompt: prompt.text, Images: prompt.input().Images, ReadDirs: []string{files}, Model: l.row.Model,
 		ModelScope: l.row.ProjectID + "/" + id,
-		Effort:     l.row.Effort, Speed: l.row.Speed, Mode: l.row.Mode, Title: l.row.Title, Env: append(shellenv.Env(tmp), brandenv.Both("SESSION", id)...), Gate: gate}
+		Effort:     l.row.Effort, Speed: l.row.Speed, Mode: l.row.Mode, Title: l.row.Title, Env: env, Gate: gate}
 	if s.mcp != nil {
 		spec.MCPServers = s.mcp(l.id)
 	}

@@ -88,11 +88,23 @@ func TestAgentDrivesCLI(t *testing.T) {
 		t.Fatalf("rate limit: %+v", r)
 	}
 
+	// Waiting on a session that is not working returns at once with how its
+	// last turn went: here the rate limit, exit code 7.
+	r = agent("", 30*time.Second, "session", "wait", id, "-o", "json")
+	if m := one(r); r.code != 7 || sess(m)["session_id"] != id || errOf(m)["kind"] != "rate_limit" || sess(m)["status"] != "idle" {
+		t.Fatalf("wait on an idle session whose turn failed: %+v", r)
+	}
+
 	// A question: the pending question and exit code 8.
 	r = agent("", time.Minute, "session", "send", id, "--wait", "-o", "json", "--message", "ask Env|Deploy where?|staging,prod\nsay ok")
 	m = one(r)
 	if q, _ := sess(m)["question"].(map[string]any); r.code != 8 || q == nil || m["exit_code"] != float64(8) || errOf(m)["kind"] != "needs_input" {
 		t.Fatalf("question: %+v", r)
+	}
+	// Waiting never answers it: session wait ends at once on the question.
+	r = agent("", 30*time.Second, "session", "wait", id, "--timeout", "20s", "-o", "json")
+	if m := one(r); r.code != 8 || errOf(m)["kind"] != "needs_input" || sess(m)["question"] == nil {
+		t.Fatalf("wait on a question: %+v", r)
 	}
 	if r := agent("", time.Minute, "session", "answer", id, "--choose", "prod", "--wait", "-o", "json"); sess(one(r))["result"] != "ok" || r.code != 0 {
 		t.Fatalf("answer: %+v", r)
@@ -100,15 +112,25 @@ func TestAgentDrivesCLI(t *testing.T) {
 
 	// Timing out on a new session still says which session it is (its id
 	// also came first on stderr), and how to check on it.
-	r = agent("", time.Minute, "session", "start", "--project", "demo", "--wait", "--timeout", "2s", "-o", "json", "--prompt", "sleep 30s\nsay late")
+	r = agent("", time.Minute, "session", "start", "--project", "demo", "--wait", "--timeout", "2s", "-o", "json", "--prompt", "sleep 8s\nsay late")
 	m = one(r)
 	slow, _ := sess(m)["session_id"].(string)
 	if r.code != 6 || !strings.HasPrefix(slow, "s_") || sess(m)["status"] != "running" || errOf(m)["kind"] != "wait_timeout" ||
 		!strings.HasPrefix(r.stderr, "session "+slow) || !strings.Contains(errOf(m)["hint"].(string), "aide session get "+slow) {
 		t.Fatalf("timeout: %+v", r)
 	}
-	if r := w.cli(30*time.Second, "session", "interrupt", slow); r.code != 0 {
-		t.Fatalf("interrupt: %+v", r)
+	// session wait picks the wait up again: another timeout first (the turn
+	// goes on), then the turn's end and its full result.
+	r = agent("", time.Minute, "session", "wait", slow, "--timeout", "1s", "-o", "json")
+	if m := one(r); r.code != 6 || errOf(m)["kind"] != "wait_timeout" || sess(m)["status"] != "running" {
+		t.Fatalf("wait times out again: %+v", r)
+	}
+	r = agent("", time.Minute, "session", "wait", slow, "-o", "json")
+	if m := one(r); r.code != 0 || m["error"] != nil || sess(m)["status"] != "idle" || sess(m)["result"] != "late" {
+		t.Fatalf("wait for the turn: %+v", r)
+	}
+	if r := agent("", 30*time.Second, "session", "wait", slow); r.code != 0 || !strings.Contains(r.stdout, "late") {
+		t.Fatalf("wait on an idle session (text): %+v", r)
 	}
 
 	// In the background: the command returns at once and says how to check;

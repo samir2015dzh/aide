@@ -34,12 +34,15 @@ func (p *Provider) binary() string {
 		return p.Binary
 	}
 	home, _ := os.UserHomeDir()
-	return provider.LookPath("codex", provider.SearchPath(p.PathEnv),
+	if bin := provider.LookPath("codex", provider.SearchPath(p.PathEnv),
 		"/opt/homebrew/bin/codex", "/usr/local/bin/codex", filepath.Join(home, ".local/bin/codex"),
 		"/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
 		"/Applications/Codex.app/Contents/Resources/codex",
 		filepath.Join(home, "Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"),
-		filepath.Join(home, "Applications/Codex.app/Contents/Resources/codex"))
+		filepath.Join(home, "Applications/Codex.app/Contents/Resources/codex")); bin != "" {
+		return bin
+	}
+	return provider.WindowsProgram("codex") // where Windows says it is
 }
 
 var versionRE = regexp.MustCompile(`\d+\.\d+\.\d+[-\w.]*`)

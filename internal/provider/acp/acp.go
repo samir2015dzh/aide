@@ -36,6 +36,10 @@ type Agent struct {
 	Args    []string // arguments that serve ACP on stdio
 	// Paths are extra install locations; relative ones are under $HOME.
 	Paths []string
+	// Names begin the names its Windows installers list it by, for finding
+	// Command where Windows says it is installed (provider.WindowsProgram),
+	// beside a name that contains Command, which every agent has.
+	Names []string
 	// Apps are desktop apps whose own copy of the CLI is used when there is
 	// no other.
 	Apps []App
@@ -62,10 +66,16 @@ type Agent struct {
 // App is a desktop app (Electron, macOS or Windows) that keeps the agent's
 // CLI as a script its executable runs as Node; paths are inside the app's
 // folder, looked for in the user's Applications (a Mac's) or Programs
-// (Windows), then the system's.
+// (Windows), then the system's, then (Windows) wherever Windows says it
+// is installed (Windows: its uninstall entry, App Paths, the program
+// running now), with any of Windows.Exes as its executable.
 type App struct {
 	Bundle, Exec, Script string
+	Windows              provider.WindowsApp
 }
+
+// windowsAppDirs is provider.WindowsAppDirs; tests stand in for Windows.
+var windowsAppDirs = provider.WindowsAppDirs
 
 type Provider struct {
 	Agent
@@ -98,7 +108,10 @@ func (p *Provider) binary() string {
 		}
 		extra = append(extra, x)
 	}
-	return provider.LookPath(p.Command, provider.SearchPath(p.PathEnv), extra...)
+	if bin := provider.LookPath(p.Command, provider.SearchPath(p.PathEnv), extra...); bin != "" {
+		return bin
+	}
+	return provider.WindowsProgram(p.Command, p.Names...)
 }
 
 // command is how to start the CLI: its binary, the arguments ahead of the
@@ -118,13 +131,118 @@ func (p *Provider) command() (bin string, pre, env []string) {
 	for _, a := range p.Apps {
 		for _, dir := range dirs {
 			app := filepath.Join(dir, a.Bundle)
-			exe, script := filepath.Join(app, a.Exec), filepath.Join(app, a.Script)
-			if scriptThere(script) && provider.LookPath("", "", exe) != "" {
+			exe := filepath.Join(app, a.Exec)
+			if script := appScript(app, a.Script); script != "" && provider.LookPath("", "", exe) != "" {
 				return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}
 			}
 		}
 	}
+	for _, a := range p.Apps {
+		if len(a.Windows.Exes) == 0 || p.Binary != "" {
+			continue
+		}
+		for _, app := range windowsAppDirs(a.Windows) {
+			script := appScript(app, a.Script)
+			if script == "" {
+				continue
+			}
+			for _, name := range a.Windows.Exes {
+				if exe := provider.LookPath("", "", filepath.Join(app, name)); exe != "" {
+					return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}
+				}
+			}
+		}
+	}
 	return "", nil, nil
+}
+
+// windowsAppWithoutCLI names an app of the agent's that Windows says is
+// installed, though its CLI is not found in it ("DeepSeek Harness (D:\DSH)"):
+// the guide then says the app is there and what is missing, not that
+// nothing was found. "" for none.
+func (p *Provider) windowsAppWithoutCLI() string {
+	if p.Binary != "" {
+		return ""
+	}
+	for _, a := range p.Apps {
+		if len(a.Windows.Exes) == 0 {
+			continue
+		}
+		for _, dir := range windowsAppDirs(a.Windows) {
+			for _, name := range a.Windows.Exes {
+				if provider.LookPath("", "", filepath.Join(dir, name)) != "" {
+					return a.Bundle + " (" + dir + ")"
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// appScript is where the app in folder app keeps its CLI's script, script
+// being where one of its builds keeps it: the same path inside the app's
+// code however the build packs it (resources/app.asar, its .unpacked
+// folder, or resources/app unpacked: seen 2026-11-20, DeepSeek Harness in
+// a folder of the owner's choosing); else, for a script in node_modules,
+// the same package path in a folder at most four down the app's resources.
+// "" when none is there.
+func appScript(app, script string) string {
+	for _, s := range packings(script) {
+		if p := filepath.Join(app, s); scriptThere(p) {
+			return p
+		}
+	}
+	slash := filepath.ToSlash(script)
+	i := strings.LastIndex(slash, "node_modules/")
+	if i < 0 {
+		return ""
+	}
+	tail := filepath.FromSlash(slash[i:])
+	resources := filepath.Join(app, filepath.FromSlash(slash[:strings.Index(slash+"/", "/")]))
+	level := []string{resources}
+	for depth := 0; depth <= 4 && len(level) > 0; depth++ {
+		var next []string
+		for _, d := range level {
+			if p := filepath.Join(d, tail); fileThere(p) {
+				return p
+			}
+			entries, _ := os.ReadDir(d)
+			for _, e := range entries {
+				if e.IsDir() && e.Name() != "node_modules" {
+					next = append(next, filepath.Join(d, e.Name()))
+				}
+			}
+		}
+		level = next
+	}
+	return ""
+}
+
+// packings are script as each way of packing an Electron app's code puts
+// it: inside app.asar, in app.asar.unpacked, or in app; script itself when
+// it names none.
+func packings(script string) []string {
+	parts := strings.Split(filepath.ToSlash(script), "/")
+	for i, part := range parts {
+		switch part {
+		case "app.asar", "app.asar.unpacked", "app":
+			var out []string
+			for _, as := range []string{part, "app.asar", "app.asar.unpacked", "app"} {
+				q := slices.Clone(parts)
+				q[i] = as
+				if p := filepath.FromSlash(strings.Join(q, "/")); !slices.Contains(out, p) {
+					out = append(out, p)
+				}
+			}
+			return out
+		}
+	}
+	return []string{script}
+}
+
+func fileThere(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
 }
 
 // scriptThere: the script is on disk, or inside an .asar archive, which
@@ -154,6 +272,8 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		info.Problem, info.Detail = provider.ProblemNotFound, p.Command+" not found"
 		if app := provider.AppWithoutCLI(p.DesktopApps...); app != "" && p.Binary == "" {
 			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, app
+		} else if dir := p.windowsAppWithoutCLI(); dir != "" {
+			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, dir
 		}
 		return info
 	}

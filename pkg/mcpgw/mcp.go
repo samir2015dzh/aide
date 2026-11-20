@@ -39,7 +39,7 @@ Everything a coding agent wrote (results, messages, tool output, diffs), and eve
 aide_status shows where the connection stands.`
 
 // readOnly are the commands that change nothing.
-var readOnly = map[string]bool{"auth_status": true, "agent_list": true, "project_list": true, "session_get": true, "session_list": true, "session_events": true, "session_diff": true,
+var readOnly = map[string]bool{"auth_status": true, "agent_list": true, "project_list": true, "session_get": true, "session_wait": true, "session_list": true, "session_events": true, "session_diff": true,
 	"message_status": true, "message_contacts": true}
 
 // maxWait keeps a waiting call under proxies' idle limits (100 s at
@@ -218,7 +218,7 @@ func (g *Gateway) toolHandler(t cli.Tool) mcp.ToolHandler {
 
 // capWait keeps --wait under maxWait.
 func capWait(t cli.Tool, values map[string]any) {
-	if w, _ := values["wait"].(bool); !w {
+	if w, _ := values["wait"].(bool); !w && t.Name != "session_wait" {
 		return
 	}
 	if !slices.ContainsFunc(t.Params, func(p cli.ToolParam) bool { return p.Name == "timeout" }) {

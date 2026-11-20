@@ -79,7 +79,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"windows": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true}
+var windowsSpecs = map[string]bool{"windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -133,7 +133,7 @@ func TestDesktop(t *testing.T) {
 			continue
 		}
 		// Windows runs its own spec and those ported to it (docs/windows.md §11).
-		if runtime.GOOS == "windows" && !windowsSpecs[name] || runtime.GOOS != "windows" && name == "windows" {
+		if runtime.GOOS == "windows" && !windowsSpecs[name] || runtime.GOOS != "windows" && (name == "windows" || name == "tray") {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {
