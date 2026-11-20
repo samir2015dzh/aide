@@ -35,6 +35,7 @@ func main() {
 	var dataDir, listen, domain, certFile, keyFile, debugAddr, publicURL string
 	var withMCP bool
 	var pushSpool string
+	var setupCodeTTL time.Duration
 	serve := &cobra.Command{
 		Use:   "serve",
 		Short: "Run the relay",
@@ -58,7 +59,7 @@ func main() {
 					return err
 				}
 			}
-			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: log, Pusher: pusher, MCPURL: mcpURL})
+			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: log, Pusher: pusher, MCPURL: mcpURL, SetupCodeTTL: setupCodeTTL})
 			if err != nil {
 				return err
 			}
@@ -74,10 +75,10 @@ func main() {
 					fmt.Fprint(os.Stderr, "  Claude, ChatGPT and other MCP apps need HTTPS: they won't connect.\n")
 				}
 			}
-			if code, err := srv.SetupCode(); err != nil {
+			if code, until, err := srv.SetupCodeUntil(); err != nil {
 				return err
 			} else if code != "" {
-				fmt.Fprintf(os.Stderr, "\n  This server is not set up yet.\n  Setup code: %s\n  In the Aide app, choose Set Up a New Server, and type it with the account\n  and password the server will keep.\n\n", code)
+				fmt.Fprintf(os.Stderr, "\n  This server is not set up yet.\n  Setup code: %s%s\n  In the Aide app, choose Set Up a New Server, and type it with the account\n  and password the server will keep.\n\n", code, setupCodeValid(until))
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
@@ -160,12 +161,12 @@ func main() {
 		Aliases: []string{"claim-code"},
 		Short:   "Print the setup code of a server not set up yet",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			srv, err := relay.New(relay.Config{DataDir: dataDir, Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))})
+			srv, err := relay.New(relay.Config{DataDir: dataDir, SetupCodeTTL: setupCodeTTL, Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))})
 			if err != nil {
 				return err
 			}
 			defer srv.Close()
-			code, err := srv.SetupCode()
+			code, until, err := srv.SetupCodeUntil()
 			if err != nil {
 				return err
 			}
@@ -174,10 +175,17 @@ func main() {
 				return nil
 			}
 			fmt.Println(code)
+			if s := setupCodeValid(until); s != "" {
+				fmt.Fprintln(os.Stderr, strings.TrimPrefix(s, " "))
+			}
 			return nil
 		},
 	}
 	setupCode.Flags().StringVar(&dataDir, "data-dir", envOr("RELAY_DATA", "./relay-data"), "data directory")
+	for _, c := range []*cobra.Command{serve, setupCode} {
+		c.Flags().DurationVar(&setupCodeTTL, "setup-code-ttl", envDuration("RELAY_SETUP_CODE_TTL", time.Hour),
+			"how long a new setup code is taken; then aide-relay setup-code prints a new one, and the old one is refused (0: forever; or AIDE_RELAY_SETUP_CODE_TTL)")
+	}
 
 	var account string
 	password := &cobra.Command{
@@ -332,4 +340,20 @@ func envOr(k, d string) string {
 		return v
 	}
 	return d
+}
+
+// envDuration is AIDE_<name> as a duration (such as 30m), else def.
+func envDuration(name string, def time.Duration) time.Duration {
+	if d, err := time.ParseDuration(brandenv.Get(name)); err == nil {
+		return d
+	}
+	return def
+}
+
+// setupCodeValid says until when a setup code is taken ("" for always).
+func setupCodeValid(until time.Time) string {
+	if until.IsZero() {
+		return ""
+	}
+	return " (valid until " + until.UTC().Format("2006-01-02 15:04 UTC") + "; then aide-relay setup-code prints a new one)"
 }

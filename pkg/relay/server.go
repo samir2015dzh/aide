@@ -49,6 +49,9 @@ type Config struct {
 	// Pusher sends notifications to the owners' iPhones (push.go); nil
 	// sends none.
 	Pusher Pusher
+	// SetupCodeTTL is how long a setup code is taken, from when it is
+	// made; then the next one asked for is new. 0: forever.
+	SetupCodeTTL time.Duration
 }
 
 type Server struct {

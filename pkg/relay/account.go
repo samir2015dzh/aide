@@ -261,10 +261,18 @@ func (s *Store) oldPasswordLogin() (*relayv1.OldPasswordLogin, error) {
 
 // SetupCode returns the code to set the server up with, or "" once it is set up.
 func (s *Server) SetupCode() (string, error) {
+	code, _, err := s.SetupCodeUntil()
+	return code, err
+}
+
+// SetupCodeUntil returns the code to set the server up with and when it
+// expires (zero: never), or "" once it is set up. An expired code is
+// replaced by a new one (Config.SetupCodeTTL).
+func (s *Server) SetupCodeUntil() (string, time.Time, error) {
 	if s.singleOwner() != "" {
-		return "", nil
+		return "", time.Time{}, nil
 	}
-	return s.sqlite.SetupCode()
+	return s.sqlite.SetupCode(time.Now(), s.cfg.SetupCodeTTL)
 }
 
 func (p *publicService) SetUp(ctx context.Context, req *relayv1.SetUpRequest) (*relayv1.LogInResponse, error) {
@@ -277,9 +285,15 @@ func (p *publicService) SetUp(ctx context.Context, req *relayv1.SetUpRequest) (*
 	if s.singleOwner() != "" {
 		return nil, errf(connect.CodeAlreadyExists, "this server is set up already: log in with its account")
 	}
-	code, err := s.sqlite.SetupCode()
+	code, until, _, err := s.sqlite.setupCode()
 	if err != nil {
 		return nil, err
+	}
+	if code == "" {
+		return nil, errf(connect.CodeFailedPrecondition, "this server has no setup code yet: print one on the server with aide-relay setup-code")
+	}
+	if setupCodeExpired(until, time.Now()) {
+		return nil, errf(connect.CodeFailedPrecondition, "the setup code expired: print a new one on the server with aide-relay setup-code")
 	}
 	if !constantTimeEqual(strings.ToUpper(strings.TrimSpace(req.SetupCode)), code) {
 		return nil, errf(connect.CodePermissionDenied, "wrong setup code")

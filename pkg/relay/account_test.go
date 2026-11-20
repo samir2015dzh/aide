@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -311,5 +313,63 @@ func TestAccountFromAnOldPasswordLogin(t *testing.T) {
 	}
 	if _, err := pub.LogIn(ctx, &relayv1.LogInRequest{Account: "me", Password: "correct horse", Joiner: dj}); err != nil {
 		t.Fatalf("a login after converting: %v", err)
+	}
+}
+
+// A setup code lasts its time (Config.SetupCodeTTL): expired, it is
+// refused, and the next one asked for is new, the old one refused still;
+// a code kept from before codes expired starts its time when next asked
+// for; a server set up has none, whatever the time.
+func TestSetupCodeExpires(t *testing.T) {
+	st, err := OpenStore(filepath.Join(t.TempDir(), "relay.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	t0 := time.Unix(1_800_000_000, 0)
+	code, until, err := st.SetupCode(t0, time.Hour)
+	if err != nil || code == "" || !until.Equal(t0.Add(time.Hour)) {
+		t.Fatalf("first: %q %v %v", code, until, err)
+	}
+	if again, u, _ := st.SetupCode(t0.Add(59*time.Minute), time.Hour); again != code || !u.Equal(until) {
+		t.Fatalf("within its time: %q %v", again, u)
+	}
+	next, u, _ := st.SetupCode(t0.Add(time.Hour), time.Hour)
+	if next == code || next == "" || !u.Equal(t0.Add(2*time.Hour)) {
+		t.Fatalf("after its time: %q %v", next, u)
+	}
+	if never, u, _ := st.SetupCode(t0.Add(2*time.Hour), 0); never == next || !u.IsZero() {
+		t.Fatalf("forever: %q %v", never, u)
+	}
+	// From before codes expired: kept, timed from now.
+	st.setMeta("claim_code", []byte("OLDC-ODE0-0000-0000"))
+	st.db.Exec(`DELETE FROM meta WHERE key='claim_code_until'`)
+	if old, u, _ := st.SetupCode(t0, time.Hour); old != "OLDC-ODE0-0000-0000" || !u.Equal(t0.Add(time.Hour)) {
+		t.Fatalf("a code from before: %q %v", old, u)
+	}
+
+	s, pub := newTestServer(t)
+	ctx := context.Background()
+	_, dj := joiner(relayv1.JoinKind_JOIN_KIND_DEVICE)
+	s.cfg.SetupCodeTTL = time.Hour
+	stale, _ := s.SetupCode()
+	s.sqlite.setMeta("claim_code_until", []byte(strconv.FormatInt(time.Now().Add(-time.Second).Unix(), 10)))
+	if _, err := pub.SetUp(ctx, &relayv1.SetUpRequest{SetupCode: stale, Account: "me", Password: "correct horse", Joiner: dj}); connect.CodeOf(err) != connect.CodeFailedPrecondition ||
+		!strings.Contains(err.Error(), "aide-relay setup-code") {
+		t.Fatalf("an expired code: %v", err)
+	}
+	fresh, _ := s.SetupCode()
+	if fresh == stale {
+		t.Fatal("no new code after the old one expired")
+	}
+	if _, err := pub.SetUp(ctx, &relayv1.SetUpRequest{SetupCode: stale, Account: "me", Password: "correct horse", Joiner: dj}); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("the expired code after a new one: %v", err)
+	}
+	if _, err := pub.SetUp(ctx, &relayv1.SetUpRequest{SetupCode: fresh, Account: "me", Password: "correct horse", Joiner: dj}); err != nil {
+		t.Fatal(err)
+	}
+	s.sqlite.setMeta("claim_code_until", []byte("1"))
+	if c, _ := s.SetupCode(); c != "" {
+		t.Fatalf("a server set up has a setup code: %q", c)
 	}
 }
