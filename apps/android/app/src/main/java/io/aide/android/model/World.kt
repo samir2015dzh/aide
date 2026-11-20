@@ -9,6 +9,7 @@ import io.aide.android.api.Session
 import io.aide.android.api.SessionCursor
 import io.aide.android.api.SessionStatus
 import io.aide.android.api.WatchResponse
+import io.aide.android.push.LiveNotices
 import java.time.Instant
 
 /**
@@ -103,20 +104,28 @@ fun mergeSessions(held: Map<String, Session>, changed: List<Session>, deleted: L
 
 fun instant(ts: String): Instant = if (ts.isEmpty()) Instant.EPOCH else runCatching { Instant.parse(ts) }.getOrDefault(Instant.EPOCH)
 
-/** The sessions as the menu lists them: those that need the person, those at work, the rest (newest first). */
-data class Buckets(val needsYou: List<Session>, val inProgress: List<Session>, val recent: List<Session>) {
+/**
+ * The sessions as the menu lists them (newest first): those that need the person, those with a result not opened yet
+ * (until it is opened, even while its machine is lost), those at work, the rest.
+ */
+data class Buckets(val needsYou: List<Session>, val unseen: List<Session>, val inProgress: List<Session>, val recent: List<Session>) {
     companion object {
         fun of(all: Collection<Session>): Buckets {
             val sorted = all.filter { it.status != SessionStatus.ARCHIVED }.sortedByDescending { instant(it.updatedAt) }
             val needs = sorted.filter { needsYou(it) }
-            val working = sorted.filter { !needsYou(it) && it.status in setOf(SessionStatus.RUNNING, SessionStatus.PREPARING, SessionStatus.QUEUED) }
-            val rest = sorted.filter { it !in needs && it !in working }
-            return Buckets(needs, working, rest)
+            val news = sorted.filter { it !in needs && doneUnseen(it) }
+            val working = sorted.filter { it !in needs && it !in news && it.status in setOf(SessionStatus.RUNNING, SessionStatus.PREPARING, SessionStatus.QUEUED) }
+            val rest = sorted.filter { it !in needs && it !in news && it !in working }
+            return Buckets(needs, news, working, rest)
         }
     }
 }
 
-fun needsYou(s: Session): Boolean = s.status == SessionStatus.WAITING_INPUT || s.progress?.pendingQuestion != null
+/** Waiting for an answer, or stopped by a failure (as the desktop's needsAttention). */
+fun needsYou(s: Session): Boolean = s.status == SessionStatus.WAITING_INPUT || s.progress?.pendingQuestion != null || LiveNotices.failed(s)
+
+/** Finished well, its result not opened yet; one whose state is not known now stays with it. */
+fun doneUnseen(s: Session): Boolean = s.status in setOf(SessionStatus.IDLE, SessionStatus.UNKNOWN) && s.progress?.lastFailure == null && unseen(s)
 
 /** A session's title in lists: its own, else the first line of its last message, else its id. */
 fun displayTitle(s: Session): String = s.title.ifBlank { s.progress?.lastMessageExcerpt?.lineSequence()?.firstOrNull()?.take(60).orEmpty() }.ifBlank { s.sessionId.take(12) }

@@ -25,6 +25,10 @@ type cases struct {
 			Failure string `json:"failure"`
 			Last    *int   `json:"last_event_ago"`
 			Updated *int   `json:"updated_ago"`
+			// Turns finished, and those the owner opened (null: the
+			// machine keeps none, as an older one).
+			Turns uint32  `json:"turns"`
+			Seen  *uint32 `json:"seen_turns"`
 		} `json:"session"`
 		Machine struct {
 			Known, Local, Syncing bool
@@ -68,7 +72,10 @@ func TestCases(t *testing.T) {
 		s := &sessionv1.Session{
 			Status:    sessionv1.SessionStatus(sessionv1.SessionStatus_value["SESSION_STATUS_"+c.Session.Status]),
 			UpdatedAt: ts(c.Session.Updated),
-			Progress:  &sessionv1.SessionProgress{LastEventAt: ts(c.Session.Last)},
+			Progress:  &sessionv1.SessionProgress{LastEventAt: ts(c.Session.Last), TurnCount: c.Session.Turns},
+		}
+		if c.Session.Seen != nil {
+			s.Seen = &sessionv1.SessionSeen{Turns: *c.Session.Seen}
 		}
 		if c.Session.Failure != "" {
 			s.Progress.LastFailure = &sessionv1.Failure{Kind: sessionv1.FailureKind(sessionv1.FailureKind_value["FAILURE_KIND_"+c.Session.Failure])}

@@ -2,11 +2,14 @@ package io.aide.android.push
 
 import io.aide.android.api.Machine
 import io.aide.android.api.Notice
+import io.aide.android.api.Question
 import io.aide.android.api.Session
 import io.aide.android.api.SessionStatus
 import io.aide.android.model.World
 import io.aide.android.model.displayTitle
 import io.aide.android.model.instant
+import io.aide.android.model.instantOrNull
+import java.time.Duration
 import java.time.Instant
 
 /**
@@ -16,10 +19,15 @@ import java.time.Instant
  * before (show, Push.notify). It follows the
  * desktop's rules (packages/core notices.ts):
  *
- * - A session seen for the first time tells about its question, and is new
- *   when it was created after the first look and not by the owner (the
- *   owner just did); one seen before tells about a new question or a new
- *   failure. Finished turns are not asked for.
+ * - A session seen for the first time is new when it was created after the
+ *   first look and not by the owner (the owner just did); one seen before
+ *   tells about a new failure. Finished turns are not asked for.
+ * - A question goes to the owner's desktop first (docs/session-states.md
+ *   §7, questionDue): the phone tells of it once no desktop said it told the
+ *   owner within DESKTOP_GRACE of its asking, or one did but the owner was
+ *   away and it is still unanswered ESCALATE_AFTER after; never once the
+ *   owner was at a desktop while it waited. From a machine that keeps
+ *   nothing seen (an older one), at once, as before.
  * - Her: an environment whose unread count grew with a newer message from
  *   an assistant that is not muted. An environment seen the first time is
  *   no news.
@@ -28,7 +36,7 @@ import java.time.Instant
  * withdrawn.
  */
 class LiveNotices {
-    private data class Snapshot(val question: String, val failed: Boolean)
+    private data class Snapshot(val failed: Boolean)
 
     /** What to show, and the threads (notificationId) to take back. */
     data class Changes(val show: List<Notice>, val withdraw: List<String>)
@@ -37,6 +45,9 @@ class LiveNotices {
     private var since: Instant? = null
     private var her: Map<String, HerSnapshot>? = null
     private var asking = setOf<String>()
+    /** Each pending question by its id: when this phone first saw it; and those it told of. */
+    private var firstSeen = mapOf<String, Instant>()
+    private var rang = setOf<String>()
     private var herShown = setOf<String>()
 
     private data class HerSnapshot(val unread: Int, val latest: String)
@@ -54,8 +65,12 @@ class LiveNotices {
             if (before == null && since?.let { instant(s.createdAt) >= it } == true && s.createdBy != "owner") {
                 show += notice(w, s, "session_started")
             }
-            if (q != null && q.questionId != before?.question) {
-                show += notice(w, s, "question").copy(question = q)
+            if (q != null && q.questionId !in rang) {
+                val due = questionDue(s, q, firstSeen[q.questionId] ?: now)
+                if (due != null && !now.isBefore(due)) {
+                    show += notice(w, s, "question").copy(question = q)
+                    rang = rang + q.questionId
+                }
             }
             if (before != null && failed(s) && !before.failed) {
                 show += notice(w, s, "failure").copy(failure = s.progress?.lastFailure?.kind.orEmpty(), failureMessage = s.progress?.lastFailure?.message.orEmpty())
@@ -65,7 +80,10 @@ class LiveNotices {
         // A question answered here or elsewhere: its notification goes (a failure since replaced it).
         for (id in asking - nowAsking) if (show.none { it.sessionId == id }) withdraw += id
         asking = nowAsking
-        seen = w.sessions.mapValues { (_, s) -> Snapshot(pendingQuestion(s)?.questionId.orEmpty(), failed(s)) }
+        val pending = w.sessions.values.mapNotNull { pendingQuestion(it)?.questionId }.toSet()
+        firstSeen = pending.associateWith { firstSeen[it] ?: now }
+        rang = rang intersect pending
+        seen = w.sessions.mapValues { (_, s) -> Snapshot(failed(s)) }
         if (since == null) since = now
 
         // Her.
@@ -112,6 +130,25 @@ class LiveNotices {
         m.her?.latest?.let { "${it.botId}\u0000${it.at}\u0000${it.text}" }.orEmpty()
 
     companion object {
+        /** How long a desktop has to say it told the owner of a question before the phone does. */
+        val DESKTOP_GRACE: Duration = Duration.ofSeconds(10)
+        /** A question a desktop told of, the owner away, still unanswered this long after it was asked, rings here. */
+        val ESCALATE_AFTER: Duration = Duration.ofMinutes(3)
+
+        /**
+         * When the phone tells of a question q of s it first saw at firstSeen, or null: never, the owner having been
+         * at a desktop while it waited (Session.seen, kept by its machine; docs/session-states.md §7).
+         */
+        fun questionDue(s: Session, q: Question, firstSeen: Instant): Instant? {
+            val seen = s.seen ?: return firstSeen // an older machine: at once, as before
+            val asked = instantOrNull(q.askedAt) ?: firstSeen
+            return when {
+                seen.questionId != q.questionId -> asked + DESKTOP_GRACE
+                seen.questionPresent -> null
+                else -> asked + ESCALATE_AFTER
+            }
+        }
+
         /** The thread a notice of Her's shows under (show). */
         fun herThread(machineId: String, botId: String) = "her:$machineId:$botId"
 

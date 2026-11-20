@@ -30,7 +30,7 @@ what the viewer can reach, and on its clock.
 
 | From | What |
 |---|---|
-| the machine | `Session.status`, `progress.last_failure`, `progress.last_event_at` (when its last event was recorded; new, set with each event), `updated_at` (stands in for `last_event_at` from older machines) |
+| the machine | `Session.status`, `progress.last_failure`, `progress.last_event_at` (when its last event was recorded; new, set with each event), `updated_at` (stands in for `last_event_at` from older machines), `progress.turn_count` and `seen.turns` (§7) |
 | the relay | whether the machine is online, and `last_seen`: while it is offline, **when it last heard from it** (it used to say when it noticed it was gone, `peerQuiet` = 20 s later) |
 | the owner's device (aided's replica) | `Machine.unreachable` / `syncing` (as before), and new: `heard_at`, `unreachable_since`, `lost_spans` (§4); `GetStatusResponse.state_limits` |
 | the CLI | what it just read (the machine answered: that is a heartbeat), the relay's `last_seen`, and the sessions it last read of each machine (§6) |
@@ -43,7 +43,7 @@ what the viewer can reach, and on its clock.
 | `running` | RUNNING | 运行中 | Running |
 | `waiting_input` | WAITING_INPUT | 等你回答 | Waiting for you |
 | `waiting_approval` | (none yet: coding sessions ask no approvals; reserved for Her's cards) | 等你审批 | Waiting for approval |
-| `done_unseen` | IDLE, finished, not opened by the owner (once sessions keep what the owner saw: the attention triage work) | 已完成未看 | Done, not opened |
+| `done_unseen` | IDLE, no failure, a finished turn the owner has not opened (`Session.seen`, §7) | 已完成未看 | Done, not opened |
 | `done` | IDLE, no failure | 已完成 | Done |
 | `failed` | CRASHED; IDLE whose last turn failed | 出错 | Failed |
 | `interrupted` | IDLE whose last turn was stopped on purpose | 已中断 | Interrupted |
@@ -146,7 +146,49 @@ For a dispatcher: `link` tells whether to believe `state`. `live` and
 act on a `lost` session's `state` without reading it again once its machine is
 back.
 
-## 7. Compared with Agents Anywhere
+## 7. What the owner has seen, and questions to phones
+
+Each session's machine keeps what the owner has seen of it (`Session.seen`,
+stored with the session; sessions from before count as seen up to their
+turns then). A device of the owner says so with `MarkSessionSeen` (the
+local API forwards it to the session's machine), and every device reads it
+back from the machine, so all of them agree:
+
+- **Opened** (`opened`): the session's page is in front of the owner (the
+  desktop window focused; the Android app in front). Its finished turns are
+  seen (`seen.turns` = `progress.turn_count`), and its pending question too,
+  the owner being there. A page sends it only when something is new to the
+  owner (`openedNews`): nothing new writes nothing.
+- **Told of a question** (`question_id`, `present`): the desktop app's main
+  process, once it has notified the owner of a session's question, tells its
+  machine so, and whether the owner is at the desktop: the system has had
+  input within the last minute and is not locked (Electron's
+  `powerMonitor.getSystemIdleState(60)` is `active`); and again once the owner
+  comes back while it waits (looked at every 10 s). With question notices off
+  the desktop tells nothing.
+
+**Lists** (desktop and Android) group by state: needs you (a question; a
+failed or crashed turn), new results (`done_unseen`: until opened on any
+device, never by itself; kept while its machine is lost), in progress, the
+rest. Lists page as before: an unopened result older than the pages loaded
+shows once they reach it. A turn started on a session
+with an unopened result is in progress again.
+
+**Questions to phones.** The desktop notifies at once, as before. A phone is
+told (the machine's sealed push, `holdQuestion`; the Android app's own,
+`LiveNotices.questionDue`):
+
+| The machine's record | The phone |
+|---|---|
+| no desktop told of it within 10 s of its asking (none runs) | at 10 s |
+| a desktop told of it, the owner away | at 3 min, if still unanswered |
+| the owner at a desktop while it waited, or opened it | never |
+| answered | never (and an earlier notice withdrawn) |
+| an older machine (keeps nothing seen) | at once, as before |
+
+Failures, new sessions and Her's notices are unchanged: at once everywhere.
+
+## 8. Compared with Agents Anywhere
 
 What AA's DSH connector does (its npm package `@agents-anywhere/dsh-bridge-next`
 2.1.0, read only): a heartbeat every 20 s, a reconnect every 3 s, and, on

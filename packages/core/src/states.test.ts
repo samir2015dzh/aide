@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { GetStatusResponseSchema, MachineSchema, StateLimitsSchema } from "@aide/proto/local";
-import { FailureKind, FailureSchema, SessionLink, SessionProgressSchema, SessionSchema, SessionState, SessionStatus } from "@aide/proto/session";
+import { FailureKind, FailureSchema, SessionLink, SessionProgressSchema, SessionSchema, SessionSeenSchema, SessionState, SessionStatus } from "@aide/proto/session";
 import cases from "../../../internal/sessionstate/testdata/cases.json" with { type: "json" };
 import { describe, expect, test } from "vitest";
 import { i18n } from "./i18n";
@@ -10,7 +10,7 @@ import { defaultStateLimits, livenessOf, lostDuring, sessionStateOf, stateLimits
 // The cases internal/sessionstate (Go) and the Android app are checked against too.
 type Case = {
   name: string;
-  session: { status: string; failure: string; last_event_ago: number | null; updated_ago: number | null };
+  session: { status: string; failure: string; last_event_ago: number | null; updated_ago: number | null; turns?: number; seen_turns?: number | null };
   machine: { known: boolean; local: boolean; unreachable: string; syncing: boolean; heard_ago: number | null; unreachable_since_ago: number | null };
   want: { state: string; link: string; quiet_seconds: number; silent_seconds: number };
 };
@@ -36,8 +36,10 @@ describe("the shared cases", () => {
         updatedAt: ts(c.session.updated_ago),
         progress: create(SessionProgressSchema, {
           lastEventAt: ts(c.session.last_event_ago),
+          turnCount: c.session.turns ?? 0,
           lastFailure: c.session.failure ? create(FailureSchema, { kind: FailureKind[c.session.failure as keyof typeof FailureKind] }) : undefined,
         }),
+        seen: c.session.seen_turns == null ? undefined : create(SessionSeenSchema, { turns: c.session.seen_turns }),
       });
       const m = c.machine;
       const v = sessionStateOf(s, { known: m.known, local: m.local, unreachable: m.unreachable, syncing: m.syncing, heardAt: ago(m.heard_ago), unreachableSince: ago(m.unreachable_since_ago) }, limits, now);
