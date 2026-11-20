@@ -41,8 +41,17 @@ func TestRollbackToAnEarlierTurn(t *testing.T) {
 	if sess.Status != idle || sess.Progress.TurnCount != 1 || sess.ProviderSessionRef != "" || sess.Result != "1" {
 		t.Fatalf("after the rollback: %v", sess)
 	}
-	if d := sess.Progress.DiffStat; d.GetFilesChanged() != 1 {
-		t.Fatalf("diff stat: %v", d)
+	// The session's changes are turn 1's again, as Aide counts them from its base.
+	row, err := h.s.st.Session(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := diffStat(context.Background(), h.s.ws.Path(id), row.BaseCommit, first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := sess.Progress.DiffStat; d.GetFilesChanged() != want.FilesChanged || d.GetInsertions() != want.Insertions || d.GetDeletions() != want.Deletions {
+		t.Fatalf("diff stat: %v, want %v", d, want)
 	}
 	wt := h.s.ws.Path(id)
 	if b, _ := os.ReadFile(filepath.Join(wt, "a.txt")); string(b) != "one\n" {
