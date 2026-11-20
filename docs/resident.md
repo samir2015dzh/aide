@@ -134,9 +134,22 @@ check (every 4 h) and a check of whether the network is up (every 60 s).
 The two `aidedw.exe` processes Task Manager shows are the service's
 supervisor (about 0.4 MB, waiting on its child) and the daemon itself.
 
-The Go runtime's memory limit is 64 MiB by default (`GOMEMLIMIT` overrides
+The Go runtime's memory limit is 96 MiB by default (`GOMEMLIMIT` overrides
 it, `off` for none): the collector works harder as the heap nears it; above
-it the daemon only collects more often, it is never stopped for it.
+it the daemon only collects more often, it is never stopped for it. 64 MiB
+was the starting point; under load it made the collector thrash, so the
+owner's allowance of 96 MiB is used (`go run ./bench -sessions 300
+-concurrency 100 -commands 4 -output-bytes 65536 -deltas 50`, Linux, one
+run each):
+
+| GOMEMLIMIT | GC cycles | aided avg CPU | aided peak RSS | StartSession p50 / p99 | sessions/s |
+|---|---|---|---|---|---|
+| off | 76 | 43% | 141 MiB | 7 / 47 ms | 73 |
+| 96 MiB | 94 | 50% | 123 MiB | 19 / 58 ms | 65 |
+| 64 MiB | 355 | 78% | 90 MiB | 57 / 254 ms | 54 |
+
+An idle daemon's heap (a few MB) is far under either: the limit only
+matters under load.
 
 ## 5. Measuring
 

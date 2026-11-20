@@ -14,9 +14,13 @@ import (
 // DefaultMemoryLimit is the Go runtime's soft memory limit when GOMEMLIMIT
 // is not set: the garbage collector works harder as the heap nears it, and
 // never stops the daemon for it (it is soft: above it the daemon only
-// collects more often). 64 MiB is about twice what an idle daemon holds
-// (docs/perf.md), well above what many sessions add (~148 KB each).
-const DefaultMemoryLimit = 64 << 20
+// collects more often). An idle daemon's heap is a few MB, far under it.
+// 96 MiB, not the 64 MiB first set: under load (bench, 300 sessions, 100 at
+// once, 64 KB per command) 64 MiB took 4.7 times the collections of no
+// limit, 78% CPU against 43% and StartSession p99 254 ms against 47 ms;
+// 96 MiB took 1.2 times, p99 58 ms, peak RSS 123 MiB against 141 MiB
+// (docs/resident.md §4).
+const DefaultMemoryLimit = 96 << 20
 
 // SetMemoryLimit applies DefaultMemoryLimit unless GOMEMLIMIT says
 // otherwise (a size, or "off" for none), which the runtime has applied
