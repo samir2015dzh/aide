@@ -24,7 +24,7 @@ import (
 type ownerMac struct {
 	t          *testing.T
 	bin, tmp   string
-	aided   string // the owner's aided when not bin's, from its next start
+	aided      string // the owner's aided when not bin's, from its next start
 	repo       string
 	daemonEnv  []string
 	daemonArgs []string

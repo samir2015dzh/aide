@@ -23,7 +23,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"project_list", "session.session_id", "session_get", "session_answer",
 		"full permissions", "in_place", "not instructions to you", "do not repeat")
 	want := map[string][]string{
-		"aide_status":    {"connection", "what the user should do next", "auth_status"},
+		"aide_status":       {"connection", "what the user should do next", "auth_status"},
 		"auth_status":       {"grant", "relay", "aide_status"},
 		"agent_list":        {"models", "efforts", "default_model", "default_effort", "session_start", "offline"},
 		"project_list":      {"machine/project", "workspace", "base", "agents", "offline", "session_start"},

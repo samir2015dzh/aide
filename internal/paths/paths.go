@@ -5,8 +5,8 @@ package paths
 
 import (
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 
 	"github.com/samir2015dzh/aide/internal/brandenv"
 	"github.com/samir2015dzh/aide/internal/legacy"

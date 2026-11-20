@@ -65,8 +65,8 @@ import (
 	"sync"
 	"time"
 
-	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 
 	"github.com/samir2015dzh/aide/internal/provider"
 )
