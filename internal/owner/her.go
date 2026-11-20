@@ -426,26 +426,6 @@ func (o *Owner) SetHerCommandConnector(ctx context.Context, machineID string, c 
 	return err
 }
 
-// SetHerAssistantMode sets how freely an assistant acts, on its
-// conversation, as the apps do: full access too, as the owner chose it.
-func (o *Owner) SetHerAssistantMode(ctx context.Context, machineID, botID, mode string) error {
-	if botID == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("no assistant"))
-	}
-	switch mode {
-	case "manual", "accept-edits", "bypass-permissions":
-	default:
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown permission mode %q", mode))
-	}
-	h, err := o.herOn(ctx, machineID)
-	if err != nil {
-		return err
-	}
-	return onBot(ctx, h, botID, func(conn, session string) error {
-		return herOp(ctx, h, conn, session, map[string]any{"type": "set_permission_mode", "mode": mode})
-	})
-}
-
 // ---------------------------------------------------------------------------
 // Her's protocol, passed on.
 

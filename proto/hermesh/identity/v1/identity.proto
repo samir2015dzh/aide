@@ -205,11 +205,10 @@ message AdminCommand {
     SetName set_name = 14;
     AgentDefaults set_agent_defaults = 15;
     SetHer set_her = 16;
-    SetHerAssistantMode set_her_assistant_mode = 17;
     SetHerCommandConnector set_her_command_connector = 18;
   }
-  reserved 12;
-  reserved "rename_machine";
+  reserved 12, 17;
+  reserved "rename_machine", "set_her_assistant_mode";
 }
 
 message AddProject {
@@ -246,15 +245,6 @@ message SetHer {
   // With enabled false only: her data is deleted too, her home and, on a
   // Mac, her Keychain items. Refused with enabled true.
   bool erase = 2;
-}
-
-// SetHerAssistantMode sets how freely one of Her's assistants acts: her's
-// permission mode ("manual", "accept-edits", "bypass-permissions"). The
-// machine refuses "bypass-permissions" any other way (docs/her-server.md §8).
-message SetHerAssistantMode {
-  // her's bot id.
-  string bot_id = 1;
-  string permission_mode = 2;
 }
 
 // SetHerCommandConnector adds, changes or removes a connector that her starts

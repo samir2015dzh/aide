@@ -230,12 +230,6 @@ func (n *Machine) execHer(ctx context.Context, cmd *identityv1.AdminCommand) (st
 		return "", err
 	}
 	switch c := cmd.Command.(type) {
-	case *identityv1.AdminCommand_SetHerAssistantMode:
-		m := c.SetHerAssistantMode
-		if err := h.AssistantMode(ctx, m.BotId, m.PermissionMode); err != nil {
-			return "", err
-		}
-		return "assistant " + m.BotId + " runs in " + m.PermissionMode, nil
 	case *identityv1.AdminCommand_SetHerCommandConnector:
 		cc := c.SetHerCommandConnector
 		if err := h.CommandConnector(ctx, cc); err != nil {

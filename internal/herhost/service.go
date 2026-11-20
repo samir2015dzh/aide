@@ -124,13 +124,6 @@ func (h *Host) Call(ctx context.Context, req *herv1.CallRequest) (*herv1.CallRes
 	return &herv1.CallResponse{Response: res}, nil
 }
 
-// AssistantMode answered SetHerAssistantMode, which set an assistant's
-// permission mode. Her has none any more: she runs actions without asking
-// (docs/her-server.md §0), so there is nothing to set.
-func (h *Host) AssistantMode(ctx context.Context, botID, mode string) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("Her has no permission modes: she runs actions without asking"))
-}
-
 // connectorName is a name her takes for an MCP server.
 var connectorName = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
 

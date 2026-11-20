@@ -115,9 +115,6 @@ const (
 	LocalServiceGetDiagnosticsProcedure = "/hermesh.local.v1.LocalService/GetDiagnostics"
 	// LocalServiceSetHerProcedure is the fully-qualified name of the LocalService's SetHer RPC.
 	LocalServiceSetHerProcedure = "/hermesh.local.v1.LocalService/SetHer"
-	// LocalServiceSetHerAssistantModeProcedure is the fully-qualified name of the LocalService's
-	// SetHerAssistantMode RPC.
-	LocalServiceSetHerAssistantModeProcedure = "/hermesh.local.v1.LocalService/SetHerAssistantMode"
 	// LocalServiceSetHerCommandConnectorProcedure is the fully-qualified name of the LocalService's
 	// SetHerCommandConnector RPC.
 	LocalServiceSetHerCommandConnectorProcedure = "/hermesh.local.v1.LocalService/SetHerCommandConnector"
@@ -342,9 +339,6 @@ type LocalServiceClient interface {
 	// Turns Her on or off for a machine, erasing her data if asked: signed by
 	// this device's root key.
 	SetHer(context.Context, *v1.SetHerRequest) (*v1.SetHerResponse, error)
-	// How freely an assistant acts; "bypass-permissions" is signed by the root
-	// key, the other modes are not.
-	SetHerAssistantMode(context.Context, *v1.SetHerAssistantModeRequest) (*v1.SetHerAssistantModeResponse, error)
 	// Adds, changes or removes a connector her starts as a command on a
 	// machine: signed by the root key.
 	SetHerCommandConnector(context.Context, *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error)
@@ -644,12 +638,6 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceSetHerProcedure,
 			connect.WithSchema(localServiceMethods.ByName("SetHer")),
-			connect.WithClientOptions(opts...),
-		),
-		setHerAssistantMode: connect.NewClient[v1.SetHerAssistantModeRequest, v1.SetHerAssistantModeResponse](
-			httpClient,
-			baseURL+LocalServiceSetHerAssistantModeProcedure,
-			connect.WithSchema(localServiceMethods.ByName("SetHerAssistantMode")),
 			connect.WithClientOptions(opts...),
 		),
 		setHerCommandConnector: connect.NewClient[v1.SetHerCommandConnectorRequest, v1.SetHerCommandConnectorResponse](
@@ -987,7 +975,6 @@ type localServiceClient struct {
 	listExecLog              *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
 	getDiagnostics           *connect.Client[v1.GetDiagnosticsRequest, v1.GetDiagnosticsResponse]
 	setHer                   *connect.Client[v1.SetHerRequest, v1.SetHerResponse]
-	setHerAssistantMode      *connect.Client[v1.SetHerAssistantModeRequest, v1.SetHerAssistantModeResponse]
 	setHerCommandConnector   *connect.Client[v1.SetHerCommandConnectorRequest, v1.SetHerCommandConnectorResponse]
 	herOpen                  *connect.Client[v1.HerOpenRequest, v12.OpenEvent]
 	herCall                  *connect.Client[v1.HerCallRequest, v12.CallResponse]
@@ -1300,15 +1287,6 @@ func (c *localServiceClient) GetDiagnostics(ctx context.Context, req *v1.GetDiag
 // SetHer calls hermesh.local.v1.LocalService.SetHer.
 func (c *localServiceClient) SetHer(ctx context.Context, req *v1.SetHerRequest) (*v1.SetHerResponse, error) {
 	response, err := c.setHer.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// SetHerAssistantMode calls hermesh.local.v1.LocalService.SetHerAssistantMode.
-func (c *localServiceClient) SetHerAssistantMode(ctx context.Context, req *v1.SetHerAssistantModeRequest) (*v1.SetHerAssistantModeResponse, error) {
-	response, err := c.setHerAssistantMode.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1833,9 +1811,6 @@ type LocalServiceHandler interface {
 	// Turns Her on or off for a machine, erasing her data if asked: signed by
 	// this device's root key.
 	SetHer(context.Context, *v1.SetHerRequest) (*v1.SetHerResponse, error)
-	// How freely an assistant acts; "bypass-permissions" is signed by the root
-	// key, the other modes are not.
-	SetHerAssistantMode(context.Context, *v1.SetHerAssistantModeRequest) (*v1.SetHerAssistantModeResponse, error)
 	// Adds, changes or removes a connector her starts as a command on a
 	// machine: signed by the root key.
 	SetHerCommandConnector(context.Context, *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error)
@@ -2131,12 +2106,6 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceSetHerProcedure,
 		svc.SetHer,
 		connect.WithSchema(localServiceMethods.ByName("SetHer")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceSetHerAssistantModeHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceSetHerAssistantModeProcedure,
-		svc.SetHerAssistantMode,
-		connect.WithSchema(localServiceMethods.ByName("SetHerAssistantMode")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceSetHerCommandConnectorHandler := connect.NewUnaryHandlerSimple(
@@ -2501,8 +2470,6 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceGetDiagnosticsHandler.ServeHTTP(w, r)
 		case LocalServiceSetHerProcedure:
 			localServiceSetHerHandler.ServeHTTP(w, r)
-		case LocalServiceSetHerAssistantModeProcedure:
-			localServiceSetHerAssistantModeHandler.ServeHTTP(w, r)
 		case LocalServiceSetHerCommandConnectorProcedure:
 			localServiceSetHerCommandConnectorHandler.ServeHTTP(w, r)
 		case LocalServiceHerOpenProcedure:
@@ -2730,10 +2697,6 @@ func (UnimplementedLocalServiceHandler) GetDiagnostics(context.Context, *v1.GetD
 
 func (UnimplementedLocalServiceHandler) SetHer(context.Context, *v1.SetHerRequest) (*v1.SetHerResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.SetHer is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) SetHerAssistantMode(context.Context, *v1.SetHerAssistantModeRequest) (*v1.SetHerAssistantModeResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hermesh.local.v1.LocalService.SetHerAssistantMode is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) SetHerCommandConnector(context.Context, *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error) {

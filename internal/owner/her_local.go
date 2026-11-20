@@ -22,13 +22,6 @@ func (l *localService) SetHer(ctx context.Context, req *localv1.SetHerRequest) (
 	return &localv1.SetHerResponse{}, nil
 }
 
-func (l *localService) SetHerAssistantMode(ctx context.Context, req *localv1.SetHerAssistantModeRequest) (*localv1.SetHerAssistantModeResponse, error) {
-	if err := l.o().SetHerAssistantMode(ctx, req.MachineId, req.BotId, req.PermissionMode); err != nil {
-		return nil, err
-	}
-	return &localv1.SetHerAssistantModeResponse{}, nil
-}
-
 func (l *localService) SetHerCommandConnector(ctx context.Context, req *localv1.SetHerCommandConnectorRequest) (*localv1.SetHerCommandConnectorResponse, error) {
 	if err := l.o().SetHerCommandConnector(ctx, req.MachineId, req.Connector); err != nil {
 		return nil, err

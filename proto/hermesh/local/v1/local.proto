@@ -101,9 +101,6 @@ service LocalService {
   // Turns Her on or off for a machine, erasing her data if asked: signed by
   // this device's root key.
   rpc SetHer(SetHerRequest) returns (SetHerResponse);
-  // How freely an assistant acts; "bypass-permissions" is signed by the root
-  // key, the other modes are not.
-  rpc SetHerAssistantMode(SetHerAssistantModeRequest) returns (SetHerAssistantModeResponse);
   // Adds, changes or removes a connector her starts as a command on a
   // machine: signed by the root key.
   rpc SetHerCommandConnector(SetHerCommandConnectorRequest) returns (SetHerCommandConnectorResponse);
@@ -1111,16 +1108,6 @@ message SetHerRequest {
 }
 
 message SetHerResponse {}
-
-message SetHerAssistantModeRequest {
-  string machine_id = 1;
-  // her's bot id.
-  string bot_id = 2;
-  // "manual", "accept-edits" or "bypass-permissions".
-  string permission_mode = 3;
-}
-
-message SetHerAssistantModeResponse {}
 
 message SetHerCommandConnectorRequest {
   string machine_id = 1;
