@@ -1,11 +1,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
 )
@@ -20,6 +22,11 @@ func TestMCPResumeMissingWorktree(t *testing.T) {
 	w.relay.stop()
 	w.relayArgs = append(w.relayArgs, "--mcp")
 	w.startRelay()
+	// The Mac's machine connects again to the new relay before a task can start on it.
+	eventually(t, 30*time.Second, "machine online again", func() bool {
+		res, err := w.app.client.ListMachines(context.Background(), &localv1.ListMachinesRequest{})
+		return err == nil && len(res.Machines) == 1 && res.Machines[0].Online && res.Machines[0].Status != nil
+	})
 	app := newOAuthApp(t, mcpAddress(t, w.app), "Resume test")
 	client := app.mcpSession(app.finish(app.connect(app.authorize())).Access)
 	gitOut(t, w.repo, "branch", "task-base", w.repoHead)
