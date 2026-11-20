@@ -1,9 +1,4 @@
 {
-  "down": {
-    "off": "{{machine}} 上还没有开启 Her。在 设置 › 机器 里打开「运行 Her」后，这里会自动恢复。",
-    "starting": "{{machine}} 上的 Her 还没有运行起来。刚开启或刚更新后要等片刻，运行起来后这里会自动恢复。",
-    "failed": "{{machine}} 上的 Her 没能启动：{{error}}。处理好后，这里会自动恢复。"
-  },
   "page": {
     "more": "更多",
     "manage": "管理「{{name}}」…",

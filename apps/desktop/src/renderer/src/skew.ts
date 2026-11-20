@@ -21,21 +21,3 @@ export function herAnswers(m: Machine, method: string): boolean | undefined {
   const methods = m.her?.methods ?? [];
   return methods.length ? methods.includes(method) : undefined;
 }
-
-/**
- * Why her can't answer on this machine now, when that, and not an older Aide, is why a call of hers
- * failed: Her is off there ("off"), her is not running yet ("starting"), or failed to start (her's
- * error). null: she runs, or the machine says nothing of Her (it is from before Her).
- */
-export function herDown(m: Machine): string | null {
-  const h = m.status?.her ?? m.her;
-  if (!h) return null;
-  if (!h.enabled) return "off";
-  if (!h.running) return h.error || "starting";
-  return null;
-}
-
-/** The call failed because the machine's Aide (or her) is older: not because her doesn't run there. */
-export function herNeedsUpdate(m: Machine, e: unknown): boolean {
-  return needsUpdate(e) && herDown(m) === null;
-}

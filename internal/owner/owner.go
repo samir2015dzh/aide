@@ -77,7 +77,6 @@ type Owner struct {
 	dialing    *relayDial   // the dial to the relay under way, if any
 	kept       *peer.Client // client, kept over a pause: not known to work yet
 	mcpURL     string       // the relay's own MCP address, with its key (GetMCP)
-	mcpProblem string       // why GetMCP could not say (Status.mcp_problem)
 	pendingMu  sync.Mutex   // pending names (pendingNames)
 	cardsMu    sync.Mutex   // one card sync at a time (cards.go)
 	removed    bool         // the relay no longer counts this device as the owner's
@@ -636,16 +635,12 @@ func (o *Owner) fetchMCP() {
 		return
 	}
 	res, err := ctl.GetMCP(ctx, &relayv1.GetMCPRequest{})
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	switch {
-	case connect.CodeOf(err) == connect.CodeUnimplemented: // a relay older than GetMCP
-		o.mcpURL, o.mcpProblem = "", "old_server"
-	case err != nil:
-		o.mcpProblem = err.Error() // the address it gave before, if any, stays
-	default:
-		o.mcpURL, o.mcpProblem = res.Url, ""
+	if err != nil { // a relay older than GetMCP
+		return
 	}
+	o.mu.Lock()
+	o.mcpURL = res.Url
+	o.mu.Unlock()
 }
 
 func (o *Owner) control(ctx context.Context) (relayv1connect.OwnerControlServiceClient, *peer.Client, error) {
@@ -689,9 +684,6 @@ func (o *Owner) ownerStatus() *localv1.GetStatusResponse {
 	}
 	if o.ownerID != "" {
 		st.McpUrl = o.mcpURL
-		if o.mcpURL == "" {
-			st.McpProblem = o.mcpProblem
-		}
 	}
 	if o.rootPub != nil && o.ownerID != "" {
 		st.DeviceKeyId = identity.KeyID(o.rootPub)

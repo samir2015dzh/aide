@@ -341,11 +341,6 @@ message GetStatusResponse {
   repeated string abilities = 21;
   // The limits sessions' states are worked out with.
   StateLimits state_limits = 22;
-  // Why mcp_url is empty when the server was asked and could not say:
-  // "old_server", a relay older than GetMCP (updating it brings the
-  // address); else the error asking it. Both empty with no mcp_url: the
-  // server serves no MCP gateway (it needs a domain with HTTPS).
-  string mcp_problem = 23;
 }
 
 message ListProfilesRequest {}

@@ -7,7 +7,6 @@ import { agoText } from "@aide/core";
 import { Icon } from "../icons";
 import { herAnswers } from "../skew";
 import { errorText, useNow, useStore } from "../store";
-import { herErrorText } from "./herErrors";
 import type { SendOp } from "./op";
 import {
   allSitesEdits,
@@ -72,9 +71,9 @@ function useRead<T>(read: (() => Promise<T>) | null, events: string[]): { value:
       setValue(await read());
       setError(null);
     } catch (e) {
-      setError(herErrorText(her.machine, e));
+      setError(errorText(e));
     }
-  }, [read, her.machine]);
+  }, [read]);
   useEffect(() => {
     if (!rpc) return;
     void again();
