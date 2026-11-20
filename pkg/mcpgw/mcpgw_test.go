@@ -76,7 +76,8 @@ func newFixture(t *testing.T, mod func(*Config)) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { r.Close() })
+	own := r // closed even when the test brings its own relay (mod)
+	t.Cleanup(func() { own.Close() })
 	db, err := sqlitedb.Open(filepath.Join(dir, "mcp.db"), []string{Schema(false)})
 	if err != nil {
 		t.Fatal(err)
