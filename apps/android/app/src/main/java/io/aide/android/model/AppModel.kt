@@ -13,6 +13,7 @@ import io.aide.android.api.Answer
 import io.aide.android.api.Device
 import io.aide.android.api.GetLoginResponse
 import io.aide.android.api.LocalApi
+import io.aide.android.api.Persona
 import io.aide.android.api.Session
 import io.aide.android.api.SetLoginRequest
 import io.aide.android.connection.ConnectionService
@@ -347,6 +348,34 @@ class AppModel(private val context: Context) {
             val w = _world.value
             _world.value = w.copy(sessions = mergeSessions(w.sessions, page.sessions), next = page.next)
         }
+    }
+
+    // Contacts (docs/personas.md), kept on the owner's server.
+
+    private val _personas = MutableStateFlow<List<Persona>?>(null)
+    val personas = _personas.asStateFlow()
+
+    suspend fun loadPersonas() {
+        report { _personas.value = api!!.listPersonas() }
+    }
+
+    /** Keeps a contact; returns it as kept, or null (said). */
+    suspend fun savePersona(p: Persona): Persona? = report { api!!.savePersona(p) }?.also { loadPersonas() }
+
+    /** Forgets a contact; its sessions stay. */
+    suspend fun deletePersona(p: Persona): Boolean = report {
+        api!!.deletePersona(p.personaId)
+        _personas.value = _personas.value?.filter { it.personaId != p.personaId }
+        true
+    } ?: false
+
+    /** Writes to a contact; returns the session it went to, or null (said). */
+    suspend fun talk(p: Persona, text: String, key: String): String? = report {
+        val r = api!!.talkToPersona(p.personaId, text, key)
+        r.session?.let { replace(it) }
+        r.persona?.let { kept -> _personas.value = _personas.value?.map { if (it.personaId == kept.personaId) kept else it } }
+        say(talkedText(p.name, r))
+        r.session?.sessionId
     }
 
     private fun replace(s: Session) {

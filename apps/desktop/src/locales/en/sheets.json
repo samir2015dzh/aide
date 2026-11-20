@@ -213,5 +213,26 @@
     "started": "Started “{{title}}”",
     "howToConnect": "How to Connect DSH, Claude Desktop…"
   },
+  "contacts": {
+    "title": "Contacts",
+    "sub": "Pick a contact and write to it: the message goes on in the task it works in when that can take one, else a new task starts on its machine and project, with its settings.",
+    "none": "No contacts yet. Add one: name it, pick its machine, project and agent.",
+    "edit": "Edit",
+    "current": "Working in:",
+    "fresh": "The next message starts a new task with its settings.",
+    "message": "Message to {{name}}",
+    "send": "Send",
+    "add": "Add Contact…",
+    "started": "{{name}} started “{{title}}”",
+    "sent": "Sent to {{name}} (“{{title}}”)",
+    "addTitle": "Add Contact",
+    "editTitle": "Edit Contact",
+    "name": "Name",
+    "avatar": "Avatar",
+    "color": "Colour",
+    "presetsNote": "Changing the machine, project, agent, model, effort or mode starts a new task with the next message; a new name or avatar keeps the task. Deleting a contact keeps its tasks.",
+    "delete": "Delete Contact",
+    "save": "Save"
+  },
   "working": "Working…"
 }

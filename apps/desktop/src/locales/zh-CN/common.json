@@ -53,6 +53,7 @@
     "running_other": "{{count}} 个在忙",
     "sentByYou": "你派的",
     "newSession": "新建任务",
+    "contacts": "联系人",
     "dsh": "DeepSeek 会话",
     "searchHint": "搜索任务、机器、Agent",
     "machinesOnline": "机器 {{online}}/{{total}} 在线",

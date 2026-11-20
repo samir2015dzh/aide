@@ -174,6 +174,18 @@ const (
 	// LocalServiceOpenWakeLinkProcedure is the fully-qualified name of the LocalService's OpenWakeLink
 	// RPC.
 	LocalServiceOpenWakeLinkProcedure = "/aide.local.v1.LocalService/OpenWakeLink"
+	// LocalServiceListPersonasProcedure is the fully-qualified name of the LocalService's ListPersonas
+	// RPC.
+	LocalServiceListPersonasProcedure = "/aide.local.v1.LocalService/ListPersonas"
+	// LocalServiceSavePersonaProcedure is the fully-qualified name of the LocalService's SavePersona
+	// RPC.
+	LocalServiceSavePersonaProcedure = "/aide.local.v1.LocalService/SavePersona"
+	// LocalServiceDeletePersonaProcedure is the fully-qualified name of the LocalService's
+	// DeletePersona RPC.
+	LocalServiceDeletePersonaProcedure = "/aide.local.v1.LocalService/DeletePersona"
+	// LocalServiceTalkToPersonaProcedure is the fully-qualified name of the LocalService's
+	// TalkToPersona RPC.
+	LocalServiceTalkToPersonaProcedure = "/aide.local.v1.LocalService/TalkToPersona"
 	// LocalServiceListSessionsProcedure is the fully-qualified name of the LocalService's ListSessions
 	// RPC.
 	LocalServiceListSessionsProcedure = "/aide.local.v1.LocalService/ListSessions"
@@ -393,6 +405,16 @@ type LocalServiceClient interface {
 	CheckWake(context.Context, *v1.CheckWakeRequest) (*v1.CheckWakeResponse, error)
 	ClearWake(context.Context, *v1.ClearWakeRequest) (*v1.ClearWakeResponse, error)
 	OpenWakeLink(context.Context, *v1.OpenWakeLinkRequest) (*v1.OpenWakeLinkResponse, error)
+	// Contacts (docs/personas.md), kept on the owner's server for all their
+	// devices.
+	ListPersonas(context.Context, *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error)
+	SavePersona(context.Context, *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error)
+	// Forgets a contact; its sessions stay.
+	DeletePersona(context.Context, *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error)
+	// TalkToPersona sends a message to a contact: to the session it talks in
+	// if that can still take one, else to a new session started with the
+	// contact's presets (docs/personas.md §3).
+	TalkToPersona(context.Context, *v1.TalkToPersonaRequest) (*v1.TalkToPersonaResponse, error)
 	// Sessions (read across all reachable machines over E2E).
 	ListSessions(context.Context, *v1.ListSessionsRequest) (*v1.ListSessionsResponse, error)
 	// WatchSessions pushes session changes from every reachable machine as
@@ -784,6 +806,30 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("OpenWakeLink")),
 			connect.WithClientOptions(opts...),
 		),
+		listPersonas: connect.NewClient[v1.ListPersonasRequest, v1.ListPersonasResponse](
+			httpClient,
+			baseURL+LocalServiceListPersonasProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListPersonas")),
+			connect.WithClientOptions(opts...),
+		),
+		savePersona: connect.NewClient[v1.SavePersonaRequest, v1.SavePersonaResponse](
+			httpClient,
+			baseURL+LocalServiceSavePersonaProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SavePersona")),
+			connect.WithClientOptions(opts...),
+		),
+		deletePersona: connect.NewClient[v1.DeletePersonaRequest, v1.DeletePersonaResponse](
+			httpClient,
+			baseURL+LocalServiceDeletePersonaProcedure,
+			connect.WithSchema(localServiceMethods.ByName("DeletePersona")),
+			connect.WithClientOptions(opts...),
+		),
+		talkToPersona: connect.NewClient[v1.TalkToPersonaRequest, v1.TalkToPersonaResponse](
+			httpClient,
+			baseURL+LocalServiceTalkToPersonaProcedure,
+			connect.WithSchema(localServiceMethods.ByName("TalkToPersona")),
+			connect.WithClientOptions(opts...),
+		),
 		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
 			httpClient,
 			baseURL+LocalServiceListSessionsProcedure,
@@ -1010,6 +1056,10 @@ type localServiceClient struct {
 	checkWake                *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
 	clearWake                *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
 	openWakeLink             *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
+	listPersonas             *connect.Client[v1.ListPersonasRequest, v1.ListPersonasResponse]
+	savePersona              *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
+	deletePersona            *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
+	talkToPersona            *connect.Client[v1.TalkToPersonaRequest, v1.TalkToPersonaResponse]
 	listSessions             *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	watchSessions            *connect.Client[v1.WatchSessionsRequest, v1.WatchSessionsResponse]
 	streamSessionEvents      *connect.Client[v1.StreamSessionEventsRequest, v13.SessionEvent]
@@ -1509,6 +1559,42 @@ func (c *localServiceClient) OpenWakeLink(ctx context.Context, req *v1.OpenWakeL
 	return nil, err
 }
 
+// ListPersonas calls aide.local.v1.LocalService.ListPersonas.
+func (c *localServiceClient) ListPersonas(ctx context.Context, req *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error) {
+	response, err := c.listPersonas.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SavePersona calls aide.local.v1.LocalService.SavePersona.
+func (c *localServiceClient) SavePersona(ctx context.Context, req *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error) {
+	response, err := c.savePersona.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// DeletePersona calls aide.local.v1.LocalService.DeletePersona.
+func (c *localServiceClient) DeletePersona(ctx context.Context, req *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error) {
+	response, err := c.deletePersona.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// TalkToPersona calls aide.local.v1.LocalService.TalkToPersona.
+func (c *localServiceClient) TalkToPersona(ctx context.Context, req *v1.TalkToPersonaRequest) (*v1.TalkToPersonaResponse, error) {
+	response, err := c.talkToPersona.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListSessions calls aide.local.v1.LocalService.ListSessions.
 func (c *localServiceClient) ListSessions(ctx context.Context, req *v1.ListSessionsRequest) (*v1.ListSessionsResponse, error) {
 	response, err := c.listSessions.CallUnary(ctx, connect.NewRequest(req))
@@ -1884,6 +1970,16 @@ type LocalServiceHandler interface {
 	CheckWake(context.Context, *v1.CheckWakeRequest) (*v1.CheckWakeResponse, error)
 	ClearWake(context.Context, *v1.ClearWakeRequest) (*v1.ClearWakeResponse, error)
 	OpenWakeLink(context.Context, *v1.OpenWakeLinkRequest) (*v1.OpenWakeLinkResponse, error)
+	// Contacts (docs/personas.md), kept on the owner's server for all their
+	// devices.
+	ListPersonas(context.Context, *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error)
+	SavePersona(context.Context, *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error)
+	// Forgets a contact; its sessions stay.
+	DeletePersona(context.Context, *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error)
+	// TalkToPersona sends a message to a contact: to the session it talks in
+	// if that can still take one, else to a new session started with the
+	// contact's presets (docs/personas.md §3).
+	TalkToPersona(context.Context, *v1.TalkToPersonaRequest) (*v1.TalkToPersonaResponse, error)
 	// Sessions (read across all reachable machines over E2E).
 	ListSessions(context.Context, *v1.ListSessionsRequest) (*v1.ListSessionsResponse, error)
 	// WatchSessions pushes session changes from every reachable machine as
@@ -2271,6 +2367,30 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("OpenWakeLink")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceListPersonasHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListPersonasProcedure,
+		svc.ListPersonas,
+		connect.WithSchema(localServiceMethods.ByName("ListPersonas")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSavePersonaHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSavePersonaProcedure,
+		svc.SavePersona,
+		connect.WithSchema(localServiceMethods.ByName("SavePersona")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceDeletePersonaHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceDeletePersonaProcedure,
+		svc.DeletePersona,
+		connect.WithSchema(localServiceMethods.ByName("DeletePersona")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceTalkToPersonaHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceTalkToPersonaProcedure,
+		svc.TalkToPersona,
+		connect.WithSchema(localServiceMethods.ByName("TalkToPersona")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListSessionsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListSessionsProcedure,
 		svc.ListSessions,
@@ -2547,6 +2667,14 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceClearWakeHandler.ServeHTTP(w, r)
 		case LocalServiceOpenWakeLinkProcedure:
 			localServiceOpenWakeLinkHandler.ServeHTTP(w, r)
+		case LocalServiceListPersonasProcedure:
+			localServiceListPersonasHandler.ServeHTTP(w, r)
+		case LocalServiceSavePersonaProcedure:
+			localServiceSavePersonaHandler.ServeHTTP(w, r)
+		case LocalServiceDeletePersonaProcedure:
+			localServiceDeletePersonaHandler.ServeHTTP(w, r)
+		case LocalServiceTalkToPersonaProcedure:
+			localServiceTalkToPersonaHandler.ServeHTTP(w, r)
 		case LocalServiceListSessionsProcedure:
 			localServiceListSessionsHandler.ServeHTTP(w, r)
 		case LocalServiceWatchSessionsProcedure:
@@ -2822,6 +2950,22 @@ func (UnimplementedLocalServiceHandler) ClearWake(context.Context, *v1.ClearWake
 
 func (UnimplementedLocalServiceHandler) OpenWakeLink(context.Context, *v1.OpenWakeLinkRequest) (*v1.OpenWakeLinkResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.OpenWakeLink is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListPersonas(context.Context, *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListPersonas is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SavePersona(context.Context, *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SavePersona is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) DeletePersona(context.Context, *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.DeletePersona is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) TalkToPersona(context.Context, *v1.TalkToPersonaRequest) (*v1.TalkToPersonaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.TalkToPersona is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListSessions(context.Context, *v1.ListSessionsRequest) (*v1.ListSessionsResponse, error) {

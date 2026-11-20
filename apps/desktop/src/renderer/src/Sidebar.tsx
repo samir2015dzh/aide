@@ -132,6 +132,12 @@ export function Sidebar() {
         <button className="tb side-new" title={`${t("sidebar.newSession")} ${keys("CmdOrCtrl+N")}`} aria-label={t("sidebar.newSession")} onClick={() => st.set({ sheet: { kind: "newSession" } })}>
           <Icon name="plus" />
         </button>
+        {/* Contacts (docs/personas.md): write to one; its task goes on or starts. */}
+        {!st.status?.machineOnly && (
+          <button className="tb side-new" title={t("sidebar.contacts")} aria-label={t("sidebar.contacts")} onClick={() => st.set({ sheet: { kind: "contacts" } })}>
+            <Icon name="persons" />
+          </button>
+        )}
         <ListViewMenu />
       </div>
       <Sessions now={now} />

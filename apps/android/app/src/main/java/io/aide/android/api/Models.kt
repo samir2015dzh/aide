@@ -66,7 +66,17 @@ data class AgentStatus(
     val loggedIn: Boolean = false,
     val detail: String = "",
     val checking: Boolean = false,
+    /** The models it offers here, to pick a contact's from. */
+    val models: List<AgentModel> = emptyList(),
+    /** Its per-session modes (permission presets) here. */
+    val modes: List<AgentMode> = emptyList(),
 )
+
+@Serializable
+data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList())
+
+@Serializable
+data class AgentMode(val id: String = "", val name: String = "")
 
 @Serializable
 data class HerStatus(
@@ -166,6 +176,8 @@ data class Project(
     val projectId: String = "",
     val description: String = "",
     val path: String = "",
+    /** The coding agents that may work in it; empty: all. */
+    val agents: List<String> = emptyList(),
 )
 
 @Serializable
@@ -418,4 +430,38 @@ data class Notice(
     val botId: String = "",
     val botName: String = "",
     val text: String = "",
+)
+
+// Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.
+
+@Serializable
+data class Persona(
+    val personaId: String = "",
+    val name: String = "",
+    val icon: String = "",
+    val color: String = "",
+    val machineId: String = "",
+    val projectId: String = "",
+    val agent: String = "",
+    val model: String = "",
+    val effort: String = "",
+    val mode: String = "",
+    /** The session it talks in now; "" before its first message or once its presets changed. */
+    val sessionId: String = "",
+)
+
+@Serializable data class ListPersonasResponse(val personas: List<Persona> = emptyList())
+@Serializable data class SavePersonaRequest(val persona: Persona)
+@Serializable data class SavePersonaResponse(val persona: Persona? = null)
+@Serializable data class DeletePersonaRequest(val personaId: String)
+@Serializable data class TalkToPersonaRequest(val personaId: String, val text: String, val idempotencyKey: String = "")
+
+@Serializable
+data class TalkToPersonaResponse(
+    val session: Session? = null,
+    /** A new session was started; else the message went to the one it talks in. */
+    val started: Boolean = false,
+    /** Why it was started: first, archived, gone, changed. */
+    val reason: String = "",
+    val persona: Persona? = null,
 )

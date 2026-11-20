@@ -44,6 +44,8 @@ export type Sheet =
   | { kind: "addProject"; machineId?: string; agent?: string }
   /** New Session (docs/technical-design.md §3.4): a machine and agent picked first when given. */
   | { kind: "newSession"; machineId?: string; agent?: string }
+  /** Contacts (docs/personas.md): write to one, which goes on in its task or starts one. */
+  | { kind: "contacts" }
   | { kind: "addDevice" }
   | { kind: "scope"; clientId: string; renew: boolean }
   /**
