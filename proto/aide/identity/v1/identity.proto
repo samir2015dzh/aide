@@ -206,6 +206,7 @@ message AdminCommand {
     AgentDefaults set_agent_defaults = 15;
     SetHer set_her = 16;
     SetHerCommandConnector set_her_command_connector = 18;
+    SetWorkspaceRoots set_workspace_roots = 19;
   }
   reserved 12, 17;
   reserved "rename_machine", "set_her_assistant_mode";
@@ -225,6 +226,15 @@ message AddProject {
 
 message RemoveProject {
   string project_id = 1;
+}
+
+// SetWorkspaceRoots sets the folders the machine's owner devices may browse,
+// make projects of and run commands in (docs/machine-ops.md §5); empty:
+// anywhere, as before there were roots. Root-signed, or from the machine's
+// own user: never a setting, as it fences what settings reach.
+message SetWorkspaceRoots {
+  // Full paths, or "~/…".
+  repeated string roots = 1;
 }
 
 // The machine's name, as people and agents call it (agents address

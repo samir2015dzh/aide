@@ -87,6 +87,10 @@ func (n *Machine) exec(ctx context.Context, p *Principal, req *machinev1.ExecReq
 		return nil, err
 	}
 	rec.Workdir = dir
+	if err := checkRoots(n.WorkspaceRoots(), dir); err != nil {
+		end(machinev1.ExecOutcome_EXEC_OUTCOME_REFUSED, err.(*connect.Error).Message())
+		return nil, err
+	}
 	shell, args := execShell(req.Command)
 	run, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

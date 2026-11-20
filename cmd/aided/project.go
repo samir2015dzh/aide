@@ -30,25 +30,31 @@ func projectName(folder string) string {
 	return s
 }
 
+// applyLocal applies cmd from this machine's own shell: through the running
+// service's control socket, or directly when it isn't running.
+func applyLocal(ctx context.Context, machineDir string, openMachine func() (*machine.Machine, error), cmd *identityv1.AdminCommand) (string, error) {
+	body, _ := protojson.Marshal(cmd)
+	if out, ok, err := machine.ControlRequest(ctx, machineDir, "POST", "/settings", body); ok {
+		return string(out), err
+	}
+	n, err := openMachine()
+	if err != nil {
+		return "", err
+	}
+	defer n.Close()
+	if !n.Paired() {
+		return "", fmt.Errorf("this machine is not logged in yet; run `aided login <server>`")
+	}
+	return n.ApplyLocal(ctx, cmd)
+}
+
 // projectCommand changes this machine's projects from its own shell
 // (docs/onboarding.md §6.7): through the running service's control socket,
 // or directly when it isn't running.
 func projectCommand(dataDir *string, openMachine func() (*machine.Machine, error)) *cobra.Command {
 	machineDir := func() string { return filepath.Join(*dataDir, "machine") }
 	apply := func(ctx context.Context, cmd *identityv1.AdminCommand) (string, error) {
-		body, _ := protojson.Marshal(cmd)
-		if out, ok, err := machine.ControlRequest(ctx, machineDir(), "POST", "/settings", body); ok {
-			return string(out), err
-		}
-		n, err := openMachine()
-		if err != nil {
-			return "", err
-		}
-		defer n.Close()
-		if !n.Paired() {
-			return "", fmt.Errorf("this machine is not logged in yet; run `aided login <server>`")
-		}
-		return n.ApplyLocal(ctx, cmd)
+		return applyLocal(ctx, machineDir(), openMachine, cmd)
 	}
 	project := &cobra.Command{Use: "project", Short: "This machine's projects: the folders agents may work in"}
 
