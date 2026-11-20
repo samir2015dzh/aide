@@ -1,9 +1,9 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { applyWatch, emptyWorld, filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshots, withKnownState, type HerSnapshot, type NoticeSnapshot } from "@aide/core";
+import { applyWatch, emptyWorld, filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshots, pendingQuestion, questionAcks, withKnownState, type HerSnapshot, type NoticeSnapshot } from "@aide/core";
 import { LocalService, type Client, type GetStatusResponse, type Machine } from "@aide/proto/local";
 import type { Session } from "@aide/proto/session";
-import { app, nativeTheme, Notification } from "electron";
+import { app, nativeTheme, Notification, powerMonitor } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import type { Command, Preferences } from "../shared/bridge";
@@ -105,9 +105,39 @@ function noticeSessions() {
   const look = new Date();
   for (const n of filterNotices(noticeDiff(seen, world.sessions, grant, since), preferences())) {
     post(`session-${n.kind}-${n.sessionId}`, n.title, n.body, `open:${n.sessionId}`, n.kind === "turnDone" || n.kind === "started");
+    const q = n.kind === "question" ? pendingQuestion(world.sessions.find((s) => s.sessionId === n.sessionId)!) : undefined;
+    if (q) told.add(q.questionId);
   }
   seen = noticeSnapshots(world.sessions);
   since ??= look;
+  ackQuestions();
+}
+
+// The questions this desktop told the owner of (their ids), and what it
+// tells their machines of them: that it did, and whether the owner is at
+// it (docs/session-states.md §7). A phone holds a question back while a
+// desktop has it, and stays silent once the owner was at one.
+const told = new Set<string>();
+
+/**
+ * The owner is at this desktop: the system has had input within the last
+ * minute and is not locked (AIDE_TEST_PRESENCE, "here" or "away", for tests).
+ */
+export function ownerPresent(): boolean {
+  const test = process.env.AIDE_TEST_PRESENCE;
+  if (test === "here" || test === "away") return test === "here";
+  return powerMonitor.getSystemIdleState(60) === "active";
+}
+
+function ackQuestions() {
+  const pending = new Set(world.sessions.map((s) => pendingQuestion(s)?.questionId).filter((q) => q !== undefined));
+  for (const q of told) if (!pending.has(q)) told.delete(q);
+  if (told.size === 0) return;
+  const local = createClient(
+    LocalService,
+    createConnectTransport({ baseUrl: "http://aided", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }),
+  );
+  for (const a of questionAcks(world.sessions, told, ownerPresent())) local.markSessionSeen(a).catch((e) => console.warn("telling of a question:", e));
 }
 
 // What Her's assistants send (docs/her-server.md §9.3), from each machine's
@@ -133,6 +163,8 @@ function noticeHer() {
 // --- Following aided ---
 
 export function watch() {
+  // The owner coming back to this desktop while a question waits: its machine hears of it.
+  setInterval(ackQuestions, 10_000).unref();
   (async () => {
     for (;;) {
       let w = emptyWorld;

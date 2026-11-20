@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { DiffStatSchema, FailureKind, FailureSchema, SessionCursorSchema, SessionStatus, UsageSchema, type Session } from "@aide/proto/session";
+import { DiffStatSchema, FailureKind, FailureSchema, SessionCursorSchema, SessionSeenSchema, SessionStatus, UsageSchema, type Session } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import {
   createdDate,
@@ -10,6 +10,7 @@ import {
   isFailed,
   mergeSessions,
   needsAttention,
+  openedNews,
   pendingQuestion,
   relistedCursor,
   searchSessions,
@@ -50,6 +51,37 @@ describe("session list", () => {
     const oldest = sessionSections(all, sessionView({ newestFirst: false }), { archived: false, now });
     expect(oldest.map((s) => s.key)).toEqual(["attention", "active", "done"]);
     expect(ids(oldest[0].sessions)).toEqual(["w", "crash"]);
+  });
+
+  test("by status, an unopened result has its own section, after what needs you, until it is opened", () => {
+    const done = (id: string, turns: number, seen: number | undefined, updated = 0) => {
+      const s = session(id, SessionStatus.IDLE, { updated });
+      progressOf(s).turnCount = turns;
+      if (seen !== undefined) s.seen = create(SessionSeenSchema, { turns: seen });
+      return s;
+    };
+    const news = done("new", 2, 1, -10);
+    const failed = done("fail", 2, 1);
+    progressOf(failed).lastFailure = create(FailureSchema, { kind: FailureKind.NETWORK });
+    const run = session("run", SessionStatus.RUNNING);
+    progressOf(run).turnCount = 1;
+    run.seen = create(SessionSeenSchema, { turns: 0 }); // a new turn on an unopened one: at work
+    const all = [news, failed, run, done("opened", 2, 2), done("older", 2, undefined)];
+    const secs = sessionSections(all, sessionView(), { archived: false, now });
+    expect(secs.map((s) => [s.key, ids(s.sessions)])).toEqual([["attention", ["fail"]], ["unseen", ["new"]], ["active", ["run"]], ["done", ["opened", "older"]]]);
+    expect(openedNews(news)).toBe("2/");
+    expect(openedNews(done("older", 2, undefined))).toBe(""); // its machine keeps nothing seen
+    // Its machine lost: still there, as it last was.
+    expect(statusOf({ ...news, status: SessionStatus.UNSPECIFIED }, () => news)).toBe("unseen");
+    // Opened on any device: done.
+    expect(statusOf({ ...news, seen: create(SessionSeenSchema, { turns: 2 }) })).toBe("done");
+    // A question the owner was not at yet is news to a page in front of the owner; once there, not.
+    const q = session("q", SessionStatus.WAITING_INPUT);
+    ask(q, "q7");
+    q.seen = create(SessionSeenSchema, { questionId: "q7" });
+    expect(openedNews(q)).toBe("0/q7");
+    q.seen = create(SessionSeenSchema, { questionId: "q7", questionPresent: true });
+    expect(openedNews(q)).toBe("");
   });
 
   test("by status, the sidebar keeps the running section while nothing runs, empty; with no session, none", () => {

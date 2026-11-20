@@ -304,6 +304,231 @@
    }
   },
   {
+   "name": "idle, a finished turn not opened: done_unseen",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 1
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done_unseen",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, never opened: done_unseen",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 1,
+    "seen_turns": 0
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done_unseen",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, every turn opened: done",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 2
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, older machine keeps no seen: done",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": null
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, unopened turn failed: failed",
+   "session": {
+    "status": "IDLE",
+    "failure": "AGENT_CRASHED",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 1
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "failed",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "idle, unopened turn stopped on purpose: interrupted",
+   "session": {
+    "status": "IDLE",
+    "failure": "INTERRUPTED",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 1
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "interrupted",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "running again after an unopened turn: running",
+   "session": {
+    "status": "RUNNING",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 1
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "running",
+    "link": "live",
+    "quiet_seconds": 60,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "archived with an unopened turn: archived",
+   "session": {
+    "status": "ARCHIVED",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 1
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "",
+    "syncing": false,
+    "heard_ago": null,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "archived",
+    "link": "live",
+    "quiet_seconds": 0,
+    "silent_seconds": 0
+   }
+  },
+  {
+   "name": "an unopened result of a lost machine stays done_unseen",
+   "session": {
+    "status": "IDLE",
+    "failure": "",
+    "last_event_ago": 60,
+    "updated_ago": 60,
+    "turns": 2,
+    "seen_turns": 1
+   },
+   "machine": {
+    "known": true,
+    "local": false,
+    "unreachable": "offline",
+    "syncing": false,
+    "heard_ago": 100,
+    "unreachable_since_ago": null
+   },
+   "want": {
+    "state": "done_unseen",
+    "link": "lost",
+    "quiet_seconds": 0,
+    "silent_seconds": 100
+   }
+  },
+  {
    "name": "crashed reads failed",
    "session": {
     "status": "CRASHED",

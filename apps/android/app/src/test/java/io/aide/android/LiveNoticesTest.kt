@@ -105,6 +105,42 @@ class LiveNoticesTest {
         assertEquals(listOf("her:m_1:b_1"), c2.withdraw)
     }
 
+    // A question goes to the owner's desktop first (docs/session-states.md §7): the phone tells of it once no desktop
+    // said it told the owner within the grace; after three minutes when one did, the owner away; never once the owner
+    // was at a desktop, or once it is answered.
+    @Test fun questionsGoToTheDesktopFirst() {
+        fun asking(seen: String, status: String = "SESSION_STATUS_WAITING_INPUT") = watch(
+            """{"reset":true,"status":{"initialized":true},"sessions":[{"sessionId":"s_ask","machineId":"m_1","agent":"gemini","status":"$status","createdBy":"c_1","title":"Colors",
+              "seen":$seen,"progress":{"pendingQuestion":{"questionId":"q1","askedAt":"2026-11-17T08:00:00Z","items":[{"id":"i1","text":"Which color?"}]}}}]}""",
+        )
+        fun kinds(live: LiveNotices, w: WatchResponse, after: Long) = live.look(World().apply(w), t0.plusSeconds(after)).show.map { it.kind }
+
+        // No desktop told of it: once the grace is over.
+        var live = LiveNotices()
+        assertEquals(emptyList<String>(), kinds(live, asking("{}"), 0))
+        assertEquals(emptyList<String>(), kinds(live, asking("{}"), 9))
+        assertEquals(listOf("question"), kinds(live, asking("{}"), 10))
+        assertEquals(emptyList<String>(), kinds(live, asking("{}"), 200)) // once
+
+        // A desktop told of it, the owner away: three minutes after it was asked.
+        val told = """{"questionId":"q1"}"""
+        live = LiveNotices()
+        assertEquals(emptyList<String>(), kinds(live, asking(told), 0))
+        assertEquals(emptyList<String>(), kinds(live, asking(told), 179))
+        assertEquals(listOf("question"), kinds(live, asking(told), 180))
+
+        // The owner at a desktop while it waited: never here.
+        live = LiveNotices()
+        kinds(live, asking(told), 0)
+        assertEquals(emptyList<String>(), kinds(live, asking("""{"questionId":"q1","questionPresent":true}"""), 600))
+
+        // Answered before the three minutes: nothing (the session runs on).
+        live = LiveNotices()
+        kinds(live, asking(told), 0)
+        assertEquals(emptyList<String>(), kinds(live, asking(told, "SESSION_STATUS_RUNNING"), 60))
+        assertEquals(emptyList<String>(), kinds(live, asking(told, "SESSION_STATUS_RUNNING"), 400))
+    }
+
     @Test fun mutedAndInterrupted() {
         val live = LiveNotices()
         var w = World().apply(watch(first))

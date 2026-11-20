@@ -69,11 +69,27 @@ fun stateOf(s: Session): SessionState = when (s.status) {
     SessionStatus.ARCHIVED -> SessionState.ARCHIVED
     SessionStatus.CRASHED -> SessionState.FAILED
     SessionStatus.IDLE -> when (s.progress?.lastFailure?.kind) {
-        null -> SessionState.DONE
+        null -> if (unseen(s)) SessionState.DONE_UNSEEN else SessionState.DONE
         "FAILURE_KIND_INTERRUPTED" -> SessionState.INTERRUPTED
         else -> SessionState.FAILED
     }
     else -> SessionState.UNKNOWN
+}
+
+/** Finished turns the owner has not opened (Session.seen; an older machine keeps none: every turn counts as seen). */
+fun unseen(s: Session): Boolean = s.seen != null && (s.progress?.turnCount ?: 0) > s.seen.turns
+
+/**
+ * What a session's page, in front of the owner, has to tell its machine (MarkSessionSeen, opened): a key that changes
+ * with what is new to the owner (a finished turn not opened, a question the owner was not marked at), or "" when
+ * nothing is (as packages/core openedNews).
+ */
+fun openedNews(s: Session): String {
+    val seen = s.seen ?: return ""
+    if (s.status == SessionStatus.UNKNOWN) return ""
+    val q = if (s.status == SessionStatus.WAITING_INPUT) s.progress?.pendingQuestion else null
+    val asks = q != null && !(seen.questionId == q.questionId && seen.questionPresent)
+    return if (unseen(s) || asks) "${s.progress?.turnCount ?: 0}/${if (asks) q!!.questionId else ""}" else ""
 }
 
 /** When a session last recorded anything: its last event, else (an older machine) when it last changed. */

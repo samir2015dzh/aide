@@ -16,6 +16,7 @@ import (
 
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 )
@@ -79,7 +80,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"windows": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -527,8 +528,20 @@ func otherMacSession(t *testing.T, f desktopFixture) int {
 			return s.SessionID != ""
 		})
 		f.Sessions[title] = s.SessionID
+		ownerOpened(t, w, s.SessionID)
 	}
 	return daemon.cmd.Process.Pid
+}
+
+// ownerOpened marks a finished session opened, as if the owner had looked
+// at it before the specs start: it is done, not a new result
+// (docs/session-states.md §7; attention.spec.ts has its own new ones).
+func ownerOpened(t *testing.T, w *ownerMac, id string) {
+	t.Helper()
+	eventually(t, time.Minute, id+" opened by the owner", func() bool {
+		_, err := w.app.client.MarkSessionSeen(context.Background(), &sessionv1.MarkSessionSeenRequest{SessionId: id, Opened: true})
+		return err == nil
+	})
 }
 
 // inPlaceSessions adds two projects worked on in place on this Mac, a
@@ -559,6 +572,7 @@ func inPlaceSessions(t *testing.T, f desktopFixture) {
 			t.Fatalf("%s: no session", title)
 		}
 		f.Sessions[title] = s.SessionID
+		ownerOpened(t, w, s.SessionID)
 	}
 }
 
@@ -576,6 +590,7 @@ func repoSession(t *testing.T, f desktopFixture) {
 		t.Fatalf("来自 GitHub: no session\n%s", r.stdout+r.stderr)
 	}
 	f.Sessions["来自 GitHub"] = s.SessionID
+	ownerOpened(t, w, s.SessionID)
 }
 
 // desktopSessions starts a session in every state the app shows and
@@ -601,6 +616,7 @@ func desktopSessions(t *testing.T, w *ownerMac) map[string]string {
 	if s, r := w.send(time.Minute, done, "write hello.txt hello again\nsay 改好了"); s.Status != "idle" {
 		t.Fatalf("second turn: %+v", r)
 	}
+	ownerOpened(t, w, done)
 	start("限流", "fail rate limited", true)
 	start("崩溃", "say 开始\ncrash", true)
 	start("选颜色", "ask 选哪个颜色|红,蓝", true)

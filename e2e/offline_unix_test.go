@@ -201,7 +201,7 @@ func TestSessionsOfAnOfflineMachine(t *testing.T) {
 		x, m := onScreen(s.SessionID)
 		got := w.get(s.SessionID)
 		return m.GetUnreachable() == "" && m.GetOnline() && x.GetStatus() == sessionv1.SessionStatus_SESSION_STATUS_IDLE && got.Status == "idle" && got.Result == "finished" &&
-			got.State == "done" && got.Link == "live" && !got.Stale
+			got.State == "done_unseen" && got.Link == "live" && !got.Stale
 	})
 	back()
 

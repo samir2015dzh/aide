@@ -1,6 +1,7 @@
 {
   "bucket": {
     "attention": "需要处理",
+    "unseen": "有新结果未看",
     "active": "进行中",
     "done": "已结束",
     "today": "今天",

@@ -1,6 +1,7 @@
 {
   "bucket": {
     "attention": "Needs You",
+    "unseen": "New Results",
     "active": "In Progress",
     "done": "Done",
     "today": "Today",

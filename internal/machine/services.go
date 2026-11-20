@@ -95,6 +95,10 @@ func (s *sessionService) RenameSession(ctx context.Context, req *sessionv1.Renam
 	return s.n.sessions.Rename(ctx, principalFrom(ctx), req.SessionId, req.Title)
 }
 
+func (s *sessionService) MarkSessionSeen(ctx context.Context, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
+	return s.n.sessions.MarkSeen(ctx, principalFrom(ctx), req)
+}
+
 func (s *sessionService) GetDiff(ctx context.Context, req *sessionv1.GetDiffRequest) (*sessionv1.GetDiffResponse, error) {
 	return s.n.sessions.Diff(ctx, principalFrom(ctx), req)
 }

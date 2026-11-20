@@ -1211,6 +1211,93 @@ func (s *Sessions) Rename(ctx context.Context, p *Principal, id, title string) (
 	return s.toProto(row), nil
 }
 
+// MarkSeen records what the owner has seen of a session (Session.seen):
+// its finished turns once a device opened it, and its pending question
+// once a desktop told of it, and whether the owner was there meanwhile.
+// Nothing is written when nothing new is seen.
+func (s *Sessions) MarkSeen(ctx context.Context, p *Principal, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
+	if p.Kind != PrincipalOwner {
+		return nil, cerr(connect.CodePermissionDenied, "only the owner marks what the owner has seen")
+	}
+	l, r, err := s.find(p, req.SessionId, false)
+	if err != nil {
+		return nil, err
+	}
+	if l != nil {
+		l.mu.Lock()
+		r = l.row
+	}
+	seen, changed := seenNow(r, req)
+	var row *sessionRow
+	if changed {
+		r.Seen = seen
+		row = snapshotRow(r)
+	}
+	if l != nil {
+		l.mu.Unlock()
+	}
+	if !changed {
+		return s.toProto(r), nil
+	}
+	if err := s.w.sync(writeOp{row: row}); err != nil {
+		return nil, err
+	}
+	return s.toProto(row), nil
+}
+
+// questionSeen is the question a session waits on ("" when none) and what
+// the owner has seen of it.
+func (s *Sessions) questionSeen(id string) (string, *sessionv1.SessionSeen) {
+	s.mu.Lock()
+	l := s.live[id]
+	s.mu.Unlock()
+	r := (*sessionRow)(nil)
+	if l != nil {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		r = l.row
+	} else if r, _ = s.st.Session(id); r == nil {
+		return "", nil
+	}
+	if r.Status != sessionv1.SessionStatus_SESSION_STATUS_WAITING_INPUT {
+		return "", r.Seen
+	}
+	return r.Progress.GetPendingQuestion().GetQuestionId(), r.Seen
+}
+
+// seenNow is what r's owner has seen once req is taken in, and whether
+// that is more than before.
+func seenNow(r *sessionRow, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.SessionSeen, bool) {
+	seen := &sessionv1.SessionSeen{}
+	if r.Seen != nil {
+		seen = proto.Clone(r.Seen).(*sessionv1.SessionSeen)
+	}
+	q := ""
+	if r.Status == sessionv1.SessionStatus_SESSION_STATUS_WAITING_INPUT {
+		q = r.Progress.GetPendingQuestion().GetQuestionId()
+	}
+	if req.Opened {
+		seen.Turns = max(seen.Turns, r.Progress.GetTurnCount())
+		if q != "" {
+			seen.QuestionId, seen.QuestionPresent = q, true
+		}
+	}
+	if q != "" && req.QuestionId == q {
+		if seen.QuestionId != q {
+			seen.QuestionId, seen.QuestionPresent = q, false
+		}
+		seen.QuestionPresent = seen.QuestionPresent || req.Present
+	}
+	return seen, !proto.Equal(seen, cmpOrEmpty(r.Seen))
+}
+
+func cmpOrEmpty(s *sessionv1.SessionSeen) *sessionv1.SessionSeen {
+	if s == nil {
+		return &sessionv1.SessionSeen{}
+	}
+	return s
+}
+
 // following reports whether who (a Principal.ID) follows the session's
 // events at this moment: it has the news already.
 func (s *Sessions) following(id, who string) bool {
@@ -2397,7 +2484,8 @@ func (s *Sessions) toProto(r *sessionRow) *sessionv1.Session {
 		Status: r.Status, CreatedBy: r.CreatedBy, Progress: proto.Clone(r.Progress).(*sessionv1.SessionProgress),
 		ProviderSessionRef: r.ProviderRef, CreatedAt: timestamppb.New(r.CreatedAt), UpdatedAt: timestamppb.New(r.UpdatedAt),
 		Error: r.Error, Branch: r.Branch, Workspace: r.Workspace, Result: r.Result, Title: r.Title, CreatedAs: r.Conversation,
-		Model: cmp.Or(r.AgentModel, r.Model), Effort: cmp.Or(r.Effort, r.AgentEffort), Repo: r.Repo, RepoBranch: r.RepoBranch}
+		Model: cmp.Or(r.AgentModel, r.Model), Effort: cmp.Or(r.Effort, r.AgentEffort), Repo: r.Repo, RepoBranch: r.RepoBranch,
+		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen)}
 }
 
 // Janitor enforces timeouts and stops idle agent processes (their sessions

@@ -89,6 +89,13 @@ service SessionService {
   rpc PushSession(PushSessionRequest) returns (PushSessionResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // MarkSessionSeen records what the owner has seen of the session
+  // (Session.seen), on its machine, so every device of the owner agrees.
+  // Only the owner's devices may mark; nothing changes, and updated_at
+  // stays, when nothing new is seen.
+  rpc MarkSessionSeen(MarkSessionSeenRequest) returns (Session) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
 }
 
 enum SessionStatus {
@@ -124,8 +131,7 @@ enum SessionState {
   SESSION_STATE_WAITING_INPUT = 3;
   // Paused on an approval (Her's cards; coding sessions ask none today).
   SESSION_STATE_WAITING_APPROVAL = 4;
-  // Finished with something the owner has not opened (once sessions keep
-  // what the owner saw: the attention triage work order).
+  // Finished a turn the owner has not opened yet (Session.seen).
   SESSION_STATE_DONE_UNSEEN = 5;
   SESSION_STATE_DONE = 6;
   // The last turn failed, or did not finish (crashed).
@@ -447,6 +453,24 @@ message Session {
   // the repository, "owner/repo", and the branch its worktree started from.
   string repo = 25;
   string repo_branch = 26;
+  // What the owner has seen of it (MarkSessionSeen); unset from older
+  // machines, where every turn counts as seen.
+  SessionSeen seen = 27;
+}
+
+// SessionSeen is what the owner's devices have seen of a session, kept by
+// its machine (docs/session-states.md §2 and §7).
+message SessionSeen {
+  // The finished turns the owner has opened: progress.turn_count when a
+  // device last showed the session's page. An idle session whose last turn
+  // succeeded, with more finished turns than this, is done_unseen.
+  uint32 turns = 1;
+  // The pending question a desktop told the owner of, and whether the
+  // owner was at a desktop while it waited (or opened the session): a
+  // phone holds back a question a desktop told of, and stays silent once
+  // the owner was there.
+  string question_id = 2;
+  bool question_present = 3;
 }
 
 message GetSessionRequest {
@@ -765,6 +789,18 @@ message GetDiffResponse {
 
 message PushSessionRequest {
   string session_id = 1;
+}
+
+message MarkSessionSeenRequest {
+  string session_id = 1;
+  // The owner opened the session's page: its finished turns are seen, and
+  // its pending question too, the owner being there.
+  bool opened = 2;
+  // The pending question the caller told the owner of (a desktop's
+  // notification); ignored unless it is the pending one.
+  string question_id = 3;
+  // The owner was at the caller while question_id waited.
+  bool present = 4;
 }
 
 message PushSessionResponse {
