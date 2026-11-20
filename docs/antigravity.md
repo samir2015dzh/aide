@@ -52,7 +52,7 @@ hermesh agent login antigravity
 Open the Google login link printed in the terminal and finish authorization.
 The desktop app's Antigravity page also offers **Run in Terminal** when no
 authentication method is configured. The iPhone shows the command to run
-on the machine. The login command does not require Hermesh pairing and does
+on the machine. The login command does not require the Aide login and does
 not create a model conversation. Ctrl+C stops the login process.
 The packaged macOS app runs its bundled CLI for this button, so a separate
 Hermesh CLI installation is not required.

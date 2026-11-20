@@ -92,7 +92,7 @@ The principles:
 
 Terms:
 
-- **Agent**: what the owner approved and gave a grant: a CLI on a computer,
+- **Agent**: what logged in with the owner's account and holds a grant: a CLI on a computer,
   or an MCP connection. It holds the inbox key. (Unchanged.)
 - **Name**: who, under an agent, a message is from or for: a Grok bot
   (`tech-demos`), a claude.ai chat, a Claude Code conversation (its key,
@@ -226,7 +226,7 @@ Two ways in, one setup:
   the CLI, in place of `message_notify`; it takes only `as`. It returns a
   one-time link, `https://hermesh.io/w/<code>`, for the owner: 30 minutes,
   one use, bound to the agent and the name. The owner opens it signed in to
-  the console, on any device, as with a pairing link (`/p/<code>`); the
+  the console, on any device, as with the pairing links of before (`/p/<code>`); the
   page is the setup below, from step 3. A self-hosted relay has no console:
   its link is `hermesh://wake?code=<code>`, which the Hermesh app on the
   owner's computer opens (§15).
@@ -316,7 +316,7 @@ End to end, with real binaries:
   Without `as`: only the agent's own. "Tech Demos" and "tech_demos" are one
   name.
 - **Waking**, for an MCP connection and for a CLI agent: the bot asks for a
-  link, and the owner (the test app as a trusted device) sets a local
+  link, and the owner (the test app as one of the owner's devices) sets a local
   webhook through it. The check rings once. A message to that name rings
   it, naming it, and the woken side reads it (the MCP tool, or `hermesh
   message list --as`); a message to another name rings nothing. 401 stops it
@@ -381,8 +381,8 @@ Steps 1 and 2, 2026-10-27 (`TestNames`, `TestWake`, `TestMCPInbox`):
   self-hosted relay, or the center until the console has it) the link is
   empty, and `message_wake` and `message wake` tell the owner the Mac app's
   way instead.
-- **Only a trusted device sets doorbells up**; a Mac that is only a machine
-  is refused, as for every approval.
+- **Only one of the owner's devices sets doorbells up**; a computer that is
+  only a machine is refused.
 - **`hermesh_status` takes `as`**, to say that name's doorbell.
 
 Step 3, the Mac app, 2026-10-27 (desktop e2e `settings`):
@@ -463,8 +463,9 @@ ids. So:
   last and when, with the names its bots went by (`Session.created_as`, the
   name a session was started under, kept on the machine). The owner can
   rename an agent ("Rename…" on its page, Mac and iPhone): the name is the
-  grant's, so `RenameClient` signs the grant again with the label alone
-  changed (what it may use and until when stay; Touch ID or Face ID), and
+  grant's, so `RenameClient` has the grant signed again with the label alone
+  changed (what it may use and until when stay; the server signs it for
+  the device, [accounts.md](accounts.md) §1), and
   every device, machine and the agent's contacts see it. A known app's
   name ("Grok Bot") brings its icon.
 - **The owner picks its icon** (2026-10-30). On the Mac, "Name and Icon…"
