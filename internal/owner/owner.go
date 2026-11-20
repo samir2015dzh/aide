@@ -2425,6 +2425,20 @@ func (o *Owner) GetDiff(ctx context.Context, id string, turn uint32) (*sessionv1
 	return n.Session.GetDiff(ctx, &sessionv1.GetDiffRequest{SessionId: id, Turn: turn})
 }
 
+// GetSessionInsights reviews a session (docs/session-insights.md), as the
+// owner.
+func (o *Owner) GetSessionInsights(ctx context.Context, id string) (*sessionv1.SessionInsights, error) {
+	req := &sessionv1.GetSessionInsightsRequest{SessionId: id}
+	if l := o.localSession(id); l != nil {
+		return l.Insights(ctx, req)
+	}
+	n, err := o.sessionMachine(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.GetSessionInsights(ctx, req)
+}
+
 // PushSession pushes a session's branch to its repository's remote, as
 // the owner asked.
 func (o *Owner) PushSession(ctx context.Context, id string) (*sessionv1.PushSessionResponse, error) {

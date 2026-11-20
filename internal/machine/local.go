@@ -206,6 +206,10 @@ func (l *Local) Diff(ctx context.Context, req *sessionv1.GetDiffRequest) (*sessi
 	return l.n.sessions.Diff(ctx, l.p, req)
 }
 
+func (l *Local) Insights(ctx context.Context, req *sessionv1.GetSessionInsightsRequest) (*sessionv1.SessionInsights, error) {
+	return l.n.sessions.Insights(ctx, l.p, req)
+}
+
 func (l *Local) Push(ctx context.Context, id string) (*sessionv1.PushSessionResponse, error) {
 	return l.n.sessions.Push(ctx, l.p, id)
 }

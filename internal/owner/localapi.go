@@ -771,6 +771,16 @@ func (l *localService) GetDiff(ctx context.Context, req *localv1.GetDiffRequest)
 	return l.o().GetDiff(ctx, req.SessionId, req.Turn)
 }
 
+func (l *localService) GetSessionInsights(ctx context.Context, req *sessionv1.GetSessionInsightsRequest) (*sessionv1.SessionInsights, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.Insights(ctx, req)
+	}
+	return l.o().GetSessionInsights(ctx, req.SessionId)
+}
+
 func (l *localService) PushSession(ctx context.Context, req *localv1.PushSessionRequest) (*sessionv1.PushSessionResponse, error) {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err != nil {

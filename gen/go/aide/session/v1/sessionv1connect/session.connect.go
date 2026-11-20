@@ -86,6 +86,9 @@ const (
 	// SessionServiceMarkSessionSeenProcedure is the fully-qualified name of the SessionService's
 	// MarkSessionSeen RPC.
 	SessionServiceMarkSessionSeenProcedure = "/aide.session.v1.SessionService/MarkSessionSeen"
+	// SessionServiceGetSessionInsightsProcedure is the fully-qualified name of the SessionService's
+	// GetSessionInsights RPC.
+	SessionServiceGetSessionInsightsProcedure = "/aide.session.v1.SessionService/GetSessionInsights"
 )
 
 // SessionServiceClient is a client for the aide.session.v1.SessionService service.
@@ -143,6 +146,14 @@ type SessionServiceClient interface {
 	// stays (lists keep their order); nothing is written when nothing new is
 	// seen, nor of an archived session.
 	MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error)
+	// GetSessionInsights reviews a session from its stored events
+	// (docs/session-insights.md): each turn's time, failures and retries,
+	// stalls and interrupts, questions and how long they waited, tool calls,
+	// changes and tokens, what the review finds, and a better prompt to
+	// dispatch such work with. Worked out by rules, never by a model; made
+	// when the session is archived or when asked, and kept until a new event
+	// comes.
+	GetSessionInsights(context.Context, *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error)
 }
 
 // NewSessionServiceClient constructs a client for the aide.session.v1.SessionService service. By
@@ -264,29 +275,36 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("MarkSessionSeen")),
 			connect.WithClientOptions(opts...),
 		),
+		getSessionInsights: connect.NewClient[v1.GetSessionInsightsRequest, v1.SessionInsights](
+			httpClient,
+			baseURL+SessionServiceGetSessionInsightsProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("GetSessionInsights")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // sessionServiceClient implements SessionServiceClient.
 type sessionServiceClient struct {
-	startSession     *connect.Client[v1.StartSessionRequest, v1.StartSessionResponse]
-	getSession       *connect.Client[v1.GetSessionRequest, v1.Session]
-	listSessions     *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	watchSessions    *connect.Client[v1.WatchSessionsRequest, v1.WatchSessionsResponse]
-	streamEvents     *connect.Client[v1.StreamEventsRequest, v1.SessionEvent]
-	listEvents       *connect.Client[v1.ListEventsRequest, v1.ListEventsResponse]
-	sendMessage      *connect.Client[v1.SendMessageRequest, v1.SendMessageResponse]
-	deliverMessage   *connect.Client[v1.DeliverMessageRequest, v1.DeliverMessageResponse]
-	interruptSession *connect.Client[v1.InterruptSessionRequest, v1.Session]
-	archiveSession   *connect.Client[v1.ArchiveSessionRequest, v1.Session]
-	unarchiveSession *connect.Client[v1.UnarchiveSessionRequest, v1.Session]
-	deleteSession    *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	renameSession    *connect.Client[v1.RenameSessionRequest, v1.Session]
-	getDiff          *connect.Client[v1.GetDiffRequest, v1.GetDiffResponse]
-	answerQuestion   *connect.Client[v1.AnswerQuestionRequest, v1.Session]
-	readToolOutput   *connect.Client[v1.ReadToolOutputRequest, v1.ToolOutputChunk]
-	pushSession      *connect.Client[v1.PushSessionRequest, v1.PushSessionResponse]
-	markSessionSeen  *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
+	startSession       *connect.Client[v1.StartSessionRequest, v1.StartSessionResponse]
+	getSession         *connect.Client[v1.GetSessionRequest, v1.Session]
+	listSessions       *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	watchSessions      *connect.Client[v1.WatchSessionsRequest, v1.WatchSessionsResponse]
+	streamEvents       *connect.Client[v1.StreamEventsRequest, v1.SessionEvent]
+	listEvents         *connect.Client[v1.ListEventsRequest, v1.ListEventsResponse]
+	sendMessage        *connect.Client[v1.SendMessageRequest, v1.SendMessageResponse]
+	deliverMessage     *connect.Client[v1.DeliverMessageRequest, v1.DeliverMessageResponse]
+	interruptSession   *connect.Client[v1.InterruptSessionRequest, v1.Session]
+	archiveSession     *connect.Client[v1.ArchiveSessionRequest, v1.Session]
+	unarchiveSession   *connect.Client[v1.UnarchiveSessionRequest, v1.Session]
+	deleteSession      *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	renameSession      *connect.Client[v1.RenameSessionRequest, v1.Session]
+	getDiff            *connect.Client[v1.GetDiffRequest, v1.GetDiffResponse]
+	answerQuestion     *connect.Client[v1.AnswerQuestionRequest, v1.Session]
+	readToolOutput     *connect.Client[v1.ReadToolOutputRequest, v1.ToolOutputChunk]
+	pushSession        *connect.Client[v1.PushSessionRequest, v1.PushSessionResponse]
+	markSessionSeen    *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
+	getSessionInsights *connect.Client[v1.GetSessionInsightsRequest, v1.SessionInsights]
 }
 
 // StartSession calls aide.session.v1.SessionService.StartSession.
@@ -439,6 +457,15 @@ func (c *sessionServiceClient) MarkSessionSeen(ctx context.Context, req *v1.Mark
 	return nil, err
 }
 
+// GetSessionInsights calls aide.session.v1.SessionService.GetSessionInsights.
+func (c *sessionServiceClient) GetSessionInsights(ctx context.Context, req *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error) {
+	response, err := c.getSessionInsights.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // SessionServiceHandler is an implementation of the aide.session.v1.SessionService service.
 type SessionServiceHandler interface {
 	StartSession(context.Context, *v1.StartSessionRequest) (*v1.StartSessionResponse, error)
@@ -494,6 +521,14 @@ type SessionServiceHandler interface {
 	// stays (lists keep their order); nothing is written when nothing new is
 	// seen, nor of an archived session.
 	MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error)
+	// GetSessionInsights reviews a session from its stored events
+	// (docs/session-insights.md): each turn's time, failures and retries,
+	// stalls and interrupts, questions and how long they waited, tool calls,
+	// changes and tokens, what the review finds, and a better prompt to
+	// dispatch such work with. Worked out by rules, never by a model; made
+	// when the session is archived or when asked, and kept until a new event
+	// comes.
+	GetSessionInsights(context.Context, *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error)
 }
 
 // NewSessionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -611,6 +646,12 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("MarkSessionSeen")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceGetSessionInsightsHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceGetSessionInsightsProcedure,
+		svc.GetSessionInsights,
+		connect.WithSchema(sessionServiceMethods.ByName("GetSessionInsights")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.session.v1.SessionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SessionServiceStartSessionProcedure:
@@ -649,6 +690,8 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServicePushSessionHandler.ServeHTTP(w, r)
 		case SessionServiceMarkSessionSeenProcedure:
 			sessionServiceMarkSessionSeenHandler.ServeHTTP(w, r)
+		case SessionServiceGetSessionInsightsProcedure:
+			sessionServiceGetSessionInsightsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -728,4 +771,8 @@ func (UnimplementedSessionServiceHandler) PushSession(context.Context, *v1.PushS
 
 func (UnimplementedSessionServiceHandler) MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.MarkSessionSeen is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) GetSessionInsights(context.Context, *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.GetSessionInsights is not implemented"))
 }
