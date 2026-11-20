@@ -62,10 +62,16 @@ type Agent struct {
 // App is a desktop app (Electron, macOS or Windows) that keeps the agent's
 // CLI as a script its executable runs as Node; paths are inside the app's
 // folder, looked for in the user's Applications (a Mac's) or Programs
-// (Windows), then the system's.
+// (Windows), then the system's, then (Windows) wherever Windows says it
+// is installed (Windows: its uninstall entry, App Paths, the program
+// running now), with any of Windows.Exes as its executable.
 type App struct {
 	Bundle, Exec, Script string
+	Windows              provider.WindowsApp
 }
+
+// windowsAppDirs is provider.WindowsAppDirs; tests stand in for Windows.
+var windowsAppDirs = provider.WindowsAppDirs
 
 type Provider struct {
 	Agent
@@ -121,6 +127,22 @@ func (p *Provider) command() (bin string, pre, env []string) {
 			exe, script := filepath.Join(app, a.Exec), filepath.Join(app, a.Script)
 			if scriptThere(script) && provider.LookPath("", "", exe) != "" {
 				return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}
+			}
+		}
+	}
+	for _, a := range p.Apps {
+		if len(a.Windows.Exes) == 0 || p.Binary != "" {
+			continue
+		}
+		for _, app := range windowsAppDirs(a.Windows) {
+			script := filepath.Join(app, a.Script)
+			if !scriptThere(script) {
+				continue
+			}
+			for _, name := range a.Windows.Exes {
+				if exe := provider.LookPath("", "", filepath.Join(app, name)); exe != "" {
+					return exe, []string{script}, []string{"ELECTRON_RUN_AS_NODE=1"}
+				}
 			}
 		}
 	}

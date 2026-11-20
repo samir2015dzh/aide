@@ -404,4 +404,69 @@ func TestWindowsDesktopCLI(t *testing.T) {
 			t.Fatalf("without APPDATA: got %q, want %q", got, threeP)
 		}
 	})
+	// The layouts the app's builds have been seen with (2026-11-20: the
+	// Code page in use, and Claude Code found in none of the folders above):
+	// the MSIX package with its Local redirected too, 3p in it with a
+	// <build-id> folder (Anthropic's third-party docs), and the one asked of
+	// the app for redirected Roaming folders.
+	for _, c := range []struct{ name, userData string }{
+		{"msix 3p", filepath.Join("Packages", "Claude_pzs8sxrjxfjjc", "LocalCache", "Roaming", "Claude-3p")},
+		{"msix local", filepath.Join("Packages", "Claude_pzs8sxrjxfjjc", "LocalCache", "Local", "Claude")},
+		{"msix local 3p", filepath.Join("Packages", "Claude_pzs8sxrjxfjjc", "LocalCache", "Local", "Claude-3p")},
+		{"localappdata", "Claude"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			appData, local := t.TempDir(), t.TempDir()
+			want := mk(t, filepath.Join(local, c.userData), "2.1.308", "b1f2")
+			if got := windowsDesktopCLI(appData, local); got != want {
+				t.Fatalf("got %q, want %q", got, want)
+			}
+		})
+	}
+	t.Run("roaming 3p", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		want := mk(t, filepath.Join(appData, "Claude-3p"), "2.1.308", "")
+		if got := windowsDesktopCLI(appData, local); got != want {
+			t.Fatalf("got %q, want %q", got, want)
+		}
+	})
+}
+
+// The Claude Code the app's Code page runs is found by its running program
+// wherever the app keeps it; the app itself (an Electron app, app.asar
+// beside it) is not Claude Code.
+func TestRunningCLI(t *testing.T) {
+	root := t.TempDir()
+	app := filepath.Join(root, "AnthropicClaude", "app-1.2.3", "claude.exe")
+	cli := filepath.Join(root, "Somewhere", "claude-code", "9.9.9", "claude.exe")
+	for _, f := range []string{app, cli, filepath.Join(filepath.Dir(app), "resources", "app.asar")} {
+		os.MkdirAll(filepath.Dir(f), 0o755)
+		os.WriteFile(f, nil, 0o755)
+	}
+	if got := runningCLI([]string{app}); got != "" {
+		t.Fatalf("the desktop app taken for Claude Code: %q", got)
+	}
+	if got := runningCLI([]string{app, cli}); got != cli {
+		t.Fatalf("got %q, want %q", got, cli)
+	}
+	if got := runningCLI([]string{filepath.Join(root, "gone", "claude.exe")}); got != "" {
+		t.Fatalf("a program no longer there: %q", got)
+	}
+	if runtime.GOOS == "windows" {
+		if got := runningCLI([]string{`C:\Program Files\WindowsApps\Claude_1.0.0.0_x64__pzs8sxrjxfjjc\app\claude.exe`}); got != "" {
+			t.Fatalf("the MSIX app taken for Claude Code: %q", got)
+		}
+	}
+}
+
+// The app's execution alias on PATH (Microsoft\WindowsApps\Claude.exe)
+// starts the app, so it is not looked in for claude.
+func TestWithoutAppAliases(t *testing.T) {
+	alias := filepath.Join("C", "Users", "u", "AppData", "Local", "Microsoft", "WindowsApps")
+	other := filepath.Join("C", "Users", "u", ".local", "bin")
+	path := strings.Join([]string{alias, other, filepath.Join("C", "Tools", "WindowsApps")}, string(filepath.ListSeparator))
+	want := strings.Join([]string{other, filepath.Join("C", "Tools", "WindowsApps")}, string(filepath.ListSeparator))
+	if got := withoutAppAliases(path); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
 }

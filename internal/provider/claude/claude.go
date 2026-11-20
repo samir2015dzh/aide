@@ -39,10 +39,42 @@ func (p *Provider) binary() string {
 		return p.Binary
 	}
 	home, _ := os.UserHomeDir()
-	return provider.LookPath("claude", provider.SearchPath(p.PathEnv),
+	return provider.LookPath("claude", withoutAppAliases(provider.SearchPath(p.PathEnv)),
 		filepath.Join(home, ".local/bin/claude"), filepath.Join(home, ".claude/local/claude"),
 		"/opt/homebrew/bin/claude", "/usr/local/bin/claude", desktopCLI(home),
-		windowsDesktopCLI(os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA")))
+		windowsDesktopCLI(os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA")),
+		runningCLI(provider.RunningExecutables("claude.exe")))
+}
+
+// withoutAppAliases is path without Windows' app execution aliases
+// (%LOCALAPPDATA%\Microsoft\WindowsApps): the Claude desktop app puts a
+// Claude.exe there that starts the app, not Claude Code.
+func withoutAppAliases(path string) string {
+	var keep []string
+	for _, d := range filepath.SplitList(path) {
+		if !strings.EqualFold(filepath.Base(d), "WindowsApps") || !strings.EqualFold(filepath.Base(filepath.Dir(d)), "Microsoft") {
+			keep = append(keep, d)
+		}
+	}
+	return strings.Join(keep, string(filepath.ListSeparator))
+}
+
+// runningCLI is the first of the claude.exe programs running now that is
+// Claude Code, not the Claude desktop app (an Electron app: resources\app.asar
+// beside it): the one the app's Code page runs, wherever the app keeps it.
+func runningCLI(running []string) string {
+	for _, p := range running {
+		if _, err := os.Stat(filepath.Join(filepath.Dir(p), "resources", "app.asar")); err == nil {
+			continue
+		}
+		if strings.Contains(strings.ToLower(p), `\windowsapps\`) { // the app's alias, or its MSIX package
+			continue
+		}
+		if q := provider.LookPath("", "", p); q != "" {
+			return q
+		}
+	}
+	return ""
 }
 
 // desktopCLI is the newest Claude Code the Claude desktop app keeps for
@@ -64,11 +96,9 @@ func desktopCLI(home string) string {
 
 // windowsDesktopCLI is the newest Claude Code the Claude desktop app keeps
 // for itself on Windows: <userData>\claude-code\<version>\claude.exe, some
-// versions with a <hash> folder between. userData is %APPDATA%\Claude, or
-// for the MSIX package (whose %APPDATA% is redirected)
-// %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude, or in 3p
-// mode %LOCALAPPDATA%\Claude-3p. "" when none has one (or not Windows: the
-// variables are unset there).
+// versions with a <hash> or <build> folder between. userData is any of
+// windowsUserData's. "" when none has one (or not Windows: the variables
+// are unset there).
 func windowsDesktopCLI(appData, localAppData string) string {
 	var dirs []string
 	for _, userData := range windowsUserData(appData, localAppData) {
@@ -88,18 +118,32 @@ func windowsDesktopCLI(appData, localAppData string) string {
 }
 
 // windowsUserData are where the Claude desktop app may keep its data on
-// Windows, in the order above.
+// Windows: %APPDATA%\Claude (the installer's, and the MSIX package's when
+// its %APPDATA% is not redirected); for the MSIX package whose %APPDATA% and
+// %LOCALAPPDATA% are redirected, under
+// %LOCALAPPDATA%\Packages\Claude_*\LocalCache\{Roaming,Local}; and in 3p
+// mode the same with Claude-3p; then %LOCALAPPDATA%\Claude. The running
+// Code page's own Claude Code is found wherever it is (runningCLI).
 func windowsUserData(appData, localAppData string) []string {
 	var dirs []string
+	names := []string{"Claude", "Claude-3p"}
 	if appData != "" {
-		dirs = append(dirs, filepath.Join(appData, "Claude"))
+		for _, n := range names {
+			dirs = append(dirs, filepath.Join(appData, n))
+		}
 	}
 	if localAppData != "" {
 		pkgs, _ := filepath.Glob(filepath.Join(localAppData, "Packages", "Claude_*"))
 		for _, p := range pkgs {
-			dirs = append(dirs, filepath.Join(p, "LocalCache", "Roaming", "Claude"))
+			for _, under := range []string{"Roaming", "Local"} {
+				for _, n := range names {
+					dirs = append(dirs, filepath.Join(p, "LocalCache", under, n))
+				}
+			}
 		}
-		dirs = append(dirs, filepath.Join(localAppData, "Claude-3p"))
+		for _, n := range names {
+			dirs = append(dirs, filepath.Join(localAppData, n))
+		}
 	}
 	return dirs
 }

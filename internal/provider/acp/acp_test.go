@@ -569,3 +569,40 @@ func TestDesktopAppCLIAsar(t *testing.T) {
 		t.Fatalf("command: %q %q %q", bin, pre, env)
 	}
 }
+
+// DSH Desktop installed in a folder of the user's choosing, which Windows
+// records (2026-11-20: installed and in use, and not found in the two
+// folders looked in): found where Windows says, with either of its program
+// names.
+func TestDesktopAppWhereWindowsSays(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	t.Setenv("ProgramFiles", t.TempDir())
+	app := filepath.Join(t.TempDir(), "D", "Tools", "DSH")
+	a := App{Bundle: "Fake Harness", Exec: "Fake Harness.exe", Script: "resources/app.asar/dsh/lib/bin.js",
+		Windows: provider.WindowsApp{Names: []string{"Fake Harness"}, Exes: []string{"Fake Harness.exe", "Fake Desktop.exe"}}}
+	asar := filepath.Join(app, "resources", "app.asar")
+	os.MkdirAll(filepath.Dir(asar), 0o755)
+	os.WriteFile(asar, nil, 0o644)
+	exe := filepath.Join(app, "Fake Desktop.exe")
+	os.WriteFile(exe, nil, 0o755)
+	was := windowsAppDirs
+	t.Cleanup(func() { windowsAppDirs = was })
+	var asked provider.WindowsApp
+	windowsAppDirs = func(w provider.WindowsApp) []string {
+		asked = w
+		return []string{filepath.Join(t.TempDir(), "elsewhere"), app}
+	}
+	p := &Provider{Agent: Agent{Name: "fake", Command: "aide-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
+	bin, pre, env := p.command()
+	if bin != exe || len(pre) != 1 || pre[0] != filepath.Join(app, a.Script) || len(env) != 1 {
+		t.Fatalf("command: %q %q %q", bin, pre, env)
+	}
+	if len(asked.Exes) != 2 || asked.Names[0] != "Fake Harness" {
+		t.Fatalf("asked Windows for %+v", asked)
+	}
+	// Not there, or its script missing: not found.
+	windowsAppDirs = func(provider.WindowsApp) []string { return []string{t.TempDir()} }
+	if bin, _, _ := p.command(); bin != "" {
+		t.Fatalf("found %q in a folder without the app", bin)
+	}
+}

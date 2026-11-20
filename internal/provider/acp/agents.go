@@ -1,6 +1,10 @@
 package acp
 
-import "runtime"
+import (
+	"runtime"
+
+	"github.com/samir2015dzh/aide/internal/provider"
+)
 
 // Agents are the ACP agents Aide knows how to start. Commands follow
 // each vendor's documented ACP entry point; flags that pre-approve tools
@@ -18,10 +22,12 @@ var Agents = []Agent{
 	{Name: "kiro", Command: "kiro-cli", Args: []string{"acp"}, DesktopApps: []string{"Kiro.app"}},
 	{Name: "qoder", Command: "qodercli", Args: []string{"--acp"}, DesktopApps: []string{"Qoder.app"}},
 	// The DSH desktop apps keep their own dsh, with no `dsh` command; the
-	// Windows one's script is inside its app.asar (tested on 0.2.1-rc.5).
+	// Windows one's script is inside its app.asar (tested on 0.2.1-rc.5),
+	// and it is found wherever Windows says it is installed.
 	{Name: "deepseek", Command: "dsh", Args: []string{"--profile", "acp"}, DSHPresets: true, Apps: []App{
 		{Bundle: "DSH Desktop.app", Exec: "Contents/MacOS/DSH Desktop", Script: "Contents/Resources/app.asar.unpacked/lib/desktop-cli.js"},
-		{Bundle: "DeepSeek Harness", Exec: "DeepSeek Harness.exe", Script: "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"},
+		{Bundle: "DeepSeek Harness", Exec: "DeepSeek Harness.exe", Script: "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js",
+			Windows: provider.WindowsApp{Names: []string{"DeepSeek Harness", "DSH Desktop"}, Exes: []string{"DeepSeek Harness.exe", "DSH Desktop.exe"}}},
 	}},
 	{Name: "codebuddy", Command: "codebuddy", Args: []string{"--acp"}},
 	{Name: "grok", Command: "grok", Args: []string{"--no-auto-update", "agent", "stdio"}, Auth: []string{"cached_token", "xai.api_key"}},
