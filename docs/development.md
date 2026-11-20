@@ -3,7 +3,7 @@
 ```bash
 make generate   # Go, Swift and TypeScript code from proto
 make lint test  # static checks and unit tests
-make test-app   # the desktop app's types and unit tests, and the signer's
+make test-app   # the desktop app's types and unit tests
 make e2e        # full user flows and malicious-relay tests with real binaries and scripted agents
 make e2e-real   # the same flows with the real Claude Code and Codex on this machine (uses quota)
 HERMESH_DOCKER=1 go test ./e2e -run Linux   # a Linux machine (Docker)
@@ -13,11 +13,11 @@ pnpm --dir apps/desktop dev   # the desktop app against the local hermeshd (HERM
 ```
 
 `make e2e` includes the desktop app's tests, which open the app on this Mac;
-`go test ./e2e -skip 'TestDesktop$|TestSignerApp$'` leaves them out.
+`go test ./e2e -skip 'TestDesktop$'` leaves them out.
 
 ## Releases
 
-A release build of the desktop app needs, besides the Developer ID certificate in the keychain, the signer's Developer ID provisioning profile (App ID `com.hermesh.app.signer`, so the root key stays in the signer's Keychain group) and an App Store Connect API key to notarize:
+A release build of the desktop app needs, besides the Developer ID certificate in the keychain, the signer's Developer ID provisioning profile (App ID `com.hermesh.app.signer`; upstream's Mac app, whose signer this fork does not have, [accounts.md](accounts.md)) and an App Store Connect API key to notarize:
 
 ```bash
 HERMESH_SIGNER_PROFILE=~/.config/hermesh/signer.provisionprofile \

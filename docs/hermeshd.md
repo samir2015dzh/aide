@@ -7,7 +7,7 @@ It runs in the background as the user it is installed for.
 ## Install
 
 ```bash
-curl -fsSL https://github.com/hermeshai/hermesh/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- relay.example.com
 ```
 
 - It installs `hermeshd` and `hermesh` in `~/.local/bin` and runs
@@ -76,15 +76,14 @@ install command, run again, also updates a machine logged in.
 In PowerShell, as yourself (no administrator):
 
 ```powershell
-irm https://github.com/hermeshai/hermesh/releases/latest/download/install.ps1 | iex
+& ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) relay.example.com
 ```
 
 - It installs `hermeshd`, `hermeshdw` and `hermesh` in
   `%LOCALAPPDATA%\Programs\Hermesh\bin`, adds that folder to your PATH and
   runs `aided login`, as on Linux (the account and password asked for,
   or from `$env:AIDE_ACCOUNT` and `$env:AIDE_PASSWORD`).
-- With your server or a name:
-  `& ([scriptblock]::Create((irm https://github.com/hermeshai/hermesh/releases/latest/download/install.ps1))) <server> -Name build-box`;
+- With a name: the same, ending `<server> -Name build-box`;
   the agents' CLI only: the same with `-Cli`.
 - The background service is a Task Scheduler task of yours that starts at
   logon. It runs `hermeshdw`, `hermeshd` without a console window, which

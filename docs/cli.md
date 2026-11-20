@@ -4,7 +4,7 @@ Agents that run on a computer (Claude Code, Codex, Cursor, your own) use
 Aide through the `hermesh` command line. Install and sign in:
 
 ```bash
-curl -fsSL https://github.com/hermeshai/hermesh/releases/latest/download/install.sh | sh -s -- --cli
+curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli
 aide auth login relay.example.com --account me --name "Codex on MacBook"   # asks for the password
 ```
 
