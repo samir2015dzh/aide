@@ -84,6 +84,7 @@ func TestConfigRefusals(t *testing.T) {
 	os.MkdirAll(other, 0o755)
 	n := rootsMachine(t)
 	addLocal(t, n, &identityv1.AdminCommand{Command: &identityv1.AdminCommand_AddProject{AddProject: &identityv1.AddProject{ProjectId: "app", Path: other, Workspace: identityv1.Workspace_WORKSPACE_IN_PLACE}}})
+	stored, _ := n.st.Project("app") // its path as kept (on Windows, the long form of a short temp path)
 	roots := []string{root}
 	for _, c := range []struct {
 		name string
@@ -103,7 +104,7 @@ func TestConfigRefusals(t *testing.T) {
 		if len(n.WorkspaceRoots()) != 0 {
 			t.Fatalf("%s: the roots changed", c.name)
 		}
-		if p, _ := n.st.Project("app"); p.Path != other {
+		if p, _ := n.st.Project("app"); p.Path != stored.Path {
 			t.Fatalf("%s: the project changed: %+v", c.name, p)
 		}
 	}
