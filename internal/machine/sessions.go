@@ -2350,7 +2350,7 @@ func (s *Sessions) refreshDiffStat(l *live) {
 			l.mu.Unlock()
 			st, err := diffStat(context.Background(), repo, base, head)
 			l.mu.Lock()
-			if err == nil {
+			if err == nil && head == l.lastCommit { // a rollback meanwhile set its own
 				l.row.Progress.DiffStat = st
 			}
 			row := snapshotRow(l.row)
