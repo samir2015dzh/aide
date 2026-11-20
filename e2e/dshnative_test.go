@@ -262,7 +262,7 @@ func TestDSHNativeCLI(t *testing.T) {
 		Native map[string]any `json:"native_session"`
 	}
 	json.Unmarshal([]byte(r.stdout), &keys)
-	documented := []string{"session_id", "source", "read_only", "dsh_session_id", "title", "machine", "machine_id", "state", "turn_open", "archived", "cwd", "agent_preset",
+	documented := []string{"session_id", "source", "read_only", "takeover", "dsh_session_id", "title", "machine", "machine_id", "state", "turn_open", "archived", "cwd", "agent_preset",
 		"error", "created_at", "last_activity_at"} // docs/cli-output.md, NativeSession
 	if got := slices.Sorted(maps.Keys(keys.Native)); !slices.Equal(got, slices.Sorted(slices.Values(documented))) {
 		t.Fatalf("native_session's fields: %v", got)
@@ -291,16 +291,20 @@ func TestDSHNativeCLI(t *testing.T) {
 		t.Fatalf("session events --limit 1: %+v", r)
 	}
 
-	// Nothing goes to it, and it can't be taken over.
+	// Nothing goes to it until the owner takes it over, and an agent can't take it over.
 	refused := func(args ...string) {
 		t.Helper()
+		why := "agents read it"
+		if args[0] == "message" {
+			why = "has not taken over"
+		}
 		r := w.cli(time.Minute, append(args, "-o", "json")...)
 		var doc struct {
 			OK    bool
 			Error struct{ Kind, Message, Hint string }
 		}
 		json.Unmarshal([]byte(r.stdout), &doc)
-		if r.code != 2 || doc.OK || doc.Error.Kind != "invalid_state" || !strings.Contains(doc.Error.Message, "agents can only read it") || !strings.Contains(doc.Error.Hint, "session events") {
+		if r.code != 2 || doc.OK || doc.Error.Kind != "invalid_state" || !strings.Contains(doc.Error.Message, why) || !strings.Contains(doc.Error.Hint, "session events") {
 			t.Fatalf("%v: %+v", args, r)
 		}
 	}
@@ -416,4 +420,108 @@ func dshSnapshot(t *testing.T, dir string) map[string]string {
 		return nil
 	})
 	return out
+}
+
+// TestDSHTakeoverByAgent: an agent (the owner's dispatcher, here "muse")
+// sends to a DeepSeek Harness session only once the owner took it over:
+// its message goes through the real bridge plugin in a stand-in DSH Host,
+// setting the session's model and permission preset first (as listed by
+// session get), and reads back as the agent's. Before takeover, and for an
+// agent that can't read the session, it is refused, with nothing sent.
+func TestDSHTakeoverByAgent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	home := dshDesktopHome(t)
+	log := dshDesktopSession(t, home)
+	w := newOwnerMac(t, []string{"DSH_HOME=" + home}, &localv1.GrantSpec{TaskVisibility: identityv1.TaskVisibility_TASK_VISIBILITY_ALL})
+	muse := w.addAgent("muse", &localv1.GrantSpec{TaskVisibility: identityv1.TaskVisibility_TASK_VISIBILITY_ALL})
+	own := w.addAgent("own", &localv1.GrantSpec{})
+	startDSHHost(t, home, log)
+	ctx := context.Background()
+
+	var id string
+	eventually(t, time.Minute, "the DSH session listed", func() bool {
+		r := run(t, muse, time.Minute, filepath.Join(w.bin, "aide"), "session", "list", "--native", "-o", "json")
+		var doc struct {
+			Native []struct {
+				SessionID string `json:"session_id"`
+				ReadOnly  bool   `json:"read_only"`
+			} `json:"native_sessions"`
+		}
+		json.Unmarshal([]byte(r.stdout), &doc)
+		if len(doc.Native) == 1 && doc.Native[0].ReadOnly {
+			id = doc.Native[0].SessionID
+		}
+		return id != ""
+	})
+	send := func(env []string, args ...string) result {
+		return run(t, env, time.Minute, filepath.Join(w.bin, "aide"), append([]string{"message", "send", "-o", "json", "--to", id}, args...)...)
+	}
+	actions := func() string { b, _ := os.ReadFile(log + ".actions"); return string(b) }
+
+	// Not taken over: refused, nothing sent.
+	if r := send(muse, "--message", "接着做"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "has not taken over") {
+		t.Fatalf("before takeover: %+v", r)
+	}
+	l, err := w.app.client.ListDSHSessions(ctx, &localv1.ListDSHSessionsRequest{})
+	if err != nil || len(l.Sessions) != 1 {
+		t.Fatalf("listed: %v %v", l, err)
+	}
+	machineID := l.Sessions[0].MachineId
+	if _, err := w.app.client.SetDSHTakeover(ctx, &localv1.SetDSHTakeoverRequest{MachineId: machineID, SessionId: "dsh-owners", On: true}); err != nil {
+		t.Fatal(err)
+	}
+	// An agent that sees only its own sessions can't reach it.
+	if r := send(own, "--message", "x"); r.code == 0 || !strings.Contains(r.stdout+r.stderr, "not_found") {
+		t.Fatalf("an agent that can't read it: %+v", r)
+	}
+
+	// session get shows it taken over, and what it may be set to.
+	r := run(t, muse, time.Minute, filepath.Join(w.bin, "aide"), "session", "get", id, "-o", "json")
+	var got struct {
+		Native struct {
+			ReadOnly bool `json:"read_only"`
+			Takeover bool `json:"takeover"`
+		} `json:"native_session"`
+		Options struct {
+			Models []struct {
+				Model   string   `json:"model"`
+				Efforts []string `json:"efforts"`
+			} `json:"models"`
+			Permissions       []string `json:"permissions"`
+			CurrentModel      string   `json:"current_model"`
+			CurrentPermission string   `json:"current_permission"`
+		} `json:"options"`
+	}
+	if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || got.Native.ReadOnly || !got.Native.Takeover || len(got.Options.Models) != 2 ||
+		got.Options.Models[0].Model != "deepseek/deepseek-v4" || strings.Join(got.Options.Models[0].Efforts, ",") != "low,high" || strings.Join(got.Options.Permissions, ",") != "ask,auto" {
+		t.Fatalf("session get: %v %+v", err, r)
+	}
+
+	// Sent, with the model and permission set first.
+	if r := send(muse, "--message", "换个模型接着做", "--model", "deepseek/deepseek-v4/high", "--permission", "auto"); r.code != 0 {
+		t.Fatalf("send: %+v", r)
+	}
+	if a := actions(); !strings.Contains(a, `"model":"deepseek-v4"`) || !strings.Contains(a, `"reasoningEffort":"high"`) || !strings.Contains(a, `"/permission auto"`) {
+		t.Fatalf("DSH was asked: %s", a)
+	}
+	if r := send(muse, "--message", "x", "--model", "deepseek/gpt-9"); r.code == 0 {
+		t.Fatalf("a model DSH doesn't offer: %+v", r)
+	}
+
+	// The conversation shows whose it is: the agent's, by its name.
+	res, err := w.app.client.ReadDSHSession(ctx, &localv1.ReadDSHSessionRequest{MachineId: machineID, SessionId: "dsh-owners", Limit: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var last *sessionv1.UserMessage
+	for _, e := range res.Events {
+		if um := e.GetUserMessage(); um != nil {
+			last = um
+		}
+	}
+	if last == nil || last.Text != "换个模型接着做" || last.From == "" || last.From == "owner" || last.FromName != "muse" {
+		t.Fatalf("the agent's message reads as %v", last)
+	}
 }

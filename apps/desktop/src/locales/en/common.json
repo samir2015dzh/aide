@@ -279,6 +279,10 @@
       "unknown": "Not known yet whether the Aide plugin in DSH Desktop runs."
     },
     "viaAide": "Sent from Aide",
+    "viaAideBy": "{{name}} via Aide",
+    "model": "Model",
+    "permission": "Permissions",
+    "asItIs": "As it is",
     "notSent": "Not sent: {{reason}}",
     "install": {
       "title": "Install the Aide plugin",

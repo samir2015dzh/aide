@@ -267,6 +267,10 @@
       "unknown": "还不知道 DSH Desktop 里的 Aide 插件是否在运行。"
     },
     "viaAide": "经 Aide 发送",
+    "viaAideBy": "{{name}} 经 Aide 发送",
+    "model": "模型",
+    "permission": "权限",
+    "asItIs": "保持不变",
     "notSent": "没有发出去：{{reason}}",
     "install": {
       "title": "安装 Aide 插件",

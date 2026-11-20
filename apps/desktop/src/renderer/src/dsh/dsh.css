@@ -52,3 +52,6 @@
 .dsh-install .err{color:var(--red);margin-left:8px}
 .dsh-path{display:flex;align-items:center;gap:8px;margin-top:4px}
 .dsh-path .mono{font-family:var(--mono);overflow-wrap:anywhere;color:var(--l1)}
+
+.dsh-picks{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.dsh-picks .psel{width:auto;max-width:100%}

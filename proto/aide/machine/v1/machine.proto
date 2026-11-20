@@ -43,6 +43,17 @@ service MachineService {
   rpc ReadDSHSession(ReadDSHSessionRequest) returns (ReadDSHSessionResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // MachineAdminService.SendDSHMessage for an agent: only to a DSH session
+  // it may read (as ReadDSHSession) that the owner took over
+  // (SetDSHTakeover); the message is shown as the agent's. Nothing else
+  // an agent does reaches a DSH session.
+  rpc SendDSHMessage(SendDSHMessageRequest) returns (SendDSHMessageResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  // MachineAdminService.DSHSessionOptions, on the same terms.
+  rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (DSHSessionOptionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
 }
 
 message WatchRequest {
@@ -511,6 +522,12 @@ service MachineAdminService {
   // (its own index), that Aide did not start, newest activity first: read
   // from the app's and Claude Code's files, which nothing here writes.
   // Owner only.
+  // The models (with their reasoning efforts) and permission presets DSH
+  // offers a taken-over session, and the ones it has now, through the
+  // bridge plugin: what SendDSHMessage may set.
+  rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (DSHSessionOptionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
   rpc ListClaudeSessions(ListClaudeSessionsRequest) returns (ListClaudeSessionsResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
@@ -684,6 +701,46 @@ message SendDSHMessageRequest {
   // Names the message for DSH, which drops a second one with the same id
   // (a retry); it starts "aide-". Empty: a new one.
   string request_id = 3;
+  // The model (and reasoning effort) the session goes on with, set in DSH
+  // before the message, as DSH's own model picker does; unset: as it is.
+  DSHModel model = 4;
+  // The permission preset the session goes on with (DSH's /permission);
+  // "": as it is.
+  string permission = 5;
+}
+
+// DSHModel is a model as DSH names it: its provider, the model, and the
+// reasoning effort ("" for the model's default).
+message DSHModel {
+  string provider = 1;
+  string model = 2;
+  string effort = 3;
+}
+
+message DSHSessionOptionsRequest {
+  string session_id = 1;
+}
+
+message DSHSessionOptionsResponse {
+  repeated DSHModelOption models = 1;
+  repeated DSHPermissionOption permissions = 2;
+  // What the session has now, as far as DSH tells (unset / "": not known).
+  DSHModel current_model = 3;
+  string current_permission = 4;
+}
+
+message DSHModelOption {
+  string provider = 1;
+  string provider_name = 2;
+  string model = 3;
+  string model_name = 4;
+  repeated string efforts = 5;
+}
+
+message DSHPermissionOption {
+  string id = 1;
+  string name = 2;
+  string description = 3;
 }
 
 message SendDSHMessageResponse {

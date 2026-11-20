@@ -198,6 +198,7 @@ service LocalService {
   rpc SendDSHMessage(SendDSHMessageRequest) returns (aide.machine.v1.SendDSHMessageResponse);
   rpc InterruptDSHSession(InterruptDSHSessionRequest) returns (aide.machine.v1.InterruptDSHSessionResponse);
   rpc PrepareDSHBridge(PrepareDSHBridgeRequest) returns (aide.machine.v1.PrepareDSHBridgeResponse);
+  rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (aide.machine.v1.DSHSessionOptionsResponse);
   // The Claude Code sessions the Claude desktop app lists on the machines
   // (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
   // activity first; a machine that can't be reached has them as last read,
@@ -1362,6 +1363,13 @@ message SendDSHMessageRequest {
   string session_id = 2;
   string text = 3;
   string request_id = 4;
+  aide.machine.v1.DSHModel model = 5;
+  string permission = 6;
+}
+
+message DSHSessionOptionsRequest {
+  string machine_id = 1;
+  string session_id = 2;
 }
 
 message InterruptDSHSessionRequest {

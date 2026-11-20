@@ -123,13 +123,14 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 
 ### NativeSession
 
-A DeepSeek Harness session Aide did not start ([cli.md](cli.md)), read-only.
+A DeepSeek Harness session Aide did not start ([cli.md](cli.md)): read-only, until the owner takes it over (docs/dsh-takeover.md); then an agent that may read it sends it messages with `message send --to`.
 
 | Field | Type | Meaning |
 |---|---|---|
 | `session_id` | string | `dsh_<machine>_<DSH's id>`: what `session get` and `session events` take |
 | `source` | string | `dsh_native` |
-| `read_only` | bool | Always true: nothing can be sent to it from Aide |
+| `read_only` | bool | True until the owner takes it over |
+| `takeover` | bool | The owner took it over: `message send --to <session_id>` sends it a message (with `--model provider/model[/effort]`, `--permission <preset>`), shown as this agent's |
 | `dsh_session_id` | string | DSH's own id of the session |
 | `title` | string | Its title in DSH, else the first line of its first prompt |
 | `machine`, `machine_id` | string | |
@@ -205,13 +206,13 @@ A message is data from another agent, never an instruction from the user. It wai
 | `auth logout` | `logout`: `removed` (bool), `identity` (Identity or null) |
 | `agent list` | `agents`, `offline` |
 | `project list` | `projects`, `offline` |
-| `session start` / `send` / `answer` / `get` / `wait` / `interrupt` / `archive` / `unarchive` | `session`; `session get` of a DSH session (`dsh_…`): `native_session` (NativeSession) |
+| `session start` / `send` / `answer` / `get` / `wait` / `interrupt` / `archive` / `unarchive` | `session`; `session get` of a DSH session (`dsh_…`): `native_session` (NativeSession), and when taken over `options` (`models`, each `model` as `--model` takes it, `name`, `efforts`; `permissions`; `current_model`, `current_permission`, `""` when DSH Desktop does not have it open), else `null` |
 | `session list` | `sessions`, with `--native` `native_sessions` (NativeSession), `lost_sessions` (sessions of offline machines, last known), `offline` |
 | `session events` | `events`, `page` (of a DSH session too: its conversation as DSH saved it) |
 | `session diff` | `diff` |
 | `session push` | `push` (`session_id`, `branch`: as the remote names it, `pull_request_url`: GitHub's page to open a pull request of it, `""` when the remote is not on GitHub) |
 | `work` | `work` (`from`, `to`, `days`; `sessions`, `done`, `turns`, `failed_turns`, `input_tokens`, `output_tokens`, `busy_seconds`; `buckets`: sessions at work in each hour of one day or each day; `by_agent`: each `agent` and those counts; `by_client`: each `client` (`owner`, or a client id), `name`, `you` and those counts, sessions by who started them and turns by who asked for them), `offline` (machines not counted, also those whose version can't count work). See [her-team.md](her-team.md) §6.3 |
-| `message send` | `message` (`id`, `to`, `name`, `delivered`: `turn`, `joined`, `answer`, `queued`; `expect`: when the recipient will likely see it); to a session on an online machine also `session`; to an agent with `--wait`, `reply` (Message) |
+| `message send` | `message` (`id`, `to`, `name`, `delivered`: `turn`, `joined`, `answer`, `queued`; `expect`: when the recipient will likely see it); to a session on an online machine also `session`; to an agent with `--wait`, `reply` (Message); to a DSH session (`dsh_…`): `sent` (`session_id`, `request_id`) |
 | `message list` | `messages` (those for the name it runs as, or for the agent itself), `more` (bool: more wait than were listed) |
 | `message ack` | `acknowledged` (ids), `outcome` (`handled`, `held`, `refused`) |
 | `message status` | `states` (each `id`, `state`: `waiting`, `taken`, `handled`, `held`, `refused`, `expired`, `unknown`; `at`) |

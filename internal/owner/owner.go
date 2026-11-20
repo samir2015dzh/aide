@@ -1729,7 +1729,7 @@ func (o *Owner) SetDSHTakeover(ctx context.Context, req *localv1.SetDSHTakeoverR
 }
 
 func (o *Owner) SendDSHMessage(ctx context.Context, req *localv1.SendDSHMessageRequest) (*machinev1.SendDSHMessageResponse, error) {
-	r := &machinev1.SendDSHMessageRequest{SessionId: req.SessionId, Text: req.Text, RequestId: req.RequestId}
+	r := dshSend(req)
 	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.SendDSHMessageResponse, error) { return l.SendDSHMessage(ctx, r) },
 		func(n *peer.Machine) (*machinev1.SendDSHMessageResponse, error) {
 			return n.Admin.SendDSHMessage(ctx, r)
@@ -1768,6 +1768,21 @@ func onDSHMachine[T any](ctx context.Context, o *Owner, machineID string, local 
 		return zero, err
 	}
 	return remote(n)
+}
+
+// DSHSessionOptions are the models and permission presets DSH offers a
+// taken-over session on a machine.
+func (o *Owner) DSHSessionOptions(ctx context.Context, req *localv1.DSHSessionOptionsRequest) (*machinev1.DSHSessionOptionsResponse, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.DSHSessionOptionsResponse, error) {
+		return l.DSHSessionOptions(ctx, req.SessionId)
+	},
+		func(n *peer.Machine) (*machinev1.DSHSessionOptionsResponse, error) {
+			return n.Admin.DSHSessionOptions(ctx, &machinev1.DSHSessionOptionsRequest{SessionId: req.SessionId})
+		})
+}
+
+func dshSend(req *localv1.SendDSHMessageRequest) *machinev1.SendDSHMessageRequest {
+	return &machinev1.SendDSHMessageRequest{SessionId: req.SessionId, Text: req.Text, RequestId: req.RequestId, Model: req.Model, Permission: req.Permission}
 }
 
 func dshRead(req *localv1.ReadDSHSessionRequest) *machinev1.ReadDSHSessionRequest {

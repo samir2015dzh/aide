@@ -170,7 +170,7 @@ func (n *Machine) readDSHSession(req *machinev1.ReadDSHSessionRequest, visible f
 	if err != nil {
 		return nil, err
 	}
-	s, evs, err := dshnative.Read(home, req.SessionId)
+	s, evs, err := dshnative.ReadAs(home, req.SessionId, n.dshSender)
 	if err == nil && visible != nil {
 		refs, rerr := n.st.ProviderRefs()
 		if rerr != nil {

@@ -467,7 +467,7 @@ func (l *localService) SendDSHMessage(ctx context.Context, req *localv1.SendDSHM
 		if err != nil {
 			return nil, err
 		}
-		return m.SendDSHMessage(ctx, &machinev1.SendDSHMessageRequest{SessionId: req.SessionId, Text: req.Text, RequestId: req.RequestId})
+		return m.SendDSHMessage(ctx, dshSend(req))
 	}
 	return l.o().SendDSHMessage(ctx, req)
 }
@@ -480,6 +480,16 @@ func (l *localService) InterruptDSHSession(ctx context.Context, req *localv1.Int
 		return m.InterruptDSHSession(ctx, &machinev1.InterruptDSHSessionRequest{SessionId: req.SessionId})
 	}
 	return l.o().InterruptDSHSession(ctx, req)
+}
+
+func (l *localService) DSHSessionOptions(ctx context.Context, req *localv1.DSHSessionOptionsRequest) (*machinev1.DSHSessionOptionsResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.DSHSessionOptions(ctx, req.SessionId)
+	}
+	return l.o().DSHSessionOptions(ctx, req)
 }
 
 func (l *localService) PrepareDSHBridge(ctx context.Context, req *localv1.PrepareDSHBridgeRequest) (*machinev1.PrepareDSHBridgeResponse, error) {

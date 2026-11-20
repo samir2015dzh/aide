@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { agoText, dateOf, lostLine, transcript } from "@aide/core";
-import { DSHSessionState, type DSHBridge, type DSHSession, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
+import { DSHSessionState, type DSHBridge, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
 import type { DSHSessionEntry, Unreachable } from "@aide/proto/local";
 import { EventView, type SessionEvent } from "@aide/proto/session";
 import { local } from "../api";
@@ -238,10 +238,11 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
       {items.map((it) => {
         switch (it.kind) {
           case "user":
-            // Every message here is the owner's; those sent from Aide (taken over) say so.
+            // Typed in DSH, or sent from Aide (taken over): by the owner, or by one of their agents, named.
             return (
               <div key={String(it.seq)} className="dsh-msg user">
                 {it.from === "owner" && <span className="dsh-via">{t("dsh.viaAide")}</span>}
+                {it.from !== "" && it.from !== "owner" && <span className="dsh-via">{t("dsh.viaAideBy", { name: it.fromName || it.from })}</span>}
                 {it.text}
               </div>
             );
@@ -339,13 +340,35 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // What the session may go on with (DSH's models and permission presets), and the owner's choice: "" keeps it as it is.
+  const [options, setOptions] = useState<DSHSessionOptionsResponse>();
+  const [model, setModel] = useState("");
+  const [permission, setPermission] = useState("");
+  useEffect(() => {
+    if (!b.ok) return;
+    local.dSHSessionOptions({ machineId: entry.machineId, sessionId: s.sessionId }).then(setOptions, () => setOptions(undefined));
+  }, [b.ok, entry.machineId, s.sessionId]);
+  const choices = (options?.models ?? []).flatMap((m) =>
+    [{ value: `${m.provider}/${m.model}/`, label: m.modelName || m.model }].concat(
+      m.efforts.map((e) => ({ value: `${m.provider}/${m.model}/${e}`, label: `${m.modelName || m.model} · ${e}` })),
+    ),
+  );
+  const current = options?.currentModel ? `${options.currentModel.provider}/${options.currentModel.model}/${options.currentModel.effort}` : "";
   const send = () => {
     if (!text.trim() || busy) return;
     reqId.current ||= newRequestId();
     setBusy(true);
     setError("");
     setNotice("");
-    local.sendDSHMessage({ machineId: entry.machineId, sessionId: s.sessionId, text, requestId: reqId.current }).then(
+    const [provider, name, effort] = model.split("/");
+    local.sendDSHMessage({
+      machineId: entry.machineId,
+      sessionId: s.sessionId,
+      text,
+      requestId: reqId.current,
+      model: model && model !== current ? { provider, model: name, effort } : undefined,
+      permission: permission && permission !== options?.currentPermission ? permission : "",
+    }).then(
       () => {
         reqId.current = "";
         setText("");
@@ -378,6 +401,35 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
         </p>
       )}
       {(b.key === "notInstalled" || b.key === "incompatible") && <Install machineId={entry.machineId} />}
+      {options && (options.models.length > 0 || options.permissions.length > 0) && (
+        <div className="dsh-picks">
+          {options.models.length > 0 && (
+            <select className="psel" aria-label={t("dsh.model")} value={model || current} onChange={(e) => ((reqId.current = ""), setModel(e.target.value))}>
+              {!current && <option value="">{t("dsh.asItIs")}</option>}
+              {choices.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          )}
+          {options.permissions.length > 0 && (
+            <select
+              className="psel"
+              aria-label={t("dsh.permission")}
+              value={permission || options.currentPermission}
+              onChange={(e) => ((reqId.current = ""), setPermission(e.target.value))}
+            >
+              {!options.currentPermission && <option value="">{t("dsh.asItIs")}</option>}
+              {options.permissions.map((p) => (
+                <option key={p.id} value={p.id} title={p.description}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
       <textarea
         aria-label={t("dsh.message")}
         placeholder={t(running ? "dsh.placeholderRunning" : "dsh.placeholder")}

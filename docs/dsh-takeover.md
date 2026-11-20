@@ -29,13 +29,29 @@ next turn (`mode: 'queue'`), as one typed in DSH would be.
   Windows a named pipe with a random name. `bridge.json` there (0600) holds
   the endpoint and a random token; every request carries the token.
 - **Protocol** (one JSON object per line, version 1): `hello` (version,
-  which DSH services the Host has), `state {sessionId}` (whether the
+  which DSH services the Host has, and `features` beyond the first
+  plugin: `options`, `selections`), `state {sessionId}` (whether the
   session's Agent runs in this Host), `prompt {sessionId, requestId,
-  text}`, `cancel {sessionId}`.
+  text, model?: {provider, model, effort?}, permission?}`, `options
+  {sessionId}`, `cancel {sessionId}`.
+- **Model and permissions** (plugin 0.2.0), as DSH's own pickers and
+  Agents Anywhere's bridge set them: `options` lists DSH's models
+  (`llm.listProviders`, `listModels`, each model's reasoning efforts from
+  `resolveModelInfo`; a provider DSH can't list now is left out) and
+  permission presets (`permissionPresets.catalog()`, not `custom`), and
+  for a session DSH Desktop has open, its own (`sessionProjections`
+  `modelSelection`, `permissionPresets.current`). A prompt that names
+  them opens the session (`sessionController.resolveAgent`), checks the
+  model (`llm.resolveCallConfig`), and sets what differs:
+  `sessionController.selectModel`, and the session's `/permission
+  <preset>` command; then queues the message. A selection DSH refuses
+  stops the message (nothing is sent). aided sends selections only to a
+  plugin that lists `selections`; an older one is told to be updated.
 - **Request ids** start `aide-`. DSH keeps the id as the message's
   `rpcId` and drops a second message with the same one, so a retry can't
-  send twice; and Aide reads a message with such an `rpcId` as sent by
-  the owner from Aide (only the owner sends through the bridge).
+  send twice; and Aide reads a message with such an `rpcId` as sent from
+  Aide: by the agent the machine recorded for that id (below), else by the
+  owner.
 - **No silent waits**: the plugin gives DSH 20 seconds to accept a message
   and then answers `timeout` (DSH's own web page was measured to hang
   silently on a held lock); aided gives each call a deadline.
@@ -55,6 +71,25 @@ next turn (`mode: 'queue'`), as one typed in DSH would be.
   FAILED_PRECONDITION, DEADLINE_EXCEEDED, NOT_FOUND or INVALID_ARGUMENT,
   each with what to do; nothing is left pending.
 - `InterruptDSHSession`: the live Agent's `cancel({kind: 'user'})`.
+- `DSHSessionOptions`: the plugin's `options`. `SendDSHMessage` takes
+  `model` (`DSHModel`) and `permission`.
+
+For an agent (`MachineService`, the owner's ruling of 2026-11-20: the
+dispatcher may write, only where the owner opened the door):
+
+- `SendDSHMessage` and `DSHSessionOptions`: only a DSH session the agent
+  may read (as `ReadDSHSession`: its grant sees sessions it did not start,
+  in the session's folder) **and** the owner took over; otherwise
+  NOT_FOUND, or FAILED_PRECONDITION "the owner has not taken over this DSH
+  session". Turning takeover on, stopping a turn and preparing the plugin
+  stay the owner's.
+- The machine records each agent's message (`dsh-sent/<request id>`: its
+  client id and name) before it goes; reading the session, that message is
+  the agent's (`UserMessage.from`, `from_name`), shown "Muse 经 Aide 发送".
+  Another sender can't reuse the id. The audit log names the sender.
+- The CLI: `aide message send --to dsh_… --message … [--model
+  provider/model[/effort]] [--permission <preset>]`; `aide session get
+  dsh_…` shows `takeover` and, taken over, the choices.
 - `ListDSHSessions` gives the owner the bridge's state: not installed, not
   running (DSH Desktop closed, or the plugin off), running, incompatible.
 
@@ -81,9 +116,12 @@ that file in DSH Desktop › Plugins and restarts DSH Desktop.
 
 On a DSH session's page (desktop and Android): a 接管 switch, which asks
 first what it means; taken over, a box to write in, Send, and Stop while a
-turn runs. A failed send says it was not sent and why, keeps the text, and
+turn runs. On the desktop, above the box, the model (with its effort) and
+the permission preset the session goes on with, from the plugin's
+options (left as they are unless changed); Android sends without them. A failed send says it was not sent and why, keeps the text, and
 shows the plugin's state; a timeout keeps the message's id for the retry.
-Messages sent from Aide read "经 Aide 发送".
+Messages sent from Aide read "经 Aide 发送"; an agent's, "<name> 经 Aide
+发送".
 
 Separately, every message in an Aide session now names its writer
 (`UserMessage.from`, `from_name`): the owner joining a session one of

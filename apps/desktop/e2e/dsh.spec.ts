@@ -39,9 +39,19 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   const box = page.getByRole("textbox", { name: "给 DSH 的消息" });
   await expect(box).toBeVisible();
   await expect(page.getByText("DSH Desktop 里还没有 Aide 插件")).toHaveCount(0);
+  // What the session goes on with: DSH's models (with their efforts) and permission presets, as the plugin lists them.
+  const model = page.getByRole("combobox", { name: "模型" });
+  const perm = page.getByRole("combobox", { name: "权限" });
+  await expect(model).toBeVisible({ timeout: 30_000 });
+  await model.selectOption({ label: "DeepSeek V4 · high" });
+  await perm.selectOption({ label: "Auto review" });
+  await snap(page, "dsh-takeover-picks");
   await box.fill("接着把测试补上");
   await page.getByRole("button", { name: "发送" }).click();
   await expect(page.getByRole("status").filter({ hasText: "已发送。" })).toBeVisible({ timeout: 30_000 });
+  const actions = fs.readFileSync(fixture.dshLog! + ".actions", "utf8");
+  expect(actions).toContain('"reasoningEffort":"high"');
+  expect(actions).toContain('"/permission auto"');
   await expect(box).toHaveValue("");
   const sent = page.locator(".dsh-msg.user").filter({ hasText: "接着把测试补上" });
   await expect(sent).toBeVisible({ timeout: 30_000 });

@@ -60,7 +60,9 @@ type desktopFixture struct {
 	// for the spec to stop it as DSH Desktop quitting would (0 when none).
 	DSHHost int    `json:"dshHost,omitempty"`
 	DSHHome string `json:"dshHome,omitempty"`
-	owner   *ownerMac
+	// The owner's session's log there: what the stand-in DSH Host was asked to set goes beside it (.actions).
+	DSHLog string `json:"dshLog,omitempty"`
+	owner  *ownerMac
 }
 
 // freshOwner is an owner daemon not set up yet: its socket, a relay of its
@@ -164,7 +166,8 @@ func TestDesktop(t *testing.T) {
 			}
 			f := desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
 			if name == "dsh" {
-				f.DSHHost, f.DSHHome = startDSHHost(t, dshHome, dshDesktopSession(t, dshHome)), dshHome
+				log := dshDesktopSession(t, dshHome)
+				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log
 			}
 			if name == "states" { // work-mac, for the spec to start a turn on and freeze
 				f.OtherMac = otherMacSession(t, f)
