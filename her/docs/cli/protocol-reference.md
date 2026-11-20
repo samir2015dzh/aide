@@ -111,6 +111,7 @@ Protocol version 2. Generated from `her protocol schema` by `tools/gen-protocol-
 | `bots/routine_run_now` | `BotRoutineParams` | `Empty` | Parameters of `bots/routine`, `bots/routine_run_now`, `bots/routine_stop` and `bots/routine_delete`. |
 | `bots/routine_runs` | `BotRoutineRunsParams` | `BotRoutineRunsResult` |  |
 | `bots/routine_set_enabled` | `BotRoutineSetEnabledParams` | `Empty` |  |
+| `bots/routine_set_patrol` | `BotRoutineSetPatrolParams` | `Empty` | Parameters of `bots/routine_set_patrol`. |
 | `bots/routine_stop` | `BotRoutineParams` | `Empty` | Parameters of `bots/routine`, `bots/routine_run_now`, `bots/routine_stop` and `bots/routine_delete`. |
 | `bots/subscribe` | — | `BotsResult` | Result of `bots/subscribe`. |
 | `bots/unread` | `BotIdParams` | `Empty` | Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`. |
