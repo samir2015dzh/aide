@@ -10,12 +10,13 @@ export type Fixture = {
   sessions: Record<string, string>;
   cli: string;
   cliEnv: string[];
-  /** Owner daemons nobody has set up yet (first-run tests; each can be set up once). */
+  /**
+   * Owner daemons nobody has set up yet, each with a relay of its own not set up either (first-run tests): claimCode
+   * is that relay's setup code, which sets it up once.
+   */
   fresh: { socket: string; relayURL: string; claimCode: string; gate?: string }[];
   /** A second Mac's daemon (its process group), a machine only with a session on it; 0 when none. */
   otherMac: number;
-  /** On Windows, the folder of an older signer, as if set up. */
-  oldSigner?: string;
   /** A connector's service that signs in with OAuth, for Her to ask for on a secure card (TestDesktopHer). */
   connector?: string;
   /** This Mac's her home, to change a file Her sent as her model would (TestDesktopHerDeliveries). */
@@ -49,7 +50,7 @@ export const fixture: Fixture = JSON.parse(fs.readFileSync(process.env.HERMESH_E
  * Starts the built app (pnpm build) against the fixture's daemon (or the one
  * at socket), with a new profile unless given one. The app follows the
  * system's languages, which macOS lets a single run override
- * (-AppleLanguages; on Windows the app reads HERMESH_TEST_LANGUAGES); the
+ * (-AppleLanguages; elsewhere the app reads HERMESH_TEST_LANGUAGES); the
  * tests read the app in Chinese unless they ask for other languages
  * (language.spec.ts).
  */
@@ -68,7 +69,7 @@ export async function launch(
     env: {
       ...process.env,
       HERMESH_SOCKET: socket,
-      ...(process.platform === "win32" ? { HERMESH_TEST_LANGUAGES: languages.join(",") } : {}),
+      ...(process.platform !== "darwin" ? { HERMESH_TEST_LANGUAGES: languages.join(",") } : {}),
       HERMESH_USER_DATA: o.profile ?? fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-")),
       ...o.env,
     },

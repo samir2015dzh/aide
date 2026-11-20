@@ -83,7 +83,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   const choices = page.getByRole("list", { name: "选择 Her 在哪里运行" });
   await expect(choices.getByRole("listitem").filter({ hasText: "work-mac" }).getByRole("button", { name: "开启 Her" })).toBeVisible({ timeout: 60_000 });
   await snap(page, "her-first-run");
-  // This Mac: the test's signer signs SetHer, as Touch ID would. Her runs there with the mock's model, and greets.
+  // This Mac: the server signs SetHer for this device, nothing to confirm. Her runs there with the mock's model, and greets.
   await choices.getByRole("listitem").filter({ hasText: "这台 Mac" }).getByRole("button", { name: "开启 Her" }).click();
   await expect(page.getByText(/^你好，我是 .+，在 .+ 上为你做事/)).toBeVisible({ timeout: 120_000 });
   // The page is the conversation with Her alone: its name at the top, no list of assistants, no environments in

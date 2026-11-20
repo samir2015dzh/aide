@@ -94,7 +94,7 @@ export function world(now = Date.now()): World {
     localMachineId: "m-local",
     localMachineName: "MacBook Pro",
     version: "0.9.0",
-    connectAddress: "relay.example/owner-1",
+    account: "owner",
     deviceKeyId: "d-1",
   });
 
