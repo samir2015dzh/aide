@@ -86,7 +86,8 @@ func TestSessionRollback(t *testing.T) {
 		t.Fatalf("session after the rollback: %v", got)
 	}
 	wt := w.worktree(id)
-	if b, _ := os.ReadFile(filepath.Join(wt, "a.txt")); string(b) != "one\n" {
+	// checked out again, with the line endings git gives files here (CRLF on Windows)
+	if b, _ := os.ReadFile(filepath.Join(wt, "a.txt")); strings.ReplaceAll(string(b), "\r\n", "\n") != "one\n" {
 		t.Fatalf("a.txt: %q", b)
 	}
 	for _, f := range []string{"b.txt", "c.txt"} {
