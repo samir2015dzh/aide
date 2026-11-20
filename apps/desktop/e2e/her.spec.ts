@@ -105,7 +105,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // Her's page, beside the conversation, as on the iPhone (docs/her-panel-demo.html): the avatar opens it (no
   // button of its own in the bar, nor Progress, Files or Scheduled Tasks there); the capsule under it is the team's
   // name tag, which opens the team panel (docs/her-team.md §14.3). Both with the hand. Three tabs, Work first: a new
-  // assistant remembers nothing yet, has no connectors, and asks before risky steps.
+  // assistant remembers nothing yet, has no connectors, and runs every step without asking (docs/her-server.md §0).
   const avatar = page.getByRole("button", { name: "助手设置", exact: true });
   const tag = page.getByRole("button", { name: "团队：现在在做什么" });
   await expect(avatar.locator(".bav.cat-av")).toBeVisible();
@@ -127,7 +127,9 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   for (const id of ["her-skills", "her-search", "her-browser"]) await expect(settings.getByTestId(id)).toBeVisible();
   await snap(page, "her-page-abilities");
   await settings.getByRole("tab", { name: "设置" }).click();
-  await expect(settings).toContainText("询问权限");
+  // No permission mode to choose (the owner's ruling, 2026-11-20): a note says she acts without asking.
+  await expect(settings).toContainText("Her 直接执行，不会停下来请你批准。");
+  await expect(settings).not.toContainText("权限模式");
   await expect(settings.getByTestId("her-environment")).toContainText("环境");
   await snap(page, "her-page-settings");
   await avatar.click();
@@ -162,15 +164,16 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await expect(composer).toHaveValue("", { timeout: 1_000 });
   await expect(log.locator("[data-testid=her-sending]")).toHaveCount(0, { timeout: 30_000 });
 
+  // Her asks the owner for nothing before she acts (docs/her-server.md §0): no approval card shows, here or later.
+  const asked = page.getByRole("region", { name: "等你批准" });
+
   // A step that needs the owner's own Chrome, whose extension is not connected: it waits, and a card above the
   // composer says so. Connecting opens the console at its guide; going on without it this time lets the step go on.
+  // The site is not asked about first, though the owner's browser has their real sign-ins: it simply opens.
   await send("[[mock:yours:https://example.com/]] hi");
-  // The site asks first in the owner's own browser, whatever the mode: their sign-ins are real.
-  const asked = page.getByRole("region", { name: "等你批准" });
-  await expect(asked).toContainText("example.com", { timeout: 60_000 });
-  await asked.getByRole("button", { name: /^允许一次/ }).click();
   const chrome = page.getByRole("region", { name: "连接你的 Chrome？" });
   await expect(chrome).toBeVisible({ timeout: 60_000 });
+  await expect(asked).toHaveCount(0);
   await snap(page, "her-chrome-wait");
   const guide = app.waitForEvent("window");
   await chrome.getByRole("button", { name: "连接 Chrome…" }).click();
@@ -180,15 +183,12 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await chrome.getByRole("button", { name: "这次用内置浏览器" }).click();
   await expect(chrome).toBeHidden({ timeout: 30_000 });
 
-  // Her starts a coding session on this Mac, asked first (docs/her-team.md §14.3): a card where she started it,
-  // kept current, which the team panel lists once it is done, and which opens the session.
+  // Her starts a coding session on this Mac at once, without asking (docs/her-team.md §14.3): a card where she
+  // started it, kept current, which the team panel lists once it is done, and which opens the session.
   await send(`[[mock:mesh:session_start:${JSON.stringify({ project: "owner-mac/demo", prompt: "say 做完了", title: "Her 派的活" })}]] 开工`);
-  // Asked first, in words that name the agent and the project.
-  const approval = page.getByRole("region", { name: "等你批准" });
-  await expect(approval).toContainText("owner-mac/demo", { timeout: 60_000 });
-  await approval.getByRole("button", { name: /^允许/ }).click();
   const sessionCard = log.getByRole("button", { name: "Her 派的活" });
   await expect(sessionCard).toBeVisible({ timeout: 60_000 });
+  await expect(asked).toHaveCount(0);
   await expect(sessionCard).toContainText("Claude · owner-mac");
   await expect(sessionCard).toContainText("完成", { timeout: 60_000 });
   await snap(page, "her-session-card");
@@ -201,7 +201,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await navTo(page, /^Her/);
   await expect(sessionCard).toBeVisible();
 
-  // Her notes a rule (her-mock's remember), with no approval asked; her settings show it on the memory page,
+  // Her notes a rule (her-mock's remember), as she does everything, without asking; her settings show it on the memory page,
   // as written (a list, Markdown), and clear it there, after asking.
   await send("[[mock:remember:- 回复一律用中文。(2026-11-11)]] 以后都用中文");
   await expect(log).toContainText("记下了。", { timeout: 60_000 });
@@ -225,13 +225,12 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await settings.getByRole("button", { name: "关闭" }).click();
   await expect(settings).toBeHidden();
 
-  // A scheduled task Her makes (her-mock's routine): its message names it and opens its run. Once the task is
-  // deleted, as one that has done its job often is, the message still opens the run, the task marked as deleted.
+  // A scheduled task Her makes (her-mock's routine), made at once, without asking: its message names it and opens
+  // its run. Once the task is deleted, as one that has done its job often is, the message still opens the run, the
+  // task marked as deleted.
   await send("[[mock:routine:拉伸|in 2s|say:该起来活动一下了。]] hi");
-  // Asked first, as Her's settings ask before risky steps.
-  await expect(approval).toContainText("拉伸", { timeout: 60_000 });
-  await approval.getByRole("button", { name: /^允许/ }).click();
   await expect(log.getByRole("button", { name: /已创建定时任务「拉伸」/ })).toBeVisible({ timeout: 60_000 });
+  await expect(asked).toHaveCount(0);
   const reminder = log.locator(".bm").filter({ hasText: "该起来活动一下了。" });
   await expect(reminder).toBeVisible({ timeout: 60_000 });
   const fromTask = reminder.getByRole("button", { name: "来自定时任务「拉伸」" });
