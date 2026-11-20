@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/internal/machine"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/internal/machine"
 )
 
 func testLink(t *testing.T) *Link {
@@ -20,7 +20,7 @@ func testLink(t *testing.T) *Link {
 }
 
 // Her's tools are CLI commands under her own names, without the parameters
-// hermeshd sets for her, and the catalog line fits what the catalog keeps.
+// aided sets for her, and the catalog line fits what the catalog keeps.
 func TestToolsAreTheCLIs(t *testing.T) {
 	if n := len(Summary); n > 250 {
 		t.Errorf("the catalog line has %d characters; the catalog keeps 250", n)

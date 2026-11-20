@@ -14,8 +14,8 @@ import (
 // TestSpawnCostVsOpenFDs (manual, -run SpawnCost -v): posix_spawn latency as
 // the parent holds more descriptors, in-process and through a Helper.
 func TestSpawnCostVsOpenFDs(t *testing.T) {
-	if os.Getenv("HERMESH_FDSCALE") == "" {
-		t.Skip("set HERMESH_FDSCALE=1")
+	if os.Getenv("AIDE_FDSCALE") == "" {
+		t.Skip("set AIDE_FDSCALE=1")
 	}
 	var l syscall.Rlimit
 	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &l)
@@ -60,11 +60,11 @@ func TestSpawnCostVsOpenFDs(t *testing.T) {
 }
 
 // TestSpawnRate (manual): how many processes per second this machine can
-// create and run to exit, with P parallel spawners (HERMESH_SPAWNRATE_BIN).
+// create and run to exit, with P parallel spawners (AIDE_SPAWNRATE_BIN).
 func TestSpawnRate(t *testing.T) {
-	bin := os.Getenv("HERMESH_SPAWNRATE_BIN")
+	bin := os.Getenv("AIDE_SPAWNRATE_BIN")
 	if bin == "" {
-		t.Skip("set HERMESH_SPAWNRATE_BIN")
+		t.Skip("set AIDE_SPAWNRATE_BIN")
 	}
 	null, _ := os.Open(os.DevNull)
 	for _, par := range []int{1, 4, 8, 16} {

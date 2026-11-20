@@ -1,7 +1,7 @@
 import type {
   AgentSnapshot, AgentStatus, ContextReport, Delta, ErrorInfo, Event, Location, PartialBlock, PartialMessage, QueuedInput,
   SessionInfo, SessionSnapshot, TaskEndItem, ThinkingLevel, ToolCategory, TranscriptItem, TranscriptPage, UsageTotals, UserMessage, WarningCode,
-} from "@hermesh/her-protocol";
+} from "@aide/her-protocol";
 import { addTotals, usageTokens } from "./text.ts";
 
 // A session as the window knows it: the snapshot it attached with, and every

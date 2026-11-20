@@ -1,11 +1,11 @@
-//! The Hermesh extension's host on Windows (browser-design §8.4).
+//! The Aide extension's host on Windows (browser-design §8.4).
 //!
 //! A browser finds a host through the registry: `HKCU\Software\<browser>\NativeMessagingHosts\
-//! com.hermesh.browser` names the host's manifest, for every profile of that browser. It
+//! com.aide.browser` names the host's manifest, for every profile of that browser. It
 //! starts the manifest's program with its own arguments alone (the extension's origin, the
 //! parent window) and none of our environment. So her itself is that program, and what the
 //! launcher script holds elsewhere, her's home and the service's endpoint, is in the registry
-//! too, under `HKCU\Software\Hermesh\Her\NativeHost`.
+//! too, under `HKCU\Software\Aide\Her\NativeHost`.
 
 use anyhow::Context as _;
 use serde_json::Value;
@@ -40,7 +40,7 @@ const BROWSERS: &[(&str, &str)] = &[("Google Chrome", r"Google\Chrome"), ("Chrom
 
 /// Where the host's settings are, under `HKCU\Software`: `Home` and, when the service is not
 /// the home's, `Socket`.
-const SETTINGS: &str = r"Hermesh\Her\NativeHost";
+const SETTINGS: &str = r"Aide\Her\NativeHost";
 
 /// A part of the current user's registry: `Software`, or a key of a test's own.
 struct Hive(String);
@@ -298,7 +298,7 @@ mod tests {
     /// A key of this test's own, removed with what the test put under it.
     struct TestHive(Hive);
 
-    const TESTS: &str = r"Software\Hermesh\Tests";
+    const TESTS: &str = r"Software\Aide\Tests";
 
     impl TestHive {
         fn new(name: &str) -> TestHive {
@@ -319,8 +319,8 @@ mod tests {
                 r"Microsoft\Edge\NativeMessagingHosts",
                 r"Microsoft\Edge",
                 "Microsoft",
-                r"Hermesh\Her",
-                "Hermesh",
+                r"Aide\Her",
+                "Aide",
             ];
             for key in keys {
                 let _ = self.0.remove(key);

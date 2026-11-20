@@ -1,9 +1,9 @@
-# Hermesh Desktop: Hybrid Architecture
+# Aide Desktop: Hybrid Architecture
 
 > **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the app
 > holds no root key and signs nothing: the server keeps the account and
 > password and a key of its own, and signs the app in when it logs in (登录,
-> or 设置新的服务器 with the setup code). The native signer (Hermesh Signer.app,
+> or 设置新的服务器 with the setup code). The native signer (Aide Signer.app,
 > its Secure Enclave key and Touch ID, §1, §4's signer row, all of §5, the
 > signer rows of §6.3, §7, §8, §9 and §10), the verification code and the
 > two digits, and approving agents, machines and devices in the app are
@@ -18,13 +18,13 @@ The owner console becomes an **Electron app** whose windows run a React UI bundl
 
 Everything security-critical stays **outside Electron**:
 
-- **hermeshd** (Go, unchanged) is still the only process that talks to relays and machines.
+- **aided** (Go, unchanged) is still the only process that talks to relays and machines.
 - **A small native signer** (Swift on macOS; one per OS later) holds the root key. It renders what is about to be signed from the bytes being signed, and asks for Touch ID.
 
 The UI can ask the daemon to do things. It can never sign, and it never sees a signing request.
 
 ```
-                    ┌──────────────────── Hermesh.app ────────────────────┐
+                    ┌──────────────────── Aide.app ────────────────────┐
                     │                                                     │
   user ── window ──▶│ Renderer (React, sandboxed)                         │
                     │      │ allowlisted LocalService calls               │
@@ -33,10 +33,10 @@ The UI can ask the daemon to do things. It can never sign, and it never sees a s
                     │   tray · notifications · deep links · menus ·       │
                     │   login item · updates · API gateway ──┐            │
                     │                                        │ Unix socket│
-                    │ Hermesh Signer.app (Swift) ────────────┤            │
+                    │ Aide Signer.app (Swift) ────────────┤            │
                     │   root key (Secure Enclave, Keychain)  │            │
                     │   confirmation panel · Touch ID        ▼            │
-                    │                              hermeshd (Go, LaunchAgent)
+                    │                              aided (Go, LaunchAgent)
                     └──────────────────────────────────────┼──────────────┘
                                                            │ WSS + E2E TLS
                                                      relay / machines
@@ -55,7 +55,7 @@ The signer and the UI never talk to each other. The daemon is the only coordinat
 
 **Non-goals**
 
-- No change to the relay, center, machines, CLI or wire protocols. The only proto changes are in `hermesh.local.v1` (§5.3).
+- No change to the relay, center, machines, CLI or wire protocols. The only proto changes are in `aide.local.v1` (§5.3).
 - Windows and Linux are designed here (§9) and built later.
 
 ## 3. Options considered
@@ -86,10 +86,10 @@ The signer and the UI never talk to each other. The daemon is the only coordinat
 
 | Process | Language | Lifetime | Can | Cannot |
 |---|---|---|---|---|
-| hermeshd | Go | LaunchAgent (`SMAppService.agent`), always on | Everything the owner device key allows; asks for root signatures | Sign with the root key |
+| aided | Go | LaunchAgent (`SMAppService.agent`), always on | Everything the owner device key allows; asks for root signatures | Sign with the root key |
 | Electron main | TS | While the app runs; starts at login | Allowlisted LocalService calls, tray, notifications, deep links, files the user picks | See or answer signing requests; touch the root key |
 | Renderer | TS/React | Only while a window is open; destroyed on close | Whatever main exposes | Node, the socket, the network, remote content |
-| Hermesh Signer | Swift | Started and restarted by Electron main; about 15 MB | Create the root key, show the confirmation, sign | Anything else: it serves only the daemon's signing stream |
+| Aide Signer | Swift | Started and restarted by Electron main; about 15 MB | Create the root key, show the confirmation, sign | Anything else: it serves only the daemon's signing stream |
 
 **Threat model.** Trusted: the daemon, the signer, and the OS (Secure Enclave, Touch ID UI).
 
@@ -131,19 +131,19 @@ The root key moves from the `app/root-key.se` file into the **data-protection Ke
 
 - Created with `SecKeyCreateRandomKey` + `kSecAttrTokenIDSecureEnclave`.
 - Access control `privateKeyUsage + userPresence` (kept, so Macs without Touch ID can still sign with the login password).
-- Stored in keychain access group `<TEAM>.com.hermesh.signer`.
+- Stored in keychain access group `<TEAM>.com.aide.signer`.
 
-Only binaries signed by our team with that entitlement can use the key, and only the signer has it. This needs a Developer ID provisioning profile embedded in `Hermesh Signer.app`, which is the pattern Codex (`CodexCLI.app`) and Claude (`hwkey` group) ship.
+Only binaries signed by our team with that entitlement can use the key, and only the signer has it. This needs a Developer ID provisioning profile embedded in `Aide Signer.app`, which is the pattern Codex (`CodexCLI.app`) and Claude (`hwkey` group) ship.
 
 Development builds without a profile fall back to a file blob per key, `app/root-keys/<key id>.se`. The product has not launched, so existing development identities are simply reset.
 
-The signer keeps one root key per profile hermeshd has (trusted-devices.md 4.8): creating a key keeps the others, each `SigningRequest` names the key to sign with (`root_key_id`), and hermeshd asks for a key to be deleted (`delete_root_key`) once its profile left the owner.
+The signer keeps one root key per profile aided has (trusted-devices.md 4.8): creating a key keeps the others, each `SigningRequest` names the key to sign with (`root_key_id`), and aided asks for a key to be deleted (`delete_root_key`) once its profile left the owner.
 
 ### 5.5 Who started this?
 
 For every RPC that leads to signing, the daemon records the calling process: its pid from `LOCAL_PEERPID` / `SO_PEERCRED`, and its executable path. That process is attached to the `SigningRequest`.
 
-The signer shows "Requested by the Hermesh app" when the caller is our own app bundle. Otherwise it shows "Requested by <program>" with a warning.
+The signer shows "Requested by the Aide app" when the caller is our own app bundle. Otherwise it shows "Requested by <program>" with a warning.
 
 This is a hint, not a guarantee. It still matters on an owner Mac that also runs coding agents with full access (the default), because any of them can call the socket.
 
@@ -152,7 +152,7 @@ This is a hint, not a guarantee. It still matters on an owner Mac that also runs
 - The signer refuses a body that fails to parse, or that carries fields the signer does not know. Today such a body renders as empty, or the unknown fields are signed without being shown.
 - It signs exactly the batch it displayed. Today the live list is signed 150 ms after the click.
 - It removes `touchIDAuthenticationAllowableReuseDuration = 10`, so a recent Touch ID unlock of the Mac does not count as approval.
-- Preview vectors (`internal/preview/testdata/vectors.json`): signing requests, and what every signer must make of them whatever its words, which are its own: whether it refuses the batch, each card's verification code, and the values from the signed bytes each card shows (names, ids, paths, coding agents by their names). Go writes them (`go test ./internal/preview -run TestVectors -update`); the Go signer (Windows' panel, Linux's terminal) and HermeshKit's (the Mac's and the iPhone's) both pass them.
+- Preview vectors (`internal/preview/testdata/vectors.json`): signing requests, and what every signer must make of them whatever its words, which are its own: whether it refuses the batch, each card's verification code, and the values from the signed bytes each card shows (names, ids, paths, coding agents by their names). Go writes them (`go test ./internal/preview -run TestVectors -update`); the Go signer (Windows' panel, Linux's terminal) and AideKit's (the Mac's and the iPhone's) both pass them.
 
 ## 6. The UI process
 
@@ -165,12 +165,12 @@ This is a hint, not a guarantee. It still matters on an owner Mac that also runs
 - Agent text is rendered as Markdown without raw HTML. Diffs and file names are always treated as text.
 - Code blocks that name their language, and shell commands in tool rows, are coloured by Shiki: its tokens become React elements, never HTML, and it runs on its JavaScript regex engine, as the CSP allows no WebAssembly. Each language loads the first time it is shown.
 
-### 6.2 Talking to hermeshd
+### 6.2 Talking to aided
 
 The renderer uses the generated Connect client (`@connectrpc/connect`), as the console does. Only the transport differs.
 
 - **The gateway lives in Electron main.** It forwards to the daemon socket and drops two RPCs: `WatchSigningRequests` and `CompleteSigningRequest`. The renderer never sees the socket path.
-- **Default implementation:** a privileged `hermesh-api:` scheme. Main proxies each request to the socket, over HTTP/1.1 or h2c; hermeshd already serves both. The renderer then uses stock `connect-web`.
+- **Default implementation:** a privileged `aide-api:` scheme. Main proxies each request to the socket, over HTTP/1.1 or h2c; aided already serves both. The renderer then uses stock `connect-web`.
 - **Fallback, if the spike (§10, S1) shows a problem with streaming or cancellation:** a typed preload bridge, with server streams over `MessagePort`s.
 - The local API has no bidi streams, so HTTP/1.1 suffices.
 - **Sessions are pushed and paged, as in a chat app.** The window lists the newest page (`ListSessions` with `limit` 50), and the next older page whenever the end of the sidebar comes into view ("Loading earlier sessions…", then "No earlier sessions"). The first page also carries every session that needs the owner or runs, however old, so Needs You and In Progress are always complete. The window follows one `LocalService.Watch` ([state-sync.md](state-sync.md)): the first message carries the status, machines, grants, projects, devices, pairing requests and the first page of sessions (BASIC: without the replies no list shows), later ones what changed; a reset after a reconnect merges its sessions, a session's later state winning, so older pages stay. Nothing is polled. A session on a machine that cannot be read now shows "State unknown" and counts neither as in progress nor as needing the owner. Search and the overview's "Today" work over the sessions loaded so far.
@@ -180,11 +180,11 @@ The renderer uses the generated Connect client (`@connectrpc/connect`), as the c
 
 | Need | How |
 |---|---|
-| Menu bar | `Tray` with a template icon that opens a small panel of the menu material under it: whether agents can reach this Mac, how many sessions need the owner (pairing requests included) and how many run (each count opens the first one), Open Hermesh, Settings, Quit Hermesh. Its renderer is closed 30 s after it hides |
-| Notifications | `Notification` (UNNotification API, needs a signed build), with actions. Main runs the same notice logic as the UI (§7, `@hermesh/core`) on what its own `Watch` pushes (the first page of sessions, with everything that needs the owner or runs, then each change, and the pairing requests); a question still waiting when the app starts is notified again, since macOS drops an app's notifications when it quits. A session an agent starts is announced (silently) once it was created after the app's first look, so the sessions from before, or of a machine coming back, are no news |
-| Deep links | `setAsDefaultProtocolClient("hermesh")`, plus `open-url` (macOS) / `second-instance` (Windows/Linux) |
-| Login item and daemon | `setLoginItemSettings` with `type: "mainAppService"` for the app, and `type: "agentService"` + `serviceName: "com.hermesh.app.daemon.plist"` for hermeshd |
-| Signer | Spawns `Contents/Helpers/Hermesh Signer.app` at start and restarts it if it exits. The signer exits when its parent does |
+| Menu bar | `Tray` with a template icon that opens a small panel of the menu material under it: whether agents can reach this Mac, how many sessions need the owner (pairing requests included) and how many run (each count opens the first one), Open Aide, Settings, Quit Aide. Its renderer is closed 30 s after it hides |
+| Notifications | `Notification` (UNNotification API, needs a signed build), with actions. Main runs the same notice logic as the UI (§7, `@aide/core`) on what its own `Watch` pushes (the first page of sessions, with everything that needs the owner or runs, then each change, and the pairing requests); a question still waiting when the app starts is notified again, since macOS drops an app's notifications when it quits. A session an agent starts is announced (silently) once it was created after the app's first look, so the sessions from before, or of a machine coming back, are no news |
+| Deep links | `setAsDefaultProtocolClient("aide")`, plus `open-url` (macOS) / `second-instance` (Windows/Linux) |
+| Login item and daemon | `setLoginItemSettings` with `type: "mainAppService"` for the app, and `type: "agentService"` + `serviceName: "com.aide.app.daemon.plist"` for aided |
+| Signer | Spawns `Contents/Helpers/Aide Signer.app` at start and restarts it if it exits. The signer exits when its parent does |
 | Menus and shortcuts | Native `Menu` with the commands of today's `MainCommands`; native context menus via `Menu.popup` |
 | Windows | Main window, plus a separate Settings window (⌘,). The renderer is destroyed when a window closes |
 | OS helpers | Pick a directory (`dialog`); run one of a fixed set of commands in Terminal (e.g. `codex login`, chosen by key, never by renderer text); clipboard |
@@ -212,18 +212,18 @@ The renderer uses the generated Connect client (`@connectrpc/connect`), as the c
 
 They agree on the essentials: check in the background, download without asking, say so quietly, and never restart under the user. None of them interrupts with a dialog.
 
-**What Hermesh does** (`apps/desktop/src/main/updater.ts`):
+**What Aide does** (`apps/desktop/src/main/updater.ts`):
 
-- **Entry points.** Hermesh › Check for Updates… and the menu bar panel's Check for Updates… open one reusable Updates window. About Hermesh shows the installed version and links to updates and What's New; Help › What's New opens the in-app history. A ready update adds Show Update Details… and Restart to Update to the app menu. General contains only Download updates automatically.
+- **Entry points.** Aide › Check for Updates… and the menu bar panel's Check for Updates… open one reusable Updates window. About Aide shows the installed version and links to updates and What's New; Help › What's New opens the in-app history. A ready update adds Show Update Details… and Restart to Update to the app menu. General contains only Download updates automatically.
 - **Quiet discovery.** A compact Update Ready row above the sidebar account opens details. With automatic download off it says Update Available instead. There are no background dialogs, sounds or system notifications, and checking/downloading/errors never take over the main window. Later hides the sidebar row for that version for 24 hours, across launches; menu entries remain available.
-- **Checks.** The first background check waits at least 30 seconds after launch, and runs only if the last successful check is at least four hours old. Last success, last attempt and failure count live in `updates.json`. Success schedules another check four hours later; failures retry after 5 minutes, 30 minutes, then 2 hours. Wake and network recovery debounce for 10 seconds and respect freshness/backoff. Manual checks bypass both; checks during checking, downloading or ready reuse the current operation. The architecture-specific feed is `https://github.com/hermeshai/hermesh/releases/latest/download/RELEASES-darwin-<arch>.json` (Windows: `RELEASES-win32-<arch>.json`, signed with the release key; windows.md §6.2); 404 means no update. An invalid or unavailable feed is a check failure.
+- **Checks.** The first background check waits at least 30 seconds after launch, and runs only if the last successful check is at least four hours old. Last success, last attempt and failure count live in `updates.json`. Success schedules another check four hours later; failures retry after 5 minutes, 30 minutes, then 2 hours. Wake and network recovery debounce for 10 seconds and respect freshness/backoff. Manual checks bypass both; checks during checking, downloading or ready reuse the current operation. The architecture-specific feed is `https://github.com/samir2015dzh/aide/releases/latest/download/RELEASES-darwin-<arch>.json` (Windows: `RELEASES-win32-<arch>.json`, signed with the release key; windows.md §6.2); 404 means no update. An invalid or unavailable feed is a check failure.
 - **Downloads and verification.** Automatic download defaults on. Squirrel.Mac downloads the ZIP and verifies the same Developer ID signature as the running app. A manual-download preference waits for Download Update. The Updates window uses indeterminate progress because Squirrel exposes no download percentage on macOS. Closing that window leaves checking/downloading running.
 - **Window actions.** Available: Download Update / Later. Downloading or checking: Close. Ready: Restart to Update / Later. Current: Done and the last successful check time. Failure: Try Again / Close, a localized recovery explanation, and collapsed Technical Details. A notes failure never prevents downloading; the browser link remains available.
-- **Release highlights.** `src/locales/en/releases.json` is the editorial source, translated in `zh-CN/releases.json`. Each version has short improvements and fixes. Before tagging a release, write what changed for users since the last tag (`git log <last tag>..`) under `unreleased`, in both catalogs, then rename `unreleased` to the exact version (no `v`) and leave an empty `unreleased` for the next one; keep previous versions. `node apps/desktop/scripts/release-notes.mjs <version>` checks this and prints the GitHub release's text; the release workflow runs it first and builds nothing without them. `build-app.mjs` bundles the catalog for offline reading and includes it as the optional `hermeshNotes` extension in the Squirrel feed; older clients keep working. The Updates window shows the target release and expandable intermediate releases when versions were skipped. What's New shows the full available catalog, with a browser link to older GitHub releases. Release notes never open automatically after an update.
-- **Restart protection and recovery.** A downloaded update installs when Hermesh quits, or immediately when Restart to Update quits and relaunches it. Later only snoozes the reminder: the window explicitly says quitting still installs. Pending pairings or signer work replace Restart to Update with Return to Approval / Later; the native menu rechecks the same guard. The signer sends only a busy bit over its parent stdout pipe and accepts SIGUSR1 to bring its existing panel forward; neither action approves anything. The selected session, the session list's view (grouping, sort, metadata, archived shown), sidebar/inspector state and non-secret question drafts survive relaunch. Secret answers are never written to the profile. Ordinary running sessions continue in the background daemon.
-- **hermeshd follows the app.** It is a LaunchAgent and keeps running while the bundle is replaced. When the new app sees that `GetStatus.version` differs from its own version, it restarts the agent once: `launchctl bootout gui/<uid>/com.hermesh.app.daemon` (SIGTERM; the agent stays registered and allowed in Login Items), then, once the job is gone, it registers the agent, and launchd reads the plist and starts the binary now in the bundle. launchd keeps a job as it loaded it, so a `kickstart -k`, or registering while the job is loaded (as the app does at launch), would keep the old plist. It waits while approval is pending or a session on this Mac is queued, preparing, running or waiting for an answer: `Recover` keeps every session after a restart, but marks a turn in progress as crashed, and the owner then has to send it again. The signer is the app's child and exits with it, so the new app starts the new signer.
-- **Only packaged builds update.** Development and test runs never check. The feed's address is a build-time constant: release builds always read GitHub Releases, and only test builds (`HERMESH_UPDATE_FEED`, used by `TestDesktopUpdate`) read another. Nothing at run time changes it, and fuses keep the bundled code from being swapped.
-- **A package per architecture.** Owners install from `Hermesh-macos-arm64.dmg` or `Hermesh-macos-x64.dmg` (§6.7). Squirrel.Mac needs a zip, so each architecture also has `Hermesh-macos-<arch>.zip` with its feed. An x64 build running under Rosetta on Apple silicon keeps reading the x64 feed.
+- **Release highlights.** `src/locales/en/releases.json` is the editorial source, translated in `zh-CN/releases.json`. Each version has short improvements and fixes. Before tagging a release, write what changed for users since the last tag (`git log <last tag>..`) under `unreleased`, in both catalogs, then rename `unreleased` to the exact version (no `v`) and leave an empty `unreleased` for the next one; keep previous versions. `node apps/desktop/scripts/release-notes.mjs <version>` checks this and prints the GitHub release's text; the release workflow runs it first and builds nothing without them. `build-app.mjs` bundles the catalog for offline reading and includes it as the optional `aideNotes` extension in the Squirrel feed; older clients keep working. The Updates window shows the target release and expandable intermediate releases when versions were skipped. What's New shows the full available catalog, with a browser link to older GitHub releases. Release notes never open automatically after an update.
+- **Restart protection and recovery.** A downloaded update installs when Aide quits, or immediately when Restart to Update quits and relaunches it. Later only snoozes the reminder: the window explicitly says quitting still installs. Pending pairings or signer work replace Restart to Update with Return to Approval / Later; the native menu rechecks the same guard. The signer sends only a busy bit over its parent stdout pipe and accepts SIGUSR1 to bring its existing panel forward; neither action approves anything. The selected session, the session list's view (grouping, sort, metadata, archived shown), sidebar/inspector state and non-secret question drafts survive relaunch. Secret answers are never written to the profile. Ordinary running sessions continue in the background daemon.
+- **aided follows the app.** It is a LaunchAgent and keeps running while the bundle is replaced. When the new app sees that `GetStatus.version` differs from its own version, it restarts the agent once: `launchctl bootout gui/<uid>/com.aide.app.daemon` (SIGTERM; the agent stays registered and allowed in Login Items), then, once the job is gone, it registers the agent, and launchd reads the plist and starts the binary now in the bundle. launchd keeps a job as it loaded it, so a `kickstart -k`, or registering while the job is loaded (as the app does at launch), would keep the old plist. It waits while approval is pending or a session on this Mac is queued, preparing, running or waiting for an answer: `Recover` keeps every session after a restart, but marks a turn in progress as crashed, and the owner then has to send it again. The signer is the app's child and exits with it, so the new app starts the new signer.
+- **Only packaged builds update.** Development and test runs never check. The feed's address is a build-time constant: release builds always read GitHub Releases, and only test builds (`AIDE_UPDATE_FEED`, used by `TestDesktopUpdate`) read another. Nothing at run time changes it, and fuses keep the bundled code from being swapped.
+- **A package per architecture.** Owners install from `Aide-macos-arm64.dmg` or `Aide-macos-x64.dmg` (§6.7). Squirrel.Mac needs a zip, so each architecture also has `Aide-macos-<arch>.zip` with its feed. An x64 build running under Rosetta on Apple silicon keeps reading the x64 feed.
 - **Publishing.** The release workflow builds each architecture in its own job; `build-app.mjs` signs, notarizes and staples the app, then its DMG, and writes the feed, whose `url` is that version's zip (`releases/download/v<version>/…`), so a feed never names another version's zip. The DMG, zip and feed are uploaded to the release.
 - **Pulling a bad release:** delete its feeds, or make an earlier release the latest. Apps that already downloaded it still install it when they quit.
 - **Not now:** staged rollout (a static feed cannot do percentages, and there are few owners yet) and release channels.
@@ -232,63 +232,63 @@ They agree on the essentials: check in the background, download without asking, 
 
 The app speaks English and Simplified Chinese. English is the source language; Chinese is a translation of it.
 
-- **Which language.** By default the first of the system's preferred languages (System Settings › General › Language & Region) that the app has, else English: `pickLanguage` in `packages/core/src/i18n.ts`, over `app.getPreferredSystemLanguages()`. As macOS picks a localization, Traditional Chinese does not take Simplified Chinese; the next language in the list does. That list also carries the per-app language macOS offers for Hermesh (the same pane, Applications), because the bundle declares exactly two localizations: `build-app.mjs` keeps only `en.lproj` and `zh_CN.lproj` of Electron's folders and sets `CFBundleLocalizations`. Settings › General › Language can override it ("System (English)", "English", "简体中文"); the choice is a preference of the main process.
-- **Once per run.** The main process picks the language when it starts (`main/language.ts`), before any menu or window exists, and hands it to each page (`--hermesh-lang`, `window.hermesh.language`) and to the signer (`-AppleLanguages`, the argument macOS itself reads). A new choice takes effect after a restart (the setting offers Restart Now), as macOS does for its per-app language. So no text is cached at a module's top level, and nothing re-renders on a change.
-- **Text.** One i18next instance (`packages/core/src/i18n.ts`) serves the main process and every page: namespace `core` for `@hermesh/core` (`packages/core/src/locales`), and per part of the app for the desktop (`apps/desktop/src/locales/<language>/<namespace>.json`: main, common, firstrun, overview, session, settings, sheets, updates; releases holds editorial summaries). Pages use react-i18next (`useTranslation`, `<Trans>` for text around links). Keys are typed from the English files, so a missing or misspelt key fails `tsc`; `src/shared/locales.test.ts` checks every language has English's keys, `{{values}}` and `<tags>`. Plurals follow `Intl.PluralRules` (`_one`/`_other` in English). Dates go through `Intl` with the app's language.
+- **Which language.** By default the first of the system's preferred languages (System Settings › General › Language & Region) that the app has, else English: `pickLanguage` in `packages/core/src/i18n.ts`, over `app.getPreferredSystemLanguages()`. As macOS picks a localization, Traditional Chinese does not take Simplified Chinese; the next language in the list does. That list also carries the per-app language macOS offers for Aide (the same pane, Applications), because the bundle declares exactly two localizations: `build-app.mjs` keeps only `en.lproj` and `zh_CN.lproj` of Electron's folders and sets `CFBundleLocalizations`. Settings › General › Language can override it ("System (English)", "English", "简体中文"); the choice is a preference of the main process.
+- **Once per run.** The main process picks the language when it starts (`main/language.ts`), before any menu or window exists, and hands it to each page (`--aide-lang`, `window.aide.language`) and to the signer (`-AppleLanguages`, the argument macOS itself reads). A new choice takes effect after a restart (the setting offers Restart Now), as macOS does for its per-app language. So no text is cached at a module's top level, and nothing re-renders on a change.
+- **Text.** One i18next instance (`packages/core/src/i18n.ts`) serves the main process and every page: namespace `core` for `@aide/core` (`packages/core/src/locales`), and per part of the app for the desktop (`apps/desktop/src/locales/<language>/<namespace>.json`: main, common, firstrun, overview, session, settings, sheets, updates; releases holds editorial summaries). Pages use react-i18next (`useTranslation`, `<Trans>` for text around links). Keys are typed from the English files, so a missing or misspelt key fails `tsc`; `src/shared/locales.test.ts` checks every language has English's keys, `{{values}}` and `<tags>`. Plurals follow `Intl.PluralRules` (`_one`/`_other` in English). Dates go through `Intl` with the app's language.
 - **The signer** (`apps/signer/macos`) keeps English as its keys in the code (`String(localized:bundle: .module)`) and their Chinese in `Resources/zh-Hans.lproj/Localizable.strings` (a strings file rather than a String Catalog: only the newer SwiftPM build system compiles catalogs, and CI's copies them as they are). SwiftPM puts it into the resource bundle, which `build-signer.sh` copies into `Contents/Resources`; its `Info.plist` declares both localizations, which macOS requires before a resource bundle's translation is used.
-- **Tests.** The end-to-end specs run the app as on a Chinese system (`-AppleLanguages (zh-Hans)`), so they also prove the translation reproduces the Chinese text; `language.spec.ts` covers English, the choice of language and the setting. `@hermesh/core`'s unit tests read Chinese, `i18n.test.ts` English. The signer's Swift tests and `TestSignerApp` read English.
+- **Tests.** The end-to-end specs run the app as on a Chinese system (`-AppleLanguages (zh-Hans)`), so they also prove the translation reproduces the Chinese text; `language.spec.ts` covers English, the choice of language and the setting. `@aide/core`'s unit tests read Chinese, `i18n.test.ts` English. The signer's Swift tests and `TestSignerApp` read English.
 - **Adding a language:** add it to `languages` and `pickLanguage`, add its files (core's and each desktop namespace), the bundle's `.lproj` folder and `CFBundleLocalizations` (app and signer), the signer's strings file, and its name to the language setting.
 
 ### 6.7 Installation on macOS
 
-- **Disk image.** `build-app.mjs` makes a read-only, compressed DMG with Hermesh on the left and an Applications shortcut on the right. A light background and an arrow show the drag. `build/dmg/settings.py` fixes the Finder window and icon positions; the background has 1× and 2× versions. The build uses `dmgbuild`, pinned with hashes in a separate Python virtual environment; it needs no Finder scripting on CI.
+- **Disk image.** `build-app.mjs` makes a read-only, compressed DMG with Aide on the left and an Applications shortcut on the right. A light background and an arrow show the drag. `build/dmg/settings.py` fixes the Finder window and icon positions; the background has 1× and 2× versions. The build uses `dmgbuild`, pinned with hashes in a separate Python virtual environment; it needs no Finder scripting on CI.
 - **First launch.** Before opening a window, registering its protocol or starting the daemon, signer or updater, a packaged Mac app checks `app.isInApplicationsFolder()`. Elsewhere (including Downloads, the disk image and App Translocation), it asks Move to Applications Folder or Quit, in the app's language. Electron's `app.moveToApplicationsFolder()` handles copying, administrator authorization when needed, an existing copy and relaunching. Failure explains how to drag the app in Finder, then quits. Development and isolated test runs skip relocation and background registration.
 - **Signing and Gatekeeper.** The app is Developer ID–signed, notarized and stapled before it goes into either archive. The DMG is then signed, notarized and stapled too. Stapled tickets allow Gatekeeper to check both offline. The build assesses the app and DMG with `spctl` after notarization. The release workflow requires the signing identity and App Store Connect key; local builds without notarization credentials warn that they are not ready for distribution.
-- **Checks.** `TestDesktop/install` drives the startup gate and localized update failures in the real Electron app, replacing the OS dialog, relocation and login-item calls to keep the developer's installation untouched. `HERMESH_DESKTOP_APP=<app> HERMESH_DESKTOP_DMG=<dmg> go test ./e2e -run '^TestDesktopPackaged$' -v` mounts the real DMG, checks its contents and signature, and launches its bundled app and signer against an isolated daemon. `TestDesktopPackagedHer`, with no window, has the bundled hermeshd run the bundled her ([her-server.md](her-server.md) §6.4), which answers a message, and serve the bundled console; `build-app.mjs` itself checks that the signed her opens a PDF with the bundle's PDFium and that agent-desktop answers. `TestDesktopUpdate` installs an update between two Developer ID–signed builds.
+- **Checks.** `TestDesktop/install` drives the startup gate and localized update failures in the real Electron app, replacing the OS dialog, relocation and login-item calls to keep the developer's installation untouched. `AIDE_DESKTOP_APP=<app> AIDE_DESKTOP_DMG=<dmg> go test ./e2e -run '^TestDesktopPackaged$' -v` mounts the real DMG, checks its contents and signature, and launches its bundled app and signer against an isolated daemon. `TestDesktopPackagedHer`, with no window, has the bundled aided run the bundled her ([her-server.md](her-server.md) §6.4), which answers a message, and serve the bundled console; `build-app.mjs` itself checks that the signed her opens a PDF with the bundle's PDFium and that agent-desktop answers. `TestDesktopUpdate` installs an update between two Developer ID–signed builds.
 
 ## 7. Code layout and sharing with the console
 
 Everything users run is open source. So the shared UI moves **from the private console into this repository**, and the console consumes it.
 
 ```
-hermesh/                                 Apache-2.0
+aide/                                 Apache-2.0
 ├── pnpm-workspace.yaml
 ├── packages/
-│   ├── proto/   @hermesh/proto          TS from hermesh/{local,identity,session}/v1 (buf, protobuf-es)
-│   ├── core/    @hermesh/core           pure logic: session list grouping and sorting, search filters, notices, diff parsing, text (port of SessionLogic.swift)
-│   └── ui/      @hermesh/ui             brand.css (Aurora colours, motion), the mark and lockup (moved from web/console), coding agents' logos
+│   ├── proto/   @aide/proto          TS from aide/{local,identity,session}/v1 (buf, protobuf-es)
+│   ├── core/    @aide/core           pure logic: session list grouping and sorting, search filters, notices, diff parsing, text (port of SessionLogic.swift)
+│   └── ui/      @aide/ui             brand.css (Aurora colours, motion), the mark and lockup (moved from web/console), coding agents' logos
 └── apps/
     ├── desktop/                         Electron: src/main, src/preload, src/renderer (Vite + React 19), e2e/
-    └── macos/                           becomes Hermesh Signer.app only
+    └── macos/                           becomes Aide Signer.app only
 
-hermesh-cloud/
-├── pnpm-workspace.yaml                  web/console + hermesh/packages/ui
-└── web/console                          imports @hermesh/ui; keeps its own pages, routing and center API
+aide-cloud/
+├── pnpm-workspace.yaml                  web/console + aide/packages/ui
+└── web/console                          imports @aide/ui; keeps its own pages, routing and center API
 ```
 
 - **Stack:** React 19 and TypeScript like the console; the desktop page uses the prototype's CSS ported as-is. Built with electron-vite; packaged by `apps/desktop/scripts/build-app.mjs` with `@electron/packager` (one build per architecture), `@electron/fuses`, `@electron/osx-sign` and `@electron/notarize`. The main process bundles its dependencies, so the app ships no `node_modules`.
-- **`@hermesh/ui` stays framework-free.** No `next/*` imports, no server components. Links and data access are passed in.
-- **Two workspaces, one package.** Both `pnpm install`s link `packages/ui/node_modules`, so `@hermesh/ui` may see the other workspace's React: the desktop renderer dedupes `react` and `react-dom` (electron.vite.config.ts), and Next.js uses its own React. The cloud workspace lists only the packages the console uses.
-- **Styles:** both apps import `@hermesh/ui/brand.css`. The package uses no Tailwind classes, so the console needs no `@source` for it yet (Tailwind v4 skips `node_modules`).
+- **`@aide/ui` stays framework-free.** No `next/*` imports, no server components. Links and data access are passed in.
+- **Two workspaces, one package.** Both `pnpm install`s link `packages/ui/node_modules`, so `@aide/ui` may see the other workspace's React: the desktop renderer dedupes `react` and `react-dom` (electron.vite.config.ts), and Next.js uses its own React. The cloud workspace lists only the packages the console uses.
+- **Styles:** both apps import `@aide/ui/brand.css`. The package uses no Tailwind classes, so the console needs no `@source` for it yet (Tailwind v4 skips `node_modules`).
 - **Visual spec:** prototype v5 for the desktop app; the console keeps its current look built on the same tokens.
 
 ## 8. Testing
 
 | Level | What |
 |---|---|
-| Unit | `@hermesh/core` with vitest. Port the SessionLogic tests one-to-one first |
+| Unit | `@aide/core` with vitest. Port the SessionLogic tests one-to-one first |
 | Signer | Swift tests plus the Go golden vectors (§5.6) |
 | End-to-end | Playwright drives the real Electron app (`_electron.launch`) against the real stack used by the Go e2e suite: relay, owner daemon and `fakeacp` sessions in every state (today's `TestAppUI` setup). Tests click through what users do: sidebar sections, open a session, answer a question, interrupt, archive and undo, diffs, the list's view menu, search, settings, onboarding |
 | Signing end-to-end | The real signer in a test mode: software key, decision scripted by env. It writes what its panel showed as JSON, and tests assert it shows the true scope even when the UI asked for something else |
 | Packaged app | CI on a macOS runner: build, sign, launch the `.app`, check daemon registration and the gateway |
-| Updates | The feed, version order and update states in `apps/desktop/src/shared/update.test.ts` (`node --test`). `TestDesktopUpdate` (opt-in, `HERMESH_UPDATE_E2E=1`, needs the Developer ID certificate, 4 to 6 minutes): two signed builds A < B, B's zip and feed served locally; the app finds B, downloads it, shows Restart to Update, and restarts into B with its signer |
+| Updates | The feed, version order and update states in `apps/desktop/src/shared/update.test.ts` (`node --test`). `TestDesktopUpdate` (opt-in, `AIDE_UPDATE_E2E=1`, needs the Developer ID certificate, 4 to 6 minutes): two signed builds A < B, B's zip and feed served locally; the app finds B, downloads it, shows Restart to Update, and restarts into B with its signer |
 | Visual | Playwright screenshots of every screen, reviewed against the prototype |
 
 ## 9. Windows and Linux (later)
 
 **Daemon**
 
-- Windows: hermeshd runs per user, started at logon. The local API moves to a named pipe with a user-only ACL, because Node uses named pipes on Windows.
+- Windows: aided runs per user, started at logon. The local API moves to a named pipe with a user-only ACL, because Node uses named pipes on Windows.
 - Linux: a systemd user service, as today.
 
 **Signer**
@@ -309,15 +309,15 @@ Every phase ends with its tests green. The current app keeps working until phase
 
 | Phase | Work | Done when |
 |---|---|---|
-| 0. Spikes | **S1** Electron shell: `app://`, the API gateway (unary, server stream, cancellation), fuses; packaged, signed and notarized with `Helpers/hermeshd` registered through `setLoginItemSettings(agentService)`. **S2** Signer bundle: nested app with provisioning profile and keychain group; Secure Enclave key in the Keychain; a binary without the entitlement cannot use it; whether today's `.se` blob can be used by any process of the user; embedded Touch ID panel. **S3** `@hermesh/ui` extracted; the console builds on it | Each spike answers yes, or this document changes |
-| 1. Foundations | pnpm workspace, `@hermesh/proto`, `@hermesh/core` with ported tests, desktop skeleton, Playwright harness on the Go stack | An empty window lists real sessions in e2e |
-| 2. Signer | Signer target extracted from today's Swift code; key requests and caller info in `hermesh.local.v1`; Keychain storage; hardening (§5.6); golden vectors | Approve, renew, add device, remove device and join all pass e2e with the signer in test mode |
+| 0. Spikes | **S1** Electron shell: `app://`, the API gateway (unary, server stream, cancellation), fuses; packaged, signed and notarized with `Helpers/aided` registered through `setLoginItemSettings(agentService)`. **S2** Signer bundle: nested app with provisioning profile and keychain group; Secure Enclave key in the Keychain; a binary without the entitlement cannot use it; whether today's `.se` blob can be used by any process of the user; embedded Touch ID panel. **S3** `@aide/ui` extracted; the console builds on it | Each spike answers yes, or this document changes |
+| 1. Foundations | pnpm workspace, `@aide/proto`, `@aide/core` with ported tests, desktop skeleton, Playwright harness on the Go stack | An empty window lists real sessions in e2e |
+| 2. Signer | Signer target extracted from today's Swift code; key requests and caller info in `aide.local.v1`; Keychain storage; hardening (§5.6); golden vectors | Approve, renew, add device, remove device and join all pass e2e with the signer in test mode |
 | 3. Main window | Sidebar, overview, session (chat, diff, info panel, control area, question), settings, sheets, first run, all matched to prototype v5 | Every flow of the walkthrough has an e2e test; screenshots reviewed |
 | 4. Shell | Tray, notifications with actions, deep links, login item, menus and shortcuts, updates; CI build, sign and notarize | The packaged-app smoke test passes on CI |
 | 5. Cutover | Delete the SwiftUI main window; release; update technical-design §7, §12 and §16 | The released app is the Electron one |
 | Later | Windows (§9), then Linux | Per their own plans |
 
-**The SwiftUI redesign now on `mac-app-redesign`** ships as the interim app. Its `SessionLogic` and tests become the specification for `@hermesh/core`. No further work goes into the SwiftUI main window.
+**The SwiftUI redesign now on `mac-app-redesign`** ships as the interim app. Its `SessionLogic` and tests become the specification for `@aide/core`. No further work goes into the SwiftUI main window.
 
 ## 11. Costs and risks
 
@@ -339,7 +339,7 @@ Fixed in phase 2:
 
 Decided not to fix (2026-10-19):
 
-- **The local socket admits every process of the same user**, including coding agents running with full access on the owner's Mac. Checking callers' code signatures (as Codex's and Claude's apps do for some of their sockets) would not change what such an agent can reach: it runs as the owner and can read hermeshd's files (the device key, the session database) and drive the app's UI. What it cannot do is add trust: every grant, machine, device or wider scope needs the root key, i.e. the owner's Touch ID on the signer's panel, which shows what is really signed. So letting agents work on the owner's Mac means trusting them with everything on it except the root key. Stronger isolation, if ever needed, means running the agents sandboxed or as another user, not guarding the socket.
+- **The local socket admits every process of the same user**, including coding agents running with full access on the owner's Mac. Checking callers' code signatures (as Codex's and Claude's apps do for some of their sockets) would not change what such an agent can reach: it runs as the owner and can read aided's files (the device key, the session database) and drive the app's UI. What it cannot do is add trust: every grant, machine, device or wider scope needs the root key, i.e. the owner's Touch ID on the signer's panel, which shows what is really signed. So letting agents work on the owner's Mac means trusting them with everything on it except the root key. Stronger isolation, if ever needed, means running the agents sandboxed or as another user, not guarding the socket.
 - **`AddProject` is unsigned**, though it widens grants whose projects are `*`: the owner removed its signature on purpose.
 
 ## Appendix: sources

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider/acp/dshnative"
+	"github.com/samir2015dzh/aide/internal/provider/acp/dshnative"
 )
 
 // The desktop's dsh spec: a DSH home with one session of the owner's (not
-// Hermesh's), and the real bridge plugin running for it in a stand-in DSH
+// Aide's), and the real bridge plugin running for it in a stand-in DSH
 // Host (testdata/dsh-bridge-host.mjs), which writes each prompt into the
 // session's log as DSH would.
 

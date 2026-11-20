@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"log/slog"
 	"net/http/httptest"
 	"path/filepath"
@@ -19,10 +20,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 func newTestServer(t *testing.T) (*Server, relayv1connect.RelayPublicServiceClient) {
@@ -246,7 +247,7 @@ func TestAccountFromAnOldPasswordLogin(t *testing.T) {
 	nonce := make([]byte, gcm.NonceSize())
 	rand.Read(nonce)
 	der, _ := x509.MarshalPKCS8PrivateKey(passwordKey.Key)
-	sealed := gcm.Seal(nil, nonce, der, append([]byte("hermesh password key\x00"+ownerID+"\x00"), pspki...))
+	sealed := gcm.Seal(nil, nonce, der, append([]byte(legacy.PasswordKey+ownerID+"\x00"), pspki...))
 	old := &relayv1.OldPasswordLogin{Account: "me", Kdf: &relayv1.OldPasswordLogin_Kdf{Salt: salt, Time: 1, MemoryKib: 8 * 1024, Threads: 1},
 		Verifier: verifier[:], Nonce: nonce, SealedKey: sealed, PublicKey: pspki}
 	// An agent the password key had signed in, and a machine the device had.

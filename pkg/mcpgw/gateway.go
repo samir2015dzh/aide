@@ -19,7 +19,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"log/slog"
 	"net"
 	"net/http"
@@ -28,14 +28,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/pkg/relay"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/pkg/relay"
 )
 
 // Account is who signed in on the consent page.
 type Account struct {
 	ID string
-	// OwnerID is "" while the account has no owner (Hermesh isn't set up
+	// OwnerID is "" while the account has no owner (Aide isn't set up
 	// on a Mac yet).
 	OwnerID string
 	// Hint names the account, masked, for the consent page ("y***@gmail.com").
@@ -56,10 +56,10 @@ type Accounts interface {
 
 type Config struct {
 	// Issuer is the authorization server's URL, where the sign-in cookies
-	// live (e.g. https://hermesh.io).
+	// live (e.g. https://aide.io).
 	Issuer string
 	// ResourceURL is the MCP endpoint people paste into agent products
-	// (e.g. https://mcp.hermesh.io/mcp).
+	// (e.g. https://mcp.aide.io/mcp).
 	ResourceURL string
 	// KeyedResource: ResourceURL's path holds a key only the owner knows
 	// (a self-hosted relay, where anyone may connect): nothing served to
@@ -75,8 +75,8 @@ type Config struct {
 	Vault        Vault
 	Accounts     Accounts
 	// WakePage is where an owner sets up a doorbell from an agent's link:
-	// the code follows it (e.g. https://hermesh.io/w/). Empty for none: the
-	// link is hermesh://wake?code=…, which the Hermesh app on a computer opens.
+	// the code follows it (e.g. https://aide.io/w/). Empty for none: the
+	// link is aide://wake?code=…, which the Aide app on a computer opens.
 	WakePage string
 	// VerifiedClients are the hosts whose Client ID Metadata Documents are
 	// shown as verified (default: claude.ai, chatgpt.com, openai.com).
@@ -384,9 +384,9 @@ func (g *Gateway) secureCookies() bool { return g.issuer.Scheme == "https" }
 
 func (g *Gateway) authzCookie() string {
 	if g.secureCookies() {
-		return "__Host-hermesh_mcp_authz"
+		return "__Host-aide_mcp_authz"
 	}
-	return "hermesh_mcp_authz"
+	return "aide_mcp_authz"
 }
 
 func clientIP(r *http.Request) string {
@@ -398,7 +398,7 @@ func clientIP(r *http.Request) string {
 }
 
 // inProcessClient is an HTTP client whose connections reach h directly,
-// in memory: the gateway's Hermesh clients dial their own relay.
+// in memory: the gateway's Aide clients dial their own relay.
 func inProcessClient(h http.Handler) *http.Client {
 	l := newPipeListener()
 	srv := &http.Server{Handler: h, ReadHeaderTimeout: 15 * time.Second}

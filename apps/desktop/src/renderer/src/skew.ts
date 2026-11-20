@@ -1,11 +1,11 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { Machine } from "@hermesh/proto/local";
+import type { Machine } from "@aide/proto/local";
 
-// A machine whose Hermesh is older than this app (docs/version-skew.md).
+// A machine whose Aide is older than this app (docs/version-skew.md).
 
 /**
- * The error says the machine's Hermesh is older than this app (§6.3): her lacks the method, or
- * hermeshd or its services don't know the call.
+ * The error says the machine's Aide is older than this app (§6.3): her lacks the method, or
+ * aided or its services don't know the call.
  */
 export function needsUpdate(e: unknown): boolean {
   if (e instanceof ConnectError) return e.code === Code.Unimplemented;

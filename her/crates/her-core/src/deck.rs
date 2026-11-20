@@ -626,10 +626,10 @@ mod tests {
 mod e2e {
     use super::*;
 
-    /// With `HERMESH_E2E_PPTX` set to a deck: every slide reads, draws and checks.
+    /// With `AIDE_E2E_PPTX` set to a deck: every slide reads, draws and checks.
     #[test]
     fn reads_a_real_deck() {
-        let Ok(path) = std::env::var("HERMESH_E2E_PPTX") else { return };
+        let Ok(path) = std::env::var("AIDE_E2E_PPTX") else { return };
         let deck = Deck::open(std::fs::read(path).unwrap()).unwrap();
         let outline = deck.outline().unwrap();
         let mut text = String::new();

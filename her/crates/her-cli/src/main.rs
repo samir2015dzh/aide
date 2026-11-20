@@ -390,12 +390,12 @@ enum BrowserCommand {
     /// Download Chrome for Testing into ~/.her/browser/chromium, for machines without Chrome,
     /// Edge or Chromium (used only when none is installed)
     Install,
-    /// Let the agent use your own Chrome through the Hermesh extension
+    /// Let the agent use your own Chrome through the Aide extension
     Extension {
         #[command(subcommand)]
         command: ExtensionCommand,
     },
-    /// The Native Messaging host that Chrome starts for the Hermesh extension
+    /// The Native Messaging host that Chrome starts for the Aide extension
     #[command(hide = true)]
     NativeHost {
         /// The her service's socket, when it is not $HER_HOME/run/her.sock
@@ -422,7 +422,7 @@ enum ExtensionCommand {
         /// $HER_HOME/run/her.sock (a service started with --listen unix://PATH)
         #[arg(long, value_name = "PATH")]
         socket: Option<PathBuf>,
-        /// Also write the Hermesh extension to this folder, to add to Chrome with "Load unpacked"
+        /// Also write the Aide extension to this folder, to add to Chrome with "Load unpacked"
         #[arg(long, value_name = "DIR")]
         folder: Option<PathBuf>,
     },

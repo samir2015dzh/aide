@@ -17,9 +17,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/oklog/ulid/v2"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/flock"
-	"github.com/hermeshai/hermesh/internal/netif"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/netif"
 )
 
 // Device is the owner role on one device, for every owner it logged in to
@@ -227,7 +227,7 @@ func (d *Device) stop() {
 // about to be suspended. Run, the next watch or list start them again;
 // Run, stopped after Pause, leaves the connection open.
 // Close lets go of the data directory: the profiles' databases and the
-// locks. hermeshd exits instead; tests and the iPhone's core close.
+// locks. aided exits instead; tests and the iPhone's core close.
 func (d *Device) Close() {
 	d.mu.Lock()
 	defer d.mu.Unlock()

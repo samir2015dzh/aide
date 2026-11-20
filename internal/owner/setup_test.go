@@ -10,7 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // A network that blocks the relay (here: a proxy answering 403, to every
@@ -24,7 +24,7 @@ func TestBlockedRelayFailsFirst(t *testing.T) {
 		detail string
 	}{
 		{"everything blocked", "", "403 Forbidden"},
-		{"WebSocket blocked", "/hermesh.relay.v1.RelayPublicService/GetInfo", "403"},
+		{"WebSocket blocked", "/aide.relay.v1.RelayPublicService/GetInfo", "403"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // stopStale has nothing to stop: her is in a job of this daemon's
-// (docs/windows.md §4.3), so no her outlives the hermeshd that started it.
+// (docs/windows.md §4.3), so no her outlives the aided that started it.
 func stopStale(lock string) {}
 
 // end stops her and what it started. Windows has no signal that asks: her

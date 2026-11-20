@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // TestAuth walks an agent's pairing over its life with real binaries:
@@ -24,9 +24,9 @@ func TestAuth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
-	bin := filepath.Join(w.bin, "hermesh")
+	bin := filepath.Join(w.bin, "aide")
 	cli := func(env []string, args ...string) result { return run(t, env, time.Minute, bin, args...) }
 	has := func(r result, what string, want ...string) {
 		t.Helper()
@@ -37,7 +37,7 @@ func TestAuth(t *testing.T) {
 		}
 	}
 	home := filepath.Join(w.tmp, "agent")
-	fresh := []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "fresh")}
+	fresh := []string{"AIDE_HOME=" + filepath.Join(w.tmp, "fresh")}
 
 	// Not paired: status says so and how to pair; logout has nothing to do.
 	r := cli(fresh, "auth", "status")

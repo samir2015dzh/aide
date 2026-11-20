@@ -11,7 +11,7 @@ import { fixture, launch, onWindows, snap } from "./app";
 // through the template.
 
 async function openSettings(app: ElectronApplication, page: Page, tab?: string): Promise<Page> {
-  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.hermesh?.openSettings(t), tab)]);
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.aide?.openSettings(t), tab)]);
   await win.waitForLoadState();
   return win;
 }
@@ -19,7 +19,7 @@ async function openSettings(app: ElectronApplication, page: Page, tab?: string):
 async function api<T>(page: Page, method: string, body: object = {}): Promise<T> {
   return page.evaluate(
     async ([m, b]) => {
-      const r = await fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+      const r = await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
       return r.json();
     },
     [method, body] as const,
@@ -69,9 +69,9 @@ test("another ACP agent: a wrong command says why; saved, it is listed, tested a
   await main.getByRole("button", { name: "添加 Agent" }).click();
   await expect(main.getByText("示例：-y @zed-industries/claude-code-acp")).toBeVisible();
   await main.getByLabel("名称", { exact: true }).fill("my-acp");
-  await main.getByLabel("命令", { exact: true }).fill("hermesh-no-such-agent");
+  await main.getByLabel("命令", { exact: true }).fill("aide-no-such-agent");
   await main.getByRole("button", { name: "测试连接" }).click();
-  await expect(main.getByText(/^连接失败：.*hermesh-no-such-agent not found/)).toBeVisible({ timeout: 60_000 });
+  await expect(main.getByText(/^连接失败：.*aide-no-such-agent not found/)).toBeVisible({ timeout: 60_000 });
 
   await main.getByLabel("命令", { exact: true }).fill(fake);
   await main.getByLabel("参数", { exact: true }).fill("acp");
@@ -111,9 +111,9 @@ test("the guide from the sidebar, and opened at a line: the assistants' shows on
   for (const name of ["Claude Desktop", "Codex", "其他 Agent", "助手"]) await expect(main.getByRole("tab", { name })).toHaveAttribute("aria-selected", "false");
 
   // A link names its line (connect/<line>): the same window, on that line.
-  await page.evaluate(() => window.hermesh?.openSettings("connect/codex"));
+  await page.evaluate(() => window.aide?.openSettings("connect/codex"));
   await expect(main.getByRole("tab", { name: "Codex" })).toHaveAttribute("aria-selected", "true");
-  await page.evaluate(() => window.hermesh?.openSettings("connect/assistants"));
+  await page.evaluate(() => window.aide?.openSettings("connect/assistants"));
   await expect(main.getByRole("tab", { name: "助手" })).toHaveAttribute("aria-selected", "true");
   expect(app.windows()).toHaveLength(2);
 
@@ -126,7 +126,7 @@ test("the guide from the sidebar, and opened at a line: the assistants' shows on
   await expect(main).toContainText(`等待 ${name} 登录…`);
   await snap(settings, "connect-assistants");
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "hmagent-"));
-  execFileSync(fixture.cli, ["auth", "login", st.relayUrl, "--account", st.account, "--name", name], { env: { ...process.env, HERMESH_HOME: home, AIDE_PASSWORD: "correct horse battery" } });
+  execFileSync(fixture.cli, ["auth", "login", st.relayUrl, "--account", st.account, "--name", name], { env: { ...process.env, AIDE_HOME: home, AIDE_PASSWORD: "correct horse battery" } });
   await expect(main.getByText(`${name} 已连接`)).toBeVisible({ timeout: 30_000 });
   await expect(main.getByRole("radiogroup", { name: "选择助手" })).toHaveCount(0);
   await snap(settings, "connect-assistants-connected");

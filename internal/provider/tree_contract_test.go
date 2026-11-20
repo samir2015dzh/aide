@@ -16,7 +16,7 @@ func TestStopEndsTheTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := StartProc(context.Background(), exe, []string{"-test.run=^$"}, "", append(os.Environ(), "HERMESH_TEST_TREE=parent"))
+	p, err := StartProc(context.Background(), exe, []string{"-test.run=^$"}, "", append(os.Environ(), "AIDE_TEST_TREE=parent"))
 	if err != nil {
 		t.Fatal(err)
 	}

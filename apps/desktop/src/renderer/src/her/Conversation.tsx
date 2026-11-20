@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { botChat, busyBubble, replyOf, runningAgents, type BotItem, type ReplyQuote } from "@hermesh/her-client";
-import type { BotSummary } from "@hermesh/her-protocol";
-import type { HerWaiting } from "@hermesh/proto/local";
-import { agoText } from "@hermesh/core";
+import { botChat, busyBubble, replyOf, runningAgents, type BotItem, type ReplyQuote } from "@aide/her-client";
+import type { BotSummary } from "@aide/her-protocol";
+import type { HerWaiting } from "@aide/proto/local";
+import { agoText } from "@aide/core";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
@@ -181,7 +181,7 @@ function useMarkRead(bot: BotSummary) {
       her.call("bots/read", { bot_id: bot.id }).catch(() => {});
     };
     read();
-    return window.hermesh?.onWindowFocus((focused) => focused && read());
+    return window.aide?.onWindowFocus((focused) => focused && read());
   }, [bot.id, unread, connected]);
 }
 
@@ -554,7 +554,7 @@ function UserBubble({ item, fresh, line, scope }: { item: Extract<BotItem, { kin
   const save = useSaveFile(scope.bot);
   // A PDF or Markdown sent opens over the window, from where it was uploaded on the assistant's machine.
   const [shown, setShown] = useState<string | null>(null);
-  // A message hermeshd delivered names its files after its words.
+  // A message aided delivered names its files after its words.
   const said = item.files.length === 0 ? splitAttached(item.text) : { text: item.text, files: item.files };
   return (
     <>
@@ -761,7 +761,7 @@ const handed = new WeakSet<object>();
 /**
  * The composer of an assistant's page: only Send (bot-mode-design §6.14); every message goes in as it
  * is sent, and the composer is free at once (docs/her-sending.md). A message shows as being sent under
- * an id of its own, and goes through hermeshd, which keeps it, then delivers it, on the conversation
+ * an id of its own, and goes through aided, which keeps it, then delivers it, on the conversation
  * this page has open or on one of its own, now or when the machine is back; sent again, her takes it
  * once.
  */
@@ -842,7 +842,7 @@ function Dock({ bot, conv, op, state, onWaiting, onHeight }: {
       const m = outbox.get(key, id);
       if (!m) return;
       const c = open.current;
-      // Files go by their path here; pictures by their bytes, kept by hermeshd with the message, which her reads as pictures.
+      // Files go by their path here; pictures by their bytes, kept by aided with the message, which her reads as pictures.
       const paths = m.draft.attachments.flatMap((a) => (a.kind === "file" ? [a.path] : []));
       const pictures = m.draft.attachments.flatMap((a) => (a.kind === "image" ? [{ name: a.name, data: Uint8Array.from(atob(a.data), (ch) => ch.charCodeAt(0)) }] : []));
       try {
@@ -899,7 +899,7 @@ function Dock({ bot, conv, op, state, onWaiting, onHeight }: {
     <ChromeWait
       rpc={conv.rpc}
       session={conv.session}
-      onConnect={() => void window.hermesh?.openHerConsole(her.machine.machineId, "browser/connect").catch((e: unknown) => st.show(errorText(e)))}
+      onConnect={() => void window.aide?.openHerConsole(her.machine.machineId, "browser/connect").catch((e: unknown) => st.show(errorText(e)))}
     />
   ) : state.kind === "starting" ? (
     <StateNote icon="clock" title={t("env.starting", { name })} />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { dateOf } from "@hermesh/core";
+import { dateOf } from "@aide/core";
 import { type Tab } from "./ConnectGuide";
 import { lines } from "./connectGuideLogic";
 import { Icon } from "./icons";
@@ -69,7 +69,7 @@ export function SettingsWindow() {
 
   useEffect(
     () =>
-      window.hermesh?.onSettingsTab((s) => {
+      window.aide?.onSettingsTab((s) => {
         const r = route(s);
         open(r.page, r.item);
       }),
@@ -80,7 +80,7 @@ export function SettingsWindow() {
   }, [label]);
   // The window's material shows through the sidebar, as in the main window.
   useEffect(() => {
-    if (!window.hermesh?.material) return;
+    if (!window.aide?.material) return;
     document.documentElement.classList.add("vibrant");
     return () => document.documentElement.classList.remove("vibrant");
   }, []);

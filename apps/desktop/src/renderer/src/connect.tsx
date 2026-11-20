@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mark, personalAgents, type PersonalAgentKind } from "@hermesh/ui";
+import { Mark, personalAgents, type PersonalAgentKind } from "@aide/ui";
 import { PersonalAgentIcon } from "./components";
 import { Icon } from "./icons";
 import { connectMessage, kindName } from "./personal";

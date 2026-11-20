@@ -2,10 +2,10 @@
 
 > **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the consent page now asks for the owner's account and password and connects the app at once, with a grant the server signs (`relay.IssueGrant`); the waiting states (`awaiting_setup`, `awaiting_approval`), the approval request on a trusted device and its push are gone. What this page says of them describes the gateway before.
 
-Status: built, 2026-10-21 (self-hosted relay: `hermesh-relay serve --mcp`; the hosted center embeds the same gateway).
+Status: built, 2026-10-21 (self-hosted relay: `aide-relay serve --mcp`; the hosted center embeds the same gateway).
 
 The MCP gateway lets AI agent products that only speak remote MCP (Claude.ai,
-ChatGPT, Cursor, Claude Code over HTTP, ...) use Hermesh: list your machines,
+ChatGPT, Cursor, Claude Code over HTTP, ...) use Aide: list your machines,
 start Claude Code or Codex sessions on them, follow and steer those sessions.
 The agent product connects to one URL and is sent to a consent page the
 first time, where the owner logs in with their account and password: the
@@ -22,11 +22,11 @@ owner.
 
 **Decision (2026-10-21).** For the cold start, MCP is served by the server
 (the hosted center or a self-hosted relay), not by the owner's own machines.
-It is the quickest way to put Hermesh in front of remote agent products, with
+It is the quickest way to put Aide in front of remote agent products, with
 one fixed URL that agent directories can list. People who don't accept the
 risk below run their own server.
 
-**What it costs.** The gateway acts as a Hermesh client: for every approved
+**What it costs.** The gateway acts as an Aide client: for every approved
 MCP connection the server holds a client private key and the owner-signed
 Grant for it. Whoever controls the server can therefore act as each MCP
 connection, within that connection's grant, and sees the content of the
@@ -48,7 +48,7 @@ is bounded:
 | The server cannot undo a revocation | The owner device pushes revocations end to end to its machines (owner.go `revoke`); a hostile server can only delay them by dropping traffic, until the Grant expires |
 | A connection ends on its own | Grants approved with a lifetime expire (90 days at most); without one, the default, they last until revoked |
 
-The other P2 shape, a local stdio `hermesh mcp` that holds the client key on
+The other P2 shape, a local stdio `aide mcp` that holds the client key on
 the agent's side, stays planned and does not conflict: it suits agents that
 run on the user's computer and needs no server trust at all.
 
@@ -65,7 +65,7 @@ Goals:
 - Connecting never fails because the owner isn't ready: no Mac set up yet,
   Mac asleep, no machine online. The connection is made, says what is
   missing, and starts working by itself once it isn't (§5.7).
-- One MCP connection = one Hermesh client identity = one Grant, so machines
+- One MCP connection = one Aide client identity = one Grant, so machines
   enforce access, attribute sessions, and revoke per connection.
 - Stateless HTTP serving, so the server can run more than one instance later.
 
@@ -87,9 +87,9 @@ agent product ──HTTPS──▶ server (hosted center or self-hosted relay)
                          ├─ OAuth authorization server   /oauth/*, /.well-known/oauth-authorization-server
                          ├─ consent page                  /oauth/consent
                          ├─ MCP resource server           /mcp, /.well-known/oauth-protected-resource
-                         │    └─ each tool: a hermesh CLI command, run in-process for the connection
+                         │    └─ each tool: an aide CLI command, run in-process for the connection
                          └─ relay ◀── dialed in memory ──┘
-                                   └──E2E mutual TLS──▶ machine (hermeshd)
+                                   └──E2E mutual TLS──▶ machine (aided)
 owner's trusted Mac ◀─ pairing request (existing flow) ─ relay
 ```
 
@@ -97,11 +97,11 @@ Package `pkg/mcpgw`, embedded like `pkg/relay`:
 
 ```go
 type Config struct {
-    Issuer       string        // e.g. https://hermesh.io (where sign-in cookies live)
-    ResourceURL  string        // canonical MCP URL, e.g. https://mcp.hermesh.io/mcp
+    Issuer       string        // e.g. https://aide.io (where sign-in cookies live)
+    ResourceURL  string        // canonical MCP URL, e.g. https://mcp.aide.io/mcp
     Relay        *relay.Server // pairing, grants, revocations, admission, owner presence
     RelayHandler http.Handler  // the relay's endpoints, dialed in-process (default Relay.Handler())
-    Backend      Backend       // SQLBackend: SQLite in hermesh-relay, PostgreSQL in the center
+    Backend      Backend       // SQLBackend: SQLite in aide-relay, PostgreSQL in the center
     Vault        Vault         // seals client private keys (§10)
     Accounts     Accounts      // who is asking in the browser; SingleOwner for a self-hosted relay
     SetupURL     string        // where to get the Mac app (default the GitHub releases; the hosted center: its console's onboarding)
@@ -121,7 +121,7 @@ by `Accept-Language`), on both the hosted center and a self-hosted relay.
 **Tools are the CLI.** `internal/cli` runs a command for an identity the
 caller holds (`cli.Exec` with a key, root chain and grant in memory, no
 files) and lists its commands as tools (`cli.Tools`, from the cobra tree:
-flags become parameters). Each MCP tool call runs the matching `hermesh`
+flags become parameters). Each MCP tool call runs the matching `aide`
 command with `-o json` and answers with its document, so the tools, their
 parameters and their output contract (docs/cli-output.md) stay the CLI's.
 The command dials the relay through an in-memory listener (`net.Pipe`), so
@@ -180,11 +180,11 @@ message Grant {
   `SubmitPairing` over HTTP rejects it, so a network client can't fake the
   badge.
 - The signer (`SigningPreview.swift`) and the app's pairing sheet show, for a
-  request with `custodian`: "“Claude” connects through hermesh.io.
-  hermesh.io holds this agent's key and can act as it within this access, and
+  request with `custodian`: "“Claude” connects through aide.io.
+  aide.io holds this agent's key and can act as it within this access, and
   sees the sessions it reaches." The app's pairing sheet says the same
-  ("“Claude (claude.ai)” connects through hermesh.io: …"), and the grant's
-  page in Settings › Access shows "Connects through hermesh.io, which holds
+  ("“Claude (claude.ai)” connects through aide.io: …"), and the grant's
+  page in Settings › Access shows "Connects through aide.io, which holds
   its key". `ListClients` carries the custodian.
 - `label` carries the product name and the redirect host, e.g.
   `Claude (claude.ai)`, at most 64 bytes.
@@ -213,11 +213,11 @@ Under `Issuer`:
 
 ```json
 {
-  "issuer": "https://hermesh.io",
-  "authorization_endpoint": "https://hermesh.io/oauth/authorize",
-  "token_endpoint": "https://hermesh.io/oauth/token",
-  "registration_endpoint": "https://hermesh.io/oauth/register",
-  "revocation_endpoint": "https://hermesh.io/oauth/revoke",
+  "issuer": "https://aide.io",
+  "authorization_endpoint": "https://aide.io/oauth/authorize",
+  "token_endpoint": "https://aide.io/oauth/token",
+  "registration_endpoint": "https://aide.io/oauth/register",
+  "revocation_endpoint": "https://aide.io/oauth/revoke",
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
   "code_challenge_methods_supported": ["S256"],
@@ -290,11 +290,11 @@ gateway fetches the document when it first sees the URL and on cache expiry:
    (scheme and host compared case-insensitively, a trailing slash tolerated).
 3. **Record** an authorization: id = 128 random bits (stored hashed), the
    validated parameters, expires in 30 minutes. Set a
-   `__Host-hermesh_mcp_authz` cookie (`hermesh_mcp_authz` on a plain-http
+   `__Host-aide_mcp_authz` cookie (`aide_mcp_authz` on a plain-http
    issuer) with the id, so the consent page only works in the browser that
    started the flow.
 4. **Who is asking.** `Accounts.Browser(r)` returns the account and its owner
-   id, which may be empty. Hosted: the `hermesh_session` cookie; with no
+   id, which may be empty. Hosted: the `aide_session` cookie; with no
    session it redirects to sign-in with `next=/oauth/consent?id=…`. Signing
    in for the first time creates the account, as everywhere else. Self-hosted:
    the relay's one owner.
@@ -333,7 +333,7 @@ owner leaks into the token:
 | Access | `hm_at_` + 256 random bits | 1 hour, never past the Grant's `expires_at` once there is a Grant |
 | Refresh | `hm_rt_` + 256 random bits | rotated on every use; dies after 30 days unused, at the Grant's `expires_at`, or when a connection that was never approved ends (§5.7) |
 
-Only `SHA-256("hermesh-mcp-token-v1\0" + token)` is stored. The prefixes let
+Only `SHA-256("aide-mcp-token-v1\0" + token)` is stored. The prefixes let
 secret scanners recognise leaked tokens.
 
 Refresh rotation and reuse:
@@ -376,7 +376,7 @@ state says what is missing, and it moves on by itself:
 
 | State | Meaning | Moves on when |
 |---|---|---|
-| `awaiting_setup` | The account has no owner: Hermesh isn't set up on a Mac | The Mac app sets up and the server links the account to its new owner → `OwnerLinked` → `awaiting_approval` |
+| `awaiting_setup` | The account has no owner: Aide isn't set up on a Mac | The Mac app sets up and the server links the account to its new owner → `OwnerLinked` → `awaiting_approval` |
 | `awaiting_approval` | No Grant yet: the owner hasn't approved on a Mac | Touch ID on any trusted device → `active` |
 | `active` | Has a Grant | — (machines may still be offline; that is reported per call) |
 | `revoked`, `expired` | Ended | — |
@@ -409,22 +409,22 @@ answer as the CLI would for an owner with nothing in it: `project_list` and
 `not_found` (retryable) and the same words in its `hint`. No special error
 kinds for the model to learn. The note reads, for example:
 
-- `awaiting_setup`: "Hermesh isn't set up yet. Install Hermesh for Mac from
+- `awaiting_setup`: "Aide isn't set up yet. Install Aide for Mac from
   <setup URL>, sign in with the same account
   (y***@gmail.com), and approve “Claude” when it asks. Then try again; no
   need to reconnect."
-- `awaiting_approval`: "Approve “Claude” in Hermesh on your Mac: the request
+- `awaiting_approval`: "Approve “Claude” in Aide on your Mac: the request
   is waiting there now. Then try again.", or, while the
-  Mac is offline, "Open Hermesh on your Mac and approve “Claude” there: the
+  Mac is offline, "Open Aide on your Mac and approve “Claude” there: the
   request goes to your Mac as soon as it is online. Then try again."
 - `active` with no machine online: the commands answer as the CLI does:
   `project_list` lists the machines offline, with when each was last seen;
   a command that needs one fails with `unreachable` (retryable).
 
-`hermesh_status` always works and returns the state, the next step, the
+`aide_status` always works and returns the state, the next step, the
 setup URL, and once active the connection's `auth status`. The
 server's `instructions` tell the model to pass a list's note on to the user
-and that `hermesh_status` shows where the connection stands. Texts are English; the model relays them in the user's
+and that `aide_status` shows where the connection stands. Texts are English; the model relays them in the user's
 language.
 
 **What a connection can do before approval.** Nothing on any machine: it has
@@ -442,15 +442,15 @@ was made; unverified clients get the warning there too.
 
 ### 6.1 Discovery and challenges
 
-`GET https://mcp.hermesh.io/.well-known/oauth-protected-resource/mcp` (and
+`GET https://mcp.aide.io/.well-known/oauth-protected-resource/mcp` (and
 the same at `/.well-known/oauth-protected-resource`):
 
 ```json
 {
-  "resource": "https://mcp.hermesh.io/mcp",
-  "authorization_servers": ["https://hermesh.io"],
+  "resource": "https://mcp.aide.io/mcp",
+  "authorization_servers": ["https://aide.io"],
   "bearer_methods_supported": ["header"],
-  "resource_name": "Hermesh"
+  "resource_name": "Aide"
 }
 ```
 
@@ -458,7 +458,7 @@ the same at `/.well-known/oauth-protected-resource`):
 first authorization server.
 
 A request without a valid token gets `401` with
-`WWW-Authenticate: Bearer resource_metadata="https://mcp.hermesh.io/.well-known/oauth-protected-resource/mcp"`
+`WWW-Authenticate: Bearer resource_metadata="https://mcp.aide.io/.well-known/oauth-protected-resource/mcp"`
 (and `error="invalid_token"` when a token was sent). Claude only starts
 sign-in on a 401.
 
@@ -473,7 +473,7 @@ sign-in on a 401.
 4. Limits per connection: 120 requests/min, 20 `start_session`/hour,
    8 concurrent tool calls; per owner: 10 MCP connections. Bodies at most
    1 MiB (attachments are not accepted over MCP in the first version).
-5. Tracing, off unless asked for: `HERMESH_MCP_TRACE` lists connection,
+5. Tracing, off unless asked for: `AIDE_MCP_TRACE` lists connection,
    account or owner ids whose requests the gateway logs, to learn what an
    agent product sends besides the call (headers, `clientInfo`, `_meta`,
    the tool and its argument names). Never the token, cookies, client
@@ -489,16 +489,16 @@ fixed order with `ttlMs` set, as 2026-07-28 asks.
 
 ## 7. Tools
 
-`hermesh_status`, then every command of `cli.Tools`, named by its path:
+`aide_status`, then every command of `cli.Tools`, named by its path:
 
 | Tool | Command |
 |---|---|
-| `hermesh_status` | the connection's state and next step (§5.7); once active, also `auth status` and the inbox (`messages`: its webhook, waiting messages) |
-| `auth_status` | `hermesh auth status` |
-| `project_list` | `hermesh project list` |
-| `session_start`, `session_get`, `session_list`, `session_events`, `session_answer`, `session_interrupt`, `session_archive`, `session_unarchive`, `session_diff` | `hermesh session <verb>` |
-| `message_send`, `message_list`, `message_ack`, `message_status`, `message_contacts` | `hermesh message <verb>`, with the connection's inbox key ([agent-messages.md](agent-messages.md)); `message_send` is how a session is told anything more (`session_send` is gone) |
-| `machine_exec` | `hermesh machine exec`: a one-shot shell command on a machine, refused unless the owner turned on Run commands for this connection ([machine-ops.md](machine-ops.md)) |
+| `aide_status` | the connection's state and next step (§5.7); once active, also `auth status` and the inbox (`messages`: its webhook, waiting messages) |
+| `auth_status` | `aide auth status` |
+| `project_list` | `aide project list` |
+| `session_start`, `session_get`, `session_list`, `session_events`, `session_answer`, `session_interrupt`, `session_archive`, `session_unarchive`, `session_diff` | `aide session <verb>` |
+| `message_send`, `message_list`, `message_ack`, `message_status`, `message_contacts` | `aide message <verb>`, with the connection's inbox key ([agent-messages.md](agent-messages.md)); `message_send` is how a session is told anything more (`session_send` is gone) |
+| `machine_exec` | `aide machine exec`: a one-shot shell command on a machine, refused unless the owner turned on Run commands for this connection ([machine-ops.md](machine-ops.md)) |
 | `message_wake` | the gateway's own: a one-time link for the owner to set up the caller's doorbell, the webhook rung when messages arrive ([agent-names.md](agent-names.md) §7) |
 
 - Parameters are the command's flags (`--question-timeout` →
@@ -510,15 +510,15 @@ fixed order with `ttlMs` set, as 2026-07-28 asks.
   `pkg/mcpgw/descriptions.go`; CLI help is unchanged. They use MCP names,
   describe the returned `session.session_id`, and do not advertise local
   file attachments. A non-empty `prompt` is needed to start a session.
-  `hermesh_status` explains setup and approval; `auth_status` diagnoses
+  `aide_status` explains setup and approval; `auth_status` diagnoses
   identity, grant and relay access after approval.
 - The result is the command's JSON document, as text and as
   `structuredContent`; `isError` is `!ok`. A hint naming a command
-  (`hermesh session get <id>`) means the tool of that name; the server's
+  (`aide session get <id>`) means the tool of that name; the server's
   instructions say so. `session_start` and `session_answer` add a `summary`,
   a sentence on where the session stands for the assistant to tell its
   owner in their words; the instructions ask it to talk about the work, not
-  ids or how Hermesh works ([agent-names.md](agent-names.md) §14).
+  ids or how Aide works ([agent-names.md](agent-names.md) §14).
 - Coding sessions take minutes. By default, `session_start` returns at once;
   the model follows with `session_get` or `session_events` using `after`.
   Hosted clients can also use `wait=true` with `timeout="30s"`. The gateway
@@ -604,7 +604,7 @@ type Vault interface {
   file at start (mode 0600, not in the database, not in the environment
   file). The sealed form starts with a key version byte, so the master key
   can rotate (re-seal on read).
-- `aad` = `"hermesh-mcp-key-v1\0" + connection_id`, so a sealed key copied
+- `aad` = `"aide-mcp-key-v1\0" + connection_id`, so a sealed key copied
   to another row doesn't open.
 - Database backups therefore hold only sealed keys. A cloud KMS can implement
   the same interface later.
@@ -644,11 +644,11 @@ CLI already warns; the app gains the same for MCP connections).
 | SSRF through CIMD fetches | §5.2 network rules |
 | DCR flooding, connection flooding before approval | per-IP limits, 10 approved connections per owner, at most 10 waiting besides (the oldest makes room), unapproved connections end after a day unused, approval requests only when the app is used, at most one pending per connection |
 | Prompt injection in the agent product | Access narrowed in the approval sheet; agent output labelled untrusted; per-connection rate limits; machine pause still works |
-| Token passthrough | The gateway never forwards OAuth tokens; machines see only Hermesh credentials |
+| Token passthrough | The gateway never forwards OAuth tokens; machines see only Aide credentials |
 
 ## 13. Self-hosted relays
 
-`hermesh-relay serve --mcp` mounts the gateway with its state in
+`aide-relay serve --mcp` mounts the gateway with its state in
 `<data-dir>/mcp.db` (SQLite) and the vault key in `<data-dir>/mcp-vault.key`
 (created on first start). The issuer is the relay's public URL
 (`--public-url`, default from `--domain` or the listen address);
@@ -664,15 +664,15 @@ bits kept in `<data-dir>/mcp-url` (`KeyedResource`):
 - Only the owner's devices learn it (`GetMCP` on the owner's control
   stream), and show it to copy: the Mac in Settings › Account & Devices › Advanced,
   the iPhone in Account and Devices and in Connect Your Agent. On the server,
-  `hermesh-relay mcp-url` prints it. The official service's address,
-  `https://mcp.hermesh.io/mcp`, has none: its sign-in does that job.
+  `aide-relay mcp-url` prints it. The official service's address,
+  `https://mcp.aide.io/mcp`, has none: its sign-in does that job.
 - Nothing served to others names it: the bare
   `/.well-known/oauth-protected-resource` isn't served, errors don't quote
   it, the log doesn't print it. `/mcp` and wrong keys answer 404, saying
   where to copy the address.
 - An authorization must name it as its `resource` (RFC 8707, which MCP
   clients send); without one it is refused.
-- `hermesh-relay mcp-url --new` makes a new key for an address that got
+- `aide-relay mcp-url --new` makes a new key for an address that got
   out, once the relay restarts. Apps connected with the old one connect
   again with the new one.
 
@@ -698,7 +698,7 @@ owner's own apps out, and nothing reaching a machine without Touch ID.
   grant any of them picked up, and stays open for a command still using it.
 - Signer: a custodial grant's card says who holds the key.
 - `e2e/mcp_test.go` (`TestMCPGateway`), real binaries: an app discovers the
-  server from a 401, registers, and connects before Hermesh is set up (every
+  server from a 401, registers, and connects before Aide is set up (every
   tool says how to set it up); the owner sets up the Mac and the approval
   request reaches it by itself with its custodian; approval makes the same
   tokens work; `session_start --wait`, `session_send`, `session_events`, a
@@ -723,9 +723,9 @@ owner's own apps out, and nothing reaching a machine without Touch ID.
 1. Done: protocol (`custodian`), relay (`SubmitCustodialPairing`,
    `PairingResult`), owner (custodian carried into the grant, visibility ALL
    by default), signer and app display, `cli.Exec`/`cli.Tools`, `pkg/mcpgw`,
-   `hermesh-relay serve --mcp`, tests.
+   `aide-relay serve --mcp`, tests.
 2. Hosted wiring in the center (PostgreSQL backend, routing for
-   `mcp.hermesh.io`, vault key file, sign-in for the consent page,
+   `mcp.aide.io`, vault key file, sign-in for the consent page,
    threat-model docs).
 3. Before release: a Connected Apps page in the console, renewal reminders
    for MCP grants, monitoring, then directory submissions (Claude's

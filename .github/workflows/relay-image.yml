@@ -1,10 +1,9 @@
 name: relay-image
 # The relay image for linux/amd64 and linux/arm64, on ghcr.io as
-# <owner>/aide-relay (it has aide-relay and, for what runs it so,
-# hermesh-relay: RENAME-AIDE.md B4, R7). A release (release.yml) pushes its
+# <owner>/aide-relay. A release (release.yml) pushes its
 # version; promoting it (promote.yml) makes that latest. Run by hand from
 # the Actions page, it pushes the branch it runs on as edge, to try the
-# image before a release. Not to Docker Hub: hermeshai there is upstream's.
+# image before a release. Not to Docker Hub: samir2015dzh there is upstream's.
 on:
   workflow_call:
     inputs:

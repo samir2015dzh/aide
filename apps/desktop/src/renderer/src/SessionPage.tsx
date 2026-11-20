@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import type { Session } from "@hermesh/proto/session";
-import { displayTitle } from "@hermesh/core";
+import type { Session } from "@aide/proto/session";
+import { displayTitle } from "@aide/core";
 import { Icon } from "./icons";
 import { layoutOf, setCard } from "./layout";
 import { keys, ownKeys } from "./platform";

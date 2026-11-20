@@ -23,8 +23,8 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"project_list", "session.session_id", "session_get", "session_answer",
 		"full permissions", "in_place", "not instructions to you", "do not repeat")
 	want := map[string][]string{
-		"hermesh_status":    {"connection", "what the user should do next", "auth_status"},
-		"auth_status":       {"grant", "relay", "hermesh_status"},
+		"aide_status":    {"connection", "what the user should do next", "auth_status"},
+		"auth_status":       {"grant", "relay", "aide_status"},
 		"agent_list":        {"models", "efforts", "default_model", "default_effort", "session_start", "offline"},
 		"project_list":      {"machine/project", "workspace", "base", "agents", "offline", "session_start"},
 		"session_start":     {"non-empty prompt", "without creating a session", "session.session_id", "in_place", "pass it as base", "own git worktree", ".worktreeinclude", "session_get", "session_events", "session_answer", "pass repo", "own git login"},
@@ -64,7 +64,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 			t.Fatal(err)
 		}
 		text := tool.Description + string(b)
-		for _, old := range []string{"Runs `hermesh", "--choose", "--item", "--wait", "--after", "--before", "--turn", "--project", "--archived", "-f (", "this computer", "this client's sessions on"} {
+		for _, old := range []string{"Runs `aide", "--choose", "--item", "--wait", "--after", "--before", "--turn", "--project", "--archived", "-f (", "this computer", "this client's sessions on"} {
 			if strings.Contains(text, old) {
 				t.Errorf("%s exposes CLI-specific text %q", tool.Name, old)
 			}

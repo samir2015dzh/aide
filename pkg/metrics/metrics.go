@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/brandenv"
 )
 
 type Counter struct{ v atomic.Int64 }
@@ -113,7 +113,7 @@ func (h *Histogram) Mean() time.Duration {
 }
 
 // Registry holds named metrics. Names may carry Prometheus labels, e.g.
-// `hermesh_rpc_seconds{method="StartSession"}`.
+// `aide_rpc_seconds{method="StartSession"}`.
 type Registry struct {
 	mu         sync.Mutex
 	counters   map[string]*Counter

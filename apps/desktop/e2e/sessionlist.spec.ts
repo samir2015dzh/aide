@@ -32,10 +32,10 @@ test("the sidebar shows the newest page, and scrolling to its end loads older se
   await expect(list).not.toContainText("写 hello");
   // The six left out are the oldest by when they last changed: "写 hello" and
   // some of the first batches. Which ones depends on how those batches
-  // finished (hermeshd stores whole seconds, and a slow runner finishes a
-  // batch late): the sidebar shows exactly hermeshd's first page.
+  // finished (aided stores whole seconds, and a slow runner finishes a
+  // batch late): the sidebar shows exactly aided's first page.
   const first = await page.evaluate(async () => {
-    const r = await fetch("app://hermesh/api/hermesh.local.v1.LocalService/ListSessions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ limit: 50 }) });
+    const r = await fetch("app://aide/api/aide.local.v1.LocalService/ListSessions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ limit: 50 }) });
     return ((await r.json()).sessions as { title: string }[]).map((s) => s.title);
   });
   const shown = await list.getByText(/^批量 \d\d$/).allTextContents();

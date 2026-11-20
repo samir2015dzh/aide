@@ -48,7 +48,7 @@ test("inline code is a file only when it is plainly a path", () => {
 });
 
 test("commands, globs, words and other code are not paths", () => {
-  for (const code of ["cargo test", "npm run dev", "src", "build", "src/**/*.ts", "a|b", "-rf", "$HOME/a", "@hermesh/her-client", "#123", "https://x.io/a.ts", "a\nb", "/", "./", "..", "std::io", "localhost:3000", "my notes/a.md", "tel:123", "x".repeat(301) + ".ts"]) {
+  for (const code of ["cargo test", "npm run dev", "src", "build", "src/**/*.ts", "a|b", "-rf", "$HOME/a", "@aide/her-client", "#123", "https://x.io/a.ts", "a\nb", "/", "./", "..", "std::io", "localhost:3000", "my notes/a.md", "tel:123", "x".repeat(301) + ".ts"]) {
     assert.equal(fileOfCode(code), null, code);
   }
 });
@@ -73,7 +73,7 @@ test("this machine's hosts", () => {
 test("a bare address is shortened in the middle, its real host kept", () => {
   assert.equal(shortURL(new URL("https://www.example.com/")), "example.com");
   assert.equal(shortURL(new URL("http://localhost:5173/")), "localhost:5173");
-  assert.equal(shortURL(new URL("https://github.com/hermesh/hermesh/pull/12/")), "github.com/hermesh/hermesh/pull/12");
+  assert.equal(shortURL(new URL("https://github.com/aide/aide/pull/12/")), "github.com/aide/aide/pull/12");
   assert.equal(shortURL(new URL("https://example.com@evil.com/login")), "evil.com/login");
   const long = shortURL(new URL("https://docs.example.com/guides/getting-started/installation/macos/troubleshooting#permissions"), 40);
   assert.equal(long.length, 40);

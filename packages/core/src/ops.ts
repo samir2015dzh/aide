@@ -1,4 +1,4 @@
-import { ExecOutcome, type ExecRecord } from "@hermesh/proto/machine";
+import { ExecOutcome, type ExecRecord } from "@aide/proto/machine";
 import { dateOf } from "./sessions";
 
 /** How a command of the ops log (docs/machine-ops.md) ended, as its row says it. */

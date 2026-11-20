@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
 // testOwner is an owner whose trusted devices are software keys; chain is

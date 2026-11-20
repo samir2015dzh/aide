@@ -81,7 +81,7 @@ const MAX_STEPS: usize = 20;
 pub(crate) enum Which {
     /// The built-in browser: a profile of its own, without the user's sign-ins.
     Builtin,
-    /// The user's own browser, through the Hermesh extension, with their real sign-ins.
+    /// The user's own browser, through the Aide extension, with their real sign-ins.
     Yours,
 }
 

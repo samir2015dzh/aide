@@ -3,7 +3,7 @@ package relay
 import (
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
 // Backend persists what the relay knows, per owner: signed objects and

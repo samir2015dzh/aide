@@ -5,14 +5,14 @@ import os from "node:os";
 import path from "node:path";
 import { fixture, launch, snap } from "./app";
 
-// A machine whose Hermesh is from before Her (docs/version-skew.md §6.7): old-box answers, without Her in its
-// status. Run by TestDesktopHerBeforeHer. Where Her runs shows it, saying its Hermesh is older and needs an update
-// there, with no Turn On, and so does its switch in Settings › Machines, disabled. Updated (its hermeshd started
+// A machine whose Aide is from before Her (docs/version-skew.md §6.7): old-box answers, without Her in its
+// status. Run by TestDesktopHerBeforeHer. Where Her runs shows it, saying its Aide is older and needs an update
+// there, with no Turn On, and so does its switch in Settings › Machines, disabled. Updated (its aided started
 // again as it is now), both offer Her by themselves.
 
 const needsUpdate = "这台电脑上的 Aide 版本较旧，在那里更新后才能运行 Her";
 
-/** Updates old-box: it says it is from before Her no more, and its hermeshd stops, to be started again. */
+/** Updates old-box: it says it is from before Her no more, and its aided stops, to be started again. */
 function update() {
   fs.writeFileSync(fixture.beforeHer!, "0");
   const daemon = fixture.beforeHerDaemon!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -29,7 +29,7 @@ test("Her: a machine from before Her says it needs an update, and offers Her onc
   await expect(page.locator("body")).not.toContainText("unknown admin command");
   await snap(page, "her-before-her");
 
-  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("machines"))]);
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("machines"))]);
   await win.waitForLoadState();
   const machines = win.getByRole("main", { name: "机器" });
   await machines.getByRole("list", { name: "机器" }).getByRole("button").filter({ hasText: "old-box" }).first().click();

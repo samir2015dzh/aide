@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
 )
 
 // TestSessionList: the owner's app pages through the sessions of two
@@ -22,12 +22,12 @@ func TestSessionList(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	ctx := context.Background()
 
 	// A second machine, vps-1, with a project demo as well.
-	daemon := filepath.Join(w.bin, "hermeshd")
+	daemon := filepath.Join(w.bin, "aided")
 	data := filepath.Join(w.tmp, "vps-1")
 	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {

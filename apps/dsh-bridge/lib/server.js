@@ -1,6 +1,6 @@
-// The bridge's local endpoint, for this computer's hermeshd only.
+// The bridge's local endpoint, for this computer's aided only.
 //
-// Rendezvous: <home>/bridge.json (home is <DSH_HOME>/hermesh-bridge) holds
+// Rendezvous: <home>/bridge.json (home is <DSH_HOME>/aide-bridge) holds
 // the endpoint and a random token, written 0600 in a 0700 folder (on
 // Windows, a folder in the user's profile, which only the user can read).
 // The endpoint is a Unix socket in that folder, or on Windows a named pipe
@@ -40,7 +40,7 @@ export class BridgeServer {
         if (this.opts.platform !== "win32")
             chmodSync(this.opts.home, 0o700);
         this.endpoint =
-            this.opts.platform === "win32" ? `\\\\.\\pipe\\hermesh-dsh-${randomBytes(16).toString("hex")}` : join(this.opts.home, "bridge.sock");
+            this.opts.platform === "win32" ? `\\\\.\\pipe\\aide-dsh-${randomBytes(16).toString("hex")}` : join(this.opts.home, "bridge.sock");
         if (this.opts.platform !== "win32") {
             // The kernel cuts longer socket paths short (sun_path is 104–108 bytes).
             if (Buffer.byteLength(this.endpoint) > 100)

@@ -1,4 +1,4 @@
-import { i18n, languages, pickLanguage, type CoreResources, type Language } from "@hermesh/core";
+import { i18n, languages, pickLanguage, type CoreResources, type Language } from "@aide/core";
 import enCommon from "../locales/en/common.json" with { type: "json" };
 import enComputer from "../locales/en/computer.json" with { type: "json" };
 import enConnect from "../locales/en/connect.json" with { type: "json" };

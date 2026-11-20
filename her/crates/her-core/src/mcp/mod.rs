@@ -47,7 +47,7 @@ pub(crate) const INSTRUCTIONS_LIMIT: usize = 16 * 1024;
 
 /// her's OAuth client metadata document (mcp-design §13.8.3), the default of
 /// `[mcp] client_metadata_url`. None: the fork publishes no such document, and its sign-ins
-/// may not depend on upstream's at hermesh.io, a file it does not control (owner's ruling of
+/// may not depend on upstream's at aide.io, a file it does not control (owner's ruling of
 /// 2026-11-19). A server that supports client metadata documents then gets her's built-in
 /// client, a registration, or the user's own; one can name a document of one's own in config.
 pub const CLIENT_METADATA_URL: Option<&str> = None;

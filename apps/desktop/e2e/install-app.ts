@@ -36,20 +36,20 @@ test.afterEach(async () => {
 export async function installer(inApplications = false, move: "success" | "cancel" | "error" = "success", options: { autoDownload?: boolean; checkedAt?: number; failures?: number; attemptedAt?: number } = {}) {
   // Keep the daemon socket below macOS's Unix-domain socket path limit.
   const home = fs.mkdtempSync("/tmp/hminst-");
-  const data = path.join(home, "Library", "Application Support", "Hermesh");
+  const data = path.join(home, "Library", "Application Support", "Aide");
   fs.mkdirSync(path.join(data, "run"), { recursive: true });
-  fs.symlinkSync(fixture.socket, path.join(data, "run", "hermeshd.sock"));
+  fs.symlinkSync(fixture.socket, path.join(data, "run", "aided.sock"));
   fs.mkdirSync(path.join(data, "desktop"));
   fs.writeFileSync(path.join(data, "desktop", "preferences.json"), JSON.stringify({ language: "zh-CN" }));
   fs.writeFileSync(path.join(data, "desktop", "updates.json"), JSON.stringify(options));
-  const entry = path.join(process.env.HERMESH_DESKTOP_OUT || path.join(import.meta.dirname, "..", "out"), "main", "index.js");
+  const entry = path.join(process.env.AIDE_DESKTOP_OUT || path.join(import.meta.dirname, "..", "out"), "main", "index.js");
   const bootstrap = path.join(home, "start.cjs");
   fs.writeFileSync(bootstrap, `
     const { app, autoUpdater, dialog, net, shell } = require("electron");
     const config = ${JSON.stringify({ home, entry, inApplications, move })};
     require("node:os").homedir = () => config.home;
-    delete process.env.HERMESH_DATA_DIR;
-    delete process.env.HERMESH_SOCKET;
+    delete process.env.AIDE_DATA_DIR;
+    delete process.env.AIDE_SOCKET;
     Object.defineProperty(app, "isPackaged", { get: () => true });
     const state = globalThis.installTest = { dialogs: [], loginItems: [], launchctl: [], protocols: [], moved: 0, feedFails: false, latest: "0.0.0", feedRequests: 0, holdFeed: false, downloads: 0, installs: 0, online: true, badNotes: false, longNotes: false, links: [] };
     net.isOnline = () => state.online;
@@ -126,7 +126,7 @@ export async function installer(inApplications = false, move: "success" | "cance
       if (state.longNotes) {
         summary.improvements = zh.improvements = Array.from({ length: 5 }, (_, i) => (i + 1) + ". " + "Improved update reliability and responsiveness. ".repeat(16));
       }
-      return new Response(JSON.stringify({ currentRelease: state.latest, hermeshNotes: state.badNotes ? null : [
+      return new Response(JSON.stringify({ currentRelease: state.latest, aideNotes: state.badNotes ? null : [
         { version: state.latest, summary: { en: summary, "zh-CN": zh } },
         { version: "1.1.0", summary: { en: summary, "zh-CN": zh } }
       ] }), { status: state.feedFails ? 503 : 200 });

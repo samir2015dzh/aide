@@ -1,7 +1,7 @@
 package machine
 
 import (
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"unsafe"
 
 	"golang.org/x/sys/windows"

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"os"
 	"path/filepath"
 	"slices"
@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Audit is an append-only, hash-chained JSONL log. Every 100 records the

@@ -22,10 +22,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/cli"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/cli"
 )
 
 // TestMCPGateway runs the MCP gateway of a relay serving MCP, as an agent
@@ -60,12 +60,12 @@ func TestMCPGateway(t *testing.T) {
 	port := freePort(t)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
 	relayData := filepath.Join(tmp, "relay")
-	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	relay := start(t, "relay", nil, filepath.Join(bin, "aide-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	logs = append(logs, relay)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
+	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sock := filepath.Join(sockDir, "o.sock")
-	owner := start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
+	owner := start(t, "owner", []string{"AIDE_FAKE_PROVIDERS=1"}, filepath.Join(bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
 	logs = append(logs, owner)
 	mac := newTestApp(t, sock)
 	if _, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: base, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"}); err != nil {
@@ -84,7 +84,7 @@ func TestMCPGateway(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The address, with its key, from the server, and the same on the Mac.
-	address := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "mcp-url", "--data-dir", relayData).stdout)
+	address := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "mcp-url", "--data-dir", relayData).stdout)
 	if !strings.HasPrefix(address, base+"/mcp/") || len(address) < len(base+"/mcp/")+26 {
 		t.Fatalf("mcp-url: %q", address)
 	}
@@ -122,7 +122,7 @@ func TestMCPGateway(t *testing.T) {
 	for _, tl := range tools.Tools {
 		names = append(names, tl.Name)
 	}
-	for _, want := range append([]string{"hermesh_status"}, cliToolNames()...) {
+	for _, want := range append([]string{"aide_status"}, cliToolNames()...) {
 		if !slices.Contains(names, want) {
 			t.Fatalf("tools %v lack %s", names, want)
 		}
@@ -313,7 +313,7 @@ func TestMCPGateway(t *testing.T) {
 	if doc = callTool(t, s3, "project_list", nil); !doc.OK || len(projectsOf(doc).Offline) != 1 {
 		t.Fatalf("a tool while the Mac is offline: %s", doc.raw)
 	}
-	owner = start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), ownerArgs...)
+	owner = start(t, "owner", []string{"AIDE_FAKE_PROVIDERS=1"}, filepath.Join(bin, "aided"), ownerArgs...)
 	logs = append(logs, owner)
 	mac = newTestApp(t, sock)
 	eventually(t, 60*time.Second, "both apps working with the Mac back", func() bool {
@@ -323,12 +323,12 @@ func TestMCPGateway(t *testing.T) {
 	})
 
 	// It sees a session another agent started, and cannot steer it.
-	agentEnv := []string{"HERMESH_HOME=" + filepath.Join(tmp, "agent")}
-	login := start(t, "login", append(slices.Clone(agentEnv), loginEnv()...), filepath.Join(bin, "hermesh"), "auth", "login", base, "--name", "bot")
+	agentEnv := []string{"AIDE_HOME=" + filepath.Join(tmp, "agent")}
+	login := start(t, "login", append(slices.Clone(agentEnv), loginEnv()...), filepath.Join(bin, "aide"), "auth", "login", base, "--name", "bot")
 	if c := login.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("login: %s", login.output())
 	}
-	r := run(t, agentEnv, time.Minute, filepath.Join(bin, "hermesh"), "session", "start", "--project", "demo", "--prompt", "say from the cli", "--wait", "-o", "json")
+	r := run(t, agentEnv, time.Minute, filepath.Join(bin, "aide"), "session", "start", "--project", "demo", "--prompt", "say from the cli", "--wait", "-o", "json")
 	other := firstSession(r.stdout).SessionID
 	if r.code != 0 || other == "" {
 		t.Fatalf("cli session: %+v", r)
@@ -434,12 +434,12 @@ func TestMCPStrangers(t *testing.T) {
 	port := freePort(t)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
 	relayData := filepath.Join(tmp, "relay")
-	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--mcp", "--data-dir", relayData,
+	relay := start(t, "relay", nil, filepath.Join(bin, "aide-relay"), "serve", "--mcp", "--data-dir", relayData,
 		"--listen", fmt.Sprintf(":%d", port), "--public-url", base)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
+	setupCode := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sock := filepath.Join(sockDir, "o.sock")
-	start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
+	start(t, "owner", []string{"AIDE_FAKE_PROVIDERS=1"}, filepath.Join(bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
 	mac := newTestApp(t, sock)
 	if _, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: base, SetupCode: setupCode, Account: testAccount, Password: testPassword, Label: "test-mac", Platform: "macos"}); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -494,26 +494,26 @@ func TestMCPStrangers(t *testing.T) {
 }
 
 // mcpAddress is the relay's MCP address as the owner's apps show it,
-// once the owner's hermeshd has asked the relay for it.
+// once the owner's aided has asked the relay for it.
 // TestMCPChatGPTClient connects the way ChatGPT does: its real client_id, so
 // the relay fetches ChatGPT's live metadata document, and its real redirect,
 // where the browser stops. It needs chatgpt.com, so it runs only with
-// HERMESH_REAL_CHATGPT=1.
+// AIDE_REAL_CHATGPT=1.
 func TestMCPChatGPTClient(t *testing.T) {
-	if testing.Short() || os.Getenv("HERMESH_REAL_CHATGPT") != "1" {
-		t.Skip("set HERMESH_REAL_CHATGPT=1")
+	if testing.Short() || os.Getenv("AIDE_REAL_CHATGPT") != "1" {
+		t.Skip("set AIDE_REAL_CHATGPT=1")
 	}
 	bin := binaries(t)
 	port := freePort(t)
 	relayData := filepath.Join(t.TempDir(), "relay")
-	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	relay := start(t, "relay", nil, filepath.Join(bin, "aide-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	t.Cleanup(func() {
 		if t.Failed() {
 			t.Logf("==== relay output ====\n%s", relay.output())
 		}
 	})
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	address := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "mcp-url", "--data-dir", relayData).stdout)
+	address := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "mcp-url", "--data-dir", relayData).stdout)
 
 	app := newOAuthApp(t, address, "ChatGPT")
 	app.clientID = "https://chatgpt.com/oauth/client.json"
@@ -615,7 +615,7 @@ type mcpStatus struct {
 
 func statusOf(t *testing.T, s *mcp.ClientSession) mcpStatus {
 	t.Helper()
-	d := callTool(t, s, "hermesh_status", nil)
+	d := callTool(t, s, "aide_status", nil)
 	var v struct {
 		Status mcpStatus `json:"status"`
 	}

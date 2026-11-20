@@ -1,5 +1,5 @@
-// Package update installs newer Hermesh releases over the programs in
-// place, for `hermeshd update`, `hermesh update` and hermeshd's background
+// Package update installs newer Aide releases over the programs in
+// place, for `aided update`, `aide update` and aided's background
 // updater (docs/machine-updates.md).
 package update
 
@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"io"
 	"net/http"
 	"os"
@@ -28,13 +28,13 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"github.com/hermeshai/hermesh/internal/flock"
+	"github.com/samir2015dzh/aide/internal/flock"
 )
 
 // Build-time constants: test builds set them with -ldflags -X.
 var (
 	// releases is where the releases are.
-	releases = "https://github.com/samir2015dzh/hermesh/releases"
+	releases = "https://github.com/samir2015dzh/aide/releases"
 	// publicKey is the release signing key, scripts/release-pubkey.pem as
 	// base64 DER.
 	publicKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzD/o6QtTf/uoNlaxWkJ9d/wLLUMGMmUzv8882oxECt9fQtjjhZqDaRuq6w1x4fz5tNHzpwE6nTRZUitMp7VkuA=="
@@ -266,13 +266,13 @@ func Dir() (string, error) {
 		return "", err
 	}
 	if strings.Contains(exe, ".app/Contents/") {
-		return "", errors.New("this hermeshd is part of the Aide app, which updates itself")
+		return "", errors.New("this aided is part of the Aide app, which updates itself")
 	}
 	// The Windows app copies its programs into the folder install.ps1 uses,
 	// and updates them itself (docs/windows.md §6.2).
 	if runtime.GOOS == "windows" {
-		if _, err := os.Stat(filepath.Join(os.Getenv("LOCALAPPDATA"), "HermeshApp", "Update.exe")); err == nil {
-			return "", errors.New("this hermeshd is the Aide app's, which updates it")
+		if _, err := os.Stat(filepath.Join(os.Getenv("LOCALAPPDATA"), "AideApp", "Update.exe")); err == nil {
+			return "", errors.New("this aided is the Aide app's, which updates it")
 		}
 	}
 	return filepath.Dir(exe), nil

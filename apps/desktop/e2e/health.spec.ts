@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { launch, snap } from "./app";
 
-// The Mac running out of processes (the fixture's hermeshd may start only
+// The Mac running out of processes (the fixture's aided may start only
 // 80 more than the user runs): every place that shows it says so in words
 // the person acts on, and it recovers by itself.
 
@@ -32,7 +32,7 @@ test("out of processes: needs-you, the map, this Mac's page and its agents say w
     await snap(page, "health-overview");
 
     // Its page in settings: the problem on top, and each coding agent's why.
-    const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("machines"))]);
+    const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("machines"))]);
     await settings.waitForLoadState();
     const panel = settings.getByRole("main", { name: "机器" });
     await panel.getByRole("list", { name: "机器" }).getByRole("button", { name: /^owner-mac/ }).click();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RpcError } from "@hermesh/her-client";
-import type { CustomModel, ProviderSummary } from "@hermesh/her-protocol";
+import { RpcError } from "@aide/her-client";
+import type { CustomModel, ProviderSummary } from "@aide/her-protocol";
 import { Dialog } from "../components";
 import { errorText } from "../format";
 import { useHer } from "../her";

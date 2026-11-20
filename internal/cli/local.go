@@ -7,13 +7,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/internal/peer"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/peer"
 )
 
 // An agent on a machine's own computer (Claude Code using this CLI on the
-// Mac that also runs hermeshd) reaches that machine over its endpoint for
+// Mac that also runs aided) reaches that machine over its endpoint for
 // this user's agents (paths.Local, machine.serveLocal), not through the
 // relay: the shortest way, and one that works while the relay cannot be
 // reached. The machine serves it as it serves a tunnel: the same handshake

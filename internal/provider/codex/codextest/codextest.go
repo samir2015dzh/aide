@@ -21,7 +21,7 @@ func IsolateHome() (func(), error) {
 		}
 		user = filepath.Join(h, ".codex")
 	}
-	dir, err := os.MkdirTemp("", "hermesh-codex-home-")
+	dir, err := os.MkdirTemp("", "aide-codex-home-")
 	if err != nil {
 		return nil, err
 	}

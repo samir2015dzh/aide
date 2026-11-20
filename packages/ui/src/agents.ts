@@ -1,4 +1,4 @@
-/** The coding agents a grant can name; matches machine.AgentNames in hermeshd. */
+/** The coding agents a grant can name; matches machine.AgentNames in aided. */
 export const codingAgentIds: readonly string[] = [
   "claude",
   "codex",

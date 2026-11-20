@@ -1,6 +1,6 @@
 //! `her install` and `her upgrade` against a local release: a signed manifest and archives.
 
-// her's own releases have no build for Windows, where Hermesh brings what they would.
+// her's own releases have no build for Windows, where Aide brings what they would.
 #![cfg(unix)]
 
 mod common;

@@ -16,14 +16,14 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // herCard is a secure card as send_to_user's details carry it
@@ -45,7 +45,7 @@ type herCard struct {
 
 // TestHerCards: Her asks the owner for a connector on a secure card
 // (docs/her-secure-cards.md, step 1), on an environment that is not this
-// Mac, and the owner's device answers through this Mac's hermeshd, the relay
+// Mac, and the owner's device answers through this Mac's aided, the relay
 // and the end-to-end tunnel. Her prepares the card with connector_connect
 // and shows it with send_to_user; the device sees it, and the machine's
 // status says it waits. An agent can't answer it; an answer whose ops do
@@ -55,7 +55,7 @@ type herCard struct {
 // connector works, and the card can't be answered again. The connector's
 // service is her-mock's her-mcp-server, with OAuth.
 func TestHerCards(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") == "1" {
+	if os.Getenv("AIDE_DOCKER") == "1" {
 		t.Skip("her takes a connector's http address on loopback only, and the tracker is not on the Linux machine's")
 	}
 	mcpServer := herMCPServer(t)
@@ -135,7 +135,7 @@ func TestHerCards(t *testing.T) {
 	cardState(t, stream, card.ID, "sign_in")
 
 	// The device signs in as the console does, from the Mac app's main
-	// process (apps/desktop's herSignin.ts): this Mac's hermeshd catches the
+	// process (apps/desktop's herSignin.ts): this Mac's aided catches the
 	// browser's redirect, and her on the machine exchanges what it carried.
 	code, body := httpDo(t, http.MethodPost, env.console+"signin", `{"path":"/callback"}`)
 	var signin struct {

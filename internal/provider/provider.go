@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
 // Info describes a provider on this machine.
@@ -252,12 +252,12 @@ type StartSpec struct {
 	Title string
 	Env   []string
 	Gate  Gate
-	// MCPServers are tools Hermesh gives the agent, as stdio MCP servers:
+	// MCPServers are tools Aide gives the agent, as stdio MCP servers:
 	// the session's messages (docs/agent-messages.md §7.4).
 	MCPServers []MCPServer
 	// Project and Requester (its client's name; "" for the owner's own
 	// devices) say what a new session is for, for agents whose own apps
-	// list it apart from Hermesh (the Claude desktop app).
+	// list it apart from Aide (the Claude desktop app).
 	Project, Requester string
 }
 

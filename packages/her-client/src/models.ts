@@ -1,4 +1,4 @@
-import type { ModelsListResult } from "@hermesh/her-protocol";
+import type { ModelsListResult } from "@aide/her-protocol";
 import { updatedAt, type ListSession } from "./sessions.ts";
 
 /**

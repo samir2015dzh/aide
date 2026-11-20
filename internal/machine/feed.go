@@ -11,15 +11,15 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // MachineService.Watch (docs/state-sync.md §3.3): what a watcher may see of
 // this machine, then each change, resumable after a reconnect.
 
 // changeLog numbers the changes to this machine's sessions and projects
-// since hermeshd started, keeping each one's last, so a watcher that held
+// since aided started, keeping each one's last, so a watcher that held
 // what it was sent up to change n gets only what changed after n. A token
 // from another start is refused: the watcher starts again.
 type changeLog struct {

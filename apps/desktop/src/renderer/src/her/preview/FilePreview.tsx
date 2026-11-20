@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { readSent } from "@hermesh/her-client";
-import type { FilesReadResult } from "@hermesh/her-protocol";
+import { readSent } from "@aide/her-client";
+import type { FilesReadResult } from "@aide/her-protocol";
 import { Icon } from "../../icons";
 import { Markdown } from "../../session/Markdown";
 import { Dialog } from "../../session/markdown/Dialog";
@@ -62,7 +62,7 @@ function PdfBody({ bot, path, snapshot, name }: { bot: string; path: string; sna
   const [read, setRead] = useState<Uint8Array | { error: string } | null>(null);
   useEffect(() => {
     let live = true;
-    const reading = readSent({ path, snapshot }, (from) => window.hermesh?.readHerFile(her.machine.machineId, bot, from) ?? Promise.reject(new Error("no app")));
+    const reading = readSent({ path, snapshot }, (from) => window.aide?.readHerFile(her.machine.machineId, bot, from) ?? Promise.reject(new Error("no app")));
     reading.then(
       (bytes) => live && setRead(bytes),
       (e) => live && setRead({ error: errorText(e) }),

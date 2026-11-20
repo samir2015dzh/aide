@@ -22,7 +22,7 @@ desktop app), and the Android app's
 the cases are
 [internal/sessionstate/testdata/cases.json](../internal/sessionstate/testdata/cases.json).
 The enums are `SessionState` and `SessionLink` in
-[session.proto](../proto/hermesh/session/v1/session.proto). Machines never send
+[session.proto](../proto/aide/session/v1/session.proto). Machines never send
 them: whoever shows a session works them out, because the link depends on
 what the viewer can reach, and on its clock.
 
@@ -32,7 +32,7 @@ what the viewer can reach, and on its clock.
 |---|---|
 | the machine | `Session.status`, `progress.last_failure`, `progress.last_event_at` (when its last event was recorded; new, set with each event), `updated_at` (stands in for `last_event_at` from older machines) |
 | the relay | whether the machine is online, and `last_seen`: while it is offline, **when it last heard from it** (it used to say when it noticed it was gone, `peerQuiet` = 20 s later) |
-| the owner's device (hermeshd's replica) | `Machine.unreachable` / `syncing` (as before), and new: `heard_at`, `unreachable_since`, `lost_spans` (§4); `GetStatusResponse.state_limits` |
+| the owner's device (aided's replica) | `Machine.unreachable` / `syncing` (as before), and new: `heard_at`, `unreachable_since`, `lost_spans` (§4); `GetStatusResponse.state_limits` |
 | the CLI | what it just read (the machine answered: that is a heartbeat), the relay's `last_seen`, and the sessions it last read of each machine (§6) |
 
 ## 2. State
@@ -80,15 +80,15 @@ offline.
 
 | | Default | Variable | Why |
 |---|---|---|---|
-| lost | 30 s | `HERMESH_LOST_AFTER` | the relay's 20 s plus a reconnect's few: a blip never reads lost |
-| stall | 5 min | `HERMESH_STALL_AFTER` | past a model's longest usual think; the machine's own watchdog stops a quiet turn at 15 min |
+| lost | 30 s | `AIDE_LOST_AFTER` | the relay's 20 s plus a reconnect's few: a blip never reads lost |
+| stall | 5 min | `AIDE_STALL_AFTER` | past a model's longest usual think; the machine's own watchdog stops a quiet turn at 15 min |
 
 A value is a Go duration (`90s`, `10m`) or seconds (`90`). The core sends its
 limits to its screens (`GetStatusResponse.state_limits`).
 
 **Recovery.** Once the machine answers again its sessions are read again
 (state-sync §4.3): each shows what it really is (the turn done meanwhile, or
-`failed` if hermeshd restarted), its link `live`, by itself.
+`failed` if aided restarted), its link `live`, by itself.
 
 ## 4. Lost spans
 
@@ -130,7 +130,7 @@ Every session object (`session get`, `list`, `start`, `wait` …) has, besides
 | `stalled_seconds` | how long a stalled turn has been quiet (0 otherwise) |
 
 The CLI keeps the sessions it last read of each machine
-(`$HERMESH_HOME/sessions-seen.json`, the newest 100 per machine). While a
+(`$AIDE_HOME/sessions-seen.json`, the newest 100 per machine). While a
 machine cannot be read:
 
 - `session list` lists them under **`lost_sessions`**, never under

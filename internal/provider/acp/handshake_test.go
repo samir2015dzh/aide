@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // A custom agent named by its path: the handshake starts it, it answers
@@ -28,7 +28,7 @@ func TestHandshake(t *testing.T) {
 }
 
 // One that needs a sign-in it was not told how to do says which methods
-// it offers; one Hermesh knows how to sign in opens its session.
+// it offers; one Aide knows how to sign in opens its session.
 func TestHandshakeAuth(t *testing.T) {
 	env := append(os.Environ(), "FAKE_ACP_AUTH=login", "FAKE_ACP_STATE="+t.TempDir())
 	p := &Provider{Agent: Agent{Name: "mine", Command: fakeBin, Custom: true}}
@@ -49,8 +49,8 @@ func TestHandshakeFails(t *testing.T) {
 		t.Skip("the stand-ins are shell scripts")
 	}
 	ctx := context.Background()
-	p := &Provider{Agent: Agent{Name: "mine", Command: "hermesh-no-such-agent", Custom: true}, PathEnv: t.TempDir()}
-	if _, err := p.Handshake(ctx, os.Environ(), t.TempDir()); err == nil || !strings.Contains(err.Error(), "hermesh-no-such-agent not found") {
+	p := &Provider{Agent: Agent{Name: "mine", Command: "aide-no-such-agent", Custom: true}, PathEnv: t.TempDir()}
+	if _, err := p.Handshake(ctx, os.Environ(), t.TempDir()); err == nil || !strings.Contains(err.Error(), "aide-no-such-agent not found") {
 		t.Fatalf("missing: %v", err)
 	}
 	if info := p.Discover(ctx); info.Available || !strings.Contains(info.Detail, "not found") {

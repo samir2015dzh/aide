@@ -13,7 +13,7 @@ import { titles } from "./world";
 // memory. Each number is a median over PERF_REPS runs. Results go to
 // perf/results/<PERF_LABEL>.json, and the table to the console.
 
-const out = process.env.HERMESH_DESKTOP_OUT || path.join(import.meta.dirname, "..", "out");
+const out = process.env.AIDE_DESKTOP_OUT || path.join(import.meta.dirname, "..", "out");
 const label = process.env.PERF_LABEL ?? "run";
 const reps = Number(process.env.PERF_REPS ?? 5);
 const window = Number(process.env.PERF_SECONDS ?? 15) * 1000;
@@ -31,7 +31,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function launch(main: string, socket: string, profile: string): Promise<Ctx & { launched: number }> {
   const launched = Date.now();
-  const app = await electron.launch({ args: [...flags, main], env: { ...process.env, HERMESH_SOCKET: socket, HERMESH_USER_DATA: profile } });
+  const app = await electron.launch({ args: [...flags, main], env: { ...process.env, AIDE_SOCKET: socket, AIDE_USER_DATA: profile } });
   const page = await app.firstWindow();
   const cdp = await page.context().newCDPSession(page);
   return { app, page, cdp, launched };
@@ -434,7 +434,7 @@ test("benchmark", async () => {
     const pal: number[] = [];
     for (let i = 0; i < reps; i++) {
       pal.push(await timed(page, () => page.locator(".nav-i", { hasText: "搜索" }).click(), { sel: ".pal input" }));
-      await page.keyboard.type("hermesh", { delay: 80 });
+      await page.keyboard.type("aide", { delay: 80 });
       await page.keyboard.press("Escape");
       await sleep(300);
     }

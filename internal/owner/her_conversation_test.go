@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // herScript is a machine whose her answers each Open with the results the

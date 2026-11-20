@@ -1,4 +1,4 @@
-import type { ErrorInfo } from "@hermesh/her-protocol";
+import type { ErrorInfo } from "@aide/her-protocol";
 import { callTarget, runningAgents, type SessionView } from "./session.ts";
 import { conversation, detailsOf, userText, type ReplyQuote, type ToolView, type WorkItem } from "./steps.ts";
 import { baseName } from "./text.ts";
@@ -192,7 +192,7 @@ const record = (v: unknown): Record<string, unknown> | null => (v && typeof v ==
 
 /**
  * The session a session_start call started, itself or through call_tool: from its result's details, or else from
- * its text, the command's document (a Her Server on an older hermeshd sends no details). A call that failed, was
+ * its text, the command's document (a Her Server on an older aided sends no details). A call that failed, was
  * refused or never ran started none.
  */
 export function startedSession(item: WorkItem): StartedSession | null {

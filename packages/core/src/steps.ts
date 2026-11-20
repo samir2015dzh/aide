@@ -1,4 +1,4 @@
-import type { ToolCall } from "@hermesh/proto/session";
+import type { ToolCall } from "@aide/proto/session";
 import { hourMinute, isYesterday, monthDay, sameDay, weekday, withinWeek } from "./calendar";
 import { t } from "./i18n";
 import type { TranscriptItem } from "./transcript";

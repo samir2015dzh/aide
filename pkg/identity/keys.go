@@ -1,4 +1,4 @@
-// Package identity implements Hermesh keys, signed envelopes, credential
+// Package identity implements Aide keys, signed envelopes, credential
 // chain verification and pairing codes.
 package identity
 

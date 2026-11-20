@@ -7,11 +7,11 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { PROTOCOL_VERSION } from "@hermesh/her-protocol";
+import { PROTOCOL_VERSION } from "@aide/her-protocol";
 
-// The console's routes as hermeshd serves them, in front of a real `her serve --listen unix://…`
-// (as packages/her-client/src/http.e2e.test.ts stands in for hermeshd in front of the mock her):
-// the machine's /her/console/ (the built console, events, rpc with hermeshd's allowlist and its
+// The console's routes as aided serves them, in front of a real `her serve --listen unix://…`
+// (as packages/her-client/src/http.e2e.test.ts stands in for aided in front of the mock her):
+// the machine's /her/console/ (the built console, events, rpc with aided's allowlist and its
 // limits on config/write, upload) and, on the same address, what the owner's device adds
 // (signin, which catches a sign-in's redirect on 127.0.0.1, and command-connector, applied
 // here at once where the device would ask its signer first). The model service, the search
@@ -34,7 +34,7 @@ export type StandIn = {
   close(): Promise<void>;
 };
 
-/** hermeshd's allowlist for the console (allow.go's `allowed`, its console part). */
+/** aided's allowlist for the console (allow.go's `allowed`, its console part). */
 const allowed = new Set([
   "models/list",
   "config/read",
@@ -157,7 +157,7 @@ function keyPath(text: string): string[] {
   }
 }
 
-/** Why hermeshd refuses a request from an owner's device, else null (allow.go's `check`). */
+/** Why aided refuses a request from an owner's device, else null (allow.go's `check`). */
 function refusal(method: string, params: Record<string, unknown> | undefined): string | null {
   if (!allowed.has(method)) return `her's "${method}" is not open to the owner's devices`;
   if (method === "config/write")
@@ -206,7 +206,7 @@ class HerConnection {
     const socket = connect(socketPath);
     await new Promise<void>((resolve, reject) => socket.once("connect", resolve).once("error", reject));
     const c = new HerConnection(socket);
-    const init = await c.call("initialize", { protocol_version: PROTOCOL_VERSION, client_info: { name: "hermeshd (stand-in)" } });
+    const init = await c.call("initialize", { protocol_version: PROTOCOL_VERSION, client_info: { name: "aided (stand-in)" } });
     if (init.error) throw new Error(`initialize: ${JSON.stringify(init.error)}`);
     return c;
   }

@@ -11,11 +11,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/internal/brandenv"
-	"github.com/hermeshai/hermesh/internal/connaddr"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/connaddr"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // accountLogin logs this agent in to the owner's server with the account

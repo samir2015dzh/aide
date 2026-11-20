@@ -12,11 +12,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
-// HerService (proto/hermesh/her/v1/her.proto) on her: each Open stream is a
+// HerService (proto/aide/her/v1/her.proto) on her: each Open stream is a
 // connection of its own, which Calls and the console's requests may name.
 
 // Open opens a connection, sends its setup requests, then sends the
@@ -225,7 +225,7 @@ func (h *Host) lost(ctx context.Context, err error) error {
 	return connect.NewError(connect.CodeUnavailable, fmt.Errorf("lost her: %w", err))
 }
 
-// answered is what a request of hermeshd's own came back with, as an error.
+// answered is what a request of aided's own came back with, as an error.
 func answered(method string, res *herv1.Response, err error) error {
 	switch {
 	case err != nil:

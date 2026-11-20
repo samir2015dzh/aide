@@ -11,17 +11,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import io.aide.android.push.Push
-import io.aide.android.ui.HermeshTheme
+import io.aide.android.ui.AideTheme
 import io.aide.android.ui.Root
 
 /** The app's one window. */
 class MainActivity : ComponentActivity() {
-    private val model get() = (application as HermeshApp).model
+    private val model get() = (application as AideApp).model
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { HermeshTheme { Root(model) } }
+        setContent { AideTheme { Root(model) } }
         handle(intent)
         // Notifications need the person's leave on Android 13 and later.
         if (Build.VERSION.SDK_INT >= 33 &&

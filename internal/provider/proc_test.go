@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/spawn"
+	"github.com/samir2015dzh/aide/internal/spawn"
 )
 
 func TestRunCommand(t *testing.T) {
@@ -25,9 +25,9 @@ func TestRunCommand(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			if mode == "helper" {
 				exe, _ := os.Executable()
-				os.Setenv("HERMESH_TEST_SPAWN_HELPER", "1")
+				os.Setenv("AIDE_TEST_SPAWN_HELPER", "1")
 				h, err := spawn.StartHelper(exe)
-				os.Unsetenv("HERMESH_TEST_SPAWN_HELPER")
+				os.Unsetenv("AIDE_TEST_SPAWN_HELPER")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -66,9 +66,9 @@ func procModes(t *testing.T, f func(t *testing.T)) {
 			useSpawn = mode != "exec"
 			if mode == "helper" {
 				exe, _ := os.Executable()
-				os.Setenv("HERMESH_TEST_SPAWN_HELPER", "1")
+				os.Setenv("AIDE_TEST_SPAWN_HELPER", "1")
 				h, err := spawn.StartHelper(exe)
-				os.Unsetenv("HERMESH_TEST_SPAWN_HELPER")
+				os.Unsetenv("AIDE_TEST_SPAWN_HELPER")
 				if err != nil {
 					t.Fatal(err)
 				}

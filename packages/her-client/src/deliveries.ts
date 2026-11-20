@@ -2,10 +2,10 @@
 // §4.3): what both apps read of deliveries/list. her answers the pages; here
 // they are joined, grouped by when each was last sent, marked new, and
 // turned into what to read and the quote a reply carries. The iPhone's
-// HermeshHer (Deliveries.swift) does the same, and both run the cases in
+// AideHer (Deliveries.swift) does the same, and both run the cases in
 // testdata/deliveries.json.
 
-import type { DeliveredFile, DeliveriesListResult, Delivery, DeliveryKind, DeliverySourceCount, DeliverySourceFilter } from "@hermesh/her-protocol";
+import type { DeliveredFile, DeliveriesListResult, Delivery, DeliveryKind, DeliverySourceCount, DeliverySourceFilter } from "@aide/her-protocol";
 import type { ReplyQuote } from "./steps.ts";
 
 /** When a file was last sent, as the list groups it. */

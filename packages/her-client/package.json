@@ -1,5 +1,5 @@
 {
-  "name": "@hermesh/her-client",
+  "name": "@aide/her-client",
   "private": true,
   "type": "module",
   "description": "Client logic for the her native protocol, free of any platform or UI framework",
@@ -12,7 +12,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@hermesh/her-protocol": "workspace:*"
+    "@aide/her-protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.10.1",

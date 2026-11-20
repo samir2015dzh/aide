@@ -91,7 +91,7 @@ button{font:inherit;color:inherit}
 .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
 .ic.sm{width:13px;height:13px}
 .ic.fill{fill:currentColor;stroke:none}
-/* mark: colours and motion in @hermesh/ui/brand.css */
+/* mark: colours and motion in @aide/ui/brand.css */
 .hm-mark{display:block;overflow:visible}
 /* controls */
 .btn{height:26px;padding:0 13px;border-radius:999px;border:0;background:var(--btn);box-shadow:var(--btn-sh);font-size:var(--fs-text);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;color:var(--l1);flex:none}

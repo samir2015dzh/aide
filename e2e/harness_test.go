@@ -17,12 +17,12 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	"github.com/hermeshai/hermesh/internal/flock"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/pkg/identity"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -37,18 +37,18 @@ func repoRoot() string {
 	return filepath.Dir(wd)
 }
 
-// binaries builds hermesh-relay, hermeshd and hermesh once per test run.
+// binaries builds aide-relay, aided and aide once per test run.
 func binaries(t *testing.T) string {
 	t.Helper()
 	buildOnce.Do(func() {
-		binDir, buildErr = os.MkdirTemp("", "hermesh-e2e-bin")
+		binDir, buildErr = os.MkdirTemp("", "aide-e2e-bin")
 		if buildErr != nil {
 			return
 		}
-		for _, pkg := range []string{"./cmd/hermesh-relay", "./cmd/hermeshd", "./cmd/hermesh", "./internal/provider/acp/fakeacp", "./bench/fakecodex"} {
+		for _, pkg := range []string{"./cmd/aide-relay", "./cmd/aided", "./cmd/aide", "./internal/provider/acp/fakeacp", "./bench/fakecodex"} {
 			cmd := filepath.Base(pkg)
 			args := []string{"build", "-o", filepath.Join(binDir, cmd+exe)}
-			if os.Getenv("HERMESH_E2E_RACE") != "" {
+			if os.Getenv("AIDE_E2E_RACE") != "" {
 				args = append(args, "-race") // the binaries exit 66 on a data race
 			}
 			out, err := exec.Command("go", append(args, pkg)...).CombinedOutput()
@@ -201,7 +201,7 @@ func loginEnv() []string {
 }
 
 // testApp is the desktop app as the tests drive it: a client of the
-// bundled hermeshd over its local socket.
+// bundled aided over its local socket.
 type testApp struct {
 	t      *testing.T
 	client localv1connect.LocalServiceClient
@@ -212,7 +212,7 @@ func newTestApp(t *testing.T, sock string) *testApp {
 	return &testApp{t: t, client: localClient(t, sock), cancel: func() {}}
 }
 
-// localClient is a client of hermeshd's local API on sock, once it answers.
+// localClient is a client of aided's local API on sock, once it answers.
 func localClient(t *testing.T, sock string) localv1connect.LocalServiceClient {
 	hc := &http.Client{Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return localipc.Dial(ctx, sock)
@@ -289,7 +289,7 @@ func withoutInboxNote(stderr string) string {
 func endLinks(t *testing.T, env []string) {
 	var home string
 	for _, e := range env {
-		if v, ok := strings.CutPrefix(e, "HERMESH_HOME="); ok {
+		if v, ok := strings.CutPrefix(e, "AIDE_HOME="); ok {
 			home = v
 		}
 	}

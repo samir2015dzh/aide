@@ -1,7 +1,7 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { LocalService } from "@hermesh/proto/local";
+import { LocalService } from "@aide/proto/local";
 
-// hermeshd's LocalService, through the main process (app://hermesh/api).
-const transport = createConnectTransport({ baseUrl: "app://hermesh/api", useBinaryFormat: true });
+// aided's LocalService, through the main process (app://aide/api).
+const transport = createConnectTransport({ baseUrl: "app://aide/api", useBinaryFormat: true });
 export const local = createClient(LocalService, transport);

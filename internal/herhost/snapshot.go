@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // What HerStatus says of her while it runs, kept current from the monitor's

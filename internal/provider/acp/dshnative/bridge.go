@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"io/fs"
 	"net"
 	"os"
@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
-// The Hermesh bridge plugin in DSH Desktop (apps/dsh-bridge,
+// The Aide bridge plugin in DSH Desktop (apps/dsh-bridge,
 // docs/dsh-takeover.md): it hands the owner's messages to the DSH Host that
-// owns a session, in-process, so Hermesh never writes a DSH session itself.
+// owns a session, in-process, so Aide never writes a DSH session itself.
 // It publishes where it listens, and a token, in BridgeDir(home)/bridge.json.
 
 // BridgeProtocol is the protocol version this client speaks.

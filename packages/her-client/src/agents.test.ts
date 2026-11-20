@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantContent, Event, EventMsg, SessionInfo, SessionSnapshot, Usage, UsageTotals } from "@hermesh/her-protocol";
+import type { AssistantContent, Event, EventMsg, SessionInfo, SessionSnapshot, Usage, UsageTotals } from "@aide/her-protocol";
 import { applyEvents, fromSnapshot, runningAgents, statusOf, type SessionView } from "./session.ts";
 import { agentBrief, agentTaskOf, conversation, messageBody, reportBody, taskGists } from "./steps.ts";
 import { agentTask } from "./mock/agents.ts";

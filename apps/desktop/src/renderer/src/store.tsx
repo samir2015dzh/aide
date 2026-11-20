@@ -1,20 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ConnectError } from "@connectrpc/connect";
-import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, Wake } from "@hermesh/proto/local";
-import type { Session } from "@hermesh/proto/session";
-import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@hermesh/core";
+import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, Wake } from "@aide/proto/local";
+import type { Session } from "@aide/proto/session";
+import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@aide/core";
 import type { Peek } from "./layout";
 import { notNow, setNotNow, startPage } from "./start";
 import { useWorld } from "./useWorld";
 import { i18n } from "../../shared/i18n";
 import { needsUpdate } from "./skew";
 
-// What the window knows: the owner's world as hermeshd pushes it
+// What the window knows: the owner's world as aided pushes it
 // (useWorld: no polling), plus the window's own state (selection, list
 // view, open sheet, toast).
 
 export type Data = {
-  /** undefined until the first answer; null when hermeshd cannot be reached. */
+  /** undefined until the first answer; null when aided cannot be reached. */
   status: GetStatusResponse | null | undefined;
   clients: Client[];
   machines: Machine[];
@@ -119,7 +119,7 @@ export type Store = Data &
     set: (patch: Partial<UI>) => void;
     select: (id: string) => void;
     refresh: () => Promise<void>;
-    /** Runs a change against hermeshd, then refreshes; failures become a toast. Resolves to whether it worked. */
+    /** Runs a change against aided, then refreshes; failures become a toast. Resolves to whether it worked. */
     run: (action: () => Promise<unknown>, done?: string) => Promise<boolean>;
     show: (text: string, undo?: () => void) => void;
   };
@@ -128,11 +128,11 @@ const Ctx = createContext<Store | null>(null);
 
 export function useStore(): Store {
   const s = useContext(Ctx);
-  if (!s) throw new Error("useStore outside HermeshProvider");
+  if (!s) throw new Error("useStore outside AideProvider");
   return s;
 }
 
-/** Message of an error from hermeshd, for the person. */
+/** Message of an error from aided, for the person. */
 export function errorText(e: unknown): string {
   if (needsUpdate(e)) return i18n.t("common:needsUpdate.text");
   if (e instanceof ConnectError) return e.rawMessage;
@@ -170,7 +170,7 @@ function savedView(): Partial<SavedView> {
   }
 }
 
-export function HermeshProvider({ children }: { children: ReactNode }) {
+export function AideProvider({ children }: { children: ReactNode }) {
   const world = useWorld();
   // Each part changes only when its own list does: a session's change leaves them all.
   const unreachable = useMemo(() => unreachableMachines(world.machines), [world.machines]);

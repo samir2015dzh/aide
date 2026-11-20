@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { codingAgentIds, codingAgentTitle } from "@hermesh/ui/agents";
+import { codingAgentIds, codingAgentTitle } from "@aide/ui/agents";
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -11,7 +11,7 @@ import { answerMenu, cli, fixture, gitRepo, launch, onWindows, pickAnswers, snap
 // Settings, for what is set up once and changed rarely.
 
 async function openSettings(app: ElectronApplication, page: Page, tab?: string): Promise<Page> {
-  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.hermesh?.openSettings(t), tab)]);
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.aide?.openSettings(t), tab)]);
   await win.waitForLoadState();
   return win;
 }
@@ -19,7 +19,7 @@ async function openSettings(app: ElectronApplication, page: Page, tab?: string):
 async function api<T = Record<string, never>>(page: Page, method: string, body: object = {}): Promise<T> {
   return page.evaluate(
     async ([m, b]) => {
-      const r = await fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+      const r = await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
       return r.json();
     },
     [method, body] as const,
@@ -41,13 +41,13 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   await expect(login).toHaveAttribute("aria-checked", "false");
   await login.click();
   await expect(login).toHaveAttribute("aria-checked", "true");
-  expect((await page.evaluate(() => window.hermesh?.loginItem()))?.on).toBe(true);
+  expect((await page.evaluate(() => window.aide?.loginItem()))?.on).toBe(true);
   const turnDone = general.getByRole("switch", { name: "一轮完成" });
   await expect(turnDone).toHaveAttribute("aria-checked", "false");
   await turnDone.click();
   await expect(turnDone).toHaveAttribute("aria-checked", "true");
   // Kept by the main process, which posts the notifications.
-  expect((await page.evaluate(() => window.hermesh?.getPreferences()))?.notifyTurnDone).toBe(true);
+  expect((await page.evaluate(() => window.aide?.getPreferences()))?.notifyTurnDone).toBe(true);
   await snap(settings, "settings-general");
 
   await nav(settings, "授权").click();
@@ -183,10 +183,10 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/hook`;
   const { app, page } = await launch();
-  // The bot asks to be woken (message wake); its owner opens the link it gives, as macOS hands the app a hermesh:// link.
+  // The bot asks to be woken (message wake); its owner opens the link it gives, as macOS hands the app an aide:// link.
   const askedLink = async (...as: string[]) => {
     const link: string = JSON.parse(await cli(...as, "message", "wake", "-o", "json")).wake.link;
-    expect(link).toMatch(/^hermesh:\/\/wake\?code=/);
+    expect(link).toMatch(/^aide:\/\/wake\?code=/);
     await app.evaluate(({ app }, l) => app.emit("open-url", { preventDefault() {} }, l), link);
   };
   try {
@@ -223,7 +223,7 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
     await dialog.getByRole("button", { name: "叫醒一次试试" }).click();
     await expect(dialog).toContainText("设置好了");
     await expect(dialog).toContainText("以后有新消息，Aide 都会这样叫醒它");
-    expect(calls.map((c) => c.type)).toEqual(["hermesh.check", "hermesh.check"]);
+    expect(calls.map((c) => c.type)).toEqual(["aide.check", "aide.check"]);
     await snap(page, "main-wake-ok");
     await dialog.getByRole("button", { name: "完成" }).click();
 
@@ -236,7 +236,7 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
     // A message for a bot of it without a doorbell of its own wakes it, naming
     // the bot and nothing more.
     await cli("message", "send", "--to", "bot/Tech Demos", "--message", "the review is ready");
-    await expect.poll(() => calls.find((c) => c.type === "hermesh.message")?.as, { timeout: 30_000 }).toBe("tech-demos");
+    await expect.poll(() => calls.find((c) => c.type === "aide.message")?.as, { timeout: 30_000 }).toBe("tech-demos");
     expect(calls.map((c) => c.raw).join()).not.toContain("the review is ready");
 
     // Its rings, newest first; then it stops, and the group goes with it.
@@ -267,7 +267,7 @@ test("only an agent that asked to be woken has a wake group: its link opens the 
   }
 });
 
-test("an app just updated finds the previous hermeshd, which keeps no doorbells; once that is restarted, the agent's page has them", async () => {
+test("an app just updated finds the previous aided, which keeps no doorbells; once that is restarted, the agent's page has them", async () => {
   test.skip(onWindows, "its proxy listens on a Unix socket");
   // The daemon through a proxy: first as the previous version (no
   // ListWakes), then, its connections dropped as a restart drops them, as
@@ -466,7 +466,7 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
 test("settings 账号与设备 shows the identity, the devices logged in, the account and, folded, the addresses", async () => {
   const { app, page } = await launch();
   const status = await page.evaluate(() =>
-    fetch("app://hermesh/api/hermesh.local.v1.LocalService/GetStatus", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.json()),
+    fetch("app://aide/api/aide.local.v1.LocalService/GetStatus", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.json()),
   );
   const settings = await openSettings(app, page, "account");
   const panel = page_(settings, "账号与设备");
@@ -505,9 +505,9 @@ test("settings 账号与设备 shows the identity, the devices logged in, the ac
   await expect(dialog).toBeHidden();
 
   // Another page opens in the same window; the old 可信设备 page's link lands here too.
-  await page.evaluate(() => window.hermesh?.openSettings("general"));
+  await page.evaluate(() => window.aide?.openSettings("general"));
   await expect(nav(settings, "通用")).toHaveAttribute("aria-current", "page");
-  await page.evaluate(() => window.hermesh?.openSettings("devices"));
+  await page.evaluate(() => window.aide?.openSettings("devices"));
   await expect(nav(settings, "账号与设备")).toHaveAttribute("aria-current", "page");
   expect(app.windows()).toHaveLength(2);
   await Promise.all([settings.waitForEvent("close"), settings.keyboard.down("Escape")]); // closes the window

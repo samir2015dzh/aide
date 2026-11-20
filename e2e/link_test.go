@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // linkPID is the process serving the link of the agent whose home is home
@@ -39,8 +39,8 @@ func TestAgentLink(t *testing.T) {
 		t.Skip("e2e")
 	}
 	const oneWay = 150 * time.Millisecond
-	w := newFarOwnerMac(t, oneWay, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
-	hermesh, home := filepath.Join(w.bin, "hermesh"), filepath.Join(w.tmp, "agent")
+	w := newFarOwnerMac(t, oneWay, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	aide, home := filepath.Join(w.bin, "aide"), filepath.Join(w.tmp, "agent")
 	// The agents' connections the relay saw come, so far.
 	connected := func() int {
 		n := 0
@@ -84,14 +84,14 @@ func TestAgentLink(t *testing.T) {
 		best := time.Duration(1 << 62)
 		for range 3 {
 			began := time.Now()
-			if r := run(t, append(w.cliEnv, env...), time.Minute, hermesh, "session", "get", s.SessionID); r.code != 0 {
+			if r := run(t, append(w.cliEnv, env...), time.Minute, aide, "session", "get", s.SessionID); r.code != 0 {
 				t.Fatalf("session get: %+v", r)
 			}
 			best = min(best, time.Since(began))
 		}
 		return best
 	}
-	alone, linked := timed("HERMESH_LINK=off"), timed()
+	alone, linked := timed("AIDE_LINK=off"), timed()
 	saved := float64(alone-linked) / float64(2*oneWay)
 	t.Logf("session get: %v by itself, %v through the link: %.1f round trips saved", alone.Round(time.Millisecond), linked.Round(time.Millisecond), saved)
 	// The upgrade and the end-to-end handshake, two round trips here; a real
@@ -117,7 +117,7 @@ func TestAgentLink(t *testing.T) {
 	// A link no command uses ends by itself.
 	syscall.Kill(linkPID(home), syscall.SIGKILL)
 	eventually(t, 5*time.Second, "the link gone", func() bool { return !alive(linkPID(home)) })
-	brief := start(t, "link", w.cliEnv, hermesh, "link", "--idle", "2s")
+	brief := start(t, "link", w.cliEnv, aide, "link", "--idle", "2s")
 	eventually(t, 15*time.Second, "the link serving", func() bool { return linkPID(home) == brief.cmd.Process.Pid })
 	before = connected()
 	cli("session", "get", s.SessionID)
@@ -131,12 +131,12 @@ func TestAgentLink(t *testing.T) {
 	// It ends with its home: another agent's, here.
 	ctx := context.Background()
 	home2 := filepath.Join(w.tmp, "agent2")
-	env2 := []string{"HERMESH_HOME=" + home2}
-	login := start(t, "login2", append(slices.Clone(env2), loginEnv()...), hermesh, "auth", "login", w.addr, "--name", "bot2")
+	env2 := []string{"AIDE_HOME=" + home2}
+	login := start(t, "login2", append(slices.Clone(env2), loginEnv()...), aide, "auth", "login", w.addr, "--name", "bot2")
 	if c := login.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("login: %s", login.output())
 	}
-	if r := run(t, env2, time.Minute, hermesh, "project", "list"); r.code != 0 {
+	if r := run(t, env2, time.Minute, aide, "project", "list"); r.code != 0 {
 		t.Fatalf("project list: %+v", r)
 	}
 	eventually(t, 15*time.Second, "the second agent's link", func() bool { return alive(linkPID(home2)) })
@@ -203,7 +203,7 @@ func TestAgentLinkThatFails(t *testing.T) {
 	// Mostly waiting (for pings to go unanswered): it runs beside the other
 	// tests that are, after the rest of the suite.
 	t.Parallel()
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	home := filepath.Join(w.tmp, "agent")
 	// The agent reaches the relay over a network of its own.
 	statePath := filepath.Join(home, "state.json")

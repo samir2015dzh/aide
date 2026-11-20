@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { runningAgents } from "@hermesh/her-client";
+import { runningAgents } from "@aide/her-client";
 import { useTranslation } from "react-i18next";
-import type { Methods, Op } from "@hermesh/her-protocol";
-import type { Machine } from "@hermesh/proto/local";
-import { agoText } from "@hermesh/core";
-import { Mark } from "@hermesh/ui";
+import type { Methods, Op } from "@aide/her-protocol";
+import type { Machine } from "@aide/proto/local";
+import { agoText } from "@aide/core";
+import { Mark } from "@aide/ui";
 import { errorText, useNow, useStore } from "../store";
 import type { SendOp } from "./op";
 import { AssistantPanel } from "./AssistantPanel";
@@ -111,7 +111,7 @@ function Environment({ machine, envs, choose }: { machine: Machine; envs: Machin
     [show],
   );
   const openConsole = useCallback((page?: string) => {
-    window.hermesh?.openHerConsole(id, page).catch((e: unknown) => show(errorText(e)));
+    window.aide?.openHerConsole(id, page).catch((e: unknown) => show(errorText(e)));
   }, [id, show]);
   // Her's conversation, as the page and the panels beside it act on it.
   const op: SendOp = useCallback(

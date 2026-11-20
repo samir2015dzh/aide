@@ -12,7 +12,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import io.aide.android.HermeshApp
+import io.aide.android.AideApp
 import io.aide.android.MainActivity
 import io.aide.android.R
 import io.aide.android.ui.t
@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
  * limits. HyperOS may still end it when the app is swiped away.
  */
 class ConnectionService : Service() {
-    private val model get() = (application as HermeshApp).model
+    private val model get() = (application as AideApp).model
     private var showing: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null

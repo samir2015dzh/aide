@@ -1,10 +1,10 @@
-import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, WatchResponse } from "@hermesh/proto/local";
-import { SessionLink, SessionStatus, type Session, type SessionCursor } from "@hermesh/proto/session";
+import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, WatchResponse } from "@aide/proto/local";
+import { SessionLink, SessionStatus, type Session, type SessionCursor } from "@aide/proto/session";
 import { mergeSessions, relistedCursor } from "./sessions";
 import { defaultStateLimits, livenessOf, sessionStateOf, type StateLimits } from "./states";
 
 /**
- * What a screen knows of the owner's world, as hermeshd's LocalService.Watch
+ * What a screen knows of the owner's world, as aided's LocalService.Watch
  * pushes it (docs/state-sync.md): no screen polls. Sessions also hold the
  * older pages a list loaded.
  */
@@ -69,7 +69,7 @@ export function applyWatch(w: World, m: WatchResponse): World {
 
 /** The machines whose sessions and projects cannot be read now. */
 export function unreachableMachines(machines: Machine[]): Unreachable[] {
-  return machines.filter((m) => m.unreachable !== "").map((m) => ({ $typeName: "hermesh.local.v1.Unreachable", machineId: m.machineId, machineName: m.machineName, error: m.unreachable }) as Unreachable);
+  return machines.filter((m) => m.unreachable !== "").map((m) => ({ $typeName: "aide.local.v1.Unreachable", machineId: m.machineId, machineName: m.machineName, error: m.unreachable }) as Unreachable);
 }
 
 /**

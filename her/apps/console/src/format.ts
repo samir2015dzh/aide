@@ -1,5 +1,5 @@
-import { RpcError } from "@hermesh/her-client";
-import type { ModelPrice } from "@hermesh/her-protocol";
+import { RpcError } from "@aide/her-client";
+import type { ModelPrice } from "@aide/her-protocol";
 import { i18n } from "./i18n.ts";
 import { SignInTimedOut } from "./signin.ts";
 
@@ -47,7 +47,7 @@ export function priceText(cost: ModelPrice): string {
 }
 
 /**
- * What went wrong, in words: her's own message, the connection's state, or hermeshd's refusal
+ * What went wrong, in words: her's own message, the connection's state, or aided's refusal
  * as it said it (the transport reports one as "config/write: HTTP 403 <its text>").
  */
 export function errorText(e: unknown): string {

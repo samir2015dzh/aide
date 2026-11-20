@@ -235,7 +235,7 @@ const I = {
   back: '<svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>',
 };
 const LIMIT = 2000;
-/* The block hermeshd puts after the owner's words (docs/her-reply.md §5.1). */
+/* The block aided puts after the owner's words (docs/her-reply.md §5.1). */
 const replyBlock = (q) => `<resource uri="her-reply:${q.id}">\nReplying to this earlier message of ${q.who === "her" ? "yours" : "mine"}, quoted in ${q.part ? "part" : "full"}:\n${q.text.split("\n").map((l) => (l ? "> " + l : ">")).join("\n")}\n</resource>`;
 const replyLabel = (q) => (q.who === "her" ? "回复 Her" : "引用自己的消息");
 

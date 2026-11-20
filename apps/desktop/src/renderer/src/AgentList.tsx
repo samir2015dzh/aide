@@ -3,11 +3,11 @@ import { lines } from "./connectGuideLogic";
 import { useState, type ReactNode } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { AgentSpeed, Workspace } from "@hermesh/proto/identity";
-import { AgentProblem, type AgentStatus } from "@hermesh/proto/machine";
-import type { Machine, Project } from "@hermesh/proto/local";
-import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@hermesh/core";
-import { AgentLogo, AgentTile, Mark } from "@hermesh/ui";
+import { AgentSpeed, Workspace } from "@aide/proto/identity";
+import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
+import type { Machine, Project } from "@aide/proto/local";
+import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@aide/core";
+import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
 import { local } from "./api";
@@ -17,7 +17,7 @@ import "./agentlist.css";
 
 // A machine's coding agents, as the first run's "Check and Manage Available
 // Agents" shows them and settings' machine page too: every coding agent
-// Hermesh supports, what the machine has of each (version, logged in), and
+// Aide supports, what the machine has of each (version, logged in), and
 // each installed one opening its page (AgentPage): the model its sessions run
 // with (Claude Code and Codex) and the projects it may work in. A project is
 // one folder; it lists the agents it is for (none: all of them).
@@ -59,7 +59,7 @@ function BrokenState({ a }: { a: AgentStatus }) {
   );
 }
 
-/** Claude Code and Codex first, then the order Hermesh lists them in. */
+/** Claude Code and Codex first, then the order Aide lists them in. */
 const order = (name: string) => codingAgentIds.indexOf(name);
 
 /**
@@ -220,7 +220,7 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
   // too; a new one is for this agent only. Another machine's is typed in.
   const add = async () => {
     if (!m.local) return st.set({ sheet: { kind: "addProject", machineId: m.machineId, agent } });
-    const path = await window.hermesh?.pickDirectory();
+    const path = await window.aide?.pickDirectory();
     if (!path) return;
     const same = projects.find((x) => x.path === path);
     setBusy(true);
@@ -265,7 +265,7 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
               {login && (
                 <>
                   <span className="chip mono">{login.text}</span>
-                  <button className="btn sm" onClick={() => (window.hermesh?.runInTerminal(login.key), setRan(true))}>
+                  <button className="btn sm" onClick={() => (window.aide?.runInTerminal(login.key), setRan(true))}>
                     <Icon name="terminal" />
                     {t("prepare.runInTerminal")}
                   </button>
@@ -322,7 +322,7 @@ function ModelCatalogs({ a }: { a: AgentStatus }) {
  * The model, reasoning effort, (Codex) speed and (ACP agents, once a session
  * of theirs said what they offer) mode an agent's sessions run with when
  * the agent starting one names no model, one row each: the agent's own
- * configuration unless set here; set here, only Hermesh's sessions use them.
+ * configuration unless set here; set here, only Aide's sessions use them.
  * Each row's button shows the value and opens a menu of the choices.
  */
 function Defaults({ a, m }: { a: AgentStatus; m: Machine }) {
@@ -337,7 +337,7 @@ function Defaults({ a, m }: { a: AgentStatus; m: Machine }) {
 
   const save = (next: typeof d) => st.run(() => local.setAgentDefaults({ machineId: m.machineId, defaults: { agent: a.name, ...next } }));
   const pick = async (items: { id: string; label: string; checked: boolean }[], set: (v: string) => void) => {
-    const id = await window.hermesh?.popupMenu(items);
+    const id = await window.aide?.popupMenu(items);
     if (id == null) return;
     set(id);
   };
@@ -439,7 +439,7 @@ function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
   const worktree = p.workspace !== Workspace.IN_PLACE;
   const how = worktree ? t("prepare.worktree") : t("prepare.inPlace");
   const more = async () => {
-    const id = await window.hermesh?.popupMenu([
+    const id = await window.aide?.popupMenu([
       { id: "worktree", label: t("prepare.worktreeItem"), checked: worktree },
       { id: "inPlace", label: t("prepare.inPlaceItem"), checked: !worktree },
       { separator: true },

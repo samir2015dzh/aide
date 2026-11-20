@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 import { fixture, launch, snap } from "./app";
 
 test("Antigravity shows scoped model observations, unknown defaults and expiry", async () => {
-  test.skip(process.env.HERMESH_MODEL_CATALOG_TEST !== "1", "TestAntigravityModelCatalogDesktop supplies fake ACP observations");
+  test.skip(process.env.AIDE_MODEL_CATALOG_TEST !== "1", "TestAntigravityModelCatalogDesktop supplies fake ACP observations");
   const { app, page } = await launch();
   try {
     const [settings] = await Promise.all([
       app.waitForEvent("window"),
-      page.evaluate(() => window.hermesh?.openSettings("machines")),
+      page.evaluate(() => window.aide?.openSettings("machines")),
     ]);
     await settings.waitForLoadState();
     const panel = settings.getByRole("main", { name: "机器" });

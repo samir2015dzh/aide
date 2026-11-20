@@ -15,16 +15,16 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1/machinev1connect"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/internal/herhost/hertest"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/internal/herhost/hertest"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // TestHer: Her on one of the owner's machines, reached as the owner's
@@ -177,7 +177,7 @@ func TestHer(t *testing.T) {
 
 	// What only the root key may do. A
 	// method the gate doesn't open at all is unimplemented, as one this
-	// hermeshd doesn't know (docs/version-skew.md §6.3).
+	// aided doesn't know (docs/version-skew.md §6.3).
 	_, err = call("", "server/shutdown", ``)
 	if connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("server/shutdown not refused as unimplemented: %v", err)

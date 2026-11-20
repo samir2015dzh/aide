@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // Her starts a coding agent in a GitHub repository the owner never cloned
@@ -80,7 +80,7 @@ func TestHerRepoSession(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(w.worktree(first), "feature.txt")); err != nil {
 		t.Fatalf("the worktree is not on feature: %v", err)
 	}
-	if strings.TrimSpace(gitOut(t, bare, "branch", "--list", "hermesh/*")) != "" {
+	if strings.TrimSpace(gitOut(t, bare, "branch", "--list", "aide/*")) != "" {
 		t.Fatal("pushed unasked")
 	}
 
@@ -113,7 +113,7 @@ func TestHerRepoSession(t *testing.T) {
 	// Her pushes her session's branch, unasked as the rest, and gets the
 	// page for its pull request.
 	said = tellHer(t, env, meshCall("session_push", map[string]any{"session_id": first}), "mesh ")
-	branch := "hermesh/" + first
+	branch := "aide/" + first
 	if !strings.HasPrefix(said, "mesh done") || !strings.Contains(said, "https://github.com/acme/widget/compare/feature..."+branch+"?expand=1") {
 		t.Fatalf("session_push: %s", said)
 	}

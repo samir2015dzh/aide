@@ -48,7 +48,7 @@ func TestConsoleFiles(t *testing.T) {
 	}
 }
 
-// hermeshd's own refusals are short texts with an HTTP status, before her
+// aided's own refusals are short texts with an HTTP status, before her
 // is asked anything.
 func TestConsoleRefusals(t *testing.T) {
 	h := New(Config{})

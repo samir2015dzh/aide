@@ -2,16 +2,16 @@ import { clone, create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromMs } from "@bufbuild/protobuf/wkt";
 import type { ConnectRouter } from "@connectrpc/connect";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { LocalService, QueryWorkResponseSchema, WatchResponseSchema, WatchSessionsResponseSchema, type WatchResponse, type WatchSessionsResponse } from "@hermesh/proto/local";
-import { SessionCursorSchema, SessionEventSchema, SessionSchema, type Session, type SessionCursor, type SessionEvent } from "@hermesh/proto/session";
+import { LocalService, QueryWorkResponseSchema, WatchResponseSchema, WatchSessionsResponseSchema, type WatchResponse, type WatchSessionsResponse } from "@aide/proto/local";
+import { SessionCursorSchema, SessionEventSchema, SessionSchema, type Session, type SessionCursor, type SessionEvent } from "@aide/proto/session";
 import fs from "node:fs";
 import http from "node:http";
 import { ids, smallConversation, world, type World } from "./world";
 
-// A stand-in for hermeshd on a Unix socket, serving the benchmark's world
+// A stand-in for aided on a Unix socket, serving the benchmark's world
 // (world.ts) with the calls the main window makes (Watch above all). While live, it changes
 // sessions as a busy owner's machines do: a running session every 100 ms
-// (hermeshd pushes at most that often), and the long running conversation
+// (aided pushes at most that often), and the long running conversation
 // grows: for 5 s by an event every 250 ms, then for 5 s by a reply written
 // as drafts every 100 ms (docs/reply-streaming.md), stored when it is done.
 
@@ -100,7 +100,7 @@ export async function startDaemon(socket: string): Promise<Daemon> {
         if (req.follow) yield* ch.drain();
       },
       queryWork: (req) => {
-        // By day and agent from the first day asked, as hermeshd counts (usageRequest).
+        // By day and agent from the first day asked, as aided counts (usageRequest).
         const [y, m, d] = req.firstDay.split("-").map(Number);
         const first = new Date(y, m - 1, d).getTime();
         const days = w.usage

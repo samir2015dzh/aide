@@ -8,12 +8,12 @@ import (
 	"slices"
 )
 
-// The mesh host (docs/her-mesh.md §4.1): hermeshd offers Her's own
+// The mesh host (docs/her-mesh.md §4.1): aided offers Her's own
 // conversation a group of tools, runs them for her without anyone being
 // asked (docs/her-mesh.md §5), and puts the news of her sessions into her
 // conversation.
 
-// Mesh is what serves her's mesh tools: Her's use of Hermesh as one of the
+// Mesh is what serves her's mesh tools: Her's use of Aide as one of the
 // owner's agents (internal/herlink).
 type Mesh interface {
 	// Group is the group her is offered; nil while Her has no grant.

@@ -20,8 +20,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 type Config struct {
@@ -30,13 +30,13 @@ type Config struct {
 	// Socket is where her listens (paths.Her).
 	Socket string
 	// Env is her's environment: a new terminal's (shellenv.Environ), which
-	// carries hermeshd's own HER_* variables.
+	// carries aided's own HER_* variables.
 	Env func() []string
-	// Version is hermeshd's, for her's client_info.
+	// Version is aided's, for her's client_info.
 	Version string
 	Logger  *slog.Logger
 	// ExtensionHost: while Her is on, the browsers here start this her as
-	// the Hermesh extension's host, for Socket (extension.go).
+	// the Aide extension's host, for Socket (extension.go).
 	ExtensionHost bool
 	// Notice is told of each newest the owner's devices tell of (snapshot's
 	// changed): her reply, a question, or what waits for the owner.
@@ -101,7 +101,7 @@ func (h *Host) Stop() {
 }
 
 // Off stops her for Her turned off: the browsers no longer start her for
-// the extension either. (hermeshd stopping only Stops.)
+// the extension either. (aided stopping only Stops.)
 func (h *Host) Off() {
 	h.op.Lock()
 	defer h.op.Unlock()

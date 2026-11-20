@@ -14,12 +14,12 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 )
 
 // credentialsOID is a private arc under 2.25 (the arcs are the first and
 // last 32 bits, top bit cleared, of UUID 7f3c9a52-4d1e-4b8e-9a6f-2c5d8e1b4a70). These
-// certificates are only ever exchanged between Hermesh peers.
+// certificates are only ever exchanged between Aide peers.
 var credentialsOID = asn1.ObjectIdentifier{2, 25, 0x7f3c9a52, 0x0e1b4a70}
 
 // TLSCertificate builds an ephemeral self-signed certificate for key that
@@ -33,7 +33,7 @@ func TLSCertificate(key crypto.Signer, creds *identityv1.Credentials) (tls.Certi
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 62))
 	tmpl := &x509.Certificate{
 		SerialNumber:    serial,
-		Subject:         pkix.Name{CommonName: "hermesh"},
+		Subject:         pkix.Name{CommonName: "aide"},
 		NotBefore:       time.Now().Add(-time.Hour),
 		NotAfter:        time.Now().Add(24 * time.Hour),
 		KeyUsage:        x509.KeyUsageDigitalSignature,
@@ -73,7 +73,7 @@ func PeerCredentials(rawCerts [][]byte) (*ecdsa.PublicKey, *identityv1.Credentia
 			return pub, c, nil
 		}
 	}
-	return nil, nil, errors.New("peer certificate carries no hermesh credentials")
+	return nil, nil, errors.New("peer certificate carries no aide credentials")
 }
 
 // SubjectPublicKeyMatches reports whether the verified subject key equals

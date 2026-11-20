@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // The machine's health: what would keep it from working, read from the
@@ -22,7 +22,7 @@ import (
 
 const (
 	healthEvery = 15 * time.Second
-	// diskLow: free space under which the disk with Hermesh's data is a problem.
+	// diskLow: free space under which the disk with Aide's data is a problem.
 	diskLow = 2 << 30
 	// culpritMin: ended, unreaped processes of one parent worth naming it for.
 	culpritMin = 50

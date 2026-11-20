@@ -21,7 +21,7 @@
   },
   "personal": {
     "other": "其他 Agent",
-    "connectMessage": "请帮我把你接入我的电脑（Aide）：\n1. 安装：curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli\n2. 登录：AIDE_PASSWORD='{{password}}' ~/.local/bin/aide auth login {{server}} --account {{account}} --name \"{{name}}\"\n登录后就能用了。用 aide project list 看能用的项目，用 aide session start --project {{project}} --prompt \"…\" 开始工作，aide --help 查看全部命令。",
+    "connectMessage": "请帮我把你接入我的电脑（Aide）：\n1. 安装：curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- --cli\n2. 登录：AIDE_PASSWORD='{{password}}' ~/.local/bin/aide auth login {{server}} --account {{account}} --name \"{{name}}\"\n登录后就能用了。用 aide project list 看能用的项目，用 aide session start --project {{project}} --prompt \"…\" 开始工作，aide --help 查看全部命令。",
     "projectArg": "项目",
     "passwordArg": "密码"
   },
@@ -246,7 +246,7 @@
       "incompatible": "DSH Desktop 里的 Aide 插件用不了。",
       "unknown": "还不知道 DSH Desktop 里的 Aide 插件是否在运行。"
     },
-    "viaHermesh": "经 Aide 发送",
+    "viaAide": "经 Aide 发送",
     "notSent": "没有发出去：{{reason}}",
     "install": {
       "title": "安装 Aide 插件",

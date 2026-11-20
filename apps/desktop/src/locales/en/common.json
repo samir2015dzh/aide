@@ -21,7 +21,7 @@
   },
   "personal": {
     "other": "Other Agent",
-    "connectMessage": "Please connect yourself to my computer (Aide):\n1. Install: curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli\n2. Log in: AIDE_PASSWORD='{{password}}' ~/.local/bin/aide auth login {{server}} --account {{account}} --name \"{{name}}\"\nThen you’re ready. Use aide project list to see the projects you can use, aide session start --project {{project}} --prompt \"…\" to start working, and aide --help for every command.",
+    "connectMessage": "Please connect yourself to my computer (Aide):\n1. Install: curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- --cli\n2. Log in: AIDE_PASSWORD='{{password}}' ~/.local/bin/aide auth login {{server}} --account {{account}} --name \"{{name}}\"\nThen you’re ready. Use aide project list to see the projects you can use, aide session start --project {{project}} --prompt \"…\" to start working, and aide --help for every command.",
     "projectArg": "project",
     "passwordArg": "password"
   },
@@ -258,7 +258,7 @@
       "incompatible": "The Aide plugin in DSH Desktop can't be used.",
       "unknown": "Not known yet whether the Aide plugin in DSH Desktop runs."
     },
-    "viaHermesh": "Sent from Aide",
+    "viaAide": "Sent from Aide",
     "notSent": "Not sent: {{reason}}",
     "install": {
       "title": "Install the Aide plugin",

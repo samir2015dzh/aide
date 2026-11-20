@@ -2,7 +2,7 @@
 //!
 //! On Unix it is a private socket at the endpoint's path. On Windows it is a named pipe that
 //! only this user can open: its name is random, and the file at the endpoint's path holds it,
-//! as for hermeshd's own endpoints (`internal/localipc`), so hermeshd dials her's as its own.
+//! as for aided's own endpoints (`internal/localipc`), so aided dials her's as its own.
 
 #[cfg(unix)]
 pub use unix::*;

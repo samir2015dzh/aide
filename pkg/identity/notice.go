@@ -4,7 +4,7 @@ import (
 	"crypto/ecdh"
 	"crypto/hpke"
 	"errors"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 
 	"google.golang.org/protobuf/proto"
 )

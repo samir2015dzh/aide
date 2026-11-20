@@ -11,7 +11,7 @@ export type WindowKind = "main" | "onboarding" | "settings" | "auxiliary" | "pan
 export interface Platform {
   /** The pages' data-platform token. */
   token: "mac" | "win";
-  /** The installed app runs hermeshd itself; development and test runs use a daemon of their own. */
+  /** The installed app runs aided itself; development and test runs use a daemon of their own. */
   installed: boolean;
   /** The window's material shows through the sidebar: macOS's vibrancy, Windows 11's Mica. */
   material: boolean;
@@ -19,13 +19,13 @@ export interface Platform {
   settle(): Promise<boolean>;
   /** The installer started this run to set the app up or remove it (Windows): it does that and quits. */
   installerEvent(): boolean;
-  /** Takes hermesh:// links (sign-in, join and wake). */
+  /** Takes aide:// links (sign-in, join and wake). */
   registerLinks(): void;
-  /** Makes hermeshd start by itself, and start now if it does not run. */
+  /** Makes aided start by itself, and start now if it does not run. */
   registerDaemon(): void;
-  /** Restarts hermeshd (after an update brought another version). */
+  /** Restarts aided (after an update brought another version). */
   restartDaemon(why: string): void;
-  /** The owner turned hermeshd's start off in the system's settings. */
+  /** The owner turned aided's start off in the system's settings. */
   daemonNeedsApproval(): boolean;
   /** Opening the app at login. */
   loginItem(): LoginItem | Promise<LoginItem>;

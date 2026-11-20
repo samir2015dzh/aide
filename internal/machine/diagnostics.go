@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/claude"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // Diagnostics describes this machine for a person to send when something

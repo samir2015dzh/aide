@@ -11,9 +11,9 @@ import (
 // Everything is in Local AppData, never Roaming: a domain profile copies
 // Roaming to the user's other PCs, and device keys must stay on one.
 
-func dataDir() string { return filepath.Join(localAppData(), "Hermesh") }
+func dataDir() string { return filepath.Join(localAppData(), "Aide") }
 
-func cliHome() string { return filepath.Join(localAppData(), "Hermesh", "cli") }
+func cliHome() string { return filepath.Join(localAppData(), "Aide", "cli") }
 
 func localAppData() string {
 	if v := os.Getenv("LOCALAPPDATA"); v != "" {
@@ -27,7 +27,7 @@ func localAppData() string {
 // (package localipc).
 
 // LocalAPI is where the owner role serves LocalService.
-func LocalAPI(dataDir string) string { return filepath.Join(dataDir, "run", "hermeshd.pipe") }
+func LocalAPI(dataDir string) string { return filepath.Join(dataDir, "run", "aided.pipe") }
 
 // Control is where a machine with this data directory takes its own
 // user's commands.
@@ -54,6 +54,6 @@ func LinkLock(cliHome string) string {
 	return filepath.Join(localDir(), fmt.Sprintf("link-%x", h[:8]))
 }
 
-func localDir() string { return filepath.Join(localAppData(), "Hermesh", "run") }
+func localDir() string { return filepath.Join(localAppData(), "Aide", "run") }
 
 const localExt = ".pipe"

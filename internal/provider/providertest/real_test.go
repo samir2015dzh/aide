@@ -15,28 +15,28 @@ import (
 	"testing"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
-	"github.com/hermeshai/hermesh/internal/provider/claude"
-	"github.com/hermeshai/hermesh/internal/provider/codex"
-	"github.com/hermeshai/hermesh/internal/provider/fake"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
+	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/provider/codex"
+	"github.com/samir2015dzh/aide/internal/provider/fake"
 )
 
-// Real-CLI tests cost tokens; run with HERMESH_REAL_CLI=1. Installed ACP
-// agents are included; HERMESH_ACP_TEST_BIN (with HERMESH_ACP_TEST_ARGS and
-// HERMESH_ACP_TEST_MODEL) adds any other ACP agent as "acp-test".
+// Real-CLI tests cost tokens; run with AIDE_REAL_CLI=1. Installed ACP
+// agents are included; AIDE_ACP_TEST_BIN (with AIDE_ACP_TEST_ARGS and
+// AIDE_ACP_TEST_MODEL) adds any other ACP agent as "acp-test".
 func realProviders(t *testing.T) []provider.Provider {
 	ps := []provider.Provider{fake.Provider{}}
-	if os.Getenv("HERMESH_REAL_CLI") == "1" {
+	if os.Getenv("AIDE_REAL_CLI") == "1" {
 		path := os.Getenv("PATH")
 		ps = append(ps, &claude.Provider{PathEnv: path}, &codex.Provider{PathEnv: path})
 		for _, p := range acp.Providers(path) {
 			ps = append(ps, p)
 		}
-		if b := os.Getenv("HERMESH_ACP_TEST_BIN"); b != "" {
-			ps = append(ps, &acp.Provider{Agent: acp.Agent{Name: "acp-test", Command: filepath.Base(b), Args: strings.Fields(os.Getenv("HERMESH_ACP_TEST_ARGS"))}, PathEnv: path, Binary: b})
+		if b := os.Getenv("AIDE_ACP_TEST_BIN"); b != "" {
+			ps = append(ps, &acp.Provider{Agent: acp.Agent{Name: "acp-test", Command: filepath.Base(b), Args: strings.Fields(os.Getenv("AIDE_ACP_TEST_ARGS"))}, PathEnv: path, Binary: b})
 		}
 	}
 	return ps
@@ -107,8 +107,8 @@ func TestTwoTurns(t *testing.T) {
 			s, err := p.Start(ctx, provider.StartSpec{
 				WorkDir: dir, TempDir: t.TempDir(), NewRef: "6f1a3c1e-6c2a-4c55-9a51-1b2f3c4d5e6f",
 				Env: os.Environ(), Model: model(p),
-				Prompt: prompt(p, "write hello.txt hermesh\nsay done",
-					"Create a file named hello.txt containing exactly the word hermesh. Then reply with just: done"),
+				Prompt: prompt(p, "write hello.txt aide\nsay done",
+					"Create a file named hello.txt containing exactly the word aide. Then reply with just: done"),
 				Gate: func(_ context.Context, a provider.ToolAction) provider.Decision {
 					calls = append(calls, a)
 					return provider.Decision{Allow: true}
@@ -123,7 +123,7 @@ func TestTwoTurns(t *testing.T) {
 				t.Fatalf("turn failed: %s", tr.result.Text)
 			}
 			b, err := os.ReadFile(filepath.Join(dir, "hello.txt"))
-			if err != nil || !strings.Contains(string(b), "hermesh") {
+			if err != nil || !strings.Contains(string(b), "aide") {
 				t.Fatalf("hello.txt: %q %v", b, err)
 			}
 			if tr.ref == "" {
@@ -221,7 +221,7 @@ func model(p provider.Provider) string {
 	case "claude":
 		return "haiku"
 	case "acp-test":
-		return os.Getenv("HERMESH_ACP_TEST_MODEL")
+		return os.Getenv("AIDE_ACP_TEST_MODEL")
 	}
 	return ""
 }
@@ -256,7 +256,7 @@ func TestRealFailureKinds(t *testing.T) {
 			base := provider.StartSpec{WorkDir: gitRepo(t), TempDir: t.TempDir(), Env: os.Environ(),
 				Prompt: "Reply with exactly: ok", Gate: func(context.Context, provider.ToolAction) provider.Decision { return provider.Decision{Allow: true} }}
 			spec := base
-			spec.Model, spec.NewRef = "no-such-model-hermesh", "8f1a3c1e-6c2a-4c55-9a51-1b2f3c4d5e6f"
+			spec.Model, spec.NewRef = "no-such-model-aide", "8f1a3c1e-6c2a-4c55-9a51-1b2f3c4d5e6f"
 			if f := failureOf(t, p, spec); f.GetKind() != sessionv1.FailureKind_FAILURE_KIND_MODEL_UNAVAILABLE {
 				t.Errorf("unknown model: %+v", f)
 			}
@@ -407,7 +407,7 @@ func TestAttachedFiles(t *testing.T) {
 			s, err := p.Start(context.Background(), provider.StartSpec{WorkDir: gitRepo(t), TempDir: t.TempDir(),
 				Env: os.Environ(), Model: model(p), NewRef: "8b3c5d7e-2f4a-4b6c-9d8e-0f1a2b3c4d5e",
 				Prompt: prompt(p, "images", "What single color fills the attached image? Also read the file "+notes+
-					". Reply with only: <color> <secret number>\n\n[Hermesh] Attached files, saved on this machine outside the worktree:\n- "+img+" (image/png, shown as an image)\n- "+notes+" (text/plain)"),
+					". Reply with only: <color> <secret number>\n\n[Aide] Attached files, saved on this machine outside the worktree:\n- "+img+" (image/png, shown as an image)\n- "+notes+" (text/plain)"),
 				Images: []provider.Image{{Path: img, MediaType: "image/png"}}, ReadDirs: []string{files},
 				Gate: func(context.Context, provider.ToolAction) provider.Decision { return provider.Decision{Allow: true} }})
 			if err != nil {
@@ -487,12 +487,12 @@ func TestQuestions(t *testing.T) {
 }
 
 // TestClaudeInboxShut: Claude Code's own cross-session inbox doesn't reach
-// a Hermesh session, even for a poster with the session's token, as
+// an Aide session, even for a poster with the session's token, as
 // anything its commands start has. Otherwise a message posted there starts
-// a turn Hermesh never asked for.
+// a turn Aide never asked for.
 func TestClaudeInboxShut(t *testing.T) {
-	if os.Getenv("HERMESH_REAL_CLI") != "1" {
-		t.Skip("real Claude Code only: HERMESH_REAL_CLI=1")
+	if os.Getenv("AIDE_REAL_CLI") != "1" {
+		t.Skip("real Claude Code only: AIDE_REAL_CLI=1")
 	}
 	p := &claude.Provider{PathEnv: os.Getenv("PATH")}
 	if info := p.Discover(context.Background()); !info.Available || !info.LoggedIn {

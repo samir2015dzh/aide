@@ -9,8 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 func (h *harness) inPlaceProject(id, dir string) {
@@ -95,9 +95,9 @@ func TestInPlaceSessionWorksInTheDirectory(t *testing.T) {
 	}
 }
 
-// In a git repository worked in place Hermesh makes no branch and no
+// In a git repository worked in place Aide makes no branch and no
 // commit: the changes are left in the owner's working tree.
-func TestInPlaceGitRepoGetsNoHermeshCommits(t *testing.T) {
+func TestInPlaceGitRepoGetsNoAideCommits(t *testing.T) {
 	h := newHarness(t, DefaultLimits())
 	repo := testRepo(t)
 	before := gitOut(t, repo, "rev-parse", "HEAD")
@@ -107,7 +107,7 @@ func TestInPlaceGitRepoGetsNoHermeshCommits(t *testing.T) {
 	if after := gitOut(t, repo, "rev-parse", "HEAD"); after != before {
 		t.Fatalf("HEAD moved: %s -> %s", before, after)
 	}
-	if b := gitOut(t, repo, "branch", "--list", "hermesh/*"); strings.TrimSpace(b) != "" {
+	if b := gitOut(t, repo, "branch", "--list", "aide/*"); strings.TrimSpace(b) != "" {
 		t.Fatalf("branches: %q", b)
 	}
 	if st := gitOut(t, repo, "status", "--porcelain"); !strings.Contains(st, "?? feature.txt") {

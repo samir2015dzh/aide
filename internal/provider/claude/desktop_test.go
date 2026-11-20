@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // desktopFixture writes a record the desktop app would have written, last
@@ -85,10 +85,10 @@ func TestDesktopAccountDir(t *testing.T) {
 }
 
 // The record is the one the desktop app writes when it imports a CLI
-// session (testdata/desktop-record.json), with Hermesh's title.
+// session (testdata/desktop-record.json), with Aide's title.
 func TestDesktopRecordGolden(t *testing.T) {
-	r := newDesktopRecord("6f1a3c1e-6c2a-4c55-9a51-1b2f3c4d5e6f", `C:\Users\owner\work\hermesh`,
-		desktopTitle("hermesh", "Muse", "Fix the login page"), time.UnixMilli(1789000000123))
+	r := newDesktopRecord("6f1a3c1e-6c2a-4c55-9a51-1b2f3c4d5e6f", `C:\Users\owner\work\aide`,
+		desktopTitle("aide", "Muse", "Fix the login page"), time.UnixMilli(1789000000123))
 	dir := t.TempDir()
 	path, err := writeDesktopRecord(dir, r)
 	if err != nil {
@@ -123,8 +123,8 @@ func TestDesktopRecordGolden(t *testing.T) {
 
 func TestDesktopTitle(t *testing.T) {
 	for _, c := range []struct{ project, requester, title, want string }{
-		{"hermesh", "Muse", "Fix the login page", "hermesh · Muse via Aide · Fix the login page"},
-		{"hermesh", "", "Fix it", "hermesh · Aide · Fix it"},
+		{"aide", "Muse", "Fix the login page", "aide · Muse via Aide · Fix the login page"},
+		{"aide", "", "Fix it", "aide · Aide · Fix it"},
 		{"", "", "", "Aide"},
 	} {
 		if got := desktopTitle(c.project, c.requester, c.title); got != c.want {
@@ -133,8 +133,8 @@ func TestDesktopTitle(t *testing.T) {
 	}
 }
 
-// A new session Hermesh starts is listed in the desktop app once Claude
-// Code reports it started under the id Hermesh gave it; a resumed one is
+// A new session Aide starts is listed in the desktop app once Claude
+// Code reports it started under the id Aide gave it; a resumed one is
 // already listed, and a machine without the desktop app is left alone.
 func TestStartListsSessionInDesktop(t *testing.T) {
 	scripted(t)

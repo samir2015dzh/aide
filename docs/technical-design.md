@@ -1,4 +1,4 @@
-# Hermesh Technical Design (Final)
+# Aide Technical Design (Final)
 
 > **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** the
 > relay keeps the owner's account and password (Argon2id) and a key of its
@@ -38,10 +38,10 @@
 | Term | Meaning |
 |---|---|
 | **Owner** | The user, who owns all machines and grants |
-| **Hermesh.app** | The macOS desktop app: **the owner's console**, and the manager of the background service. The owner's root key lives in its Secure Enclave; every authorization-type operation is confirmed here with Touch ID |
-| **Relay** | `hermesh-relay`, self-hosted by the user. It **only coordinates and forwards**: pairing, the machine list, online status, tunnel routing, revocation distribution. It is **untrusted**: it cannot forge a grant and cannot see content |
-| **Machine** | A machine running the `hermeshd` background service (a Mac mini, a MacBook and a Linux VPS are fully equal). It is what actually runs Claude Code or Codex |
-| **Client** | The party that starts work with the `hermesh` CLI, usually a cloud agent such as Grok Bot |
+| **Aide.app** | The macOS desktop app: **the owner's console**, and the manager of the background service. The owner's root key lives in its Secure Enclave; every authorization-type operation is confirmed here with Touch ID |
+| **Relay** | `aide-relay`, self-hosted by the user. It **only coordinates and forwards**: pairing, the machine list, online status, tunnel routing, revocation distribution. It is **untrusted**: it cannot forge a grant and cannot see content |
+| **Machine** | A machine running the `aided` background service (a Mac mini, a MacBook and a Linux VPS are fully equal). It is what actually runs Claude Code or Codex |
+| **Client** | The party that starts work with the `aide` CLI, usually a cloud agent such as Grok Bot |
 | **agent (coding agent)** | The Claude Code, Codex or ACP agent doing the work on a machine; the "agent" in `--agent claude` refers to it |
 | **Grant** | The authorization the owner issues to a client: which machines and projects it may use, which coding agents it may use, and the validity period |
 | **Session** | One coding agent session: Claude Code, Codex or an ACP agent running on one project of one machine, possibly over several rounds of conversation; depending on the project setting it runs in its own git worktree or directly in the project directory (in place). Corresponds to a Claude session or a Codex thread |
@@ -65,7 +65,7 @@
 
 ### 1.2 P1 Goals
 
-1. **A cloud agent drives Claude Code and Codex on any of the user's machines through the `hermesh` CLI**: start sessions, watch streaming progress, append messages, cancel, fetch the diff, and summarize progress across machines.
+1. **A cloud agent drives Claude Code and Codex on any of the user's machines through the `aide` CLI**: start sessions, watch streaming progress, append messages, cancel, fetch the diff, and summarize progress across machines.
 2. **The owner does all management in the Mac app, with no command line needed**:
    - first-run setup;
    - pairing machines and clients;
@@ -78,7 +78,7 @@
 4. **Security baseline**:
    - even if the relay is compromised, it **cannot forge commands or grants, and cannot read content**;
    - each client's permissions are decided by the owner and can be changed or revoked at any time;
-   - Hermesh itself never carries any credentials;
+   - Aide itself never carries any credentials;
    - the audit log is tamper-evident.
 
 ### 1.3 Out of Scope for P1
@@ -97,14 +97,14 @@
 | # | Scenario | Pass criteria |
 |---|---|---|
 | A1 | A new user follows the README: deploy the relay with one `docker run` → install the app → first-run setup → check "这台 Mac 也作为执行机器" (Also use this Mac as a machine) | Done within 10 minutes |
-| A2 | Run the install command on a Linux VPS and on another Mac, and enter the pairing codes from their terminals into the app | Both machines appear in the app and show as online; `hermeshd doctor` points out problems such as Claude/Codex not being logged in |
-| A3 | Grok Bot runs `hermesh auth login <connection-address>`, and the owner enters the pairing code in the app; this client opens a Claude session on a project on the Mac mini | Streaming events are visible; the diff is fetched at the end; the user's own working directory is untouched |
+| A2 | Run the install command on a Linux VPS and on another Mac, and enter the pairing codes from their terminals into the app | Both machines appear in the app and show as online; `aided doctor` points out problems such as Claude/Codex not being logged in |
+| A3 | Grok Bot runs `aide auth login <connection-address>`, and the owner enters the pairing code in the app; this client opens a Claude session on a project on the Mac mini | Streaming events are visible; the diff is fetched at the end; the user's own working directory is untouched |
 | A4 | Same as A3, but a Codex session on the VPS | Same as above |
-| A5 | Append a message to an idle session to start a second turn; interrupt while running and the session is kept; `hermesh session list` and the app's Sessions page both summarize progress across all machines | The second turn carries the context; after cancel, the whole process group exits; offline machines are clearly marked unreachable |
+| A5 | Append a message to an idle session to start a second turn; interrupt while running and the session is kept; `aide session list` and the app's Sessions page both summarize progress across all machines | The second turn carries the context; after cancel, the whole process group exits; offline machines are clearly marked unreachable |
 | A6 | Narrow the client's grant to Codex only, then open a session with Claude | Opening the session is refused; after the grant changes, it takes effect from the next session, and old grant versions are rejected |
 | A7 | **Malicious relay test suite** (every row of section 3.8) | All fail; the machine's audit has records of the rejections; packet capture confirms the relay side only sees ciphertext |
 | A8 | Revoke a client | The relay disconnects it immediately; the app notifies every online machine over the end-to-end channel and shows each machine's acknowledgement |
-| A9 | Resilience: the daemon is killed with kill -9, the relay restarts, the app quits and reopens, `hermesh login` is interrupted while waiting for pairing and then rerun | Sessions are not interrupted, or are marked crashed and can be resumed; `--wait` resumes reading by seq without losing events; rerunning login shows the same pairing code |
+| A9 | Resilience: the daemon is killed with kill -9, the relay restarts, the app quits and reopens, `aide login` is interrupted while waiting for pairing and then rerun | Sessions are not interrupted, or are marked crashed and can be resumed; `--wait` resumes reading by seq without losing events; rerunning login shows the same pairing code |
 | A10 | Trusted devices: a second Mac joins, approved on the first; the first is lost and removed from the second | All machines accept the new chain and reject the removed key; grants and machine certificates it signed are reissued automatically; agents need to do nothing; the removed Mac learns it was removed |
 
 ---
@@ -114,18 +114,18 @@
 ```mermaid
 flowchart LR
   subgraph AG["Client (cloud agent)"]
-    CLI["hermesh CLI<br/>client key + grant"]
+    CLI["aide CLI<br/>client key + grant"]
   end
   subgraph RL["Relay (self-hosted, untrusted)"]
-    RY["hermesh-relay<br/>pairing / admission / routing / lists / revocation"]
+    RY["aide-relay<br/>pairing / admission / routing / lists / revocation"]
   end
   subgraph MB["Owner's Mac"]
-    APP["Hermesh.app (Electron + native signer)<br/>Secure Enclave root key + Touch ID"]
-    CORE["Built-in hermeshd (Go)<br/>owner role + optional machine role"]
+    APP["Aide.app (Electron + native signer)<br/>Secure Enclave root key + Touch ID"]
+    CORE["Built-in aided (Go)<br/>owner role + optional machine role"]
     APP -- "local API (UDS, gRPC)" --- CORE
   end
   subgraph ND["Other machines (Mac / Linux VPS)"]
-    D["hermeshd (machine role)"]
+    D["aided (machine role)"]
     P["claude -p / codex app-server<br/>one worktree per session"]
     D --> P
   end
@@ -140,10 +140,10 @@ flowchart LR
 
 | Component | Runs on | Responsibilities |
 |---|---|---|
-| `Hermesh.app` | The owner's Mac | UI; manages the local background service (start, stop, status); the owner root key (Secure Enclave); signing confirmation ("sign what you see") |
-| `hermeshd` | Every machine; the app also embeds a copy | **Machine role**: identity, sessions, provider adapters, worktrees, audit. **Owner role** (only inside the app): connects to the relay, handles pairing, reads each machine's sessions over the end-to-end channel, sends admin commands |
-| `hermesh-relay` | The user's own VPS (Docker) | Pairing matchmaking, admission, online status, machine and client lists, tunnel routing, revocation distribution |
-| `hermesh` | The machine where the client runs | Client-facing CLI with machine-readable output |
+| `Aide.app` | The owner's Mac | UI; manages the local background service (start, stop, status); the owner root key (Secure Enclave); signing confirmation ("sign what you see") |
+| `aided` | Every machine; the app also embeds a copy | **Machine role**: identity, sessions, provider adapters, worktrees, audit. **Owner role** (only inside the app): connects to the relay, handles pairing, reads each machine's sessions over the end-to-end channel, sends admin commands |
+| `aide-relay` | The user's own VPS (Docker) | Pairing matchmaking, admission, online status, machine and client lists, tunnel routing, revocation distribution |
+| `aide` | The machine where the client runs | Client-facing CLI with machine-readable output |
 
 ### 2.2 Three Protocol Layers
 
@@ -174,19 +174,19 @@ flowchart LR
 
 Both principles are part of the malicious relay test suite (A7) and are verified on every CI run.
 
-One opt-in exception (2026-10-21, before accounts): a relay server may run the **MCP gateway** (docs/mcp-gateway.md), which holds the client keys of the MCP connections its owners approved with Touch ID, so that remote agent products can use Hermesh. Within such a connection's grant the server can act as it and see the sessions it reaches; it gains nothing over any other client or machine, cannot widen a grant, and cannot create a connection that reaches a machine without the owner's Touch ID. People who don't accept that run their own relay.
+One opt-in exception (2026-10-21, before accounts): a relay server may run the **MCP gateway** (docs/mcp-gateway.md), which holds the client keys of the MCP connections its owners approved with Touch ID, so that remote agent products can use Aide. Within such a connection's grant the server can act as it and see the sessions it reaches; it gains nothing over any other client or machine, cannot widen a grant, and cannot create a connection that reaches a machine without the owner's Touch ID. People who don't accept that run their own relay.
 
 ### 2.3 The Complete User Journey
 
 1. Run one `docker run …` on a VPS to start the relay; the log prints a **claim code**.
-2. Install Hermesh.app and go through first-run setup:
+2. Install Aide.app and go through first-run setup:
    1. fill in the relay address and the claim code;
    2. press Touch ID to generate the owner key; this Mac becomes the first trusted device;
    3. check "这台 Mac 也作为执行机器" (Also use this Mac as a machine).
    Another Mac joins later with "加入已有的主人" (Join an Existing Owner), approved on this one.
 3. **Add a machine**: the app shows a one-line install command; copy it to the Mac mini or VPS and run it. The terminal shows a pairing code; go back to the app, enter it, and press Touch ID.
 4. **Add a project**: choose the machine and the path, and press Touch ID.
-5. **Add a client**: give the connection address from the app to Grok Bot and have it run `hermesh auth login <connection-address>`. It shows a pairing code; you enter it in the app, confirm the permissions (full access by default) and scope, and press Touch ID.
+5. **Add a client**: give the connection address from the app to Grok Bot and have it run `aide auth login <connection-address>`. It shows a pairing code; you enter it in the app, confirm the permissions (full access by default) and scope, and press Touch ID.
 6. From then on the client opens sessions, appends messages and fetches diffs by itself; in the app you can see the progress of all sessions, and you can change the client's permissions or revoke it at any time.
 
 ---
@@ -207,9 +207,9 @@ Machine keys (one per machine)    Client keys (one per client)
 | Key | Stored in | Purpose | Impact if leaked |
 |---|---|---|---|
 | **Root key** (one per trusted device) | The app's Secure Enclave, access control `userPresence`, not exportable | Issues every object that "adds permissions", and the next RootCert when a device joins or is removed. The first device's key is the trust anchor: `owner_id = "o_" + fp(its public key)[:24]` | If a Mac is stolen, the attacker still has to pass Touch ID or the password; another trusted device removes it |
-| **Device key** | Keychain software key; the app and the built-in hermeshd share an access group | Connects to the relay as the owner; over the end-to-end channel it **reads** sessions, cancels sessions, pushes revocations, and starts and drives the owner's own sessions (§3.4) | Can read, cancel and revoke, and run the owner's own sessions on the owner's machines; cannot add any permission |
-| **Machine key** | macOS: Keychain; Linux: `~/.local/share/hermesh/keys/machine.key` (0600) | Machine identity; TLS server key for L1; relay admission | Affects only this one machine; can be revoked |
-| **Client key** | `~/.config/hermesh/client.key` (0600) on the client's machine | Client identity; TLS client key for L1; relay admission | Valid only within the grant's scope; revocable; has an expiry |
+| **Device key** | Keychain software key; the app and the built-in aided share an access group | Connects to the relay as the owner; over the end-to-end channel it **reads** sessions, cancels sessions, pushes revocations, and starts and drives the owner's own sessions (§3.4) | Can read, cancel and revoke, and run the owner's own sessions on the owner's machines; cannot add any permission |
+| **Machine key** | macOS: Keychain; Linux: `~/.local/share/aide/keys/machine.key` (0600) | Machine identity; TLS server key for L1; relay admission | Affects only this one machine; can be revoked |
+| **Client key** | `~/.config/aide/client.key` (0600) on the client's machine | Client identity; TLS client key for L1; relay admission | Valid only within the grant's scope; revocable; has an expiry |
 | Relay TLS certificate | The relay (ACME) | Used only for the outer TLS | **Plays no part in any authorization** |
 
 **ID rules**:
@@ -223,11 +223,11 @@ Every credential is a protobuf message wrapped in an outer signature. The signat
 
 ```proto
 message Signed {
-  string type = 1;            // e.g. "hermesh.identity.v1.Grant"; also used for domain separation of the signature
+  string type = 1;            // e.g. "aide.identity.v1.Grant"; also used for domain separation of the signature
   bytes  body = 2;
   string signer_key_id = 3;
   SignatureAlgorithm alg = 4; // P1: ECDSA_P256_SHA256 (signatures produced by the Secure Enclave have the same format)
-  bytes  signature = 5;       // signature over "hermesh-sig-v1\0" || type || "\0" || body
+  bytes  signature = 5;       // signature over "aide-sig-v1\0" || type || "\0" || body
 }
 ```
 
@@ -261,14 +261,14 @@ message Signed {
 
 ### 3.4 A Grant Means Full Trust
 
-Hermesh does not build its own permission controls (since 2026-10-18; the earlier four presets "full access / sandbox / read-only" have been removed). A grant only limits **who** can open sessions, on **which machines and which projects**, with **which coding agents**, and for **how long**; inside a session the coding agent runs with full access and behaves the same as if you ran it yourself on that machine:
+Aide does not build its own permission controls (since 2026-10-18; the earlier four presets "full access / sandbox / read-only" have been removed). A grant only limits **who** can open sessions, on **which machines and which projects**, with **which coding agents**, and for **how long**; inside a session the coding agent runs with full access and behaves the same as if you ran it yourself on that machine:
 
 | Claude Code | Codex | ACP agent |
 |---|---|---|
 | `--dangerously-skip-permissions`, loading the user's usual configuration | `sandbox: danger-full-access`, `approvalPolicy: never` | Always choose `allow_once` for permission requests |
 
 - A separate worktree (or in-place directory) per session, an audit record for every tool call, end-to-end encryption and signed grants all stay as before.
-- Each coding agent's own permission mode (Claude's `--permission-mode`, Codex's sandbox, ACP's session mode) can later be passed through as is, without Hermesh mapping between them; this is not done yet.
+- Each coding agent's own permission mode (Claude's `--permission-mode`, Codex's sandbox, ACP's session mode) can later be passed through as is, without Aide mapping between them; this is not done yet.
 
 **The owner's own sessions** (2026-11-16): the owner starts sessions from a trusted device too (the desktop app's New Session sheet, `LocalService.StartSession`), and keeps driving them there.
 
@@ -289,7 +289,7 @@ Hermesh does not build its own permission controls (since 2026-10-18; the earlie
 **How the pairing code is computed**:
 
 ```
-code = CrockfordBase32( SHA-256("hermesh-pair-v1\0" || kind || applicant public key SPKI) )[:12]
+code = CrockfordBase32( SHA-256("aide-pair-v1\0" || kind || applicant public key SPKI) )[:12]
 shown as XXXX-XXXX-XXXX (about 60 bits)
 ```
 
@@ -308,7 +308,7 @@ sequenceDiagram
   S->>S: Generate a key; record the owner_id from the connection address as the trust anchor
   S->>R: POST /v1/pairing (PairingRequest, self-signed)
   R-->>S: Registered (valid for 10 minutes)
-  S->>S: Terminal shows: enter pairing code K7QM-2XPA-9RTD in the Hermesh app, then wait
+  S->>S: Terminal shows: enter pairing code K7QM-2XPA-9RTD in the Aide app, then wait
   A->>R: User enters the pairing code → lookup
   R-->>A: Return the PairingRequest
   A->>A: Verify the signature, recompute the pairing code from the public key and compare with the input → show name, platform, hostname<br/>User confirms the machine name, or chooses the scope for the agent → Touch ID
@@ -317,8 +317,8 @@ sequenceDiagram
   S->>S: Verify the credential chain against the trust anchor → done
 ```
 
-- **Client**: run `hermesh auth login relay.example.com/o_7k3m9x2q [--name grok]`. The pairing state is saved locally, so if the command is cut off by a timeout, rerunning it shows **the same pairing code** and keeps waiting.
-- **Machine**: run `curl -fsSL https://github.com/<org>/hermesh/releases/latest/download/install.sh | sh -s -- relay.example.com/o_7k3m9x2q`. The argument is the connection address. After installation it starts pairing automatically and shows the pairing code. To show it again, run `hermeshd pair`.
+- **Client**: run `aide auth login relay.example.com/o_7k3m9x2q [--name grok]`. The pairing state is saved locally, so if the command is cut off by a timeout, rerunning it shows **the same pairing code** and keeps waiting.
+- **Machine**: run `curl -fsSL https://github.com/<org>/aide/releases/latest/download/install.sh | sh -s -- relay.example.com/o_7k3m9x2q`. The argument is the connection address. After installation it starts pairing automatically and shows the pairing code. To show it again, run `aided pair`.
 - **The owner's own Mac**: needs no pairing; check "这台 Mac 也作为执行机器" (Also use this Mac as a machine) in the app, and the root key issues its MachineCert directly.
 - **Anti-harassment**: the pairing endpoint is public. The relay rate-limits it by IP and caps the number of pending requests (20 by default). Next to the input field the app shows the hint "只输入你刚刚让 agent 或机器显示的配对码" (Only enter a pairing code you just had an agent or machine display).
 
@@ -327,11 +327,11 @@ sequenceDiagram
 **F1 Deploy the relay**
 
 ```bash
-docker run -d --name hermesh-relay --restart unless-stopped -p 80:80 -p 443:443 -v hermesh-relay:/data \
-  -e HERMESH_RELAY_DOMAIN=relay.example.com hermeshai/hermesh-relay:<version>
+docker run -d --name aide-relay --restart unless-stopped -p 80:80 -p 443:443 -v aide-relay:/data \
+  -e AIDE_RELAY_DOMAIN=relay.example.com ghcr.io/samir2015dzh/aide-relay:<version>
 ```
 
-The image is built for linux/amd64 and linux/arm64, runs as nonroot, and takes its settings from `-e` (`HERMESH_RELAY_DOMAIN`, `HERMESH_RELAY_MCP`, `HERMESH_RELAY_PUBLIC_URL`) as well as from flags. The relay obtains its certificate automatically through ACME. On first start it prints a claim code, and until it is claimed it only accepts the claim request.
+The image is built for linux/amd64 and linux/arm64, runs as nonroot, and takes its settings from `-e` (`AIDE_RELAY_DOMAIN`, `AIDE_RELAY_MCP`, `AIDE_RELAY_PUBLIC_URL`) as well as from flags. The relay obtains its certificate automatically through ACME. On first start it prints a claim code, and until it is claimed it only accepts the claim request.
 
 **F2 First-run setup (app)**
 1. The user fills in the relay address and the claim code.
@@ -354,7 +354,7 @@ A revoked client leaves the owner's list: the relay forgets its grant, and the r
 **F7 Manage machines**: add or remove projects, pause or resume accepting new sessions, rename, set a coding agent's defaults. The app builds an AdminCommand and sends it to the machine over the end-to-end channel, authenticated as one of the owner's trusted devices:
 - projects, pausing, the name and agent defaults are settings, not permissions (a grant is already full trust on the machine; projects and the name tell agents what to use), so they go unsigned, without Touch ID; the machine accepts them only from a trusted device, never from an agent or the relay.
 
-**Agent defaults**: for Claude Code, Codex and (once one of their sessions said what they offer) ACP agents, each machine keeps the model, reasoning effort, (Codex) speed and (ACP agents) mode their sessions run with when the client starting one names no model (`AgentDefaults`, set in the app on the agent's row of the machine page). Empty fields follow the agent's own configuration; a model the client names wins over the default model, the default effort and speed still apply. They are resolved when a session starts and stored with it, so a resumed process runs as the session began. Hermesh passes them per session (`--model`/`--effort` for Claude Code; `model`, `config.model_reasoning_effort` and `serviceTier` in Codex's `thread/start`) and never edits the agents' own configuration files. To pick from, a check of the agents also reports the models each offers (Claude Code's aliases; Codex's `model/list`) and Codex's own configuration (`config/read`), so the app can say what following it means. Clients see the same models, with each model's reasoning efforts and what a session runs with by default, in `agent list`, and may name a model and an effort when starting a session (the client's wins over the defaults). Since Codex's list is every model it takes there, a session naming another Codex model is refused before it starts, with the ones it offers; Claude Code's aliases are not all it takes, so its model names are not checked. An effort must be one the session's model takes (for a model Hermesh does not list, one any listed model takes), and an agent that lists none takes no effort.
+**Agent defaults**: for Claude Code, Codex and (once one of their sessions said what they offer) ACP agents, each machine keeps the model, reasoning effort, (Codex) speed and (ACP agents) mode their sessions run with when the client starting one names no model (`AgentDefaults`, set in the app on the agent's row of the machine page). Empty fields follow the agent's own configuration; a model the client names wins over the default model, the default effort and speed still apply. They are resolved when a session starts and stored with it, so a resumed process runs as the session began. Aide passes them per session (`--model`/`--effort` for Claude Code; `model`, `config.model_reasoning_effort` and `serviceTier` in Codex's `thread/start`) and never edits the agents' own configuration files. To pick from, a check of the agents also reports the models each offers (Claude Code's aliases; Codex's `model/list`) and Codex's own configuration (`config/read`), so the app can say what following it means. Clients see the same models, with each model's reasoning efforts and what a session runs with by default, in `agent list`, and may name a model and an effort when starting a session (the client's wins over the defaults). Since Codex's list is every model it takes there, a session naming another Codex model is refused before it starts, with the ones it offers; Claude Code's aliases are not all it takes, so its model names are not checked. An effort must be one the session's model takes (for a model Aide does not list, one any listed model takes), and an agent that lists none takes no effort.
 
 **Machine names**: a machine is identified by its key (machine_id); its name is a label. It names itself when it pairs (its operator's `--name`, else its host name); a name chosen in the approval window is set on it once it connects, and the owner can rename it at any time. Agents address projects as `name/project`, and the relay could relabel machines in the list it hands out, so the name the agent holds a machine to is the one the machine presents in the end-to-end handshake (`Credentials.machine_name`, authenticated by that handshake): a machine that calls itself something else than the list said is not used.
 
@@ -367,7 +367,7 @@ A revoked client leaves the owner's list: the relay forgets its grant, and the r
 
 **Admission (L0, only to prevent abuse)**:
 1. The relay first sends `Challenge{nonce, relay_id, server_time}`.
-2. The peer replies `Hello{role, credentials, proof}`: `role` is machine, client or owner; `proof` is a signature over `"hermesh-admit-v1" || relay_id || nonce || role`.
+2. The peer replies `Hello{role, credentials, proof}`: `role` is machine, client or owner; `proof` is a signature over `"aide-admit-v1" || relay_id || nonce || role`.
 3. The relay checks that the credential chain traces back to the owner_id that claimed this relay, and that it has not been revoked.
 
 **Passing admission does not imply any authorization.**
@@ -382,7 +382,7 @@ A revoked client leaves the owner's list: the relay forgets its grant, and the r
 - **Why TLS 1.3 rather than Noise**: Go, Swift and Rust all have mature, audited implementations with native P-256 support; Noise would require designing our own identity binding, which amounts to inventing a small piece of cryptographic protocol.
 
 **Local API**:
-- The app and the built-in hermeshd talk over a Unix socket: 0600 in a 0700 directory, the uid checked with `LOCAL_PEERCRED`. Callers' code signatures are not checked: other processes of the same user are trusted with everything on the owner's Mac except the root key ([desktop-app.md](desktop-app.md) §12).
+- The app and the built-in aided talk over a Unix socket: 0600 in a 0700 directory, the uid checked with `LOCAL_PEERCRED`. Callers' code signatures are not checked: other processes of the same user are trusted with everything on the owner's Mac except the root key ([desktop-app.md](desktop-app.md) §12).
 - Even so, operations that add permissions still need a root key signature.
 
 ### 3.8 Threats from a Compromised Relay (P1 Red-Team Checklist)
@@ -436,14 +436,14 @@ A single-process in-memory map: `machine_id → connection`. If the same machine
 
 ### 4.3 An Agent on the Machine's Own Computer
 
-An agent often runs on a computer that is also a machine: Claude Code with the `hermesh` CLI on the Mac that runs hermeshd. Through the relay, each of its calls to that machine would leave the computer and come back (two round trips to the relay each), and nothing would work while the relay cannot be reached. So (decided 2026-11-11):
+An agent often runs on a computer that is also a machine: Claude Code with the `aide` CLI on the Mac that runs aided. Through the relay, each of its calls to that machine would leave the computer and come back (two round trips to the relay each), and nothing would work while the relay cannot be reached. So (decided 2026-11-11):
 
 - **The machine serves its own user's agents directly.** Each machine listens on an endpoint of its own on its computer (`paths.Local`: a Unix socket in the user's folder of the temp directory, named after the machine; on Windows a named pipe), which only that user can open. A connection there is served as a tunnel the relay spliced: the same end-to-end handshake, the same grant, the same checks, the same audit record (marked as not through the relay). The relay's own check before it splices a tunnel (the grant covers the machine, and is not revoked) is one the machine makes too.
 - **The CLI tries there first.** Connecting to a machine, it looks for that machine's endpoint on this computer; a machine that is not here, or that refuses the handshake, is reached through the relay as before, which then says why. The machine still proves it is the one the agent meant, by its key, so nothing is taken on trust from the endpoint's path.
 - **Without the relay, the computer's own machine still works.** A command whose relay cannot be reached goes on with the machines as the relay last listed them: those of this computer are online, the others are not. It starts sessions there, reads and lists them; the inbox and messages between agents, which the relay keeps, wait for the relay.
 - **No time limit.** A machine goes on serving its own computer's agents however long ago it last heard from the relay. A revocation the machine has heard of holds as ever; one it has not, made while its computer was off the network, takes effect when it is back. Whoever runs an agent as this user on this computer can do as much as the machine does anyway.
 
-`HERMESH_LOCAL=off` turns it off on either side (the machine serves no endpoint, the CLI looks for none); `HERMESH_LOCAL_DIR` puts the endpoints elsewhere.
+`AIDE_LOCAL=off` turns it off on either side (the machine serves no endpoint, the CLI looks for none); `AIDE_LOCAL_DIR` puts the endpoints elsewhere.
 
 ---
 
@@ -452,13 +452,13 @@ An agent often runs on a computer that is also a machine: Claude Code with the `
 ### 5.1 Layout and Tooling
 
 ```
-proto/hermesh/
+proto/aide/
 ├── options/v1/options.proto     # method options: capability (session / admin / owner), access (READ / WRITE)
 ├── identity/v1/identity.proto   # Signed, RootCert, OwnerDeviceCert, PairingRequest, MachineCert, Grant, AdminCommand
 ├── relay/v1/relay.proto         # Challenge, Hello, StreamHeader, Machine/Client/OwnerControlService, pairing messages
 ├── machine/v1/machine.proto           # MachineService (GetInfo, ListProjects), MachineAdminService (ApplyAdminCommand, PushRevocations)
 ├── session/v1/session.proto     # SessionService, Session, SessionProgress, SessionEvent
-└── local/v1/local.proto         # LocalService: app ↔ built-in hermeshd (signing delegation, local service control, status, event subscription)
+└── local/v1/local.proto         # LocalService: app ↔ built-in aided (signing delegation, local service control, status, event subscription)
 ```
 
 - `buf` handles lint and code generation: `protoc-gen-go` + `protoc-gen-connect-go` on the Go side, `swift-protobuf` for the signer, `protoc-gen-es` for the desktop app. Generated code is committed.
@@ -526,7 +526,7 @@ message SessionEvent {
 - The first page (no `before`) also carries every unsettled session however old: queued, preparing, running, waiting for an answer or crashed, or whose last turn failed (not interrupted). So the app's 需要处理 and 进行中 sections are always complete, whatever has been paged in.
 - A change only moves a session's `updated_at` forward, i.e. to the front of the list; the watch reports it there. So paging never skips a session, and a session that changed while older pages load is merged by its state (`last_event_seq`, then `updated_at`).
 - `WatchSessions` first sends an empty message once the watch is in place, then the sessions the caller can read that changed since its last message (each committed row or event marks its session; one message per 100 ms at most, so a busy session costs one message per interval). The owner's tunnel carries it end to end; revoking a grant closes the tunnel and so the watch.
-- **Across machines (`LocalService`)**: `ListSessions` asks every online machine for a page of `limit` past the same cursor, merges, keeps the newest `limit` (plus, on the first page, the unsettled ones) and returns the next cursor when any machine had more or some were cut. Since [state-sync.md](state-sync.md), hermeshd keeps a replica of the owner's world: what the relay pushes (`WatchOwner`), and each other online machine followed with `MachineService.Watch` (resumable; `SessionService.WatchSessions` for a machine without it); the trusted device's own machine is read in process. The first page of `ListSessions` (BASIC) and every other List call answer from it, and the screens follow `LocalService.Watch` instead of polling. `LocalService.WatchSessions` stays for older callers and reports `machines_changed` as before. A watcher that falls 256 messages behind is ended and watches again. Session content never passes through the relay in the clear (decision #12).
+- **Across machines (`LocalService`)**: `ListSessions` asks every online machine for a page of `limit` past the same cursor, merges, keeps the newest `limit` (plus, on the first page, the unsettled ones) and returns the next cursor when any machine had more or some were cut. Since [state-sync.md](state-sync.md), aided keeps a replica of the owner's world: what the relay pushes (`WatchOwner`), and each other online machine followed with `MachineService.Watch` (resumable; `SessionService.WatchSessions` for a machine without it); the trusted device's own machine is read in process. The first page of `ListSessions` (BASIC) and every other List call answer from it, and the screens follow `LocalService.Watch` instead of polling. `LocalService.WatchSessions` stays for older callers and reports `machines_changed` as before. A watcher that falls 256 messages behind is ended and watches again. Session content never passes through the relay in the clear (decision #12).
 
 **Appending messages while running (SendMessage)**:
 
@@ -544,7 +544,7 @@ message SessionEvent {
 
 **Agent asking questions mid-turn** (`Question`, `AnswerQuestion`, state `WAITING_INPUT`):
 
-| Agent | Native mechanism | How Hermesh wires it up |
+| Agent | Native mechanism | How Aide wires it up |
 |---|---|---|
 | Claude Code | `AskUserQuestion` goes to the permission host through the `can_use_tool` control request; in `-p` mode without a permission host the tool is not offered, and `--permission-prompts none` also makes it get denied automatically | Add `--permission-prompt-tool stdio`. The question request is held; an answer replies `allow` plus `updatedInput.answers` (keyed by question text, multiple values joined with `", "`), and a refusal to answer replies `deny` with an explanation. Other permission requests are still denied (equivalent to the former none); `ExitPlanMode` is denied |
 | Codex | Default mode: an `agentMessage` with `delivery:"async"` and `questions`, after which it waits for input with `sleep` (measured on 0.162); Plan mode: `item/tool/requestUserInput` (blocking) | Async questions get the answer sent in with `turn/steer`; `requestUserInput` is answered with `{answers}` per question id, and a refusal also replies with explanatory text, never an empty answer |
@@ -561,32 +561,32 @@ message SessionEvent {
 
 - At most 20 files and 32 MiB in total per message, uploaded with the RPC over the end-to-end channel; the relay cannot see the contents.
 - The machine stores the files under `<data-dir>/sessions/<id>/attachments/<message>/`, outside the worktree, so they are not part of snapshots or diffs; only the base name of each file is kept, and duplicates are renamed automatically; they stay through archiving and are removed when the session is deleted. The audit records file name, size and sha256.
-- A `[Hermesh] Attached files…` section is appended to the end of the message, listing each file's path, type and size; the agent reads them with its own tools as needed. The `UserMessage` event carries `attachments` (path, type, size, sha256).
+- A `[Aide] Attached files…` section is appended to the end of the message, listing each file's path, type and size; the agent reads them with its own tools as needed. The `UserMessage` event carries `attachments` (path, type, size, sha256).
 - Images whose content really is PNG/JPEG/GIF/WebP and that are no larger than 3.5 MiB are also given to the model directly: Claude Code gets a base64 `image` block in stream-json, Codex gets `localImage`, and ACP agents get an `image` block when `promptCapabilities.image` is true.
 - The attachments directory is created when the agent starts and is readable by the agent: Claude Code via `--add-dir`; Codex can read it already.
 
 ---
 
-## 6. The Machine Daemon (hermeshd)
+## 6. The Machine Daemon (aided)
 
 ### 6.1 Deployment Forms
 
 | Form | Process management | Notes |
 |---|---|---|
 | Built into the app (the owner's Mac) | The app registers it as a LaunchAgent with `SMAppService.agent`; **the app can start, stop and restart it, and view its status** | Takes the owner role and (optionally) the machine role; upgraded together with the app |
-| Standalone Mac | install.sh writes `~/Library/LaunchAgents/com.hermesh.daemon.plist` | Machine role only; the app can remotely pause or resume accepting new sessions |
+| Standalone Mac | install.sh writes `~/Library/LaunchAgents/com.aide.daemon.plist` | Machine role only; the app can remotely pause or resume accepting new sessions |
 | Linux (VPS) | install.sh writes a systemd user service and runs `loginctl enable-linger` | Same as above; runs as the user it is installed for, root included; the installer asks as root |
 
 - Runs in user space, because it needs the user's CLI login state and home directory.
 - On a Mac, runs at the priority of a program the person runs (launchd `ProcessType` Interactive), because git and the agents it starts inherit it: as a Background job (priority 4), busy loops at nice 5 starved their checkouts past `StartTimeout`, and Standard still holds them at priority 20.
 - A pidfile plus flock ensures a single instance.
-- Data directory: `~/Library/Application Support/Hermesh/` on macOS, `$XDG_DATA_HOME/hermesh/` on Linux.
+- Data directory: `~/Library/Application Support/Aide/` on macOS, `$XDG_DATA_HOME/aide/` on Linux.
 
 ```
-Hermesh/
-├── hermeshd.db          # SQLite: projects, sessions, turns, session_events, idempotency, grants_seen, revocations, trust, kv
+Aide/
+├── aided.db          # SQLite: projects, sessions, turns, session_events, idempotency, grants_seen, revocations, trust, kv
 ├── config.yaml          # local limits (concurrency, timeouts, etc.)
-├── run/hermeshd.sock    # local API (directory 0700, socket 0600)
+├── run/aided.sock    # local API (directory 0700, socket 0600)
 ├── worktrees/<session_id>/
 ├── sessions/<session_id>/   # tmp/ (session-specific TMPDIR), raw.jsonl (raw provider output, only for local troubleshooting), stderr tail
 ├── audit/
@@ -655,7 +655,7 @@ type Session interface {
 - Starting a session (since 2026-10-30): a busy machine makes a start slow, not stuck, so neither the worktree's checkout nor the agent's handshake has a limit of its own (they had 2 minutes and 30–60 s; on a Mac at a load of 190 both ran out while still working). The whole start, from preparing to the agent taking the first prompt, is stopped only by an interrupt, at once, or after 10 minutes, as a stall (`StartTimeout`). A start that fails or is stopped leaves nothing in the way: a half-made worktree and its branch are removed, and a prompt the agent never got is kept, sent together with the next message.
 - CLI discovery: first `exec.LookPath`; if not found, resolve PATH with a login shell and cache it. The coding agents are checked (version, login) only when something needs to know, never in the background (since 2026-10-21): the app showing them (it asks again while waiting for a sign-in in Terminal), the owner's devices reading a machine's state (the first check only), an agent asking where it can work (a check under 5 minutes old stands), and a session whose agent the last check found missing (that agent is checked again). Each agent shows as soon as its own check ends (`checking` until then). Refuse to start if it is below the minimum supported version.
 - Why an agent is not available (since 2026-10-26): each check runs the agent with the login shell's PATH (a Node CLI finds `node`) and says what kept it from running, as `AgentStatus.problem` with the agent's own words in `detail`: not found; its desktop app installed without the command line tool (Qoder.app without `qodercli`); the machine out of processes; no answer within 20 s; its runtime missing (`env: node: No such file or directory`, or a `#!` interpreter that is gone); any other failure, with the first line it printed. The apps show found-but-broken agents with that reason instead of "not installed". An agent starting a session there is told the same. The login shell's PATH is read with a 10 s limit; a failed read is used for a minute and then tried again (at once when the shell could not start for want of processes), instead of for the daemon's whole life.
-- Machine health (since 2026-10-26, `MachineStatus.problems`): what keeps a machine from working, read from the system without starting a process: the user's processes at 90% of their limit or more (the lower of `kern.maxprocperuid` and `RLIMIT_NPROC`; and the parent holding the most ended, unreaped children, named when it holds 50 or more; on macOS by its app as the person sees it, the bundle's display name in their language read from its `InfoPlist.strings` or `InfoPlist.loctable` ("千问办公", not the executable's "QwenWorkCN")), under 2 GB free on the disk with Hermesh's data, hermeshd's open files at 90% of its limit, and the login shell's PATH unreadable. It is read only while the machine's status is asked for (at most every 15 s), never in the background, and goes end to end to every screen of the owner: the overview's needs-you section (this Mac's and every other machine's), the machine's node on the map, its page in settings. Out of processes, a session start is refused with that reason; once they are below the limit, agents whose last check failed for want of them are checked again by themselves. `LocalService.GetDiagnostics` (Settings › the Mac's page › Copy Diagnostics, and `hermeshd doctor`) gives all of it, with each agent's binary and failure, as text to send; nothing leaves the Mac unless the person copies it.
+- Machine health (since 2026-10-26, `MachineStatus.problems`): what keeps a machine from working, read from the system without starting a process: the user's processes at 90% of their limit or more (the lower of `kern.maxprocperuid` and `RLIMIT_NPROC`; and the parent holding the most ended, unreaped children, named when it holds 50 or more; on macOS by its app as the person sees it, the bundle's display name in their language read from its `InfoPlist.strings` or `InfoPlist.loctable` ("千问办公", not the executable's "QwenWorkCN")), under 2 GB free on the disk with Aide's data, aided's open files at 90% of its limit, and the login shell's PATH unreadable. It is read only while the machine's status is asked for (at most every 15 s), never in the background, and goes end to end to every screen of the owner: the overview's needs-you section (this Mac's and every other machine's), the machine's node on the map, its page in settings. Out of processes, a session start is refused with that reason; once they are below the limit, agents whose last check failed for want of them are checked again by themselves. `LocalService.GetDiagnostics` (Settings › the Mac's page › Copy Diagnostics, and `aided doctor`) gives all of it, with each agent's binary and failure, as text to send; nothing leaves the Mac unless the person copies it.
 
 ### 6.4 ToolGate
 
@@ -702,20 +702,20 @@ stateDiagram-v2
   - `IN_PLACE`: the session uses the project directory as its working directory, just as when the owner runs the agent there themselves. The daemon creates no worktree, no branch and no snapshot commits; `GetDiff` returns `FailedPrecondition`; `base_ref` is meaningless (passing it when opening a session is refused outright). Concurrent writes to the same directory are not coordinated; the agent handles that itself. Cleanup only touches `<data>/worktrees/<session_id>` and never the in-place directory.
   - When not specified on add: a git repository root uses `WORKTREE`, and any other directory (including a subdirectory of a repository) uses `IN_PLACE`. Specifying `WORKTREE` for a non-git directory is refused.
   - At session start the project's mode and directory at that moment are recorded, so later changes to the project do not affect existing sessions.
-- **Creation**: first rev-parse to get `base_commit`, then run `git -C <repo> worktree add -b hermesh/<session_id> <data>/worktrees/<session_id> <base_commit>`. Git write operations on the same repository are serialized. The baseline is the committed version and does not include the user's uncommitted changes.
+- **Creation**: first rev-parse to get `base_commit`, then run `git -C <repo> worktree add -b aide/<session_id> <data>/worktrees/<session_id> <base_commit>`. Git write operations on the same repository are serialized. The baseline is the committed version and does not include the user's uncommitted changes.
 - **A base the repository lacks** (since 2026-11-03): a tag CI pushed or a branch pushed from another computer is not in the local repository until someone fetches. Before failing, the daemon fetches that ref alone from the repository's remotes, origin first: a tag or branch of that name (a branch lands in `refs/remotes/<remote>/`), a `<remote>/<branch>`, or a full commit id (servers that allow it); no other tags, no submodules, never a prompt for credentials (an answer it would need is an error), in the login shell's environment (its proxy), each remote command limited to 2 minutes, one fetch per repository at a time. A name that is no valid ref is never fetched, so it cannot be read as a refspec. The project's branches, checkout and uncommitted changes are untouched. When no remote has it, the session fails with `BASE_REF_UNAVAILABLE`, saying which remotes were asked or why one could not be.
 - **Local files** (since 2026-10-31): a checkout has only tracked files, so settings kept out of git (signing configuration, `.env`) are missing from a new worktree. If the repository root has a `.worktreeinclude` (gitignore syntax, the same file Claude Code reads), the ignored files it names are copied from the project directory into the worktree when it is created and again when it is restored; a named file git does not ignore is left out, so snapshots never commit one, and a file the session already has is kept. When every pattern has a path, git looks only there; a bare name such as `.env` makes it walk the whole tree. A failed copy is logged and does not stop the session. Agents starting sessions through MCP are told to pass `base` for another branch, tag or commit rather than have the agent make its own worktree, which would have none of these files.
 - **Per-turn snapshot commits**: after each turn, the daemon runs:
 
   ```
   git -c core.hooksPath=/dev/null add -A
-  git -c core.hooksPath=/dev/null commit --no-verify -m "hermesh <session_id> turn <n>"
+  git -c core.hooksPath=/dev/null commit --no-verify -m "aide <session_id> turn <n>"
   ```
 
   This makes per-turn diffs possible. The agent committing or pushing on its own is not restricted.
 - **Diff**: `git diff --binary <base_commit>..<turn or HEAD>`, at most 10 MiB per response, paged beyond that.
-- **Delivery**: changes stay on the local branch `hermesh/<session_id>`. **The daemon itself never pushes.**
-- **Cleanup**: on archive the worktree and the session's TMPDIR are deleted, and the branch `hermesh/<session>` keeps every turn's snapshot; on unarchive the worktree is rebuilt from the branch (same path, so the coding agent's session can resume in its original working directory), and the agent's next start makes a new TMPDIR.
+- **Delivery**: changes stay on the local branch `aide/<session_id>`. **The daemon itself never pushes.**
+- **Cleanup**: on archive the worktree and the session's TMPDIR are deleted, and the branch `aide/<session>` keeps every turn's snapshot; on unarchive the worktree is rebuilt from the branch (same path, so the coding agent's session can resume in its original working directory), and the agent's next start makes a new TMPDIR.
 
 ### 6.7 Claude Code Adapter
 
@@ -730,7 +730,7 @@ Plus `--dangerously-skip-permissions`: loads the user's usual settings and MCP c
 
 - **cwd**: the worktree. **TMPDIR**: the session-specific directory.
 - **Environment variables**: inherit the daemon's user environment (PATH as resolved, TMPDIR set to the session-specific directory).
-- **Login**: reuses the existing `claude` login state of this user on this machine; credentials never leave the machine. `hermeshd doctor` checks whether it is logged in.
+- **Login**: reuses the existing `claude` login state of this user on this machine; credentials never leave the machine. `aided doctor` checks whether it is logged in.
 - **Startup handshake**: send `control_request{subtype:"initialize", hooks:{PreToolUse:[{matcher:null, hookCallbackIds:["gate"]}]}}`. Every `hook_callback` calls the Gate and replies `allow` or `deny`.
   - Whether the hook still fires in full-access mode needs to be confirmed in S0. If it does not, record audit and progress from the `tool_use` events in the stream instead.
 - **stdin always stays open**: `Send` writes one user message line; `Interrupt` sends an interrupt control_request.
@@ -745,7 +745,7 @@ Plus `--dangerously-skip-permissions`: loads the user's usual settings and MCP c
   | `system/init` | Record session_id as the ResumeToken |
 
 - **Resume failure**: when a resume is refused, fall back to a new session and mark the old session as poisoned.
-- **Also to confirm in S0**: whether `--dangerously-skip-permissions`, the first time it is used in `-p` mode, requires interactive acceptance of a disclaimer. If it does, `hermeshd doctor` guides the user to accept it manually once.
+- **Also to confirm in S0**: whether `--dangerously-skip-permissions`, the first time it is used in `-p` mode, requires interactive acceptance of a disclaimer. If it does, `aided doctor` guides the user to accept it manually once.
 
 ### 6.8 Codex Adapter (based on the official docs; S0 confirms against the schema of the actual version)
 
@@ -761,74 +761,74 @@ Plus `--dangerously-skip-permissions`: loads the user's usual settings and MCP c
 
 ### 6.8.1 ACP Adapter (P2, 2026-10-16)
 
-Apart from Claude/Codex, coding agents either speak ACP (Hermes, Kimi, Kiro, Grok, Qoder, Trae, etc.) or expose a vendor-specific per-turn JSON interface (Cursor, Copilot, OpenCode run, Pi, etc.). Cursor (`cursor-agent acp`) and Copilot (`copilot --acp`) support ACP as well, so Hermesh implements one generic ACP adapter and registers a launch command per agent (`internal/provider/acp/agents.go`).
+Apart from Claude/Codex, coding agents either speak ACP (Hermes, Kimi, Kiro, Grok, Qoder, Trae, etc.) or expose a vendor-specific per-turn JSON interface (Cursor, Copilot, OpenCode run, Pi, etc.). Cursor (`cursor-agent acp`) and Copilot (`copilot --acp`) support ACP as well, so Aide implements one generic ACP adapter and registers a launch command per agent (`internal/provider/acp/agents.go`).
 
 - **Protocol**: JSON-RPC 2.0, one message per line over stdio. `initialize` (no fs/terminal capabilities declared; the agent uses its own tools) → `authenticate` when needed (by the method priority in the registry entry, such as Cursor's `cursor_login` or Grok's `cached_token`) → `session/new {cwd: worktree, mcpServers: []}` → the model, reasoning effort and mode the session runs with, when given, each through its session config option (category `model`, `thought_level`, `mode`: `session/set_config_option`, an effort after the model it depends on), else `session/set_model` or `session/set_mode` (one the session does not offer fails the session start; nothing is ever silently swapped) → `session/prompt`.
 - **Session options** (WO #5): an ACP agent says what it offers (config options, or the older `modes` and `models`) only in a session. The `EventRef` of each new session carries it; the machine keeps the last one per agent (`agent_offers/` in its store) and reports it as the agent's models (with the reasoning efforts of each model a session ran; DSH offers those of the session's model only), modes and own settings in `AgentStatus`, so `agent list`, `session start --model/--effort/--mode`, the MCP gateway and the app's agent defaults offer them from the agent's first session on that machine. Before it, a mode or an effort is refused (a model goes to the agent, which checks it); later, an effort for a model whose efforts are not known yet is checked by the agent at start. Nothing chosen, the session runs as the agent's own configuration says.
-- **DSH permission presets** (WO #5 补充): DSH's ACP bridge offers no modes, but its permission presets (`@deepseek-ai/dsh-permission-presets`: read-only, workspace-write, danger-full-access and any the owner configured) are a per-session fact: a new session takes the permission row's `defaultPreset` when it is created, records it in its log and keeps it when resumed. Since Hermesh runs one `dsh --profile acp` process per session, the deepseek agent's modes are these presets (`DSHPresets` in its registry entry; `internal/provider/acp/dshpresets.go` is the only code that knows DSH's configuration): the agent check reads them with `dsh --profile acp --dump-config` (so they are offered before any session), and a new session with a mode starts its process with `--patch <file>`, an overlay holding the permission row as that dump composes it (the owner's own layers included; a patch replaces a row's whole config) with only `defaultPreset` changed, removed once the process has started. Nothing in the owner's DSH home is written, other sessions' processes are not touched, and a resumed session gets no overlay. Nothing chosen, the session has DSH's own default. Presets are DSH's enforcement (its sandbox and approval policy), not Hermesh's gate; a sandbox escalation DSH asks for reaches the gate as an ordinary permission request.
+- **DSH permission presets** (WO #5 补充): DSH's ACP bridge offers no modes, but its permission presets (`@deepseek-ai/dsh-permission-presets`: read-only, workspace-write, danger-full-access and any the owner configured) are a per-session fact: a new session takes the permission row's `defaultPreset` when it is created, records it in its log and keeps it when resumed. Since Aide runs one `dsh --profile acp` process per session, the deepseek agent's modes are these presets (`DSHPresets` in its registry entry; `internal/provider/acp/dshpresets.go` is the only code that knows DSH's configuration): the agent check reads them with `dsh --profile acp --dump-config` (so they are offered before any session), and a new session with a mode starts its process with `--patch <file>`, an overlay holding the permission row as that dump composes it (the owner's own layers included; a patch replaces a row's whole config) with only `defaultPreset` changed, removed once the process has started. Nothing in the owner's DSH home is written, other sessions' processes are not touched, and a resumed session gets no overlay. Nothing chosen, the session has DSH's own default. Presets are DSH's enforcement (its sandbox and approval policy), not Aide's gate; a sandbox escalation DSH asks for reaches the gate as an ordinary permission request.
 - **Resume**: chosen by the capabilities the agent declares: `sessionCapabilities.resume` → `session/resume`; `loadSession` → `session/load` (it first replays history as `session/update`, and all events during the replay are dropped); if neither is supported, startup fails and the core falls back to a new session.
 - **Events**: `agent_message_chunk`s are joined into one AgentMessage (emitted when a tool call arrives or the turn ends); `tool_call`/`tool_call_update` are normalized by ACP kind (read / edit·delete·move / search / execute / fetch); the response to `session/prompt` is the TurnCompleted (`stopReason`, `usage`); `session/cancel` interrupts, and `cancelled` is recorded as interrupted. Stopping the process (an interrupt, an archive, an idle process) first sends `session/close` (waiting at most 10 s) to an agent that declares `sessionCapabilities.close`, so it ends the turn and keeps the session (DSH flushes it to disk) before its process goes.
 - **Gate**: each tool call is decided only once (the `tool_call` notification and `session/request_permission` share the decision). Permission requests only ever choose `allow_once` or `reject_once`, **never `allow_always`/`reject_always`**, so the agent does not remember the choice beyond the session.
-- **Discovery**: `<cli> --version`; ACP has no way to query login state in advance, so login problems are reported by the agent itself when the session opens. `hermesh project list` only lists agents that are installed and allowed by the grant.
+- **Discovery**: `<cli> --version`; ACP has no way to query login state in advance, so login problems are reported by the agent itself when the session opens. `aide project list` only lists agents that are installed and allowed by the grant.
 - **Tests**: `internal/provider/acp/fakeacp` is a scripted agent that speaks real ACP; unit tests cover multiple turns, tools and the Gate, load/resume, authentication, models, interrupts and failures; `e2e/acp_test.go` runs the full flow with the real relay, daemon and CLI (including `session/load` recovery after a daemon restart).
 
 ### 6.9 Audit
 
 - Each machine appends locally to `audit/YYYY-MM.jsonl`, with `hash = SHA-256(prev_hash || canonicalized record)`.
 - What is recorded: tunnel setup and teardown, all WRITE-type RPCs, **every tool call**, AdminCommands, changes to credentials, revocations and grant versions, provider process start and exit. Prompts are recorded only as summaries.
-- Every hour or every 1000 records, the head of the chain is signed with the machine key as a checkpoint. `hermeshd audit verify` checks the whole chain.
+- Every hour or every 1000 records, the head of the chain is signed with the machine key as a checkpoint. `aided audit verify` checks the whole chain.
 
 ---
 
-## 7. Hermesh.app (the Owner's Desktop App)
+## 7. Aide.app (the Owner's Desktop App)
 
-Replaced on 2026-10-19 by the hybrid design in [desktop-app.md](desktop-app.md): an Electron app whose page reaches hermeshd only through its main process, and a separate native signer (Hermesh Signer.app, Swift) that creates the root key, renders what is signed from the signed bytes and asks for Touch ID. The bundle:
+Replaced on 2026-10-19 by the hybrid design in [desktop-app.md](desktop-app.md): an Electron app whose page reaches aided only through its main process, and a separate native signer (Aide Signer.app, Swift) that creates the root key, renders what is signed from the signed bytes and asks for Touch ID. The bundle:
 
 ```
-Hermesh.app/
-├── Contents/MacOS/Hermesh                    # Electron: windows, menu bar, notifications, API gateway
+Aide.app/
+├── Contents/MacOS/Aide                    # Electron: windows, menu bar, notifications, API gateway
 ├── Contents/Resources/app.asar               # main process and the page (React)
-├── Contents/Resources/console                # Her's console, which hermeshd serves (her-server.md)
-├── Contents/Helpers/hermeshd                 # the same Go binary as on other machines (LaunchAgent)
-├── Contents/Helpers/her                      # Her's kernel, which hermeshd runs while Her is on for this Mac
+├── Contents/Resources/console                # Her's console, which aided serves (her-server.md)
+├── Contents/Helpers/aided                 # the same Go binary as on other machines (LaunchAgent)
+├── Contents/Helpers/her                      # Her's kernel, which aided runs while Her is on for this Mac
 ├── Contents/Helpers/agent-desktop            # desktop control for her's computer use, with its helper
-├── Contents/Helpers/Hermesh Signer.app       # root key (Secure Enclave), confirmation panel, Touch ID
+├── Contents/Helpers/Aide Signer.app       # root key (Secure Enclave), confirmation panel, Touch ID
 ├── Contents/Frameworks/libpdfium.dylib       # PDFium, for her's document tools
-└── Contents/Library/LaunchAgents/…plist      # SMAppService.agent registers the built-in hermeshd
+└── Contents/Library/LaunchAgents/…plist      # SMAppService.agent registers the built-in aided
 ```
 
-- **Signing delegation (sign what you see)**: hermeshd pushes `SigningRequest{type, body}` on `LocalService.WatchSigningRequests` to the signer only (the page cannot reach it); the signer parses the body itself, refuses what it cannot fully show, renders it, and signs after Touch ID; one authentication covers a batch. hermeshd also asks the signer to create the root key (`create_root_key`), and tags each request with the local process that caused it.
-- **Keys**: root key in the Secure Enclave with `.privateKeyUsage + .userPresence`, kept in the signer's Keychain access group when it has a Developer ID provisioning profile (otherwise its Secure Enclave handle in a file); device key: a 0600 file of hermeshd.
+- **Signing delegation (sign what you see)**: aided pushes `SigningRequest{type, body}` on `LocalService.WatchSigningRequests` to the signer only (the page cannot reach it); the signer parses the body itself, refuses what it cannot fully show, renders it, and signs after Touch ID; one authentication covers a batch. aided also asks the signer to create the root key (`create_root_key`), and tags each request with the local process that caused it.
+- **Keys**: root key in the Secure Enclave with `.privateKeyUsage + .userPresence`, kept in the signer's Keychain access group when it has a Developer ID provisioning profile (otherwise its Secure Enclave handle in a file); device key: a 0600 file of aided.
 - **Distribution**: Developer ID signing and notarization (`apps/desktop/scripts/build-app.mjs`), shipped as a zip through GitHub Releases.
 
 ---
 
-## 8. hermesh CLI (Client-Facing)
+## 8. aide CLI (Client-Facing)
 
 **Principles**:
-- Fully non-interactive; prints human-readable text by default, and stable JSON with `-o json` (or the environment variable `HERMESH_OUTPUT=json`). Every command has the same outer structure `{ok, exit_code, error, <data key>}`, where `error` is `{kind, message, hint, retryable}`; the full conventions are in [cli-output.md](cli-output.md);
+- Fully non-interactive; prints human-readable text by default, and stable JSON with `-o json` (or the environment variable `AIDE_OUTPUT=json`). Every command has the same outer structure `{ok, exit_code, error, <data key>}`, where `error` is `{kind, message, hint, retryable}`; the full conventions are in [cli-output.md](cli-output.md);
 - Exit codes: 0 success, 1 internal error, 2 bad arguments, not found or state does not allow it, 3 not paired, revoked or refused, 4 the relay or the machine needed is offline or unreachable, 5 session failed, 6 wait timed out, 7 retryable, 8 waiting for an answer;
 - Write operations carry an idempotency key automatically; every wait can be resumed by seq.
 - An agent's commands share one connection to the relay and its tunnels, kept by a background process of the CLI (the link, [cli.md](cli.md)); a command whose link does not answer connects by itself.
 
 ```
-hermesh auth login <connection-address> [--name N]           # pairing (section 3.5); rerun after an interruption to show the same pairing code; rerun after revocation or expiry to apply again as a new agent
-hermesh auth status                               # diagnostics: local identity, grant, relay connection, whether the grant is up to date
-hermesh auth logout                               # delete the local key and grant (revocation is done by the owner in the app or console)
-hermesh agent list [--machine N] [--agent A]      # the coding agents this agent may run on each machine, with each model's reasoning efforts and the default model and effort
-hermesh project list [--machine N]                # a flat list: every place work can happen, written as machine/project, with description, path, base branch, number of sessions in progress, platform, usable coding agents and whether a session can be opened; exit code 4 when no machine is reachable
-hermesh session start --project machine/project --agent claude|codex
+aide auth login <connection-address> [--name N]           # pairing (section 3.5); rerun after an interruption to show the same pairing code; rerun after revocation or expiry to apply again as a new agent
+aide auth status                               # diagnostics: local identity, grant, relay connection, whether the grant is up to date
+aide auth logout                               # delete the local key and grant (revocation is done by the owner in the app or console)
+aide agent list [--machine N] [--agent A]      # the coding agents this agent may run on each machine, with each model's reasoning efforts and the default model and effort
+aide project list [--machine N]                # a flat list: every place work can happen, written as machine/project, with description, path, base branch, number of sessions in progress, platform, usable coding agents and whether a session can be opened; exit code 4 when no machine is reachable
+aide session start --project machine/project --agent claude|codex
                       [--base REF] [--model M] [--effort E] [--mode MODE]
                       (--prompt TEXT | --prompt-file F, F of - reads stdin)
                       [--wait [--timeout D]] [--idempotency-key K]     # background by default: returns immediately; use session get for progress and results
-hermesh session get|interrupt|archive|unarchive <session_id>   # get: status, progress, questions; after a turn ends it includes the full result
-hermesh session list [--machine N] [--status S] [--since T] [--archived]   # archived sessions excluded by default
-hermesh session events <session_id> [--limit N] [--after SEQ | --before SEQ]   # one page of events in chronological order; the latest 50 by default; the JSON `page` carries first_seq/last_seq/has_more_*
-hermesh session send <session_id> (--message TEXT | --message-file F)
-hermesh session diff <session_id> [--turn N] [--stat]
+aide session get|interrupt|archive|unarchive <session_id>   # get: status, progress, questions; after a turn ends it includes the full result
+aide session list [--machine N] [--status S] [--since T] [--archived]   # archived sessions excluded by default
+aide session events <session_id> [--limit N] [--after SEQ | --before SEQ]   # one page of events in chronological order; the latest 50 by default; the JSON `page` carries first_seq/last_seq/has_more_*
+aide session send <session_id> (--message TEXT | --message-file F)
+aide session diff <session_id> [--turn N] [--stat]
 ```
 
-- Config directory: `~/.config/hermesh/` (overridable with `HERMESH_HOME`), holding the client key, in-progress pairing state, grant and trust anchor.
+- Config directory: `~/.config/aide/` (overridable with `AIDE_HOME`), holding the client key, in-progress pairing state, grant and trust anchor.
 - `--project` is written as `machine/project` (e.g. `vps-1/demo`); if the project name exists on only one machine, the project name alone is enough; if several machines have it, it is an error that lists the candidate addresses. Machine names contain only `[a-z0-9-]` and project names only `[a-z0-9._-]`, so `/` is never ambiguous.
 - When a machine is offline its projects cannot be listed (projects are stored only on the machine), so the list shows it as a single row `machine/*` with status `offline` and the last-seen time. Offline is a status in the list, not an error: as long as the relay answers, the list command succeeds; it fails with exit code 4 only when the machine the command needs is offline.
 - The project description is filled in by the owner when adding the project (at most 200 characters) and is delivered to the machine with the signed admin command; adding a project with the same name again changes it.
@@ -837,7 +837,7 @@ hermesh session diff <session_id> [--turn N] [--stat]
 
 ---
 
-## 9. Relay (hermesh-relay)
+## 9. Relay (aide-relay)
 
 | Item | Design |
 |---|---|
@@ -855,21 +855,21 @@ hermesh session diff <session_id> [--turn N] [--stat]
 ### 10.1 install.sh
 
 ```bash
-curl -fsSL https://github.com/<org>/hermesh/releases/latest/download/install.sh | sh -s -- relay.example.com/o_7k3m9x2q
+curl -fsSL https://github.com/<org>/aide/releases/latest/download/install.sh | sh -s -- relay.example.com/o_7k3m9x2q
 ```
 
 This command is fixed and contains no secret; it can be copied directly from the "添加机器" (Add Machine) page in the app. **The script and binaries both come from GitHub Releases and never pass through the relay.** The script does the following in order:
 1. Detects the OS and architecture (darwin or linux, arm64 or amd64).
-2. Downloads a pinned version of `hermeshd` from **GitHub Releases**, verifies its signature with the minisign public key built into the script, and aborts if verification fails.
+2. Downloads a pinned version of `aided` from **GitHub Releases**, verifies its signature with the minisign public key built into the script, and aborts if verification fails.
 3. Installs it to `~/.local/bin` and writes the launchd or systemd user service.
-4. Runs `hermeshd pair`: starts pairing, shows the pairing code, and waits for the owner to enter it in the app.
-5. After pairing, runs `hermeshd doctor` and prints anything the user still needs to do, for example "run `claude` once as this user to log in".
+4. Runs `aided pair`: starts pairing, shows the pairing code, and waits for the owner to enter it in the app.
+5. After pairing, runs `aided doctor` and prints anything the user still needs to do, for example "run `claude` once as this user to log in".
 
 **Source of trust**: at install time what is trusted is GitHub Releases and the project's minisign release key, not the relay. The README also offers `brew install` and manual download plus verification.
 
-### 10.2 hermeshd Local Commands
+### 10.2 aided Local Commands
 
-See [hermeshd.md](hermeshd.md).
+See [aided.md](aided.md).
 
 ### 10.3 Upgrades and Compatibility
 
@@ -894,7 +894,7 @@ See [hermeshd.md](hermeshd.md).
 | Dependency supply chain | Pinned go.sum; CI runs `govulncheck`; release packages have minisign signatures; the app is notarized |
 
 **P1 residual risks (stated honestly in the README and in the app's grant explanation)**:
-- **A grant means full trust; the agent can do anything on this machine that you can do yourself**: read `~/.ssh` and all kinds of credentials, access the network, modify any file, push code. If the calling agent reads a malicious web page or email and gets prompt-injected, the consequences are the same. What Hermesh does guarantee: only agents you have granted can start sessions, only within the grant's scope (machines, projects, coding agents, validity period); every tool call has an audit record; and you can narrow or revoke the grant at any time.
+- **A grant means full trust; the agent can do anything on this machine that you can do yourself**: read `~/.ssh` and all kinds of credentials, access the network, modify any file, push code. If the calling agent reads a malicious web page or email and gets prompt-injected, the consequences are the same. What Aide does guarantee: only agents you have granted can start sessions, only within the grant's scope (machines, projects, coding agents, validity period); every tool call has an audit record; and you can narrow or revoke the grant at any time.
 - The relay can see metadata and can deny service.
 - Files the agent writes into the worktree (a Makefile, say) take effect when the owner later runs them, so diffs need human review before merging.
 - Provider login state on a VPS is kept on the cloud provider's disk.
@@ -904,17 +904,17 @@ See [hermeshd.md](hermeshd.md).
 ## 12. Repository Layout (monorepo)
 
 ```
-hermesh/
+aide/
 ├── AGENTS.md  README.md  LICENSE
 ├── go.mod  go.sum                     # a single Go module
 ├── Makefile                           # generate / lint / test / e2e / build / release
 ├── buf.yaml  buf.gen.yaml
-├── proto/hermesh/…                    # the single source of contracts
+├── proto/aide/…                    # the single source of contracts
 ├── gen/go/…                           # generated Go code (committed; Swift and TypeScript go next to their apps)
 ├── cmd/
-│   ├── hermeshd/                      # machine + owner roles
-│   ├── hermesh-relay/
-│   └── hermesh/                       # the CLI used by clients
+│   ├── aided/                      # machine + owner roles
+│   ├── aide-relay/
+│   └── aide/                       # the CLI used by clients
 ├── internal/
 │   ├── identity/                      # keys, signed envelope, credential chain validation, pairing codes, TLS certificate construction (shared by all sides)
 │   ├── transport/                     # WSS ↔ net.Conn, yamux, StreamHeader, E2E dial and listen (shared by all sides)
@@ -924,7 +924,7 @@ hermesh/
 │   ├── cli/
 │   └── platform/…
 ├── apps/desktop/                      # the desktop app (Electron, React; docs/desktop-app.md)
-├── apps/signer/macos/                 # Hermesh Signer.app (Swift; SwiftPM)
+├── apps/signer/macos/                 # Aide Signer.app (Swift; SwiftPM)
 ├── packages/{proto,core,ui}/          # TypeScript: generated contracts, pure logic, shared UI (pnpm workspace)
 ├── scripts/install.sh                 # published with each GitHub Release
 ├── e2e/                               # end-to-end scenarios, malicious relay, fake CLI programs, test git repositories, headless owner test harness
@@ -955,7 +955,7 @@ hermesh/
 | Level | Contents | Environment |
 |---|---|---|
 | Unit tests | Signatures and credential chains (including rotation, grant versions and revocation), pairing code computation, state machines, path normalization, event truncation | Linux + macOS CI |
-| Provider conformance tests | `providertest` covers every provider with the same set of cases. CI uses **fake CLIs** (replaying recorded interactions); real CLIs are enabled manually with `HERMESH_REAL_CLI=1`, using the cheapest model | Fake ones in CI; real ones locally |
+| Provider conformance tests | `providertest` covers every provider with the same set of cases. CI uses **fake CLIs** (replaying recorded interactions); real CLIs are enabled manually with `AIDE_REAL_CLI=1`, using the cheapest model | Fake ones in CI; real ones locally |
 | Integration tests | Relay, several machines and several clients started in one process | CI |
 | **End-to-end tests** | Real binaries + temporary HOME and data directories; the **headless owner test harness** calls `LocalService` directly, with a software key in place of the Secure Enclave, taking the same path as the app; runs through A2–A10 one by one | Fake CLIs in CI; real CLIs locally and on a real VPS |
 | Malicious relay | `e2e/evilrelay`: a programmable relay that carries out each attack from section 3.8 and asserts that all of them fail | CI |
@@ -979,7 +979,7 @@ Each step is done when the "Verification" column is met.
 | S6 Codex adapter | Section 6.8 | Conformance tests cover the four presets; A4 passes with the real CLI |
 | S7 Owner role (Go) | Pairing, grant issuance and versions, revocation push, admin commands, cross-machine summaries, recovery, LocalService, local service control | A2, A5, A7, A8 and A10 pass with the headless owner test harness |
 | S8 Mac app | All screens from section 7.2; signing delegation; SMAppService | XCUITest smoke tests; A1 walked through by hand |
-| S9 Installation and release | install.sh, `hermeshd pair` and `doctor`, GitHub Actions release (minisign signing, notarization), Docker image | A2 passes on a real VPS |
+| S9 Installation and release | install.sh, `aided pair` and `doctor`, GitHub Actions release (minisign signing, notarization), Docker image | A2 passes on a real VPS |
 | S10 Hardening and docs | Resilience, GC, log rotation, README (including the preset risk notes), threat model, operations manual | A1–A10 all pass |
 
 Rough estimate for one person: **8–10 weeks**, to be revised after S0. Prerequisites: an Apple Developer account, a VPS for testing and a domain name.
@@ -990,7 +990,7 @@ Rough estimate for one person: **8–10 weeks**, to be revised after S0. Prerequ
 
 | Phase | Contents |
 |---|---|
-| **P2 Personal experience improvements** | Pass through the coding agents' native permission modes and forward their approval requests to the requester; iPhone app (as a second owner device); MCP access (**without the relay vouching**: either `hermesh mcp` runs on the agent side as a local stdio MCP server that holds the client key, or the remote MCP endpoint lives on the user's own machine and the relay only forwards TLS ciphertext); automatic updates (Sparkle + minisign, with GitHub Releases as the update source, not via the relay); audit viewer; more agent providers (OpenCode, ACP, etc.); connecting local services at home (NAS, Home Assistant, etc.) as new capabilities; rotating the recovery key |
+| **P2 Personal experience improvements** | Pass through the coding agents' native permission modes and forward their approval requests to the requester; iPhone app (as a second owner device); MCP access (**without the relay vouching**: either `aide mcp` runs on the agent side as a local stdio MCP server that holds the client key, or the remote MCP endpoint lives on the user's own machine and the relay only forwards TLS ciphertext); automatic updates (Sparkle + minisign, with GitHub Releases as the update source, not via the relay); audit viewer; more agent providers (OpenCode, ACP, etc.); connecting local services at home (NAS, Home Assistant, etc.) as new capabilities; rotating the recovery key |
 | Long term (no commitment) | Team collaboration, sandboxed "hands", large-scale deployment. The protocols are all defined in proto and adding a capability means adding a service, so these directions stay possible, but no complexity is paid for them up front |
 
 **Extension points**:
@@ -998,7 +998,7 @@ Rough estimate for one person: **8–10 weeks**, to be revised after S0. Prerequ
 | To be added later | P1 extension point it relies on | Scope of change |
 |---|---|---|
 | Approvals | The ToolGate interface (a decision can return "needs to wait"); Claude's hook reply can be held (Appendix A) | New approval messages and an app screen |
-| MCP | The `hermesh` CLI already holds the client key and can be wrapped directly as a stdio MCP server; SessionService already has complete session semantics | A new `mcp` subcommand in the CLI; the relay is unchanged |
+| MCP | The `aide` CLI already holds the client key and can be wrapped directly as a stdio MCP server; SessionService already has complete session semantics | A new `mcp` subcommand in the CLI; the relay is unchanged |
 | iPhone as another trusted device | The root chain lists any number of devices + OwnerDeviceCert | A new client that joins like a Mac (trusted-devices.md 4.2), with the credential format unchanged |
 | New agents | The `Provider` interface + `providertest` | One new package |
 | New capabilities (local services, etc.) | Capability = proto service + method option; the authz and audit interceptors are generic | New services and their implementations |
@@ -1015,7 +1015,7 @@ Rough estimate for one person: **8–10 weeks**, to be revised after S0. Prerequ
 | 4 | Signing happens only in the native signer, which parses and displays what is being signed itself; the web UI never sees signing requests | Prevents "showing one thing and signing another", even with a compromised UI |
 | 5 | Equal trusted devices in a root chain as the trust anchor, each root key in its Secure Enclave, the device key for everyday use | Secure Enclave keys cannot be exported: another trusted device is the way to a new Mac, and nothing exportable exists to be stolen ([trusted-devices.md](trusted-devices.md)) |
 | 6 | **Clients and machines both join with "connection address + pairing code"** | One mechanism, two steps; the pairing code is computed from the public key, so the relay cannot impersonate anyone |
-| 7 | **A grant means full trust, and coding agents run with full access**; Hermesh does not build its own permission controls (the four presets were removed on 2026-10-18) | Simplest early on; to restrict, narrow the grant's scope or don't grant; passing through the coding agents' native permission modes can be considered later |
+| 7 | **A grant means full trust, and coding agents run with full access**; Aide does not build its own permission controls (the four presets were removed on 2026-10-18) | Simplest early on; to restrict, narrow the grant's scope or don't grant; passing through the coding agents' native permission modes can be considered later |
 | 8 | **Concepts aligned with mainstream agents: Session and Turn** | Corresponds to Claude's session and Codex's thread |
 | 9 | **No approvals in P1** | A grant means full trust, so approvals have no use; this saves a whole mechanism of inboxes, encryption and notifications |
 | 10 | Revocation and lowering permissions are enforced immediately by the relay, and the app pushes directly over the end-to-end channel and collects acknowledgements | Reducing permissions needs no signature; withholding messages can be detected |
@@ -1026,7 +1026,7 @@ Rough estimate for one person: **8–10 weeks**, to be revised after S0. Prerequ
 | 15 | The daemon automatically commits a snapshot each turn; the daemon itself never pushes | Supports per-turn diffs |
 | 16 | The daemon runs as a regular user (LaunchAgent on macOS, systemd user service on Linux) | Needs the user's login state; no root |
 | 17 | Claude and Codex both reuse the user's usual login state and config directories | No extra login after installation; behaves the same as when the user runs them |
-| 18 | The CLI has no `hermesh run` shortcut command | Keep it simple for now |
+| 18 | The CLI has no `aide run` shortcut command | Keep it simple for now |
 | 19 | No MCP, iPhone, automatic updates or relay web UI in P1 | Control scope |
 | 20 | **Two inviolable principles**: the trust model and key hierarchy are fixed; the relay is untrusted (no execution authority, no plaintext secrets, serves no code) | Recommended by the external review; changing them later costs a full migration and re-pairing |
 | 21 | Install scripts and binaries come from GitHub Releases, not via the relay | The relay serves no executable content |
@@ -1064,10 +1064,10 @@ These experiments originally served the sandbox preset (removed on 2026-10-18, s
 
 | Scenario | Coverage | Tests |
 |---|---|---|
-| A1 First-run setup | Relay claim → Secure Enclave root key → Setup, verified by the app's self-test mode in a real login session (`Hermesh --api-test`); a full UI walkthrough needs the owner to press Touch ID | `e2e/scenario_test.go`, app self-test |
+| A1 First-run setup | Relay claim → Secure Enclave root key → Setup, verified by the app's self-test mode in a real login session (`Aide --api-test`); a full UI walkthrough needs the owner to press Touch ID | `e2e/scenario_test.go`, app self-test |
 | A2 Add machines | macOS machine pairing; a Linux machine (Alpine in Docker) pairs and runs a session | `TestUserJourney`, `TestLinuxMachineInDocker` |
-| A3/A4 Claude/Codex sessions | Real local Claude Code (haiku) and Codex write files and fetch diffs through Hermesh | `HERMESH_REAL_CLI=1 TestUserJourney` |
-| A5 Multiple turns, interrupt, summaries | The second turn keeps context (checked with the real CLI), interrupt, `hermesh session list` summaries and unreachable marking | `TestUserJourney` |
+| A3/A4 Claude/Codex sessions | Real local Claude Code (haiku) and Codex write files and fetch diffs through Aide | `AIDE_REAL_CLI=1 TestUserJourney` |
+| A5 Multiple turns, interrupt, summaries | The second turn keeps context (checked with the real CLI), interrupt, `aide session list` summaries and unreachable marking | `TestUserJourney` |
 | Session lifecycle | The same session continues after an interrupt; archiving is read-only, releases the worktree and keeps the changes; unarchiving restores it; revoking a client interrupts its sessions | `TestSessionLifecycle` |
 | A6 Change a grant | After narrowing, the old grant version is invalid and coding agents outside the scope are refused | `TestUserJourney` |
 | A7 Malicious relay | All 14 attacks fail (forged grants, impersonated machines, rerouting, replay, tampering, swapped pairing public keys, forged admin commands, etc.) | `TestEvilRelay` |
@@ -1080,7 +1080,7 @@ These experiments originally served the sandbox preset (removed on 2026-10-18, s
 ### Differences from the Design (P1 implementation trade-offs, to be filled in later)
 
 1. **Machine keys and device keys are stored as 0600 files**, not yet in the macOS Keychain. The root key is in the Secure Enclave as designed (CryptoKit, no restricted Keychain entitlement needed).
-2. **The local API only checks the peer uid**, by decision (2026-10-19, [desktop-app.md](desktop-app.md) §12): a code-signature check would not keep same-user processes away from hermeshd's files. Operations that add permissions still need a root key signature.
+2. **The local API only checks the peer uid**, by decision (2026-10-19, [desktop-app.md](desktop-app.md) §12): a code-signature check would not keep same-user processes away from aided's files. Operations that add permissions still need a root key signature.
 3. **The owner reaches the trusted device's own machine in process**, as designed (since 2026-10-21; until then it went through a relay tunnel like a remote machine): its state and coding agents, projects, settings, sessions, answers, diffs and revocation pushes never go through the relay, and all keep working while the relay is down (`TestOwnMacWithoutRelay`). Only other machines, devices and agents are reached through the relay. Agents on the same Mac still connect through the relay.
 4. **Release signing uses ECDSA P-256 + openssl instead** (the design originally called for minisign), so target machines need no extra tools, and it matches the key algorithm used across the project.
 7. **The relay gained two capabilities**: `GetInfo` returns the current root certificate (needed for recovery); after a credential is replaced (lowered permissions or recovery), the holder of the old credential can complete admission with the new credential using the same key, which is how "agents need to do nothing" is achieved.

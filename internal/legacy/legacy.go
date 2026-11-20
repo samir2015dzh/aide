@@ -8,9 +8,6 @@ package legacy
 
 import "strings"
 
-// Name is the product's name before the rename.
-const Name = "hermesh"
-
 // Signing and encryption labels (domain separation): what was signed,
 // sealed or hashed with them verifies, opens or matches only with them.
 const (
@@ -65,7 +62,6 @@ const (
 	Daemon           = "hermeshd"
 	DaemonWindowless = "hermeshdw"
 	CLI              = "hermesh"
-	Relay            = "hermesh-relay"
 	// SystemdUnit, LaunchAgent and LogonTask name its background service.
 	SystemdUnit = "hermeshd.service"
 	LaunchAgent = "com.hermesh.daemon"

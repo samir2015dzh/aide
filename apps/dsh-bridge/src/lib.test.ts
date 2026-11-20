@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-// lib/ is committed: hermeshd carries it (embed.go). It must be what the source builds to.
+// lib/ is committed: aided carries it (embed.go). It must be what the source builds to.
 test("lib/ is the build of src/", () => {
   const here = join(import.meta.dirname, "..");
   const out = mkdtempSync(join(tmpdir(), "hmbridge-lib-"));

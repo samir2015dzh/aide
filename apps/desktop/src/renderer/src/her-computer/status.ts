@@ -2,11 +2,11 @@ import type { ComputerPermission } from "../../../shared/bridge";
 
 // Her's computer use on this Mac, as the Her entry's settings show it
 // (docs/her-server.md §4.4): her's desktop/status, and what each permission
-// asks of the owner. macOS holds hermeshd responsible for the desktop tools,
-// so the owner switches on hermeshd under Accessibility, and Hermesh, the app
+// asks of the owner. macOS holds aided responsible for the desktop tools,
+// so the owner switches on aided under Accessibility, and Aide, the app
 // it is in, under Screen Recording.
 
-/** her's DesktopStatus, desktop/status's result (@hermesh/her-protocol). */
+/** her's DesktopStatus, desktop/status's result (@aide/her-protocol). */
 export type DesktopStatus = {
   enabled: boolean;
   program?: string | null;
@@ -39,7 +39,7 @@ export function computerUseView(status: DesktopStatus | null, macos: number): Co
   };
 }
 
-/** desktop/status's result as hermeshd hands it over (a her Response's result, JSON), or null for her's error or nothing. */
+/** desktop/status's result as aided hands it over (a her Response's result, JSON), or null for her's error or nothing. */
 export function parseDesktopStatus(result: Uint8Array | undefined, failed: boolean): DesktopStatus | null {
   if (failed || !result?.length) return null;
   try {

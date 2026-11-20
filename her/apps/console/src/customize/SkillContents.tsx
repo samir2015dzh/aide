@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { SkillFileInfo, SkillsFilesResult, SkillsReadResult } from "@hermesh/her-protocol";
+import type { SkillFileInfo, SkillsFilesResult, SkillsReadResult } from "@aide/her-protocol";
 import { Lightbox } from "../components";
 import { errorText } from "../format";
 import { useHer } from "../her";

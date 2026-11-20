@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/internal/netif"
-	"github.com/hermeshai/hermesh/internal/paths"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/netif"
+	"github.com/samir2015dzh/aide/internal/paths"
 )
 
 // serveLocal takes the connections of this user's own agents on this

@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
 )
 
 // TestAntigravityPermissions tests the real Google server, not just its advertised
 // capabilities: a denied edit cannot reach disk, shell input reaches the gate,
 // and a running turn can be cancelled without destroying the session.
 func TestAntigravityPermissions(t *testing.T) {
-	if os.Getenv("HERMESH_REAL_CLI") != "1" {
-		t.Skip("set HERMESH_REAL_CLI=1")
+	if os.Getenv("AIDE_REAL_CLI") != "1" {
+		t.Skip("set AIDE_REAL_CLI=1")
 	}
 	var p *acp.Provider
 	for _, candidate := range acp.Providers("") {

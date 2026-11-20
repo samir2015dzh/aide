@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { RpcClient } from "@hermesh/her-client";
-import type { BrowserStatus } from "@hermesh/her-protocol";
+import type { RpcClient } from "@aide/her-client";
+import type { BrowserStatus } from "@aide/her-protocol";
 
 /** her's word on the browsers (browser/status, then browser/changed) and her user file's settings
  * (config/read, then config/changed), on the page's connection: what the Browser page's rows read. */

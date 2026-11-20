@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { McpServerView, McpToolsResult, SkillsFilesResult } from "@hermesh/her-protocol";
+import type { McpServerView, McpToolsResult, SkillsFilesResult } from "@aide/her-protocol";
 import { agoText, errorText } from "../format";
 import { useHer, useNow } from "../her";
 import { Icon } from "../icons";

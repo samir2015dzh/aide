@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // A DSH session's id leads to its machine as a session's does, gives DSH's

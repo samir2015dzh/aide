@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Build the owner role (cmd/hermesh-mobile/android, the iPhone's core) as an
+# Build the owner role (cmd/aide-mobile/android, the iPhone's core) as an
 # Android library with gomobile, for phones (arm64) and the emulator (x86_64):
-#   apps/android/scripts/build-core.sh   →   apps/android/build/core/hermeshcore.aar
+#   apps/android/scripts/build-core.sh   →   apps/android/build/core/aidecore.aar
 # It does nothing when the library is newer than every Go source file
 # (the Gradle build runs it before each build). VERSION stamps the version.
 # No build names a server: logging in asks for it (docs/accounts.md).
@@ -9,10 +9,10 @@
 # ANDROID_NDK_HOME; gomobile and gobind come from go.mod's tools.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-OUT=apps/android/build/core/hermeshcore.aar
+OUT=apps/android/build/core/aidecore.aar
 VERSION="${VERSION:-0.0.0-dev}"
 if [[ -f "$OUT" && -z "${FORCE:-}" ]] && [[ -z "$(find cmd internal pkg gen go.mod go.sum -newer "$OUT" -name '*.go' -o -newer "$OUT" -name 'go.*' | head -1)" ]]; then
-  echo "› hermeshcore.aar is up to date"
+  echo "› aidecore.aar is up to date"
   exit 0
 fi
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -37,7 +37,7 @@ export PATH="$TMP/bin:$PATH"
 mkdir -p "$(dirname "$OUT")"
 echo "› building the core for android/arm64 and android/amd64"
 gomobile bind -target=android/arm64,android/amd64 -androidapi 30 -javapkg io.aide.android \
-  -trimpath -ldflags "-s -w -X github.com/hermeshai/hermesh/internal/machine.Version=${VERSION#v}" \
-  -o "$OUT" ./cmd/hermesh-mobile/android
+  -trimpath -ldflags "-s -w -X github.com/samir2015dzh/aide/internal/machine.Version=${VERSION#v}" \
+  -o "$OUT" ./cmd/aide-mobile/android
 rm -f "${OUT%.aar}-sources.jar"
 echo "› $OUT"

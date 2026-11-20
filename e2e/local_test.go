@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestLocalAgent: an agent on a machine's own computer (Claude Code with
-// the CLI on the Mac that runs hermeshd) reaches that machine without the
+// the CLI on the Mac that runs aided) reaches that machine without the
 // relay: no tunnel through it, and sooner; a machine on another computer
 // is reached through the relay as before. With the relay stopped, the
 // agent still works with this computer's machine (it starts a session,
@@ -25,16 +25,16 @@ func TestLocalAgent(t *testing.T) {
 	const oneWay = 150 * time.Millisecond
 	door, _ := os.MkdirTemp(shortTemp, "hl")
 	t.Cleanup(func() { os.RemoveAll(door) })
-	here := []string{"HERMESH_LOCAL=on", "HERMESH_LOCAL_DIR=" + door}
+	here := []string{"AIDE_LOCAL=on", "AIDE_LOCAL_DIR=" + door}
 	// The owner's Mac serves its own agents; the server is another computer.
-	w := newFarOwnerMac(t, oneWay, append([]string{"HERMESH_FAKE_PROVIDERS=1"}, here...), &localv1.GrantSpec{})
+	w := newFarOwnerMac(t, oneWay, append([]string{"AIDE_FAKE_PROVIDERS=1"}, here...), &localv1.GrantSpec{})
 	ctx := context.Background()
-	daemon, data := filepath.Join(w.bin, "hermeshd"), filepath.Join(w.tmp, "vps-1")
+	daemon, data := filepath.Join(w.bin, "aided"), filepath.Join(w.tmp, "vps-1")
 	pair := start(t, "pair", loginEnv(), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}
-	w.logs = append(w.logs, start(t, "vps-1", []string{"HERMESH_FAKE_PROVIDERS=1"}, daemon, "run", "--data-dir", data))
+	w.logs = append(w.logs, start(t, "vps-1", []string{"AIDE_FAKE_PROVIDERS=1"}, daemon, "run", "--data-dir", data))
 	var vpsID string
 	eventually(t, 30*time.Second, "the server online", func() bool {
 		res, _ := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
@@ -49,9 +49,9 @@ func TestLocalAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hermesh := filepath.Join(w.bin, "hermesh")
+	aide := filepath.Join(w.bin, "aide")
 	cli := func(env []string, args ...string) result {
-		return run(t, append(append([]string{}, w.cliEnv...), env...), time.Minute, hermesh, args...)
+		return run(t, append(append([]string{}, w.cliEnv...), env...), time.Minute, aide, args...)
 	}
 	ok := func(env []string, args ...string) result {
 		t.Helper()
@@ -61,7 +61,7 @@ func TestLocalAgent(t *testing.T) {
 		}
 		return r
 	}
-	tunnels := func() int { return metric(t, w.relayDebug, "hermesh_relay_tunnels_total") }
+	tunnels := func() int { return metric(t, w.relayDebug, "aide_relay_tunnels_total") }
 
 	// The agent as on another computer: through the relay.
 	s, r := w.startSession(time.Minute, "--project", "demo", "--wait", "--prompt", "say hi")
@@ -97,7 +97,7 @@ func TestLocalAgent(t *testing.T) {
 		best := time.Duration(1 << 62)
 		for range 3 {
 			began := time.Now()
-			ok(append(env, "HERMESH_LINK=off"), "session", "get", h.SessionID)
+			ok(append(env, "AIDE_LINK=off"), "session", "get", h.SessionID)
 			best = min(best, time.Since(began))
 		}
 		return best

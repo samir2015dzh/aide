@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { ErrorInfo } from "@hermesh/her-protocol";
+import type { ErrorInfo } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { useRowState } from "../session/useRowState";
 import { useStore } from "../store";

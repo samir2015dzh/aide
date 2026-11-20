@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hermeshai/hermesh/internal/provider/codex/codextest"
+	"github.com/samir2015dzh/aide/internal/provider/codex/codextest"
 )
 
-// Real Codex runs (HERMESH_REAL_CLI) must not write threads or trusted
+// Real Codex runs (AIDE_REAL_CLI) must not write threads or trusted
 // projects into the user's own Codex state.
 func TestMain(m *testing.M) {
 	cleanup, err := codextest.IsolateHome()

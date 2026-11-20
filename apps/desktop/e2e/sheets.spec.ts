@@ -16,15 +16,15 @@ const password = "correct horse battery";
 /** What the app menu, the menu bar and notifications send the page (e.g. 文件 › 连接助手…). */
 async function command(app: ElectronApplication, page: Page, c: string) {
   await expect((await sessionList(page))).toBeVisible();
-  type Main = { hermeshTest: { mainWindow(): { webContents: { send(channel: string, c: string): void } } } };
-  await app.evaluate((_, c) => (globalThis as unknown as Main).hermeshTest.mainWindow().webContents.send("command", c), c);
+  type Main = { aideTest: { mainWindow(): { webContents: { send(channel: string, c: string): void } } } };
+  await app.evaluate((_, c) => (globalThis as unknown as Main).aideTest.mainWindow().webContents.send("command", c), c);
 }
 
-/** hermeshd's local API, as the page reaches it. */
+/** aided's local API, as the page reaches it. */
 async function api<T = Record<string, never>>(page: Page, method: string, body: object = {}): Promise<T> {
   return page.evaluate(
     async ([m, b]) => {
-      const r = await fetch(`app://hermesh/api/hermesh.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+      const r = await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
       return r.json();
     },
     [method, body] as const,
@@ -37,7 +37,7 @@ type Client = { grantId: string; grantVersion: string; label: string; expiresAt?
 const running = new Set<ChildProcess>();
 test.afterEach(() => running.forEach((p) => p.kill())); // a failed test leaves no login waiting
 
-/** Runs a Hermesh binary in the background with the account's password; exit resolves to its exit code. */
+/** Runs an Aide binary in the background with the account's password; exit resolves to its exit code. */
 function background(bin: string, args: string[], env: Record<string, string> = {}) {
   const p = spawn(bin, args, { env: { ...process.env, AIDE_PASSWORD: password, ...env }, stdio: ["ignore", "pipe", "pipe"] });
   running.add(p);
@@ -53,10 +53,10 @@ function background(bin: string, args: string[], env: Record<string, string> = {
 function newAgent() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "hmagent-"));
   return {
-    login: (st: Status, name: string) => background(fixture.cli, ["auth", "login", st.relayUrl, "--account", st.account, "--name", name], { HERMESH_HOME: home }),
+    login: (st: Status, name: string) => background(fixture.cli, ["auth", "login", st.relayUrl, "--account", st.account, "--name", name], { AIDE_HOME: home }),
     run: (...args: string[]) =>
       new Promise<string>((resolve, reject) =>
-        execFile(fixture.cli, args, { env: { ...process.env, HERMESH_HOME: home } }, (err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout))),
+        execFile(fixture.cli, args, { env: { ...process.env, AIDE_HOME: home } }, (err, stdout, stderr) => (err ? reject(new Error(stderr || String(err))) : resolve(stdout))),
       ),
   };
 }
@@ -179,12 +179,12 @@ test("adding a machine: its system, then the app or a command (Linux: the comman
   const how = sheet.getByRole("group", { name: "安装方式" });
   const viaApp = how.getByRole("button", { name: "安装应用" });
   const viaCommand = how.getByRole("button", { name: "终端命令" });
-  const install = `curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | AIDE_ACCOUNT='${st.account}' sh -s -- ${st.relayUrl}`;
+  const install = `curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | AIDE_ACCOUNT='${st.account}' sh -s -- ${st.relayUrl}`;
 
   // A Mac, by default with the app: opened there, then logged in to this server with the account, as a machine only.
   await expect(sheet.getByRole("button", { name: "Mac", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(viaApp).toHaveAttribute("aria-pressed", "true");
-  await expect(sheet).toContainText("在那台 Mac 上打开github.com/samir2015dzh/hermesh/releases/latest");
+  await expect(sheet).toContainText("在那台 Mac 上打开github.com/samir2015dzh/aide/releases/latest");
   await expect(sheet).toContainText(`服务器填${st.relayUrl}`);
   await expect(sheet).toContainText(`账号填${st.account}`);
   await expect(sheet).not.toContainText("install.sh");
@@ -197,10 +197,10 @@ test("adding a machine: its system, then the app or a command (Linux: the comman
   // A Windows PC: the app, or install.ps1 in PowerShell.
   await sheet.getByRole("button", { name: "Windows" }).click();
   await expect(sheet).toContainText("PowerShell · 用你平时写代码的用户");
-  await expect(sheet).toContainText(`$env:AIDE_ACCOUNT='${st.account}'; & ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) ${st.relayUrl}`);
+  await expect(sheet).toContainText(`$env:AIDE_ACCOUNT='${st.account}'; & ([scriptblock]::Create((irm https://github.com/samir2015dzh/aide/releases/latest/download/install.ps1))) ${st.relayUrl}`);
   await snap(page, "sheet-add-machine-windows");
   await viaApp.click();
-  await expect(sheet).toContainText("在那台电脑上打开github.com/samir2015dzh/hermesh/releases/latest");
+  await expect(sheet).toContainText("在那台电脑上打开github.com/samir2015dzh/aide/releases/latest");
 
   // Linux has no app: the command, whatever was picked before.
   await sheet.getByRole("button", { name: "Linux" }).click();
@@ -217,11 +217,11 @@ test("adding a machine: its system, then the app or a command (Linux: the comman
 
   // The machine logs in with the account and password (aided login, as the install script runs it), and runs (its
   // background service would): the sheet says so, by the name it gave itself.
-  const hermeshd = path.join(path.dirname(fixture.cli), "hermeshd");
+  const aided = path.join(path.dirname(fixture.cli), "aided");
   const data = fs.mkdtempSync(path.join(os.tmpdir(), "hmmachine-"));
-  const login = background(hermeshd, ["login", st.relayUrl, "--account", st.account, "--name", name, "--no-service", "--data-dir", data]);
+  const login = background(aided, ["login", st.relayUrl, "--account", st.account, "--name", name, "--no-service", "--data-dir", data]);
   expect(await login.exit, login.output()).toBe(0);
-  background(hermeshd, ["run", "--data-dir", data]); // stopped after the test
+  background(aided, ["run", "--data-dir", data]); // stopped after the test
   await expect(sheet).toContainText(`「${name}」已添加`, { timeout: 30_000 });
   await snap(page, "sheet-add-machine-added");
   await sheet.getByRole("button", { name: "完成" }).click();
@@ -241,7 +241,7 @@ test("a hosted agent shows its app's icon only when it logs in from the app's ow
   const st = await api<Status>(page, "GetStatus");
   for (const name of [muse, impostor]) await loggedIn(page, st, name);
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("grants"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   const grants = settings.getByRole("list", { name: "授权" }).getByRole("button");
   // The app by its own name, with its icon; the impostor keeps where it logged in, and a letter.
@@ -257,7 +257,7 @@ test("renaming an agent from settings keeps what it may use and until when; a kn
   const before = await loggedIn(page, st, name);
   const clients = async () => (await api<{ clients: Client[] }>(page, "ListClients")).clients;
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("grants"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: new RegExp(name) }).click();
   const panel = settings.getByRole("main", { name: "授权" });
@@ -290,7 +290,7 @@ test("changing what an agent may use, and renewing it, from settings", async () 
   await loggedIn(page, st, name);
   const grant = async () => (await api<{ clients: Client[] }>(page, "ListClients")).clients.find((c) => c.label === name)!;
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("grants"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: new RegExp(name) }).click();
   const panel = settings.getByRole("main", { name: "授权" });

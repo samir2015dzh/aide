@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { envPrefix, kept } from "./legacy";
 
-// Test builds only (HERMESH_TEST_DATA_DIR when building): a data directory
+// Test builds only (AIDE_TEST_DATA_DIR when building): a data directory
 // baked in, so an app that Squirrel relaunches after an update still talks
 // to the test's daemon, without touching the session's environment.
-declare const __HERMESH_TEST_DATA_DIR__: string;
-export const testDataDir = __HERMESH_TEST_DATA_DIR__;
+declare const __AIDE_TEST_DATA_DIR__: string;
+export const testDataDir = __AIDE_TEST_DATA_DIR__;
 
 // Mirrors DataDir and LocalAPI in internal/paths.
 export function dataDir(): string {
@@ -24,17 +24,17 @@ export function dataDir(): string {
 }
 
 export function socketPath(): string {
-  if (process.platform === "win32") return pipeName(process.env.HERMESH_SOCKET && !app.isPackaged ? process.env.HERMESH_SOCKET : path.join(dataDir(), "run", "hermeshd.pipe"));
-  if (process.env.HERMESH_SOCKET && !app.isPackaged) return process.env.HERMESH_SOCKET;
-  const p = path.join(dataDir(), "run", "hermeshd.sock");
-  if (Buffer.byteLength(p) > 100) return path.join(os.tmpdir(), `hermesh-${process.getuid?.() ?? 0}`, "hermeshd.sock");
+  if (process.platform === "win32") return pipeName(process.env.AIDE_SOCKET && !app.isPackaged ? process.env.AIDE_SOCKET : path.join(dataDir(), "run", "aided.pipe"));
+  if (process.env.AIDE_SOCKET && !app.isPackaged) return process.env.AIDE_SOCKET;
+  const p = path.join(dataDir(), "run", "aided.sock");
+  if (Buffer.byteLength(p) > 100) return path.join(os.tmpdir(), `aide-${process.getuid?.() ?? 0}`, "aided.sock");
   return p;
 }
 
 /**
- * On Windows hermeshd serves a pipe with a random name, written in a file
+ * On Windows aided serves a pipe with a random name, written in a file
  * only this user can read (internal/localipc): read again for each
- * connection, since it changes whenever hermeshd starts. Before it has
+ * connection, since it changes whenever aided starts. Before it has
  * started there is no name, and connecting to the file's path fails as
  * a missing socket does.
  */

@@ -1,7 +1,7 @@
 import { useLayoutEffect, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import type { Avatar as AvatarSpec, AvatarHue, AvatarShape, BotSummary } from "@hermesh/her-protocol";
+import type { Avatar as AvatarSpec, AvatarHue, AvatarShape, BotSummary } from "@aide/her-protocol";
 import { local } from "../api";
 import { ErrorLine, useAction } from "../sheets/common";
 import { useStore } from "../store";
@@ -36,7 +36,7 @@ const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
 /** At most 20 characters, as her keeps names. */
 export const NAME_MAX = 20;
 
-/** The characters, the first character of its name, and the colours; `mark` adds the Hermesh mark, Her's. */
+/** The characters, the first character of its name, and the colours; `mark` adds the Aide mark, Her's. */
 export function AvatarChoices({ avatar, hue, name, mark = false, onChoose }: { avatar: AvatarSpec; hue: AvatarHue; name: string; mark?: boolean; onChoose: (spec: Exclude<AvatarSpec, { kind: "image" }>) => void }) {
   const { t } = useTranslation("her");
   return (

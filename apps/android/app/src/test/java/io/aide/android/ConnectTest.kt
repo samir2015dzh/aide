@@ -35,7 +35,7 @@ class ConnectTest {
 
     private fun api() = LocalApi(server.port.toLong(), "tok")
 
-    // What the core sends, from Go's protojson (cmd/hermesh-mobile/android's core, 2026-11-16).
+    // What the core sends, from Go's protojson (cmd/aide-mobile/android's core, 2026-11-16).
     private val watchJson = """{"reset":true,"status":{"initialized":true,"ownerId":"o_x","relayConnected":true},"machines":[{"machineId":"m_1","machineName":"mac","online":true,"status":{"platform":"darwin/arm64","agents":[{"name":"claude","available":true,"loggedIn":true}],"runningSessions":2},"her":{"enabled":true,"running":true,"unread":3}}],"devices":[{"keyId":"k_1","label":"Xiaomi 15 Pro","platform":"android","thisDevice":true},{"keyId":"k_2","label":"MacBook","platform":"darwin","machineId":"m_1","machineOnline":true,"legacy":true}],"sessions":[{"sessionId":"s_1","machineId":"m_1","agent":"claude","status":"SESSION_STATUS_WAITING_INPUT","createdBy":"c_1","progress":{"pendingQuestion":{"questionId":"q1","items":[{"id":"i1","text":"Which?","options":[{"label":"A"}]}]}},"updatedAt":"2026-11-16T17:24:05.572Z"}],"workVersion":"7"}"""
 
     @Test fun envelopesRoundTrip() {
@@ -54,7 +54,7 @@ class ConnectTest {
         assertEquals("o_x", st.ownerId)
         assertEquals(listOf("her_reply"), st.abilities)
         val r = server.takeRequest()
-        assertEquals("/hermesh.local.v1.LocalService/GetStatus", r.path)
+        assertEquals("/aide.local.v1.LocalService/GetStatus", r.path)
         assertEquals("Bearer tok", r.getHeader("Authorization"))
         assertEquals("1", r.getHeader("Connect-Protocol-Version"))
         assertTrue(r.getHeader("Content-Type")!!.startsWith("application/json"))
@@ -70,7 +70,7 @@ class ConnectTest {
             assertEquals("permission_denied", e.code)
             assertEquals("wrong account or password", e.message)
         }
-        assertEquals("/hermesh.local.v1.LocalService/LogIn", server.takeRequest().path)
+        assertEquals("/aide.local.v1.LocalService/LogIn", server.takeRequest().path)
     }
 
     @Test fun streamReadsEachMessageUntilTheEnd() = runBlocking {
@@ -120,7 +120,7 @@ class ConnectTest {
         assertEquals(JsonPrimitive(true), req["partial"])
     }
 
-    // protojson names: LogInRequest and SetupRequest (hermesh.local.v1, docs/accounts.md).
+    // protojson names: LogInRequest and SetupRequest (aide.local.v1, docs/accounts.md).
     @Test fun loggingInNamesThisPlatform() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"ownerId":"o_x"}"""))
         assertEquals("o_x", api().logIn("https://aide.example", "owner", "correct horse", "Xiaomi 15 Pro").ownerId)
@@ -135,7 +135,7 @@ class ConnectTest {
         server.enqueue(MockResponse().setBody("""{"ownerId":"o_x"}"""))
         api().setup("http://203.0.113.7:8080", "ABCD-EFGH", "owner", "correct horse", "Xiaomi 15 Pro")
         val r = server.takeRequest()
-        assertEquals("/hermesh.local.v1.LocalService/Setup", r.path)
+        assertEquals("/aide.local.v1.LocalService/Setup", r.path)
         val o = ConnectClient.json.parseToJsonElement(r.body.readUtf8()).jsonObject
         assertEquals(setOf("relayUrl", "setupCode", "account", "password", "label", "platform"), o.keys)
         assertEquals("ABCD-EFGH", o["setupCode"]!!.jsonPrimitive.content)
@@ -167,7 +167,7 @@ class ConnectTest {
         server.enqueue(MockResponse().setBody("""{"reissuedMachines":1}"""))
         assertEquals(1, api().removeDevice("k_2", eraseHer = true).reissuedMachines)
         val rm = server.takeRequest()
-        assertEquals("/hermesh.local.v1.LocalService/RemoveDevice", rm.path)
+        assertEquals("/aide.local.v1.LocalService/RemoveDevice", rm.path)
         assertEquals("""{"keyId":"k_2","eraseHer":true}""", rm.body.readUtf8())
     }
 }

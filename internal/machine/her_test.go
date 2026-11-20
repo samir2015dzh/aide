@@ -16,12 +16,12 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/herhost/hertest"
-	"github.com/hermeshai/hermesh/internal/paths"
-	"github.com/hermeshai/hermesh/internal/provider"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/herhost/hertest"
+	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 func openHerMachine(t *testing.T, dir, bin string) *Machine {
@@ -59,8 +59,8 @@ func TestHerCommandsAreSignedOnly(t *testing.T) {
 }
 
 // A command this version doesn't know comes from a device newer than it:
-// unimplemented, which the devices show as "update Hermesh there"
-// (docs/version-skew.md §6.3). One acting as a hermeshd from before Her
+// unimplemented, which the devices show as "update Aide there"
+// (docs/version-skew.md §6.3). One acting as an aided from before Her
 // (TestBeforeHer) has no Her in its status and answers her commands as
 // 0.1.4 did; the rest it runs.
 func TestUnknownAdminCommand(t *testing.T) {
@@ -239,7 +239,7 @@ func TestHerOffOnARemovedMachine(t *testing.T) {
 
 // With HerExtensionHost, turning Her on registers her with the browsers for
 // the machine's socket, and turning it off takes that back; closing the
-// machine (hermeshd stopping) leaves it.
+// machine (aided stopping) leaves it.
 func TestHerExtensionHost(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the fake her is a shell script")

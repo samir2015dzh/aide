@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestRemoteMachineSetup: what a trusted device does to set up a machine it
@@ -24,7 +24,7 @@ func TestRemoteMachineSetup(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	ctx := context.Background()
 
@@ -36,7 +36,7 @@ func TestRemoteMachineSetup(t *testing.T) {
 	gitRepoAt(t, filepath.Join(home, "code", "node_modules", "dep"), map[string]string{"x": "y"})
 	gitRepoAt(t, filepath.Join(home, "a", "b", "c", "deep"), map[string]string{"x": "y"})
 	vpsEnv := append(homeEnv(home), env...)
-	daemon := filepath.Join(w.bin, "hermeshd")
+	daemon := filepath.Join(w.bin, "aided")
 	data := filepath.Join(w.tmp, "vps-1")
 	pair := start(t, "pair", append(slices.Clone(vpsEnv), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {

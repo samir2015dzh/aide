@@ -14,9 +14,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/provider/acp"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
 )
 
 var (
@@ -171,8 +171,8 @@ func TestCustomAgentRefused(t *testing.T) {
 		t.Fatalf("remove: %v", err)
 	}
 	// A command that does not answer as an ACP agent fails its test with why.
-	res, err := n.TestCustomAgent(context.Background(), &machinev1.CustomAgent{Name: "mine", Command: "hermesh-no-such-agent"})
-	if err != nil || res.Ok || !strings.Contains(res.Reason, "hermesh-no-such-agent not found") {
+	res, err := n.TestCustomAgent(context.Background(), &machinev1.CustomAgent{Name: "mine", Command: "aide-no-such-agent"})
+	if err != nil || res.Ok || !strings.Contains(res.Reason, "aide-no-such-agent not found") {
 		t.Fatalf("test: %+v %v", res, err)
 	}
 }

@@ -24,7 +24,7 @@
 .step-icon{flex:none;align-self:center;width:52px;height:52px;margin-top:14px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:var(--accent-t);background:linear-gradient(135deg,color-mix(in srgb,var(--aurora-0) 16%,transparent),color-mix(in srgb,var(--aurora-1) 14%,transparent),color-mix(in srgb,var(--aurora-2) 16%,transparent))}
 .step-icon .ic{width:26px;height:26px;stroke-width:1.5}
 .step-icon+.ob-h{margin-top:14px}
-/* Looking for the agents: every one Hermesh supports, lit in turn like a
+/* Looking for the agents: every one Aide supports, lit in turn like a
    light passing along the row (opacity only, so the compositor runs it).
    Then the page comes in. */
 .ag-sweep{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:480px}

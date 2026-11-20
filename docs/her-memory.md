@@ -261,7 +261,7 @@ Clear Memory sits beside Clear Chat.
   moment of §4.2. The chat stays.
 - Clearing the chat says that what Her remembers stays.
 
-Two methods carry it, which hermeshd lets the owner's devices call:
+Two methods carry it, which aided lets the owner's devices call:
 `bots/memory` (the file as written, its path, the other files with when each
 changed) and `bots/memory_clear`.
 

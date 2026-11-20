@@ -1,4 +1,4 @@
-// Package service installs hermeshd as a per-user background service: a
+// Package service installs aided as a per-user background service: a
 // launchd LaunchAgent on macOS, a systemd user unit on Linux, a Task
 // Scheduler logon task on Windows.
 package service

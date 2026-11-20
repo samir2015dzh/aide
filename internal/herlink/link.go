@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/internal/herhost"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/internal/herhost"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // TakesMessages is how Her's inbox says it takes messages: the news of her

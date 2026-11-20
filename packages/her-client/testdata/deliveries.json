@@ -1,5 +1,5 @@
 {
-  "_": "The files Her sent, as both apps read deliveries/list (docs/her-deliverables.md §3.1, §4.3): grouping by time, which files are media, what is new, what to read, the quote for a reply, pages joined, and the filter by where files came from (deliveries/sources). her-client's deliveries.test.ts and HermeshHer's DeliveriesTests.swift run these. Times: now is 2026-11-16 14:40 at UTC+8 (06:40Z).",
+  "_": "The files Her sent, as both apps read deliveries/list (docs/her-deliverables.md §3.1, §4.3): grouping by time, which files are media, what is new, what to read, the quote for a reply, pages joined, and the filter by where files came from (deliveries/sources). her-client's deliveries.test.ts and AideHer's DeliveriesTests.swift run these. Times: now is 2026-11-16 14:40 at UTC+8 (06:40Z).",
   "now": "2026-11-16T06:40:00Z",
   "offset_minutes": 480,
   "page": {
@@ -288,7 +288,7 @@
           "kind": "routine",
           "id": "rtn_2"
         },
-        "name": "Hermesh用户用量周报",
+        "name": "Aide用户用量周报",
         "files": 3,
         "media": 1,
         "latest": 5
@@ -313,7 +313,7 @@
       "conversation": true,
       "routines": [
         "每日晨报",
-        "Hermesh用户用量周报",
+        "Aide用户用量周报",
         "PH 周报"
       ],
       "sessions": [
@@ -324,7 +324,7 @@
       "query": " 周报 ",
       "conversation": false,
       "routines": [
-        "Hermesh用户用量周报",
+        "Aide用户用量周报",
         "PH 周报"
       ],
       "sessions": []
@@ -346,7 +346,7 @@
   ],
   "source_counts": [
     {
-      "name": "Hermesh用户用量周报",
+      "name": "Aide用户用量周报",
       "all": 3,
       "media": 1,
       "documents": 2

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as KeyEvent, type PointerEvent as PointerDown } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
-import type { WebSearchSource, WebSearchStatus, WebSearchTestResult } from "@hermesh/her-protocol";
+import type { WebSearchSource, WebSearchStatus, WebSearchTestResult } from "@aide/her-protocol";
 import { Dialog, PageTop } from "../components";
 import { PopMenu, type MenuItem } from "../customize/parts";
 import { agoText, errorText } from "../format";

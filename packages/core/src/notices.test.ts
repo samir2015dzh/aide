@@ -1,8 +1,8 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { MachineSchema } from "@hermesh/proto/local";
-import { HerLatestKind, HerLatestSchema, HerStatusSchema } from "@hermesh/proto/machine";
+import { MachineSchema } from "@aide/proto/local";
+import { HerLatestKind, HerLatestSchema, HerStatusSchema } from "@aide/proto/machine";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionStatus } from "@hermesh/proto/session";
+import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import { filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshot, noticeSnapshots, type NoticeItem } from "./notices";
 import { ask, at, progressOf, session } from "./testing";

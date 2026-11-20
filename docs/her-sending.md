@@ -32,7 +32,7 @@ interrupted, or when the owner taps Edit on a message that was refused.
 
 | What the owner saw | Why |
 |---|---|
-| A bubble, and the words still in the composer | `HerChat.send` put the draft back whenever the call threw (apps/ios/Hermesh/Views/Her/HerChat.swift), though her may have taken it: the answer lost when the connection reopened, or late. The Mac did the same (Conversation.tsx `Dock`). |
+| A bubble, and the words still in the composer | `HerChat.send` put the draft back whenever the call threw (apps/ios/Aide/Views/Her/HerChat.swift), though her may have taken it: the answer lost when the connection reopened, or late. The Mac did the same (Conversation.tsx `Dock`). |
 | The same message twice | The core (`herDeliver`, internal/owner/her.go) kept a message whose answer came late, and delivered it again. |
 | Send greyed out after sending | `sending` held Send until the whole call ended: up to 20 s reaching the machine, 20 s for her, 120 s for each file. |
 | The composer faded | `noModel`, while the machine's status said no model for a moment. |
@@ -82,7 +82,7 @@ her's (§5.3).
 
 ### 4.1 HerSend
 
-`HerSendRequest` (proto/hermesh/local/v1/local.proto) gains:
+`HerSendRequest` (proto/aide/local/v1/local.proto) gains:
 
 - `id`: the message's id, given by the app (`hw_` and a ULID or UUID,
   lowercase). Left out by an older app, the core gives one.
@@ -156,7 +156,7 @@ Messages the core delivered before named their files after the words
   waits for a message before.
 - What the keyboard is composing goes with the message, and nothing comes
   back into the field. On the iPhone the keyboard keeps what it composed and
-  writes it back into a field emptied under it (seen in HermeshUITests: the
+  writes it back into a field emptied under it (seen in AideUITests: the
   message went, "ni hao" came back, and Send was greyed out under it, the
   field's value being empty); so with marked text, the field lets go of the
   keyboard first, which commits it, then the message goes and the field takes
@@ -217,7 +217,7 @@ matched by its id.
 |---|---|
 | An older her | ignores `id`: a delivery tried again may be taken twice, as before; apps match by words. |
 | An older app, this core | sends without `id`: the core gives one; the app shows the outbox as before. |
-| This app, an older core | not possible: on the iPhone the core is the app's own; the Mac's app and hermeshd update together. |
+| This app, an older core | not possible: on the iPhone the core is the app's own; the Mac's app and aided update together. |
 
 ## 7. Tests
 
@@ -229,10 +229,10 @@ matched by its id.
   connection, and on its own when that is gone (without history); delivers
   older waiting messages first; pictures as images; a refusal is answered
   and not kept; HerSend and flushWaiting never deliver one message at once.
-- HermeshKit (Swift) and her-client/desktop (TS): matching by id, by words
+- AideKit (Swift) and her-client/desktop (TS): matching by id, by words
   for her's ids; what is handed back; the states.
 - End to end, with the real her, relay and core:
-  - iPhone (HermeshUITests via TestIPhone): after Send the composer is empty
+  - iPhone (AideUITests via TestIPhone): after Send the composer is empty
     and the bubble shows once; sending while pinyin is being composed; with
     the conversation's connection gone, a message still goes and shows
     once.
@@ -254,7 +254,7 @@ matched by its id.
   tries the app's connection first; `onBot` asks for `history_limit: 0`.
 - iPhone: `HerChat.send`/`retry`/`edit`/`deliver`, `sending` and
   `reconnecting`; `HerComposer` lets go of the keyboard while it composes
-  (`UIResponder.herFirst`) and waits for photos; rows by `herOutbox` (HermeshKit `Kept.swift`), a
+  (`UIResponder.herFirst`) and waits for photos; rows by `herOutbox` (AideKit `Kept.swift`), a
   `.sending` row, `HerConnectingLine`; what a task hands back
   (`herReturned`) goes into the composer.
 - Mac: the outbox store, `SendingBubble` and `ConnectingLine` in

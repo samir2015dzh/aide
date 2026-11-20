@@ -38,7 +38,7 @@ func TestCheck(t *testing.T) {
 		{"a session of its own", "session/new", `{"cwd":"/"}`, connect.CodeUnimplemented},
 		{"a document panel", "doc/open", `{}`, connect.CodeUnimplemented},
 		{"the rest of browser/*", "browser/reveal", `{}`, connect.CodeUnimplemented},
-		{"initialize is hermeshd's", "initialize", `{"protocol_version":2}`, connect.CodeUnimplemented},
+		{"initialize is aided's", "initialize", `{"protocol_version":2}`, connect.CodeUnimplemented},
 		{"an unknown method", "bots/everything", ``, connect.CodeUnimplemented},
 		{"no method", "", ``, connect.CodeUnimplemented},
 		{"params that are not JSON", "bots/open", `{"bot_id":`, connect.CodeInvalidArgument},

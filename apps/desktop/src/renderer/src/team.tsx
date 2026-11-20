@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { Session } from "@hermesh/proto/session";
+import type { Session } from "@aide/proto/session";
 import {
   clockText, codingAgentTitle, createdDate, dateOf, displayTitle, elapsedSeconds, listTime, pendingQuestion, quickChoice, teamState, todayStats, updatedDate,
   type TeamState,
-} from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+} from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { local } from "./api";
 import { Icon } from "./icons";
 import { senderLine } from "./Sidebar";

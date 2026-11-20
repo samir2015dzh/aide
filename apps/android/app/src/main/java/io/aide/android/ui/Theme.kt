@@ -14,7 +14,7 @@ val Positive = Color(0xFF1F9D55)
 val Warning = Color(0xFFD97706)
 
 @Composable
-fun HermeshTheme(content: @Composable () -> Unit) {
+fun AideTheme(content: @Composable () -> Unit) {
     val colors = if (isSystemInDarkTheme()) {
         darkColorScheme(
             primary = Color(0xFFF2F2F3), onPrimary = Color(0xFF0B0B0D), secondary = Color(0xFF9B9BA3), tertiary = Color(0xFFF5A050),

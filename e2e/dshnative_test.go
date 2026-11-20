@@ -17,17 +17,17 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // TestDSHNativeSessions: the owner sees the DeepSeek Harness sessions
-// Hermesh did not start, on each machine (DSH_HOME, as DSH 0.2.2 keeps
+// Aide did not start, on each machine (DSH_HOME, as DSH 0.2.2 keeps
 // them), and opens one: its title, when it was last at work and its
 // conversation, read from the remote machine end to end, from this Mac's
-// own in process. The session of DSH's that a Hermesh session runs, and a
+// own in process. The session of DSH's that an Aide session runs, and a
 // DSH subagent's, are not among them. A Mac that is only a machine sees
 // its own. Nothing in either DSH home changes.
 func TestDSHNativeSessions(t *testing.T) {
@@ -35,11 +35,11 @@ func TestDSHNativeSessions(t *testing.T) {
 		t.Skip("e2e")
 	}
 	macHome, workHome := t.TempDir(), t.TempDir()
-	w := newOwnerMac(t, []string{"DSH_HOME=" + macHome, "HERMESH_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + t.TempDir()},
+	w := newOwnerMac(t, []string{"DSH_HOME=" + macHome, "AIDE_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + t.TempDir()},
 		&localv1.GrantSpec{Agents: []string{"deepseek"}})
 	ctx := context.Background()
 
-	// A session Hermesh starts: DSH writes its log under the id Hermesh
+	// A session Aide starts: DSH writes its log under the id Aide
 	// keeps (the scripted agent here does not, so the test does).
 	s, r := w.startSession(time.Minute, "--agent", "deepseek", "--prompt", "hello")
 	if r.code != 0 {
@@ -143,7 +143,7 @@ func TestDSHNativeSessions(t *testing.T) {
 }
 
 // TestDSHNativeCLI: an agent whose grant sees the sessions it did not
-// start lists a machine's DeepSeek Harness sessions with the hermesh CLI,
+// start lists a machine's DeepSeek Harness sessions with the aide CLI,
 // as a dispatcher does (session list --native), and opens one (session
 // get, session events), read only: sending to it, or anything else that
 // acts on it, is refused, plainly. One that sees its own sessions sees
@@ -173,7 +173,7 @@ func TestDSHNativeCLI(t *testing.T) {
 	}
 	list := func(env []string, args ...string) []native {
 		t.Helper()
-		r := run(t, env, time.Minute, filepath.Join(w.bin, "hermesh"), append([]string{"session", "list", "--native", "-o", "json"}, args...)...)
+		r := run(t, env, time.Minute, filepath.Join(w.bin, "aide"), append([]string{"session", "list", "--native", "-o", "json"}, args...)...)
 		var doc struct {
 			OK       bool
 			Sessions []json.RawMessage
@@ -275,14 +275,14 @@ func TestDSHNativeCLI(t *testing.T) {
 	if got := list(own); len(got) != 0 {
 		t.Fatalf("listed to an agent that sees its own: %+v", got)
 	}
-	if r := run(t, own, time.Minute, filepath.Join(w.bin, "hermesh"), "session", "get", desktop.SessionID, "-o", "json"); r.code != 2 || !strings.Contains(r.stdout, `"not_found"`) {
+	if r := run(t, own, time.Minute, filepath.Join(w.bin, "aide"), "session", "get", desktop.SessionID, "-o", "json"); r.code != 2 || !strings.Contains(r.stdout, `"not_found"`) {
 		t.Fatalf("read by an agent that sees its own: %+v", r)
 	}
 	// One that sees all in demo, those in demo's folder.
 	if got := list(inDemo); len(got) != 1 || got[0].SessionID != desktop.SessionID {
 		t.Fatalf("listed to an agent of demo's: %+v", got)
 	}
-	if r := run(t, inDemo, time.Minute, filepath.Join(w.bin, "hermesh"), "session", "events", site.SessionID); r.code != 2 {
+	if r := run(t, inDemo, time.Minute, filepath.Join(w.bin, "aide"), "session", "events", site.SessionID); r.code != 2 {
 		t.Fatalf("read outside demo: %+v", r)
 	}
 

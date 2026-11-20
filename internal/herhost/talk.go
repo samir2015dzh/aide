@@ -12,7 +12,7 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// Talk is Her's conversation in a terminal (hermeshd her, docs/linux.md
+// Talk is Her's conversation in a terminal (aided her, docs/linux.md
 // §8), on the her this machine runs, at sock: what Her sends shows as it
 // comes and each line read from in goes to her. Her runs actions without
 // asking, so nothing is asked in the terminal. It ends when in does, or ctx.

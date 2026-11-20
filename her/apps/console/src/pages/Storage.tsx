@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { StorageUsage } from "@hermesh/her-protocol";
+import type { StorageUsage } from "@aide/her-protocol";
 import { PageTop } from "../components";
 import { bytesText, errorText } from "../format";
 import { useHer } from "../her";

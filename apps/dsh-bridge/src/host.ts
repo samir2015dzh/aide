@@ -37,7 +37,7 @@ export class BridgeError extends Error {
   }
 }
 
-/** What Hermesh asks: the Host's own view of one session, a prompt, a cancel. */
+/** What Aide asks: the Host's own view of one session, a prompt, a cancel. */
 export interface Host {
   /** Which services the Host has (a profile without them can't take prompts). */
   services(): { sessionController: boolean; agents: boolean };

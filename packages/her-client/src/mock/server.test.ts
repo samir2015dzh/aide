@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Event, Op, SessionSnapshot, SessionSummary } from "@hermesh/her-protocol";
+import type { Event, Op, SessionSnapshot, SessionSummary } from "@aide/her-protocol";
 import { RpcClient } from "../rpc.ts";
 import { applyEvent, fromSnapshot, statusOf, type SessionView } from "../session.ts";
 import { conversation } from "../steps.ts";

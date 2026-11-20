@@ -3,12 +3,12 @@ import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import {
   ClientSchema, DeviceSchema, GetStatusResponseSchema, MachineSchema, ProjectSchema,
   type Client, type Device, type GetStatusResponse, type Machine, type Project,
-} from "@hermesh/proto/local";
-import { AgentStatusSchema, MachineStatusSchema } from "@hermesh/proto/machine";
+} from "@aide/proto/local";
+import { AgentStatusSchema, MachineStatusSchema } from "@aide/proto/machine";
 import {
   FailureKind, SessionEventSchema, SessionSchema, SessionStatus,
   type Session, type SessionEvent,
-} from "@hermesh/proto/session";
+} from "@aide/proto/session";
 
 // A heavy owner's world, the same on every run: a few machines and grants,
 // a few hundred sessions over two months (a dozen live), a year of usage,
@@ -79,7 +79,7 @@ export function world(now = Date.now()): World {
       spec: { label, machineIds: ["*"], projectIds: ["*"], agents },
     }),
   );
-  const projectNames = ["hermesh", "web-console", "relay", "docs", "infra", "ml-pipeline", "mobile", "billing", "design-system", "data-lake", "search", "auth"];
+  const projectNames = ["aide", "web-console", "relay", "docs", "infra", "ml-pipeline", "mobile", "billing", "design-system", "data-lake", "search", "auth"];
   const projects = projectNames.map((p, i) => create(ProjectSchema, { machineId: machines[i % 3].machineId, projectId: p, defaultBaseRef: "main", agents }));
   const devices = [
     create(DeviceSchema, { keyId: "d-1", label: "MacBook Pro", platform: "darwin", thisDevice: true, machineId: "m-local", machineOnline: true }),
@@ -126,7 +126,7 @@ export function world(now = Date.now()): World {
         status,
         createdBy: clients[i % clients.length].clientId,
         title: i === 100 ? titles.smallA : i === 101 ? titles.smallB : `${pick(verbs)}${pick(things)} #${i}`,
-        branch: `hermesh/${id}`,
+        branch: `aide/${id}`,
         createdAt: ts(created),
         updatedAt: ts(updated),
         progress: {
@@ -159,7 +159,7 @@ export function world(now = Date.now()): World {
       create(SessionSchema, {
         sessionId: id,
         machineId: "m-local",
-        projectId: "hermesh",
+        projectId: "aide",
         agent: "claude",
         status: running ? SessionStatus.RUNNING : SessionStatus.IDLE,
         createdBy: "c-0",
@@ -232,7 +232,7 @@ export function conversation(r: () => number, turns: number, calls: number, star
     { kind: "read", name: "Read", summary: () => `Read packages/core/src/file${Math.floor(r() * 90)}.ts` },
     { kind: "search", name: "Grep", summary: () => `Grep "mergeSessions" in packages/` },
     { kind: "edit", name: "Edit", summary: () => `Edit packages/core/src/sessions.ts` },
-    { kind: "shell", name: "Bash", summary: () => `Bash pnpm --filter @hermesh/core test -- --run sessions` },
+    { kind: "shell", name: "Bash", summary: () => `Bash pnpm --filter @aide/core test -- --run sessions` },
   ];
   for (let turn = 1; turn <= turns; turn++) {
     add({ case: "turnStarted", value: { turn } });

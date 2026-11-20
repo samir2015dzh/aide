@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 func fixture(t *testing.T, name string) line {
@@ -131,7 +131,7 @@ func TestInitReportsModel(t *testing.T) {
 }
 
 // A message steered after Claude finished the turn's model calls is run as
-// one more Claude turn (two results, as Claude Code 2.1.292 does): Hermesh
+// one more Claude turn (two results, as Claude Code 2.1.292 does): Aide
 // reports one turn, ending with the last result.
 func TestSteerAfterLastToolIsOneTurn(t *testing.T) {
 	scripted(t)
@@ -194,7 +194,7 @@ func TestSteerAfterLastToolIsOneTurn(t *testing.T) {
 	}
 }
 
-// AskUserQuestion arrives as a permission request (with Hermesh as the
+// AskUserQuestion arrives as a permission request (with Aide as the
 // permission host); the answer goes back as the tool's input with
 // answers keyed by question text, as Claude Code 2.1.292 takes it.
 func TestAskUserQuestion(t *testing.T) {

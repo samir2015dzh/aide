@@ -6,8 +6,8 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-// HERMESH_DESKTOP_OUT builds somewhere other than out/ (tests building side by side).
-const out = process.env.HERMESH_DESKTOP_OUT || path.join(import.meta.dirname, "out");
+// AIDE_DESKTOP_OUT builds somewhere other than out/ (tests building side by side).
+const out = process.env.AIDE_DESKTOP_OUT || path.join(import.meta.dirname, "out");
 
 // pdf.js's data files, served at pdfjs/ beside the page: character maps for Chinese, Japanese
 // and Korean fonts, the standard fonts a PDF may not embed, and its image decoders.
@@ -15,7 +15,7 @@ const pdfjsDir = path.dirname(createRequire(import.meta.url).resolve("pdfjs-dist
 const pdfjsData = ["cmaps", "standard_fonts", "wasm"];
 function pdfjsAssets(): Plugin {
   return {
-    name: "hermesh-pdfjs-assets",
+    name: "aide-pdfjs-assets",
     configureServer(server) {
       server.middlewares.use("/pdfjs", (req, res, next) => {
         const rel = decodeURIComponent((req.url ?? "").split("?")[0]).replace(/^\/+/, "");
@@ -38,11 +38,11 @@ export default defineConfig({
     build: { externalizeDeps: false, outDir: path.join(out, "main") },
     // Where updates come from, baked in for test builds only (main/updater.ts).
     define: {
-      __HERMESH_RELEASE_VERSION__: JSON.stringify(process.env.VERSION ?? ""),
-      __HERMESH_UPDATE_FEED__: JSON.stringify(process.env.HERMESH_UPDATE_FEED ?? ""),
+      __AIDE_RELEASE_VERSION__: JSON.stringify(process.env.VERSION ?? ""),
+      __AIDE_UPDATE_FEED__: JSON.stringify(process.env.AIDE_UPDATE_FEED ?? ""),
       // The release key, which signs the Windows app's feed; test builds bring their own.
-      __HERMESH_RELEASE_PUBKEY__: JSON.stringify(fs.readFileSync(process.env.HERMESH_RELEASE_PUBKEY_FILE || path.join(import.meta.dirname, "../../scripts/release-pubkey.pem"), "utf8")),
-      __HERMESH_TEST_DATA_DIR__: JSON.stringify(process.env.HERMESH_TEST_DATA_DIR ?? ""),
+      __AIDE_RELEASE_PUBKEY__: JSON.stringify(fs.readFileSync(process.env.AIDE_RELEASE_PUBKEY_FILE || path.join(import.meta.dirname, "../../scripts/release-pubkey.pem"), "utf8")),
+      __AIDE_TEST_DATA_DIR__: JSON.stringify(process.env.AIDE_TEST_DATA_DIR ?? ""),
     },
   },
   preload: {
@@ -53,8 +53,8 @@ export default defineConfig({
     plugins: [react(), tailwindcss(), pdfjsAssets()],
     // The code highlighter's worker loads each language when first shown: an ES module worker, which can split.
     worker: { format: "es" },
-    // One React: @hermesh/ui's own node_modules may link another copy (the
-    // hermesh-cloud workspace installs the package too).
+    // One React: @aide/ui's own node_modules may link another copy (the
+    // aide-cloud workspace installs the package too).
     resolve: { dedupe: ["react", "react-dom"] },
     build: { outDir: path.join(out, "renderer") },
   },

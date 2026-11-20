@@ -14,7 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
 )
 
 // Files in and out of an assistant's folder, <her home>/bots/<id>/files

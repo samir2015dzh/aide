@@ -13,7 +13,7 @@ import (
 // the clock, two in the same tick of Windows' coarse clock made the same
 // one, and the machine took the second start for a retry of the first.
 func TestIdempotencyKeysDiffer(t *testing.T) {
-	if os.Getenv("HERMESH_TEST_IDEM_KEY") != "" {
+	if os.Getenv("AIDE_TEST_IDEM_KEY") != "" {
 		fmt.Println(newIdempotencyKey())
 		return
 	}
@@ -22,7 +22,7 @@ func TestIdempotencyKeysDiffer(t *testing.T) {
 	outs := make([]*strings.Builder, n)
 	for i := range cmds {
 		cmds[i] = exec.Command(os.Args[0], "-test.run=^TestIdempotencyKeysDiffer$")
-		cmds[i].Env = append(os.Environ(), "HERMESH_TEST_IDEM_KEY=1")
+		cmds[i].Env = append(os.Environ(), "AIDE_TEST_IDEM_KEY=1")
 		outs[i] = &strings.Builder{}
 		cmds[i].Stdout = outs[i]
 	}

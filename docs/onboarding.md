@@ -1,6 +1,6 @@
 # Onboarding without a Mac
 
-> **Superseded (2026-11-20) by [accounts.md](accounts.md):** machines, agents and devices now log in with the server, the account and the password, and the server signs them in at once. No longer: pairing codes and QR codes to scan or type, verification codes and the two digits, approval on another device (Face ID, Touch ID, a PIN), connection addresses with `/o_…` as the way in, `aided pair` and `aided device join`, `aided approve`, and the Linux trusted device with a passphrase (§9). The install command now takes the server and asks for the account and password (README, [hermeshd.md](hermeshd.md)). What this page says of pairing, approving and trusted devices describes the flow before.
+> **Superseded (2026-11-20) by [accounts.md](accounts.md):** machines, agents and devices now log in with the server, the account and the password, and the server signs them in at once. No longer: pairing codes and QR codes to scan or type, verification codes and the two digits, approval on another device (Face ID, Touch ID, a PIN), connection addresses with `/o_…` as the way in, `aided pair` and `aided device join`, `aided approve`, and the Linux trusted device with a passphrase (§9). The install command now takes the server and asks for the account and password (README, [aided.md](aided.md)). What this page says of pairing, approving and trusted devices describes the flow before.
 
 > Status: designed 2026-10-28; the owner took every recommendation in §12
 > the same day. Built the same day, all seven steps of §10 with the tests
@@ -37,7 +37,7 @@ What done means, for the build and for the demo:
 2. Nothing long is carried between devices by hand. The install command is
    the same for everyone, the phone scans what the terminal shows, and the
    only thing typed across is two digits.
-3. Every request to connect reaches the phone, whether Hermesh is open or
+3. Every request to connect reaches the phone, whether Aide is open or
    not.
 4. No screen, terminal line or web page says "your Mac" where any trusted
    device would do.
@@ -58,14 +58,14 @@ Read in main 44c911e, not run:
 | Adding one without an address | After the owner approves, the machine asks a y/N question on stdin. Under `curl … \| sh`, stdin is the script, so it can't ask and gives up after the owner's device signed its cert. Not tested: the tests pass `--yes` | `TerminalConfirm` in `internal/machine/pair.go` |
 | Installing as root | Refused, with no way forward | `scripts/install.sh` |
 | The background service | `systemctl --user` runs before `enable-linger`, so it fails after `su`. There is no fallback without systemd | `internal/service/service.go` |
-| Coding agents | Found and shown as "Not signed in", with "run `claude` in Terminal". Nothing says how to sign in on a server without a browser | `MachineAgentView`, `hermeshd doctor` |
+| Coding agents | Found and shown as "Not signed in", with "run `claude` in Terminal". Nothing says how to sign in on a server without a browser | `MachineAgentView`, `aided doctor` |
 | Checking them again | The phone's pull to refresh calls `CheckAgents`, which covers only the device's own machine, and a phone has none. A remote machine can't be asked to look again (`GetInfoRequest` is empty) | `internal/owner/localapi.go` |
 | Projects | A path typed on the phone, and nothing on the machine itself | `AddProjectSheet` |
 | Connecting an agent | The iPhone sends the old message with the address, even on the official service (the Mac sends the /connect line) | `ConnectAgentSheet`; the desktop's `personal.ts` |
 | An agent's pairing link | Claimed in the console ("send it to my Mac"), which wakes the devices that are online and pushes nothing | `ClaimPairing` in `pkg/relay` |
 | MCP apps | The approval request is made only while a trusted device is connected. An iPhone is connected while open and for 5 minutes after | `refresh` and `OwnerOnline` in `pkg/mcpgw` |
 | The first task | None on the iPhone | |
-| Wording | "Approve it on your Mac", "Touch ID" and "Hermesh.app" in the terminal, the CLI, the MCP pages, the console and /connect | §8 |
+| Wording | "Approve it on your Mac", "Touch ID" and "Aide.app" in the terminal, the CLI, the MCP pages, the console and /connect | §8 |
 | One trusted device | Losing the phone means setting up again, and nothing says so | |
 
 ## 3. What does not change
@@ -87,16 +87,16 @@ Read in main 44c911e, not run:
 
 | # | On the iPhone | On the Linux server | Underneath |
 |---|---|---|---|
-| 1 | First time using Hermesh, the browser sheet; Create your management key (Face ID); Turn on notifications | | `Setup` with the link code (unchanged) |
+| 1 | First time using Aide, the browser sheet; Create your management key (Face ID); Turn on notifications | | `Setup` with the link code (unchanged) |
 | 2 | The guide: Where does your code live? Linux | | §5.2 |
-| 3 | The install command, Copy, Share, Scan the QR Code | Paste the command (from the sheet, hermesh.io or the README) | §6.1 |
+| 3 | The install command, Copy, Share, Scan the QR Code | Paste the command (from the sheet, aide.io or the README) | §6.1 |
 | 4 | | A QR and the pairing code | An unpinned machine request with `confirm_match` (§6.3) |
 | 5 | Scan: "A machine calling itself vps-1 wants to join". Name it, Face ID | "Claimed by a…@example.com. Approve it on your iPhone" | The phone claims the code (`LookupPairing`) |
 | 6 | "Type these digits on vps-1: 47" | "Approved on Alex's iPhone. Type the two digits it shows: 47". It pairs, starts the service and checks the coding agents | `JoinMatchCode` of the machine cert |
-| 7 | Coding agents: Claude Code signed in; its page has Test and Add a Project, which lists the git repositories in the home folder | Or `hermeshd project add ~/app` | §5.5, §6.7 |
+| 7 | Coding agents: Claude Code signed in; its page has Test and Add a Project, which lists the git repositories in the home folder | Or `aided project add ~/app` | §5.5, §6.7 |
 | 8 | Connect your agent. ChatGPT gets the connector URL, Grok Bot the /connect line | The agent signs in or asks to connect | §5.6 |
 | 9 | A notification: "ChatGPT wants to connect". Choose its scope, Face ID | | §7 |
-| 10 | Try it: "Send ChatGPT this: Use Hermesh to have Claude Code say hello to me in the app project". Its session and answer show as it runs | Claude Code runs | §5.7 |
+| 10 | Try it: "Send ChatGPT this: Use Aide to have Claude Code say hello to me in the app project". Its session and answer show as it runs | Claude Code runs | §5.7 |
 
 What crosses devices by hand: one command anyone can copy, one scan and
 two digits.
@@ -109,7 +109,7 @@ It opens on a page of its own the first time, after signing out and after
 Erase Everything, and it splits by what the person says first:
 
 ```
- ⋰ Hermesh
+ ⋰ Aide
  Let your agents
  talk to each other
 
@@ -118,12 +118,12 @@ Erase Everything, and it splits by what the person says first:
                      Fixed: PR #143, all tests pass.  (Codex, your server)
  (Grok Bot)  Good, I'll get you to merge it.
 
- ✦ First time using Hermesh                 ›
+ ✦ First time using Aide                 ›
  ▭ Already using it on another device       ›
  Use Your Own Server…
 ```
 
-- One screen says what Hermesh is for, without pages to swipe: agents in
+- One screen says what Aide is for, without pages to swipe: agents in
   the cloud (left) and on your computers (right) talk, a line after another,
   then again from the start (`WelcomeChat`). A small iPhone shows the first
   three lines; with Reduce Motion they all show at once. The story itself
@@ -140,7 +140,7 @@ Erase Everything, and it splits by what the person says first:
   stays on this iPhone; everything that joins needs Face ID; the server
   can't approve). Create with Face ID runs `Setup`. Never call it an
   encryption key: it authorizes, and content is end to end by other keys.
-- **Another device.** Join your Hermesh: what joining gives, a diagram (this
+- **Another device.** Join your Aide: what joining gives, a diagram (this
   iPhone's key, the server that only relays, the other device that approves)
   and three lines (a management key made here; Face ID signs the request, so
   the server can't pretend to be this iPhone; compare the code and approve).
@@ -169,9 +169,9 @@ Overview. The guide's pages:
 | Page | What it does |
 |---|---|
 | Where does your code live? | Mac or Linux; Set Up Later puts the guide off |
-| Install Hermesh on your Mac | The download link (Copy Link, AirDrop…), then signing in with the same account (or the connection address on one's own server); the Mac's request opens to approve, then its two digits, until it joins |
-| Install Hermesh on Linux | The install command, then Scan the QR Code or Enter the Pairing Code… (one's own server: the pinned command, whose request comes by itself); the same approval, digits and join |
-| Coding agents | Those found on that computer, each opening its page (§5.5: Test, default model, projects and Add a Project…); the others Hermesh works with, by logo; Rescan after installing one there; Continue |
+| Install Aide on your Mac | The download link (Copy Link, AirDrop…), then signing in with the same account (or the connection address on one's own server); the Mac's request opens to approve, then its two digits, until it joins |
+| Install Aide on Linux | The install command, then Scan the QR Code or Enter the Pairing Code… (one's own server: the pinned command, whose request comes by itself); the same approval, digits and join |
+| Coding agents | Those found on that computer, each opening its page (§5.5: Test, default model, projects and Add a Project…); the others Aide works with, by logo; Rescan after installing one there; Continue |
 | Connect your agent | As Connect Your Agent (§5.6), its request opening by itself, for all projects |
 | Try it | The first task (§5.7), and the session it starts with its answer; Add a project first when there is none; Done ends the guide |
 
@@ -209,7 +209,7 @@ Agents use Claude Code and Codex on it.
 
 ┌ The app (a Mac or a PC) ─────────────────────────────────┐
 │ ① On that Mac, open                                      │
-│   hermesh.io/download                       (copy) (send)│
+│   aide.io/download                       (copy) (send)│
 │ ② Install it, open it, and sign in with the same account │
 │   (an own server: "…and join", with its address)         │
 └──────────────────────────────────────────────────────────┘
@@ -217,7 +217,7 @@ Waiting for that machine to connect…      Enter a Pairing Code
 
 ┌ The command ─────────────────────────────────────────────┐
 │ ① On that machine, run                                   │
-│   curl -fsSL https://github.com/hermeshai/hermesh/…/install.sh | sh
+│   curl -fsSL https://github.com/samir2015dzh/aide/…/install.sh | sh
 │   As the user you code as. It shows a code. (copy) (send)│
 │ ② Scan the code it shows                                 │
 │   [ Scan the Code ]                                      │
@@ -236,12 +236,12 @@ Waiting for that machine to connect…      Enter a Pairing Code
   command then carries this account's address, and the request comes here
   by itself), are behind one "Can't Scan?" menu, not lines of their own.
 - **The app's way** names a page to open on that computer, not a download
-  here: the installer belongs on the other machine. `hermesh.io/download`
+  here: the installer belongs on the other machine. `aide.io/download`
   offers the build for its system and chip. That app then signs in to the
   same account (or joins the own server), as a trusted device or a machine
   only (trusted-devices.md 4.7); either request opens here.
 - The command is the same for everyone, so it can come from this sheet,
-  from hermesh.io or from the README, on whatever computer has the
+  from aide.io or from the README, on whatever computer has the
   terminal.
 - Scan the Code opens the camera in the sheet (VisionKit's data scanner)
   and reads the terminal's QR (§6.2). A pairing code typed by hand does the
@@ -251,7 +251,7 @@ Waiting for that machine to connect…      Enter a Pairing Code
   It needs no digits, because the owner is in the command. Its label doesn't
   say "address", following the decision to keep the address out of the
   official service's screens.
-- A Scan item in the New menu reads any Hermesh code: a machine's, or an
+- A Scan item in the New menu reads any Aide code: a machine's, or an
   agent's link (§7.3).
 - A camera prompt needs its usage string, in both languages.
 
@@ -297,7 +297,7 @@ Waiting for that machine to connect…      Enter a Pairing Code
     Documents, Downloads, iCloud Drive, other volumes): reading them would
     put a privacy prompt on a screen nobody may be watching. Browsing into
     one says so first, since that prompt shows on the Mac.
-- **Version**: when a machine's Hermesh is older than the phone's, its
+- **Version**: when a machine's Aide is older than the phone's, its
   version row has an Update button that opens the install command that
   updates it (a 0.0.0 build of no release never shows it). Machines also
   update themselves ([machine-updates.md](machine-updates.md)).
@@ -309,14 +309,14 @@ Waiting for that machine to connect…      Enter a Pairing Code
 
 - The step opens on a guide for each coding agent, a tab each: DeepSeek
   (DSH), Claude, Codex and Other Agent (any ACP agent, kept on the machine:
-  [hermeshd.md](hermeshd.md), Custom agents), the assistants on a tab of
+  [aided.md](aided.md), Custom agents), the assistants on a tab of
   their own (`ConnectGuide.tsx`); Settings › Connect has the same guide.
   Each says what must be on the computer first and what to click, shows
   the machine's check of the agent as it is now (and what to check when it
   is not detected), runs Test (below) and a test task in one of its
   projects, and says where its tasks show.
 - On the official service, the sheet gives the /connect line, as the Mac
-  does (`personal.ts`): "Connect to Hermesh: follow https://hermesh.io/connect".
+  does (`personal.ts`): "Connect to Aide: follow https://aide.io/connect".
   MCP apps also get the connector URL. On an own server, the sheet keeps
   today's message with the address.
 - On the official service, Account › About stops showing the connection
@@ -326,7 +326,7 @@ Waiting for that machine to connect…      Enter a Pairing Code
 ### 5.7 The first task
 
 - After the first grant is approved, the approval ends on the Mac's first
-  task page. It says what to send the agent: "Use Hermesh to have Claude
+  task page. It says what to send the agent: "Use Aide to have Claude
   Code say hello to me in the app project", with Copy and Share.
 - That grant's first session opens as soon as it appears. Continue closes
   the page. In the guide, Try it shows that session and its answer in place.
@@ -350,34 +350,34 @@ up again and pair your machines and agents again." It offers Add Another…
 
 Use Your Own Server… takes a relay's address and its claim code
 (`SetupRequest.claim_code`), as the Mac does, besides joining with a
-connection address. The relay's banner says "Enter it in the Hermesh app",
-not "Hermesh.app".
+connection address. The relay's banner says "Enter it in the Aide app",
+not "Aide.app".
 
 ## 6. Linux: the first install
 
 ### 6.1 The command
 
 ```
-curl -fsSL https://github.com/hermeshai/hermesh/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh
 ```
 
 - **It stays on GitHub.** The script carries the key that checks the
   downloads, so whoever serves the script decides what runs. A short URL on
-  hermesh.io would hand that to the center (decision 4).
-- **With a connection address after it** (`sh -s -- connect.hermesh.io/o_…`),
+  aide.io would hand that to the center (decision 4).
+- **With a connection address after it** (`sh -s -- connect.aide.io/o_…`),
   the owner is pinned and nothing changes from today except the words (§8).
 
 ### 6.2 What the terminal shows
 
 ```
-› downloading hermeshd-linux-amd64, hermesh-linux-amd64
+› downloading aided-linux-amd64, aide-linux-amd64
 ✓ installed to /home/dev/.local/bin
 
-Pair this machine with your Hermesh
+Pair this machine with your Aide
 
     █▀▀▀▀▀█ ▄▀▄█ █▀▀▀▀▀█
-    █ ███ █ ▀█▄▀ █ ███ █      Scan with Hermesh on your iPhone,
-    █ ▀▀▀ █ █▀ ▄ █ ▀▀▀ █      or open Hermesh › Add a Machine ›
+    █ ███ █ ▀█▄▀ █ ███ █      Scan with Aide on your iPhone,
+    █ ▀▀▀ █ █▀ ▄ █ ▀▀▀ █      or open Aide › Add a Machine ›
     ▀▀▀▀▀▀▀ ▀ █▄ ▀▀▀▀▀▀▀      Enter the pairing code:
     …                         K7QM-2XPA-9RTD
 
@@ -391,7 +391,7 @@ Waiting…
 Coding agents
   claude   2.1.3   signed in
   codex    not installed: https://…
-Next: add a project here (hermeshd project add <folder>) or on your iPhone.
+Next: add a project here (aided project add <folder>) or on your iPhone.
 ```
 
 - **The QR**: drawn with half-block characters (a small encoder such as
@@ -403,7 +403,7 @@ Next: add a project here (hermeshd project add <folder>) or on your iPhone.
 - **No terminal** (a script, cloud-init): `--yes` takes the center's word,
   as today, or the command takes a connection address.
 - **Names**: the approving device is named from the root chain (its key's
-  label). Before the claim, the text says "Hermesh on your iPhone or Mac".
+  label). Before the claim, the text says "Aide on your iPhone or Mac".
 
 ### 6.3 Pairing underneath
 
@@ -432,9 +432,9 @@ installs; starts the service; checks the coding agents
   make the person's own device show the digits. That leaves nothing for a
   verification code to catch, so none is compared in this flow.
 - **What the QR holds**: `https://<console>/p/<code>`. On a phone with
-  Hermesh, the link opens the app, which claims the code over its own
+  Aide, the link opens the app, which claims the code over its own
   connection, with no browser and no console. Anywhere else, the console's
-  page claims nothing for a machine: it says to scan the code with Hermesh,
+  page claims nothing for a machine: it says to scan the code with Aide,
   or to type it in the app.
 - **Own servers keep the command with the address.** A self-hosted relay
   refuses requests that name no owner (`submitPairing`), and that command
@@ -448,12 +448,12 @@ installs; starts the service; checks the coding agents
 
 ### 6.4 Root
 
-A fresh VPS logs in as root. Whom Hermesh runs as is the person's choice:
+A fresh VPS logs in as root. Whom Aide runs as is the person's choice:
 the installer says who they are, and installs for root unless they name
 someone else.
 
 ```
-You are root: Hermesh will be installed for root.
+You are root: Aide will be installed for root.
 Press Enter to continue, or type another user to install for (q quits): dev
 “dev” doesn't exist. Create it? [Y/n]
 ```
@@ -467,7 +467,7 @@ installs for root without asking. For another user, named there or with
 3. installs into its home and runs the rest as that user (`runuser -u
    <name>` with its `XDG_RUNTIME_DIR`), so the service is the user's own.
 
-The coding agents are installed and signed in as the user Hermesh runs as
+The coding agents are installed and signed in as the user Aide runs as
 (`su - dev` for another user), and the final check says so.
 
 ### 6.5 The background service
@@ -477,10 +477,10 @@ The coding agents are installed and signed in as the user Hermesh runs as
   `XDG_RUNTIME_DIR=/run/user/<uid>` when the session has none, as after
   `su`.
 - **No user systemd** (a container, WSL without systemd): the installer says
-  so and gives two ways, `hermeshd run` as the container's command, or
-  `hermeshd run` under tmux or nohup. It does not claim a service that isn't
+  so and gives two ways, `aided run` as the container's command, or
+  `aided run` under tmux or nohup. It does not claim a service that isn't
   there.
-- **`hermeshd doctor`** reports whether the service runs, not only whether
+- **`aided doctor`** reports whether the service runs, not only whether
   it is installed.
 
 ### 6.6 Coding agents
@@ -493,12 +493,12 @@ agent is shown in one of three states:
 - not signed in, with the command to run once as this user. On a server,
   that command prints a link to open on any device.
 
-Hermesh never signs in for them (the onboarding concepts).
+Aide never signs in for them (the onboarding concepts).
 
 ### 6.7 Projects on the machine
 
-`hermeshd project add <folder> [--name] [--in-place] [--base main] [--agents
-claude,codex]`, plus `hermeshd project list` and `hermeshd project remove`.
+`aided project add <folder> [--name] [--in-place] [--base main] [--agents
+claude,codex]`, plus `aided project list` and `aided project remove`.
 
 - These are the machine's own settings. It reports changes to the trusted
   devices like any other change, and the phone shows the new project at
@@ -509,9 +509,9 @@ claude,codex]`, plus `hermeshd project list` and `hermeshd project remove`.
 ### 6.8 An agent on the same server
 
 Claude Code, OpenClaw or an agent of one's own on the server hands out work
-with the `hermesh` CLI, which is installed with the machine.
+with the `aide` CLI, which is installed with the machine.
 
-- `hermesh auth login --name "OpenClaw on vps-1"` prints its link, with a QR
+- `aide auth login --name "OpenClaw on vps-1"` prints its link, with a QR
   when the output is a terminal.
 - Opened on the phone, the link opens the request in the app. Like any
   unpinned client request claimed by the owner, it needs no verification
@@ -543,7 +543,7 @@ with the `hermesh` CLI, which is installed with the machine.
 
 - **The links**: the app takes `https://<console>/p/<code>` as a universal
   link (the center serves `apple-app-site-association`), and
-  `hermesh://pair?code=…`. Today it takes `hermesh://` links only during
+  `aide://pair?code=…`. Today it takes `aide://` links only during
   onboarding.
 - **A machine's code**: the app claims it and opens its request (§6.3).
 - **An agent's link**: the app claims it and opens its request, already
@@ -557,7 +557,7 @@ with the `hermesh` CLI, which is installed with the machine.
 A push can arrive late, and a request lives 10 minutes. Nothing dies
 quietly:
 
-- a machine's command and `hermesh auth login` submit again while they wait
+- a machine's command and `aide auth login` submit again while they wait
   (§6.3);
 - MCP requests go out again (§7.2).
 
@@ -565,12 +565,12 @@ quietly:
 
 | Where | Today | Instead |
 |---|---|---|
-| `hermeshd pair`, `hermesh auth login` | "Approve only if Hermesh on your Mac shows this same code", "In Hermesh on your Mac, choose…", "Sent to Hermesh on your Mac" | Before the claim, "Hermesh on your iPhone or Mac"; after it, the approving device by name, or "your trusted devices" |
-| The `hermesh` CLI | "renew it in Hermesh.app", "add one … in Hermesh.app" | "in the Hermesh app" |
-| MCP consent and status (`pkg/mcpgw`) | "approve it on your Mac with Touch ID", "Install Hermesh for Mac" | Chosen by the platforms of the owner's devices in the root chain: "on your iPhone", "on your Mac", or "on one of your trusted devices". Before setup: "Install Hermesh on your iPhone or Mac" |
-| `hermesh-relay serve` | "Enter it in Hermesh.app during setup" | "in the Hermesh app" |
+| `aided pair`, `aide auth login` | "Approve only if Aide on your Mac shows this same code", "In Aide on your Mac, choose…", "Sent to Aide on your Mac" | Before the claim, "Aide on your iPhone or Mac"; after it, the approving device by name, or "your trusted devices" |
+| The `aide` CLI | "renew it in Aide.app", "add one … in Aide.app" | "in the Aide app" |
+| MCP consent and status (`pkg/mcpgw`) | "approve it on your Mac with Touch ID", "Install Aide for Mac" | Chosen by the platforms of the owner's devices in the root chain: "on your iPhone", "on your Mac", or "on one of your trusted devices". Before setup: "Install Aide on your iPhone or Mac" |
+| `aide-relay serve` | "Enter it in Aide.app during setup" | "in the Aide app" |
 | The console (closed source) | "是我，发到我的 Mac 确认", "在 Mac 上批准", onboarding's "请在 Mac 上打开这个页面", device lists headed "你的 Mac" | Trusted devices. The onboarding card offers the iPhone app and the Mac |
-| /connect | "approve you in Hermesh on their Mac with Touch ID" | "on their phone or Mac" |
+| /connect | "approve you in Aide on their Mac with Touch ID" | "on their phone or Mac" |
 | README, Get started | Mac only | iPhone first or Mac first |
 
 Only the device that uses them names Face ID or Touch ID.
@@ -586,28 +586,28 @@ Only the device that uses them names Face ID or Touch ID.
 ### 9.2 The risk to design around
 
 On a Mac, the root key sits in the Secure Enclave and only the signed signer
-app can use it, with Touch ID. hermeshd and the coding agents can ask for a
+app can use it, with Touch ID. aided and the coding agents can ask for a
 signature, but they can never sign. Linux has no such boundary between the
 programs of one user:
 
 - a coding agent runs as that user with full trust. It can replace
-  `~/.local/bin/hermeshd`, read what is typed into it, and wait for the next
+  `~/.local/bin/aided`, read what is typed into it, and wait for the next
   approval;
 - on a cloud server that user usually has passwordless sudo, which makes the
   agent root.
 
 So **a Linux trusted device runs no coding agents.** It is a computer, or a
 Unix user, that is not one of the owner's machines.
-`hermeshd device join` refuses where this user's hermeshd is a machine, and
-warns where another user's hermeshd on the computer is one. Decision 5
+`aided device join` refuses where this user's aided is a machine, and
+warns where another user's aided on the computer is one. Decision 5
 covers relaxing this.
 
 ### 9.3 Shape
 
-- **Owner role**: `hermeshd run --owner` as a systemd user service, as on a
+- **Owner role**: `aided run --owner` as a systemd user service, as on a
   Mac but without the app. It holds the relay connection, the requests and
   the profile. It never hosts a machine.
-- **Signer**: `hermeshd approve`, in a terminal. It watches signing requests
+- **Signer**: `aided approve`, in a terminal. It watches signing requests
   (`WatchSigningRequests`), shows what will be signed, asks for the key's PIN
   or passphrase, signs and completes the request. What it shows comes from a
   Go port of SigningPreview, checked against the Swift one on shared test
@@ -621,17 +621,17 @@ covers relaxing this.
   The key's label says which ("Linux · TPM", "Linux · passphrase"), and the
   other devices show it.
 - **Notifications**: on a desktop, one notification per request. On a
-  server, none: someone signs in and runs `hermeshd approve`.
+  server, none: someone signs in and runs `aided approve`.
 
 ### 9.4 Commands, first version
 
 | Command | Does |
 |---|---|
-| `hermeshd device join` | Creates the key and shows a pairing code and QR, as a machine does (§6.3); the phone scans it, approves the device, and shows two digits to type here. No browser |
-| `hermeshd device setup` | The first device, for someone with no other device: signs in as in §9.5 |
-| `hermeshd approve [code]` | Goes through each waiting request (or the one with this code): who asks; the verification code when the request came pinned; for an agent, its scope (projects, coding agents, lifetime; default all, all, until revoked); then the PIN. After a machine, it shows its two digits |
-| `hermeshd device list`, `hermeshd device remove <name>` | Lists the trusted devices, and removes a lost one, re-issuing what it signed (trusted-devices.md 4.3) |
-| `hermeshd device leave` | `Leave` |
+| `aided device join` | Creates the key and shows a pairing code and QR, as a machine does (§6.3); the phone scans it, approves the device, and shows two digits to type here. No browser |
+| `aided device setup` | The first device, for someone with no other device: signs in as in §9.5 |
+| `aided approve [code]` | Goes through each waiting request (or the one with this code): who asks; the verification code when the request came pinned; for an agent, its scope (projects, coding agents, lifetime; default all, all, until revoked); then the PIN. After a machine, it shows its two digits |
+| `aided device list`, `aided device remove <name>` | Lists the trusted devices, and removes a lost one, re-issuing what it signed (trusted-devices.md 4.3) |
+| `aided device leave` | `Leave` |
 
 The first version approves and removes. Sessions, settings and editing
 grants stay on the phone, the Mac or the owner's agent.
@@ -645,7 +645,7 @@ relay accepts such device requests on a hosted center; today it refuses
 them ("a device joins a named owner").
 
 Only the first device signs in. `/app-login` hands the link code back
-through `hermesh://`, which a terminal can't receive.
+through `aide://`, which a terminal can't receive.
 
 - With `cli=1` the page shows the code instead, and the terminal asks for
   it.
@@ -682,12 +682,12 @@ Each step works end to end on its own and ships with its end-to-end test
 | Step | What | Size | Where |
 |---|---|---|---|
 | 1 | Requests reach the phone: pushes on link claims (§7.1), MCP requests (§7.2), the iPhone's /connect line and no address on the official service (§5.6), the words (§8) | S | relay, mcpgw, iOS, CLI; the console's words |
-| 2 | The Linux install: the digits for unpinned machines (§6.3), `/dev/tty`, re-submitting, root (§6.4), the service (§6.5), doctor (§6.6) | M | `internal/machine`, `internal/service`, `install.sh`, `cmd/hermeshd` |
+| 2 | The Linux install: the digits for unpinned machines (§6.3), `/dev/tty`, re-submitting, root (§6.4), the service (§6.5), doctor (§6.6) | M | `internal/machine`, `internal/service`, `install.sh`, `cmd/aided` |
 | 3 | The iPhone adds machines: scan, links (§7.3), the digits page (§5.4) | M | iOS; `apple-app-site-association` and the machine `/p/` page on the center |
 | 4 | The iPhone's first run: Get Started, notifications, the first task, the second-device row (§5.1, §5.2, §5.7, §5.8), and Check Again on a remote machine (`recheck`, §5.5) | M | iOS, machine |
-| 5 | Projects and Test: `hermeshd project add`, the repositories offered (§5.5, §6.7), Test (decision 2) | S–M | machine, iOS |
+| 5 | Projects and Test: `aided project add`, the repositories offered (§5.5, §6.7), Test (decision 2) | S–M | machine, iOS |
 | 6 | An own server set up from the iPhone (§5.9) | S | iOS |
-| 7 | Linux trusted devices (§9) | L | owner role, signer, `cmd/hermeshd`; `/app-login` on the center |
+| 7 | Linux trusted devices (§9) | L | owner role, signer, `cmd/aided`; `/app-login` on the center |
 
 Steps 1 to 4 make the five-minute journey of §4. Steps 5 to 7 make it
 comfortable and widen who can use it.
@@ -698,8 +698,8 @@ comfortable and widen who can use it.
   passphrase only (`internal/devicekey`);
 - notifications on a Linux trusted device with a desktop (§9.3);
 - shared test vectors between the Go preview (`internal/preview`) and
-  HermeshKit's SigningPreview (§9.3): each has its own tests;
-- `hermeshd device join` refuses where this user's hermeshd is a machine,
+  AideKit's SigningPreview (§9.3): each has its own tests;
+- `aided device join` refuses where this user's aided is a machine,
   but doesn't yet warn when another user's on the computer is one (§9.2);
 - how often a request may notify, and production APNs (decision 13).
 
@@ -710,12 +710,12 @@ comfortable and widen who can use it.
   hosted center run locally, for the official flow;
 - a Linux machine in Docker, with systemd as PID 1 (an Ubuntu image) and
   logged in as root. It runs the install script from a local release
-  directory (`HERMESH_DOWNLOAD_BASE`), with the scripted ACP agent
+  directory (`AIDE_DOWNLOAD_BASE`), with the scripted ACP agent
   (`fakeacp`) or a real `claude`.
 
 ## 11. Tests
 
-- **TestLinuxInstall** (hermesh-cloud, `HERMESH_DOCKER=1`): a systemd
+- **TestLinuxInstall** (aide-cloud, `AIDE_DOCKER=1`): a systemd
   container logged in as root, the one command from a local release, the
   user it creates, the code claimed by the owner's device and the digits
   typed into the script's pty after a wrong pair. The service runs with
@@ -723,7 +723,7 @@ comfortable and widen who can use it.
 - **TestRemoteMachineSetup**: Check Again on a remote machine, the
   repositories it finds, Test, and projects added in its shell and from a
   device (`~/…`).
-- **TestIPhoneFirstRun** (`HERMESH_IPHONE_E2E=1`): the iPhone app in the
+- **TestIPhoneFirstRun** (`AIDE_IPHONE_E2E=1`): the iPhone app in the
   Simulator claims a new own server and makes its key, puts the guide off
   and takes it up again from Get Started: a machine added by its pairing
   link with nothing to compare, Rescan, Test and a project the machine found
@@ -734,16 +734,16 @@ comfortable and widen who can use it.
   registered for push and offline. An MCP app uses its connection and the
   push arrives (spool); the phone connects later, the request is there, and
   it approves it.
-- **On the center** (hermesh-cloud): `TestCenterPush` (an agent's link
+- **On the center** (aide-cloud): `TestCenterPush` (an agent's link
   claimed in the console pushes a sealed notice), `TestDirectApproval` (a
   machine's code on the console page claims nothing), and the console's
   tests of the machine `/p/` page, `apple-app-site-association` and
   `/app-login?cli=1`.
-- **TestLinuxTrustedDevice** (hermesh-cloud): a first device set up with
+- **TestLinuxTrustedDevice** (aide-cloud): a first device set up with
   the code `/app-login?cli=1` shows, another joining by its code with the
   digits, approving a machine and an agent with the passphrase, removing a
   lost device, and a machine's user refused.
-- **Wording**: `internal/words` fails on "your Mac", "Hermesh.app" or
+- **Wording**: `internal/words` fails on "your Mac", "Aide.app" or
   "Touch ID" in Go strings, outside code that picks a device's words.
 
 ## 12. Decisions
@@ -754,7 +754,7 @@ Decided by the owner on 2026-10-28, each as recommended:
    the command with the address as the alternative.
 2. **Test on a coding agent's page**: one fixed turn, no session.
 3. **The second-device row**: shown once the first machine joins.
-4. **The install URL**: it stays on GitHub, because a short hermesh.io URL
+4. **The install URL**: it stays on GitHub, because a short aide.io URL
    would let the center change what runs on new machines.
 5. **Linux trusted devices**: only on computers that run no coding agents,
    and no one-box mode.
@@ -777,7 +777,7 @@ Technical decisions, also by the owner on 2026-10-28:
 13. **Notifications**: how often a request that keeps asking may notify,
     and the production APNs setup, are studied once this is built.
 
-Details settled without the owner: `hermeshd project add` reaches the
+Details settled without the owner: `aided project add` reaches the
 running machine through a new local socket (0600, same user), since the
 machine locks its data directory; Linux keeps the systemd user service; a
 machine asks for the digits only when it can ask (a terminal, no `--yes`);

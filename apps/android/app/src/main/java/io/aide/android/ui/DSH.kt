@@ -54,8 +54,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // DeepSeek Harness's own sessions on the owner's machines: those opened in DSH, or by another tool, which
-// Hermesh did not start: the list by last activity, and what DSH wrote of each. Read only until the owner
-// takes one over (docs/dsh-takeover.md): then their messages go to it through the Hermesh plugin in DSH
+// Aide did not start: the list by last activity, and what DSH wrote of each. Read only until the owner
+// takes one over (docs/dsh-takeover.md): then their messages go to it through the Aide plugin in DSH
 // Desktop, queued after a turn that runs, as DSH queues its own.
 
 /** What the page says of the bridge plugin, or null when messages can go. */
@@ -67,11 +67,11 @@ fun dshBridgeProblem(b: DSHBridge?): String? = when (b?.state) {
     else -> t("Not known yet whether the Aide plugin in DSH Desktop runs.", "还不知道 DSH Desktop 里的 Aide 插件是否在运行。")
 }
 
-/** A message's id for DSH ("hermesh-" + 26 lowercase letters and digits), which drops a second one with it. */
+/** A message's id for DSH ("aide-" + 26 lowercase letters and digits), which drops a second one with it. */
 fun newDSHRequestId(): String {
     val alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
     val r = java.security.SecureRandom()
-    return "hermesh-" + (1..26).map { alphabet[r.nextInt(alphabet.length)] }.joinToString("")
+    return "aide-" + (1..26).map { alphabet[r.nextInt(alphabet.length)] }.joinToString("")
 }
 
 fun dshStateText(s: DSHSession): String = when (s.state) {

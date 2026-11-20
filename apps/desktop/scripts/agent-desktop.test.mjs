@@ -7,7 +7,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { agentDesktopBinaries, agentDesktopFiles, agentDesktopLinuxFiles, integrityOf } from "./agent-desktop.mjs";
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "hermesh-ad-"));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "aide-ad-"));
 
 /** A package laid out like agent-desktop's, as a tarball; `corrupt` breaks one binary after its sha256 is written. */
 function fakePackage(corrupt = false) {

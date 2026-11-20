@@ -1,5 +1,5 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionStatus, ToolCallSchema } from "@hermesh/proto/session";
+import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionStatus, ToolCallSchema } from "@aide/proto/session";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { i18n, pickLanguage } from "./i18n";
 import { noticeDiff, noticeSnapshots } from "./notices";

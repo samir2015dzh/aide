@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "@bufbuild/protobuf";
-import { GrantSpecSchema, type Client, type GrantSpec } from "@hermesh/proto/local";
-import { agoText, dateOf, longLived, monthDay, sameDay, updatedDate } from "@hermesh/core";
-import { agentName } from "@hermesh/ui";
+import { GrantSpecSchema, type Client, type GrantSpec } from "@aide/proto/local";
+import { agoText, dateOf, longLived, monthDay, sameDay, updatedDate } from "@aide/core";
+import { agentName } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import { AgentName, GrantAvatar } from "../components";
@@ -35,7 +35,7 @@ function list(names: string[]): string {
 }
 
 /**
- * Who used a grant last, and when, which tells grants apart: "hermesh 在用 ·
+ * Who used a grant last, and when, which tells grants apart: "aide 在用 ·
  * 2 分钟前", "3 天前用过". The names are those a hosted app's bots go by; an
  * agent on a computer names its conversations instead.
  */
@@ -166,7 +166,7 @@ function GrantDetail({ c }: { c: Client }) {
             <span className="fl">{t("grants.sessions")}</span>
             <span className="fv">
               {t("grants.sessionCount", { today, total: all.length })}
-              <button className="btn sm" disabled={all.length === 0} onClick={() => (window.hermesh?.showInMain({ grant: c.clientId }), window.close())}>
+              <button className="btn sm" disabled={all.length === 0} onClick={() => (window.aide?.showInMain({ grant: c.clientId }), window.close())}>
                 {t("showInMain")}
               </button>
             </span>

@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/connaddr"
 )
 
 // linuxServerImage is a fresh Ubuntu server with systemd running, and git
@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends systemd systemd
 CMD ["/sbin/init"]
 `
 
-// TestLinuxUpdate (HERMESH_DOCKER=1) is docs/machine-updates.md §7 on a
+// TestLinuxUpdate (AIDE_DOCKER=1) is docs/machine-updates.md §7 on a
 // Linux server logged in as root, with its systemd user service, and three
 // signed releases A < B < C served by the test as GitHub serves them:
 //
@@ -47,10 +47,10 @@ CMD ["/sbin/init"]
 //     machine ID;
 //  3. the install command runs again: no pairing, the service restarts;
 //  4. with automatic updates off, C is published: nothing happens until
-//     `hermeshd update --yes`, which installs C and restarts the service.
+//     `aided update --yes`, which installs C and restarts the service.
 func TestLinuxUpdate(t *testing.T) {
-	if os.Getenv("HERMESH_DOCKER") != "1" {
-		t.Skip("set HERMESH_DOCKER=1")
+	if os.Getenv("AIDE_DOCKER") != "1" {
+		t.Skip("set AIDE_DOCKER=1")
 	}
 	bin := binaries(t)
 	tmp := t.TempDir()
@@ -65,13 +65,13 @@ func TestLinuxUpdate(t *testing.T) {
 	// The owner, on a relay here.
 	port := freePort(t)
 	relayData := filepath.Join(tmp, "relay")
-	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	relay := start(t, "relay", nil, filepath.Join(bin, "aide-relay"), "serve", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sockDir, _ := os.MkdirTemp("/tmp", "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
-	start(t, "owner", nil, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
+	start(t, "owner", nil, filepath.Join(bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner"), "--socket", sock)
 	app := newTestApp(t, sock)
 	setup, err := app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: fmt.Sprintf("http://127.0.0.1:%d", port), SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-mac"})
 	if err != nil {
@@ -80,12 +80,12 @@ func TestLinuxUpdate(t *testing.T) {
 	address := strings.Replace(connaddr.Format(fmt.Sprintf("http://127.0.0.1:%d", port), setup.OwnerId), "127.0.0.1", "host.docker.internal", 1)
 
 	// The server.
-	name, sh := startLinuxServer(t, "hermesh-update", "vps-1")
+	name, sh := startLinuxServer(t, "aide-update", "vps-1")
 	// A project, and the scripted coding agents for the service.
 	if out, err := sh(`git config --global user.email t@t && git config --global user.name t &&
 		mkdir -p /srv/demo && cd /srv/demo && git init -q -b main && echo hi > README.md && git add -A && git commit -qm init &&
-		mkdir -p /root/.config/systemd/user/hermeshd.service.d &&
-		printf '[Service]\nEnvironment=HERMESH_FAKE_PROVIDERS=1\n' > /root/.config/systemd/user/hermeshd.service.d/fake.conf`); err != nil {
+		mkdir -p /root/.config/systemd/user/aided.service.d &&
+		printf '[Service]\nEnvironment=AIDE_FAKE_PROVIDERS=1\n' > /root/.config/systemd/user/aided.service.d/fake.conf`); err != nil {
 		t.Fatalf("%v %s", err, out)
 	}
 
@@ -104,7 +104,7 @@ func TestLinuxUpdate(t *testing.T) {
 	if err := install.Start(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Fprint(input, "\n/srv/hermesh data\n"); err != nil {
+	if _, err := fmt.Fprint(input, "\n/srv/aide data\n"); err != nil {
 		t.Fatal(err)
 	}
 	var machineID string
@@ -115,7 +115,7 @@ func TestLinuxUpdate(t *testing.T) {
 	if err := install.Wait(); err != nil {
 		t.Fatalf("install: %v\n%s", err, installOut.String())
 	}
-	if out, err := sh(`readlink /root/.local/share/hermesh; test -f '/srv/hermesh data/machine/hermeshd.db'`); err != nil || out != "/srv/hermesh data" {
+	if out, err := sh(`readlink /root/.local/share/aide; test -f '/srv/aide data/machine/aided.db'`); err != nil || out != "/srv/aide data" {
 		t.Fatalf("selected data directory: %v %s", err, out)
 	}
 	machineVersion := func() string {
@@ -136,10 +136,10 @@ func TestLinuxUpdate(t *testing.T) {
 	}
 
 	// 2. B while a session runs.
-	home := []string{"HERMESH_HOME=" + filepath.Join(tmp, "agent")}
-	login := start(t, "login", append(slices.Clone(home), loginEnv()...), filepath.Join(bin, "hermesh"), "auth", "login", connaddr.Format(fmt.Sprintf("http://127.0.0.1:%d", port), setup.OwnerId), "--name", "agent")
+	home := []string{"AIDE_HOME=" + filepath.Join(tmp, "agent")}
+	login := start(t, "login", append(slices.Clone(home), loginEnv()...), filepath.Join(bin, "aide"), "auth", "login", connaddr.Format(fmt.Sprintf("http://127.0.0.1:%d", port), setup.OwnerId), "--name", "agent")
 	login.wait(t, 30*time.Second)
-	started := run(t, home, time.Minute, filepath.Join(bin, "hermesh"), "session", "start", "--project", "vps-1/demo", "-o", "json", "--prompt", "sleep 40s\nsay done")
+	started := run(t, home, time.Minute, filepath.Join(bin, "aide"), "session", "start", "--project", "vps-1/demo", "-o", "json", "--prompt", "sleep 40s\nsay done")
 	var doc struct {
 		Session struct {
 			SessionID string `json:"session_id"`
@@ -150,14 +150,14 @@ func TestLinuxUpdate(t *testing.T) {
 		t.Fatalf("session start: %+v", started)
 	}
 	sessionStatus := func() string {
-		r := run(t, home, 30*time.Second, filepath.Join(bin, "hermesh"), "session", "get", doc.Session.SessionID, "-o", "json")
+		r := run(t, home, 30*time.Second, filepath.Join(bin, "aide"), "session", "get", doc.Session.SessionID, "-o", "json")
 		json.Unmarshal([]byte(r.stdout), &doc)
 		return doc.Session.Status
 	}
 	eventually(t, 30*time.Second, "the session running", func() bool { return sessionStatus() == "running" })
 	publish("0.0.2")
 	eventually(t, 30*time.Second, "the machine finds 0.0.2", func() bool {
-		out, _ := sh("cat /root/.local/share/hermesh/update/update.json")
+		out, _ := sh("cat /root/.local/share/aide/update/update.json")
 		return strings.Contains(out, `"available": "0.0.2"`)
 	})
 	time.Sleep(5 * time.Second) // more checks, still under the session
@@ -166,7 +166,7 @@ func TestLinuxUpdate(t *testing.T) {
 	}
 	eventually(t, 90*time.Second, "the session done", func() bool { return sessionStatus() == "idle" })
 	eventually(t, 60*time.Second, "the machine on 0.0.2", func() bool { return machineVersion() == "0.0.2" })
-	if out, _ := sh("/root/.local/bin/hermesh version; ls -a /root/.local/bin"); !strings.HasPrefix(out, "0.0.2") || !strings.Contains(out, ".hermeshd.previous") {
+	if out, _ := sh("/root/.local/bin/aide version; ls -a /root/.local/bin"); !strings.HasPrefix(out, "0.0.2") || !strings.Contains(out, ".aided.previous") {
 		t.Errorf("the programs after the update: %s", out)
 	}
 
@@ -178,7 +178,7 @@ func TestLinuxUpdate(t *testing.T) {
 	eventually(t, 60*time.Second, "the machine back on 0.0.2", func() bool { return machineVersion() == "0.0.2" })
 
 	// 4. Automatic updates off.
-	if out, err := sh("/root/.local/bin/hermeshd update auto off"); err != nil || !strings.Contains(out, "off") {
+	if out, err := sh("/root/.local/bin/aided update auto off"); err != nil || !strings.Contains(out, "off") {
 		t.Fatalf("auto off: %v %s", err, out)
 	}
 	publish("0.0.3")
@@ -186,25 +186,25 @@ func TestLinuxUpdate(t *testing.T) {
 	if v := machineVersion(); v != "0.0.2" {
 		t.Fatalf("updated to %q with automatic updates off", v)
 	}
-	if out, _ := sh("/root/.local/bin/hermeshd update --check"); !strings.Contains(out, "0.0.3 is available") {
+	if out, _ := sh("/root/.local/bin/aided update --check"); !strings.Contains(out, "0.0.3 is available") {
 		t.Errorf("--check: %s", out)
 	}
-	if out, err := sh("/root/.local/bin/hermeshd update --yes"); err != nil || !strings.Contains(out, "the service restarted on 0.0.3") {
+	if out, err := sh("/root/.local/bin/aided update --yes"); err != nil || !strings.Contains(out, "the service restarted on 0.0.3") {
 		t.Fatalf("update: %v\n%s", err, out)
 	}
 	eventually(t, 60*time.Second, "the machine on 0.0.3", func() bool { return machineVersion() == "0.0.3" })
-	if out, _ := sh("/root/.local/bin/hermeshd status"); !strings.Contains(out, "updates      off") {
+	if out, _ := sh("/root/.local/bin/aided status"); !strings.Contains(out, "updates      off") {
 		t.Errorf("status: %s", out)
 	}
 	// A missing data volume must not create a new machine at the old
 	// entry point. Restore it afterwards and keep the original identity.
-	if out, err := sh(`XDG_RUNTIME_DIR=/run/user/0 systemctl --user stop hermeshd.service && mv '/srv/hermesh data' '/srv/hermesh data.offline'`); err != nil {
+	if out, err := sh(`XDG_RUNTIME_DIR=/run/user/0 systemctl --user stop aided.service && mv '/srv/aide data' '/srv/aide data.offline'`); err != nil {
 		t.Fatalf("take data offline: %v %s", err, out)
 	}
-	if out, err := sh("/root/.local/bin/hermeshd status"); err == nil {
+	if out, err := sh("/root/.local/bin/aided status"); err == nil {
 		t.Fatalf("status succeeded without the data volume: %s", out)
 	}
-	if out, err := sh(`test ! -e '/srv/hermesh data' && mv '/srv/hermesh data.offline' '/srv/hermesh data' && XDG_RUNTIME_DIR=/run/user/0 systemctl --user start hermeshd.service`); err != nil {
+	if out, err := sh(`test ! -e '/srv/aide data' && mv '/srv/aide data.offline' '/srv/aide data' && XDG_RUNTIME_DIR=/run/user/0 systemctl --user start aided.service`); err != nil {
 		t.Fatalf("restore data: %v %s", err, out)
 	}
 	eventually(t, 60*time.Second, "the same machine back after its data returns", func() bool { return machineVersion() == "0.0.3" })
@@ -244,17 +244,17 @@ func newTestReleases(t *testing.T) *testReleases {
 }
 
 // add makes release v as scripts/release.sh builds one, but naming the
-// test's releases and key: hermeshd and hermesh for Linux, and files.
+// test's releases and key: aided and aide for Linux, and files.
 func (r *testReleases) add(t *testing.T, v string, files map[string][]byte) {
 	t.Helper()
 	dir := filepath.Join(r.dir, v)
 	os.MkdirAll(dir, 0o755)
 	der, _ := x509.MarshalPKIXPublicKey(&r.key.PublicKey)
-	ldflags := "-X github.com/hermeshai/hermesh/internal/machine.Version=" + v +
-		" -X github.com/hermeshai/hermesh/internal/update.releases=" + r.url +
-		" -X github.com/hermeshai/hermesh/internal/update.publicKey=" + base64.StdEncoding.EncodeToString(der) +
-		" -X github.com/hermeshai/hermesh/internal/update.testInterval=2s"
-	for _, b := range []string{"hermeshd", "hermesh"} {
+	ldflags := "-X github.com/samir2015dzh/aide/internal/machine.Version=" + v +
+		" -X github.com/samir2015dzh/aide/internal/update.releases=" + r.url +
+		" -X github.com/samir2015dzh/aide/internal/update.publicKey=" + base64.StdEncoding.EncodeToString(der) +
+		" -X github.com/samir2015dzh/aide/internal/update.testInterval=2s"
+	for _, b := range []string{"aided", "aide"} {
 		asset := b + "-linux-" + runtime.GOARCH
 		cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", filepath.Join(dir, asset), "./cmd/"+b)
 		cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0")
@@ -287,7 +287,7 @@ func (r *testReleases) add(t *testing.T, v string, files map[string][]byte) {
 	for name, body := range map[string][]byte{
 		"checksums.txt":     sums.Bytes(),
 		"checksums.txt.sig": sig,
-		"install.sh":        bytes.Replace(script, []byte("__HERMESH_RELEASE_PUBKEY__"), []byte(pub), 1),
+		"install.sh":        bytes.Replace(script, []byte("__AIDE_RELEASE_PUBKEY__"), []byte(pub), 1),
 	} {
 		os.WriteFile(filepath.Join(dir, name), body, 0o644)
 	}
@@ -302,7 +302,7 @@ func (r *testReleases) publish(v string) {
 // installCommand is the install command of the latest release, with args,
 // logging the machine in with the test account.
 func (r *testReleases) installCommand(args string) string {
-	return "curl -fsSL " + r.url + "/latest/download/install.sh | HERMESH_DOWNLOAD_BASE=" + r.url + "/latest/download AIDE_ACCOUNT=" + testAccount +
+	return "curl -fsSL " + r.url + "/latest/download/install.sh | AIDE_DOWNLOAD_BASE=" + r.url + "/latest/download AIDE_ACCOUNT=" + testAccount +
 		" AIDE_PASSWORD='" + testPassword + "' sh -s -- " + args
 }
 
@@ -311,7 +311,7 @@ func (r *testReleases) installCommand(args string) string {
 // to run a shell script there.
 func startLinuxServer(t *testing.T, prefix, host string) (string, func(string) (string, error)) {
 	t.Helper()
-	return startLinuxImage(t, "hermesh-e2e-linux-server:1", linuxServerImage, prefix, host)
+	return startLinuxImage(t, "aide-e2e-linux-server:1", linuxServerImage, prefix, host)
 }
 
 // startLinuxImage is startLinuxServer for another image, built from
@@ -335,7 +335,7 @@ func startLinuxImage(t *testing.T, tag, dockerfile, prefix, host string) (string
 	}
 	t.Cleanup(func() {
 		if t.Failed() {
-			out, _ := sh("journalctl --no-pager -n 60; tail -n 80 /root/.local/share/hermesh/logs/hermeshd.log")
+			out, _ := sh("journalctl --no-pager -n 60; tail -n 80 /root/.local/share/aide/logs/aided.log")
 			t.Logf("==== journal and log ====\n%s", out)
 		}
 		exec.Command("docker", "rm", "-f", name).Run()

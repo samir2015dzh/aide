@@ -23,12 +23,12 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/internal/sqlitedb"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/relay"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/internal/sqlitedb"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/relay"
 )
 
 // testAccounts: one account, signed in. The server's owner logs in with
@@ -622,10 +622,10 @@ func TestAccountManagesItsConnections(t *testing.T) {
 	}
 }
 
-// HERMESH_MCP_TRACE logs what a connection's MCP requests carry besides
+// AIDE_MCP_TRACE logs what a connection's MCP requests carry besides
 // the call, never its token, addresses or arguments.
 func TestTraceLogsWhatCallersSend(t *testing.T) {
-	t.Setenv("HERMESH_MCP_TRACE", "a1")
+	t.Setenv("AIDE_MCP_TRACE", "a1")
 	var logs bytes.Buffer
 	f := newFixture(t, func(c *Config) { c.Logger = slog.New(slog.NewTextHandler(&logs, nil)) })
 	redirect := "http://127.0.0.1/callback"
@@ -644,7 +644,7 @@ func TestTraceLogsWhatCallersSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	res.Body.Close()
-	call := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"hermesh_status","arguments":{"secret":"do-not-log"}}}`
+	call := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"aide_status","arguments":{"secret":"do-not-log"}}}`
 	req, _ = http.NewRequest(http.MethodPost, f.srv.URL+"/mcp", strings.NewReader(call))
 	req.Header = res.Request.Header.Clone()
 	res, err = http.DefaultClient.Do(req)
@@ -653,7 +653,7 @@ func TestTraceLogsWhatCallersSend(t *testing.T) {
 	}
 	res.Body.Close()
 	out := logs.String()
-	for _, want := range []string{"mcp trace", "grok-bot", "tech-demos", "X-Bot-Id", "bot_42", "hermesh_status", "argumentNames"} {
+	for _, want := range []string{"mcp trace", "grok-bot", "tech-demos", "X-Bot-Id", "bot_42", "aide_status", "argumentNames"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("the trace lacks %q: %s", want, out)
 		}
@@ -709,16 +709,16 @@ func TestOwnerGoneForgetsConnectionsAndDoorbells(t *testing.T) {
 // the fields it has, and the gateway knows it without fetching it: Her signs
 // in as this client, from a loopback port of the moment, as a verified app.
 func TestHerClientMetadataDocument(t *testing.T) {
-	f := newFixture(t, func(c *Config) { c.Issuer = "https://hermesh.test" })
+	f := newFixture(t, func(c *Config) { c.Issuer = "https://aide.test" })
 	b := f.browser()
 	res, body := b.get(f.srv.URL + "/oauth/client.json")
 	var doc map[string]any
 	json.Unmarshal([]byte(body), &doc)
-	if res.StatusCode != 200 || doc["client_id"] != "https://hermesh.test/oauth/client.json" || doc["client_name"] != "Her" ||
+	if res.StatusCode != 200 || doc["client_id"] != "https://aide.test/oauth/client.json" || doc["client_name"] != "Her" ||
 		doc["token_endpoint_auth_method"] != "none" || strings.Contains(body, "null") {
 		t.Fatalf("document: %d %s", res.StatusCode, body)
 	}
-	res, page := b.get(f.authorizeURL("https://hermesh.test/oauth/client.json", "http://127.0.0.1:63251/callback", nil))
+	res, page := b.get(f.authorizeURL("https://aide.test/oauth/client.json", "http://127.0.0.1:63251/callback", nil))
 	if res.StatusCode != 200 || !strings.Contains(page, "Connect Her to Aide") || !strings.Contains(page, "Verified app") {
 		t.Fatalf("authorize: %d\n%s", res.StatusCode, page)
 	}

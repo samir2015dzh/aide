@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mark } from "@hermesh/ui";
+import { Mark } from "@aide/ui";
 import { errorText } from "../store";
 
 /** An action a sheet waits on; its error stays in the sheet. Resolves to whether it worked. */

@@ -13,7 +13,7 @@ test("Her: the onboarding signs in to ChatGPT", async () => {
   // The app, a development build, opens the fixture's sign-in page although it is not https.
   const { app, page } = await launch(fixture.socket, {
     profile: fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-")),
-    env: { HERMESH_TEST_CHATGPT_BASE: fixture.chatgpt! },
+    env: { AIDE_TEST_CHATGPT_BASE: fixture.chatgpt! },
   });
   const log = page.getByRole("log", { name: "对话" });
   const composer = page.getByRole("textbox", { name: "消息" });
@@ -31,7 +31,7 @@ test("Her: the onboarding signs in to ChatGPT", async () => {
   const browser = () => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened);
   await log.getByRole("button", { name: "用 ChatGPT 登录" }).click();
   await expect.poll(browser, { timeout: 60_000 }).toHaveLength(1);
-  // The fixture approves and sends the browser back to this Mac's hermeshd, as OpenAI does once the person
+  // The fixture approves and sends the browser back to this Mac's aided, as OpenAI does once the person
   // signed in; her, on the Her Server, then takes the tokens.
   const [signInPage] = await browser();
   expect((await fetch(signInPage)).status).toBeLessThan(400);

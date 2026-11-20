@@ -9,12 +9,12 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestHerOnAMachineFromBeforeHer: the owner's device is newer than one of
-// its machines, whose hermeshd is from before Her (HERMESH_TEST_BEFORE_HER,
+// its machines, whose aided is from before Her (AIDE_TEST_BEFORE_HER,
 // acting as 0.1.4; docs/version-skew.md §6.7). Once it answers, its status
 // has no Her, which the apps show as needing an update. Turning Her on there
 // asks it first and says it needs an update (unimplemented), with no Face
@@ -32,7 +32,7 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	box, sock := w.otherMac("old-box", []string{"HERMESH_TEST_BEFORE_HER=1"})
+	box, sock := w.otherMac("old-box", []string{"AIDE_TEST_BEFORE_HER=1"})
 	daemon := w.logs[len(w.logs)-1] // the one otherMac started
 	id := w.logInMachineOnly(box, home, "old-box").LocalMachineId
 
@@ -54,7 +54,7 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 		t.Fatalf("the server was asked to sign for a machine from before her: %d times", got-signed)
 	}
 	// Signed and sent all the same (a command the device can't check first):
-	// 0.1.4's answer, made "update Hermesh there".
+	// 0.1.4's answer, made "update Aide there".
 	_, err = c.SetHerCommandConnector(ctx, &localv1.SetHerCommandConnectorRequest{MachineId: id,
 		Connector: &identityv1.SetHerCommandConnector{Name: "notes", Command: "/bin/cat"}})
 	if connect.CodeOf(err) != connect.CodeUnimplemented || strings.Contains(err.Error(), "unknown admin command") {
@@ -66,7 +66,7 @@ func TestHerOnAMachineFromBeforeHer(t *testing.T) {
 
 	// Updated: started again, without the switch.
 	daemon.stop()
-	w.logs = append(w.logs, start(t, "owner old-box updated", nil, filepath.Join(w.bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(w.tmp, "old-box"), "--socket", sock))
+	w.logs = append(w.logs, start(t, "owner old-box updated", nil, filepath.Join(w.bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(w.tmp, "old-box"), "--socket", sock))
 	eventually(t, time.Minute, "old-box answers with Her", func() bool {
 		return listedMachine(t, c, id).GetStatus().GetHer() != nil
 	})

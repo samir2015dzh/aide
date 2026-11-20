@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
-// TestCustomAgent: the owner connects an ACP agent Hermesh has not built
+// TestCustomAgent: the owner connects an ACP agent Aide has not built
 // in, as the desktop app's Connect page does: tests the command (a wrong
 // one says why), saves it with a key among its variables, finds it in the
 // machine's agent list, starts a session with it from the app and from an
-// agent; it keeps working after hermeshd restarts, with its key, which
+// agent; it keeps working after aided restarts, with its key, which
 // never was in agents.json; removed, it is gone. The same on a machine of
 // the owner's that is another computer, through its tunnel.
 func TestCustomAgent(t *testing.T) {
@@ -45,7 +45,7 @@ func TestCustomAgent(t *testing.T) {
 		}
 		return res
 	}
-	if res := test(mid, &machinev1.CustomAgent{Name: "mine", Command: "hermesh-no-such-agent"}); res.Ok || !strings.Contains(res.Reason, "hermesh-no-such-agent not found") {
+	if res := test(mid, &machinev1.CustomAgent{Name: "mine", Command: "aide-no-such-agent"}); res.Ok || !strings.Contains(res.Reason, "aide-no-such-agent not found") {
 		t.Fatalf("missing command: %+v", res)
 	}
 	if runtime.GOOS != "windows" {
@@ -118,7 +118,7 @@ func TestCustomAgent(t *testing.T) {
 		t.Fatalf("an agent's session: %+v\n%s", s, r.stdout+r.stderr)
 	}
 
-	// hermeshd restarts: the agent is there, with its key.
+	// aided restarts: the agent is there, with its key.
 	w.restartOwner(false)
 	eventually(t, 30*time.Second, "the agent listed after the restart", func() bool {
 		a := listed(mid)

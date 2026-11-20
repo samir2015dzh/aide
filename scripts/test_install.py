@@ -28,16 +28,16 @@ class InstallerTest(unittest.TestCase):
         self.root = Path(self.temp.name).resolve()
         self.home = self.root / "home"
         self.home.mkdir()
-        self.entry = self.home / ".local/share/hermesh"
+        self.entry = self.home / ".local/share/aide"
         self.mock = self.root / "commands"
         self.mock.mkdir()
         self.release = self.root / "release"
         self.release.mkdir()
         self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith(("HERMESH_", "XDG_")) and k != "NO_COLOR"}
+                    if not k.startswith(("AIDE_", "XDG_")) and k != "NO_COLOR"}
         self.env.update(HOME=str(self.home), TERM="xterm-256color",
                         PATH=f"{self.mock}:{os.environ['PATH']}",
-                        HERMESH_DOWNLOAD_BASE=self.release.as_uri())
+                        AIDE_DOWNLOAD_BASE=self.release.as_uri())
         self.command("uname", 'case "$1" in -s) echo Linux;; -m) echo x86_64;; esac')
         self.command("id", 'echo 1000')
         self.command("df", 'printf "Filesystem 1024-blocks Used Available Capacity Mounted\\nfixture 100000000 0 90000000 0%% /\\n"')
@@ -49,11 +49,11 @@ class InstallerTest(unittest.TestCase):
                                       stderr=subprocess.DEVNULL).decode().strip()
         fixture = b'#!/bin/sh\nprintf "PAIRING %s\\n" "$*"\n'
         self.sums = {}
-        for binary in ("hermeshd", "hermesh"):
+        for binary in ("aided", "aide"):
             self.publish(f"{binary}-linux-amd64", fixture)
         self.script = self.root / "install.sh"
         self.source = Path(__file__).with_name("install.sh").read_text().replace(
-            "__HERMESH_RELEASE_PUBKEY__", pub)
+            "__AIDE_RELEASE_PUBKEY__", pub)
         self.source = self.source.replace("/etc.defaults/VERSION", str(self.root / "VERSION"))
         self.source = self.source.replace("/proc/mounts", str(self.root / "mounts"))
         # Relocate NAS fixtures without requiring root or mounting host disks.
@@ -161,17 +161,17 @@ class InstallerTest(unittest.TestCase):
 
     def test_explicit_environment_default_is_respected(self):
         target = self.root / "configured data"
-        self.env["HERMESH_DATA_DIR"] = str(target)
+        self.env["AIDE_DATA_DIR"] = str(target)
         code, output = self.choose("")
         self.assertEqual(code, 0, output)
         self.assertTrue(target.is_dir())
         self.assertFalse(self.entry.exists())
 
     def test_invalid_inputs_retry_and_tilde_expands(self):
-        code, output = self.choose("0", "999", "relative/path", "~/hermesh data")
+        code, output = self.choose("0", "999", "relative/path", "~/aide data")
         self.assertEqual(code, 0, output)
         self.assertEqual(output.count("Please enter an absolute path"), 3)
-        self.assertEqual(self.entry.resolve(), self.home / "hermesh data")
+        self.assertEqual(self.entry.resolve(), self.home / "aide data")
 
     def test_nonempty_directory_is_not_adopted(self):
         target = self.root / "other installation"
@@ -195,7 +195,7 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(code, 0, output)
         self.assertNotIn("\033[", output)
         self.assertFalse(self.entry.exists())
-        self.assertFalse((self.home / ".local/bin/hermeshd").exists())
+        self.assertFalse((self.home / ".local/bin/aided").exists())
 
     def test_unavailable_volume_does_not_create_new_data(self):
         self.entry.parent.mkdir(parents=True)
@@ -236,12 +236,12 @@ class InstallerTest(unittest.TestCase):
         code, output = self.choose("1")
         self.assertEqual(code, 0, output)
         self.assertIn("Synology storage volumes", output)
-        self.assertIn(f"Default: {self.root}/volume2/@hermesh-1000", output)
+        self.assertIn(f"Default: {self.root}/volume2/@aide-1000", output)
         self.assertNotIn(str(self.root / "volume3"), output)
         self.assertNotIn(str(self.root / "volume4"), output)
-        self.assertEqual(self.entry.resolve(), self.root / "volume1/@hermesh-1000")
+        self.assertEqual(self.entry.resolve(), self.root / "volume1/@aide-1000")
 
-    def test_her_and_its_console_beside_hermeshd(self):
+    def test_her_and_its_console_beside_aided(self):
         bin = self.home / ".local/bin"
         code, output = self.run_install(terminal=False)
         self.assertEqual(code, 0, output)
@@ -270,7 +270,7 @@ class InstallerTest(unittest.TestCase):
     def test_cli_does_not_ask_for_daemon_data(self):
         code, output = self.run_install(args="--cli")
         self.assertEqual(code, 0, output)
-        self.assertNotIn("Where should Hermesh", output)
+        self.assertNotIn("Where should Aide", output)
         self.assertFalse(self.entry.exists())
 
 

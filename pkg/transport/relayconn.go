@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"io"
 	"net"
 	"net/http"
@@ -18,8 +18,8 @@ import (
 	"github.com/coder/websocket"
 	"github.com/hashicorp/yamux"
 
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 const ProtocolVersion = 1
@@ -96,7 +96,7 @@ func Probe(ctx context.Context, relayURL string, hc *http.Client) error {
 	if err != nil {
 		return err
 	}
-	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: hc, Subprotocols: []string{"hermesh.v1"}})
+	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: hc, Subprotocols: []string{"aide.v1"}})
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func newDefaultDialHTTPClient() *http.Client {
 func dialWebSocket(ctx context.Context, wsURL string, hc *http.Client) (*websocket.Conn, error) {
 	for attempt := range 3 {
 		actx, cancel := context.WithTimeout(ctx, 6*time.Second)
-		ws, resp, err := websocket.Dial(actx, wsURL, &websocket.DialOptions{HTTPClient: hc, Subprotocols: []string{"hermesh.v1"}})
+		ws, resp, err := websocket.Dial(actx, wsURL, &websocket.DialOptions{HTTPClient: hc, Subprotocols: []string{"aide.v1"}})
 		cancel()
 		if err == nil {
 			return ws, nil

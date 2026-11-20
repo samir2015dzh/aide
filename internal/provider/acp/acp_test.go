@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 var fakeBin string
@@ -288,7 +288,7 @@ func TestModelConfigOption(t *testing.T) {
 
 // A new session says what it offers (models with their reasoning efforts,
 // modes) and what it runs with unless told, as config options; a model,
-// effort and mode Hermesh names are set through them, an effort after the
+// effort and mode Aide names are set through them, an effort after the
 // model it depends on. One not offered fails the start.
 func TestSessionConfigOptions(t *testing.T) {
 	f := newFixture(t, "FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=small,large", "FAKE_ACP_EFFORTS=small=low;large=low|high", "FAKE_ACP_MODES=ask,code")
@@ -440,7 +440,7 @@ func TestDiscover(t *testing.T) {
 	if !info.Available || info.Version != "1.2.3" {
 		t.Fatalf("info: %+v", info)
 	}
-	info = (&Provider{Agent: Agent{Name: "nope", Command: "hermesh-no-such-agent"}, PathEnv: t.TempDir()}).Discover(context.Background())
+	info = (&Provider{Agent: Agent{Name: "nope", Command: "aide-no-such-agent"}, PathEnv: t.TempDir()}).Discover(context.Background())
 	if info.Available || !strings.Contains(info.Detail, "not found") {
 		t.Fatalf("missing agent: %+v", info)
 	}
@@ -537,7 +537,7 @@ func TestDesktopAppCLI(t *testing.T) {
 	a := App{Bundle: "Fake Desktop.app", Exec: "Contents/MacOS/Fake Desktop", Script: "Contents/Resources/lib/cli.js"}
 	fakeApp(t, a)
 	f := newFixture(t)
-	f.p = &Provider{Agent: Agent{Name: "fake", Command: "hermesh-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
+	f.p = &Provider{Agent: Agent{Name: "fake", Command: "aide-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
 	if info := f.p.Discover(context.Background()); !info.Available || info.Version != "1.2.3" {
 		t.Fatalf("info: %+v", info)
 	}
@@ -562,7 +562,7 @@ func TestDesktopAppCLIAsar(t *testing.T) {
 	os.WriteFile(asar, nil, 0o644)
 	exe := filepath.Join(app, a.Exec)
 	os.WriteFile(exe, nil, 0o755) // LookPath on Linux needs the execute bit
-	p := &Provider{Agent: Agent{Name: "fake", Command: "hermesh-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
+	p := &Provider{Agent: Agent{Name: "fake", Command: "aide-no-such-agent", Args: []string{"acp"}, Apps: []App{a}}, PathEnv: t.TempDir()}
 	bin, pre, env := p.command()
 	want := filepath.Join(app, "resources/app.asar/dsh/lib/bin.js")
 	if bin != exe || len(pre) != 1 || pre[0] != want || len(env) != 1 || env[0] != "ELECTRON_RUN_AS_NODE=1" {

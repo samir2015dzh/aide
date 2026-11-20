@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // TestAgentDefaults: a Codex session started without a model runs with the
@@ -86,10 +86,10 @@ func TestAgentDefaults(t *testing.T) {
 }
 
 // TestSessionModel: a session shows the model the agent reported over the
-// one Hermesh passed it (an alias), and the effort Hermesh passed over the
+// one Aide passed it (an alias), and the effort Aide passed over the
 // agent's own; both are kept across a restart.
 func TestSessionModel(t *testing.T) {
-	st, err := OpenStore(filepath.Join(t.TempDir(), "hermeshd.db"))
+	st, err := OpenStore(filepath.Join(t.TempDir(), "aided.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestACPOffers(t *testing.T) {
 	h.n.mu.Lock()
 	h.n.offers = map[string]provider.Offers{}
 	h.n.mu.Unlock()
-	h.n.loadDefaults() // as when hermeshd starts again
+	h.n.loadDefaults() // as when aided starts again
 	if o := h.n.offers["kimi"]; len(o.Models) != 2 || strings.Join(o.Models[0].Efforts, ",") != "low" || len(o.Modes) != 2 {
 		t.Fatalf("stored: %+v", o)
 	}

@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { httpTransport, RpcClient } from "@hermesh/her-client";
-import type { Methods, ModelsListResult } from "@hermesh/her-protocol";
+import { httpTransport, RpcClient } from "@aide/her-client";
+import type { Methods, ModelsListResult } from "@aide/her-protocol";
 import { errorText } from "./format";
 import { i18n } from "./i18n";
 
-// The page's one connection to her, through hermeshd's console routes (the events and rpc
+// The page's one connection to her, through aided's console routes (the events and rpc
 // beside the page): every page asks on it, so a read on one page subscribes the connection to
 // what changes (config/changed after config/read, and so on). When it drops, the pages wait
 // and a new one is opened; what they read is read again on it. Also the model list, which

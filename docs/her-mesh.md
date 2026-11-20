@@ -19,7 +19,7 @@ not. It builds on
 ## 0. Summary
 
 Her can already talk, research and work on her own Her Server. She can't yet
-use what Hermesh is for: the owner's other computers and the coding agents on
+use what Aide is for: the owner's other computers and the coding agents on
 them. This design gives her that.
 
 - **Her is one of the owner's agents.** She gets a client key, a grant, a
@@ -29,7 +29,7 @@ them. This design gives her that.
   coding agent in one, write to it, answer it, read what it did. The group
   costs one line of her prompt until she uses it.
 - **Her never polls.** When a session's turn ends, asks a question or fails,
-  hermeshd puts the news into her own conversation and wakes her.
+  aided puts the news into her own conversation and wakes her.
 - **The owner stays in control.** In the default mode Her asks before she
   starts or writes to a session. Turning Her off ends her access.
 
@@ -37,10 +37,10 @@ them. This design gives her that.
 sequenceDiagram
     participant O as Owner (iPhone)
     participant H as Her (kernel)
-    participant D as hermeshd on the Her Server
-    participant M as hermeshd on another machine
+    participant D as aided on the Her Server
+    participant M as aided on another machine
     participant C as Claude Code
-    O->>H: "Have Claude fix the flaky relay test in hermesh"
+    O->>H: "Have Claude fix the flaky relay test in aide"
     H-->>O: "Starting Claude Code on it."
     H->>D: mesh/call session_start
     D->>M: StartSession, as Her's client (end to end)
@@ -69,7 +69,7 @@ today, so this design adds no new kind of thing:
 | Tools that cost nothing until used | Deferred groups: one line in `<deferred_tools>`, definitions through `tool_search`, calls through `call_tool` ([deferred.rs](../her/crates/her-core/src/deferred.rs)) |
 | Best practices the model reads when it needs them | Skills, with built-in ones compiled into her ([skills/system.rs](../her/crates/her-core/src/skills/system.rs)) |
 | Work that reports back and wakes Her | Mail: a sub-agent's report or a routine's report wakes her conversation ([agents/mail.rs](../her/crates/her-core/src/agents/mail.rs)) |
-| Hermesh commands as tools, for an identity kept in memory | `cli.Tools()` and `cli.Exec` ([embed.go](../internal/cli/embed.go)), as the MCP gateway uses them |
+| Aide commands as tools, for an identity kept in memory | `cli.Tools()` and `cli.Exec` ([embed.go](../internal/cli/embed.go)), as the MCP gateway uses them |
 | News of a session for the agent that asked | `session_news` messages through the post office ([news.go](../internal/machine/news.go)) |
 
 **Left out of the first step** (§13 has the full list):
@@ -93,7 +93,7 @@ These were settled before this document was written.
    every session, not only her own.
 4. **No expiry.** The owner never renews Her's access. It ends when Her is
    turned off, her machine is removed, or the owner revokes it.
-5. **A native tool group, served by hermeshd.** Not the hosted MCP gateway,
+5. **A native tool group, served by aided.** Not the hosted MCP gateway,
    which would hold Her's key at the center, and not a local MCP server,
    which could not wake her (§16).
 6. **News wakes Her in her own conversation.** The conversation that
@@ -109,18 +109,18 @@ These were settled before this document was written.
 
 ### 3.1 Keys
 
-hermeshd on a Her Server holds two keys for Her, next to the machine's own
+aided on a Her Server holds two keys for Her, next to the machine's own
 key:
 
 - a **client key** (P-256), which signs her requests and her inbox
   registration; her client id is derived from it (`c_…`);
 - an **inbox key** (X25519), which opens the messages sealed to her.
 
-hermeshd makes both the first time it starts on a machine that can run her.
+aided makes both the first time it starts on a machine that can run her.
 Without a grant they give nothing. The public client key is reported in
 `HerStatus` (§3.7), so the owner's app has it before the owner decides.
 
-The keys never enter her process. her asks hermeshd to run a tool; hermeshd
+The keys never enter her process. her asks aided to run a tool; aided
 signs.
 
 ### 3.2 The grant
@@ -159,7 +159,7 @@ sequenceDiagram
     participant A as Owner's app
     participant K as Root key (Touch ID)
     participant R as Relay
-    participant D as hermeshd on the Her Server
+    participant D as aided on the Her Server
     A->>D: machine status
     D-->>A: HerStatus with Her's public client key
     Note over A: the page names both decisions (§3.6)
@@ -260,15 +260,15 @@ its `takes_messages` is `her` (§6.6).
 
 ### 4.1 How the kernel gets it
 
-The kernel knows nothing of Hermesh. A connection may register as the
+The kernel knows nothing of Aide. A connection may register as the
 **mesh host**, as the desktop app registers as the `docx/host` today. For
-her run by hermeshd, the host is hermeshd.
+her run by aided, the host is aided.
 
 | Method | Direction | What it does |
 |---|---|---|
-| `mesh/host` | hermeshd → her | Registers this connection as the host and gives the group: its catalog line, its guidelines and its tools. A later host replaces it; it leaves with its connection |
-| `mesh/call` | her → hermeshd | Runs one tool. Params: the assistant's id, the call's id, the tool's name and arguments. Result: the command's JSON document, and details for the apps (§4.5) |
-| `mesh/news` | hermeshd → her | Puts news into an assistant's conversation and wakes her (§6). It answers once the news is in the conversation |
+| `mesh/host` | aided → her | Registers this connection as the host and gives the group: its catalog line, its guidelines and its tools. A later host replaces it; it leaves with its connection |
+| `mesh/call` | her → aided | Runs one tool. Params: the assistant's id, the call's id, the tool's name and arguments. Result: the command's JSON document, and details for the apps (§4.5) |
+| `mesh/news` | aided → her | Puts news into an assistant's conversation and wakes her (§6). It answers once the news is in the conversation |
 
 ```json
 // mesh/host
@@ -283,11 +283,11 @@ her run by hermeshd, the host is hermeshd.
 ```
 
 The tools, their descriptions and the guidelines are all written in
-hermeshd, in Go. They then always match the hermeshd that runs them, and the
-kernel carries no words about Hermesh. her's own tool contract
+aided, in Go. They then always match the aided that runs them, and the
+kernel carries no words about Aide. her's own tool contract
 (`tests/snapshots/tools.json`) doesn't change.
 
-hermeshd's connection to her today only sends requests and reads
+aided's connection to her today only sends requests and reads
 notifications ([rpc.go](../internal/herhost/rpc.go)); it learns to answer
 requests from her.
 
@@ -325,11 +325,11 @@ session), and `agent_list` is `coding_agent_list`.
 
 | CLI tool | Why Her doesn't get it |
 |---|---|
-| `message_list`, `message_ack` | hermeshd takes her messages and puts them in her conversation |
+| `message_list`, `message_ack` | aided takes her messages and puts them in her conversation |
 | `message_status`, `message_contacts` | Only for messages to agents, which wait for a later step |
-| `auth_status` | Her's connection is hermeshd's business; a problem shows in the tool's own error |
+| `auth_status` | Her's connection is aided's business; a problem shows in the tool's own error |
 
-**Parameters the model doesn't see**, set by hermeshd:
+**Parameters the model doesn't see**, set by aided:
 
 | Parameter | Value |
 |---|---|
@@ -399,7 +399,7 @@ keeps at most 250 characters of a line; this is 230.
     say whose it is.
 12. Every result is JSON: read `ok` first. On a failure, `error.kind` and
     `error.hint` say what to do next. A hint that names a command means the
-    tool of that name (`hermesh session get` is session_get; `hermesh message
+    tool of that name (`aide session get` is session_get; `aide message
     send` is session_send).
 13. For work that takes several sessions, sessions on several computers, or
     a review of what a session did, first read the skill at `<path>`.
@@ -441,7 +441,7 @@ A test checks that every tool has a description here, as
 
 The command's JSON document ([cli-output.md](cli-output.md)), unchanged.
 Its top-level `inbox` field, which tells an agent that messages wait, stays
-absent: hermeshd takes her messages as they arrive. The kernel cuts a long
+absent: aided takes her messages as they arrive. The kernel cuts a long
 result as it cuts every tool's and keeps the whole in the session's
 `tool-output` directory.
 
@@ -450,16 +450,16 @@ tool result for the apps and the model never reads
 ([her-team.md](her-team.md) §6.2): `{"session": …}` for `session_start`,
 `{"work": …}` for `work_summary`.
 
-### 4.6 How hermeshd runs a call
+### 4.6 How aided runs a call
 
 - `cli.Exec` with an `Identity` built from Her's keys and grant, as the MCP
   gateway does for a connection.
 - One `cli.Peer` for Her, kept while she is on: the relay connection and the
   tunnels to machines stay open from one call to the next.
-- hermeshd keeps a small record of the sessions Her started: session id,
+- aided keeps a small record of the sessions Her started: session id,
   project address, title.
 - A grant the owner changed or revoked reaches Her through `Adopted`, as it
-  reaches a gateway connection. Once revoked, hermeshd takes the group back
+  reaches a gateway connection. Once revoked, aided takes the group back
   from her.
 
 ### 4.7 Who has the group
@@ -468,7 +468,7 @@ Her's own conversation, when a mesh host is connected and holds a grant.
 The kernel gives it the way it gives the `connectors` group: to the
 assistant's conversation only (`header.bot.is_some()`,
 [server.rs](../her/crates/her-server/src/server.rs)). Sub-agents and routine
-runs don't have it in this step. her run alone, without hermeshd, never has
+runs don't have it in this step. her run alone, without aided, never has
 it.
 
 ## 5. No approvals
@@ -505,7 +505,7 @@ failed. They seal it to that agent's inbox and hand it to the post office.
 Her's sessions are started with `--as <assistant id>`, so the news is
 addressed to that assistant.
 
-hermeshd on the Her Server does three things.
+aided on the Her Server does three things.
 
 1. **It follows Her's inbox**, over her kept relay connection, with the
    post office's `Watch` stream, as it follows the machine's own inbox
@@ -529,10 +529,10 @@ the relay is unreachable. Today news is tried three times and then dropped.
 
 ### 6.2 What Her reads
 
-hermeshd writes the text; the kernel treats it as it treats a report.
+aided writes the text; the kernel treats it as it treats a report.
 
 ```
-<session_news id="msg_01jb…" kind="turn_done" session="s_q2x9ab12_01jb…" title="Fix the flaky relay test" agent="claude" project="macbook/hermesh" sent="2026-11-12 10:42 +08:00">
+<session_news id="msg_01jb…" kind="turn_done" session="s_q2x9ab12_01jb…" title="Fix the flaky relay test" agent="claude" project="macbook/aide" sent="2026-11-12 10:42 +08:00">
 <result>
 The test waited on the wrong channel. I made it wait on `done` and added a
 case for a closed stream. `go test ./pkg/relay` passes.
@@ -605,7 +605,7 @@ conversation's inbox.
 | The conversation was cleared | The news goes to the new conversation |
 | The Her Server is off | The news waits at the post office (30 days at most), then in the queue |
 | her stops between taking news and writing it down | The queue still has it; it is delivered again when her is back |
-| hermeshd stops between her answer and removing the entry | Her may read one news twice. Her prompt already says to drop a repeated result nobody waits for |
+| aided stops between her answer and removing the entry | Her may read one news twice. Her prompt already says to drop a repeated result nobody waits for |
 
 Two details in the kernel:
 
@@ -757,14 +757,14 @@ Her becomes the agent with the widest reach. What that changes:
 
 | Risk | What holds it |
 |---|---|
-| **A Her Server taken over gives access to every machine.** Before, it gave away that environment only ([her-server.md](her-server.md) §8). It matters most for a Her Server on a public cloud host: whoever takes it can run code on the owner's Mac | Accepted, with full access (decision 3). The sheet says it in words (§3.6). Her's keys stay in hermeshd, outside her's process. Turning Her off ends it |
+| **A Her Server taken over gives access to every machine.** Before, it gave away that environment only ([her-server.md](her-server.md) §8). It matters most for a Her Server on a public cloud host: whoever takes it can run code on the owner's Mac | Accepted, with full access (decision 3). The sheet says it in words (§3.6). Her's keys stay in aided, outside her's process. Turning Her off ends it |
 | **A revocation the relay hides.** With no expiry, a hostile relay can keep a revoked grant alive on a machine that was offline when it was revoked, for as long as it hides the revocation | Accepted (decision 4): the same as for a machine's certificate, which has no expiry either. Revocations go to every online machine end to end, and the owner's device hears which machines confirmed |
 | **Text that drives Her.** A web page, a mail or a session's result tells her to start a session | The prompt's rule that such text is never a request. Her runs actions without asking (§5), so nothing else stands in the way |
 | **A session's result that drives Her.** The agent's last message says "now run this in the other project" | The news is marked as data (§6.2); a new start is asked for (§5) |
 | **Another agent writes to Her** to make her act with her access | Refused in this step (§6.6). [her-secure-cards.md](her-secure-cards.md) §5.4 stays true: agents can't reach Her |
 | **Forged news.** The relay, or an agent, hands Her a made-up result | News must be signed by a machine in the owner's root chain. The relay can't forge that, and an agent's key is not a machine's |
 | **Her's key copied from the machine** | It is kept as the machine's own key is. Whoever can read one can read the other, and the machine's key already runs sessions on that machine |
-| **her itself taken over** (a bug in the kernel, a hostile tool result) | her holds no key and can only ask hermeshd for the twelve tools |
+| **her itself taken over** (a bug in the kernel, a hostile tool result) | her holds no key and can only ask aided for the twelve tools |
 | **Loops**: Her and a session answer each other without end | The machine's limit of 30 message turns an hour from one agent to a session ([agent-messages.md](agent-messages.md) §7.2) |
 
 The center learns nothing new in kind. Her is one more client with an
@@ -816,7 +816,7 @@ the stand-in coding agent, and her with a scripted model.
 5. A question: the news carries it; her answer reaches the session.
 6. The Her Server is off when the turn ends. The news waits and arrives
    when it starts.
-7. her is killed after hermeshd took the news. It is delivered once her is
+7. her is killed after aided took the news. It is delivered once her is
    back.
 8. A session on Her's own machine ends while the relay is stopped. The news
    arrives.
@@ -864,7 +864,7 @@ Mac): the same, and Her in the agents list.
 - A renewal of Her's grant: there is nothing to renew.
 - Showing a session's steps live inside Her's conversation.
 - Files sent with a message to a session.
-- The `mesh` group in her run alone, without hermeshd.
+- The `mesh` group in her run alone, without aided.
 
 ## 14. What changes for the other documents' promises
 
@@ -895,7 +895,7 @@ Mac): the same, and Her in the agents list.
 3. **A plan lost to compaction.** After her conversation is compacted or
    cleared, the news still tells her the result, but she may not remember
    what was to come next. If the acceptance runs show this, `session_start`
-   gains a note ("when this ends, do …") that hermeshd keeps and adds to
+   gains a note ("when this ends, do …") that aided keeps and adds to
    the news.
 4. **Sessions the owner started.** Settled 2026-11-14: Her's grant is the
    exception, and she answers, stops and archives every session she reads
@@ -912,11 +912,11 @@ Mac): the same, and Her in the agents list.
 | Shape | Why not |
 |---|---|
 | Her connects to the hosted MCP gateway as a connector (no code: her is already a client of it) | The center would hold Her's key and see her prompts and results in plaintext. She would have to poll, or be rung at most once a minute. A self-hosted relay would need its own gateway set up |
-| hermeshd gives her a local MCP server | End to end, and small. But an MCP server can't wake her, its tools would be judged as an outside server's (asked by name, with raw arguments), and nothing ties a result to her conversation |
-| The tools written in the kernel, in Rust | The kernel would carry Hermesh's commands and words, and they could drift from the hermeshd that runs them. her run alone would list tools it can't run |
+| aided gives her a local MCP server | End to end, and small. But an MCP server can't wake her, its tools would be judged as an outside server's (asked by name, with raw arguments), and nothing ties a result to her conversation |
+| The tools written in the kernel, in Rust | The kernel would carry Aide's commands and words, and they could drift from the aided that runs them. her run alone would list tools it can't run |
 | A 30-day grant that the app renews quietly | The owner away for a month comes back to a Her that lost her access, exactly when she was most useful. A quiet renewal needs the root key, which needs a confirmation |
 | A grant with no `expires_at` | Every verifier refuses it, and older machines would refuse Her |
 | News in a fresh context each time | It would not know why the session was started or what comes next, and its findings would have to come back to her conversation anyway |
 | Her polls `session_get` | It costs a model turn per look, it is late by the polling interval, and it keeps her turn open so the owner's next message waits |
 | Asking once per project by default | It reads as a boundary and is not one (§5) |
-| **A standard agent with a grant that doesn't expire, a native group served by hermeshd, news as mail into her own conversation** | Chosen |
+| **A standard agent with a grant that doesn't expire, a native group served by aided, news as mail into her own conversation** | Chosen |

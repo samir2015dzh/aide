@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { QueryWorkResponse } from "@hermesh/proto/local";
-import { codingAgentShort, dayKey, language, tokensText, usageRequest, usageYear, type UsageCell } from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+import type { QueryWorkResponse } from "@aide/proto/local";
+import { codingAgentShort, dayKey, language, tokensText, usageRequest, usageYear, type UsageCell } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import { useStore } from "../store";
@@ -14,7 +14,7 @@ export function dayText(d: Date): string {
   return i18n.t("overview:day", { date, weekday });
 }
 
-/** A year of work by day and agent (QueryWork, answered from what hermeshd holds), asked again when its counts move; null until the first answer. */
+/** A year of work by day and agent (QueryWork, answered from what aided holds), asked again when its counts move; null until the first answer. */
 export function useUsage(now: Date): QueryWorkResponse | null {
   const st = useStore();
   const [res, setRes] = useState<QueryWorkResponse | null>(null);

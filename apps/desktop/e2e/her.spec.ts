@@ -55,7 +55,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   let { app, page } = await launch(fixture.socket, { profile });
   const posted = () =>
-    app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
+    app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.notifications().map((n) => ({ id: n.id, title: n.title, body: n.body })));
   const log = page.getByRole("log", { name: "对话" });
   const composer = page.getByRole("textbox", { name: "消息" });
   const send = async (text: string) => {
@@ -150,7 +150,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // The owner's bubble is a session page's: a quiet grey with the page's own words, as Grok's (the owner's ruling, 2026-11-19).
   await expect(log.locator(".um .bub").first()).toHaveCSS("background-color", "rgb(240, 240, 241)");
   await expect(log.locator(".um .bub").first()).toHaveCSS("color", "rgba(0, 0, 0, 0.9)");
-  // A message leaves the composer at once and shows once (docs/her-sending.md): it goes by its id through hermeshd,
+  // A message leaves the composer at once and shows once (docs/her-sending.md): it goes by its id through aided,
   // on this conversation's connection, and stays where it is from being sent to her having it.
   await send(mockSend("只收到一次"));
   await expect(composer).toHaveValue("", { timeout: 1_000 });
@@ -309,7 +309,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // with OAuth. Under Her's words, the card says it is an MCP connection, what Her wants to connect to, its address
   // large, what that lets Her do and to connect only what one trusts; nothing changes until the owner answers, and
   // the composer stays open meanwhile. Authorizing adds it, and its sign-in
-  // opens in the browser (here, the stand-in records it), coming back to this Mac's hermeshd, and opens again when
+  // opens in the browser (here, the stand-in records it), coming back to this Mac's aided, and opens again when
   // asked. The service approves at once: the card folds into one line with the connector's tools.
   await app.evaluate(({ shell }) => {
     const pages: string[] = [];
@@ -362,16 +362,16 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await page.getByRole("button", { name: "助手设置", exact: true }).click();
   await expect(settings).toBeHidden();
 
-  // The console, from ⋯: a window of its own at this Mac's hermeshd, which is none of the app's pages.
+  // The console, from ⋯: a window of its own at this Mac's aided, which is none of the app's pages.
   const opened = app.waitForEvent("window");
   await page.getByRole("button", { name: "更多", exact: true }).click();
   await page.getByRole("menuitem", { name: /^管理「.+」…$/ }).click();
   const consolePage = await opened;
   await consolePage.waitForLoadState("domcontentloaded");
   expect(consolePage.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/her\//);
-  // The test's console page, or the real one (HERMESH_HER_CONSOLE): served, whichever it is.
+  // The test's console page, or the real one (AIDE_HER_CONSOLE): served, whichever it is.
   expect(await consolePage.evaluate(async () => (await fetch(location.href)).status)).toBe(200);
-  expect(await consolePage.evaluate(() => typeof (window as { hermesh?: unknown }).hermesh)).toBe("undefined");
+  expect(await consolePage.evaluate(() => typeof (window as { aide?: unknown }).aide)).toBe("undefined");
   await consolePage.close();
 
   // Keep the first reply outside the final virtual window when this conversation opens again.
@@ -401,7 +401,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await snap(page, "her-onboarding");
 
   // ChatGPT: her's sign-in page opens in the browser (here, the stand-in records it), coming back to this
-  // Mac's hermeshd, and opens again when asked. Another way stops it, and Her offers the ways again.
+  // Mac's aided, and opens again when asked. Another way stops it, and Her offers the ways again.
   await app.evaluate(({ shell }) => {
     const opened: string[] = [];
     Object.assign(globalThis, { opened });
@@ -512,7 +512,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await waiting.getByRole("button", { name: "丢弃" }).click();
   await expect(waiting).toBeHidden();
 
-  // The app restarts while work-mac is away: what was said there still shows, as this Mac's hermeshd
+  // The app restarts while work-mac is away: what was said there still shows, as this Mac's aided
   // keeps it, under the same line.
   await app.close();
   ({ app, page } = await launch(fixture.socket, { profile }));
@@ -547,7 +547,7 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await expect(page.getByText(/^work-mac 离线 · .+在线$/)).toBeVisible({ timeout: 30_000 });
   expect(await environmentNames(page)).toEqual([]);
 
-  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("machines"))]);
+  const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("machines"))]);
   await win.waitForLoadState();
   const machines = win.getByRole("main", { name: "机器" });
   await machines.getByRole("list", { name: "机器" }).getByRole("button").filter({ hasNotText: "work-mac" }).first().click();

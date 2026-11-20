@@ -41,16 +41,16 @@ func resolve() (string, []string, string, bool) {
 	sh := shell()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, sh, "-lic", `printf '__HERMESH_PATH__%s__HERMESH_ENV__' "$PATH"; env -0; printf '__HERMESH_END__'`)
+	cmd := exec.CommandContext(ctx, sh, "-lic", `printf '__AIDE_PATH__%s__AIDE_ENV__' "$PATH"; env -0; printf '__AIDE_END__'`)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	var parts, env []string
 	problem, short := "", false
-	if _, p, ok := strings.Cut(string(out), "__HERMESH_PATH__"); err == nil && ok {
-		p, vars, _ := strings.Cut(p, "__HERMESH_ENV__")
+	if _, p, ok := strings.Cut(string(out), "__AIDE_PATH__"); err == nil && ok {
+		p, vars, _ := strings.Cut(p, "__AIDE_ENV__")
 		parts = append(parts, filepath.SplitList(strings.TrimSpace(p))...)
-		vars, _, _ = strings.Cut(vars, "__HERMESH_END__")
+		vars, _, _ = strings.Cut(vars, "__AIDE_END__")
 		for _, kv := range strings.Split(vars, "\x00") {
 			// The shell's own, not the terminal's.
 			if name, _, ok := strings.Cut(kv, "="); ok && name != "" && !slices.Contains([]string{"PATH", "PWD", "OLDPWD", "SHLVL", "_"}, name) {

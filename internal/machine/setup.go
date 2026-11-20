@@ -17,9 +17,9 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/shellenv"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // What a machine offers the owner's devices while they set it up from
@@ -222,7 +222,7 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 	if p == nil {
 		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no coding agent %q here", name))
 	}
-	dir, err := os.MkdirTemp("", "hermesh-test-")
+	dir, err := os.MkdirTemp("", "aide-test-")
 	if err != nil {
 		return nil, err
 	}

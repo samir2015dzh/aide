@@ -1,13 +1,13 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { Client, Machine } from "@hermesh/proto/local";
-import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@hermesh/proto/session";
+import type { Client, Machine } from "@aide/proto/local";
+import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
 import {
   agoText, clockText, dateOf, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
   turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, type Step,
-} from "@hermesh/core";
-import { AgentLogo, Mark, agentName } from "@hermesh/ui";
+} from "@aide/core";
+import { AgentLogo, Mark, agentName } from "@aide/ui";
 import { local } from "../api";
 import { StatusDot, useStateView } from "../components";
 import { Icon } from "../icons";
@@ -500,7 +500,7 @@ export function AgentText({ text, end, at, live = false }: { text: string; end: 
   );
 }
 
-/** A turn stopped on purpose: by you, by one of your agents, or by Hermesh. */
+/** A turn stopped on purpose: by you, by one of your agents, or by Aide. */
 function InterruptNote({ failure, clients, grant }: { failure: Failure | undefined; clients: Client[]; grant: string }) {
   const { t } = useTranslation("session");
   const by = interrupter(failure);

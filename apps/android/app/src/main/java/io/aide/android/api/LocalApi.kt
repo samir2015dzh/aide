@@ -7,11 +7,11 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
 /**
- * LocalService (hermesh.local.v1) of the core in this app's process: the
+ * LocalService (aide.local.v1) of the core in this app's process: the
  * only API the app uses, as on the iPhone.
  */
 class LocalApi(port: Long, token: String) {
-    val client = ConnectClient("http://127.0.0.1:$port", token, "hermesh.local.v1.LocalService")
+    val client = ConnectClient("http://127.0.0.1:$port", token, "aide.local.v1.LocalService")
 
     suspend inline fun <reified Req, reified Res> call(method: String, req: Req, timeoutSeconds: Long = 30): Res {
         val out = client.unary(method, ConnectClient.json.encodeToJsonElement(req), timeoutSeconds)

@@ -8,28 +8,28 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
-// TestHerMeshReal talks to the Her of a hermeshd that is really in use
+// TestHerOnTheMeshReal talks to the Her of an aided that is really in use
 // (docs/her-mesh.md), with her real model and the owner's real machines:
 // for trying what the mock can't show, how she uses the mesh tools. It
 // sends her one message and prints her conversation while it follows it.
 // She runs the mesh tools without asking (docs/her-mesh.md §5): nothing in
 // it waits for an answer.
 //
-//	HERMESH_REAL_HER_SOCKET   the hermeshd's local API socket; unset: skipped
-//	HERMESH_REAL_HER_MACHINE  the machine Her runs on (default: this one's own)
-//	HERMESH_REAL_HER_GRANT=1  give a Her without her grant the grant first
+//	AIDE_REAL_HER_SOCKET   the aided's local API socket; unset: skipped
+//	AIDE_REAL_HER_MACHINE  the machine Her runs on (default: this one's own)
+//	AIDE_REAL_HER_GRANT=1  give a Her without her grant the grant first
 //	                          (the owner confirms it with the root key)
-//	HERMESH_REAL_HER_ASK      the message; unset: only her status is printed
-//	HERMESH_REAL_HER_FOLLOW   how long to follow (default 10m); it also ends
-//	                          once she has been idle for HERMESH_REAL_HER_IDLE
+//	AIDE_REAL_HER_ASK      the message; unset: only her status is printed
+//	AIDE_REAL_HER_FOLLOW   how long to follow (default 10m); it also ends
+//	                          once she has been idle for AIDE_REAL_HER_IDLE
 //	                          (default 90s) after telling the owner something
-func TestHerMeshReal(t *testing.T) {
-	sock := os.Getenv("HERMESH_REAL_HER_SOCKET")
+func TestHerOnTheMeshReal(t *testing.T) {
+	sock := os.Getenv("AIDE_REAL_HER_SOCKET")
 	if sock == "" {
-		t.Skip("HERMESH_REAL_HER_SOCKET is not set")
+		t.Skip("AIDE_REAL_HER_SOCKET is not set")
 	}
 	dur := func(name string, def time.Duration) time.Duration {
 		if d, err := time.ParseDuration(os.Getenv(name)); err == nil {
@@ -38,9 +38,9 @@ func TestHerMeshReal(t *testing.T) {
 		return def
 	}
 	c := localClient(t, sock)
-	ctx, cancel := context.WithTimeout(context.Background(), dur("HERMESH_REAL_HER_FOLLOW", 10*time.Minute))
+	ctx, cancel := context.WithTimeout(context.Background(), dur("AIDE_REAL_HER_FOLLOW", 10*time.Minute))
 	defer cancel()
-	machine := os.Getenv("HERMESH_REAL_HER_MACHINE")
+	machine := os.Getenv("AIDE_REAL_HER_MACHINE")
 	if machine == "" {
 		machine = localMachine(t, c)
 	}
@@ -51,7 +51,7 @@ func TestHerMeshReal(t *testing.T) {
 			her.GetEnabled(), her.GetRunning(), her.GetModelReady(), her.GetMesh(), len(her.GetClientPublicKey()) > 0)
 	}
 	status()
-	if her := listedMachine(t, c, machine).GetHer(); her.GetEnabled() && !her.GetMesh() && os.Getenv("HERMESH_REAL_HER_GRANT") == "1" {
+	if her := listedMachine(t, c, machine).GetHer(); her.GetEnabled() && !her.GetMesh() && os.Getenv("AIDE_REAL_HER_GRANT") == "1" {
 		t.Log("asking the owner to sign Her's grant…")
 		if _, err := c.SetHer(ctx, &localv1.SetHerRequest{MachineId: machine, Enabled: true}); err != nil {
 			t.Fatalf("SetHer: %v", err)
@@ -59,7 +59,7 @@ func TestHerMeshReal(t *testing.T) {
 		eventually(t, time.Minute, "Her on the mesh", func() bool { return listedMachine(t, c, machine).GetHer().GetMesh() })
 		status()
 	}
-	ask := os.Getenv("HERMESH_REAL_HER_ASK")
+	ask := os.Getenv("AIDE_REAL_HER_ASK")
 	if ask == "" {
 		return
 	}
@@ -70,7 +70,7 @@ func TestHerMeshReal(t *testing.T) {
 		t.Fatalf("HerSend: %v %v", res, err)
 	}
 	t.Logf(">>> %s", ask)
-	idle := dur("HERMESH_REAL_HER_IDLE", 90*time.Second)
+	idle := dur("AIDE_REAL_HER_IDLE", 90*time.Second)
 	events := make(chan json.RawMessage, 256)
 	go func() {
 		defer close(events)

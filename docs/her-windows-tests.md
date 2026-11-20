@@ -11,7 +11,7 @@ The outcome is a report (§4): each test passed, failed or not run, with what wa
 - **Your server, account and password**, to log this PC in (the app's Log In), and **another device of the owner's** logged in already, a phone or another computer, to reach Her from (H9).
 - **A model** Her can use: a ChatGPT sign-in, or a key of a provider the console lists.
 - **Google Chrome** installed (H5), and **Git for Windows** on the first account (H6).
-- When something fails: the time, what was on screen, and `%LOCALAPPDATA%\Hermesh\logs\` (hermeshd's log) and `%USERPROFILE%\.her\logs\` (her's), zipped.
+- When something fails: the time, what was on screen, and `%LOCALAPPDATA%\Aide\logs\` (aided's log) and `%USERPROFILE%\.her\logs\` (her's), zipped.
 
 ## 2. The tests
 
@@ -27,7 +27,7 @@ The outcome is a report (§4): each test passed, failed or not run, with what wa
 | H8 | Computer use | Open Notepad. Ask her to type a paragraph in it, then to read back what is there. | The text appears; she reads it back. Neither she nor Windows asks for permission. |
 | H9 | From the other device | On the iPhone or Mac, open Her on this PC and talk; send a file both ways. | As on this PC. |
 | H10 | Sleep and restart | Put the PC to sleep for a minute, wake it. Then restart Windows and sign in. | Her comes back by herself each time: the other device shows her online again within a minute. |
-| H11 | A machine without the app | On another PC (or after H13): `& ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/download/<version>/install.ps1))) <server>`, giving the account and password when it asks, then turn Her on for it from the other device. | Her runs there: H3 and H6 pass from the other device. |
+| H11 | A machine without the app | On another PC (or after H13): `& ([scriptblock]::Create((irm https://github.com/samir2015dzh/aide/releases/download/<version>/install.ps1))) <server>`, giving the account and password when it asks, then turn Her on for it from the other device. | Her runs there: H3 and H6 pass from the other device. |
 | H12 | Update | Once the next release is out: Aide › check for updates, install, relaunch. | Her is on and remembers the conversation. |
 | H13 | Off, erase, uninstall | Turn Her off with "erase her data". Then Settings › Apps › Aide › Uninstall. | Her's folder (`%USERPROFILE%\.her`) is gone after the erase; nothing of Aide runs after the uninstall. |
 

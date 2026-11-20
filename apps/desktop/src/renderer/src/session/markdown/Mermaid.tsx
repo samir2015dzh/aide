@@ -46,7 +46,7 @@ export default function MermaidBlock({ text }: { text: string }) {
   const save = () => {
     if (!current?.svg) return;
     const url = URL.createObjectURL(new Blob([current.svg], { type: "image/svg+xml" }));
-    const a = document.createElement("a"); a.href = url; a.download = "hermesh-diagram.svg"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = "aide-diagram.svg"; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return <div className="md-diagram md-wide">

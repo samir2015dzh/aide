@@ -1,8 +1,8 @@
 import { ConnectLink } from "../components";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { codingAgentTitle, displayTitle } from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+import { codingAgentTitle, displayTitle } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { useStore } from "../store";

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	"github.com/hermeshai/hermesh/internal/localipc"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
 // her's JSON-RPC 2.0 (her/docs/cli/json-rpc.md): one JSON object per line
@@ -81,7 +81,7 @@ func dial(ctx context.Context, sock, version string, notes bool) (*conn, error) 
 		c.notes = make(chan note, queuedNotes)
 	}
 	go c.read()
-	params, _ := json.Marshal(map[string]any{"protocol_version": 2, "client_info": map[string]string{"name": "hermeshd", "version": version}})
+	params, _ := json.Marshal(map[string]any{"protocol_version": 2, "client_info": map[string]string{"name": "aided", "version": version}})
 	res, err := c.call(ctx, "initialize", params)
 	if err == nil && res.Error != nil {
 		err = fmt.Errorf("initialize: %s", res.Error.Message)

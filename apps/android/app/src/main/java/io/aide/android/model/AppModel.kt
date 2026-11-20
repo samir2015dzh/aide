@@ -19,7 +19,7 @@ import io.aide.android.connection.ConnectionService
 import io.aide.android.connection.Keepalive
 import io.aide.android.connection.Link
 import io.aide.android.connection.link
-import io.aide.android.hermeshcore.Hermeshcore
+import io.aide.android.aidecore.Aidecore
 import io.aide.android.push.LiveNotices
 import io.aide.android.push.NoticeTarget
 import io.aide.android.push.Push
@@ -87,8 +87,8 @@ class AppModel(private val context: Context) {
     fun start() {
         scope.launch {
             try {
-                val dir = File(context.filesDir, "hermesh").apply { mkdirs() }
-                val info = withContext(Dispatchers.IO) { Hermeshcore.start(dir.absolutePath) }
+                val dir = File(context.filesDir, "aide").apply { mkdirs() }
+                val info = withContext(Dispatchers.IO) { Aidecore.start(dir.absolutePath) }
                 api = LocalApi(info.port, info.token)
             } catch (e: Exception) {
                 startError = e.message
@@ -127,12 +127,12 @@ class AppModel(private val context: Context) {
         if (api == null) return // not started: start() follows once it is
         val active = _foreground.value || _kept.value
         if (active) {
-            scope.launch(coreCalls) { Hermeshcore.resume() }
+            scope.launch(coreCalls) { Aidecore.resume() }
             if (watching?.isActive != true) watching = scope.launch { watch() }
         } else if (_active.value) {
             watching?.cancel()
             watching = null
-            scope.launch(coreCalls) { Hermeshcore.pause() }
+            scope.launch(coreCalls) { Aidecore.pause() }
         }
         _active.value = active
     }
@@ -200,7 +200,7 @@ class AppModel(private val context: Context) {
         _online.value = cm.activeNetwork != null
         cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                if (current != null && current != network) Hermeshcore.networkChanged()
+                if (current != null && current != network) Aidecore.networkChanged()
                 current = network
                 _online.value = true
             }
@@ -213,7 +213,7 @@ class AppModel(private val context: Context) {
             }
 
             override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) {
-                if (network == current) Hermeshcore.pathChanged()
+                if (network == current) Aidecore.pathChanged()
             }
         })
     }

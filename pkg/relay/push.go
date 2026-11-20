@@ -12,9 +12,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Notifications for the owner's trusted devices while their app is not
@@ -200,7 +200,7 @@ func (n *machineControl) Notify(ctx context.Context, req *relayv1.NotifyRequest)
 func (s *Server) pushing() bool { return s.cfg.Pusher != nil }
 
 // deliver hands one sealed notice to the push service. What the person
-// sees before their phone opens it says nothing ("Hermesh: something needs
+// sees before their phone opens it says nothing ("Aide: something needs
 // you"); the app's notification extension replaces it with the content.
 func (s *Server) deliver(pt *relayv1.PushTarget, sealed []byte, kind, thread string) {
 	reg := &identityv1.PushRegistration{}
@@ -225,7 +225,7 @@ func (s *Server) deliver(pt *relayv1.PushTarget, sealed []byte, kind, thread str
 			"thread-id":          threadID(thread),
 			"interruption-level": level,
 		},
-		"hermesh": map[string]string{"n": base64.StdEncoding.EncodeToString(sealed), "k": kind},
+		"aide": map[string]string{"n": base64.StdEncoding.EncodeToString(sealed), "k": kind},
 	})
 	s.send(pusher, Push{Token: reg.Token, Environment: reg.Environment, Payload: payload, Urgent: urgent, Thread: threadID(thread)}, reg.OwnerId)
 }
@@ -245,6 +245,6 @@ func threadID(thread string) string {
 	if thread == "" {
 		return ""
 	}
-	h := sha256.Sum256([]byte("hermesh-thread\x00" + thread))
+	h := sha256.Sum256([]byte("aide-thread\x00" + thread))
 	return hex.EncodeToString(h[:8])
 }

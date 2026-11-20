@@ -12,7 +12,7 @@
 > runs" row of §15 describes Her before. The rest (the machine, the app,
 > packaging, updates, Her's seams) holds.
 
-Status: accepted 2026-10-30, with the owner's decisions in §12; phases W0 to W3 are built, and §14 lists what is checked on a real PC next and what is left. Her on a PC is §15 (2026-11-17). It replaces [desktop-app.md](desktop-app.md) §9 for Windows. Windows goes into [technical-design.md](technical-design.md) §6.1 and [hermeshd.md](hermeshd.md) as it is built.
+Status: accepted 2026-10-30, with the owner's decisions in §12; phases W0 to W3 are built, and §14 lists what is checked on a real PC next and what is left. Her on a PC is §15 (2026-11-17). It replaces [desktop-app.md](desktop-app.md) §9 for Windows. Windows goes into [technical-design.md](technical-design.md) §6.1 and [aided.md](aided.md) as it is built.
 
 ## 1. Goal
 
@@ -26,7 +26,7 @@ A Windows PC does what a Mac does, in three steps that are each useful alone:
 
 **Not in scope:** per-machine and managed (MDM) deployment, the relay on Windows, the app on Windows Server, and Aide itself running inside WSL (a WSL distribution is a Linux machine, §8).
 
-**What does not change:** the relay, the center, the iPhone app, the wire protocols and the signature format. The only API change is two small additions to `hermesh.local.v1` for the signer (§7.3).
+**What does not change:** the relay, the center, the iPhone app, the wire protocols and the signature format. The only API change is two small additions to `aide.local.v1` for the signer (§7.3).
 
 ## 2. Principles
 
@@ -42,10 +42,10 @@ The processes on a Windows PC that is both a machine and a trusted device:
 ```
  the owner's programs (medium integrity)                  elevated (high integrity)
  ┌──────────────────────────────────────────────┐         ┌───────────────────────┐
- │ Hermesh.exe        window · tray · toasts    │         │ hermesh-signer.exe    │
+ │ Aide.exe        window · tray · toasts    │         │ aide-signer.exe    │
  │   │ named pipe, this user only               │         │ in Program Files      │
  │   ▼                                          │  pipe   │ TPM key · panel ·     │
- │ hermeshd           logon task, supervised    │◀────────│ Windows Hello         │
+ │ aided           logon task, supervised    │◀────────│ Windows Hello         │
  │   │ a job object per session                 │         └───────────────────────┘
  │   ▼                                          │
  │ claude · codex · ACP agents, and their tools │
@@ -54,7 +54,7 @@ The processes on a Windows PC that is both a machine and a trusted device:
                   relay / machines
 ```
 
-As on the Mac, the signer and the app never talk to each other; hermeshd is the only coordinator.
+As on the Mac, the signer and the app never talk to each other; aided is the only coordinator.
 
 ## 3. What the code assumes today
 
@@ -62,14 +62,14 @@ Cross-compiling with `GOOS=windows` fails first in `pkg/rlimit`, `internal/flock
 
 | Area | Today | Where |
 |---|---|---|
-| Local endpoints | Unix sockets (0600 in a 0700 folder) and a peer uid check: three listeners, five dialers | `internal/owner/localapi.go`, `internal/machine/{control,sessiontools,messagemcp}.go`, `cmd/hermeshd/{main,device}.go`, `internal/cli/hook.go` |
+| Local endpoints | Unix sockets (0600 in a 0700 folder) and a peer uid check: three listeners, five dialers | `internal/owner/localapi.go`, `internal/machine/{control,sessiontools,messagemcp}.go`, `cmd/aided/{main,device}.go`, `internal/cli/hook.go` |
 | Process trees | Process groups, `kill(-pgid)`, `Wait4`, a sampled process table for descendants that leave the group, posix_spawn helpers on macOS | `internal/provider/{proc,tree,proctable_*}.go`, `internal/spawn` |
 | Background service | LaunchAgent or systemd user unit, through `runtime.GOOS` switches | `internal/service/service.go` |
 | PATH for agents | The login shell's (`$SHELL -lic`) | `internal/shellenv` |
 | Finding agents | Unix install locations; executable bits (`mode&0o111`); `/` in paths | `internal/provider/{claude,codex,acp}`, `proc.go` (`LookPath`, `startSpawn`) |
 | Hooks | `strconv.Quote(exe) + " message hook …"` in the agents' settings; `Flock`, `Setsid`, `kill(pid, 0)` | `internal/cli/hook.go` |
 | Health | `Statfs`, `RLIMIT_*`, `kern.proc` or `/proc` | `internal/machine/{health*,diagnostics}.go` |
-| Data | `~/Library/Application Support/Hermesh` or XDG; the CLI's `~/.config/hermesh` | `cmd/hermeshd/main.go`, `internal/cli/state.go`, mirrored in `apps/desktop/src/main/paths.ts` |
+| Data | `~/Library/Application Support/Aide` or XDG; the CLI's `~/.config/aide` | `cmd/aided/main.go`, `internal/cli/state.go`, mirrored in `apps/desktop/src/main/paths.ts` |
 | Electron main | Daemon, login item, signer, tray, updater and install gate only on `darwin`; Terminal `.command` files; Activity Monitor; off macOS, quitting when the last window closes | `apps/desktop/src/main/*.ts` |
 | Renderer | `⌘` written into shortcut labels; folder names split on `/`; Add Project requires a leading `/`; about 60 English strings (outside release notes) name the Mac, Touch ID, Finder or System Settings | `Sidebar.tsx`, `Search.tsx`, `sheets/Add.tsx`, `src/locales` |
 | Packaging and release | DMG, Squirrel.Mac zip and feed, notarization; binaries for darwin and linux; `install.sh` | `apps/desktop/scripts/build-app.mjs`, `scripts/release.sh`, `.github/workflows` |
@@ -83,18 +83,18 @@ Each seam gathers code that today repeats or is spread out, so that its Windows 
 
 ### 4.1 Where things live
 
-One package, `internal/paths`, says where everything is; `cmd/hermeshd`, `internal/cli` and `internal/machine` ask it instead of computing paths. `paths.ts` mirrors it, and a test compares the two through a hidden `hermeshd paths --json`.
+One package, `internal/paths`, says where everything is; `cmd/aided`, `internal/cli` and `internal/machine` ask it instead of computing paths. `paths.ts` mirrors it, and a test compares the two through a hidden `aided paths --json`.
 
 | | macOS | Linux | Windows |
 |---|---|---|---|
-| Data: daemon, keys, database, worktrees, logs | `~/Library/Application Support/Hermesh` | `$XDG_DATA_HOME/hermesh` | `%LOCALAPPDATA%\Hermesh` |
+| Data: daemon, keys, database, worktrees, logs | `~/Library/Application Support/Aide` | `$XDG_DATA_HOME/aide` | `%LOCALAPPDATA%\Aide` |
 | Local endpoints | `<data>/run/*.sock` (a short fallback in the temp folder) | same | named pipes whose names are in `<data>\run\*.pipe` (§4.2) |
-| CLI: agents' identity and state | `~/.config/hermesh` | same | `%LOCALAPPDATA%\Hermesh\cli` |
+| CLI: agents' identity and state | `~/.config/aide` | same | `%LOCALAPPDATA%\Aide\cli` |
 | App profile | `<data>/desktop` | same | `<data>\desktop` |
-| Programs | `Hermesh.app/Contents/Helpers`, or `~/.local/bin` (`install.sh`) | `~/.local/bin` | `%LOCALAPPDATA%\Programs\Hermesh\bin`, on PATH: the app copies its programs there (§6.1), as `install.ps1` downloads them |
+| Programs | `Aide.app/Contents/Helpers`, or `~/.local/bin` (`install.sh`) | `~/.local/bin` | `%LOCALAPPDATA%\Programs\Aide\bin`, on PATH: the app copies its programs there (§6.1), as `install.ps1` downloads them |
 
 - **Local, never Roaming.** A domain profile copies Roaming AppData to the user's other PCs, and device keys must stay on one.
-- **One folder.** The CLI moves in too (today's code would pick `%USERPROFILE%\.config\hermesh`), so erasing has a single folder to remove.
+- **One folder.** The CLI moves in too (today's code would pick `%USERPROFILE%\.config\aide`), so erasing has a single folder to remove.
 - On Windows, paths compare case-insensitively (projects, worktrees), and the worktrees Aide creates set `core.longpaths`.
 
 ### 4.2 Local endpoints
@@ -108,7 +108,7 @@ Peer(c net.Conn) (p Process, ok bool)                    // pid and executable: 
 ```
 
 - **Unix:** what the code does today.
-- **Windows:** a named pipe (go-winio, already in `go.mod`), created with a security descriptor that admits only the user's SID. go-winio also refuses remote clients and creates the first instance exclusively. The name is random, `\\.\pipe\hermesh-<128-bit random>`; the daemon writes it into `<data>\run\<endpoint>.pipe` at each start, and clients read it there; `Dial` also takes a pipe's own name, for another program's endpoint. No other user can read that file, so no other user can learn the name, take it first or pose as the daemon: the protection the 0700 folder gives the socket on Unix. The peer comes from `GetNamedPipeClientProcessId` and `QueryFullProcessImageName`.
+- **Windows:** a named pipe (go-winio, already in `go.mod`), created with a security descriptor that admits only the user's SID. go-winio also refuses remote clients and creates the first instance exclusively. The name is random, `\\.\pipe\aide-<128-bit random>`; the daemon writes it into `<data>\run\<endpoint>.pipe` at each start, and clients read it there; `Dial` also takes a pipe's own name, for another program's endpoint. No other user can read that file, so no other user can learn the name, take it first or pose as the daemon: the protection the 0700 folder gives the socket on Unix. The peer comes from `GetNamedPipeClientProcessId` and `QueryFullProcessImageName`.
 - **Node** connects to a pipe the way it connects to a socket (`http.request({ socketPath })`), so the gateway, the notifier and sign-in only change how they find the path.
 - **Liveness** is a dial, not `os.Stat`, since a pipe is not a file: `aide message watch` checks Claude Code's inbox that way, where today it looks for the socket file.
 
@@ -126,16 +126,16 @@ KillGroup(pgid int)            // end it gently, then for sure (also at recovery
 - **Unix** (`proc_unix.go`, `tree.go`): as today: a process group, the sampled process table for descendants that leave it, posix_spawn helpers on macOS.
 - **Windows** (`proc_windows.go`, `tree_windows.go`): a job object per session with `KILL_ON_JOB_CLOSE`. The process starts suspended and joins its job before it runs, so no descendant ever runs outside it. Only the three stdio handles are inherited (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`), with `CREATE_NO_WINDOW`. Stop closes stdin, waits, then calls `TerminateJobObject`.
 - **Less to do.** A job sees every descendant, so there is no process table to sample. `CreateProcess` copies no descriptor table, so there are no spawn helpers. `RunCommand` (git) runs in a job too, so a timeout ends its whole tree.
-- **When hermeshd dies**, its jobs close and their processes end: the state `Recover` already expects (the turn in progress is crashed). On Windows there are no orphans to kill at recovery.
+- **When aided dies**, its jobs close and their processes end: the state `Recover` already expects (the turn in progress is crashed). On Windows there are no orphans to kill at recovery.
 - Interrupting a turn stays in each agent's protocol (stream-json, app-server, ACP); no signal is involved.
 
 ### 4.4 The background service
 
-- **A windowless twin.** A console program started at logon opens a console window. So Windows has `hermeshd.exe` (console, every command) and `hermeshdw.exe` (the same code built with `-H windowsgui`, for `run` only), as Python has `python.exe` and `pythonw.exe`.
+- **A windowless twin.** A console program started at logon opens a console window. So Windows has `aided.exe` (console, every command) and `aidedw.exe` (the same code built with `-H windowsgui`, for `run` only), as Python has `python.exe` and `pythonw.exe`.
 - **Started at logon** by a Task Scheduler logon task of this user's, which needs no administrator: `aided service install`, which `install.ps1` runs for a machine, and the app with `--owner` for its own daemon (the owner's, and the PC's machine). The app registers the task again whenever it finds the daemon not answering, so it takes over a machine that `install.ps1` set up.
-- **Kept running.** Task Scheduler's restart-on-failure does not cover a program that starts and later exits, so `hermeshdw run` supervises: it runs the daemon as its child in a kill-on-close job, and restarts it with backoff when it exits unexpectedly. That is what `KeepAlive` and `Restart=on-failure` do elsewhere.
+- **Kept running.** Task Scheduler's restart-on-failure does not cover a program that starts and later exits, so `aidedw run` supervises: it runs the daemon as its child in a kill-on-close job, and restarts it with backoff when it exits unexpectedly. That is what `KeepAlive` and `Restart=on-failure` do elsewhere.
 - **Stopped and restarted through the control endpoint**, since there is no SIGTERM: `aided service restart`, and the app after an update, ask the daemon to exit with "restart", and the supervisor starts it again from the current program.
-- **Logoff and shutdown** reach a windowless program as window messages, not console events: `hermeshdw` keeps a message-only window and stops cleanly on `WM_ENDSESSION`.
+- **Logoff and shutdown** reach a windowless program as window messages, not console events: `aidedw` keeps a message-only window and stops cleanly on `WM_ENDSESSION`.
 - **One daemon per data folder**, as today: the folder's lock, taken with `LockFileEx`.
 - **Later:** running with nobody logged on (a PC reached only over SSH) needs a task that runs whether the user is logged on or not, which an administrator sets up once.
 
@@ -158,7 +158,7 @@ KillGroup(pgid int)            // end it gently, then for sure (also at recovery
 - **Git.** Worktrees need Git for Windows; a missing git is a machine problem with its fix (`winget install Git.Git`).
 - **Claude Code** uses Git Bash for its shell tool when Git for Windows is installed, PowerShell otherwise; nothing for Aide to do. It has no sandbox on native Windows.
 - **Codex** brings its own Windows sandbox; S4 checks it under our job.
-- **Hooks.** On Windows the command names `hermesh` by its execution alias, in the syntax of the shell the agent runs hooks with (S4: which shell, and a user name with a space in it).
+- **Hooks.** On Windows the command names `aide` by its execution alias, in the syntax of the shell the agent runs hooks with (S4: which shell, and a user name with a space in it).
 - **Claude Code's inbox** is whatever Claude Code exports in `CLAUDE_CODE_MESSAGING_SOCKET`; `localipc.Dial` takes a pipe's name as well as an endpoint's path.
 
 ### 4.7 Health, diagnostics and the small ones
@@ -178,8 +178,8 @@ KillGroup(pgid int)            // end it gently, then for sure (also at recovery
 | | macOS | Windows |
 |---|---|---|
 | Daemon | `SMAppService` agent; `launchctl bootout`, then registered again | The logon task, which the app registers (`aided service install --owner`); a restart ends the task, whose supervisor's job ends the daemon, and runs it again |
-| Open Hermesh at login | `mainAppService` | The user's Run value, through Electron's login item API, naming the Hermesh.exe above the versions; Startup apps lists and switches it |
-| Signer (removed 2026-11-20) | `Hermesh Signer.app`, the app's child | A protected system component, not the app's child (§7.3) |
+| Open Aide at login | `mainAppService` | The user's Run value, through Electron's login item API, naming the Aide.exe above the versions; Startup apps lists and switches it |
+| Signer (removed 2026-11-20) | `Aide Signer.app`, the app's child | A protected system component, not the app's child (§7.3) |
 | Updates | Squirrel.Mac | Squirrel.Windows, through the same `autoUpdater`, from a signed feed (§6.2) |
 | First launch | Move to Applications | Nothing: Setup.exe installed it; the installer's events (install, update, uninstall) start the app to set itself up and quit |
 | Login commands (`codex login`) | A `.command` file in Terminal | A Windows Terminal tab (`wt.exe`), else PowerShell; a command table per OS, still chosen by key |
@@ -194,12 +194,12 @@ KillGroup(pgid int)            // end it gently, then for sure (also at recovery
 - **Menus.** Windows has no menu bar at the top of the screen, and the caption overlay leaves no room for one in the window. The command list in `menu.ts` stays the one source: on Windows it becomes the window's hidden menu (its accelerators keep working) and a menu button at the top of the sidebar. Context menus stay native.
 - **Shortcut labels** come from the accelerators (`CmdOrCtrl+K` → `⌘K` or `Ctrl+K`; `src/shared/keys.ts`), not from `⌘` written in the renderer. The two that differ get Windows keys of their own: the sidebar Ctrl+B, the info panel Ctrl+Shift+I (never Ctrl+Alt, which is AltGr on many keyboards).
 - **Notification area.** An icon in light and dark versions, for the taskbar's theme. A left click opens the panel above it, a right click a native menu. Closing the last window keeps Aide there, since notifications come from main; today, off macOS, it quits.
-- **Notifications** are toasts, as the Mac's notifications are, under the app's AppUserModelID (`com.hermesh.app`, its Start menu shortcut's); a click opens what it tells of while the app runs (it stays in the notification area). Buttons and replies (Electron 41 and later) can come to both.
-- **Deep links:** the app registers `hermesh:` for the user, naming the Hermesh.exe above the versions, and links come through `second-instance` as today.
+- **Notifications** are toasts, as the Mac's notifications are, under the app's AppUserModelID (`com.aide.app`, its Start menu shortcut's); a click opens what it tells of while the app runs (it stays in the notification area). Buttons and replies (Electron 41 and later) can come to both.
+- **Deep links:** the app registers `aide:` for the user, naming the Aide.exe above the versions, and links come through `second-instance` as today.
 
 ### 5.3 Words
 
-Where the wording differs, a key's Windows variant takes its place on Windows when the text loads: `key_win` (plural forms `key_win_one`), in every language and namespace, so no call site changes (`src/shared/words.ts`). "This PC" stands for "This Mac", "Windows Hello" for "Touch ID", "Settings › Apps › Startup" for "System Settings › Login Items". The Chinese of each variant goes into the translation files, as for every string. The same goes for hermeshd's and the CLI's output, and for the center's pages in hermesh-cloud: "On your Mac" becomes "on your computer" where both apply.
+Where the wording differs, a key's Windows variant takes its place on Windows when the text loads: `key_win` (plural forms `key_win_one`), in every language and namespace, so no call site changes (`src/shared/words.ts`). "This PC" stands for "This Mac", "Windows Hello" for "Touch ID", "Settings › Apps › Startup" for "System Settings › Login Items". The Chinese of each variant goes into the translation files, as for every string. The same goes for aided's and the CLI's output, and for the center's pages in aide-cloud: "On your Mac" becomes "on your computer" where both apply.
 
 ### 5.4 Paths of other machines
 
@@ -211,41 +211,41 @@ The app shows paths of machines of every OS, so it reads each by that machine's 
 
 The app ships as a per-user Squirrel.Windows installer, `Aide-windows-<arch>-setup.exe`, from the GitHub release (and the website, which links there). It needs no administrator, and no signature (§6.4): Windows warns once, through SmartScreen, before it runs. While it installs it shows the mark on the icon's dark fill, a thin bar running under it, and no words, since it can't pick the person's language (`windows-splash.mjs` draws it). (The plan was an MSIX package through the Microsoft Store, which would have signed it; the owner chose to distribute it themselves, and an MSIX package installs only when signed.)
 
-Setup.exe installs into `%LOCALAPPDATA%\HermeshApp` (Squirrel removes that folder on uninstall, so it isn't `Hermesh`, the data folder): a folder per version, and above them `Hermesh.exe`, which starts the newest, and `Update.exe`, which installs updates and uninstalls. Squirrel starts the app with an event, before anything else, for it to set itself up and quit (`installerEvent`, `platform/win.ts`):
+Setup.exe installs into `%LOCALAPPDATA%\AideApp` (Squirrel removes that folder on uninstall, so it isn't `Aide`, the data folder): a folder per version, and above them `Aide.exe`, which starts the newest, and `Update.exe`, which installs updates and uninstalls. Squirrel starts the app with an event, before anything else, for it to set itself up and quit (`installerEvent`, `platform/win.ts`):
 
 | Event | The app |
 |---|---|
-| Install | A Start menu shortcut at the top of All apps (with the app's AppUserModelID, for toasts); `%LOCALAPPDATA%\Programs\Hermesh\bin` on the user's PATH |
+| Install | A Start menu shortcut at the top of All apps (with the app's AppUserModelID, for toasts); `%LOCALAPPDATA%\Programs\Aide\bin` on the user's PATH |
 | Updated | That folder on PATH, still |
-| Uninstall | Ends its running copies (Squirrel ends none, and their files could not go), removes hermeshd's logon task (`aided service uninstall`), the shortcut, the PATH entry, the `hermesh:` link, Open at login and the programs' folder. The data folder stays, as a Mac app's does, and so does a signer an earlier version put in Program Files, which only an administrator removes |
+| Uninstall | Ends its running copies (Squirrel ends none, and their files could not go), removes aided's logon task (`aided service uninstall`), the shortcut, the PATH entry, the `aide:` link, Open at login and the programs' folder. The data folder stays, as a Mac app's does, and so does a signer an earlier version put in Program Files, which only an administrator removes |
 
 What these do goes to `<data>\logs\setup.log`, where nobody sees the app's output. Each start, the app then:
 
-- **Places its programs where they stay.** Each version has a folder of its own, but hooks, terminals and the logon task name programs by paths that survive updates (§2, principle 6). So the app copies `hermeshd.exe`, `hermeshdw.exe` and `hermesh.exe` into `%LOCALAPPDATA%\Programs\Hermesh\bin`, the folder `install.ps1` uses, unless they are there already; a running program moves aside first, as `install.ps1` does (§6.3).
-- **Registers `hermesh:`** for the user, naming the `Hermesh.exe` above the versions.
-- **Runs hermeshd** from the logon task, registering it again (`aided service install --owner`) when the daemon doesn't answer.
+- **Places its programs where they stay.** Each version has a folder of its own, but hooks, terminals and the logon task name programs by paths that survive updates (§2, principle 6). So the app copies `aided.exe`, `aidedw.exe` and `aide.exe` into `%LOCALAPPDATA%\Programs\Aide\bin`, the folder `install.ps1` uses, unless they are there already; a running program moves aside first, as `install.ps1` does (§6.3).
+- **Registers `aide:`** for the user, naming the `Aide.exe` above the versions.
+- **Runs aided** from the logon task, registering it again (`aided service install --owner`) when the daemon doesn't answer.
 
 ```
-%LOCALAPPDATA%\HermeshApp\
-  Hermesh.exe, Update.exe                  start the newest version; update and uninstall
-  app-<version>\Hermesh.exe, resources\    Electron: main, preload and the page
-  app-<version>\bin\hermeshd.exe, hermeshdw.exe, hermesh.exe
-%LOCALAPPDATA%\Programs\Hermesh\bin\       hermeshd.exe, hermeshdw.exe (the logon task), hermesh.exe: on PATH
+%LOCALAPPDATA%\AideApp\
+  Aide.exe, Update.exe                  start the newest version; update and uninstall
+  app-<version>\Aide.exe, resources\    Electron: main, preload and the page
+  app-<version>\bin\aided.exe, aidedw.exe, aide.exe
+%LOCALAPPDATA%\Programs\Aide\bin\       aided.exe, aidedw.exe (the logon task), aide.exe: on PATH
 ```
 
 What MSIX would have given and Setup.exe doesn't: files that no program of the user can change (here a program running as the user can replace the app's files, as it can replace the CLI that `install.sh` installs; §7.4), and declarations instead of the steps above.
 
 ### 6.2 Updates
 
-- **A signed feed.** Squirrel.Mac checks the app's Developer ID signature; the Windows app has none. So each architecture's feed, `RELEASES-win32-<arch>.json`, is signed with the release key, which signs the checksum list too (`.sig`, openssl's DER signature), and the app carries the public key (a build-time constant, as the feed's address is). The feed names this version (`currentRelease`), its highlights (`hermeshNotes`, as the darwin feed has them) and its package: the `.nupkg`'s address, its SHA-256 and Squirrel's `RELEASES` line for it.
+- **A signed feed.** Squirrel.Mac checks the app's Developer ID signature; the Windows app has none. So each architecture's feed, `RELEASES-win32-<arch>.json`, is signed with the release key, which signs the checksum list too (`.sig`, openssl's DER signature), and the app carries the public key (a build-time constant, as the feed's address is). The feed names this version (`currentRelease`), its highlights (`aideNotes`, as the darwin feed has them) and its package: the `.nupkg`'s address, its SHA-256 and Squirrel's `RELEASES` line for it.
 - **Downloaded by the app.** The app reads the feed as on the Mac, checks its signature, downloads the package into `<data>\desktop\update`, checks its hash, writes the `RELEASES` line beside it, and points `autoUpdater` (Squirrel.Windows) at that folder. Squirrel installs the version beside the running one, at once; the app runs it from its next start, as Restart to Update does under the Mac's guard (desktop-app.md §6.5): never a restart under the owner.
-- **hermeshd after an update.** The new version places its programs (§6.1); hermeshd keeps running the old ones, which moved aside, until the app restarts it as on the Mac: once no approval is pending and no session on this PC is queued, preparing, running or waiting for an answer.
-- **Tested end to end** (`check-windows-update.ps1`, in CI): an older build, installed from its Setup.exe, finds, downloads and installs a newer one from a feed signed with a key of the test's, and opened again runs it, with hermeshd restarted on the new programs.
+- **aided after an update.** The new version places its programs (§6.1); aided keeps running the old ones, which moved aside, until the app restarts it as on the Mac: once no approval is pending and no session on this PC is queued, preparing, running or waiting for an answer.
+- **Tested end to end** (`check-windows-update.ps1`, in CI): an older build, installed from its Setup.exe, finds, downloads and installs a newer one from a feed signed with a key of the test's, and opened again runs it, with aided restarted on the new programs.
 
 ### 6.3 Programs without the app
 
-- Release assets add `hermeshd`, `hermeshdw` and `hermesh` for `windows-amd64` and `windows-arm64` (`.exe`), in the signed checksum list.
-- `install.ps1` (Windows PowerShell 5.1) mirrors `install.sh`: a machine by default, or `-Cli`. It installs into `%LOCALAPPDATA%\Programs\Hermesh\bin`, adds that folder to the user's PATH, checks the signed checksum list (ECDSA, through .NET), registers the logon task, then runs `aided login` (the account and password asked for, or from `$env:AIDE_ACCOUNT` and `$env:AIDE_PASSWORD`).
+- Release assets add `aided`, `aidedw` and `aide` for `windows-amd64` and `windows-arm64` (`.exe`), in the signed checksum list.
+- `install.ps1` (Windows PowerShell 5.1) mirrors `install.sh`: a machine by default, or `-Cli`. It installs into `%LOCALAPPDATA%\Programs\Aide\bin`, adds that folder to the user's PATH, checks the signed checksum list (ECDSA, through .NET), registers the logon task, then runs `aided login` (the account and password asked for, or from `$env:AIDE_ACCOUNT` and `$env:AIDE_PASSWORD`).
 - Updating while the daemon runs: rename the running program aside (Windows allows it), write the new one, restart the daemon, delete the old file later. Machines update themselves this way too (machine-updates.md §5.5).
 - One PC, one daemon: the installer refuses machine mode where the app's daemon is registered, and the app takes over a daemon that `install.ps1` set up (it registers the logon task again, with `--owner`).
 
@@ -307,13 +307,13 @@ Standard (non-administrator) accounts get no protected signer; their trusted dev
 
 > **Removed (2026-11-20, [accounts.md](accounts.md)):** nothing is signed on the computer any more; the signer, its installer step and its Windows Hello prompt are gone.
 
-- **Program.** `hermesh-signer.exe`, in Go (`cmd/hermesh-signer`). When the owner makes this PC a trusted device, one elevated setup step (one UAC prompt) copies it into `%ProgramFiles%\Hermesh Signer\` and registers a Task Scheduler task for this user that runs it with the highest privileges, at logon and when triggered. The app and the daemon start it only by triggering that task; nothing else starts it elevated.
-- **Key.** A TPM 2.0 P-256 key (Microsoft Platform Crypto Provider), not exportable, usable only with a random PIN that the signer keeps in `%ProgramData%\Hermesh Signer\keys\<SID>`, which only Administrators and SYSTEM can read: the daemon, the app and the agents, at medium integrity, can ask the TPM for the key by its name but cannot sign with it, and the TPM locks out guessing. One key per profile, as on the Mac (`root_key_id`, `delete_root_key`). Windows 11 requires a TPM 2.0; a PC without one cannot be a trusted device.
+- **Program.** `aide-signer.exe`, in Go (`cmd/aide-signer`). When the owner makes this PC a trusted device, one elevated setup step (one UAC prompt) copies it into `%ProgramFiles%\Aide Signer\` and registers a Task Scheduler task for this user that runs it with the highest privileges, at logon and when triggered. The app and the daemon start it only by triggering that task; nothing else starts it elevated.
+- **Key.** A TPM 2.0 P-256 key (Microsoft Platform Crypto Provider), not exportable, usable only with a random PIN that the signer keeps in `%ProgramData%\Aide Signer\keys\<SID>`, which only Administrators and SYSTEM can read: the daemon, the app and the agents, at medium integrity, can ask the TPM for the key by its name but cannot sign with it, and the TPM locks out guessing. One key per profile, as on the Mac (`root_key_id`, `delete_root_key`). Windows 11 requires a TPM 2.0; a PC without one cannot be a trusted device.
 - **Panel.** A window the elevated signer draws itself (`drawn_windows.go`, GDI+ and GDI), in the design of the Mac's panel, on top of other windows, showing what the signer computes from the bytes it signs (`internal/preview`, in the panel's language), Deny the default. Approve asks Windows Hello (`UserConsentVerifier` for the panel's window), the panel waiting under it; not verified, it stays to approve again or deny. Drawn by the elevated process, the user's other programs can neither change nor click it; WebView2 was not an option, since Edge de-elevates its processes. Should the window fail, a native task dialog stands in.
 - **Signature.** ECDSA P-256 in DER, the format everything verifies today. `RootKey.platform` is `windows`, the label "Windows · TPM". Nothing changes in what is signed or how it is checked.
 - **One signer core in Go.** The loop of `aided approve` (watch, preview, confirm, sign, complete) moves into `internal/signer`, behind two interfaces: `Confirmer` (the terminal; the Windows panel) and `KeyStore` (the passphrase file; the TPM). Linux's terminal signer and the Windows panel then share one implementation of what is shown and signed, and a Linux desktop signer can reuse it later. The Swift signer stays for Apple. Both pass the same preview vectors (desktop-app.md §5.6).
-- **Through the daemon only.** On the Mac the signer is the app's child: it reports busy on stdout, and SIGUSR1 brings it forward. The Windows signer is not the app's child, so hermeshd reports the signer's presence and busy state in its status, and relays "show" on the signing stream: `LocalService.ShowSigner` and a status field, the two additions to `hermesh.local.v1`. The app lets the signer's window take the foreground when the owner clicks Approve. Moving the Mac to the same later would remove the one direct channel between an app and its signer.
-- **Setup.** Before hermeshd needs a new root key (sign-in, an own server's setup, joining as a trusted device), the app makes sure a signer watches: it starts the signer's task, or runs `hermesh-signer setup` elevated (one UAC prompt). The refusals of the next point each have an exit status, which the app tells in its own words.
+- **Through the daemon only.** On the Mac the signer is the app's child: it reports busy on stdout, and SIGUSR1 brings it forward. The Windows signer is not the app's child, so aided reports the signer's presence and busy state in its status, and relays "show" on the signing stream: `LocalService.ShowSigner` and a status field, the two additions to `aide.local.v1`. The app lets the signer's window take the foreground when the owner clicks Approve. Moving the Mac to the same later would remove the one direct channel between an app and its signer.
+- **Setup.** Before aided needs a new root key (sign-in, an own server's setup, joining as a trusted device), the app makes sure a signer watches: it starts the signer's task, or runs `aide-signer setup` elevated (one UAC prompt). The refusals of the next point each have an exit status, which the app tells in its own words.
 - **Updates.** The signer changes rarely, and refuses what it cannot show in full. When the app carries a newer signer than the installed one, Needs You offers to update it: the same elevated setup (one UAC prompt) copies the app's signer over the installed one, moving a still running one aside, keeps the keys and restarts the task.
 - **Refusals.** With UAC off (`EnableLUA` 0), every program of an administrator runs elevated and the line is gone: such a PC cannot be a trusted device that also runs coding agents. Where elevation needs no consent ("Never notify"), Settings says so and recommends Administrator protection.
 
@@ -335,10 +335,10 @@ Standard (non-administrator) accounts get no protected signer; their trusted dev
 
 Windows Hello confirms each approval by default. An owner who does not want it can switch, per trusted device (per root key), to a passphrase typed in the signer's own window, and back at any time (Settings › Account & Devices › Approve With). The owner's own call for their own PCs (2026-11-16), with the cost said as it is in Settings, in the signer's window and in §7.4.
 
-- **The key stays in the TPM.** The root key was made in the TPM without `NCRYPT_ALLOW_EXPORT_FLAG`, and the Platform Crypto Provider never exports a private key: it cannot move into a file. A new software key sealed with the passphrase would change the device's root key, so a new root cert, every machine cert and grant it signed re-issued, and its own machine re-certified (trusted-devices.md §4.3), while leaving the key in a file that a copy of the disk could attack. So switching changes only how the key's PIN is kept: in Windows Hello mode the random PIN is in `%ProgramData%\Hermesh Signer\keys\<SID>\<key id>.json`, as before; in passphrase mode that record keeps no PIN, and `<key id>.pin` holds it sealed with the passphrase in `internal/devicekey`'s format (Argon2id, then AES-256-GCM, bound to the key's public key), in the same folder that only administrators and the system read. The device's root key, owner id, root cert and everything it paired stay as they are. A key the signer makes later (a new profile) starts in Windows Hello mode.
+- **The key stays in the TPM.** The root key was made in the TPM without `NCRYPT_ALLOW_EXPORT_FLAG`, and the Platform Crypto Provider never exports a private key: it cannot move into a file. A new software key sealed with the passphrase would change the device's root key, so a new root cert, every machine cert and grant it signed re-issued, and its own machine re-certified (trusted-devices.md §4.3), while leaving the key in a file that a copy of the disk could attack. So switching changes only how the key's PIN is kept: in Windows Hello mode the random PIN is in `%ProgramData%\Aide Signer\keys\<SID>\<key id>.json`, as before; in passphrase mode that record keeps no PIN, and `<key id>.pin` holds it sealed with the passphrase in `internal/devicekey`'s format (Argon2id, then AES-256-GCM, bound to the key's public key), in the same folder that only administrators and the system read. The device's root key, owner id, root cert and everything it paired stay as they are. A key the signer makes later (a new profile) starts in Windows Hello mode.
 - **Approving.** The panel shows the same preview, Deny the default; Approve opens the signer's passphrase window instead of Windows Hello, drawn by the same elevated process (`entry_windows.go`), and the right passphrase opens the PIN for that one signature. Closing it leaves the panel to approve again or deny.
 - **Wrong passphrases** (`internal/signer/unlock`), modeled on the TPM's dictionary-attack lockout: five cost nothing; each one after that doubles the wait before the next is even tried, from 30 seconds up to an hour. The count is kept beside the key (`<key id>.tries`), where only administrators write, and counted before the passphrase is tried, so neither restarting the signer or the PC nor ending a try halfway resets it; only the right passphrase does.
-- **Switching** is `hermesh-signer unlock --user <SID> --key <key id> --to passphrase|hello`, run by the app elevated from the installed signer (one UAC prompt), which first verifies the owner the way the key is unlocked now: to a passphrase, the owner types a new one twice (8 characters or more), then Windows Hello confirms; back to Windows Hello, the passphrase once more, with the same waits. A switch cut short leaves the key as it was. The signer writes the mode where the user's programs can read it and only administrators write (`%ProgramData%\Hermesh Signer\unlock\<SID>\<key id>`), and `hermesh-signer unlock --key <key id>` prints it for Settings.
+- **Switching** is `aide-signer unlock --user <SID> --key <key id> --to passphrase|hello`, run by the app elevated from the installed signer (one UAC prompt), which first verifies the owner the way the key is unlocked now: to a passphrase, the owner types a new one twice (8 characters or more), then Windows Hello confirms; back to Windows Hello, the passphrase once more, with the same waits. A switch cut short leaves the key as it was. The signer writes the mode where the user's programs can read it and only administrators write (`%ProgramData%\Aide Signer\unlock\<SID>\<key id>`), and `aide-signer unlock --key <key id>` prints it for Settings.
 - **What it costs.** No program of the owner's that is not elevated can read the sealed PIN, type in the panel or reset the count, as in Windows Hello mode. But a passphrase is something known rather than someone present: any program of the owner's can draw a window that looks like the signer's and ask for it, or log keys, and a passphrase used elsewhere may already be known. Settings says, whenever passphrase mode is on, that the promise that agents on this PC cannot approve on their own is weaker than with Windows Hello.
 
 ## 8. WSL
@@ -354,9 +354,9 @@ Every phase ends with its tests green, end-to-end tests included (AGENTS.md §4)
 | Phase | Work | Done when |
 |---|---|---|
 | W0. Seams (built) | `internal/paths` and `internal/localipc`, holding today's Unix code, with their contract tests; the process, health, lock and hook code split by OS; Windows files that compile and report "not supported yet"; `GOOS=windows go vet ./...` in `make lint` | Every current test passes; the Windows vet passes in CI |
-| W1. A Windows machine (built) | The Windows halves of the seams; agents on Windows (locations, shims, hooks); health; `fakeacp` for Windows; `.exe` release assets; `install.ps1`; Windows in hermeshd.md; the Go suite on `windows-latest` | On a clean Windows 11, `install.ps1` pairs from the iPhone, and Claude Code and Codex sessions start, answer, interrupt, show diffs and archive; `make e2e` passes on `windows-latest`; `make e2e-real` passes on a Windows 11 VM |
+| W1. A Windows machine (built) | The Windows halves of the seams; agents on Windows (locations, shims, hooks); health; `fakeacp` for Windows; `.exe` release assets; `install.ps1`; Windows in aided.md; the Go suite on `windows-latest` | On a clean Windows 11, `install.ps1` pairs from the iPhone, and Claude Code and Codex sessions start, answer, interrupt, show diffs and archive; `make e2e` passes on `windows-latest`; `make e2e-real` passes on a Windows 11 VM |
 | W2. The app (built; §14) | `platform/win.ts`; window, tray, notifications, menus, shortcut labels, words, paths; Setup.exe, signed feed, release job; the desktop e2e suite on Windows. The first run joins as a machine only, approved from another trusted device | `TestDesktop` passes on `windows-latest`; the packaged test installs the signed package and finds the daemon, the aliases and the protocol; an update between two signed builds works |
-| W3. A trusted device (built; §14) | Preview vectors; `internal/signer`; `hermesh-signer.exe` and its protected setup; the TPM key; Windows Hello; signer status and show through the daemon; the refusals of §7.3 | Approve, renew, add device, remove device and join pass e2e on Windows with the test signer; a medium-integrity program can neither open the key nor touch the signer; a checklist with real Windows Hello hardware passes |
+| W3. A trusted device (built; §14) | Preview vectors; `internal/signer`; `aide-signer.exe` and its protected setup; the TPM key; Windows Hello; signer status and show through the daemon; the refusals of §7.3 | Approve, renew, add device, remove device and join pass e2e on Windows with the test signer; a medium-integrity program can neither open the key nor touch the signer; a checklist with real Windows Hello hardware passes |
 | Later | WSL distributions as machines from the app; machines that run with nobody logged on; a Linux desktop app on the same seams and signer core | Per their own plans |
 
 W1 comes first because it is useful alone: a Windows PC becomes a machine for an owner who approves from the iPhone or a Mac.
@@ -368,8 +368,8 @@ Each answers yes before the phase that needs it, or this document changes.
 | Spike | Questions | Before |
 |---|---|---|
 | S1. MSIX (dropped with the Store, §6.1) | The daemon's startup task at logon; aliases on PATH; the protocol; toast buttons while the app is quit; Store updates: whether they wait for the package's processes or end them, and whether the app can hold one (`StoreContext`); the Store's review of a package with startup tasks, aliases and full trust; the data folder's exclusion, seen from a program outside the package; agents breaking away from it. Fallback: Squirrel.Windows | W2 |
-| S2. Pipes | Electron main ↔ hermeshd over a pipe: unary calls, `Watch`, cancellation; another local user refused; the name file across daemon restarts | W1 |
-| S3. Jobs | Creating a process with the job and handle lists from Go; a whole tree (Claude Code → PowerShell or bash → node → its children) ends on Stop and when hermeshd dies; inside the package; with Codex's own sandbox processes | W1 |
+| S2. Pipes | Electron main ↔ aided over a pipe: unary calls, `Watch`, cancellation; another local user refused; the name file across daemon restarts | W1 |
+| S3. Jobs | Creating a process with the job and handle lists from Go; a whole tree (Claude Code → PowerShell or bash → node → its children) ends on Stop and when aided dies; inside the package; with Codex's own sandbox processes | W1 |
 | S4. Agents | Claude Code, native, with and without Git Bash, in stream-json; which shell runs hooks for Claude Code and for Codex, and a user name with a space; Claude Code's inbox on Windows; Codex's app-server and sandbox under our job; where the Codex app keeps its CLI | W1 |
 | S5. Protected signer | The elevated task starts without a prompt; a medium-integrity program of the same user can neither open the key through NCrypt nor load it through TBS; `UserConsentVerifier` works from the elevated signer with our window and message; the panel takes the foreground; the elevated setup step runs from inside the package | W3 |
 | S6. Unsigned programs | What a first run of `install.ps1`'s programs, and of a browser download, looks like with SmartScreen and Smart App Control on; what Defender says | W1 |
@@ -419,8 +419,8 @@ All of W0 to W3 is built (2026-10-30). CI checks on `windows-latest` what it can
 
 | Check | How |
 |---|---|
-| The app installed from its Setup.exe | Downloaded through a browser: SmartScreen's warning, once; Start lists Aide, `hermesh` and `hermeshd` run from a new terminal, a `hermesh:` link opens the app |
-| The daemon at logon | Sign out and in: the logon task starts hermeshd; Startup apps lists "Aide" once Open Aide at login is on |
+| The app installed from its Setup.exe | Downloaded through a browser: SmartScreen's warning, once; Start lists Aide, `aide` and `aided` run from a new terminal, a `aide:` link opens the app |
+| The daemon at logon | Sign out and in: the logon task starts aided; Startup apps lists "Aide" once Open Aide at login is on |
 | The window | Caption buttons over the top band, the menu button, Ctrl shortcuts, the words of a PC, light and dark |
 | The notification area | The icon in the taskbar's colours, the panel above it, the right-click menu; closing the window keeps the app |
 | Joining as a machine only | Approved from the iPhone or a Mac; sessions run from there |
@@ -428,7 +428,7 @@ All of W0 to W3 is built (2026-10-30). CI checks on `windows-latest` what it can
 | The refusals | A standard account, User Account Control off, Windows Hello not set up |
 | Passphrase mode (§7.5) | Switch to a passphrase in Settings: one UAC prompt, the signer's window, Windows Hello once; approve a pairing with no Windows Hello, the same preview; wrong passphrases refused, then a wait that survives restarting the signer; back to Windows Hello with the passphrase |
 
-Checked on a Windows 11 arm64 VM (2026-10-31), with the MSIX package of then: the app from its package, its window and its start; the signer's setup with one UAC prompt, the TPM key, the panel and Windows Hello, and the refusal without Windows Hello; joining as a trusted device, being removed, and joining as a machine only. Not yet: a standard account, User Account Control off, a program not elevated trying the key and the panel, a `hermesh:` link, and everything about Setup.exe on a real PC.
+Checked on a Windows 11 arm64 VM (2026-10-31), with the MSIX package of then: the app from its package, its window and its start; the signer's setup with one UAC prompt, the TPM key, the panel and Windows Hello, and the refusal without Windows Hello; joining as a trusted device, being removed, and joining as a machine only. Not yet: a standard account, User Account Control off, a program not elevated trying the key and the panel, a `aide:` link, and everything about Setup.exe on a real PC.
 
 Left for later, each its own change:
 
@@ -437,17 +437,17 @@ Left for later, each its own change:
 
 ## 15. Her on a PC
 
-her (her/, the kernel of Her: [her-server.md](her-server.md)) runs on Windows as on a Mac: hermeshd starts it while Her is on for the PC, and the apps offer the PC as a place for Her. Its differences sit behind seams of its own, as hermeshd's do (§4). A PC whose Aide is from before says `windows` for why it can't run Her, and the apps then say to update it.
+her (her/, the kernel of Her: [her-server.md](her-server.md)) runs on Windows as on a Mac: aided starts it while Her is on for the PC, and the apps offer the PC as a place for Her. Its differences sit behind seams of its own, as aided's do (§4). A PC whose Aide is from before says `windows` for why it can't run Her, and the apps then say to update it.
 
 | Seam | On Unix | On Windows | Where |
 |---|---|---|---|
-| The service's endpoint | A socket in a private folder, the peer's uid checked | A named pipe only this user's SID opens, its name random and written into the file at the socket's path, as `internal/localipc` does (§4.2): hermeshd dials both the same way | `her-server/src/endpoint.rs`, `internal/herhost/rpc.go` |
+| The service's endpoint | A socket in a private folder, the peer's uid checked | A named pipe only this user's SID opens, its name random and written into the file at the socket's path, as `internal/localipc` does (§4.2): aided dials both the same way | `her-server/src/endpoint.rs`, `internal/herhost/rpc.go` |
 | Process trees (a command, an MCP server) | A process group; SIGTERM, then SIGKILL | A job object the process joins before it runs; ended at once, since nothing asks a process without a window to stop. Closing the job ends nothing: an app a command opened stays, as on a Mac | `her-tools/src/proctree.rs` |
 | The shell of `bash` | `/bin/bash`, else `/bin/sh` | Git for Windows' `bash.exe` where it is installed (never `bash.exe` from PATH: System32's starts WSL), else PowerShell 7, else Windows PowerShell. PowerShell gets the command encoded (no quoting on the way), writes UTF-8, and answers the exit code of the program that failed. The prompt's `shell:` line tells the model which it has | `her-tools/src/local_env.rs` |
 | What a command asks before it runs | The rules read a POSIX shell's words: deletions of the root, the home or the workspace always ask | In Git for Windows' bash the same, with `/c/Users` read as `C:/Users`. In PowerShell every deletion asks, whatever the mode (`Remove-Item` and its aliases, cmd's `del` and `rd`, .NET's `Delete()`, found in any word, a false alarm only asking); `mkdir`, `cp` and `mv`, which are other commands there, never run unasked; its words are judged with slashes for backslashes. The bash tool tells the model, on Windows, to write paths with forward slashes or quoted | `her-core/src/approval.rs`, `her-core/src/rules.rs`, `her-tools/src/builtin/bash.rs` |
-| Stopping her | SIGTERM: sessions close, logs are saved | hermeshd asks on her's endpoint (`server/shutdown`), then its job ends what is left; a her of an earlier hermeshd can't be left running, since it was in that hermeshd's job (§4.3) | `internal/herhost/stale_windows.go` |
+| Stopping her | SIGTERM: sessions close, logs are saved | aided asks on her's endpoint (`server/shutdown`), then its job ends what is left; a her of an earlier aided can't be left running, since it was in that aided's job (§4.3) | `internal/herhost/stale_windows.go` |
 | The managed browser's DevTools pipe | Descriptors 3 and 4 | Two named pipes whose browser ends are inherited handles, named in `--remote-debugging-io-pipes` | `her-browser/src/launch.rs` |
-| The Aide extension's host | A launcher script, and a manifest in each browser's folder | The registry: Chrome's, Chromium's and Edge's `NativeMessagingHosts\com.hermesh.browser` name the home's manifest, whose program is her itself; Chrome starts it with Chrome's own arguments and none of our environment, so the home and the service's endpoint are under `HKCU\Software\Hermesh\Her\NativeHost` | `her-cli/src/native_host_windows.rs` |
+| The Aide extension's host | A launcher script, and a manifest in each browser's folder | The registry: Chrome's, Chromium's and Edge's `NativeMessagingHosts\com.aide.browser` name the home's manifest, whose program is her itself; Chrome starts it with Chrome's own arguments and none of our environment, so the home and the service's endpoint are under `HKCU\Software\Aide\Her\NativeHost` | `her-cli/src/native_host_windows.rs` |
 | Computer use | agent-desktop on macOS's Accessibility API, with two permissions to grant | The same agent-desktop release's Windows program on UI Automation; Windows asks for no permission for apps at her's integrity level, so `desktop/status` reports none missing. Text is pasted with Ctrl-V | `her-core/src/desktop.rs`, `her-server/src/desktop_status.rs` |
 | Removed skills | `~/.Trash`, the freedesktop trash | The Recycle Bin, through the shell | `her-core/src/trash.rs` |
 | Whether a file changed since her read it | Size, times and the file's identity, from its metadata | The same, the change time and the identity asked of the file's handle: Windows' metadata has neither | `her-tools/src/files.rs` |
@@ -455,19 +455,19 @@ her (her/, the kernel of Her: [her-server.md](her-server.md)) runs on Windows as
 | Variables an MCP server starts with | A base set, by name | Also the ones Windows programs do not start without (`SystemRoot`, `TEMP`, `USERPROFILE` and the like), whatever their case | `her-mcp/src/env.rs` |
 | Saved keys | The Keychain on a Mac; a file only the user reads on Linux | The file, in the user's profile, as on Linux | `her-llm/src/credentials.rs` |
 
-**The app** carries her as the Mac's does (§6.1), and `install.ps1` puts her and her console beside hermeshd on a PC that is only a machine: `bin\her.exe` with `her-console\`, `agent-desktop.exe` and `pdfium.dll` beside it, which the app places beside hermeshd, where hermeshd runs her from. her writes the Hermesh extension itself, where the console's guide has the owner load it from (`%LOCALAPPDATA%\Hermesh\Chrome Extension`). Rust builds for Windows on Windows only, so `make app-windows` elsewhere makes an app without Her.
+**The app** carries her as the Mac's does (§6.1), and `install.ps1` puts her and her console beside aided on a PC that is only a machine: `bin\her.exe` with `her-console\`, `agent-desktop.exe` and `pdfium.dll` beside it, which the app places beside aided, where aided runs her from. her writes the Aide extension itself, where the console's guide has the owner load it from (`%LOCALAPPDATA%\Aide\Chrome Extension`). Rust builds for Windows on Windows only, so `make app-windows` elsewhere makes an app without Her.
 
 **Checked on `windows-latest`** (2026-11-17), by jobs that do not fail the run while this is ported:
 
 | What | By |
 |---|---|
 | her builds with MSVC, and its own tests run: the endpoint (two clients at once, the client's process, a client gone), commands in Git for Windows' bash and in PowerShell (exit codes, UTF-8, a tree ended at its time), an MCP server's tree ended with it, session logs written, read while written and cut, the managed browser in a real Chrome over its inherited pipes, the extension host's registry entries | her-ci.yml's `windows` |
-| hermeshd starts her; Her is turned on by a signed command, talks, takes and sends files both ways, remembers across a cleared conversation, installs a skill and sends one to the Recycle Bin, signs in to ChatGPT through this computer, lists what she sent; her stops with hermeshd | ci.yml's `windows-e2e`, with her built there |
-| Setup.exe carries her: the packaged her starts and opens a PDF with the app's PDFium, agent-desktop answers with the pinned version, and installed, her is beside hermeshd with her console | ci.yml's `windows-app` (package-win.mjs, check-windows-setup.ps1) |
+| aided starts her; Her is turned on by a signed command, talks, takes and sends files both ways, remembers across a cleared conversation, installs a skill and sends one to the Recycle Bin, signs in to ChatGPT through this computer, lists what she sent; her stops with aided | ci.yml's `windows-e2e`, with her built there |
+| Setup.exe carries her: the packaged her starts and opens a PDF with the app's PDFium, agent-desktop answers with the pinned version, and installed, her is beside aided with her console | ci.yml's `windows-app` (package-win.mjs, check-windows-setup.ps1) |
 
 **Left**, each its own change:
 
-- Tests still failing there: the last step of `TestHerMesh` (a session on Her's own machine while the relay is away).
+- Tests still failing there: the last step of `TestHerOnTheMesh` (a session on Her's own machine while the relay is away).
 - What only a real PC shows, in [her-windows-tests.md](her-windows-tests.md), for whoever tries a release on one: the owner's own Chrome through the extension, computer use on real apps, PowerShell as the shell on a PC without Git for Windows, sleep and restart.
 - A PC that is only a machine gets her and her console from `install.ps1` (the release builds her for Windows on Windows, and the binaries job signs it with the rest), but neither agent-desktop nor PDFium: no computer use there, and no PDF.
 - Saved keys behind the user's Windows credentials (DPAPI), as the Mac's are behind the Keychain.

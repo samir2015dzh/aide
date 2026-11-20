@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { Machine } from "@hermesh/proto/local";
+import type { Machine } from "@aide/proto/local";
 import { herAnswers, needsUpdate } from "./skew.ts";
 
 // A machine older than this app (docs/version-skew.md §6.1, §6.3).

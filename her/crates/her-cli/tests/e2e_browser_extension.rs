@@ -1,4 +1,4 @@
-//! End-to-end: the user's own Chrome through the Hermesh extension (browser-design §8.4).
+//! End-to-end: the user's own Chrome through the Aide extension (browser-design §8.4).
 //! A real Chrome loads apps/chrome-extension, starts the real `her browser native-host`
 //! through the manifest that `her browser extension install` wrote, and that host lends the
 //! browser to a real `her serve`, whose session (driven by the mock model) opens a page and
@@ -122,7 +122,7 @@ async fn a_session_drives_the_users_chrome_through_the_extension() {
         .unwrap();
     assert!(installed.status.success(), "{}", String::from_utf8_lossy(&installed.stderr));
     let manifest: Value =
-        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.hermesh.browser.json")).unwrap())
+        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.aide.browser.json")).unwrap())
             .unwrap();
     assert_eq!(manifest["allowed_origins"], json!([format!("chrome-extension://{EXTENSION_ID}/")]));
 
@@ -340,7 +340,7 @@ async fn the_extension_and_her_agree_on_a_bridge_version_or_say_which_to_update(
     let _ = tokio::time::timeout(Duration::from_secs(20), service.wait()).await;
 }
 
-/// A service on a socket of its own, as Hermesh runs her: the host that `install --socket`
+/// A service on a socket of its own, as Aide runs her: the host that `install --socket`
 /// registered, started as Chrome starts it (the manifest's program, with the extension's origin
 /// and none of our environment), reaches that service. Nothing listens on the home's socket.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -356,7 +356,7 @@ async fn a_host_registered_for_a_socket_of_its_own_reaches_that_service() {
         .unwrap();
     assert!(installed.status.success(), "{}", String::from_utf8_lossy(&installed.stderr));
     let manifest: Value =
-        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.hermesh.browser.json")).unwrap()).unwrap();
+        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.aide.browser.json")).unwrap()).unwrap();
     let launcher = manifest["path"].as_str().unwrap().to_string();
     assert!(std::fs::read_to_string(&launcher).unwrap().contains(&format!("--socket '{}'", socket.display())));
 
@@ -410,7 +410,7 @@ async fn chrome_loads_the_extension_her_wrote_and_it_connects() {
     let env = TestEnv::new("").await;
     let socket = env.home.path().join("run").join("her.sock");
     let profile = env.work().join("chrome-profile");
-    let folder = env.work().join("share").join("hermesh").join("chrome-extension");
+    let folder = env.work().join("share").join("aide").join("chrome-extension");
     let (mut service, client, _demux) = serve(&env, &socket, None).await;
     let installed = env
         .her(&["browser", "extension", "install", "--user-data-dir", profile.to_str().unwrap(), "--folder", folder.to_str().unwrap()])
@@ -431,7 +431,7 @@ async fn chrome_loads_the_extension_her_wrote_and_it_connects() {
     let _ = tokio::time::timeout(Duration::from_secs(20), service.wait()).await;
 }
 
-/// her as Hermesh runs it on a machine, with no desktop app: the built-in browser stays off
+/// her as Aide runs it on a machine, with no desktop app: the built-in browser stays off
 /// until the console's switch turns it on (`browser.enabled = true`, through config/write), and
 /// then a session opens a page in a Chrome of her own, here without a window, as on a server
 /// without a display. browser/status names the program, for the console to show. The switch
@@ -516,7 +516,7 @@ async fn the_default_falls_back_to_the_built_in_browser_until_the_users_connects
     let _ = tokio::time::timeout(Duration::from_secs(20), service.wait()).await;
 }
 
-/// her on a Linux computer with a desktop, started as Hermesh starts it there: by a service of
+/// her on a Linux computer with a desktop, started as Aide starts it there: by a service of
 /// the user's that began at boot, before anyone logged in, so her's own environment names no
 /// display. Once someone logs in to the desktop, which puts its display in the user's systemd,
 /// the built-in browser has a window to show, without her starting again.
@@ -955,11 +955,11 @@ async fn the_extensions_page_says_what_is_wrong_and_what_to_do() {
         .unwrap();
     assert!(installed.status.success(), "{}", String::from_utf8_lossy(&installed.stderr));
     let manifest: Value =
-        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.hermesh.browser.json")).unwrap()).unwrap();
+        serde_json::from_str(&std::fs::read_to_string(profile.join("NativeMessagingHosts/com.aide.browser.json")).unwrap()).unwrap();
     let script = std::path::PathBuf::from(manifest["path"].as_str().unwrap());
     let working = std::fs::read(&script).unwrap();
 
-    // No service runs: the host starts and says Hermesh is not open, which is not a problem.
+    // No service runs: the host starts and says Aide is not open, which is not a problem.
     let (chrome, chrome_process) = chrome_with_extension(&env, &profile, &chrome_exe).await;
     let opened = chrome.send(None, "Target.createTarget", json!({"url": format!("chrome-extension://{EXTENSION_ID}/src/popup.html"), "background": true})).await.unwrap();
     let popup = opened["targetId"].as_str().unwrap().to_string();

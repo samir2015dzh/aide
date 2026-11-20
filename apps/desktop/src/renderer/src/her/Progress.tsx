@@ -3,9 +3,9 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   agentBrief, agentCalls, agentElapsed, agentHistoryCursor, agentPost, agentState, agentTaskOf, agentTitles, agentTokens, messageBody, progressGroups, stepsOf,
   toolObject, toolOutput, type AgentLaunch, type AgentPost, type AgentState, type AgentView, type ProgressGroup, type ProgressTask, type SessionView, type Step, type WorkItem,
-} from "@hermesh/her-client";
-import type { BotSummary } from "@hermesh/her-protocol";
-import { clockText, elapsedSeconds, listTime, tokensText, turnTimeLine } from "@hermesh/core";
+} from "@aide/her-client";
+import type { BotSummary } from "@aide/her-protocol";
+import { clockText, elapsedSeconds, listTime, tokensText, turnTimeLine } from "@aide/core";
 import { Icon } from "../icons";
 import { layoutOf, setCard } from "../layout";
 import { keys, ownKeys } from "../platform";

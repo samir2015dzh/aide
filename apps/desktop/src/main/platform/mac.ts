@@ -9,18 +9,18 @@ import { settleInApplications } from "../install";
 import { testDataDir } from "../paths";
 import type { Platform, WindowKind } from "./types";
 
-// The installed app runs hermeshd as a LaunchAgent (its plist in
+// The installed app runs aided as a LaunchAgent (its plist in
 // Contents/Library/LaunchAgents), so it keeps running when the app quits,
-// and opens itself at login when the owner wants it to (Open Hermesh at login).
+// and opens itself at login when the owner wants it to (Open Aide at login).
 // Development and test runs do neither: they use a daemon of their own,
 // and must not register the Electron binary to start at login. Nor does a
-// packaged app pointed at another daemon (HERMESH_DATA_DIR, as tests do).
-const installed = app.isPackaged && process.platform === "darwin" && !process.env.HERMESH_DATA_DIR && !testDataDir;
-const agent = { type: "agentService", serviceName: "com.hermesh.app.daemon.plist" } as const;
+// packaged app pointed at another daemon (AIDE_DATA_DIR, as tests do).
+const installed = app.isPackaged && process.platform === "darwin" && !process.env.AIDE_DATA_DIR && !testDataDir;
+const agent = { type: "agentService", serviceName: "com.aide.app.daemon.plist" } as const;
 let devLoginItem = false;
 
 // The CLIs that come with the Claude and ChatGPT (Codex) desktop apps, after
-// the person's own PATH, as hermeshd finds them: for those who have only the app.
+// the person's own PATH, as aided finds them: for those who have only the app.
 const appCLIs = String.raw`path+=(~/Library/Application\ Support/Claude/claude-code/*/*/claude.app/Contents/MacOS/claude(Nn[-1]:h) {,~}/Applications/{ChatGPT.app/Contents/Resources/codex-cli/bin,Codex.app/Contents/Resources}/codex(N:h))`;
 
 export const mac: Platform = {
@@ -38,7 +38,7 @@ export const mac: Platform = {
   },
 
   registerLinks() {
-    if (app.isPackaged) app.setAsDefaultProtocolClient("hermesh");
+    if (app.isPackaged) app.setAsDefaultProtocolClient("aide");
   },
 
   registerDaemon() {
@@ -53,21 +53,21 @@ export const mac: Platform = {
    */
   restartDaemon(why) {
     if (!installed) return;
-    console.warn(`restarting hermeshd: ${why}`);
-    const job = `gui/${process.getuid?.()}/com.hermesh.app.daemon`;
+    console.warn(`restarting aided: ${why}`);
+    const job = `gui/${process.getuid?.()}/com.aide.app.daemon`;
     const deadline = Date.now() + 15_000; // launchd kills it 5 s after the SIGTERM
     const whenGone = () => execFile("launchctl", ["print", job], (notLoaded) => {
       if (notLoaded) app.setLoginItemSettings({ ...agent, openAtLogin: true });
       else if (Date.now() < deadline) setTimeout(whenGone, 200);
-      else execFile("launchctl", ["kickstart", "-k", job], (err) => err && console.warn("restarting hermeshd:", err));
+      else execFile("launchctl", ["kickstart", "-k", job], (err) => err && console.warn("restarting aided:", err));
     });
     execFile("launchctl", ["bootout", job], (err) => {
-      if (err) console.warn("restarting hermeshd:", err);
+      if (err) console.warn("restarting aided:", err);
       whenGone();
     });
   },
 
-  /** The owner turned hermeshd off in System Settings › Login Items (or never allowed it): it does not run until they do. */
+  /** The owner turned aided off in System Settings › Login Items (or never allowed it): it does not run until they do. */
   daemonNeedsApproval() {
     return installed && app.getLoginItemSettings(agent).status === "requires-approval";
   },
@@ -96,11 +96,11 @@ export const mac: Platform = {
 
   runInTerminal(c: TerminalCommand, command: string) {
     if (c === "antigravityLogin" && app.isPackaged) {
-      const bin = path.join(process.resourcesPath, "..", "Helpers", "hermesh");
+      const bin = path.join(process.resourcesPath, "..", "Helpers", "aide");
       command = `'${bin.replaceAll("'", "'\\''")}' agent login antigravity`;
     }
     // A .command file opens in Terminal and runs there, in the person's login shell.
-    const dir = path.join(os.homedir(), "Library", "Caches", "Hermesh");
+    const dir = path.join(os.homedir(), "Library", "Caches", "Aide");
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `${c}.command`);
     fs.writeFileSync(file, `#!/bin/zsh -l\n${appCLIs}\n${command}\n`, { mode: 0o700 });

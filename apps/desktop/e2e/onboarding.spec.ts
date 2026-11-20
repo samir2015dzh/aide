@@ -1,7 +1,7 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { Workspace } from "@hermesh/proto/identity";
-import { LocalService } from "@hermesh/proto/local";
+import { Workspace } from "@aide/proto/identity";
+import { LocalService } from "@aide/proto/local";
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -31,9 +31,9 @@ async function expectMainWindow(app: ElectronApplication, page: Page) {
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0)).toBeGreaterThan(900);
 }
 
-/** hermeshd's local API on socket, as another of the owner's devices uses it. */
+/** aided's local API on socket, as another of the owner's devices uses it. */
 const daemon = (socket: string) =>
-  createClient(LocalService, createConnectTransport({ baseUrl: "http://hermeshd", httpVersion: "1.1", nodeOptions: { socketPath: socket } }));
+  createClient(LocalService, createConnectTransport({ baseUrl: "http://aided", httpVersion: "1.1", nodeOptions: { socketPath: socket } }));
 
 /** Sets up fresh's server from its own daemon, as the owner's first device. */
 async function setUp(fresh: (typeof fixture.fresh)[number], label: string, localMachineName = "") {
@@ -44,7 +44,7 @@ async function setUp(fresh: (typeof fixture.fresh)[number], label: string, local
 
 /** An assistant logging in with the agent CLI, in a home of its own: its exit code, and its home for what it runs next. */
 function agentLogin(server: string, name: string) {
-  const env = { ...process.env, HERMESH_HOME: fs.mkdtempSync(path.join(os.tmpdir(), "hmagent-")), AIDE_PASSWORD: password };
+  const env = { ...process.env, AIDE_HOME: fs.mkdtempSync(path.join(os.tmpdir(), "hmagent-")), AIDE_PASSWORD: password };
   const login = spawn(fixture.cli, ["auth", "login", server, "--account", account, "--name", name], { env });
   let out = "";
   login.stdout.on("data", (b: Buffer) => (out += b));
@@ -73,7 +73,7 @@ async function setUpHere(page: Page, fresh: (typeof fixture.fresh)[number]) {
   await expect(page.getByRole("heading", { name: "这台电脑在 Aide 里做什么？" })).toBeVisible();
 }
 
-test("the window opens at its last size, loading in the middle until hermeshd answers", async () => {
+test("the window opens at its last size, loading in the middle until aided answers", async () => {
   const none = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), "hmsock-")), "none.sock");
   const width = (app: ElectronApplication) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0);
   // A first start: the main window's size, as most starts are.
@@ -107,7 +107,7 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   // Logging in first, then setting a new server up. No official service: no link to its site.
   await expect(page.getByRole("button", { name: "登录", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "设置新的服务器…" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "hermesh.io", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "aide.io", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "登录", exact: true }).click();
   await expect(page.getByRole("heading", { name: "登录你的 Aide" })).toBeVisible();
   // The server is asked for with the account and password, empty: Continue waits for all three.
@@ -199,7 +199,7 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   release("codex");
   release("gemini");
   release("antigravity");
-  // Every coding agent Hermesh supports: the installed ones with their state, the rest greyed.
+  // Every coding agent Aide supports: the installed ones with their state, the rest greyed.
   await expect(page.getByRole("heading", { name: "检查和管理可用的 Agent" })).toBeVisible({ timeout: 30_000 });
   await expect(searching).toHaveCount(0);
   await expect(page.getByRole("list", { name: "设置步骤" })).toHaveCount(0); // no way back, so no steps
@@ -315,8 +315,8 @@ test("a new server's first assistant: it logs in with the account itself, shows 
   const browser = () => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened);
 
   // A sign-in's link code, or an account's join link, would come from a hosted center: neither is ours.
-  await link(`hermesh://link?code=${fresh.claimCode}`);
-  await link("hermesh://join?owner=o_" + "a".repeat(24));
+  await link(`aide://link?code=${fresh.claimCode}`);
+  await link("aide://join?owner=o_" + "a".repeat(24));
   await page.waitForTimeout(500);
   await expect(page.getByRole("heading", { name: "让 Agent 安全地互相连接" })).toBeVisible();
   expect(await browser()).toEqual([]);
@@ -588,7 +588,7 @@ test("a work Mac logs in as a machine only (你的设备 off): its own projects 
 
   // One of the owner's devices too: the account and password again, on the server it uses; its machine stays.
   const machineId = st.localMachineId;
-  const [again] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("account"))]);
+  const [again] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("account"))]);
   await again.waitForLoadState();
   await Promise.all([again.waitForEvent("close"), again.getByRole("main", { name: "账号" }).getByRole("button", { name: "让这台电脑也成为你的设备…" }).click()]);
   await expect(page.getByRole("heading", { name: "登录你的 Aide" })).toBeVisible({ timeout: 30_000 });
@@ -616,7 +616,7 @@ test("Settings › Account: a new device logging in shows in Add Device; a new p
   const server = fixture.fresh[6].relayURL;
   const { app, page } = await launch(fixture.fresh[6].socket);
   await expectMainWindow(app, page);
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("account"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("account"))]);
   await settings.waitForLoadState();
   const panel = settings.getByRole("main", { name: "账号与设备" });
   const devices = panel.getByRole("list", { name: "你的设备" });
@@ -680,7 +680,7 @@ test("erasing everything: what it erases, the server's address typed, then this 
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   const { app, page } = await launch(fresh.socket, { profile });
   await expectMainWindow(app, page);
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("account"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("account"))]);
   await settings.waitForLoadState();
   await settings.getByRole("main", { name: "账号与设备" }).getByRole("button", { name: "全部清空…" }).click();
 
@@ -729,7 +729,7 @@ test("another device's machine is marked in 设置 › 机器 and signed out wit
   await expect.poll(async () => (await first.listDevices({})).devices.find((d) => d.label === "work-pc")?.machineId ?? "", { timeout: 30_000 }).not.toBe("");
 
   const { app, page } = await launch(fixture.fresh[10].socket);
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.hermesh?.openSettings("machines"))]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("machines"))]);
   const row = settings.getByRole("list", { name: "机器" }).getByRole("button", { name: /^work-pc/ });
   await expect(row).toContainText("你的设备");
   await row.click();

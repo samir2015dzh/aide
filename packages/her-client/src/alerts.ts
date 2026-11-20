@@ -1,4 +1,4 @@
-import type { BotSummary, SessionState, SessionSummary } from "@hermesh/her-protocol";
+import type { BotSummary, SessionState, SessionSummary } from "@aide/her-protocol";
 import { lastText } from "./bots.ts";
 import { displayTitle } from "./sessions.ts";
 

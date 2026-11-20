@@ -17,11 +17,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/internal/provider"
-	"github.com/hermeshai/hermesh/internal/sessionstate"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/sessionstate"
 )
 
 func (a *app) sessionCmd() *cobra.Command {
@@ -342,7 +342,7 @@ func turnError(s *sessionv1.Session, result *sessionv1.TurnCompleted, final sess
 		f = result.Failure
 	case final == sessionv1.SessionStatus_SESSION_STATUS_CRASHED:
 		// The turn did not finish (or start): the agent crashed or could
-		// not start, or hermeshd restarted.
+		// not start, or aided restarted.
 		f = s.GetProgress().GetLastFailure()
 		if f == nil {
 			f = &sessionv1.Failure{Kind: sessionv1.FailureKind_FAILURE_KIND_AGENT_CRASHED, Retryable: true,

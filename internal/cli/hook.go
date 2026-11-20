@@ -16,17 +16,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/internal/brandenv"
-	"github.com/hermeshai/hermesh/internal/localipc"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Agents on a computer (docs/agent-messages.md §6.2). Claude Code and Codex
-// run `hermesh message hook` as their hooks: each conversation gets the
+// run `aide message hook` as their hooks: each conversation gets the
 // messages addressed to it, the replies and news of what it wrote or
 // started, at the start of its turns and when a turn would end. Claude Code
-// also gets them between tool calls and while idle, from `hermesh message
+// also gets them between tool calls and while idle, from `aide message
 // watch`, which posts them to the conversation's own inbox socket. A message
 // addressed to no conversation is never pushed into one: the hooks only say
 // how many wait.
@@ -89,7 +89,7 @@ func (a *app) hook(ctx context.Context, agent string, in hookInput) map[string]a
 		if agent == "claude" {
 			if f := os.Getenv("CLAUDE_ENV_FILE"); f != "" {
 				if w, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
-					fmt.Fprintf(w, "export AIDE_AS=%s\nexport HERMESH_AS=%s\n", strconv.Quote(conv), strconv.Quote(conv))
+					fmt.Fprintf(w, "export AIDE_AS=%s\n", strconv.Quote(conv))
 					w.Close()
 				}
 			}
@@ -228,7 +228,7 @@ func (a *app) watching(conv string) bool {
 	return err == nil && pid > 0 && processAlive(pid)
 }
 
-// startWatch starts `hermesh message watch` for the conversation, apart
+// startWatch starts `aide message watch` for the conversation, apart
 // from the hook, unless one runs.
 func (a *app) startWatch(conv, sock string) {
 	if a.watching(conv) {
@@ -371,7 +371,7 @@ func postToClaude(sock, text string) error {
 
 var hookEvents = []string{"SessionStart", "UserPromptSubmit", "Stop"}
 
-// installHooks adds `hermesh message hook <agent>` to the agent's own user
+// installHooks adds `aide message hook <agent>` to the agent's own user
 // settings, for the events it runs on, and says what it added.
 func (a *app) installHooks(cmd *cobra.Command, agent string) error {
 	exe, err := os.Executable()
@@ -461,7 +461,7 @@ func addHooks(path, command string) ([]string, error) {
 		return nil, err
 	}
 	os.MkdirAll(filepath.Dir(path), 0o700)
-	tmp := path + ".hermesh.tmp"
+	tmp := path + ".aide.tmp"
 	if err := os.WriteFile(tmp, out, 0o600); err != nil {
 		return nil, err
 	}

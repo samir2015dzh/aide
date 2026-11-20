@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantContent, BotSummary, Event, EventMsg, SessionInfo, Usage } from "@hermesh/her-protocol";
+import type { AssistantContent, BotSummary, Event, EventMsg, SessionInfo, Usage } from "@aide/her-protocol";
 import { applyEvents, fromSnapshot, type SessionView } from "./session.ts";
 import { attention, botLine, initialOf, lastText, mergeBots, plain, searchBots, sortBots } from "./bots.ts";
 import { botChat, busyBubble, imageRatio, imageRows, readSent } from "./botChat.ts";

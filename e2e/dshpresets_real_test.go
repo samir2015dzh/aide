@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestRealDSHPermissionPresets is TestDSHPermissionPresets with the real
-// DeepSeek Harness (HERMESH_REAL_DSH: its dsh command, e.g. from
+// DeepSeek Harness (AIDE_REAL_DSH: its dsh command, e.g. from
 // `npm install @deepseek-ai/dsh`), in a DSH home of its own, and a stand-in
 // for DeepSeek's API ($DEEPSEEK_BASE_URL) that answers a prompt "WRITE
 // <file>" with DSH's write tool on that file in the session's directory,
@@ -27,15 +27,15 @@ import (
 // and never written. Each session's preset is checked in DSH's own
 // records of the session.
 func TestRealDSHPermissionPresets(t *testing.T) {
-	dsh := os.Getenv("HERMESH_REAL_DSH")
+	dsh := os.Getenv("AIDE_REAL_DSH")
 	if testing.Short() || dsh == "" {
-		t.Skip("real DeepSeek Harness only: HERMESH_REAL_DSH=<its dsh command>")
+		t.Skip("real DeepSeek Harness only: AIDE_REAL_DSH=<its dsh command>")
 	}
 	home, err := os.MkdirTemp("", "dsh-home")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { // after hermeshd: its dsh processes may still be saving their sessions
+	t.Cleanup(func() { // after aided: its dsh processes may still be saving their sessions
 		for i := 0; os.RemoveAll(home) != nil && i < 50; i++ {
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -48,7 +48,7 @@ func TestRealDSHPermissionPresets(t *testing.T) {
 	}
 	api := httptest.NewServer(http.HandlerFunc(fakeDeepSeek))
 	t.Cleanup(api.Close)
-	w := newOwnerMac(t, []string{"HERMESH_DEEPSEEK_BIN=" + dsh, "PATH=" + os.Getenv("PATH"), "DSH_HOME=" + home, "DSH_TELEMETRY_DISABLED=1",
+	w := newOwnerMac(t, []string{"AIDE_DEEPSEEK_BIN=" + dsh, "PATH=" + os.Getenv("PATH"), "DSH_HOME=" + home, "DSH_TELEMETRY_DISABLED=1",
 		"DEEPSEEK_BASE_URL=" + api.URL, "DEEPSEEK_API_KEY=sk-test"}, &localv1.GrantSpec{Agents: []string{"deepseek"}})
 
 	var l struct {
@@ -89,7 +89,7 @@ func TestRealDSHPermissionPresets(t *testing.T) {
 			t.Errorf("%q: DSH records preset %q", mode, got)
 		}
 	}
-	// Resumed by a new dsh process (hermeshd restarted), a session keeps its
+	// Resumed by a new dsh process (aided restarted), a session keeps its
 	// preset.
 	w.restartOwner(false)
 	if s, r := w.send(2*time.Minute, ids["read-only"], "WRITE again.txt"); r.code != 0 || !strings.Contains(s.Result, "denied under read-only mode") ||

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { platformTitle } from "@hermesh/core";
-import type { Machine } from "@hermesh/proto/local";
-import { Mark } from "@hermesh/ui";
+import { platformTitle } from "@aide/core";
+import type { Machine } from "@aide/proto/local";
+import { Mark } from "@aide/ui";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { ErrorLine, Working, useAction } from "../sheets/common";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyEvents, botChat, fromSnapshot } from "@hermesh/her-client";
-import type { Event, SessionSnapshot } from "@hermesh/her-protocol";
+import { applyEvents, botChat, fromSnapshot } from "@aide/her-client";
+import type { Event, SessionSnapshot } from "@aide/her-protocol";
 import { cardNow, cardOf, cardShown, connectBody, filled, toolCount, type Card } from "./cards.ts";
 
 const usage = { input: 1, output: 1, cache_read: 0, cache_write: 0, cost: { currency: "USD", input: 0, output: 0, cache_read: 0, cache_write: 0, total: 0 } };

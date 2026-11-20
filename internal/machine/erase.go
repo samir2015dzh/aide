@@ -11,16 +11,16 @@ import (
 
 	"connectrpc.com/connect"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Erasing everything (docs/erase-everything.md): an owner's signed order,
 // which the relay keeps after it forgot the owner. A machine, device or
 // agent that is refused fetches it, verifies it against the root chain it
-// holds, says it is erasing, and erases what Hermesh keeps there.
+// holds, says it is erasing, and erases what Aide keeps there.
 
 // ErrErased is what Run returns once the owner's erase order came: the
 // machine is then to erase its data (Erase) and stop.
@@ -87,7 +87,7 @@ func (n *Machine) checkErase(ctx context.Context) bool {
 	return true
 }
 
-// Erase erases what Hermesh keeps for the machine in cfg.DataDir (which
+// Erase erases what Aide keeps for the machine in cfg.DataDir (which
 // must not be running): its key, owner, projects list and sessions, and
 // the worktrees it made, whose branches stay in their repositories. A
 // worktree with uncommitted changes is kept, moved into keepDir when it

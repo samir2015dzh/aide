@@ -15,13 +15,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 )
 
 // replica is this device's copy of the owner's world (docs/state-sync.md):
@@ -176,9 +176,9 @@ const (
 // How followed machines' watches started: afresh, resumed from where they
 // were, or afresh because the machine refused the token.
 var (
-	mWatchFresh   = metrics.Default.Counter(`hermesh_owner_machine_watches_total{start="fresh"}`)
-	mWatchResumed = metrics.Default.Counter(`hermesh_owner_machine_watches_total{start="resumed"}`)
-	mWatchRefused = metrics.Default.Counter(`hermesh_owner_machine_watches_total{start="refused"}`)
+	mWatchFresh   = metrics.Default.Counter(`aide_owner_machine_watches_total{start="fresh"}`)
+	mWatchResumed = metrics.Default.Counter(`aide_owner_machine_watches_total{start="resumed"}`)
+	mWatchRefused = metrics.Default.Counter(`aide_owner_machine_watches_total{start="refused"}`)
 )
 
 func newReplica(o *Owner) *replica {
@@ -854,7 +854,7 @@ func (r *replica) followSessions(ctx context.Context, s *sources, f *feed, n *pe
 	defer stream.Close()
 	if !stream.Receive() {
 		if connect.CodeOf(stream.Err()) == connect.CodeUnimplemented {
-			return errors.New("its hermeshd is too old to report session changes; update it")
+			return errors.New("its aided is too old to report session changes; update it")
 		}
 		return late(cmp.Or(stream.Err(), errors.New("stopped at once")))
 	}

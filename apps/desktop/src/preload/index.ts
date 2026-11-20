@@ -4,8 +4,8 @@ import type { Bridge, Command, ComputerPermission, MenuItem, MenuState, Preferen
 import type { UpdateInfo } from "../shared/update";
 
 // The only things the page gets from outside its sandbox. Data comes from
-// hermeshd through app://hermesh/api (see main/gateway.ts).
-const arg = (name: string) => process.argv.find((a) => a.startsWith(`--hermesh-${name}=`))?.split("=").slice(1).join("=") ?? "";
+// aided through app://aide/api (see main/gateway.ts).
+const arg = (name: string) => process.argv.find((a) => a.startsWith(`--aide-${name}=`))?.split("=").slice(1).join("=") ?? "";
 
 const listen = <T>(channel: string, cb: (v: T) => void) => {
   const h = (_: unknown, v: T) => cb(v);
@@ -96,4 +96,4 @@ const bridge: Bridge = {
 
 window.addEventListener("online", () => ipcRenderer.send("updates-online"));
 
-contextBridge.exposeInMainWorld("hermesh", bridge);
+contextBridge.exposeInMainWorld("aide", bridge);

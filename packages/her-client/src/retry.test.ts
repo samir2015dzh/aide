@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Event, EventMsg, SessionInfo } from "@hermesh/her-protocol";
+import type { Event, EventMsg, SessionInfo } from "@aide/her-protocol";
 import { applyEvents, fromSnapshot, type SessionView } from "./session.ts";
 
 // A model request retried after part of the reply arrived: the part is dropped while the

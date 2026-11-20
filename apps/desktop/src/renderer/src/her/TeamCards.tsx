@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
-import type { StartedSession, TeamWork } from "@hermesh/her-client";
-import { SessionStatus } from "@hermesh/proto/session";
-import { clockText, codingAgentShort, createdDate, dateOf, displayTitle, elapsedSeconds, isActive, isFailed, tokensText } from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+import type { StartedSession, TeamWork } from "@aide/her-client";
+import { SessionStatus } from "@aide/proto/session";
+import { clockText, codingAgentShort, createdDate, dateOf, displayTitle, elapsedSeconds, isActive, isFailed, tokensText } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { GrantAvatar } from "../components";
 import { Icon } from "../icons";
 import { machineName, senderName } from "../Sidebar";

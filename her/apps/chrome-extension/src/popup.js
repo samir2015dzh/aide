@@ -1,6 +1,6 @@
 // The extension's page, from its toolbar icon (your-browser-design §3): one line on how things
 // stand, what to do about it if anything, and the conversations with tabs here. The worker holds
-// the state and says when it changes; details are in Hermesh's settings.
+// the state and says when it changes; details are in Aide's settings.
 
 import { headline, listed, offersTab } from "./panel.js";
 

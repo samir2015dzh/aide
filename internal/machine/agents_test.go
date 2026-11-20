@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // probe is a coding agent whose check counts how often it ran, and waits

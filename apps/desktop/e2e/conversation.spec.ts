@@ -7,7 +7,7 @@ import { ids, titles } from "../perf/world";
 import { launch, sessionList } from "./app";
 
 // A long conversation in the real app (docs/desktop-performance.md §7): the benchmark's stand-in
-// for hermeshd (perf/daemon.ts) serves two conversations of 40 turns and about 2,700 events, one
+// for aided (perf/daemon.ts) serves two conversations of 40 turns and about 2,700 events, one
 // finished and one that grows while live. Only the rows near what is in sight are drawn; reading,
 // following the end, what a row has open and a selection behave as with every row drawn.
 

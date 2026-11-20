@@ -5,15 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // A connection's inbox (docs/agent-messages.md §6.3): the gateway holds its
@@ -172,8 +172,8 @@ func (g *Gateway) inboxRegistered(id string) func(string) {
 	}
 }
 
-// hermeshClientID is the Hermesh client id of a connection (its grant's).
-func hermeshClientID(c *Connection) string {
+// aideClientID is the Aide client id of a connection (its grant's).
+func aideClientID(c *Connection) string {
 	sg := &identityv1.Signed{}
 	g := &identityv1.Grant{}
 	if proto.Unmarshal(c.Grant, sg) != nil || identity.Unverified(sg, g) != nil {

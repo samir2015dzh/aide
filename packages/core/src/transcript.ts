@@ -9,7 +9,7 @@ import {
   type ToolCall,
   type ToolResult,
   type TurnCompleted,
-} from "@hermesh/proto/session";
+} from "@aide/proto/session";
 import { t } from "./i18n";
 import { dateOf } from "./sessions";
 

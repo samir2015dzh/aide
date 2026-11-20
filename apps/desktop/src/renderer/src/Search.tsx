@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
-import { codingAgentShort, codingAgentTitle, displayTitle, searchSessions, sessionFilter, shortTime, updatedDate, type SessionFilter } from "@hermesh/core";
+import { SessionStatus, type Session } from "@aide/proto/session";
+import { codingAgentShort, codingAgentTitle, displayTitle, searchSessions, sessionFilter, shortTime, updatedDate, type SessionFilter } from "@aide/core";
 import { i18n } from "../../shared/i18n";
 import { StatusDot } from "./components";
 import { Icon } from "./icons";
@@ -14,7 +14,7 @@ type Action = { label: string; shortcut: string; run: (st: Store) => void };
 
 const actions = (): Action[] => [
   ...addActions.map((a) => ({ label: a.label, shortcut: a.shortcut, run: (st: Store) => openAdd(st, a.id) })),
-  { label: i18n.t("common:search.openSettings"), shortcut: keys("CmdOrCtrl+,"), run: () => window.hermesh?.openSettings() },
+  { label: i18n.t("common:search.openSettings"), shortcut: keys("CmdOrCtrl+,"), run: () => window.aide?.openSettings() },
 ];
 
 // The ⌘K search palette: find a session by its title, project, grant,

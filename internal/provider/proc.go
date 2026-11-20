@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/spawn"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	"github.com/samir2015dzh/aide/internal/spawn"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 	"io"
 	"os"
 	"os/exec"
@@ -410,8 +410,8 @@ var errNotRunning = errors.New("provider process is not running")
 // mSpawn is the time to create an agent process (with os/exec this grows
 // under concurrency: Go serializes forks process-wide).
 var (
-	mSpawn         = metrics.Default.Histogram("hermesh_provider_spawn_seconds")
-	mSpawnFallback = metrics.Default.Counter("hermesh_provider_spawn_fallback_total")
+	mSpawn         = metrics.Default.Histogram("aide_provider_spawn_seconds")
+	mSpawnFallback = metrics.Default.Counter("aide_provider_spawn_fallback_total")
 )
 
 // dedupEnv is env with one entry for each key, its last, as os/exec

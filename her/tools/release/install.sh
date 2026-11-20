@@ -3,14 +3,14 @@
 # ~/.local/bin. Running it again upgrades. To uninstall, delete that one file; ~/.her holds your
 # sessions and settings, and stays until you delete it.
 #
-#   curl -fsSL https://github.com/hermeshai/her-releases/releases/latest/download/install.sh | sh
+#   curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh
 #   sh install.sh --version 0.2.0 --dir /usr/local/bin
 #
 # HER_INSTALL_DIR sets the folder, HER_RELEASES_URL a mirror of the releases. It goes through
 # HTTPS_PROXY when that is set.
 set -eu
 
-releases="${HER_RELEASES_URL:-https://github.com/hermeshai/her-releases/releases}"
+releases="${HER_RELEASES_URL:-https://github.com/samir2015dzh/aide/releases}"
 dir="${HER_INSTALL_DIR:-$HOME/.local/bin}"
 version=""
 

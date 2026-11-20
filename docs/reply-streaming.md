@@ -1,6 +1,6 @@
-# Hermesh reply streaming: show an agent's reply as it is written
+# Aide reply streaming: show an agent's reply as it is written
 
-Status: built, 2026-10-25 (Mac app, iPhone app, hermeshd, all three providers).
+Status: built, 2026-10-25 (Mac app, iPhone app, aided, all three providers).
 
 The owner watches a coding agent answer. Today the reply shows up all at
 once when the agent finishes it, sometimes after a minute of nothing but
@@ -25,7 +25,7 @@ agent CLI ──chunks──► provider adapter ──whole message──► Se
 [`Sessions.emit`](../internal/machine/sessions.go) gives every event a seq
 and queues it for the writer. Subscribers get it once it is committed, in
 seq order. The Mac app ([events.ts](../apps/desktop/src/renderer/src/session/events.ts))
-and the iPhone app ([Service.swift](../apps/ios/Hermesh/App/Service.swift))
+and the iPhone app ([Service.swift](../apps/ios/Aide/App/Service.swift))
 both read `LocalService.StreamSessionEvents` with `follow`, and resume by
 `after_seq`. For the owner's own Mac, [`Owner.StreamSessionEvents`](../internal/owner/owner.go)
 reads the machine in process. For a remote machine it calls
@@ -41,7 +41,7 @@ message replaces it.**
 
 1. Each provider reports partial reply text as `EventAgentDraft{Text}`,
    pieces in order.
-2. hermeshd keeps the draft of each live session in memory, and sends its
+2. aided keeps the draft of each live session in memory, and sends its
    new text to the subscribers that ask for drafts at most every 100 ms. The
    pieces go through the writer's queue without being written, so they
    reach subscribers in order with the stored events around them.
@@ -49,7 +49,7 @@ message replaces it.**
    the draft on the screen: the provider always stores the finished text
    before the next tool call, question or end of the turn.
 4. If a turn ends with a draft that was never finished (interrupted,
-   crashed, stalled), hermeshd stores the draft as an `AgentMessage` first,
+   crashed, stalled), aided stores the draft as an `AgentMessage` first,
    so what the owner saw stays in the conversation.
 5. Drafts are opt-in on the stream (`partial = true`). Bots, the CLI and the
    MCP gateway don't ask, and see exactly what they see today.
@@ -100,7 +100,7 @@ Field 4 of both requests is left for `view` ([state-sync.md](state-sync.md) §3.
 - **seq 0.** A client never moves `after_seq` on a draft. Clients that don't
   set `partial` never get one, so older iPhone builds and bots are safe.
 
-## 4. hermeshd
+## 4. aided
 
 - **`provider.EventAgentDraft`** joins `provider.Event` (field `Text`).
 - **`live.draft`** (a `strings.Builder`), `live.draftQueued` (how much of it

@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestHerDeliveries: the files Her sent are listed apart from her
 // conversation (docs/her-deliverables.md §4.2–§4.4), through this Mac's
-// hermeshd: the machine says it answers the two requests; a file sent,
+// aided: the machine says it answers the two requests; a file sent,
 // changed and sent again is one file with two versions, each with the copy
 // to read; her row counts the files the owner has not seen, until the list
 // was seen. A file a routine made is the routine's (§4.11): the list shows one
@@ -233,7 +233,7 @@ func sentFile(details json.RawMessage, name string) bool {
 }
 
 // TestHerSentCopies: her keeps a copy of each file Her sends, as it was when
-// she sent it (docs/her-deliverables.md §4.1), and this Mac's hermeshd brings
+// she sent it (docs/her-deliverables.md §4.1), and this Mac's aided brings
 // a copy down like a file of the assistant's folder. A file changed on the
 // machine and sent again: each message names its own copy, and each comes
 // down as it was sent, while the file itself comes down as it is now. A file

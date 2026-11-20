@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { AssistantContent, Event, EventMsg, SessionInfo, Usage } from "@hermesh/her-protocol";
+import type { AssistantContent, Event, EventMsg, SessionInfo, Usage } from "@aide/her-protocol";
 import { applyEvents, callTarget, fromSnapshot, type SessionView } from "./session.ts";
 import { attachedBlock, docQuoteBlock, docViewingBlock, presentationViewingBlock, sheetViewingBlock, webCommentBlock, conversation, describe, settledSteps, withStreaming, toolObject, userText, workSummary } from "./steps.ts";
 import { clockText, costText, tokensText } from "./text.ts";

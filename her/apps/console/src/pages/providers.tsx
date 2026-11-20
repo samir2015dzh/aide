@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { RpcError } from "@hermesh/her-client";
-import type { ProviderSummary } from "@hermesh/her-protocol";
+import { RpcError } from "@aide/her-client";
+import type { ProviderSummary } from "@aide/her-protocol";
 import alibabacloud from "../assets/providers/alibabacloud.svg?raw";
 import anthropic from "../assets/providers/anthropic.svg?raw";
 import deepseek from "../assets/providers/deepseek.svg?raw";

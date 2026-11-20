@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 	"math/rand/v2"
 	"net"
 	"net/http"
@@ -14,14 +14,14 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/hermeshai/hermesh/gen/go/hermesh/her/v1/herv1connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1/machinev1connect"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/session/v1/sessionv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/gen/go/aide/session/v1/sessionv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type tunnel struct {
@@ -334,8 +334,8 @@ func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) co
 }
 
 var (
-	mHandshake = metrics.Default.Histogram("hermesh_machine_handshake_seconds")
-	mTunnels   = metrics.Default.Gauge("hermesh_machine_tunnels_active")
+	mHandshake = metrics.Default.Histogram("aide_machine_handshake_seconds")
+	mTunnels   = metrics.Default.Gauge("aide_machine_tunnels_active")
 	rpcHists   sync.Map
 )
 
@@ -344,7 +344,7 @@ func rpcHistogram(procedure string) *metrics.Histogram {
 		return h.(*metrics.Histogram)
 	}
 	method := procedure[strings.LastIndexByte(procedure, '/')+1:]
-	h := metrics.Default.Histogram(`hermesh_machine_rpc_seconds{method="` + method + `"}`)
+	h := metrics.Default.Histogram(`aide_machine_rpc_seconds{method="` + method + `"}`)
 	rpcHists.Store(procedure, h)
 	return h
 }

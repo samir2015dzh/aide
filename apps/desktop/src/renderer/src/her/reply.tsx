@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { plain, type ReplyQuote } from "@hermesh/her-client";
+import { plain, type ReplyQuote } from "@aide/her-client";
 import { Icon } from "../icons";
 
 // Replying to a message of the conversation, or to a part of one (docs/her-reply.md): from a message's buttons, or

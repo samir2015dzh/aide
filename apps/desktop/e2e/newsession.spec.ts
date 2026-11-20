@@ -9,8 +9,8 @@ import { launch, sessionList } from "./app";
 /** What the app menu sends the page (文件 › 新建任务…). */
 async function command(app: ElectronApplication, page: Page, c: string) {
   await expect(await sessionList(page)).toBeVisible();
-  type Main = { hermeshTest: { mainWindow(): { webContents: { send(channel: string, c: string): void } } } };
-  await app.evaluate((_, c) => (globalThis as unknown as Main).hermeshTest.mainWindow().webContents.send("command", c), c);
+  type Main = { aideTest: { mainWindow(): { webContents: { send(channel: string, c: string): void } } } };
+  await app.evaluate((_, c) => (globalThis as unknown as Main).aideTest.mainWindow().webContents.send("command", c), c);
 }
 
 test("starting a session in a project, then writing to it under the conversation", async () => {

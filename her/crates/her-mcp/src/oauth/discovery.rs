@@ -181,7 +181,7 @@ mod tests {
             well_known(&url, "oauth-protected-resource"),
             vec!["https://mcp.example.com/.well-known/oauth-protected-resource/v1/mcp", "https://mcp.example.com/.well-known/oauth-protected-resource"]
         );
-        let root = Url::parse("https://hermesh.io").unwrap();
-        assert_eq!(well_known(&root, "oauth-authorization-server"), vec!["https://hermesh.io/.well-known/oauth-authorization-server"]);
+        let root = Url::parse("https://aide.io").unwrap();
+        assert_eq!(well_known(&root, "oauth-authorization-server"), vec!["https://aide.io/.well-known/oauth-authorization-server"]);
     }
 }

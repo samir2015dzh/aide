@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Question, QuestionItem, Session } from "@hermesh/proto/session";
-import { codingAgentTitle, dateOf, minutesLeft } from "@hermesh/core";
-import { AgentLogo } from "@hermesh/ui";
+import type { Question, QuestionItem, Session } from "@aide/proto/session";
+import { codingAgentTitle, dateOf, minutesLeft } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { useNow, useStore } from "../store";

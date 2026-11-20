@@ -6,7 +6,7 @@ import (
 	"errors"
 	"slices"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
 )
 
 // Her's conversations kept on this device (docs/her-server.md §7): for each

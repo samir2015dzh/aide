@@ -53,8 +53,8 @@ func TestDiscover(t *testing.T) {
 }
 
 func TestCenter(t *testing.T) {
-	t.Setenv("HERMESH_CENTER", "")
-	t.Setenv("HERMESH_SERVER", "")
+	t.Setenv("AIDE_CENTER", "")
+	t.Setenv("AIDE_SERVER", "")
 	// No default: nothing typed is nothing to pair with, never a hosted center.
 	if got := Center(""); got != "" {
 		t.Fatalf("default %q", got)
@@ -62,11 +62,11 @@ func TestCenter(t *testing.T) {
 	if got := Center("  "); got != "" {
 		t.Fatalf("blank %q", got)
 	}
-	t.Setenv("HERMESH_SERVER", "relay.lan.example")
+	t.Setenv("AIDE_SERVER", "relay.lan.example")
 	if got := Center(""); got != "https://relay.lan.example" {
-		t.Fatalf("$HERMESH_SERVER %q", got)
+		t.Fatalf("$AIDE_SERVER %q", got)
 	}
-	t.Setenv("HERMESH_CENTER", "https://center.example.com")
+	t.Setenv("AIDE_CENTER", "https://center.example.com")
 	if got := Center(""); got != "https://center.example.com" {
 		t.Fatalf("from the environment %q", got)
 	}
@@ -76,7 +76,7 @@ func TestCenter(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
-	t.Setenv("HERMESH_SERVER", "")
+	t.Setenv("AIDE_SERVER", "")
 	for in, want := range map[string]string{
 		"relay.example.com":                            "https://relay.example.com",
 		"relay.example.com/":                           "https://relay.example.com",
@@ -90,8 +90,8 @@ func TestServer(t *testing.T) {
 			t.Errorf("Server(%q) = %q, want %q", in, got, want)
 		}
 	}
-	t.Setenv("HERMESH_SERVER", "other.example")
+	t.Setenv("AIDE_SERVER", "other.example")
 	if got := Server(""); got != "https://other.example" {
-		t.Errorf("$HERMESH_SERVER: %q", got)
+		t.Errorf("$AIDE_SERVER: %q", got)
 	}
 }

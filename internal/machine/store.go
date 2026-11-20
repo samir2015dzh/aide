@@ -16,10 +16,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/sqlitedb"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/sqlitedb"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 )
 
 var migrations = []string{`
@@ -207,7 +207,7 @@ func OpenStore(path string) (*Store, error) {
 		return nil, err
 	}
 	walOnce.Do(func() {
-		metrics.Default.GaugeFunc("hermesh_machine_wal_bytes", func() int64 {
+		metrics.Default.GaugeFunc("aide_machine_wal_bytes", func() int64 {
 			st, err := os.Stat(path + "-wal")
 			if err != nil {
 				return 0
@@ -225,7 +225,7 @@ func OpenStore(path string) (*Store, error) {
 
 var walOnce sync.Once
 
-var mCheckpoint = metrics.Default.Histogram("hermesh_machine_wal_checkpoint_seconds")
+var mCheckpoint = metrics.Default.Histogram("aide_machine_wal_checkpoint_seconds")
 
 func (s *Store) Close() error {
 	s.ckpt.Close()

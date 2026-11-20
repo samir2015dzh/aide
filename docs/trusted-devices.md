@@ -12,7 +12,7 @@
 > which devices set up then still carry (their root keys stay listed until
 > they are signed out, accounts.md §4–5); profiles (§4.8) are unchanged.
 
-In one sentence: **every device with the Hermesh app is an equal trusted
+In one sentence: **every device with the Aide app is an equal trusted
 device of its owner**: any of them can approve, each is usually a machine as
 well, a new one joins with the approval of one it already has, a lost one is
 removed from any other, and only when none is left does the owner start over.
@@ -35,10 +35,10 @@ removed from any other, and only when none is left does the owner start over.
 | Device | Role | How it is added |
 |---|---|---|
 | A device with the app (Mac, iPhone; Windows later) | **Trusted device**: holds a root key, approves, signs. Also a **machine** unless the owner turns that off (not an iPhone) | The first one creates the owner; each further one joins (4.2) |
-| A Linux computer that runs no coding agents | **Trusted device**, never a machine: its key sealed by a passphrase, approving in a terminal ([onboarding.md](onboarding.md) §9) | `hermeshd device setup` (the first, with the server's claim code) or `hermeshd device join` (approved on one of the owner's devices, then the two digits) |
+| A Linux computer that runs no coding agents | **Trusted device**, never a machine: its key sealed by a passphrase, approving in a terminal ([onboarding.md](onboarding.md) §9) | `aided device setup` (the first, with the server's claim code) or `aided device join` (approved on one of the owner's devices, then the two digits) |
 | A device with the app that should not approve (a work Mac) | **Machine** only | Joins with "可信设备" (Trusted device) off (4.7), approved on any trusted device |
-| A server, a VPS, any `hermeshd` without the app | **Machine** only | `hermeshd pair <connection address>`, approved on any trusted device |
-| A personal agent (`hermesh` CLI) | **Agent** | `hermesh auth login` (a link the owner opens in the web console) or `hermesh auth login <connection address>`, approved on any trusted device |
+| A server, a VPS, any `aided` without the app | **Machine** only | `aided pair <connection address>`, approved on any trusted device |
+| A personal agent (`aide` CLI) | **Agent** | `aide auth login` (a link the owner opens in the web console) or `aide auth login <connection address>`, approved on any trusted device |
 
 ## 3. Identity: a chain of root certs
 
@@ -92,7 +92,7 @@ device's root key.
    account already has an owner: `/app-login` offers **"把这台 Mac 加入你的账号"
    (Add This Mac to Your Account)** first, and "start over" only as the way
    out when no other device is left. It hands the app
-   `hermesh://join?owner=<owner_id>`. (Self-hosted: B is given the connection
+   `aide://join?owner=<owner_id>`. (Self-hosted: B is given the connection
    address, as machines are.)
 2. B creates its root key and submits a device pairing request pinned to that
    owner. It shows the verification code, `VerificationCode(DEVICE, B's key,
@@ -143,8 +143,8 @@ remove the old one from the new one.
 The relay disconnects a removed device's owner connection as soon as the
 chain without it arrives. When it next connects and is refused, it asks the
 relay (`GetInfo` with its owner id) whether it is still listed; if not, the
-app says "这台 Mac 已不在你的 Hermesh 账号里" (This Mac Is No Longer in Your
-Hermesh Account) and offers to reset it (`Leave`), after which it can be set
+app says "这台 Mac 已不在你的 Aide 账号里" (This Mac Is No Longer in Your
+Aide Account) and offers to reset it (`Leave`), after which it can be set
 up or join again. `Leave` also has the signer delete the root key it no
 longer uses. Its own machine keeps its key and projects.
 
@@ -162,11 +162,11 @@ Every Touch ID must stand for one decision the person understands:
 - Setting up the first device, or joining, is one Touch ID: the root cert
   (or the join request), the device cert and, if the person allowed it on
   the authorization page (4.1), the device's own machine are signed
-  together. The prompt follows macOS's "“Hermesh”正在尝试" and names the
-  act ("创建你的 Hermesh 密钥，让这台 Mac 成为你的可信设备").
+  together. The prompt follows macOS's "“Aide”正在尝试" and names the
+  act ("创建你的 Aide 密钥，让这台 Mac 成为你的可信设备").
 - When the person confirms something in the app's own window (a machine or
   an agent with its verification code and scope, a device with its code),
-  the app checks the batch hermeshd asks it to sign against exactly that,
+  the app checks the batch aided asks it to sign against exactly that,
   on the signed bytes: the same key (through the verification code), owner,
   scope and no longer validity, and nothing more. Then it goes straight to
   Touch ID, whose prompt names it ("批准机器「vps-1」加入（核对码 …）"). Anything
@@ -188,7 +188,7 @@ the authorization page; that switch is there only when joining, since the
 first device is the owner. Sharing its agents is then required, and there is
 no Touch ID on it.
 
-1. Its hermeshd creates no root key: its machine signs a machine pairing
+1. Its aided creates no root key: its machine signs a machine pairing
    request pinned to the owner (`RequestJoin` with `machine_only`), and shows
    the verification code. Any trusted device approves it as any machine.
 2. When the owner id came from the center (the person signed in), the
@@ -222,7 +222,7 @@ no Touch ID on it.
    agents, each with its sign-in, default model and projects; renaming,
    pausing), and "账号" (Account) says whose it is and where it connects,
    and lets it become a trusted device (5) or leave. Whatever is this
-   machine's own it manages here, as a trusted device would. hermeshd
+   machine's own it manages here, as a trusted device would. aided
    serves this from the machine in process (`machine.Local`); everything
    that needs the owner's identity (approving, grants, devices, other
    machines) is refused, and the app does not offer it.
@@ -253,13 +253,13 @@ offer neither signing out nor a second owner yet.
 - A profile is a directory of its own,
   `<data>/owner/profiles/<id>/` (its `owner.db`, `keys/device.key`, and its
   own machine in `machine/`), with a root key of its own in the signer.
-  `<data>/owner/current` names the current profile. hermeshd runs only the
+  `<data>/owner/current` names the current profile. aided runs only the
   current one (its relay connection and its machine), and `LocalService`
   acts on it. A root key is never shared: an owner id comes from its first
   device's key, so a device that set up two owners with one key would name
   both the same.
 - A device set up before profiles had one owner at the top of
-  `<data>/owner/`: hermeshd moves it into a profile of its own on start.
+  `<data>/owner/`: aided moves it into a profile of its own on start.
   Its machine stays where it was, in `<data>/machine/`, since its
   worktrees' git metadata names that path; the profile records it
   (`machine_dir`). The signer moves the old key handle (`app/root-key.se`)
@@ -280,7 +280,7 @@ offer neither signing out nor a second owner yet.
 - **Signing in again** (`SignIn`) takes no other device. A hosted center
   wants the person signed in, in the browser, to the account that owns the
   profile: the app opens `/app-login` naming the owners it has (`owners`),
-  the page hands the link code straight back for one of them, and hermeshd
+  the page hands the link code straight back for one of them, and aided
   redeems it with `Claim{resume}`, which the center accepts only when the
   account's owner is the profile's, and which links or changes nothing. A
   self-hosted relay has no accounts, so signing in only checks the relay.
@@ -292,7 +292,7 @@ offer neither signing out nor a second owner yet.
 | Attack | Result | Why |
 |---|---|---|
 | The center routes a join request to its own owner, approves it, and hands B that chain | Fails | No device of the person shows the two digits B needs (4.2 step 4); 1 in 100 to guess, three tries |
-| hermeshd asks the app to sign more than, or other than, what the person approved in the app | Shown in full | The batch does not match what was confirmed (4.6), so the signing window lists it |
+| aided asks the app to sign more than, or other than, what the person approved in the app | Shown in full | The batch does not match what was confirmed (4.6), so the signing window lists it |
 | The center swaps B's key in a join request | Fails | The verification codes differ (as for machines) |
 | A stranger who knows the owner id submits join requests | Prompts the user, who rejects them | Same as machine and agent requests; rate-limited per owner |
 | The center withholds a removal from some machines | They keep trusting the removed device until they see the chain | Bounded as withheld revocations are: trusted devices also push the chain to machines over E2E when online |
@@ -307,12 +307,12 @@ offer neither signing out nor a second owner yet.
 
 | Area | Change |
 |---|---|
-| `proto/hermesh/identity/v1` | `RootCert` without `recovery_public_key`; `RootKey.platform`; `Credentials.root_chain`; `PAIRING_KIND_DEVICE`; `MachineCert.device_key_id` |
+| `proto/aide/identity/v1` | `RootCert` without `recovery_public_key`; `RootKey.platform`; `Credentials.root_chain`; `PAIRING_KIND_DEVICE`; `MachineCert.device_key_id` |
 | `pkg/identity` | `Trust` keeps and verifies a chain; owner id from the first key; `recovery.go` and go-bip39 removed |
 | `pkg/relay` | Stores the chain; admission, `GetInfo` and the machine push use it; `PublishRootCert` appends; device pairing requests pushed to trusted devices |
 | `internal/machine`, `internal/cli` | Keep the chain; pairing installs it |
 | `internal/owner` | Setup without words; `RequestJoin`, `WaitJoin`, `ConfirmJoin` (B); `ApproveDevicePairing` (A); `ListDevices`, `RemoveDevice`, `Leave`; `Recover` removed |
-| Mac app | First run without words; "add this Mac" waiting screen with the code and the final confirmation (from `hermesh://join`, or a connection address on a self-hosted relay); device requests in the approval window; a Devices list with Remove; the removed screen with Leave; self-hosted recovery screens removed |
+| Mac app | First run without words; "add this Mac" waiting screen with the code and the final confirmation (from `aide://join`, or a connection address on a self-hosted relay); device requests in the approval window; a Devices list with Remove; the removed screen with Leave; self-hosted recovery screens removed |
 | Hosted center | `owners.root_chain`; `/app-login` offers joining first; the console lists trusted devices (read only) |
 | Profiles (4.8) | `LocalService` `ListProfiles`, `SwitchProfile`, `AddProfile`, `SignOut`, `SignIn`; `SigningRequest.root_key_id` and `delete_root_key`; `ClaimRequest.resume`; `internal/owner` `Device` over one `Owner` per profile; the signers keep a key per profile; the center redeems `resume` codes and `/app-login` takes `owners`; `TestAccountsOnOneDevice`, hosted `TestDeviceSignsOutAndIn` |
 | Tests | `pkg/identity` `TestRootChain` (join, removal, forks, gaps, rollbacks, foreign chains); `TestUserJourney` A10 (self-hosted); hosted-center `TestTrustedDevicesOnCenter` (join, approve, remove, a join the center completes itself) and `TestMacAppJoin` (the app's own join code); the browser test for the join choice |

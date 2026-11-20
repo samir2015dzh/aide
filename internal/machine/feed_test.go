@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // firstWatch is the first message of a Watch with req.
@@ -72,7 +72,7 @@ func TestWatchResumes(t *testing.T) {
 		t.Fatalf("resumed with nothing changed: %v", again)
 	}
 
-	h.s.changeLog = newChangeLog() // as after hermeshd started again
+	h.s.changeLog = newChangeLog() // as after aided started again
 	restarted := h.firstWatch(&machinev1.WatchRequest{ResumeToken: again.ResumeToken, HeldAt: fresh.SentAt})
 	if !restarted.Reset_ || !slices.Equal(ids(restarted.Sessions), []string{second}) || !slices.Equal(restarted.DeletedSessionIds, []string{first}) {
 		t.Fatalf("after a restart: reset %v, sessions %v, deleted %v", restarted.Reset_, ids(restarted.Sessions), restarted.DeletedSessionIds)

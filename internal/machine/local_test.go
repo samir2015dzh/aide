@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hermeshai/hermesh/pkg/transport"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // TestGone: only the relay saying the machine is no longer its owner's

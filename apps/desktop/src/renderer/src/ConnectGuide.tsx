@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { CustomAgent } from "@hermesh/proto/machine";
-import type { Machine } from "@hermesh/proto/local";
-import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@hermesh/core";
-import { AgentTile, Mark } from "@hermesh/ui";
+import type { CustomAgent } from "@aide/proto/machine";
+import type { Machine } from "@aide/proto/local";
+import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@aide/core";
+import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
 import { local } from "./api";
 import { agentOf, detect, fixes, formOf, formProblem, lines, looksSecret, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
@@ -220,7 +220,7 @@ function Verify({ m, agent, line, ready, place }: { m: Machine; agent: string; l
   // On this computer the folder is picked; another computer's is typed in.
   const add = async () => {
     if (!m.local) return st.set({ sheet: { kind: "addProject", machineId: m.machineId, agent } });
-    const path = await window.hermesh?.pickDirectory();
+    const path = await window.aide?.pickDirectory();
     if (!path) return;
     setAdding(true);
     const projectId = projectIdFromFolder(path.split(/[\\/]/).filter(Boolean).pop() ?? "", new Set(st.projects.filter((p) => p.machineId === m.machineId).map((x) => x.projectId)));
@@ -413,7 +413,7 @@ function CustomFormView({ m, agent, close }: { m: Machine; agent?: CustomAgent; 
     }
   };
   const pickDir = async () => {
-    const p = await window.hermesh?.pickDirectory();
+    const p = await window.aide?.pickDirectory();
     if (p) set({ dir: p });
   };
   return (

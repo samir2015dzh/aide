@@ -1,10 +1,10 @@
 import http from "node:http";
 import { Readable } from "node:stream";
 
-// The renderer reaches hermeshd only through here: requests to
-// app://hermesh/api/<service>/<method> are forwarded to the daemon's Unix
+// The renderer reaches aided only through here: requests to
+// app://aide/api/<service>/<method> are forwarded to the daemon's Unix
 // socket.
-const service = "hermesh.local.v1.LocalService";
+const service = "aide.local.v1.LocalService";
 const forwardedHeaders = ["content-type", "connect-protocol-version", "connect-timeout-ms", "connect-content-encoding", "connect-accept-encoding"];
 
 let open = 0;
@@ -51,7 +51,7 @@ export async function forward(req: Request, apiPath: string, socket: string, cor
     });
     up.on("error", (err) => {
       finish();
-      resolve(new Response(JSON.stringify({ code: "unavailable", message: `hermeshd: ${err.message}` }), {
+      resolve(new Response(JSON.stringify({ code: "unavailable", message: `aided: ${err.message}` }), {
         status: 503,
         headers: { ...cors, "content-type": "application/json" },
       }));

@@ -24,7 +24,7 @@ data class Tool(val callId: String, val name: String, val summary: String, val r
 
 /**
  * A session's events folded into what its page shows (as the iPhone's
- * HermeshSessions Transcript): consecutive tool calls in one group, each
+ * AideSessions Transcript): consecutive tool calls in one group, each
  * with its result; questions with how they were resolved; the draft being
  * written last, until a stored event ends it.
  */

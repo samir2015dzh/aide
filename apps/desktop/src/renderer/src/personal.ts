@@ -1,8 +1,8 @@
-import type { GetStatusResponse } from "@hermesh/proto/local";
-import type { PersonalAgentKind } from "@hermesh/ui";
+import type { GetStatusResponse } from "@aide/proto/local";
+import type { PersonalAgentKind } from "@aide/ui";
 import { i18n } from "../../shared/i18n";
 
-/** A personal agent kind's name as the picker shows it (@hermesh/ui names Other in Chinese, for the console). */
+/** A personal agent kind's name as the picker shows it (@aide/ui names Other in Chinese, for the console). */
 export function kindName(k: PersonalAgentKind): string {
   return k.id === "other" ? i18n.t("common:personal.other") : k.name;
 }

@@ -1,5 +1,5 @@
-import { createdDate, isActive, needsAttention, updatedDate } from "@hermesh/core";
-import { SessionStatus, type Session } from "@hermesh/proto/session";
+import { createdDate, isActive, needsAttention, updatedDate } from "@aide/core";
+import { SessionStatus, type Session } from "@aide/proto/session";
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, nativeTheme, screen, Tray, type NativeImage } from "electron";
 import glyph1x from "../../resources/menuBarIconTemplate.png?inline";
 import glyph2x from "../../resources/menuBarIconTemplate@2x.png?inline";
@@ -45,7 +45,7 @@ export function showTray() {
     panel.setSize(268, Math.ceil(h));
     if (panel.isVisible()) place(panel);
   });
-  // With no window open the app lives in the menu bar only (Open Hermesh at login, in the menu bar only). The panel doesn't count.
+  // With no window open the app lives in the menu bar only (Open Aide at login, in the menu bar only). The panel doesn't count.
   const watch = (w: BrowserWindow) =>
     w.on("closed", () => BrowserWindow.getAllWindows().every((x) => x === w || x === panel) && app.dock?.hide());
   BrowserWindow.getAllWindows().forEach(watch);

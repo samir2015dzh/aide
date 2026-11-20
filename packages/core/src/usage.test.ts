@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { QueryWorkResponseSchema, WorkBucket, WorkDimension, type QueryWorkResponse } from "@hermesh/proto/local";
+import { QueryWorkResponseSchema, WorkBucket, WorkDimension, type QueryWorkResponse } from "@aide/proto/local";
 import { describe, expect, test } from "vitest";
 import { usageRequest, usageSince, usageYear } from "./usage";
 

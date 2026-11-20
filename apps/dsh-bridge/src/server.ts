@@ -1,6 +1,6 @@
-// The bridge's local endpoint, for this computer's hermeshd only.
+// The bridge's local endpoint, for this computer's aided only.
 //
-// Rendezvous: <home>/bridge.json (home is <DSH_HOME>/hermesh-bridge) holds
+// Rendezvous: <home>/bridge.json (home is <DSH_HOME>/aide-bridge) holds
 // the endpoint and a random token, written 0600 in a 0700 folder (on
 // Windows, a folder in the user's profile, which only the user can read).
 // The endpoint is a Unix socket in that folder, or on Windows a named pipe
@@ -26,13 +26,13 @@ const MAX_ID = 200;
 export interface Options {
   /** Where bridge.json (and on Unix the socket) go. */
   home: string;
-  /** This bridge's version, as hermeshd shows it. */
+  /** This bridge's version, as aided shows it. */
   version: string;
   promptTimeoutMs?: number;
   platform?: NodeJS.Platform;
 }
 
-/** What hermeshd reads to find the bridge. */
+/** What aided reads to find the bridge. */
 export interface Rendezvous {
   protocol: number;
   endpoint: string;
@@ -64,7 +64,7 @@ export class BridgeServer {
     mkdirSync(this.opts.home, { recursive: true, mode: 0o700 });
     if (this.opts.platform !== "win32") chmodSync(this.opts.home, 0o700);
     this.endpoint =
-      this.opts.platform === "win32" ? `\\\\.\\pipe\\hermesh-dsh-${randomBytes(16).toString("hex")}` : join(this.opts.home, "bridge.sock");
+      this.opts.platform === "win32" ? `\\\\.\\pipe\\aide-dsh-${randomBytes(16).toString("hex")}` : join(this.opts.home, "bridge.sock");
     if (this.opts.platform !== "win32") {
       // The kernel cuts longer socket paths short (sun_path is 104–108 bytes).
       if (Buffer.byteLength(this.endpoint) > 100) throw new Error(`socket path too long: ${this.endpoint}`);

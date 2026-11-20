@@ -1,5 +1,5 @@
 import type { TaskScript } from "./script.ts";
-import type { Avatar, AvatarHue, AvatarShape, BotSummary, LastMessage, RoutineSummary, SessionState, SessionSummary, TranscriptItem, Usage } from "@hermesh/her-protocol";
+import type { Avatar, AvatarHue, AvatarShape, BotSummary, LastMessage, RoutineSummary, SessionState, SessionSummary, TranscriptItem, Usage } from "@aide/her-protocol";
 
 // A heavy owner for the mock (frontend stress tests): many bots, many
 // sessions, long conversations, and a stream of list changes. Everything is
@@ -56,7 +56,7 @@ const shapes: AvatarShape[] = ["tall", "dot", "smile", "wink", "lid", "bar", "si
 const roles = ["研究", "日报", "读书", "周报", "翻译", "客服", "运维", "招聘", "法务", "采购", "竞品", "舆情", "健身", "数据", "代码", "测试", "设计", "文案", "会议", "差旅"];
 const owners = ["小助手", "分析师", "秘书", "巡检员", "观察员", "管家", "专员", "顾问", "记录员", "整理员"];
 const projects = [
-  "hermesh", "calc-lib", "web-console", "billing", "infra", "ml-pipeline", "mobile-app", "docs-site", "data-lake", "search",
+  "aide", "calc-lib", "web-console", "billing", "infra", "ml-pipeline", "mobile-app", "docs-site", "data-lake", "search",
   "auth", "gateway", "payments", "crm", "analytics", "notebook", "scheduler", "etl", "cli", "sdk-js",
 ];
 const topics = [

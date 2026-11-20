@@ -3,30 +3,28 @@
 # release files (its package and signed feed) on 127.0.0.1:8765, where
 # both test builds look, opens the app, which downloads the newer version
 # and has Squirrel install it beside itself; opened again, the app is the
-# newer version, places its programs and restarts hermeshd on them. Then
+# newer version, places its programs and restarts aided on them. Then
 # it uninstalls. Both builds come from package-win.mjs with
-# HERMESH_UPDATE_FEED=http://127.0.0.1:8765, the same
-# HERMESH_RELEASE_URL, and a key of the test's (HERMESH_RELEASE_PUBKEY_FILE,
+# AIDE_UPDATE_FEED=http://127.0.0.1:8765, the same
+# AIDE_RELEASE_URL, and a key of the test's (AIDE_RELEASE_PUBKEY_FILE,
 # RELEASE_SIGNING_KEY_FILE).
 #   check-windows-update.ps1 <older Setup.exe> <newer build's dist> <newer version>
 param([Parameter(Mandatory)][string]$Setup, [Parameter(Mandatory)][string]$Release, [Parameter(Mandatory)][string]$Version)
 $ErrorActionPreference = "Stop"
 
-$root = Join-Path $env:LOCALAPPDATA "HermeshApp"
-$bin = Join-Path $env:LOCALAPPDATA "Programs\Hermesh\bin"
+$root = Join-Path $env:LOCALAPPDATA "AideApp"
+$bin = Join-Path $env:LOCALAPPDATA "Programs\Aide\bin"
 $link = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Aide.lnk"
-# The shortcut an install from before the app was called Aide has (RENAME-AIDE.md D9).
-$oldLink = Join-Path (Split-Path $link) "Hermesh.lnk"
-$pipe = Join-Path $env:LOCALAPPDATA "Hermesh\run\hermeshd.pipe"
+$pipe = Join-Path $env:LOCALAPPDATA "Aide\run\aided.pipe"
 function Fail($what) {
   # What there is, to see why.
   Get-ChildItem $root | Format-Table Name, LastWriteTime
-  Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Hermesh|hermeshdw|Update)\.exe$' } | Format-Table ProcessId, ExecutablePath, CommandLine -Wrap
-  Get-Content (Join-Path $env:LOCALAPPDATA "Hermesh\logs\setup.log") -Tail 20 -ErrorAction SilentlyContinue
+  Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Aide|aidedw|Update)\.exe$' } | Format-Table ProcessId, ExecutablePath, CommandLine -Wrap
+  Get-Content (Join-Path $env:LOCALAPPDATA "Aide\logs\setup.log") -Tail 20 -ErrorAction SilentlyContinue
   Get-Content (Join-Path $root "Squirrel-Update.log") -Tail 40 -ErrorAction SilentlyContinue
   throw "check-windows-update: $what"
 }
-function Daemons { @(Get-CimInstance Win32_Process -Filter "Name='hermeshdw.exe'" | ForEach-Object ProcessId) }
+function Daemons { @(Get-CimInstance Win32_Process -Filter "Name='aidedw.exe'" | ForEach-Object ProcessId) }
 function Wait($what, $seconds, [scriptblock]$done) {
   for ($i = 0; $i -lt $seconds; $i++) { if (& $done) { return }; Start-Sleep 1 }
   Fail "waited $seconds s for $what"
@@ -40,27 +38,24 @@ try {
   Start-Process $link
   Wait "the daemon" 90 { Test-Path $pipe }
   $before = Daemons
-  # As installed by a Hermesh: its shortcut has the old name, which the update moves to Aide.lnk.
-  Move-Item $link $oldLink
 
   Write-Host "> waiting for the app to find, download and install $Version"
   # Installed once Squirrel has run the new version's step (setup.log) and is done.
-  $log = Join-Path $env:LOCALAPPDATA "Hermesh\logs\setup.log"
+  $log = Join-Path $env:LOCALAPPDATA "Aide\logs\setup.log"
   Wait "--squirrel-updated $Version" 300 { (Get-Content $log -ErrorAction SilentlyContinue) -match "--squirrel-updated $Version" }
   Wait "Update.exe to finish" 60 { -not (Get-Process Update -ErrorAction SilentlyContinue) }
 
-  if (-not (Test-Path $link)) { Fail "the update made no Aide.lnk" }
-  if (Test-Path $oldLink) { Fail "Hermesh.lnk stayed beside Aide.lnk" }
+  if (-not (Test-Path $link)) { Fail "the update removed Aide.lnk" }
 
   Write-Host "> opening it again"
-  Stop-Process -Name Hermesh -Force
+  Stop-Process -Name Aide -Force
   Start-Sleep 2
   Start-Process $link
-  Wait "the app at $Version" 60 { Get-CimInstance Win32_Process -Filter "Name='Hermesh.exe'" | Where-Object { $_.ExecutablePath -like "*\app-$Version\*" } }
-  Wait "its programs" 60 { (& (Join-Path $bin "hermesh.exe") version) -eq $Version -and (& (Join-Path $bin "aide.exe") version) -eq $Version }
-  # Not busy, the app restarts hermeshd 30 s after seeing its older version.
-  Wait "hermeshd restarted" 120 { $now = Daemons; $now.Count -gt 0 -and -not ($now | Where-Object { $before -contains $_ }) }
-  Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Hermesh|hermeshdw)\.exe$' } | Format-Table ProcessId, ExecutablePath -Wrap
+  Wait "the app at $Version" 60 { Get-CimInstance Win32_Process -Filter "Name='Aide.exe'" | Where-Object { $_.ExecutablePath -like "*\app-$Version\*" } }
+  Wait "its programs" 60 { (& (Join-Path $bin "aide.exe") version) -eq $Version -and (& (Join-Path $bin "aide.exe") version) -eq $Version }
+  # Not busy, the app restarts aided 30 s after seeing its older version.
+  Wait "aided restarted" 120 { $now = Daemons; $now.Count -gt 0 -and -not ($now | Where-Object { $before -contains $_ }) }
+  Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Aide|aidedw)\.exe$' } | Format-Table ProcessId, ExecutablePath -Wrap
 
   Write-Host "> uninstalling"
   $p = Start-Process -FilePath (Join-Path $root "Update.exe") -ArgumentList "--uninstall", "-s" -Wait -PassThru

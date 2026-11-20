@@ -11,13 +11,13 @@ import (
 	"github.com/oklog/ulid/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Messages to the machine's sessions (docs/agent-messages.md §7.1, §7.2):
@@ -111,7 +111,7 @@ func inboxAddress(a *inboxv1.Address) string {
 
 // letterText is what the coding agent is given of a message. The agent
 // that started the session speaks to it as with `session send`; anyone
-// else's words come under a line Hermesh writes, saying who wrote them.
+// else's words come under a line Aide writes, saying who wrote them.
 func letterText(m *inboxv1.Message, name string, creator bool) string {
 	if creator {
 		return m.Text

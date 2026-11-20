@@ -1,4 +1,4 @@
-// A Her console's address (docs/her-server.md §5.3): this computer's hermeshd
+// A Her console's address (docs/her-server.md §5.3): this computer's aided
 // serves it on 127.0.0.1, under a token in its path (GetHerConsole). Its
 // window opens nothing else: other pages of that origin only, https links in
 // the browser.

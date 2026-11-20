@@ -6,26 +6,25 @@
 # tools run) and (for machines) logs the machine in to your server with your
 # account and password (docs/accounts.md).
 #
-#   Add a machine:   curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- <server>
+#   Add a machine:   curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- <server>
 #                    (without one: $AIDE_SERVER; there is no default server). It asks for the
 #                    account and password, or takes them from $AIDE_ACCOUNT and $AIDE_PASSWORD.
-#   Agent CLI only:  curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli
+#   Agent CLI only:  curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- --cli
 #   As root:         … | sh -s -- --user dev   (installs for that user, creating it if needed; without it, asks, and root is the default)
 #
-# Environment: AIDE_VERSION (default latest), AIDE_BIN_DIR (default ~/.local/bin); the HERMESH_ names too
+# Environment: AIDE_VERSION (default latest), AIDE_BIN_DIR (default ~/.local/bin); the AIDE_ names too
 set -eu
 
-REPO="samir2015dzh/hermesh"
-# Each AIDE_ variable, or the HERMESH_ one it was before the product was called Aide.
-HERMESH_VERSION="${AIDE_VERSION:-${HERMESH_VERSION:-}}"
-HERMESH_BIN_DIR="${AIDE_BIN_DIR:-${HERMESH_BIN_DIR:-}}"
-HERMESH_DOWNLOAD_BASE="${AIDE_DOWNLOAD_BASE:-${HERMESH_DOWNLOAD_BASE:-}}"
-HERMESH_DATA_DIR="${AIDE_DATA_DIR:-${HERMESH_DATA_DIR:-}}"
-VERSION="${HERMESH_VERSION:-latest}"
-BIN_DIR="${HERMESH_BIN_DIR:-$HOME/.local/bin}"
+REPO="samir2015dzh/aide"
+AIDE_VERSION="${AIDE_VERSION:-}"
+AIDE_BIN_DIR="${AIDE_BIN_DIR:-}"
+AIDE_DOWNLOAD_BASE="${AIDE_DOWNLOAD_BASE:-}"
+AIDE_DATA_DIR="${AIDE_DATA_DIR:-}"
+VERSION="${AIDE_VERSION:-latest}"
+BIN_DIR="${AIDE_BIN_DIR:-$HOME/.local/bin}"
 
 # Release signing public key (ECDSA P-256). Replaced at release time.
-PUBKEY='__HERMESH_RELEASE_PUBKEY__'
+PUBKEY='__AIDE_RELEASE_PUBKEY__'
 
 die() { echo "aide install: $*" >&2; exit 1; }
 
@@ -66,7 +65,7 @@ fi
 printf '\n%s  /\\  /\\%s\n%s /  \\/  \\   H E R M E S H%s\n' "$CYAN" "$RESET" "$CYAN" "$RESET"
 printf '%s             Your coding agents, connected.%s\n\n' "$DIM" "$RESET"
 
-# Hermesh runs as the user it is installed for. As root, the installer says
+# Aide runs as the user it is installed for. As root, the installer says
 # so and installs for root, or for another user you name.
 AS=""
 if [ "$(id -u)" = 0 ] && [ -z "$FOR_USER" ] && [ -n "$TTY" ]; then
@@ -102,7 +101,7 @@ elif [ "$(id -u)" = 0 ]; then
   else
     echo "✓ Installing for $FOR_USER"
   fi
-  BIN_DIR="${HERMESH_BIN_DIR:-$home/.local/bin}"
+  BIN_DIR="${AIDE_BIN_DIR:-$home/.local/bin}"
   AS="runuser -u $FOR_USER -- env HOME=$home USER=$FOR_USER LOGNAME=$FOR_USER XDG_RUNTIME_DIR=/run/user/$uid"
 elif [ -n "$FOR_USER" ]; then
   die "--user is for root; you are installing for yourself already"
@@ -111,8 +110,8 @@ fi
 command -v curl >/dev/null || die "curl is required"
 command -v openssl >/dev/null || die "openssl is required to verify the download"
 
-if [ -n "${HERMESH_DOWNLOAD_BASE:-}" ]; then
-  BASE="$HERMESH_DOWNLOAD_BASE"
+if [ -n "${AIDE_DOWNLOAD_BASE:-}" ]; then
+  BASE="$AIDE_DOWNLOAD_BASE"
 elif [ "$VERSION" = latest ]; then
   BASE="https://github.com/$REPO/releases/latest/download"
 else
@@ -132,11 +131,11 @@ prepare_data_dir() {
   if [ -n "$AS" ]; then
     target_home="$home"
     target_uid="$uid"
-    # Match the environment runuser passes to hermeshd.
+    # Match the environment runuser passes to aided.
     data_base="${XDG_DATA_HOME:-$home/.local/share}"
   fi
-  DATA_ENTRY="$data_base/hermesh"
-  DATA_ENTRY="${HERMESH_DATA_DIR:-$DATA_ENTRY}"
+  DATA_ENTRY="$data_base/aide"
+  DATA_ENTRY="${AIDE_DATA_DIR:-$DATA_ENTRY}"
 
   printf '\n%s  Where should Aide keep its data?%s\n' "$BOLD" "$RESET"
   echo '  Sessions, logs and worktrees will live here.'
@@ -161,14 +160,14 @@ prepare_data_dir() {
   recommended="$DATA_ENTRY"
   best_free=0
   home_on_volume=false
-  if [ "$OS" = linux ] && [ -f /etc.defaults/VERSION ] && [ -z "${HERMESH_DATA_DIR:-}" ]; then
+  if [ "$OS" = linux ] && [ -f /etc.defaults/VERSION ] && [ -z "${AIDE_DATA_DIR:-}" ]; then
     awk '$2 ~ /^\/volume[0-9]+$/ && ($3 == "btrfs" || $3 == "ext4") && $4 ~ /(^|,)rw(,|$)/ {print $2}' /proc/mounts > "$TMP/mounts"
     while IFS= read -r volume; do
       $AS test -w "$volume" || continue
       available="$(free_kb "$volume")"
       [ "$available" -ge 2097152 ] || continue
       case "$DATA_ENTRY" in "$volume"/*) home_on_volume=true ;; esac
-      destination="$volume/@hermesh-$target_uid"
+      destination="$volume/@aide-$target_uid"
       # A pre-existing destination might belong to another installation.
       if [ -e "$destination" ] || [ -L "$destination" ]; then continue; fi
       printf '%s\n' "$destination" >> "$TMP/volumes"
@@ -277,15 +276,15 @@ show_space() {
 }
 
 case "$MODE" in
-  cli) BINS="hermesh" ;;
-  *) BINS="hermeshd hermesh" ;;
+  cli) BINS="aide" ;;
+  *) BINS="aided aide" ;;
 esac
 
 echo "› downloading checksums"
 curl -fsSL "$BASE/checksums.txt" -o "$TMP/checksums.txt"
 curl -fsSL "$BASE/checksums.txt.sig" -o "$TMP/checksums.txt.sig"
 case "$PUBKEY" in
-  __HERMESH*) die "this installer has no release signing key; download a released install.sh" ;;
+  __AIDE*) die "this installer has no release signing key; download a released install.sh" ;;
 esac
 printf '%s\n' "$PUBKEY" > "$TMP/pub.pem"
 openssl dgst -sha256 -verify "$TMP/pub.pem" -signature "$TMP/checksums.txt.sig" "$TMP/checksums.txt" >/dev/null 2>&1 \
@@ -320,16 +319,8 @@ fi
 for b in $BINS; do
   fetch "$b-$OS-$ARCH"
   put "$TMP/$b-$OS-$ARCH" "$BIN_DIR/$b"
-  # The name it has since the product was called Aide, a link to the file:
-  # services and agents' hooks run the file by the name it had, and updates
-  # replace it there (RENAME-AIDE.md B1, B2).
-  case "$b" in hermeshd) alias=aided ;; hermesh) alias=aide ;; *) alias= ;; esac
-  if [ -n "$alias" ]; then
-    ln -sfn "$b" "$BIN_DIR/$alias"
-    [ -z "$AS" ] || chown -h "$FOR_USER:$(id -gn "$FOR_USER")" "$BIN_DIR/$alias"
-  fi
 done
-# Her's kernel and its console, beside hermeshd, which runs them while Her
+# Her's kernel and its console, beside aided, which runs them while Her
 # is on for this machine (docs/her-server.md §6.4): from a release that has
 # them for this system.
 if [ "$MODE" = machine ] && grep -q " her-$OS-$ARCH\$" "$TMP/checksums.txt"; then
@@ -386,22 +377,22 @@ set -- login
 # The account, when given in the environment, goes along to aided login
 # (runuser keeps no environment of its own); the password goes on its
 # stdin, never on a command line.
-ACCOUNT="${AIDE_ACCOUNT:-${HERMESH_ACCOUNT:-}}"
-PASSWORD="${AIDE_PASSWORD:-${HERMESH_PASSWORD:-}}"
+ACCOUNT="${AIDE_ACCOUNT:-}"
+PASSWORD="${AIDE_PASSWORD:-}"
 [ -n "$ACCOUNT" ] && set -- "$@" --account "$ACCOUNT"
-# The terminal goes to hermeshd as its stdin, for what it asks.
+# The terminal goes to aided as its stdin, for what it asks.
 if [ -n "$PASSWORD" ]; then
-  printf '%s\n' "$PASSWORD" | env -u AIDE_PASSWORD -u HERMESH_PASSWORD $AS "$BIN_DIR/hermeshd" "$@" --password-stdin
+  printf '%s\n' "$PASSWORD" | env -u AIDE_PASSWORD $AS "$BIN_DIR/aided" "$@" --password-stdin
 elif [ -n "$TTY" ]; then
-  $AS "$BIN_DIR/hermeshd" "$@" <"$TTY"
+  $AS "$BIN_DIR/aided" "$@" <"$TTY"
 else
-  $AS "$BIN_DIR/hermeshd" "$@"
+  $AS "$BIN_DIR/aided" "$@"
 fi
 # Installed by root: its commands, as the service, are that user's.
 if [ -n "$AS" ]; then
   echo
   echo "Aide runs as $FOR_USER: run these as $FOR_USER (su - $FOR_USER)"
-  if ! su - "$FOR_USER" -c 'command -v hermeshd' >/dev/null 2>&1; then
+  if ! su - "$FOR_USER" -c 'command -v aided' >/dev/null 2>&1; then
     echo "  ($FOR_USER's PATH lacks $BIN_DIR: echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> $home/.profile)"
   fi
 fi

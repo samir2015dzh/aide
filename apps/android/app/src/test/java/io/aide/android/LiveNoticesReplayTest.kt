@@ -25,7 +25,7 @@ import java.util.Locale
  * agent connects, starts sessions that ask and fail, the owner starts one,
  * the relay goes away and comes back while a session asks), recorded as the
  * app reads it (watch-recorded.jsonl; a fresh one from
- * HERMESH_ANDROID_WATCH_RECORD when set), played through World and
+ * AIDE_ANDROID_WATCH_RECORD when set), played through World and
  * LiveNotices as AppModel does. The recording is from before accounts: it
  * also carries the agent's request to connect (the Watch's pairings, gone
  * since), which the app no longer reads, so nothing is told of it.
@@ -43,7 +43,7 @@ class LiveNoticesReplayTest {
     private data class Step(val shown: List<Notice>, val withdrawn: List<String>, val link: Link)
 
     @Test fun aRecordedWatch() {
-        val lines = (System.getenv("HERMESH_ANDROID_WATCH_RECORD")?.takeIf { it.isNotEmpty() }?.let { File(it).readLines() }
+        val lines = (System.getenv("AIDE_ANDROID_WATCH_RECORD")?.takeIf { it.isNotEmpty() }?.let { File(it).readLines() }
             ?: javaClass.getResource("/watch-recorded.jsonl")!!.readText().lines()).filter { it.isNotBlank() }
         val live = LiveNotices()
         var w = World()

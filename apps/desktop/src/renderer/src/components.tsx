@@ -1,7 +1,7 @@
-import { SessionLink, SessionStatus, type Session } from "@hermesh/proto/session";
-import { codingAgentShort, codingAgentTitle, isActive, isFailed, livenessOf, sessionStateOf, stateLine, statusTitle, type StateView } from "@hermesh/core";
+import { SessionLink, SessionStatus, type Session } from "@aide/proto/session";
+import { codingAgentShort, codingAgentTitle, isActive, isFailed, livenessOf, sessionStateOf, stateLine, statusTitle, type StateView } from "@aide/core";
 import { useNow, useStore } from "./store";
-import { AgentLogo, AgentTile, grantColor, grantLogo, grantPicture, type GrantLook, type PersonalAgentKind } from "@hermesh/ui";
+import { AgentLogo, AgentTile, grantColor, grantLogo, grantPicture, type GrantLook, type PersonalAgentKind } from "@aide/ui";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -165,7 +165,7 @@ export function PopMenu({ label, items, anchor, keyboard, onClose }: { label: st
  */
 export function ConnectLink({ line, children }: { line?: string; children: ReactNode }) {
   return (
-    <button type="button" className="link" onClick={() => window.hermesh?.openSettings(line ? `connect/${line}` : "connect")}>
+    <button type="button" className="link" onClick={() => window.aide?.openSettings(line ? `connect/${line}` : "connect")}>
       {children}
     </button>
   );

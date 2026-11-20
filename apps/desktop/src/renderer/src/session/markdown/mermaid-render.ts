@@ -25,7 +25,7 @@ export function renderDiagram(source: string, dark: boolean): Promise<string> {
       flowchart: { htmlLabels: false, useMaxWidth: false, padding: 16 },
       sequence: { useMaxWidth: false },
     });
-    const { svg } = await mermaid.render(`hermesh-diagram-${++serial}`, source);
+    const { svg } = await mermaid.render(`aide-diagram-${++serial}`, source);
     cache.set(key, svg);
     while (cache.size > 30) cache.delete(cache.keys().next().value!);
     return svg;

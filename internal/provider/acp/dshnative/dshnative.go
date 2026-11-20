@@ -1,5 +1,5 @@
 // Package dshnative reads the sessions DeepSeek Harness (DSH) keeps in its
-// home, so the owner can see those Hermesh did not start: the ones they
+// home, so the owner can see those Aide did not start: the ones they
 // opened in DSH Desktop, or another tool did. It only reads DSH's files,
 // never writes in its home, and never takes a session's write lock: it only
 // looks whether a process holds it.
@@ -25,8 +25,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // ErrNotFound: DSH has no session by that id.

@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 use crate::paths::HerHome;
 
-const RELEASES: &str = "https://github.com/hermeshai/her-releases/releases";
+const RELEASES: &str = "https://github.com/samir2015dzh/aide/releases";
 
 /// The release signing key's public half, base64. Its private half stays with the maintainers.
 const PUBLIC_KEY: &str = include_str!("release_public_key.txt");

@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import { imageRatio, imageRows, readSent, type BotFile, type RpcClient } from "@hermesh/her-client";
+import { imageRatio, imageRows, readSent, type BotFile, type RpcClient } from "@aide/her-client";
 import { errorText, useStore } from "../store";
 import { Markdown } from "../session/Markdown";
 import { Lightbox, Tile } from "./Composer";
@@ -46,7 +46,7 @@ export function useSaveFile(bot: string) {
   const st = useStore();
   const her = useHer();
   return (path: string, name: string, snapshot?: string) =>
-    readSent({ path, snapshot }, (from) => window.hermesh?.saveHerFile(her.machine.machineId, bot, from) ?? Promise.reject(new Error("no app"))).then(
+    readSent({ path, snapshot }, (from) => window.aide?.saveHerFile(her.machine.machineId, bot, from) ?? Promise.reject(new Error("no app"))).then(
       () => st.show(t("files.saved", { name })),
       (e) => st.show(errorText(e)),
     );

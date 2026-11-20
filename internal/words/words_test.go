@@ -40,7 +40,7 @@ func TestNoMacOnlyWords(t *testing.T) {
 					return true
 				}
 				s, _ := strconv.Unquote(lit.Value)
-				for _, w := range []string{"your Mac", "Hermesh.app", "Touch ID"} {
+				for _, w := range []string{"your Mac", "Aide.app", "Touch ID"} {
 					if strings.Contains(s, w) {
 						t.Errorf("%s: %q says %q", fset.Position(lit.Pos()), s, w)
 					}

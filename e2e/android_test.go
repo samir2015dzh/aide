@@ -16,15 +16,15 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	hermeshcore "github.com/hermeshai/hermesh/cmd/hermesh-mobile/android"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	aidecore "github.com/samir2015dzh/aide/cmd/aide-mobile/android"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // TestAndroidCore is acceptance 2 of the Android app (WO #1) on the core
-// the app binds (cmd/hermesh-mobile/android), driven through LocalService
+// the app binds (cmd/aide-mobile/android), driven through LocalService
 // as the app drives it: the phone logs in with the account and password
 // (nothing signed on it, no one approving), sees an agent that logged in,
 // follows that agent's session live and answers its question, and the
@@ -33,7 +33,7 @@ func TestAndroidCore(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
 	st, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
 	if err != nil {
@@ -41,11 +41,11 @@ func TestAndroidCore(t *testing.T) {
 	}
 
 	// The app starts its core, and logs in.
-	info, err := hermeshcore.Start(t.TempDir())
+	info, err := aidecore.Start(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(hermeshcore.Pause)
+	t.Cleanup(aidecore.Pause)
 	hc := &http.Client{Transport: &bearer{token: info.Token, next: http.DefaultTransport}}
 	phone := localv1connect.NewLocalServiceClient(hc, fmt.Sprintf("http://127.0.0.1:%d", info.Port))
 	if _, err := phone.LogIn(ctx, &localv1.LogInRequest{RelayUrl: st.RelayUrl, Account: testAccount, Password: testPassword, Label: "Xiaomi 15 Pro", Platform: "android"}); err != nil {
@@ -63,13 +63,13 @@ func TestAndroidCore(t *testing.T) {
 	// The app's Watch, as the Kotlin app reads it (the JSON codec): its
 	// notices come from it (push/LiveNotices.kt) while the connection
 	// service keeps the core running. Recorded for the app's
-	// LiveNoticesReplayTest (HERMESH_ANDROID_WATCH_RECORD names the file).
+	// LiveNoticesReplayTest (AIDE_ANDROID_WATCH_RECORD names the file).
 	watch := watchAsTheApp(t, hc, fmt.Sprintf("http://127.0.0.1:%d", info.Port))
 
 	// An agent (the cloud assistant) logs in with the account; the phone's
 	// Watch brings it, with no one approving.
-	museEnv := []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "muse")}
-	bin := filepath.Join(w.bin, "hermesh")
+	museEnv := []string{"AIDE_HOME=" + filepath.Join(w.tmp, "muse")}
+	bin := filepath.Join(w.bin, "aide")
 	if r := run(t, append(slices.Clone(museEnv), loginEnv()...), 30*time.Second, bin, "auth", "login", w.server, "--name", "Muse"); r.code != 0 {
 		t.Fatalf("login: %+v", r)
 	}
@@ -257,7 +257,7 @@ func (w *appWatch) wait(t *testing.T, what string, cond func(*localv1.WatchRespo
 }
 
 func (w *appWatch) save(t *testing.T) {
-	out := os.Getenv("HERMESH_ANDROID_WATCH_RECORD")
+	out := os.Getenv("AIDE_ANDROID_WATCH_RECORD")
 	if out == "" {
 		return
 	}

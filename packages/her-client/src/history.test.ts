@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { SessionInfo, TranscriptItem } from "@hermesh/her-protocol";
+import type { SessionInfo, TranscriptItem } from "@aide/her-protocol";
 import { conversation } from "./steps.ts";
 import { fromSnapshot, latestPage, withHistory } from "./session.ts";
 

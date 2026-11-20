@@ -111,7 +111,7 @@ export function squirrelFailure(message: string): UpdateFailure {
 
 /** The release's page, with its notes. */
 export function releaseNotesURL(version: string): string {
-  return `https://github.com/samir2015dzh/hermesh/releases/tag/v${version}`;
+  return `https://github.com/samir2015dzh/aide/releases/tag/v${version}`;
 }
 
 /**
@@ -122,7 +122,7 @@ export function releaseNotesURL(version: string): string {
 export function releaseFeed(r: { version: string; url: string; date: Date; notes?: ReleaseNote[] }) {
   return {
     currentRelease: r.version,
-    ...(r.notes && { hermeshNotes: r.notes }),
+    ...(r.notes && { aideNotes: r.notes }),
     releases: [
       {
         version: r.version,

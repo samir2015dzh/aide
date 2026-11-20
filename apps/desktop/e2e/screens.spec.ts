@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 import { fixture, launch, onWindows, snap } from "./app";
 
 // The website's download page shows the app in a demo world (e2e
-// TestScreens, HERMESH_SCREENS_DEMO=zh|en), on a Mac or a PC: the overview, a finished
+// TestScreens, AIDE_SCREENS_DEMO=zh|en), on a Mac or a PC: the overview, a finished
 // session, and a question the agent waits on,
 // dark, at 1440×900 in twice as many pixels. It is no test of the app, and runs only then.
-const lang = process.env.HERMESH_SCREENS_DEMO;
+const lang = process.env.AIDE_SCREENS_DEMO;
 test.skip(!lang, "the download page's screenshots (TestScreens)");
 
 const zh = lang === "zh";
@@ -16,9 +16,9 @@ test("the download page's screenshots", async () => {
   test.setTimeout(5 * 60_000);
   const { app, page } = await launch(fixture.socket, { systemLanguages: [zh ? "zh-Hans" : "en"], dark: true, args: ["--force-device-scale-factor=2"] });
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1440, 900));
-  type Main = { hermeshTest: { mainWindow(): { webContents: { send(channel: string, ...args: unknown[]): void } } } };
+  type Main = { aideTest: { mainWindow(): { webContents: { send(channel: string, ...args: unknown[]): void } } } };
   // As a window in front: the tests' windows never take focus (background.cjs).
-  const front = () => app.evaluate(() => (globalThis as unknown as Main).hermeshTest.mainWindow().webContents.send("window-focus", true));
+  const front = () => app.evaluate(() => (globalThis as unknown as Main).aideTest.mainWindow().webContents.send("window-focus", true));
   const sessions = page.getByRole("list", { name: t("任务", "Tasks") });
   const open = async (title: string) => {
     await sessions.getByText(title, { exact: true }).click();

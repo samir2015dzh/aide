@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { RpcClient, SessionView } from "@hermesh/her-client";
+import type { RpcClient, SessionView } from "@aide/her-client";
 import { Icon } from "../icons";
 import { errorText, useNow, useStore } from "../store";
 import { cardNow, cardShown, connectBody, filled, type Card, type CardAnswer, type CardStatus } from "./cards";
@@ -42,7 +42,7 @@ export function SecureCard({ card, view, rpc, session }: { card: Card; view: Ses
   const signIn = () => {
     if (!body) return;
     signing.set(key, "running");
-    (window.hermesh ? window.hermesh.signInHerConnector(machineId, body.name) : Promise.reject(new Error("no bridge")))
+    (window.aide ? window.aide.signInHerConnector(machineId, body.name) : Promise.reject(new Error("no bridge")))
       // How it went, her says on the card.
       .catch((e: unknown) => st.show(errorText(e)))
       .finally(() => signing.get(key) === "running" && signing.set(key, "ended"));
@@ -112,7 +112,7 @@ export function SecureCard({ card, view, rpc, session }: { card: Card; view: Ses
     void answer({ decision: "approve", ops: filled(card.ops, typed) });
   };
   const cancel = () => {
-    if (shown.kind === "signIn") window.hermesh?.cancelHerConnector(machineId, body.name);
+    if (shown.kind === "signIn") window.aide?.cancelHerConnector(machineId, body.name);
     void answer({ decision: "decline" });
   };
 
@@ -145,7 +145,7 @@ export function SecureCard({ card, view, rpc, session }: { card: Card; view: Ses
             <button className="btn" disabled={sending || !rpc} onClick={cancel}>
               {t("card.cancel")}
             </button>
-            <button className="btn" onClick={() => (signing.get(key) === "running" ? window.hermesh?.reopenHerConnector(machineId, body.name) : signIn())}>
+            <button className="btn" onClick={() => (signing.get(key) === "running" ? window.aide?.reopenHerConnector(machineId, body.name) : signIn())}>
               {t("card.reopen")}
             </button>
           </div>

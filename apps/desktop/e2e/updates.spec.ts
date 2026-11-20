@@ -12,7 +12,7 @@ const requests = (app: ElectronApplication) => app.evaluate(() => (globalThis as
 /** Opens the menu bar panel; another app taking focus closes it (the specs run side by side), so it opens it again then. */
 async function openTray(app: ElectronApplication) {
   const tray = () => app.evaluate(() => {
-    const t = (globalThis as unknown as { hermeshTest: { tray(): { open: boolean; toggle(): void } } }).hermeshTest.tray();
+    const t = (globalThis as unknown as { aideTest: { tray(): { open: boolean; toggle(): void } } }).aideTest.tray();
     if (!t.open) t.toggle();
     return t.open;
   });
@@ -22,8 +22,8 @@ async function openTray(app: ElectronApplication) {
 }
 async function open(app: ElectronApplication, main: Page) {
   const existing = app.windows().find((p) => p.url().endsWith("#updates"));
-  if (existing) { await main.evaluate(() => window.hermesh?.openUpdates()); return existing; }
-  const [updatesPage] = await Promise.all([app.waitForEvent("window"), main.evaluate(() => window.hermesh?.openUpdates())]);
+  if (existing) { await main.evaluate(() => window.aide?.openUpdates()); return existing; }
+  const [updatesPage] = await Promise.all([app.waitForEvent("window"), main.evaluate(() => window.aide?.openUpdates())]);
   return updatesPage;
 }
 /**
@@ -62,7 +62,7 @@ test("background discovery stays quiet; details, snooze and automatic download s
   await updates.getByRole("button", { name: "稍后", exact: true }).click();
   await expect(main.getByRole("button", { name: /有可用更新/ })).toHaveCount(0);
 
-  const [settings] = await Promise.all([app.waitForEvent("window"), main.evaluate(() => window.hermesh?.openSettings())]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), main.evaluate(() => window.aide?.openSettings())]);
   await expect(settings.getByRole("main", { name: "通用" })).toBeVisible();
   await expect(settings.getByRole("status", { name: "更新状态" })).toHaveCount(0);
   await expect(settings.getByRole("button", { name: /检查更新|下载更新|重新启动以更新/ })).toHaveCount(0);
@@ -107,7 +107,7 @@ test("checks debounce, retry with backoff, recover after wake, and preserve fres
   expect(await requests(app)).toBe(0);
   await advance(app, 1);
   await expect.poll(() => requests(app)).toBe(1);
-  expect((await main.evaluate(() => window.hermesh!.getUpdate())).checkedAt).toBeNull();
+  expect((await main.evaluate(() => window.aide!.getUpdate())).checkedAt).toBeNull();
   await advance(app, 5 * 60_000 - 1);
   expect(await requests(app)).toBe(1);
   await advance(app, 1);
@@ -125,7 +125,7 @@ test("checks debounce, retry with backoff, recover after wake, and preserve fres
   await app.evaluate(() => { (globalThis as unknown as Hook).installTest.holdFeed = false; });
   const updates = await open(app, main);
   await expect(updates.getByRole("status")).toContainText("已是最新版本");
-  let success = (await main.evaluate(() => window.hermesh!.getUpdate())).checkedAt;
+  let success = (await main.evaluate(() => window.aide!.getUpdate())).checkedAt;
   expect(success).not.toBeNull();
   await app.evaluate(({ powerMonitor }) => { powerMonitor.emit("resume"); powerMonitor.emit("resume"); });
   await advance(app, 10_000);
@@ -141,14 +141,14 @@ test("checks debounce, retry with backoff, recover after wake, and preserve fres
   await advance(app, 1);
   await expect.poll(() => requests(app)).toBe(6);
   await expect(updates.getByRole("status")).toContainText("已是最新版本");
-  success = (await main.evaluate(() => window.hermesh!.getUpdate())).checkedAt;
+  success = (await main.evaluate(() => window.aide!.getUpdate())).checkedAt;
   // Relaunch retains last success and snooze settings instead of checking immediately.
   app = await restartInstaller(app);
   main = await app.firstWindow();
   await expect((await sessionList(main))).toBeVisible();
   await advance(app, 30_000);
   expect(await requests(app)).toBe(0);
-  expect((await main.evaluate(() => window.hermesh!.getUpdate())).checkedAt).toBe(success);
+  expect((await main.evaluate(() => window.aide!.getUpdate())).checkedAt).toBe(success);
   await clickMenu(app, "checkForUpdates");
   await expect.poll(() => requests(app)).toBe(1);
 });
@@ -162,14 +162,14 @@ test("About and Help lead to updates and readable history", async () => {
   await expect(updates.getByRole("status")).toContainText("已是最新版本");
   const [history] = await Promise.all([app.waitForEvent("window"), clickMenu(app, "whatsNew")]);
   await expect(history.getByRole("heading", { name: "版本 0.1.0-rc7" })).toBeVisible();
-  await expect(history.getByText("通过签名磁盘映像安装 Hermesh，可直接拖入「应用程序」。")).toBeVisible();
+  await expect(history.getByText("通过签名磁盘映像安装 Aide，可直接拖入「应用程序」。")).toBeVisible();
   await snap(history, "updates-history");
   await history.close();
-  // The menu bar panel offers no check of its own while Hermesh is up to date.
+  // The menu bar panel offers no check of its own while Aide is up to date.
   const panel = await openTray(app);
   await expect(panel.getByRole("button", { name: "打开 Aide" })).toBeVisible();
   await expect(panel.getByRole("button", { name: /检查更新|重新启动以更新/ })).toHaveCount(0);
-  await main.evaluate(() => window.hermesh?.trayAction("settings")); // Sender restrictions reject main-window tray actions.
+  await main.evaluate(() => window.aide?.trayAction("settings")); // Sender restrictions reject main-window tray actions.
   await new Promise((r) => setTimeout(r, 500));
   expect(app.windows().some((p) => p.url().includes("#settings"))).toBe(false);
   expect(await requests(app)).toBe(1);
@@ -197,7 +197,7 @@ test("release history fits short content and keeps its actions visible with long
 
   await holdWorkArea(app, "#whats-new");
   await app.evaluate(() => { const s = (globalThis as unknown as Hook).installTest; s.latest = "1.2.0"; s.longNotes = true; });
-  await main.evaluate(() => window.hermesh?.checkForUpdates());
+  await main.evaluate(() => window.aide?.checkForUpdates());
   await expect.poll(async () => (await layout()).height).toBeGreaterThan(shortHeight);
   await expect.poll(async () => (await layout()).scrolls).toBe(true);
   await expect(history.getByRole("button", { name: "完成", exact: true })).toBeInViewport();
@@ -300,7 +300,7 @@ test("snooze survives relaunch, a later version reminds again, and missing notes
   const updates = await open(app, main);
   await expect(updates.getByText(/暂时无法在这里显示更新摘要/)).toBeVisible();
   await updates.getByRole("button", { name: "在浏览器中查看更新说明" }).click();
-  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.links)).toEqual(["https://github.com/samir2015dzh/hermesh/releases/tag/v1.2.0"]);
+  expect(await app.evaluate(() => (globalThis as unknown as Hook).installTest.links)).toEqual(["https://github.com/samir2015dzh/aide/releases/tag/v1.2.0"]);
   await updates.getByRole("button", { name: "稍后", exact: true }).click();
   app = await restartInstaller(app);
   main = await app.firstWindow();
@@ -309,7 +309,7 @@ test("snooze survives relaunch, a later version reminds again, and missing notes
   await expect(again.getByRole("status")).toHaveText("有可用更新");
   await expect(main.getByRole("button", { name: /有可用更新/ })).toHaveCount(0);
   await app.evaluate(() => { const s = (globalThis as unknown as Hook).installTest; s.latest = "1.3.0"; s.badNotes = true; });
-  await again.evaluate(() => window.hermesh?.checkForUpdates());
+  await again.evaluate(() => window.aide?.checkForUpdates());
   await expect(main.getByRole("button", { name: /有可用更新/ })).toBeVisible();
   await again.getByRole("button", { name: "下载更新" }).click();
   await expect(again.getByRole("status")).toContainText("正在下载 1.3.0");
@@ -351,13 +351,13 @@ test("update windows fit their content with balanced action spacing and scroll l
   await expect(status).toContainText("已是最新版本");
 
   await app.evaluate(() => { (globalThis as unknown as Hook).installTest.latest = "1.2.0"; });
-  await updates.evaluate(() => window.hermesh?.checkForUpdates());
+  await updates.evaluate(() => window.aide?.checkForUpdates());
   await expect(status).toHaveText("有可用更新");
   await compact(460);
   const shortHeight = (await layout()).height;
   await holdWorkArea(app, "#updates");
   await app.evaluate(() => { (globalThis as unknown as Hook).installTest.longNotes = true; });
-  await updates.evaluate(() => window.hermesh?.checkForUpdates());
+  await updates.evaluate(() => window.aide?.checkForUpdates());
   await expect.poll(async () => (await layout()).height).toBeGreaterThan(shortHeight);
   await expect.poll(async () => (await layout()).scrolls).toBe(true);
   const frame = await app.evaluate(({ BrowserWindow, screen }) => {
@@ -372,7 +372,7 @@ test("update windows fit their content with balanced action spacing and scroll l
   await snap(updates, "updates-long-notes-balanced");
 
   await app.evaluate(() => { (globalThis as unknown as Hook).installTest.longNotes = false; });
-  await updates.evaluate(() => window.hermesh?.checkForUpdates());
+  await updates.evaluate(() => window.aide?.checkForUpdates());
   await expect(status).toHaveText("有可用更新");
   await compact(460);
   await updates.getByRole("button", { name: "下载更新", exact: true }).click();
@@ -385,7 +385,7 @@ test("update windows fit their content with balanced action spacing and scroll l
   await updates.emulateMedia({ colorScheme: "dark" });
   await snap(updates, "updates-ready-balanced-dark");
   const before = (await layout()).height;
-  await main.evaluate(() => window.hermesh?.updateWindowHeight(2000));
-  await updates.evaluate(() => window.hermesh?.updateWindowHeight(Number.NaN));
+  await main.evaluate(() => window.aide?.updateWindowHeight(2000));
+  await updates.evaluate(() => window.aide?.updateWindowHeight(Number.NaN));
   expect((await layout()).height).toBe(before);
 });

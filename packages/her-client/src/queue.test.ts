@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Event, EventMsg, QueuedInput, SessionInfo, UserMessage } from "@hermesh/her-protocol";
+import type { Event, EventMsg, QueuedInput, SessionInfo, UserMessage } from "@aide/her-protocol";
 import { applyEvents, fromSnapshot } from "./session.ts";
 
 // Input sent while a task runs: it waits in view, as the kernel's queue says, until it joins

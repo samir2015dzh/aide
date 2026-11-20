@@ -1,5 +1,5 @@
-import type { ReplyQuote } from "@hermesh/her-client";
-import type { HerWaiting } from "@hermesh/proto/local";
+import type { ReplyQuote } from "@aide/her-client";
+import type { HerWaiting } from "@aide/proto/local";
 
 // Messages written to an assistant while its machine was offline: this device
 // keeps them and delivers them once the machine is back (HerSend,
@@ -19,7 +19,7 @@ const fileName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? 
 const attachedMark = "Attached files:";
 
 /**
- * A message hermeshd delivered with files (HerSend) names them after its
+ * A message aided delivered with files (HerSend) names them after its
  * words, "Attached files:" and a line "- <path>" for each: its words, and
  * the files' paths on the machine.
  */

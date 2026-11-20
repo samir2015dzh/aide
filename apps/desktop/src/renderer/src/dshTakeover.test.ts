@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { DSHBridge } from "@hermesh/proto/machine";
+import type { DSHBridge } from "@aide/proto/machine";
 import { bridgeView, newRequestId, retryKeepsId } from "./dshTakeover.ts";
 
-test("a message's id is hermesh- and 26 lowercase letters and digits, as the machine takes it", () => {
+test("a message's id is aide- and 26 lowercase letters and digits, as the machine takes it", () => {
   const id = newRequestId();
-  assert.match(id, /^hermesh-[0-9a-z]{26}$/);
+  assert.match(id, /^aide-[0-9a-z]{26}$/);
   assert.notEqual(newRequestId(), id);
-  assert.equal(newRequestId((n) => new Uint8Array(n).fill(35)), "hermesh-" + "z".repeat(26));
+  assert.equal(newRequestId((n) => new Uint8Array(n).fill(35)), "aide-" + "z".repeat(26));
 });
 
 test("only a timeout keeps the id for the retry", () => {

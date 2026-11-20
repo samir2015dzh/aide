@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 )
 
 // OwnerControlService.WatchOwner (docs/state-sync.md §3.2): an owner's

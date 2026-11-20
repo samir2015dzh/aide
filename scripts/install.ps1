@@ -1,16 +1,16 @@
 # Aide installer for Windows. Downloads release programs from GitHub
 # Releases, verifies them against the signed checksum list, installs them
-# under %LOCALAPPDATA%\Programs\Hermesh\bin and (for a machine) logs it in
+# under %LOCALAPPDATA%\Programs\Aide\bin and (for a machine) logs it in
 # to your server with your account and password (docs/accounts.md).
 # Windows PowerShell 5.1 or later; no administrator needed.
 #
-#   Add a machine:   & ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) <server> -Name build-box
+#   Add a machine:   & ([scriptblock]::Create((irm https://github.com/samir2015dzh/aide/releases/latest/download/install.ps1))) <server> -Name build-box
 #                    (it asks for the account and password, or takes them from
 #                    $env:AIDE_ACCOUNT and $env:AIDE_PASSWORD)
 #   Agent CLI only:  & ([scriptblock]::Create((irm .../install.ps1))) -Cli
 #
 # Environment: AIDE_VERSION (default latest), AIDE_BIN_DIR (default
-# %LOCALAPPDATA%\Programs\Hermesh\bin), AIDE_NO_PATH=1 (leave the user's
+# %LOCALAPPDATA%\Programs\Aide\bin), AIDE_NO_PATH=1 (leave the user's
 # PATH alone).
 param([string]$Address = "", [switch]$Cli, [string]$Name = "")
 
@@ -18,14 +18,13 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue" # Invoke-WebRequest crawls with a progress bar
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-$Repo = "samir2015dzh/hermesh"
-# Each AIDE_ variable, or the HERMESH_ one it was before the product was called Aide.
-function Get-Setting([string]$name) { if ((Get-Item "env:AIDE_$name" -ErrorAction SilentlyContinue).Value) { (Get-Item "env:AIDE_$name").Value } else { (Get-Item "env:HERMESH_$name" -ErrorAction SilentlyContinue).Value } }
+$Repo = "samir2015dzh/aide"
+function Get-Setting([string]$name) { (Get-Item "env:AIDE_$name" -ErrorAction SilentlyContinue).Value }
 $Version = if (Get-Setting VERSION) { Get-Setting VERSION } else { "latest" }
-$BinDir = if (Get-Setting BIN_DIR) { Get-Setting BIN_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\Hermesh\bin" }
+$BinDir = if (Get-Setting BIN_DIR) { Get-Setting BIN_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\Aide\bin" }
 
 # Release signing public key (ECDSA P-256). Replaced at release time.
-$PubKey = '__HERMESH_RELEASE_PUBKEY__'
+$PubKey = '__AIDE_RELEASE_PUBKEY__'
 
 switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
   "X64" { $Arch = "amd64" }
@@ -68,13 +67,13 @@ function Test-Signature([byte[]]$Data, [byte[]]$Der, [string]$Pem) {
   return $ecdsa.VerifyData($Data, $raw)
 }
 
-$Tmp = Join-Path ([IO.Path]::GetTempPath()) ("hermesh-" + [guid]::NewGuid())
+$Tmp = Join-Path ([IO.Path]::GetTempPath()) ("aide-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $Tmp | Out-Null
 try {
   Write-Host "> downloading checksums"
   Invoke-WebRequest -UseBasicParsing "$Base/checksums.txt" -OutFile "$Tmp\checksums.txt"
   Invoke-WebRequest -UseBasicParsing "$Base/checksums.txt.sig" -OutFile "$Tmp\checksums.txt.sig"
-  if ($PubKey.StartsWith("__HERMESH")) { throw "aide install: this installer has no release signing key; download a released install.ps1" }
+  if ($PubKey.StartsWith("__AIDE")) { throw "aide install: this installer has no release signing key; download a released install.ps1" }
   if (-not (Test-Signature ([IO.File]::ReadAllBytes("$Tmp\checksums.txt")) ([IO.File]::ReadAllBytes("$Tmp\checksums.txt.sig")) $PubKey)) {
     throw "aide install: checksum signature verification FAILED; refusing to install"
   }
@@ -102,17 +101,13 @@ try {
     if (Test-Path $dest) { Move-Item $dest "$dest.$(Get-Random).old" }
     Move-Item $file $dest
   }
-  $bins = if ($Cli) { @("hermesh") } else { @("hermeshd", "hermeshdw", "hermesh") }
+  $bins = if ($Cli) { @("aide") } else { @("aided", "aidedw", "aide") }
   New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
   foreach ($b in $bins) {
     $file = Get-Verified "$b-windows-$Arch.exe"
-    # Also under the name it has since the product was called Aide: a copy, as
-    # the logon task and agents' hooks run it by the name it had (RENAME-AIDE.md B1, B2).
-    $alias = @{ "hermeshd" = "aided"; "hermesh" = "aide" }[$b]
-    if ($alias) { $copy = "$file.$alias"; Copy-Item $file $copy; Install-Program $copy "$alias.exe" }
     Install-Program $file "$b.exe"
   }
-  # Her's kernel and its console, beside hermeshd, which runs them while Her
+  # Her's kernel and its console, beside aided, which runs them while Her
   # is on for this PC (docs/her-server.md §6.4): from a release that has them.
   if (-not $Cli -and $sums.ContainsKey("her-windows-$Arch.exe")) {
     $console = Get-Verified "her-console.tar.gz"
@@ -135,8 +130,8 @@ $userPath = $envKey.GetValue("Path", "", [Microsoft.Win32.RegistryValueOptions]:
 if (-not (Get-Setting NO_PATH) -and -not (($userPath -split ';') -contains $BinDir)) {
   Set-ItemProperty -Path "HKCU:\Environment" -Name Path -Type ExpandString -Value ((($userPath.TrimEnd(';')) + ";" + $BinDir).TrimStart(';'))
   # Setting any user variable tells running programs the environment changed.
-  [Environment]::SetEnvironmentVariable("HERMESH_INSTALLED", "1", "User")
-  [Environment]::SetEnvironmentVariable("HERMESH_INSTALLED", $null, "User")
+  [Environment]::SetEnvironmentVariable("AIDE_INSTALLED", "1", "User")
+  [Environment]::SetEnvironmentVariable("AIDE_INSTALLED", $null, "User")
   Write-Host "added $BinDir to your PATH (new terminals see it)"
 }
 if (-not (($env:Path -split ';') -contains $BinDir)) { $env:Path = "$env:Path;$BinDir" }
@@ -148,4 +143,4 @@ if ($Cli) {
 $login = @("login")
 if ($Name) { $login += @("--name", $Name) }
 if ($Address) { $login += $Address }
-& (Join-Path $BinDir "hermeshd.exe") @login
+& (Join-Path $BinDir "aided.exe") @login

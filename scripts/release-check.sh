@@ -29,7 +29,7 @@ openssl dgst -sha256 -verify "$PUB" -signature "$DIR/checksums.txt.sig" "$DIR/ch
 grep -q '  version$' "$DIR/checksums.txt" || fail "version is not in checksums.txt"
 for os in linux; do
   for arch in arm64 amd64; do
-    for cmd in hermeshd hermesh hermesh-relay aided aide aide-relay; do
+    for cmd in aided aide aide-relay; do
       need "$cmd-$os-$arch"
       grep -q "  $cmd-$os-$arch\$" "$DIR/checksums.txt" || fail "$cmd-$os-$arch is not in checksums.txt"
     done
@@ -40,7 +40,7 @@ for f in her-linux-arm64 her-linux-amd64 her-windows-amd64.exe her-console.tar.g
   grep -q "  $f\$" "$DIR/checksums.txt" || fail "$f is not in checksums.txt"
 done
 for arch in arm64 amd64; do
-  for cmd in hermeshd hermeshdw hermesh aided aide; do
+  for cmd in aided aidedw aide; do
     need "$cmd-windows-$arch.exe"
     grep -q "  $cmd-windows-$arch.exe\$" "$DIR/checksums.txt" || fail "$cmd-windows-$arch.exe is not in checksums.txt"
   done
@@ -48,7 +48,7 @@ done
 if command -v sha256sum >/dev/null; then sum="sha256sum"; else sum="shasum -a 256"; fi
 (cd "$DIR" && $sum -c checksums.txt) >/dev/null 2>&1 || fail "a file does not match checksums.txt"
 for f in install.sh install.ps1; do
-  ! grep -q __HERMESH_RELEASE_PUBKEY__ "$DIR/$f" || fail "$f has no release key"
+  ! grep -q __AIDE_RELEASE_PUBKEY__ "$DIR/$f" || fail "$f has no release key"
   grep -qF "$(sed -n 2p "$PUB")" "$DIR/$f" || fail "$f has another key than the release key"
 done
 if has win32-arm64 || has win32-x64; then need Aide.ico; fi

@@ -3,7 +3,7 @@ package machine
 import (
 	"context"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // gate returns the tool gate for a session. A grant fully trusts its

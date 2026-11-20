@@ -24,7 +24,7 @@ func Acquire(dir string) (*Lock, error) {
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		f.Close()
-		return nil, fmt.Errorf("another hermeshd is already using %s", dir)
+		return nil, fmt.Errorf("another aided is already using %s", dir)
 	}
 	f.Truncate(0)
 	fmt.Fprintf(f, "%d\n", os.Getpid())

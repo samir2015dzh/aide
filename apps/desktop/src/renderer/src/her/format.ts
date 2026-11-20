@@ -1,5 +1,5 @@
-import { hourMinute, isYesterday, modelName, monthDay, sameDay, weekday, withinWeek, workSummary, type ToolView, type WorkItem } from "@hermesh/her-client";
-import type { ModelSummary, ModelsListResult, ThinkingLevel } from "@hermesh/her-protocol";
+import { hourMinute, isYesterday, modelName, monthDay, sameDay, weekday, withinWeek, workSummary, type ToolView, type WorkItem } from "@aide/her-client";
+import type { ModelSummary, ModelsListResult, ThinkingLevel } from "@aide/her-protocol";
 import { i18n } from "../../../shared/i18n";
 
 // Her's words for times, steps and models, in the app's language.

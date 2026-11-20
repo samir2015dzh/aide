@@ -1,4 +1,4 @@
-import type { BotSummary, LastMessage } from "@hermesh/her-protocol";
+import type { BotSummary, LastMessage } from "@aide/her-protocol";
 
 // What Bot mode's list shows about bots (docs/desktop/bot-mode-design.md §6.2),
 // worked out from the bots alone so it can be checked without a window.
@@ -57,7 +57,7 @@ export function lastText(last: LastMessage): { text: string; files: string[] } {
   let text = last.text;
   let files: string[] = last.file ? [last.file] : [];
   if (last.from === "user") {
-    // What it replies to (hermeshd's replyBlock, docs/her-reply.md §4.1) is none of its words.
+    // What it replies to (aided's replyBlock, docs/her-reply.md §4.1) is none of its words.
     text = text.replace(/<resource uri="her-reply:[^"\n]*">\n[^\n]*\n(?:>[^\n]*\n)+<\/resource>\n?/, "");
     const at = text.indexOf(attached);
     if (at >= 0) {

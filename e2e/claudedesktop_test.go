@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
-// A Claude session an agent starts through Hermesh is listed in the Claude
+// A Claude session an agent starts through Aide is listed in the Claude
 // desktop app's own index of Claude Code sessions (WO #8), in the account
 // the app uses, pointing at the session's transcript and directory, and
 // named for its project and who started it. The app's own records are
@@ -56,7 +56,7 @@ done
 	if err := os.WriteFile(claude, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	w := newOwnerMac(t, []string{"HERMESH_CLAUDE_BIN=" + claude, "HOME=" + home}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_CLAUDE_BIN=" + claude, "HOME=" + home}, &localv1.GrantSpec{})
 
 	s, r := w.startSession(2*time.Minute, "--agent", "claude", "--wait", "--prompt", "hello")
 	if r.code != 0 || s.Status != "idle" || s.Ref == "" {

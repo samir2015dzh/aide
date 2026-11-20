@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 )
 
 // writeOp is one event, session row, idempotency key and/or turn commit to
@@ -70,14 +70,14 @@ type writer struct {
 var errWriterClosed = errors.New("the session store is closed")
 
 var (
-	mBatch     = metrics.Default.Histogram("hermesh_machine_write_batch_seconds")
-	mBatchOps  = metrics.Default.Counter("hermesh_machine_write_ops_total")
-	mBatches   = metrics.Default.Counter("hermesh_machine_write_batches_total")
-	mWriteWait = metrics.Default.Histogram("hermesh_machine_write_enqueue_seconds")
+	mBatch     = metrics.Default.Histogram("aide_machine_write_batch_seconds")
+	mBatchOps  = metrics.Default.Counter("aide_machine_write_ops_total")
+	mBatches   = metrics.Default.Counter("aide_machine_write_batches_total")
+	mWriteWait = metrics.Default.Histogram("aide_machine_write_enqueue_seconds")
 	// begin covers waiting for the writer connection; commit is the WAL
 	// append (plus any automatic checkpoint).
-	mBatchBegin  = metrics.Default.Histogram("hermesh_machine_write_begin_seconds")
-	mBatchCommit = metrics.Default.Histogram("hermesh_machine_write_commit_seconds")
+	mBatchBegin  = metrics.Default.Histogram("aide_machine_write_begin_seconds")
+	mBatchCommit = metrics.Default.Histogram("aide_machine_write_commit_seconds")
 )
 
 const maxBatch = 2048
@@ -86,7 +86,7 @@ const maxBatch = 2048
 // the store refused.
 var writeRetries = []time.Duration{100 * time.Millisecond, 400 * time.Millisecond, 1600 * time.Millisecond}
 
-var mBatchRetries = metrics.Default.Counter("hermesh_machine_write_retries_total")
+var mBatchRetries = metrics.Default.Counter("aide_machine_write_retries_total")
 
 func newWriter(st *Store, log *slog.Logger, deliver func(*live, *sessionv1.SessionEvent), stored func(id string)) *writer {
 	w := &writer{write: st.WriteBatch, ch: make(chan writeOp, 8192), deliver: deliver, stored: stored, done: make(chan struct{}), log: log}

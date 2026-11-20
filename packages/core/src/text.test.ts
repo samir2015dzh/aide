@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { FailureKind, FailureSchema, SessionStatus } from "@hermesh/proto/session";
+import { FailureKind, FailureSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import { agoText, clockText, elapsedSeconds, failureAdvice, failureHeadline, listTime, minutesLeft, phaseText, shortTime, tokensText, toolSummary } from "./text";
 import { at, now, progressOf, session } from "./testing";

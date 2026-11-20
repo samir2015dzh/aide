@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
-import { codingAgentTitle, displayTitle } from "@hermesh/core";
-import { kindNamed, Mark, personalAgents } from "@hermesh/ui";
+import { codingAgentTitle, displayTitle } from "@aide/core";
+import { kindNamed, Mark, personalAgents } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { PersonalAgentIcon } from "../components";
 import { Icon } from "../icons";
@@ -14,7 +14,7 @@ import { setProgress } from "./progress";
  * The first run's last page: the agent just connected, one thing to send it
  * that shows the whole way works (a coding agent saying hello in a project
  * it was given), then its first session as soon as it starts (the window
- * opens on it), or Continue to Hermesh.
+ * opens on it), or Continue to Aide.
  */
 export function FirstTask({ agent }: { agent: string }) {
   const { t } = useTranslation("firstrun");

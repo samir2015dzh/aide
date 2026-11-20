@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"golang.org/x/sys/unix"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // A session another DSH process holds (it flocks session.lock, as DSH

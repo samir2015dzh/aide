@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { catchRedirect, caught, signCommandConnector, upload } from "./routes.ts";
 import { SignInTimedOut, signInRemotely } from "./signin.ts";
 
-// The console's own routes, against fetch as the test plays hermeshd (the machine's for
+// The console's own routes, against fetch as the test plays aided (the machine's for
 // upload, the owner's device's for signin and command-connector).
 
 type Asked = { url: string; method: string; headers: Record<string, string>; body: unknown };

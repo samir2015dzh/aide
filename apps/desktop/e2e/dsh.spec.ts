@@ -4,9 +4,9 @@ import path from "node:path";
 import { fixture, launch, snap } from "./app";
 
 // DeepSeek 会话 › taking one over (docs/dsh-takeover.md): read only until the owner turns 接管 on
-// for it (asked first, with what it means); then a message goes to DSH through the Hermesh plugin
+// for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
 // (here the real plugin in a stand-in DSH Host, which writes it into the session as DSH would) and
-// comes back marked as sent from Hermesh. With DSH Desktop gone, the send fails saying so and the
+// comes back marked as sent from Aide. With DSH Desktop gone, the send fails saying so and the
 // text stays. Off again, read only.
 
 test.describe.configure({ timeout: 120_000 });
@@ -35,7 +35,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await ask.getByRole("button", { name: "开启接管" }).click();
   await expect(takeover).toHaveAttribute("aria-checked", "true");
 
-  // The plugin runs: a message goes, and comes back in the conversation marked as from Hermesh.
+  // The plugin runs: a message goes, and comes back in the conversation marked as from Aide.
   const box = page.getByRole("textbox", { name: "给 DSH 的消息" });
   await expect(box).toBeVisible();
   await expect(page.getByText("DSH Desktop 里还没有 Aide 插件")).toHaveCount(0);
@@ -62,7 +62,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
 
   // Never installed (no rendezvous): preparing backs up DSH's configuration and writes the package,
   // for DSH Desktop's Plugins page to install.
-  fs.rmSync(path.join(fixture.dshHome!, "hermesh-bridge", "bridge.json"));
+  fs.rmSync(path.join(fixture.dshHome!, "aide-bridge", "bridge.json"));
   await expect(page.getByRole("status").filter({ hasText: "DSH Desktop 里还没有 Aide 插件，发不了消息。" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "准备安装…" }).click();
   const install = page.getByRole("region", { name: "安装 Aide 插件" });

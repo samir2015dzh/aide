@@ -39,7 +39,7 @@ test("nothing to show off macOS or without an answer; a missing agent-desktop sa
   assert.deepEqual(computerUseView(status({ program: undefined, accessibility: "unknown", screen_recording: "unknown" }), 27), { kind: "missing" });
 });
 
-test("desktop/status as hermeshd hands it over", () => {
+test("desktop/status as aided hands it over", () => {
   const json = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
   const s = status({});
   assert.deepEqual(parseDesktopStatus(json(s), false), s);

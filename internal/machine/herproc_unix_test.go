@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/hermeshai/hermesh/internal/paths"
+	"github.com/samir2015dzh/aide/internal/paths"
 )
 
 // herPID is the her a machine of dir runs, as her's lock records it.

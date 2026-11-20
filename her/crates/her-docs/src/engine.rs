@@ -93,9 +93,9 @@ pub struct Rendered {
     pub height: u32,
 }
 
-/// Where the PDFium library is: `HER_PDFIUM`, else beside the program (Hermesh.app's
+/// Where the PDFium library is: `HER_PDFIUM`, else beside the program (Aide.app's
 /// `Contents/MacOS` or `Contents/Frameworks`), else the `pdf` component (`her-pdf/` beside the
-/// program on a Linux machine of Hermesh's, or `her install pdf`), else
+/// program on a Linux machine of Aide's, or `her install pdf`), else
 /// `$HER_HOME/pdfium/lib`, else, in development builds, the copy `tools/pdfium` downloads into.
 pub fn locate_library() -> Option<PathBuf> {
     let name = Pdfium::pdfium_platform_library_name();

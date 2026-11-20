@@ -51,7 +51,7 @@ pub enum AvatarHue {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Avatar {
-    /// The Hermesh mark: the default bot's alone.
+    /// The Aide mark: the default bot's alone.
     Mark,
     /// A character on a colour.
     Char { shape: AvatarShape, hue: AvatarHue },

@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Workspace } from "@hermesh/proto/identity";
-import type { Project } from "@hermesh/proto/local";
-import { codingAgentIds, codingAgentTitle, defaultScope, scopeComplete, scopeOfClient, scopeSpec, ttlChoices, type ScopeChoice } from "@hermesh/core";
+import { Workspace } from "@aide/proto/identity";
+import type { Project } from "@aide/proto/local";
+import { codingAgentIds, codingAgentTitle, defaultScope, scopeComplete, scopeOfClient, scopeSpec, ttlChoices, type ScopeChoice } from "@aide/core";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import { Icon } from "../icons";

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // delayProxy forwards TCP connections to target, holding every byte for
@@ -78,10 +78,10 @@ func TestRelayRoundTrips(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	// A command that connects by itself, as the first one does and as any
 	// does without its link (TestAgentLink times the others).
-	w.cliEnv = append(w.cliEnv, "HERMESH_LINK=off")
+	w.cliEnv = append(w.cliEnv, "AIDE_LINK=off")
 	s, r := w.startSession(time.Minute, "--wait", "--prompt", "say hi")
 	if r.code != 0 {
 		t.Fatalf("start: %+v", r)
@@ -214,7 +214,7 @@ func TestMCPRoundTrips(t *testing.T) {
 	ctx := context.Background()
 	port := freePort(t)
 	relayData := filepath.Join(tmp, "relay")
-	relay := start(t, "relay", nil, filepath.Join(bin, "hermesh-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	relay := start(t, "relay", nil, filepath.Join(bin, "aide-relay"), "serve", "--mcp", "--data-dir", relayData, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	logs = append(logs, relay)
 	eventually(t, 20*time.Second, "relay up", func() bool { return strings.Contains(relay.output(), "relay listening") })
 
@@ -222,9 +222,9 @@ func TestMCPRoundTrips(t *testing.T) {
 	// its machine, goes through the proxy. The app reaches the relay directly.
 	const oneWay = 250 * time.Millisecond
 	far := "http://" + delayProxy(t, fmt.Sprintf("127.0.0.1:%d", port), oneWay)
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(bin, "aide-relay"), "setup-code", "--data-dir", relayData).stdout)
 	sock := filepath.Join(sockDir, "o.sock")
-	owner := start(t, "owner", []string{"HERMESH_FAKE_PROVIDERS=1"}, filepath.Join(bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
+	owner := start(t, "owner", []string{"AIDE_FAKE_PROVIDERS=1"}, filepath.Join(bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock)
 	logs = append(logs, owner)
 	mac := newTestApp(t, sock)
 	if _, err := mac.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: far, SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-mac"}); err != nil {

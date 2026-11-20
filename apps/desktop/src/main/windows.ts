@@ -1,4 +1,4 @@
-import { language } from "@hermesh/core";
+import { language } from "@aide/core";
 import { app, BrowserWindow, screen, session, shell, type WebContents } from "electron";
 import fs from "node:fs";
 import os from "node:os";
@@ -7,7 +7,7 @@ import { consoleURL, inConsole, opensOutside } from "../shared/herConsole";
 import { i18n } from "../shared/i18n";
 import { platform } from "./platform";
 
-export const origin = "app://hermesh";
+export const origin = "app://aide";
 export const devURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined;
 
 let main: BrowserWindow | undefined;
@@ -66,7 +66,7 @@ function webPreferences() {
     contextIsolation: true,
     nodeIntegration: false,
     spellcheck: false,
-    additionalArguments: [`--hermesh-user=${os.userInfo().username}`, `--hermesh-version=${app.getVersion()}`, `--hermesh-lang=${language()}`, `--hermesh-material=${platform.material ? 1 : 0}`],
+    additionalArguments: [`--aide-user=${os.userInfo().username}`, `--aide-version=${app.getVersion()}`, `--aide-lang=${language()}`, `--aide-material=${platform.material ? 1 : 0}`],
   };
 }
 
@@ -193,7 +193,7 @@ const consoles = new Map<string, BrowserWindow>();
 
 /**
  * A machine's Her console (docs/her-server.md §5.3), in a window of its own: the page her ships,
- * served by this computer's hermeshd on 127.0.0.1 (`address`, GetHerConsole). It is not one of the
+ * served by this computer's aided on 127.0.0.1 (`address`, GetHerConsole). It is not one of the
  * app's pages: no preload, sandboxed, in a session of its own that grants no permission. It stays on
  * the console's origin; https links, and the sign-in pages it opens, go to the default browser.
  */
@@ -203,7 +203,7 @@ export async function showHerConsole(machineId: string, title: string, address: 
   if (page) url.hash = page;
   const open = consoles.get(machineId);
   if (open && !open.isDestroyed()) {
-    // hermeshd started again meanwhile: the console is at another port and token. A page asked for goes there.
+    // aided started again meanwhile: the console is at another port and token. A page asked for goes there.
     const now = open.webContents.getURL();
     if (!now.startsWith(url.href.split("#")[0])) open.loadURL(url.href);
     else if (page) open.webContents.executeJavaScript(`location.hash = ${JSON.stringify(page)}`).catch(() => {});

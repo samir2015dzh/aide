@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // end stops her and what it started: SIGTERM, on which her closes its
@@ -17,7 +17,7 @@ import (
 func (h *Host) end(p *provider.Proc) { provider.KillGroup(p.Pgid()) }
 
 // stopStale stops a her still holding lock, the lock file her keeps beside
-// its socket while it runs ({"pid": …}): one an earlier hermeshd left
+// its socket while it runs ({"pid": …}): one an earlier aided left
 // running, which would keep the socket from a new her. A lock nobody holds
 // is no her's, whatever pid it names.
 func stopStale(lock string) {

@@ -10,7 +10,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 
 // Her's protocol, as far as the phone's minimal Her panel reads it (the
-// iPhone's HermeshHer, cut down): her's JSON over the core's HerOpen,
+// iPhone's AideHer, cut down): her's JSON over the core's HerOpen,
 // HerCall and HerSend (docs/her-server.md).
 
 internal operator fun JsonElement?.get(key: String): JsonElement? = (this as? JsonObject)?.get(key)

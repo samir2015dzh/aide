@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { initialOf } from "@hermesh/her-client";
-import type { Avatar as AvatarSpec, AvatarHue, AvatarShape, BotSummary } from "@hermesh/her-protocol";
+import { initialOf } from "@aide/her-client";
+import type { Avatar as AvatarSpec, AvatarHue, AvatarShape, BotSummary } from "@aide/her-protocol";
 import { Cat } from "./Cat";
 import { useHer } from "./context";
 

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // TestACPSessionOptions: DeepSeek Harness (played by a scripted agent that
@@ -27,7 +27,7 @@ func TestACPSessionOptions(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_RESUME=resume",
+	w := newOwnerMac(t, []string{"AIDE_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_RESUME=resume",
 		"FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=magpie/v4-pro,magpie/v4-flash", "FAKE_ACP_EFFORTS=magpie/v4-pro=low|high;magpie/v4-flash=max", "FAKE_ACP_MODES=ask,code"},
 		&localv1.GrantSpec{Agents: []string{"deepseek"}})
 	ctx := context.Background()
@@ -104,7 +104,7 @@ func TestACPSessionOptions(t *testing.T) {
 		t.Fatalf("app sessions: %v %v", sessionModels(res), err)
 	}
 
-	// The same session resumed by a new agent process (hermeshd restarted)
+	// The same session resumed by a new agent process (aided restarted)
 	// runs with what it began with.
 	w.restartOwner(false)
 	if r := w.cli(time.Minute, "session", "send", chosen, "--wait", "--message", "config"); r.code != 0 || !strings.Contains(r.stdout, "config: magpie/v4-flash max code") {

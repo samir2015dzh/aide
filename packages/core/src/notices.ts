@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
-import type { Machine } from "@hermesh/proto/local";
-import { HerLatestKind, type HerLatest } from "@hermesh/proto/machine";
-import { FailureSchema, SessionStatus, type Session } from "@hermesh/proto/session";
+import type { Machine } from "@aide/proto/local";
+import { HerLatestKind, type HerLatest } from "@aide/proto/machine";
+import { FailureSchema, SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
 import { dateOf, displayTitle, isFailed, pendingQuestion } from "./sessions";

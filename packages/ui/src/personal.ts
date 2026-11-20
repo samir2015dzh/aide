@@ -3,7 +3,7 @@
 // logos are in too: the same app is drawn the same everywhere (ChatGPT is the
 // app Codex runs in, so it is Codex's icon; Claude is Claude Code's).
 // domains are where the app's hosted MCP connector returns to: a connection to
-// mcp.hermesh.io is named "Name (host)": the name is the app's own claim, the host
+// mcp.aide.io is named "Name (host)": the name is the app's own claim, the host
 // where it signs in (Grok Bot signs in the way Cursor does).
 export type PersonalAgentKind = { id: string; name: string; color: string; logo?: string; domains?: string[] };
 

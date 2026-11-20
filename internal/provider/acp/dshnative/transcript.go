@@ -2,18 +2,18 @@ package dshnative
 
 import (
 	"encoding/json"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // inlineOutput is how much of a tool's output an event carries, as for
-// Hermesh's own sessions (EVENT_VIEW_FULL).
+// Aide's own sessions (EVENT_VIEW_FULL).
 const inlineOutput = 16 << 10
 
 // message is the part of a DSH message (@deepseek-ai/dsh-llm) shown.
@@ -53,12 +53,12 @@ func appended(e event) bool { return string(e.SurfaceOp) == `"append"` }
 // RequestPrefix starts the request id of every message Aide sends into a
 // DSH session (through the bridge); DSH keeps it as the message's rpcId.
 // The messages sent before the rename have the old prefix (internal/legacy).
-const RequestPrefix = "hermesh-"
+const RequestPrefix = "aide-"
 
 // userText is what the owner wrote, when e is a prompt of theirs (DSH
-// also logs as user messages the context it adds itself); viaHermesh: the
-// owner sent it from Hermesh (its rpcId is one Hermesh made).
-func userText(e event) (text string, viaHermesh, ok bool) {
+// also logs as user messages the context it adds itself); viaAide: the
+// owner sent it from Aide (its rpcId is one Aide made).
+func userText(e event) (text string, viaAide, ok bool) {
 	var m message
 	if e.Type != "user/message" || !appended(e) || json.Unmarshal(e.Data, &m) != nil || m.Source.Kind != "user" {
 		return "", false, false
@@ -66,7 +66,7 @@ func userText(e event) (text string, viaHermesh, ok bool) {
 	return m.text(true), strings.HasPrefix(m.Source.RPCID, RequestPrefix) || strings.HasPrefix(m.Source.RPCID, legacy.DSHRequest), true
 }
 
-// transcript is the conversation as Hermesh's session events: turns
+// transcript is the conversation as Aide's session events: turns
 // started and completed, the owner's prompts, DSH's replies, tool calls
 // and results, and its compactions (a StatusChanged, reason "compacted").
 func (p *parsed) transcript() []*sessionv1.SessionEvent {
@@ -79,12 +79,12 @@ func (p *parsed) transcript() []*sessionv1.SessionEvent {
 			json.Unmarshal(e.Data, &d)
 			ev.Kind = &sessionv1.SessionEvent_TurnStarted{TurnStarted: &sessionv1.TurnStarted{Turn: d.Turn}}
 		case "user/message":
-			text, viaHermesh, ok := userText(e)
+			text, viaAide, ok := userText(e)
 			if !ok {
 				continue
 			}
 			um := &sessionv1.UserMessage{Text: text}
-			if viaHermesh { // only the owner sends through the bridge
+			if viaAide { // only the owner sends through the bridge
 				um.From = "owner"
 			}
 			ev.Kind = &sessionv1.SessionEvent_UserMessage{UserMessage: um}

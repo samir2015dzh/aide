@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // An MCP client continues the same session after a daemon restart and a
@@ -18,7 +18,7 @@ func TestMCPResumeMissingWorktree(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	w.relay.stop()
 	w.relayArgs = append(w.relayArgs, "--mcp")
 	w.startRelay()
@@ -51,7 +51,7 @@ func TestMCPResumeMissingWorktree(t *testing.T) {
 			if !d.OK || s.Status != "idle" {
 				t.Fatalf("start: %s", d.raw)
 			}
-			head := gitOut(t, w.repo, "rev-parse", "hermesh/"+s.SessionID)
+			head := gitOut(t, w.repo, "rev-parse", "aide/"+s.SessionID)
 			w.restartOwner(false)
 			if err := os.RemoveAll(w.worktree(s.SessionID)); err != nil {
 				t.Fatal(err)
@@ -73,7 +73,7 @@ func TestMCPResumeMissingWorktree(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(w.worktree(s.SessionID), "default-only.txt")); !os.IsNotExist(err) {
 				t.Fatalf("resumed from the project default instead of the explicit base: %v", err)
 			}
-			if got := gitOut(t, w.repo, "rev-parse", "hermesh/"+s.SessionID); got != head {
+			if got := gitOut(t, w.repo, "rev-parse", "aide/"+s.SessionID); got != head {
 				t.Fatalf("branch moved: %s, want %s", got, head)
 			}
 			d = callTool(t, client, "session_diff", map[string]any{"session_id": s.SessionID})

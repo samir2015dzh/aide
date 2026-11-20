@@ -112,7 +112,7 @@ export type Anchor = {
 
 export type AnimationClass = "entrance" | "emphasis" | "exit";
 
-/** The effects Hermesh writes; the file's others are kept and listed by their preset id. */
+/** The effects Aide writes; the file's others are kept and listed by their preset id. */
 export type AnimationEffect = "appear" | "fade" | "fly_in" | "wipe" | "zoom" | "float_in" | "split" | "pulse" | "spin" | "grow_shrink" | "teeter" | "disappear" | "fly_out" | "float_out";
 
 export type AnimationSpec = {
@@ -422,7 +422,7 @@ export type BrowserHostParams = {
   bridge?: BridgeRange | null;
   /** The browser the host is in, as it names itself: "Google Chrome 141.0.7390.54". */
   browser?: string | null;
-  /** The Hermesh extension's version, for an extension host. */
+  /** The Aide extension's version, for an extension host. */
   extension_version?: string | null;
   /** Tells this extension's browser and profile apart from others: kept by the extension. */
   instance?: string | null;
@@ -2025,7 +2025,7 @@ export type Delta = {
   type: "tool_call_args";
 };
 
-/** A system permission as agent-desktop finds it from inside her. macOS asks it of the process it holds responsible for her: the terminal app, or hermeshd when Hermesh runs her. */
+/** A system permission as agent-desktop finds it from inside her. macOS asks it of the process it holds responsible for her: the terminal app, or aided when Aide runs her. */
 export type DesktopPermission = "granted" | "denied" | "unknown" | "unsupported";
 
 /** The result of `desktop/status`: whether computer use can work where her runs. */
@@ -2656,7 +2656,7 @@ export type ExtensionSession = {
   title: string;
 };
 
-/** The user's own browser, lent through the Hermesh extension (browser-design §8.4). */
+/** The user's own browser, lent through the Aide extension (browser-design §8.4). */
 export type ExtensionStatus = {
   /** The account signed in to that browser profile, when it has one. */
   account?: string | null;
@@ -4804,7 +4804,7 @@ export type TranscriptPage = {
   items: TranscriptItem[];
 };
 
-/** Transitions Hermesh writes; others the file has are kept and shown by name. */
+/** Transitions Aide writes; others the file has are kept and shown by name. */
 export type TransitionKind = "none" | "cut" | "fade" | "push" | "wipe" | "split" | "reveal" | "cover" | "zoom" | "morph";
 
 export type UnderlineStyle = "none" | "single" | "double" | "heavy" | "dotted" | "dash" | "wavy";

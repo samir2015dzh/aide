@@ -1,4 +1,4 @@
-import type { McpServerView, SkillEntry, SkillsListResult } from "@hermesh/her-protocol";
+import type { McpServerView, SkillEntry, SkillsListResult } from "@aide/her-protocol";
 
 // What the Connectors and Skills pages show, made from her's answers (skills/list, mcp/list):
 // the groups of skills, and each server's state as one line.

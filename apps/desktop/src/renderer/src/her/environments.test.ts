@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Machine } from "@hermesh/proto/local";
+import type { Machine } from "@aide/proto/local";
 import { environments, envState, herChoices, herDataKept, lacksGrant, newServer, pickEnvironment, unreadCount } from "./environments.ts";
 
 type Her = NonNullable<Machine["her"]>;
 
 /**
  * A machine as Watch lists it: online unless said, Her as given (none when undefined). With a platform it has
- * answered: its status has Her in it, as every hermeshd's since Her, unless it is from before Her (beforeHer).
+ * answered: its status has Her in it, as every aided's since Her, unless it is from before Her (beforeHer).
  */
 function machine(id: string, name: string, o: { local?: boolean; online?: boolean; her?: Partial<Her>; platform?: string; seen?: number; beforeHer?: boolean } = {}): Machine {
   const her = (h: Partial<Her>) => ({ enabled: false, running: false, version: "", modelReady: false, unsupported: "", unread: 0, error: "", ...h }) as Her;
@@ -86,7 +86,7 @@ test("the first run offers this Mac first, then machines that can run Her, then 
   assert.equal(herChoices([{ ...nas, her: undefined }])[0].why, "unsupported");
   // A PC running the app: its own machine runs Her too.
   assert.equal(herChoices([machine("l", "this", { local: true, platform: "windows/amd64" })])[0].why, null);
-  // A Hermesh from before her ran on Windows says it can't, whatever the platform says.
+  // An Aide from before her ran on Windows says it can't, whatever the platform says.
   assert.equal(herChoices([machine("x", "box", { her: { unsupported: "windows" } })])[0].why, "windows");
 });
 

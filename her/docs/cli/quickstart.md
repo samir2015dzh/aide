@@ -3,7 +3,7 @@
 ## Install
 
 ```bash
-curl -fsSL https://github.com/hermeshai/her-releases/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh
 ```
 
 It checks the download's SHA-256 and puts `her` in `~/.local/bin`; `--dir` or `HER_INSTALL_DIR` picks another folder, `--version V` a version. Run it again to upgrade, or run `her upgrade`.
@@ -11,7 +11,7 @@ It checks the download's SHA-256 and puts `her` in `~/.local/bin`; `--dir` or `H
 With Homebrew:
 
 ```bash
-brew install hermeshai/tap/her
+brew install samir2015dzh/tap/her
 ```
 
 To check a download by hand, compare it with `SHA256SUMS` from the same release.

@@ -2,7 +2,7 @@ package acp
 
 import "runtime"
 
-// Agents are the ACP agents Hermesh knows how to start. Commands follow
+// Agents are the ACP agents Aide knows how to start. Commands follow
 // each vendor's documented ACP entry point; flags that pre-approve tools
 // are not needed because the gate answers permission requests.
 var Agents = []Agent{

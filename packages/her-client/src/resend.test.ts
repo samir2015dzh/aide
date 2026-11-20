@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Event, EventMsg, SessionInfo, TranscriptItem, UserMessage } from "@hermesh/her-protocol";
+import type { Event, EventMsg, SessionInfo, TranscriptItem, UserMessage } from "@aide/her-protocol";
 import { applyEvents, fromSnapshot } from "./session.ts";
 import { attachedBlock, changesFilesAfter, conversation, handedTabBlock, handedTabsBlock, userText } from "./steps.ts";
 

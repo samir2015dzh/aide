@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { MailInfo, RoutineRunInfo, RoutineSummary } from "@hermesh/her-protocol";
+import type { MailInfo, RoutineRunInfo, RoutineSummary } from "@aide/her-protocol";
 import { botChat } from "./botChat.ts";
 import { routineDot, routineGroups, routineLine, runLate, runRows, runTook } from "./routines.ts";
 import { conversation, reportBody } from "./steps.ts";

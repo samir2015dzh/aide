@@ -1,4 +1,4 @@
-module github.com/hermeshai/hermesh
+module github.com/samir2015dzh/aide
 
 go 1.27.1
 

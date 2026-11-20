@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // News as her reads it (docs/her-mesh.md §6.2): the session's news in a
-// tag hermeshd writes, then a line saying what it is and what to do with
+// tag aided writes, then a line saying what it is and what to do with
 // it. The line is here and not in her prompt, which is frozen when a
 // conversation starts.
 

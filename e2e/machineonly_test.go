@@ -12,9 +12,9 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // TestMachineOnlyMac: a Mac logs in as a machine only (a work Mac), with
@@ -26,7 +26,7 @@ func TestMachineOnlyMac(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")}
+	env := []string{"AIDE_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"gemini"}}) // all machines, as the app's default
 	ctx := context.Background()
 	home, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
@@ -34,7 +34,7 @@ func TestMachineOnlyMac(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The work Mac: the app's hermeshd, nobody's yet. A wrong password
+	// The work Mac: the app's aided, nobody's yet. A wrong password
 	// makes it nothing.
 	work, _ := w.otherMac("work-mac", env)
 	if _, err := work.LogIn(ctx, &localv1.LogInRequest{RelayUrl: home.RelayUrl, Account: testAccount, Password: "not the password", Label: "Work Mac", MachineOnly: true}); connect.CodeOf(err) != connect.CodePermissionDenied {
@@ -261,14 +261,14 @@ func (w *ownerMac) logInMachineOnly(mac localv1connect.LocalServiceClient, home 
 	return st
 }
 
-// otherMac starts another Mac's hermeshd (as the app runs it) that belongs
+// otherMac starts another Mac's aided (as the app runs it) that belongs
 // to nobody yet, and returns its local API and socket.
 func (w *ownerMac) otherMac(name string, env []string) (localv1connect.LocalServiceClient, string) {
 	w.t.Helper()
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	w.t.Cleanup(func() { os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "o.sock")
-	p := start(w.t, "owner "+name, env, filepath.Join(w.bin, "hermeshd"), "run", "--owner", "--data-dir", filepath.Join(w.tmp, name), "--socket", sock)
+	p := start(w.t, "owner "+name, env, filepath.Join(w.bin, "aided"), "run", "--owner", "--data-dir", filepath.Join(w.tmp, name), "--socket", sock)
 	w.logs = append(w.logs, p)
 	return localClient(w.t, sock), sock
 }
@@ -280,7 +280,7 @@ func TestMachineNameAfterRelayRestart(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")}
+	env := []string{"AIDE_GEMINI_BIN=" + filepath.Join(binaries(t), "fakeacp"), "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"gemini"}})
 	ctx := context.Background()
 	home, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})

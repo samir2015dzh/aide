@@ -6,7 +6,7 @@ import {
   QuestionResolvedSchema,
   SessionEventSchema,
   type SessionEvent,
-} from "@hermesh/proto/session";
+} from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import { interrupter, isInterruption, resolutionTitle, transcript, turnStartedAt } from "./transcript";
 import { at } from "./testing";
@@ -83,7 +83,7 @@ describe("transcript", () => {
       "你回答：红；深一点",
     );
     expect(resolutionTitle(r({ resolution: QuestionResolution.DECLINED, by: "c1" }), () => "bot")).toBe("bot 跳过了回答");
-    expect(resolutionTitle(r({ resolution: QuestionResolution.TIMED_OUT, by: "hermesh" }))).toBe("无人回答，Agent 已自行继续");
+    expect(resolutionTitle(r({ resolution: QuestionResolution.TIMED_OUT, by: "aide" }))).toBe("无人回答，Agent 已自行继续");
   });
 
   test("an interruption is not a failure", () => {

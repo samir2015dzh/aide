@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { TFunction } from "i18next";
 import { Trans, useTranslation } from "react-i18next";
-import { rootPlatform } from "@hermesh/core";
-import { Mark } from "@hermesh/ui";
+import { rootPlatform } from "@aide/core";
+import { Mark } from "@aide/ui";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { errorText, save, useStore } from "../store";
@@ -23,7 +23,7 @@ type How =
 
 type Page = { kind: "welcome" } | { kind: "login" } | { kind: "setUp" } | { kind: "authorize"; how: How };
 
-const bridge = () => window.hermesh!;
+const bridge = () => window.aide!;
 
 export function SignIn() {
   const [page, setPage] = useState<Page>({ kind: "welcome" });
@@ -279,9 +279,9 @@ function Authorize({ how, cancel }: { how: How; cancel: () => void }) {
   const go = async () => {
     // Reminders: start with the login session (in the menu bar) and notify.
     for (const k of ["openAtLogin", "notifyQuestion", "notifyFailed"]) save(k, remind);
-    (window.hermesh as { setLoginItem?: (on: boolean) => void } | undefined)?.setLoginItem?.(remind);
+    (window.aide as { setLoginItem?: (on: boolean) => void } | undefined)?.setLoginItem?.(remind);
     setBusy(true);
-    // The pages after this one, before hermeshd says it is set up (so the main window never flashes).
+    // The pages after this one, before aided says it is set up (so the main window never flashes).
     setProgress(!device ? null : machine ? { step: "prepare" } : { step: "agent" });
     try {
       const name = await bridge().computerName();
@@ -447,7 +447,7 @@ export function Removed() {
 type Trouble = { title: string; message: string; detail?: string };
 
 /**
- * e said for the person. hermeshd checks the server before logging in and
+ * e said for the person. aided checks the server before logging in and
  * says "relay unreachable (host): reason" when this network can't reach it.
  */
 function troubleOf(t: TFunction<"firstrun">, e: unknown, title: string): Trouble {

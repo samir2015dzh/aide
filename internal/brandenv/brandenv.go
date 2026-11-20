@@ -8,7 +8,7 @@ package brandenv
 import (
 	"os"
 
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 )
 
 // The prefixes: the name since the rename, and the one before.

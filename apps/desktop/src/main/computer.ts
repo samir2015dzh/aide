@@ -2,7 +2,7 @@ import { desktopCapturer, shell, systemPreferences } from "electron";
 import type { ComputerPermission } from "../shared/bridge";
 
 // Her's computer use on this Mac (docs/her-server.md §4.4). macOS holds
-// hermeshd responsible for Her's desktop tools, so whether they have their
+// aided responsible for Her's desktop tools, so whether they have their
 // permissions only her can tell (desktop/status, asked by the page); the app
 // opens the panes where the owner allows them.
 
@@ -12,9 +12,9 @@ const panes: Record<ComputerPermission, string> = {
 };
 
 /**
- * Opens a permission's pane. her's own check has listed hermeshd under
- * Accessibility already; macOS lists Hermesh under Screen Recording only once
- * the app tried to capture, and Hermesh's switch there is hermeshd's too: one
+ * Opens a permission's pane. her's own check has listed aided under
+ * Accessibility already; macOS lists Aide under Screen Recording only once
+ * the app tried to capture, and Aide's switch there is aided's too: one
  * tiny capture does it.
  */
 export async function openComputerPermission(kind: unknown) {

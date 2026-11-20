@@ -31,12 +31,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/metrics"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/metrics"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type Config struct {
@@ -183,20 +183,20 @@ func (s *Server) Close() error {
 }
 
 var (
-	mAdmission         = metrics.Default.Histogram("hermesh_relay_admission_seconds")
-	mAdmissionsOK      = metrics.Default.Counter(`hermesh_relay_admissions_total{result="ok"}`)
-	mAdmissionsRefused = metrics.Default.Counter(`hermesh_relay_admissions_total{result="refused"}`)
-	mTunnelOpen        = metrics.Default.Histogram("hermesh_relay_tunnel_open_seconds")
-	mTunnelsTotal      = metrics.Default.Counter("hermesh_relay_tunnels_total")
-	mTunnelsActive     = metrics.Default.Gauge("hermesh_relay_tunnels_active")
-	mTunnelBytes       = metrics.Default.Counter("hermesh_relay_tunnel_bytes_total")
+	mAdmission         = metrics.Default.Histogram("aide_relay_admission_seconds")
+	mAdmissionsOK      = metrics.Default.Counter(`aide_relay_admissions_total{result="ok"}`)
+	mAdmissionsRefused = metrics.Default.Counter(`aide_relay_admissions_total{result="refused"}`)
+	mTunnelOpen        = metrics.Default.Histogram("aide_relay_tunnel_open_seconds")
+	mTunnelsTotal      = metrics.Default.Counter("aide_relay_tunnels_total")
+	mTunnelsActive     = metrics.Default.Gauge("aide_relay_tunnels_active")
+	mTunnelBytes       = metrics.Default.Counter("aide_relay_tunnel_bytes_total")
 )
 
 func (s *Server) registerMetrics() {
 	for _, role := range []relayv1.Role{relayv1.Role_ROLE_MACHINE, relayv1.Role_ROLE_CLIENT, relayv1.Role_ROLE_OWNER} {
 		role := role
 		name := strings.ToLower(strings.TrimPrefix(role.String(), "ROLE_"))
-		metrics.Default.GaugeFunc(`hermesh_relay_peers{role="`+name+`"}`, func() int64 {
+		metrics.Default.GaugeFunc(`aide_relay_peers{role="`+name+`"}`, func() int64 {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			n := int64(0)
@@ -352,7 +352,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	s.serving.Add(1)
 	defer s.serving.Done()
 	inProcess := r.Context().Value(inProcessKey{}) != nil
-	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"hermesh.v1"}})
+	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"aide.v1"}})
 	if err != nil {
 		return
 	}
@@ -733,10 +733,10 @@ func (s *Server) controlMux(role relayv1.Role) http.Handler {
 // owner's app costs the relay (docs/state-sync.md §8). Nothing per owner.
 var mOwnerRPCs = func() map[string]*metrics.Counter {
 	m := map[string]*metrics.Counter{}
-	methods := relayv1.File_hermesh_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
+	methods := relayv1.File_aide_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
 	for i := range methods.Len() {
 		name := string(methods.Get(i).Name())
-		m["/"+relayv1connect.OwnerControlServiceName+"/"+name] = metrics.Default.Counter(`hermesh_relay_owner_rpcs_total{method="` + name + `"}`)
+		m["/"+relayv1connect.OwnerControlServiceName+"/"+name] = metrics.Default.Counter(`aide_relay_owner_rpcs_total{method="` + name + `"}`)
 	}
 	return m
 }()

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Her on the mesh (docs/her-mesh.md), as the owner meets it: turning Her on
@@ -164,7 +164,7 @@ func herClient(t *testing.T, env *herEnvironment) *localv1.Client {
 	return nil
 }
 
-func TestHerMesh(t *testing.T) {
+func TestHerOnTheMesh(t *testing.T) {
 	env := newHerEnvironment(t)
 	w, c, ctx := env.w, env.c, context.Background()
 	onMesh := func() bool { return listedMachine(t, c, env.machine).GetHer().GetMesh() }

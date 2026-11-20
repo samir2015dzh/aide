@@ -6,7 +6,7 @@ export const palettes = {
   dark: { foreground: "#E8ECF4", keyword: "#7AB0FF", function: "#91BFFF", string: "#59CDB8", comment: "#9AA3B5", constant: "#B69AFF", type: "#B69AFF", property: "#F3B46B", invalid: "#FF8C94" },
 };
 export const themes: ThemeRegistration[] = Object.entries(palettes).map(([mode, c]) => ({
-  name: `hermesh-${mode}`, type: mode as "light" | "dark",
+  name: `aide-${mode}`, type: mode as "light" | "dark",
   colors: { "editor.foreground": c.foreground, "editor.background": mode === "light" ? "#F6F7FA" : "#18181B" },
   settings: [
     { settings: { foreground: c.foreground } },

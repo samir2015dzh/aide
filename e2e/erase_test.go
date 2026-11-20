@@ -12,7 +12,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestEraseEverything: from one of the owner's devices (the server signs
@@ -26,7 +26,7 @@ func TestEraseEverything(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	// Her's homes: the Mac's, where Her is turned on, and the servers', where
 	// she never is (docs/her-server.md §5.6).
 	herMac, herVPS := filepath.Join(t.TempDir(), "her"), filepath.Join(t.TempDir(), "her")
@@ -39,7 +39,7 @@ func TestEraseEverything(t *testing.T) {
 	}
 	w := newOwnerMac(t, herEnv(herMac), &localv1.GrantSpec{})
 	ctx := context.Background()
-	daemon := filepath.Join(w.bin, "hermeshd")
+	daemon := filepath.Join(w.bin, "aided")
 
 	// Two sessions on the Mac's machine: one leaves its worktree with
 	// uncommitted changes, the other leaves it clean.
@@ -245,7 +245,7 @@ func TestEraseEverything(t *testing.T) {
 	machineErased(offData)
 
 	// A cold start: the server can be set up again, and the Mac with it.
-	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(w.bin, "hermesh-relay"), "setup-code", "--data-dir", filepath.Join(w.tmp, "relay")).stdout)
+	claim := strings.TrimSpace(run(t, nil, 10*time.Second, filepath.Join(w.bin, "aide-relay"), "setup-code", "--data-dir", filepath.Join(w.tmp, "relay")).stdout)
 	setup, err := w.app.client.Setup(ctx, &localv1.SetupRequest{RelayUrl: home.RelayUrl, SetupCode: claim, Account: testAccount, Password: testPassword, Label: "test-mac"})
 	if err != nil {
 		t.Fatalf("setting up again: %v", err)
@@ -260,7 +260,7 @@ func TestEraseEverything(t *testing.T) {
 	// Those the erase never reached log in to the new owner as they are:
 	// their old owner is gone from the server, nothing to log out of first.
 	gone := "is gone from its server (it erased everything)"
-	login := start(t, "login late again", append(slices.Clone(lateAgent), loginEnv()...), filepath.Join(w.bin, "hermesh"), "auth", "login", home.RelayUrl, "--name", "late")
+	login := start(t, "login late again", append(slices.Clone(lateAgent), loginEnv()...), filepath.Join(w.bin, "aide"), "auth", "login", home.RelayUrl, "--name", "late")
 	if c := login.wait(t, 30*time.Second); c != 0 || !strings.Contains(login.output(), gone) {
 		t.Fatalf("the late agent logging in again: %d\n%s", c, login.output())
 	}
@@ -270,7 +270,7 @@ func TestEraseEverything(t *testing.T) {
 	}
 }
 
-// TestEraseThisMachine: `hermeshd erase` on a server erases its machine
+// TestEraseThisMachine: `aided erase` on a server erases its machine
 // only: not while it runs, then unpaired (its owner's devices stop listing
 // it) and its data gone. On one of the owner's devices it says where to
 // erase everything instead.
@@ -278,10 +278,10 @@ func TestEraseThisMachine(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	ctx := context.Background()
-	daemon := filepath.Join(w.bin, "hermeshd")
+	daemon := filepath.Join(w.bin, "aided")
 	data := filepath.Join(w.tmp, "vps-1")
 	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {

@@ -16,11 +16,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // spooled is one notification the relay handed to the push service (its
@@ -36,10 +36,10 @@ type spooled struct {
 			InterruptionLevel string            `json:"interruption-level"`
 			ThreadID          string            `json:"thread-id"`
 		} `json:"aps"`
-		Hermesh struct {
+		Aide struct {
 			N string `json:"n"`
 			K string `json:"k"`
-		} `json:"hermesh"`
+		} `json:"aide"`
 	} `json:"payload"`
 }
 
@@ -75,7 +75,7 @@ func TestPushNotices(t *testing.T) {
 		t.Skip("e2e")
 	}
 	fake := filepath.Join(binaries(t), "fakeacp")
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini"}}, "--retry-delay", "0") // its rate limit fails at once
 	// A push service the relay doesn't know (Mi Push, given up) is refused.
 	if _, err := w.app.client.RegisterPush(context.Background(), &localv1.RegisterPushRequest{Token: "regid", Environment: "production",
@@ -114,7 +114,7 @@ func TestPushNotices(t *testing.T) {
 		if s.Token != "abc123" || s.Environment != "development" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.Alert["loc-key"] != "notice.body" {
 			t.Fatalf("payload: %+v", s)
 		}
-		sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+		sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 		n := &sessionv1.Notice{}
 		if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 			t.Fatalf("open notice: %v", err)
@@ -255,11 +255,11 @@ func TestPushHerNotices(t *testing.T) {
 		t.Helper()
 		for _, s := range readSpool(t, spool, seen) {
 			// Sent at once, as the owner waits for her; but not time-sensitive, which would break through Focus.
-			if s.Token != "abc123" || s.Payload.Hermesh.K != "her" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.ThreadID == "" ||
+			if s.Token != "abc123" || s.Payload.Aide.K != "her" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.ThreadID == "" ||
 				!s.Urgent || s.Payload.Aps.InterruptionLevel != "active" {
 				t.Fatalf("payload: %+v", s)
 			}
-			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 			n := &sessionv1.Notice{}
 			if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 				t.Fatalf("open notice: %v", err)
@@ -319,7 +319,7 @@ func TestPushHerNotices(t *testing.T) {
 	send("[[mock:ask:先发给谁？|财务|所有人]] 然后呢")
 	one("question", "先发给谁？")
 
-	// This Mac's hermeshd starting again, and her with it: what she had
+	// This Mac's aided starting again, and her with it: what she had
 	// before is no news.
 	w.restartOwner(false)
 	c = w.app.client
@@ -371,7 +371,7 @@ func TestPushNoticeWaitsForRelay(t *testing.T) {
 	// tests that are, after the rest of the suite.
 	t.Parallel()
 	fake := filepath.Join(binaries(t), "fakeacp")
-	w := newOwnerMac(t, []string{"HERMESH_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
+	w := newOwnerMac(t, []string{"AIDE_GEMINI_BIN=" + fake, "FAKE_ACP_STATE=" + filepath.Join(t.TempDir(), "fakeacp")},
 		&localv1.GrantSpec{Agents: []string{"gemini"}})
 	spool := filepath.Join(t.TempDir(), "push")
 	w.relayArgs = append(w.relayArgs, "--push-spool", spool)
@@ -425,7 +425,7 @@ func TestPushNoticeWaitsForRelay(t *testing.T) {
 	var got []*sessionv1.Notice
 	read := func() {
 		for _, s := range readSpool(t, spool, seen) {
-			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Hermesh.N)
+			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
 			n := &sessionv1.Notice{}
 			if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
 				t.Fatalf("open notice: %v", err)

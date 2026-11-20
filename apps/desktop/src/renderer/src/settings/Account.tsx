@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Device } from "@hermesh/proto/local";
-import { platformTitle } from "@hermesh/core";
+import type { Device } from "@aide/proto/local";
+import { platformTitle } from "@aide/core";
 import { local } from "../api";
 import { herDataKept } from "../her/environments";
 import { Icon } from "../icons";
@@ -19,7 +19,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
   const st = useStore();
   const s = st.status;
   if (s?.machineOnly) return <MachineAccount />;
-  const user = window.hermesh?.userName || "—";
+  const user = window.aide?.userName || "—";
   const relay = s?.relayUrl ?? "";
   const host = URL.canParse(relay) ? new URL(relay).host : relay;
   const account = s?.account ?? "";
@@ -130,7 +130,7 @@ function MachineAccount() {
   const { t: f } = useTranslation("firstrun");
   const st = useStore();
   const s = st.status!;
-  const user = window.hermesh?.userName || "—";
+  const user = window.aide?.userName || "—";
   const host = URL.canParse(s.relayUrl) ? new URL(s.relayUrl).host : s.relayUrl;
   const leave = () =>
     st.set({
@@ -171,7 +171,7 @@ function MachineAccount() {
         </div>
       </More>
       <div className="set-acts">
-        <button className="btn" onClick={() => (window.hermesh?.showUpgrade(), window.close())}>{f("machineOnly.upgrade")}</button>
+        <button className="btn" onClick={() => (window.aide?.showUpgrade(), window.close())}>{f("machineOnly.upgrade")}</button>
         <button className="btn danger push" onClick={leave}>{f("machineOnly.leave")}</button>
       </div>
     </div>

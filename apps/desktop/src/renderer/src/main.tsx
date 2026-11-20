@@ -10,7 +10,7 @@ import "./styles.css";
 document.documentElement.dataset.platform = platform;
 
 // Titles go grey while another window has the focus (the .blurred rules).
-window.hermesh?.onWindowFocus((focused) => document.documentElement.classList.toggle("blurred", !focused));
+window.aide?.onWindowFocus((focused) => document.documentElement.classList.toggle("blurred", !focused));
 // Memory a long conversation held goes back while the window is hidden (memory.ts).
 releaseWhileHidden();
 

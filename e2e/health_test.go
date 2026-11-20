@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // userProcesses counts this user's processes, as the system limits them.
@@ -63,7 +63,7 @@ func TestOutOfProcesses(t *testing.T) {
 	}
 	codex := filepath.Join(t.TempDir(), "codex")
 	os.WriteFile(codex, []byte("#!/bin/sh\ncase \"$1\" in --version) echo 'codex-cli 0.48.0';; login) echo 'Logged in';; esac\n"), 0o755)
-	w := newOwnerMac(t, []string{"HERMESH_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
+	w := newOwnerMac(t, []string{"AIDE_CODEX_BIN=" + codex}, &localv1.GrantSpec{Agents: []string{"codex"}})
 	ctx := context.Background()
 	status := func() *machinev1.MachineStatus {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
@@ -83,7 +83,7 @@ func TestOutOfProcesses(t *testing.T) {
 	w.app.client.CheckAgents(ctx, &localv1.CheckAgentsRequest{})
 	eventually(t, 30*time.Second, "codex available", func() bool { a := agent("codex"); return a != nil && a.Available })
 
-	// Its hermeshd may start 80 more processes than this user runs now (only
+	// Its aided may start 80 more processes than this user runs now (only
 	// it: the user's other programs keep the system's limit, far above)…
 	w.nproc = userProcesses(t) + 80
 	w.restartOwner(false)
@@ -131,7 +131,7 @@ func TestOutOfProcesses(t *testing.T) {
 	eventually(t, 40*time.Second, "codex is available again", func() bool { a := agent("codex"); return a != nil && a.Available })
 }
 
-// TestAgentsOnTheLoginShellsPath: hermeshd runs with launchd's bare PATH,
+// TestAgentsOnTheLoginShellsPath: aided runs with launchd's bare PATH,
 // so it reads the login shell's. A coding agent installed where only that
 // PATH reaches (a Node CLI and its node, from nvm) is found and runs; with
 // a login shell that hangs, the machine says it can't read the PATH, and
@@ -144,15 +144,15 @@ func TestAgentsOnTheLoginShellsPath(t *testing.T) {
 	dir := t.TempDir()
 	nvm := filepath.Join(dir, "nvm", "bin")
 	os.MkdirAll(nvm, 0o755)
-	os.WriteFile(filepath.Join(nvm, "hermesh-test-node"), []byte("#!/bin/sh\necho 'codex-cli 0.48.0'\n"), 0o755)
+	os.WriteFile(filepath.Join(nvm, "aide-test-node"), []byte("#!/bin/sh\necho 'codex-cli 0.48.0'\n"), 0o755)
 	codex := filepath.Join(nvm, "codex")
-	os.WriteFile(codex, []byte("#!/usr/bin/env hermesh-test-node\n"), 0o755)
+	os.WriteFile(codex, []byte("#!/usr/bin/env aide-test-node\n"), 0o755)
 	shell := filepath.Join(dir, "zsh")
-	os.WriteFile(shell, []byte("#!/bin/sh\nprintf '__HERMESH_PATH__%s' '"+nvm+":/usr/bin:/bin'\n"), 0o755)
+	os.WriteFile(shell, []byte("#!/bin/sh\nprintf '__AIDE_PATH__%s' '"+nvm+":/usr/bin:/bin'\n"), 0o755)
 	slow := filepath.Join(dir, "slowsh")
 	os.WriteFile(slow, []byte("#!/bin/sh\nexec sleep 60\n"), 0o755)
 
-	env := []string{"HERMESH_CODEX_BIN=" + codex, "PATH=/usr/bin:/bin:/usr/sbin:/sbin"}
+	env := []string{"AIDE_CODEX_BIN=" + codex, "PATH=/usr/bin:/bin:/usr/sbin:/sbin"}
 	w := newOwnerMac(t, append(env, "SHELL="+shell), &localv1.GrantSpec{Agents: []string{"codex"}})
 	ctx := context.Background()
 	status := func() *machinev1.MachineStatus {
@@ -179,7 +179,7 @@ func TestAgentsOnTheLoginShellsPath(t *testing.T) {
 	w.app.client.CheckAgents(ctx, &localv1.CheckAgentsRequest{})
 	eventually(t, time.Minute, "codex says what it misses", func() bool {
 		a := codexStatus()
-		return a != nil && !a.Available && !a.Checking && a.Problem == machinev1.AgentProblem_AGENT_PROBLEM_MISSING_RUNTIME && a.Detail == "hermesh-test-node"
+		return a != nil && !a.Available && !a.Checking && a.Problem == machinev1.AgentProblem_AGENT_PROBLEM_MISSING_RUNTIME && a.Detail == "aide-test-node"
 	})
 	eventually(t, 30*time.Second, "the machine says it can't read the PATH", func() bool {
 		for _, p := range status().GetProblems() {

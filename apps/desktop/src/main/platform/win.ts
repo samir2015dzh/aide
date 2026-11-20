@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { LocalService } from "@hermesh/proto/local";
+import { LocalService } from "@aide/proto/local";
 import { app, BrowserWindow, nativeTheme, shell } from "electron";
 import { execFile, execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -12,39 +12,38 @@ import type { LoginItem } from "../../shared/bridge";
 import { i18n } from "../../shared/i18n";
 import { newer } from "../../shared/update";
 import { dataDir, socketPath, testDataDir } from "../paths";
+import { envPrefix } from "../legacy";
 import type { Platform, WindowKind } from "./types";
 
 // Setup.exe (Squirrel.Windows, docs/windows.md §6.1) installs the app for
-// this user into %LOCALAPPDATA%\HermeshApp: a folder per version, app-<version>,
-// with Hermesh.exe and Update.exe above them, which start the newest one.
-// Each version copies hermeshd, hermeshdw and hermesh, and her beside them,
-// where they stay, the folder install.ps1 uses, on PATH; hermeshd's logon task runs hermeshdw
-// from there (hermeshd service install --owner). Open Hermesh at login is
+// this user into %LOCALAPPDATA%\AideApp: a folder per version, app-<version>,
+// with Aide.exe and Update.exe above them, which start the newest one.
+// Each version copies aided, aidedw and aide, and her beside them,
+// where they stay, the folder install.ps1 uses, on PATH; aided's logon task runs aidedw
+// from there (aided service install --owner). Open Aide at login is
 // the user's Run value, which Startup apps lists and switches. Development
 // and test runs use a daemon of their own and touch none of it.
 const root = path.resolve(path.dirname(process.execPath), "..");
 const updateExe = path.join(root, "Update.exe");
-const installed = app.isPackaged && process.platform === "win32" && !process.env.AIDE_DATA_DIR && !process.env.HERMESH_DATA_DIR && !testDataDir && fs.existsSync(updateExe);
-/** Hermesh.exe above the versions, which starts the newest: for links, shortcuts and login. */
-const stub = path.join(root, "Hermesh.exe");
+const installed = app.isPackaged && process.platform === "win32" && !process.env.AIDE_DATA_DIR && !process.env[envPrefix + "DATA_DIR"] && !testDataDir && fs.existsSync(updateExe);
+/** Aide.exe above the versions, which starts the newest: for links, shortcuts and login. */
+const stub = path.join(root, "Aide.exe");
 let devLoginItem = false;
 /** Opened at login, the app gets this argument: in the notification area only. */
-const atLogin = { path: stub, args: ["--hermesh-at-login"] };
+const atLogin = { path: stub, args: ["--aide-at-login"] };
 // The app's name to Windows: its Start menu shortcut and its notifications carry it.
-const appId = "com.hermesh.app";
+const appId = "com.aide.app";
 if (installed) app.setAppUserModelId(appId);
 /** The Start menu's shortcut, at the top of All apps (Squirrel's own would be in a folder). */
 const startMenu = path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "Microsoft", "Windows", "Start Menu", "Programs");
 const shortcut = path.join(startMenu, "Aide.lnk");
-/** The shortcut's name before the app was called Aide (RENAME-AIDE.md D9): moved to the new one on update. */
-const oldShortcut = path.join(startMenu, "Hermesh.lnk");
 
-// The app's programs, beside Hermesh.exe (package-win.mjs), and where they stay.
+// The app's programs, beside Aide.exe (package-win.mjs), and where they stay.
 const program = (name: string) => path.join(path.dirname(process.execPath), "bin", name);
-const binDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Programs", "Hermesh", "bin");
-const hermeshd = path.join(binDir, "hermeshd.exe");
+const binDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Programs", "Aide", "bin");
+const aided = path.join(binDir, "aided.exe");
 
-/** Whether hermeshd answers on its pipe now. */
+/** Whether aided answers on its pipe now. */
 function answers(): Promise<boolean> {
   return new Promise((resolve) => {
     const c = net.connect(socketPath());
@@ -59,10 +58,7 @@ function answers(): Promise<boolean> {
 }
 
 /**
- * Copies this version's hermeshd, hermeshdw and hermesh to binDir, the first
- * and last also as aided and aide (the names they have since the app was
- * called Aide; the old ones stay, for the logon task, agents' hooks and
- * scripts: RENAME-AIDE.md B1, B2), and her
+ * Copies this version's aided, aidedw and aide to binDir, and her
  * with what is hers where the app has it (package-win.mjs), unless they are
  * there already. A running program can be renamed, not overwritten: it
  * moves aside, and goes once nothing runs it.
@@ -73,8 +69,7 @@ function placePrograms() {
     if (f.endsWith(".old")) fs.rm(path.join(binDir, f), { recursive: true, force: true }, () => {});
   }
   const hers = ["her.exe", "agent-desktop.exe", "pdfium.dll"].filter((name) => fs.existsSync(program(name)));
-  const names: [string, string][] = ["hermeshd.exe", "hermeshdw.exe", "hermesh.exe", ...hers].map((n) => [n, n]);
-  names.push(["hermeshd.exe", "aided.exe"], ["hermesh.exe", "aide.exe"]);
+  const names: [string, string][] = ["aided.exe", "aidedw.exe", "aide.exe", ...hers].map((n) => [n, n]);
   for (const [name, as] of names) {
     const from = fs.statSync(program(name));
     const to = path.join(binDir, as);
@@ -84,7 +79,7 @@ function placePrograms() {
     fs.copyFileSync(program(name), to);
     fs.utimesSync(to, from.atime, from.mtime);
   }
-  // Her's console, a folder hermeshd serves from beside her: replaced whole.
+  // Her's console, a folder aided serves from beside her: replaced whole.
   const from = program("her-console");
   const to = path.join(binDir, "her-console");
   if (fs.existsSync(from) && filesOf(from) !== filesOf(to)) {
@@ -105,14 +100,14 @@ function filesOf(dir: string): string {
     .join("\n");
 }
 
-/** Registers hermeshd's logon task, the owner's and this PC's machine, and starts it. */
+/** Registers aided's logon task, the owner's and this PC's machine, and starts it. */
 function installDaemon() {
-  execFile(hermeshd, ["service", "install", "--owner"], { windowsHide: true }, (err) => err && console.warn("hermeshd's logon task:", err));
+  execFile(aided, ["service", "install", "--owner"], { windowsHide: true }, (err) => err && console.warn("aided's logon task:", err));
 }
 
 /** binDir on the user's PATH, or not, as install.ps1 writes it; running programs are told. */
 function setPath(on: boolean) {
-  execFileSync(program("hermeshd.exe"), ["user-path", on ? "add" : "remove", binDir], { windowsHide: true, timeout: 5_000 });
+  execFileSync(program("aided.exe"), ["user-path", on ? "add" : "remove", binDir], { windowsHide: true, timeout: 5_000 });
 }
 
 /** What Setup's events did, in the data folder's logs (nobody sees the app's output then). */
@@ -152,21 +147,14 @@ function installerEvent(): boolean {
       attempt("PATH", () => setPath(true));
       break;
     case "--squirrel-updated":
-      // Hermesh.lnk becomes Aide.lnk, with the same app id: pinned and grouped as before. One the owner removed stays removed.
-      if (fs.existsSync(oldShortcut)) {
-        attempt("the Start menu", () => {
-          shell.writeShortcutLink(shortcut, { target: stub, appUserModelId: appId, description: "Aide" });
-          fs.rmSync(oldShortcut, { force: true });
-        });
-      }
       attempt("PATH", () => setPath(true));
       break;
     case "--squirrel-uninstall":
       // The app running (Squirrel ends nothing), its files could not go. Its
       // helpers go with it: one already gone is no failure.
       attempt("the app", () => {
-        const list = execFileSync("tasklist.exe", ["/FO", "CSV", "/NH", "/FI", "IMAGENAME eq Hermesh.exe"], { encoding: "utf8", windowsHide: true, timeout: 10_000 });
-        for (const [, pid] of list.matchAll(/^"Hermesh\.exe","(\d+)"/gim)) {
+        const list = execFileSync("tasklist.exe", ["/FO", "CSV", "/NH", "/FI", "IMAGENAME eq Aide.exe"], { encoding: "utf8", windowsHide: true, timeout: 10_000 });
+        for (const [, pid] of list.matchAll(/^"Aide\.exe","(\d+)"/gim)) {
           if (Number(pid) === process.pid) continue;
           try {
             process.kill(Number(pid));
@@ -175,12 +163,12 @@ function installerEvent(): boolean {
           }
         }
       });
-      attempt("hermeshd's logon task", () => execFileSync(hermeshd, ["service", "uninstall"], { windowsHide: true, timeout: 5_000 }));
-      attempt("links", () => app.removeAsDefaultProtocolClient("hermesh", stub, []));
+      attempt("aided's logon task", () => execFileSync(aided, ["service", "uninstall"], { windowsHide: true, timeout: 5_000 }));
+      attempt("links", () => app.removeAsDefaultProtocolClient("aide", stub, []));
       attempt("open at login", () => app.setLoginItemSettings({ ...atLogin, openAtLogin: false }));
-      attempt("the Start menu", () => [shortcut, oldShortcut].forEach((f) => fs.rmSync(f, { force: true })));
+      attempt("the Start menu", () => fs.rmSync(shortcut, { force: true }));
       attempt("PATH", () => setPath(false));
-      // Last: hermeshd, just stopped, lets go of its files within moments.
+      // Last: aided, just stopped, lets go of its files within moments.
       attempt("the programs", () => fs.rmSync(binDir, { recursive: true, force: true, maxRetries: 8 }));
       break;
     case "--squirrel-obsolete":
@@ -217,7 +205,7 @@ export const win: Platform = {
   },
   installerEvent,
   registerLinks() {
-    if (installed) app.setAsDefaultProtocolClient("hermesh", stub, []);
+    if (installed) app.setAsDefaultProtocolClient("aide", stub, []);
   },
 
   registerDaemon() {
@@ -225,7 +213,7 @@ export const win: Platform = {
     try {
       placePrograms();
     } catch (e) {
-      console.warn("placing hermeshd:", e);
+      console.warn("placing aided:", e);
     }
     // Its logon task starts it; not running (the first launch, or a daemon of install.ps1's,
     // a machine only), the app registers the task again, which starts it.
@@ -244,11 +232,11 @@ export const win: Platform = {
 
   restartDaemon(why) {
     if (!installed) return;
-    console.warn(`restarting hermeshd: ${why}`);
+    console.warn(`restarting aided: ${why}`);
     // Its logon task, ended and run again: the supervisor, and the daemon with it, on the programs in binDir.
-    execFile(hermeshd, ["service", "restart"], { windowsHide: true }, (err) => {
+    execFile(aided, ["service", "restart"], { windowsHide: true }, (err) => {
       if (err) {
-        console.warn("restarting hermeshd:", err);
+        console.warn("restarting aided:", err);
         installDaemon();
       }
     });
@@ -272,7 +260,7 @@ export const win: Platform = {
   },
 
   openedAtLogin() {
-    return installed && process.argv.includes("--hermesh-at-login");
+    return installed && process.argv.includes("--aide-at-login");
   },
 
   openLoginItems() {

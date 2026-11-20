@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"os"
 	"os/exec"
 	"os/user"
@@ -95,7 +95,7 @@ func Install(bin, dataDir, logDir string, args ...string) error {
 			}
 		}
 		if lingerErr != nil {
-			fmt.Fprintln(os.Stderr, "note: could not enable lingering; run `sudo loginctl enable-linger "+userName()+"` so hermeshd keeps running after you log out")
+			fmt.Fprintln(os.Stderr, "note: could not enable lingering; run `sudo loginctl enable-linger "+userName()+"` so aided keeps running after you log out")
 		}
 		return nil
 	}
@@ -227,7 +227,7 @@ func Installed() bool {
 }
 
 // plistText is the launchd job Install writes. It is Interactive, as the Mac
-// app's own job is, because git and the agents hermeshd starts inherit it and
+// app's own job is, because git and the agents aided starts inherit it and
 // do what the person asked for: launchd's other types hold them back
 // (docs/technical-design.md §6.1).
 func plistText(bin, dataDir, logDir string, args []string) string {
@@ -245,7 +245,7 @@ func plistText(bin, dataDir, logDir string, args []string) string {
   <key>StandardErrorPath</key><string>%s</string>
 </dict>
 </plist>
-`, label(), xmlEscape(bin), plistArgs(args), xmlEscape(dataDir), xmlEscape(filepath.Join(logDir, "hermeshd.log")), xmlEscape(filepath.Join(logDir, "hermeshd.log")))
+`, label(), xmlEscape(bin), plistArgs(args), xmlEscape(dataDir), xmlEscape(filepath.Join(logDir, "aided.log")), xmlEscape(filepath.Join(logDir, "aided.log")))
 }
 
 // unitText is the systemd unit Install writes.
@@ -352,7 +352,7 @@ func RunInBackground(bin, dataDir string) (int, error) {
 	return pid, nil
 }
 
-// Supervise is for Windows: launchd and systemd keep hermeshd running.
+// Supervise is for Windows: launchd and systemd keep aided running.
 func Supervise(dataDir, exe string, args []string) error {
-	return errors.New("--supervise is for Windows; launchd and systemd keep hermeshd running here")
+	return errors.New("--supervise is for Windows; launchd and systemd keep aided running here")
 }

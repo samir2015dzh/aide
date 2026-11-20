@@ -14,8 +14,8 @@ import (
 	"connectrpc.com/connect"
 )
 
-// her's console as plain HTTP (proto/hermesh/her/v1/her.proto's header, and
-// packages/her-client's httpTransport). hermeshd's own refusals are non-2xx
+// her's console as plain HTTP (proto/aide/her/v1/her.proto's header, and
+// packages/her-client's httpTransport). aided's own refusals are non-2xx
 // with a short text; her's answers, her errors included, are 200.
 
 const (
@@ -215,7 +215,7 @@ func (h *Host) stage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"path": path})
 }
 
-// httpError answers with a refusal of hermeshd's own: a connect error's code
+// httpError answers with a refusal of aided's own: a connect error's code
 // as HTTP's status, its message as the text.
 func httpError(w http.ResponseWriter, err error) {
 	status := map[connect.Code]int{

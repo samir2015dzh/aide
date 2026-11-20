@@ -6,7 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 )
 
 // Doorbells are the webhooks rung when messages wait for an address

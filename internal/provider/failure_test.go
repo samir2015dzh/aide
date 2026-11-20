@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 func TestClassify(t *testing.T) {
@@ -111,7 +111,7 @@ func TestRedact(t *testing.T) {
 		{"opaque Qm9vbXNoYWthbGFrYTEyMzQ1Njc4OTBBQkNERUZHSElK end", "Qm9vbXNoYWthbGFrYTEyMzQ1Njc4OTBBQkNERUZHSElK", "end"},
 		// Ordinary paths and words survive (real Codex 401 text).
 		{"Missing bearer or basic authentication in header", "", "basic authentication in header"},
-		{"/private/tmp/claude-501/-Users-alice-code-hermesh--worktrees-x/a.txt", "", "-Users-alice-code-hermesh--worktrees-x/a.txt"},
+		{"/private/tmp/claude-501/-Users-alice-code-aide--worktrees-x/a.txt", "", "-Users-alice-code-aide--worktrees-x/a.txt"},
 		{"session 019a0000-0000-7000-8000-000000000000 not found", "", "019a0000-0000-7000-8000-000000000000"},
 	} {
 		out := Redact(c.in)

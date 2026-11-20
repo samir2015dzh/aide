@@ -1,4 +1,4 @@
-import type { Avatar } from "@hermesh/her-protocol";
+import type { Avatar } from "@aide/her-protocol";
 import type { TaskScript, ToolScript } from "./script.ts";
 
 // Bot mode in the mock (docs/kernel/bot-design.md): the demo's bots and what

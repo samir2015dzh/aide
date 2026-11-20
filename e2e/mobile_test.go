@@ -20,10 +20,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/mobile"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/mobile"
 )
 
 // TestMobileCoreProcess is the iPhone app's process in the tests that start
@@ -31,7 +31,7 @@ import (
 // paused and resumed by lines on stdin as the app does when it leaves the
 // front and comes back, and told the same way that its network changed.
 func TestMobileCoreProcess(t *testing.T) {
-	dir := os.Getenv("HERMESH_TEST_MOBILE_CORE")
+	dir := os.Getenv("AIDE_TEST_MOBILE_CORE")
 	if dir == "" {
 		t.Skip("only as a mobile core's process")
 	}
@@ -75,7 +75,7 @@ type mobileCore struct {
 func startMobileCore(t *testing.T, dir string) *mobileCore {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run", "^TestMobileCoreProcess$")
-	cmd.Env = append(os.Environ(), "HERMESH_TEST_MOBILE_CORE="+dir)
+	cmd.Env = append(os.Environ(), "AIDE_TEST_MOBILE_CORE="+dir)
 	stdin, _ := cmd.StdinPipe()
 	stdout, _ := cmd.StdoutPipe()
 	logf, err := os.CreateTemp(t.TempDir(), "core-*.log")
@@ -261,7 +261,7 @@ func TestMobileNetwork(t *testing.T) {
 	}
 	const oneWay = 150 * time.Millisecond
 	rtt := 2 * oneWay
-	w := newFarOwnerMac(t, oneWay, []string{"HERMESH_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	w := newFarOwnerMac(t, oneWay, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	var script strings.Builder
 	for i := range 120 {
 		fmt.Fprintf(&script, "say step %d: looking at the next part of the change, which is long enough to read like a real reply\n", i)

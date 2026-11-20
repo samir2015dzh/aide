@@ -1,6 +1,6 @@
 // The Windows app's icon: build/Aide.ico, drawn by hand for every size it
 // holds (16-24 px pixel by pixel, so the mark stays a ring with two dots;
-// RENAME-AIDE.md §2.11, the handover's design/aide/icons/final-g3, whose
+// the handover's design/aide/icons/final-g3, whose
 // tools/ draw it again). readPNG is the splash's (windows-splash.mjs), which
 // draws from the macOS icon's mark. No image library: PNGs are read with zlib.
 import fs from "node:fs";
@@ -44,7 +44,7 @@ export function readPNG(buf) {
   return { width, height, px };
 }
 
-/** Writes the program's icon (Hermesh.exe's, its shortcuts' and Setup.exe's) to icoPath. */
+/** Writes the program's icon (Aide.exe's, its shortcuts' and Setup.exe's) to icoPath. */
 export function windowsIcons(icoPath) {
   fs.copyFileSync(path.join(desktop, "build/Aide.ico"), icoPath);
 }

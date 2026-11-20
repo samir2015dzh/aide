@@ -6,16 +6,16 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hermeshai/hermesh/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/legacy"
 	"strings"
 	"time"
 
 	"github.com/oklog/ulid/v2"
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	"github.com/hermeshai/hermesh/internal/cli"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/internal/cli"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Connections: made on the consent page with the owner's account and
@@ -189,7 +189,7 @@ func (g *Gateway) end(ctx context.Context, c *Connection, state, reason string) 
 	if err := g.inboxes.DeleteInbox(ctx, c.ID); err != nil {
 		g.log.Warn("mcp: delete the inbox", "connection", c.ID, "err", err)
 	}
-	if inbox := hermeshClientID(c); inbox != "" {
+	if inbox := aideClientID(c); inbox != "" {
 		g.Forget(ctx, c.OwnerID, inbox)
 	}
 	g.log.Info("mcp: connection ended", "connection", c.ID, "state", state, "reason", reason)

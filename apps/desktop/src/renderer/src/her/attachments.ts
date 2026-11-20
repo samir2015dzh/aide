@@ -1,6 +1,6 @@
 
 // What the composer attaches to a message (docs/her-server.md §9.1, Files):
-// pictures go in the message itself; other files are uploaded by hermeshd
+// pictures go in the message itself; other files are uploaded by aided
 // into the assistant's folder on its machine first (HerSend), and the message
 // names where they landed ("Attached files:"). Both are read here by their
 // paths on this Mac, which the preload tells (webUtils).
@@ -26,7 +26,7 @@ async function base64(f: Blob): Promise<string> {
 export async function fromFiles(files: File[]): Promise<Attachment[]> {
   const out: Attachment[] = [];
   for (const f of files) {
-    const local = window.hermesh?.pathForFile(f) || undefined;
+    const local = window.aide?.pathForFile(f) || undefined;
     if (pictures.has(f.type) && f.size <= PICTURE_MAX) out.push({ kind: "image", path: local ?? `${f.name}:${f.size}:${f.lastModified}`, name: f.name, mime_type: f.type, data: await base64(f), local });
     else if (local) out.push({ kind: "file", path: local, name: f.name });
   }

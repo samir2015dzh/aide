@@ -1,8 +1,8 @@
 # Work stats: one model for the overview, usage and what comes next
 
-Status: accepted 2026-10-31; machines and hermeshd (steps 1 and 2, §11)
+Status: accepted 2026-10-31; machines and aided (steps 1 and 2, §11)
 built the same day. Replaces `turn_usage`, `GetUsage` and
-`GetActivity` on machines and in hermeshd. There are no users yet: no
+`GetActivity` on machines and in aided. There are no users yet: no
 compatibility with older machines, apps or databases is kept, and a
 machine's existing counts are rebuilt from its session events once (§5.6).
 
@@ -28,7 +28,7 @@ switching ranges, a year of days, and machines that are offline.
   and whole `sessions` rows (`result` and progress included) and walks spans
   hour by hour in Go. `GetUsage` reads every turn of the year and every
   session the machine ever had, on each refresh.
-- **Every question crosses the relay.** hermeshd asks every machine each
+- **Every question crosses the relay.** aided asks every machine each
   time (250–300 ms to the hosted center); a machine that is offline is left
   out of the numbers. Each new chart needs a new machine RPC and a machine
   release.
@@ -58,7 +58,7 @@ the owner's world per device; counts become part of that world.
    machine's `Watch` feed (§6). Its own machine's counts (a Mac that is one)
    are read in process, never copied, as its sessions are. Machines never
    answer statistical questions.
-3. **Screens ask hermeshd one local question**, `QueryWork` (§7): any range,
+3. **Screens ask aided one local question**, `QueryWork` (§7): any range,
    by hour or day, grouped by client, agent, machine or project. No relay
    round trip per question; an offline machine counts up to its last sync.
 4. **The center learns nothing new.** Counts travel machine → owner device
@@ -228,7 +228,7 @@ service MachineService {
   // keys (§5.5): whole hours, keys and sessions. Owner devices keep a
   // replica of them (docs/work-stats.md).
   rpc PullWork(PullWorkRequest) returns (PullWorkResponse) {
-    option (hermesh.options.v1.access) = ACCESS_READ;
+    option (aide.options.v1.access) = ACCESS_READ;
   }
 }
 
@@ -256,7 +256,7 @@ message WorkKey { uint32 key = 1; string client = 2; string agent = 3; string pr
 message WorkSession {
   uint32 session = 1;
   uint32 key = 2;
-  hermesh.session.v1.SessionStatus status = 3;
+  aide.session.v1.SessionStatus status = 3;
   bool failed = 4;
 }
 
@@ -289,7 +289,7 @@ A page carries up to 31 days of changed hours, read in one SQLite read
 transaction, in `seq` order. An hour that changes again is sent again,
 whole; while sessions run, that is one or two hours of a few dozen rows.
 
-### 6.2 hermeshd
+### 6.2 aided
 
 - **When.** Only while the app runs in the foreground (on the iPhone the
   process is frozen otherwise; the notification extension never pulls):
@@ -441,7 +441,7 @@ message QueryWorkResponse {
 }
 ```
 
-**How it is answered.** hermeshd turns the range into bucket bounds in
+**How it is answered.** aided turns the range into bucket bounds in
 quarters (Go's time zone database, so DST days come out right), then runs
 two aggregations in SQLite, each a nested range scan of a clustered key, on
 its copy of the other machines and, the same way, on its own machine's
@@ -469,7 +469,7 @@ dictionary and adds rows that fall into the same group (exact, §4).
 **Speed.** Thirty days of five busy machines are ~36,000 presence and
 ~18,000 measure rows, aggregated inside SQLite: a target of 20 ms on an
 iPhone. A year of days by agent (~220,000 measure rows) has a target of
-100 ms; if it is slower, hermeshd keeps the finished days of the asked time
+100 ms; if it is slower, aided keeps the finished days of the asked time
 zone in a cache table that ingest invalidates by hour. Nothing crosses the
 network, so switching Today, 7 days and 30 days is that fast too.
 
@@ -501,7 +501,7 @@ partition by those dimensions.
 - Machine: `turn_usage`, `putUsage`, `backfillUsage`, `Store.TurnUsage`,
   `Store.TurnSpans`, `Sessions.Usage`, `Sessions.Activity`.
 - session.proto: `GetUsage`, `GetActivity` and their messages.
-- local.proto and hermeshd: `GetUsage`, `GetActivity`, their fan-out, and
+- local.proto and aided: `GetUsage`, `GetActivity`, their fan-out, and
   the replica's kept usage answers (`heldUsage`, `keepUsage`).
 - iPhone: `DayActivity` and the usage and activity loaders; Mac:
   `useUsage`. Both read `QueryWork`.
@@ -530,7 +530,7 @@ partition by those dimensions.
 1. **Machine.** Tables, writes (§5.3), the quarter timer, retention,
    rebuild, `PullWork`, `work_seq` on `Watch`; drop `turn_usage`,
    `GetUsage`, `GetActivity`. Store tests and benchmarks.
-2. **hermeshd.** `owner.db` tables, the pull loop (relay and in process),
+2. **aided.** `owner.db` tables, the pull loop (relay and in process),
    `QueryWork`, `work_version`; drop `GetUsage`, `GetActivity` and their
    caches. Owner tests and the query benchmark.
 3. **iPhone.** The overview by range (segmented control, live label, bars,

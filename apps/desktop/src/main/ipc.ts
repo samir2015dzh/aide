@@ -215,7 +215,7 @@ export function registerIPC() {
   ipcMain.on("open-folder", (e, dir: unknown, to: unknown) => {
     if (trusted(e) && (to === "files" || to === "terminal") && typeof dir === "string" && path.isAbsolute(dir)) platform.openFolder(path.normalize(dir), to);
   });
-  // Only what erasing everything kept (hermeshd's kept-worktrees), never any path the page names.
+  // Only what erasing everything kept (aided's kept-worktrees), never any path the page names.
   ipcMain.on("reveal-kept-worktree", (e, p) => {
     if (trusted(e) && typeof p === "string" && path.isAbsolute(p) && path.normalize(p).split(path.sep).includes("kept-worktrees")) shell.showItemInFolder(path.normalize(p));
   });

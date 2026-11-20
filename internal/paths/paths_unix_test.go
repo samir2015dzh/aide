@@ -16,7 +16,7 @@ func TestControlSocketIsPerMachine(t *testing.T) {
 	if a == b || len(a) > 100 {
 		t.Fatalf("%s, %s", a, b)
 	}
-	if got := Control("/home/dev/.local/share/hermesh/machine"); got != "/home/dev/.local/share/hermesh/machine/control.sock" {
+	if got := Control("/home/dev/.local/share/aide/machine"); got != "/home/dev/.local/share/aide/machine/control.sock" {
 		t.Fatal(got)
 	}
 }
@@ -29,7 +29,7 @@ func TestHerSocket(t *testing.T) {
 	if a == b || len(a) > 103 || filepath.Base(a) != "her.sock" || strings.HasPrefix(a, long) {
 		t.Fatalf("%s, %s", a, b)
 	}
-	if got := Her("/home/dev/.local/share/hermesh/machine"); got != "/home/dev/.local/share/hermesh/machine/her/her.sock" {
+	if got := Her("/home/dev/.local/share/aide/machine"); got != "/home/dev/.local/share/aide/machine/her/her.sock" {
 		t.Fatal(got)
 	}
 }
@@ -42,7 +42,7 @@ func TestLinkSocket(t *testing.T) {
 	if a == b || len(a) > 100 || strings.HasPrefix(a, long) {
 		t.Fatalf("%s, %s", a, b)
 	}
-	if got := Link("/home/dev/.config/hermesh"); got != "/home/dev/.config/hermesh/link/link.sock" {
+	if got := Link("/home/dev/.config/aide"); got != "/home/dev/.config/aide/link/link.sock" {
 		t.Fatal(got)
 	}
 }

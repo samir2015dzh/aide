@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { BotSummary } from "@hermesh/her-protocol";
+import type { BotSummary } from "@aide/her-protocol";
 import { badgeCount, botAlerts, sessionAlerts, targetOf, type AlertSession } from "./alerts.ts";
 
 const bot = (over: Partial<BotSummary> = {}): BotSummary => ({ id: "b", name: "小研", avatar: { kind: "mono", hue: "slate" }, created_at: "2026-11-04T00:00:00Z", ...over });

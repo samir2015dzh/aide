@@ -12,7 +12,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestAccountsOnOneDevice: one Mac belongs to two owners, each on its own
@@ -25,11 +25,11 @@ func TestAccountsOnOneDevice(t *testing.T) {
 		t.Skip("e2e")
 	}
 	bin := binaries(t)
-	relayBin, daemonBin := filepath.Join(bin, "hermesh-relay"), filepath.Join(bin, "hermeshd")
+	relayBin, daemonBin := filepath.Join(bin, "aide-relay"), filepath.Join(bin, "aided")
 	tmp := t.TempDir()
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	ctx := context.Background()
 	var logs []*proc
 	t.Cleanup(func() {
@@ -211,14 +211,14 @@ func TestAccountsOnOneDevice(t *testing.T) {
 
 // TestOwnerFromBeforeProfiles: a Mac set up before profiles (owner.db and
 // keys at the top of the owner directory, its machine beside it) keeps its
-// owner and its machine: hermeshd moves the owner into a profile, and the
+// owner and its machine: aided moves the owner into a profile, and the
 // machine, whose worktrees name its path, stays where it is.
 func TestOwnerFromBeforeProfiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
 	bin := binaries(t)
-	relayBin, daemonBin := filepath.Join(bin, "hermesh-relay"), filepath.Join(bin, "hermeshd")
+	relayBin, daemonBin := filepath.Join(bin, "aide-relay"), filepath.Join(bin, "aided")
 	tmp := t.TempDir()
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
@@ -241,7 +241,7 @@ func TestOwnerFromBeforeProfiles(t *testing.T) {
 
 	data, sock := filepath.Join(tmp, "mac"), filepath.Join(sockDir, "m.sock")
 	startMac := func() *proc {
-		p := start(t, "mac", []string{"HERMESH_FAKE_PROVIDERS=1"}, daemonBin, "run", "--owner", "--data-dir", data, "--socket", sock)
+		p := start(t, "mac", []string{"AIDE_FAKE_PROVIDERS=1"}, daemonBin, "run", "--owner", "--data-dir", data, "--socket", sock)
 		logs = append(logs, p)
 		return p
 	}
@@ -284,7 +284,7 @@ func TestOwnerFromBeforeProfiles(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(ownerDir, "owner.db")); !os.IsNotExist(err) {
 		t.Fatalf("owner.db left at the top: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(data, "machine", "hermeshd.db")); err != nil {
+	if _, err := os.Stat(filepath.Join(data, "machine", "aided.db")); err != nil {
 		t.Fatalf("the machine moved: %v", err)
 	}
 	res, err := app.client.ListProfiles(ctx, &localv1.ListProfilesRequest{})

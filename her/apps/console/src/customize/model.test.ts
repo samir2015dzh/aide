@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { McpServerView, SkillEntry, SkillsListResult } from "@hermesh/her-protocol";
+import type { McpServerView, SkillEntry, SkillsListResult } from "@aide/her-protocol";
 import { brokenSkills, credentialName, credentialRef, isCommand, joinCommand, monogram, nextInLine, quoteKey, skillItems, splitCommand, statusOf, withCredential } from "./model.ts";
 
 // The Connectors and Skills pages' reading of her's answers.

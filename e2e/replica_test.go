@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
 
 // ownerRPCs is how many control calls the relay served owner devices so far
-// (hermesh_relay_owner_rpcs_total, all methods).
+// (aide_relay_owner_rpcs_total, all methods).
 func ownerRPCs(t *testing.T, w *ownerMac) int {
-	return metric(t, w.relayDebug, "hermesh_relay_owner_rpcs_total{")
+	return metric(t, w.relayDebug, "aide_relay_owner_rpcs_total{")
 }
 
 // metric adds up the values of the metrics named by prefix that the process
@@ -45,8 +45,8 @@ func metric(t *testing.T, addr, prefix string) int {
 // TestOwnerReplica (docs/state-sync.md, step 1): with the relay 300 ms away,
 // the owner's app lists machines, agents, devices,
 // projects and the sessions of this Mac and of another machine in a few
-// milliseconds, from hermeshd's replica; three windows polling as the app
-// did cost the relay no call (hermeshd follows WatchOwner); and what changes
+// milliseconds, from aided's replica; three windows polling as the app
+// did cost the relay no call (aided follows WatchOwner); and what changes
 // shows: a session started on the other machine within a moment, and the
 // app's own changes (a project added, a session archived) at once.
 func TestOwnerReplica(t *testing.T) {
@@ -113,7 +113,7 @@ func TestOwnerReplica(t *testing.T) {
 	}
 
 	// Three windows polling as the app's screens did (the sessions
-	// every second, the rest every three) cost the relay nothing: hermeshd
+	// every second, the rest every three) cost the relay nothing: aided
 	// follows its WatchOwner.
 	const span = 30 * time.Second
 	before := ownerRPCs(t, w)
@@ -170,10 +170,10 @@ func TestOwnerReplica(t *testing.T) {
 // machine, vps-1, both online; restart stops vps-1 and, unless stopped is
 // true, starts it again.
 func farOwnerWithVPS(t *testing.T, oneWay time.Duration) (w *ownerMac, vpsID string, restart func(stopped bool)) {
-	env := []string{"HERMESH_FAKE_PROVIDERS=1"}
+	env := []string{"AIDE_FAKE_PROVIDERS=1"}
 	w = newFarOwnerMac(t, oneWay, env, &localv1.GrantSpec{})
 	ctx := context.Background()
-	daemon := filepath.Join(w.bin, "hermeshd")
+	daemon := filepath.Join(w.bin, "aided")
 	data := filepath.Join(w.tmp, "vps-1")
 	pair := start(t, "pair", append(slices.Clone(env), loginEnv()...), daemon, "login", w.addr, "--name", "vps-1", "--no-service", "--data-dir", data)
 	if c := pair.wait(t, 30*time.Second); c != 0 {
@@ -357,9 +357,9 @@ func TestOwnerWatch(t *testing.T) {
 
 	// An agent that logs in reaches the screen as the relay pushes it:
 	// nobody asks the relay for the list.
-	asked := metric(t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="ListClients"}`)
+	asked := metric(t, w.relayDebug, `aide_relay_owner_rpcs_total{method="ListClients"}`)
 	began := time.Now()
-	w.loginAgent([]string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent2")}, "bot2", nil)
+	w.loginAgent([]string{"AIDE_HOME=" + filepath.Join(w.tmp, "agent2")}, "bot2", nil)
 	eventually(t, 5*time.Second, "the new agent on the screen", scr.has(func(s *screen) bool {
 		for _, c := range s.clients {
 			if c.Label == "bot2" {
@@ -369,7 +369,7 @@ func TestOwnerWatch(t *testing.T) {
 		return false
 	}))
 	t.Logf("the new agent on the screen %v after it logged in", time.Since(began).Round(time.Millisecond))
-	if got := metric(t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="ListClients"}`); got > asked+1 {
+	if got := metric(t, w.relayDebug, `aide_relay_owner_rpcs_total{method="ListClients"}`); got > asked+1 {
 		t.Errorf("the relay was asked for the agents %d times", got-asked)
 	}
 
@@ -422,8 +422,8 @@ func TestMachineResume(t *testing.T) {
 	}
 	scr := watchScreen(ctx, t, w)
 	eventually(t, 5*time.Second, "the session on the screen", scr.has(func(s *screen) bool { return s.sessions[sess.SessionID] != nil }))
-	fresh := metric(t, w.ownerDebug, `hermesh_owner_machine_watches_total{start="fresh"}`)
-	resumed := metric(t, w.ownerDebug, `hermesh_owner_machine_watches_total{start="resumed"}`)
+	fresh := metric(t, w.ownerDebug, `aide_owner_machine_watches_total{start="fresh"}`)
+	resumed := metric(t, w.ownerDebug, `aide_owner_machine_watches_total{start="resumed"}`)
 	if fresh < 1 {
 		t.Fatalf("vps-1 is not followed by its Watch (fresh %d)", fresh)
 	}
@@ -434,10 +434,10 @@ func TestMachineResume(t *testing.T) {
 
 	w.restartRelay()
 	eventually(t, 40*time.Second, "vps-1 followed again, resumed", func() bool {
-		return metric(t, w.ownerDebug, `hermesh_owner_machine_watches_total{start="resumed"}`) > resumed
+		return metric(t, w.ownerDebug, `aide_owner_machine_watches_total{start="resumed"}`) > resumed
 	})
 	eventually(t, 10*time.Second, "vps-1 reachable on the screen", scr.has(func(s *screen) bool { return s.machines[vpsID].GetUnreachable() == "" }))
-	if got := metric(t, w.ownerDebug, `hermesh_owner_machine_watches_total{start="fresh"}`); got != fresh {
+	if got := metric(t, w.ownerDebug, `aide_owner_machine_watches_total{start="fresh"}`); got != fresh {
 		t.Errorf("vps-1 was listed again: %d fresh starts, %d before", got, fresh)
 	}
 	scr.mu.Lock()

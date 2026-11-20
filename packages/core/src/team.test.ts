@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { FailureKind, FailureSchema, QuestionItemSchema, QuestionSchema, SessionStatus, type Session } from "@hermesh/proto/session";
+import { FailureKind, FailureSchema, QuestionItemSchema, QuestionSchema, SessionStatus, type Session } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
 import { sessionSections, sessionView } from "./sessions";
 import { liveByAgent, quickChoice, teamState } from "./team";
@@ -14,7 +14,7 @@ function failed(id: string, updated: number): Session {
   return s;
 }
 
-// The same table as HermeshKit's SessionsTests (docs/her-team.md §4.2), so both apps say the same.
+// The same table as AideKit's SessionsTests (docs/her-team.md §4.2), so both apps say the same.
 describe("the team's state", () => {
   const waiting = (id: string, updated: number, agent = "codex") => {
     const s = session(id, SessionStatus.WAITING_INPUT, { updated, agent });

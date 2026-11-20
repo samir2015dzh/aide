@@ -22,7 +22,7 @@ her doctor --json
 
 Set `HER_LOG=debug` for details in `~/.her/logs`.
 
-## Living beside Hermesh
+## Living beside Aide
 
 The app and the CLI share `~/.her`: settings, sessions and keys. A key saved in one shows up in the other. `her exec` and conversations do not go through a service. A `her serve --listen unix://` shares the app's default socket, and the app replaces what runs there with its own when idle; to run your own, use `--listen unix:///your/path`.
 

@@ -36,7 +36,7 @@ Words are English, or Chinese on a phone set to Chinese (`ui/Words.kt`).
 ```
 apps/android/
 ├── app/src/main/java/io/aide/android/
-│   ├── HermeshApp.kt, MainActivity.kt   the core started with the process; the window
+│   ├── AideApp.kt, MainActivity.kt   the core started with the process; the window
 │   ├── api/       Connect client (JSON codec) for LocalService, its messages
 │   ├── model/     AppModel (state, actions, Watch, lifecycle), World, Transcript, links, answers, the account's checks
 │   ├── her/       Her's protocol over the core's HerOpen/HerCall/HerSend, the panel's state
@@ -44,17 +44,17 @@ apps/android/
 │   ├── push/      notifications: what the Watch brings as notices (LiveNotices), showing them
 │   └── ui/        Compose screens
 ├── app/src/test/  JVM unit tests
-├── scripts/build-core.sh   gomobile bind → build/core/hermeshcore.aar
-└── scripts/build.sh        the core, the app and its tests → build/Hermesh-<version>-debug.apk
-cmd/hermesh-mobile/android/  the Go package bound for Android (package hermeshcore)
+├── scripts/build-core.sh   gomobile bind → build/core/aidecore.aar
+└── scripts/build.sh        the core, the app and its tests → build/Aide-<version>-debug.apk
+cmd/aide-mobile/android/  the Go package bound for Android (package aidecore)
 ```
 
-- **The same core as the iPhone's.** `cmd/hermesh-mobile/android` wraps
+- **The same core as the iPhone's.** `cmd/aide-mobile/android` wraps
   `internal/mobile` (the owner role without a local machine) with
   gomobile-friendly calls: `Start(dataDir)` (port and token), `Resume`,
   `Pause`, `NetworkChanged`, `PathChanged`, as the iPhone's C library has
   them. Nothing in it is Android's alone: the
-  iPhone app keeps building `cmd/hermesh-mobile` as before, and both share
+  iPhone app keeps building `cmd/aide-mobile` as before, and both share
   `internal/mobile` (and its log, `mobile.Logger`). gomobile and gobind are
   `go.mod` tools, so their version is the module's.
 - **LocalService on loopback.** As on the iPhone: `127.0.0.1` at a random
@@ -70,7 +70,7 @@ cmd/hermesh-mobile/android/  the Go package bound for Android (package hermeshco
   with it switched off, the core pauses (`Pause`: no relay), as
   the iPhone does. A change of network (`ConnectivityManager`) connects
   again at once.
-- **Data.** `filesDir/hermesh` (the owner role's), no backup or device
+- **Data.** `filesDir/aide` (the owner role's), no backup or device
   transfer (`data_extraction_rules.xml`): it holds this phone's device key,
   which another phone must not take over (it logs in itself).
 
@@ -130,7 +130,7 @@ background by a foreground service.
    default), the app starts `ConnectionService`, a foreground service
    (`foregroundServiceType="specialUse"`: none of the other types fits a
    connection to one's own server, and `dataSync` is limited to 6 hours a
-   day from Android 15) with a quiet ongoing notification ("Hermesh is
+   day from Android 15) with a quiet ongoing notification ("Aide is
    connected", its channel of low importance). While it runs, the core
    stays resumed and the `Watch` goes on when the app goes behind, so
    notices come while the app is in the background or the screen is locked.
@@ -150,7 +150,7 @@ background by a foreground service.
    service again when it reclaimed it, when Android allows it then (12+
    may refuse a start from the background; the service then stops). Nothing
    goes around the system's limits: no wake locks, no second process, no
-   alarms. On HyperOS, swiping Hermesh away from Recents or a force stop
+   alarms. On HyperOS, swiping Aide away from Recents or a force stop
    ends it; notices then wait until the app is opened. To keep it alive
    longer the app asks once (skippable, not again) to set **Battery saver:
    No restrictions** and **Autostart: on** (§4.2), with a button to the
@@ -172,17 +172,17 @@ and its notice key are gone; the relay refuses a registration for it.
 
 
 HyperOS stops apps in the background and keeps them from starting
-themselves. For notices while Hermesh is closed (these also keep §4.1's
+themselves. For notices while Aide is closed (these also keep §4.1's
 connection service alive longer, and are what its guide asks for):
 
 - **Notifications**: Settings › Notifications & status bar › App
-  notifications › Hermesh: allowed, with lock screen and banners
+  notifications › Aide: allowed, with lock screen and banners
   (悬浮通知、锁屏通知).
-- **Autostart** (自启动): Settings › Apps › Manage apps › Hermesh ›
+- **Autostart** (自启动): Settings › Apps › Manage apps › Aide ›
   Autostart: on, so that the system may start the connection service again.
-- **Battery** (省电策略): Settings › Apps › Manage apps › Hermesh › Battery
+- **Battery** (省电策略): Settings › Apps › Manage apps › Aide › Battery
   saver: **No restrictions** (无限制).
-- Optionally lock Hermesh in Recents (pull its card down, 锁定), so
+- Optionally lock Aide in Recents (pull its card down, 锁定), so
   clearing Recents spares it.
 
 ### 4.3 Not yet
@@ -217,8 +217,8 @@ Needs Go (the module's version), a JDK 17 or later, and the Android SDK with
 
 ```
 sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "build-tools;35.0.0" "ndk;27.3.13750724"
-ANDROID_HOME=<sdk> apps/android/scripts/build.sh          # → apps/android/build/Hermesh-0.0.0-dev-debug.apk
-adb install -r apps/android/build/Hermesh-0.0.0-dev-debug.apk
+ANDROID_HOME=<sdk> apps/android/scripts/build.sh          # → apps/android/build/Aide-0.0.0-dev-debug.apk
+adb install -r apps/android/build/Aide-0.0.0-dev-debug.apk
 ```
 
 `build.sh` runs Gradle (`./gradlew`, its wrapper fetches Gradle 8.14.3),
@@ -245,7 +245,7 @@ again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
   new sessions not the owner's, failures but not interruptions, questions,
   Her muted or read, nothing before logging in or once signed out) and the
   connection as shown.
-- `go test ./cmd/hermesh-mobile/...`: the binding (start).
+- `go test ./cmd/aide-mobile/...`: the binding (start).
 - `go test ./e2e -run TestAndroidCore`: the bound core end to end, driven
   as the app drives it: logs in to the owner's server with the account and
   password (platform `android`) and is among the owner's devices at once;
@@ -257,7 +257,7 @@ again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
   then the owner starts a session of their own, Muse one that fails, and
   one that asks while the relay is stopped: the `Watch` shows the relay
   gone, then back (the core reconnecting by itself), then the question.
-  With `HERMESH_ANDROID_WATCH_RECORD=<file>` it writes that `Watch` out,
+  With `AIDE_ANDROID_WATCH_RECORD=<file>` it writes that `Watch` out,
   for `LiveNoticesReplayTest`, which plays it through `World` and
   `LiveNotices` as `AppModel` does (`app/src/test/resources/watch-recorded.jsonl`
   is one such recording, from before accounts: the request to connect it

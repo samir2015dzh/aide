@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // TestDSHPermissionPresets: DeepSeek Harness's permission presets (WO #5
@@ -18,13 +18,13 @@ import (
 // agent's modes before any session; two sessions at once with different
 // presets each run with their own (the read-only one cannot write, the
 // other can); one with none has DSH's own default; a session resumed by a
-// new process (hermeshd restarted) keeps its preset; one DSH does not have
+// new process (aided restarted) keeps its preset; one DSH does not have
 // is refused before a session starts. The owner's app shows them.
 func TestDSHPermissionPresets(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, []string{"HERMESH_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_RESUME=resume",
+	w := newOwnerMac(t, []string{"AIDE_DEEPSEEK_BIN=" + filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_RESUME=resume",
 		"FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=v4-pro", "FAKE_ACP_PRESETS="}, &localv1.GrantSpec{Agents: []string{"deepseek"}})
 	ctx := context.Background()
 	presets := "read-only, workspace-write, danger-full-access"

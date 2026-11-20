@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/pkg/transport"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 // Two independent RPC failures on an old tunnel must not close a replacement

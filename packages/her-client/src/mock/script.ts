@@ -1,4 +1,4 @@
-import type { ErrorInfo } from "@hermesh/her-protocol";
+import type { ErrorInfo } from "@aide/her-protocol";
 
 // What a scripted task does, turn by turn: the mock server plays it as her
 // would, event by event.

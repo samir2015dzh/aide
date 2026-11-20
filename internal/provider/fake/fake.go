@@ -24,7 +24,7 @@
 //	refuse-resume       end the first turn of a resumed process with a
 //	                    refused-resume error (as Claude Code does), then exit
 //	notice              agent message "notice: yes|no" (was the prompt
-//	                    prefixed with Hermesh's continuity notice)
+//	                    prefixed with Aide's continuity notice)
 //	resumed             agent message "resumed: <ref>" ("" when fresh)
 //	env <name>          agent message "<name>=<value>" from the agent's
 //	                    environment ("" when unset)
@@ -34,17 +34,17 @@
 //	                    then agent message "answer: <value>" or
 //	                    "declined: <message>"
 //	ask-secret <h>|<q>  the same, a secret free-text question
-//	message <to>|<text> call the session's message_send tool (Hermesh's MCP
+//	message <to>|<text> call the session's message_send tool (Aide's MCP
 //	                    server) to write text to agent to ("" for the
 //	                    session's creator); its result is the turn's
 //
 // Steer appends a script to the running turn, run before it completes.
 //
-// Hermesh's automatic retry after a rate limit (a prompt saying "automatic
+// Aide's automatic retry after a rate limit (a prompt saying "automatic
 // retry") runs the conversation's last script again, then the rest of the
 // prompt: the agent goes on with what it was doing.
 //
-// HERMESH_FAKE_SCRIPTS names a JSON object of prompts and their scripts: a
+// AIDE_FAKE_SCRIPTS names a JSON object of prompts and their scripts: a
 // prompt ending in one of them runs its script instead, so a demo world's
 // conversations read as a person wrote them (e2e TestScreens).
 //
@@ -65,10 +65,10 @@ import (
 	"sync"
 	"time"
 
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/hermeshai/hermesh/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 type Provider struct{}
@@ -231,7 +231,7 @@ func (s *session) turn(ctx context.Context, in provider.Input) {
 	s.mu.Lock()
 	s.inTurn, s.images, s.usage = true, in.Images, provider.Usage{InputTokens: 10, OutputTokens: 5}
 	s.mu.Unlock()
-	if b, err := os.ReadFile(os.Getenv("HERMESH_FAKE_SCRIPTS")); err == nil {
+	if b, err := os.ReadFile(os.Getenv("AIDE_FAKE_SCRIPTS")); err == nil {
 		var scripts map[string]string
 		json.Unmarshal(b, &scripts)
 		for p, script := range scripts {
@@ -501,7 +501,7 @@ func (s *session) decide(ctx context.Context, a provider.ToolAction) provider.De
 	return s.spec.Gate(ctx, a)
 }
 
-// callTool calls one of the tools Hermesh gave the session, the way an
+// callTool calls one of the tools Aide gave the session, the way an
 // agent does: it starts the MCP server and calls the tool.
 func (s *session) callTool(ctx context.Context, name string, args map[string]any) (string, bool) {
 	if len(s.spec.MCPServers) == 0 {

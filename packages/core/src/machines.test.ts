@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { AgentStatusSchema } from "@hermesh/proto/machine";
+import { AgentStatusSchema } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
 import { agentTiles, folderName, isAbsolutePath, modelTitle, platformTitle } from "./machines";
 

@@ -80,9 +80,9 @@ pub struct McpFile {
 /// `[browser]`: the browser tools (docs/kernel/browser-design.md §10).
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct BrowserFile {
-    /// Whether Hermesh controls browsers at all (browser-design §10.1).
+    /// Whether Aide controls browsers at all (browser-design §10.1).
     pub enabled: Option<bool>,
-    /// The user's own browser through the Hermesh extension (§8.4): connected for the agent.
+    /// The user's own browser through the Aide extension (§8.4): connected for the agent.
     pub extension: Option<bool>,
     /// Where pages open when a call names no browser: `builtin` or `yours`.
     pub default: Option<String>,
@@ -113,10 +113,10 @@ pub enum DefaultBrowser {
 /// `[browser]` with its defaults applied.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrowserSettings {
-    /// Whether Hermesh controls browsers (`browser.enabled`); `None` when not set: on where a
+    /// Whether Aide controls browsers (`browser.enabled`); `None` when not set: on where a
     /// desktop app shows browsers or the user's own browser is connected (browser-design §10.1).
     pub enabled: Option<bool>,
-    /// The user's own browser, through the Hermesh extension (`browser.extension`).
+    /// The user's own browser, through the Aide extension (`browser.extension`).
     pub extension: bool,
     /// Where pages open when a call names no browser, while both are on.
     pub default: DefaultBrowser,
@@ -203,7 +203,7 @@ impl BrowserSettings {
         })
     }
 
-    /// Whether Hermesh controls browsers, given whether a desktop app shows them.
+    /// Whether Aide controls browsers, given whether a desktop app shows them.
     pub fn control_on(&self, embedded: bool) -> bool {
         self.enabled.unwrap_or(embedded || self.extension)
     }
@@ -283,7 +283,7 @@ impl DesktopSettings {
 
     /// Whether the computer use tools are on, `app` saying whether the desktop app is connected.
     /// `HER_DESKTOP=on` turns them on where nothing is set: a host that runs her on a Mac, where
-    /// macOS asks the owner for the permissions first (Hermesh, docs/her-server.md §4.4), or on a
+    /// macOS asks the owner for the permissions first (Aide, docs/her-server.md §4.4), or on a
     /// Linux computer, where it counts only while someone is logged in to its desktop: a server
     /// has no apps to use.
     pub fn on(&self, app: bool) -> bool {
@@ -961,7 +961,7 @@ pub fn check_file(text: &str, path: &Path) -> Result<toml::Table, ConfigError> {
 }
 
 /// Reads one layer's file. A key this version does not know is a warning, not a failure: a newer
-/// her or Hermesh may have written it, and every command, `her doctor` included, should still
+/// her or Aide may have written it, and every command, `her doctor` included, should still
 /// run. A value it cannot read stays an error, and so does anything unknown in `rules`: a safety
 /// rule must not quietly go missing.
 fn read_table(path: &Path) -> Result<toml::Table, ConfigError> {
@@ -1374,7 +1374,7 @@ mod tests {
 
     #[test]
     fn no_client_metadata_document_unless_configured() {
-        // The fork publishes none, and upstream's at hermesh.io is not its to depend on.
+        // The fork publishes none, and upstream's at aide.io is not its to depend on.
         let dir = tempfile::tempdir().unwrap();
         let user = dir.path().join("user.toml");
         std::fs::write(&user, "").unwrap();

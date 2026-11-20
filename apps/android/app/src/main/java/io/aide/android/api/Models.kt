@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
-// The hermesh.local.v1 messages the app reads and sends, as protojson has
+// The aide.local.v1 messages the app reads and sends, as protojson has
 // them: lowerCamelCase names, 64-bit integers as strings, enums by name,
 // timestamps as RFC 3339, bytes as base64, defaults left out. Only the
 // fields the app uses; the rest are ignored. A request's field whose
@@ -264,7 +264,7 @@ data class WatchResponse(
     val next: SessionCursor? = null,
 )
 
-// Session events (hermesh.session.v1.SessionEvent): one of the kinds is set.
+// Session events (aide.session.v1.SessionEvent): one of the kinds is set.
 
 @Serializable data class StatusChanged(val status: String = "", val reason: String = "")
 @Serializable data class TurnStarted(val asker: String = "")
@@ -344,7 +344,7 @@ data class SessionEvent(
 @Serializable data class AnswerQuestionRequest(val sessionId: String, val questionId: String, val answers: List<Answer> = emptyList(), val decline: Boolean = false)
 @Serializable data class AnswerQuestionResponse(val session: Session? = null)
 @Serializable data class MachineIdRequest(val machineId: String)
-/** DeepSeek Harness's own sessions on the owner's machines (docs: hermesh.machine.v1.DSHSession); takeover: the owner took it over in Hermesh. */
+/** DeepSeek Harness's own sessions on the owner's machines (docs: aide.machine.v1.DSHSession); takeover: the owner took it over in Aide. */
 @Serializable data class DSHSession(
     val sessionId: String = "",
     val title: String = "",
@@ -358,7 +358,7 @@ data class SessionEvent(
     val error: String = "",
     val takeover: Boolean = false,
 )
-/** The Hermesh bridge plugin in DSH Desktop (hermesh.machine.v1.DSHBridge). */
+/** The Aide bridge plugin in DSH Desktop (aide.machine.v1.DSHBridge). */
 @Serializable data class DSHBridge(val state: String = "", val version: String = "", val detail: String = "")
 @Serializable data class DSHBridgeEntry(val machineId: String = "", val bridge: DSHBridge = DSHBridge())
 @Serializable data class SetDSHTakeoverRequest(val machineId: String, val sessionId: String, val on: Boolean)
@@ -384,7 +384,7 @@ data class SessionEvent(
 
 @Serializable data class DiffStat(val filesChanged: Int = 0, val insertions: Int = 0, val deletions: Int = 0)
 
-/** hermesh.session.v1.Notice: what a machine sealed to this phone's notice key. */
+/** aide.session.v1.Notice: what a machine sealed to this phone's notice key. */
 @Serializable
 data class Notice(
     val kind: String = "",

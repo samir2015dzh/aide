@@ -1,4 +1,4 @@
-# @hermesh/dsh-bridge
+# @aide/dsh-bridge
 
 A DeepSeek Harness (DSH) plugin that lets this computer's Aide take over
 DSH sessions: send the owner's messages into a session (queued as its next
@@ -8,8 +8,8 @@ and calls DSH's own session controller in-process, so the Host that owns a
 session is the one that writes it: no second writer, no lock taken behind
 DSH's back.
 
-- **Who can reach it**: only this user's hermeshd. It listens on a Unix
-  socket in `<DSH_HOME>/hermesh-bridge/` (0700) or, on Windows, a named pipe
+- **Who can reach it**: only this user's aided. It listens on a Unix
+  socket in `<DSH_HOME>/aide-bridge/` (0700) or, on Windows, a named pipe
   with a random name; `bridge.json` there (0600) holds the endpoint and a
   random token that every request must carry.
 - **What it does**: `hello`, `state`, `prompt` (queue mode, with Aide's
@@ -20,7 +20,7 @@ DSH's back.
   settings, start sessions, or talk to anything off this computer.
 - **Install / remove**: from Aide (it backs up the profile first), or
   `dsh plugin --profile desktop add <path to the package>` and
-  `dsh plugin --profile desktop remove @hermesh/dsh-bridge`; or turn it off
+  `dsh plugin --profile desktop remove @aide/dsh-bridge`; or turn it off
   in DSH's Plugins page. Restart DSH after installing.
 
 Design: Aide's `docs/dsh-takeover.md`.

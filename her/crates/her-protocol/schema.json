@@ -1164,7 +1164,7 @@
       "type": "string"
     },
     "AnimationEffect": {
-      "description": "The effects Hermesh writes; the file's others are kept and listed by their preset id.",
+      "description": "The effects Aide writes; the file's others are kept and listed by their preset id.",
       "enum": [
         "appear",
         "fade",
@@ -1425,7 +1425,7 @@
       "description": "A bot's avatar.",
       "oneOf": [
         {
-          "description": "The Hermesh mark: the default bot's alone.",
+          "description": "The Aide mark: the default bot's alone.",
           "properties": {
             "kind": {
               "enum": [
@@ -2334,7 +2334,7 @@
           ]
         },
         "extension_version": {
-          "description": "The Hermesh extension's version, for an extension host.",
+          "description": "The Aide extension's version, for an extension host.",
           "type": [
             "string",
             "null"
@@ -5559,7 +5559,7 @@
           "type": "string"
         },
         {
-          "description": "Not something Hermesh can do to this content (or this build); say so, or suggest PowerPoint.",
+          "description": "Not something Aide can do to this content (or this build); say so, or suggest PowerPoint.",
           "enum": [
             "unsupported"
           ],
@@ -9196,7 +9196,7 @@
       ]
     },
     "DesktopPermission": {
-      "description": "A system permission as agent-desktop finds it from inside her. macOS asks it of the process it holds responsible for her: the terminal app, or hermeshd when Hermesh runs her.",
+      "description": "A system permission as agent-desktop finds it from inside her. macOS asks it of the process it holds responsible for her: the terminal app, or aided when Aide runs her.",
       "oneOf": [
         {
           "enum": [
@@ -11814,7 +11814,7 @@
           "type": "string"
         },
         {
-          "description": "The extension is newer than this her; update Hermesh.",
+          "description": "The extension is newer than this her; update Aide.",
           "enum": [
             "update_her"
           ],
@@ -11846,7 +11846,7 @@
       "type": "object"
     },
     "ExtensionStatus": {
-      "description": "The user's own browser, lent through the Hermesh extension (browser-design §8.4).",
+      "description": "The user's own browser, lent through the Aide extension (browser-design §8.4).",
       "properties": {
         "account": {
           "description": "The account signed in to that browser profile, when it has one.",
@@ -20557,7 +20557,7 @@
       "type": "object"
     },
     "TransitionKind": {
-      "description": "Transitions Hermesh writes; others the file has are kept and shown by name.",
+      "description": "Transitions Aide writes; others the file has are kept and shown by name.",
       "oneOf": [
         {
           "enum": [

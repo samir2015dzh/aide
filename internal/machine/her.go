@@ -14,11 +14,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	"github.com/hermeshai/hermesh/internal/herhost"
-	"github.com/hermeshai/hermesh/pkg/identity"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/herhost"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Her on this machine (docs/her-server.md): whether the owner turned it on
@@ -118,7 +118,7 @@ func (n *Machine) herDataKept() herDataKept {
 }
 
 // HerData is where her data is on the machine in cfg, when Her was on there
-// once and it is still there: for `hermeshd uninstall` and `hermeshd erase`
+// once and it is still there: for `aided uninstall` and `aided erase`
 // to ask whether it goes too. A running machine (its service) is asked.
 func HerData(cfg Config) (home string, ok bool, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -170,7 +170,7 @@ func EraseHer(cfg Config) error {
 	return n.her.Erase()
 }
 
-// herStatus is HerStatus as hermeshd last saw her: never a request to her.
+// herStatus is HerStatus as aided last saw her: never a request to her.
 func (n *Machine) herStatus() *machinev1.HerStatus {
 	n.mu.Lock()
 	on, data := n.herOn, n.herData

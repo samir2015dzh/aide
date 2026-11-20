@@ -1,5 +1,5 @@
 import type { AgentView, NoteEntry, SessionView } from "./session.ts";
-import type { AgentStatus, AssistantContent, MailInfo, TaskEndItem, ToolCategory, ToolResultMessage, UsageTotals, UserContent } from "@hermesh/her-protocol";
+import type { AgentStatus, AssistantContent, MailInfo, TaskEndItem, ToolCategory, ToolResultMessage, UsageTotals, UserContent } from "@aide/her-protocol";
 import { argsOf, callTarget, type ToolDescription } from "./session.ts";
 import { addTotals } from "./text.ts";
 
@@ -565,7 +565,7 @@ export type ReplyQuote = { ref: string; own: boolean; text: string; partial: boo
 const replyShape = /^<resource uri="her-reply:([A-Za-z0-9_:.-]{1,128})">\nReplying to this earlier message of (yours|mine), quoted in (part|full):\n((?:>(?: [^\n]*)?\n)+)<\/resource>$/;
 
 /**
- * The reply a text block tells her of, as hermeshd writes it after the owner's words (its replyBlock, §4.1): the
+ * The reply a text block tells her of, as aided writes it after the owner's words (its replyBlock, §4.1): the
  * window shows it as a quote. Null for any other text; both run the cases in internal/owner/testdata/her_reply.json.
  */
 export function replyOf(text: string): ReplyQuote | null {

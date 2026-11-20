@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { EraseItem } from "@hermesh/proto/local";
-import { agentName } from "@hermesh/ui";
+import type { EraseItem } from "@aide/proto/local";
+import { agentName } from "@aide/ui";
 import { local } from "../api";
 import { GrantAvatar } from "../components";
 import { Icon } from "../icons";

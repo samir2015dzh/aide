@@ -2,10 +2,10 @@
 // process and its first-run pages share. Every way in starts with the
 // owner's own server, typed, and its account and password.
 
-/** A hermesh:// link the app was opened with. */
+/** An aide:// link the app was opened with. */
 export type AppLink = { kind: "wake"; code: string };
 
-/** hermesh://wake?code=… (an agent's wake link, docs/agent-names.md §7.2). */
+/** aide://wake?code=… (an agent's wake link, docs/agent-names.md §7.2). */
 export function parseAppLink(s: string): AppLink | null {
   let u: URL;
   try {
@@ -13,7 +13,7 @@ export function parseAppLink(s: string): AppLink | null {
   } catch {
     return null;
   }
-  if (u.protocol !== "hermesh:") return null;
+  if (u.protocol !== "aide:") return null;
   if (u.host === "wake") {
     const code = u.searchParams.get("code");
     return code ? { kind: "wake", code } : null;

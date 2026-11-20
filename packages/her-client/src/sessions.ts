@@ -1,4 +1,4 @@
-import type { SessionState, SessionSummary } from "@hermesh/her-protocol";
+import type { SessionState, SessionSummary } from "@aide/her-protocol";
 import { isYesterday, sameDay, withinWeek } from "./calendar.ts";
 import { baseName, modelName } from "./text.ts";
 

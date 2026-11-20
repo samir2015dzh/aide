@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { Client } from "@hermesh/proto/local";
-import { dateOf, displayTitle, pendingQuestion } from "@hermesh/core";
+import type { Client } from "@aide/proto/local";
+import { dateOf, displayTitle, pendingQuestion } from "@aide/core";
 import { i18n } from "../../../shared/i18n";
 import { opensActivityMonitor, problemBody, problemsOf, problemTitle, severe } from "../health";
 import { Icon } from "../icons";
@@ -42,9 +42,9 @@ export function Attention({ now }: { now: Date }) {
         {sick.map(({ m, p }) => (
           <Row key={`${m.machineId}:${p.kind}`} icon="warn" tint={severe(p) ? "r" : "y"} title={problemTitle(m, p)} detail={problemBody(p)} wrap>
             {opensActivityMonitor(m, p) ? (
-              <button className="btn" onClick={() => window.hermesh?.openActivityMonitor()}>{i18n.t("common:health.openActivityMonitor")}</button>
+              <button className="btn" onClick={() => window.aide?.openActivityMonitor()}>{i18n.t("common:health.openActivityMonitor")}</button>
             ) : (
-              <button className="btn" onClick={() => window.hermesh?.openSettings(`machines/${m.machineId}`)}>{i18n.t("common:health.view")}</button>
+              <button className="btn" onClick={() => window.aide?.openSettings(`machines/${m.machineId}`)}>{i18n.t("common:health.view")}</button>
             )}
           </Row>
         ))}

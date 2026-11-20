@@ -1,4 +1,4 @@
-import type { TaskEndItem } from "@hermesh/her-protocol";
+import type { TaskEndItem } from "@aide/her-protocol";
 import { saidTo } from "./botChat.ts";
 import { type AgentView, type SessionView } from "./session.ts";
 import { conversation, taskGists, toolObject, type AgentLaunch, type Step, type ToolView, type WorkItem } from "./steps.ts";

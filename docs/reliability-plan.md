@@ -1,6 +1,6 @@
 # Reliability and failure classification plan (2026-10-16, implemented)
 
-This plan fills in three pieces of Hermesh infrastructure: **failure classification**, **sessions that can continue after a failure**, and **stall detection**, plus robustness fixes for processes and pipes.
+This plan fills in three pieces of Aide infrastructure: **failure classification**, **sessions that can continue after a failure**, and **stall detection**, plus robustness fixes for processes and pipes.
 
 Every "current state" in this document has been checked against the current code, and verified against the schemas of the real Claude Code 2.1.292 and Codex app-server on this machine.
 
@@ -47,7 +47,7 @@ Add a `FailureKind` enum to the proto. Each kind carries three attributes: **whe
 | `AGENT_CRASHED` | Process exited unexpectedly, output over the limit | Process exits midway through the turn, scanner error | Yes | Yes (automatic resume) | Retry; if it happens repeatedly, check the CLI on the machine |
 | `STALLED` | Watchdog judged no progress | §3 | Yes | Yes (automatic resume) | Retry |
 | `TIMEOUT` | Turn exceeded the total duration limit | §3 | Depends | Yes | — |
-| `START_FAILED` | Not installed, not executable, handshake failed | Start returns an error | No | Depends | `hermeshd doctor` |
+| `START_FAILED` | Not installed, not executable, handshake failed | Start returns an error | No | Depends | `aided doctor` |
 | `UNKNOWN` | Unrecognized | — | No | Yes | Look at `message` |
 
 Cancellation and interruption by the user are not failures; their states stay as they are now.
@@ -164,7 +164,7 @@ The interrupted turn also gets a worktree snapshot, so the caller can get the "h
 
 Draft of the continuity notice:
 
-> [Hermesh] The earlier context of this conversation can no longer be restored (reason: …). The changes from all previous turns are still saved in the current worktree, one commit per turn; first use `git log` and `git diff` to understand the work already done, then continue with the request below.
+> [Aide] The earlier context of this conversation can no longer be restored (reason: …). The changes from all previous turns are still saved in the current worktree, one commit per turn; first use `git log` and `git diff` to understand the work already done, then continue with the request below.
 
 ### 2.4 Context overflow (P6)
 
@@ -204,7 +204,7 @@ Today only normalized events refresh `lastEvent`. But Codex reasoning, command o
 - The Janitor's check interval stays at 10 seconds.
 - Once this turn's TurnCompleted enters processing (during the snapshot), the watchdog skips this session.
 - Sleep: on macOS and Linux, Go's monotonic clock does not count system sleep, so a separate awake-time clock is unnecessary on these platforms.
-- All windows can be configured with `hermeshd run` flags or `config.yaml`.
+- All windows can be configured with `aided run` flags or `config.yaml`.
 
 ### 3.3 Actions when a window fires
 
@@ -226,12 +226,12 @@ Before the process goes, the watchdog records what it was doing (since 2026-11-0
 ## 5. Observability
 
 - **Metrics**:
-  - `hermesh_turn_failures_total{agent,kind}`
-  - `hermesh_watchdog_fired_total{window}`
-  - `hermesh_resume_total{agent,outcome=resumed|rejected_fresh|failed_kept}`
+  - `aide_turn_failures_total{agent,kind}`
+  - `aide_watchdog_fired_total{window}`
+  - `aide_resume_total{agent,outcome=resumed|rejected_fresh|failed_kept}`
 - **Audit**: record the kind for every failed turn.
-- **Machine log** (`hermeshd.log`): each agent process start ("agent started": session, agent, pid, resumed, how long the start took), every failed turn other than an interruption ("turn failed": kind and message), an agent process that exits during a turn (with the end of its stderr), a stalled turn with what it was running, and a base ref fetched from a remote. No prompt text.
-- **`hermesh status`**: the session list shows the failure category. `hermeshd doctor` shows counts of each failure kind over the last 24 hours.
+- **Machine log** (`aided.log`): each agent process start ("agent started": session, agent, pid, resumed, how long the start took), every failed turn other than an interruption ("turn failed": kind and message), an agent process that exits during a turn (with the end of its stderr), a stalled turn with what it was running, and a base ref fetched from a remote. No prompt text.
+- **`aide status`**: the session list shows the failure category. `aided doctor` shows counts of each failure kind over the last 24 hours.
 
 ---
 
@@ -262,7 +262,7 @@ Every phase comes with both unit tests and end-to-end tests with real binaries (
 
 ## 8. Implementation record (2026-10-16)
 
-All four phases are done, settled according to the suggestions in §6: no limit on total turn duration by default; the kernel does not resend prompts automatically (the only exception: when resume is rejected and this turn has no tool calls yet, it reruns once in a new provider session); after a context overflow, the next message automatically continues in a new context; the windows are 3 minutes / 15 minutes / 2 hours (adjustable with `hermeshd run --idle-timeout/--tool-timeout/--turn-timeout`); exit code 7 was added.
+All four phases are done, settled according to the suggestions in §6: no limit on total turn duration by default; the kernel does not resend prompts automatically (the only exception: when resume is rejected and this turn has no tool calls yet, it reruns once in a new provider session); after a context overflow, the next message automatically continues in a new context; the windows are 3 minutes / 15 minutes / 2 hours (adjustable with `aided run --idle-timeout/--tool-timeout/--turn-timeout`); exit code 7 was added.
 
 Differences from the plan:
 
@@ -280,7 +280,7 @@ Verification:
 
 ## 9. Chaos testing with the real Codex (`make e2e-chaos`, 2026-10-16)
 
-The real Codex (0.162) on this machine goes through the real relay, daemon and CLI, with real faults injected. After each scenario, the same set of invariants is checked: the session is in a definite state; event seq numbers are contiguous with no duplicates, and every turn has a result; `session diff` matches `git diff`; the worktree content of an idle session equals the session branch head; the owner's repository was not touched; no leftover processes after the daemon exits; `hermeshd audit-verify` passes.
+The real Codex (0.162) on this machine goes through the real relay, daemon and CLI, with real faults injected. After each scenario, the same set of invariants is checked: the session is in a definite state; event seq numbers are contiguous with no duplicates, and every turn has a result; `session diff` matches `git diff`; the worktree content of an idle session equals the session branch head; the owner's repository was not touched; no leftover processes after the daemon exits; `aided audit-verify` passes.
 
 | Scenario | First result | Findings and fixes |
 |---|---|---|

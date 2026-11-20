@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { routineDot, type SessionView } from "@hermesh/her-client";
-import type { AvatarHue, AvatarInput, BotSummary, McpServerView, ModelsListResult } from "@hermesh/her-protocol";
+import { routineDot, type SessionView } from "@aide/her-client";
+import type { AvatarHue, AvatarInput, BotSummary, McpServerView, ModelsListResult } from "@aide/her-protocol";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { herAnswers } from "../skew";

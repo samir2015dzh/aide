@@ -1,5 +1,5 @@
-import type { Session } from "@hermesh/proto/session";
-import { displayTitle } from "@hermesh/core";
+import type { Session } from "@aide/proto/session";
+import { displayTitle } from "@aide/core";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import type { Store } from "../store";
@@ -12,7 +12,7 @@ export function interrupt(st: Store, s: Session) {
 }
 
 /**
- * Pushes the session's branch to its repository's remote with the machine's own git login: Hermesh never pushes
+ * Pushes the session's branch to its repository's remote with the machine's own git login: Aide never pushes
  * unasked. With pr, then opens GitHub's page to open its pull request.
  */
 export async function push(st: Store, s: Session, pr = false) {
@@ -20,7 +20,7 @@ export async function push(st: Store, s: Session, pr = false) {
   const ok = await st.run(async () => {
     url = (await local.pushSession({ sessionId: s.sessionId })).pullRequestUrl;
   }, i18n.t("session:actions.pushed", { branch: s.branch }));
-  if (ok && pr && url !== "") window.hermesh?.openExternal(url);
+  if (ok && pr && url !== "") window.aide?.openExternal(url);
 }
 
 export function copySessionId(st: Store, s: Session) {

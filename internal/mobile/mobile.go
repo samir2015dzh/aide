@@ -1,5 +1,5 @@
 // Package mobile runs the owner role inside the iPhone app, in the app's own
-// process: hermeshd's owner without a local machine (an iPhone approves,
+// process: aided's owner without a local machine (an iPhone approves,
 // it never runs agents). It serves LocalService on a loopback port; only a
 // caller with the token minted at each start may use it, since every app on
 // the phone shares the loopback interface.
@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/hermeshai/hermesh/internal/owner"
+	"github.com/samir2015dzh/aide/internal/owner"
 )
 
 // Core is the running owner role.

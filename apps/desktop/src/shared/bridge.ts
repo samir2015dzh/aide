@@ -2,8 +2,8 @@ import type { ChatGptSignIn, ConnectorSignIn } from "./herSignin";
 import type { Language, LanguageChoice } from "./i18n";
 import type { UpdateInfo } from "./update";
 
-// What the preload script gives the page (window.hermesh). Everything else
-// the page needs comes from hermeshd through app://hermesh/api.
+// What the preload script gives the page (window.aide). Everything else
+// the page needs comes from aided through app://aide/api.
 
 export type MenuItem = { id: string; label: string; enabled?: boolean; checked?: boolean } | { separator: true };
 
@@ -22,7 +22,7 @@ export type Command =
 
 /**
  * What the menu bar panel shows (main/tray.ts): whether this Mac reaches the
- * Hermesh service (ok), is still being set up, or can't reach its own
+ * Aide service (ok), is still being set up, or can't reach its own
  * background service; how many machines are online, how many sessions need
  * the owner (pairing requests included) and run; a downloaded update.
  */
@@ -103,17 +103,17 @@ export type Bridge = {
   setWindowMode(mode: "onboarding" | "main"): void;
   /** This computer's name as the person sees it. */
   computerName(): Promise<string>;
-  /** hermesh:// links the app received (wake links), also those that came before the page subscribed. */
+  /** aide:// links the app received (wake links), also those that came before the page subscribed. */
   onLink(cb: (url: string) => void): () => void;
   /** What the main process does on its own: notifications and the menu bar (stored in the app's profile). */
   getPreferences(): Promise<Preferences>;
   setPreferences(p: Partial<Preferences>): Promise<Preferences>;
   /** Quits and opens the app again (a new language takes effect). */
   relaunch(): void;
-  /** Whether the app opens at login (Open Hermesh at login). */
+  /** Whether the app opens at login (Open Aide at login). */
   loginItem(): Promise<LoginItem>;
   setLoginItem(on: boolean): Promise<LoginItem>;
-  /** hermeshd's background service waits for the person to allow it in System Settings › Login Items. */
+  /** aided's background service waits for the person to allow it in System Settings › Login Items. */
   daemonNeedsApproval(): Promise<boolean>;
   /** Opens System Settings › Login Items. */
   openLoginItems(): void;
@@ -187,6 +187,6 @@ export type MenuState = {
 
 declare global {
   interface Window {
-    hermesh?: Bridge;
+    aide?: Bridge;
   }
 }

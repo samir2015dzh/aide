@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/workstats"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/workstats"
 )
 
 // totals adds up a CountWork answer's whole-range rows (bucket -1), and its
@@ -57,7 +57,7 @@ func countWork(t *testing.T, st *Store, tz, first string, days int, hourly bool)
 
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
-	st, err := OpenStore(filepath.Join(t.TempDir(), "hermeshd.db"))
+	st, err := OpenStore(filepath.Join(t.TempDir(), "aided.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

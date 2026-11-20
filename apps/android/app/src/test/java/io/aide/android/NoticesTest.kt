@@ -24,7 +24,7 @@ class NoticesTest {
 
     @After fun restore() = Locale.setDefault(locale)
 
-    // protojson as Go writes a Notice (cmd/hermesh-mobile/android OpenNotice).
+    // protojson as Go writes a Notice (cmd/aide-mobile/android OpenNotice).
     @Test fun question() {
         val n = parseNotice(
             """{"kind":"question","at":"2026-11-17T08:00:00Z","sessionId":"s_1","title":"选颜色","grant":"Muse","agent":"gemini","project":"demo","machine":"owner-mac",

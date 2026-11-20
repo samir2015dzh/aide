@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { agoText, dateOf, transcript } from "@hermesh/core";
-import { DSHSessionState, type DSHBridge, type DSHSession, type PrepareDSHBridgeResponse } from "@hermesh/proto/machine";
-import type { DSHSessionEntry, Unreachable } from "@hermesh/proto/local";
-import { EventView, type SessionEvent } from "@hermesh/proto/session";
+import { agoText, dateOf, transcript } from "@aide/core";
+import { DSHSessionState, type DSHBridge, type DSHSession, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
+import type { DSHSessionEntry, Unreachable } from "@aide/proto/local";
+import { EventView, type SessionEvent } from "@aide/proto/session";
 import { local } from "../api";
 import { bridgeView, newRequestId, retryKeepsId } from "../dshTakeover";
 import { Switch } from "../settings/common";
@@ -11,8 +11,8 @@ import { errorText, useNow, useStore } from "../store";
 import "./dsh.css";
 
 // DeepSeek Harness's own sessions on the owner's machines: those opened in DSH Desktop, or by another
-// tool, which Hermesh did not start: their list (by last activity) and what DSH wrote of each. Read
-// only, until the owner takes one over (docs/dsh-takeover.md): then Hermesh sends it their messages
+// tool, which Aide did not start: their list (by last activity) and what DSH wrote of each. Read
+// only, until the owner takes one over (docs/dsh-takeover.md): then Aide sends it their messages
 // through the bridge plugin in DSH Desktop, queued after a turn that runs, as DSH queues its own.
 
 const stateClass: Record<DSHSessionState, string> = {
@@ -194,10 +194,10 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
       {items.map((it) => {
         switch (it.kind) {
           case "user":
-            // Every message here is the owner's; those sent from Hermesh (taken over) say so.
+            // Every message here is the owner's; those sent from Aide (taken over) say so.
             return (
               <div key={String(it.seq)} className="dsh-msg user">
-                {it.from === "owner" && <span className="dsh-via">{t("dsh.viaHermesh")}</span>}
+                {it.from === "owner" && <span className="dsh-via">{t("dsh.viaAide")}</span>}
                 {it.text}
               </div>
             );
@@ -233,7 +233,7 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
 /**
  * Installing the bridge plugin: DSH Desktop's own plugin manager does it (Plugins page), checking it
  * against the DSH there, restoring the profile when it fails, and turning it off or removing it later.
- * Hermesh prepares: it backs up DSH's configuration and writes the plugin's package, whose path it shows.
+ * Aide prepares: it backs up DSH's configuration and writes the plugin's package, whose path it shows.
  */
 function Install({ machineId }: { machineId: string }) {
   const { t } = useTranslation("common");

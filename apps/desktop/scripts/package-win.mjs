@@ -8,30 +8,30 @@
 //   dist/Aide.ico                             on Windows: the icon Installed apps shows, a release file
 //
 // The app:
-//   Hermesh.exe, resources\app.asar    Electron: main, preload and the page
-//   bin\hermeshd.exe                   console, every command
-//   bin\hermeshdw.exe                  windowless; the daemon's logon task
-//   bin\hermesh.exe                    the agents' CLI
-//   bin\her.exe                        Her's kernel (her/), which hermeshd runs from beside itself (docs/her-server.md §6.4)
-//   bin\her-console\                   Her's console (her/apps/console), which hermeshd serves
+//   Aide.exe, resources\app.asar    Electron: main, preload and the page
+//   bin\aided.exe                   console, every command
+//   bin\aidedw.exe                  windowless; the daemon's logon task
+//   bin\aide.exe                    the agents' CLI
+//   bin\her.exe                        Her's kernel (her/), which aided runs from beside itself (docs/her-server.md §6.4)
+//   bin\her-console\                   Her's console (her/apps/console), which aided serves
 //   bin\agent-desktop.exe              desktop control, which her's desktop tools find beside her (scripts/agent-desktop.mjs)
 //   bin\pdfium.dll                     PDFium, which her's document worker finds beside her (scripts/pdfium.mjs)
 //   resources\model-connection-licenses, resources\third-party-licenses   notices, as in the Mac app
 // The app copies bin's first three, and her with what is hers, where they stay across updates, on PATH
-// (main/platform/win.ts). her carries the Hermesh extension itself, and writes it where hermeshd says.
+// (main/platform/win.ts). her carries the Aide extension itself, and writes it where aided says.
 //
 // Needs Go and Node, on any system; her and the installer need Windows (Rust builds for Windows there),
 // so the files made elsewhere are an app without Her.
 //
 // Environment:
 //   VERSION                     version (default: package.json's)
-//   HERMESH_ARCH                x64 (default) or arm64
-//   HERMESH_DIST                where to put it all (default: dist/)
-//   HERMESH_RELEASE_URL         where the release's files are downloaded from, for the feed
+//   AIDE_ARCH                x64 (default) or arm64
+//   AIDE_DIST                where to put it all (default: dist/)
+//   AIDE_RELEASE_URL         where the release's files are downloaded from, for the feed
 //   RELEASE_SIGNING_KEY_FILE    the release key (ECDSA P-256, PEM), to sign the feed
-//   HERMESH_UPDATE_FEED         test builds only: where the app looks for updates (default: the latest GitHub release)
-//   HERMESH_RELEASE_PUBKEY_FILE test builds only: the key the app checks the feed with (default: scripts/release-pubkey.pem)
-//   HERMESH_HER_PROFILE         test builds only: the cargo profile her is built with (default: dist, as her's releases)
+//   AIDE_UPDATE_FEED         test builds only: where the app looks for updates (default: the latest GitHub release)
+//   AIDE_RELEASE_PUBKEY_FILE test builds only: the key the app checks the feed with (default: scripts/release-pubkey.pem)
+//   AIDE_HER_PROFILE         test builds only: the cargo profile her is built with (default: dist, as her's releases)
 //   HER_GITHUB_OAUTH_CLIENT_SECRET   the secret of her's GitHub OAuth app, built into her, as for the Mac app (build-app.mjs)
 import { packager } from "@electron/packager";
 import { flipFuses, FuseV1Options, FuseVersion } from "@electron/fuses";
@@ -50,13 +50,13 @@ import { installSplash } from "./windows-splash.mjs";
 
 const desktop = path.resolve(import.meta.dirname, "..");
 const root = path.resolve(desktop, "../..");
-const dist = path.resolve(process.env.HERMESH_DIST || path.join(root, "dist"));
+const dist = path.resolve(process.env.AIDE_DIST || path.join(root, "dist"));
 const tmp = path.join(dist, "tmp-win");
 const pkg = JSON.parse(fs.readFileSync(path.join(desktop, "package.json"), "utf8"));
 const version = process.env.VERSION || pkg.version;
 const electronVersion = JSON.parse(fs.readFileSync(path.join(desktop, "node_modules/electron/package.json"), "utf8")).version;
-const arch = process.env.HERMESH_ARCH || "x64";
-if (!["x64", "arm64"].includes(arch)) throw new Error(`HERMESH_ARCH: ${arch}`);
+const arch = process.env.AIDE_ARCH || "x64";
+if (!["x64", "arm64"].includes(arch)) throw new Error(`AIDE_ARCH: ${arch}`);
 const onWindows = process.platform === "win32";
 
 const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: "inherit", ...opts });
@@ -67,21 +67,21 @@ fs.mkdirSync(tmp, { recursive: true });
 
 step("building the page and the main process");
 const staged = path.join(tmp, "app");
-sh("pnpm", ["--dir", desktop, "build"], { env: { ...process.env, VERSION: version, HERMESH_DESKTOP_OUT: staged }, shell: onWindows });
+sh("pnpm", ["--dir", desktop, "build"], { env: { ...process.env, VERSION: version, AIDE_DESKTOP_OUT: staged }, shell: onWindows });
 fs.writeFileSync(
   path.join(staged, "package.json"),
-  JSON.stringify({ name: "hermesh", productName: "Aide", version, main: "main/index.js", type: "module" }, null, 2),
+  JSON.stringify({ name: "aide", productName: "Aide", version, main: "main/index.js", type: "module" }, null, 2),
 );
 
-step(`building hermeshd, hermeshdw and hermesh (${arch})`);
+step(`building aided, aidedw and aide (${arch})`);
 const bin = path.join(tmp, "bin");
 // No build names a server: logging in asks for it (docs/accounts.md).
-const ldflags = `-s -w -X github.com/hermeshai/hermesh/internal/machine.Version=${version}`;
+const ldflags = `-s -w -X github.com/samir2015dzh/aide/internal/machine.Version=${version}`;
 const goEnv = { ...process.env, GOOS: "windows", GOARCH: arch === "x64" ? "amd64" : "arm64", CGO_ENABLED: "0" };
 for (const [name, cmd, flags] of [
-  ["hermeshd.exe", "./cmd/hermeshd", ldflags],
-  ["hermeshdw.exe", "./cmd/hermeshd", `${ldflags} -H windowsgui`],
-  ["hermesh.exe", "./cmd/hermesh", ldflags],
+  ["aided.exe", "./cmd/aided", ldflags],
+  ["aidedw.exe", "./cmd/aided", `${ldflags} -H windowsgui`],
+  ["aide.exe", "./cmd/aide", ldflags],
 ]) {
   sh("go", ["build", "-trimpath", "-ldflags", flags, "-o", path.join(bin, name), cmd], { cwd: root, env: goEnv });
 }
@@ -93,7 +93,7 @@ const cache = path.join(desktop, "node_modules/.cache");
 let pdfium = null;
 if (onWindows) {
   const triple = { x64: "x86_64-pc-windows-msvc", arm64: "aarch64-pc-windows-msvc" }[arch];
-  const profile = process.env.HERMESH_HER_PROFILE || "dist";
+  const profile = process.env.AIDE_HER_PROFILE || "dist";
   step(`building her (${arch})`);
   const githubSecret = process.env.HER_GITHUB_OAUTH_CLIENT_SECRET || "";
   if (!githubSecret) console.warn("⚠️  no HER_GITHUB_OAUTH_CLIENT_SECRET: this her signs in to GitHub with a token only.");
@@ -124,19 +124,19 @@ fs.rmSync(layout, { recursive: true, force: true });
 const ico = path.join(tmp, "Aide.ico");
 windowsIcons(ico);
 
-step("packaging Hermesh.exe");
+step("packaging Aide.exe");
 const [built] = await packager({
   dir: staged,
   out: tmp,
-  name: "Hermesh",
-  executableName: "Hermesh",
+  name: "Aide",
+  executableName: "Aide",
   electronVersion,
   platform: "win32",
   arch,
   appVersion: version,
   icon: ico,
-  // What Task Manager and Installed apps show: Aide. The file stays Hermesh.exe, which links, shortcuts and login start (RENAME-AIDE.md D6, D7).
-  win32metadata: { CompanyName: "Aide", FileDescription: "Aide", ProductName: "Aide", InternalName: "Aide", OriginalFilename: "Hermesh.exe" },
+  // What Task Manager and Installed apps show: Aide; Aide.exe is what links, shortcuts and login start.
+  win32metadata: { CompanyName: "Aide", FileDescription: "Aide", ProductName: "Aide", InternalName: "Aide", OriginalFilename: "Aide.exe" },
   asar: true,
   prune: false,
   overwrite: true,
@@ -146,8 +146,8 @@ fs.renameSync(built, layout);
 for (const f of fs.readdirSync(path.join(layout, "locales"))) if (!["en-US.pak", "zh-CN.pak"].includes(f)) fs.rmSync(path.join(layout, "locales", f));
 
 step("flipping Electron fuses");
-// As on the Mac (packager embeds the asar's digest in Hermesh.exe).
-await flipFuses(path.join(layout, "Hermesh.exe"), {
+// As on the Mac (packager embeds the asar's digest in Aide.exe).
+await flipFuses(path.join(layout, "Aide.exe"), {
   version: FuseVersion.V1,
   [FuseV1Options.RunAsNode]: false,
   [FuseV1Options.EnableCookieEncryption]: true,
@@ -197,20 +197,21 @@ if (onWindows) {
     appDirectory: layout,
     outputDirectory: out,
     // Squirrel installs into %LOCALAPPDATA%\<name> and removes that folder on uninstall:
-    // not Hermesh, the data folder's name. Squirrel updates the package of this id: it stays
-    // HermeshApp since the app is called Aide, as installed ones have it (RENAME-AIDE.md D8).
-    name: "HermeshApp",
+    // not Aide, the data folder's name. Squirrel updates the package of this id; an app
+    // installed before the rename (its package had the old name) does not update to it, and is reinstalled
+    // once (docs/aide-rename.md).
+    name: "AideApp",
     title: "Aide",
     authors: "Aide",
     description: "Aide",
     setupExe: "AideSetup.exe",
-    exe: "Hermesh.exe",
+    exe: "Aide.exe",
     version,
     setupIcon: ico,
     // What Setup.exe shows while it installs (Squirrel's own is an old editor's).
     loadingGif: splash,
     // Apps › Installed apps shows it; Squirrel downloads it while installing (the release carries it).
-    iconUrl: "https://github.com/samir2015dzh/hermesh/releases/latest/download/Aide.ico",
+    iconUrl: "https://github.com/samir2015dzh/aide/releases/latest/download/Aide.ico",
     // The template takes Electron's files only.
     additionalFiles: [{ src: "bin\\**", target: "lib\\net45\\bin" }],
     noMsi: true,
@@ -226,11 +227,11 @@ if (onWindows) {
   const releases = fs.readFileSync(path.join(out, "RELEASES"), "utf8").replace(/^\uFEFF/, "").trim();
   const nupkg = path.join(dist, `Aide-windows-${arch}.nupkg`);
   fs.copyFileSync(path.join(out, releases.split(/\s+/)[1]), nupkg);
-  const releaseURL = process.env.HERMESH_RELEASE_URL || `https://github.com/samir2015dzh/hermesh/releases/download/v${version}`;
+  const releaseURL = process.env.AIDE_RELEASE_URL || `https://github.com/samir2015dzh/aide/releases/download/v${version}`;
   const feed = path.join(dist, `RELEASES-win32-${arch}.json`);
   fs.writeFileSync(feed, JSON.stringify({
     currentRelease: version,
-    hermeshNotes: releaseCatalog(enNotes, zhNotes, version),
+    aideNotes: releaseCatalog(enNotes, zhNotes, version),
     package: { url: `${releaseURL}/${path.basename(nupkg)}`, sha256: createHash("sha256").update(fs.readFileSync(nupkg)).digest("hex"), releases },
   }, null, 2));
   if (process.env.RELEASE_SIGNING_KEY_FILE) fs.writeFileSync(`${feed}.sig`, sign("sha256", fs.readFileSync(feed), fs.readFileSync(process.env.RELEASE_SIGNING_KEY_FILE, "utf8")));

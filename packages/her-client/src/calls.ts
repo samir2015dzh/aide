@@ -1,10 +1,10 @@
-import { PROTOCOL_VERSION, type InitializeResult } from "@hermesh/her-protocol";
+import { PROTOCOL_VERSION, type InitializeResult } from "@aide/her-protocol";
 import type { Transport } from "./rpc.ts";
 
-// her's connections as hermeshd forwards them (proto/hermesh/her/v1/her.proto): a
+// her's connections as aided forwards them (proto/aide/her/v1/her.proto): a
 // connection is a stream that opens it, says its id and then carries her's notifications,
 // and each request is a call of its own on that connection, answered once. This turns them
-// into the NDJSON pipe RpcClient reads, so a page talks to her through hermeshd as it would
+// into the NDJSON pipe RpcClient reads, so a page talks to her through aided as it would
 // to her directly.
 
 /**
@@ -22,7 +22,7 @@ export type CallResult = { result: unknown } | { error: CallError };
 /** A request sent as a connection opens (bots/subscribe, bots/open), before any notification of it. */
 export type SetupRequest = { method: string; params: unknown };
 
-/** hermeshd's side of a connection. */
+/** aided's side of a connection. */
 export interface CallAdapter {
   /** Opens a connection, sending `setup` on it first. The stream ends when the connection does; `signal` ends it. */
   open(signal: AbortSignal, setup: SetupRequest[]): AsyncIterable<ConnectionEvent>;
@@ -31,9 +31,9 @@ export interface CallAdapter {
 }
 
 /**
- * What `initialize` answers. hermeshd initialized the connection itself and does not pass
+ * What `initialize` answers. aided initialized the connection itself and does not pass
  * her's answer on, so this is her's own (her-server's native.rs) without its version. A
- * method hermeshd does not forward still fails when it is called.
+ * method aided does not forward still fails when it is called.
  */
 const initialized: InitializeResult = {
   protocol_version: PROTOCOL_VERSION,

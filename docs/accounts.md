@@ -173,14 +173,14 @@ new machine, agent or device, and no agent action waits for the owner
 
 | Area | What |
 |---|---|
-| `proto/hermesh/relay/v1` | `SetUp`, `LogIn` (public); `Sign`, `GetLogin`, `SetLogin`, `ListDevices`, `RemoveDevice` (owner); `Joiner`, `JoinKind`, `Account`, `OldPasswordLogin` |
-| `proto/hermesh/identity/v1` | `RevocationList.revoked_device_keys`, `EraseOrder.by` |
-| `proto/hermesh/local/v1` | `Setup`, `LogIn`, `GetLogin`, `SetLogin` |
+| `proto/aide/relay/v1` | `SetUp`, `LogIn` (public); `Sign`, `GetLogin`, `SetLogin`, `ListDevices`, `RemoveDevice` (owner); `Joiner`, `JoinKind`, `Account`, `OldPasswordLogin` |
+| `proto/aide/identity/v1` | `RevocationList.revoked_device_keys`, `EraseOrder.by` |
+| `proto/aide/local/v1` | `Setup`, `LogIn`, `GetLogin`, `SetLogin` |
 | `pkg/relay/account.go` | The account, the server's key, logging in, signing for the owner, devices, the conversion, `SetPassword` |
 | `internal/machine/login.go` | `Machine.LogIn`, `LogInTo`, `CheckLogIn` |
 | `internal/owner/login.go` | A device logging in or setting up; `signRoot` through the server |
 | `internal/cli/login.go` | `aide auth login` |
-| `cmd/hermeshd` | `aided login` |
-| `cmd/hermesh-relay` | `setup-code`, `password` |
+| `cmd/aided` | `aided login` |
+| `cmd/aide-relay` | `setup-code`, `password` |
 | `pkg/mcpgw` | The consent page logs in (`relay.IssueGrant`) |
 | Tests | `pkg/relay/account_test.go` (`TestAccountLogIn`, `TestAccountSignsAndSignsOut`, `TestAccountFromAnOldPasswordLogin`); e2e `TestUserJourney`, `TestMachineOnlyMac`, `TestAccountsOnOneDevice`, `TestMCPGateway`, `TestMCPStrangers`, `TestEraseEverything`, `TestAndroidCore`, `TestEvilRelay` |

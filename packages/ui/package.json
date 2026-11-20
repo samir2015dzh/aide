@@ -1,5 +1,5 @@
 {
-  "name": "@hermesh/ui",
+  "name": "@aide/ui",
   "private": true,
   "type": "module",
   "exports": {

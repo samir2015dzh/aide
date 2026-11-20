@@ -1,7 +1,7 @@
 import { ExtensionBrowser } from "./browser.js";
 import { bridge } from "./methods.js";
 
-// The Hermesh extension (browser-design §8.4): a Native Messaging port to `her browser
+// The Aide extension (browser-design §8.4): a Native Messaging port to `her browser
 // native-host`, which relays to the her service, and an ExtensionBrowser for each browser
 // the kernel starts on it. A new stream number is a new browser; the one before is let go.
 // The open port keeps this worker alive; an alarm brings it back if Chrome stopped it.
@@ -10,14 +10,14 @@ import { bridge } from "./methods.js";
 // and when a connection drops, and finds it here again by its session. The service hears of
 // every change, so the app can show a session's tabs whoever holds them.
 //
-// The store updates this extension apart from Hermesh, so the hello says which bridge
+// The store updates this extension apart from Aide, so the hello says which bridge
 // versions it speaks (D-219): `bridge` from methods.js, down to BRIDGE_MIN, the oldest whose
-// frames and commands it still handles. Keep BRIDGE_MIN low: a Hermesh app updates later
+// frames and commands it still handles. Keep BRIDGE_MIN low: an Aide app updates later
 // than its extension. A kept-alive worker never takes an update by itself; it reloads for
 // one while the agent has no tab here. Loaded from its folder, the app's update changes the
 // files under it: the same reload, once the files are seen to differ.
 
-const HOST = "com.hermesh.browser";
+const HOST = "com.aide.browser";
 const PROTOCOL = "1.3";
 const BRIDGE_MIN = 1;
 const GROUP_TITLE = "Aide";
@@ -346,7 +346,7 @@ function timeConnecting() {
   }
 }
 
-/** Only what needs the user shows on the icon: Hermesh not being open is fine. */
+/** Only what needs the user shows on the icon: Aide not being open is fine. */
 function show() {
   timeConnecting();
   const text = hostState === "outdated" || stuck ? "!" : "";
@@ -416,7 +416,7 @@ function onMessage(message) {
     if (message.status === "outdated") {
       hostState = "outdated";
       tooOld = message.update ?? null;
-      // Too old for this Hermesh: ask the store now rather than within hours.
+      // Too old for this Aide: ask the store now rather than within hours.
       if (message.update === "extension") chrome.runtime.requestUpdateCheck?.().catch(() => {});
     } else if (message.status === "connected") {
       hostState = "connected";
@@ -467,7 +467,7 @@ async function instance() {
   return id;
 }
 
-/** Tells the host which browser this is, so Hermesh can show it. */
+/** Tells the host which browser this is, so Aide can show it. */
 async function hello() {
   let browser = navigator.userAgent;
   try {

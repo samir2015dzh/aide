@@ -5,10 +5,10 @@ import (
 	"io"
 	"net/http"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
 )
 
-// Her (docs/her-server.md): the in-process side of hermesh.her.v1.HerService,
+// Her (docs/her-server.md): the in-process side of aide.her.v1.HerService,
 // for the owner role when the machine is this Mac. Each does what the
 // service does over the tunnel, which calls these.
 

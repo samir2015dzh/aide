@@ -9,7 +9,7 @@ import {
   type Session,
   type SessionProgress,
   type SessionStatus,
-} from "@hermesh/proto/session";
+} from "@aide/proto/session";
 
 /** A Monday, 15:42 local time, so day buckets are stable. */
 export const now = new Date(2026, 9, 19, 15, 42);

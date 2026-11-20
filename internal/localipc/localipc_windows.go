@@ -34,7 +34,7 @@ func Listen(path string) (net.Listener, error) {
 	}
 	var b [16]byte
 	rand.Read(b[:])
-	name := pipePrefix + "hermesh-" + hex.EncodeToString(b[:])
+	name := pipePrefix + "aide-" + hex.EncodeToString(b[:])
 	// Only this user (go-winio also refuses remote clients).
 	ln, err := winio.ListenPipe(name, &winio.PipeConfig{SecurityDescriptor: "D:P(A;;GA;;;" + sid + ")"})
 	if err != nil {

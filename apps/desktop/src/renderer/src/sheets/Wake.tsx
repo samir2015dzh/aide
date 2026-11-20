@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { WakeCheck, WakeRing } from "@hermesh/proto/local";
-import { agoText, dateOf } from "@hermesh/core";
+import type { WakeCheck, WakeRing } from "@aide/proto/local";
+import { agoText, dateOf } from "@aide/core";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { useNow, useStore, type Sheet } from "../store";
 import { ErrorLine, useAction } from "./common";
 
-// An agent's doorbell (docs/agent-names.md §7): the webhook Hermesh calls
+// An agent's doorbell (docs/agent-names.md §7): the webhook Aide calls
 // when messages wait for the agent, or one of its bots. Only a bot that can
 // be woken asks for one: it makes its routine, then hands its owner a wake
-// link (hermesh://wake?code=…), which opens this sheet at two steps, the
+// link (aide://wake?code=…), which opens this sheet at two steps, the
 // routine's URL and key, and a first ring. The key goes from here to
-// Hermesh's vault; neither the bot nor its model ever sees it.
+// Aide's vault; neither the bot nor its model ever sees it.
 
 type Step = "webhook" | "check" | "manage";
 
-/** Why a webhook didn't take a call, from its answer: the reason Hermesh gave, in the app's words. */
+/** Why a webhook didn't take a call, from its answer: the reason Aide gave, in the app's words. */
 export function wakeReason(status: number, reason: string): string {
   if (status === 400) return i18n.t("sheets:wake.reason400");
   if (status === 401 || status === 403) return i18n.t("sheets:wake.reasonKey", { status });

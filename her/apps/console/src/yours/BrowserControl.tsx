@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { RpcClient } from "@hermesh/her-client";
-import type { ConfigEdit } from "@hermesh/her-protocol";
+import type { RpcClient } from "@aide/her-client";
+import type { ConfigEdit } from "@aide/her-protocol";
 import { Switch } from "../customize/parts";
 import type { BrowserState } from "./useBrowser";
 import { browserName, controlConfig, controlEdits, controlOn, defaultBrowser, defaultEdits, yours, yoursConfig, type DefaultBrowser } from "./yours";

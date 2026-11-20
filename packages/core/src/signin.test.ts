@@ -3,11 +3,11 @@ import { parseAppLink, projectIdFromFolder } from "./signin";
 
 describe("sign-in", () => {
   test("links: a wake link; anything else is not ours", () => {
-    expect(parseAppLink("hermesh://link?code=ABCD-EFGH")).toBeNull();
-    expect(parseAppLink("hermesh://join?owner=o_123")).toBeNull();
-    expect(parseAppLink("hermesh://wake?code=abc234")).toEqual({ kind: "wake", code: "abc234" });
-    expect(parseAppLink("hermesh://wake")).toBeNull();
-    expect(parseAppLink("hermesh://other?code=x")).toBeNull();
+    expect(parseAppLink("aide://link?code=ABCD-EFGH")).toBeNull();
+    expect(parseAppLink("aide://join?owner=o_123")).toBeNull();
+    expect(parseAppLink("aide://wake?code=abc234")).toEqual({ kind: "wake", code: "abc234" });
+    expect(parseAppLink("aide://wake")).toBeNull();
+    expect(parseAppLink("aide://other?code=x")).toBeNull();
     expect(parseAppLink("https://link?code=x")).toBeNull();
     expect(parseAppLink("not a url")).toBeNull();
   });

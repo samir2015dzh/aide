@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { httpTransport, RpcClient, RpcError } from "@hermesh/her-client";
+import { httpTransport, RpcClient, RpcError } from "@aide/her-client";
 import { agoText, bytesText, errorText, priceText, tokensText } from "./format.ts";
 import { i18n } from "./i18n.ts";
 
-// Errors in words: her's own, the connection's, and hermeshd's refusals as it said them.
+// Errors in words: her's own, the connection's, and aided's refusals as it said them.
 
 await i18n.changeLanguage("en");
 
@@ -25,7 +25,7 @@ class FakeEventSource {
   close() {}
 }
 
-test("a refusal of hermeshd's reads as hermeshd said it", async () => {
+test("a refusal of aided's reads as aided said it", async () => {
   globalThis.EventSource = FakeEventSource as unknown as typeof EventSource;
   globalThis.fetch = async () => new Response("the owner's devices may not change tools.bash: settings that let Her do more on this machine need the owner's root key\n", { status: 403 });
   const transport = httpTransport("./");

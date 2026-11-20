@@ -6,10 +6,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-// The shared Go core (cmd/hermesh-mobile/android), built by gomobile before
+// The shared Go core (cmd/aide-mobile/android), built by gomobile before
 // each build as Xcode builds the iPhone's (scripts/build-core.sh skips when
 // nothing changed). -PskipCore builds with the library already there.
-val coreAar = rootProject.file("build/core/hermeshcore.aar")
+val coreAar = rootProject.file("build/core/aidecore.aar")
 val buildCore by tasks.registering(Exec::class) {
     description = "Builds the shared Go core with gomobile"
     commandLine(rootProject.file("scripts/build-core.sh").absolutePath)

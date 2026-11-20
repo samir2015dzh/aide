@@ -1,14 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Workspace } from "@hermesh/proto/identity";
-import { folderName, isAbsolutePath, projectIdFromFolder } from "@hermesh/core";
-import { Mark } from "@hermesh/ui";
+import { Workspace } from "@aide/proto/identity";
+import { folderName, isAbsolutePath, projectIdFromFolder } from "@aide/core";
+import { Mark } from "@aide/ui";
 import { local } from "../api";
 import { Icon } from "../icons";
 import { useStore } from "../store";
 import { ErrorLine, useAction } from "./common";
 
-const releases = "https://github.com/samir2015dzh/hermesh/releases/latest/download";
+const releases = "https://github.com/samir2015dzh/aide/releases/latest/download";
 
 /**
  * The command that logs a computer in as a machine of this account:
@@ -23,7 +23,7 @@ function addMachineCommand(windows: boolean, server: string, account: string) {
 }
 
 /** Where that PC gets the app: the fork's releases (it has no site, and no Mac app). */
-const downloadPage = "github.com/samir2015dzh/hermesh/releases/latest";
+const downloadPage = "github.com/samir2015dzh/aide/releases/latest";
 
 type MachineOs = "mac" | "windows" | "linux";
 
@@ -239,7 +239,7 @@ export function AddProjectSheet({ machineId, agent }: { machineId?: string; agen
     setId(folder ? projectIdFromFolder(folder, taken) : "");
   };
   const pick = async () => {
-    const p = await window.hermesh?.pickDirectory();
+    const p = await window.aide?.pickDirectory();
     if (p) choosePath(p);
   };
   const add = async (e: FormEvent) => {

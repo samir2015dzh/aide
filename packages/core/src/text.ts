@@ -1,4 +1,4 @@
-import { FailureKind, SessionStatus, type Failure, type Session } from "@hermesh/proto/session";
+import { FailureKind, SessionStatus, type Failure, type Session } from "@aide/proto/session";
 import { hourMinute, isYesterday, monthDay, pad2, sameDay, weekday, withinWeek } from "./calendar";
 import { t } from "./i18n";
 

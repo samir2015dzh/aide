@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ListExecLogResponse } from "@hermesh/proto/local";
-import { agoText, dateOf, opsMillis, opsResult } from "@hermesh/core";
-import { agentName } from "@hermesh/ui";
+import type { ListExecLogResponse } from "@aide/proto/local";
+import { agoText, dateOf, opsMillis, opsResult } from "@aide/core";
+import { agentName } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
 import { errorText, useNow, useStore } from "../store";

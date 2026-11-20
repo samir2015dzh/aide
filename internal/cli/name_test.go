@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	"github.com/hermeshai/hermesh/internal/peer"
+	"github.com/samir2015dzh/aide/internal/peer"
 )
 
 // TestCheckName: an agent uses a machine picked by name only if the

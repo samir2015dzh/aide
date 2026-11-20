@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // A long conversation with Her, in English: hundreds of messages, short and
@@ -170,7 +170,7 @@ func longModel(t *testing.T) string {
 	return srv.URL
 }
 
-// longHer is what an owner Mac's hermeshd needs to run Her on longModel,
+// longHer is what an owner Mac's aided needs to run Her on longModel,
 // and her home.
 func longHer(t *testing.T) (env []string, home string) {
 	her, mockBin := herBinaries(t)
@@ -243,7 +243,7 @@ func longChatWorld(t *testing.T) desktopFixture {
 	w := newOwnerMac(t, env, &localv1.GrantSpec{})
 	t.Cleanup(w.owner.stop) // stopped as a service is, so that it stops her
 	longChatWith(t, w)
-	return desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "hermesh"), CLIEnv: w.cliEnv, HerHome: home, owner: w}
+	return desktopFixture{Socket: w.sock, Sessions: map[string]string{}, CLI: filepath.Join(w.bin, "aide"), CLIEnv: w.cliEnv, HerHome: home, owner: w}
 }
 
 // TestDesktopHerLong runs apps/desktop/e2e/her-long.spec.ts: the long
@@ -253,11 +253,11 @@ func longChatWorld(t *testing.T) desktopFixture {
 //
 //	go test ./e2e -run TestDesktopHerLong -v -timeout 30m
 //
-// With HERMESH_DESKTOP_PREVIEW=<seconds> it keeps the world up instead, for
+// With AIDE_DESKTOP_PREVIEW=<seconds> it keeps the world up instead, for
 // a person to scroll the conversation themselves:
 //
-//	HERMESH_DESKTOP_PREVIEW=3600 go test ./e2e -run TestDesktopHerLong -v -timeout 70m
-//	HERMESH_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
+//	AIDE_DESKTOP_PREVIEW=3600 go test ./e2e -run TestDesktopHerLong -v -timeout 70m
+//	AIDE_SOCKET=<socket it prints> pnpm --dir apps/desktop dev
 func TestDesktopHerLong(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -266,8 +266,8 @@ func TestDesktopHerLong(t *testing.T) {
 		t.Skip("pnpm not installed")
 	}
 	f := longChatWorld(t)
-	if secs, _ := strconv.Atoi(os.Getenv("HERMESH_DESKTOP_PREVIEW")); secs > 0 {
-		t.Logf("Her's long conversation is ready on this Mac (%d messages, in English); open the app with:\nHERMESH_SOCKET=%s pnpm --dir apps/desktop dev", longChat, f.Socket)
+	if secs, _ := strconv.Atoi(os.Getenv("AIDE_DESKTOP_PREVIEW")); secs > 0 {
+		t.Logf("Her's long conversation is ready on this Mac (%d messages, in English); open the app with:\nAIDE_SOCKET=%s pnpm --dir apps/desktop dev", longChat, f.Socket)
 		time.Sleep(time.Duration(secs) * time.Second)
 		return
 	}

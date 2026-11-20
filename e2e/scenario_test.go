@@ -19,31 +19,31 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"google.golang.org/protobuf/proto"
 )
 
 // TestUserJourney walks the P1 acceptance scenarios with real binaries:
-// relay, the owner daemon (driven like Hermesh.app over its Unix socket),
+// relay, the owner daemon (driven like Aide.app over its Unix socket),
 // a separate execution machine and the agent CLI.
 //
-// By default the coding agents are scripted fakes. With HERMESH_REAL_CLI=1
+// By default the coding agents are scripted fakes. With AIDE_REAL_CLI=1
 // the machines run this computer's real Claude Code and Codex.
 func TestUserJourney(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	real := os.Getenv("HERMESH_REAL_CLI") == "1"
+	real := os.Getenv("AIDE_REAL_CLI") == "1"
 	bin := binaries(t)
-	relayBin, daemonBin, cliBin := filepath.Join(bin, "hermesh-relay"), filepath.Join(bin, "hermeshd"), filepath.Join(bin, "hermesh")
+	relayBin, daemonBin, cliBin := filepath.Join(bin, "aide-relay"), filepath.Join(bin, "aided"), filepath.Join(bin, "aide")
 	tmp := t.TempDir()
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	var agentEnv []string
 	if !real {
-		agentEnv = []string{"HERMESH_FAKE_PROVIDERS=1"}
+		agentEnv = []string{"AIDE_FAKE_PROVIDERS=1"}
 	} else {
 		agentEnv = []string{"PATH=" + os.Getenv("PATH") + ":/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin"}
 	}
@@ -69,7 +69,7 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("setup code %q", setupCode)
 	}
 
-	// --- Owner Mac: hermeshd --owner + the "app" ---------------------------
+	// --- Owner Mac: aided --owner + the "app" ---------------------------
 	ownerData := filepath.Join(tmp, "owner-mac")
 	sock := filepath.Join(sockDir, "o.sock")
 	startOwner := func(dataDir string) *proc {
@@ -167,9 +167,9 @@ func TestUserJourney(t *testing.T) {
 		}
 	}
 
-	// --- A3: an agent logs in with `hermesh auth login` -------------------------
+	// --- A3: an agent logs in with `aide auth login` -------------------------
 	grokHome := filepath.Join(tmp, "grok")
-	grokEnv := []string{"HERMESH_HOME=" + grokHome}
+	grokEnv := []string{"AIDE_HOME=" + grokHome}
 	cli := func(env []string, timeout time.Duration, args ...string) result {
 		return run(t, env, timeout, cliBin, args...)
 	}
@@ -304,7 +304,7 @@ func TestUserJourney(t *testing.T) {
 		model = []string{"--model", "haiku"}
 	}
 	start1 := cli(grokEnv, 6*time.Minute, append([]string{"session", "start", "--project", "vps-1/demo", "--agent", "claude", "--wait", "-o", "json",
-		"--idempotency-key", "e2e-s1", "--prompt", prompt("say working\nwrite hello.txt hello from hermesh", "Create a file hello.txt containing exactly: hello from hermesh. Then reply: done")}, model...)...)
+		"--idempotency-key", "e2e-s1", "--prompt", prompt("say working\nwrite hello.txt hello from aide", "Create a file hello.txt containing exactly: hello from aide. Then reply: done")}, model...)...)
 	if start1.code != 0 {
 		t.Fatalf("claude session: %+v", start1)
 	}
@@ -317,7 +317,7 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("session after wait: %s", start1.stdout)
 	}
 	diff := cli(grokEnv, 30*time.Second, "session", "diff", s1.SessionID)
-	if diff.code != 0 || !strings.Contains(diff.stdout, "hello.txt") || !strings.Contains(diff.stdout, "+hello from hermesh") {
+	if diff.code != 0 || !strings.Contains(diff.stdout, "hello.txt") || !strings.Contains(diff.stdout, "+hello from aide") {
 		t.Fatalf("diff: %+v", diff)
 	}
 	if b, _ := os.ReadFile(filepath.Join(repo1, "hello.txt")); len(b) != 0 {
@@ -557,7 +557,7 @@ func TestUserJourney(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(inPlaceRepo, "feature.txt")); r.code != 0 || !strings.Contains(string(b), "from codex") {
 		t.Fatalf("in-place codex session: %+v, feature.txt %q", r, b)
 	}
-	if h := gitIn(t, inPlaceRepo, "rev-parse", "HEAD"); h != headBefore || gitIn(t, inPlaceRepo, "branch", "--list", "hermesh/*") != "" ||
+	if h := gitIn(t, inPlaceRepo, "rev-parse", "HEAD"); h != headBefore || gitIn(t, inPlaceRepo, "branch", "--list", "aide/*") != "" ||
 		!strings.Contains(gitIn(t, inPlaceRepo, "status", "--porcelain"), "?? feature.txt") {
 		t.Fatalf("in-place git repo: HEAD %s (was %s), branches %q", h, headBefore, gitIn(t, inPlaceRepo, "branch", "--list"))
 	}
@@ -672,10 +672,10 @@ func TestUserJourney(t *testing.T) {
 
 	// A10 prep: a second agent that will survive losing the first Mac untouched.
 	scoutHome := filepath.Join(tmp, "scout")
-	scoutEnv := []string{"HERMESH_HOME=" + scoutHome}
+	scoutEnv := []string{"AIDE_HOME=" + scoutHome}
 	pairClient(scoutEnv, "scout", &localv1.GrantSpec{MachineIds: []string{vps1.MachineId}, Agents: []string{"claude"}})
 	// An agent granted no project that exists sees an empty list that says what to do.
-	idleEnv := []string{"HERMESH_HOME=" + filepath.Join(tmp, "idle")}
+	idleEnv := []string{"AIDE_HOME=" + filepath.Join(tmp, "idle")}
 	pairClient(idleEnv, "idle", &localv1.GrantSpec{ProjectIds: []string{"nothing-here"}})
 	if r := cli(idleEnv, 30*time.Second, "project", "list"); r.code != 0 || !strings.Contains(r.stdout, "ask the owner") {
 		t.Fatalf("empty project list: %+v", r)

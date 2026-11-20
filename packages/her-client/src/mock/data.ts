@@ -1,5 +1,5 @@
 import { demoTokenPlans } from "./token-plans.ts";
-import type { ModelsListResult, ModelSummary, ProviderSummary, SkillsListResult, SkillUse, ThinkingLevel } from "@hermesh/her-protocol";
+import type { ModelsListResult, ModelSummary, ProviderSummary, SkillsListResult, SkillUse, ThinkingLevel } from "@aide/her-protocol";
 import { skillMentions } from "../mentions.ts";
 import type { TaskScript } from "./script.ts";
 import { snake } from "./snake.ts";
@@ -11,10 +11,10 @@ const min = 60_000;
 const hour = 60 * min;
 const day = 24 * hour;
 
-export const root = snake.cwd.replace(/\/hermesh\/her\/examples\/snake-game$/, "");
+export const root = snake.cwd.replace(/\/aide\/her\/examples\/snake-game$/, "");
 export const projects = {
-  her: `${root}/hermesh/her`,
-  hermesh: `${root}/hermesh`,
+  her: `${root}/aide/her`,
+  aide: `${root}/aide`,
   playground: `${root}/playground`,
 };
 
@@ -128,11 +128,11 @@ const readme: TaskScript = {
   turns: [
     {
       say: "先看现在的 README。",
-      tools: [{ name: "read", args: { path: `${projects.hermesh}/README.md` }, output: "# Aide\n\nLet your agents hand work to Claude Code on your computer.\n…", ms: 200 }],
+      tools: [{ name: "read", args: { path: `${projects.aide}/README.md` }, output: "# Aide\n\nLet your agents hand work to Claude Code on your computer.\n…", ms: 200 }],
     },
     {
       say: "安装说明分散在三处，我把它们合并成一节，并按平台分开写。",
-      tools: [{ name: "edit", args: { path: `${projects.hermesh}/README.md`, edits: [{ old_text: "## Install", new_text: "## 安装\n\n### macOS\n…" }] }, output: `Edited ${projects.hermesh}/README.md`, ms: 200 }],
+      tools: [{ name: "edit", args: { path: `${projects.aide}/README.md`, edits: [{ old_text: "## Install", new_text: "## 安装\n\n### macOS\n…" }] }, output: `Edited ${projects.aide}/README.md`, ms: 200 }],
     },
     { say: "改好了：安装说明合并成「安装」一节，分 macOS 和 Linux 两小节，命令都能直接复制运行。" },
   ],
@@ -210,7 +210,7 @@ export function demoSessions(): DemoSession[] {
     },
     {
       id: "0193e2c4-7f1a-7d38-a2b6-5e4f3c2d1b0a",
-      cwd: projects.hermesh,
+      cwd: projects.aide,
       model: "anthropic/claude-sonnet-5-5",
       thinking: "off",
       title: "整理 README 的安装说明",
@@ -324,7 +324,7 @@ export function siteScript(): TaskScript {
           },
         ],
       },
-      { say: "控制台已经打开，账户首页列出了 hermesh.io 的流量概览。" },
+      { say: "控制台已经打开，账户首页列出了 aide.io 的流量概览。" },
     ],
   };
 }
@@ -343,7 +343,7 @@ const demoSkillList: { name: string; description: string; hint?: string; scope: 
 ];
 
 const skillPath = (s: (typeof demoSkillList)[number]) =>
-  s.scope === "project" ? `/Users/demo/code/hermesh/.agents/skills/${s.name}/SKILL.md` : `/Users/demo/.her/skills/${s.name}/SKILL.md`;
+  s.scope === "project" ? `/Users/demo/code/aide/.agents/skills/${s.name}/SKILL.md` : `/Users/demo/.her/skills/${s.name}/SKILL.md`;
 
 /** The demo's `skills/list`, for a session or a folder alike. */
 export function demoSkills(): SkillsListResult {

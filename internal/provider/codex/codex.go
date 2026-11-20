@@ -17,9 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 type Provider struct {
@@ -120,7 +120,7 @@ func appServer(ctx context.Context, env []string, bin string, do func(call func(
 		}
 		return fmt.Errorf("codex app-server ended before answering %s", method)
 	}
-	if err := call("initialize", map[string]any{"clientInfo": map[string]any{"name": "hermesh", "version": "0.1.0"}}, &struct{}{}); err != nil {
+	if err := call("initialize", map[string]any{"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"}}, &struct{}{}); err != nil {
 		return err
 	}
 	return do(call)
@@ -235,7 +235,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	}
 	// No limit of its own: a busy machine makes Codex slow to start, not
 	// stuck. ctx ends it (an interrupt, or the session's start limit).
-	if _, err := s.call(ctx, "initialize", map[string]any{"clientInfo": map[string]any{"name": "hermesh", "version": "0.1.0"}}); err != nil {
+	if _, err := s.call(ctx, "initialize", map[string]any{"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"}}); err != nil {
 		return fail(fmt.Errorf("codex initialize: %w", err))
 	}
 	s.notify("initialized", nil)

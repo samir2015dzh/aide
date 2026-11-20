@@ -537,7 +537,7 @@ pub struct BrowserHostParams {
     /// The browser the host is in, as it names itself: "Google Chrome 141.0.7390.54".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub browser: Option<String>,
-    /// The Hermesh extension's version, for an extension host.
+    /// The Aide extension's version, for an extension host.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extension_version: Option<String>,
     /// The bridge versions the extension speaks (browser-design D-219). An extension host
@@ -565,7 +565,7 @@ pub struct BridgeRange {
 pub enum ExtensionProblem {
     /// The extension is older than this her can drive; the store updates it by itself.
     UpdateExtension,
-    /// The extension is newer than this her; update Hermesh.
+    /// The extension is newer than this her; update Aide.
     UpdateHer,
 }
 
@@ -581,7 +581,7 @@ pub struct BrowserHostResult {
     pub problem: Option<ExtensionProblem>,
 }
 
-/// The user's own browser, lent through the Hermesh extension (browser-design §8.4).
+/// The user's own browser, lent through the Aide extension (browser-design §8.4).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ExtensionStatus {
     /// "Google Chrome 141.0.7390.54", when the extension said.
@@ -668,7 +668,7 @@ pub struct DesktopStatus {
 }
 
 /// A system permission as agent-desktop finds it from inside her. macOS asks it of the process
-/// it holds responsible for her: the terminal app, or hermeshd when Hermesh runs her.
+/// it holds responsible for her: the terminal app, or aided when Aide runs her.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DesktopPermission {

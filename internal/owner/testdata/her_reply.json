@@ -1,5 +1,5 @@
 {
-  "about": "How a message says what it replies to (docs/her-reply.md §4.1). cases: the reply as an app sends it (local.v1 HerReply) and the text block the core writes for her after the owner's words; the core (internal/owner replyBlock) writes each block from its reply, and the apps (her-client replyOf, HermeshHer herReply) read each reply back from its block. not: text that is not such a block, which the apps show as the words they are.",
+  "about": "How a message says what it replies to (docs/her-reply.md §4.1). cases: the reply as an app sends it (local.v1 HerReply) and the text block the core writes for her after the owner's words; the core (internal/owner replyBlock) writes each block from its reply, and the apps (her-client replyOf, AideHer herReply) read each reply back from its block. not: text that is not such a block, which the apps show as the words they are.",
   "cases": [
     {
       "reply": {

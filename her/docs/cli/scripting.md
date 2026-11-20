@@ -56,7 +56,7 @@ Failures under `--json` are JSON too, on stdout: `{"error": {"kind": "no_model",
 ## In CI
 
 ```yaml
-- run: curl -fsSL https://github.com/hermeshai/her-releases/releases/latest/download/install.sh | sh
+- run: curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh
 - run: ~/.local/bin/her exec --json "fix the failing test" > result.json
   env:
     DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}

@@ -15,8 +15,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/internal/connaddr"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/connaddr"
 )
 
 // ownerMac is an owner Mac (the owner daemon, also running its local machine
@@ -24,7 +24,7 @@ import (
 type ownerMac struct {
 	t          *testing.T
 	bin, tmp   string
-	hermeshd   string // the owner's hermeshd when not bin's, from its next start
+	aided   string // the owner's aided when not bin's, from its next start
 	repo       string
 	daemonEnv  []string
 	daemonArgs []string
@@ -37,7 +37,7 @@ type ownerMac struct {
 	relayArgs  []string
 	relayEnv   []string
 	relayDebug string // where the relay serves /metrics
-	ownerDebug string // where the owner's hermeshd serves /metrics
+	ownerDebug string // where the owner's aided serves /metrics
 	repoHead   string // the owner's HEAD, which sessions must never move
 	addr       string // the owner's server, as a connection address (any login takes it)
 	server     string // the owner's server
@@ -64,7 +64,7 @@ func newOwnerMacAt(t *testing.T, oneWay time.Duration, daemonEnv []string, grant
 	t.Helper()
 	w := &ownerMac{t: t, bin: binaries(t), tmp: t.TempDir(), daemonArgs: daemonArgs}
 	w.ownerDebug = fmt.Sprintf("127.0.0.1:%d", freePort(t))
-	w.daemonEnv = append(slices.Clone(daemonEnv), "HERMESH_DEBUG_ADDR="+w.ownerDebug)
+	w.daemonEnv = append(slices.Clone(daemonEnv), "AIDE_DEBUG_ADDR="+w.ownerDebug)
 	sockDir, _ := os.MkdirTemp(shortTemp, "hm")
 	t.Cleanup(func() { os.RemoveAll(sockDir) })
 	w.sock = filepath.Join(sockDir, "o.sock")
@@ -76,7 +76,7 @@ func newOwnerMacAt(t *testing.T, oneWay time.Duration, daemonEnv []string, grant
 		}
 	})
 	ctx := context.Background()
-	relayBin := filepath.Join(w.bin, "hermesh-relay")
+	relayBin := filepath.Join(w.bin, "aide-relay")
 	relayData := filepath.Join(w.tmp, "relay")
 	// freePort's port is free when it answers, not when the relay binds it:
 	// another test can take it in between ("bind: address already in use").
@@ -120,7 +120,7 @@ func newOwnerMacAt(t *testing.T, oneWay time.Duration, daemonEnv []string, grant
 	if _, err := w.app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: localMachine.MachineId, ProjectId: "demo", Path: w.repo}); err != nil {
 		t.Fatal(err)
 	}
-	w.cliEnv = []string{"HERMESH_HOME=" + filepath.Join(w.tmp, "agent")}
+	w.cliEnv = []string{"AIDE_HOME=" + filepath.Join(w.tmp, "agent")}
 	w.loginAgent(w.cliEnv, "bot", grant)
 	return w
 }
@@ -130,7 +130,7 @@ func newOwnerMacAt(t *testing.T, oneWay time.Duration, daemonEnv []string, grant
 // It returns the agent's grant id.
 func (w *ownerMac) loginAgent(env []string, name string, spec *localv1.GrantSpec) string {
 	w.t.Helper()
-	if r := run(w.t, append(slices.Clone(env), loginEnv()...), 60*time.Second, filepath.Join(w.bin, "hermesh"), "auth", "login", w.server, "--name", name); r.code != 0 {
+	if r := run(w.t, append(slices.Clone(env), loginEnv()...), 60*time.Second, filepath.Join(w.bin, "aide"), "auth", "login", w.server, "--name", name); r.code != 0 {
 		w.t.Fatalf("login %s: %+v", name, r)
 	}
 	ctx := context.Background()
@@ -161,7 +161,7 @@ func (w *ownerMac) loginAgent(env []string, name string, spec *localv1.GrantSpec
 // it. It returns the machine's id.
 func (w *ownerMac) loginMachine(name, dataDir string, env []string, args ...string) string {
 	w.t.Helper()
-	r := run(w.t, append(slices.Clone(env), loginEnv()...), 60*time.Second, filepath.Join(w.bin, "hermeshd"),
+	r := run(w.t, append(slices.Clone(env), loginEnv()...), 60*time.Second, filepath.Join(w.bin, "aided"),
 		append([]string{"login", w.server, "--name", name, "--no-service", "--data-dir", dataDir}, args...)...)
 	if r.code != 0 {
 		w.t.Fatalf("aided login %s: %+v", name, r)
@@ -191,7 +191,7 @@ func (w *ownerMac) startRelay() {
 // runRelay starts the relay and waits until it is listening; false if it
 // exits first.
 func (w *ownerMac) runRelay() bool {
-	w.relay = start(w.t, "relay", w.relayEnv, filepath.Join(w.bin, "hermesh-relay"), w.relayArgs...)
+	w.relay = start(w.t, "relay", w.relayEnv, filepath.Join(w.bin, "aide-relay"), w.relayArgs...)
 	w.logs = append(w.logs, w.relay)
 	r := w.relay
 	for end := time.Now().Add(20 * time.Second); time.Now().Before(end); time.Sleep(50 * time.Millisecond) {
@@ -222,9 +222,9 @@ func (w *ownerMac) worktree(id string) string {
 
 func (w *ownerMac) startOwner() {
 	args := append([]string{"run", "--owner", "--data-dir", filepath.Join(w.tmp, "owner-mac"), "--socket", w.sock}, w.daemonArgs...)
-	bin := filepath.Join(w.bin, "hermeshd")
-	if w.hermeshd != "" {
-		bin = w.hermeshd
+	bin := filepath.Join(w.bin, "aided")
+	if w.aided != "" {
+		bin = w.aided
 	}
 	if w.nproc > 0 {
 		args = append([]string{"-c", fmt.Sprintf(`ulimit -u %d && exec "$0" "$@"`, w.nproc), bin}, args...)
@@ -254,11 +254,11 @@ func (w *ownerMac) restartOwner(kill bool) {
 // signs is how often the owner's devices had the server sign something
 // (OwnerControl.Sign), as the relay counts it.
 func (w *ownerMac) signs() int {
-	return metric(w.t, w.relayDebug, `hermesh_relay_owner_rpcs_total{method="Sign"}`)
+	return metric(w.t, w.relayDebug, `aide_relay_owner_rpcs_total{method="Sign"}`)
 }
 
 func (w *ownerMac) cli(timeout time.Duration, args ...string) result {
-	return run(w.t, w.cliEnv, timeout, filepath.Join(w.bin, "hermesh"), args...)
+	return run(w.t, w.cliEnv, timeout, filepath.Join(w.bin, "aide"), args...)
 }
 
 // sessionJSON is the part of the contract's session the tests read.
@@ -284,7 +284,7 @@ type sessionJSON struct {
 	StalledFor   int64   `json:"stalled_seconds"`
 }
 
-// startSession runs `hermesh session start --project demo -o json args...`.
+// startSession runs `aide session start --project demo -o json args...`.
 func (w *ownerMac) startSession(timeout time.Duration, args ...string) (sessionJSON, result) {
 	r := w.cli(timeout, append([]string{"session", "start", "--project", "demo", "-o", "json"}, args...)...)
 	return firstSession(r.stdout), r
@@ -306,7 +306,7 @@ func unmarshalSession(out string, v any) error {
 	return json.Unmarshal(doc.Session, v)
 }
 
-// send runs `hermesh session send id --wait -o json --message text`.
+// send runs `aide session send id --wait -o json --message text`.
 func (w *ownerMac) send(timeout time.Duration, id, text string) (sessionJSON, result) {
 	r := w.cli(timeout, "session", "send", id, "--wait", "-o", "json", "--message", text)
 	return firstSession(r.stdout), r

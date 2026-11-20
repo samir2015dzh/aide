@@ -25,19 +25,19 @@ test("a PC's words, type and corners, and Ctrl shortcuts, the menu button, the n
   expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("14px");
   expect(await overview.evaluate((e) => getComputedStyle(e).borderRadius)).toBe("4px");
   expect(await overview.evaluate((e) => getComputedStyle(e, "::before").width)).toBe("3px");
-  await expect.poll(() => app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().view.state)).toBe("ok");
+  await expect.poll(() => app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().view.state)).toBe("ok");
   await snap(page, "windows");
-  await app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.mainWindow()?.close());
+  await app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.mainWindow()?.close());
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(0);
   // Still there: its notification area's icon still follows the daemon.
-  expect(await app.evaluate(() => (globalThis as unknown as { hermeshTest: Hook }).hermeshTest.tray().view.state)).toBe("ok");
-  // A hermesh: link, opened again as Windows does (a second Hermesh.exe), brings the window back.
-  await app.evaluate(({ app }) => app.emit("second-instance", {}, ["Hermesh.exe", "hermesh://open"]));
+  expect(await app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().view.state)).toBe("ok");
+  // An aide: link, opened again as Windows does (a second Aide.exe), brings the window back.
+  await app.evaluate(({ app }) => app.emit("second-instance", {}, ["Aide.exe", "aide://open"]));
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w) => w.isVisible()).length)).toBe(1);
   await app.close();
 });
 
-test("the window opens at the size it had last time, loading in the middle until hermeshd answers", async () => {
+test("the window opens at the size it had last time, loading in the middle until aided answers", async () => {
   const width = (app: Awaited<ReturnType<typeof launch>>["app"]) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   const first = await launch(undefined, { profile });

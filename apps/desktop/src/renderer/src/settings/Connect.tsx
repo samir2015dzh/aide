@@ -5,8 +5,8 @@ import { ConnectGuide, LinePicker, type Place, type Tab } from "../ConnectGuide"
 
 /** What the guide opens goes to the main window: a task, or DeepSeek Harness's own sessions. */
 const place: Place = {
-  openSession: (id) => window.hermesh?.showInMain({ session: id }),
-  openDSH: () => window.hermesh?.showInMain({ dsh: true }),
+  openSession: (id) => window.aide?.showInMain({ session: id }),
+  openDSH: () => window.aide?.showInMain({ dsh: true }),
 };
 
 /** Connect: the guide for each coding agent, as the first run has it, and the assistants' (line: the one to open on). */

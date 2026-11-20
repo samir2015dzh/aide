@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // takeOffline stops env's machine as a service is stopped, so that it stops
-// her: the hermeshd newHerEnvironment started on this computer, or the Linux
-// machine's container, whose first process is its hermeshd.
+// her: the aided newHerEnvironment started on this computer, or the Linux
+// machine's container, whose first process is its aided.
 func takeOffline(t *testing.T, env *herEnvironment) {
 	t.Helper()
 	if env.container != "" {
@@ -97,7 +97,7 @@ func (k keptConversation) said() []string {
 }
 
 // TestHerOfflineConversation: the owner talks to Her on another machine,
-// which then goes away. Once this Mac's hermeshd has started again, with
+// which then goes away. Once this Mac's aided has started again, with
 // nothing of it in memory, the Her entry still finds there what was said,
 // as the entry shows it, through LocalService. Offline, the machine can't
 // be removed with her data erased; once removed, nothing is left here
@@ -116,8 +116,8 @@ func TestHerOfflineConversation(t *testing.T) {
 	untilEvent(t, stream, "the reply's task ended", func(e herEvent) bool { return e.Type == "task_completed" })
 	stream.Close()
 
-	// The machine goes away (its hermeshd stops, and her with it), then this
-	// Mac's hermeshd stops and starts again.
+	// The machine goes away (its aided stops, and her with it), then this
+	// Mac's aided stops and starts again.
 	takeOffline(t, env)
 	eventually(t, time.Minute, "the machine offline", func() bool {
 		m := listedMachine(t, env.c, env.machine)

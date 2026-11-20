@@ -1,5 +1,5 @@
-// Package owner implements the owner role of the hermeshd bundled with
-// Hermesh.app, on each of the owner's trusted devices: onboarding, devices
+// Package owner implements the owner role of the aided bundled with
+// Aide.app, on each of the owner's trusted devices: onboarding, devices
 // joining and leaving, pairing approval, grants, revocation, machine
 // administration and cross-machine session views. Anything that adds
 // permissions is signed by this device's root key, held by the app.
@@ -26,18 +26,18 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1/relayv1connect"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/flock"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/internal/sessionstate"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/transport"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/flock"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/sessionstate"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
 type Config struct {
@@ -1491,7 +1491,7 @@ func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.Lis
 	return out, err
 }
 
-// ListDSHSessions gathers the DeepSeek Harness sessions Hermesh did not
+// ListDSHSessions gathers the DeepSeek Harness sessions Aide did not
 // start on the machines, newest activity first.
 func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1.ListDSHSessionsResponse, error) {
 	on, off, err := o.onlineMachines(ctx, machineID)

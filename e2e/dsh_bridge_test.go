@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/provider/acp/dshnative"
+	"github.com/samir2015dzh/aide/internal/provider/acp/dshnative"
 )
 
 // The bridge plugin as DSH Desktop runs it (apps/dsh-bridge, loaded by Node
-// with DSH's services faked) and hermeshd's client of it speak the same
-// protocol: hello, state, a prompt in queue mode under Hermesh's request id,
+// with DSH's services faked) and aided's client of it speak the same
+// protocol: hello, state, a prompt in queue mode under Aide's request id,
 // cancel, a DSH that never takes a message failing as a timeout, and the
 // rendezvous gone when DSH disposes the plugin (the token's refusal is in
 // the plugin's own tests). On Windows the endpoint is a named pipe.
@@ -150,12 +150,12 @@ func TestDSHBridgePlugin(t *testing.T) {
 	if live, _, err := b.State(ctx, "s_cold"); err != nil || live {
 		t.Fatalf("state of a session the Host doesn't run: %v %v", live, err)
 	}
-	if err := b.Prompt(ctx, "s_cold", "hermesh-01h", "继续，按计划"); err != nil {
+	if err := b.Prompt(ctx, "s_cold", "aide-01h", "继续，按计划"); err != nil {
 		t.Fatal(err)
 	}
 	m := next("prompt")
 	p, _ := m["prompt"].(map[string]any)
-	if p["sessionId"] != "s_cold" || p["requestId"] != "hermesh-01h" || p["mode"] != "queue" || m["signal"] != true ||
+	if p["sessionId"] != "s_cold" || p["requestId"] != "aide-01h" || p["mode"] != "queue" || m["signal"] != true ||
 		!strings.Contains(asJSON(p["content"]), `"text":"继续，按计划"`) {
 		t.Fatalf("DSH was asked %v", m)
 	}
@@ -169,12 +169,12 @@ func TestDSHBridgePlugin(t *testing.T) {
 		t.Fatalf("cancel of a session the Host doesn't run: %v %v", ok, err)
 	}
 	var be *dshnative.BridgeError
-	if err := b.Prompt(ctx, "s_live", "hermesh-02", "  "); !errors.As(err, &be) || be.Code != "bad-request" {
+	if err := b.Prompt(ctx, "s_live", "aide-02", "  "); !errors.As(err, &be) || be.Code != "bad-request" {
 		t.Fatalf("an empty message: %v", err)
 	}
 	// The plugin gives up on DSH after 20 s and says so.
 	pctx, pcancel := context.WithTimeout(ctx, 25*time.Second)
-	err = b.Prompt(pctx, "s_live", "hermesh-03", "hang")
+	err = b.Prompt(pctx, "s_live", "aide-03", "hang")
 	pcancel()
 	if !errors.As(err, &be) || be.Code != "timeout" {
 		t.Fatalf("a DSH that never takes it: %v", err)

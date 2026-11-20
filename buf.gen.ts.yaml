@@ -6,10 +6,10 @@ plugins:
 inputs:
   - directory: proto
     paths:
-      - proto/hermesh/local
-      - proto/hermesh/her
-      - proto/hermesh/session
-      - proto/hermesh/identity
-      - proto/hermesh/machine
-      - proto/hermesh/screen
-      - proto/hermesh/options
+      - proto/aide/local
+      - proto/aide/her
+      - proto/aide/session
+      - proto/aide/identity
+      - proto/aide/machine
+      - proto/aide/screen
+      - proto/aide/options

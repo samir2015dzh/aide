@@ -141,7 +141,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
  * One conversation row. A message from someone other than the session's
  * starter (the owner in a session an agent started; another agent) is
  * named; dsh: a DSH session's page, where every message is the owner's and
- * those sent from Hermesh are marked so.
+ * those sent from Aide are marked so.
  */
 @Composable
 internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {

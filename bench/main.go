@@ -1,8 +1,8 @@
 //go:build unix
 
-// Command bench load-tests the full Hermesh path: agent client → relay →
-// E2E tunnel → hermeshd → Codex adapter → coding-agent process (fakecodex).
-// It runs relay and hermeshd as separate processes, samples their CPU and
+// Command bench load-tests the full Aide path: agent client → relay →
+// E2E tunnel → aided → Codex adapter → coding-agent process (fakecodex).
+// It runs relay and aided as separate processes, samples their CPU and
 // memory (and the agent processes'), scrapes their /metrics, captures pprof
 // profiles and writes a report.
 //
@@ -36,16 +36,16 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
-	identityv1 "github.com/hermeshai/hermesh/gen/go/hermesh/identity/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	relayv1 "github.com/hermeshai/hermesh/gen/go/hermesh/relay/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/machine"
-	"github.com/hermeshai/hermesh/internal/owner"
-	"github.com/hermeshai/hermesh/internal/peer"
-	"github.com/hermeshai/hermesh/pkg/identity"
-	"github.com/hermeshai/hermesh/pkg/metrics"
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/owner"
+	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/pkg/identity"
+	"github.com/samir2015dzh/aide/pkg/metrics"
 )
 
 var (
@@ -63,7 +63,7 @@ var (
 	flagProfile     = flag.Duration("profile", 10*time.Second, "CPU profile duration captured mid-load (0 = off)")
 	flagMessages    = flag.Int("messages", 0, "agent messages per turn, between the commands")
 	flagWatchers    = flag.Int("watchers", 0, "extra event-stream subscribers per session, following each turn (like the app watching progress)")
-	flagTrace       = flag.Duration("trace", 0, "execution trace of hermeshd captured mid-load (0 = off; see go tool trace)")
+	flagTrace       = flag.Duration("trace", 0, "execution trace of aided captured mid-load (0 = off; see go tool trace)")
 	flagOut         = flag.String("out", "", "report directory (default bench-results/<time>)")
 	flagLabel       = flag.String("label", "", "label for this run")
 	flagNoWorktree  = flag.Bool("no-worktree", false, "run sessions without git worktrees (measures the daemon itself)")
@@ -117,7 +117,7 @@ func freePort() int {
 }
 
 func build(dst string) error {
-	for _, c := range []struct{ out, pkg string }{{"hermesh-relay", "./cmd/hermesh-relay"}, {"hermeshd", "./cmd/hermeshd"}, {"fakecodex", "./bench/fakecodex"}} {
+	for _, c := range []struct{ out, pkg string }{{"aide-relay", "./cmd/aide-relay"}, {"aided", "./cmd/aided"}, {"fakecodex", "./bench/fakecodex"}} {
 		if out, err := exec.Command("go", "build", "-o", filepath.Join(dst, c.out), c.pkg).CombinedOutput(); err != nil {
 			return fmt.Errorf("build %s: %v %s", c.out, err, out)
 		}
@@ -157,12 +157,12 @@ func setup(ctx context.Context) (*env, error) {
 	e.relayURL = fmt.Sprintf("http://127.0.0.1:%d", relayPort)
 	e.relayDbg = fmt.Sprintf("http://127.0.0.1:%d", relayDbg)
 	e.daemonDbg = fmt.Sprintf("http://127.0.0.1:%d", daemonDbg)
-	fmt.Printf("debug endpoints: hermeshd %s, relay %s\n", e.daemonDbg, e.relayDbg)
+	fmt.Printf("debug endpoints: aided %s, relay %s\n", e.daemonDbg, e.relayDbg)
 	relayData := filepath.Join(e.tmp, "relay")
-	e.relay = startProc("relay", nil, filepath.Join(*flagOut, "relay.log"), filepath.Join(e.bin, "hermesh-relay"), "serve", "--data-dir", relayData,
+	e.relay = startProc("relay", nil, filepath.Join(*flagOut, "relay.log"), filepath.Join(e.bin, "aide-relay"), "serve", "--data-dir", relayData,
 		"--listen", fmt.Sprintf("127.0.0.1:%d", relayPort), "--debug-addr", fmt.Sprintf("127.0.0.1:%d", relayDbg))
 	waitHTTP(e.relayURL + "/healthz")
-	out, err := exec.Command(filepath.Join(e.bin, "hermesh-relay"), "setup-code", "--data-dir", relayData).Output()
+	out, err := exec.Command(filepath.Join(e.bin, "aide-relay"), "setup-code", "--data-dir", relayData).Output()
 	if err != nil {
 		return nil, err
 	}
@@ -196,14 +196,14 @@ func setup(ctx context.Context) (*env, error) {
 
 	// Execution machine: log in, then run with the fake Codex.
 	machineData := filepath.Join(e.tmp, "machine")
-	login := exec.Command(filepath.Join(e.bin, "hermeshd"), "login", e.relayURL, "--account", benchAccount, "--password-stdin", "--name", "bench", "--no-service", "--data-dir", machineData)
+	login := exec.Command(filepath.Join(e.bin, "aided"), "login", e.relayURL, "--account", benchAccount, "--password-stdin", "--name", "bench", "--no-service", "--data-dir", machineData)
 	login.Stdin = strings.NewReader(benchPassword + "\n")
 	login.Stdout, login.Stderr = io.Discard, os.Stderr
 	if err := login.Run(); err != nil {
 		return nil, fmt.Errorf("login: %w", err)
 	}
 	fake := []string{
-		"HERMESH_CODEX_BIN=" + filepath.Join(e.bin, "fakecodex"),
+		"AIDE_CODEX_BIN=" + filepath.Join(e.bin, "fakecodex"),
 		fmt.Sprintf("FAKE_CODEX_TURN_MS=%d", *flagTurnMS), fmt.Sprintf("FAKE_CODEX_DELTAS=%d", *flagDeltas),
 		fmt.Sprintf("FAKE_CODEX_COMMANDS=%d", *flagCommands), fmt.Sprintf("FAKE_CODEX_OUTPUT_BYTES=%d", *flagOutBytes),
 		fmt.Sprintf("FAKE_CODEX_WRITE=%d", *flagWrites), fmt.Sprintf("FAKE_CODEX_BALLAST_MB=%d", *flagBallast),
@@ -214,7 +214,7 @@ func setup(ctx context.Context) (*env, error) {
 	if *flagNoWorktree {
 		args = append(args, "--workspace", "none")
 	}
-	e.daemon = startProc("hermeshd", fake, filepath.Join(*flagOut, "hermeshd.log"), filepath.Join(e.bin, "hermeshd"), args...)
+	e.daemon = startProc("aided", fake, filepath.Join(*flagOut, "aided.log"), filepath.Join(e.bin, "aided"), args...)
 	waitHTTP(e.daemonDbg + "/metrics")
 	for i := 0; i < 200; i++ {
 		machines, err := e.app.ListMachines(ctx, &localv1.ListMachinesRequest{})
@@ -484,7 +484,7 @@ type procStat struct {
 // some were still alive after the timeout).
 var reclaim time.Duration
 
-// waitAgentsGone polls until hermeshd has no fakecodex children and
+// waitAgentsGone polls until aided has no fakecodex children and
 // returns that moment.
 func waitAgentsGone(e *env, timeout time.Duration) time.Time {
 	deadline := time.Now().Add(timeout)
@@ -497,12 +497,12 @@ func waitAgentsGone(e *env, timeout time.Duration) time.Time {
 	return time.Time{}
 }
 
-// agentPids lists fake agents started by hermeshd (np), directly or through
+// agentPids lists fake agents started by aided (np), directly or through
 // its spawn helper.
 func agentPids(ps map[int]procStat, np int) []int {
 	parents := map[int]bool{np: true}
 	for pid, st := range ps {
-		if st.ppid == np && strings.Contains(st.comm, "hermeshd") {
+		if st.ppid == np && strings.Contains(st.comm, "aided") {
 			parents[pid] = true
 		}
 	}
@@ -600,7 +600,7 @@ func sampler(ctx context.Context, e *env, start time.Time, out *[]sample, mu *sy
 		s.RelayRSS, s.DaemonRSS = ps[rp].rss, ps[np].rss
 		for pid, st := range ps {
 			s.MachineCPU += cpu(pid)
-			if st.ppid == np && strings.Contains(st.comm, "hermeshd") {
+			if st.ppid == np && strings.Contains(st.comm, "aided") {
 				s.HelperCPU += cpu(pid)
 				s.HelperRSS += st.rss
 			}
@@ -613,10 +613,10 @@ func sampler(ctx context.Context, e *env, start time.Time, out *[]sample, mu *sy
 		if m := scrape(e.daemonDbg); m != nil {
 			s.DaemonGoroutines = int64(m["go_sched_goroutines_goroutines"])
 			s.DaemonFDs = int64(m["process_open_fds"])
-			s.DaemonWAL = int64(m["hermesh_machine_wal_bytes"])
-			s.DaemonProcs = int64(m["hermesh_machine_provider_processes"])
+			s.DaemonWAL = int64(m["aide_machine_wal_bytes"])
+			s.DaemonProcs = int64(m["aide_machine_provider_processes"])
 			for k, v := range m {
-				if strings.HasPrefix(k, "hermesh_machine_sessions{") {
+				if strings.HasPrefix(k, "aide_machine_sessions{") {
 					s.DaemonSessionsLive += int64(v)
 				}
 			}
@@ -679,12 +679,12 @@ func run() error {
 	var profWG sync.WaitGroup
 	onHalf := func() {
 		// where goroutines wait under load (aggregated stacks)
-		go fetch(e.daemonDbg+"/debug/pprof/goroutine?debug=1", filepath.Join(*flagOut, "hermeshd.goroutine-load.txt"))
+		go fetch(e.daemonDbg+"/debug/pprof/goroutine?debug=1", filepath.Join(*flagOut, "aided.goroutine-load.txt"))
 		if *flagTrace > 0 {
 			profWG.Add(1)
 			go func() {
 				defer profWG.Done()
-				fetch(fmt.Sprintf("%s/debug/pprof/trace?seconds=%g", e.daemonDbg, flagTrace.Seconds()), filepath.Join(*flagOut, "hermeshd.trace"))
+				fetch(fmt.Sprintf("%s/debug/pprof/trace?seconds=%g", e.daemonDbg, flagTrace.Seconds()), filepath.Join(*flagOut, "aided.trace"))
 			}()
 		}
 		if *flagProfile <= 0 {
@@ -694,7 +694,7 @@ func run() error {
 		sec := int(flagProfile.Seconds())
 		go func() {
 			defer profWG.Done()
-			fetch(fmt.Sprintf("%s/debug/pprof/profile?seconds=%d", e.daemonDbg, sec), filepath.Join(*flagOut, "hermeshd.cpu.pprof"))
+			fetch(fmt.Sprintf("%s/debug/pprof/profile?seconds=%d", e.daemonDbg, sec), filepath.Join(*flagOut, "aided.cpu.pprof"))
 		}()
 		go func() {
 			defer profWG.Done()
@@ -708,8 +708,8 @@ func run() error {
 	if *flagHold > 0 {
 		fmt.Printf("holding %d sessions for %s…\n", r.idle.Load(), *flagHold)
 		time.Sleep(*flagHold)
-		fetch(e.daemonDbg+"/debug/pprof/heap", filepath.Join(*flagOut, "hermeshd.heap.pprof"))
-		fetch(e.daemonDbg+"/debug/pprof/goroutine", filepath.Join(*flagOut, "hermeshd.goroutine.pprof"))
+		fetch(e.daemonDbg+"/debug/pprof/heap", filepath.Join(*flagOut, "aided.heap.pprof"))
+		fetch(e.daemonDbg+"/debug/pprof/goroutine", filepath.Join(*flagOut, "aided.goroutine.pprof"))
 		holdEnd := time.Now()
 		var cwg sync.WaitGroup
 		sem := make(chan struct{}, 64)
@@ -831,7 +831,7 @@ func fmtD(d time.Duration) string {
 func report(e *env, r *result, elapsed time.Duration, samples []sample, daemonM, relayM string) error {
 	var b bytes.Buffer
 	w := func(f string, a ...any) { fmt.Fprintf(&b, f, a...) }
-	w("# Hermesh bench %s\n\n", *flagLabel)
+	w("# Aide bench %s\n\n", *flagLabel)
 	w("sessions=%d concurrency=%d agents=%d turns=%d hold=%s no-worktree=%v | fake agent: turn=%dms deltas=%d commands=%d messages=%d output=%dB writes=%d ballast=%dMB watchers=%d\n\n",
 		*flagSessions, *flagConcurrency, *flagAgents, *flagTurns, *flagHold, *flagNoWorktree, *flagTurnMS, *flagDeltas, *flagCommands, *flagMessages, *flagOutBytes, *flagWrites, *flagBallast, *flagWatchers)
 	w("## Outcome\n\n- elapsed %s, **%.1f sessions/s**, started %d, completed %d, failed %d\n", elapsed.Round(time.Millisecond),
@@ -864,7 +864,7 @@ func report(e *env, r *result, elapsed time.Duration, samples []sample, daemonM,
 		h := hs[n]
 		w("| %s | %d | %s | %s | %s | %s |\n", n, h.Count(), fmtD(h.Quantile(.5)), fmtD(h.Quantile(.9)), fmtD(h.Quantile(.99)), fmtD(h.Quantile(1)))
 	}
-	for _, sec := range []struct{ title, text string }{{"hermeshd", daemonM}, {"relay", relayM}} {
+	for _, sec := range []struct{ title, text string }{{"aided", daemonM}, {"relay", relayM}} {
 		w("\n## Server-side latency: %s\n\n| metric | n | p50 | p90 | p99 |\n|---|---|---|---|---|\n", sec.title)
 		ph := parseHists(sec.text)
 		var keys []string
@@ -876,7 +876,7 @@ func report(e *env, r *result, elapsed time.Duration, samples []sample, daemonM,
 		sort.Strings(keys)
 		for _, k := range keys {
 			h := ph[k]
-			w("| %s | %.0f | %s | %s | %s |\n", strings.TrimPrefix(strings.TrimPrefix(k, "hermesh_machine_"), "hermesh_relay_"), h.n, fmtD(h.q(.5)), fmtD(h.q(.9)), fmtD(h.q(.99)))
+			w("| %s | %.0f | %s | %s | %s |\n", strings.TrimPrefix(strings.TrimPrefix(k, "aide_machine_"), "aide_relay_"), h.n, fmtD(h.q(.5)), fmtD(h.q(.9)), fmtD(h.q(.99)))
 		}
 	}
 	// Resources.
@@ -914,13 +914,13 @@ func report(e *env, r *result, elapsed time.Duration, samples []sample, daemonM,
 		n := float64(len(samples))
 		w("\n## Resources (sampled every 1s)\n\n| process | avg CPU | peak CPU | baseline RSS | peak RSS | peak goroutines |\n|---|---|---|---|---|---|\n")
 		w("| relay | %.0f%% | %.0f%% | %s | %s | %d |\n", sumRelay/n, peak.RelayCPU, mib(base.RelayRSS), mib(peak.RelayRSS), peak.RelayGoroutines)
-		w("| hermeshd | %.0f%% | %.0f%% | %s | %s | %d |\n", sumDaemon/n, peak.DaemonCPU, mib(base.DaemonRSS), mib(peak.DaemonRSS), peak.DaemonGoroutines)
+		w("| aided | %.0f%% | %.0f%% | %s | %s | %d |\n", sumDaemon/n, peak.DaemonCPU, mib(base.DaemonRSS), mib(peak.DaemonRSS), peak.DaemonGoroutines)
 		w("| spawn helpers | %.0f%% | %.0f%% | — | %s | — |\n", sumHelper/n, peak.HelperCPU, mib(peak.HelperRSS))
 		w("| agent processes (all) | %.0f%% | %.0f%% | — | %s (%d procs) | — |\n", sumChild/n, peak.ChildCPU, mib(peak.ChildRSS), peak.Children)
 		w("| whole machine (%d cores) | %.0f%% | %.0f%% | — | — | — |\n", runtime.NumCPU(), sumMachine/n, peak.MachineCPU)
 		live := max(int64(peak.Children), 1)
-		w("\n- hermeshd marginal memory per live session: **%.1f KiB** ((peak − baseline) / %d live processes)\n", float64(peak.DaemonRSS-base.DaemonRSS)/float64(live), live)
-		w("- agent process RSS each: %.1f MiB\n- hermeshd peak open fds: %d\n- peak SQLite WAL: %.1f MiB\n", float64(peak.ChildRSS)/float64(live)/1024, peak.DaemonFDs, float64(peak.DaemonWAL)/(1<<20))
+		w("\n- aided marginal memory per live session: **%.1f KiB** ((peak − baseline) / %d live processes)\n", float64(peak.DaemonRSS-base.DaemonRSS)/float64(live), live)
+		w("- agent process RSS each: %.1f MiB\n- aided peak open fds: %d\n- peak SQLite WAL: %.1f MiB\n", float64(peak.ChildRSS)/float64(live)/1024, peak.DaemonFDs, float64(peak.DaemonWAL)/(1<<20))
 		w("\n<details><summary>timeline</summary>\n\n| t | relay cpu | machine cpu | helpers cpu | agents cpu | machine cpu | machine rss | agent procs | machine goroutines | machine fds | events/s recv | max event lag |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 		for _, s := range samples {
 			sec := min(max(int(s.Wall.Sub(benchStart).Seconds())-1, 0), len(secEvents)-1)
@@ -929,14 +929,14 @@ func report(e *env, r *result, elapsed time.Duration, samples []sample, daemonM,
 		}
 		w("\n</details>\n")
 	}
-	if _, err := os.Stat(filepath.Join(*flagOut, "hermeshd.cpu.pprof")); err == nil {
-		for _, p := range []string{"hermeshd", "relay"} {
+	if _, err := os.Stat(filepath.Join(*flagOut, "aided.cpu.pprof")); err == nil {
+		for _, p := range []string{"aided", "relay"} {
 			out, _ := exec.Command("go", "tool", "pprof", "-top", "-machinecount=25", filepath.Join(*flagOut, p+".cpu.pprof")).CombinedOutput()
 			w("\n## CPU profile: %s (top 25)\n\n```\n%s```\n", p, out)
 		}
 	}
 	os.WriteFile(filepath.Join(*flagOut, "report.md"), b.Bytes(), 0o644)
-	os.WriteFile(filepath.Join(*flagOut, "hermeshd.metrics.txt"), []byte(daemonM), 0o644)
+	os.WriteFile(filepath.Join(*flagOut, "aided.metrics.txt"), []byte(daemonM), 0o644)
 	os.WriteFile(filepath.Join(*flagOut, "relay.metrics.txt"), []byte(relayM), 0o644)
 	js, _ := json.MarshalIndent(samples, "", " ")
 	os.WriteFile(filepath.Join(*flagOut, "samples.json"), js, 0o644)

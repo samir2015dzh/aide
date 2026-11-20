@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/flock"
+	"github.com/samir2015dzh/aide/internal/flock"
 )
 
 // The task runs the windowless daemon with its arguments quoted for the
 // command line, and its file reads back as written.
 func TestTaskXML(t *testing.T) {
-	x := taskXML(`C:\Users\A B\AppData\Local\Programs\Hermesh\bin\hermeshdw.exe`, []string{"run", "--supervise", "--data-dir", `C:\Users\A B\AppData\Local\Hermesh`}, "S-1-5-21-1")
+	x := taskXML(`C:\Users\A B\AppData\Local\Programs\Aide\bin\aidedw.exe`, []string{"run", "--supervise", "--data-dir", `C:\Users\A B\AppData\Local\Aide`}, "S-1-5-21-1")
 	for _, want := range []string{
-		`<Command>C:\Users\A B\AppData\Local\Programs\Hermesh\bin\hermeshdw.exe</Command>`,
-		`<Arguments>run --supervise --data-dir "C:\Users\A B\AppData\Local\Hermesh"</Arguments>`,
+		`<Command>C:\Users\A B\AppData\Local\Programs\Aide\bin\aidedw.exe</Command>`,
+		`<Arguments>run --supervise --data-dir "C:\Users\A B\AppData\Local\Aide"</Arguments>`,
 		`<UserId>S-1-5-21-1</UserId>`,
 		`<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>`,
 	} {

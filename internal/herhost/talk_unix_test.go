@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/herhost/hertest"
+	"github.com/samir2015dzh/aide/internal/herhost/hertest"
 )
 
 // syncBuffer is what Talk writes, read while it writes.

@@ -676,7 +676,7 @@ Object.assign(subs, {
     ${grp("步骤", row("思考") + row("已调用 Gmail · 搜索邮件") + row("已调用 GitHub · 列出通知"))}` },
 
   connector: { title: "GitHub", tab: "has", parent: "connectors", from: "现有页面（单个连接器）", body: (m) => `
-    ${grp("", row2(`<i class="ava">${ic("person", 20)}</i>`, "你的 GitHub 账号", "已登录"), m ? "登录信息保存在 MacBook Pro 上，不经过 Hermesh 的服务器。" : "登录信息保存在 MacBook Pro 上，不在这台 iPhone 上，也不经过 Hermesh 的服务器。")}
+    ${grp("", row2(`<i class="ava">${ic("person", 20)}</i>`, "你的 GitHub 账号", "已登录"), m ? "登录信息保存在 MacBook Pro 上，不经过 Aide 的服务器。" : "登录信息保存在 MacBook Pro 上，不在这台 iPhone 上，也不经过 Aide 的服务器。")}
     ${grp("", row("让 Her 使用", sw(), false), "关掉以后登录还在，Her 从下一步起不再用它。")}
     ${grp("", row("工具", "42", true, "", "tools"), "GitHub 标为只读的工具，Her 直接用；其他工具用之前会先问你。")}
     ${grp("地址", `<div class="md mono">https://api.githubcopilot.com/mcp/</div>` + row("上次检测", `3 分钟前　<span style="color:var(--tint)">重新检查</span>`, false))}

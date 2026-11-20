@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
 // Chaos tests drive this machine's real Codex through real binaries and
@@ -26,8 +26,8 @@ import (
 
 func chaosOwner(t *testing.T, env []string, args ...string) *ownerMac {
 	t.Helper()
-	if os.Getenv("HERMESH_CHAOS") != "1" {
-		t.Skip("set HERMESH_CHAOS=1 to run against this machine's real Codex")
+	if os.Getenv("AIDE_CHAOS") != "1" {
+		t.Skip("set AIDE_CHAOS=1 to run against this machine's real Codex")
 	}
 	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"codex"}}, args...)
 	t.Cleanup(func() { w.finish(t) })
@@ -36,7 +36,7 @@ func chaosOwner(t *testing.T, env []string, args ...string) *ownerMac {
 
 // bg runs the agent CLI in the background.
 func (w *ownerMac) bg(name string, args ...string) *proc {
-	p := start(w.t, name, w.cliEnv, filepath.Join(w.bin, "hermesh"), args...)
+	p := start(w.t, name, w.cliEnv, filepath.Join(w.bin, "aide"), args...)
 	w.logs = append(w.logs, p)
 	return p
 }
@@ -199,7 +199,7 @@ func (w *ownerMac) finish(t *testing.T) {
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	r := run(t, nil, time.Minute, filepath.Join(w.bin, "hermeshd"), "audit-verify", "--data-dir", filepath.Join(w.tmp, "owner-mac"))
+	r := run(t, nil, time.Minute, filepath.Join(w.bin, "aided"), "audit-verify", "--data-dir", filepath.Join(w.tmp, "owner-mac"))
 	if r.code != 0 || !strings.Contains(r.stdout, "audit log ok") {
 		t.Errorf("audit-verify: %+v", r)
 	}

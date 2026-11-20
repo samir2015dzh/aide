@@ -1,6 +1,6 @@
 import { startStandIn } from "./stand-in.ts";
 
-// The built console in front of a real her, as hermeshd would serve it (stand-in.ts): run
+// The built console in front of a real her, as aided would serve it (stand-in.ts): run
 // `pnpm build` first, then `pnpm dev` (PORT picks the port, HER_BIN_DIR where her and her-mock
 // are). Its her has a private home, deleted when this stops.
 

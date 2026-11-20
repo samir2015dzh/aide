@@ -1,5 +1,5 @@
 // Package hertest runs a private her for tests: her and her-mock from the
-// repository's debug build (her/target/debug), or from $HERMESH_HER_BIN's
+// repository's debug build (her/target/debug), or from $AIDE_HER_BIN's
 // folder. Tests that need her are skipped without them.
 package hertest
 
@@ -17,10 +17,10 @@ import (
 // exe ends a program's name on Windows.
 var exe = map[bool]string{true: ".exe"}[runtime.GOOS == "windows"]
 
-// Bin is the her to test with: $HERMESH_HER_BIN, else her/target/debug/her
+// Bin is the her to test with: $AIDE_HER_BIN, else her/target/debug/her
 // in this repository, with her-mock beside it; the test is skipped without.
 func Bin(t testing.TB) string {
-	bin := os.Getenv("HERMESH_HER_BIN")
+	bin := os.Getenv("AIDE_HER_BIN")
 	if bin == "" {
 		dir, _ := os.Getwd()
 		for {
@@ -36,7 +36,7 @@ func Bin(t testing.TB) string {
 	}
 	for _, p := range []string{bin, filepath.Join(filepath.Dir(bin), "her-mock"+exe)} {
 		if _, err := os.Stat(p); err != nil {
-			t.Skipf("no her to test with (%v): build her/ or set HERMESH_HER_BIN", err)
+			t.Skipf("no her to test with (%v): build her/ or set AIDE_HER_BIN", err)
 		}
 	}
 	return bin

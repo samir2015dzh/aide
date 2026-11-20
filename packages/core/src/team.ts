@@ -1,10 +1,10 @@
-import { SessionStatus, type Question, type QuestionItem, type Session } from "@hermesh/proto/session";
+import { SessionStatus, type Question, type QuestionItem, type Session } from "@aide/proto/session";
 import { createdDate, isActive, isFailed, needsAttention, updatedDate } from "./sessions";
 
 // What the owner's agents are doing, as Her's name tag, the team panel and
 // Work show it (docs/her-team.md §4.2, §4.3, §14.6): the sessions that wait
 // for the owner, those that failed, those at work and those that are done.
-// The same rules as HermeshKit's Team.swift, so both apps say the same.
+// The same rules as AideKit's Team.swift, so both apps say the same.
 
 /** What the name tag says beside Her's name, the first that holds. */
 export type TeamTag =

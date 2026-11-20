@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // A session whose session.lock a process flocks, as DSH does while it has

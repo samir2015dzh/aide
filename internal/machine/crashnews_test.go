@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	inboxv1 "github.com/hermeshai/hermesh/gen/go/hermesh/inbox/v1"
-	sessionv1 "github.com/hermeshai/hermesh/gen/go/hermesh/session/v1"
-	"github.com/hermeshai/hermesh/internal/provider"
+	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // A session whose agent could not start is news of that failure, with what

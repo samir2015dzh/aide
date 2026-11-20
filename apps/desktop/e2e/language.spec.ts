@@ -36,7 +36,7 @@ test("the first preferred language the app has wins; Traditional Chinese isn't S
 test("a language chosen in settings takes over from the next start", async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   const first = await launch(undefined, { systemLanguages: ["en"], profile });
-  const [settings] = await Promise.all([first.app.waitForEvent("window"), first.page.evaluate(() => window.hermesh?.openSettings())]);
+  const [settings] = await Promise.all([first.app.waitForEvent("window"), first.page.evaluate(() => window.aide?.openSettings())]);
   await settings.waitForLoadState();
   const general = settings.getByRole("main", { name: "General" });
   const select = general.getByRole("combobox", { name: "Language" });
@@ -47,7 +47,7 @@ test("a language chosen in settings takes over from the next start", async () =>
   await select.selectOption("zh-CN");
   await expect(general.getByText("Takes effect after Aide restarts.")).toBeVisible();
   await expect(general.getByRole("button", { name: "Restart Now" })).toBeVisible();
-  expect((await first.page.evaluate(() => window.hermesh?.getPreferences()))?.language).toBe("zh-CN");
+  expect((await first.page.evaluate(() => window.aide?.getPreferences()))?.language).toBe("zh-CN");
   // Still English until then.
   await expect.poll(() => lang(settings)).toBe("en");
   await first.app.close();

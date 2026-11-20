@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hermeshai/hermesh/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/localipc"
 )
 
 // The endpoint's file holds a pipe's name, which Dial takes too; once the
@@ -29,7 +29,7 @@ func TestPipeNameFile(t *testing.T) {
 		}
 	}()
 	b, err := os.ReadFile(path)
-	if err != nil || !strings.HasPrefix(string(b), `\\.\pipe\hermesh-`) {
+	if err != nil || !strings.HasPrefix(string(b), `\\.\pipe\aide-`) {
 		t.Fatalf("%q, %v", b, err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

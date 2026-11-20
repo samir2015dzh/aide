@@ -22,21 +22,21 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
-	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
-	"github.com/hermeshai/hermesh/gen/go/hermesh/local/v1/localv1connect"
-	machinev1 "github.com/hermeshai/hermesh/gen/go/hermesh/machine/v1"
+	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
+	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
 
 // Phase 2 of docs/her-server.md (§11, "everything an environment can do"),
 // on an environment that is not this Mac: what the owner does in the Her
-// entry and the console, through this Mac's hermeshd (LocalService and the
+// entry and the console, through this Mac's aided (LocalService and the
 // console's HTTP), the relay and the end-to-end tunnel to the machine's
-// hermeshd, which runs her.
+// aided, which runs her.
 
 // herEnvironment is Her on one of the owner's machines other than this Mac:
-// a second hermeshd on this computer standing in for the cloud machine, or
-// with HERMESH_DOCKER=1 a Linux machine in Docker (startLinuxHer).
+// a second aided on this computer standing in for the cloud machine, or
+// with AIDE_DOCKER=1 a Linux machine in Docker (startLinuxHer).
 type herEnvironment struct {
 	w         *ownerMac
 	c         localv1connect.LocalServiceClient
@@ -44,7 +44,7 @@ type herEnvironment struct {
 	home      string // her's home there
 	console   string // its console on this Mac (GetHerConsole), ending in "/"
 	bot       herBot // Her, its default assistant
-	container string // the Linux machine's container; "" for the hermeshd on this computer
+	container string // the Linux machine's container; "" for the aided on this computer
 	mac       string // this computer, as the machine reaches it
 	mcpServer string // her-mcp-server in the container, when there is a Linux one
 }
@@ -64,7 +64,7 @@ func newHerEnvironmentWith(t *testing.T, macVars []string, herVars ...string) *h
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	docker := os.Getenv("HERMESH_DOCKER") == "1"
+	docker := os.Getenv("AIDE_DOCKER") == "1"
 	var herLinux string
 	if docker {
 		herLinux = herLinuxBinary(t)
@@ -73,7 +73,7 @@ func newHerEnvironmentWith(t *testing.T, macVars []string, herVars ...string) *h
 	mock := startHerMock(t, mockBin)
 	// The scripted coding agents, never the ones installed here: the
 	// sessions Her starts follow their scripts (sleep, ask, say).
-	w := newOwnerMac(t, append([]string{"HERMESH_FAKE_PROVIDERS=1"}, macVars...), &localv1.GrantSpec{})
+	w := newOwnerMac(t, append([]string{"AIDE_FAKE_PROVIDERS=1"}, macVars...), &localv1.GrantSpec{})
 	env := &herEnvironment{w: w, c: w.app.client, mac: "127.0.0.1"}
 	ctx := context.Background()
 	if docker {
@@ -104,7 +104,7 @@ func newHerEnvironmentWith(t *testing.T, macVars []string, herVars ...string) *h
 	return env
 }
 
-// startHerServer starts a second hermeshd on this computer, standing in for
+// startHerServer starts a second aided on this computer, standing in for
 // the cloud machine, and pairs it to the owner Mac as Add Machine pairs a
 // server. It returns the machine's id and her's home there, once it is
 // online.
@@ -117,12 +117,12 @@ func startHerServer(t *testing.T, w *ownerMac, her string, mock *herMock, herVar
 		t.Fatal(err)
 	}
 	c := w.app.client
-	daemon := filepath.Join(w.bin, "hermeshd"+exe)
+	daemon := filepath.Join(w.bin, "aided"+exe)
 	data := filepath.Join(w.tmp, "her-server")
 	machineID = w.loginMachine("her-server", data, nil)
 	// The scripted coding agents here too: the sessions Her starts on her own
 	// machine follow their scripts, whatever this computer has installed.
-	vars := append(herEnv(her, herConsole(t), home, mock.base), "HERMESH_FAKE_PROVIDERS=1")
+	vars := append(herEnv(her, herConsole(t), home, mock.base), "AIDE_FAKE_PROVIDERS=1")
 	server := start(t, "her-server", append(vars, herVars...), daemon, "run", "--data-dir", data)
 	w.logs = append(w.logs, server)
 	// Stopped as a service is, so that it stops her: killed, it would leave
@@ -164,7 +164,7 @@ func (env *herEnvironment) mcpServerThere(t *testing.T) string {
 		return herMCPServer(t)
 	}
 	if env.mcpServer == "" {
-		t.Skip("no her-mcp-server beside HERMESH_HER_LINUX: build it for Linux with her (cargo build -p her-mock --bin her-mcp-server)")
+		t.Skip("no her-mcp-server beside AIDE_HER_LINUX: build it for Linux with her (cargo build -p her-mock --bin her-mcp-server)")
 	}
 	return env.mcpServer
 }
@@ -302,7 +302,7 @@ type herNote struct {
 }
 
 // consoleAnswer is what the console's rpc answered: her's response, or
-// hermeshd's refusal (a status other than 200, with a short text).
+// aided's refusal (a status other than 200, with a short text).
 type consoleAnswer struct {
 	status int
 	text   string
@@ -599,7 +599,7 @@ func TestHerFilesBothWays(t *testing.T) {
 
 // TestHerConnectorSignIn: a connector that needs a sign-in, added by its
 // address in the console, signed in from this Mac: the sign-in starts on the
-// Her Server, the browser comes back to this Mac's hermeshd, and the console
+// Her Server, the browser comes back to this Mac's aided, and the console
 // brings what the redirect carried to her, who exchanges it and keeps the
 // token; then Her uses it in a conversation (docs/her-server.md §5.4, §11
 // phase 2.2–2.3).
@@ -626,7 +626,7 @@ func TestHerConnectorSignIn(t *testing.T) {
 		t.Fatalf("before signing in: %+v", before)
 	}
 
-	// The browser is to come back to this Mac, where hermeshd catches it.
+	// The browser is to come back to this Mac, where aided catches it.
 	code, body := httpDo(t, http.MethodPost, env.console+"signin", `{"path":"/callback"}`)
 	var signin struct {
 		ID          string `json:"id"`
@@ -642,7 +642,7 @@ func TestHerConnectorSignIn(t *testing.T) {
 	page.call("mcp/login", map[string]string{"name": "tracker", "redirect_uri": signin.RedirectURI}, &login)
 
 	// The browser: the service approves and redirects to this Mac's catcher,
-	// which tells the person to go back to Hermesh.
+	// which tells the person to go back to Aide.
 	res, err := browser.Get(login.AuthorizeURL)
 	if err != nil {
 		t.Fatal(err)
@@ -722,7 +722,7 @@ console.log("fixture at " + f.base);`, fixture)
 
 // TestHerChatGPTSignIn: signing in to ChatGPT from this Mac, for the
 // environment: her makes the authorization request on the Her Server, the
-// browser here signs in and comes back to this Mac's hermeshd, and the
+// browser here signs in and comes back to this Mac's aided, and the
 // console brings what the redirect carried to her, who exchanges it, keeps
 // the tokens there and takes the account's models (docs/her-server.md §5.4,
 // §11 phase 2.3). her's ChatGPT fixture stands in for OpenAI; her takes its
@@ -740,7 +740,7 @@ func TestHerChatGPTSignIn(t *testing.T) {
 	}
 	page := openConsolePage(t, env.console)
 
-	// The browser is to come back to this Mac, where hermeshd catches it.
+	// The browser is to come back to this Mac, where aided catches it.
 	code, body := httpDo(t, http.MethodPost, env.console+"signin", `{"path":"/auth/callback"}`)
 	var signin struct {
 		ID          string `json:"id"`
@@ -807,7 +807,7 @@ func TestHerChatGPTSignIn(t *testing.T) {
 
 // TestHerCommandConnector: the console can't add a connector started as a
 // command (it runs a program on the Her Server) through her's JSON-RPC; it
-// goes through this Mac's hermeshd, which has its signer sign it, and her
+// goes through this Mac's aided, which has its signer sign it, and her
 // then starts it and speaks MCP with it (docs/her-server.md §8).
 func TestHerCommandConnector(t *testing.T) {
 	env := newHerEnvironment(t)
@@ -828,7 +828,7 @@ func TestHerCommandConnector(t *testing.T) {
 		t.Fatalf("written anyway: %v", connectors())
 	}
 
-	// Through hermeshd's route: signed here, applied there.
+	// Through aided's route: signed here, applied there.
 	before := env.w.signs()
 	if code, text := httpDo(t, http.MethodPost, env.console+"command-connector",
 		`{"name":"notes","command":"`+mcpServer+`","args":["--name","notes"],"env":{"NOTES_MOOD":"calm"}}`); code != http.StatusOK {
