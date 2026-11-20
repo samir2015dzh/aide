@@ -13,9 +13,6 @@ import (
 type fakeMesh struct{ group *MeshGroup }
 
 func (m fakeMesh) Group() *MeshGroup { return m.group }
-func (m fakeMesh) Describe(_ context.Context, bot, name string, args json.RawMessage) (string, []string) {
-	return "Start " + name + " for " + bot, []string{"mesh", "mini/app"}
-}
 func (m fakeMesh) Call(_ context.Context, bot, callID, name string, args json.RawMessage) (string, any, bool) {
 	if name == "fails" {
 		return "failed", nil, true
@@ -24,7 +21,9 @@ func (m fakeMesh) Call(_ context.Context, bot, callID, name string, args json.Ra
 }
 
 // The mesh host: her is offered the group (none: an empty one), her
-// requests on the connection are answered, and news goes to her.
+// requests on the connection are answered, and news goes to her. There is
+// no mesh/describe any more (her asks no one before a call): it is an
+// unknown method.
 func TestMeshHost(t *testing.T) {
 	offered := make(chan map[string]any, 4)
 	answers := make(chan map[string]any, 4)
@@ -80,10 +79,13 @@ func TestMeshHost(t *testing.T) {
 	got := map[any]map[string]any{}
 	for range 3 {
 		a := <-answers
+		if a["id"] == "r1" {
+			if a["error"] == nil || a["result"] != nil {
+				t.Errorf("mesh/describe answered: %v", a)
+			}
+			continue
+		}
 		got[a["id"]], _ = a["result"].(map[string]any)
-	}
-	if r := got["r1"]; r["summary"] != "Start session_start for b1" || fmt.Sprint(r["rule"]) != "[mesh mini/app]" {
-		t.Errorf("describe: %v", r)
 	}
 	if r := got["r2"]; r["output"] != `b1 c9 session_get {"session_id":"s_1"}` || r["is_error"] != false || fmt.Sprint(r["details"]) != "map[session:map[session_id:s_1]]" {
 		t.Errorf("call: %v", r)

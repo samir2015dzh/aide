@@ -436,7 +436,7 @@ pub fn document() -> Value {
 /// follows the compatibility rules; `experimental` may change with any version; `internal` is for
 /// the desktop app and the extension host.
 pub fn stability(name: &str) -> &'static str {
-    const INTERNAL: &[&str] = &["browser/host", "browser/cdp", "browser/extension", "browser/control", "browser/request", "docx/host", "docx/serialize", "mesh/host", "mesh/describe", "mesh/call", "mesh/news"];
+    const INTERNAL: &[&str] = &["browser/host", "browser/cdp", "browser/extension", "browser/control", "browser/request", "docx/host", "docx/serialize", "mesh/host", "mesh/call", "mesh/news"];
     const EXPERIMENTAL: &[&str] = &["connections/", "connectors/", "doc/", "docx/", "pptx/", "bots/", "browser/", "routines/", "bot/", "connector/", "desktop/", "cards/"];
     if INTERNAL.contains(&name) {
         "internal"

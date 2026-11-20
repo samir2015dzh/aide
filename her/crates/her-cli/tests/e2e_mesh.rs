@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 /// answered as they come.
 struct Wire {
     events: mpsc::UnboundedReceiver<Value>,
-    /// Each `mesh/describe` and `mesh/call`: its method and parameters.
+    /// Each `mesh/call`: its method and parameters.
     asked: mpsc::UnboundedReceiver<(String, Value)>,
 }
 

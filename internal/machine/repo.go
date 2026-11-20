@@ -85,17 +85,6 @@ func parseGitHubRepo(s string) (githubRepo, error) {
 // repositories share one).
 func (r githubRepo) projectID() string { return strings.ToLower("github." + r.Owner + "." + r.Name) }
 
-// GitHubRepo reads a repository as StartSessionRequest.repo takes it, and
-// returns it as owner/repo and the project its clone is kept as: what Her's
-// approval names and remembers (internal/herlink).
-func GitHubRepo(s string) (repo, projectID string, err error) {
-	r, err := parseGitHubRepo(s)
-	if err != nil {
-		return "", "", err
-	}
-	return r.String(), r.projectID(), nil
-}
-
 // cloneDir is where the machine keeps its clone.
 func (r githubRepo) cloneDir(dataDir string) string {
 	return filepath.Join(dataDir, "repos", "github.com", strings.ToLower(r.Owner), strings.ToLower(r.Name))
