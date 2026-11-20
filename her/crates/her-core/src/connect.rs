@@ -21,6 +21,7 @@ use her_protocol::customize::McpSuggestedAuth;
 use her_tools::Tool;
 use her_tools::ToolCtx;
 use her_tools::ToolError;
+use her_tools::ToolKind;
 use her_tools::ToolOutput;
 use her_tools::Typed;
 use her_tools::TypedTool;
@@ -106,6 +107,10 @@ impl TypedTool for ConnectorStatus {
     const DESCRIPTION: &'static str = "List the connectors (MCP servers) the user has: each one's name, where it is, whether it is on, \
         whether it is connected, needs a sign-in or failed, and how many tools it has.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -156,6 +161,10 @@ impl TypedTool for ConnectorConnect {
     const DESCRIPTION: &'static str = "Prepare a card that asks the user to connect an app or service by its MCP server's address, or to sign \
         in to an existing connector again. The address is checked first. Nothing changes until the user answers the card: show it with \
         send_to_user.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::Concurrent
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES

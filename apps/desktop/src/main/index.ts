@@ -6,7 +6,7 @@ import { forward, forwardedCalls, openUpstream } from "./gateway";
 import { registerIPC } from "./ipc";
 import { chooseLanguage } from "./language";
 import { setAppMenu } from "./menu";
-import { applyAppearance, posted, watch } from "./notify";
+import { applyAppearance, posted, watch, world } from "./notify";
 import { dataDir, socketPath } from "./paths";
 import { platform } from "./platform";
 import { receiveLink } from "./links";
@@ -102,4 +102,4 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {});
 
 // For end-to-end tests (evaluated in the main process by Playwright).
-Object.assign(globalThis, { aideTest: { openUpstream, forwardedCalls, mainWindow, notifications: () => posted, tray: trayState } });
+Object.assign(globalThis, { aideTest: { openUpstream, forwardedCalls, mainWindow, notifications: () => posted, tray: trayState, world: () => world } });

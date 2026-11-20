@@ -210,6 +210,9 @@ const (
 	// LocalServiceRenameSessionProcedure is the fully-qualified name of the LocalService's
 	// RenameSession RPC.
 	LocalServiceRenameSessionProcedure = "/aide.local.v1.LocalService/RenameSession"
+	// LocalServiceMarkSessionSeenProcedure is the fully-qualified name of the LocalService's
+	// MarkSessionSeen RPC.
+	LocalServiceMarkSessionSeenProcedure = "/aide.local.v1.LocalService/MarkSessionSeen"
 	// LocalServiceAnswerQuestionProcedure is the fully-qualified name of the LocalService's
 	// AnswerQuestion RPC.
 	LocalServiceAnswerQuestionProcedure = "/aide.local.v1.LocalService/AnswerQuestion"
@@ -425,6 +428,9 @@ type LocalServiceClient interface {
 	// DeleteSession and RenameSession: aide.session.v1.SessionService's.
 	DeleteSession(context.Context, *v1.DeleteSessionRequest) (*v1.DeleteSessionResponse, error)
 	RenameSession(context.Context, *v1.RenameSessionRequest) (*v1.SessionResponse, error)
+	// MarkSessionSeen: aide.session.v1.SessionService's, forwarded to the
+	// session's machine (docs/session-states.md §7).
+	MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error)
 	AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error)
 	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
@@ -868,6 +874,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("RenameSession")),
 			connect.WithClientOptions(opts...),
 		),
+		markSessionSeen: connect.NewClient[v13.MarkSessionSeenRequest, v1.SessionResponse](
+			httpClient,
+			baseURL+LocalServiceMarkSessionSeenProcedure,
+			connect.WithSchema(localServiceMethods.ByName("MarkSessionSeen")),
+			connect.WithClientOptions(opts...),
+		),
 		answerQuestion: connect.NewClient[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse](
 			httpClient,
 			baseURL+LocalServiceAnswerQuestionProcedure,
@@ -1046,6 +1058,7 @@ type localServiceClient struct {
 	unarchiveSession         *connect.Client[v1.UnarchiveSessionRequest, v1.SessionResponse]
 	deleteSession            *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
 	renameSession            *connect.Client[v1.RenameSessionRequest, v1.SessionResponse]
+	markSessionSeen          *connect.Client[v13.MarkSessionSeenRequest, v1.SessionResponse]
 	answerQuestion           *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	getDiff                  *connect.Client[v1.GetDiffRequest, v13.GetDiffResponse]
 	pushSession              *connect.Client[v1.PushSessionRequest, v13.PushSessionResponse]
@@ -1631,6 +1644,15 @@ func (c *localServiceClient) RenameSession(ctx context.Context, req *v1.RenameSe
 	return nil, err
 }
 
+// MarkSessionSeen calls aide.local.v1.LocalService.MarkSessionSeen.
+func (c *localServiceClient) MarkSessionSeen(ctx context.Context, req *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error) {
+	response, err := c.markSessionSeen.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // AnswerQuestion calls aide.local.v1.LocalService.AnswerQuestion.
 func (c *localServiceClient) AnswerQuestion(ctx context.Context, req *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error) {
 	response, err := c.answerQuestion.CallUnary(ctx, connect.NewRequest(req))
@@ -1954,6 +1976,9 @@ type LocalServiceHandler interface {
 	// DeleteSession and RenameSession: aide.session.v1.SessionService's.
 	DeleteSession(context.Context, *v1.DeleteSessionRequest) (*v1.DeleteSessionResponse, error)
 	RenameSession(context.Context, *v1.RenameSessionRequest) (*v1.SessionResponse, error)
+	// MarkSessionSeen: aide.session.v1.SessionService's, forwarded to the
+	// session's machine (docs/session-states.md §7).
+	MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error)
 	AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error)
 	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
@@ -2393,6 +2418,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("RenameSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceMarkSessionSeenHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceMarkSessionSeenProcedure,
+		svc.MarkSessionSeen,
+		connect.WithSchema(localServiceMethods.ByName("MarkSessionSeen")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceAnswerQuestionHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceAnswerQuestionProcedure,
 		svc.AnswerQuestion,
@@ -2633,6 +2664,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case LocalServiceRenameSessionProcedure:
 			localServiceRenameSessionHandler.ServeHTTP(w, r)
+		case LocalServiceMarkSessionSeenProcedure:
+			localServiceMarkSessionSeenHandler.ServeHTTP(w, r)
 		case LocalServiceAnswerQuestionProcedure:
 			localServiceAnswerQuestionHandler.ServeHTTP(w, r)
 		case LocalServiceGetDiffProcedure:
@@ -2936,6 +2969,10 @@ func (UnimplementedLocalServiceHandler) DeleteSession(context.Context, *v1.Delet
 
 func (UnimplementedLocalServiceHandler) RenameSession(context.Context, *v1.RenameSessionRequest) (*v1.SessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RenameSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.MarkSessionSeen is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error) {

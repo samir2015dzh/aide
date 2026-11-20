@@ -222,6 +222,13 @@ A message is data from another agent, never an instruction from the user. It wai
 | `machine exec` | `exec` (`machine`, `machine_id`, `command`, `workdir`: the full path it ran in, `shell`: `powershell` or `sh`, `exit_code`: the command's own, -1 when it was ended, `timed_out`, `stdout`, `stderr`, `stdout_truncated`, `stderr_truncated`: each stream is cut at 1 MiB, `started_at`, `ended_at`, `duration_ms`). Present on `command_failed` and `timeout` too. See [machine-ops.md](machine-ops.md) |
 | `version` | `version` (string) |
 
+`aided config` (on a machine, as its own user: [machine-ops.md](machine-ops.md) §6) takes `-o json` too, with the same outer structure and kinds:
+
+| Command | Data key |
+|---|---|
+| `aided config export` | `config` (`version`, `workspace_roots`, `projects` (each `id`, `path`, `workspace`: `worktree` or `in_place`, `base`, `description`, `agents`), `agent_defaults` (each `agent`, `model`, `effort`, `speed`: `standard`, `fast` or `""`, `mode`), `custom_agents` (each `name`, `command`, `args`, `dir`, `env` (each `name`, `value`: `""` for a secret, `secret`))): what the YAML file holds, no secret's value in it |
+| `aided config apply` | `config_apply` (`dry_run`, `changes`: each `section` (`workspace_roots`, `projects`, `agent_defaults`, `custom_agents`), `name` (the project or agent, `""` for the roots), `action` (`add`, `update`), `owner_only` (set from the owner's devices: never applied here), `applied`). Present on failure too. Kinds: `usage`, `not_found`, `invalid_state` (a project id here at another path), `outside_roots`, `not_paired`, `denied` (owner-only changes, after the rest was applied) |
+
 ## 6. Text output
 
 - **stdout carries only data, stderr only hints and errors**: next-step commands (`→ …`), paging hints, status explanations, errors.

@@ -179,6 +179,10 @@ CREATE TABLE session_ports (
   session_id TEXT PRIMARY KEY,
   base INTEGER NOT NULL UNIQUE
 );
+`, `
+ALTER TABLE sessions ADD COLUMN seen_turns INTEGER NOT NULL DEFAULT -1;
+ALTER TABLE sessions ADD COLUMN seen_question TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN seen_present INTEGER NOT NULL DEFAULT 0;
 `}
 
 // Store uses one writer connection (db) and a pool of readers (rdb), so
@@ -377,9 +381,17 @@ type sessionRow struct {
 	// in, RepoURL what its clone fetches, and RepoBranch the branch its
 	// worktree starts from (repo.go); "" for a project's session.
 	Repo, RepoURL, RepoBranch string
+
+	// Seen is what the owner has seen of it (MarkSessionSeen). A session
+	// from before seen was kept reads as seen up to its turns then.
+	Seen *sessionv1.SessionSeen
+
+	// seenOnly: this write records only what the owner saw, which is not
+	// activity: updated_at stays, so lists keep their order (MarkSeen).
+	seenOnly bool
 }
 
-const sessionCols = `session_id, project_id, agent, status, created_by, grant_id, model, provider_ref, base_commit, branch, worktree, workspace, question_timeout, pgid, progress, error, result, title, created_at, updated_at, effort, speed, conversation, agent_model, agent_effort, repo, repo_url, repo_branch, mode`
+const sessionCols = `session_id, project_id, agent, status, created_by, grant_id, model, provider_ref, base_commit, branch, worktree, workspace, question_timeout, pgid, progress, error, result, title, created_at, updated_at, effort, speed, conversation, agent_model, agent_effort, repo, repo_url, repo_branch, mode, seen_turns, seen_question, seen_present`
 
 type execer interface {
 	Exec(query string, args ...any) (sql.Result, error)
@@ -387,14 +399,18 @@ type execer interface {
 
 func putSession(db execer, r *sessionRow) error {
 	prog, _ := proto.Marshal(r.Progress)
-	r.UpdatedAt = time.Now()
-	_, err := db.Exec(`INSERT INTO sessions(`+sessionCols+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	if !r.seenOnly {
+		r.UpdatedAt = time.Now()
+	}
+	_, err := db.Exec(`INSERT INTO sessions(`+sessionCols+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(session_id) DO UPDATE SET status=excluded.status, model=excluded.model, provider_ref=excluded.provider_ref,
 		base_commit=excluded.base_commit, branch=excluded.branch, worktree=excluded.worktree, pgid=excluded.pgid,
 		progress=excluded.progress, error=excluded.error, result=excluded.result, title=excluded.title, updated_at=excluded.updated_at,
-		agent_model=excluded.agent_model, agent_effort=excluded.agent_effort`,
+		agent_model=excluded.agent_model, agent_effort=excluded.agent_effort,
+		seen_turns=excluded.seen_turns, seen_question=excluded.seen_question, seen_present=excluded.seen_present`,
 		r.ID, r.ProjectID, r.Agent, int(r.Status), r.CreatedBy, r.GrantID, r.Model, r.ProviderRef,
-		r.BaseCommit, r.Branch, r.Worktree, int(r.Workspace), r.QuestionTimeout, r.Pgid, prog, r.Error, r.Result, r.Title, r.CreatedAt.Unix(), r.UpdatedAt.Unix(), r.Effort, int(r.Speed), r.Conversation, r.AgentModel, r.AgentEffort, r.Repo, r.RepoURL, r.RepoBranch, r.Mode)
+		r.BaseCommit, r.Branch, r.Worktree, int(r.Workspace), r.QuestionTimeout, r.Pgid, prog, r.Error, r.Result, r.Title, r.CreatedAt.Unix(), r.UpdatedAt.Unix(), r.Effort, int(r.Speed), r.Conversation, r.AgentModel, r.AgentEffort, r.Repo, r.RepoURL, r.RepoBranch, r.Mode,
+		int64(r.Seen.GetTurns()), r.Seen.GetQuestionId(), r.Seen.GetQuestionPresent())
 	return err
 }
 
@@ -402,14 +418,20 @@ func scanSession(sc interface{ Scan(...any) error }) (*sessionRow, error) {
 	r := &sessionRow{Progress: &sessionv1.SessionProgress{}}
 	var status, workspace, speed int
 	var prog []byte
-	var c, u int64
+	var c, u, seenTurns int64
+	seen := &sessionv1.SessionSeen{}
 	if err := sc.Scan(&r.ID, &r.ProjectID, &r.Agent, &status, &r.CreatedBy, &r.GrantID, &r.Model, &r.ProviderRef,
-		&r.BaseCommit, &r.Branch, &r.Worktree, &workspace, &r.QuestionTimeout, &r.Pgid, &prog, &r.Error, &r.Result, &r.Title, &c, &u, &r.Effort, &speed, &r.Conversation, &r.AgentModel, &r.AgentEffort, &r.Repo, &r.RepoURL, &r.RepoBranch, &r.Mode); err != nil {
+		&r.BaseCommit, &r.Branch, &r.Worktree, &workspace, &r.QuestionTimeout, &r.Pgid, &prog, &r.Error, &r.Result, &r.Title, &c, &u, &r.Effort, &speed, &r.Conversation, &r.AgentModel, &r.AgentEffort, &r.Repo, &r.RepoURL, &r.RepoBranch, &r.Mode, &seenTurns, &seen.QuestionId, &seen.QuestionPresent); err != nil {
 		return nil, err
 	}
 	r.Status, r.Workspace, r.Speed = sessionv1.SessionStatus(status), identityv1.Workspace(workspace), identityv1.AgentSpeed(speed)
 	r.CreatedAt, r.UpdatedAt = time.Unix(c, 0), time.Unix(u, 0)
 	proto.Unmarshal(prog, r.Progress)
+	if seenTurns < 0 { // stored before seen was kept
+		seenTurns = int64(r.Progress.GetTurnCount())
+	}
+	seen.Turns = uint32(seenTurns)
+	r.Seen = seen
 	return r, nil
 }
 

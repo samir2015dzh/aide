@@ -113,6 +113,30 @@ export function noticeDiff(
   return out;
 }
 
+/** What a desktop tells a session's machine of a question it told the owner of (MarkSessionSeen). */
+export interface QuestionAck {
+  sessionId: string;
+  questionId: string;
+  present: boolean;
+}
+
+/**
+ * What a desktop has to tell the machines of the questions it told the owner of (told: their question ids), the owner
+ * at it now or not (present): each one its machine does not have yet (docs/session-states.md §7). Phones hold back a
+ * question a desktop told of, for a while, and for good once the owner was there. A machine that keeps nothing seen
+ * (an older one) is told nothing.
+ */
+export function questionAcks(sessions: Session[], told: ReadonlySet<string>, present: boolean): QuestionAck[] {
+  const out: QuestionAck[] = [];
+  for (const s of sessions) {
+    const q = pendingQuestion(s);
+    if (!q || !s.seen || !told.has(q.questionId)) continue;
+    const has = s.seen.questionId === q.questionId;
+    if (!has || (present && !s.seen.questionPresent)) out.push({ sessionId: s.sessionId, questionId: q.questionId, present });
+  }
+  return out;
+}
+
 /** The notices the owner can switch off in settings, by their settings key. */
 export interface NoticePrefs {
   notifyStarted: boolean;

@@ -3,6 +3,7 @@ package relay
 import (
 	"database/sql"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -150,17 +151,55 @@ func (s *Store) RelayID() (string, error) {
 	return id, s.setMeta("relay_id", []byte(id))
 }
 
-// SetupCode returns the code to set up a new server with, creating one
-// until it is set up.
-func (s *Store) SetupCode() (string, error) {
-	v, err := s.getMeta("claim_code")
-	if err != nil || v != nil {
-		return string(v), err
+// SetupCode returns the code to set up a new server with, and when it
+// expires (zero: never), until the server is set up. It makes a new one
+// when there is none or it expired: the expired one is then never taken
+// again. ttl is how long a new one lasts (0: forever). A code kept from
+// before codes expired starts its time now.
+func (s *Store) SetupCode(now time.Time, ttl time.Duration) (string, time.Time, error) {
+	code, until, timed, err := s.setupCode()
+	if err != nil {
+		return "", time.Time{}, err
 	}
-	c := identity.RandomCode(16)
-	code := c[:4] + "-" + c[4:8] + "-" + c[8:12] + "-" + c[12:16]
-	return code, s.setMeta("claim_code", []byte(code))
+	if code != "" && timed && !setupCodeExpired(until, now) {
+		return code, until, nil
+	}
+	if code == "" || timed { // none, or expired
+		c := identity.RandomCode(16)
+		code = c[:4] + "-" + c[4:8] + "-" + c[8:12] + "-" + c[12:16]
+		if err := s.setMeta("claim_code", []byte(code)); err != nil {
+			return "", time.Time{}, err
+		}
+	}
+	until = time.Time{}
+	if ttl > 0 {
+		until = now.Add(ttl).Truncate(time.Second)
+	}
+	var sec int64
+	if !until.IsZero() {
+		sec = until.Unix()
+	}
+	return code, until, s.setMeta("claim_code_until", []byte(strconv.FormatInt(sec, 10)))
 }
+
+// setupCode is the setup code kept and when it expires (zero: never);
+// timed is false for a code kept before codes expired.
+func (s *Store) setupCode() (code string, until time.Time, timed bool, err error) {
+	v, err := s.getMeta("claim_code")
+	if err != nil || v == nil {
+		return "", time.Time{}, false, err
+	}
+	u, err := s.getMeta("claim_code_until")
+	if err != nil || u == nil {
+		return string(v), time.Time{}, false, err
+	}
+	if sec, _ := strconv.ParseInt(string(u), 10, 64); sec > 0 {
+		until = time.Unix(sec, 0)
+	}
+	return string(v), until, true, nil
+}
+
+func setupCodeExpired(until, now time.Time) bool { return !until.IsZero() && !now.Before(until) }
 
 func (s *Store) OwnerID() (string, error) {
 	v, err := s.getMeta("owner_id")
@@ -188,7 +227,7 @@ func (s *Store) SaveSetup(ownerID string, rootChain *identityv1.RootChain, serve
 			return err
 		}
 	}
-	if _, err := tx.Exec(`DELETE FROM meta WHERE key='claim_code'`); err != nil {
+	if _, err := tx.Exec(`DELETE FROM meta WHERE key IN ('claim_code', 'claim_code_until')`); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -526,7 +565,7 @@ ON CONFLICT(owner_id) DO UPDATE SET erase_id=excluded.erase_id, erase_order=excl
 		return err
 	}
 	for _, q := range []string{
-		`DELETE FROM meta WHERE key IN ('owner_id', 'root_chain', 'device_cert', 'revocations', 'claim_code', 'server_key', 'account', 'password_login', 'logins_off')`,
+		`DELETE FROM meta WHERE key IN ('owner_id', 'root_chain', 'device_cert', 'revocations', 'claim_code', 'claim_code_until', 'server_key', 'account', 'password_login', 'logins_off')`,
 		`DELETE FROM machine_certs`, `DELETE FROM grants`, `DELETE FROM logins`, `DELETE FROM push_targets`,
 		`DELETE FROM messages`, `DELETE FROM inbox_registrations`, `DELETE FROM contact_cards`, `DELETE FROM connection_log`,
 	} {

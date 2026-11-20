@@ -67,10 +67,10 @@ test("a session started by an agent shows up at once, and so do its changes", as
   await cli("session", "start", "--project", "demo", "--agent", "gemini", "--title", "新来的", "--prompt", "shell sleep 3\nsay 好了");
   const row = list.getByRole("listitem").filter({ hasText: "新来的" });
   await expect(row).toBeVisible({ timeout: 1500 });
-  // In progress with a ring while it runs (docs/her-team.md §16), then done, with no mark, once it finishes.
+  // In progress with a ring while it runs (docs/her-team.md §16), then a new result, with no mark, once it finishes.
   await expect(list.getByRole("group", { name: "进行中" })).toContainText("新来的");
   await expect(row.getByRole("img", { name: "运行中" })).toBeVisible();
-  await expect(list.getByRole("group", { name: "已结束" })).toContainText("新来的", { timeout: 30_000 });
+  await expect(list.getByRole("group", { name: "有新结果未看" })).toContainText("新来的", { timeout: 30_000 });
   await expect(row.locator(".smeta [role=img]")).toHaveCount(0);
   await app.close();
 });

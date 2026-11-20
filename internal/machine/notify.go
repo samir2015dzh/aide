@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"maps"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -20,7 +21,8 @@ import (
 	"github.com/samir2015dzh/aide/pkg/transport"
 )
 
-// Notices for the owner's iPhones. When a session asks something, fails or
+// Notices for the owner's iPhones. When a session asks something (held
+// back while the owner's desktop has it: holdQuestion), fails or
 // finishes a turn, the machine seals a notice to the notice key of each
 // trusted device that asked for that kind (its push registration, signed by
 // its device key, which a root key certifies) and hands the ciphertext to
@@ -118,6 +120,8 @@ func (n *Machine) sessionNotice(s noticeSession, e *sessionv1.SessionEvent) {
 	case *sessionv1.SessionEvent_QuestionAsked:
 		nt.Kind = "question"
 		nt.Question = trimQuestion(k.QuestionAsked.Question)
+		n.holdQuestion(nt, s, k.QuestionAsked.Question.GetQuestionId())
+		return
 	case *sessionv1.SessionEvent_TurnCompleted:
 		tc := k.TurnCompleted
 		nt.Turn = tc.Turn
@@ -149,10 +153,59 @@ func (n *Machine) sessionNotice(s noticeSession, e *sessionv1.SessionEvent) {
 	default:
 		return
 	}
-	n.notify(nt, s.id, func() {
+	n.notify(nt, s.id, n.fillSessionNotice(nt, s))
+}
+
+func (n *Machine) fillSessionNotice(nt *sessionv1.Notice, s noticeSession) func() {
+	return func() {
 		nt.Grant = n.knownClients()[s.createdBy].Label
 		nt.Machine = n.Name()
-	})
+	}
+}
+
+// The delays of a question's notice to phones (docs/session-states.md §7),
+// AIDE_QUESTION_DESKTOP_GRACE and AIDE_QUESTION_ESCALATE_AFTER (a Go
+// duration) for tests.
+const (
+	// questionDesktopGrace: how long a desktop has to say it told the owner
+	// of a question (MarkSessionSeen) before phones are told at once, as
+	// when the owner has no desktop running.
+	questionDesktopGrace = 10 * time.Second
+	// questionEscalateAfter: a question a desktop told of, the owner not
+	// there, still unanswered this long after it was asked goes to phones.
+	questionEscalateAfter = 3 * time.Minute
+)
+
+func questionDelay(env string, d time.Duration) time.Duration {
+	if v, err := time.ParseDuration(os.Getenv(env)); err == nil && v >= 0 {
+		return v
+	}
+	return d
+}
+
+// holdQuestion tells phones of a question only if the owner's desktop did
+// not take it: at once (after the desktop's grace) when no desktop told of
+// it, after questionEscalateAfter when one did but the owner was not at it
+// and it is still unanswered, and never once it is answered or the owner
+// was at a desktop (or opened the session) while it waited.
+func (n *Machine) holdQuestion(nt *sessionv1.Notice, s noticeSession, qid string) {
+	asked := time.Now()
+	after := questionDelay("AIDE_QUESTION_ESCALATE_AFTER", questionEscalateAfter)
+	var check func()
+	check = func() {
+		pending, seen := n.sessions.questionSeen(s.id)
+		if pending != qid || seen.GetQuestionId() == qid && seen.GetQuestionPresent() {
+			return // answered, or the owner was there
+		}
+		if seen.GetQuestionId() == qid { // a desktop told the owner, who was away
+			if wait := time.Until(asked.Add(after)); wait > 0 {
+				time.AfterFunc(wait, check)
+				return
+			}
+		}
+		n.notify(nt, s.id, n.fillSessionNotice(nt, s))
+	}
+	time.AfterFunc(questionDelay("AIDE_QUESTION_DESKTOP_GRACE", questionDesktopGrace), check)
 }
 
 // herNotice tells the owner's devices of what Her's newest became

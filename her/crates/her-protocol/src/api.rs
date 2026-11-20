@@ -257,6 +257,8 @@ pub mod method {
     pub const BOTS_ROUTINE_RUNS: &str = "bots/routine_runs";
     pub const BOTS_ROUTINE_RUN: &str = "bots/routine_run";
     pub const BOTS_ROUTINE_SET_ENABLED: &str = "bots/routine_set_enabled";
+    /// Makes a routine a patrol, whose runs only look, or not (docs/her-patrol.md).
+    pub const BOTS_ROUTINE_SET_PATROL: &str = "bots/routine_set_patrol";
     /// Runs a routine now, even a paused one. It does the real thing.
     pub const BOTS_ROUTINE_RUN_NOW: &str = "bots/routine_run_now";
     pub const BOTS_ROUTINE_STOP: &str = "bots/routine_stop";

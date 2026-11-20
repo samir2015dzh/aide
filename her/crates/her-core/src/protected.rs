@@ -118,6 +118,7 @@ mod tests {
             env: Arc::new(LocalEnvironment::new(workspace.to_path_buf())),
             data_dir: canonical_lossy(data_dir),
             memory_dir: None,
+            patrol: None,
             browser: Arc::default(),
             desktop: Default::default(),
         }

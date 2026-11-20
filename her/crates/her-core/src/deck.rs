@@ -15,6 +15,7 @@ use her_tools::ToolCategory;
 use her_tools::ToolCtx;
 use her_tools::ToolDescription;
 use her_tools::ToolError;
+use her_tools::ToolKind;
 use her_tools::ToolOutput;
 use her_tools::Typed;
 use her_tools::TypedTool;
@@ -241,6 +242,10 @@ impl TypedTool for DeckOpen {
     const DESCRIPTION: &'static str = "The outline of a presentation (.pptx): its slide size and count, and a line a slide \
         with its number, title, layout, object count and whether it has tables, charts, pictures or speaker notes.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -301,6 +306,10 @@ impl TypedTool for DeckRead {
         boxes, shapes and tables, the alternative text of pictures and charts, and its speaker notes; with detail \
         `objects`, also the slide's background and each object's shape_id, kind, position, fill and outline colour and the \
         look of its text (size, colour, bold, italic, font; what it inherits from the layout is left out).";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
@@ -418,6 +427,10 @@ impl TypedTool for DeckFind {
     const DESCRIPTION: &'static str = "Find every place a text or number appears in a presentation (.pptx): slide text, \
         tables, alternative text and speaker notes, with the slide, the object and the text around it.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -504,6 +517,10 @@ impl TypedTool for DeckView {
     const DESCRIPTION: &'static str = "Look at a slide of a presentation (.pptx) as an image: its layout, charts, \
         pictures and how the text sits.";
 
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
+
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES
     }
@@ -563,6 +580,10 @@ impl TypedTool for DeckCheck {
     const DESCRIPTION: &'static str = "Check a presentation (.pptx) for two problems only: objects off the slide, pictures \
         and charts without alternative text. Lists each problem with its slide and object. It does not see text that \
         overflows its box or objects that overlap; look at the slide with deck_view for those.";
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
+    }
 
     fn guidelines(&self) -> &[&'static str] {
         GUIDELINES

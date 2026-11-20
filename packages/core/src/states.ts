@@ -69,12 +69,17 @@ export function stateOf(s: Session): SessionState {
       return SessionState.FAILED;
     case SessionStatus.IDLE: {
       const f = s.progress?.lastFailure;
-      if (!f) return SessionState.DONE;
+      if (!f) return isUnseen(s) ? SessionState.DONE_UNSEEN : SessionState.DONE;
       return f.kind === FailureKind.INTERRUPTED ? SessionState.INTERRUPTED : SessionState.FAILED;
     }
     default:
       return SessionState.UNSPECIFIED;
   }
+}
+
+/** Finished turns the owner has not opened (Session.seen; an older machine keeps none: every turn counts as seen). */
+export function isUnseen(s: Session): boolean {
+  return s.seen !== undefined && (s.progress?.turnCount ?? 0) > s.seen.turns;
 }
 
 /** When a session last recorded anything: its last event, else (an older machine) when it last changed. */

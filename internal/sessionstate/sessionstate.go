@@ -113,6 +113,8 @@ func StateOf(s *sessionv1.Session) sessionv1.SessionState {
 	case sessionv1.SessionStatus_SESSION_STATUS_IDLE:
 		f := s.GetProgress().GetLastFailure()
 		switch {
+		case f == nil && Unseen(s):
+			return sessionv1.SessionState_SESSION_STATE_DONE_UNSEEN
 		case f == nil:
 			return sessionv1.SessionState_SESSION_STATE_DONE
 		case f.GetKind() == sessionv1.FailureKind_FAILURE_KIND_INTERRUPTED:
@@ -122,6 +124,13 @@ func StateOf(s *sessionv1.Session) sessionv1.SessionState {
 		}
 	}
 	return sessionv1.SessionState_SESSION_STATE_UNSPECIFIED
+}
+
+// Unseen says whether a session has finished turns the owner has not
+// opened (Session.seen; from an older machine, which keeps none, every
+// turn counts as seen).
+func Unseen(s *sessionv1.Session) bool {
+	return s.GetSeen() != nil && s.GetProgress().GetTurnCount() > s.GetSeen().GetTurns()
 }
 
 // LastEventAt is when a session last recorded anything: its last event's

@@ -10,6 +10,7 @@ use her_protocol::EventMsg;
 use her_protocol::Op;
 use her_protocol::PromptMode;
 use her_protocol::bot::RoutineOutcome;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -35,6 +36,13 @@ use crate::store::SessionHeader;
 const BRIEF: &str = include_str!("prompts/routine_run.md");
 /// Follows the time in a brief when the run starts well after it was due.
 const LATE: &str = " This run is late because the computer was not running at the scheduled time: judge what still makes sense.";
+/// Follows the rules in a patrol's brief (docs/her-patrol.md §3).
+const PATROL: &str = "\n\nThis routine is a patrol: you look for problems and do not fix them. Whatever may change something is \
+    refused, and so is every connector's tool. The one place you write is your notes, in `{notes}`: keep there what you found \
+    and what you suggest, for the next run too. For anything you would do, say in your reply what and why: {bot} passes it on, \
+    and the user decides in their own conversation.";
+/// Heads what a patrol was refused, after its reply.
+const NOT_DONE: &str = "Not done, as this routine only looks. Suggested for the user, who decides whether to do it:";
 
 /// A run under way.
 pub(super) struct ActiveRun {
@@ -58,12 +66,20 @@ fn brief(bot: &str, run: &RoutineRun) -> String {
     BRIEF
         .trim_end()
         .replace("{late}", if run.late { LATE } else { "" })
+        .replace("{patrol}", &run.patrol.as_ref().map(|notes| PATROL.replace("{notes}", &notes.display().to_string())).unwrap_or_default())
         .replace("{scheduled}", &run.scheduled)
         .replace("{now}", &run.now)
         .replace("{bot}", bot)
         .replace("{name}", &run.name)
         // Last: the user's words stay as they are, whatever they look like.
         .replace("{prompt}", run.prompt.trim())
+}
+
+/// Whether the result is a patrol's refusal (docs/her-patrol.md §2).
+fn patrol_refused(result: &her_llm::ToolResultMessage) -> bool {
+    result.content.iter().any(|part| {
+        matches!(part, UserContent::Text { text } if text.strip_prefix("Tool call denied: ").is_some_and(|rest| rest.starts_with(crate::policy::PATROL_REFUSED)))
+    })
 }
 
 /// A round that never got to run.
@@ -87,8 +103,8 @@ impl AgentTree {
         let driver = tokio::spawn({
             let (tree, stop, id) = (self.clone(), stop.clone(), id.clone());
             async move {
-                let (report, log) = tree.carry_out(&run, &stop).await;
-                let outcome = tree.conclude(&run, report, log);
+                let (report, log, refused) = tree.carry_out(&run, &stop).await;
+                let outcome = tree.conclude(&run, report, log, &refused);
                 tree.state.lock().runs.retain(|active| active.id != id);
                 let _ = done.send(outcome);
             }
@@ -121,29 +137,31 @@ impl AgentTree {
             parent_task: String::new(),
             routine: Some(run.routine_id.clone()),
         });
-        let kernel = kernel::start_child(self.child_launch(root, header)).map_err(|err| format!("cannot start the run: {err}"))?;
+        let mut launch = self.child_launch(root, header);
+        launch.patrol = run.patrol.clone();
+        let kernel = kernel::start_child(launch).map_err(|err| format!("cannot start the run: {err}"))?;
         let bot = root.state.lock().bot.as_ref().map_or_else(|| "the bot".to_string(), |bot| bot.current.clone());
         Ok((kernel, brief(&bot, run)))
     }
 
     /// Runs it to its end and closes its session. The main session stays out of it: held only
-    /// for the start, so that it can close meanwhile.
-    async fn carry_out(&self, run: &RoutineRun, stop: &CancellationToken) -> (Report, Option<PathBuf>) {
+    /// for the start, so that it can close meanwhile. With what a patrol was refused.
+    async fn carry_out(&self, run: &RoutineRun, stop: &CancellationToken) -> (Report, Option<PathBuf>, Vec<String>) {
         // A session just loaded is still connecting. A sub-agent's tool list starts from the
         // connectors as they are, and its main session has always waited for them by then.
         if let Some(mcp) = &self.deps.mcp {
             let failed = mcp.settle(stop).await;
             if stop.is_cancelled() {
-                return (unstarted(AgentStatus::Interrupted, None), None);
+                return (unstarted(AgentStatus::Interrupted, None), None, Vec::new());
             }
             if !failed.is_empty() {
-                return (unstarted(AgentStatus::Failed, Some(crate::mcp::required_error(&failed))), None);
+                return (unstarted(AgentStatus::Failed, Some(crate::mcp::required_error(&failed))), None, Vec::new());
             }
         }
         let started = self.root().map_err(|err| err.to_string()).and_then(|root| self.start_run_session(&root, run));
         let (mut kernel, brief) = match started {
             Ok(started) => started,
-            Err(message) => return (unstarted(AgentStatus::Failed, Some(ErrorInfo::new("run_not_started", message))), None),
+            Err(message) => return (unstarted(AgentStatus::Failed, Some(ErrorInfo::new("run_not_started", message))), None, Vec::new()),
         };
         let log = kernel.session_file().to_path_buf();
         if let Some(active) = self.state.lock().runs.iter_mut().find(|active| active.id == run.id) {
@@ -158,6 +176,8 @@ impl AgentTree {
             })
             .await;
         let mut round = Round::new();
+        let mut titles = HashMap::new();
+        let mut refused = Vec::new();
         let mut finished = false;
         let mut stopping = false;
         loop {
@@ -165,6 +185,15 @@ impl AgentTree {
                 event = kernel.next_event() => {
                     let Some(event) = event else { break };
                     round.note(&event.msg);
+                    match &event.msg {
+                        EventMsg::ToolStarted { call_id, title, name, .. } => {
+                            titles.insert(call_id.clone(), if title.is_empty() { name.clone() } else { title.clone() });
+                        }
+                        EventMsg::ToolCompleted { call_id, result } if result.is_error && patrol_refused(result) => {
+                            refused.extend(titles.remove(call_id));
+                        }
+                        _ => {}
+                    }
                     match event.msg {
                         EventMsg::Idle => {
                             finished = true;
@@ -186,17 +215,23 @@ impl AgentTree {
             report.status = AgentStatus::Failed;
             report.error = Some(ErrorInfo::new("closed", "the run's session stopped unexpectedly"));
         }
-        (report, Some(log))
+        (report, Some(log), refused)
     }
 
     /// What the run came to, and the mail when it has something to say or failed for the first
     /// time in a while (routine-design §2.2).
-    fn conclude(&self, run: &RoutineRun, report: Report, log: Option<PathBuf>) -> RunOutcome {
+    /// A patrol's refused calls go after its reply, so a run that was refused never passes as quiet.
+    fn conclude(&self, run: &RoutineRun, mut report: Report, log: Option<PathBuf>, refused: &[String]) -> RunOutcome {
         let usage = report.usage.clone();
         let ended = |outcome, note, report| RunOutcome { outcome, note, report, log: log.clone(), usage: usage.clone() };
         match report.status {
             AgentStatus::Interrupted => return ended(RoutineOutcome::Interrupted, None, None),
             AgentStatus::Failed => {}
+            _ if !refused.is_empty() => {
+                let list: String = refused.iter().map(|title| format!("\n- {title}")).collect();
+                let reply = report.reply.take().unwrap_or_default();
+                report.reply = Some(format!("{}\n\n{NOT_DONE}{list}", reply.trim_end()).trim_start().to_string());
+            }
             _ => {
                 if let Some(note) = report.reply.as_deref().and_then(quiet_note) {
                     return ended(RoutineOutcome::Quiet, Some(note), None);

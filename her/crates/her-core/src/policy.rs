@@ -6,7 +6,8 @@
 //! - a command that deletes a critical path: the file system root, a top-level directory, the
 //!   home directory, or the workspace and the directories that hold it;
 //! - a file tool writing another bot's memory;
-//! - in the browser and on the desktop, what the configuration refuses (see [`site_policy`]).
+//! - in the browser and on the desktop, what the configuration refuses (see [`site_policy`]);
+//! - in a patrol run, anything but looking and writing its own notes (docs/her-patrol.md).
 //!
 //! [`site_policy`]: crate::site_policy
 
@@ -16,6 +17,7 @@ use her_protocol::CommandRule;
 use her_protocol::RuleDecision;
 use her_tools::Authority;
 use her_tools::Tool;
+use her_tools::ToolKind;
 use her_tools::ToolOrigin;
 use std::path::Path;
 
@@ -29,6 +31,9 @@ use crate::rules::Analysis;
 use crate::rules::ShellContext;
 use crate::rules::Target;
 
+/// How a refusal in a patrol run starts: the run's report lists what it would have done.
+pub(crate) const PATROL_REFUSED: &str = "This routine is a patrol: it only looks";
+
 const OTHERS_MEMORY: &str = "This is a bot's memory, and only the bot itself writes it. Say in your reply what it should know.";
 
 pub struct ToolPolicy;
@@ -36,6 +41,11 @@ pub struct ToolPolicy;
 #[async_trait]
 impl Hooks for ToolPolicy {
     async fn before_tool(&self, call: &ToolCall, tool: &dyn Tool, authorities: &[Authority], view: &SessionView) -> Gate {
+        if let Some(notes) = &view.patrol
+            && let Some(reason) = patrol_refusal(call, tool, notes, view)
+        {
+            return Gate::Deny(reason);
+        }
         if tool.origin_for(&call.arguments.to_value()) == ToolOrigin::Mcp {
             return evaluate_mcp(call, view);
         }
@@ -48,6 +58,27 @@ impl Hooks for ToolPolicy {
             None => evaluate(call, view),
         }
     }
+}
+
+/// Why a patrol run may not make the call: all it does is look, and write its notes. A tool from
+/// outside is refused whatever it says of itself: its read-only hint is a hint (docs/her-patrol.md §2).
+fn patrol_refusal(call: &ToolCall, tool: &dyn Tool, notes: &Path, view: &SessionView) -> Option<String> {
+    let args = call.arguments.to_value();
+    let inner = through_call_tool(call);
+    let target = inner.as_ref().unwrap_or(call);
+    let external = tool.origin_for(&args) == ToolOrigin::Mcp && call.name != crate::mcp::tools::SEARCH_TOOL;
+    let note = matches!(target.name.as_str(), "write" | "edit")
+        && target.arguments.to_value().get("path").and_then(|v| v.as_str()).is_some_and(|path| {
+            canonical_lossy(&view.env.resolve(path)).starts_with(notes)
+        });
+    if !external && (note || tool.kind_for(&args) == ToolKind::ReadOnly) {
+        return None;
+    }
+    Some(format!(
+        "{PATROL_REFUSED}, and `{}` may change something, so it did not run. Do not try it another way: write it \
+         in your notes and your reply as a suggestion for the owner, who decides in their own conversation.",
+        target.name
+    ))
 }
 
 /// A built-in tool run through call_tool, as the call it stands for.
@@ -193,6 +224,7 @@ mod tests {
             env: Arc::new(LocalEnvironment::new(dir.to_path_buf())),
             data_dir: canonical_lossy(&dir.join("her-home")),
             memory_dir: None,
+            patrol: None,
             browser: Arc::default(),
             desktop: Default::default(),
         }
@@ -327,6 +359,122 @@ mod tests {
         assert!(matches!(evaluate(&write(&line), &another), Gate::Deny(_)), "another bot's");
         let settings = dir.path().join("her-home/bots/b1/bot.json").display().to_string();
         assert_eq!(evaluate(&write(&settings), &own), Gate::Allow);
+    }
+
+    /// A tool for the patrol tests: of a given origin and kind, or saying neither.
+    struct Fake {
+        spec: her_llm::ToolSpec,
+        origin: ToolOrigin,
+        kind: Option<ToolKind>,
+    }
+
+    #[async_trait]
+    impl Tool for Fake {
+        fn spec(&self) -> &her_llm::ToolSpec {
+            &self.spec
+        }
+
+        fn kind(&self) -> ToolKind {
+            self.kind.unwrap_or_else(|| Fake::unsaid().kind())
+        }
+
+        fn origin(&self) -> ToolOrigin {
+            self.origin
+        }
+
+        async fn execute(&self, _args: serde_json::Value, _ctx: her_tools::ToolCtx) -> Result<her_tools::ToolOutput, her_tools::ToolError> {
+            unreachable!()
+        }
+    }
+
+    impl Fake {
+        fn new(name: &str, origin: ToolOrigin, kind: Option<ToolKind>) -> Fake {
+            Fake { spec: her_llm::ToolSpec { name: name.into(), description: String::new(), parameters: json!({}) }, origin, kind }
+        }
+
+        /// What the trait says of a tool that says nothing.
+        fn unsaid() -> impl Tool {
+            struct Unsaid(her_llm::ToolSpec);
+            #[async_trait]
+            impl Tool for Unsaid {
+                fn spec(&self) -> &her_llm::ToolSpec {
+                    &self.0
+                }
+                async fn execute(&self, _args: serde_json::Value, _ctx: her_tools::ToolCtx) -> Result<her_tools::ToolOutput, her_tools::ToolError> {
+                    unreachable!()
+                }
+            }
+            Unsaid(her_llm::ToolSpec { name: "unsaid".into(), description: String::new(), parameters: json!({}) })
+        }
+    }
+
+    async fn judged(call: &ToolCall, tool: &dyn Tool, view: &SessionView) -> Gate {
+        ToolPolicy.before_tool(call, tool, &[], view).await
+    }
+
+    /// A patrol run (docs/her-patrol.md §2): it looks and writes its notes; everything else is
+    /// refused, however it is reached, and says what to do instead.
+    #[tokio::test]
+    async fn a_patrol_only_looks_and_writes_its_notes() {
+        let (_dir, workspace) = workspace();
+        let notes = workspace.parent().unwrap().join("patrol").join("r_1");
+        std::fs::create_dir_all(&notes).unwrap();
+        let mut patrol = view(&workspace);
+        patrol.patrol = Some(canonical_lossy(&notes));
+        let tools: std::collections::HashMap<String, Arc<dyn Tool>> = her_tools::builtin::builtin_tools(Default::default())
+            .into_iter()
+            .map(|tool| (tool.spec().name.clone(), tool))
+            .collect();
+        let note = notes.join("notes.md").display().to_string();
+        let allowed = [
+            ("read", json!({ "path": "src/a.rs" })),
+            ("write", json!({ "path": note })),
+            ("edit", json!({ "path": note, "edits": [] })),
+        ];
+        for (name, args) in allowed {
+            assert_eq!(judged(&call(name, args.clone()), tools[name].as_ref(), &patrol).await, Gate::Allow, "{name} {args}");
+        }
+        let refused = [
+            ("bash", json!({ "command": "ls" })),
+            ("bash", json!({ "command": format!("echo x > {note}") })),
+            ("write", json!({ "path": "src/a.rs" })),
+            ("write", json!({ "path": format!("{}/../../x", notes.display()) })),
+            ("edit", json!({ "path": "/etc/hosts", "edits": [] })),
+        ];
+        for (name, args) in refused {
+            let reason = denied(judged(&call(name, args.clone()), tools[name].as_ref(), &patrol).await);
+            assert!(reason.starts_with(PATROL_REFUSED) && reason.contains(&format!("`{name}`")), "{name} {args}: {reason}");
+        }
+        // The same calls in another session run.
+        let plain = view(&workspace);
+        assert_eq!(judged(&call("bash", json!({ "command": "ls" })), tools["bash"].as_ref(), &plain).await, Gate::Allow);
+    }
+
+    #[tokio::test]
+    async fn a_patrol_refuses_what_says_nothing_and_every_connector() {
+        let (_dir, workspace) = workspace();
+        let mut patrol = view(&workspace);
+        patrol.patrol = Some(canonical_lossy(&workspace.join("notes")));
+        assert_eq!(Fake::unsaid().kind(), ToolKind::Mutating, "a tool that says nothing changes something");
+        let refused = [
+            Fake::new("unsaid", ToolOrigin::Builtin, None),
+            Fake::new("spawn_agent", ToolOrigin::Builtin, Some(ToolKind::Concurrent)),
+            // A connector's tool that says it only reads: a hint, not a promise.
+            Fake::new("mcp__notes__echo", ToolOrigin::Mcp, Some(ToolKind::ReadOnly)),
+            Fake::new(crate::mcp::tools::CALL_TOOL, ToolOrigin::Mcp, Some(ToolKind::ReadOnly)),
+        ];
+        for tool in &refused {
+            let name = &tool.spec.name;
+            assert!(denied(judged(&call(name, json!({})), tool, &patrol).await).starts_with(PATROL_REFUSED), "{name}");
+        }
+        // Looking for tools, and a built-in tool through call_tool, are judged as themselves.
+        let search = Fake::new(crate::mcp::tools::SEARCH_TOOL, ToolOrigin::Mcp, Some(ToolKind::ReadOnly));
+        assert_eq!(judged(&call(crate::mcp::tools::SEARCH_TOOL, json!({})), &search, &patrol).await, Gate::Allow);
+        let through = Fake::new(crate::mcp::tools::CALL_TOOL, ToolOrigin::Builtin, Some(ToolKind::Mutating));
+        let write = call(crate::mcp::tools::CALL_TOOL, json!({ "name": "write", "arguments": { "path": "src/a.rs" } }));
+        assert!(denied(judged(&write, &through, &patrol).await).contains("`write`"));
+        let note = call(crate::mcp::tools::CALL_TOOL, json!({ "name": "write", "arguments": { "path": "notes/n.md" } }));
+        assert_eq!(judged(&note, &through, &patrol).await, Gate::Allow);
     }
 
     #[test]
