@@ -175,8 +175,7 @@ func TestHer(t *testing.T) {
 		return st.Latest.GetText() == "hello" && st.Latest.GetBotId() == bot && st.Latest.GetKind() == machinev1.HerLatestKind_HER_LATEST_KIND_MESSAGE && st.Unread > 0
 	})
 
-	// What only the root key may do; an assistant's full access is the
-	// owner's choice on any of their devices, and older ones sign it. A
+	// What only the root key may do. A
 	// method the gate doesn't open at all is unimplemented, as one this
 	// hermeshd doesn't know (docs/version-skew.md §6.3).
 	_, err = call("", "server/shutdown", ``)
@@ -185,11 +184,12 @@ func TestHer(t *testing.T) {
 	}
 	_, err = call("", "config/write", `{"layer":"user","edits":[{"key_path":"mcp_servers.notes","value":{"command":"/bin/cat"}}]}`)
 	refused(err)
-	apply(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerAssistantMode{SetHerAssistantMode: &identityv1.SetHerAssistantMode{BotId: bot, PermissionMode: "bypass-permissions"}}})
 	apply(&identityv1.AdminCommand{Command: &identityv1.AdminCommand_SetHerCommandConnector{SetHerCommandConnector: &identityv1.SetHerCommandConnector{Name: "notes", Command: "/bin/cat"}}})
+	// Her has no modes to set: she runs actions without asking, and her
+	// conversation says no permission mode.
 	result, err = call("", "bots/open", `{"bot_id":"`+bot+`","history_limit":0}`)
-	if err != nil || !strings.Contains(string(result), `"permission_mode":"bypass-permissions"`) {
-		t.Fatalf("the assistant's mode: %s %v", result, err)
+	if err != nil || strings.Contains(string(result), "permission_mode") {
+		t.Fatalf("the assistant's conversation: %s %v", result, err)
 	}
 	if result, err = call("", "config/read", `{}`); err != nil || !strings.Contains(string(result), `"/bin/cat"`) {
 		t.Fatalf("the connector: %s %v", result, err)

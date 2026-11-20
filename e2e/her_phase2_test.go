@@ -182,27 +182,29 @@ var browser = &http.Client{Transport: &http.Transport{DialContext: func(ctx cont
 }}}
 
 // askHer sends Her a message in her conversation, as the Her entry does,
-// approves what she asks to do on the way, and waits for her to send the
-// owner a message with want in it. It returns the tools she asked to use
-// and what she sent.
-func askHer(t *testing.T, env *herEnvironment, text, want string) (asked []string, said string) {
+// and waits for her to send the owner a message with want in it. It
+// returns the tools that ran on the way, and what she sent. She runs them
+// without asking (docs/her-server.md §0): nothing waits for the owner
+// meanwhile.
+func askHer(t *testing.T, env *herEnvironment, text, want string) (ran []string, said string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	stream, op, session := openAssistant(t, ctx, env)
+	stream, _, _ := openAssistant(t, ctx, env)
 	defer stream.Close()
 	if res, err := env.c.HerSend(ctx, &localv1.HerSendRequest{MachineId: env.machine, BotId: env.bot.ID, Text: text}); err != nil || !res.Delivered {
 		t.Fatalf("HerSend: %v %v", res, err)
 	}
 	e := untilEvent(t, stream, "Her's answer with "+want, func(e herEvent) bool {
-		if e.Type == "approval_requested" {
-			asked = append(asked, e.Name)
-			herCall(t, env, op.ConnectionId, "session/op", map[string]any{"session_id": session,
-				"op": map[string]any{"type": "approval", "call_id": e.CallID, "decision": map[string]string{"type": "approve"}}})
+		switch {
+		case strings.Contains(e.Type, "approval"):
+			t.Fatalf("Her asked the owner before acting: %+v", e)
+		case e.Type == "tool_completed":
+			ran = append(ran, e.Result.ToolName)
 		}
 		return e.sentText(want)
 	})
-	return asked, e.Args.Text
+	return ran, e.Args.Text
 }
 
 // openAssistant opens an assistant's conversation as the Her entry follows
@@ -687,11 +689,10 @@ func TestHerConnectorSignIn(t *testing.T) {
 	}
 
 	// Her uses it in a conversation: she calls its tool, which is not
-	// read-only, once the owner approves, and her answer carries what the
-	// tool gave.
-	asked, said := askHer(t, env, "[[mock:mcp:tracker:Apollo]] What is Apollo's release code?", "mcp done: Release code for Apollo: FX-")
-	if !slices.Equal(asked, []string{"call_tool"}) {
-		t.Fatalf("Her asked to use %v before answering %q", asked, said)
+	// read-only, without asking, and her answer carries what the tool gave.
+	ran, said := askHer(t, env, "[[mock:mcp:tracker:Apollo]] What is Apollo's release code?", "mcp done: Release code for Apollo: FX-")
+	if !slices.Contains(ran, "call_tool") {
+		t.Fatalf("Her answered %q without calling the connector's tool (ran %v)", said, ran)
 	}
 }
 
@@ -931,8 +932,8 @@ func TestHerSkillUpload(t *testing.T) {
 
 	// Her uses it in a conversation: she reads its SKILL.md, then the file it
 	// names, and her answer carries what the skill gave.
-	if asked, said := askHer(t, env, "[[mock:skill:weekly-report]] Write this week's report.", "skill done: "); !strings.Contains(said, "Done, doing, blocked.") {
-		t.Fatalf("Her's answer: %q (asked to use %v)", said, asked)
+	if ran, said := askHer(t, env, "[[mock:skill:weekly-report]] Write this week's report.", "skill done: "); !strings.Contains(said, "Done, doing, blocked.") {
+		t.Fatalf("Her's answer: %q (ran %v)", said, ran)
 	}
 
 	// Turned off.
@@ -943,7 +944,7 @@ func TestHerSkillUpload(t *testing.T) {
 }
 
 // TestHerRoutine: the owner asks Her for a reminder a minute later; Her
-// makes a routine, once the owner approves it; it runs by itself, and its
+// makes a routine, without asking; it runs by itself, and its
 // report wakes Her, who passes it on to the owner, in the conversation and
 // in the machine's status the sidebar and notifications follow
 // (docs/her-server.md §11 phase 2.4).
@@ -951,21 +952,18 @@ func TestHerRoutine(t *testing.T) {
 	env := newHerEnvironment(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	stream, op, session := openAssistant(t, ctx, env)
+	stream, _, _ := openAssistant(t, ctx, env)
 	defer stream.Close()
 
 	if res, err := env.c.HerSend(ctx, &localv1.HerSendRequest{MachineId: env.machine, BotId: env.bot.ID,
 		Text: "[[mock:routine:Stretch|in 1m|say:Time to stretch.]] Remind me to stretch in a minute."}); err != nil || !res.Delivered {
 		t.Fatalf("HerSend: %v %v", res, err)
 	}
-	var asked bool
 	var routine string
 	untilEvent(t, stream, "Her saying the routine is saved", func(e herEvent) bool {
 		switch {
-		case e.Type == "approval_requested" && e.Name == "manage_routine":
-			asked = true
-			herCall(t, env, op.ConnectionId, "session/op", map[string]any{"session_id": session,
-				"op": map[string]any{"type": "approval", "call_id": e.CallID, "decision": map[string]string{"type": "approve"}}})
+		case strings.Contains(e.Type, "approval"):
+			t.Fatalf("Her asked the owner before making the routine: %+v", e)
 		case e.Type == "tool_completed" && e.Result.ToolName == "manage_routine":
 			var d struct {
 				RoutineID string `json:"routine_id"`
@@ -975,8 +973,8 @@ func TestHerRoutine(t *testing.T) {
 		}
 		return e.sentText(`Saved routine "Stretch"`)
 	})
-	if !asked || routine == "" {
-		t.Fatalf("asked to approve: %v; the routine made: %q", asked, routine)
+	if routine == "" {
+		t.Fatal("no routine made")
 	}
 
 	// About a minute later, with nobody asking: what the run found, as Her
@@ -1024,7 +1022,8 @@ func TestHerConsoleSettings(t *testing.T) {
 		// for new assistants, no instructions for all of them.
 		{"instructions.extra", "Answer in plain English.", false},
 		{"model", "openai/gpt-5", false},
-		{"permission_mode", "accept-edits", false},
+		// A setting her has no more (she runs actions without asking): not
+		// the console's either.
 		{"permission_mode", "bypass-permissions", false},
 		{"tools.bash", map[string]any{"pass_provider_keys": true}, false},
 		{"system_prompt_file", "/tmp/another-prompt.md", false},

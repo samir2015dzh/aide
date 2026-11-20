@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -207,8 +208,8 @@ func mustGlob(dir string) []string {
 
 // TestPushHerNotices: Her on the owner Mac's own machine tells a device
 // registered for "her" what the Mac app's notifications tell
-// (notices.ts herNotices): her reply, a question she asks and an approval
-// she waits for, one sealed notice each, which only the device opens. A
+// (notices.ts herNotices): her reply, a question she asks and a secure card
+// she waits on, one sealed notice each, which only the device opens. A
 // muted assistant tells nothing, nor does unmuting it, nor her starting
 // again with what she had.
 func TestPushHerNotices(t *testing.T) {
@@ -324,17 +325,22 @@ func TestPushHerNotices(t *testing.T) {
 	eventually(t, 2*time.Minute, "her running again", func() bool { return listedMachine(t, c, mac).GetHer().GetRunning() })
 	none("a notice for what her had before she started")
 
-	// An approval: asking before each command, she waits for the owner.
-	if _, err := c.SetHerAssistantMode(ctx, &localv1.SetHerAssistantModeRequest{MachineId: mac, BotId: bot.ID, PermissionMode: "manual"}); err != nil {
-		t.Fatal(err)
-	}
-	send("[[mock:bash:touch 批准.txt]] 建个文件")
-	one("approval", "touch 批准.txt")
+	// A secure card: what still waits for the owner, since she runs actions
+	// without asking. A connector to sign in to, her-mock's
+	// her-mcp-server with OAuth.
+	tracker := start(t, "tracker", nil, herMCPServer(t), "--http", "127.0.0.1:0", "--oauth", "--name", "tracker")
+	var address string
+	eventually(t, 20*time.Second, "the tracker's address", func() bool {
+		address = regexp.MustCompile(`http://\S+/mcp`).FindString(tracker.output())
+		return address != ""
+	})
+	send("[[mock:connect:tracker|" + address + "]] 接上我的 tracker")
+	one("approval", "这件事要用到它，请在卡片上确认。")
 
 	// The push service got none of it in the clear.
 	for _, f := range mustGlob(spool) {
 		raw, _ := os.ReadFile(f)
-		for _, s := range []string{"早上好", "静音", "先发给谁", "批准", bot.ID, mac} {
+		for _, s := range []string{"早上好", "静音", "先发给谁", "请在卡片上确认", bot.ID, mac} {
 			if strings.Contains(string(raw), s) {
 				t.Fatalf("%q in the push payload: %s", s, raw)
 			}

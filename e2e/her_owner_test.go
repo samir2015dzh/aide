@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	herv1 "github.com/hermeshai/hermesh/gen/go/hermesh/her/v1"
 	localv1 "github.com/hermeshai/hermesh/gen/go/hermesh/local/v1"
@@ -394,11 +396,14 @@ func TestHerOnThisMac(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("doc/open: %v", err)
 	}
-	// An assistant's mode, full access too, goes unsigned: the owner chose it.
-	for _, mode := range []string{"accept-edits", "bypass-permissions", "manual"} {
-		if _, err := c.SetHerAssistantMode(ctx, &localv1.SetHerAssistantModeRequest{MachineId: mac, BotId: bot.ID, PermissionMode: mode}); err != nil {
-			t.Fatalf("%s: %v", mode, err)
-		}
+	// Her has no assistant modes (she runs actions without asking): an older
+	// app's SetHerAssistantMode is a call this hermeshd doesn't have.
+	hc := &http.Client{Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return localipc.Dial(ctx, w.sock)
+	}}}
+	old := connect.NewClient[emptypb.Empty, emptypb.Empty](hc, "http://local/hermesh.local.v1.LocalService/SetHerAssistantMode")
+	if _, err := old.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{})); connect.CodeOf(err) != connect.CodeUnimplemented {
+		t.Fatalf("SetHerAssistantMode: %v", err)
 	}
 
 	// A connector started as a command, from the console, which can't sign:
