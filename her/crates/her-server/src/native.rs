@@ -968,6 +968,16 @@ impl NativeProtocol {
                 }
                 Err(err) => conn.send_error(Some(id), &err),
             },
+            method::BOTS_ROUTINE_SET_PATROL => match her_rpc::params::<her_protocol::bot::BotRoutineSetPatrolParams>(params) {
+                Ok(p) => {
+                    let (conn, id) = (conn.clone(), id.clone());
+                    tokio::spawn(async move {
+                        let result = server.bots_routine_set_patrol(&p.bot_id, &p.routine_id, p.patrol).await;
+                        conn.send(reply(&id, result.map(|()| json!({}))));
+                    });
+                }
+                Err(err) => conn.send_error(Some(id), &err),
+            },
             method::DOC_OPEN => match her_rpc::params::<her_protocol::doc::DocOpenParams>(params) {
                 Ok(p) => {
                     server.watch_docs(conn);

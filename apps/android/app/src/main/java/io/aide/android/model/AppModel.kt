@@ -29,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -152,8 +153,15 @@ class AppModel(private val context: Context) {
     }
 
     /** The world while in front or kept: the first message, then each change; again after an error. */
-    private suspend fun watch() {
-        val api = api ?: return
+    private suspend fun watch() = coroutineScope {
+        val api = api ?: return@coroutineScope
+        // Notices that fall due with nothing changing (a question held back for a desktop: LiveNotices).
+        launch {
+            while (true) {
+                delay(10_000)
+                if (_world.value.watched) notify(live.look(_world.value))
+            }
+        }
         while (true) {
             _active.first { it }
             try {
@@ -315,6 +323,12 @@ class AppModel(private val context: Context) {
             say(if (decline) "Told it to decide by itself" else "Answered; ${agentTitle(s.agent)} is working again")
             true
         } ?: false
+    }
+
+    /** The owner opened a session's page: every device hears of it through its machine (docs/session-states.md §7). */
+    suspend fun markSeen(s: Session) {
+        val api = api ?: return
+        runCatching { api.markSeen(s.sessionId) }.getOrNull()?.let { replace(it) }
     }
 
     suspend fun interrupt(s: Session) {

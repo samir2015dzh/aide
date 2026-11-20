@@ -2390,6 +2390,18 @@ func (o *Owner) RenameSession(ctx context.Context, id, title string) (*sessionv1
 	return o.written(id)(n.Session.RenameSession(ctx, &sessionv1.RenameSessionRequest{SessionId: id, Title: title}))
 }
 
+// MarkSessionSeen records on a session's machine what the owner has seen of it.
+func (o *Owner) MarkSessionSeen(ctx context.Context, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
+	if l := o.localSession(req.SessionId); l != nil {
+		return l.MarkSeen(ctx, req)
+	}
+	n, err := o.sessionMachine(ctx, req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	return o.written(req.SessionId)(n.Session.MarkSessionSeen(ctx, req))
+}
+
 // AnswerQuestion answers a session's question as the owner.
 func (o *Owner) AnswerQuestion(ctx context.Context, req *sessionv1.AnswerQuestionRequest) (*sessionv1.Session, error) {
 	if l := o.localSession(req.SessionId); l != nil {

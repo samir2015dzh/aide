@@ -565,6 +565,10 @@ pub struct RoutineSummary {
     /// The schedule in the user's words, as the bot wrote it.
     pub when: String,
     pub state: RoutineState,
+    /// A patrol: its runs only look, and what they would do comes back as suggestions
+    /// (docs/her-patrol.md).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub patrol: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub running: bool,
     /// RFC 3339. None when it is paused or finished.
@@ -675,6 +679,14 @@ pub struct BotRoutineSetEnabledParams {
     pub bot_id: String,
     pub routine_id: String,
     pub enabled: bool,
+}
+
+/// Parameters of `bots/routine_set_patrol`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotRoutineSetPatrolParams {
+    pub bot_id: String,
+    pub routine_id: String,
+    pub patrol: bool,
 }
 
 #[cfg(test)]

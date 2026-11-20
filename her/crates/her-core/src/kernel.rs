@@ -211,6 +211,8 @@ struct Launch {
     system: Arc<SystemCell>,
     /// A bot's main session: its memory (docs/her-memory.md §3).
     memory_dir: Option<PathBuf>,
+    /// A patrol run: its notes folder (docs/her-patrol.md).
+    patrol: Option<PathBuf>,
 }
 
 fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
@@ -307,6 +309,7 @@ fn launch(launch: Launch) -> (Kernel, Arc<Session>) {
         request_estimates: Mutex::new(Vec::new()),
         data_dir: crate::protected::canonical_data_dir(launch.home.root()),
         memory_dir: launch.memory_dir,
+        patrol: launch.patrol,
         locks: launch.locks,
         agents: launch.agents,
         sub_agent: launch.sub_agent,
@@ -430,6 +433,8 @@ pub(crate) struct ChildLaunch {
     pub(crate) locks: Arc<PathLocks>,
     /// The main session's browser and desktop settings, which the sub-agent follows.
     pub(crate) system: Arc<SystemCell>,
+    /// A patrol run: its notes folder (docs/her-patrol.md).
+    pub(crate) patrol: Option<PathBuf>,
 }
 
 /// Starts a sub-agent's session: an ordinary session with its own log.
@@ -472,6 +477,7 @@ pub(crate) fn start_child(mut child: ChildLaunch) -> Result<Kernel, KernelError>
         mcp: child.mcp,
         system: child.system,
         memory_dir: None,
+        patrol: child.patrol.as_deref().map(crate::protected::canonical_lossy),
     });
     // The main session has waited for the servers already: their tools are in from the start.
     session.refresh_mcp();
@@ -700,6 +706,7 @@ impl Kernel {
             mcp: mcp.clone(),
             system,
             memory_dir,
+            patrol: None,
         });
         if let Some(tree) = &agents {
             tree.bind_root(&session, kernel.internal.clone());
@@ -915,6 +922,7 @@ impl Kernel {
             mcp: mcp.clone(),
             system,
             memory_dir,
+            patrol: None,
         });
         if let Some(tree) = &agents {
             tree.bind_root(&session, kernel.internal.clone());

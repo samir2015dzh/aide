@@ -25,6 +25,7 @@ use her_tools::ToolCategory;
 use her_tools::ToolCtx;
 use her_tools::ToolDescription;
 use her_tools::ToolError;
+use her_tools::ToolKind;
 use her_tools::ToolOutput;
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -160,6 +161,10 @@ fn understand(args: Args, today: NaiveDate) -> Result<SearchRequest, ToolError> 
 impl Tool for WebSearch {
     fn spec(&self) -> &ToolSpec {
         &SPEC
+    }
+
+    fn kind(&self) -> ToolKind {
+        ToolKind::ReadOnly
     }
 
     fn guidelines(&self) -> &[&'static str] {

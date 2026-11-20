@@ -1060,6 +1060,13 @@ export class MockServer {
         this.routinesChanged(bot);
         return {};
       }
+      case "bots/routine_set_patrol": {
+        const q = p as P<"bots/routine_set_patrol">;
+        const { bot, routine } = this.routine(q.bot_id, q.routine_id);
+        routine.summary = { ...routine.summary, patrol: q.patrol || undefined };
+        this.routinesChanged(bot);
+        return {};
+      }
       case "bots/routine_run_now": {
         const q = p as P<"bots/routine_run_now">;
         const { bot, routine } = this.routine(q.bot_id, q.routine_id);

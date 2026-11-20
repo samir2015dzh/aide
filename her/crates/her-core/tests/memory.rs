@@ -449,6 +449,7 @@ fn a_run() -> RoutineRun {
         now: "Thu 2026-11-05 09:00".into(),
         late: false,
         report_failure: true,
+        patrol: None,
     }
 }
 

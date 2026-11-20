@@ -90,6 +90,7 @@ mod tests {
             env: Arc::new(LocalEnvironment::new(root.to_path_buf())),
             data_dir: root.join(".her-data"),
             memory_dir: None,
+            patrol: None,
             browser: Arc::new(policy),
             desktop: Default::default(),
         }

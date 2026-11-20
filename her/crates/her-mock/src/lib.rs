@@ -51,6 +51,8 @@
 //! | `note_session:SECONDS` | the same in a session: `spawn_agent`, `交给子智能体了。`, then `回复：<the latest message>` for whatever comes next |
 //! | `note:SECONDS:TEXT` | half a second later, a sub-agent's `send_message` of TEXT to `main`, then a bash call running `sleep SECONDS`, then `写完了。` |
 //! | `routine:NAME\|SCHEDULE\|RUN` | a bot's `manage_routine` create, with RUN as the routine's prompt in brackets (`[[mock:RUN]]`); then `转告：<its result>` sent with `end_turn`, and for each report that wakes it, what the run found, sent with `end_turn` |
+//! | `patrol:NAME\|SCHEDULE\|RUN` | as `routine`, with the routine made a patrol (docs/her-patrol.md) |
+//! | `patrol_run:SERVER` | a patrol's run that tries every way to act, one call a step: `read` of `../bot.json`, `bash` touching `patrol-bash.txt`, `write` of `patrol-write.txt`, `call_tool` on `write` of `patrol-call.txt`, `tool_search` for `mcp__SERVER__echo`, a direct call of it and one through `call_tool`; then a `write` of `notes.md` in the notes folder its brief names, and `巡查完毕。` |
 //! | `write:PATH\|TEXT` | a `write` of TEXT to PATH, then `write done` |
 //! | `routine_file:NAME\|SCHEDULE\|FILE` | as `routine`, with a run that writes FILE in its folder (`write`), and each report that wakes it passed on with FILE attached, as a model sends what a routine made |
 //! | `connect:NAME[\|URL]` | Her's `call_tool` on `connector_connect` (`name` NAME, `url` URL); then `send_to_user` of the card it prepared (`type` card); when how the card ended wakes her: if it is done, `call_tool` on the connector's `echo` (`mcp__NAME__echo`); then `转告：<its note>`, with what `echo` said on a line of its own, sent with `end_turn` |
@@ -947,14 +949,16 @@ fn plan(shared: &Shared, messages: &[Value], name: &str, arg: &str, prompt: &str
             }
         },
         // A bot that makes a routine, then passes on what comes back (routine-design §2.3).
-        "routine" => match step {
+        "routine" | "patrol" => match step {
             0 => {
+                let patrol = name == "patrol";
                 let mut parts = arg.splitn(3, '|');
                 let (name, schedule, run) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""), parts.next().unwrap_or(""));
-                Plan::Step(Step::calls(vec![(
-                    "manage_routine",
-                    json!({ "action": "create", "name": name, "prompt": format!("[[mock:{run}]]"), "schedule": schedule, "when": "说好的时间" }),
-                )]))
+                let mut args = json!({ "action": "create", "name": name, "prompt": format!("[[mock:{run}]]"), "schedule": schedule, "when": "说好的时间" });
+                if patrol {
+                    args["patrol"] = json!(true);
+                }
+                Plan::Step(Step::calls(vec![("manage_routine", args)]))
             }
             _ => {
                 // What came last, but for what the kernel adds to keep the model up to date. Of a
@@ -964,6 +968,26 @@ fn plan(shared: &Shared, messages: &[Value], name: &str, arg: &str, prompt: &str
                 Plan::Step(Step::calls(vec![("send_to_user", json!({ "text": text, "end_turn": true }))]))
             }
         },
+        // A patrol's run, trying to act every way there is (docs/her-patrol.md).
+        "patrol_run" => {
+            let echo = format!("mcp__{arg}__echo");
+            let call = |name: &str, args: Value| Plan::Step(Step::calls(vec![(name, args)]));
+            match step {
+                0 => call("read", json!({ "path": "../bot.json" })),
+                1 => call("bash", json!({ "command": "touch patrol-bash.txt" })),
+                2 => call("write", json!({ "path": "patrol-write.txt", "content": "x\n" })),
+                3 => call("call_tool", json!({ "name": "write", "arguments": { "path": "patrol-call.txt", "content": "x\n" } })),
+                4 => call("tool_search", json!({ "query": echo })),
+                5 => call(&echo, json!({ "text": "直接" })),
+                6 => call("call_tool", json!({ "name": echo, "arguments": { "text": "转一道" } })),
+                7 => {
+                    let brief = messages.iter().map(content_text).find(|text| text.contains("[[mock:patrol_run")).unwrap_or_default();
+                    let notes = brief.split("your notes, in `").nth(1).and_then(|rest| rest.split('`').next()).unwrap_or("notes");
+                    call("write", json!({ "path": format!("{notes}/notes.md"), "content": "- 建议：清理 patrol-bash.txt 之类的临时文件。\n" }))
+                }
+                _ => Plan::Step(Step::text("巡查完毕。".to_string())),
+            }
+        }
         // A routine that makes a file each run, which the bot sends on (docs/her-deliverables.md §4.11).
         "routine_file" => match step {
             0 => {

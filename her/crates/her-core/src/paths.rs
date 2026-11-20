@@ -170,6 +170,11 @@ impl HerHome {
         self.bot_dir(id).join(crate::confirm_rules::FILE)
     }
 
+    /// A patrol routine's notes: the one place its runs write (docs/her-patrol.md §3).
+    pub fn bot_patrol_dir(&self, id: &str, routine: &str) -> PathBuf {
+        self.bot_dir(id).join("patrol").join(routine)
+    }
+
     /// Whether a session in `cwd` (canonical) has no project: one started without a project,
     /// or a bot's. Neither looks for a project around its folder.
     pub fn has_no_project(&self, cwd: &Path) -> bool {

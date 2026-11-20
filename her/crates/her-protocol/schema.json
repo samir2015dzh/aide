@@ -65,6 +65,9 @@
       "$ref": "#/definitions/BotRoutineSetEnabledParams"
     },
     {
+      "$ref": "#/definitions/BotRoutineSetPatrolParams"
+    },
+    {
       "$ref": "#/definitions/BotUpdateParams"
     },
     {
@@ -1924,6 +1927,26 @@
       "required": [
         "bot_id",
         "enabled",
+        "routine_id"
+      ],
+      "type": "object"
+    },
+    "BotRoutineSetPatrolParams": {
+      "description": "Parameters of `bots/routine_set_patrol`.",
+      "properties": {
+        "bot_id": {
+          "type": "string"
+        },
+        "patrol": {
+          "type": "boolean"
+        },
+        "routine_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bot_id",
+        "patrol",
         "routine_id"
       ],
       "type": "object"
@@ -16888,6 +16911,10 @@
             "null"
           ]
         },
+        "patrol": {
+          "description": "A patrol: its runs only look, and what they would do comes back as suggestions (docs/her-patrol.md).",
+          "type": "boolean"
+        },
         "running": {
           "type": "boolean"
         },
@@ -21290,6 +21317,10 @@
       "params": "BotRoutineSetEnabledParams",
       "result": "Empty"
     },
+    "bots/routine_set_patrol": {
+      "params": "BotRoutineSetPatrolParams",
+      "result": "Empty"
+    },
     "bots/routine_stop": {
       "params": "BotRoutineParams",
       "result": "Empty"
@@ -21873,6 +21904,7 @@
       "bots/routine_run_now": "experimental",
       "bots/routine_runs": "experimental",
       "bots/routine_set_enabled": "experimental",
+      "bots/routine_set_patrol": "experimental",
       "bots/routine_stop": "experimental",
       "bots/subscribe": "experimental",
       "bots/unread": "experimental",

@@ -54,6 +54,8 @@ pub struct NewRoutine {
     pub prompt: String,
     pub schedule: String,
     pub when: String,
+    /// See [`RoutineRun::patrol`].
+    pub patrol: bool,
 }
 
 /// The fields to change.
@@ -63,6 +65,7 @@ pub struct RoutineChange {
     pub prompt: Option<String>,
     pub schedule: Option<String>,
     pub when: Option<String>,
+    pub patrol: Option<bool>,
 }
 
 /// A routine as it was left.
@@ -85,6 +88,7 @@ pub struct RoutineDetail {
     pub prompt: String,
     pub schedule: String,
     pub state: RoutineState,
+    pub patrol: bool,
     /// Newest first.
     pub recent: Vec<RecentRun>,
 }
@@ -139,6 +143,9 @@ pub struct RoutineRun {
     pub late: bool,
     /// A failure goes to the bot: the first of a streak does (routine-design D-423).
     pub report_failure: bool,
+    /// A patrol (docs/her-patrol.md): the run only looks, and writes nothing but its notes, in
+    /// this folder.
+    pub patrol: Option<PathBuf>,
 }
 
 /// What a run came to.
@@ -251,6 +258,9 @@ struct ManageArgs {
     /// The schedule as the user would say it, in their language. The user sees this. Required on create and whenever schedule changes.
     #[serde(default)]
     when: Option<String>,
+    /// A patrol: each run only looks for problems and writes nothing but its own notes; what it would do comes back to you as suggestions for the user. For when the user wants things checked but not touched.
+    #[serde(default)]
+    patrol: Option<bool>,
 }
 
 /// A field as kept: trimmed, and absent when empty.
@@ -301,8 +311,9 @@ fn detail_text(detail: &RoutineDetail) -> String {
         RoutineState::Paused => "paused",
         RoutineState::Finished => "finished",
     };
+    let patrol = if detail.patrol { ", a patrol: it only looks" } else { "" };
     let mut text = format!(
-        "Routine \"{}\" (id {}), {state}.\nWhen: {}\nSchedule: {}\n",
+        "Routine \"{}\" (id {}), {state}{patrol}.\nWhen: {}\nSchedule: {}\n",
         saved.name, saved.id, saved.when, detail.schedule
     );
     if !saved.upcoming.is_empty() {
@@ -371,6 +382,7 @@ impl TypedTool for ManageRoutine {
                 prompt: required(args.prompt, "prompt", action)?,
                 schedule: required(args.schedule, "schedule", action)?,
                 when: required(args.when, "when", action)?,
+                patrol: args.patrol.unwrap_or(false),
             };
             let saved = host.create(bot, new).await.map_err(ToolError::Failed)?;
             return Ok(ToolOutput::text(saved_line(&saved)).with_details(details(action, &saved)));
@@ -388,9 +400,10 @@ impl TypedTool for ManageRoutine {
                     prompt: given(args.prompt),
                     schedule: given(args.schedule),
                     when: given(args.when),
+                    patrol: args.patrol,
                 };
                 if change == RoutineChange::default() {
-                    return Err(ToolError::InvalidArgs("update needs at least one of name, prompt, schedule, when".into()));
+                    return Err(ToolError::InvalidArgs("update needs at least one of name, prompt, schedule, when, patrol".into()));
                 }
                 if change.schedule.is_some() && change.when.is_none() {
                     return Err(ToolError::InvalidArgs("when is required whenever schedule changes".into()));
@@ -495,6 +508,7 @@ mod tests {
             prompt: "Check the price.\n".into(),
             schedule: "0 10-16 * * 1-5".into(),
             state: RoutineState::Active,
+            patrol: false,
             recent: vec![
                 RecentRun { at: "Wed Nov 4 16:00".into(), outcome: Some(RoutineOutcome::Quiet), text: Some("412".into()) },
                 RecentRun { at: "Wed Nov 4 15:00".into(), outcome: Some(RoutineOutcome::Skipped), text: None },

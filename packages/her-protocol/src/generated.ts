@@ -318,6 +318,13 @@ export type BotRoutineSetEnabledParams = {
   routine_id: string;
 };
 
+/** Parameters of `bots/routine_set_patrol`. */
+export type BotRoutineSetPatrolParams = {
+  bot_id: string;
+  patrol: boolean;
+  routine_id: string;
+};
+
 export type BotSummary = {
   /** Sub-agents at work. */
   agents_working?: number;
@@ -3897,6 +3904,8 @@ export type RoutineSummary = {
   name: string;
   /** RFC 3339. None when it is paused or finished. */
   next_run?: string | null;
+  /** A patrol: its runs only look, and what they would do comes back as suggestions (docs/her-patrol.md). */
+  patrol?: boolean;
   running?: boolean;
   state: RoutineState;
   /** The schedule in the user's words, as the bot wrote it. */
@@ -4970,6 +4979,7 @@ export interface Methods {
   "bots/routine_run_now": [BotRoutineParams, Empty];
   "bots/routine_runs": [BotRoutineRunsParams, BotRoutineRunsResult];
   "bots/routine_set_enabled": [BotRoutineSetEnabledParams, Empty];
+  "bots/routine_set_patrol": [BotRoutineSetPatrolParams, Empty];
   "bots/routine_stop": [BotRoutineParams, Empty];
   "bots/subscribe": [Record<string, never>, BotsResult];
   "bots/unread": [BotIdParams, Empty];

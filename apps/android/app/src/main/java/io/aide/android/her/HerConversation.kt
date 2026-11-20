@@ -51,11 +51,11 @@ data class HerBot(
 }
 
 /** A scheduled task of an assistant's (docs/kernel/routine-design.md §8), read-only here. */
-data class HerRoutine(val id: String, val name: String, val schedule: String, val state: String, val nextRun: String?, val running: Boolean, val lastOutcome: String?) {
+data class HerRoutine(val id: String, val name: String, val schedule: String, val state: String, val nextRun: String?, val running: Boolean, val lastOutcome: String?, val patrol: Boolean = false) {
     companion object {
         fun parse(j: JsonElement?): HerRoutine? {
             val id = j["id"].str ?: return null
-            return HerRoutine(id, j["name"].str ?: "", j["when"].str ?: "", j["state"].str ?: "active", j["next_run"].str, j["running"].bool ?: false, j["last_run"]["outcome"].str)
+            return HerRoutine(id, j["name"].str ?: "", j["when"].str ?: "", j["state"].str ?: "active", j["next_run"].str, j["running"].bool ?: false, j["last_run"]["outcome"].str, j["patrol"].bool ?: false)
         }
     }
 }

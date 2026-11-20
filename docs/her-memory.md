@@ -71,6 +71,8 @@ starts" does not carry over as it is. §4.2 is what replaces it.
   it, their writes are outside their workspace and inside her's data
   directory; the tool policy refuses their writes to a bot's memory (§6).
 - Work in the folder ("tidy up my files") cannot sweep the notes away.
+- A patrol routine's notes are beside them too, in `patrol/<routine>/`, the
+  one place its runs write ([her-patrol.md](her-patrol.md)).
 
 What follows from the place, with no code of its own:
 

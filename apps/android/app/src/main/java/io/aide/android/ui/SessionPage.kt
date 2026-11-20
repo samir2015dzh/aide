@@ -64,6 +64,7 @@ import io.aide.android.model.choose
 import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
 import io.aide.android.model.lostSpanText
+import io.aide.android.model.openedNews
 import kotlinx.coroutines.launch
 
 /** A session's whole conversation, live, with the agent's question to answer and a way to interrupt it. */
@@ -81,6 +82,12 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
     val items by feed.items.collectAsState()
     val loading by feed.loading.collectAsState()
     val list = rememberLazyListState()
+    // In front of the owner: what is new here is seen, on every device.
+    val news = s?.let(::openedNews).orEmpty()
+    val front by model.foreground.collectAsState()
+    LaunchedEffect(id, news, front) {
+        if (front && news.isNotEmpty()) world.sessions[id]?.let { model.markSeen(it) }
+    }
     LaunchedEffect(items.size, items.lastOrNull()) {
         // Follow the end while it is in view (or on first load).
         val last = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1

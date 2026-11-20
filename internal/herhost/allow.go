@@ -19,7 +19,7 @@ func init() {
 		// The Her entry: assistants, their conversations, memory, routines and files.
 		"bots/subscribe", "bots/unsubscribe", "bots/open", "bots/read", "bots/unread", "bots/create", "bots/update",
 		"bots/avatar", "bots/clear", "bots/delete", "bots/memory", "bots/memory_clear", "bots/routine", "bots/routine_delete", "bots/routine_run",
-		"bots/routine_run_now", "bots/routine_runs", "bots/routine_set_enabled", "bots/routine_stop",
+		"bots/routine_run_now", "bots/routine_runs", "bots/routine_set_enabled", "bots/routine_set_patrol", "bots/routine_stop",
 		// The owner's confirmation rules: listed and deleted in the apps, added in the chat (docs/her-confirm-rules.md).
 		"bots/confirm_rules", "bots/confirm_rule_delete",
 		"session/op", "session/history", "session/detach", "models/list", "files/list", "files/read",
