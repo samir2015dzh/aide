@@ -43,7 +43,7 @@ func metric(t *testing.T, addr, prefix string) int {
 }
 
 // TestOwnerReplica (docs/state-sync.md, step 1): with the relay 300 ms away,
-// the owner's app lists machines, agents, pairing requests, devices,
+// the owner's app lists machines, agents, devices,
 // projects and the sessions of this Mac and of another machine in a few
 // milliseconds, from hermeshd's replica; three windows polling as the app
 // did cost the relay no call (hermeshd follows WatchOwner); and what changes
@@ -112,7 +112,7 @@ func TestOwnerReplica(t *testing.T) {
 		}
 	}
 
-	// Three windows polling as the app's screens did (pairing requests
+	// Three windows polling as the app's screens did (the sessions
 	// every second, the rest every three) cost the relay nothing: hermeshd
 	// follows its WatchOwner.
 	const span = 30 * time.Second
@@ -122,9 +122,9 @@ func TestOwnerReplica(t *testing.T) {
 	for range 3 {
 		wg.Go(func() {
 			for i := 0; pollCtx.Err() == nil; i++ {
-				calls["ListPairingRequests"]()
+				calls["ListSessions"]()
 				if i%3 == 0 {
-					for _, name := range []string{"GetStatus", "ListMachines", "ListClients", "ListProjects", "ListDevices", "ListSessions"} {
+					for _, name := range []string{"GetStatus", "ListMachines", "ListClients", "ListProjects", "ListDevices"} {
 						calls[name]()
 					}
 				}
@@ -322,7 +322,7 @@ func (s *screen) has(f func(*screen) bool) func() bool {
 // TestOwnerWatch (docs/state-sync.md, step 2): a screen that follows
 // LocalService.Watch gets the owner's world at once, and then each change
 // without asking: a project added, a session started on another machine
-// and its turn ending, a pairing request (the relay pushes it), that
+// and its turn ending, an agent logging in, that
 // machine going offline (its sessions stay, the machine marked unreachable)
 // and coming back. Nothing comes while nothing changes.
 func TestOwnerWatch(t *testing.T) {

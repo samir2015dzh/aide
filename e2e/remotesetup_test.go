@@ -63,7 +63,7 @@ func TestRemoteMachineSetup(t *testing.T) {
 	if !strings.Contains(doc.stdout, `logged in    yes, as "vps-1"`) || !strings.Contains(doc.stdout, "relay        connected") || !strings.Contains(doc.stdout, "claude") {
 		t.Fatalf("doctor while it runs: %+v", doc)
 	}
-	if st := run(t, vpsEnv, 60*time.Second, daemon, "status", "--data-dir", data); st.code != 0 || !strings.Contains(st.stdout, `paired as "vps-1"`) || !strings.Contains(st.stdout, "connected") {
+	if st := run(t, vpsEnv, 60*time.Second, daemon, "status", "--data-dir", data); st.code != 0 || !strings.Contains(st.stdout, `logged in as "vps-1"`) || !strings.Contains(st.stdout, "connected") {
 		t.Fatalf("status while it runs: %+v", st)
 	}
 
