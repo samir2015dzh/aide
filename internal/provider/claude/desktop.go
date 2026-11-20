@@ -42,12 +42,13 @@ import (
 // desktopIndexes are where the desktop app may keep its index:
 // <userData>/claude-code-sessions/<account>/<organization>/local_<id>.json,
 // userData being Claude (or Claude-3p) under ~/Library/Application Support
-// on macOS, and on Windows as windowsUserData says.
+// on macOS; on Windows, a claude-code-sessions folder found as its
+// claude-code is (beside it, at most two folders down one of windowsRoots).
 func desktopIndexes(home, appData, localAppData string) []string {
-	var dirs []string
-	for _, d := range append([]string{filepath.Join(home, "Library", "Application Support", "Claude"),
-		filepath.Join(home, "Library", "Application Support", "Claude-3p")}, windowsUserData(appData, localAppData)...) {
-		dirs = append(dirs, filepath.Join(d, "claude-code-sessions"))
+	dirs := []string{filepath.Join(home, "Library", "Application Support", "Claude", "claude-code-sessions"),
+		filepath.Join(home, "Library", "Application Support", "Claude-3p", "claude-code-sessions")}
+	for _, root := range windowsRoots(appData, localAppData) {
+		dirs = append(dirs, foldersNamed(root, "claude-code-sessions")...)
 	}
 	return dirs
 }

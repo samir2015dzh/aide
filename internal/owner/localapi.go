@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 
@@ -15,6 +17,8 @@ import (
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/localipc"
+	"github.com/samir2015dzh/aide/internal/machine"
+	"github.com/samir2015dzh/aide/internal/resident"
 )
 
 // ServeLocal serves LocalService on a local endpoint that only the same
@@ -44,7 +48,86 @@ func (d *Device) ServeLocal(ctx context.Context, sockPath string) error {
 func (d *Device) LocalHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle(localv1connect.NewLocalServiceHandler(&localService{d: d}, connect.WithInterceptors(connect.UnaryInterceptorFunc(d.kickAfterWrites))))
-	return mux
+	return viewers(mux)
+}
+
+// ViewerHeader marks the calls of a window of the app (the desktop app's
+// gateway sets it; its main process's own Watch, for notifications and the
+// notification area, has none): while one holds a stream open, aided does
+// not save power (internal/resident).
+const ViewerHeader = "Aide-Viewer"
+
+// AppHeader is the desktop app's main process's pid, on its own Watch: when
+// power saving starts, the app's processes give back their idle memory with
+// aided's (internal/resident).
+const AppHeader = "Aide-App-Pid"
+
+func viewers(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if pid, err := strconv.Atoi(r.Header.Get(AppHeader)); err == nil {
+			defer resident.SetApp(pid)()
+		}
+		if r.Header.Get(ViewerHeader) != "" {
+			defer resident.Viewing()()
+			defer windowViewing()()
+			r = r.WithContext(context.WithValue(r.Context(), viewerKey{}, true))
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+type viewerKey struct{}
+
+// fromWindow says whether a call is a window's (ViewerHeader).
+func fromWindow(ctx context.Context) bool { return ctx.Value(viewerKey{}) != nil }
+
+// windows counts the calls of windows in flight; arrived is closed when the
+// first one comes (docs/resident.md §4: what runs only for a window looking
+// runs at once, then at its pace).
+var windows struct {
+	mu      sync.Mutex
+	n       int
+	arrived chan struct{}
+}
+
+func windowViewing() (done func()) {
+	windows.mu.Lock()
+	windows.n++
+	if windows.n == 1 && windows.arrived != nil {
+		close(windows.arrived)
+		windows.arrived = nil
+	}
+	windows.mu.Unlock()
+	return func() {
+		windows.mu.Lock()
+		windows.n--
+		windows.mu.Unlock()
+	}
+}
+
+// windowLooking says whether a window holds a call open now, and gives a
+// channel closed once one does, when none does.
+func windowLooking() (bool, <-chan struct{}) {
+	windows.mu.Lock()
+	defer windows.mu.Unlock()
+	if windows.n > 0 {
+		return true, nil
+	}
+	if windows.arrived == nil {
+		windows.arrived = make(chan struct{})
+	}
+	return false, windows.arrived
+}
+
+// LocalMachine is this device's own machine while it runs, else nil.
+func (d *Device) LocalMachine() *machine.Machine {
+	o := d.owner()
+	if o == nil {
+		return nil
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.localMachine
 }
 
 // kickAfterWrites tells the screens (Watch) to look again after a call that

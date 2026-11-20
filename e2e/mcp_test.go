@@ -228,6 +228,11 @@ func TestMCPGateway(t *testing.T) {
 	if doc.OK || doc.Error.Kind != "wait_timeout" || json.Unmarshal(doc.raw, &started) != nil || started.Session.SessionID != id {
 		t.Fatalf("message_send wait timeout: %s", doc.raw)
 	}
+	// session_wait picks the wait up again, read-only, without resending.
+	doc = callTool(t, session, "session_wait", map[string]any{"session_id": id, "timeout": "30s"})
+	if !doc.OK || json.Unmarshal(doc.raw, &started) != nil || started.Session.Status != "idle" || !strings.Contains(started.Session.Result, "finished after timeout") {
+		t.Fatalf("session_wait after wait_timeout: %s", doc.raw)
+	}
 	eventually(t, 15*time.Second, "poll the turn after wait_timeout", func() bool {
 		doc = callTool(t, session, "session_get", map[string]any{"session_id": id})
 		return doc.OK && json.Unmarshal(doc.raw, &started) == nil && started.Session.Status == "idle" && strings.Contains(started.Session.Result, "finished after timeout")

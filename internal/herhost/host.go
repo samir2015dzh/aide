@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -59,6 +60,7 @@ type Host struct {
 	mon   *conn              // the monitor's connection, while her answers
 	err   string             // why her is not running although Her is on
 	off   bool               // turned off (Off), so what her was doing ends with errOff
+	pid   atomic.Int64       // her's process while it runs
 	conns map[string]*conn   // the connections Open streams and console event streams hold
 }
 
@@ -143,6 +145,10 @@ func (h *Host) Status() *machinev1.HerStatus {
 	return st
 }
 
+// Pid is her's process while she runs, else 0 (power saving throttles
+// her with aided, internal/resident).
+func (h *Host) Pid() int { return int(h.pid.Load()) }
+
 // Busy counts her's assistants at work (a turn, sub-agents, a routine's
 // run), as last seen: restarting her would stop their work.
 func (h *Host) Busy() int {
@@ -205,6 +211,8 @@ func (h *Host) serve(ctx context.Context) error {
 		return fmt.Errorf("her could not start: %w", err)
 	}
 	go p.Lines(func([]byte) {})
+	h.pid.Store(int64(p.Pgid()))
+	defer h.pid.Store(0)
 	defer func() {
 		select {
 		case <-p.Done():

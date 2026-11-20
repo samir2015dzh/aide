@@ -41,6 +41,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 	"github.com/samir2015dzh/aide/internal/provider/codex"
 	"github.com/samir2015dzh/aide/internal/provider/fake"
+	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/internal/service"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/internal/spawn"
@@ -184,6 +185,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 			defer stop()
 			openLogFile(dataDir)
 			log := logger(verbose)
+			resident.SetMemoryLimit(log)
 			if n := rlimit.RaiseNoFile(); n > 0 { // Windows has no such limit
 				log.Info("open file limit", "soft", n)
 			}
@@ -234,11 +236,28 @@ A computer that runs no coding agents can approve instead: aided device.`}
 					}
 				}()
 			}
+			// Power saving while nothing runs and no window looks (Windows, docs/resident.md §2).
+			savePower := func(m func() *machine.Machine) {
+				resident.SetGroupPids(provider.GroupPids)
+				saver := resident.NewSaver(log, func() int {
+					if n := m(); n != nil {
+						return n.Busy()
+					}
+					return 0
+				}, func() int {
+					if n := m(); n != nil {
+						return n.HerPid()
+					}
+					return 0
+				})
+				go saver.Run(ctx)
+			}
 			if ownerMode {
 				o, err := owner.Open(owner.Config{DataDir: filepath.Join(dataDir, "owner"), Logger: log, MachineConfig: machineConfig(), NoLocalMachine: noMachine})
 				if err != nil {
 					return err
 				}
+				savePower(o.LocalMachine)
 				if socket == "" {
 					socket = paths.LocalAPI(dataDir)
 				}
@@ -255,6 +274,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 				return err
 			}
 			autoUpdate(n.Busy)
+			savePower(func() *machine.Machine { return n })
 			err = n.Run(ctx)
 			n.Close()
 			if errors.Is(err, machine.ErrErased) {
@@ -488,6 +508,9 @@ installs the background service.`,
 			}
 			ok = serviceLine(running) && ok
 			fmt.Printf("her          %s\n", herLine(c.Her, running))
+			if c.Power != nil && c.Power.Supported {
+				fmt.Printf("power        %s\n", powerLine(c.Power))
+			}
 			switch {
 			case running && c.Connected:
 				fmt.Printf("relay        connected (%s)\n", c.RelayURL)
@@ -535,6 +558,9 @@ installs the background service.`,
 			serviceLine(running)
 			fmt.Printf("updates      %s\n", update.Line(dataDir))
 			fmt.Printf("her          %s\n", herLine(c.Her, running))
+			if c.Power != nil && c.Power.Supported {
+				fmt.Printf("power        %s\n", powerLine(c.Power))
+			}
 			fmt.Println()
 			list, _, _ := projects.Find([]string{"list"})
 			return list.RunE(cmd, nil)
@@ -667,6 +693,21 @@ Aide also updates itself when no session is running, unless
 	root.AddCommand(run, pair, doctor, status, audit, svc, upd, helper, messageMCP, userPath, projects, rootsCommand(&dataDir, openMachine),
 		&cobra.Command{Use: "version", Short: "Print the version", Args: cobra.NoArgs, Run: func(*cobra.Command, []string) { fmt.Println(machine.Version) }})
 	return root
+}
+
+// powerLine says whether the running aided saves power, and why (docs/resident.md §2.3).
+func powerLine(p *resident.State) string {
+	line := "normal (" + p.Reason + ")"
+	if p.Saving {
+		line = "saving: throttled, " + p.Priority + " priority (" + p.Reason + ")"
+	}
+	if !p.Since.IsZero() {
+		line += " since " + p.Since.Local().Format("15:04:05")
+	}
+	if p.Error != "" {
+		line += " · error: " + p.Error
+	}
+	return line
 }
 
 // serviceLine prints the background service's state (byHand: an aided

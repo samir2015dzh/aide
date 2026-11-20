@@ -19,6 +19,9 @@ import (
 // whole group can be ended at once.
 func setGroup(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
 
+// GroupPids is Windows' (power saving, internal/resident).
+func GroupPids(pgid int) []int { return nil }
+
 // joinGroup has nothing to do: the group exists from the start.
 func joinGroup(cmd *exec.Cmd) error { return nil }
 

@@ -26,6 +26,8 @@ test("what to try follows the line and what is wrong", () => {
   assert.deepEqual(fixes("deepseek", "missing"), ["deepseek.fixInstall", "deepseek.fixWhere", "fix.checkAgain"]);
   assert.deepEqual(fixes("codex", "signIn"), ["codex.fixSignIn", "fix.checkAgain"]);
   assert.deepEqual(fixes("deepseek", "broken"), ["fix.broken", "fix.checkAgain"]);
+  // The DSH app found where Windows says, its dsh not in it: what to do about that, not how to install DSH.
+  assert.deepEqual(fixes("deepseek", "appOnly"), ["deepseek.fixAppOnly", "fix.checkAgain"]);
   assert.deepEqual(fixes("custom", "missing"), ["fix.customMissing", "fix.checkAgain"]);
   assert.deepEqual(fixes("codex", "ready"), []);
 });

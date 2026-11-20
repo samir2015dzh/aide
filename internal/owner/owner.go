@@ -77,6 +77,7 @@ type Owner struct {
 	dialing    *relayDial   // the dial to the relay under way, if any
 	kept       *peer.Client // client, kept over a pause: not known to work yet
 	mcpURL     string       // the relay's own MCP address, with its key (GetMCP)
+	mcpOld     bool         // the relay is older than GetMCP
 	pendingMu  sync.Mutex   // pending names (pendingNames)
 	cardsMu    sync.Mutex   // one card sync at a time (cards.go)
 	removed    bool         // the relay no longer counts this device as the owner's
@@ -282,6 +283,7 @@ func (o *Owner) stayConnected(ctx context.Context) {
 				done = c.Done()
 				warned = false
 				o.log.Info("owner: relay connected", "after", time.Since(started).Round(time.Millisecond))
+				o.kickScreens()
 			} else if !warned && ctx.Err() == nil {
 				warned = true
 				o.log.Warn("owner: relay unreachable", "err", err, "retry_in", backoff)
@@ -296,6 +298,7 @@ func (o *Owner) stayConnected(ctx context.Context) {
 			case <-done:
 			}
 			o.log.Info("owner: relay disconnected")
+			o.kickScreens()
 			err := c.Refused()
 			if err == nil {
 				backoff = time.Second
@@ -311,6 +314,13 @@ func (o *Owner) stayConnected(ctx context.Context) {
 			backoff = min(backoff*2, 10*time.Second)
 		}
 	}
+}
+
+// kickScreens has the screens look again now (the status changed).
+func (o *Owner) kickScreens() {
+	o.rep.mu.Lock()
+	o.rep.kickLocked()
+	o.rep.mu.Unlock()
 }
 
 func (o *Owner) requireInit() error {
@@ -625,13 +635,27 @@ func (o *Owner) fetchMCP() {
 	if err != nil {
 		return
 	}
-	res, err := ctl.GetMCP(ctx, &relayv1.GetMCPRequest{})
-	if err != nil { // a relay older than GetMCP
+	url, old, ok := mcpAnswer(ctl.GetMCP(ctx, &relayv1.GetMCPRequest{}))
+	if !ok {
 		return
 	}
 	o.mu.Lock()
-	o.mcpURL = res.Url
+	o.mcpURL, o.mcpOld = url, old
 	o.mu.Unlock()
+}
+
+// mcpAnswer is what GetMCP's answer says: the relay's MCP address ("" when
+// its MCP is off), or that the relay is older than GetMCP (it does not know
+// the call); not ok when it did not answer (asked again at the next
+// connection).
+func mcpAnswer(res *relayv1.GetMCPResponse, err error) (url string, older, ok bool) {
+	switch {
+	case err == nil:
+		return res.Url, false, true
+	case connect.CodeOf(err) == connect.CodeUnimplemented:
+		return "", true, true
+	}
+	return "", false, false
 }
 
 func (o *Owner) control(ctx context.Context) (relayv1connect.OwnerControlServiceClient, *peer.Client, error) {
@@ -674,7 +698,7 @@ func (o *Owner) ownerStatus() *localv1.GetStatusResponse {
 		st.LocalMachineEnabled, st.LocalMachineId, st.LocalMachineName = true, o.localMachine.MachineID(), o.localMachine.Name()
 	}
 	if o.ownerID != "" {
-		st.McpUrl = o.mcpURL
+		st.McpUrl, st.RelayOlderThanMcp = o.mcpURL, o.mcpOld
 	}
 	if o.rootPub != nil && o.ownerID != "" {
 		st.DeviceKeyId = identity.KeyID(o.rootPub)
@@ -1046,9 +1070,12 @@ func (o *Owner) setPendingName(machineID, name string) {
 }
 
 // namePending names the machines approved under another name than the one
-// they asked with, once they are online (run in the background).
+// they asked with, once they are online (run in the background). Nothing
+// asks for that since approvals went (docs/accounts.md): it names what an
+// older version left pending, and stops once nothing is, instead of
+// reading the store every 3 s for good (docs/resident.md §4).
 func (o *Owner) namePending(ctx context.Context) {
-	for {
+	for len(o.pendingNames()) > 0 {
 		select {
 		case <-ctx.Done():
 			return

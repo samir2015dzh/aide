@@ -26,7 +26,8 @@ export async function forward(req: Request, apiPath: string, socket: string, cor
   const method = apiPath.slice(apiPath.lastIndexOf("/") + 1);
   calls.set(method, (calls.get(method) ?? 0) + 1);
   const body = Buffer.from(await req.arrayBuffer());
-  const headers: Record<string, string> = { "content-length": String(body.length) };
+  // A window's call: while one holds a stream open, aided does not save power (internal/owner ViewerHeader).
+  const headers: Record<string, string> = { "content-length": String(body.length), "aide-viewer": "window" };
   for (const h of forwardedHeaders) {
     const v = req.headers.get(h);
     if (v) headers[h] = v;

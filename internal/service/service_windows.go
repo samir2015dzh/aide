@@ -20,6 +20,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/brandenv"
 	"github.com/samir2015dzh/aide/internal/flock"
 	"github.com/samir2015dzh/aide/internal/paths"
+	"github.com/samir2015dzh/aide/internal/resident"
 )
 
 // On Windows aided runs from a Task Scheduler task of this user's, at
@@ -248,6 +249,9 @@ func Supervise(dataDir, exe string, args []string) error {
 		return err
 	}
 	defer lock.Release()
+	// It only waits on the daemon: below normal and throttled for good
+	// (docs/resident.md §2); the daemon starts at normal and saves by itself.
+	resident.SaveAlways()
 	backoff := time.Second
 	for {
 		began := time.Now()
@@ -283,7 +287,7 @@ func runInJob(exe string, args []string) (int, error) {
 	}
 	cmd := exec.Command(exe, args...)
 	cmd.Env = append(os.Environ(), brandenv.Both(supervisorEnv, "1")...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED | windows.CREATE_NO_WINDOW}
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED | windows.CREATE_NO_WINDOW | windows.NORMAL_PRIORITY_CLASS}
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}

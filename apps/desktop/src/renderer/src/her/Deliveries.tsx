@@ -6,12 +6,13 @@ import type { BotSummary, DeliveredFile, DeliveriesListResult, DeliveriesSources
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { Dialog } from "../session/markdown/Dialog";
-import { herAnswers, needsUpdate } from "../skew";
+import { herAnswers, herHas, needsUpdate } from "../skew";
 import { errorText, useNow, useStore } from "../store";
 import { BotAvatar } from "./Avatar";
 import { useHer } from "./context";
 import { replyInComposer, showMessage } from "./Conversation";
 import { reachable } from "./environments";
+import { HerUnavailable } from "./Unavailable";
 import { momentText, sizeText } from "./format";
 import { MenuButton, MenuItem, menuKeys } from "./menus";
 import { PdfView } from "./preview/PdfView";
@@ -56,7 +57,6 @@ function readVersion(machineId: string, botId: string, f: DeliveredFile, v: Deli
 /** The panel: `kept` is the first page as this Mac keeps it, shown until her answers and while the machine is offline. */
 export function DeliveriesPanel({ bot, kept, onBack, onClose }: { bot: BotSummary; kept: DeliveriesListResult | null; onBack: () => void; onClose: () => void }) {
   const { t } = useTranslation("her");
-  const { t: tc } = useTranslation("common");
   const her = useHer();
   const st = useStore();
   const now = useNow(60_000);
@@ -119,6 +119,10 @@ export function DeliveriesPanel({ bot, kept, onBack, onClose }: { bot: BotSummar
     );
     return { files, seen: kept.seen };
   }, [list, kept, query, tab, source]);
+  // Her can't give the list: an older machine (as its list or its answer says), or her off or not running
+  // there; this Mac's copy shows meanwhile, except on a machine its list says is older.
+  const has = herHas(machine, "deliveries/list", lacks);
+  const unavailable = older || ((has === "older" || has === "off" || has === "notRunning") && !shownList);
 
   // Which files this Mac has, for while the machine is offline.
   const shaList = (shownList?.files ?? []).flatMap((f) => f.versions.flatMap((v) => (v.sha256 ? [[v.sha256, f.name] as [string, string]] : [])));
@@ -215,12 +219,9 @@ export function DeliveriesPanel({ bot, kept, onBack, onClose }: { bot: BotSummar
           <Icon name="x" />
         </button>
       </div>
-      {older || (lacks && !shownList) ? (
+      {unavailable ? (
         <div className="her-panel-body">
-          <div className="rtn-empty" data-testid="needs-update">
-            <b>{tc("needsUpdate.title")}</b>
-            {tc("needsUpdate.body", { machine: machine.machineName })}
-          </div>
+          <HerUnavailable machine={machine} has={has} />
         </div>
       ) : (
         <>

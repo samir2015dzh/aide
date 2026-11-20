@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { Machine } from "@aide/proto/local";
-import { herAnswers, needsUpdate } from "./skew.ts";
+import { herAnswers, herHas, needsUpdate } from "./skew.ts";
 
 // A machine older than this app (docs/version-skew.md §6.1, §6.3).
 
@@ -22,4 +22,18 @@ test("what a machine lists is what it answers; nothing listed is unknown", () =>
   const listed = m({ methods: ["bots/subscribe", "bots/memory"] });
   assert.equal(herAnswers(listed, "bots/memory"), true);
   assert.equal(herAnswers(listed, "bots/routine"), false);
+});
+
+test("only a running her that lacks a method says the machine is older; one not running, or off, says so instead", () => {
+  const m = (her: Partial<NonNullable<Machine["her"]>> | undefined) => ({ her: her as Machine["her"] });
+  // Her never ran with this build: no methods, and that is not an older machine.
+  assert.equal(herHas(m(undefined), "bots/memory"), "off");
+  assert.equal(herHas(m({ enabled: false, methods: [] }), "bots/memory"), "off");
+  assert.equal(herHas(m({ enabled: true, running: false, methods: [] }), "bots/memory"), "notRunning");
+  assert.equal(herHas(m({ enabled: true, running: false, methods: [], error: "exit status 1" }), "bots/memory", true), "notRunning");
+  // Running: its list, or its answer, says.
+  assert.equal(herHas(m({ enabled: true, running: true, methods: ["bots/memory"] }), "bots/memory"), "yes");
+  assert.equal(herHas(m({ enabled: true, running: true, methods: ["bots/list"] }), "bots/memory"), "older");
+  assert.equal(herHas(m({ enabled: true, running: true, methods: [] }), "bots/memory"), "unknown");
+  assert.equal(herHas(m({ enabled: true, running: true, methods: [] }), "bots/memory", true), "older");
 });

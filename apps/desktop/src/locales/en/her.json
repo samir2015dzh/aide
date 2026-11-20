@@ -27,12 +27,11 @@
     "offline": "Offline",
     "unsupported": "Can't run Her: {{detail}}",
     "newServer": "A New Server",
-    "newServerDesc": "Install Aide on it and pair it, as Add Machine does",
+    "newServerDesc": "Install Aide on it and log it in to your account, as Add Machine does",
     "add": "Add…",
     "turnOn": "Turn On Her",
-    "signer": "Confirm in the signer to turn on Her on {{name}}.",
     "turningOn": "Turning on Her…",
-    "paired": "Paired just now",
+    "paired": "Added just now",
     "notNow": "Not Now"
   },
   "grant": {
