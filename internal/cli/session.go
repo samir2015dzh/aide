@@ -26,7 +26,7 @@ import (
 
 func (a *app) sessionCmd() *cobra.Command {
 	cmd := group(&cobra.Command{Use: "session", Short: "Start and manage coding-agent sessions"})
-	cmd.AddCommand(a.startCmd(), a.getCmd(), a.listCmd(), a.eventsCmd(), a.sendCmd(), a.answerCmd(), a.interruptCmd(), a.archiveCmd(), a.unarchiveCmd(), a.diffCmd(), a.pushCmd())
+	cmd.AddCommand(a.startCmd(), a.getCmd(), a.waitCmd(), a.listCmd(), a.eventsCmd(), a.sendCmd(), a.answerCmd(), a.interruptCmd(), a.archiveCmd(), a.unarchiveCmd(), a.diffCmd(), a.pushCmd())
 	return cmd
 }
 
@@ -793,6 +793,50 @@ state, folder and last activity, read-only.`,
 			return a.lastKnown(cmd, args[0], err)
 		},
 	}
+}
+
+func (a *app) waitCmd() *cobra.Command {
+	var timeout time.Duration
+	cmd := &cobra.Command{
+		Use:   "wait <session id>",
+		Short: "Wait for a session's turn to finish, then show it as session get does (exit code: how its last turn went)",
+		Long: `Wait for the turn under way to finish, then print the session with the agent's full result, as
+start, send and answer do with --wait: for a session started without --wait, or after a wait that
+timed out. It sends nothing and changes nothing.
+
+A session that is not working returns at once: idle or crashed, with the exit code of its last turn
+(0, or its failure: 5, 7); waiting for an answer, 8 and the question; archived, 5. Questions are never
+answered by waiting: the wait ends as the agent asks one. --timeout ends the wait, not the turn (6).`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// The connection outlives the wait, so a wait that times out
+			// still shows the session as it is then.
+			ctx := cmd.Context()
+			return a.withMachine(ctx, args[0], func(c *peer.Client, n *peer.Machine, ref machineRef) error {
+				s, err := n.Session.GetSession(ctx, &sessionv1.GetSessionRequest{SessionId: args[0]})
+				if err != nil {
+					return err
+				}
+				a.keepSeen(s.GetMachineId(), time.Now(), s)
+				switch s.Status {
+				case sessionv1.SessionStatus_SESSION_STATUS_WAITING_INPUT:
+					return a.outcome(cmd.OutOrStdout(), ref.Name, s, &exitError{code: exitNeedsInput, kind: "needs_input", err: fmt.Errorf("session %s is waiting for an answer", args[0]),
+						hint: fmt.Sprintf("`aide session answer %s --choose <option>` or `--text <answer>` (or reply with `aide session send`)", args[0])})
+				case sessionv1.SessionStatus_SESSION_STATUS_IDLE, sessionv1.SessionStatus_SESSION_STATUS_CRASHED, sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED:
+					return a.outcome(cmd.OutOrStdout(), ref.Name, s, turnError(s, nil, s.Status))
+				}
+				fmt.Fprintf(cmd.ErrOrStderr(), "session %s is %s; waiting for its turn to finish\n", args[0], statusName(s.Status))
+				if timeout > 0 {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, timeout)
+					defer cancel()
+				}
+				return a.waitTurn(ctx, cmd, c, ref, args[0], s.GetProgress().GetLastEventSeq())
+			})
+		},
+	}
+	cmd.Flags().DurationVar(&timeout, "timeout", 0, "stop waiting after this long (exit code 6; the turn goes on). Pass one below the time limit of the tool running this command")
+	return cmd
 }
 
 // lastKnown is session get's answer when the session's machine cannot be

@@ -496,7 +496,7 @@ fixed order with `ttlMs` set, as 2026-07-28 asks.
 | `aide_status` | the connection's state and next step (§5.7); once active, also `auth status` and the inbox (`messages`: its webhook, waiting messages) |
 | `auth_status` | `aide auth status` |
 | `project_list` | `aide project list` |
-| `session_start`, `session_get`, `session_list`, `session_events`, `session_answer`, `session_interrupt`, `session_archive`, `session_unarchive`, `session_diff` | `aide session <verb>` |
+| `session_start`, `session_get`, `session_wait`, `session_list`, `session_events`, `session_answer`, `session_interrupt`, `session_archive`, `session_unarchive`, `session_diff` | `aide session <verb>` |
 | `message_send`, `message_list`, `message_ack`, `message_status`, `message_contacts` | `aide message <verb>`, with the connection's inbox key ([agent-messages.md](agent-messages.md)); `message_send` is how a session is told anything more (`session_send` is gone) |
 | `machine_exec` | `aide machine exec`: a one-shot shell command on a machine, refused unless the owner turned on Run commands for this connection ([machine-ops.md](machine-ops.md)) |
 | `message_wake` | the gateway's own: a one-time link for the owner to set up the caller's doorbell, the webhook rung when messages arrive ([agent-names.md](agent-names.md) §7) |
@@ -523,16 +523,17 @@ fixed order with `ttlMs` set, as 2026-07-28 asks.
   the model follows with `session_get` or `session_events` using `after`.
   Hosted clients can also use `wait=true` with `timeout="30s"`. The gateway
   caps waiting calls at 50 s, including omitted timeouts and `"0s"` (not
-  unlimited waiting). After `wait_timeout`, poll `session_get` rather than
-  repeating the action: the turn continues.
+  unlimited waiting). After `wait_timeout`, call `session_wait` (it waits
+  again, sends nothing, and also caps at 50 s) or poll `session_get` rather
+  than repeating the action: the turn continues.
 - `session_list` follows the grant's visibility: `all` includes other
   clients' sessions in permitted projects, but only sessions started by
   this connection can be controlled. `session_diff` supports worktree
   projects only; for an `in_place` session it started, the model can ask
   the agent through `session_send` to inspect and report working-directory
   changes, which may include other sessions' or the user's work.
-- Annotations: `auth_status`, `project_list`, `session_get`, `session_list`,
-  `session_events`, `session_diff` are `readOnlyHint`; the others
+- Annotations: `auth_status`, `project_list`, `session_get`, `session_wait`,
+  `session_list`, `session_events`, `session_diff` are `readOnlyHint`; the others
   `openWorldHint`, `session_interrupt` and `session_archive`
   `destructiveHint`. Each tool carries `_meta.securitySchemes:
   [{"type": "oauth2"}]` for ChatGPT.
