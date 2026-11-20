@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/samir2015dzh/hermesh/releases">Releases</a> ·
+  <a href="https://github.com/samir2015dzh/aide/releases">Releases</a> ·
   <a href="#get-started">Get started</a> ·
   <a href="#run-your-own-server">Your server</a> ·
   <a href="docs/aide-rename.md">Names from before</a> ·
@@ -35,7 +35,7 @@ Aide has no server of its own: each owner runs one ([Run your own server](#run-y
 
 | Platform | Download |
 |---|---|
-| **Windows** | `Aide-windows-x64-setup.exe` from the [latest release](https://github.com/samir2015dzh/hermesh/releases/latest) |
+| **Windows** | `Aide-windows-x64-setup.exe` from the [latest release](https://github.com/samir2015dzh/aide/releases/latest) |
 | **Android** | `Aide-<version>-debug.apk` from the same release |
 
 Open the app and enter your server's address. The Windows app also makes that PC a machine your agents can run coding agents on. The Windows installer is not code-signed yet: click **More info › Run anyway** if SmartScreen asks.
@@ -45,13 +45,13 @@ Open the app and enter your server's address. The Windows app also makes that PC
 On a Linux computer where coding agents should run:
 
 ```bash
-curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- relay.example.com/o_xxxxxxxx
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- relay.example.com/o_xxxxxxxx
 ```
 
 On a Windows PC without the app, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((irm https://github.com/samir2015dzh/hermesh/releases/latest/download/install.ps1))) relay.example.com/o_xxxxxxxx
+& ([scriptblock]::Create((irm https://github.com/samir2015dzh/aide/releases/latest/download/install.ps1))) relay.example.com/o_xxxxxxxx
 ```
 
 Approve the machine in the app. Make sure Claude Code or Codex is installed and signed in as the same user, run `aided doctor` to check everything, and `aided project add <folder>` to let agents work in a folder. Reference: [docs/hermeshd.md](docs/hermeshd.md).
@@ -61,7 +61,7 @@ Approve the machine in the app. Make sure Claude Code or Codex is installed and 
 A CLI agent (Claude Code, Codex, Cursor, your own) installs the `aide` command and asks to join:
 
 ```bash
-curl -fsSL https://github.com/samir2015dzh/hermesh/releases/latest/download/install.sh | sh -s -- --cli
+curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- --cli
 aide auth login relay.example.com/o_xxxxxxxx --name "Codex on the build box"
 ```
 
