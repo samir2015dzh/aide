@@ -41,17 +41,11 @@
   "working": {
     "message": "Working"
   },
-  "approval": {
-    "message": "Waiting for your approval in Aide"
-  },
   "finished": {
     "message": "Finished"
   },
   "back": {
     "message": "Back to conversation"
-  },
-  "done": {
-    "message": "I'm done"
   },
   "stop": {
     "message": "Stop"
@@ -61,9 +55,6 @@
   },
   "offerNote": {
     "message": "Her will be able to read and use this tab."
-  },
-  "groupWaiting": {
-    "message": "Waiting · $1"
   },
   "titleConnected": {
     "message": "Aide: connected"
@@ -82,9 +73,6 @@
   },
   "titleOutdated": {
     "message": "Aide: needs an update"
-  },
-  "titleWaiting": {
-    "message": "Her is waiting for you"
   },
   "statusStuck": {
     "message": "Can't reach Her"
@@ -109,12 +97,6 @@
   },
   "update": {
     "message": "Update extension"
-  },
-  "waitingOne": {
-    "message": "1 thing needs you"
-  },
-  "waiting": {
-    "message": "$1 things need you"
   },
   "titleStuck": {
     "message": "Aide: can't connect"

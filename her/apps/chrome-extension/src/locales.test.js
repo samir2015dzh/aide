@@ -17,9 +17,9 @@ test("every message the manifest, the page and the worker name is there", () => 
   const code = read("popup.js") + read("background.js");
   named.push(...[...code.matchAll(/msg\("(\w+)"/g)].map((m) => m[1]));
   named.push(...[...code.matchAll(/"(title[A-Z]\w*)"/g)].map((m) => m[1]));
-  const waiting = { id: "a", title: "A", state: "awaiting_approval", tabs: 1 };
+  const running = { id: "a", title: "A", state: "running", tabs: 1 };
   for (const host of ["connected", "connecting", "not_open", "missing", "outdated"]) {
-    for (const over of [{}, { inUse: false }, { sessions: [waiting] }, { sessions: [waiting, waiting] }, { stuck: true }, { update: "her" }]) {
+    for (const over of [{}, { inUse: false }, { sessions: [running] }, { stuck: true }, { update: "her" }]) {
       const line = headline({ host, inUse: true, stuck: false, sessions: [], ...over });
       named.push(line.title, line.hint, line.action?.label);
     }

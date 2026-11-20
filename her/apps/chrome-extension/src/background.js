@@ -60,7 +60,7 @@ const lastUsed = new Map();
 const groups = new Map();
 /** Tabs the user offered to a conversation, not given to a session yet. */
 const offered = new Set();
-/** What the service says about the sessions with tabs here. @type {Record<string, {title: string, state: string, handoff?: string, task?: string}>} */
+/** What the service says about the sessions with tabs here. @type {Record<string, {title: string, state: string, task?: string}>} */
 let sessions = {};
 /** The window the agent's tabs open in: its own, so the user's tabs are never taken. */
 let windowId = null;
@@ -166,10 +166,10 @@ function groupLook(session) {
   const known = sessions[session];
   // Named for the task at hand, which a long conversation changes: the user's latest words.
   const title = (known?.task || known?.title || GROUP_TITLE).slice(0, TITLE_CHARS);
-  const waiting = known?.state === "awaiting_approval";
-  // Orange asks for the user, blue is at work, grey has finished: the tabs stay theirs.
-  const color = waiting ? "orange" : known?.state === "running" ? "blue" : "grey";
-  return { title: waiting ? msg("groupWaiting", title) : title, color };
+  // Blue is at work, grey has finished: the tabs stay theirs. Her asks nothing of the user here:
+  // she runs her tools without asking.
+  const color = known?.state === "running" ? "blue" : "grey";
+  return { title, color };
 }
 
 async function group(tabId, label) {
@@ -346,12 +346,11 @@ function timeConnecting() {
   }
 }
 
-/** Only what asks something of the user shows on the icon: Hermesh not being open is fine. */
+/** Only what needs the user shows on the icon: Hermesh not being open is fine. */
 function show() {
   timeConnecting();
-  const waiting = Object.values(sessions).filter((s) => s.state === "awaiting_approval").length;
-  const text = waiting > 0 ? String(waiting) : hostState === "outdated" || stuck ? "!" : "";
-  const title = waiting > 0 ? msg("titleWaiting") : msg({
+  const text = hostState === "outdated" || stuck ? "!" : "";
+  const title = msg({
     connected: inUse ? "titleConnected" : "titleStandby",
     connecting: stuck ? "titleStuck" : "titleConnecting",
     not_open: "titleNotOpen",
@@ -542,7 +541,6 @@ async function pageState() {
     id,
     title: sessions[id]?.title || GROUP_TITLE,
     state: sessions[id]?.state ?? "idle",
-    handoff: sessions[id]?.handoff,
     tabs: tabs.released(id).length,
   }));
   return {
@@ -561,9 +559,6 @@ function pageAction(action) {
     case "back":
       postControl({ kind: "open_app" });
       postControl({ kind: "open_session", session_id: action.session });
-      break;
-    case "done":
-      postControl({ kind: "done", session_id: action.session });
       break;
     case "stop":
       postControl({ kind: "stop", session_id: action.session });
