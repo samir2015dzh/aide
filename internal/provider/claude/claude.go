@@ -130,7 +130,8 @@ func windowsRoots(appData, localAppData string) []string {
 	}
 	if localAppData != "" {
 		parents = append(parents, localAppData)
-		for _, pkg := range namedLike(filepath.Join(localAppData, "Packages"), "claude_") {
+		pkgs := filepath.Join(localAppData, "Packages")
+		for _, pkg := range append(namedLike(pkgs, "claude_"), namedLike(pkgs, "anthropicpbc.claude_")...) {
 			parents = append(parents, filepath.Join(pkg, "LocalCache", "Roaming"), filepath.Join(pkg, "LocalCache", "Local"))
 		}
 	}
@@ -185,45 +186,33 @@ func foldersNamed(root, name string) []string {
 }
 
 // windowsApp: the Claude desktop app is installed on Windows though it has
-// not fetched Claude Code yet: one of windowsRoots is its data (Electron's
-// Local Storage or Preferences, its config, or a claude-code folder, at
-// most two folders down), or the app itself is running (running are the
+// not fetched Claude Code yet, as its program says, not its data (which its
+// uninstall leaves behind): the installer's claude.exe in
+// %LOCALAPPDATA%\AnthropicClaude, its MSIX package's folder in
+// %LOCALAPPDATA%\Packages or its package registered (packages:
+// provider.WindowsStorePackages), or the app running (running: the
 // claude.exe programs running now).
-func windowsApp(appData, localAppData string, running []string) bool {
-	if slices.ContainsFunc(running, isDesktopApp) {
+func windowsApp(appData, localAppData string, running, packages []string) bool {
+	if slices.ContainsFunc(running, isDesktopApp) || provider.StorePackageNamed(packages, "Claude", "AnthropicPBC.Claude") {
 		return true
 	}
-	for _, root := range windowsRoots(appData, localAppData) {
-		if len(codeDirs(root)) > 0 {
-			return true
-		}
-		for _, d := range append([]string{root}, subdirs(root)...) {
-			for _, mark := range []string{"Local Storage", "Preferences", "claude_desktop_config.json"} {
-				if _, err := os.Stat(filepath.Join(d, mark)); err == nil {
-					return true
-				}
-			}
-		}
+	if localAppData == "" {
+		return false
 	}
-	return false
-}
-
-func subdirs(dir string) []string {
-	entries, _ := os.ReadDir(dir)
-	var out []string
-	for _, e := range entries {
-		if e.IsDir() {
-			out = append(out, filepath.Join(dir, e.Name()))
-		}
+	if st, err := os.Stat(filepath.Join(localAppData, "AnthropicClaude", "claude.exe")); err == nil && st.Mode().IsRegular() {
+		return true
 	}
-	return out
+	pkgs := filepath.Join(localAppData, "Packages")
+	return len(namedLike(pkgs, "claude_"))+len(namedLike(pkgs, "anthropicpbc.claude_")) > 0
 }
 
 // isDesktopApp: the program at p is the Claude desktop app itself, not
-// Claude Code: an Electron app (resources\app.asar beside it), or run from
-// WindowsApps (its MSIX package, or the alias of it).
+// Claude Code: an Electron app (resources\app.asar beside it), its
+// installer's folder (AnthropicClaude: the claude.exe there starts the
+// app-<version> one), or run from WindowsApps (its MSIX package, or the
+// alias of it).
 func isDesktopApp(p string) bool {
-	if strings.Contains(strings.ToLower(filepath.ToSlash(p)), "/windowsapps/") {
+	if lower := strings.ToLower(filepath.ToSlash(p)); strings.Contains(lower, "/windowsapps/") || strings.Contains(lower, "/anthropicclaude/") {
 		return true
 	}
 	_, err := os.Stat(filepath.Join(filepath.Dir(p), "resources", "app.asar"))
@@ -253,7 +242,7 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		info.Problem, info.Detail = provider.ProblemNotFound, "claude not found"
 		if app := provider.AppWithoutCLI("Claude.app"); app != "" && p.Binary == "" {
 			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, app
-		} else if p.Binary == "" && windowsApp(os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA"), provider.RunningExecutables("claude.exe")) {
+		} else if p.Binary == "" && windowsApp(os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA"), provider.RunningExecutables("claude.exe"), provider.WindowsStorePackages()) {
 			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, WindowsApp
 		}
 		return info

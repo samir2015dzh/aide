@@ -1,6 +1,8 @@
 package shellenv
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -35,5 +37,22 @@ func TestOnUserPath(t *testing.T) {
 	}
 	if got := read(); got != strings.TrimSuffix(before, ";") && got != before {
 		t.Fatalf("after remove: %q, was %q", got, before)
+	}
+}
+
+// A tool installed after aided started is on the PATH it gives at most
+// refreshAfter later, without a restart: the registry's PATH is read again.
+func TestPathReadAgain(t *testing.T) {
+	first := Path()
+	added := t.TempDir()
+	t.Setenv("PATH", added+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	if p := Path(); p != first {
+		t.Fatalf("read again before refreshAfter")
+	}
+	mu.Lock()
+	readAt = readAt.Add(-refreshAfter)
+	mu.Unlock()
+	if p := Path(); !strings.Contains(strings.ToLower(p), strings.ToLower(added)) {
+		t.Fatalf("%s not on the PATH read again: %s", added, p)
 	}
 }

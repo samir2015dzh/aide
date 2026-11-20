@@ -112,3 +112,19 @@ func expand(s string) string {
 	}
 	return s
 }
+
+// appxPackagesKey lists the Store (MSIX) packages registered for this
+// user, readable without PowerShell or access to WindowsApps.
+var appxPackagesKey = regKey{registry.CURRENT_USER, `Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages`}
+
+// WindowsStorePackages are the full names of the Store (MSIX) packages
+// registered for this user: name_version_architecture_resourceid_publisher.
+func WindowsStorePackages() []string {
+	k, err := registry.OpenKey(appxPackagesKey.root, appxPackagesKey.path, registry.ENUMERATE_SUB_KEYS)
+	if err != nil {
+		return nil
+	}
+	defer k.Close()
+	names, _ := k.ReadSubKeyNames(-1)
+	return names
+}

@@ -363,17 +363,42 @@ func TestWindowsDesktopCLI(t *testing.T) {
 		if got := windowsDesktopCLI(appData, local); got != "" {
 			t.Fatalf("no app: got %q", got)
 		}
-		if windowsApp(appData, local, nil) {
+		if windowsApp(appData, local, nil, nil) {
 			t.Fatal("no app: reported installed")
 		}
-		// The app is there but has not fetched Claude Code (an empty
-		// version folder: a download not finished).
+		// An empty version folder (a download not finished) is no Claude
+		// Code; and the app's data, which its uninstall leaves behind, is no
+		// sign of the app.
 		os.MkdirAll(filepath.Join(appData, "Claude", "claude-code", "2.1.300"), 0o755)
 		if got := windowsDesktopCLI(appData, local); got != "" {
 			t.Fatalf("empty version folder: got %q", got)
 		}
-		if !windowsApp(appData, local, nil) {
+		if windowsApp(appData, local, nil, nil) {
+			t.Fatal("the app's data left behind taken for the app")
+		}
+		// Its installer's program is.
+		stub := filepath.Join(local, "AnthropicClaude", "claude.exe")
+		os.MkdirAll(filepath.Dir(stub), 0o755)
+		os.WriteFile(stub, nil, 0o755)
+		if !windowsApp(appData, local, nil, nil) {
 			t.Fatal("app without its CLI: not reported")
+		}
+		if got := runningCLI([]string{stub}); got != "" {
+			t.Fatalf("the installer's claude.exe taken for Claude Code: %q", got)
+		}
+	})
+	t.Run("store package", func(t *testing.T) {
+		appData, local := t.TempDir(), t.TempDir()
+		resource := []string{"Claude_6.6395.1.0_neutral_split.language-en_pzs8sxrjxfjjc", "ClaudeNotes_1.0.0.0_x64__abc"}
+		if windowsApp(appData, local, nil, resource) {
+			t.Fatal("a resource package, or another app, taken for the app")
+		}
+		if !windowsApp(appData, local, nil, append(resource, "Claude_6.6395.1.0_x64__pzs8sxrjxfjjc")) {
+			t.Fatal("the registered package: not reported")
+		}
+		os.MkdirAll(filepath.Join(local, "Packages", "AnthropicPBC.Claude_pzs8sxrjxfjjc", "LocalCache"), 0o755)
+		if !windowsApp(appData, local, nil, nil) {
+			t.Fatal("the package's folder: not reported")
 		}
 	})
 	t.Run("both depths, newest", func(t *testing.T) {
@@ -431,9 +456,6 @@ func TestWindowsDesktopCLI(t *testing.T) {
 		if got := windowsDesktopCLI(appData, local); got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}
-		if !windowsApp(appData, local, nil) {
-			t.Fatal("the app's data not taken for the app")
-		}
 	})
 	t.Run("another Claude folder, two down", func(t *testing.T) {
 		appData, local := t.TempDir(), t.TempDir()
@@ -456,10 +478,10 @@ func TestWindowsDesktopCLI(t *testing.T) {
 	t.Run("the app running, its data not fetched yet", func(t *testing.T) {
 		appData, local := t.TempDir(), t.TempDir()
 		pkg := filepath.Join(t.TempDir(), "WindowsApps", "Claude_6.6395.1.0_x64__pzs8sxrjxfjjc", "app", "Claude.exe")
-		if windowsApp(appData, local, nil) {
+		if windowsApp(appData, local, nil, nil) {
 			t.Fatal("no app: reported installed")
 		}
-		if !windowsApp(appData, local, []string{pkg}) {
+		if !windowsApp(appData, local, []string{pkg}, nil) {
 			t.Fatal("the app running from its MSIX package: not reported")
 		}
 		if got := runningCLI([]string{pkg}); got != "" {

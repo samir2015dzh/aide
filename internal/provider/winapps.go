@@ -129,3 +129,15 @@ func WindowsProgram(command string, names ...string) string {
 	}
 	return ""
 }
+
+// StorePackageNamed: one of packages (WindowsStorePackages) is the main
+// package (no resource id) of one of names.
+func StorePackageNamed(packages []string, names ...string) bool {
+	for _, p := range packages {
+		f := strings.Split(p, "_")
+		if len(f) == 5 && f[3] == "" && slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(f[0], n) }) {
+			return true
+		}
+	}
+	return false
+}
