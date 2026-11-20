@@ -58,7 +58,7 @@
   },
   "deepseek": {
     "intro": "DSH is the DeepSeek Harness desktop app, DeepSeek’s coding agent. Aide runs the DSH installed on your computer: the one in the desktop app, or the dsh command.",
-    "need1": "DeepSeek Harness installed on the computer that runs it: the DSH desktop app (installed in its usual folder), or the dsh command.",
+    "need1": "DeepSeek Harness installed on the computer that runs it: the DSH desktop app (installed anywhere), or the dsh command.",
     "need2": "DSH set up with your DeepSeek account or API key: open DSH once and send it a message to be sure it answers.",
     "need3": "Aide open on that computer and signed in to your account (this computer already is).",
     "step1": "Choose the computer that runs DSH above (this one is chosen for you).",
@@ -67,7 +67,7 @@
     "step4": "Click Run Test. DSH answers one short question.",
     "step5": "Click Start Test Task. A real task starts and opens in Aide.",
     "fixInstall": "Is DeepSeek Harness installed on {{machine}}? Install the DSH desktop app from DeepSeek, or the dsh command, and open it once.",
-    "fixWhere": "Installed somewhere else? Aide finds the DSH app only in its usual install folder (on Windows: your user’s Programs folder, or Program Files), and the dsh command only if a new terminal finds it (type dsh --version there).",
+    "fixWhere": "Installed and still not found? Aide finds the DSH app where Windows says it is: in its list of installed programs, and the DSH running now. Open DSH once, then check again here. The dsh command counts only if a new terminal finds it (type dsh --version there).",
     "fixSignIn": "Open DSH and sign in or set up your DeepSeek API key there.",
     "testFailedHint": "If the reason mentions a key, an account or a sign-in, open DSH, set up your DeepSeek account or API key there, and run the test again.",
     "where1": "Tasks you start in Aide with DeepSeek are in Aide’s task list, on every device of yours.",
@@ -111,7 +111,7 @@
     "where1": "Tasks you start in Aide with Codex are in Aide’s task list, on every device of yours."
   },
   "custom": {
-    "intro": "Connect any coding agent Aide doesn’t list, if it speaks the Agent Client Protocol (ACP). Tell Aide how to start it; Aide keeps it on that computer and lists it with the others.",
+    "intro": "Connect any coding agent Aide doesn’t list, if it speaks the Agent Client Protocol (ACP). Tell Aide how to start it; Aide keeps it on that computer and lists it with the others. An agent without ACP that can run commands in a terminal (WorkBuddy, for one) connects under Assistants below, as Other Agent.",
     "need1": "The agent installed on the computer that runs it, and its own sign-in or key ready.",
     "need2": "The command that starts it in ACP mode, from its documentation (often an --acp argument).",
     "step1": "Choose the computer that runs the agent above.",
@@ -132,7 +132,7 @@
     "name": "Name",
     "nameHelp": "How Aide and your assistants call it: lower-case letters, digits and -. It can’t be changed later.",
     "command": "Command",
-    "commandHelp": "The program that starts the agent: a command a new terminal on that computer finds, or its full path.",
+    "commandHelp": "The program that starts this agent: a command a new terminal on that computer finds, or its full path. On Windows, given just a command’s name, Aide also looks for it in the list of installed programs and among the programs running.",
     "args": "Arguments",
     "argsHelp": "What follows the command, separated by spaces; put quotes around one that has spaces. They must start the agent in ACP mode.",
     "env": "Environment variables",
@@ -174,7 +174,7 @@
     }
   },
   "assistants": {
-    "intro": "Assistants such as Muse, Grok Bot, ChatGPT, Claude Desktop’s chat or OpenClaw don’t run on your computer: they give tasks to the coding agents above. One logs in with your Aide account and password, and is ready at once: there’s nothing for you to approve.",
+    "intro": "Assistants such as Muse, Grok Bot, ChatGPT, Claude Desktop’s chat or OpenClaw don’t run on your computer: they give tasks to the coding agents above. One logs in with your Aide account and password, and is ready at once: there’s nothing for you to approve. One not listed connects as Other Agent if it can run commands in a terminal (WorkBuddy, for one): it installs the Aide command line and logs in with the account and password.",
     "pick": "Choose the assistant",
     "name": "Name",
     "steps": {

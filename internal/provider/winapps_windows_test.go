@@ -76,3 +76,59 @@ func deleteTree(root registry.Key, path string) {
 	}
 	registry.DeleteKey(root, path)
 }
+
+// Any agent's program is found where Windows says, the same way for each:
+// by an installed program whose name contains its command (or begins with
+// one of its names), in that program's folder or its bin; and the program
+// of that name running now.
+func TestWindowsProgram(t *testing.T) {
+	base := `Software\AideTest\` + filepath.Base(t.TempDir())
+	t.Cleanup(func() { deleteTree(registry.CURRENT_USER, base) })
+	wasU, wasA := uninstallKeys, appPathsKeys
+	t.Cleanup(func() { uninstallKeys, appPathsKeys = wasU, wasA })
+	uninstallKeys = []regKey{{registry.CURRENT_USER, base + `\Uninstall`}}
+	appPathsKeys = []regKey{{registry.CURRENT_USER, base + `\App Paths`}}
+	entry := func(name, dir string) {
+		t.Helper()
+		k, _, err := registry.CreateKey(registry.CURRENT_USER, base+`\Uninstall\`+name, registry.ALL_ACCESS)
+		if err != nil {
+			t.Fatal(err)
+		}
+		k.SetStringValue("DisplayName", name)
+		k.SetStringValue("InstallLocation", dir)
+		k.Close()
+	}
+	exe := func(p string) string {
+		t.Helper()
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+
+	cli := filepath.Join(t.TempDir(), "FakeCode")
+	want := exe(filepath.Join(cli, "bin", "fakecode.exe"))
+	entry("FakeCode 1.4 (user)", cli)
+	if got := WindowsProgram("fakecode"); !strings.EqualFold(got, want) {
+		t.Fatalf("by a name containing the command: got %q, want %q", got, want)
+	}
+
+	app := filepath.Join(t.TempDir(), "Work")
+	want = exe(filepath.Join(app, "fakebuddy.exe"))
+	entry("FakeWork Buddy", app)
+	if got := WindowsProgram("fakebuddy"); got != "" {
+		t.Fatalf("found without the name: %q", got)
+	}
+	if got := WindowsProgram("fakebuddy", "FakeWork"); !strings.EqualFold(got, want) {
+		t.Fatalf("by one of its names: got %q, want %q", got, want)
+	}
+
+	if got := WindowsProgram("aide-no-such-program"); got != "" {
+		t.Fatalf("a program Windows knows nothing of: %q", got)
+	}
+	self, _ := os.Executable()
+	if got := WindowsProgram(strings.TrimSuffix(filepath.Base(self), ".exe")); !strings.EqualFold(got, self) {
+		t.Fatalf("running: got %q, want %q", got, self)
+	}
+}

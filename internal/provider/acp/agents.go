@@ -19,8 +19,8 @@ var Agents = []Agent{
 	{Name: "goose", Command: "goose", Args: []string{"acp"}},
 	{Name: "auggie", Command: "auggie", Args: []string{"--acp"}},
 	{Name: "kimi", Command: "kimi", Args: []string{"acp"}},
-	{Name: "kiro", Command: "kiro-cli", Args: []string{"acp"}, DesktopApps: []string{"Kiro.app"}},
-	{Name: "qoder", Command: "qodercli", Args: []string{"--acp"}, DesktopApps: []string{"Qoder.app"}},
+	{Name: "kiro", Command: "kiro-cli", Args: []string{"acp"}, DesktopApps: []string{"Kiro.app"}, Names: []string{"Kiro"}},
+	{Name: "qoder", Command: "qodercli", Args: []string{"--acp"}, DesktopApps: []string{"Qoder.app"}, Names: []string{"Qoder"}},
 	// The DSH desktop apps keep their own dsh, with no `dsh` command; the
 	// Windows one's script is inside its app.asar (tested on 0.2.1-rc.5),
 	// and it is found wherever Windows says it is installed.
@@ -29,7 +29,7 @@ var Agents = []Agent{
 		{Bundle: "DeepSeek Harness", Exec: "DeepSeek Harness.exe", Script: "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js",
 			Windows: provider.WindowsApp{Names: []string{"DeepSeek Harness", "DSH Desktop"}, Exes: []string{"DeepSeek Harness.exe", "DSH Desktop.exe"}}},
 	}},
-	{Name: "codebuddy", Command: "codebuddy", Args: []string{"--acp"}},
+	{Name: "codebuddy", Command: "codebuddy", Args: []string{"--acp"}, Names: []string{"CodeBuddy", "WorkBuddy"}},
 	{Name: "grok", Command: "grok", Args: []string{"--no-auto-update", "agent", "stdio"}, Auth: []string{"cached_token", "xai.api_key"}},
 }
 

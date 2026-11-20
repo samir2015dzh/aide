@@ -36,6 +36,10 @@ type Agent struct {
 	Args    []string // arguments that serve ACP on stdio
 	// Paths are extra install locations; relative ones are under $HOME.
 	Paths []string
+	// Names begin the names its Windows installers list it by, for finding
+	// Command where Windows says it is installed (provider.WindowsProgram),
+	// beside a name that contains Command, which every agent has.
+	Names []string
 	// Apps are desktop apps whose own copy of the CLI is used when there is
 	// no other.
 	Apps []App
@@ -104,7 +108,10 @@ func (p *Provider) binary() string {
 		}
 		extra = append(extra, x)
 	}
-	return provider.LookPath(p.Command, provider.SearchPath(p.PathEnv), extra...)
+	if bin := provider.LookPath(p.Command, provider.SearchPath(p.PathEnv), extra...); bin != "" {
+		return bin
+	}
+	return provider.WindowsProgram(p.Command, p.Names...)
 }
 
 // command is how to start the CLI: its binary, the arguments ahead of the

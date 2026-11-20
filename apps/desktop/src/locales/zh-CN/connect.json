@@ -57,7 +57,7 @@
   },
   "deepseek": {
     "intro": "DSH 指 DeepSeek Harness 桌面应用，DeepSeek 的编码 Agent。Aide 运行你电脑上装的 DSH：桌面应用里自带的那个，或者 dsh 命令。",
-    "need1": "运行它的电脑上装好 DeepSeek Harness：DSH 桌面应用（装在默认位置），或者 dsh 命令。",
+    "need1": "运行它的电脑上装好 DeepSeek Harness：DSH 桌面应用（装在哪里都可以），或者 dsh 命令。",
     "need2": "DSH 已经配好你的 DeepSeek 账号或 API 密钥：先打开 DSH 发一条消息，确认它能回答。",
     "need3": "那台电脑上打开了 Aide，并登录了你的账号（这台电脑已经登录）。",
     "step1": "在上面选运行 DSH 的电脑（默认就是这台）。",
@@ -66,7 +66,7 @@
     "step4": "点「运行测试」。DSH 会回答一个简短的问题。",
     "step5": "点「开始测试任务」。一个真正的任务会开始，并在 Aide 里打开。",
     "fixInstall": "{{machine}} 上装了 DeepSeek Harness 吗？从 DeepSeek 装好 DSH 桌面应用或 dsh 命令，并打开一次。",
-    "fixWhere": "装在别的位置了？Aide 只在默认安装位置找 DSH 应用（Windows 上是你用户的 Programs 文件夹或 Program Files），dsh 命令要新开的终端能找到才行（在终端里输入 dsh --version 试试）。",
+    "fixWhere": "装好了还是没检测到？Aide 按 Windows 记下的位置找 DSH 应用：已安装的程序列表，以及正在运行的 DSH。先打开一次 DSH，再回这里重新检测。dsh 命令要新开的终端能找到才行（在终端里输入 dsh --version 试试）。",
     "fixSignIn": "打开 DSH，在里面登录或者配好你的 DeepSeek API 密钥。",
     "testFailedHint": "如果原因里提到密钥、账号或登录，打开 DSH 配好你的 DeepSeek 账号或 API 密钥，再测试一次。",
     "where1": "你在 Aide 里用 DeepSeek 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。",
@@ -110,7 +110,7 @@
     "where1": "你在 Aide 里用 Codex 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。"
   },
   "custom": {
-    "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。",
+    "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。不支持 ACP、但能在终端里运行命令的 Agent（例如 WorkBuddy），在下面的「助手」里选「其他 Agent」连接。",
     "need1": "运行它的电脑上装好这个 Agent，并准备好它自己的登录或密钥。",
     "need2": "以 ACP 模式启动它的命令，见它的文档（通常带一个 --acp 参数）。",
     "step1": "在上面选运行这个 Agent 的电脑。",
@@ -131,7 +131,7 @@
     "name": "名称",
     "nameHelp": "Aide 和你的助手怎么称呼它：小写字母、数字和 -。保存后不能改。",
     "command": "命令",
-    "commandHelp": "启动这个 Agent 的程序：那台电脑上新开的终端能找到的命令，或者它的完整路径。",
+    "commandHelp": "启动这个 Agent 的程序：那台电脑上新开的终端能找到的命令，或者它的完整路径。在 Windows 上，只填命令名时，Aide 也会按已安装的程序列表和正在运行的程序去找它。",
     "args": "参数",
     "argsHelp": "跟在命令后面的内容，用空格分隔；含空格的参数用引号括起来。这些参数必须让 Agent 以 ACP 模式启动。",
     "env": "环境变量",
@@ -173,7 +173,7 @@
     }
   },
   "assistants": {
-    "intro": "Muse、Grok Bot、ChatGPT、Claude Desktop 的聊天、OpenClaw 这样的助手不在你的电脑上运行：它们给上面的编码 Agent 派任务。它用你的 Aide 账号和密码登录，登录后马上就能用，不需要你批准。",
+    "intro": "Muse、Grok Bot、ChatGPT、Claude Desktop 的聊天、OpenClaw 这样的助手不在你的电脑上运行：它们给上面的编码 Agent 派任务。它用你的 Aide 账号和密码登录，登录后马上就能用，不需要你批准。没有列出来的，只要能在终端里运行命令（例如 WorkBuddy），都可以选「其他 Agent」：它装上 Aide 命令行，用账号密码登录。",
     "pick": "选择助手",
     "name": "名称",
     "steps": {

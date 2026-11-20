@@ -83,3 +83,49 @@ func commandPath(s string) string {
 func hasPrefixFold(s, prefix string) bool {
 	return len(s) >= len(prefix) && strings.EqualFold(s[:len(prefix)], prefix)
 }
+
+// WindowsProgram is where Windows says the program named command (without
+// its .exe) is, when it is not on PATH: its App Paths entry, the program
+// of that name running now, or command.exe in the folder (or its bin) of
+// an installed program whose DisplayName contains command or begins with
+// one of names. The same for every agent, the owner's own included, so
+// that none needs its folders guessed; "" off Windows and when Windows
+// knows of none.
+func WindowsProgram(command string, names ...string) string {
+	if command == "" || strings.ContainsAny(command, `/\`) {
+		return ""
+	}
+	exe := command
+	if !strings.EqualFold(filepath.Ext(exe), ".exe") {
+		exe += ".exe"
+	}
+	for _, p := range RunningExecutables(exe) {
+		if q := LookPath("", "", p); q != "" {
+			return q
+		}
+	}
+	if p := appPath(exe); p != "" {
+		if q := LookPath("", "", p); q != "" {
+			return q
+		}
+	}
+	base := strings.TrimSuffix(exe, filepath.Ext(exe))
+	for _, e := range uninstallEntries() {
+		named := len(base) >= 4 && strings.Contains(strings.ToLower(e.name), strings.ToLower(base))
+		named = named || slices.ContainsFunc(names, func(n string) bool { return n != "" && hasPrefixFold(e.name, n) })
+		if !named {
+			continue
+		}
+		for _, d := range []string{e.location, filepath.Dir(commandPath(e.icon)), filepath.Dir(commandPath(e.uninstall))} {
+			if d == "" || d == "." {
+				continue
+			}
+			for _, p := range []string{filepath.Join(d, exe), filepath.Join(d, "bin", exe)} {
+				if q := LookPath("", "", p); q != "" {
+					return q
+				}
+			}
+		}
+	}
+	return ""
+}
