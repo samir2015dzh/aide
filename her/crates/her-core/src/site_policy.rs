@@ -124,7 +124,8 @@ mod tests {
         let root = dunce::canonicalize(dir.path()).unwrap();
         let view = view(SitePolicy::default(), &root);
         for own in [false, true] {
-            for url in ["https://93.184.215.14/docs", "http://192.168.0.7/", "http://localhost:5173/", "about:blank", "file:///etc/hosts"] {
+            let outside = if cfg!(windows) { "file:///C:/Windows/win.ini" } else { "file:///etc/hosts" };
+            for url in ["https://93.184.215.14/docs", "http://192.168.0.7/", "http://localhost:5173/", "about:blank", outside] {
                 assert_eq!(evaluate(&[nav(url, own)], &view).await, Gate::Allow, "{url}");
             }
             for origin in ["https://93.184.215.14", "http://192.168.0.7", "http://127.0.0.1:3000"] {
