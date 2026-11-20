@@ -34,9 +34,6 @@ type desktopFixture struct {
 	// The process group of a second Mac, a machine only with a finished
 	// session on it, for the spec to take offline (0 when none).
 	OtherMac int `json:"otherMac"`
-	// On Windows, the folder of an older signer, as if set up, for the app
-	// to offer its own (empty elsewhere).
-	OldSigner string `json:"oldSigner,omitempty"`
 	// The address of a connector's service that signs in with OAuth, for
 	// Her to ask for on a secure card (empty when none).
 	Connector string `json:"connector,omitempty"`
@@ -172,13 +169,6 @@ func TestDesktop(t *testing.T) {
 			}
 			if name == "newsession" { // acme/widget on its GitHub, and an agent's session there
 				repoSession(t, f)
-			}
-			if name == "windows" {
-				f.OldSigner = t.TempDir()
-				bin := filepath.Join(f.OldSigner, "hermesh-signer.exe")
-				if r := run(t, nil, 5*time.Minute, "go", "build", "-ldflags", "-X main.version=0.0.1", "-o", bin, "./cmd/hermesh-signer"); r.code != 0 {
-					t.Fatalf("an older signer: %+v", r)
-				}
 			}
 			file := filepath.Join(t.TempDir(), "fixture.json")
 			b, _ := json.Marshal(f)

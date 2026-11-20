@@ -12,7 +12,6 @@
 //   bin\hermeshd.exe                   console, every command
 //   bin\hermeshdw.exe                  windowless; the daemon's logon task
 //   bin\hermesh.exe                    the agents' CLI
-//   bin\hermesh-signer.exe             copied into Program Files when this PC becomes a trusted device
 //   bin\her.exe                        Her's kernel (her/), which hermeshd runs from beside itself (docs/her-server.md §6.4)
 //   bin\her-console\                   Her's console (her/apps/console), which hermeshd serves
 //   bin\agent-desktop.exe              desktop control, which her's desktop tools find beside her (scripts/agent-desktop.mjs)
@@ -74,16 +73,15 @@ fs.writeFileSync(
   JSON.stringify({ name: "hermesh", productName: "Aide", version, main: "main/index.js", type: "module" }, null, 2),
 );
 
-step(`building hermeshd, hermeshdw, hermesh and hermesh-signer (${arch})`);
+step(`building hermeshd, hermeshdw and hermesh (${arch})`);
 const bin = path.join(tmp, "bin");
-// No build names a server: logging in asks for it (docs/password-login.md).
+// No build names a server: logging in asks for it (docs/accounts.md).
 const ldflags = `-s -w -X github.com/hermeshai/hermesh/internal/machine.Version=${version}`;
 const goEnv = { ...process.env, GOOS: "windows", GOARCH: arch === "x64" ? "amd64" : "arm64", CGO_ENABLED: "0" };
 for (const [name, cmd, flags] of [
   ["hermeshd.exe", "./cmd/hermeshd", ldflags],
   ["hermeshdw.exe", "./cmd/hermeshd", `${ldflags} -H windowsgui`],
   ["hermesh.exe", "./cmd/hermesh", ldflags],
-  ["hermesh-signer.exe", "./cmd/hermesh-signer", `-s -w -X main.version=${version} -H windowsgui`],
 ]) {
   sh("go", ["build", "-trimpath", "-ldflags", flags, "-o", path.join(bin, name), cmd], { cwd: root, env: goEnv });
 }
