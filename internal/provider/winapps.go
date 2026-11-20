@@ -17,6 +17,10 @@ type WindowsApp struct {
 	// Exes are its program's file names, for App Paths and for the programs
 	// running now.
 	Exes []string
+	// GUIDs are the keys electron-builder's installers register it under
+	// (HKCU or HKLM Software\<guid>, with its InstallLocation; the UUID v5
+	// of its appId), read before the uninstall entries' names.
+	GUIDs []string
 }
 
 // WindowsAppDirs are the folders the app is installed in, as Windows says:
@@ -43,6 +47,9 @@ func WindowsAppDirs(app WindowsApp) []string {
 		if p := appPath(exe); p != "" {
 			add(filepath.Dir(p))
 		}
+	}
+	for _, g := range app.GUIDs {
+		add(registeredLocation(g))
 	}
 	for _, e := range uninstallEntries() {
 		if !slices.ContainsFunc(app.Names, func(n string) bool { return n != "" && hasPrefixFold(e.name, n) }) {

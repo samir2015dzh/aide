@@ -56,7 +56,7 @@ export function fixes(line: Line, d: Detected): string[] {
     case "missing":
       return line === "custom" ? ["fix.customMissing", "fix.checkAgain"] : [`${line}.fixInstall`, `${line}.fixWhere`, "fix.checkAgain"];
     case "appOnly":
-      return line === "claude" ? ["claude.fixCodeTab", "fix.checkAgain"] : [`${line}.fixInstall`, "fix.checkAgain"];
+      return line === "claude" ? ["claude.fixCodeTab", "fix.checkAgain"] : line === "deepseek" ? ["deepseek.fixAppOnly", "fix.checkAgain"] : [`${line}.fixInstall`, "fix.checkAgain"];
     case "signIn":
       return [`${line}.fixSignIn`, "fix.checkAgain"];
     case "broken":

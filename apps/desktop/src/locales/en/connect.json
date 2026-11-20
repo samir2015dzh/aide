@@ -68,6 +68,7 @@
     "step5": "Click Start Test Task. A real task starts and opens in Aide.",
     "fixInstall": "Is DeepSeek Harness installed on {{machine}}? Install the DSH desktop app from DeepSeek, or the dsh command, and open it once.",
     "fixWhere": "Installed and still not found? Aide finds the DSH app where Windows says it is: in its list of installed programs, and the DSH running now. Open DSH once, then check again here. The dsh command counts only if a new terminal finds it (type dsh --version there).",
+    "fixAppOnly": "The DSH app is there, but the dsh it carries isn’t found in it. Update DSH, open it once, then check again here. If it still isn’t found, install the dsh command (npm install -g @deepseek-ai/dsh), or add it under Other Agent by dsh’s full path.",
     "fixSignIn": "Open DSH and sign in or set up your DeepSeek API key there.",
     "testFailedHint": "If the reason mentions a key, an account or a sign-in, open DSH, set up your DeepSeek account or API key there, and run the test again.",
     "where1": "Tasks you start in Aide with DeepSeek are in Aide’s task list, on every device of yours.",

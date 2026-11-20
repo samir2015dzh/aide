@@ -640,6 +640,33 @@ func TestDesktopAppScriptHoweverPacked(t *testing.T) {
 			t.Fatalf("got %q", got)
 		}
 	})
+	// The app is where Windows says, its CLI not in it (a build that keeps
+	// it elsewhere): the agent says the app is there without its CLI, with
+	// the app's folder, not that nothing was found.
+	t.Run("app without its CLI", func(t *testing.T) {
+		t.Setenv("LOCALAPPDATA", t.TempDir())
+		t.Setenv("ProgramFiles", t.TempDir())
+		app := filepath.Join(t.TempDir(), "DSH")
+		write(t, filepath.Join(app, "DeepSeek Harness.exe"))
+		was := windowsAppDirs
+		t.Cleanup(func() { windowsAppDirs = was })
+		windowsAppDirs = func(provider.WindowsApp) []string { return []string{app} }
+		var dsh Agent
+		for _, a := range Agents {
+			if a.Name == "deepseek" {
+				dsh = a
+			}
+		}
+		dsh.Command = "aide-no-such-agent"
+		p := &Provider{Agent: dsh, PathEnv: t.TempDir()}
+		if info := p.Discover(context.Background()); info.Problem != provider.ProblemAppWithoutCLI || info.Detail != "DeepSeek Harness ("+app+")" {
+			t.Fatalf("info: %+v", info)
+		}
+		windowsAppDirs = func(provider.WindowsApp) []string { return nil }
+		if info := p.Discover(context.Background()); info.Problem != provider.ProblemNotFound {
+			t.Fatalf("no app: %+v", info)
+		}
+	})
 	t.Run("found where Windows says", func(t *testing.T) {
 		t.Setenv("LOCALAPPDATA", t.TempDir())
 		t.Setenv("ProgramFiles", t.TempDir())

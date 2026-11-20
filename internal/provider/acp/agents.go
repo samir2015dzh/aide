@@ -27,7 +27,8 @@ var Agents = []Agent{
 	{Name: "deepseek", Command: "dsh", Args: []string{"--profile", "acp"}, DSHPresets: true, Apps: []App{
 		{Bundle: "DSH Desktop.app", Exec: "Contents/MacOS/DSH Desktop", Script: "Contents/Resources/app.asar.unpacked/lib/desktop-cli.js"},
 		{Bundle: "DeepSeek Harness", Exec: "DeepSeek Harness.exe", Script: "resources/app.asar/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js",
-			Windows: provider.WindowsApp{Names: []string{"DeepSeek Harness", "DSH Desktop"}, Exes: []string{"DeepSeek Harness.exe", "DSH Desktop.exe"}}},
+			Windows: provider.WindowsApp{Names: []string{"DeepSeek Harness", "DSH Desktop"}, Exes: []string{"DeepSeek Harness.exe", "DSH Desktop.exe"},
+				GUIDs: []string{"1bf39983-50d0-5fe0-9ef4-cece76f67c5e"}}}, // com.deepseek.dsh
 	}},
 	{Name: "codebuddy", Command: "codebuddy", Args: []string{"--acp"}, Names: []string{"CodeBuddy", "WorkBuddy"}},
 	{Name: "grok", Command: "grok", Args: []string{"--no-auto-update", "agent", "stdio"}, Auth: []string{"cached_token", "xai.api_key"}},

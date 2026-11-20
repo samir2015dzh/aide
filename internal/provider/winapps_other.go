@@ -13,3 +13,5 @@ func uninstallEntries() []uninstallEntry { return nil }
 // WindowsStorePackages are the Store packages registered for this user:
 // none off Windows.
 func WindowsStorePackages() []string { return nil }
+
+func registeredLocation(guid string) string { return "" }

@@ -156,6 +156,29 @@ func (p *Provider) command() (bin string, pre, env []string) {
 	return "", nil, nil
 }
 
+// windowsAppWithoutCLI names an app of the agent's that Windows says is
+// installed, though its CLI is not found in it ("DeepSeek Harness (D:\DSH)"):
+// the guide then says the app is there and what is missing, not that
+// nothing was found. "" for none.
+func (p *Provider) windowsAppWithoutCLI() string {
+	if p.Binary != "" {
+		return ""
+	}
+	for _, a := range p.Apps {
+		if len(a.Windows.Exes) == 0 {
+			continue
+		}
+		for _, dir := range windowsAppDirs(a.Windows) {
+			for _, name := range a.Windows.Exes {
+				if provider.LookPath("", "", filepath.Join(dir, name)) != "" {
+					return a.Bundle + " (" + dir + ")"
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // appScript is where the app in folder app keeps its CLI's script, script
 // being where one of its builds keeps it: the same path inside the app's
 // code however the build packs it (resources/app.asar, its .unpacked
@@ -249,6 +272,8 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		info.Problem, info.Detail = provider.ProblemNotFound, p.Command+" not found"
 		if app := provider.AppWithoutCLI(p.DesktopApps...); app != "" && p.Binary == "" {
 			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, app
+		} else if dir := p.windowsAppWithoutCLI(); dir != "" {
+			info.Problem, info.Detail = provider.ProblemAppWithoutCLI, dir
 		}
 		return info
 	}

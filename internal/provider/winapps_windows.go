@@ -128,3 +128,24 @@ func WindowsStorePackages() []string {
 	names, _ := k.ReadSubKeyNames(-1)
 	return names
 }
+
+// registryRoots are where electron-builder registers an app: this user's,
+// then the machine's. Tests point them at keys of their own.
+var registryRoots = []regKey{{registry.CURRENT_USER, `Software`}, {registry.LOCAL_MACHINE, `Software`}}
+
+// registeredLocation is the InstallLocation electron-builder's installer
+// registered the app with guid under (Software\<guid>), "" for none.
+func registeredLocation(guid string) string {
+	for _, r := range registryRoots {
+		k, err := registry.OpenKey(r.root, r.path+`\`+guid, registry.QUERY_VALUE)
+		if err != nil {
+			continue
+		}
+		v, _, _ := k.GetStringValue("InstallLocation")
+		k.Close()
+		if v = strings.Trim(strings.TrimSpace(expand(v)), `"`); v != "" {
+			return v
+		}
+	}
+	return ""
+}

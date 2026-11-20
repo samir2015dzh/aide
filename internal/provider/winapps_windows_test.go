@@ -132,3 +132,25 @@ func TestWindowsProgram(t *testing.T) {
 		t.Fatalf("running: got %q, want %q", got, self)
 	}
 }
+
+// An app electron-builder's installer registered (Software\<guid>, its
+// InstallLocation) is found there, in a folder of the user's choosing.
+func TestWindowsAppDirsRegistered(t *testing.T) {
+	base := `Software\AideTest\` + filepath.Base(t.TempDir())
+	t.Cleanup(func() { deleteTree(registry.CURRENT_USER, base) })
+	wasR, wasU, wasA := registryRoots, uninstallKeys, appPathsKeys
+	t.Cleanup(func() { registryRoots, uninstallKeys, appPathsKeys = wasR, wasU, wasA })
+	registryRoots = []regKey{{registry.CURRENT_USER, base}}
+	uninstallKeys, appPathsKeys = nil, nil
+	const guid = "00000000-1111-5222-8333-444444444444"
+	k, _, err := registry.CreateKey(registry.CURRENT_USER, base+`\`+guid, registry.ALL_ACCESS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	k.SetStringValue("InstallLocation", `"D:\DSH"`)
+	k.Close()
+	got := WindowsAppDirs(WindowsApp{Exes: []string{"aide-no-such.exe"}, GUIDs: []string{"ffffffff-0000-5000-8000-000000000000", guid}})
+	if len(got) != 1 || got[0] != `D:\DSH` {
+		t.Fatalf("got %q, want D:\\DSH", got)
+	}
+}
