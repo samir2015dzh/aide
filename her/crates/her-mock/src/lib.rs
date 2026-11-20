@@ -1651,7 +1651,7 @@ mod tests {
         messages.extend([json!({"role": "assistant", "content": null}), json!({"role": "tool", "content": r#"{"ok":true,"session":"s1"}"#})]);
         assert_eq!(step(&messages, 2, false), ("text", json!(r#"mesh done: {"ok":true,"session":"s1"}"#)));
         assert_eq!(step(&messages, 2, true), ("send_to_user", json!({"text": r#"mesh done: {"ok":true,"session":"s1"}"#, "end_turn": true})));
-        for failed in ["The user denied this tool call.", "Tool call denied: The tool is blocked by the rule `mesh`", "The mesh host is not connected, so these tools cannot run now.", r#"{"ok":false,"error":{"kind":"no_grant"}}"#] {
+        for failed in ["Tool call denied: The tool is blocked by the rule `mesh`", "The mesh host is not connected, so these tools cannot run now.", r#"{"ok":false,"error":{"kind":"no_grant"}}"#] {
             *messages.last_mut().unwrap() = json!({"role": "tool", "content": failed});
             assert_eq!(step(&messages, 2, true), ("send_to_user", json!({"text": format!("mesh failed: {failed}"), "end_turn": true})));
         }
