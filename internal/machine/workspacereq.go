@@ -102,7 +102,10 @@ func findWorkspace(dir string) *managedWorkspace {
 // form; def for one that is empty or leads out of the root.
 func relOr(p, def string) string {
 	p = filepath.Clean(filepath.FromSlash(strings.ReplaceAll(p, `\`, "/")))
-	if p == "." || filepath.IsAbs(p) || filepath.VolumeName(p) != "" || p == ".." || strings.HasPrefix(p, ".."+string(filepath.Separator)) {
+	// Rooted without a drive (\x on Windows) is not IsAbs there, yet no
+	// path relative to the root either.
+	if p == "." || filepath.IsAbs(p) || filepath.VolumeName(p) != "" || strings.HasPrefix(p, string(filepath.Separator)) ||
+		p == ".." || strings.HasPrefix(p, ".."+string(filepath.Separator)) {
 		return filepath.FromSlash(def)
 	}
 	return p
