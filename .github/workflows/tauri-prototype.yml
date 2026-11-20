@@ -1,8 +1,13 @@
 # 原型，不合并（交接仓 TAURI-EVAL.md）：Tauri 外壳原型的 Windows 包，供所有者在真机上同页对比。
-# Only by hand, on the prototype's branch; it is in no other workflow and builds nothing of the app's.
+# Only on the prototype's branch: by hand, or a push there that changes the prototype. (GitHub runs a
+# workflow_dispatch-only workflow only once it is on the default branch, which this one must never be:
+# the push is what registers it on this branch.) It is in no other workflow and builds nothing of the app's.
 name: tauri-prototype
 on:
   workflow_dispatch:
+  push:
+    branches: [prototype/tauri-shell]
+    paths: ["prototypes/tauri-shell/**", ".github/workflows/tauri-prototype.yml"]
 jobs:
   windows:
     if: github.ref == 'refs/heads/prototype/tauri-shell'
