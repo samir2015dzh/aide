@@ -426,6 +426,48 @@ service OwnerControlService {
   // Where Computer Control looks for a path to a machine
   // (docs/computer-control.md §7).
   rpc GetScreenServers(GetScreenServersRequest) returns (GetScreenServersResponse);
+  // Contacts (docs/personas.md): the owner's long-lived names to hand work
+  // to, kept here so that every device of the owner has the same ones. Set
+  // by a trusted device; a relay that keeps none answers Unimplemented.
+  rpc ListPersonas(ListPersonasRequest) returns (ListPersonasResponse);
+  // Adds a contact (no persona_id) or changes one. A change to what its
+  // sessions start with (machine, project, agent, model, effort, mode)
+  // forgets its session: the next message starts a new one.
+  rpc SavePersona(SavePersonaRequest) returns (SavePersonaResponse);
+  // Forgets a contact. Its sessions stay.
+  rpc DeletePersona(DeletePersonaRequest) returns (DeletePersonaResponse);
+  // Records the session a contact talks in now.
+  rpc BindPersonaSession(BindPersonaSessionRequest) returns (BindPersonaSessionResponse);
+}
+
+message ListPersonasRequest {}
+
+message ListPersonasResponse {
+  repeated aide.identity.v1.Persona personas = 1;
+}
+
+message SavePersonaRequest {
+  // Its session_id and updated_at are the relay's: ignored.
+  aide.identity.v1.Persona persona = 1;
+}
+
+message SavePersonaResponse {
+  aide.identity.v1.Persona persona = 1;
+}
+
+message DeletePersonaRequest {
+  string persona_id = 1;
+}
+
+message DeletePersonaResponse {}
+
+message BindPersonaSessionRequest {
+  string persona_id = 1;
+  string session_id = 2;
+}
+
+message BindPersonaSessionResponse {
+  aide.identity.v1.Persona persona = 1;
 }
 
 // Wake is a doorbell: a webhook rung when messages wait for an address. Its

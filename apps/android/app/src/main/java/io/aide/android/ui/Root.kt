@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +47,10 @@ sealed interface Route {
     /** DeepSeek Harness's own sessions, and one of them. */
     data object DSH : Route
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
+    /** Handing work over (docs/personas.md): pick a contact, then write to it. */
+    data object Contacts : Route
+    data class Contact(val id: String) : Route
+    data class EditContact(val persona: io.aide.android.api.Persona) : Route
 }
 
 enum class Tab { Sessions, NeedsYou, Machines, Her, Settings }
@@ -90,12 +96,25 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.Her -> HerPage(model, top.machineId, back = { stack.removeAt(stack.lastIndex) })
             Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
+            Route.Contacts -> ContactsPage(model, open = { stack.add(Route.Contact(it.personaId)) }, add = { stack.add(Route.EditContact(io.aide.android.api.Persona(icon = "robot", color = io.aide.android.model.personaColors.first()))) }, back = { stack.removeAt(stack.lastIndex) })
+            // Written to, the real session opens over the contact.
+            is Route.Contact -> ContactPage(model, top.id, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
+            is Route.EditContact -> ContactEditPage(model, top.persona) { kept ->
+                stack.removeAt(stack.lastIndex)
+                // Deleted: its page goes too.
+                if (kept == null && top.persona.personaId.isNotEmpty()) stack.removeAll { it is Route.Contact && it.id == top.persona.personaId }
+                if (kept != null && top.persona.personaId.isEmpty()) stack.add(Route.Contact(kept.personaId))
+            }
         }
         return
     }
     val needs = world.buckets.needsYou.size
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
+        // Handing work over: a contact first, then what to do.
+        floatingActionButton = {
+            if (tab == Tab.Sessions) ExtendedFloatingActionButton(onClick = { stack.add(Route.Contacts) }, icon = { Icon(Icons.Filled.Person, null) }, text = { Text(t("Hand Work", "派活")) })
+        },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(tab == Tab.Sessions, { tab = Tab.Sessions }, icon = { Icon(Icons.AutoMirrored.Filled.List, null) }, label = { Text(t("Tasks", "任务")) })

@@ -102,6 +102,12 @@ CREATE TABLE logins (
   generation INTEGER NOT NULL,
   logged_in_at INTEGER NOT NULL
 );
+`, `
+CREATE TABLE personas (
+  persona_id TEXT PRIMARY KEY,
+  persona BLOB NOT NULL,
+  created_at INTEGER NOT NULL
+);
 `}
 
 // Store is the Backend of a self-hosted relay: one owner, SQLite. Beside
@@ -567,7 +573,7 @@ ON CONFLICT(owner_id) DO UPDATE SET erase_id=excluded.erase_id, erase_order=excl
 	for _, q := range []string{
 		`DELETE FROM meta WHERE key IN ('owner_id', 'root_chain', 'device_cert', 'revocations', 'claim_code', 'claim_code_until', 'server_key', 'account', 'password_login', 'logins_off')`,
 		`DELETE FROM machine_certs`, `DELETE FROM grants`, `DELETE FROM logins`, `DELETE FROM push_targets`,
-		`DELETE FROM messages`, `DELETE FROM inbox_registrations`, `DELETE FROM contact_cards`, `DELETE FROM connection_log`,
+		`DELETE FROM messages`, `DELETE FROM inbox_registrations`, `DELETE FROM contact_cards`, `DELETE FROM connection_log`, `DELETE FROM personas`,
 	} {
 		if _, err := tx.Exec(q); err != nil {
 			return err

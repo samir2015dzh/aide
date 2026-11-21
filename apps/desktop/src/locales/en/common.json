@@ -57,6 +57,7 @@
     "running_other": "{{count}} working",
     "sentByYou": "Sent by You",
     "newSession": "New Task",
+    "contacts": "Contacts",
     "dsh": "DeepSeek Sessions",
     "searchHint": "Search tasks, machines, agents",
     "machinesOnline": "{{online}}/{{total}} machines online",

@@ -210,5 +210,26 @@
     "started": "已启动「{{title}}」",
     "howToConnect": "怎么连接 DSH、Claude Desktop…"
   },
+  "contacts": {
+    "title": "联系人",
+    "sub": "挑一个联系人直接说话：它在用的任务能接着做就接着做，否则按它的设置在它的机器和项目里新开一个任务。",
+    "none": "还没有联系人。添加一个：给它起名，选好机器、项目和 Agent。",
+    "edit": "编辑",
+    "current": "正在用的任务：",
+    "fresh": "下一条消息会按它的设置新开一个任务。",
+    "message": "发给 {{name}} 的消息",
+    "send": "发送",
+    "add": "添加联系人…",
+    "started": "{{name}} 新开了任务「{{title}}」",
+    "sent": "已发给 {{name}}（「{{title}}」）",
+    "addTitle": "添加联系人",
+    "editTitle": "编辑联系人",
+    "name": "名字",
+    "avatar": "头像",
+    "color": "颜色",
+    "presetsNote": "改机器、项目、Agent、模型、推理强度或模式后，下一条消息会新开任务；只改名字或头像会接着用原来的任务。删除联系人不会删除它的任务。",
+    "delete": "删除联系人",
+    "save": "保存"
+  },
   "working": "正在处理…"
 }
