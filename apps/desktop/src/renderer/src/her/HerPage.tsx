@@ -13,7 +13,9 @@ import { HerContext, useHer, type Her, type HerSheet, type Panel } from "./conte
 import { Conversation, putInComposer, showRun } from "./Conversation";
 import { DeliveriesPanel } from "./Deliveries";
 import { Progress } from "./Progress";
-import { environments, envState, pickEnvironment } from "./environments";
+import { environments, envState, herChoices, herScope } from "./environments";
+import { local } from "../api";
+import { ErrorLine, useAction } from "../sheets/common";
 import { RoutinesPanel } from "./RoutinesPanel";
 import { BrowserPage, EnvironmentPage, ModelPage, ProviderPage, SearchPage, SkillPage, SkillsPage, StoragePage } from "./HerPages";
 import { FirstRun, Setup } from "./Setup";
@@ -50,7 +52,9 @@ export default function HerPage() {
   const st = useStore();
   const envs = useMemo(() => environments(st.machines), [st.machines]);
   const wanted = st.selection.kind === "her" || st.selection.kind === "progress" ? st.selection.machine : undefined;
-  const machine = pickEnvironment(envs, wanted ?? rememberedEnv());
+  // This computer's Her, or that it is off; another machine's only once the owner picked it (herScope).
+  const scope = herScope(st.machines, wanted, rememberedEnv());
+  const machine = scope.kind === "env" ? scope.machine : undefined;
   useEffect(() => {
     if (machine) rememberEnv(machine.machineId);
   }, [machine?.machineId]);
@@ -58,6 +62,7 @@ export default function HerPage() {
   // Another environment: of the page shown, Her's conversation or what she sent out.
   const progress = st.selection.kind === "progress";
   const choose = useCallback((machineId: string) => set({ selection: { kind: progress ? "progress" : "her", machine: machineId } }), [set, progress]);
+  if (scope.kind === "localOff") return <LocalOff machine={scope.machine} envs={envs} choose={choose} />;
   if (!machine) return <FirstRun onDone={choose} />;
   return <Environment key={machine.machineId} machine={machine} envs={envs} choose={choose} />;
 }
@@ -149,6 +154,7 @@ function Environment({ machine, envs, choose }: { machine: Machine; envs: Machin
           ) : (
             <>
               <TopBar />
+              {!machine.local && <NotHere machine={machine} choose={choose} />}
               {bot ? <Conversation bot={bot} conv={conv} op={op} waiting={waiting.list} onWaiting={refreshWaiting} /> : <EnvStatus machine={machine} />}
             </>
           )}
@@ -182,6 +188,75 @@ function Environment({ machine, envs, choose }: { machine: Machine; envs: Machin
         {sheet?.kind === "add" && <AddEnvironmentSheet />}
       </div>
     </HerContext.Provider>
+  );
+}
+
+/**
+ * This computer's Her is off (the owner's rule, 2026-11-21): the page says so and turns her on here, in the
+ * app, as the first run does (SetHer, which the owner confirms). Another machine's Her shows only when the
+ * owner picks it below; never in this one's place.
+ */
+function LocalOff({ machine, envs, choose }: { machine: Machine; envs: Machine[]; choose: (machineId: string) => void }) {
+  const { t } = useTranslation("her");
+  const st = useStore();
+  const act = useAction();
+  const choice = herChoices(st.machines).find((c) => c.machine.machineId === machine.machineId);
+  const why =
+    choice?.why === "needsUpdate" ? t("setup.needsUpdate")
+    : choice?.why === "windows" ? t("setup.windows")
+    : choice?.why === "unsupported" ? t("setup.unsupported", { detail: choice.detail })
+    : "";
+  const others = envs.filter((m) => !m.local);
+  return (
+    <div className="her-first">
+      <div className="ctool drag" />
+      <div className="her-first-in">
+        <Mark size={44} variant={act.busy ? "pulse" : undefined} />
+        <h1>{t("scope.offTitle")}</h1>
+        <p className="lede">{t("scope.offSub", { name: machine.machineName })}</p>
+        {why ? (
+          <p className="her-setup-note">{why}</p>
+        ) : (
+          <button className="btn primary" disabled={act.busy} onClick={() => void act.go(() => local.setHer({ machineId: machine.machineId, enabled: true }))}>
+            {act.busy ? t("setup.turningOn") : t("scope.turnOnHere")}
+          </button>
+        )}
+        <p className="her-setup-note">{t("grant.desc")}</p>
+        <ErrorLine text={act.error} />
+        {others.length > 0 && (
+          <div className="her-choices" role="list" aria-label={t("scope.others")}>
+            <p className="her-setup-note">{t("scope.others")}</p>
+            {others.map((m) => (
+              <div key={m.machineId} className="her-choice" role="listitem">
+                <div className="her-choice-t">
+                  <b>{m.machineName}</b>
+                </div>
+                <button className="btn" onClick={() => choose(m.machineId)}>
+                  {t("scope.view")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Over another machine's Her, for as long as it shows: whose Her this is, and the way back to this computer's. */
+function NotHere({ machine, choose }: { machine: Machine; choose: (machineId: string) => void }) {
+  const { t } = useTranslation("her");
+  const st = useStore();
+  const here = st.machines.find((m) => m.local);
+  return (
+    <div className="her-nothere" role="status">
+      <span>{t("scope.viewing", { name: machine.machineName })}</span>
+      {here && (
+        <button className="link" onClick={() => choose(here.machineId)}>
+          {t("scope.backHere")}
+        </button>
+      )}
+    </div>
   );
 }
 
