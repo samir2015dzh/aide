@@ -1,5 +1,8 @@
 package io.aide.android.ui
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.animation.core.tween
 import io.aide.android.model.onMachine
 import io.aide.android.model.Buckets
 import androidx.compose.runtime.setValue
@@ -31,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +56,7 @@ import io.aide.android.model.stateLine
 import kotlinx.coroutines.launch
 
 /** Every machine's sessions: those that need you, those at work, the rest. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
     val world by model.world.collectAsState()
@@ -66,6 +71,9 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
         PageTitle(t("Sessions", "会话"))
         SyncLine(model)
         MachineFilter(world, picked) { picked = it }
+        // Pulled down: read again now (the Watch keeps the list current otherwise).
+        var refreshing by remember { mutableStateOf(false) }
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, modifier = Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize()) {
             // DeepSeek Harness's own sessions, on a machine that has it.
             if (world.machines.any { m -> m.status?.agents.orEmpty().any { it.name == "deepseek" } }) {
@@ -86,6 +94,7 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
                 }
             }
         }
+        }
     }
 }
 
@@ -104,7 +113,11 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
                 item(key = "h-sessions") { SectionHeader(t("Tasks waiting for you", "等你处理的任务") + " · ${sessions.size}") }
             }
             items(sessions, key = { it.sessionId }) { s ->
-                Card(Modifier.fillMaxWidth()) { SessionRow(s, world) { open(s.sessionId) } }
+                Box(
+                    Modifier.fillMaxWidth()
+                        .animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))
+                        .aideCard(),
+                ) { SessionRow(s, world) { open(s.sessionId) } }
             }
         }
     }
@@ -114,14 +127,17 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
     if (sessions.isEmpty()) return
     item(key = "h-$title") { SectionHeader("$title · ${sessions.size}", color ?: MaterialTheme.colorScheme.primary) }
     items(sessions, key = { it.sessionId }) { s ->
-        SessionRow(s, world) { open(s.sessionId) }
-        HorizontalDivider(Modifier.padding(start = 16.dp))
+        // A session moving between groups, or arriving, eases into place rather than jumping (Motion, as the desktop's).
+        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))) {
+            SessionRow(s, world) { open(s.sessionId) }
+            HorizontalDivider(Modifier.padding(start = 16.dp))
+        }
     }
 }
 
 @Composable
 fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().pressable(onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         // Waiting for the owner: a bar at the row's start, as on the desktop.
         if (needsYou(s)) {
             Box(Modifier.width(3.dp).height(36.dp).background(Warning, RoundedCornerShape(2.dp)))
@@ -186,10 +202,11 @@ fun PageTitle(text: String) {
 }
 
 @Composable
-fun SectionHeader(text: String, color: Color = MaterialTheme.colorScheme.primary) {
+fun SectionHeader(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    // Quiet, as the desktop's group headings: a label above its rows, not a title competing with them.
     Text(
-        text, style = MaterialTheme.typography.labelLarge, color = color,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+        text, style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.4.sp), color = color, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp),
     )
 }
 

@@ -1,5 +1,18 @@
 package io.aide.android.ui
 
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -91,7 +104,9 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
     LaunchedEffect(items.size, items.lastOrNull()) {
         // Follow the end while it is in view (or on first load).
         val last = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        if (items.isNotEmpty() && (last < 0 || last >= items.size - 3)) list.scrollToItem(items.size - 1)
+        // The first time, straight to the end; after, a message arriving while the owner is at the end eases into view.
+        if (items.isNotEmpty() && last < 0) list.scrollToItem(items.size - 1)
+        else if (items.isNotEmpty() && last >= items.size - 3) list.animateScrollToItem(items.size - 1)
     }
     Scaffold(
         topBar = {
@@ -137,7 +152,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) { ItemView(it, starter = s?.createdBy.orEmpty()) }
+                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
             }
@@ -167,11 +182,12 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
                 else -> item.fromName.ifEmpty { item.from }
             }
             by?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)) }
-            Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(max = 320.dp)) {
-                SelectionContainer { Text(item.text, Modifier.padding(10.dp), color = MaterialTheme.colorScheme.onPrimary) }
+            // The owner's message, as the desktop's: a step above the page in either mode, never the accent (in dark mode it was white).
+            Surface(color = aide.bubble, contentColor = aide.onBubble, shape = RoundedCornerShape(Radius.Xl), modifier = Modifier.widthIn(max = 320.dp)) {
+                SelectionContainer { Text(item.text, Modifier.padding(horizontal = 15.dp, vertical = 9.dp), style = MaterialTheme.typography.bodyLarge) }
             }
         }
-        is Item.Agent -> SelectionContainer { Text(item.text, pad) }
+        is Item.Agent -> SelectionContainer { Text(item.text, pad, style = MaterialTheme.typography.bodyLarge) }
         is Item.Draft -> Text(item.text, pad, color = MaterialTheme.colorScheme.onSurfaceVariant)
         is Item.Tools -> ToolsView(item)
         is Item.Asked -> Surface(pad, color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(12.dp)) {
@@ -228,19 +244,50 @@ private fun resolutionText(r: String) = when (r) {
 @Composable
 private fun ToolsView(item: Item.Tools) {
     var open by remember { mutableStateOf(false) }
-    Column(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clickable { open = !open }) {
-        val first = item.calls.first()
-        Text(
-            if (item.calls.size == 1) listOf(first.name, first.line).filter { it.isNotEmpty() }.joinToString(" · ") else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (open) 4 else 1, overflow = TextOverflow.Ellipsis,
-        )
-        if (open) {
-            item.calls.forEach { c ->
-                HorizontalDivider()
-                Text(listOf(c.name, c.line).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-                // The raw arguments, under the line, when the line is not all they say.
-                if (c.summary.isNotBlank() && c.summary != c.line) Text(c.summary, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 8, overflow = TextOverflow.Ellipsis)
-                c.result?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = if (c.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+    val turn by animateFloatAsState(if (open) 90f else 0f, tween(Motion.Medium, easing = Motion.EaseOut), label = "chevron")
+    // One quiet row until opened, as on the desktop: a fill a step above the page, the calls folding out under it.
+    Surface(
+        color = aide.fill, shape = RoundedCornerShape(Radius.Md),
+        modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(Radius.Md)).clickable { open = !open },
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            val first = item.calls.first()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (item.calls.size == 1) listOf(first.name, first.line).filter { it.isNotEmpty() }.joinToString(" · ") else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            AnimatedVisibility(
+                open,
+                enter = expandVertically(tween(Motion.Medium, easing = Motion.EaseOut)) + fadeIn(tween(Motion.Medium)),
+                exit = shrinkVertically(tween(Motion.Short, easing = Motion.EaseOut)) + fadeOut(tween(Motion.Short)),
+            ) {
+                Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item.calls.forEach { c ->
+                        HorizontalDivider(color = aide.separator)
+                        Text(listOf(c.name, c.line).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        // The raw arguments, under the line, when the line is not all they say (#37), in the same block as the result.
+                        if (c.summary.isNotBlank() && c.summary != c.line) {
+                            Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
+                                Text(
+                                    c.summary, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 8, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        c.result?.let {
+                            Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
+                                Text(
+                                    it, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                                    color = if (c.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 12, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Machine } from "@aide/proto/local";
-import { environments, envState, herChoices, herDataKept, lacksGrant, newServer, pickEnvironment, unreadCount } from "./environments.ts";
+import { environments, envState, herChoices, herDataKept, herScope, lacksGrant, newServer, pickEnvironment, unreadCount } from "./environments.ts";
 
 type Her = NonNullable<Machine["her"]>;
 
@@ -122,4 +122,26 @@ test("Her's data is kept as the machine says while it answers, else as last seen
   // Never on, or software older than HerStatus.data.
   assert.equal(herDataKept(machine("m1", "a")), false);
   assert.equal(herDataKept(machine("m1", "a", { her: { enabled: false } })), false);
+});
+
+// The owner's rule (2026-11-21): the Her page is this computer's Her; another machine's only once picked.
+test("the Her page shows this computer's Her, or that it is off: never another machine's in its place", () => {
+  const here = (her?: Partial<Her>) => machine("m1", "this-pc", { local: true, her });
+  const other = machine("m2", "work-pc", { her: ready });
+  const kind = (s: ReturnType<typeof herScope>) => (s.kind === "none" ? "none" : `${s.kind}:${s.machine.machineId}`);
+  // This computer's Her off, another's on: this computer's off page, even with the other remembered.
+  assert.equal(kind(herScope([other, here()], undefined, "m2")), "localOff:m1");
+  assert.equal(kind(herScope([other, here({ enabled: false })], undefined)), "localOff:m1");
+  // On here: here, whatever was remembered.
+  assert.equal(kind(herScope([other, here(ready)], undefined, "m2")), "env:m1");
+  // Picked by the owner: the other machine's Her, while it runs one.
+  assert.equal(kind(herScope([other, here()], "m2")), "env:m2");
+  assert.equal(kind(herScope([machine("m2", "work-pc"), here()], "m2")), "localOff:m1");
+  // Picked: this computer, off: its off page.
+  assert.equal(kind(herScope([other, here()], "m1")), "localOff:m1");
+  // A device with no machine of its own: as before, the remembered environment, else the first, else none.
+  const third = machine("m3", "cloud", { her: ready });
+  assert.equal(kind(herScope([other, third], undefined, "m3")), "env:m3");
+  assert.equal(kind(herScope([other, third], undefined)), "env:m3");
+  assert.equal(kind(herScope([machine("m2", "work-pc")], undefined)), "none");
 });

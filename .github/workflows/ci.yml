@@ -81,6 +81,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # her's debug build, kept apart from her-ci's and windows-app's (deleted with her).
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: her -> target
+          key: ci-windows-e2e
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - name: Build Her for its end-to-end tests
         shell: bash
         env:
@@ -125,6 +131,13 @@ jobs:
           fi
           git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
           echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+      # The package's her build (release profile, MSVC target), kept apart from the others
+      # (deleted with her).
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: her -> target
+          key: ci-windows-app
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       # her is built once, with the profile that takes the least of this job's time.
       - name: package
         run: node apps/desktop/scripts/package-win.mjs

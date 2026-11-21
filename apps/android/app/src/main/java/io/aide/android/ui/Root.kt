@@ -1,5 +1,13 @@
 package io.aide.android.ui
 
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +63,9 @@ sealed interface Route {
 
 enum class Tab { Sessions, NeedsYou, Machines, Her, Settings }
 
+/** The page shown over the tabs (none: the tabs), and how deep in the stack, so a transition knows forward from back. */
+private data class PageAt(val route: Route?, val depth: Int)
+
 @Composable
 fun Root(model: AppModel) {
     val phase by model.phase.collectAsState()
@@ -89,7 +100,19 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         }
         model.opened()
     }
-    val top = stack.lastOrNull()
+    // A page over the tabs slides in a little from the side and fades, back the other way (Motion, as the desktop's).
+    AnimatedContent(
+        targetState = PageAt(stack.lastOrNull(), stack.size),
+        transitionSpec = {
+            val forward = targetState.depth > initialState.depth
+            val shift = { w: Int -> if (forward) w / 6 else -w / 6 }
+            (slideInHorizontally(tween(Motion.Long, easing = Motion.EaseOut), shift) + fadeIn(tween(Motion.Medium, easing = Motion.EaseOut)))
+                .togetherWith(slideOutHorizontally(tween(Motion.Long, easing = Motion.EaseOut)) { w -> -shift(w) / 2 } + fadeOut(tween(Motion.Short)))
+        },
+        contentKey = { it.depth to it.route },
+        label = "page",
+    ) { at ->
+    val top = at.route
     if (top != null) {
         when (top) {
             is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
@@ -106,7 +129,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                 if (kept != null && top.persona.personaId.isEmpty()) stack.add(Route.Contact(kept.personaId))
             }
         }
-        return
+        return@AnimatedContent
     }
     val needs = world.buckets.needsYou.size
     Scaffold(
@@ -129,14 +152,17 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         },
     ) { pad ->
         Box(Modifier.padding(pad)) {
-            when (tab) {
-                Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
-                Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
-                Tab.Machines -> MachinesTab(model)
-                Tab.Her -> HerTab(model) { stack.add(Route.Her(it)) }
-                Tab.Settings -> SettingsTab(model)
+            Crossfade(tab, animationSpec = tween(Motion.Medium, easing = Motion.EaseOut), label = "tab") { shown ->
+                when (shown) {
+                    Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
+                    Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
+                    Tab.Machines -> MachinesTab(model)
+                    Tab.Her -> HerTab(model) { stack.add(Route.Her(it)) }
+                    Tab.Settings -> SettingsTab(model)
+                }
             }
         }
+    }
     }
 }
 
