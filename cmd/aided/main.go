@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"runtime"
 	"strings"
 	"syscall"
@@ -718,13 +719,39 @@ var serviceLine func(byHand bool) bool
 
 // machineCheck asks the running machine how it is (it holds the data
 // directory), or opens it when it isn't running.
+// machineDirs are where this user's machines keep their data: aided
+// login's own first, then the app's machine in the current owner profile,
+// then in the other profiles.
+func machineDirs(dataDir string) []string {
+	dirs := []string{filepath.Join(dataDir, "machine")}
+	owner := filepath.Join(dataDir, "owner")
+	if cur, err := os.ReadFile(filepath.Join(owner, "current")); err == nil {
+		if id := strings.TrimSpace(string(cur)); id != "" && !strings.ContainsAny(id, `/\`) {
+			dirs = append(dirs, filepath.Join(owner, "profiles", id, "machine"))
+		}
+	}
+	others, _ := filepath.Glob(filepath.Join(owner, "profiles", "*", "machine"))
+	for _, d := range others {
+		if !slices.Contains(dirs, d) {
+			dirs = append(dirs, d)
+		}
+	}
+	return dirs
+}
+
 func machineCheck(ctx context.Context, dataDir string, open func() (*machine.Machine, error)) (machine.Check, bool, error) {
 	var c machine.Check
-	if out, ok, err := machine.ControlRequest(ctx, filepath.Join(dataDir, "machine"), "GET", "/check", nil); ok {
-		if err == nil {
-			err = json.Unmarshal(out, &c)
+	// The machine that runs answers: aided login's own, or the app's in its
+	// owner profile. Asking only the first, status read the app's PC as
+	// never logged in (the machine from before its profile) while doctor,
+	// which asks the app's aided, said it was.
+	for _, dir := range machineDirs(dataDir) {
+		if out, ok, err := machine.ControlRequest(ctx, dir, "GET", "/check", nil); ok {
+			if err == nil {
+				err = json.Unmarshal(out, &c)
+			}
+			return c, true, err
 		}
-		return c, true, err
 	}
 	n, err := open()
 	if err != nil {
