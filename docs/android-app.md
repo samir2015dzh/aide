@@ -40,7 +40,6 @@ apps/android/
 │   ├── AideApp.kt, MainActivity.kt   the core started with the process; the window
 │   ├── api/       Connect client (JSON codec) for LocalService, its messages
 │   ├── model/     AppModel (state, actions, Watch, lifecycle), World, Transcript, links, answers, the account's checks
-│   ├── her/       Her's protocol over the core's HerOpen/HerCall/HerSend, the panel's state
 │   ├── connection/ the foreground service that keeps the connection in the background, its switch (§4.1)
 │   ├── push/      notifications: what the Watch brings as notices (LiveNotices), showing them
 │   └── ui/        Compose screens
@@ -194,6 +193,9 @@ Google Play services (a `Pusher` beside APNs, with the owner's own
 Firebase project), notices for a phone whose app is not running at all.
 
 ## 5. Her
+
+> **Gone (2026-11-21):** Aide no longer has Her (work order #17); the
+> app's Her panel was removed. Kept as the record.
 
 The core already carries everything Her needs (`HerOpen`, `HerCall`,
 `HerSend`, docs/her-server.md), so the app has a minimal Her panel without

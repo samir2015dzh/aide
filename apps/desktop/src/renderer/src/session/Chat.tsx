@@ -98,7 +98,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
 }
 
 /**
- * A conversation's frame, as a session's page and a sub-agent's record (her/Progress.tsx) have it: its rows, newest
+ * A conversation's frame, as a session's page has it: its rows, newest
  * at the bottom, only those near what is in sight drawn (useVirtualRows, docs/desktop-performance.md §7), between
  * `head` and `foot`; `unread` in their place while there is nothing to show. It opens at its end and stays there as
  * it grows (or `follow` changes) unless the person scrolled up; scrolled well up, a button takes them back down.

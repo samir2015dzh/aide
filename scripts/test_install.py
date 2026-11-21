@@ -8,14 +8,12 @@ operations are real. Full daemon/service coverage lives in LinuxUpdate.
 
 import errno
 import hashlib
-import io
 import os
 from pathlib import Path
 import pty
 import select
 import signal
 import subprocess
-import tarfile
 import tempfile
 import time
 import unittest
@@ -67,17 +65,6 @@ class InstallerTest(unittest.TestCase):
         subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(self.key), "-out",
                         str(self.release / "checksums.txt.sig"),
                         str(self.release / "checksums.txt")], check=True, capture_output=True)
-
-    def publish_her(self, index):
-        """her for Linux and her console, as release.sh makes it (tar -C dist .)."""
-        self.publish("her-linux-amd64", b"#!/bin/sh\necho her 0.2.0\n")
-        archive = io.BytesIO()
-        with tarfile.open(fileobj=archive, mode="w:gz") as tar:
-            for name, data in (("./index.html", index), ("./assets/app.js", b"app")):
-                info = tarfile.TarInfo(name)
-                info.size = len(data)
-                tar.addfile(info, io.BytesIO(data))
-        self.publish("her-console.tar.gz", archive.getvalue())
 
     def command(self, name, body):
         path = self.mock / name
@@ -241,31 +228,30 @@ class InstallerTest(unittest.TestCase):
         self.assertNotIn(str(self.root / "volume4"), output)
         self.assertEqual(self.entry.resolve(), self.root / "volume1/@aide-1000")
 
-    def test_her_and_its_console_beside_aided(self):
+    def test_her_from_before_is_removed(self):
+        """A machine from a version with Her: installing over it removes her and her folders."""
         bin = self.home / ".local/bin"
+        bin.mkdir(parents=True, exist_ok=True)
+        for name in ("her", ".her.previous"):
+            (bin / name).write_text("#!/bin/sh\n")
+        for name in ("her-console", "her-computer", "her-pdf", ".her-console.previous"):
+            (bin / name / "assets").mkdir(parents=True)
+            (bin / name / "assets/app.js").write_text("old")
+        (bin / "hermit").write_text("mine")
         code, output = self.run_install(terminal=False)
         self.assertEqual(code, 0, output)
-        self.assertFalse((bin / "her").exists(), "a release without her")
-        self.publish_her(b"console one")
-        code, output = self.run_install(terminal=False)
-        self.assertEqual(code, 0, output)
-        self.assertTrue(os.access(bin / "her", os.X_OK), output)
-        self.assertEqual((bin / "her-console/index.html").read_bytes(), b"console one")
-        # Again with another console: it replaces the old one whole.
-        (bin / "her-console/stale.js").write_text("old")
-        self.publish_her(b"console two")
-        code, output = self.run_install(terminal=False)
-        self.assertEqual(code, 0, output)
-        self.assertEqual((bin / "her-console/index.html").read_bytes(), b"console two")
-        self.assertFalse((bin / "her-console/stale.js").exists())
+        for name in ("her", ".her.previous", "her-console", "her-computer", "her-pdf", ".her-console.previous"):
+            self.assertFalse((bin / name).exists(), name)
+        self.assertEqual((bin / "hermit").read_text(), "mine")
+        self.assertTrue(os.access(bin / "aided", os.X_OK), output)
 
-    def test_cli_has_no_her(self):
-        self.publish_her(b"console")
-        for args in ("--cli",):
-            code, output = self.run_install(terminal=False, args=args)
-            self.assertEqual(code, 0, output)
-            self.assertFalse((self.home / ".local/bin/her").exists(), args)
-            self.assertFalse((self.home / ".local/bin/her-console").exists(), args)
+    def test_cli_leaves_the_folder_alone(self):
+        bin = self.home / ".local/bin"
+        bin.mkdir(parents=True, exist_ok=True)
+        (bin / "her").write_text("#!/bin/sh\n")
+        code, output = self.run_install(terminal=False, args="--cli")
+        self.assertEqual(code, 0, output)
+        self.assertTrue((bin / "her").exists(), output)
 
     def test_cli_does_not_ask_for_daemon_data(self):
         code, output = self.run_install(args="--cli")

@@ -92,7 +92,7 @@ with the state as JSON:
 ```
 
 Checking it: on Windows 10 (no efficiency mode column) Task Manager's
-Details tab shows `aidedw.exe` and `her.exe` at Below normal priority while
+Details tab shows `aidedw.exe` at Below normal priority while
 `aided status` says saving; on Windows 11 the Efficiency mode column says
 Yes. With a window open or a session running, neither holds.
 

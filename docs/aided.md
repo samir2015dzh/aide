@@ -15,13 +15,9 @@ curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install
   from `$AIDE_ACCOUNT` and `$AIDE_PASSWORD`, the password handed to it on
   stdin), and your server adds the machine to your machines at once, with
   nothing to approve or compare ([accounts.md](accounts.md) §3).
-- On Linux it also installs `her`, `her-console/`, `her-pdf/` and
-  `her-computer/` there (not with `--cli`): Her's kernel, its
-  console, what reads PDFs for it, and agent-desktop, which Her's computer
-  use runs on a computer with a desktop ([linux.md](linux.md) §4, §5; the
-  last two need glibc). They run only once you turn
-  Her on for this machine in the Aide app
-  ([her-server.md](her-server.md)), keeping Her's data in `~/.her`.
+- Aide no longer has Her. Installing over a version that had her removes
+  `her`, `her-console/`, `her-pdf/` and `her-computer/` from there (not
+  with `--cli`); Her's data in `~/.her` stays.
 - As root, it says it installs for root: press Enter, or type another
   user to install for (creating it if needed). From then on, run the
   commands as that user: `su - dev`.
@@ -142,7 +138,8 @@ It lists what goes and asks first (`--yes` for scripts):
 - the data directory, and where it links to (a Synology volume's
   `@aide-<uid>`): sessions, logs, the worktrees Aide made;
 - the agents' CLI key and settings (`~/.config/aide`);
-- `aided`, and `aide`, `her` and `her-console/` beside it.
+- `aided`, and `aide` beside it (and what a version with Her left there:
+  `her`, `her-console/`, `her-pdf/`, `her-computer/`).
 
 Your project folders and repositories stay, and so does `~/.her`, Her's
 assistants, conversations and settings: delete it yourself to remove
