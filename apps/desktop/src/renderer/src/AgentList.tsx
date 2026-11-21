@@ -109,6 +109,7 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                     </span>
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
+                    {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
                   </span>
                 </span>
                 <Icon name="chevR" className="ag-chev" />
@@ -189,6 +190,21 @@ function defaultsText(a: AgentStatus, t: T): string {
   const d = a.defaults;
   if (!d) return "";
   return [d.model && modelName(a, d.model), d.effort && effortName(t, d.effort), d.speed ? speedName(t, d.speed) : "", d.mode && modeName(a, d.mode)].filter(Boolean).join(" · ");
+}
+
+/** The Claude plan usage for its row: "Plan 5h 20% · Week 59%", a stale
+ * marker when kept after a failed refresh, or a short "unavailable" note.
+ * "" when there is no reading at all (no token source wired). */
+function usageText(a: AgentStatus, t: T): string {
+  const u = a.usage;
+  if (!u) return "";
+  if (u.unavailable) return t("prepare.usageUnreadable");
+  if (u.windows.length === 0) return "";
+  const label = (k: string) => (k === "five_hour" ? t("prepare.usage5h") : k === "seven_day" ? t("prepare.usageWeek") : k.replace("seven_day_", "7d "));
+  const parts = u.windows.map((w) => `${label(w.key)} ${Math.round(w.utilization)}%`);
+  let s = `${t("prepare.usageLabel")} ${parts.join(" · ")}`;
+  if (u.stale) s += ` (${t("prepare.usageStale")})`;
+  return s;
 }
 
 const logins: Record<string, { key: TerminalCommand; text: string }> = {

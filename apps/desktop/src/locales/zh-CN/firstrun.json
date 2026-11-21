@@ -142,7 +142,12 @@
       "missingRuntime": "找到了 {{binary}}，但运行它需要的 {{runtime}} 找不到。确认它在终端里能运行。",
       "failed": "找到了 {{binary}}，但运行时报错：{{detail}}"
     },
-    "howToConnect": "怎么连接…"
+    "howToConnect": "怎么连接…",
+    "usageLabel": "套餐",
+    "usage5h": "5h",
+    "usageWeek": "周",
+    "usageStale": "旧值",
+    "usageUnreadable": "套餐用量读不到"
   },
   "erased": {
     "done": "Aide 已全部清空",

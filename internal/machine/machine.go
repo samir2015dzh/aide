@@ -64,6 +64,11 @@ type Config struct {
 	// NewHerLink makes Her's link to the mesh (internal/herlink, which is
 	// above this package); nil: Her has no mesh tools.
 	NewHerLink func(HerLinkConfig) HerLink
+	// ClaudeUsage turns on reading the Claude plan usage on this machine
+	// (claudeusage.go): the account's OAuth token is read locally to fetch
+	// the five-hour and weekly windows, with auto-renew. Off by default so
+	// tests make no network calls; aided turns it on.
+	ClaudeUsage bool
 	// TestBeforeHer makes this machine act as an aided from before Her
 	// (before 0.1.5), for the end-to-end tests of an app newer than its
 	// machine (docs/version-skew.md §6.7): its status carries no Her, and
@@ -112,6 +117,10 @@ type Machine struct {
 	grants      []*identityv1.Grant         // the grants that cover this machine (grants.go)
 	health      []*machinev1.MachineProblem // what keeps it from working (health.go)
 	healthAt    time.Time                   // when it was read
+	usage       *machinev1.ClaudeUsage      // last Claude plan usage reading (claudeusage.go)
+	usageAt     time.Time                   // when a reading was last attempted
+	usageFetch  bool                        // a usage fetch is under way
+	usageSrc    usageSource                 // reads plan usage; nil disables it
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
 	checked     time.Time                // when the last check of all of them ended
@@ -256,6 +265,9 @@ func Open(cfg Config) (*Machine, error) {
 	n.sessions.requester = func(id string) string { return n.knownClients()[id].Label }
 	if c, ok := cfg.Providers["claude"].(*claude.Provider); ok && c.Log == nil {
 		c.Log = n.log
+	}
+	if cfg.ClaudeUsage {
+		n.usageSrc = &claude.UsageReader{AutoRenew: true, HTTP: cfg.HTTPClient, Log: n.log}
 	}
 	n.sessions.offered = n.offered
 	n.sessions.notice = func(s noticeSession, e *sessionv1.SessionEvent) {
@@ -525,6 +537,9 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 			a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version,
 				LoggedIn: i.LoggedIn, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary}
 			n.agentModels(a, i)
+			if name == "claude" {
+				a.Usage = n.usage // the last reading; a refresh is kicked below
+			}
 			st.Agents = append(st.Agents, a)
 		}
 	}
@@ -538,7 +553,11 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		st.Agents = append(st.Agents, a)
 	}
 	st.Problems = n.health
+	kickUsage := n.usageDue()
 	n.mu.Unlock()
+	if kickUsage {
+		go n.refreshUsage()
+	}
 	st.RunningSessions = uint32(n.sessions.Running())
 	st.Sessions = n.sessions.Counts()
 	if !n.cfg.TestBeforeHer {

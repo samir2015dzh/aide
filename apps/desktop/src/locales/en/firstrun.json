@@ -143,7 +143,12 @@
       "missingRuntime": "Found {{binary}}, but its required runtime ({{runtime}}) wasn’t found. Make sure it runs in Terminal.",
       "failed": "Found {{binary}}, but running it failed: {{detail}}"
     },
-    "howToConnect": "How to Connect…"
+    "howToConnect": "How to Connect…",
+    "usageLabel": "Plan",
+    "usage5h": "5h",
+    "usageWeek": "Week",
+    "usageStale": "stale",
+    "usageUnreadable": "plan usage unavailable"
   },
   "erased": {
     "done": "Aide erased everything",
