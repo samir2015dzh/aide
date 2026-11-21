@@ -61,7 +61,9 @@ type desktopFixture struct {
 	// for the spec to stop it as DSH Desktop quitting would (0 when none).
 	DSHHost int    `json:"dshHost,omitempty"`
 	DSHHome string `json:"dshHome,omitempty"`
-	owner   *ownerMac
+	// The owner's session's log there: what the stand-in DSH Host was asked to set goes beside it (.actions).
+	DSHLog string `json:"dshLog,omitempty"`
+	owner  *ownerMac
 }
 
 // freshOwner is an owner daemon not set up yet: its socket, a relay of its
@@ -156,9 +158,17 @@ func TestDesktop(t *testing.T) {
 				dshHome = dshDesktopHome(t)
 				more = append(more, "DSH_HOME="+dshHome, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}
+			if name == "claudesessions" { // the Claude app's own session, in a checkout of a GitHub repository
+				local, config, repo := t.TempDir(), t.TempDir(), t.TempDir()
+				os.MkdirAll(filepath.Join(repo, ".git"), 0o755)
+				os.WriteFile(filepath.Join(repo, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@github.com:octo/site.git\n"), 0o644)
+				claudeAppSession(t, filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), config, "c-site", "改首页", repo, time.Now().Add(-time.Hour), "首页标题改一下", "改好了。")
+				more = append(more, "LOCALAPPDATA="+local, "CLAUDE_CONFIG_DIR="+config)
+			}
 			f := desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
 			if name == "dsh" {
-				f.DSHHost, f.DSHHome = startDSHHost(t, dshHome, dshDesktopSession(t, dshHome)), dshHome
+				log := dshDesktopSession(t, dshHome)
+				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log
 			}
 			if name == "states" { // work-mac, for the spec to start a turn on and freeze
 				f.OtherMac = otherMacSession(t, f)

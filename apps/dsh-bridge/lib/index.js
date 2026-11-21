@@ -9,7 +9,7 @@ import { isAbsolute, join } from "node:path";
 import { DshHost } from "./host.js";
 import { BridgeServer } from "./server.js";
 export const name = "aide-dsh-bridge";
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 /** Where the bridge meets aided: <DSH_HOME>/aide-bridge, as aided finds DSH's home. */
 export function bridgeHome(env = process.env) {
     let dsh = env.DSH_HOME?.trim() ?? "";

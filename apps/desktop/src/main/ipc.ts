@@ -43,8 +43,8 @@ const terminalCommands: Record<TerminalCommand, string> = {
 
 export function registerIPC() {
   ipcMain.on("open-settings", (e, tab?: string) => trusted(e) && showSettings(typeof tab === "string" ? tab : undefined));
-  // From the settings window: the main window's search, narrowed to a grant or a machine; a session; DSH's own sessions.
-  ipcMain.on("show-in-main", (e, f: { grant?: unknown; machine?: unknown; session?: unknown; dsh?: unknown }) => {
+  // From the settings window: the main window's search, narrowed to a grant or a machine; a session; DSH's own sessions; the Claude app's.
+  ipcMain.on("show-in-main", (e, f: { grant?: unknown; machine?: unknown; session?: unknown; dsh?: unknown; claude?: unknown }) => {
     if (!trusted(e) || typeof f !== "object" || f === null) return;
     const c: Command | undefined =
       typeof f.grant === "string"
@@ -55,7 +55,9 @@ export function registerIPC() {
             ? `open:${f.session}`
             : f.dsh === true
               ? "dsh"
-              : undefined;
+              : f.claude === true
+                ? "claude"
+                : undefined;
     if (!c) return;
     command(c);
   });

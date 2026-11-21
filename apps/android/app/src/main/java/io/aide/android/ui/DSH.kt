@@ -1,6 +1,7 @@
 package io.aide.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,18 +46,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.ApiError
 import io.aide.android.api.DSHBridge
+import io.aide.android.api.DSHBridgeEntry
 import io.aide.android.api.DSHSession
 import io.aide.android.api.DSHSessionEntry
+import io.aide.android.api.DSHUnreachable
 import io.aide.android.api.SessionEvent
 import io.aide.android.model.AppModel
 import io.aide.android.model.Transcript
+import io.aide.android.model.durationText
+import io.aide.android.model.instantOrNull
+import java.time.Duration
+import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // DeepSeek Harness's own sessions on the owner's machines: those opened in DSH, or by another tool, which
 // Aide did not start: the list by last activity, and what DSH wrote of each. Read only until the owner
 // takes one over (docs/dsh-takeover.md): then their messages go to it through the Aide plugin in DSH
-// Desktop, queued after a turn that runs, as DSH queues its own.
+// Desktop, queued after a turn that runs, as DSH queues its own. A machine that can't be reached keeps
+// its sessions here as last read, lost: their state last known, never shown as now (docs/session-states.md).
 
 /** What the page says of the bridge plugin, or null when messages can go. */
 fun dshBridgeProblem(b: DSHBridge?): String? = when (b?.state) {
@@ -81,8 +89,21 @@ fun dshStateText(s: DSHSession): String = when (s.state) {
     else -> t("State unknown", "状态未知")
 }
 
+/** The state line of a listed session: DSH's word for it, or, its machine lost, that word as last known. */
+fun dshEntryStateText(e: DSHSessionEntry, now: Instant = Instant.now()): String {
+    val st = dshStateText(e.session)
+    if (!e.lost) return st
+    val silent = instantOrNull(e.readAt)?.let { Duration.between(it, now) } ?: Duration.ZERO
+    return if (silent.isZero || silent.isNegative) t("Lost · last known $st", "失联 · 最后已知 $st")
+    else t("Lost · last known $st · ${durationText(silent)} ago", "失联 · 最后已知 $st · ${durationText(silent)}前")
+}
+
 @Composable
-private fun DSHDot(s: DSHSession) {
+private fun DSHDot(s: DSHSession, lost: Boolean) {
+    if (lost) {
+        Box(Modifier.size(10.dp).border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape))
+        return
+    }
     val color = when (s.state) {
         "DSH_SESSION_STATE_RUNNING" -> Color(0xFF17924F)
         "DSH_SESSION_STATE_IDLE" -> Warning
@@ -95,7 +116,8 @@ private fun DSHDot(s: DSHSession) {
 @Composable
 fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Unit) {
     var entries by remember { mutableStateOf<List<DSHSessionEntry>?>(null) }
-    var unreachable by remember { mutableStateOf<List<String>>(emptyList()) }
+    var unreachable by remember { mutableStateOf<List<DSHUnreachable>>(emptyList()) }
+    var homes by remember { mutableStateOf<List<DSHBridgeEntry>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var archived by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -104,7 +126,8 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                 val r = model.api?.listDSHSessions()
                 if (r != null) {
                     entries = r.sessions
-                    unreachable = r.unreachable.map { it.machineName.ifEmpty { it.machineId } }
+                    unreachable = r.unreachable
+                    homes = r.bridges.filter { it.dshHome.isNotEmpty() }
                     error = null
                 }
             } catch (e: ApiError) {
@@ -134,19 +157,39 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                 )
             }
             error?.let { item { Text(it, Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error) } }
-            items(unreachable) { Text(t("$it doesn’t answer.", "$it 没有响应。"), Modifier.padding(horizontal = 16.dp), color = Warning) }
+            items(unreachable) { u ->
+                val name = u.machineName.ifEmpty { u.machineId }
+                Text(
+                    if (all.any { it.lost && it.machineId == u.machineId }) t("$name is lost: its sessions below are as last read.", "$name 失联：下面是最后一次读到的会话。")
+                    else t("$name doesn’t answer.", "$name 没有响应。"),
+                    Modifier.padding(horizontal = 16.dp), color = Warning,
+                )
+            }
             if (shown.isEmpty()) {
                 item { Text(t("No DeepSeek Harness sessions of its own.", "没有 DeepSeek Harness 自己的会话。"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                // Which DSH home each machine read: where to look when DSH Desktop has sessions this lacks.
+                items(homes) { h ->
+                    val name = model.world.value.machineName(h.machineId)
+                    Text(t("Read from on $name: ${h.dshHome}", "$name 上读取的目录：${h.dshHome}"), Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (homes.isNotEmpty()) item {
+                    Text(
+                        t("If DSH Desktop has sessions that are not here, it keeps them in another folder: set the user environment variable DSH_HOME to that folder, and Aide reads there.",
+                            "如果 DSH Desktop 里有会话却不在这里，说明它的数据在别的目录：把用户环境变量 DSH_HOME 设成那个目录，Aide 就会改读那里。"),
+                        Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             items(shown, key = { it.machineId + "/" + it.session.sessionId }) { e ->
                 val s = e.session
                 Row(Modifier.fillMaxWidth().clickable { open(e) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DSHDot(s)
+                    DSHDot(s, e.lost)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            listOf(dshStateText(s), relativeTime(s.lastActivityAt), e.machineName, s.cwd.split('/', '\\').lastOrNull { it.isNotEmpty() }.orEmpty(),
+                            listOf(dshEntryStateText(e), relativeTime(s.lastActivityAt), e.machineName, s.cwd.split('/', '\\').lastOrNull { it.isNotEmpty() }.orEmpty(),
                                 if (s.archived) t("archived", "已归档") else "").filter { it.isNotEmpty() }.joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -185,7 +228,7 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
         }
         loading = false
     }
-    LaunchedEffect(entry) { read(0) }
+    LaunchedEffect(entry) { if (entry.lost) loading = false else read(0) }
     val items = remember(events) { Transcript().also { t -> events.forEach(t::add) }.items() }
     var takeover by remember { mutableStateOf(s.takeover) }
     var asking by remember { mutableStateOf(false) }
@@ -226,17 +269,20 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
             title = {
                 Column {
                     Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(listOf(dshStateText(s), entry.machineName).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                    Text(listOf(dshEntryStateText(entry), entry.machineName).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
                 }
             },
             navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
             actions = {
-                Text(t("Take over", "接管"), style = MaterialTheme.typography.labelMedium)
-                Switch(checked = takeover, onCheckedChange = { on -> if (on) asking = true else scope.launch { setOn(false) } }, modifier = Modifier.padding(horizontal = 8.dp))
+                // Lost: nothing can be sent to it, nor its switch changed, until its machine is back.
+                if (!entry.lost) {
+                    Text(t("Take over", "接管"), style = MaterialTheme.typography.labelMedium)
+                    Switch(checked = takeover, onCheckedChange = { on -> if (on) asking = true else scope.launch { setOn(false) } }, modifier = Modifier.padding(horizontal = 8.dp))
+                }
             },
         )
     }, bottomBar = {
-        if (takeover) DSHComposer(model, entry, bridge, sent = { scope.launch { delay(1500); read(0) } }, failed = { scope.launch { readBridge() } })
+        if (takeover && !entry.lost) DSHComposer(model, entry, bridge, sent = { scope.launch { delay(1500); read(0) } }, failed = { scope.launch { readBridge() } })
     }) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading) {
@@ -252,7 +298,10 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                         }
                     }
                     items(items, key = { it.key }) { ItemView(it, dsh = true) }
-                    if (items.isEmpty() && error == null) item { Text(t("Nothing written yet.", "还没有内容。"), Modifier.padding(12.dp)) }
+                    if (entry.lost) {
+                        val name = entry.machineName.ifEmpty { entry.machineId }
+                        item { Text(t("$name can't be reached: what is shown is as last read. Its conversation can be read once it is back.", "$name 连不上：这里显示的是最后一次读到的样子，内容要等它重新连上才能读。"), Modifier.padding(12.dp)) }
+                    } else if (items.isEmpty() && error == null) item { Text(t("Nothing written yet.", "还没有内容。"), Modifier.padding(12.dp)) }
                 }
             }
         }

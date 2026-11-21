@@ -9,7 +9,7 @@ import { Icon } from "./icons";
 import { setSidebar } from "./layout";
 import { AppMenuButton } from "./MainWindow";
 import { keys, ownKeys } from "./platform";
-import { AccountMenu, hasDSH, overviewMarks, RowMark } from "./Sidebar";
+import { AccountMenu, hasClaude, hasDSH, overviewMarks, RowMark } from "./Sidebar";
 import { useNow, useStore } from "./store";
 
 // The sidebar's rail (docs/her-team.md §16): Her and the overview, then one logo for each coding agent with
@@ -94,6 +94,9 @@ export function Rail() {
         {owner &&
           hasDSH(st) &&
           button({ label: t("sidebar.dsh"), current: sel.kind === "dsh", onClick: () => sel.kind !== "dsh" && st.set({ selection: { kind: "dsh" } }), children: <Icon name="terminal" /> })}
+        {owner &&
+          hasClaude(st) &&
+          button({ label: t("sidebar.claude"), current: sel.kind === "claude", onClick: () => sel.kind !== "claude" && st.set({ selection: { kind: "claude" } }), children: <Icon name="terminal" /> })}
         {groups.length > 0 && <div className="rail-sep" role="separator" />}
         {groups.map((g) => (
           <div key={g.agent}>

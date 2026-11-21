@@ -150,7 +150,7 @@ func TestDSHBridgePlugin(t *testing.T) {
 	if live, _, err := b.State(ctx, "s_cold"); err != nil || live {
 		t.Fatalf("state of a session the Host doesn't run: %v %v", live, err)
 	}
-	if err := b.Prompt(ctx, "s_cold", "aide-01h", "继续，按计划"); err != nil {
+	if err := b.Prompt(ctx, "s_cold", "aide-01h", "继续，按计划", dshnative.Selections{}); err != nil {
 		t.Fatal(err)
 	}
 	m := next("prompt")
@@ -159,6 +159,43 @@ func TestDSHBridgePlugin(t *testing.T) {
 		!strings.Contains(asJSON(p["content"]), `"text":"继续，按计划"`) {
 		t.Fatalf("DSH was asked %v", m)
 	}
+	// The session's options, then a message that sets its model and permission preset first,
+	// as DSH's own pickers do; only what changes is set.
+	if !b.Hello.Has("options") || !b.Hello.Has("selections") {
+		t.Fatalf("features: %v", b.Hello.Features)
+	}
+	o, err := b.Options(ctx, "s_live")
+	if err != nil || len(o.Models) != 2 || o.Models[0].Model != "deepseek-v4" || strings.Join(o.Models[0].Efforts, ",") != "low,high" ||
+		len(o.Permissions) != 2 || o.Current.Permission != "ask" || o.Current.Model == nil || o.Current.Model.Model != "deepseek-v4-flash" {
+		t.Fatalf("options: %+v %v", o, err)
+	}
+	sel := dshnative.Selections{Model: &dshnative.Model{Provider: "deepseek", Model: "deepseek-v4", Effort: "high"}, Permission: "auto"}
+	if err := b.Prompt(ctx, "s_live", "aide-sel", "换个模型接着做", sel); err != nil {
+		t.Fatal(err)
+	}
+	if m := next("selectModel"); asJSON(m["selectModel"]) != `{"model":"deepseek-v4","provider":"deepseek","reasoningEffort":"high","sessionId":"s_live"}` {
+		t.Fatalf("DSH was asked %v", m)
+	}
+	if m := next("permission"); m["command"] != "/permission auto" {
+		t.Fatalf("DSH was asked %v", m)
+	}
+	if m := next("prompt"); m["prompt"].(map[string]any)["requestId"] != "aide-sel" {
+		t.Fatalf("DSH was asked %v", m)
+	}
+	if m := next("flush"); m["flush"] != true {
+		t.Fatalf("DSH was asked %v", m)
+	}
+	if err := b.Prompt(ctx, "s_live", "aide-sel2", "同样的设置", sel); err != nil { // nothing to change now
+		t.Fatal(err)
+	}
+	if m := next("prompt"); m["prompt"].(map[string]any)["requestId"] != "aide-sel2" {
+		t.Fatalf("set again what the session already has: %v", m)
+	}
+	next("flush")
+	if err := b.Prompt(ctx, "s_live", "aide-bad", "x", dshnative.Selections{Model: &dshnative.Model{Provider: "deepseek", Model: "gpt"}}); !errors.As(err, new(*dshnative.BridgeError)) {
+		t.Fatalf("a model DSH doesn't offer: %v", err)
+	}
+
 	if ok, err := b.Cancel(ctx, "s_live"); err != nil || !ok {
 		t.Fatalf("cancel: %v %v", ok, err)
 	}
@@ -169,12 +206,12 @@ func TestDSHBridgePlugin(t *testing.T) {
 		t.Fatalf("cancel of a session the Host doesn't run: %v %v", ok, err)
 	}
 	var be *dshnative.BridgeError
-	if err := b.Prompt(ctx, "s_live", "aide-02", "  "); !errors.As(err, &be) || be.Code != "bad-request" {
+	if err := b.Prompt(ctx, "s_live", "aide-02", "  ", dshnative.Selections{}); !errors.As(err, &be) || be.Code != "bad-request" {
 		t.Fatalf("an empty message: %v", err)
 	}
 	// The plugin gives up on DSH after 20 s and says so.
 	pctx, pcancel := context.WithTimeout(ctx, 25*time.Second)
-	err = b.Prompt(pctx, "s_live", "aide-03", "hang")
+	err = b.Prompt(pctx, "s_live", "aide-03", "hang", dshnative.Selections{})
 	pcancel()
 	if !errors.As(err, &be) || be.Code != "timeout" {
 		t.Fatalf("a DSH that never takes it: %v", err)
