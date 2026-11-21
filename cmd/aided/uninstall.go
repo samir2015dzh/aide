@@ -19,8 +19,8 @@ import (
 
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
-	"github.com/samir2015dzh/aide/internal/localipc"
 	"github.com/samir2015dzh/aide/internal/brandenv"
+	"github.com/samir2015dzh/aide/internal/localipc"
 	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/internal/paths"
 	"github.com/samir2015dzh/aide/internal/service"
