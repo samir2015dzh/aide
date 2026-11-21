@@ -798,5 +798,7 @@ end.
   (aided for its sessions, the CLI for its agent) holds for the owner a
   message beyond hop 4, or one whose chain reaches the same endpoint a
   fourth time within an hour (`internal/msgchain`), and tells the sender
-  it is held. The hop is the sender's say: it binds the owner's own
+  it is held. The CLI keeps its book (`chains.json`) in the agent's home; an
+  agent with no home of its own (the MCP gateway's) keeps it for one
+  command only. The hop is the sender's say: it binds the owner's own
   agents; the post office's per-pair limits stay the floor (§5).

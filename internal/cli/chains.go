@@ -31,12 +31,21 @@ type chainBook struct {
 	Passes  map[string][]time.Time `json:"passes"`
 }
 
-func (a *app) chainsPath() string { return filepath.Join(a.home, "chains.json") }
+// chainsPath is where the book is kept; "" for an agent with no home of
+// its own (the MCP gateway's), whose book lasts one command.
+func (a *app) chainsPath() string {
+	if a.home == "" {
+		return ""
+	}
+	return filepath.Join(a.home, "chains.json")
+}
 
 func (a *app) chains() *chainBook {
 	b := &chainBook{}
-	if data, err := os.ReadFile(a.chainsPath()); err == nil {
-		json.Unmarshal(data, b)
+	if p := a.chainsPath(); p != "" {
+		if data, err := os.ReadFile(p); err == nil {
+			json.Unmarshal(data, b)
+		}
 	}
 	if b.Traces == nil {
 		b.Traces = map[string]chainRec{}
@@ -76,8 +85,10 @@ func (a *app) saveChains(b *chainBook, now time.Time) {
 			b.Passes[k] = keep
 		}
 	}
-	if data, err := json.Marshal(b); err == nil {
-		os.WriteFile(a.chainsPath(), data, 0o600)
+	if p := a.chainsPath(); p != "" {
+		if data, err := json.Marshal(b); err == nil {
+			os.WriteFile(p, data, 0o600)
+		}
 	}
 }
 

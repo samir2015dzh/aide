@@ -13,3 +13,6 @@ xcuserdata/
 # local secrets (API keys)
 .env
 .claude/worktrees/
+
+# An agent's chain book (internal/cli/chains.go) belongs in its home, never here.
+/chains.json
