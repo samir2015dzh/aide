@@ -13,10 +13,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: corepack enable
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: screenshots
         run: go test ./e2e -run '^TestScreens$' -count=1 -v -timeout 40m
