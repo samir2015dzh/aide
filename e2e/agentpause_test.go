@@ -21,7 +21,7 @@ func TestAgentPause(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	w := newOwnerMac(t, nil, nil)
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
 	ctx := context.Background()
 	status := func() (string, *machinev1.AgentStatus) {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
@@ -35,7 +35,11 @@ func TestAgentPause(t *testing.T) {
 		}
 		return res.Machines[0].MachineId, nil
 	}
-	eventually(t, 30*time.Second, "claude checked", func() bool { _, a := status(); return a.GetAvailable() })
+	// Agents are checked when a page showing them asks, as the app's would.
+	if _, err := w.app.client.CheckAgents(ctx, &localv1.CheckAgentsRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 30*time.Second, "claude checked", func() bool { _, a := status(); return a != nil && !a.Checking })
 	machineID, _ := status()
 	pause := func(paused bool, until time.Time) {
 		t.Helper()
