@@ -12,7 +12,6 @@ import { local } from "./api";
 import { AppMenuButton } from "./MainWindow";
 import { Icon } from "./icons";
 import { setSidebar } from "./layout";
-import { localMachineOff } from "./localMachine";
 import { unreadCount } from "./her/environments";
 import { expiringClients } from "./overview/Attention";
 import { keys, ownKeys } from "./platform";
@@ -154,21 +153,14 @@ export function Sidebar() {
   );
 }
 
-/** What the two entries below are shown by: the machines' agents, and whether this computer is one of the machines. */
-type AgentsHere = { machines: { status?: { agents: { name: string }[] } }[]; status?: Parameters<typeof localMachineOff>[0] };
-
-/**
- * Whether a machine has DeepSeek Harness, whose own sessions the DSH page lists. While this computer is not
- * turned on as a machine nobody knows what it has, so the entry stays: its page says why this computer's
- * sessions are not there, and turns it on (dsh/LocalMachineOff.tsx).
- */
-export function hasDSH(st: AgentsHere): boolean {
-  return localMachineOff(st.status) || st.machines.some((m) => m.status?.agents.some((a) => a.name === "deepseek"));
+/** Whether a machine has DeepSeek Harness, whose own sessions the DSH page lists. */
+export function hasDSH(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
+  return st.machines.some((m) => m.status?.agents.some((a) => a.name === "deepseek"));
 }
 
-/** Claude Code is on a machine: the Claude desktop app's sessions may be read there. This computer turned off as a machine: as hasDSH. */
-export function hasClaude(st: AgentsHere): boolean {
-  return localMachineOff(st.status) || st.machines.some((m) => m.status?.agents.some((a) => a.name === "claude"));
+/** Claude Code is on a machine: the Claude desktop app's sessions may be read there. */
+export function hasClaude(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
+  return st.machines.some((m) => m.status?.agents.some((a) => a.name === "claude"));
 }
 
 /**
