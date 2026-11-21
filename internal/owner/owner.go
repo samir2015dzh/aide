@@ -1355,7 +1355,7 @@ func (o *Owner) admin(ctx context.Context, machineID string, build func(*identit
 	req := &machinev1.ApplyAdminCommandRequest{}
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
-		*identityv1.AdminCommand_SetAgentDefaults:
+		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden:
 		if l := o.local(); l != nil && l.MachineID() == machineID {
 			return l.ApplySettings(ctx, build) // this device's own machine, in process
 		}
@@ -1398,12 +1398,12 @@ func (o *Owner) machineClient(ctx context.Context, machineID string) (*peer.Mach
 
 // RecheckAgents has a machine check its coding agents now (Check Again)
 // and waits for it; the new state then reaches this device's replica.
-func (o *Owner) RecheckAgents(ctx context.Context, machineID string) error {
+func (o *Owner) RecheckAgents(ctx context.Context, machineID string, rescanHidden bool) error {
 	n, err := o.machineClient(ctx, machineID)
 	if err != nil {
 		return err
 	}
-	_, err = n.Info.GetInfo(ctx, &machinev1.GetInfoRequest{Recheck: true})
+	_, err = n.Info.GetInfo(ctx, &machinev1.GetInfoRequest{Recheck: true, RescanHidden: rescanHidden})
 	return err
 }
 
@@ -1827,6 +1827,15 @@ func (o *Owner) SetMachinePaused(ctx context.Context, machineID string, paused b
 func (o *Owner) SetAgentDefaults(ctx context.Context, machineID string, d *identityv1.AgentDefaults) error {
 	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
 		c.Command = &identityv1.AdminCommand_SetAgentDefaults{SetAgentDefaults: d}
+	})
+	return err
+}
+
+// SetAgentHidden hides a coding agent a machine lists, or shows it again: a
+// setting (no Touch ID), as agent defaults are.
+func (o *Owner) SetAgentHidden(ctx context.Context, machineID, agent string, hidden bool) error {
+	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
+		c.Command = &identityv1.AdminCommand_SetAgentHidden{SetAgentHidden: &identityv1.SetAgentHidden{Agent: agent, Hidden: hidden}}
 	})
 	return err
 }

@@ -72,7 +72,7 @@ fun SettingsTab(model: AppModel) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { SectionHeader(t("Account", "账号")) }
             item {
-                Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.fillMaxWidth().aideCard().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     val l = login
                     Labeled(t("Account", "账号"), l?.account?.ifEmpty { null } ?: st.account)
                     Labeled(t("Server", "服务器"), l?.server?.ifEmpty { null } ?: st.relayUrl)
@@ -116,7 +116,7 @@ fun SettingsTab(model: AppModel) {
 
             item {
                 SectionHeader(t("This phone", "这台手机"))
-                Column(Modifier.padding(horizontal = 4.dp)) {
+                Column(Modifier.fillMaxWidth().aideCard().padding(horizontal = 14.dp, vertical = 6.dp)) {
                     Labeled(t("Server", "服务器"), st.relayUrl)
                     if (st.account.isNotEmpty()) Labeled(t("Account", "账号"), st.account)
                     Labeled(t("Core version", "核心版本"), st.version)

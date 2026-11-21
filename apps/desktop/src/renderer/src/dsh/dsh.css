@@ -20,8 +20,20 @@
 .dsh-view .dsh-head span{font-size:12px;color:var(--l2)}
 .dsh-msg{max-width:var(--conversation-width);margin:0 0 var(--sp-3);white-space:pre-wrap;line-height:1.5;user-select:text}
 .dsh-msg.user{background:var(--fill);border-radius:var(--r-lg);padding:8px 12px}
-.dsh-msg.tool{font-family:var(--mono);font-size:12px;color:var(--l2)}
-.dsh-msg.tool details pre{white-space:pre-wrap;max-height:240px;overflow:auto;color:var(--l1)}
+/* A tool call: one line (its name, then what it does), the arguments and result folded under it (ToolRow). */
+.dsh-msg.tool{white-space:normal;font-size:12.5px;color:var(--l2)}
+.dsh-msg.tool summary{display:flex;align-items:center;gap:8px;min-width:0;cursor:default;list-style:none;padding:4px 8px;margin:0 -8px;border-radius:var(--r-md);transition:background .12s}
+.dsh-msg.tool summary::-webkit-details-marker{display:none}
+.dsh-msg.tool summary::before{content:"";flex:none;width:6px;height:6px;border-right:1.5px solid var(--l3);border-bottom:1.5px solid var(--l3);transform:rotate(-45deg);transition:transform .15s var(--ease-out)}
+.dsh-msg.tool details[open] summary::before{transform:rotate(45deg)}
+.dsh-msg.tool summary:hover{background:var(--fill)}
+.dsh-msg.tool .tool-name{flex:none;font-family:var(--mono);font-size:11.5px;padding:1px 6px;border-radius:var(--r-sm);background:var(--fill2);color:var(--l1)}
+.dsh-msg.tool .tool-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--l1)}
+.dsh-msg.tool .tool-err{flex:none;color:var(--red);font-size:11.5px}
+.dsh-msg.tool .tool-body{padding:4px 0 2px 14px}
+.dsh-msg.tool .tool-h{font-size:11px;color:var(--l3);margin:6px 0 3px}
+.dsh-msg.tool pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--l1);background:var(--fill);border-radius:var(--r-md);padding:8px 10px;box-shadow:inset 0 0 0 .5px var(--sep)}
+.dsh-msg.tool pre.err{color:var(--red)}
 .dsh-msg.end{font-size:12px;color:var(--l2)}
 .dsh-msg.end.err{color:var(--red)}
 .dsh-empty{color:var(--l2);padding:var(--sp-4)}
@@ -31,16 +43,27 @@
 
 .dsh-head-row{display:flex;align-items:center;gap:var(--sp-3)}
 .dsh-head-row h2{flex:1;min-width:0}
-.dsh-takeover{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--l2);flex:none}
+.dsh-takeover{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--l2);flex:none;user-select:none}
 .dsh-confirm{max-width:var(--conversation-width);border:1px solid var(--sep);border-radius:var(--r-lg);padding:var(--sp-3);margin:0 0 var(--sp-3);font-size:13px}
 .dsh-confirm ul{margin:6px 0;padding-left:18px;color:var(--l2)}
 .dsh-confirm li{margin:3px 0}
 .dsh-confirm-acts{display:flex;justify-content:flex-end;gap:8px}
-.dsh-compose{position:sticky;bottom:0;max-width:var(--conversation-width);background:var(--win);padding:var(--sp-2) 0 var(--sp-1);margin-top:var(--sp-3)}
-.dsh-compose textarea{width:100%;min-height:64px;resize:vertical;font:inherit;padding:8px 10px;border:1px solid var(--sep);border-radius:var(--r-lg);background:var(--fill);color:inherit;box-sizing:border-box}
-.dsh-compose-acts{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px;font-size:12px}
-.dsh-compose-acts .err{color:var(--red);margin-right:auto}
-.dsh-compose-acts .ok{color:var(--l2);margin-right:auto}
+/* The message area, as the session page's (session.css .mbox): one rounded box, the text, then a bar with the
+   take-over switch, DSH's model and permission, the state of what was sent, and Send. Always there; read only
+   until taken over. */
+.dsh-compose{position:sticky;bottom:0;max-width:var(--conversation-width);padding:var(--sp-3) 0 var(--sp-2);margin-top:var(--sp-3);background:linear-gradient(to bottom,transparent,var(--win) 14px)}
+.dsh-box{background:var(--win);border-radius:18px;box-shadow:0 0 0 .5px var(--menu-bd),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);padding:8px 8px 6px 12px;transition:box-shadow .15s var(--ease-out)}
+.dsh-box:focus-within{box-shadow:0 0 0 1px var(--l4),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.08)}
+.dsh-box textarea{display:block;width:100%;min-height:44px;max-height:240px;resize:none;border:0;outline:0;background:transparent;color:var(--l1);font:inherit;font-size:var(--chat-size,14px);line-height:1.55;padding:2px 0 6px;box-sizing:border-box}
+.dsh-box textarea::placeholder{color:var(--l3)}
+.dsh-compose.off .dsh-box textarea{cursor:not-allowed}
+.dsh-bar{display:flex;align-items:center;gap:8px;min-width:0}
+.dsh-pick{height:26px;max-width:180px;border:0;border-radius:999px;padding:0 10px;background:var(--fill2);color:var(--l1);font:inherit;font-size:12px}
+.dsh-bar-note{flex:1;min-width:0;font-size:12px;color:var(--l2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsh-bar-note .err{color:var(--red)}
+.dsh-send{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent,var(--win));display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s,color .15s}
+.dsh-send:disabled{color:var(--l3);background:var(--fill2)}
+.dsh-send .ic{width:16px;height:16px}
 .dsh-bridge{font-size:12px;margin:0 0 6px}
 .dsh-bridge.warn{color:var(--orange)}
 .dsh-bridge span{display:block;color:var(--l2)}
@@ -53,5 +76,4 @@
 .dsh-path{display:flex;align-items:center;gap:8px;margin-top:4px}
 .dsh-path .mono{font-family:var(--mono);overflow-wrap:anywhere;color:var(--l1)}
 
-.dsh-picks{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-.dsh-picks .psel{width:auto;max-width:100%}
+

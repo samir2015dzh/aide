@@ -123,6 +123,7 @@ type Machine struct {
 	usageSrc    usageSource                 // reads plan usage; nil disables it
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
+	hidden      map[string]hiddenAgent   // the coding agents the owner hid (hiddenagents.go)
 	checked     time.Time                // when the last check of all of them ended
 	checking    chan struct{}            // closed when the check under way ends; nil when none is
 	pending     map[string]bool          // the agents the check under way has not finished yet
@@ -242,7 +243,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
+		infos: map[string]provider.Info{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	n.her = herhost.New(herhost.Config{Bin: cfg.HerBin, ConsoleDir: cfg.HerConsole, Socket: paths.Her(cfg.DataDir), Env: shellenv.Environ,
 		Version: Version, Logger: n.log, ExtensionHost: cfg.HerExtensionHost, Notice: n.herNotice, Mesh: n.herOnMeshNow})
@@ -280,6 +281,7 @@ func Open(cfg Config) (*Machine, error) {
 
 func (n *Machine) loadState() error {
 	n.loadDefaults()
+	n.loadHiddenAgents() // the machine's own, logged in or not
 	on, _ := n.st.Get(kHer)
 	n.herOn = string(on) == "1"
 	n.herData = len(on) > 0 && n.herHomeExists()
@@ -535,7 +537,8 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		i, ok := n.infos[name]
 		if (ok && (i.Available || i.Problem != provider.ProblemNotFound || name == "claude" || name == "codex")) || (!ok && n.pending[name]) {
 			a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version,
-				LoggedIn: i.LoggedIn, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary}
+				LoggedIn: i.LoggedIn, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary,
+				Hidden: n.isHiddenLocked(name)}
 			n.agentModels(a, i)
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
@@ -548,7 +551,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		// about to be.
 		i, ok := n.infos[name]
 		a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version, LoggedIn: i.LoggedIn, Detail: i.Detail,
-			Checking: n.pending[name] || !ok, Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary, Custom: true}
+			Checking: n.pending[name] || !ok, Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary, Custom: true, Hidden: n.isHiddenLocked(name)}
 		n.agentModels(a, i)
 		st.Agents = append(st.Agents, a)
 	}

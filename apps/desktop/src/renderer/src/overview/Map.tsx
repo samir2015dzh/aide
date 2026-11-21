@@ -376,7 +376,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <span className="lm-t">
                 <b>{n.machine.local ? t("thisMac") : n.machine.machineName}</b>
                 <span className="lm-agents">
-                  {(n.machine.status?.agents ?? []).filter((a) => a.available).map((a) => (
+                  {(n.machine.status?.agents ?? []).filter((a) => a.available && !a.hidden).map((a) => (
                     <span key={a.name} className={a.loggedIn ? "" : "out"} title={a.loggedIn ? undefined : t("map.notSignedIn")}>
                       <AgentLogo agent={a.name} size={13} />
                     </span>

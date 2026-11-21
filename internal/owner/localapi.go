@@ -339,7 +339,7 @@ func (l *localService) SetAgentDefaults(ctx context.Context, req *localv1.SetAge
 // to end, waiting for it; this device's own in the background.
 func (l *localService) CheckAgents(ctx context.Context, req *localv1.CheckAgentsRequest) (*localv1.CheckAgentsResponse, error) {
 	if req.MachineId != "" && (l.o().local() == nil || l.o().local().MachineID() != req.MachineId) {
-		return &localv1.CheckAgentsResponse{}, l.o().RecheckAgents(ctx, req.MachineId)
+		return &localv1.CheckAgentsResponse{}, l.o().RecheckAgents(ctx, req.MachineId, req.RescanHidden)
 	}
 	m, ok, err := l.o().onlyMachine()
 	if !ok {
@@ -351,8 +351,30 @@ func (l *localService) CheckAgents(ctx context.Context, req *localv1.CheckAgents
 	if err != nil {
 		return nil, err
 	}
-	m.CheckAgents()
+	if req.RescanHidden {
+		m.RescanAgents()
+	} else {
+		m.CheckAgents()
+	}
 	return &localv1.CheckAgentsResponse{}, nil
+}
+
+// SetAgentHidden hides a coding agent a machine lists, or shows it again.
+func (l *localService) SetAgentHidden(ctx context.Context, req *localv1.SetAgentHiddenRequest) (*localv1.SetAgentHiddenResponse, error) {
+	if req.Agent == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("which coding agent?"))
+	}
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err == nil {
+			err = onlyMachineSettings(ctx, m, req.MachineId, func(c *identityv1.AdminCommand) {
+				c.Command = &identityv1.AdminCommand_SetAgentHidden{SetAgentHidden: &identityv1.SetAgentHidden{Agent: req.Agent, Hidden: req.Hidden}}
+			})
+		}
+		return &localv1.SetAgentHiddenResponse{}, err
+	}
+	err := l.o().SetAgentHidden(ctx, req.MachineId, req.Agent, req.Hidden)
+	l.o().wrote(ctx, err, false, req.MachineId)
+	return &localv1.SetAgentHiddenResponse{}, err
 }
 
 func (l *localService) ListMachineRepos(ctx context.Context, req *localv1.ListMachineReposRequest) (*localv1.ListMachineReposResponse, error) {

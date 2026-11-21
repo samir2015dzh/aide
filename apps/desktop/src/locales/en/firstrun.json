@@ -148,7 +148,12 @@
     "usage5h": "5h",
     "usageWeek": "Week",
     "usageStale": "stale",
-    "usageUnreadable": "plan usage unavailable"
+    "usageUnreadable": "plan usage unavailable",
+    "hide": "Hide from the List",
+    "hideNote": "Hiding only, as nothing about an agent found here can be edited. A routine check won't bring it back; Check Again does once it runs where it didn't, or is found elsewhere. Sessions can still use it.",
+    "hiddenList_one": "{{count}} hidden:",
+    "hiddenList_other": "{{count}} hidden:",
+    "show": "Show"
   },
   "erased": {
     "done": "Aide erased everything",

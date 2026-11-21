@@ -1,5 +1,8 @@
 package io.aide.android.ui
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -122,22 +125,27 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
     var homes by remember { mutableStateOf<List<DSHBridgeEntry>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var archived by remember { mutableStateOf(false) }
+    suspend fun load() {
+        try {
+            val r = model.api?.listDSHSessions()
+            if (r != null) {
+                entries = r.sessions
+                unreachable = r.unreachable
+                homes = r.bridges.filter { it.dshHome.isNotEmpty() }
+                error = null
+            }
+        } catch (e: ApiError) {
+            error = e.message.ifEmpty { e.code }
+        }
+    }
     LaunchedEffect(Unit) {
         while (true) {
-            try {
-                val r = model.api?.listDSHSessions()
-                if (r != null) {
-                    entries = r.sessions
-                    unreachable = r.unreachable
-                    homes = r.bridges.filter { it.dshHome.isNotEmpty() }
-                    error = null
-                }
-            } catch (e: ApiError) {
-                error = e.message.ifEmpty { e.code }
-            }
+            load()
             delay(15_000)
         }
     }
+    var refreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(t("DeepSeek sessions", "DeepSeek 会话")) },
@@ -151,7 +159,8 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
         }
         val shown = all.filter { archived || !it.session.archived }
         val hidden = all.size - shown.size
-        LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } }, modifier = Modifier.fillMaxSize().padding(pad)) {
+        LazyColumn(Modifier.fillMaxSize()) {
             item {
                 Text(
                     t("Sessions DeepSeek Harness has of its own. Read only, until you turn on Take Over for one.", "DeepSeek Harness 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以给它发消息。"),
@@ -189,7 +198,8 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
             if (many) item(key = "g-" + g.machineId) { MachineGroupHeader(g.name, g.items.size) }
             items(g.items, key = { it.machineId + "/" + it.session.sessionId }) { e ->
                 val s = e.session
-                Row(Modifier.fillMaxWidth().clickable { open(e) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))) {
+                Row(Modifier.fillMaxWidth().pressable { open(e) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     DSHDot(s, e.lost)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -202,6 +212,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                     }
                 }
                 HorizontalDivider(Modifier.padding(start = 16.dp))
+                }
             }
             }
             if (hidden > 0 || archived) {
@@ -211,6 +222,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                     }
                 }
             }
+        }
         }
     }
 }
@@ -284,22 +296,27 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                 }
             },
             navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-            actions = {
-                // Lost: nothing can be sent to it, nor its switch changed, until its machine is back.
-                if (!entry.lost) {
-                    Text(t("Take over", "接管"), style = MaterialTheme.typography.labelMedium)
-                    Switch(checked = takeover, onCheckedChange = { on -> if (on) asking = true else scope.launch { setOn(false) } }, modifier = Modifier.padding(horizontal = 8.dp))
-                }
-            },
         )
     }, bottomBar = {
-        if (takeover && !entry.lost) DSHComposer(model, entry, bridge, sent = { scope.launch { delay(1500); read(0) } }, failed = { scope.launch { readBridge() } })
+        // Always there (the owner's ruling, 2026-11-21): read only until taken over, the switch in it, beside sending.
+        // Lost: nothing can be sent to it, nor its switch changed, until its machine is back.
+        if (!entry.lost) DSHComposer(
+            model, entry, bridge, takeover,
+            setTakeover = { on -> if (on) asking = true else scope.launch { setOn(false) } },
+            sent = { scope.launch { delay(1500); read(0) } }, failed = { scope.launch { readBridge() } },
+        )
     }) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
             } else {
-                LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val list = rememberLazyListState()
+                LaunchedEffect(items.size) {
+                    val info = list.layoutInfo
+                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: return@LaunchedEffect
+                    if (info.totalItemsCount > 0 && last >= info.totalItemsCount - 3) list.animateScrollToItem(info.totalItemsCount - 1)
+                }
+                LazyColumn(Modifier.fillMaxSize(), state = list, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     error?.let { item { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error) } }
                     if (more) {
                         item {
@@ -308,7 +325,9 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                             }
                         }
                     }
-                    items(items, key = { it.key }) { ItemView(it, dsh = true) }
+                    items(items, key = { it.key }) {
+                        Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, dsh = true) }
+                    }
                     if (entry.lost) {
                         val name = entry.machineName.ifEmpty { entry.machineId }
                         item { Text(t("$name can't be reached: what is shown is as last read. Its conversation can be read once it is back.", "$name 连不上：这里显示的是最后一次读到的样子，内容要等它重新连上才能读。"), Modifier.padding(12.dp)) }
@@ -325,10 +344,10 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
  * id too, so sending again can't make two.
  */
 @Composable
-private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBridge?, sent: () -> Unit, failed: () -> Unit) {
+private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBridge?, takeover: Boolean, setTakeover: (Boolean) -> Unit, sent: () -> Unit, failed: () -> Unit) {
     val s = entry.session
     val running = s.state == "DSH_SESSION_STATE_RUNNING"
-    val problem = dshBridgeProblem(bridge)
+    val problem = if (takeover) dshBridgeProblem(bridge) else null
     var text by remember { mutableStateOf("") }
     var reqId by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -341,12 +360,23 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
         error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         OutlinedTextField(
-            value = text, onValueChange = { text = it; reqId = "" }, enabled = !busy, modifier = Modifier.fillMaxWidth(),
+            value = text, onValueChange = { text = it; reqId = "" }, enabled = takeover && !busy, modifier = Modifier.fillMaxWidth(),
             label = { Text(t("Message to DSH", "给 DSH 的消息")) },
-            placeholder = { Text(if (running) t("A turn is running: this waits for the next turn", "会话正在运行：这条消息会排到这一轮之后") else t("Message this session", "给这个会话发消息")) },
+            placeholder = {
+                Text(
+                    when {
+                        !takeover -> t("Turn on Take Over to send this session messages", "开启接管后可向此会话发送消息")
+                        running -> t("A turn is running: this waits for the next turn", "会话正在运行：这条消息会排到这一轮之后")
+                        else -> t("Message this session", "给这个会话发消息")
+                    },
+                )
+            },
         )
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-            if (running) {
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The switch, beside sending: off, the box above can't be written in.
+            Switch(checked = takeover, onCheckedChange = setTakeover)
+            Text(t("Take over", "接管"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            if (takeover && running) {
                 TextButton(enabled = problem == null, onClick = {
                     scope.launch {
                         error = null
@@ -360,7 +390,7 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
                     }
                 }) { Text(t("Stop", "打断")) }
             }
-            Button(enabled = !busy && text.isNotBlank() && problem == null, onClick = {
+            Button(enabled = takeover && !busy && text.isNotBlank() && problem == null, onClick = {
                 if (reqId.isEmpty()) reqId = newDSHRequestId()
                 busy = true
                 error = null

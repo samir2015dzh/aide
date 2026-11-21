@@ -82,6 +82,8 @@ service LocalService {
   // Checks this Mac's coding agents again (installed, version, signed in),
   // in the background: they are only checked when something needs them.
   rpc CheckAgents(CheckAgentsRequest) returns (CheckAgentsResponse);
+  // Hides a coding agent a machine lists, or shows it again (SetAgentHidden).
+  rpc SetAgentHidden(SetAgentHiddenRequest) returns (SetAgentHiddenResponse);
   // A machine's git repositories under its home folder, for Add a Project.
   rpc ListMachineRepos(ListMachineReposRequest) returns (ListMachineReposResponse);
   // The folders in one of a machine's folders, for Add a Project.
@@ -676,7 +678,19 @@ message CheckAgentsRequest {
   // A machine of the owner to check, end to end, waiting for it; empty:
   // this device's own machine, in the background.
   string machine_id = 1;
+  // The owner rescans on purpose (the machine page's Check Again, not a
+  // poll): a hidden agent that now runs where it did not, or is found
+  // elsewhere, shows again.
+  bool rescan_hidden = 2;
 }
+
+message SetAgentHiddenRequest {
+  string machine_id = 1;
+  string agent = 2;
+  bool hidden = 3;
+}
+
+message SetAgentHiddenResponse {}
 
 message CheckAgentsResponse {}
 

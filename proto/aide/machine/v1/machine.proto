@@ -161,6 +161,9 @@ message GetInfoRequest {
   // An owner's device asks the machine to check its coding agents again
   // now (installed, version, signed in), and waits for it: Check Again.
   bool recheck = 1;
+  // With recheck, the owner rescans on purpose: a hidden agent that now
+  // runs where it did not when hidden, or is found elsewhere, shows again.
+  bool rescan_hidden = 2;
 }
 
 message GetInfoResponse {
@@ -338,6 +341,9 @@ message AgentStatus {
   // Desktop's token here; the token never leaves the machine, only these
   // windows' utilization and reset times are reported.
   ClaudeUsage usage = 16;
+  // The owner hid it (SetAgentHidden): the apps leave it out of the lists,
+  // and say how many are hidden, to show again.
+  bool hidden = 17;
 }
 
 // ClaudeUsage is the Claude plan usage (docs/claude-usage.md): the hard

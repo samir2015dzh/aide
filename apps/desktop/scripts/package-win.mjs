@@ -45,6 +45,7 @@ import enNotes from "../src/locales/en/releases.json" with { type: "json" };
 import zhNotes from "../src/locales/zh-CN/releases.json" with { type: "json" };
 import { agentDesktopBinaries, agentDesktopRelease } from "./agent-desktop.mjs";
 import { minimalPdf, pdfiumFor, pdfiumLibraryIn, pdfiumRelease } from "./pdfium.mjs";
+import { planRustTarget } from "./rust-target.mjs";
 import { windowsIcons } from "./windows-icons.mjs";
 import { installSplash } from "./windows-splash.mjs";
 import { windowsVersionProblem } from "./windows-version.mjs";
@@ -101,7 +102,10 @@ if (onWindows) {
   step(`building her (${arch})`);
   const githubSecret = process.env.HER_GITHUB_OAUTH_CLIENT_SECRET || "";
   if (!githubSecret) console.warn("⚠️  no HER_GITHUB_OAUTH_CLIENT_SECRET: this her signs in to GitHub with a token only.");
-  sh("rustup", ["target", "add", triple], { cwd: herRoot });
+  // The target's standard library: there already (a standalone Rust ships it), added by rustup, or a clear stop (rust-target.mjs).
+  const rust = planRustTarget(triple, { cwd: herRoot });
+  if (rust.do === "fail") throw new Error(rust.message);
+  if (rust.do === "rustup") sh("rustup", ["target", "add", triple], { cwd: herRoot });
   sh("cargo", ["build", "--profile", profile, "--locked", "-p", "her-cli", "--bin", "her", "--no-default-features", "--target", triple], {
     cwd: herRoot,
     env: { ...process.env, HER_GITHUB_OAUTH_CLIENT_SECRET: githubSecret },
