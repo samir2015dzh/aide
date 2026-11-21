@@ -605,6 +605,7 @@ async fn run_task(session: &Arc<Session>, task: &TaskCtx, input: Option<Input>) 
         session.note_date();
         session.note_bot_name();
         session.note_routines();
+        session.note_recall();
         // The turn starts: `steer_now` ends it alone. Steering input that came while the MCP
         // servers or a compaction were awaited makes this request too.
         task.next_turn();

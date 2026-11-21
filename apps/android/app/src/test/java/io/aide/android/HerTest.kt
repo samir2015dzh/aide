@@ -3,7 +3,9 @@ package io.aide.android
 import io.aide.android.her.HerBot
 import io.aide.android.her.HerConversation
 import io.aide.android.her.HerLine
+import io.aide.android.her.HerEntry
 import io.aide.android.her.HerMemory
+import io.aide.android.her.HerProposal
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.junit.Assert.assertEquals
@@ -52,5 +54,8 @@ class HerTest {
         val merged = HerBot.merge(bots, j("""{"bots":[{"id":"b1","name":"Her 2","default":true}],"deleted":["b2"]}"""))
         assertEquals(listOf("Her 2"), merged.map { it.name })
         assertEquals(HerMemory("likes tea", listOf("people")), HerMemory.parse(j("""{"text":"likes tea","pages":[{"name":"people","path":"/m/people.md"}]}""")))
+        val known = HerMemory.parse(j("""{"text":"","entries":[{"name":"weekly-report","trigger":"周报; weekly report","text":"Fridays."}],"proposals":[{"id":"p_1","name":"tea","trigger":"茶","text":"Green tea only.","created_at":"2026-11-20T10:00:00.000Z"},{"name":"no id"}]}"""))
+        assertEquals(listOf(HerEntry("weekly-report", "周报; weekly report", "Fridays.")), known.entries)
+        assertEquals(listOf(HerProposal("p_1", "tea", "茶", "Green tea only.")), known.proposals)
     }
 }

@@ -79,6 +79,34 @@ pub fn routines_message(text: &str, ts: Timestamp) -> UserMessage {
     }
 }
 
+/// The user message that gives a bot a knowledge entry its owner's words hit (docs/her-memory.md
+/// §10).
+pub fn recall_message(name: &str, text: &str, ts: Timestamp) -> UserMessage {
+    UserMessage {
+        content: vec![UserContent::Text {
+            text: format!(
+                "<recall entry=\"{name}\">\nFrom your knowledge, because the user's words match this entry's trigger. Use it if it \
+                 bears on the request, without announcing it.\n\n{text}\n</recall>"
+            ),
+        }],
+        ts,
+    }
+}
+
+/// The text of each knowledge entry the current context recalled, by name: the newest since the
+/// last compaction.
+pub fn recalled_in_context(history: &History) -> Vec<(&str, &str)> {
+    let mut found: Vec<(&str, &str)> = Vec::new();
+    for entry in history.branch_back() {
+        match &entry.kind {
+            EntryKind::Recall { name, text } if !found.iter().any(|(n, _)| n == name) => found.push((name, text)),
+            EntryKind::Compaction(_) => break,
+            _ => {}
+        }
+    }
+    found
+}
+
 /// The user message that reminds a bot of what came of its work (bot-turn-design §6).
 pub fn undelivered_message(ts: Timestamp) -> UserMessage {
     UserMessage {
@@ -237,6 +265,7 @@ pub fn entry_message(kind: &EntryKind, ts: Timestamp) -> Option<Cow<'_, Message>
         EntryKind::Date { date } => Some(Cow::Owned(Message::from(date_message(date, ts)))),
         EntryKind::BotName { name } => Some(Cow::Owned(Message::from(bot_name_message(name, ts)))),
         EntryKind::Routines { text } => Some(Cow::Owned(Message::from(routines_message(text, ts)))),
+        EntryKind::Recall { name, text } => Some(Cow::Owned(Message::from(recall_message(name, text, ts)))),
         EntryKind::Unanswered { routine } => Some(Cow::Owned(Message::from(unanswered_message(*routine, ts)))),
         EntryKind::Undelivered => Some(Cow::Owned(Message::from(undelivered_message(ts)))),
         EntryKind::ReplyNudge => Some(Cow::Owned(Message::from(reply_nudge_message(ts)))),

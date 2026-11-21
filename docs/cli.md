@@ -25,6 +25,7 @@ aide message send --to s_xxx --wait -f screenshot.png -f spec.pdf --message "Cha
 aide session answer s_xxx --wait --choose 2   # answer the agent's question (also --text, --decline, or just write to the session)
 aide session wait s_xxx --timeout 5m   # wait again for a session started without --wait, or after a wait_timeout; sends nothing
 aide session diff s_xxx
+aide session insights s_xxx      # review a session once done: each turn's time, failures and retries, questions and their waits, tool calls, changes, tokens, and a better prompt for such work (Markdown for a delivery record; docs/session-insights.md)
 aide session list                # your sessions (--archived for archived ones)
 aide session list --native       # also the DeepSeek Harness sessions Aide did not start, read-only (dsh_…: session get / events)
 aide session interrupt s_xxx     # stop the running turn; the session stays, and a later message continues it

@@ -1077,6 +1077,13 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 		return nil, err
 	}
 	s.audit.Log(AuditRecord{Kind: "session.archive", Subject: p.ID(), Session: id, Decision: "allow"})
+	// Its review, made now and kept (docs/session-insights.md), off the
+	// archive's own path.
+	go func() {
+		if _, err := s.insights(row); err != nil {
+			s.log.Warn("archive: insights not made", "session", id, "err", err)
+		}
+	}()
 	return s.toProto(row), nil
 }
 

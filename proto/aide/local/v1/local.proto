@@ -186,6 +186,8 @@ service LocalService {
   rpc MarkSessionSeen(aide.session.v1.MarkSessionSeenRequest) returns (SessionResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc GetDiff(GetDiffRequest) returns (aide.session.v1.GetDiffResponse);
+  // aide.session.v1.SessionService.GetSessionInsights, as the owner.
+  rpc GetSessionInsights(aide.session.v1.GetSessionInsightsRequest) returns (aide.session.v1.SessionInsights);
   // aide.session.v1.SessionService.PushSession, as the owner.
   rpc PushSession(PushSessionRequest) returns (aide.session.v1.PushSessionResponse);
   // aide.session.v1.SessionService.RollbackSession, as the owner.

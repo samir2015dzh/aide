@@ -19,6 +19,14 @@ pub(crate) fn memory(path: &Path, view: &SessionView) -> Option<bool> {
     (below.next()?.as_os_str() == crate::bot_memory::DIR).then_some(false)
 }
 
+/// Whether `path` (canonical) is in the knowledge entries or proposals of this session's own
+/// memory, which the owner alone saves (docs/her-memory.md §10).
+pub(crate) fn owners_entries(path: &Path, view: &SessionView) -> bool {
+    view.memory_dir
+        .as_ref()
+        .is_some_and(|own| [crate::knowledge::KNOWLEDGE, crate::knowledge::PROPOSALS].iter().any(|part| path.starts_with(own.join(part))))
+}
+
 /// Why deleting `path` (absolute and normalized) would be a disaster: it is the file system
 /// root, a top-level directory, the home directory, or the workspace, the working directory
 /// or one of their ancestors.

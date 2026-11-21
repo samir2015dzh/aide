@@ -28,7 +28,7 @@ func TestToolsAreTheCommands(t *testing.T) {
 		tools[tl.Name] = tl
 	}
 	for _, name := range []string{"auth_status", "project_list", "session_start", "session_get", "session_wait", "session_list", "session_events",
-		"session_answer", "session_interrupt", "session_archive", "session_unarchive", "session_diff", "session_push",
+		"session_answer", "session_interrupt", "session_archive", "session_unarchive", "session_diff", "session_insights", "session_push",
 		"message_send", "message_list", "message_ack", "message_status", "message_contacts"} {
 		if _, ok := tools[name]; !ok {
 			t.Errorf("no tool %s", name)

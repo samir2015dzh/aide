@@ -32,6 +32,7 @@ pub mod history;
 pub mod hooks;
 pub mod instructions;
 pub mod kernel;
+pub mod knowledge;
 pub mod lang;
 pub mod mcp;
 pub mod mesh;

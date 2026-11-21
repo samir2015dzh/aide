@@ -193,6 +193,12 @@ pub enum EntryKind {
     Routines {
         text: String,
     },
+    /// A bot's session: a knowledge entry whose trigger the owner's words hit, given to the model
+    /// with its text as it was then (docs/her-memory.md §10).
+    Recall {
+        name: String,
+        text: String,
+    },
     /// A bot's session: its task was about to end with the owner's message unanswered, and the
     /// model is reminded to reply, once per task (bot-design §3.11).
     Unanswered {

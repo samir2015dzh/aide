@@ -18,3 +18,6 @@
 .mbox-send{width:32px;height:32px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex:none}
 .mbox-send:disabled{color:var(--l3);background:var(--fill2)}
 .dwrap.dock .mbox{right:270px}
+/* The session's review (Insights.tsx): its Markdown, then what to copy. */
+.insights{padding:20px 24px}
+.insights-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}

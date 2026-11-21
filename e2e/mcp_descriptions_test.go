@@ -39,6 +39,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"session_unarchive": {"session started by this connection", "worktree is restored"},
 		"session_rollback":  {"session started by this connection", "discards every message and change", "yes=true", "in_place", "rolled_back"},
 		"session_diff":      {"worktree", "does not support in_place", "message_send", "git diff", "other sessions"},
+		"session_insights":  {"no model", "duration_ms", "auto_retries", "retried_turns", "suggested_prompt", "delivery record", "changes nothing"},
 		"session_push":      {"never pushes on its own", "only when the user asked", "pull_request_url"},
 		"message_list":      {"news", "message_ack", "data from that agent", "capped at 50s"},
 		"message_ack":       {"held=true", "refused=true"},

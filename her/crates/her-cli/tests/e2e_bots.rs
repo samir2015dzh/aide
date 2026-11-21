@@ -758,6 +758,74 @@ async fn a_bot_remembers_across_a_cleared_conversation() {
     assert_eq!(std::fs::read_to_string(trashed).unwrap(), format!("{LINE}\n"));
 }
 
+/// Knowledge entries (docs/her-memory.md §10) through `her serve`: Her proposes two entries, the
+/// owner saves one and declines the other; only the saved one is recalled, and only when the
+/// owner's words hit its trigger. The owner changes and deletes entries; an entry they saved by
+/// hand is recalled too, and a MEMORY.md line stays in the prompt as before.
+#[tokio::test]
+async fn a_proposed_entry_is_recalled_once_the_owner_saves_it() {
+    let env = TestEnv::new("").await;
+    let (_child, client, incoming) = env.spawn_rpc(&["serve", "--stdio"]);
+    native_init(&client).await;
+    let mut wire = route(incoming);
+    client.request("bots/subscribe", Value::Null).await.unwrap();
+    let created = client.request("bots/create", json!({"name": "秘书", "avatar": {"kind": "mono", "hue": "clay"}})).await.unwrap();
+    let bot = created["bot"]["id"].as_str().unwrap().to_string();
+    const LINE: &str = "- 回复一律用中文。(2026-11-11)";
+    const WEEKLY: &str = "周报周五下午发到团队群，PDF 格式。(2026-11-20)";
+    const LAUNCH: &str = "发布会定在 12 月 8 日。(2026-11-20)";
+    // A MEMORY.md line kept before the conversation: it is in every prompt, as before.
+    let memory = env.home.path().join("bots").join(&bot).join("memory");
+    std::fs::create_dir_all(&memory).unwrap();
+    std::fs::write(memory.join("MEMORY.md"), format!("{LINE}\n")).unwrap();
+    let session = open(&client, &bot).await;
+
+    say(&client, &session, &format!("[[mock:propose:weekly-report|周报; weekly report|{WEEKLY}]] 周报以后发 PDF")).await;
+    let said = sent(&until_event(&mut wire, ended).await);
+    assert!(said[0].starts_with("提议了：Proposed \"weekly-report\""), "{said:?}");
+    say(&client, &session, &format!("[[mock:propose:launch|发布会|{LAUNCH}]] 发布会在 12 月 8 日")).await;
+    until_event(&mut wire, ended).await;
+    let waiting = client.request("bots/memory", json!({"bot_id": bot})).await.unwrap();
+    let proposals = waiting["proposals"].as_array().unwrap().clone();
+    assert_eq!(proposals.iter().map(|p| p["name"].as_str().unwrap()).collect::<Vec<_>>(), ["weekly-report", "launch"], "{waiting}");
+    assert_eq!(proposals[0]["trigger"], "周报; weekly report");
+    assert_eq!(proposals[0]["text"], WEEKLY);
+    assert!(waiting.get("entries").is_none(), "{waiting}");
+    say(&client, &session, "[[mock:recalled]] 周报和发布会").await;
+    assert_eq!(sent(&until_event(&mut wire, ended).await), ["没有想起什么。"], "a proposal is nothing until saved");
+
+    client.request("bots/memory_proposal_answer", json!({"bot_id": bot, "proposal_id": proposals[0]["id"], "accept": true})).await.unwrap();
+    client.request("bots/memory_proposal_answer", json!({"bot_id": bot, "proposal_id": proposals[1]["id"], "accept": false})).await.unwrap();
+    let again = client.request("bots/memory_proposal_answer", json!({"bot_id": bot, "proposal_id": proposals[1]["id"], "accept": true})).await;
+    assert!(again.is_err(), "answered once");
+    let kept = client.request("bots/memory", json!({"bot_id": bot})).await.unwrap();
+    assert!(kept.get("proposals").is_none(), "{kept}");
+    assert_eq!(kept["entries"], json!([{"name": "weekly-report", "trigger": "周报; weekly report", "text": WEEKLY}]));
+    assert_eq!(kept["text"], format!("{LINE}\n"), "MEMORY.md as before");
+
+    say(&client, &session, "[[mock:recalled]] 今天天气怎样").await;
+    assert_eq!(sent(&until_event(&mut wire, ended).await), ["没有想起什么。"], "no trigger hit");
+    say(&client, &session, "[[mock:recalled]] 这周的 Weekly Report 和发布会").await;
+    assert_eq!(sent(&until_event(&mut wire, ended).await), [format!("想起：weekly-report={WEEKLY}")], "the declined one never");
+    say(&client, &session, "[[mock:recall]] 你记得什么").await;
+    let said = sent(&until_event(&mut wire, ended).await);
+    assert!(said[0].starts_with(&format!("记得：{LINE}")), "MEMORY.md stays in the prompt: {said:?}");
+
+    // The owner changes the entry and adds one by hand; then deletes the first.
+    client.request("bots/memory_entry_set", json!({"bot_id": bot, "name": "weekly-report", "trigger": "周报", "text": "周报改成周四发。"})).await.unwrap();
+    client.request("bots/memory_entry_set", json!({"bot_id": bot, "name": "tea", "trigger": "茶", "text": "主人只喝绿茶。"})).await.unwrap();
+    let bad = client.request("bots/memory_entry_set", json!({"bot_id": bot, "name": "../x", "trigger": "茶", "text": "x"})).await;
+    assert!(bad.is_err());
+    say(&client, &session, "[[mock:recalled]] 周报，顺便泡杯茶").await;
+    assert_eq!(sent(&until_event(&mut wire, ended).await), ["想起：tea=主人只喝绿茶。；weekly-report=周报改成周四发。"]);
+    client.request("bots/memory_entry_delete", json!({"bot_id": bot, "name": "weekly-report"})).await.unwrap();
+    assert!(client.request("bots/memory_entry_delete", json!({"bot_id": bot, "name": "weekly-report"})).await.is_err());
+    say(&client, &session, "[[mock:recalled]] 周报呢").await;
+    assert_eq!(sent(&until_event(&mut wire, ended).await), ["没有想起什么。"]);
+    let left = client.request("bots/memory", json!({"bot_id": bot})).await.unwrap();
+    assert_eq!(left["entries"], json!([{"name": "tea", "trigger": "茶", "text": "主人只喝绿茶。"}]));
+}
+
 #[tokio::test]
 async fn bots_and_their_rows_survive_a_restart() {
     let env = TestEnv::new("").await;
