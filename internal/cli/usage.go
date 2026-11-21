@@ -35,7 +35,7 @@ The reading is taken on the machine from the signed-in account's token
 (Claude Desktop, or the Claude Code credentials file); the token never
 leaves the machine, and nothing here carries it, only the windows. When
 there is no reading the usage shows as unavailable with the reason
-(signed_out, no_token, api_error, unsupported). A reading kept after a
+(signed_out, no_token, api_error, parse_error, unsupported). A reading kept after a
 failed refresh is marked stale.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {

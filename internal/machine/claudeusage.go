@@ -61,11 +61,12 @@ func (n *Machine) refreshUsage() {
 }
 
 // usageToProto turns a reading into the status message. When the endpoint
-// failed (api_error) but there is a last good reading, its windows are kept
-// and marked stale, so a blip does not blank the figures; any renew outcome
+// failed (api_error), or answered with what could not be parsed
+// (parse_error), but there is a last good reading, its windows are kept and
+// marked stale, so a blip does not blank the figures; any renew outcome
 // still shows. Every other unavailability is reported as it is.
 func usageToProto(u claude.Usage, prev *machinev1.ClaudeUsage) *machinev1.ClaudeUsage {
-	if u.Unavailable == "api_error" && prev != nil && len(prev.Windows) > 0 {
+	if (u.Unavailable == "api_error" || u.Unavailable == "parse_error") && prev != nil && len(prev.Windows) > 0 {
 		out := proto.Clone(prev).(*machinev1.ClaudeUsage)
 		out.Stale = true
 		out.Renew = u.Renew
