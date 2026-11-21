@@ -29,7 +29,7 @@ func TestHerStatusSaysRemoved(t *testing.T) {
 	n := openPlainMachine(t)
 	defer n.Close()
 	st := n.Status().Her
-	if st == nil || st.Unsupported != herRemoved || st.Enabled || st.Running || st.Data {
+	if st == nil || st.Unsupported != herRemoved || st.Enabled || st.Data {
 		t.Fatalf("Her's status = %v, want only unsupported=%q", st, herRemoved)
 	}
 }

@@ -450,3 +450,30 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 // errUnknownAdmin answers a command this version doesn't know: one from a
 // device newer than this machine (docs/version-skew.md §6.3).
 var errUnknownAdmin = connect.NewError(connect.CodeUnimplemented, errors.New("unknown admin command"))
+
+// statusFor is the machine's status as p may see it: the screen's carries
+// the name of a device, and direct_addrs internal/public endpoints, for the
+// owner's devices only.
+func (n *Machine) statusFor(p *Principal) *machinev1.MachineStatus {
+	st := n.Status()
+	if p == nil || p.Kind != PrincipalOwner {
+		st.Her, st.Screen, st.DirectAddrs = nil, nil, nil
+		for _, a := range st.Agents {
+			a.ModelCatalogs = slices.DeleteFunc(a.ModelCatalogs, func(c *machinev1.AgentModelCatalog) bool {
+				if p == nil || p.Grant == nil || !identity.Allows(p.Grant.Agents, a.Name) {
+					return true
+				}
+				if c.Scope == "isolated" {
+					return false
+				}
+				_, id, ok := strings.Cut(c.Scope, "/")
+				if !ok {
+					return true
+				}
+				_, _, err := n.sessions.find(p, id, false)
+				return err != nil
+			})
+		}
+	}
+	return st
+}

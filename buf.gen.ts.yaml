@@ -7,7 +7,6 @@ inputs:
   - directory: proto
     paths:
       - proto/aide/local
-      - proto/aide/her
       - proto/aide/session
       - proto/aide/identity
       - proto/aide/machine

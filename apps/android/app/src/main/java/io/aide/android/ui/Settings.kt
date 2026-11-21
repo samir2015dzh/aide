@@ -133,7 +133,7 @@ fun SettingsTab(model: AppModel) {
         val l = login
         if (l != null) AccountDialog(model, c, l, done = { changed -> editing = null; if (changed) version++ })
     }
-    signingOut?.let { d -> SignOutDialog(model, d, world.machines.firstOrNull { it.machineId == d.machineId }?.her?.let { it.enabled || it.data } == true) { signingOut = null } }
+    signingOut?.let { d -> SignOutDialog(model, d, world.machines.firstOrNull { it.machineId == d.machineId }?.status?.her?.let { it.enabled || it.data } == true) { signingOut = null } }
 }
 
 @Composable

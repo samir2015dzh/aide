@@ -974,7 +974,8 @@ func (x *StartSessionResponse) GetSession() *Session {
 // without reading it.
 type Notice struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "question", "failure", "turn_done", "session_started" or "her".
+	// "question", "failure", "turn_done" or "session_started"; "her" from
+	// an aided from before Aide dropped Her.
 	Kind string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	At   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=at,proto3" json:"at,omitempty"`
 	// A session's notice.
@@ -992,18 +993,8 @@ type Notice struct {
 	Failure        FailureKind `protobuf:"varint,10,opt,name=failure,proto3,enum=aide.session.v1.FailureKind" json:"failure,omitempty"`
 	FailureMessage string      `protobuf:"bytes,11,opt,name=failure_message,json=failureMessage,proto3" json:"failure_message,omitempty"`
 	// kind "turn_done": the turn and what it changed.
-	Turn     uint32    `protobuf:"varint,12,opt,name=turn,proto3" json:"turn,omitempty"`
-	DiffStat *DiffStat `protobuf:"bytes,13,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
-	// kind "her": what an assistant of Her's on the machine (machine names
-	// it) has for the owner, as HerLatest says it: "message", "question" (it
-	// asks the owner to choose) or "approval" (a secure card waits for the
-	// owner: Her runs actions without asking, so nothing else waits; the
-	// name is kept for the apps that read it), and its first words.
-	HerKind       string `protobuf:"bytes,18,opt,name=her_kind,json=herKind,proto3" json:"her_kind,omitempty"`
-	MachineId     string `protobuf:"bytes,19,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	BotId         string `protobuf:"bytes,20,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	BotName       string `protobuf:"bytes,21,opt,name=bot_name,json=botName,proto3" json:"bot_name,omitempty"`
-	Text          string `protobuf:"bytes,22,opt,name=text,proto3" json:"text,omitempty"`
+	Turn          uint32    `protobuf:"varint,12,opt,name=turn,proto3" json:"turn,omitempty"`
+	DiffStat      *DiffStat `protobuf:"bytes,13,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1127,41 +1118,6 @@ func (x *Notice) GetDiffStat() *DiffStat {
 		return x.DiffStat
 	}
 	return nil
-}
-
-func (x *Notice) GetHerKind() string {
-	if x != nil {
-		return x.HerKind
-	}
-	return ""
-}
-
-func (x *Notice) GetMachineId() string {
-	if x != nil {
-		return x.MachineId
-	}
-	return ""
-}
-
-func (x *Notice) GetBotId() string {
-	if x != nil {
-		return x.BotId
-	}
-	return ""
-}
-
-func (x *Notice) GetBotName() string {
-	if x != nil {
-		return x.BotName
-	}
-	return ""
-}
-
-func (x *Notice) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
 }
 
 type DiffStat struct {
@@ -5792,7 +5748,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x06sha256\x18\x05 \x01(\tR\x06sha256\x12\x14\n" +
 	"\x05image\x18\x06 \x01(\bR\x05image\"J\n" +
 	"\x14StartSessionResponse\x122\n" +
-	"\asession\x18\x01 \x01(\v2\x18.aide.session.v1.SessionR\asession\"\x85\x05\n" +
+	"\asession\x18\x01 \x01(\v2\x18.aide.session.v1.SessionR\asession\"\xb9\x04\n" +
 	"\x06Notice\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12*\n" +
 	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x1d\n" +
@@ -5808,13 +5764,8 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	" \x01(\x0e2\x1c.aide.session.v1.FailureKindR\afailure\x12'\n" +
 	"\x0ffailure_message\x18\v \x01(\tR\x0efailureMessage\x12\x12\n" +
 	"\x04turn\x18\f \x01(\rR\x04turn\x126\n" +
-	"\tdiff_stat\x18\r \x01(\v2\x19.aide.session.v1.DiffStatR\bdiffStat\x12\x19\n" +
-	"\bher_kind\x18\x12 \x01(\tR\aherKind\x12\x1d\n" +
-	"\n" +
-	"machine_id\x18\x13 \x01(\tR\tmachineId\x12\x15\n" +
-	"\x06bot_id\x18\x14 \x01(\tR\x05botId\x12\x19\n" +
-	"\bbot_name\x18\x15 \x01(\tR\abotName\x12\x12\n" +
-	"\x04text\x18\x16 \x01(\tR\x04textJ\x04\b\x0e\x10\x12R\fpairing_kindR\rpairing_labelR\x11verification_codeR\fpairing_code\"m\n" +
+	"\tdiff_stat\x18\r \x01(\v2\x19.aide.session.v1.DiffStatR\bdiffStatJ\x04\b\x0e\x10\x12J\x04\b\x12\x10\x17R\fpairing_kindR\rpairing_labelR\x11verification_codeR\fpairing_codeR\bher_kindR\n" +
+	"machine_idR\x06bot_idR\bbot_nameR\x04text\"m\n" +
 	"\bDiffStat\x12#\n" +
 	"\rfiles_changed\x18\x01 \x01(\rR\ffilesChanged\x12\x1e\n" +
 	"\n" +

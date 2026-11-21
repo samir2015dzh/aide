@@ -11,6 +11,8 @@ lint:
 	go vet ./...
 	GOOS=windows go vet ./...
 	test -z "$$(gofmt -l cmd internal pkg e2e)"
+	# What the READMEs show, nothing over 500 KB: videos go in a release.
+	test -z "$$(find docs/assets -type f -size +500k)"
 
 test:
 	go test ./cmd/... ./internal/... ./pkg/... -count=1

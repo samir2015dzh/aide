@@ -17,7 +17,6 @@ import (
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	"github.com/samir2015dzh/aide/internal/shellenv"
-	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // Her is no longer part of Aide. What is left here is for the machines that
@@ -46,8 +45,6 @@ const (
 	HerErased = "Her is off, and her data is erased"
 )
 
-var errOwnerOnly = connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
-
 // herStatus tells the apps from before that this machine has no Her, and
 // whether her data from then is still here.
 func (n *Machine) herStatus() *machinev1.HerStatus {
@@ -74,11 +71,6 @@ func (n *Machine) setHer(on, erase bool) (string, error) {
 	n.mu.Unlock()
 	n.kickStatus()
 	return HerErased, nil
-}
-
-// SetHerGrant was how the owner's device gave this machine's Her her grant.
-func (s *adminService) SetHerGrant(context.Context, *machinev1.SetHerGrantRequest) (*machinev1.SetHerGrantResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Aide no longer has Her"))
 }
 
 // forgetHer drops what a machine kept for Her as one of the owner's agents:
@@ -223,31 +215,4 @@ var deleteHerKeychainItems = func(service string) error {
 		}
 	}
 	return fmt.Errorf("erasing her Keychain items (%s): too many", service)
-}
-
-// statusFor is the machine's status as p may see it: the screen's carries
-// the name of a device, and direct_addrs internal/public endpoints, for the
-// owner's devices only.
-func (n *Machine) statusFor(p *Principal) *machinev1.MachineStatus {
-	st := n.Status()
-	if p == nil || p.Kind != PrincipalOwner {
-		st.Her, st.Screen, st.DirectAddrs = nil, nil, nil
-		for _, a := range st.Agents {
-			a.ModelCatalogs = slices.DeleteFunc(a.ModelCatalogs, func(c *machinev1.AgentModelCatalog) bool {
-				if p == nil || p.Grant == nil || !identity.Allows(p.Grant.Agents, a.Name) {
-					return true
-				}
-				if c.Scope == "isolated" {
-					return false
-				}
-				_, id, ok := strings.Cut(c.Scope, "/")
-				if !ok {
-					return true
-				}
-				_, _, err := n.sessions.find(p, id, false)
-				return err != nil
-			})
-		}
-	}
-	return st
 }

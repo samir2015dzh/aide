@@ -8,10 +8,9 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v12 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
 	v1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	v11 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
-	v13 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	v12 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -116,34 +115,6 @@ const (
 	// LocalServiceGetDiagnosticsProcedure is the fully-qualified name of the LocalService's
 	// GetDiagnostics RPC.
 	LocalServiceGetDiagnosticsProcedure = "/aide.local.v1.LocalService/GetDiagnostics"
-	// LocalServiceSetHerProcedure is the fully-qualified name of the LocalService's SetHer RPC.
-	LocalServiceSetHerProcedure = "/aide.local.v1.LocalService/SetHer"
-	// LocalServiceSetHerCommandConnectorProcedure is the fully-qualified name of the LocalService's
-	// SetHerCommandConnector RPC.
-	LocalServiceSetHerCommandConnectorProcedure = "/aide.local.v1.LocalService/SetHerCommandConnector"
-	// LocalServiceHerOpenProcedure is the fully-qualified name of the LocalService's HerOpen RPC.
-	LocalServiceHerOpenProcedure = "/aide.local.v1.LocalService/HerOpen"
-	// LocalServiceHerCallProcedure is the fully-qualified name of the LocalService's HerCall RPC.
-	LocalServiceHerCallProcedure = "/aide.local.v1.LocalService/HerCall"
-	// LocalServiceHerSendProcedure is the fully-qualified name of the LocalService's HerSend RPC.
-	LocalServiceHerSendProcedure = "/aide.local.v1.LocalService/HerSend"
-	// LocalServiceListHerWaitingProcedure is the fully-qualified name of the LocalService's
-	// ListHerWaiting RPC.
-	LocalServiceListHerWaitingProcedure = "/aide.local.v1.LocalService/ListHerWaiting"
-	// LocalServiceDeleteHerWaitingProcedure is the fully-qualified name of the LocalService's
-	// DeleteHerWaiting RPC.
-	LocalServiceDeleteHerWaitingProcedure = "/aide.local.v1.LocalService/DeleteHerWaiting"
-	// LocalServiceGetHerConversationProcedure is the fully-qualified name of the LocalService's
-	// GetHerConversation RPC.
-	LocalServiceGetHerConversationProcedure = "/aide.local.v1.LocalService/GetHerConversation"
-	// LocalServiceHerUploadProcedure is the fully-qualified name of the LocalService's HerUpload RPC.
-	LocalServiceHerUploadProcedure = "/aide.local.v1.LocalService/HerUpload"
-	// LocalServiceHerDownloadProcedure is the fully-qualified name of the LocalService's HerDownload
-	// RPC.
-	LocalServiceHerDownloadProcedure = "/aide.local.v1.LocalService/HerDownload"
-	// LocalServiceGetHerConsoleProcedure is the fully-qualified name of the LocalService's
-	// GetHerConsole RPC.
-	LocalServiceGetHerConsoleProcedure = "/aide.local.v1.LocalService/GetHerConsole"
 	// LocalServiceStopScreenProcedure is the fully-qualified name of the LocalService's StopScreen RPC.
 	LocalServiceStopScreenProcedure = "/aide.local.v1.LocalService/StopScreen"
 	// LocalServiceListProjectsProcedure is the fully-qualified name of the LocalService's ListProjects
@@ -369,40 +340,6 @@ type LocalServiceClient interface {
 	// something does not work: versions, health, PATH and each coding agent.
 	// Nothing leaves the Mac unless they do.
 	GetDiagnostics(context.Context, *v1.GetDiagnosticsRequest) (*v1.GetDiagnosticsResponse, error)
-	// Her (docs/her-server.md). A machine's Her is Machine.her. Each call
-	// goes in process when the machine is this Mac, else through the tunnel.
-	// Turns Her on or off for a machine, erasing her data if asked: signed by
-	// this device's root key.
-	SetHer(context.Context, *v1.SetHerRequest) (*v1.SetHerResponse, error)
-	// Adds, changes or removes a connector her starts as a command on a
-	// machine: signed by the root key.
-	SetHerCommandConnector(context.Context, *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error)
-	// Opens a her connection on a machine (aide.her.v1.HerService.Open).
-	HerOpen(context.Context, *v1.HerOpenRequest) (*connect.ServerStreamForClient[v12.OpenEvent], error)
-	// One her request on a machine (aide.her.v1.HerService.Call).
-	HerCall(context.Context, *v1.HerCallRequest) (*v12.CallResponse, error)
-	// A message to an assistant: kept on this device first, then delivered,
-	// now or when the machine is back (docs/her-sending.md §4). An error: it
-	// is not kept and was not taken.
-	HerSend(context.Context, *v1.HerSendRequest) (*v1.HerSendResponse, error)
-	// The messages this device keeps for a machine's assistants until it is
-	// back, oldest first.
-	ListHerWaiting(context.Context, *v1.ListHerWaitingRequest) (*v1.ListHerWaitingResponse, error)
-	// Drops a message this device keeps, undelivered: one her keeps refusing
-	// then stops holding back that assistant's later ones.
-	DeleteHerWaiting(context.Context, *v1.DeleteHerWaitingRequest) (*v1.DeleteHerWaitingResponse, error)
-	// What this device keeps of a machine's Her, to show at once and while
-	// the machine is offline (docs/her-server.md §7): Her and the end of
-	// Her's conversation, as the HerOpen streams that followed them last
-	// carried them here.
-	GetHerConversation(context.Context, *v1.GetHerConversationRequest) (*v1.GetHerConversationResponse, error)
-	// A file on this device into an assistant's folder on a machine.
-	HerUpload(context.Context, *v1.HerUploadRequest) (*v1.HerUploadResponse, error)
-	// A file from an assistant's folder on a machine into a folder here.
-	HerDownload(context.Context, *v1.HerDownloadRequest) (*v1.HerDownloadResponse, error)
-	// The address of a machine's Her console, served by this aided on
-	// 127.0.0.1 with a token in its path.
-	GetHerConsole(context.Context, *v1.GetHerConsoleRequest) (*v1.GetHerConsoleResponse, error)
 	// Ends the Computer Control session on this computer's own machine, if
 	// one is under way (docs/computer-control.md §4.3): the Mac's menu bar
 	// names the device in control and offers this.
@@ -442,11 +379,11 @@ type LocalServiceClient interface {
 	// online machine while anyone watches). A watcher that falls behind is
 	// ended (RESOURCE_EXHAUSTED) and should watch again.
 	WatchSessions(context.Context, *v1.WatchSessionsRequest) (*connect.ServerStreamForClient[v1.WatchSessionsResponse], error)
-	StreamSessionEvents(context.Context, *v1.StreamSessionEventsRequest) (*connect.ServerStreamForClient[v13.SessionEvent], error)
+	StreamSessionEvents(context.Context, *v1.StreamSessionEventsRequest) (*connect.ServerStreamForClient[v12.SessionEvent], error)
 	// A session's events by seq, as aide.session.v1.SessionService.ListEvents.
 	ListSessionEvents(context.Context, *v1.ListSessionEventsRequest) (*v1.ListSessionEventsResponse, error)
 	// A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
-	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v13.ToolOutputChunk], error)
+	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v12.ToolOutputChunk], error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -463,13 +400,13 @@ type LocalServiceClient interface {
 	RenameSession(context.Context, *v1.RenameSessionRequest) (*v1.SessionResponse, error)
 	// MarkSessionSeen: aide.session.v1.SessionService's, forwarded to the
 	// session's machine (docs/session-states.md §7).
-	MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error)
+	MarkSessionSeen(context.Context, *v12.MarkSessionSeenRequest) (*v1.SessionResponse, error)
 	AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error)
-	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
+	GetDiff(context.Context, *v1.GetDiffRequest) (*v12.GetDiffResponse, error)
 	// aide.session.v1.SessionService.GetSessionInsights, as the owner.
-	GetSessionInsights(context.Context, *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error)
+	GetSessionInsights(context.Context, *v12.GetSessionInsightsRequest) (*v12.SessionInsights, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
-	PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error)
+	PushSession(context.Context, *v1.PushSessionRequest) (*v12.PushSessionResponse, error)
 	// aide.session.v1.SessionService.RollbackSession, as the owner.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error)
 	// The DeepSeek Harness sessions Aide did not start, on the machines
@@ -701,72 +638,6 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("GetDiagnostics")),
 			connect.WithClientOptions(opts...),
 		),
-		setHer: connect.NewClient[v1.SetHerRequest, v1.SetHerResponse](
-			httpClient,
-			baseURL+LocalServiceSetHerProcedure,
-			connect.WithSchema(localServiceMethods.ByName("SetHer")),
-			connect.WithClientOptions(opts...),
-		),
-		setHerCommandConnector: connect.NewClient[v1.SetHerCommandConnectorRequest, v1.SetHerCommandConnectorResponse](
-			httpClient,
-			baseURL+LocalServiceSetHerCommandConnectorProcedure,
-			connect.WithSchema(localServiceMethods.ByName("SetHerCommandConnector")),
-			connect.WithClientOptions(opts...),
-		),
-		herOpen: connect.NewClient[v1.HerOpenRequest, v12.OpenEvent](
-			httpClient,
-			baseURL+LocalServiceHerOpenProcedure,
-			connect.WithSchema(localServiceMethods.ByName("HerOpen")),
-			connect.WithClientOptions(opts...),
-		),
-		herCall: connect.NewClient[v1.HerCallRequest, v12.CallResponse](
-			httpClient,
-			baseURL+LocalServiceHerCallProcedure,
-			connect.WithSchema(localServiceMethods.ByName("HerCall")),
-			connect.WithClientOptions(opts...),
-		),
-		herSend: connect.NewClient[v1.HerSendRequest, v1.HerSendResponse](
-			httpClient,
-			baseURL+LocalServiceHerSendProcedure,
-			connect.WithSchema(localServiceMethods.ByName("HerSend")),
-			connect.WithClientOptions(opts...),
-		),
-		listHerWaiting: connect.NewClient[v1.ListHerWaitingRequest, v1.ListHerWaitingResponse](
-			httpClient,
-			baseURL+LocalServiceListHerWaitingProcedure,
-			connect.WithSchema(localServiceMethods.ByName("ListHerWaiting")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteHerWaiting: connect.NewClient[v1.DeleteHerWaitingRequest, v1.DeleteHerWaitingResponse](
-			httpClient,
-			baseURL+LocalServiceDeleteHerWaitingProcedure,
-			connect.WithSchema(localServiceMethods.ByName("DeleteHerWaiting")),
-			connect.WithClientOptions(opts...),
-		),
-		getHerConversation: connect.NewClient[v1.GetHerConversationRequest, v1.GetHerConversationResponse](
-			httpClient,
-			baseURL+LocalServiceGetHerConversationProcedure,
-			connect.WithSchema(localServiceMethods.ByName("GetHerConversation")),
-			connect.WithClientOptions(opts...),
-		),
-		herUpload: connect.NewClient[v1.HerUploadRequest, v1.HerUploadResponse](
-			httpClient,
-			baseURL+LocalServiceHerUploadProcedure,
-			connect.WithSchema(localServiceMethods.ByName("HerUpload")),
-			connect.WithClientOptions(opts...),
-		),
-		herDownload: connect.NewClient[v1.HerDownloadRequest, v1.HerDownloadResponse](
-			httpClient,
-			baseURL+LocalServiceHerDownloadProcedure,
-			connect.WithSchema(localServiceMethods.ByName("HerDownload")),
-			connect.WithClientOptions(opts...),
-		),
-		getHerConsole: connect.NewClient[v1.GetHerConsoleRequest, v1.GetHerConsoleResponse](
-			httpClient,
-			baseURL+LocalServiceGetHerConsoleProcedure,
-			connect.WithSchema(localServiceMethods.ByName("GetHerConsole")),
-			connect.WithClientOptions(opts...),
-		),
 		stopScreen: connect.NewClient[v1.StopScreenRequest, v1.StopScreenResponse](
 			httpClient,
 			baseURL+LocalServiceStopScreenProcedure,
@@ -881,7 +752,7 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("WatchSessions")),
 			connect.WithClientOptions(opts...),
 		),
-		streamSessionEvents: connect.NewClient[v1.StreamSessionEventsRequest, v13.SessionEvent](
+		streamSessionEvents: connect.NewClient[v1.StreamSessionEventsRequest, v12.SessionEvent](
 			httpClient,
 			baseURL+LocalServiceStreamSessionEventsProcedure,
 			connect.WithSchema(localServiceMethods.ByName("StreamSessionEvents")),
@@ -893,7 +764,7 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("ListSessionEvents")),
 			connect.WithClientOptions(opts...),
 		),
-		readToolOutput: connect.NewClient[v1.ReadToolOutputRequest, v13.ToolOutputChunk](
+		readToolOutput: connect.NewClient[v1.ReadToolOutputRequest, v12.ToolOutputChunk](
 			httpClient,
 			baseURL+LocalServiceReadToolOutputProcedure,
 			connect.WithSchema(localServiceMethods.ByName("ReadToolOutput")),
@@ -941,7 +812,7 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("RenameSession")),
 			connect.WithClientOptions(opts...),
 		),
-		markSessionSeen: connect.NewClient[v13.MarkSessionSeenRequest, v1.SessionResponse](
+		markSessionSeen: connect.NewClient[v12.MarkSessionSeenRequest, v1.SessionResponse](
 			httpClient,
 			baseURL+LocalServiceMarkSessionSeenProcedure,
 			connect.WithSchema(localServiceMethods.ByName("MarkSessionSeen")),
@@ -953,19 +824,19 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("AnswerQuestion")),
 			connect.WithClientOptions(opts...),
 		),
-		getDiff: connect.NewClient[v1.GetDiffRequest, v13.GetDiffResponse](
+		getDiff: connect.NewClient[v1.GetDiffRequest, v12.GetDiffResponse](
 			httpClient,
 			baseURL+LocalServiceGetDiffProcedure,
 			connect.WithSchema(localServiceMethods.ByName("GetDiff")),
 			connect.WithClientOptions(opts...),
 		),
-		getSessionInsights: connect.NewClient[v13.GetSessionInsightsRequest, v13.SessionInsights](
+		getSessionInsights: connect.NewClient[v12.GetSessionInsightsRequest, v12.SessionInsights](
 			httpClient,
 			baseURL+LocalServiceGetSessionInsightsProcedure,
 			connect.WithSchema(localServiceMethods.ByName("GetSessionInsights")),
 			connect.WithClientOptions(opts...),
 		),
-		pushSession: connect.NewClient[v1.PushSessionRequest, v13.PushSessionResponse](
+		pushSession: connect.NewClient[v1.PushSessionRequest, v12.PushSessionResponse](
 			httpClient,
 			baseURL+LocalServicePushSessionProcedure,
 			connect.WithSchema(localServiceMethods.ByName("PushSession")),
@@ -1102,17 +973,6 @@ type localServiceClient struct {
 	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
 	listExecLog              *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
 	getDiagnostics           *connect.Client[v1.GetDiagnosticsRequest, v1.GetDiagnosticsResponse]
-	setHer                   *connect.Client[v1.SetHerRequest, v1.SetHerResponse]
-	setHerCommandConnector   *connect.Client[v1.SetHerCommandConnectorRequest, v1.SetHerCommandConnectorResponse]
-	herOpen                  *connect.Client[v1.HerOpenRequest, v12.OpenEvent]
-	herCall                  *connect.Client[v1.HerCallRequest, v12.CallResponse]
-	herSend                  *connect.Client[v1.HerSendRequest, v1.HerSendResponse]
-	listHerWaiting           *connect.Client[v1.ListHerWaitingRequest, v1.ListHerWaitingResponse]
-	deleteHerWaiting         *connect.Client[v1.DeleteHerWaitingRequest, v1.DeleteHerWaitingResponse]
-	getHerConversation       *connect.Client[v1.GetHerConversationRequest, v1.GetHerConversationResponse]
-	herUpload                *connect.Client[v1.HerUploadRequest, v1.HerUploadResponse]
-	herDownload              *connect.Client[v1.HerDownloadRequest, v1.HerDownloadResponse]
-	getHerConsole            *connect.Client[v1.GetHerConsoleRequest, v1.GetHerConsoleResponse]
 	stopScreen               *connect.Client[v1.StopScreenRequest, v1.StopScreenResponse]
 	listProjects             *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
 	addProject               *connect.Client[v1.AddProjectRequest, v1.AddProjectResponse]
@@ -1132,9 +992,9 @@ type localServiceClient struct {
 	talkToPersona            *connect.Client[v1.TalkToPersonaRequest, v1.TalkToPersonaResponse]
 	listSessions             *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	watchSessions            *connect.Client[v1.WatchSessionsRequest, v1.WatchSessionsResponse]
-	streamSessionEvents      *connect.Client[v1.StreamSessionEventsRequest, v13.SessionEvent]
+	streamSessionEvents      *connect.Client[v1.StreamSessionEventsRequest, v12.SessionEvent]
 	listSessionEvents        *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
-	readToolOutput           *connect.Client[v1.ReadToolOutputRequest, v13.ToolOutputChunk]
+	readToolOutput           *connect.Client[v1.ReadToolOutputRequest, v12.ToolOutputChunk]
 	startSession             *connect.Client[v1.StartSessionRequest, v1.SessionResponse]
 	sendMessage              *connect.Client[v1.SendMessageRequest, v1.SessionResponse]
 	interruptSession         *connect.Client[v1.InterruptSessionRequest, v1.SessionResponse]
@@ -1142,11 +1002,11 @@ type localServiceClient struct {
 	unarchiveSession         *connect.Client[v1.UnarchiveSessionRequest, v1.SessionResponse]
 	deleteSession            *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
 	renameSession            *connect.Client[v1.RenameSessionRequest, v1.SessionResponse]
-	markSessionSeen          *connect.Client[v13.MarkSessionSeenRequest, v1.SessionResponse]
+	markSessionSeen          *connect.Client[v12.MarkSessionSeenRequest, v1.SessionResponse]
 	answerQuestion           *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
-	getDiff                  *connect.Client[v1.GetDiffRequest, v13.GetDiffResponse]
-	getSessionInsights       *connect.Client[v13.GetSessionInsightsRequest, v13.SessionInsights]
-	pushSession              *connect.Client[v1.PushSessionRequest, v13.PushSessionResponse]
+	getDiff                  *connect.Client[v1.GetDiffRequest, v12.GetDiffResponse]
+	getSessionInsights       *connect.Client[v12.GetSessionInsightsRequest, v12.SessionInsights]
+	pushSession              *connect.Client[v1.PushSessionRequest, v12.PushSessionResponse]
 	rollbackSession          *connect.Client[v1.RollbackSessionRequest, v1.SessionResponse]
 	listDSHSessions          *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
 	readDSHSession           *connect.Client[v1.ReadDSHSessionRequest, v11.ReadDSHSessionResponse]
@@ -1431,101 +1291,6 @@ func (c *localServiceClient) GetDiagnostics(ctx context.Context, req *v1.GetDiag
 	return nil, err
 }
 
-// SetHer calls aide.local.v1.LocalService.SetHer.
-func (c *localServiceClient) SetHer(ctx context.Context, req *v1.SetHerRequest) (*v1.SetHerResponse, error) {
-	response, err := c.setHer.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// SetHerCommandConnector calls aide.local.v1.LocalService.SetHerCommandConnector.
-func (c *localServiceClient) SetHerCommandConnector(ctx context.Context, req *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error) {
-	response, err := c.setHerCommandConnector.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// HerOpen calls aide.local.v1.LocalService.HerOpen.
-func (c *localServiceClient) HerOpen(ctx context.Context, req *v1.HerOpenRequest) (*connect.ServerStreamForClient[v12.OpenEvent], error) {
-	return c.herOpen.CallServerStream(ctx, connect.NewRequest(req))
-}
-
-// HerCall calls aide.local.v1.LocalService.HerCall.
-func (c *localServiceClient) HerCall(ctx context.Context, req *v1.HerCallRequest) (*v12.CallResponse, error) {
-	response, err := c.herCall.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// HerSend calls aide.local.v1.LocalService.HerSend.
-func (c *localServiceClient) HerSend(ctx context.Context, req *v1.HerSendRequest) (*v1.HerSendResponse, error) {
-	response, err := c.herSend.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// ListHerWaiting calls aide.local.v1.LocalService.ListHerWaiting.
-func (c *localServiceClient) ListHerWaiting(ctx context.Context, req *v1.ListHerWaitingRequest) (*v1.ListHerWaitingResponse, error) {
-	response, err := c.listHerWaiting.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// DeleteHerWaiting calls aide.local.v1.LocalService.DeleteHerWaiting.
-func (c *localServiceClient) DeleteHerWaiting(ctx context.Context, req *v1.DeleteHerWaitingRequest) (*v1.DeleteHerWaitingResponse, error) {
-	response, err := c.deleteHerWaiting.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// GetHerConversation calls aide.local.v1.LocalService.GetHerConversation.
-func (c *localServiceClient) GetHerConversation(ctx context.Context, req *v1.GetHerConversationRequest) (*v1.GetHerConversationResponse, error) {
-	response, err := c.getHerConversation.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// HerUpload calls aide.local.v1.LocalService.HerUpload.
-func (c *localServiceClient) HerUpload(ctx context.Context, req *v1.HerUploadRequest) (*v1.HerUploadResponse, error) {
-	response, err := c.herUpload.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// HerDownload calls aide.local.v1.LocalService.HerDownload.
-func (c *localServiceClient) HerDownload(ctx context.Context, req *v1.HerDownloadRequest) (*v1.HerDownloadResponse, error) {
-	response, err := c.herDownload.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// GetHerConsole calls aide.local.v1.LocalService.GetHerConsole.
-func (c *localServiceClient) GetHerConsole(ctx context.Context, req *v1.GetHerConsoleRequest) (*v1.GetHerConsoleResponse, error) {
-	response, err := c.getHerConsole.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
 // StopScreen calls aide.local.v1.LocalService.StopScreen.
 func (c *localServiceClient) StopScreen(ctx context.Context, req *v1.StopScreenRequest) (*v1.StopScreenResponse, error) {
 	response, err := c.stopScreen.CallUnary(ctx, connect.NewRequest(req))
@@ -1694,7 +1459,7 @@ func (c *localServiceClient) WatchSessions(ctx context.Context, req *v1.WatchSes
 }
 
 // StreamSessionEvents calls aide.local.v1.LocalService.StreamSessionEvents.
-func (c *localServiceClient) StreamSessionEvents(ctx context.Context, req *v1.StreamSessionEventsRequest) (*connect.ServerStreamForClient[v13.SessionEvent], error) {
+func (c *localServiceClient) StreamSessionEvents(ctx context.Context, req *v1.StreamSessionEventsRequest) (*connect.ServerStreamForClient[v12.SessionEvent], error) {
 	return c.streamSessionEvents.CallServerStream(ctx, connect.NewRequest(req))
 }
 
@@ -1708,7 +1473,7 @@ func (c *localServiceClient) ListSessionEvents(ctx context.Context, req *v1.List
 }
 
 // ReadToolOutput calls aide.local.v1.LocalService.ReadToolOutput.
-func (c *localServiceClient) ReadToolOutput(ctx context.Context, req *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v13.ToolOutputChunk], error) {
+func (c *localServiceClient) ReadToolOutput(ctx context.Context, req *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v12.ToolOutputChunk], error) {
 	return c.readToolOutput.CallServerStream(ctx, connect.NewRequest(req))
 }
 
@@ -1776,7 +1541,7 @@ func (c *localServiceClient) RenameSession(ctx context.Context, req *v1.RenameSe
 }
 
 // MarkSessionSeen calls aide.local.v1.LocalService.MarkSessionSeen.
-func (c *localServiceClient) MarkSessionSeen(ctx context.Context, req *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error) {
+func (c *localServiceClient) MarkSessionSeen(ctx context.Context, req *v12.MarkSessionSeenRequest) (*v1.SessionResponse, error) {
 	response, err := c.markSessionSeen.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
@@ -1794,7 +1559,7 @@ func (c *localServiceClient) AnswerQuestion(ctx context.Context, req *v1.AnswerQ
 }
 
 // GetDiff calls aide.local.v1.LocalService.GetDiff.
-func (c *localServiceClient) GetDiff(ctx context.Context, req *v1.GetDiffRequest) (*v13.GetDiffResponse, error) {
+func (c *localServiceClient) GetDiff(ctx context.Context, req *v1.GetDiffRequest) (*v12.GetDiffResponse, error) {
 	response, err := c.getDiff.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
@@ -1803,7 +1568,7 @@ func (c *localServiceClient) GetDiff(ctx context.Context, req *v1.GetDiffRequest
 }
 
 // GetSessionInsights calls aide.local.v1.LocalService.GetSessionInsights.
-func (c *localServiceClient) GetSessionInsights(ctx context.Context, req *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error) {
+func (c *localServiceClient) GetSessionInsights(ctx context.Context, req *v12.GetSessionInsightsRequest) (*v12.SessionInsights, error) {
 	response, err := c.getSessionInsights.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
@@ -1812,7 +1577,7 @@ func (c *localServiceClient) GetSessionInsights(ctx context.Context, req *v13.Ge
 }
 
 // PushSession calls aide.local.v1.LocalService.PushSession.
-func (c *localServiceClient) PushSession(ctx context.Context, req *v1.PushSessionRequest) (*v13.PushSessionResponse, error) {
+func (c *localServiceClient) PushSession(ctx context.Context, req *v1.PushSessionRequest) (*v12.PushSessionResponse, error) {
 	response, err := c.pushSession.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
@@ -2045,40 +1810,6 @@ type LocalServiceHandler interface {
 	// something does not work: versions, health, PATH and each coding agent.
 	// Nothing leaves the Mac unless they do.
 	GetDiagnostics(context.Context, *v1.GetDiagnosticsRequest) (*v1.GetDiagnosticsResponse, error)
-	// Her (docs/her-server.md). A machine's Her is Machine.her. Each call
-	// goes in process when the machine is this Mac, else through the tunnel.
-	// Turns Her on or off for a machine, erasing her data if asked: signed by
-	// this device's root key.
-	SetHer(context.Context, *v1.SetHerRequest) (*v1.SetHerResponse, error)
-	// Adds, changes or removes a connector her starts as a command on a
-	// machine: signed by the root key.
-	SetHerCommandConnector(context.Context, *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error)
-	// Opens a her connection on a machine (aide.her.v1.HerService.Open).
-	HerOpen(context.Context, *v1.HerOpenRequest, *connect.ServerStream[v12.OpenEvent]) error
-	// One her request on a machine (aide.her.v1.HerService.Call).
-	HerCall(context.Context, *v1.HerCallRequest) (*v12.CallResponse, error)
-	// A message to an assistant: kept on this device first, then delivered,
-	// now or when the machine is back (docs/her-sending.md §4). An error: it
-	// is not kept and was not taken.
-	HerSend(context.Context, *v1.HerSendRequest) (*v1.HerSendResponse, error)
-	// The messages this device keeps for a machine's assistants until it is
-	// back, oldest first.
-	ListHerWaiting(context.Context, *v1.ListHerWaitingRequest) (*v1.ListHerWaitingResponse, error)
-	// Drops a message this device keeps, undelivered: one her keeps refusing
-	// then stops holding back that assistant's later ones.
-	DeleteHerWaiting(context.Context, *v1.DeleteHerWaitingRequest) (*v1.DeleteHerWaitingResponse, error)
-	// What this device keeps of a machine's Her, to show at once and while
-	// the machine is offline (docs/her-server.md §7): Her and the end of
-	// Her's conversation, as the HerOpen streams that followed them last
-	// carried them here.
-	GetHerConversation(context.Context, *v1.GetHerConversationRequest) (*v1.GetHerConversationResponse, error)
-	// A file on this device into an assistant's folder on a machine.
-	HerUpload(context.Context, *v1.HerUploadRequest) (*v1.HerUploadResponse, error)
-	// A file from an assistant's folder on a machine into a folder here.
-	HerDownload(context.Context, *v1.HerDownloadRequest) (*v1.HerDownloadResponse, error)
-	// The address of a machine's Her console, served by this aided on
-	// 127.0.0.1 with a token in its path.
-	GetHerConsole(context.Context, *v1.GetHerConsoleRequest) (*v1.GetHerConsoleResponse, error)
 	// Ends the Computer Control session on this computer's own machine, if
 	// one is under way (docs/computer-control.md §4.3): the Mac's menu bar
 	// names the device in control and offers this.
@@ -2118,11 +1849,11 @@ type LocalServiceHandler interface {
 	// online machine while anyone watches). A watcher that falls behind is
 	// ended (RESOURCE_EXHAUSTED) and should watch again.
 	WatchSessions(context.Context, *v1.WatchSessionsRequest, *connect.ServerStream[v1.WatchSessionsResponse]) error
-	StreamSessionEvents(context.Context, *v1.StreamSessionEventsRequest, *connect.ServerStream[v13.SessionEvent]) error
+	StreamSessionEvents(context.Context, *v1.StreamSessionEventsRequest, *connect.ServerStream[v12.SessionEvent]) error
 	// A session's events by seq, as aide.session.v1.SessionService.ListEvents.
 	ListSessionEvents(context.Context, *v1.ListSessionEventsRequest) (*v1.ListSessionEventsResponse, error)
 	// A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
-	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v13.ToolOutputChunk]) error
+	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -2139,13 +1870,13 @@ type LocalServiceHandler interface {
 	RenameSession(context.Context, *v1.RenameSessionRequest) (*v1.SessionResponse, error)
 	// MarkSessionSeen: aide.session.v1.SessionService's, forwarded to the
 	// session's machine (docs/session-states.md §7).
-	MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error)
+	MarkSessionSeen(context.Context, *v12.MarkSessionSeenRequest) (*v1.SessionResponse, error)
 	AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error)
-	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
+	GetDiff(context.Context, *v1.GetDiffRequest) (*v12.GetDiffResponse, error)
 	// aide.session.v1.SessionService.GetSessionInsights, as the owner.
-	GetSessionInsights(context.Context, *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error)
+	GetSessionInsights(context.Context, *v12.GetSessionInsightsRequest) (*v12.SessionInsights, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
-	PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error)
+	PushSession(context.Context, *v1.PushSessionRequest) (*v12.PushSessionResponse, error)
 	// aide.session.v1.SessionService.RollbackSession, as the owner.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error)
 	// The DeepSeek Harness sessions Aide did not start, on the machines
@@ -2371,72 +2102,6 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceGetDiagnosticsProcedure,
 		svc.GetDiagnostics,
 		connect.WithSchema(localServiceMethods.ByName("GetDiagnostics")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceSetHerHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceSetHerProcedure,
-		svc.SetHer,
-		connect.WithSchema(localServiceMethods.ByName("SetHer")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceSetHerCommandConnectorHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceSetHerCommandConnectorProcedure,
-		svc.SetHerCommandConnector,
-		connect.WithSchema(localServiceMethods.ByName("SetHerCommandConnector")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceHerOpenHandler := connect.NewServerStreamHandlerSimple(
-		LocalServiceHerOpenProcedure,
-		svc.HerOpen,
-		connect.WithSchema(localServiceMethods.ByName("HerOpen")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceHerCallHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceHerCallProcedure,
-		svc.HerCall,
-		connect.WithSchema(localServiceMethods.ByName("HerCall")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceHerSendHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceHerSendProcedure,
-		svc.HerSend,
-		connect.WithSchema(localServiceMethods.ByName("HerSend")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceListHerWaitingHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceListHerWaitingProcedure,
-		svc.ListHerWaiting,
-		connect.WithSchema(localServiceMethods.ByName("ListHerWaiting")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceDeleteHerWaitingHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceDeleteHerWaitingProcedure,
-		svc.DeleteHerWaiting,
-		connect.WithSchema(localServiceMethods.ByName("DeleteHerWaiting")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceGetHerConversationHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceGetHerConversationProcedure,
-		svc.GetHerConversation,
-		connect.WithSchema(localServiceMethods.ByName("GetHerConversation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceHerUploadHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceHerUploadProcedure,
-		svc.HerUpload,
-		connect.WithSchema(localServiceMethods.ByName("HerUpload")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceHerDownloadHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceHerDownloadProcedure,
-		svc.HerDownload,
-		connect.WithSchema(localServiceMethods.ByName("HerDownload")),
-		connect.WithHandlerOptions(opts...),
-	)
-	localServiceGetHerConsoleHandler := connect.NewUnaryHandlerSimple(
-		LocalServiceGetHerConsoleProcedure,
-		svc.GetHerConsole,
-		connect.WithSchema(localServiceMethods.ByName("GetHerConsole")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceStopScreenHandler := connect.NewUnaryHandlerSimple(
@@ -2801,28 +2466,6 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListExecLogHandler.ServeHTTP(w, r)
 		case LocalServiceGetDiagnosticsProcedure:
 			localServiceGetDiagnosticsHandler.ServeHTTP(w, r)
-		case LocalServiceSetHerProcedure:
-			localServiceSetHerHandler.ServeHTTP(w, r)
-		case LocalServiceSetHerCommandConnectorProcedure:
-			localServiceSetHerCommandConnectorHandler.ServeHTTP(w, r)
-		case LocalServiceHerOpenProcedure:
-			localServiceHerOpenHandler.ServeHTTP(w, r)
-		case LocalServiceHerCallProcedure:
-			localServiceHerCallHandler.ServeHTTP(w, r)
-		case LocalServiceHerSendProcedure:
-			localServiceHerSendHandler.ServeHTTP(w, r)
-		case LocalServiceListHerWaitingProcedure:
-			localServiceListHerWaitingHandler.ServeHTTP(w, r)
-		case LocalServiceDeleteHerWaitingProcedure:
-			localServiceDeleteHerWaitingHandler.ServeHTTP(w, r)
-		case LocalServiceGetHerConversationProcedure:
-			localServiceGetHerConversationHandler.ServeHTTP(w, r)
-		case LocalServiceHerUploadProcedure:
-			localServiceHerUploadHandler.ServeHTTP(w, r)
-		case LocalServiceHerDownloadProcedure:
-			localServiceHerDownloadHandler.ServeHTTP(w, r)
-		case LocalServiceGetHerConsoleProcedure:
-			localServiceGetHerConsoleHandler.ServeHTTP(w, r)
 		case LocalServiceStopScreenProcedure:
 			localServiceStopScreenHandler.ServeHTTP(w, r)
 		case LocalServiceListProjectsProcedure:
@@ -3052,50 +2695,6 @@ func (UnimplementedLocalServiceHandler) GetDiagnostics(context.Context, *v1.GetD
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetDiagnostics is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) SetHer(context.Context, *v1.SetHerRequest) (*v1.SetHerResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetHer is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) SetHerCommandConnector(context.Context, *v1.SetHerCommandConnectorRequest) (*v1.SetHerCommandConnectorResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetHerCommandConnector is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) HerOpen(context.Context, *v1.HerOpenRequest, *connect.ServerStream[v12.OpenEvent]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.HerOpen is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) HerCall(context.Context, *v1.HerCallRequest) (*v12.CallResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.HerCall is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) HerSend(context.Context, *v1.HerSendRequest) (*v1.HerSendResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.HerSend is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) ListHerWaiting(context.Context, *v1.ListHerWaitingRequest) (*v1.ListHerWaitingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListHerWaiting is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) DeleteHerWaiting(context.Context, *v1.DeleteHerWaitingRequest) (*v1.DeleteHerWaitingResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.DeleteHerWaiting is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) GetHerConversation(context.Context, *v1.GetHerConversationRequest) (*v1.GetHerConversationResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetHerConversation is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) HerUpload(context.Context, *v1.HerUploadRequest) (*v1.HerUploadResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.HerUpload is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) HerDownload(context.Context, *v1.HerDownloadRequest) (*v1.HerDownloadResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.HerDownload is not implemented"))
-}
-
-func (UnimplementedLocalServiceHandler) GetHerConsole(context.Context, *v1.GetHerConsoleRequest) (*v1.GetHerConsoleResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetHerConsole is not implemented"))
-}
-
 func (UnimplementedLocalServiceHandler) StopScreen(context.Context, *v1.StopScreenRequest) (*v1.StopScreenResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.StopScreen is not implemented"))
 }
@@ -3172,7 +2771,7 @@ func (UnimplementedLocalServiceHandler) WatchSessions(context.Context, *v1.Watch
 	return connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.WatchSessions is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) StreamSessionEvents(context.Context, *v1.StreamSessionEventsRequest, *connect.ServerStream[v13.SessionEvent]) error {
+func (UnimplementedLocalServiceHandler) StreamSessionEvents(context.Context, *v1.StreamSessionEventsRequest, *connect.ServerStream[v12.SessionEvent]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.StreamSessionEvents is not implemented"))
 }
 
@@ -3180,7 +2779,7 @@ func (UnimplementedLocalServiceHandler) ListSessionEvents(context.Context, *v1.L
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListSessionEvents is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v13.ToolOutputChunk]) error {
+func (UnimplementedLocalServiceHandler) ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadToolOutput is not implemented"))
 }
 
@@ -3212,7 +2811,7 @@ func (UnimplementedLocalServiceHandler) RenameSession(context.Context, *v1.Renam
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RenameSession is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error) {
+func (UnimplementedLocalServiceHandler) MarkSessionSeen(context.Context, *v12.MarkSessionSeenRequest) (*v1.SessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.MarkSessionSeen is not implemented"))
 }
 
@@ -3220,15 +2819,15 @@ func (UnimplementedLocalServiceHandler) AnswerQuestion(context.Context, *v1.Answ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.AnswerQuestion is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error) {
+func (UnimplementedLocalServiceHandler) GetDiff(context.Context, *v1.GetDiffRequest) (*v12.GetDiffResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetDiff is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) GetSessionInsights(context.Context, *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error) {
+func (UnimplementedLocalServiceHandler) GetSessionInsights(context.Context, *v12.GetSessionInsightsRequest) (*v12.SessionInsights, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetSessionInsights is not implemented"))
 }
 
-func (UnimplementedLocalServiceHandler) PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error) {
+func (UnimplementedLocalServiceHandler) PushSession(context.Context, *v1.PushSessionRequest) (*v12.PushSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.PushSession is not implemented"))
 }
 

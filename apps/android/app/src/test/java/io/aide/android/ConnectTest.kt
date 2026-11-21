@@ -37,7 +37,7 @@ class ConnectTest {
     private fun api() = LocalApi(server.port.toLong(), "tok")
 
     // What the core sends, from Go's protojson (cmd/aide-mobile/android's core, 2026-11-16).
-    private val watchJson = """{"reset":true,"status":{"initialized":true,"ownerId":"o_x","relayConnected":true},"machines":[{"machineId":"m_1","machineName":"mac","online":true,"status":{"platform":"darwin/arm64","agents":[{"name":"claude","available":true,"loggedIn":true}],"runningSessions":2},"her":{"enabled":true,"running":true,"unread":3}}],"devices":[{"keyId":"k_1","label":"Xiaomi 15 Pro","platform":"android","thisDevice":true},{"keyId":"k_2","label":"MacBook","platform":"darwin","machineId":"m_1","machineOnline":true,"legacy":true}],"sessions":[{"sessionId":"s_1","machineId":"m_1","agent":"claude","status":"SESSION_STATUS_WAITING_INPUT","createdBy":"c_1","progress":{"pendingQuestion":{"questionId":"q1","items":[{"id":"i1","text":"Which?","options":[{"label":"A"}]}]}},"updatedAt":"2026-11-16T17:24:05.572Z"}],"workVersion":"7"}"""
+    private val watchJson = """{"reset":true,"status":{"initialized":true,"ownerId":"o_x","relayConnected":true},"machines":[{"machineId":"m_1","machineName":"mac","online":true,"status":{"platform":"darwin/arm64","agents":[{"name":"claude","available":true,"loggedIn":true}],"runningSessions":2,"her":{"unsupported":"removed","data":true}}}],"devices":[{"keyId":"k_1","label":"Xiaomi 15 Pro","platform":"android","thisDevice":true},{"keyId":"k_2","label":"MacBook","platform":"darwin","machineId":"m_1","machineOnline":true,"legacy":true}],"sessions":[{"sessionId":"s_1","machineId":"m_1","agent":"claude","status":"SESSION_STATUS_WAITING_INPUT","createdBy":"c_1","progress":{"pendingQuestion":{"questionId":"q1","items":[{"id":"i1","text":"Which?","options":[{"label":"A"}]}]}},"updatedAt":"2026-11-16T17:24:05.572Z"}],"workVersion":"7"}"""
 
     @Test fun envelopesRoundTrip() {
         val b = ConnectClient.envelope(0, "{\"a\":1}".encodeToByteArray())
@@ -86,7 +86,7 @@ class ConnectTest {
         assertTrue(w.reset)
         assertEquals("mac", w.machines[0].machineName)
         assertEquals(2, w.machines[0].status!!.runningSessions)
-        assertEquals(3, w.machines[0].her!!.unread)
+        assertTrue(w.machines[0].status!!.her!!.data)
         assertTrue(w.devices[0].thisDevice)
         assertTrue(w.devices[1].legacy && w.devices[1].machineOnline)
         assertEquals("q1", w.sessions[0].progress!!.pendingQuestion!!.questionId)

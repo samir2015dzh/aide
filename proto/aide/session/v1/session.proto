@@ -303,7 +303,8 @@ message StartSessionResponse {
 // key end to end (identity.v1.PushRegistration): the relay forwards it
 // without reading it.
 message Notice {
-  // "question", "failure", "turn_done", "session_started" or "her".
+  // "question", "failure", "turn_done" or "session_started"; "her" from
+  // an aided from before Aide dropped Her.
   string kind = 1;
   google.protobuf.Timestamp at = 2;
   // A session's notice.
@@ -325,16 +326,9 @@ message Notice {
   DiffStat diff_stat = 13;
   reserved 14 to 17;
   reserved "pairing_kind", "pairing_label", "verification_code", "pairing_code";
-  // kind "her": what an assistant of Her's on the machine (machine names
-  // it) has for the owner, as HerLatest says it: "message", "question" (it
-  // asks the owner to choose) or "approval" (a secure card waits for the
-  // owner: Her runs actions without asking, so nothing else waits; the
-  // name is kept for the apps that read it), and its first words.
-  string her_kind = 18;
-  string machine_id = 19;
-  string bot_id = 20;
-  string bot_name = 21;
-  string text = 22;
+  // Her's notices (kind "her"), from an aided from before Aide dropped her.
+  reserved 18 to 22;
+  reserved "her_kind", "machine_id", "bot_id", "bot_name", "text";
 }
 
 message DiffStat {

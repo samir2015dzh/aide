@@ -95,8 +95,8 @@ func newMachine(machineID, name string, h2 *transport.H2Client) *Machine {
 		Ops:     machinev1connect.NewMachineOpsServiceClient(h2, base, transport.ClientNoCompression)}
 }
 
-// HTTP is the tunnel's HTTP/2 client, for the machine's plain HTTP routes
-// (Her's console): requests go to "https://machine/…".
+// HTTP is the tunnel's HTTP/2 client, for the machine's plain HTTP routes:
+// requests go to "https://machine/…".
 func (n *Machine) HTTP() *http.Client { return n.h2.Client }
 
 // Close closes the machine's underlying tunnel.

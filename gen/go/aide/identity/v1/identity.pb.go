@@ -784,7 +784,7 @@ type Grant struct {
 	// A square PNG or JPEG of at most 256 px, re-encoded by the owner's
 	// device, when client_icon is "image".
 	ClientImage []byte `protobuf:"bytes,17,opt,name=client_image,json=clientImage,proto3" json:"client_image,omitempty"`
-	// Set on Her's own grant (docs/her-mesh.md §3.2): the machine she runs
+	// Set on Her's own grant: the machine she runs
 	// on, whose aided holds the client key. Turning Her off there or
 	// removing that machine revokes it. "" for every other agent.
 	HerMachineId string `protobuf:"bytes,18,opt,name=her_machine_id,json=herMachineId,proto3" json:"her_machine_id,omitempty"`
@@ -1118,7 +1118,6 @@ type AdminCommand struct {
 	//	*AdminCommand_SetName
 	//	*AdminCommand_SetAgentDefaults
 	//	*AdminCommand_SetHer
-	//	*AdminCommand_SetHerCommandConnector
 	//	*AdminCommand_SetWorkspaceRoots
 	//	*AdminCommand_SetAgentHidden
 	Command       isAdminCommand_Command `protobuf_oneof:"command"`
@@ -1245,15 +1244,6 @@ func (x *AdminCommand) GetSetHer() *SetHer {
 	return nil
 }
 
-func (x *AdminCommand) GetSetHerCommandConnector() *SetHerCommandConnector {
-	if x != nil {
-		if x, ok := x.Command.(*AdminCommand_SetHerCommandConnector); ok {
-			return x.SetHerCommandConnector
-		}
-	}
-	return nil
-}
-
 func (x *AdminCommand) GetSetWorkspaceRoots() *SetWorkspaceRoots {
 	if x != nil {
 		if x, ok := x.Command.(*AdminCommand_SetWorkspaceRoots); ok {
@@ -1300,10 +1290,6 @@ type AdminCommand_SetHer struct {
 	SetHer *SetHer `protobuf:"bytes,16,opt,name=set_her,json=setHer,proto3,oneof"`
 }
 
-type AdminCommand_SetHerCommandConnector struct {
-	SetHerCommandConnector *SetHerCommandConnector `protobuf:"bytes,18,opt,name=set_her_command_connector,json=setHerCommandConnector,proto3,oneof"`
-}
-
 type AdminCommand_SetWorkspaceRoots struct {
 	SetWorkspaceRoots *SetWorkspaceRoots `protobuf:"bytes,19,opt,name=set_workspace_roots,json=setWorkspaceRoots,proto3,oneof"`
 }
@@ -1323,8 +1309,6 @@ func (*AdminCommand_SetName) isAdminCommand_Command() {}
 func (*AdminCommand_SetAgentDefaults) isAdminCommand_Command() {}
 
 func (*AdminCommand_SetHer) isAdminCommand_Command() {}
-
-func (*AdminCommand_SetHerCommandConnector) isAdminCommand_Command() {}
 
 func (*AdminCommand_SetWorkspaceRoots) isAdminCommand_Command() {}
 
@@ -1659,7 +1643,7 @@ func (x *SetPaused) GetPaused() bool {
 	return false
 }
 
-// SetHer turns Her on or off for the machine (docs/her-server.md §5.2): on, its
+// SetHer turns Her on or off for the machine: on, its
 // aided keeps her running; off, it stops her and keeps her data, unless
 // erase (§5.6). Root-signed only, never a setting.
 type SetHer struct {
@@ -1716,88 +1700,6 @@ func (x *SetHer) GetErase() bool {
 	return false
 }
 
-// SetHerCommandConnector adds, changes or removes a connector that her starts
-// as a command on the machine: an MCP server over stdio in her's user
-// configuration. The console can add connectors by address only
-// (docs/her-server.md §8).
-type SetHerCommandConnector struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The connector's name in her's configuration.
-	Name    string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Command string            `protobuf:"bytes,2,opt,name=command,proto3" json:"command,omitempty"`
-	Args    []string          `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
-	Env     map[string]string `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Removes the connector of that name; the other fields are ignored.
-	Remove        bool `protobuf:"varint,5,opt,name=remove,proto3" json:"remove,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetHerCommandConnector) Reset() {
-	*x = SetHerCommandConnector{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetHerCommandConnector) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetHerCommandConnector) ProtoMessage() {}
-
-func (x *SetHerCommandConnector) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetHerCommandConnector.ProtoReflect.Descriptor instead.
-func (*SetHerCommandConnector) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *SetHerCommandConnector) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *SetHerCommandConnector) GetCommand() string {
-	if x != nil {
-		return x.Command
-	}
-	return ""
-}
-
-func (x *SetHerCommandConnector) GetArgs() []string {
-	if x != nil {
-		return x.Args
-	}
-	return nil
-}
-
-func (x *SetHerCommandConnector) GetEnv() map[string]string {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
-func (x *SetHerCommandConnector) GetRemove() bool {
-	if x != nil {
-		return x.Remove
-	}
-	return false
-}
-
 // AgentDefaults is what a coding agent's sessions on the machine run with
 // when the client starting one names no model: a setting, it grants
 // nothing. Empty fields follow the agent's own configuration; Aide
@@ -1819,7 +1721,7 @@ type AgentDefaults struct {
 
 func (x *AgentDefaults) Reset() {
 	*x = AgentDefaults{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1831,7 +1733,7 @@ func (x *AgentDefaults) String() string {
 func (*AgentDefaults) ProtoMessage() {}
 
 func (x *AgentDefaults) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1844,7 +1746,7 @@ func (x *AgentDefaults) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentDefaults.ProtoReflect.Descriptor instead.
 func (*AgentDefaults) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{19}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AgentDefaults) GetAgent() string {
@@ -1913,7 +1815,7 @@ type Persona struct {
 
 func (x *Persona) Reset() {
 	*x = Persona{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1925,7 +1827,7 @@ func (x *Persona) String() string {
 func (*Persona) ProtoMessage() {}
 
 func (x *Persona) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1938,7 +1840,7 @@ func (x *Persona) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Persona.ProtoReflect.Descriptor instead.
 func (*Persona) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{20}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Persona) GetPersonaId() string {
@@ -2043,7 +1945,7 @@ type RevocationList struct {
 
 func (x *RevocationList) Reset() {
 	*x = RevocationList{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2055,7 +1957,7 @@ func (x *RevocationList) String() string {
 func (*RevocationList) ProtoMessage() {}
 
 func (x *RevocationList) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2068,7 +1970,7 @@ func (x *RevocationList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevocationList.ProtoReflect.Descriptor instead.
 func (*RevocationList) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{21}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RevocationList) GetOwnerId() string {
@@ -2127,7 +2029,7 @@ type Credentials struct {
 
 func (x *Credentials) Reset() {
 	*x = Credentials{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2139,7 +2041,7 @@ func (x *Credentials) String() string {
 func (*Credentials) ProtoMessage() {}
 
 func (x *Credentials) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2152,7 +2054,7 @@ func (x *Credentials) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Credentials.ProtoReflect.Descriptor instead.
 func (*Credentials) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{22}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Credentials) GetRootChain() *RootChain {
@@ -2245,7 +2147,7 @@ type ContactCard struct {
 
 func (x *ContactCard) Reset() {
 	*x = ContactCard{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2257,7 +2159,7 @@ func (x *ContactCard) String() string {
 func (*ContactCard) ProtoMessage() {}
 
 func (x *ContactCard) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2270,7 +2172,7 @@ func (x *ContactCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactCard.ProtoReflect.Descriptor instead.
 func (*ContactCard) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{23}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ContactCard) GetOwnerId() string {
@@ -2327,7 +2229,7 @@ type InboxRegistration struct {
 	// How the inbox takes its messages, for senders to know what to expect:
 	// "session", "hook", "wait", "webhook" or "poll". Informational, but for
 	// "her": Her's inbox takes the news of her own sessions and no message
-	// from an agent (docs/her-mesh.md §6.6), so senders don't write to it.
+	// from an agent, so senders don't write to it.
 	TakesMessages string                 `protobuf:"bytes,4,opt,name=takes_messages,json=takesMessages,proto3" json:"takes_messages,omitempty"`
 	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2336,7 +2238,7 @@ type InboxRegistration struct {
 
 func (x *InboxRegistration) Reset() {
 	*x = InboxRegistration{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2348,7 +2250,7 @@ func (x *InboxRegistration) String() string {
 func (*InboxRegistration) ProtoMessage() {}
 
 func (x *InboxRegistration) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2361,7 +2263,7 @@ func (x *InboxRegistration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InboxRegistration.ProtoReflect.Descriptor instead.
 func (*InboxRegistration) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{24}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *InboxRegistration) GetOwnerId() string {
@@ -2414,7 +2316,7 @@ type Contact struct {
 
 func (x *Contact) Reset() {
 	*x = Contact{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[25]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2426,7 +2328,7 @@ func (x *Contact) String() string {
 func (*Contact) ProtoMessage() {}
 
 func (x *Contact) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[25]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2439,7 +2341,7 @@ func (x *Contact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Contact.ProtoReflect.Descriptor instead.
 func (*Contact) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{25}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Contact) GetCard() *Signed {
@@ -2551,7 +2453,7 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"public_key\x18\x02 \x01(\fR\tpublicKey\x12\x18\n" +
 	"\asubject\x18\x03 \x01(\tR\asubject\x129\n" +
 	"\vdevice_cert\x18\x04 \x01(\v2\x18.aide.identity.v1.SignedR\n" +
-	"deviceCert\"\x81\a\n" +
+	"deviceCert\"\xbb\x06\n" +
 	"\fAdminCommand\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1d\n" +
 	"\n" +
@@ -2567,11 +2469,10 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"set_paused\x18\r \x01(\v2\x1b.aide.identity.v1.SetPausedH\x00R\tsetPaused\x126\n" +
 	"\bset_name\x18\x0e \x01(\v2\x19.aide.identity.v1.SetNameH\x00R\asetName\x12O\n" +
 	"\x12set_agent_defaults\x18\x0f \x01(\v2\x1f.aide.identity.v1.AgentDefaultsH\x00R\x10setAgentDefaults\x123\n" +
-	"\aset_her\x18\x10 \x01(\v2\x18.aide.identity.v1.SetHerH\x00R\x06setHer\x12e\n" +
-	"\x19set_her_command_connector\x18\x12 \x01(\v2(.aide.identity.v1.SetHerCommandConnectorH\x00R\x16setHerCommandConnector\x12U\n" +
+	"\aset_her\x18\x10 \x01(\v2\x18.aide.identity.v1.SetHerH\x00R\x06setHer\x12U\n" +
 	"\x13set_workspace_roots\x18\x13 \x01(\v2#.aide.identity.v1.SetWorkspaceRootsH\x00R\x11setWorkspaceRoots\x12L\n" +
 	"\x10set_agent_hidden\x18\x14 \x01(\v2 .aide.identity.v1.SetAgentHiddenH\x00R\x0esetAgentHiddenB\t\n" +
-	"\acommandJ\x04\b\f\x10\rJ\x04\b\x11\x10\x12R\x0erename_machineR\x16set_her_assistant_mode\"\xde\x01\n" +
+	"\acommandJ\x04\b\f\x10\rJ\x04\b\x11\x10\x12J\x04\b\x12\x10\x13R\x0erename_machineR\x16set_her_assistant_modeR\x19set_her_command_connector\"\xde\x01\n" +
 	"\n" +
 	"AddProject\x12\x1d\n" +
 	"\n" +
@@ -2595,16 +2496,7 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\x06paused\x18\x01 \x01(\bR\x06paused\"8\n" +
 	"\x06SetHer\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x14\n" +
-	"\x05erase\x18\x02 \x01(\bR\x05erase\"\xef\x01\n" +
-	"\x16SetHerCommandConnector\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
-	"\acommand\x18\x02 \x01(\tR\acommand\x12\x12\n" +
-	"\x04args\x18\x03 \x03(\tR\x04args\x12C\n" +
-	"\x03env\x18\x04 \x03(\v21.aide.identity.v1.SetHerCommandConnector.EnvEntryR\x03env\x12\x16\n" +
-	"\x06remove\x18\x05 \x01(\bR\x06remove\x1a6\n" +
-	"\bEnvEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9b\x01\n" +
+	"\x05erase\x18\x02 \x01(\bR\x05erase\"\x9b\x01\n" +
 	"\rAgentDefaults\x12\x14\n" +
 	"\x05agent\x18\x01 \x01(\tR\x05agent\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12\x16\n" +
@@ -2698,85 +2590,81 @@ func file_aide_identity_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_identity_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_aide_identity_v1_identity_proto_goTypes = []any{
-	(SignatureAlgorithm)(0),        // 0: aide.identity.v1.SignatureAlgorithm
-	(Workspace)(0),                 // 1: aide.identity.v1.Workspace
-	(TaskVisibility)(0),            // 2: aide.identity.v1.TaskVisibility
-	(AgentSpeed)(0),                // 3: aide.identity.v1.AgentSpeed
-	(*Signed)(nil),                 // 4: aide.identity.v1.Signed
-	(*RootKey)(nil),                // 5: aide.identity.v1.RootKey
-	(*RootCert)(nil),               // 6: aide.identity.v1.RootCert
-	(*RootChain)(nil),              // 7: aide.identity.v1.RootChain
-	(*OwnerDeviceCert)(nil),        // 8: aide.identity.v1.OwnerDeviceCert
-	(*PushRegistration)(nil),       // 9: aide.identity.v1.PushRegistration
-	(*MachineCert)(nil),            // 10: aide.identity.v1.MachineCert
-	(*Grant)(nil),                  // 11: aide.identity.v1.Grant
-	(*EraseOrder)(nil),             // 12: aide.identity.v1.EraseOrder
-	(*EraseAck)(nil),               // 13: aide.identity.v1.EraseAck
-	(*AdminCommand)(nil),           // 14: aide.identity.v1.AdminCommand
-	(*AddProject)(nil),             // 15: aide.identity.v1.AddProject
-	(*RemoveProject)(nil),          // 16: aide.identity.v1.RemoveProject
-	(*SetAgentHidden)(nil),         // 17: aide.identity.v1.SetAgentHidden
-	(*SetWorkspaceRoots)(nil),      // 18: aide.identity.v1.SetWorkspaceRoots
-	(*SetName)(nil),                // 19: aide.identity.v1.SetName
-	(*SetPaused)(nil),              // 20: aide.identity.v1.SetPaused
-	(*SetHer)(nil),                 // 21: aide.identity.v1.SetHer
-	(*SetHerCommandConnector)(nil), // 22: aide.identity.v1.SetHerCommandConnector
-	(*AgentDefaults)(nil),          // 23: aide.identity.v1.AgentDefaults
-	(*Persona)(nil),                // 24: aide.identity.v1.Persona
-	(*RevocationList)(nil),         // 25: aide.identity.v1.RevocationList
-	(*Credentials)(nil),            // 26: aide.identity.v1.Credentials
-	(*ContactCard)(nil),            // 27: aide.identity.v1.ContactCard
-	(*InboxRegistration)(nil),      // 28: aide.identity.v1.InboxRegistration
-	(*Contact)(nil),                // 29: aide.identity.v1.Contact
-	nil,                            // 30: aide.identity.v1.SetHerCommandConnector.EnvEntry
-	nil,                            // 31: aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	(*timestamppb.Timestamp)(nil),  // 32: google.protobuf.Timestamp
+	(SignatureAlgorithm)(0),       // 0: aide.identity.v1.SignatureAlgorithm
+	(Workspace)(0),                // 1: aide.identity.v1.Workspace
+	(TaskVisibility)(0),           // 2: aide.identity.v1.TaskVisibility
+	(AgentSpeed)(0),               // 3: aide.identity.v1.AgentSpeed
+	(*Signed)(nil),                // 4: aide.identity.v1.Signed
+	(*RootKey)(nil),               // 5: aide.identity.v1.RootKey
+	(*RootCert)(nil),              // 6: aide.identity.v1.RootCert
+	(*RootChain)(nil),             // 7: aide.identity.v1.RootChain
+	(*OwnerDeviceCert)(nil),       // 8: aide.identity.v1.OwnerDeviceCert
+	(*PushRegistration)(nil),      // 9: aide.identity.v1.PushRegistration
+	(*MachineCert)(nil),           // 10: aide.identity.v1.MachineCert
+	(*Grant)(nil),                 // 11: aide.identity.v1.Grant
+	(*EraseOrder)(nil),            // 12: aide.identity.v1.EraseOrder
+	(*EraseAck)(nil),              // 13: aide.identity.v1.EraseAck
+	(*AdminCommand)(nil),          // 14: aide.identity.v1.AdminCommand
+	(*AddProject)(nil),            // 15: aide.identity.v1.AddProject
+	(*RemoveProject)(nil),         // 16: aide.identity.v1.RemoveProject
+	(*SetAgentHidden)(nil),        // 17: aide.identity.v1.SetAgentHidden
+	(*SetWorkspaceRoots)(nil),     // 18: aide.identity.v1.SetWorkspaceRoots
+	(*SetName)(nil),               // 19: aide.identity.v1.SetName
+	(*SetPaused)(nil),             // 20: aide.identity.v1.SetPaused
+	(*SetHer)(nil),                // 21: aide.identity.v1.SetHer
+	(*AgentDefaults)(nil),         // 22: aide.identity.v1.AgentDefaults
+	(*Persona)(nil),               // 23: aide.identity.v1.Persona
+	(*RevocationList)(nil),        // 24: aide.identity.v1.RevocationList
+	(*Credentials)(nil),           // 25: aide.identity.v1.Credentials
+	(*ContactCard)(nil),           // 26: aide.identity.v1.ContactCard
+	(*InboxRegistration)(nil),     // 27: aide.identity.v1.InboxRegistration
+	(*Contact)(nil),               // 28: aide.identity.v1.Contact
+	nil,                           // 29: aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	(*timestamppb.Timestamp)(nil), // 30: google.protobuf.Timestamp
 }
 var file_aide_identity_v1_identity_proto_depIdxs = []int32{
 	0,  // 0: aide.identity.v1.Signed.alg:type_name -> aide.identity.v1.SignatureAlgorithm
 	5,  // 1: aide.identity.v1.RootCert.root_keys:type_name -> aide.identity.v1.RootKey
-	32, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
+	30, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 3: aide.identity.v1.RootChain.certs:type_name -> aide.identity.v1.Signed
-	32, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
-	32, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	32, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
+	30, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
+	30, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	30, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
 	2,  // 7: aide.identity.v1.Grant.task_visibility:type_name -> aide.identity.v1.TaskVisibility
-	32, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
-	32, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
-	32, // 10: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
+	30, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
+	30, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
+	30, // 10: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 11: aide.identity.v1.EraseAck.device_cert:type_name -> aide.identity.v1.Signed
-	32, // 12: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
+	30, // 12: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
 	15, // 13: aide.identity.v1.AdminCommand.add_project:type_name -> aide.identity.v1.AddProject
 	16, // 14: aide.identity.v1.AdminCommand.remove_project:type_name -> aide.identity.v1.RemoveProject
 	20, // 15: aide.identity.v1.AdminCommand.set_paused:type_name -> aide.identity.v1.SetPaused
 	19, // 16: aide.identity.v1.AdminCommand.set_name:type_name -> aide.identity.v1.SetName
-	23, // 17: aide.identity.v1.AdminCommand.set_agent_defaults:type_name -> aide.identity.v1.AgentDefaults
+	22, // 17: aide.identity.v1.AdminCommand.set_agent_defaults:type_name -> aide.identity.v1.AgentDefaults
 	21, // 18: aide.identity.v1.AdminCommand.set_her:type_name -> aide.identity.v1.SetHer
-	22, // 19: aide.identity.v1.AdminCommand.set_her_command_connector:type_name -> aide.identity.v1.SetHerCommandConnector
-	18, // 20: aide.identity.v1.AdminCommand.set_workspace_roots:type_name -> aide.identity.v1.SetWorkspaceRoots
-	17, // 21: aide.identity.v1.AdminCommand.set_agent_hidden:type_name -> aide.identity.v1.SetAgentHidden
-	1,  // 22: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
-	30, // 23: aide.identity.v1.SetHerCommandConnector.env:type_name -> aide.identity.v1.SetHerCommandConnector.EnvEntry
-	3,  // 24: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
-	32, // 25: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
-	31, // 26: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	7,  // 27: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
-	4,  // 28: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
-	4,  // 29: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
-	4,  // 30: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
-	32, // 31: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
-	32, // 32: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	4,  // 33: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
-	4,  // 34: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
-	4,  // 35: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
-	4,  // 36: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
-	37, // [37:37] is the sub-list for method output_type
-	37, // [37:37] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	18, // 19: aide.identity.v1.AdminCommand.set_workspace_roots:type_name -> aide.identity.v1.SetWorkspaceRoots
+	17, // 20: aide.identity.v1.AdminCommand.set_agent_hidden:type_name -> aide.identity.v1.SetAgentHidden
+	1,  // 21: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
+	3,  // 22: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
+	30, // 23: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
+	29, // 24: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	7,  // 25: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
+	4,  // 26: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
+	4,  // 27: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
+	4,  // 28: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
+	30, // 29: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
+	30, // 30: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	4,  // 31: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
+	4,  // 32: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
+	4,  // 33: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
+	4,  // 34: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
+	35, // [35:35] is the sub-list for method output_type
+	35, // [35:35] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_aide_identity_v1_identity_proto_init() }
@@ -2791,11 +2679,10 @@ func file_aide_identity_v1_identity_proto_init() {
 		(*AdminCommand_SetName)(nil),
 		(*AdminCommand_SetAgentDefaults)(nil),
 		(*AdminCommand_SetHer)(nil),
-		(*AdminCommand_SetHerCommandConnector)(nil),
 		(*AdminCommand_SetWorkspaceRoots)(nil),
 		(*AdminCommand_SetAgentHidden)(nil),
 	}
-	file_aide_identity_v1_identity_proto_msgTypes[22].OneofWrappers = []any{
+	file_aide_identity_v1_identity_proto_msgTypes[21].OneofWrappers = []any{
 		(*Credentials_MachineCert)(nil),
 		(*Credentials_Grant)(nil),
 		(*Credentials_DeviceCert)(nil),
@@ -2806,7 +2693,7 @@ func file_aide_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_identity_v1_identity_proto_rawDesc), len(file_aide_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   28,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,6 +1,5 @@
 import { clone, create } from "@bufbuild/protobuf";
 import { MachineSchema } from "@aide/proto/local";
-import { HerLatestKind, HerLatestSchema, HerStatusSchema } from "@aide/proto/machine";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionSeenSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
