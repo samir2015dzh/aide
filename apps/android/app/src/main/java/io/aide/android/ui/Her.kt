@@ -147,11 +147,11 @@ private fun HerChat(panel: HerPanel) {
             items(lines, key = { it.key }) { l ->
                 when (l) {
                     is HerLine.Owner -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(max = 320.dp)) {
-                            SelectionContainer { Text(l.text, Modifier.padding(10.dp), color = MaterialTheme.colorScheme.onPrimary) }
+                        Surface(color = aide.bubble, contentColor = aide.onBubble, shape = RoundedCornerShape(Radius.Xl), modifier = Modifier.widthIn(max = 320.dp)) {
+                            SelectionContainer { Text(l.text, Modifier.padding(horizontal = 15.dp, vertical = 9.dp), style = MaterialTheme.typography.bodyLarge) }
                         }
                     }
-                    is HerLine.Her -> SelectionContainer { Text(l.text) }
+                    is HerLine.Her -> SelectionContainer { Text(l.text, style = MaterialTheme.typography.bodyLarge) }
                     is HerLine.Failed -> Text(l.text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }

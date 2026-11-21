@@ -67,6 +67,9 @@ var (
 	envMissing = regexp.MustCompile(`env: ['‘]?([\w.+-]+)['’]?: No such file or directory`)
 	// "bad interpreter: /usr/local/bin/node: no such file or directory"
 	badInterpreter = regexp.MustCompile(`bad interpreter: ([^:\s]+)`)
+	// launcherOnly: what a launcher prints when the agent it starts is not
+	// installed: "... was not found ... install ...", or "... is not installed ...".
+	launcherOnly = regexp.MustCompile(`(?is)\b(?:was|is) not (?:found|installed)\b.*\binstall`)
 )
 
 // whyFailed says why running bin failed, from the error and what it printed.
@@ -88,6 +91,13 @@ func whyFailed(ctx context.Context, bin string, err error, printed string) (Prob
 	}
 	if m := badInterpreter.FindStringSubmatch(printed); m != nil {
 		return ProblemMissingRuntime, filepath.Base(m[1])
+	}
+	// A launcher with no agent behind it: what was found only says the agent
+	// itself is not installed (VS Code's copilot shim: "GitHub Copilot CLI was
+	// not found. Run copilot in a terminal to install it"). The agent is not
+	// here, as when nothing is found, not one that is here and fails.
+	if launcherOnly.MatchString(printed) {
+		return ProblemNotFound, firstLine(printed, err)
 	}
 	return ProblemFailed, firstLine(printed, err)
 }

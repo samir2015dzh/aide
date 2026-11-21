@@ -20,6 +20,25 @@ export function pickEnvironment<M extends Env>(envs: M[], remembered: string | u
   return envs.find((m) => m.machineId === remembered) ?? envs[0];
 }
 
+/**
+ * What the Her page shows (the owner's rule, 2026-11-21): this computer's Her, whatever other machines
+ * run one. Another machine's Her shows only when the owner picked it (wanted); with this computer's Her
+ * off, the page is that it is off, with the switch to turn it on, never another machine's Her in its
+ * place. A device with no machine of its own (none listed local) shows the remembered environment, or the
+ * first, as before; none is the first run.
+ */
+export type HerScope<M> = { kind: "env"; machine: M } | { kind: "localOff"; machine: M } | { kind: "none" };
+
+export function herScope<M extends Env>(machines: M[], wanted: string | undefined, remembered?: string): HerScope<M> {
+  const envs = environments(machines);
+  const picked = wanted ? envs.find((m) => m.machineId === wanted) : undefined;
+  if (picked) return { kind: "env", machine: picked };
+  const here = machines.find((m) => m.local);
+  if (here) return here.her?.enabled ? { kind: "env", machine: here } : { kind: "localOff", machine: here };
+  const m = pickEnvironment(envs, remembered);
+  return m ? { kind: "env", machine: m } : { kind: "none" };
+}
+
 /** Unread messages and approvals, over an environment's assistants (her counts them). */
 export function unreadCount(envs: Pick<Machine, "her">[]): number {
   return envs.reduce((n, m) => n + (m.her?.enabled ? m.her.unread : 0), 0);
