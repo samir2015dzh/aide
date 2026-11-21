@@ -153,7 +153,18 @@
     "hideNote": "Hiding only, as nothing about an agent found here can be edited. A routine check won't bring it back; Check Again does once it runs where it didn't, or is found elsewhere. Sessions can still use it.",
     "hiddenList_one": "{{count}} hidden:",
     "hiddenList_other": "{{count}} hidden:",
-    "show": "Show"
+    "show": "Show",
+    "paused": "Paused",
+    "pausedUntil": "Paused · resumes {{when}}",
+    "pauseHead": "Pause",
+    "pause": "Pause",
+    "pauseUntilReset": "Pause until Usage Resets ({{when}})",
+    "resume": "Resume",
+    "pauseNote": "Paused, no new session starts with it on this computer; those under way run on, and its settings and history stay. Resume it any time; hiding it is separate.",
+    "pausedNote": "Paused: no new session starts with it on this computer until you resume it.",
+    "pausedUntilNote": "Paused: no new session starts with it on this computer; it resumes by itself when its usage resets, {{when}}. You can resume it now too.",
+    "autoResumed": "Last resumed by itself at {{when}}.",
+    "allPaused": "Every agent on this computer is paused: resume one to start a session."
   },
   "erased": {
     "done": "Aide erased everything",

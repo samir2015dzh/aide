@@ -112,17 +112,17 @@ type Machine struct {
 	pausedAgents map[string]pausedAgent
 	resumed      map[string]time.Time
 	resumeTimers map[string]*time.Timer
-	checked     time.Time                // when the last check of all of them ended
-	checking    chan struct{}            // closed when the check under way ends; nil when none is
-	pending     map[string]bool          // the agents the check under way has not finished yet
-	defaults    map[string]*identityv1.AgentDefaults
-	tunnels     map[*tunnel]struct{}
-	connected   bool
-	refused     bool       // the relay refused admission when last connecting
-	erased      bool       // the owner's erase order came (SelfErase)
-	goneSaid    bool       // the log said the owner is gone and how to pair again
-	clientsMu   sync.Mutex // rememberClient
-	adminSeen   map[string]time.Time
+	checked      time.Time       // when the last check of all of them ended
+	checking     chan struct{}   // closed when the check under way ends; nil when none is
+	pending      map[string]bool // the agents the check under way has not finished yet
+	defaults     map[string]*identityv1.AgentDefaults
+	tunnels      map[*tunnel]struct{}
+	connected    bool
+	refused      bool       // the relay refused admission when last connecting
+	erased       bool       // the owner's erase order came (SelfErase)
+	goneSaid     bool       // the log said the owner is gone and how to pair again
+	clientsMu    sync.Mutex // rememberClient
+	adminSeen    map[string]time.Time
 	// grantSeen caches the highest version of each grant recorded in the
 	// store, so only first sight and upgrades touch the database.
 	grantSeen  map[string]uint64

@@ -219,7 +219,7 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
             SectionHeader(t("Agent", "Agent"))
             if (c.agents.isEmpty()) Text(t("No coding agent on this machine.", "这台机器上没有可用的编程 Agent。"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                c.agents.forEach { a -> FilterChip(p.agent == a.name, { p = p.copy(agent = a.name, projectId = "", model = "", effort = "", mode = "") }, label = { Text(agentTitle(a.name)) }) }
+                c.agents.forEach { a -> FilterChip(p.agent == a.name, { p = p.copy(agent = a.name, projectId = "", model = "", effort = "", mode = "") }, label = { Text(if (a.pause != null) agentTitle(a.name) + t(" · paused", " · 已暂停") else agentTitle(a.name)) }) }
             }
             SectionHeader(t("Project", "项目"))
             if (c.agent != null && c.projects.isEmpty()) Text(t("No project here for this agent: add one on a computer.", "这里还没有给它用的项目：在电脑上添加。"), color = MaterialTheme.colorScheme.onSurfaceVariant)

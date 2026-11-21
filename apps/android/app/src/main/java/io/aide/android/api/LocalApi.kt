@@ -115,4 +115,12 @@ class LocalApi(port: Long, token: String) {
     suspend fun checkAgents(machineId: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)
     }
+
+    suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
+        call<SetAgentHiddenRequest, JsonElement>("SetAgentHidden", SetAgentHiddenRequest(machineId, agent, hidden))
+    }
+
+    suspend fun setAgentPaused(machineId: String, agent: String, paused: Boolean, resumeAt: String? = null) {
+        call<SetAgentPausedRequest, JsonElement>("SetAgentPaused", SetAgentPausedRequest(machineId, agent, paused, resumeAt))
+    }
 }

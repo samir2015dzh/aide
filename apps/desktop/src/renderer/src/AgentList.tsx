@@ -11,6 +11,7 @@ import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@aide/cor
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
+import { autoResumedAt, pauseOf, usageResetAt } from "./agentPause";
 import { local } from "./api";
 import { Icon } from "./icons";
 import { useNow, useStore } from "./store";
@@ -111,6 +112,7 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                       <i />
                       {a.loggedIn ? t("prepare.signedIn") : t("prepare.notSignedIn")}
                     </span>
+                    <PausedTag a={a} />
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
                     {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
@@ -135,6 +137,7 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                 <b>{codingAgentTitle(a.name)}</b>
                 <span className="ag-sub">
                   <BrokenState a={a} />
+                  <PausedTag a={a} />
                   {projectsFor(projects, a.name).length > 0 && <span>{t("prepare.projects", { count: projectsFor(projects, a.name).length })}</span>}
                 </span>
                 <span className="ag-why">{whyBroken(a, t)}</span>
@@ -331,6 +334,7 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
           {busy ? t("prepare.adding") : t("prepare.addProject")}
         </button>
       </section>
+      {a && <PauseSection a={a} m={m} />}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
       {a && !a.hidden && (
         <section className="ag-hide" aria-label={t("prepare.hide")}>
@@ -359,6 +363,63 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
         </section>
       )}
     </div>
+  );
+}
+
+/** "Paused" on an agent's row, with when it resumes by itself if it does (SetAgentPaused). */
+function PausedTag({ a }: { a: AgentStatus }) {
+  const { t } = useTranslation("firstrun");
+  const p = pauseOf(a);
+  if (!p) return null;
+  return <span className="warn ag-paused">{p.until ? t("prepare.pausedUntil", { when: p.until.toLocaleString() }) : t("prepare.paused")}</span>;
+}
+
+/**
+ * Pause or resume the agent on this machine (SetAgentPaused), beside hiding it and not in its place: paused, no new
+ * session starts with it there, those under way run on, and nothing is removed. Where the machine read when its plan's
+ * usage resets (Claude Code), it can be paused until then, to resume by itself.
+ */
+function PauseSection({ a, m }: { a: AgentStatus; m: Machine }) {
+  const { t } = useTranslation("firstrun");
+  const st = useStore();
+  const now = useNow(60_000);
+  const p = pauseOf(a);
+  const reset = usageResetAt(a, now);
+  const resumed = autoResumedAt(a);
+  const set = (paused: boolean, until?: Date) =>
+    void st.run(() =>
+      local.setAgentPaused({
+        machineId: m.machineId,
+        agent: a.name,
+        paused,
+        resumeAt: until ? { seconds: BigInt(Math.floor(until.getTime() / 1000)), nanos: 0 } : undefined,
+      }),
+    );
+  return (
+    <section className="ag-hide" aria-label={t("prepare.pauseHead")}>
+      <div className="ag-group">{t("prepare.pauseHead")}</div>
+      {p ? (
+        <>
+          <p className="ag-note">{p.until ? t("prepare.pausedUntilNote", { when: p.until.toLocaleString() }) : t("prepare.pausedNote")}</p>
+          <button className="btn sm" onClick={() => set(false)}>
+            {t("prepare.resume")}
+          </button>
+        </>
+      ) : (
+        <>
+          <button className="btn sm" onClick={() => set(true)}>
+            {t("prepare.pause")}
+          </button>{" "}
+          {reset && (
+            <button className="btn sm" onClick={() => set(true, reset)}>
+              {t("prepare.pauseUntilReset", { when: reset.toLocaleString() })}
+            </button>
+          )}
+          <p className="ag-note">{t("prepare.pauseNote")}</p>
+          {resumed && <p className="ag-note">{t("prepare.autoResumed", { when: resumed.toLocaleString() })}</p>}
+        </>
+      )}
+    </section>
   );
 }
 

@@ -8,14 +8,18 @@
       "The tray's Needs-you badge on Windows is now orange, the same orange as Needs you in the app, so it reads as a state, not as part of the mark.",
       "The Her page shows this computer's Her: while she is off here, the page turns her on right there; another machine's Her shows only once you pick it, and the page says whose she is for as long as it does.",
       "Several machines, told apart at a glance: session lists are grouped by machine (filtered by machine on Android), a session's machine shows beside its title, and where you message or take over a session it says which machine it goes to. With one machine none of it shows.",
-      "A coding agent listed on a machine's page now shows the program found for it, so one still listed after it was uninstalled can be told apart."
+      "A coding agent listed on a machine's page now shows the program found for it, so one still listed after it was uninstalled can be told apart.",
+      "The messages of a taken-over session, redone: a tool call is one line, its name and what it does, instead of a long run of raw arguments, with the details a tap away; how a message to a taken-over session is queued, and where it is, shows more clearly.",
+      "Android, polished further: cards look alike, a press answers, lists refresh when pulled down, and a new message arrives with a little motion."
     ],
     "fixes": [
       "Windows: the tray icon's translucent edge no longer glows light on a dark taskbar (pixels are now written premultiplied, in BGRA).",
       "Android: opening any DSH session no longer closes the app (the network is no longer read on the main thread).",
       "The Grants page no longer lists a machine's Her twice (one of them already revoked); turning Her on again also ends any extra grant she held.",
       "Windows: an installer at a version not above 0.0.0 (such as 0.0.0-local) left the Start menu shortcut and aide: links crashing as they started; packaging now refuses such a version.",
-      "Relay: contacts added in quick succession could be listed out of order; they are now listed in the order added."
+      "Relay: contacts added in quick succession could be listed out of order; they are now listed in the order added.",
+      "Agent detection on a machine's page: a leftover shell that can't actually run is no longer reported as installed.",
+      "Claude plan usage: when the service leaves out a field now and then, the row no longer shows Unknown altogether; what can be read is shown as before."
     ]
   },
   "0.2.2": {

@@ -72,7 +72,23 @@ data class AgentStatus(
     val models: List<AgentModel> = emptyList(),
     /** Its per-session modes (permission presets) here. */
     val modes: List<AgentMode> = emptyList(),
+    /** The owner paused it here (SetAgentPaused): no new session starts with it until it resumes. */
+    val pause: AgentPause? = null,
+    /** When it last resumed by itself, once its pause came to its end (RFC 3339). */
+    val autoResumedAt: String = "",
+    /** Claude plan usage read on that machine (Claude Code only). */
+    val usage: ClaudeUsage? = null,
 )
+
+/** aide.machine.v1.AgentPause; resumeAt empty: only the owner resumes it. Times are RFC 3339. */
+@Serializable
+data class AgentPause(val since: String = "", val resumeAt: String = "")
+
+@Serializable
+data class ClaudeUsage(val windows: List<UsageWindow> = emptyList())
+
+@Serializable
+data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val resetsAt: String = "")
 
 @Serializable
 data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList())
@@ -368,6 +384,11 @@ data class SessionEvent(
 @Serializable data class MarkSessionSeenRequest(val sessionId: String, val opened: Boolean = false, val questionId: String = "", val present: Boolean = false)
 @Serializable data class AnswerQuestionResponse(val session: Session? = null)
 @Serializable data class MachineIdRequest(val machineId: String)
+
+/** resumeAt (RFC 3339), with paused: when it resumes by itself; null: when the owner resumes it. */
+@Serializable data class SetAgentHiddenRequest(val machineId: String, val agent: String, val hidden: Boolean)
+
+@Serializable data class SetAgentPausedRequest(val machineId: String, val agent: String, val paused: Boolean, val resumeAt: String? = null)
 /** DeepSeek Harness's own sessions on the owner's machines (docs: aide.machine.v1.DSHSession); takeover: the owner took it over in Aide. */
 @Serializable data class DSHSession(
     val sessionId: String = "",
