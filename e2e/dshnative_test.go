@@ -70,9 +70,18 @@ func TestDSHNativeSessions(t *testing.T) {
 
 	before := map[string]map[string]string{macHome: dshSnapshot(t, macHome), workHome: dshSnapshot(t, workHome)}
 	var list *localv1.ListDSHSessionsResponse
-	eventually(t, time.Minute, "both machines listed", func() bool {
+	// Both machines listed under the names the assertions below read: the
+	// work Mac's name reaches this one a moment after its sessions can.
+	eventually(t, time.Minute, "both machines listed, by name", func() bool {
 		list, err = w.app.client.ListDSHSessions(ctx, &localv1.ListDSHSessionsRequest{})
-		return err == nil && len(list.Unreachable) == 0 && len(list.Sessions) == 2
+		if err != nil || len(list.Unreachable) != 0 || len(list.Sessions) != 2 {
+			return false
+		}
+		names := map[string]bool{}
+		for _, e := range list.Sessions {
+			names[e.MachineName] = true
+		}
+		return names["owner-mac"] && names["work-mac"]
 	})
 	var got []string
 	for _, e := range list.Sessions {
