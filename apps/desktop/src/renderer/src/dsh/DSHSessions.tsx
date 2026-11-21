@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "../icons";
+import { ToolRow } from "./ToolRow";
 import { useTranslation } from "react-i18next";
 import { agoText, dateOf, lostLine, transcript } from "@aide/core";
 import { DSHSessionState, type DSHBridge, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
@@ -203,32 +205,9 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
       <div className="dsh-head">
         <div className="dsh-head-row">
           <h2>{s.title || s.sessionId}</h2>
-          <label className="dsh-takeover">
-            {t("dsh.takeover")}
-            <Switch on={takeover} label={t("dsh.takeover")} set={(on) => (on ? setAsking(true) : (setAsking(false), setOn(false)))} />
-          </label>
         </div>
         <span>{[stateText, entry.machineName, s.cwd].filter(Boolean).join(" · ")}</span>
       </div>
-      {asking && !takeover && (
-        <div className="dsh-confirm" role="dialog" aria-label={t("dsh.takeoverAsk")}>
-          <b>{t("dsh.takeoverAsk")}</b>
-          <ul>
-            <li>{t("dsh.takeoverNote1")}</li>
-            <li>{t("dsh.takeoverNote2")}</li>
-            <li>{t("dsh.takeoverNote3")}</li>
-          </ul>
-          <div className="dsh-confirm-acts">
-            <button className="btn sm" onClick={() => setAsking(false)}>
-              {t("dsh.cancel")}
-            </button>
-            <button className="btn sm primary" onClick={() => setOn(true)}>
-              {t("dsh.takeoverOn")}
-            </button>
-          </div>
-        </div>
-      )}
-      {switchError && <p className="dsh-msg end err">{switchError}</p>}
       {error && <p className="dsh-msg end err">{error}</p>}
       {more && (
         <button className="btn sm" onClick={() => events.length && read(events[0].seq)}>
@@ -249,16 +228,7 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
           case "agent":
             return <div key={String(it.seq)} className="dsh-msg">{it.text}</div>;
           case "tool":
-            return (
-              <div key={String(it.seq)} className="dsh-msg tool">
-                <details>
-                  <summary>
-                    {it.call.name} {it.call.summary}
-                  </summary>
-                  {it.result && <pre>{it.result.summary}</pre>}
-                </details>
-              </div>
-            );
+            return <ToolRow key={String(it.seq)} call={it.call} result={it.result} />;
           case "turnEnd":
             return it.end.isError ? (
               <div key={String(it.seq)} className="dsh-msg end err">
@@ -270,7 +240,19 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
         }
       })}
       {items.length === 0 && !error && <p className="dsh-empty">{t("dsh.empty")}</p>}
-      {takeover && <Composer entry={entry} bridge={bridge} sent={() => (changed(), setTimeout(() => read(0n), 1500))} failed={changed} />}
+      {/* Always there (the owner's ruling, 2026-11-21): read only until taken over, the switch in it, beside sending. */}
+      <Composer
+        entry={entry}
+        bridge={bridge}
+        takeover={takeover}
+        asking={asking}
+        switchError={switchError}
+        ask={(on) => (on ? setAsking(true) : (setAsking(false), setOn(false)))}
+        confirm={() => setOn(true)}
+        cancel={() => setAsking(false)}
+        sent={() => (changed(), setTimeout(() => read(0n), 1500))}
+        failed={changed}
+      />
     </>
   );
 }
@@ -330,7 +312,29 @@ function Install({ machineId }: { machineId: string }) {
  * waits for the next turn when one runs (as in DSH). A failure says what to do and keeps the text; a
  * timeout keeps the message's id too, so sending again can't make two.
  */
-function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bridge: DSHBridge | undefined; sent: () => void; failed: () => void }) {
+function Composer({
+  entry,
+  bridge,
+  takeover,
+  asking,
+  switchError,
+  ask,
+  confirm,
+  cancel,
+  sent,
+  failed,
+}: {
+  entry: DSHSessionEntry;
+  bridge: DSHBridge | undefined;
+  takeover: boolean;
+  asking: boolean;
+  switchError: string;
+  ask: (on: boolean) => void;
+  confirm: () => void;
+  cancel: () => void;
+  sent: () => void;
+  failed: () => void;
+}) {
   const { t } = useTranslation("common");
   const s = entry.session!;
   const running = s.state === DSHSessionState.DSH_SESSION_STATE_RUNNING;
@@ -345,9 +349,9 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
   const [model, setModel] = useState("");
   const [permission, setPermission] = useState("");
   useEffect(() => {
-    if (!b.ok) return;
+    if (!b.ok || !takeover) return;
     local.dSHSessionOptions({ machineId: entry.machineId, sessionId: s.sessionId }).then(setOptions, () => setOptions(undefined));
-  }, [b.ok, entry.machineId, s.sessionId]);
+  }, [b.ok, takeover, entry.machineId, s.sessionId]);
   const choices = (options?.models ?? []).flatMap((m) =>
     [{ value: `${m.provider}/${m.model}/`, label: m.modelName || m.model }].concat(
       m.efforts.map((e) => ({ value: `${m.provider}/${m.model}/${e}`, label: `${m.modelName || m.model} · ${e}` })),
@@ -355,7 +359,7 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
   );
   const current = options?.currentModel ? `${options.currentModel.provider}/${options.currentModel.model}/${options.currentModel.effort}` : "";
   const send = () => {
-    if (!text.trim() || busy) return;
+    if (!takeover || !text.trim() || busy) return;
     reqId.current ||= newRequestId();
     setBusy(true);
     setError("");
@@ -392,19 +396,56 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
       (e) => setError(errorText(e)),
     );
   };
+  const off = !takeover;
   return (
-    <div className="dsh-compose">
-      {!b.ok && (
+    <div className={`dsh-compose ${off ? "off" : ""}`}>
+      {takeover && !b.ok && (
         <p className="dsh-bridge warn" role="status">
           {t(`dsh.bridge.${b.key}`)}
           {b.key === "incompatible" && b.detail && <span>{b.detail}</span>}
         </p>
       )}
-      {(b.key === "notInstalled" || b.key === "incompatible") && <Install machineId={entry.machineId} />}
-      {options && (options.models.length > 0 || options.permissions.length > 0) && (
-        <div className="dsh-picks">
-          {options.models.length > 0 && (
-            <select className="psel" aria-label={t("dsh.model")} value={model || current} onChange={(e) => ((reqId.current = ""), setModel(e.target.value))}>
+      {takeover && (b.key === "notInstalled" || b.key === "incompatible") && <Install machineId={entry.machineId} />}
+      {asking && off && (
+        <div className="dsh-confirm" role="dialog" aria-label={t("dsh.takeoverAsk")}>
+          <b>{t("dsh.takeoverAsk")}</b>
+          <ul>
+            <li>{t("dsh.takeoverNote1")}</li>
+            <li>{t("dsh.takeoverNote2")}</li>
+            <li>{t("dsh.takeoverNote3")}</li>
+          </ul>
+          <div className="dsh-confirm-acts">
+            <button className="btn sm" onClick={cancel}>
+              {t("dsh.cancel")}
+            </button>
+            <button className="btn sm primary" onClick={confirm}>
+              {t("dsh.takeoverOn")}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="dsh-box">
+        <textarea
+          rows={2}
+          aria-label={t("dsh.message")}
+          placeholder={off ? t("dsh.takeoverToSend") : t(running ? "dsh.placeholderRunning" : "dsh.placeholder")}
+          value={text}
+          disabled={off || busy}
+          onChange={(e) => ((reqId.current = ""), setText(e.target.value))}
+          onKeyDown={(e) => {
+            // Enter sends, as chat apps do; Shift+Enter is a new line; Ctrl/⌘+Enter still sends. Never while an IME composes.
+            if (e.key !== "Enter" || e.shiftKey || e.altKey || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            send();
+          }}
+        />
+        <div className="dsh-bar">
+          <label className="dsh-takeover" title={t("dsh.takeoverAsk")}>
+            <Switch on={takeover} label={t("dsh.takeover")} set={ask} />
+            {t("dsh.takeover")}
+          </label>
+          {takeover && options && options.models.length > 0 && (
+            <select className="dsh-pick" aria-label={t("dsh.model")} value={model || current} onChange={(e) => ((reqId.current = ""), setModel(e.target.value))}>
               {!current && <option value="">{t("dsh.asItIs")}</option>}
               {choices.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -413,42 +454,39 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
               ))}
             </select>
           )}
-          {options.permissions.length > 0 && (
+          {takeover && options && options.permissions.length > 0 && (
             <select
-              className="psel"
+              className="dsh-pick"
               aria-label={t("dsh.permission")}
               value={permission || options.currentPermission}
               onChange={(e) => ((reqId.current = ""), setPermission(e.target.value))}
             >
               {!options.currentPermission && <option value="">{t("dsh.asItIs")}</option>}
-              {options.permissions.map((p) => (
-                <option key={p.id} value={p.id} title={p.description}>
-                  {p.name}
+              {options.permissions.map((x) => (
+                <option key={x.id} value={x.id} title={x.description}>
+                  {x.name}
                 </option>
               ))}
             </select>
           )}
-        </div>
-      )}
-      <textarea
-        aria-label={t("dsh.message")}
-        placeholder={t(running ? "dsh.placeholderRunning" : "dsh.placeholder")}
-        value={text}
-        disabled={busy}
-        onChange={(e) => ((reqId.current = ""), setText(e.target.value))}
-        onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && (e.preventDefault(), send())}
-      />
-      <div className="dsh-compose-acts">
-        {error && <span className="err" role="alert">{error}</span>}
-        {notice && !error && <span className="ok" role="status">{notice}</span>}
-        {running && (
-          <button className="btn sm" onClick={interrupt} disabled={!b.ok}>
-            {t("dsh.interrupt")}
+          <span className="dsh-bar-note">
+            {switchError || error ? (
+              <span className="err" role="alert">
+                {switchError || error}
+              </span>
+            ) : (
+              notice && <span role="status">{notice}</span>
+            )}
+          </span>
+          {takeover && running && (
+            <button className="btn sm" onClick={interrupt} disabled={!b.ok}>
+              {t("dsh.interrupt")}
+            </button>
+          )}
+          <button className="dsh-send" onClick={send} disabled={off || busy || !text.trim() || !b.ok} title={t("dsh.send")} aria-label={t("dsh.send")}>
+            <Icon name="arrowUp" />
           </button>
-        )}
-        <button className="btn sm primary" onClick={send} disabled={busy || !text.trim() || !b.ok}>
-          {busy ? t("dsh.sending") : t("dsh.send")}
-        </button>
+        </div>
       </div>
     </div>
   );

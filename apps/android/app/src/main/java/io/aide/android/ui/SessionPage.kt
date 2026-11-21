@@ -230,13 +230,15 @@ private fun ToolsView(item: Item.Tools) {
     Column(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clickable { open = !open }) {
         val first = item.calls.first()
         Text(
-            if (item.calls.size == 1) "${first.name} ${first.summary}" else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
+            if (item.calls.size == 1) listOf(first.name, first.line).filter { it.isNotEmpty() }.joinToString(" · ") else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (open) 4 else 1, overflow = TextOverflow.Ellipsis,
         )
         if (open) {
             item.calls.forEach { c ->
                 HorizontalDivider()
-                Text("${c.name} ${c.summary}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                Text(listOf(c.name, c.line).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                // The raw arguments, under the line, when the line is not all they say.
+                if (c.summary.isNotBlank() && c.summary != c.line) Text(c.summary, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 8, overflow = TextOverflow.Ellipsis)
                 c.result?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = if (c.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }

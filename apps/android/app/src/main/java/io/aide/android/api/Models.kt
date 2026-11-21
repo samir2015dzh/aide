@@ -299,7 +299,8 @@ data class WatchResponse(
 @Serializable data class UserMessage(val text: String = "", val attachments: List<AttachmentInfo> = emptyList(), val from: String = "", val fromName: String = "")
 @Serializable data class AgentMessage(val text: String = "")
 @Serializable data class AgentDraft(val text: String = "", val whole: Boolean = false)
-@Serializable data class ToolCall(val callId: String = "", val kind: String = "", val name: String = "", val summary: String = "", val decision: String = "", val reason: String = "")
+/** title: the line it shows by when summary is its raw arguments (a session read from DSH's or Claude Desktop's records). */
+@Serializable data class ToolCall(val callId: String = "", val kind: String = "", val name: String = "", val summary: String = "", val decision: String = "", val reason: String = "", val title: String = "")
 @Serializable data class ToolResult(val callId: String = "", val summary: String = "", val isError: Boolean = false, val truncated: Boolean = false, val preview: Boolean = false)
 @Serializable data class TurnCompleted(val result: String = "", val isError: Boolean = false, val commit: String = "", val failure: Failure? = null)
 @Serializable data class ErrorEvent(val message: String = "", val failure: Failure? = null)

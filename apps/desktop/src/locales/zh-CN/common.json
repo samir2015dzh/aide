@@ -251,8 +251,8 @@
     "takeoverOn": "开启接管",
     "cancel": "取消",
     "message": "给 DSH 的消息",
-    "placeholder": "给这个会话发消息…（⌘/Ctrl+Enter 发送）",
-    "placeholderRunning": "会话正在运行：这条消息会排到这一轮之后…（⌘/Ctrl+Enter 发送）",
+    "placeholder": "给这个会话发消息…（Enter 发送，Shift+Enter 换行）",
+    "placeholderRunning": "会话正在运行：这条消息会排到这一轮之后…（Enter 发送，Shift+Enter 换行）",
     "send": "发送",
     "sending": "正在发送…",
     "sent": "已发送。",
@@ -283,6 +283,10 @@
       "copy": "复制",
       "copied": "已复制",
       "restart": "重启 DSH Desktop。以后在同一页可以关闭或移除它。"
-    }
+    },
+    "takeoverToSend": "开启接管后可向此会话发送消息",
+    "toolArgs": "参数",
+    "toolResult": "结果",
+    "toolFailed": "失败"
   }
 }

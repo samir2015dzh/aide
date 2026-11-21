@@ -263,8 +263,8 @@
     "takeoverOn": "Take Over",
     "cancel": "Cancel",
     "message": "Message to DSH",
-    "placeholder": "Message this session… (⌘/Ctrl+Enter to send)",
-    "placeholderRunning": "A turn is running: this message waits for the next turn… (⌘/Ctrl+Enter to send)",
+    "placeholder": "Message this session… (Enter to send, Shift+Enter for a new line)",
+    "placeholderRunning": "A turn is running: this waits for the next turn… (Enter to send, Shift+Enter for a new line)",
     "send": "Send",
     "sending": "Sending…",
     "sent": "Sent.",
@@ -296,6 +296,10 @@
       "copy": "Copy",
       "copied": "Copied",
       "restart": "Restart DSH Desktop. You can turn it off or remove it on the same page later."
-    }
+    },
+    "takeoverToSend": "Turn on Take Over to send this session messages",
+    "toolArgs": "Arguments",
+    "toolResult": "Result",
+    "toolFailed": "failed"
   }
 }

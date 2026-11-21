@@ -273,16 +273,15 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                 }
             },
             navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-            actions = {
-                // Lost: nothing can be sent to it, nor its switch changed, until its machine is back.
-                if (!entry.lost) {
-                    Text(t("Take over", "接管"), style = MaterialTheme.typography.labelMedium)
-                    Switch(checked = takeover, onCheckedChange = { on -> if (on) asking = true else scope.launch { setOn(false) } }, modifier = Modifier.padding(horizontal = 8.dp))
-                }
-            },
         )
     }, bottomBar = {
-        if (takeover && !entry.lost) DSHComposer(model, entry, bridge, sent = { scope.launch { delay(1500); read(0) } }, failed = { scope.launch { readBridge() } })
+        // Always there (the owner's ruling, 2026-11-21): read only until taken over, the switch in it, beside sending.
+        // Lost: nothing can be sent to it, nor its switch changed, until its machine is back.
+        if (!entry.lost) DSHComposer(
+            model, entry, bridge, takeover,
+            setTakeover = { on -> if (on) asking = true else scope.launch { setOn(false) } },
+            sent = { scope.launch { delay(1500); read(0) } }, failed = { scope.launch { readBridge() } },
+        )
     }) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading) {
@@ -314,10 +313,10 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
  * id too, so sending again can't make two.
  */
 @Composable
-private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBridge?, sent: () -> Unit, failed: () -> Unit) {
+private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBridge?, takeover: Boolean, setTakeover: (Boolean) -> Unit, sent: () -> Unit, failed: () -> Unit) {
     val s = entry.session
     val running = s.state == "DSH_SESSION_STATE_RUNNING"
-    val problem = dshBridgeProblem(bridge)
+    val problem = if (takeover) dshBridgeProblem(bridge) else null
     var text by remember { mutableStateOf("") }
     var reqId by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -329,12 +328,23 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
         error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         OutlinedTextField(
-            value = text, onValueChange = { text = it; reqId = "" }, enabled = !busy, modifier = Modifier.fillMaxWidth(),
+            value = text, onValueChange = { text = it; reqId = "" }, enabled = takeover && !busy, modifier = Modifier.fillMaxWidth(),
             label = { Text(t("Message to DSH", "给 DSH 的消息")) },
-            placeholder = { Text(if (running) t("A turn is running: this waits for the next turn", "会话正在运行：这条消息会排到这一轮之后") else t("Message this session", "给这个会话发消息")) },
+            placeholder = {
+                Text(
+                    when {
+                        !takeover -> t("Turn on Take Over to send this session messages", "开启接管后可向此会话发送消息")
+                        running -> t("A turn is running: this waits for the next turn", "会话正在运行：这条消息会排到这一轮之后")
+                        else -> t("Message this session", "给这个会话发消息")
+                    },
+                )
+            },
         )
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-            if (running) {
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The switch, beside sending: off, the box above can't be written in.
+            Switch(checked = takeover, onCheckedChange = setTakeover)
+            Text(t("Take over", "接管"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            if (takeover && running) {
                 TextButton(enabled = problem == null, onClick = {
                     scope.launch {
                         error = null
@@ -348,7 +358,7 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
                     }
                 }) { Text(t("Stop", "打断")) }
             }
-            Button(enabled = !busy && text.isNotBlank() && problem == null, onClick = {
+            Button(enabled = takeover && !busy && text.isNotBlank() && problem == null, onClick = {
                 if (reqId.isEmpty()) reqId = newDSHRequestId()
                 busy = true
                 error = null

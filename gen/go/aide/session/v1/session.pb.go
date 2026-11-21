@@ -3724,8 +3724,13 @@ type ToolCall struct {
 	Name    string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Summary string `protobuf:"bytes,4,opt,name=summary,proto3" json:"summary,omitempty"`
 	// allow | deny
-	Decision      string `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`
-	Reason        string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	Decision string `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`
+	Reason   string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The line the call shows by, when summary is its raw arguments (a session
+	// read from DSH's or Claude Desktop's records): the call's description, or
+	// a natural summary (an edit's file and lines, the command's first line).
+	// Empty: summary reads as it is.
+	Title         string `protobuf:"bytes,7,opt,name=title,proto3" json:"title,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3798,6 +3803,13 @@ func (x *ToolCall) GetDecision() string {
 func (x *ToolCall) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *ToolCall) GetTitle() string {
+	if x != nil {
+		return x.Title
 	}
 	return ""
 }
@@ -6022,14 +6034,15 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\n" +
 	"AgentDraft\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x14\n" +
-	"\x05whole\x18\x02 \x01(\bR\x05whole\"\x99\x01\n" +
+	"\x05whole\x18\x02 \x01(\bR\x05whole\"\xaf\x01\n" +
 	"\bToolCall\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x18\n" +
 	"\asummary\x18\x04 \x01(\tR\asummary\x12\x1a\n" +
 	"\bdecision\x18\x05 \x01(\tR\bdecision\x12\x16\n" +
-	"\x06reason\x18\x06 \x01(\tR\x06reason\"\xa6\x01\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\x12\x14\n" +
+	"\x05title\x18\a \x01(\tR\x05title\"\xa6\x01\n" +
 	"\n" +
 	"ToolResult\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x18\n" +

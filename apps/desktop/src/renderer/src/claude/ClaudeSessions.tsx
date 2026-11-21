@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { ToolRow } from "../dsh/ToolRow";
 import { useTranslation } from "react-i18next";
 import { agoText, dateOf, lostLine, transcript } from "@aide/core";
 import type { ClaudeSessionEntry, ClaudeIndexEntry, Unreachable } from "@aide/proto/local";
@@ -185,16 +186,7 @@ function ClaudeTranscript({ entry, line }: { entry: ClaudeSessionEntry; line: st
                   </div>
                 );
               case "tool":
-                return (
-                  <div key={String(it.seq)} className="dsh-msg tool">
-                    <details>
-                      <summary>
-                        {it.call.name} {it.call.summary}
-                      </summary>
-                      {it.result && <pre>{it.result.summary}</pre>}
-                    </details>
-                  </div>
-                );
+                return <ToolRow key={String(it.seq)} call={it.call} result={it.result} />;
               default:
                 return null;
             }
