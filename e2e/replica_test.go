@@ -107,8 +107,11 @@ func TestOwnerReplica(t *testing.T) {
 		}
 		slices.Sort(took)
 		t.Logf("%-20s p50 %v, max %v", name, took[10].Round(10*time.Microsecond), took[20].Round(10*time.Microsecond))
-		if took[10] > 5*time.Millisecond {
-			t.Errorf("%s: p50 %v, want at most 5ms with the relay %v away", name, took[10], 2*oneWay)
+		// Through the relay it would take at least the 300 ms round trip;
+		// 50 ms leaves room for the race detector CI runs this under
+		// (5 ms was missed by microseconds there) and still tells the two apart.
+		if took[10] > 50*time.Millisecond {
+			t.Errorf("%s: p50 %v, want at most 50ms with the relay %v away", name, took[10], 2*oneWay)
 		}
 	}
 
