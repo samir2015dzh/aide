@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -127,6 +128,14 @@ func (l *Local) PushRevocations(r *identityv1.RevocationList, chain *identityv1.
 		l.n.acceptRootChain(chain)
 	}
 	l.n.applyRevocations(r)
+}
+
+// RevokedGrants are the grants the owner's revocations name, as this
+// machine applied them.
+func (l *Local) RevokedGrants() []string {
+	l.n.mu.Lock()
+	defer l.n.mu.Unlock()
+	return slices.Clone(l.n.revocations.GetRevokedGrantIds())
 }
 
 // SetHerGrant gives this machine's Her her grant (docs/her-mesh.md §3.3).

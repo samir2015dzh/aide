@@ -7,6 +7,7 @@ import (
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	"github.com/samir2015dzh/aide/pkg/identity"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // A machine has one Her, who holds one grant: Her turned on again while her
@@ -51,5 +52,49 @@ func TestHerGrantsIn(t *testing.T) {
 	}
 	if got := herGrantsIn(clients, "o_1", "m_3", nil); len(got) != 0 {
 		t.Errorf("a machine without Her: revokes %v", got)
+	}
+}
+
+// The relay can keep listing a grant it was never told of the end of (a
+// revocation that reached the machines but not it): this device knows it is
+// revoked, and lists it so, beside the grant that replaced it, which every
+// screen then shows alone ("Her on <machine>" was there twice).
+func TestClientsRevokedHere(t *testing.T) {
+	root, _ := identity.GenerateKey()
+	ownerID := identity.OwnerID(identity.MarshalPublicKey(root.Public()))
+	rc, err := identity.Sign(&identityv1.RootCert{OwnerId: ownerID, Version: 1, IssuedAt: timestamppb.Now(),
+		RootKeys: []*identityv1.RootKey{{PublicKey: identity.MarshalPublicKey(root.Public())}}}, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trust := identity.NewTrust(ownerID)
+	if _, err := trust.AcceptRootChain(&identityv1.RootChain{Certs: []*identityv1.Signed{rc}}); err != nil {
+		t.Fatal(err)
+	}
+	oldKey, _ := identity.GenerateKey()
+	newKey, _ := identity.GenerateKey()
+	before := HerGrant(ownerID, "m_1", "box", identity.MarshalPublicKey(oldKey.Public()))
+	now := HerGrant(ownerID, "m_1", "box", identity.MarshalPublicKey(newKey.Public()))
+	var res relayv1.ListClientsResponse
+	for _, g := range []*identityv1.Grant{before, now} {
+		s, err := identity.Sign(g, root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Clients = append(res.Clients, &relayv1.ClientEntry{Grant: s})
+	}
+	shown := func(revoked map[string]bool) (out []string) {
+		for _, c := range clientsFrom(&res, ownerID, trust, revoked) {
+			if !c.Revoked {
+				out = append(out, c.GrantId)
+			}
+		}
+		return out
+	}
+	if got := shown(nil); len(got) != 2 {
+		t.Fatalf("nothing revoked here: %v shown", got)
+	}
+	if got := shown(map[string]bool{before.GrantId: true}); !slices.Equal(got, []string{now.GrantId}) {
+		t.Fatalf("the grant before revoked here: %v shown, want only %s", got, now.GrantId)
 	}
 }
