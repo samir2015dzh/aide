@@ -6,6 +6,9 @@ on:
   # By hand, on any branch: Windows work is tried on Windows runners there
   # before it reaches main (docs/windows.md).
   workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   go:
     strategy:
@@ -44,12 +47,14 @@ jobs:
       # the macOS app job, gone with the Mac app). After the end-to-end tests:
       # with pnpm here, TestDesktop would run, and Electron's sandbox can't on
       # this runner (the desktop's end-to-end tests run on windows-app).
+      # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
       - name: types and unit tests (TypeScript)
         run: |
-          corepack enable
           pnpm install --frozen-lockfile
           pnpm -r typecheck
           pnpm --filter @aide/core test
@@ -112,10 +117,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: corepack enable
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: end-to-end (desktop app)
         run: go test ./e2e -run '^TestDesktop$' -count=1 -v -timeout 30m

@@ -176,11 +176,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
       - name: her console
-        run: corepack enable && pnpm install --frozen-lockfile --filter "@aide/her-console..." && pnpm --dir her/apps/console build
+        run: pnpm install --frozen-lockfile --filter "@aide/her-console..." && pnpm --dir her/apps/console build
       - uses: actions/download-artifact@v4
         with:
           pattern: her-*
@@ -238,10 +241,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: corepack enable && pnpm install --frozen-lockfile
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
       - name: Read access to the NimbleOffice fork
         shell: bash
@@ -280,6 +286,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
