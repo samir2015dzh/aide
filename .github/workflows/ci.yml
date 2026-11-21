@@ -87,11 +87,13 @@ jobs:
         with:
           go-version-file: go.mod
       # her's debug build, kept apart from her-ci's and windows-app's (deleted with her).
+      # Saved when the tests after it fail too: this job's failures are allowed for now.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: her -> target
           key: ci-windows-e2e
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-on-failure: true
       - name: Build Her for its end-to-end tests
         shell: bash
         env:
