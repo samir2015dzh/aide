@@ -538,7 +538,7 @@ type stateJSON struct {
 func (a *app) messageStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status <message id>...",
-		Short: "What became of messages you sent: waiting, taken, handled, held, refused, expired, or unknown",
+		Short: "What became of messages you sent: waiting, taken, handed, handled, replied, held, refused, expired, or unknown",
 		Args:  cobra.RangeArgs(1, 100),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -557,7 +557,14 @@ func (a *app) messageStatusCmd() *cobra.Command {
 				return err
 			}
 			states := []stateJSON{}
+			replied := a.chains().Replied
 			for _, s := range res.States {
+				// A reply came: replied, which only the sender sees (the
+				// post office never opens messages).
+				if at, ok := replied[s.MessageId]; ok {
+					states = append(states, stateJSON{s.MessageId, "replied", timeJSON(at)})
+					continue
+				}
 				states = append(states, stateJSON{s.MessageId, s.State, tsJSON(s.At)})
 			}
 			if a.output == "json" {
@@ -903,9 +910,9 @@ func tierOf(t target) string {
 }
 
 func (a *app) messageSendCmd() *cobra.Command {
-	var to, text, file, subject, replyTo, model, permission, request, status string
+	var to, text, file, subject, replyTo, model, permission, request, status, idem string
 	var files []string
-	var wait bool
+	var wait, fyi bool
 	var timeout time.Duration
 	cmd := &cobra.Command{
 		Use:   "send",
@@ -999,8 +1006,10 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 			if err != nil {
 				return err
 			}
-			m := &inboxv1.Message{MessageId: "msg_" + newIdempotencyKey(), From: &inboxv1.Address{Inbox: a.g.ClientId, Session: a.as},
-				To: &inboxv1.Address{Inbox: t.inbox, Session: t.session}, SentAt: timestampOf(time.Now()), InReplyTo: replyTo, Subject: subject, Text: body, WorkspaceRequest: wr}
+			trace, hop := a.chains().next(replyTo)
+			m := &inboxv1.Message{MessageId: messageIDFor(a.g.ClientId+"/"+a.as, idem), From: &inboxv1.Address{Inbox: a.g.ClientId, Session: a.as},
+				To: &inboxv1.Address{Inbox: t.inbox, Session: t.session}, SentAt: timestampOf(time.Now()), InReplyTo: replyTo, Subject: subject, Text: body, WorkspaceRequest: wr,
+				Fyi: fyi, TraceId: trace, Hop: hop}
 			if wr != nil && t.session == "" {
 				return &exitError{code: exitUsage, kind: "usage", err: errors.New("a reply to a workspace request goes to its session (s_…)")}
 			}
@@ -1045,6 +1054,9 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, timeoutHelp)
 	cmd.Flags().StringVar(&model, "model", "", "to a DSH session: the model it goes on with, provider/model[/effort]")
 	cmd.Flags().StringVar(&permission, "permission", "", "to a DSH session: the permission preset it goes on with")
+	cmd.Flags().BoolVar(&fyi, "fyi", false, "for information only: it wakes no one and starts no turn; it is read at the recipient's next turn")
+	cmd.Flags().StringVar(&idem, "idempotency-key", "", "retrying with the same key sends the same message, taken once")
+	cmd.Flags().MarkHidden("idempotency-key")
 	cmd.MarkFlagRequired("to")
 	return cmd
 }
@@ -1074,7 +1086,7 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 		return err
 	}
 	sm := &relayv1.SealedMessage{Inbox: t.inbox, MessageId: m.MessageId, Sealed: sealed}
-	if t.woken {
+	if t.woken && !m.Fyi {
 		sm.Ring = &t.session // the post office rings its doorbell
 	}
 	_, err = ms.Send(ctx, &relayv1.SendSealedRequest{Message: sm})
@@ -1097,6 +1109,9 @@ func (a *app) deliverDirect(ctx context.Context, cmd *cobra.Command, c *peer.Cli
 		delivered := ""
 		var sess *sessionv1.Session
 		switch {
+		case connect.CodeOf(err) == connect.CodeAlreadyExists:
+			// Sent again (--idempotency-key): the session has it already.
+			sess, delivered, err = before, "already", nil
 		case connect.CodeOf(err) == connect.CodeUnimplemented && before.CreatedBy == a.g.ClientId:
 			// A machine older than messages: as session send.
 			r, err := n.Session.SendMessage(ctx, &sessionv1.SendMessageRequest{SessionId: t.session, Text: m.Text, Attachments: atts})
@@ -1139,6 +1154,8 @@ func deliveredText(d string) string {
 		return "it answered the question"
 	case "queued":
 		return "it waits for a turn of its own"
+	case "already":
+		return "the session had it already (sent again)"
 	}
 	return d
 }
@@ -1199,7 +1216,22 @@ func (a *app) fetchAll(ctx context.Context, ms relayv1connect.MessageServiceClie
 	good, refused, again := a.open(sealed)
 	a.ackOutcome(ctx, ms, refused, "refused")
 	a.ackOutcome(ctx, ms, again, "handled")
-	return good, nil
+	// Chains (docs/agent-messages.md §15): one gone too far is held for
+	// the owner, not handed to this agent.
+	book, now := a.chains(), time.Now()
+	var kept []opened
+	var held []string
+	for _, o := range good {
+		if why := book.took(a.g.ClientId+"/"+o.m.GetTo().GetSession(), o.m.MessageId, o.m.TraceId, o.m.Hop, o.m.InReplyTo, now); why != "" {
+			fmt.Fprintf(os.Stderr, "held for your owner: message %s: %s\n", o.m.MessageId, why)
+			held = append(held, o.m.MessageId)
+			continue
+		}
+		kept = append(kept, o)
+	}
+	a.saveChains(book, now)
+	a.ackOutcome(ctx, ms, held, "held")
+	return kept, nil
 }
 
 // forMe are the messages for the name the command runs as (--as), or for

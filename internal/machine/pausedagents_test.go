@@ -42,7 +42,12 @@ func TestPauseAgent(t *testing.T) {
 		return nil
 	}
 	startErr := func() error {
-		_, err := h.s.Start(ctx, h.p, &sessionv1.StartSessionRequest{ProjectId: "demo", Agent: "fake", Prompt: "hello"})
+		sess, err := h.s.Start(ctx, h.p, &sessionv1.StartSessionRequest{ProjectId: "demo", Agent: "fake", Prompt: "hello"})
+		if err == nil {
+			// Its turn done before the test goes on (or ends): its worktree
+			// written, nothing left writing under the test's folders.
+			h.wait(sess.SessionId, sessionv1.SessionStatus_SESSION_STATUS_IDLE)
+		}
 		return err
 	}
 

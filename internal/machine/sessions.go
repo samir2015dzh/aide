@@ -211,6 +211,8 @@ type live struct {
 	// idle (docs/agent-messages.md §7.2).
 	asker string
 	asked []message
+	// fyi are messages for information only, waiting for the next turn.
+	fyi []message
 	// askerConv is the conversation of the turn's asker, where its news
 	// goes (known since this aided started; the creator's is the row's).
 	askerConv string
@@ -729,6 +731,13 @@ func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts
 func (s *Sessions) take(ctx context.Context, l *live, m message) (string, error) {
 	for {
 		l.mu.Lock()
+		if m.fyi && (l.row.Status != sessionv1.SessionStatus_SESSION_STATUS_RUNNING || l.asker != m.by || l.askerConv != m.conv) {
+			// For information only: it starts no turn and answers no
+			// question; the next turn takes it (nextTurn).
+			l.fyi = append(l.fyi, m)
+			l.mu.Unlock()
+			return "queued", nil
+		}
 		if (l.asker != m.by || l.askerConv != m.conv) && turnBusy(l.row.Status) {
 			l.asked = append(l.asked, m)
 			s.saveAsked(l)
@@ -796,7 +805,7 @@ func (l *live) askedBy(who string) bool {
 // §7.2): p is that agent, with its grant, which must cover the session's
 // project and coding agent, and the session must be one it may read. text
 // is what the coding agent is given; rec is what the session records.
-func (s *Sessions) Deliver(ctx context.Context, p *Principal, id, conv, text string, rec *sessionv1.MessageReceived, atts []*sessionv1.Attachment) (*sessionv1.Session, string, error) {
+func (s *Sessions) Deliver(ctx context.Context, p *Principal, id, conv, text string, rec *sessionv1.MessageReceived, atts []*sessionv1.Attachment, fyi bool) (*sessionv1.Session, string, error) {
 	if p.Kind != PrincipalClient {
 		return nil, "", cerr(connect.CodePermissionDenied, "only an agent delivers messages")
 	}
@@ -820,7 +829,7 @@ func (s *Sessions) Deliver(ctx context.Context, p *Principal, id, conv, text str
 	if err != nil {
 		return nil, "", fmt.Errorf("saving attachments: %w", err)
 	}
-	m.by, m.conv, m.byName, m.quiet, m.answer = p.ID(), conv, p.Name(), true, rec.Text
+	m.by, m.conv, m.byName, m.quiet, m.answer, m.fyi = p.ID(), conv, p.Name(), true, rec.Text, fyi
 	delivered, err := s.take(ctx, l, m)
 	if err != nil {
 		return nil, "", err
@@ -931,6 +940,15 @@ func (s *Sessions) loadAsked(id string) []message {
 // nextTurn starts a turn with m, in the running agent process or a new
 // one. It is called with l.mu held and releases it.
 func (s *Sessions) nextTurn(ctx context.Context, l *live, m message) error {
+	if len(l.fyi) > 0 { // the messages for information that waited: this turn takes them
+		var f message
+		for _, x := range l.fyi {
+			f = f.join(x)
+		}
+		j := f.join(m)
+		j.by, j.conv, j.byName = m.by, m.conv, m.byName // m's turn
+		m, l.fyi = j, nil
+	}
 	ps := l.sess
 	alive := ps != nil
 	if alive {

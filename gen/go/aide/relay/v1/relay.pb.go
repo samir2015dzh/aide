@@ -5817,7 +5817,8 @@ func (x *FetchMessagesResponse) GetMore() bool {
 type MessageAck struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	MessageId string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	// "handled", "held" or "refused".
+	// "handed" (in its agent's hands, not yet done with: it may be
+	// acknowledged handled after), "handled", "held" or "refused".
 	Outcome       string `protobuf:"bytes,2,opt,name=outcome,proto3" json:"outcome,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6074,7 +6075,7 @@ func (x *MessageStatusRequest) GetMessageIds() []string {
 type MessageState struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	MessageId string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	// "waiting", "taken", "handled", "held", "refused", "expired", or
+	// "waiting", "taken", "handed", "handled", "held", "refused", "expired", or
 	// "unknown" for an id the post office never had or no longer remembers.
 	State         string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
 	At            *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=at,proto3" json:"at,omitempty"`

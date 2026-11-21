@@ -830,7 +830,8 @@ message FetchMessagesResponse {
 
 message MessageAck {
   string message_id = 1;
-  // "handled", "held" or "refused".
+  // "handed" (in its agent's hands, not yet done with: it may be
+  // acknowledged handled after), "handled", "held" or "refused".
   string outcome = 2;
 }
 
@@ -852,7 +853,7 @@ message MessageStatusRequest {
 
 message MessageState {
   string message_id = 1;
-  // "waiting", "taken", "handled", "held", "refused", "expired", or
+  // "waiting", "taken", "handed", "handled", "held", "refused", "expired", or
   // "unknown" for an id the post office never had or no longer remembers.
   string state = 2;
   google.protobuf.Timestamp at = 3;

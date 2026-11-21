@@ -35,6 +35,17 @@ message Message {
   // coordinator) and on its replies (from the coordinator or provisioner
   // to the session): docs/workspace-requests.md.
   aide.session.v1.WorkspaceRequest workspace_request = 9;
+  // For information only (docs/agent-messages.md §15): it rings no
+  // doorbell and starts no turn; the recipient takes it at its next pause
+  // (the next turn, the next hook). A turn's news is never one.
+  bool fyi = 10;
+  // The chain it belongs to: a reply, or a message written because of
+  // another, keeps its trace and counts one more hop; anything else starts
+  // a chain of its own at hop 1. The recipient holds a chain gone too far
+  // (more than 4 hops, or the same chain through it more than 3 times an
+  // hour) for the owner, and the owner's own messages start chains anew.
+  string trace_id = 11;
+  uint32 hop = 12;
 }
 
 // SessionNews tells whoever asked for a turn how it went: it ended, it
