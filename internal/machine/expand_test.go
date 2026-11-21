@@ -2,8 +2,10 @@ package machine
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -95,5 +97,39 @@ func TestMacros(t *testing.T) {
 		if got, err := h.s.expandPrompt(h.p, s); err != nil || got != s {
 			t.Fatalf("%q: %q %v", s, got, err)
 		}
+	}
+}
+
+func TestSessionReferenceLimitAndChanges(t *testing.T) {
+	h := newHarness(t, DefaultLimits())
+	old := h.start("write fresh-by-the-test.txt hello\nsay wrote it")
+	h.wait(old, idle)
+	// The change summary follows the session's diff stat, worked out after the turn.
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		got, err := h.s.expandPrompt(h.p, "#"+old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(got, "1 files changed, +1 −0\n") && strings.Contains(got, "Changes: branch aide/") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no change summary:\n%s", got)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	refs := ""
+	for i := range maxSessionRefs + 1 {
+		refs += fmt.Sprintf(" #s_x_%d", i)
+	}
+	if _, err := h.s.expandPrompt(h.p, "see"+refs); connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "6 sessions referenced; at most 5") {
+		t.Fatalf("over the limit: %v", err)
+	}
+	// The same session named twice counts once, and is brought in once.
+	got, err := h.s.expandPrompt(h.p, "#"+old+" and #"+old)
+	if err != nil || strings.Count(got, "[Aide] Referenced session #"+old) != 1 {
+		t.Fatalf("twice: %v\n%s", err, got)
 	}
 }

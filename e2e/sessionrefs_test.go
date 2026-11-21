@@ -96,4 +96,18 @@ func TestSessionRefsAndMacros(t *testing.T) {
 			t.Fatalf("bot2 referencing %s: %+v", ref, r)
 		}
 	}
+	// So is a message to its own session that names one it may not see:
+	// nothing of it reaches the session.
+	r = run(t, env2, time.Minute, filepath.Join(w.bin, "aide"), "session", "start", "--project", "demo", "--wait", "-o", "json", "--prompt", "say mine")
+	own := firstSession(r.stdout)
+	if r.code != 0 || own.Result != "mine" {
+		t.Fatalf("bot2's own session: %+v", r)
+	}
+	if d, r := sendMessage(t, w, env2, time.Minute, "--to", own.SessionID, "--message", "look at #"+old.SessionID); d.OK ||
+		!strings.Contains(r.stdout+r.stderr, "referenced session #"+old.SessionID+" not found, or not visible to you") {
+		t.Fatalf("bot2's message naming another's session: %+v", r)
+	}
+	if u := userTexts(env2, own.SessionID); len(u) != 1 || u[0] != "say mine" {
+		t.Fatalf("bot2's session after the refused message: %q", u)
+	}
 }
