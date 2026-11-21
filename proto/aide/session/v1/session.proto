@@ -892,6 +892,10 @@ message SessionInsights {
   string suggested_prompt = 18;
   // The whole review in Markdown, for a delivery record.
   string markdown = 19;
+  // Times the session was rolled back (RollbackSession), and the turns
+  // that discarded.
+  uint32 rollbacks = 20;
+  uint32 discarded_turns = 21;
 }
 
 message TurnInsight {
@@ -909,6 +913,8 @@ message TurnInsight {
   FailureKind failure = 9;
   DiffStat diff_stat = 10;
   Usage usage = 11;
+  // A rollback discarded the turn; its number may come again.
+  bool rolled_back = 12;
 }
 
 message FailureCount {
@@ -938,7 +944,7 @@ message ToolCount {
 // would avoid.
 message InsightFinding {
   // "clarifying_questions", "follow_ups", "repeated_failures", "stalled",
-  // "interrupted" or "missing_context".
+  // "interrupted", "rolled_back" or "missing_context".
   string code = 1;
   string text = 2;
 }

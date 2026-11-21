@@ -4951,9 +4951,13 @@ type SessionInsights struct {
 	// lacked.
 	SuggestedPrompt string `protobuf:"bytes,18,opt,name=suggested_prompt,json=suggestedPrompt,proto3" json:"suggested_prompt,omitempty"`
 	// The whole review in Markdown, for a delivery record.
-	Markdown      string `protobuf:"bytes,19,opt,name=markdown,proto3" json:"markdown,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Markdown string `protobuf:"bytes,19,opt,name=markdown,proto3" json:"markdown,omitempty"`
+	// Times the session was rolled back (RollbackSession), and the turns
+	// that discarded.
+	Rollbacks      uint32 `protobuf:"varint,20,opt,name=rollbacks,proto3" json:"rollbacks,omitempty"`
+	DiscardedTurns uint32 `protobuf:"varint,21,opt,name=discarded_turns,json=discardedTurns,proto3" json:"discarded_turns,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SessionInsights) Reset() {
@@ -5119,6 +5123,20 @@ func (x *SessionInsights) GetMarkdown() string {
 	return ""
 }
 
+func (x *SessionInsights) GetRollbacks() uint32 {
+	if x != nil {
+		return x.Rollbacks
+	}
+	return 0
+}
+
+func (x *SessionInsights) GetDiscardedTurns() uint32 {
+	if x != nil {
+		return x.DiscardedTurns
+	}
+	return 0
+}
+
 type TurnInsight struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Turn      uint32                 `protobuf:"varint,1,opt,name=turn,proto3" json:"turn,omitempty"`
@@ -5132,9 +5150,11 @@ type TurnInsight struct {
 	ToolErrors  uint32 `protobuf:"varint,7,opt,name=tool_errors,json=toolErrors,proto3" json:"tool_errors,omitempty"`
 	AutoRetries uint32 `protobuf:"varint,8,opt,name=auto_retries,json=autoRetries,proto3" json:"auto_retries,omitempty"`
 	// Why the turn failed; unspecified when it succeeded or runs.
-	Failure       FailureKind `protobuf:"varint,9,opt,name=failure,proto3,enum=aide.session.v1.FailureKind" json:"failure,omitempty"`
-	DiffStat      *DiffStat   `protobuf:"bytes,10,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
-	Usage         *Usage      `protobuf:"bytes,11,opt,name=usage,proto3" json:"usage,omitempty"`
+	Failure  FailureKind `protobuf:"varint,9,opt,name=failure,proto3,enum=aide.session.v1.FailureKind" json:"failure,omitempty"`
+	DiffStat *DiffStat   `protobuf:"bytes,10,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
+	Usage    *Usage      `protobuf:"bytes,11,opt,name=usage,proto3" json:"usage,omitempty"`
+	// A rollback discarded the turn; its number may come again.
+	RolledBack    bool `protobuf:"varint,12,opt,name=rolled_back,json=rolledBack,proto3" json:"rolled_back,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5244,6 +5264,13 @@ func (x *TurnInsight) GetUsage() *Usage {
 		return x.Usage
 	}
 	return nil
+}
+
+func (x *TurnInsight) GetRolledBack() bool {
+	if x != nil {
+		return x.RolledBack
+	}
+	return false
 }
 
 type FailureCount struct {
@@ -5450,7 +5477,7 @@ func (x *ToolCount) GetErrors() uint32 {
 type InsightFinding struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "clarifying_questions", "follow_ups", "repeated_failures", "stalled",
-	// "interrupted" or "missing_context".
+	// "interrupted", "rolled_back" or "missing_context".
 	Code          string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	Text          string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -5876,7 +5903,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x10pull_request_url\x18\x02 \x01(\tR\x0epullRequestUrl\":\n" +
 	"\x19GetSessionInsightsRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\xc6\x06\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\x8d\a\n" +
 	"\x0fSessionInsights\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12$\n" +
@@ -5900,7 +5927,9 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x05usage\x18\x10 \x01(\v2\x16.aide.session.v1.UsageR\x05usage\x12;\n" +
 	"\bfindings\x18\x11 \x03(\v2\x1f.aide.session.v1.InsightFindingR\bfindings\x12)\n" +
 	"\x10suggested_prompt\x18\x12 \x01(\tR\x0fsuggestedPrompt\x12\x1a\n" +
-	"\bmarkdown\x18\x13 \x01(\tR\bmarkdown\"\xdf\x03\n" +
+	"\bmarkdown\x18\x13 \x01(\tR\bmarkdown\x12\x1c\n" +
+	"\trollbacks\x18\x14 \x01(\rR\trollbacks\x12'\n" +
+	"\x0fdiscarded_turns\x18\x15 \x01(\rR\x0ediscardedTurns\"\x80\x04\n" +
 	"\vTurnInsight\x12\x12\n" +
 	"\x04turn\x18\x01 \x01(\rR\x04turn\x129\n" +
 	"\n" +
@@ -5917,7 +5946,9 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\afailure\x18\t \x01(\x0e2\x1c.aide.session.v1.FailureKindR\afailure\x126\n" +
 	"\tdiff_stat\x18\n" +
 	" \x01(\v2\x19.aide.session.v1.DiffStatR\bdiffStat\x12,\n" +
-	"\x05usage\x18\v \x01(\v2\x16.aide.session.v1.UsageR\x05usage\"V\n" +
+	"\x05usage\x18\v \x01(\v2\x16.aide.session.v1.UsageR\x05usage\x12\x1f\n" +
+	"\vrolled_back\x18\f \x01(\bR\n" +
+	"rolledBack\"V\n" +
 	"\fFailureCount\x120\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1c.aide.session.v1.FailureKindR\x04kind\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\rR\x05count\"\xf1\x01\n" +

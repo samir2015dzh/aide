@@ -79,8 +79,9 @@ func reviewSession(id, title string, diff *sessionv1.DiffStat, evs []*sessionv1.
 		callKind  = map[string]string{}
 		curTurn   = map[string]*sessionv1.TurnInsight{} // call id → its turn
 		questions = map[string]*sessionv1.QuestionInsight{}
-		prompts   []string // what the dispatcher wrote, in order
-		answers   []string // "question → answer"
+		askedIn   = map[string]*sessionv1.TurnInsight{} // question id → its turn
+		prompts   []string                              // what the dispatcher wrote, in order
+		answers   []string                              // "question → answer"
 		reads     int
 		edits     int
 		edited    []string
@@ -152,6 +153,7 @@ func reviewSession(id, title string, diff *sessionv1.DiffStat, evs []*sessionv1.
 				qi.Texts = append(qi.Texts, it.Text)
 			}
 			questions[qi.QuestionId] = qi
+			askedIn[qi.QuestionId] = cur
 			in.Questions = append(in.Questions, qi)
 		case *sessionv1.SessionEvent_QuestionResolved:
 			r := k.QuestionResolved
@@ -164,15 +166,25 @@ func reviewSession(id, title string, diff *sessionv1.DiffStat, evs []*sessionv1.
 				qi.WaitMs = uint64(w.Milliseconds())
 			}
 			in.QuestionWaitMs += qi.WaitMs
-			for _, t := range in.Turns {
-				if t.Turn == qi.Turn {
-					t.QuestionWaitMs += qi.WaitMs
-				}
+			// Its turn, not its number: a rollback numbers turns again.
+			if t := askedIn[r.QuestionId]; t != nil {
+				t.QuestionWaitMs += qi.WaitMs
 			}
 			for i, a := range r.Answers {
 				text := strings.TrimSpace(strings.Join(append(slices.Clone(a.Selected), a.Text), " "))
 				if text != "" && i < len(qi.Texts) {
 					answers = append(answers, qi.Texts[i]+" → "+text)
+				}
+			}
+		case *sessionv1.SessionEvent_RolledBack:
+			// Turns turn+1 to last_turn, the latest ones of those numbers,
+			// are discarded.
+			rb := k.RolledBack
+			in.Rollbacks++
+			for i := len(in.Turns) - 1; i >= 0; i-- {
+				if t := in.Turns[i]; t.Turn > rb.Turn && t.Turn <= rb.LastTurn && !t.RolledBack {
+					t.RolledBack = true
+					in.DiscardedTurns++
 				}
 			}
 		case *sessionv1.SessionEvent_Error:
@@ -273,6 +285,9 @@ func findings(in *sessionv1.SessionInsights, messages, reads, edits int) []*sess
 	if in.Stalls > 0 {
 		add("stalled", "The agent went quiet for too long %d time(s); ask for small steps that each report progress, and no long silent commands.", in.Stalls)
 	}
+	if in.Rollbacks > 0 {
+		add("rolled_back", "The work was rolled back %d time(s), discarding %d turn(s); say which approach not to take, and to check in before large changes.", in.Rollbacks, in.DiscardedTurns)
+	}
 	if in.Interrupts > 0 {
 		add("interrupted", "Someone stopped the work %d time(s); say where the work stops and what is out of scope.", in.Interrupts)
 	}
@@ -330,6 +345,9 @@ func suggestPrompt(in *sessionv1.SessionInsights, prompts, answers, edited []str
 	if has("stalled") {
 		rules = append(rules, "work in small steps and report after each; no command that runs for minutes without output")
 	}
+	if has("rolled_back") {
+		rules = append(rules, "<the approach that was rolled back, not to take again>; check in before large changes")
+	}
 	if has("interrupted") {
 		rules = append(rules, "<where to stop, and what is out of scope>")
 	}
@@ -359,6 +377,7 @@ func insightsMarkdown(in *sessionv1.SessionInsights, title string) string {
 	p("| Failures | %s |\n", cmp.Or(strings.Join(fails, ", "), "none"))
 	p("| Retries | %d by the machine, %d turn(s) asked again |\n", in.AutoRetries, in.RetriedTurns)
 	p("| Stalls / interrupts | %d / %d |\n", in.Stalls, in.Interrupts)
+	p("| Rollbacks | %d (%d turn(s) discarded) |\n", in.Rollbacks, in.DiscardedTurns)
 	p("| Questions | %d, waited %s |\n", len(in.Questions), ms(in.QuestionWaitMs))
 	var tools []string
 	for _, t := range in.Tools {
@@ -380,6 +399,9 @@ func insightsMarkdown(in *sessionv1.SessionInsights, title string) string {
 				result = "running"
 			case t.Failure != sessionv1.FailureKind_FAILURE_KIND_UNSPECIFIED:
 				result = failureName(t.Failure)
+			}
+			if t.RolledBack {
+				result += ", rolled back"
 			}
 			tools := fmt.Sprint(t.ToolCalls)
 			if t.ToolErrors > 0 {
