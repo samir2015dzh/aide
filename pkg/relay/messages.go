@@ -158,6 +158,15 @@ func (m *messageService) Contacts(ctx context.Context, _ *relayv1.ContactsReques
 		return nil, err
 	}
 	res := &relayv1.ContactsResponse{Contacts: contacts, RootChain: t.trust.RootChain()}
+	listed := map[string]bool{}
+	for _, c := range contacts {
+		listed[contactInbox(c)] = true
+	}
+	for _, p := range m.s.presence(t) {
+		if listed[p.Inbox] { // the contacts' only
+			res.Presence = append(res.Presence, p)
+		}
+	}
 	if d := m.s.doorbellService(); d != nil {
 		woken, err := d.Woken(ctx, t.ownerID)
 		if err != nil {
@@ -623,4 +632,17 @@ func (m *memoryMessages) Cards(ownerID string) (map[string]StoredCard, error) {
 		out[k] = v
 	}
 	return out, nil
+}
+
+// contactInbox is the inbox a contact is for, read from its card or machine
+// cert (contacts verified them).
+func contactInbox(c *identityv1.Contact) string {
+	if c.GetCard() != nil {
+		card := &identityv1.ContactCard{}
+		identity.Unverified(c.Card, card)
+		return card.ClientId
+	}
+	mc := &identityv1.MachineCert{}
+	identity.Unverified(c.GetMachineCert(), mc)
+	return mc.MachineId
 }

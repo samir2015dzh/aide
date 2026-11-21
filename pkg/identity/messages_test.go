@@ -70,6 +70,15 @@ func TestContacts(t *testing.T) {
 	if err != nil || info.Name != "bot" || info.Kind != "cli" || info.TakesMessages != "poll" || len(info.InboxKey) != 32 {
 		t.Fatalf("contact: %+v %v", info, err)
 	}
+	if info.Tier != "pull" {
+		t.Fatalf("tier of a polled inbox: %q", info.Tier)
+	}
+	// A registration from before tiers: its tier is worked out from how it
+	// takes messages, as one signed now says it.
+	old, _ := Sign(&identityv1.InboxRegistration{OwnerId: o.ownerID, Inbox: ClientID(MarshalPublicKey(client.Public())), InboxPublicKey: inboxPub, TakesMessages: "hook"}, client)
+	if info, err := trust.VerifyContact(&identityv1.Contact{Card: card, DeviceCert: dc, Registration: old}); err != nil || info.Tier != "turn" {
+		t.Fatalf("a registration from before tiers: %+v %v", info, err)
+	}
 
 	// A card signed by a key no trusted device holds (the relay's own).
 	stranger, _ := GenerateKey()
@@ -93,5 +102,14 @@ func TestContacts(t *testing.T) {
 	elsewhere, _ := SignRegistration(client, o.ownerID, "c_other", inboxPub, "poll")
 	if _, err := trust.VerifyContact(&identityv1.Contact{Card: card, DeviceCert: dc, Registration: elsewhere}); err == nil {
 		t.Fatal("a registration for another inbox verified")
+	}
+}
+
+// When a message reaches an inbox, by how it takes them (docs/agent-messages.md §15).
+func TestTierOf(t *testing.T) {
+	for takes, want := range map[string]string{"session": "push", "wait": "push", "webhook": "push", "hook": "turn", "poll": "pull", "": "pull"} {
+		if got := TierOf(takes); got != want {
+			t.Errorf("TierOf(%q) = %q, want %q", takes, got, want)
+		}
 	}
 }

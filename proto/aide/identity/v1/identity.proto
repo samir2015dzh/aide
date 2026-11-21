@@ -392,6 +392,12 @@ message InboxRegistration {
   // from an agent, so senders don't write to it.
   string takes_messages = 4;
   google.protobuf.Timestamp issued_at = 5;
+  // When a message reaches the one it is for (docs/agent-messages.md §15):
+  // "push", it is woken or its session takes it at once; "turn", in its
+  // next turn; "pull", when it next checks its inbox. Set from
+  // takes_messages (identity.TierOf); a registration from before has none,
+  // and readers work it out the same way.
+  string tier = 6;
 }
 
 // Contact is one of the owner's inboxes as a sender checks it: an agent's
