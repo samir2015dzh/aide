@@ -48,6 +48,9 @@ type Message struct {
 	// Ring is the doorbell the sender asked to ring: a name under the inbox
 	// with one, "" for the inbox itself; nil for none (SealedMessage.ring).
 	Ring *string
+	// Sender is who sent it (the caller of Send), "" for one kept from
+	// before senders were: a message id is its sender's.
+	Sender string
 }
 
 // MessageState is what became of a message: "waiting", "taken", "handled",
@@ -55,6 +58,8 @@ type Message struct {
 type MessageState struct {
 	State string
 	At    time.Time
+	// Sender is who sent it ("" when not known).
+	Sender string
 }
 
 // MessageStore keeps the post office. A Backend may implement it (the
@@ -64,7 +69,8 @@ type MessageStore interface {
 	// WaitingMessages are an inbox's unacknowledged messages, oldest first.
 	WaitingMessages(ownerID, inbox string) ([]Message, error)
 	// SetMessageStates records what became of messages of an inbox:
-	// "taken" keeps a message waiting, any other state drops its body.
+	// "taken" keeps a message waiting, any other state drops its body; a
+	// "handed" one may still be acknowledged handled, held or refused.
 	SetMessageStates(ownerID, inbox string, ids []string, state string, at time.Time) error
 	MessageStates(ownerID string, ids []string) (map[string]MessageState, error)
 	// ExpireMessages drops bodies past their expiry (state "expired") and
@@ -256,7 +262,12 @@ func (m *messageService) Send(ctx context.Context, req *relayv1.SendSealedReques
 	s.maybeExpire()
 	ms := s.messageStore()
 	if st, err := ms.MessageStates(t.ownerID, []string{sm.MessageId}); err == nil && st[sm.MessageId].State != "" {
-		return &relayv1.SendSealedResponse{}, nil // sent again: the post office has it
+		// A message id is its sender's (docs/agent-messages.md §15): sent
+		// again by it, the post office has it; another's is a conflict.
+		if from := st[sm.MessageId].Sender; from != "" && from != p.subject.ID {
+			return nil, errf(connect.CodeAlreadyExists, "conflict: another sender's message has this id")
+		}
+		return &relayv1.SendSealedResponse{}, nil
 	}
 	if !s.messageLimit.Allow(t.ownerID+"/"+p.subject.ID) || !s.pairLimit.Allow(t.ownerID+"/"+p.subject.ID+"/"+sm.Inbox) {
 		return nil, errf(connect.CodeResourceExhausted, "too many messages: wait a while, or put them in one")
@@ -273,7 +284,7 @@ func (m *messageService) Send(ctx context.Context, req *relayv1.SendSealedReques
 		return nil, connect.NewError(connect.CodeResourceExhausted, errInboxFull)
 	}
 	now := time.Now()
-	if err := ms.PutMessage(t.ownerID, Message{ID: sm.MessageId, Inbox: sm.Inbox, Sealed: sm.Sealed, ReceivedAt: now, ExpiresAt: now.Add(MessageRetention), Ring: sm.Ring}); err != nil {
+	if err := ms.PutMessage(t.ownerID, Message{ID: sm.MessageId, Inbox: sm.Inbox, Sealed: sm.Sealed, ReceivedAt: now, ExpiresAt: now.Add(MessageRetention), Ring: sm.Ring, Sender: p.subject.ID}); err != nil {
 		return nil, err
 	}
 	s.nudgeInbox(t, sm.Inbox, sm.Ring)
@@ -349,10 +360,10 @@ func (m *messageService) Ack(ctx context.Context, req *relayv1.AckMessagesReques
 	byOutcome := map[string][]string{}
 	for _, a := range req.Acks {
 		switch a.Outcome {
-		case "handled", "held", "refused":
+		case "handed", "handled", "held", "refused":
 			byOutcome[a.Outcome] = append(byOutcome[a.Outcome], a.MessageId)
 		default:
-			return nil, errf(connect.CodeInvalidArgument, "an outcome is handled, held or refused")
+			return nil, errf(connect.CodeInvalidArgument, "an outcome is handed, handled, held or refused")
 		}
 	}
 	now := time.Now()
@@ -508,7 +519,7 @@ func (m *memoryMessages) PutMessage(ownerID string, msg Message) error {
 	defer m.mu.Unlock()
 	m.init(ownerID)
 	if m.msgs[ownerID][msg.ID] == nil { // sent again: the first one stays
-		m.msgs[ownerID][msg.ID] = &memMessage{Message: msg, state: MessageState{State: "waiting", At: msg.ReceivedAt}}
+		m.msgs[ownerID][msg.ID] = &memMessage{Message: msg, state: MessageState{State: "waiting", At: msg.ReceivedAt, Sender: msg.Sender}}
 	}
 	return nil
 }
@@ -546,10 +557,10 @@ func (m *memoryMessages) SetMessageStates(ownerID, inbox string, ids []string, s
 	defer m.mu.Unlock()
 	for _, id := range ids {
 		msg := m.msgs[ownerID][id]
-		if msg == nil || msg.Inbox != inbox || msg.Sealed == nil {
+		if msg == nil || msg.Inbox != inbox || (msg.Sealed == nil && (msg.state.State != "handed" || state == "taken")) {
 			continue
 		}
-		msg.state = MessageState{State: state, At: at}
+		msg.state = MessageState{State: state, At: at, Sender: msg.Sender}
 		if state != "taken" {
 			msg.Sealed = nil
 		}

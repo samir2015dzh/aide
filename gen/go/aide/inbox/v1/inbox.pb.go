@@ -97,8 +97,19 @@ type Message struct {
 	// coordinator) and on its replies (from the coordinator or provisioner
 	// to the session): docs/workspace-requests.md.
 	WorkspaceRequest *v1.WorkspaceRequest `protobuf:"bytes,9,opt,name=workspace_request,json=workspaceRequest,proto3" json:"workspace_request,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// For information only (docs/agent-messages.md §15): it rings no
+	// doorbell and starts no turn; the recipient takes it at its next pause
+	// (the next turn, the next hook). A turn's news is never one.
+	Fyi bool `protobuf:"varint,10,opt,name=fyi,proto3" json:"fyi,omitempty"`
+	// The chain it belongs to: a reply, or a message written because of
+	// another, keeps its trace and counts one more hop; anything else starts
+	// a chain of its own at hop 1. The recipient holds a chain gone too far
+	// (more than 4 hops, or the same chain through it more than 3 times an
+	// hour) for the owner, and the owner's own messages start chains anew.
+	TraceId       string `protobuf:"bytes,11,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Hop           uint32 `protobuf:"varint,12,opt,name=hop,proto3" json:"hop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -192,6 +203,27 @@ func (x *Message) GetWorkspaceRequest() *v1.WorkspaceRequest {
 		return x.WorkspaceRequest
 	}
 	return nil
+}
+
+func (x *Message) GetFyi() bool {
+	if x != nil {
+		return x.Fyi
+	}
+	return false
+}
+
+func (x *Message) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *Message) GetHop() uint32 {
+	if x != nil {
+		return x.Hop
+	}
+	return 0
 }
 
 // SessionNews tells whoever asked for a turn how it went: it ended, it
@@ -401,7 +433,7 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\x19aide/inbox/v1/inbox.proto\x12\raide.inbox.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1faide/identity/v1/identity.proto\x1a\x1daide/session/v1/session.proto\"9\n" +
 	"\aAddress\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x18\n" +
-	"\asession\x18\x02 \x01(\tR\asession\"\x8e\x03\n" +
+	"\asession\x18\x02 \x01(\tR\asession\"\xcd\x03\n" +
 	"\aMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12*\n" +
@@ -412,7 +444,11 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\asubject\x18\x06 \x01(\tR\asubject\x12\x12\n" +
 	"\x04text\x18\a \x01(\tR\x04text\x12=\n" +
 	"\fsession_news\x18\b \x01(\v2\x1a.aide.inbox.v1.SessionNewsR\vsessionNews\x12N\n" +
-	"\x11workspace_request\x18\t \x01(\v2!.aide.session.v1.WorkspaceRequestR\x10workspaceRequest\"\xc7\x03\n" +
+	"\x11workspace_request\x18\t \x01(\v2!.aide.session.v1.WorkspaceRequestR\x10workspaceRequest\x12\x10\n" +
+	"\x03fyi\x18\n" +
+	" \x01(\bR\x03fyi\x12\x19\n" +
+	"\btrace_id\x18\v \x01(\tR\atraceId\x12\x10\n" +
+	"\x03hop\x18\f \x01(\rR\x03hop\"\xc7\x03\n" +
 	"\vSessionNews\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1d\n" +
 	"\n" +

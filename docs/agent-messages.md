@@ -765,3 +765,38 @@ end.
   answered a question, or DSH has it) or `queued` (at the post office, or
   waiting for a turn of its own); its `tier`; and `expect`, in words, when
   it will be read. `delivered` and `expect` stay as they were.
+
+### 15.1 States, retries, fyi and chains (batch 2)
+
+- **`handed`.** A message in its agent's hands, not yet done with: aided
+  acknowledges one from the post office `handed` once a session's turn
+  took it (it started, joined or waits for a turn), and `handled` when
+  that session's next turn ends. The post office keeps no body for a
+  handed message, and takes `handled`, `held` or `refused` for it after.
+  (A message waiting behind another agent's turn is acknowledged handled
+  when the turn under way ends: a little early, kept simple.)
+- **`replied`** is the sender's alone: the post office never opens a
+  message, so only the sender's software, seeing a reply come
+  (`in_reply_to`), can tell. `message status` shows it in place of the
+  post office's state.
+- **A message id is its sender's.** The post office keeps who sent each
+  message; the same id sent again by the same sender is the same message
+  (nothing new is kept), and by another a conflict (`already_exists`,
+  "conflict"). The design's "same ciphertext digest" is not used: a
+  message sealed again has another ciphertext, so retries would conflict.
+  `message send --idempotency-key` (hidden; the MCP gateway's retries)
+  gives the same id for the same key and sender each time, and a session
+  that has a message already answers `delivered: already`.
+- **`fyi`** (`message send --fyi`): for information only. It rings no
+  doorbell; a session takes it into its next turn, whoever's, and never
+  starts a turn or answers a question with it (it joins a turn under way
+  only when that turn is its sender's). A turn's news is never fyi. What
+  waits is in aided's memory: a restart loses it.
+- **Chains.** Each message carries `trace_id` and `hop`: a reply, or what
+  a session writes after taking a message, goes on with that message's
+  chain one hop more; anything else starts a chain at hop 1. A recipient
+  (aided for its sessions, the CLI for its agent) holds for the owner a
+  message beyond hop 4, or one whose chain reaches the same endpoint a
+  fourth time within an hour (`internal/msgchain`), and tells the sender
+  it is held. The hop is the sender's say: it binds the owner's own
+  agents; the post office's per-pair limits stay the floor (§5).

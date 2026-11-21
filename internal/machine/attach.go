@@ -46,6 +46,8 @@ type message struct {
 	// are what its turn records of the others.
 	quiet  bool
 	answer string
+	// fyi: for information only (inbox Message.fyi): it starts no turn.
+	fyi    bool
 	events []*sessionv1.SessionEvent
 }
 

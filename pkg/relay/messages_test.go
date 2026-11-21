@@ -46,6 +46,23 @@ func TestMessageStores(t *testing.T) {
 			if states["msg_a"].State != "handled" || states["msg_b"].State != "waiting" || states["msg_z"].State != "" {
 				t.Fatalf("states: %+v", states)
 			}
+			// Handed to its agent: out of the post office, then handled
+			// (docs/agent-messages.md §15). Its sender is kept.
+			if err := ms.PutMessage(owner, Message{ID: "msg_h", Inbox: "c_1", Sealed: []byte("h"), ReceivedAt: t0, ExpiresAt: t0.Add(MessageRetention), Sender: "c_9"}); err != nil {
+				t.Fatal(err)
+			}
+			ms.SetMessageStates(owner, "c_1", []string{"msg_h"}, "handed", t0)
+			if w, _ := ms.WaitingMessages(owner, "c_1"); len(w) != 1 || w[0].ID != "msg_b" {
+				t.Fatalf("a handed message must not wait: %+v", w)
+			}
+			ms.SetMessageStates(owner, "c_1", []string{"msg_h"}, "taken", t0) // never back
+			if states, _ := ms.MessageStates(owner, []string{"msg_h"}); states["msg_h"].State != "handed" || states["msg_h"].Sender != "c_9" {
+				t.Fatalf("handed: %+v", states)
+			}
+			ms.SetMessageStates(owner, "c_1", []string{"msg_h"}, "handled", t0)
+			if states, _ := ms.MessageStates(owner, []string{"msg_h"}); states["msg_h"].State != "handled" {
+				t.Fatalf("handed, then handled: %+v", states)
+			}
 			// Expired after the retention, forgotten a retention later.
 			ms.ExpireMessages(t0.Add(MessageRetention + 2*time.Second))
 			if w, _ := ms.WaitingMessages(owner, "c_1"); len(w) != 0 {

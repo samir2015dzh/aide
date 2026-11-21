@@ -216,6 +216,9 @@ func (n *Machine) sendMessage(m *inboxv1.Message) error {
 	if conn == nil || cert == nil {
 		return errors.New("not connected")
 	}
+	if m.TraceId == "" {
+		m.TraceId, m.Hop = n.chainFrom(m.GetFrom().GetSession())
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	ms, err := n.messageService(conn)

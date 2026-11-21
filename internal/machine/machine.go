@@ -29,6 +29,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/flock"
 	"github.com/samir2015dzh/aide/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/msgchain"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
@@ -138,6 +139,12 @@ type Machine struct {
 	// hands over again is not delivered twice.
 	lettersSeen     map[string]time.Time
 	lettersPrunedAt time.Time
+	// The chains of messages that reached the sessions, the last one each
+	// session took (what it writes goes on with), and the messages handed
+	// to each session's turn, acknowledged handled once it ends (chains.go).
+	chains      msgchain.Guard
+	lastChain   map[string]chainAt
+	handedTurns map[string][]string
 	// inboxWake tells the inbox's follower to try the messages it holds
 	// again: the machine resumed.
 	inboxWake chan struct{}
@@ -255,6 +262,9 @@ func Open(cfg Config) (*Machine, error) {
 	n.sessions.notice = func(s noticeSession, e *sessionv1.SessionEvent) {
 		n.sessionNotice(s, e)
 		n.sessionNews(s, e)
+		if _, ok := e.Kind.(*sessionv1.SessionEvent_TurnCompleted); ok {
+			n.turnEnded(s.id)
+		}
 	}
 	n.sessions.registerMetrics()
 	return n, nil

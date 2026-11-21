@@ -17,6 +17,7 @@ import (
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/msgchain"
 	"github.com/samir2015dzh/aide/pkg/identity"
 	"github.com/samir2015dzh/aide/pkg/transport"
 )
@@ -43,6 +44,9 @@ func (s *sessionService) DeliverMessage(ctx context.Context, req *sessionv1.Deli
 	}
 	if err := s.n.checkLetter(m, p.ClientID, req.SessionId); err != nil {
 		return nil, err
+	}
+	if why := s.n.chainCheck(m); why != "" {
+		return nil, cerr(connect.CodeFailedPrecondition, "held for the owner: %s", why)
 	}
 	sess, delivered, err := s.n.deliverLetter(ctx, p, m, p.Grant.ClientLabel, req.Attachments)
 	if err != nil {
@@ -117,11 +121,12 @@ func (n *Machine) deliverLetter(ctx context.Context, p *Principal, m *inboxv1.Me
 		}
 	}
 	rec := &sessionv1.MessageReceived{MessageId: m.MessageId, From: inboxAddress(m.From), FromName: name, Text: m.Text, InReplyTo: m.InReplyTo}
-	sess, delivered, err := n.sessions.Deliver(ctx, p, m.To.Session, m.From.GetSession(), text, rec, atts)
+	sess, delivered, err := n.sessions.Deliver(ctx, p, m.To.Session, m.From.GetSession(), text, rec, atts, m.Fyi)
 	if err != nil {
 		unsee()
 		return nil, "", err
 	}
+	n.tookChain(m)
 	if reply != nil {
 		n.wsReqs.sessions[m.To.Session][reply.RequestId] = reply
 		n.sessions.record(m.To.Session, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_WorkspaceRequest{WorkspaceRequest: reply}})
@@ -294,6 +299,11 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 	if g == nil {
 		return bounce("your grant doesn't cover this machine")
 	}
+	if why := n.chainCheck(m); why != "" {
+		n.log.Info("a message held for the owner", "message", m.MessageId, "session", m.To.Session, "why", why)
+		n.tell(m, "Held", fmt.Sprintf("Your message %s to %s is held for the owner: %s", m.MessageId, inboxAddress(m.To), why))
+		return "held"
+	}
 	if _, _, err := n.deliverLetter(ctx, &Principal{Kind: PrincipalClient, ClientID: g.ClientId, Grant: g}, m, info.Name, nil); err != nil {
 		switch connect.CodeOf(err) {
 		case connect.CodeAlreadyExists:
@@ -303,18 +313,24 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 		}
 		return bounce(err.Error())
 	}
-	return "handled"
+	n.handedToTurn(m.To.Session, m.MessageId)
+	return "handed" // handled once its turn ends (turnEnded)
 }
 
 // bounce tells the sender of a message why it couldn't be delivered.
 func (n *Machine) bounce(m *inboxv1.Message, why string) {
+	n.tell(m, "Not delivered", fmt.Sprintf("Your message %s to %s could not be delivered: %s", m.MessageId, inboxAddress(m.To), why))
+}
+
+// tell writes the agent that sent m what became of it.
+func (n *Machine) tell(m *inboxv1.Message, subject, text string) {
 	from := m.GetFrom()
 	if !strings.HasPrefix(from.GetInbox(), "c_") {
 		return
 	}
+	trace, hop := msgchain.Next(m.TraceId, m.Hop)
 	reply := &inboxv1.Message{MessageId: "msg_" + strings.ToLower(ulid.Make().String()), From: &inboxv1.Address{Inbox: n.machineID, Session: m.GetTo().GetSession()},
-		To: from, SentAt: timestamppb.Now(), InReplyTo: m.MessageId, Subject: "Not delivered",
-		Text: fmt.Sprintf("Your message %s to %s could not be delivered: %s", m.MessageId, inboxAddress(m.To), why)}
+		To: from, SentAt: timestamppb.Now(), InReplyTo: m.MessageId, Subject: subject, Text: text, TraceId: trace, Hop: hop}
 	go func() {
 		for attempt := range 3 {
 			if err := n.sendMessage(reply); err == nil {

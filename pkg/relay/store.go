@@ -108,6 +108,8 @@ CREATE TABLE personas (
   persona BLOB NOT NULL,
   created_at INTEGER NOT NULL
 );
+`, `
+ALTER TABLE messages ADD COLUMN sender TEXT;
 `}
 
 // Store is the Backend of a self-hosted relay: one owner, SQLite. Beside
@@ -405,8 +407,8 @@ func (s *Store) DeletePushTarget(_, deviceKeyID string) error {
 // keep their order of arrival.
 
 func (s *Store) PutMessage(_ string, m Message) error {
-	_, err := s.db.Exec(`INSERT INTO messages (id, inbox, sealed, state, state_at, received_at, expires_at, ring) VALUES (?, ?, ?, 'waiting', ?, ?, ?, ?)
-ON CONFLICT(id) DO NOTHING`, m.ID, m.Inbox, m.Sealed, m.ReceivedAt.UnixNano(), m.ReceivedAt.UnixNano(), m.ExpiresAt.UnixNano(), m.Ring)
+	_, err := s.db.Exec(`INSERT INTO messages (id, inbox, sealed, state, state_at, received_at, expires_at, ring, sender) VALUES (?, ?, ?, 'waiting', ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO NOTHING`, m.ID, m.Inbox, m.Sealed, m.ReceivedAt.UnixNano(), m.ReceivedAt.UnixNano(), m.ExpiresAt.UnixNano(), m.Ring, m.Sender)
 	return err
 }
 
@@ -435,7 +437,9 @@ func (s *Store) SetMessageStates(_, inbox string, ids []string, state string, at
 		return err
 	}
 	defer tx.Rollback()
-	q := `UPDATE messages SET state = ?, state_at = ?, sealed = NULL WHERE id = ? AND inbox = ? AND sealed IS NOT NULL`
+	// A message handed to its agent has left the post office, and is
+	// acknowledged handled (or held, refused) after.
+	q := `UPDATE messages SET state = ?, state_at = ?, sealed = NULL WHERE id = ? AND inbox = ? AND (sealed IS NOT NULL OR state = 'handed')`
 	if state == "taken" {
 		q = `UPDATE messages SET state = ?, state_at = ? WHERE id = ? AND inbox = ? AND sealed IS NOT NULL`
 	}
@@ -450,16 +454,16 @@ func (s *Store) SetMessageStates(_, inbox string, ids []string, state string, at
 func (s *Store) MessageStates(_ string, ids []string) (map[string]MessageState, error) {
 	out := map[string]MessageState{}
 	for _, id := range ids {
-		var st string
+		var st, sender string
 		var at int64
-		err := s.db.QueryRow(`SELECT state, state_at FROM messages WHERE id = ?`, id).Scan(&st, &at)
+		err := s.db.QueryRow(`SELECT state, state_at, COALESCE(sender, '') FROM messages WHERE id = ?`, id).Scan(&st, &at, &sender)
 		if errors.Is(err, sql.ErrNoRows) {
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
-		out[id] = MessageState{State: st, At: time.Unix(0, at)}
+		out[id] = MessageState{State: st, At: time.Unix(0, at), Sender: sender}
 	}
 	return out, nil
 }
