@@ -107,17 +107,22 @@ type Machine struct {
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
 	hidden      map[string]hiddenAgent   // the coding agents the owner hid (hiddenagents.go)
-	checked     time.Time                // when the last check of all of them ended
-	checking    chan struct{}            // closed when the check under way ends; nil when none is
-	pending     map[string]bool          // the agents the check under way has not finished yet
-	defaults    map[string]*identityv1.AgentDefaults
-	tunnels     map[*tunnel]struct{}
-	connected   bool
-	refused     bool       // the relay refused admission when last connecting
-	erased      bool       // the owner's erase order came (SelfErase)
-	goneSaid    bool       // the log said the owner is gone and how to pair again
-	clientsMu   sync.Mutex // rememberClient
-	adminSeen   map[string]time.Time
+	// The coding agents the owner paused, when each last resumed by itself,
+	// and the timers that resume them (pausedagents.go).
+	pausedAgents map[string]pausedAgent
+	resumed      map[string]time.Time
+	resumeTimers map[string]*time.Timer
+	checked      time.Time       // when the last check of all of them ended
+	checking     chan struct{}   // closed when the check under way ends; nil when none is
+	pending      map[string]bool // the agents the check under way has not finished yet
+	defaults     map[string]*identityv1.AgentDefaults
+	tunnels      map[*tunnel]struct{}
+	connected    bool
+	refused      bool       // the relay refused admission when last connecting
+	erased       bool       // the owner's erase order came (SelfErase)
+	goneSaid     bool       // the log said the owner is gone and how to pair again
+	clientsMu    sync.Mutex // rememberClient
+	adminSeen    map[string]time.Time
 	// grantSeen caches the highest version of each grant recorded in the
 	// store, so only first sight and upgrades touch the database.
 	grantSeen  map[string]uint64
@@ -235,7 +240,7 @@ func Open(cfg Config) (*Machine, error) {
 	ws.none = cfg.WorkspaceMode == "none"
 	n.sessions = &Sessions{st: st, ws: ws, audit: n.audit, log: n.log,
 		machineID: n.machineID, dataDir: cfg.DataDir, provider: n.provider, info: n.providerInfo, limits: cfg.Limits,
-		paused: n.isPaused, defaults: n.agentDefaults, outOfProcesses: n.outOfProcesses, live: map[string]*live{},
+		paused: n.isPaused, agentPaused: n.agentPaused, defaults: n.agentDefaults, outOfProcesses: n.outOfProcesses, live: map[string]*live{},
 		memoryLow: resident.MemoryLow}
 	n.sessions.w = newWriter(st, n.log, n.sessions.deliver, n.sessions.changed)
 	n.sessions.mcp = n.mcpServers
@@ -258,6 +263,7 @@ func Open(cfg Config) (*Machine, error) {
 func (n *Machine) loadState() error {
 	n.loadDefaults()
 	n.loadHiddenAgents() // the machine's own, logged in or not
+	n.loadPausedAgents()
 	was, _ := n.st.Get(kHer)
 	n.herData = len(was) > 0 && herHomeExists()
 	n.forgetHer() // whoever the owner is, or none yet
@@ -298,6 +304,7 @@ func (n *Machine) loadState() error {
 }
 
 func (n *Machine) Close() error {
+	n.stopResumeTimers()
 	n.sessions.w.close()
 	err := n.st.Close()
 	n.audit.Close()
@@ -512,6 +519,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 			a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version,
 				LoggedIn: i.LoggedIn, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary,
 				Hidden: n.isHiddenLocked(name)}
+			a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 			n.agentModels(a, i)
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
@@ -525,6 +533,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		i, ok := n.infos[name]
 		a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version, LoggedIn: i.LoggedIn, Detail: i.Detail,
 			Checking: n.pending[name] || !ok, Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary, Custom: true, Hidden: n.isHiddenLocked(name)}
+		a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 		n.agentModels(a, i)
 		st.Agents = append(st.Agents, a)
 	}

@@ -207,6 +207,7 @@ message AdminCommand {
     SetHer set_her = 16;
     SetWorkspaceRoots set_workspace_roots = 19;
     SetAgentHidden set_agent_hidden = 20;
+    SetAgentPaused set_agent_paused = 21;
   }
   reserved 12, 17, 18;
   reserved "rename_machine", "set_her_assistant_mode", "set_her_command_connector";
@@ -238,6 +239,19 @@ message SetAgentHidden {
   // "claude" | "codex" | an ACP agent ("copilot", "deepseek", ...)
   string agent = 1;
   bool hidden = 2;
+}
+
+// SetAgentPaused pauses a coding agent on the machine, or resumes it: a
+// setting, as hiding one is. While paused, no new session starts with it
+// there (a plan's usage used up, say); its sessions under way run on, and
+// nothing of it is removed.
+message SetAgentPaused {
+  // "claude" | "codex" | an ACP agent ("copilot", "deepseek", ...)
+  string agent = 1;
+  bool paused = 2;
+  // With paused: when it resumes by itself (a plan's usage reset), else
+  // only the owner resumes it. In the future.
+  google.protobuf.Timestamp resume_at = 3;
 }
 
 // SetWorkspaceRoots sets the folders the machine's owner devices may browse,

@@ -83,6 +83,8 @@ service LocalService {
   rpc CheckAgents(CheckAgentsRequest) returns (CheckAgentsResponse);
   // Hides a coding agent a machine lists, or shows it again (SetAgentHidden).
   rpc SetAgentHidden(SetAgentHiddenRequest) returns (SetAgentHiddenResponse);
+  // Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
+  rpc SetAgentPaused(SetAgentPausedRequest) returns (SetAgentPausedResponse);
   // A machine's git repositories under its home folder, for Add a Project.
   rpc ListMachineRepos(ListMachineReposRequest) returns (ListMachineReposResponse);
   // The folders in one of a machine's folders, for Add a Project.
@@ -656,6 +658,16 @@ message SetAgentHiddenRequest {
 }
 
 message SetAgentHiddenResponse {}
+
+message SetAgentPausedRequest {
+  string machine_id = 1;
+  string agent = 2;
+  bool paused = 3;
+  // With paused: when it resumes by itself; unset: when the owner resumes it.
+  google.protobuf.Timestamp resume_at = 4;
+}
+
+message SetAgentPausedResponse {}
 
 message CheckAgentsResponse {}
 

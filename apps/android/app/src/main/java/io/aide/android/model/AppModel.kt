@@ -340,6 +340,16 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /** Hides a coding agent a machine lists (one the owner doesn't trust, as on the desktop), or shows it again. */
+    suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
+        report { api!!.setAgentHidden(machineId, agent, hidden) }
+    }
+
+    /** Pauses a coding agent on a machine, or resumes it; resumeAt (RFC 3339), with paused: when it resumes by itself. */
+    suspend fun setAgentPaused(machineId: String, agent: String, paused: Boolean, resumeAt: String? = null) {
+        report { api!!.setAgentPaused(machineId, agent, paused, resumeAt) }
+    }
+
     /**
      * Pulled down: the status and the latest page of sessions read again now, merged into what the Watch
      * holds; the Watch keeps them current after.

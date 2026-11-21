@@ -24,7 +24,9 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
   const mid = machine?.machineId ?? "";
   const agents = (machine?.status?.agents ?? []).filter((a) => a.available);
   const [agentChosen, setAgent] = useState(agentAsked);
-  const a = agents.find((x) => x.name === agentChosen) ?? agents[0];
+  // A paused agent is listed, but no new session starts with it (SetAgentPaused).
+  const usable = agents.filter((x) => !x.pause);
+  const a = usable.find((x) => x.name === agentChosen) ?? usable[0];
   const agent = a?.name ?? "";
   const projects = projectsFor(st.projects.filter((p) => p.machineId === mid), agent);
   const [fromRepo, setFromRepo] = useState(false);
@@ -114,11 +116,13 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               {agents.length ? (
                 <div className="seg" role="group" aria-label={t("newSession.agent")}>
                   {agents.map((x) => (
-                    <button type="button" key={x.name} className={x.name === agent ? "on" : ""} aria-pressed={x.name === agent} onClick={() => pickAgent(x.name)}>
+                    <button type="button" key={x.name} className={x.name === agent ? "on" : ""} aria-pressed={x.name === agent} disabled={!!x.pause} title={x.pause ? tf("prepare.paused") : undefined} onClick={() => pickAgent(x.name)}>
                       <AgentLogo agent={x.name} size={14} />
                       {codingAgentTitle(x.name)}
+                      {x.pause && <> · {tf("prepare.paused")}</>}
                     </button>
                   ))}
+                  {usable.length === 0 && <span className="sub">{tf("prepare.allPaused")}</span>}
                 </div>
               ) : (
                 <>

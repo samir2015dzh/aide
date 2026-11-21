@@ -3699,6 +3699,111 @@ func (*SetAgentHiddenResponse) Descriptor() ([]byte, []int) {
 	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{60}
 }
 
+type SetAgentPausedRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Agent     string                 `protobuf:"bytes,2,opt,name=agent,proto3" json:"agent,omitempty"`
+	Paused    bool                   `protobuf:"varint,3,opt,name=paused,proto3" json:"paused,omitempty"`
+	// With paused: when it resumes by itself; unset: when the owner resumes it.
+	ResumeAt      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=resume_at,json=resumeAt,proto3" json:"resume_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAgentPausedRequest) Reset() {
+	*x = SetAgentPausedRequest{}
+	mi := &file_aide_local_v1_local_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAgentPausedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAgentPausedRequest) ProtoMessage() {}
+
+func (x *SetAgentPausedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_local_v1_local_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAgentPausedRequest.ProtoReflect.Descriptor instead.
+func (*SetAgentPausedRequest) Descriptor() ([]byte, []int) {
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *SetAgentPausedRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *SetAgentPausedRequest) GetAgent() string {
+	if x != nil {
+		return x.Agent
+	}
+	return ""
+}
+
+func (x *SetAgentPausedRequest) GetPaused() bool {
+	if x != nil {
+		return x.Paused
+	}
+	return false
+}
+
+func (x *SetAgentPausedRequest) GetResumeAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ResumeAt
+	}
+	return nil
+}
+
+type SetAgentPausedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAgentPausedResponse) Reset() {
+	*x = SetAgentPausedResponse{}
+	mi := &file_aide_local_v1_local_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAgentPausedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAgentPausedResponse) ProtoMessage() {}
+
+func (x *SetAgentPausedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_local_v1_local_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAgentPausedResponse.ProtoReflect.Descriptor instead.
+func (*SetAgentPausedResponse) Descriptor() ([]byte, []int) {
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{62}
+}
+
 type CheckAgentsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -3707,7 +3812,7 @@ type CheckAgentsResponse struct {
 
 func (x *CheckAgentsResponse) Reset() {
 	*x = CheckAgentsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[61]
+	mi := &file_aide_local_v1_local_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3719,7 +3824,7 @@ func (x *CheckAgentsResponse) String() string {
 func (*CheckAgentsResponse) ProtoMessage() {}
 
 func (x *CheckAgentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[61]
+	mi := &file_aide_local_v1_local_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3732,7 +3837,7 @@ func (x *CheckAgentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckAgentsResponse.ProtoReflect.Descriptor instead.
 func (*CheckAgentsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{61}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{63}
 }
 
 type ListMachineReposRequest struct {
@@ -3744,7 +3849,7 @@ type ListMachineReposRequest struct {
 
 func (x *ListMachineReposRequest) Reset() {
 	*x = ListMachineReposRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[62]
+	mi := &file_aide_local_v1_local_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3756,7 +3861,7 @@ func (x *ListMachineReposRequest) String() string {
 func (*ListMachineReposRequest) ProtoMessage() {}
 
 func (x *ListMachineReposRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[62]
+	mi := &file_aide_local_v1_local_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3769,7 +3874,7 @@ func (x *ListMachineReposRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineReposRequest.ProtoReflect.Descriptor instead.
 func (*ListMachineReposRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{62}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListMachineReposRequest) GetMachineId() string {
@@ -3788,7 +3893,7 @@ type ListMachineReposResponse struct {
 
 func (x *ListMachineReposResponse) Reset() {
 	*x = ListMachineReposResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[63]
+	mi := &file_aide_local_v1_local_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3800,7 +3905,7 @@ func (x *ListMachineReposResponse) String() string {
 func (*ListMachineReposResponse) ProtoMessage() {}
 
 func (x *ListMachineReposResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[63]
+	mi := &file_aide_local_v1_local_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3813,7 +3918,7 @@ func (x *ListMachineReposResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineReposResponse.ProtoReflect.Descriptor instead.
 func (*ListMachineReposResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{63}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ListMachineReposResponse) GetRepos() []*v12.Repo {
@@ -3834,7 +3939,7 @@ type ListMachineFoldersRequest struct {
 
 func (x *ListMachineFoldersRequest) Reset() {
 	*x = ListMachineFoldersRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[64]
+	mi := &file_aide_local_v1_local_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3846,7 +3951,7 @@ func (x *ListMachineFoldersRequest) String() string {
 func (*ListMachineFoldersRequest) ProtoMessage() {}
 
 func (x *ListMachineFoldersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[64]
+	mi := &file_aide_local_v1_local_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3859,7 +3964,7 @@ func (x *ListMachineFoldersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineFoldersRequest.ProtoReflect.Descriptor instead.
 func (*ListMachineFoldersRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{64}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ListMachineFoldersRequest) GetMachineId() string {
@@ -3893,7 +3998,7 @@ type TestMachineAgentRequest struct {
 
 func (x *TestMachineAgentRequest) Reset() {
 	*x = TestMachineAgentRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[65]
+	mi := &file_aide_local_v1_local_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3905,7 +4010,7 @@ func (x *TestMachineAgentRequest) String() string {
 func (*TestMachineAgentRequest) ProtoMessage() {}
 
 func (x *TestMachineAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[65]
+	mi := &file_aide_local_v1_local_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3918,7 +4023,7 @@ func (x *TestMachineAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestMachineAgentRequest.ProtoReflect.Descriptor instead.
 func (*TestMachineAgentRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{65}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *TestMachineAgentRequest) GetMachineId() string {
@@ -3944,7 +4049,7 @@ type ListMachineCustomAgentsRequest struct {
 
 func (x *ListMachineCustomAgentsRequest) Reset() {
 	*x = ListMachineCustomAgentsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[66]
+	mi := &file_aide_local_v1_local_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3956,7 +4061,7 @@ func (x *ListMachineCustomAgentsRequest) String() string {
 func (*ListMachineCustomAgentsRequest) ProtoMessage() {}
 
 func (x *ListMachineCustomAgentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[66]
+	mi := &file_aide_local_v1_local_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3969,7 +4074,7 @@ func (x *ListMachineCustomAgentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMachineCustomAgentsRequest.ProtoReflect.Descriptor instead.
 func (*ListMachineCustomAgentsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{66}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ListMachineCustomAgentsRequest) GetMachineId() string {
@@ -3989,7 +4094,7 @@ type SaveMachineCustomAgentRequest struct {
 
 func (x *SaveMachineCustomAgentRequest) Reset() {
 	*x = SaveMachineCustomAgentRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[67]
+	mi := &file_aide_local_v1_local_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4001,7 +4106,7 @@ func (x *SaveMachineCustomAgentRequest) String() string {
 func (*SaveMachineCustomAgentRequest) ProtoMessage() {}
 
 func (x *SaveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[67]
+	mi := &file_aide_local_v1_local_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4014,7 +4119,7 @@ func (x *SaveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveMachineCustomAgentRequest.ProtoReflect.Descriptor instead.
 func (*SaveMachineCustomAgentRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{67}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *SaveMachineCustomAgentRequest) GetMachineId() string {
@@ -4041,7 +4146,7 @@ type RemoveMachineCustomAgentRequest struct {
 
 func (x *RemoveMachineCustomAgentRequest) Reset() {
 	*x = RemoveMachineCustomAgentRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[68]
+	mi := &file_aide_local_v1_local_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4053,7 +4158,7 @@ func (x *RemoveMachineCustomAgentRequest) String() string {
 func (*RemoveMachineCustomAgentRequest) ProtoMessage() {}
 
 func (x *RemoveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[68]
+	mi := &file_aide_local_v1_local_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4066,7 +4171,7 @@ func (x *RemoveMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMachineCustomAgentRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMachineCustomAgentRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{68}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *RemoveMachineCustomAgentRequest) GetMachineId() string {
@@ -4093,7 +4198,7 @@ type TestMachineCustomAgentRequest struct {
 
 func (x *TestMachineCustomAgentRequest) Reset() {
 	*x = TestMachineCustomAgentRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[69]
+	mi := &file_aide_local_v1_local_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4105,7 +4210,7 @@ func (x *TestMachineCustomAgentRequest) String() string {
 func (*TestMachineCustomAgentRequest) ProtoMessage() {}
 
 func (x *TestMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[69]
+	mi := &file_aide_local_v1_local_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4118,7 +4223,7 @@ func (x *TestMachineCustomAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestMachineCustomAgentRequest.ProtoReflect.Descriptor instead.
 func (*TestMachineCustomAgentRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{69}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *TestMachineCustomAgentRequest) GetMachineId() string {
@@ -4143,7 +4248,7 @@ type GetDiagnosticsRequest struct {
 
 func (x *GetDiagnosticsRequest) Reset() {
 	*x = GetDiagnosticsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[70]
+	mi := &file_aide_local_v1_local_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4155,7 +4260,7 @@ func (x *GetDiagnosticsRequest) String() string {
 func (*GetDiagnosticsRequest) ProtoMessage() {}
 
 func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[70]
+	mi := &file_aide_local_v1_local_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4168,7 +4273,7 @@ func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsRequest.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{70}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{72}
 }
 
 type GetDiagnosticsResponse struct {
@@ -4180,7 +4285,7 @@ type GetDiagnosticsResponse struct {
 
 func (x *GetDiagnosticsResponse) Reset() {
 	*x = GetDiagnosticsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[71]
+	mi := &file_aide_local_v1_local_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4192,7 +4297,7 @@ func (x *GetDiagnosticsResponse) String() string {
 func (*GetDiagnosticsResponse) ProtoMessage() {}
 
 func (x *GetDiagnosticsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[71]
+	mi := &file_aide_local_v1_local_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4205,7 +4310,7 @@ func (x *GetDiagnosticsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsResponse.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{71}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *GetDiagnosticsResponse) GetText() string {
@@ -4227,7 +4332,7 @@ type RemoveMachineRequest struct {
 
 func (x *RemoveMachineRequest) Reset() {
 	*x = RemoveMachineRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[72]
+	mi := &file_aide_local_v1_local_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4239,7 +4344,7 @@ func (x *RemoveMachineRequest) String() string {
 func (*RemoveMachineRequest) ProtoMessage() {}
 
 func (x *RemoveMachineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[72]
+	mi := &file_aide_local_v1_local_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4252,7 +4357,7 @@ func (x *RemoveMachineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMachineRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMachineRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{72}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *RemoveMachineRequest) GetMachineId() string {
@@ -4277,7 +4382,7 @@ type RemoveMachineResponse struct {
 
 func (x *RemoveMachineResponse) Reset() {
 	*x = RemoveMachineResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[73]
+	mi := &file_aide_local_v1_local_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4289,7 +4394,7 @@ func (x *RemoveMachineResponse) String() string {
 func (*RemoveMachineResponse) ProtoMessage() {}
 
 func (x *RemoveMachineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[73]
+	mi := &file_aide_local_v1_local_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4302,7 +4407,7 @@ func (x *RemoveMachineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMachineResponse.ProtoReflect.Descriptor instead.
 func (*RemoveMachineResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{73}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{75}
 }
 
 type Project struct {
@@ -4322,7 +4427,7 @@ type Project struct {
 
 func (x *Project) Reset() {
 	*x = Project{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[74]
+	mi := &file_aide_local_v1_local_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4334,7 +4439,7 @@ func (x *Project) String() string {
 func (*Project) ProtoMessage() {}
 
 func (x *Project) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[74]
+	mi := &file_aide_local_v1_local_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4347,7 +4452,7 @@ func (x *Project) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Project.ProtoReflect.Descriptor instead.
 func (*Project) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{74}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *Project) GetMachineId() string {
@@ -4409,7 +4514,7 @@ type ListProjectsRequest struct {
 
 func (x *ListProjectsRequest) Reset() {
 	*x = ListProjectsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[75]
+	mi := &file_aide_local_v1_local_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4421,7 +4526,7 @@ func (x *ListProjectsRequest) String() string {
 func (*ListProjectsRequest) ProtoMessage() {}
 
 func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[75]
+	mi := &file_aide_local_v1_local_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4434,7 +4539,7 @@ func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{75}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListProjectsRequest) GetMachineId() string {
@@ -4454,7 +4559,7 @@ type ListProjectsResponse struct {
 
 func (x *ListProjectsResponse) Reset() {
 	*x = ListProjectsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[76]
+	mi := &file_aide_local_v1_local_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4466,7 +4571,7 @@ func (x *ListProjectsResponse) String() string {
 func (*ListProjectsResponse) ProtoMessage() {}
 
 func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[76]
+	mi := &file_aide_local_v1_local_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4479,7 +4584,7 @@ func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListProjectsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{76}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *ListProjectsResponse) GetProjects() []*Project {
@@ -4513,7 +4618,7 @@ type AddProjectRequest struct {
 
 func (x *AddProjectRequest) Reset() {
 	*x = AddProjectRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[77]
+	mi := &file_aide_local_v1_local_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4525,7 +4630,7 @@ func (x *AddProjectRequest) String() string {
 func (*AddProjectRequest) ProtoMessage() {}
 
 func (x *AddProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[77]
+	mi := &file_aide_local_v1_local_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4538,7 +4643,7 @@ func (x *AddProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddProjectRequest.ProtoReflect.Descriptor instead.
 func (*AddProjectRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{77}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *AddProjectRequest) GetMachineId() string {
@@ -4598,7 +4703,7 @@ type AddProjectResponse struct {
 
 func (x *AddProjectResponse) Reset() {
 	*x = AddProjectResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[78]
+	mi := &file_aide_local_v1_local_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4610,7 +4715,7 @@ func (x *AddProjectResponse) String() string {
 func (*AddProjectResponse) ProtoMessage() {}
 
 func (x *AddProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[78]
+	mi := &file_aide_local_v1_local_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4623,7 +4728,7 @@ func (x *AddProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddProjectResponse.ProtoReflect.Descriptor instead.
 func (*AddProjectResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{78}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{80}
 }
 
 type RemoveProjectRequest struct {
@@ -4636,7 +4741,7 @@ type RemoveProjectRequest struct {
 
 func (x *RemoveProjectRequest) Reset() {
 	*x = RemoveProjectRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[79]
+	mi := &file_aide_local_v1_local_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4648,7 +4753,7 @@ func (x *RemoveProjectRequest) String() string {
 func (*RemoveProjectRequest) ProtoMessage() {}
 
 func (x *RemoveProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[79]
+	mi := &file_aide_local_v1_local_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4661,7 +4766,7 @@ func (x *RemoveProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveProjectRequest.ProtoReflect.Descriptor instead.
 func (*RemoveProjectRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{79}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *RemoveProjectRequest) GetMachineId() string {
@@ -4686,7 +4791,7 @@ type RemoveProjectResponse struct {
 
 func (x *RemoveProjectResponse) Reset() {
 	*x = RemoveProjectResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[80]
+	mi := &file_aide_local_v1_local_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4698,7 +4803,7 @@ func (x *RemoveProjectResponse) String() string {
 func (*RemoveProjectResponse) ProtoMessage() {}
 
 func (x *RemoveProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[80]
+	mi := &file_aide_local_v1_local_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4711,7 +4816,7 @@ func (x *RemoveProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveProjectResponse.ProtoReflect.Descriptor instead.
 func (*RemoveProjectResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{80}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{82}
 }
 
 type Client struct {
@@ -4741,7 +4846,7 @@ type Client struct {
 
 func (x *Client) Reset() {
 	*x = Client{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[81]
+	mi := &file_aide_local_v1_local_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4753,7 +4858,7 @@ func (x *Client) String() string {
 func (*Client) ProtoMessage() {}
 
 func (x *Client) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[81]
+	mi := &file_aide_local_v1_local_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4766,7 +4871,7 @@ func (x *Client) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Client.ProtoReflect.Descriptor instead.
 func (*Client) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{81}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *Client) GetClientId() string {
@@ -4875,7 +4980,7 @@ type ListClientsRequest struct {
 
 func (x *ListClientsRequest) Reset() {
 	*x = ListClientsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[82]
+	mi := &file_aide_local_v1_local_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4887,7 +4992,7 @@ func (x *ListClientsRequest) String() string {
 func (*ListClientsRequest) ProtoMessage() {}
 
 func (x *ListClientsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[82]
+	mi := &file_aide_local_v1_local_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4900,7 +5005,7 @@ func (x *ListClientsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListClientsRequest.ProtoReflect.Descriptor instead.
 func (*ListClientsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{82}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{84}
 }
 
 type ListClientsResponse struct {
@@ -4912,7 +5017,7 @@ type ListClientsResponse struct {
 
 func (x *ListClientsResponse) Reset() {
 	*x = ListClientsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[83]
+	mi := &file_aide_local_v1_local_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4924,7 +5029,7 @@ func (x *ListClientsResponse) String() string {
 func (*ListClientsResponse) ProtoMessage() {}
 
 func (x *ListClientsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[83]
+	mi := &file_aide_local_v1_local_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4937,7 +5042,7 @@ func (x *ListClientsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListClientsResponse.ProtoReflect.Descriptor instead.
 func (*ListClientsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{83}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *ListClientsResponse) GetClients() []*Client {
@@ -4957,7 +5062,7 @@ type UpdateClientRequest struct {
 
 func (x *UpdateClientRequest) Reset() {
 	*x = UpdateClientRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[84]
+	mi := &file_aide_local_v1_local_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4969,7 +5074,7 @@ func (x *UpdateClientRequest) String() string {
 func (*UpdateClientRequest) ProtoMessage() {}
 
 func (x *UpdateClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[84]
+	mi := &file_aide_local_v1_local_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4982,7 +5087,7 @@ func (x *UpdateClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateClientRequest.ProtoReflect.Descriptor instead.
 func (*UpdateClientRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{84}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *UpdateClientRequest) GetGrantId() string {
@@ -5009,7 +5114,7 @@ type UpdateClientResponse struct {
 
 func (x *UpdateClientResponse) Reset() {
 	*x = UpdateClientResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[85]
+	mi := &file_aide_local_v1_local_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5021,7 +5126,7 @@ func (x *UpdateClientResponse) String() string {
 func (*UpdateClientResponse) ProtoMessage() {}
 
 func (x *UpdateClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[85]
+	mi := &file_aide_local_v1_local_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5034,7 +5139,7 @@ func (x *UpdateClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateClientResponse.ProtoReflect.Descriptor instead.
 func (*UpdateClientResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{85}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *UpdateClientResponse) GetGrantVersion() uint64 {
@@ -5065,7 +5170,7 @@ type RenameClientRequest struct {
 
 func (x *RenameClientRequest) Reset() {
 	*x = RenameClientRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[86]
+	mi := &file_aide_local_v1_local_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5077,7 +5182,7 @@ func (x *RenameClientRequest) String() string {
 func (*RenameClientRequest) ProtoMessage() {}
 
 func (x *RenameClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[86]
+	mi := &file_aide_local_v1_local_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5090,7 +5195,7 @@ func (x *RenameClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameClientRequest.ProtoReflect.Descriptor instead.
 func (*RenameClientRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{86}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *RenameClientRequest) GetGrantId() string {
@@ -5130,7 +5235,7 @@ type RenameClientResponse struct {
 
 func (x *RenameClientResponse) Reset() {
 	*x = RenameClientResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[87]
+	mi := &file_aide_local_v1_local_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5142,7 +5247,7 @@ func (x *RenameClientResponse) String() string {
 func (*RenameClientResponse) ProtoMessage() {}
 
 func (x *RenameClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[87]
+	mi := &file_aide_local_v1_local_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5155,7 +5260,7 @@ func (x *RenameClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameClientResponse.ProtoReflect.Descriptor instead.
 func (*RenameClientResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{87}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *RenameClientResponse) GetGrantVersion() uint64 {
@@ -5174,7 +5279,7 @@ type RevokeClientRequest struct {
 
 func (x *RevokeClientRequest) Reset() {
 	*x = RevokeClientRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[88]
+	mi := &file_aide_local_v1_local_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5186,7 +5291,7 @@ func (x *RevokeClientRequest) String() string {
 func (*RevokeClientRequest) ProtoMessage() {}
 
 func (x *RevokeClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[88]
+	mi := &file_aide_local_v1_local_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5199,7 +5304,7 @@ func (x *RevokeClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeClientRequest.ProtoReflect.Descriptor instead.
 func (*RevokeClientRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{88}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *RevokeClientRequest) GetGrantId() string {
@@ -5218,7 +5323,7 @@ type RevokeClientResponse struct {
 
 func (x *RevokeClientResponse) Reset() {
 	*x = RevokeClientResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[89]
+	mi := &file_aide_local_v1_local_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5230,7 +5335,7 @@ func (x *RevokeClientResponse) String() string {
 func (*RevokeClientResponse) ProtoMessage() {}
 
 func (x *RevokeClientResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[89]
+	mi := &file_aide_local_v1_local_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5243,7 +5348,7 @@ func (x *RevokeClientResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeClientResponse.ProtoReflect.Descriptor instead.
 func (*RevokeClientResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{89}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *RevokeClientResponse) GetAcks() []*MachineAck {
@@ -5274,7 +5379,7 @@ type Wake struct {
 
 func (x *Wake) Reset() {
 	*x = Wake{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[90]
+	mi := &file_aide_local_v1_local_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5286,7 +5391,7 @@ func (x *Wake) String() string {
 func (*Wake) ProtoMessage() {}
 
 func (x *Wake) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[90]
+	mi := &file_aide_local_v1_local_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5299,7 +5404,7 @@ func (x *Wake) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Wake.ProtoReflect.Descriptor instead.
 func (*Wake) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{90}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *Wake) GetClientId() string {
@@ -5379,7 +5484,7 @@ type WakeRing struct {
 
 func (x *WakeRing) Reset() {
 	*x = WakeRing{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[91]
+	mi := &file_aide_local_v1_local_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5391,7 +5496,7 @@ func (x *WakeRing) String() string {
 func (*WakeRing) ProtoMessage() {}
 
 func (x *WakeRing) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[91]
+	mi := &file_aide_local_v1_local_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5404,7 +5509,7 @@ func (x *WakeRing) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WakeRing.ProtoReflect.Descriptor instead.
 func (*WakeRing) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{91}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *WakeRing) GetAt() *timestamppb.Timestamp {
@@ -5446,7 +5551,7 @@ type WakeCheck struct {
 
 func (x *WakeCheck) Reset() {
 	*x = WakeCheck{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[92]
+	mi := &file_aide_local_v1_local_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5458,7 +5563,7 @@ func (x *WakeCheck) String() string {
 func (*WakeCheck) ProtoMessage() {}
 
 func (x *WakeCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[92]
+	mi := &file_aide_local_v1_local_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5471,7 +5576,7 @@ func (x *WakeCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WakeCheck.ProtoReflect.Descriptor instead.
 func (*WakeCheck) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{92}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *WakeCheck) GetOk() bool {
@@ -5505,7 +5610,7 @@ type ListWakesRequest struct {
 
 func (x *ListWakesRequest) Reset() {
 	*x = ListWakesRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[93]
+	mi := &file_aide_local_v1_local_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5517,7 +5622,7 @@ func (x *ListWakesRequest) String() string {
 func (*ListWakesRequest) ProtoMessage() {}
 
 func (x *ListWakesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[93]
+	mi := &file_aide_local_v1_local_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5530,7 +5635,7 @@ func (x *ListWakesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWakesRequest.ProtoReflect.Descriptor instead.
 func (*ListWakesRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{93}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *ListWakesRequest) GetClientId() string {
@@ -5549,7 +5654,7 @@ type ListWakesResponse struct {
 
 func (x *ListWakesResponse) Reset() {
 	*x = ListWakesResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[94]
+	mi := &file_aide_local_v1_local_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5561,7 +5666,7 @@ func (x *ListWakesResponse) String() string {
 func (*ListWakesResponse) ProtoMessage() {}
 
 func (x *ListWakesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[94]
+	mi := &file_aide_local_v1_local_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5574,7 +5679,7 @@ func (x *ListWakesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWakesResponse.ProtoReflect.Descriptor instead.
 func (*ListWakesResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{94}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ListWakesResponse) GetWakes() []*Wake {
@@ -5600,7 +5705,7 @@ type SetWakeRequest struct {
 
 func (x *SetWakeRequest) Reset() {
 	*x = SetWakeRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[95]
+	mi := &file_aide_local_v1_local_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5612,7 +5717,7 @@ func (x *SetWakeRequest) String() string {
 func (*SetWakeRequest) ProtoMessage() {}
 
 func (x *SetWakeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[95]
+	mi := &file_aide_local_v1_local_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5625,7 +5730,7 @@ func (x *SetWakeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWakeRequest.ProtoReflect.Descriptor instead.
 func (*SetWakeRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{95}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *SetWakeRequest) GetClientId() string {
@@ -5682,7 +5787,7 @@ type SetWakeResponse struct {
 
 func (x *SetWakeResponse) Reset() {
 	*x = SetWakeResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[96]
+	mi := &file_aide_local_v1_local_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5694,7 +5799,7 @@ func (x *SetWakeResponse) String() string {
 func (*SetWakeResponse) ProtoMessage() {}
 
 func (x *SetWakeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[96]
+	mi := &file_aide_local_v1_local_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5707,7 +5812,7 @@ func (x *SetWakeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWakeResponse.ProtoReflect.Descriptor instead.
 func (*SetWakeResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{96}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *SetWakeResponse) GetWake() *Wake {
@@ -5741,7 +5846,7 @@ type CheckWakeRequest struct {
 
 func (x *CheckWakeRequest) Reset() {
 	*x = CheckWakeRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[97]
+	mi := &file_aide_local_v1_local_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5753,7 +5858,7 @@ func (x *CheckWakeRequest) String() string {
 func (*CheckWakeRequest) ProtoMessage() {}
 
 func (x *CheckWakeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[97]
+	mi := &file_aide_local_v1_local_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5766,7 +5871,7 @@ func (x *CheckWakeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckWakeRequest.ProtoReflect.Descriptor instead.
 func (*CheckWakeRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{97}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *CheckWakeRequest) GetClientId() string {
@@ -5793,7 +5898,7 @@ type CheckWakeResponse struct {
 
 func (x *CheckWakeResponse) Reset() {
 	*x = CheckWakeResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[98]
+	mi := &file_aide_local_v1_local_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5805,7 +5910,7 @@ func (x *CheckWakeResponse) String() string {
 func (*CheckWakeResponse) ProtoMessage() {}
 
 func (x *CheckWakeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[98]
+	mi := &file_aide_local_v1_local_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5818,7 +5923,7 @@ func (x *CheckWakeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckWakeResponse.ProtoReflect.Descriptor instead.
 func (*CheckWakeResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{98}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *CheckWakeResponse) GetWake() *Wake {
@@ -5845,7 +5950,7 @@ type ClearWakeRequest struct {
 
 func (x *ClearWakeRequest) Reset() {
 	*x = ClearWakeRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[99]
+	mi := &file_aide_local_v1_local_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5857,7 +5962,7 @@ func (x *ClearWakeRequest) String() string {
 func (*ClearWakeRequest) ProtoMessage() {}
 
 func (x *ClearWakeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[99]
+	mi := &file_aide_local_v1_local_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5870,7 +5975,7 @@ func (x *ClearWakeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearWakeRequest.ProtoReflect.Descriptor instead.
 func (*ClearWakeRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{99}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *ClearWakeRequest) GetClientId() string {
@@ -5895,7 +6000,7 @@ type ClearWakeResponse struct {
 
 func (x *ClearWakeResponse) Reset() {
 	*x = ClearWakeResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[100]
+	mi := &file_aide_local_v1_local_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5907,7 +6012,7 @@ func (x *ClearWakeResponse) String() string {
 func (*ClearWakeResponse) ProtoMessage() {}
 
 func (x *ClearWakeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[100]
+	mi := &file_aide_local_v1_local_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5920,7 +6025,7 @@ func (x *ClearWakeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearWakeResponse.ProtoReflect.Descriptor instead.
 func (*ClearWakeResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{100}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{102}
 }
 
 type OpenWakeLinkRequest struct {
@@ -5932,7 +6037,7 @@ type OpenWakeLinkRequest struct {
 
 func (x *OpenWakeLinkRequest) Reset() {
 	*x = OpenWakeLinkRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[101]
+	mi := &file_aide_local_v1_local_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5944,7 +6049,7 @@ func (x *OpenWakeLinkRequest) String() string {
 func (*OpenWakeLinkRequest) ProtoMessage() {}
 
 func (x *OpenWakeLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[101]
+	mi := &file_aide_local_v1_local_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5957,7 +6062,7 @@ func (x *OpenWakeLinkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenWakeLinkRequest.ProtoReflect.Descriptor instead.
 func (*OpenWakeLinkRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{101}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *OpenWakeLinkRequest) GetCode() string {
@@ -5978,7 +6083,7 @@ type OpenWakeLinkResponse struct {
 
 func (x *OpenWakeLinkResponse) Reset() {
 	*x = OpenWakeLinkResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[102]
+	mi := &file_aide_local_v1_local_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5990,7 +6095,7 @@ func (x *OpenWakeLinkResponse) String() string {
 func (*OpenWakeLinkResponse) ProtoMessage() {}
 
 func (x *OpenWakeLinkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[102]
+	mi := &file_aide_local_v1_local_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6003,7 +6108,7 @@ func (x *OpenWakeLinkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenWakeLinkResponse.ProtoReflect.Descriptor instead.
 func (*OpenWakeLinkResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{102}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *OpenWakeLinkResponse) GetClientId() string {
@@ -6039,7 +6144,7 @@ type MachineAck struct {
 
 func (x *MachineAck) Reset() {
 	*x = MachineAck{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[103]
+	mi := &file_aide_local_v1_local_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6051,7 +6156,7 @@ func (x *MachineAck) String() string {
 func (*MachineAck) ProtoMessage() {}
 
 func (x *MachineAck) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[103]
+	mi := &file_aide_local_v1_local_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6064,7 +6169,7 @@ func (x *MachineAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineAck.ProtoReflect.Descriptor instead.
 func (*MachineAck) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{103}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *MachineAck) GetMachineId() string {
@@ -6105,7 +6210,7 @@ type ListExecLogRequest struct {
 
 func (x *ListExecLogRequest) Reset() {
 	*x = ListExecLogRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[104]
+	mi := &file_aide_local_v1_local_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6117,7 +6222,7 @@ func (x *ListExecLogRequest) String() string {
 func (*ListExecLogRequest) ProtoMessage() {}
 
 func (x *ListExecLogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[104]
+	mi := &file_aide_local_v1_local_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6130,7 +6235,7 @@ func (x *ListExecLogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExecLogRequest.ProtoReflect.Descriptor instead.
 func (*ListExecLogRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{104}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *ListExecLogRequest) GetMachineId() string {
@@ -6151,7 +6256,7 @@ type ExecLogEntry struct {
 
 func (x *ExecLogEntry) Reset() {
 	*x = ExecLogEntry{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[105]
+	mi := &file_aide_local_v1_local_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6163,7 +6268,7 @@ func (x *ExecLogEntry) String() string {
 func (*ExecLogEntry) ProtoMessage() {}
 
 func (x *ExecLogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[105]
+	mi := &file_aide_local_v1_local_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6176,7 +6281,7 @@ func (x *ExecLogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecLogEntry.ProtoReflect.Descriptor instead.
 func (*ExecLogEntry) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{105}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *ExecLogEntry) GetMachineId() string {
@@ -6211,7 +6316,7 @@ type ListExecLogResponse struct {
 
 func (x *ListExecLogResponse) Reset() {
 	*x = ListExecLogResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[106]
+	mi := &file_aide_local_v1_local_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6223,7 +6328,7 @@ func (x *ListExecLogResponse) String() string {
 func (*ListExecLogResponse) ProtoMessage() {}
 
 func (x *ListExecLogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[106]
+	mi := &file_aide_local_v1_local_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6236,7 +6341,7 @@ func (x *ListExecLogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExecLogResponse.ProtoReflect.Descriptor instead.
 func (*ListExecLogResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{106}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *ListExecLogResponse) GetEntries() []*ExecLogEntry {
@@ -6264,7 +6369,7 @@ type Unreachable struct {
 
 func (x *Unreachable) Reset() {
 	*x = Unreachable{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[107]
+	mi := &file_aide_local_v1_local_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6276,7 +6381,7 @@ func (x *Unreachable) String() string {
 func (*Unreachable) ProtoMessage() {}
 
 func (x *Unreachable) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[107]
+	mi := &file_aide_local_v1_local_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6289,7 +6394,7 @@ func (x *Unreachable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Unreachable.ProtoReflect.Descriptor instead.
 func (*Unreachable) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{107}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *Unreachable) GetMachineId() string {
@@ -6330,7 +6435,7 @@ type ListSessionsRequest struct {
 
 func (x *ListSessionsRequest) Reset() {
 	*x = ListSessionsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[108]
+	mi := &file_aide_local_v1_local_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6342,7 +6447,7 @@ func (x *ListSessionsRequest) String() string {
 func (*ListSessionsRequest) ProtoMessage() {}
 
 func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[108]
+	mi := &file_aide_local_v1_local_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6355,7 +6460,7 @@ func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{108}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *ListSessionsRequest) GetMachineId() string {
@@ -6398,7 +6503,7 @@ type ListSessionsResponse struct {
 
 func (x *ListSessionsResponse) Reset() {
 	*x = ListSessionsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[109]
+	mi := &file_aide_local_v1_local_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6410,7 +6515,7 @@ func (x *ListSessionsResponse) String() string {
 func (*ListSessionsResponse) ProtoMessage() {}
 
 func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[109]
+	mi := &file_aide_local_v1_local_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6423,7 +6528,7 @@ func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{109}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *ListSessionsResponse) GetSessions() []*v1.Session {
@@ -6455,7 +6560,7 @@ type WatchSessionsRequest struct {
 
 func (x *WatchSessionsRequest) Reset() {
 	*x = WatchSessionsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[110]
+	mi := &file_aide_local_v1_local_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6467,7 +6572,7 @@ func (x *WatchSessionsRequest) String() string {
 func (*WatchSessionsRequest) ProtoMessage() {}
 
 func (x *WatchSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[110]
+	mi := &file_aide_local_v1_local_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6480,7 +6585,7 @@ func (x *WatchSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchSessionsRequest.ProtoReflect.Descriptor instead.
 func (*WatchSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{110}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{112}
 }
 
 type WatchSessionsResponse struct {
@@ -6502,7 +6607,7 @@ type WatchSessionsResponse struct {
 
 func (x *WatchSessionsResponse) Reset() {
 	*x = WatchSessionsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[111]
+	mi := &file_aide_local_v1_local_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6514,7 +6619,7 @@ func (x *WatchSessionsResponse) String() string {
 func (*WatchSessionsResponse) ProtoMessage() {}
 
 func (x *WatchSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[111]
+	mi := &file_aide_local_v1_local_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6527,7 +6632,7 @@ func (x *WatchSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchSessionsResponse.ProtoReflect.Descriptor instead.
 func (*WatchSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{111}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *WatchSessionsResponse) GetSessions() []*v1.Session {
@@ -6572,7 +6677,7 @@ type StreamSessionEventsRequest struct {
 
 func (x *StreamSessionEventsRequest) Reset() {
 	*x = StreamSessionEventsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[112]
+	mi := &file_aide_local_v1_local_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6584,7 +6689,7 @@ func (x *StreamSessionEventsRequest) String() string {
 func (*StreamSessionEventsRequest) ProtoMessage() {}
 
 func (x *StreamSessionEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[112]
+	mi := &file_aide_local_v1_local_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6597,7 +6702,7 @@ func (x *StreamSessionEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamSessionEventsRequest.ProtoReflect.Descriptor instead.
 func (*StreamSessionEventsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{112}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *StreamSessionEventsRequest) GetSessionId() string {
@@ -6647,7 +6752,7 @@ type AnswerQuestionRequest struct {
 
 func (x *AnswerQuestionRequest) Reset() {
 	*x = AnswerQuestionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[113]
+	mi := &file_aide_local_v1_local_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6659,7 +6764,7 @@ func (x *AnswerQuestionRequest) String() string {
 func (*AnswerQuestionRequest) ProtoMessage() {}
 
 func (x *AnswerQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[113]
+	mi := &file_aide_local_v1_local_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6672,7 +6777,7 @@ func (x *AnswerQuestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AnswerQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{113}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *AnswerQuestionRequest) GetSessionId() string {
@@ -6712,7 +6817,7 @@ type AnswerQuestionResponse struct {
 
 func (x *AnswerQuestionResponse) Reset() {
 	*x = AnswerQuestionResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[114]
+	mi := &file_aide_local_v1_local_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6724,7 +6829,7 @@ func (x *AnswerQuestionResponse) String() string {
 func (*AnswerQuestionResponse) ProtoMessage() {}
 
 func (x *AnswerQuestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[114]
+	mi := &file_aide_local_v1_local_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6737,7 +6842,7 @@ func (x *AnswerQuestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerQuestionResponse.ProtoReflect.Descriptor instead.
 func (*AnswerQuestionResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{114}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *AnswerQuestionResponse) GetSession() *v1.Session {
@@ -6757,7 +6862,7 @@ type StartSessionRequest struct {
 
 func (x *StartSessionRequest) Reset() {
 	*x = StartSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[115]
+	mi := &file_aide_local_v1_local_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6769,7 +6874,7 @@ func (x *StartSessionRequest) String() string {
 func (*StartSessionRequest) ProtoMessage() {}
 
 func (x *StartSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[115]
+	mi := &file_aide_local_v1_local_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6782,7 +6887,7 @@ func (x *StartSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartSessionRequest.ProtoReflect.Descriptor instead.
 func (*StartSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{115}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *StartSessionRequest) GetMachineId() string {
@@ -6810,7 +6915,7 @@ type SendMessageRequest struct {
 
 func (x *SendMessageRequest) Reset() {
 	*x = SendMessageRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[116]
+	mi := &file_aide_local_v1_local_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6822,7 +6927,7 @@ func (x *SendMessageRequest) String() string {
 func (*SendMessageRequest) ProtoMessage() {}
 
 func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[116]
+	mi := &file_aide_local_v1_local_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6835,7 +6940,7 @@ func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendMessageRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{116}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *SendMessageRequest) GetSessionId() string {
@@ -6868,7 +6973,7 @@ type InterruptSessionRequest struct {
 
 func (x *InterruptSessionRequest) Reset() {
 	*x = InterruptSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[117]
+	mi := &file_aide_local_v1_local_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6880,7 +6985,7 @@ func (x *InterruptSessionRequest) String() string {
 func (*InterruptSessionRequest) ProtoMessage() {}
 
 func (x *InterruptSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[117]
+	mi := &file_aide_local_v1_local_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6893,7 +6998,7 @@ func (x *InterruptSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterruptSessionRequest.ProtoReflect.Descriptor instead.
 func (*InterruptSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{117}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{119}
 }
 
 func (x *InterruptSessionRequest) GetSessionId() string {
@@ -6912,7 +7017,7 @@ type ArchiveSessionRequest struct {
 
 func (x *ArchiveSessionRequest) Reset() {
 	*x = ArchiveSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[118]
+	mi := &file_aide_local_v1_local_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6924,7 +7029,7 @@ func (x *ArchiveSessionRequest) String() string {
 func (*ArchiveSessionRequest) ProtoMessage() {}
 
 func (x *ArchiveSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[118]
+	mi := &file_aide_local_v1_local_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6937,7 +7042,7 @@ func (x *ArchiveSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveSessionRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{118}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *ArchiveSessionRequest) GetSessionId() string {
@@ -6956,7 +7061,7 @@ type UnarchiveSessionRequest struct {
 
 func (x *UnarchiveSessionRequest) Reset() {
 	*x = UnarchiveSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[119]
+	mi := &file_aide_local_v1_local_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6968,7 +7073,7 @@ func (x *UnarchiveSessionRequest) String() string {
 func (*UnarchiveSessionRequest) ProtoMessage() {}
 
 func (x *UnarchiveSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[119]
+	mi := &file_aide_local_v1_local_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6981,7 +7086,7 @@ func (x *UnarchiveSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchiveSessionRequest.ProtoReflect.Descriptor instead.
 func (*UnarchiveSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{119}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *UnarchiveSessionRequest) GetSessionId() string {
@@ -7000,7 +7105,7 @@ type DeleteSessionRequest struct {
 
 func (x *DeleteSessionRequest) Reset() {
 	*x = DeleteSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[120]
+	mi := &file_aide_local_v1_local_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7012,7 +7117,7 @@ func (x *DeleteSessionRequest) String() string {
 func (*DeleteSessionRequest) ProtoMessage() {}
 
 func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[120]
+	mi := &file_aide_local_v1_local_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7025,7 +7130,7 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{120}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *DeleteSessionRequest) GetSessionId() string {
@@ -7043,7 +7148,7 @@ type DeleteSessionResponse struct {
 
 func (x *DeleteSessionResponse) Reset() {
 	*x = DeleteSessionResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[121]
+	mi := &file_aide_local_v1_local_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7055,7 +7160,7 @@ func (x *DeleteSessionResponse) String() string {
 func (*DeleteSessionResponse) ProtoMessage() {}
 
 func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[121]
+	mi := &file_aide_local_v1_local_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7068,7 +7173,7 @@ func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{121}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{123}
 }
 
 type RenameSessionRequest struct {
@@ -7081,7 +7186,7 @@ type RenameSessionRequest struct {
 
 func (x *RenameSessionRequest) Reset() {
 	*x = RenameSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[122]
+	mi := &file_aide_local_v1_local_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7093,7 +7198,7 @@ func (x *RenameSessionRequest) String() string {
 func (*RenameSessionRequest) ProtoMessage() {}
 
 func (x *RenameSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[122]
+	mi := &file_aide_local_v1_local_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7106,7 +7211,7 @@ func (x *RenameSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameSessionRequest.ProtoReflect.Descriptor instead.
 func (*RenameSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{122}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *RenameSessionRequest) GetSessionId() string {
@@ -7132,7 +7237,7 @@ type SessionResponse struct {
 
 func (x *SessionResponse) Reset() {
 	*x = SessionResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[123]
+	mi := &file_aide_local_v1_local_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7144,7 +7249,7 @@ func (x *SessionResponse) String() string {
 func (*SessionResponse) ProtoMessage() {}
 
 func (x *SessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[123]
+	mi := &file_aide_local_v1_local_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7157,7 +7262,7 @@ func (x *SessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionResponse.ProtoReflect.Descriptor instead.
 func (*SessionResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{123}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *SessionResponse) GetSession() *v1.Session {
@@ -7183,7 +7288,7 @@ type QueryWorkRequest struct {
 
 func (x *QueryWorkRequest) Reset() {
 	*x = QueryWorkRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[124]
+	mi := &file_aide_local_v1_local_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7195,7 +7300,7 @@ func (x *QueryWorkRequest) String() string {
 func (*QueryWorkRequest) ProtoMessage() {}
 
 func (x *QueryWorkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[124]
+	mi := &file_aide_local_v1_local_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7208,7 +7313,7 @@ func (x *QueryWorkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryWorkRequest.ProtoReflect.Descriptor instead.
 func (*QueryWorkRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{124}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *QueryWorkRequest) GetTimeZone() string {
@@ -7259,7 +7364,7 @@ type WorkGroup struct {
 
 func (x *WorkGroup) Reset() {
 	*x = WorkGroup{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[125]
+	mi := &file_aide_local_v1_local_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7271,7 +7376,7 @@ func (x *WorkGroup) String() string {
 func (*WorkGroup) ProtoMessage() {}
 
 func (x *WorkGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[125]
+	mi := &file_aide_local_v1_local_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7284,7 +7389,7 @@ func (x *WorkGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkGroup.ProtoReflect.Descriptor instead.
 func (*WorkGroup) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{125}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *WorkGroup) GetClient() string {
@@ -7330,7 +7435,7 @@ type SessionCount struct {
 
 func (x *SessionCount) Reset() {
 	*x = SessionCount{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[126]
+	mi := &file_aide_local_v1_local_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7342,7 +7447,7 @@ func (x *SessionCount) String() string {
 func (*SessionCount) ProtoMessage() {}
 
 func (x *SessionCount) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[126]
+	mi := &file_aide_local_v1_local_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7355,7 +7460,7 @@ func (x *SessionCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionCount.ProtoReflect.Descriptor instead.
 func (*SessionCount) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{126}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *SessionCount) GetBucket() uint32 {
@@ -7403,7 +7508,7 @@ type TurnCount struct {
 
 func (x *TurnCount) Reset() {
 	*x = TurnCount{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[127]
+	mi := &file_aide_local_v1_local_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7415,7 +7520,7 @@ func (x *TurnCount) String() string {
 func (*TurnCount) ProtoMessage() {}
 
 func (x *TurnCount) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[127]
+	mi := &file_aide_local_v1_local_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7428,7 +7533,7 @@ func (x *TurnCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnCount.ProtoReflect.Descriptor instead.
 func (*TurnCount) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{127}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *TurnCount) GetBucket() uint32 {
@@ -7497,7 +7602,7 @@ type WorkSource struct {
 
 func (x *WorkSource) Reset() {
 	*x = WorkSource{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[128]
+	mi := &file_aide_local_v1_local_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7509,7 +7614,7 @@ func (x *WorkSource) String() string {
 func (*WorkSource) ProtoMessage() {}
 
 func (x *WorkSource) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[128]
+	mi := &file_aide_local_v1_local_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7522,7 +7627,7 @@ func (x *WorkSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkSource.ProtoReflect.Descriptor instead.
 func (*WorkSource) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{128}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *WorkSource) GetMachineId() string {
@@ -7567,7 +7672,7 @@ type QueryWorkResponse struct {
 
 func (x *QueryWorkResponse) Reset() {
 	*x = QueryWorkResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[129]
+	mi := &file_aide_local_v1_local_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7579,7 +7684,7 @@ func (x *QueryWorkResponse) String() string {
 func (*QueryWorkResponse) ProtoMessage() {}
 
 func (x *QueryWorkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[129]
+	mi := &file_aide_local_v1_local_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7592,7 +7697,7 @@ func (x *QueryWorkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryWorkResponse.ProtoReflect.Descriptor instead.
 func (*QueryWorkResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{129}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *QueryWorkResponse) GetSessions() []*SessionCount {
@@ -7640,7 +7745,7 @@ type GetDiffRequest struct {
 
 func (x *GetDiffRequest) Reset() {
 	*x = GetDiffRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[130]
+	mi := &file_aide_local_v1_local_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7652,7 +7757,7 @@ func (x *GetDiffRequest) String() string {
 func (*GetDiffRequest) ProtoMessage() {}
 
 func (x *GetDiffRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[130]
+	mi := &file_aide_local_v1_local_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7665,7 +7770,7 @@ func (x *GetDiffRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffRequest.ProtoReflect.Descriptor instead.
 func (*GetDiffRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{130}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *GetDiffRequest) GetSessionId() string {
@@ -7691,7 +7796,7 @@ type PushSessionRequest struct {
 
 func (x *PushSessionRequest) Reset() {
 	*x = PushSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[131]
+	mi := &file_aide_local_v1_local_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7703,7 +7808,7 @@ func (x *PushSessionRequest) String() string {
 func (*PushSessionRequest) ProtoMessage() {}
 
 func (x *PushSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[131]
+	mi := &file_aide_local_v1_local_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7716,7 +7821,7 @@ func (x *PushSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushSessionRequest.ProtoReflect.Descriptor instead.
 func (*PushSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{131}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *PushSessionRequest) GetSessionId() string {
@@ -7736,7 +7841,7 @@ type RollbackSessionRequest struct {
 
 func (x *RollbackSessionRequest) Reset() {
 	*x = RollbackSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[132]
+	mi := &file_aide_local_v1_local_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7748,7 +7853,7 @@ func (x *RollbackSessionRequest) String() string {
 func (*RollbackSessionRequest) ProtoMessage() {}
 
 func (x *RollbackSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[132]
+	mi := &file_aide_local_v1_local_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7761,7 +7866,7 @@ func (x *RollbackSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackSessionRequest.ProtoReflect.Descriptor instead.
 func (*RollbackSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{132}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *RollbackSessionRequest) GetSessionId() string {
@@ -7786,7 +7891,7 @@ type StopScreenRequest struct {
 
 func (x *StopScreenRequest) Reset() {
 	*x = StopScreenRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[133]
+	mi := &file_aide_local_v1_local_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7798,7 +7903,7 @@ func (x *StopScreenRequest) String() string {
 func (*StopScreenRequest) ProtoMessage() {}
 
 func (x *StopScreenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[133]
+	mi := &file_aide_local_v1_local_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7811,7 +7916,7 @@ func (x *StopScreenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopScreenRequest.ProtoReflect.Descriptor instead.
 func (*StopScreenRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{133}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{135}
 }
 
 type StopScreenResponse struct {
@@ -7822,7 +7927,7 @@ type StopScreenResponse struct {
 
 func (x *StopScreenResponse) Reset() {
 	*x = StopScreenResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[134]
+	mi := &file_aide_local_v1_local_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7834,7 +7939,7 @@ func (x *StopScreenResponse) String() string {
 func (*StopScreenResponse) ProtoMessage() {}
 
 func (x *StopScreenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[134]
+	mi := &file_aide_local_v1_local_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7847,7 +7952,7 @@ func (x *StopScreenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopScreenResponse.ProtoReflect.Descriptor instead.
 func (*StopScreenResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{134}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{136}
 }
 
 type ListDSHSessionsRequest struct {
@@ -7860,7 +7965,7 @@ type ListDSHSessionsRequest struct {
 
 func (x *ListDSHSessionsRequest) Reset() {
 	*x = ListDSHSessionsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[135]
+	mi := &file_aide_local_v1_local_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7872,7 +7977,7 @@ func (x *ListDSHSessionsRequest) String() string {
 func (*ListDSHSessionsRequest) ProtoMessage() {}
 
 func (x *ListDSHSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[135]
+	mi := &file_aide_local_v1_local_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7885,7 +7990,7 @@ func (x *ListDSHSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDSHSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListDSHSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{135}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *ListDSHSessionsRequest) GetMachineId() string {
@@ -7909,7 +8014,7 @@ type ListDSHSessionsResponse struct {
 
 func (x *ListDSHSessionsResponse) Reset() {
 	*x = ListDSHSessionsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[136]
+	mi := &file_aide_local_v1_local_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7921,7 +8026,7 @@ func (x *ListDSHSessionsResponse) String() string {
 func (*ListDSHSessionsResponse) ProtoMessage() {}
 
 func (x *ListDSHSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[136]
+	mi := &file_aide_local_v1_local_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7934,7 +8039,7 @@ func (x *ListDSHSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDSHSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListDSHSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{136}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *ListDSHSessionsResponse) GetSessions() []*DSHSessionEntry {
@@ -7975,7 +8080,7 @@ type DSHSessionEntry struct {
 
 func (x *DSHSessionEntry) Reset() {
 	*x = DSHSessionEntry{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[137]
+	mi := &file_aide_local_v1_local_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7987,7 +8092,7 @@ func (x *DSHSessionEntry) String() string {
 func (*DSHSessionEntry) ProtoMessage() {}
 
 func (x *DSHSessionEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[137]
+	mi := &file_aide_local_v1_local_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8000,7 +8105,7 @@ func (x *DSHSessionEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DSHSessionEntry.ProtoReflect.Descriptor instead.
 func (*DSHSessionEntry) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{137}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *DSHSessionEntry) GetMachineId() string {
@@ -8050,7 +8155,7 @@ type DSHBridgeEntry struct {
 
 func (x *DSHBridgeEntry) Reset() {
 	*x = DSHBridgeEntry{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[138]
+	mi := &file_aide_local_v1_local_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8062,7 +8167,7 @@ func (x *DSHBridgeEntry) String() string {
 func (*DSHBridgeEntry) ProtoMessage() {}
 
 func (x *DSHBridgeEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[138]
+	mi := &file_aide_local_v1_local_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8075,7 +8180,7 @@ func (x *DSHBridgeEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DSHBridgeEntry.ProtoReflect.Descriptor instead.
 func (*DSHBridgeEntry) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{138}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *DSHBridgeEntry) GetMachineId() string {
@@ -8109,7 +8214,7 @@ type ListClaudeSessionsRequest struct {
 
 func (x *ListClaudeSessionsRequest) Reset() {
 	*x = ListClaudeSessionsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[139]
+	mi := &file_aide_local_v1_local_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8121,7 +8226,7 @@ func (x *ListClaudeSessionsRequest) String() string {
 func (*ListClaudeSessionsRequest) ProtoMessage() {}
 
 func (x *ListClaudeSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[139]
+	mi := &file_aide_local_v1_local_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8134,7 +8239,7 @@ func (x *ListClaudeSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListClaudeSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListClaudeSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{139}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *ListClaudeSessionsRequest) GetMachineId() string {
@@ -8157,7 +8262,7 @@ type ListClaudeSessionsResponse struct {
 
 func (x *ListClaudeSessionsResponse) Reset() {
 	*x = ListClaudeSessionsResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[140]
+	mi := &file_aide_local_v1_local_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8169,7 +8274,7 @@ func (x *ListClaudeSessionsResponse) String() string {
 func (*ListClaudeSessionsResponse) ProtoMessage() {}
 
 func (x *ListClaudeSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[140]
+	mi := &file_aide_local_v1_local_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8182,7 +8287,7 @@ func (x *ListClaudeSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListClaudeSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListClaudeSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{140}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *ListClaudeSessionsResponse) GetSessions() []*ClaudeSessionEntry {
@@ -8220,7 +8325,7 @@ type ClaudeSessionEntry struct {
 
 func (x *ClaudeSessionEntry) Reset() {
 	*x = ClaudeSessionEntry{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[141]
+	mi := &file_aide_local_v1_local_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8232,7 +8337,7 @@ func (x *ClaudeSessionEntry) String() string {
 func (*ClaudeSessionEntry) ProtoMessage() {}
 
 func (x *ClaudeSessionEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[141]
+	mi := &file_aide_local_v1_local_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8245,7 +8350,7 @@ func (x *ClaudeSessionEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaudeSessionEntry.ProtoReflect.Descriptor instead.
 func (*ClaudeSessionEntry) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{141}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *ClaudeSessionEntry) GetMachineId() string {
@@ -8293,7 +8398,7 @@ type ClaudeIndexEntry struct {
 
 func (x *ClaudeIndexEntry) Reset() {
 	*x = ClaudeIndexEntry{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[142]
+	mi := &file_aide_local_v1_local_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8305,7 +8410,7 @@ func (x *ClaudeIndexEntry) String() string {
 func (*ClaudeIndexEntry) ProtoMessage() {}
 
 func (x *ClaudeIndexEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[142]
+	mi := &file_aide_local_v1_local_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8318,7 +8423,7 @@ func (x *ClaudeIndexEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaudeIndexEntry.ProtoReflect.Descriptor instead.
 func (*ClaudeIndexEntry) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{142}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *ClaudeIndexEntry) GetMachineId() string {
@@ -8349,7 +8454,7 @@ type ReadClaudeSessionRequest struct {
 
 func (x *ReadClaudeSessionRequest) Reset() {
 	*x = ReadClaudeSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[143]
+	mi := &file_aide_local_v1_local_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8361,7 +8466,7 @@ func (x *ReadClaudeSessionRequest) String() string {
 func (*ReadClaudeSessionRequest) ProtoMessage() {}
 
 func (x *ReadClaudeSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[143]
+	mi := &file_aide_local_v1_local_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8374,7 +8479,7 @@ func (x *ReadClaudeSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadClaudeSessionRequest.ProtoReflect.Descriptor instead.
 func (*ReadClaudeSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{143}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{145}
 }
 
 func (x *ReadClaudeSessionRequest) GetMachineId() string {
@@ -8430,7 +8535,7 @@ type SetDSHTakeoverRequest struct {
 
 func (x *SetDSHTakeoverRequest) Reset() {
 	*x = SetDSHTakeoverRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[144]
+	mi := &file_aide_local_v1_local_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8442,7 +8547,7 @@ func (x *SetDSHTakeoverRequest) String() string {
 func (*SetDSHTakeoverRequest) ProtoMessage() {}
 
 func (x *SetDSHTakeoverRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[144]
+	mi := &file_aide_local_v1_local_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8455,7 +8560,7 @@ func (x *SetDSHTakeoverRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDSHTakeoverRequest.ProtoReflect.Descriptor instead.
 func (*SetDSHTakeoverRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{144}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *SetDSHTakeoverRequest) GetMachineId() string {
@@ -8493,7 +8598,7 @@ type SendDSHMessageRequest struct {
 
 func (x *SendDSHMessageRequest) Reset() {
 	*x = SendDSHMessageRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[145]
+	mi := &file_aide_local_v1_local_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8505,7 +8610,7 @@ func (x *SendDSHMessageRequest) String() string {
 func (*SendDSHMessageRequest) ProtoMessage() {}
 
 func (x *SendDSHMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[145]
+	mi := &file_aide_local_v1_local_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8518,7 +8623,7 @@ func (x *SendDSHMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendDSHMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendDSHMessageRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{145}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *SendDSHMessageRequest) GetMachineId() string {
@@ -8573,7 +8678,7 @@ type DSHSessionOptionsRequest struct {
 
 func (x *DSHSessionOptionsRequest) Reset() {
 	*x = DSHSessionOptionsRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[146]
+	mi := &file_aide_local_v1_local_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8585,7 +8690,7 @@ func (x *DSHSessionOptionsRequest) String() string {
 func (*DSHSessionOptionsRequest) ProtoMessage() {}
 
 func (x *DSHSessionOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[146]
+	mi := &file_aide_local_v1_local_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8598,7 +8703,7 @@ func (x *DSHSessionOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DSHSessionOptionsRequest.ProtoReflect.Descriptor instead.
 func (*DSHSessionOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{146}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *DSHSessionOptionsRequest) GetMachineId() string {
@@ -8625,7 +8730,7 @@ type InterruptDSHSessionRequest struct {
 
 func (x *InterruptDSHSessionRequest) Reset() {
 	*x = InterruptDSHSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[147]
+	mi := &file_aide_local_v1_local_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8637,7 +8742,7 @@ func (x *InterruptDSHSessionRequest) String() string {
 func (*InterruptDSHSessionRequest) ProtoMessage() {}
 
 func (x *InterruptDSHSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[147]
+	mi := &file_aide_local_v1_local_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8650,7 +8755,7 @@ func (x *InterruptDSHSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterruptDSHSessionRequest.ProtoReflect.Descriptor instead.
 func (*InterruptDSHSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{147}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *InterruptDSHSessionRequest) GetMachineId() string {
@@ -8676,7 +8781,7 @@ type PrepareDSHBridgeRequest struct {
 
 func (x *PrepareDSHBridgeRequest) Reset() {
 	*x = PrepareDSHBridgeRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[148]
+	mi := &file_aide_local_v1_local_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8688,7 +8793,7 @@ func (x *PrepareDSHBridgeRequest) String() string {
 func (*PrepareDSHBridgeRequest) ProtoMessage() {}
 
 func (x *PrepareDSHBridgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[148]
+	mi := &file_aide_local_v1_local_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8701,7 +8806,7 @@ func (x *PrepareDSHBridgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareDSHBridgeRequest.ProtoReflect.Descriptor instead.
 func (*PrepareDSHBridgeRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{148}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *PrepareDSHBridgeRequest) GetMachineId() string {
@@ -8727,7 +8832,7 @@ type ReadDSHSessionRequest struct {
 
 func (x *ReadDSHSessionRequest) Reset() {
 	*x = ReadDSHSessionRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[149]
+	mi := &file_aide_local_v1_local_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8739,7 +8844,7 @@ func (x *ReadDSHSessionRequest) String() string {
 func (*ReadDSHSessionRequest) ProtoMessage() {}
 
 func (x *ReadDSHSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[149]
+	mi := &file_aide_local_v1_local_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8752,7 +8857,7 @@ func (x *ReadDSHSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadDSHSessionRequest.ProtoReflect.Descriptor instead.
 func (*ReadDSHSessionRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{149}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *ReadDSHSessionRequest) GetMachineId() string {
@@ -8805,7 +8910,7 @@ type ListPersonasRequest struct {
 
 func (x *ListPersonasRequest) Reset() {
 	*x = ListPersonasRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[150]
+	mi := &file_aide_local_v1_local_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8817,7 +8922,7 @@ func (x *ListPersonasRequest) String() string {
 func (*ListPersonasRequest) ProtoMessage() {}
 
 func (x *ListPersonasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[150]
+	mi := &file_aide_local_v1_local_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8830,7 +8935,7 @@ func (x *ListPersonasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPersonasRequest.ProtoReflect.Descriptor instead.
 func (*ListPersonasRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{150}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{152}
 }
 
 type ListPersonasResponse struct {
@@ -8842,7 +8947,7 @@ type ListPersonasResponse struct {
 
 func (x *ListPersonasResponse) Reset() {
 	*x = ListPersonasResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[151]
+	mi := &file_aide_local_v1_local_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8854,7 +8959,7 @@ func (x *ListPersonasResponse) String() string {
 func (*ListPersonasResponse) ProtoMessage() {}
 
 func (x *ListPersonasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[151]
+	mi := &file_aide_local_v1_local_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8867,7 +8972,7 @@ func (x *ListPersonasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPersonasResponse.ProtoReflect.Descriptor instead.
 func (*ListPersonasResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{151}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{153}
 }
 
 func (x *ListPersonasResponse) GetPersonas() []*v11.Persona {
@@ -8886,7 +8991,7 @@ type SavePersonaRequest struct {
 
 func (x *SavePersonaRequest) Reset() {
 	*x = SavePersonaRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[152]
+	mi := &file_aide_local_v1_local_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8898,7 +9003,7 @@ func (x *SavePersonaRequest) String() string {
 func (*SavePersonaRequest) ProtoMessage() {}
 
 func (x *SavePersonaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[152]
+	mi := &file_aide_local_v1_local_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8911,7 +9016,7 @@ func (x *SavePersonaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePersonaRequest.ProtoReflect.Descriptor instead.
 func (*SavePersonaRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{152}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *SavePersonaRequest) GetPersona() *v11.Persona {
@@ -8930,7 +9035,7 @@ type SavePersonaResponse struct {
 
 func (x *SavePersonaResponse) Reset() {
 	*x = SavePersonaResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[153]
+	mi := &file_aide_local_v1_local_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8942,7 +9047,7 @@ func (x *SavePersonaResponse) String() string {
 func (*SavePersonaResponse) ProtoMessage() {}
 
 func (x *SavePersonaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[153]
+	mi := &file_aide_local_v1_local_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8955,7 +9060,7 @@ func (x *SavePersonaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePersonaResponse.ProtoReflect.Descriptor instead.
 func (*SavePersonaResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{153}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *SavePersonaResponse) GetPersona() *v11.Persona {
@@ -8974,7 +9079,7 @@ type DeletePersonaRequest struct {
 
 func (x *DeletePersonaRequest) Reset() {
 	*x = DeletePersonaRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[154]
+	mi := &file_aide_local_v1_local_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8986,7 +9091,7 @@ func (x *DeletePersonaRequest) String() string {
 func (*DeletePersonaRequest) ProtoMessage() {}
 
 func (x *DeletePersonaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[154]
+	mi := &file_aide_local_v1_local_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8999,7 +9104,7 @@ func (x *DeletePersonaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePersonaRequest.ProtoReflect.Descriptor instead.
 func (*DeletePersonaRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{154}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{156}
 }
 
 func (x *DeletePersonaRequest) GetPersonaId() string {
@@ -9017,7 +9122,7 @@ type DeletePersonaResponse struct {
 
 func (x *DeletePersonaResponse) Reset() {
 	*x = DeletePersonaResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[155]
+	mi := &file_aide_local_v1_local_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9029,7 +9134,7 @@ func (x *DeletePersonaResponse) String() string {
 func (*DeletePersonaResponse) ProtoMessage() {}
 
 func (x *DeletePersonaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[155]
+	mi := &file_aide_local_v1_local_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9042,7 +9147,7 @@ func (x *DeletePersonaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePersonaResponse.ProtoReflect.Descriptor instead.
 func (*DeletePersonaResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{155}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{157}
 }
 
 type TalkToPersonaRequest struct {
@@ -9058,7 +9163,7 @@ type TalkToPersonaRequest struct {
 
 func (x *TalkToPersonaRequest) Reset() {
 	*x = TalkToPersonaRequest{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[156]
+	mi := &file_aide_local_v1_local_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9070,7 +9175,7 @@ func (x *TalkToPersonaRequest) String() string {
 func (*TalkToPersonaRequest) ProtoMessage() {}
 
 func (x *TalkToPersonaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[156]
+	mi := &file_aide_local_v1_local_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9083,7 +9188,7 @@ func (x *TalkToPersonaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TalkToPersonaRequest.ProtoReflect.Descriptor instead.
 func (*TalkToPersonaRequest) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{156}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{158}
 }
 
 func (x *TalkToPersonaRequest) GetPersonaId() string {
@@ -9131,7 +9236,7 @@ type TalkToPersonaResponse struct {
 
 func (x *TalkToPersonaResponse) Reset() {
 	*x = TalkToPersonaResponse{}
-	mi := &file_aide_local_v1_local_proto_msgTypes[157]
+	mi := &file_aide_local_v1_local_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9143,7 +9248,7 @@ func (x *TalkToPersonaResponse) String() string {
 func (*TalkToPersonaResponse) ProtoMessage() {}
 
 func (x *TalkToPersonaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_local_v1_local_proto_msgTypes[157]
+	mi := &file_aide_local_v1_local_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9156,7 +9261,7 @@ func (x *TalkToPersonaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TalkToPersonaResponse.ProtoReflect.Descriptor instead.
 func (*TalkToPersonaResponse) Descriptor() ([]byte, []int) {
-	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{157}
+	return file_aide_local_v1_local_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *TalkToPersonaResponse) GetSession() *v1.Session {
@@ -9438,7 +9543,14 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +
 	"\x05agent\x18\x02 \x01(\tR\x05agent\x12\x16\n" +
 	"\x06hidden\x18\x03 \x01(\bR\x06hidden\"\x18\n" +
-	"\x16SetAgentHiddenResponse\"\x15\n" +
+	"\x16SetAgentHiddenResponse\"\x9d\x01\n" +
+	"\x15SetAgentPausedRequest\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +
+	"\x05agent\x18\x02 \x01(\tR\x05agent\x12\x16\n" +
+	"\x06paused\x18\x03 \x01(\bR\x06paused\x127\n" +
+	"\tresume_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\x18\n" +
+	"\x16SetAgentPausedResponse\"\x15\n" +
 	"\x13CheckAgentsResponse\"8\n" +
 	"\x17ListMachineReposRequest\x12\x1d\n" +
 	"\n" +
@@ -9857,7 +9969,7 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x15WORK_DIMENSION_CLIENT\x10\x01\x12\x18\n" +
 	"\x14WORK_DIMENSION_AGENT\x10\x02\x12\x1a\n" +
 	"\x16WORK_DIMENSION_MACHINE\x10\x03\x12\x1a\n" +
-	"\x16WORK_DIMENSION_PROJECT\x10\x042\xe08\n" +
+	"\x16WORK_DIMENSION_PROJECT\x10\x042\xbf9\n" +
 	"\fLocalService\x12N\n" +
 	"\tGetStatus\x12\x1f.aide.local.v1.GetStatusRequest\x1a .aide.local.v1.GetStatusResponse\x12D\n" +
 	"\x05Watch\x12\x1b.aide.local.v1.WatchRequest\x1a\x1c.aide.local.v1.WatchResponse0\x01\x12W\n" +
@@ -9884,7 +9996,8 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x10SetAgentDefaults\x12&.aide.local.v1.SetAgentDefaultsRequest\x1a'.aide.local.v1.SetAgentDefaultsResponse\x12Z\n" +
 	"\rRemoveMachine\x12#.aide.local.v1.RemoveMachineRequest\x1a$.aide.local.v1.RemoveMachineResponse\x12T\n" +
 	"\vCheckAgents\x12!.aide.local.v1.CheckAgentsRequest\x1a\".aide.local.v1.CheckAgentsResponse\x12]\n" +
-	"\x0eSetAgentHidden\x12$.aide.local.v1.SetAgentHiddenRequest\x1a%.aide.local.v1.SetAgentHiddenResponse\x12c\n" +
+	"\x0eSetAgentHidden\x12$.aide.local.v1.SetAgentHiddenRequest\x1a%.aide.local.v1.SetAgentHiddenResponse\x12]\n" +
+	"\x0eSetAgentPaused\x12$.aide.local.v1.SetAgentPausedRequest\x1a%.aide.local.v1.SetAgentPausedResponse\x12c\n" +
 	"\x10ListMachineRepos\x12&.aide.local.v1.ListMachineReposRequest\x1a'.aide.local.v1.ListMachineReposResponse\x12d\n" +
 	"\x12ListMachineFolders\x12(.aide.local.v1.ListMachineFoldersRequest\x1a$.aide.machine.v1.ListFoldersResponse\x12^\n" +
 	"\x10TestMachineAgent\x12&.aide.local.v1.TestMachineAgentRequest\x1a\".aide.machine.v1.TestAgentResponse\x12T\n" +
@@ -9958,7 +10071,7 @@ func file_aide_local_v1_local_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_local_v1_local_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_aide_local_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 158)
+var file_aide_local_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 160)
 var file_aide_local_v1_local_proto_goTypes = []any{
 	(WorkBucket)(0),                         // 0: aide.local.v1.WorkBucket
 	(WorkDimension)(0),                      // 1: aide.local.v1.WorkDimension
@@ -10023,405 +10136,410 @@ var file_aide_local_v1_local_proto_goTypes = []any{
 	(*CheckAgentsRequest)(nil),              // 60: aide.local.v1.CheckAgentsRequest
 	(*SetAgentHiddenRequest)(nil),           // 61: aide.local.v1.SetAgentHiddenRequest
 	(*SetAgentHiddenResponse)(nil),          // 62: aide.local.v1.SetAgentHiddenResponse
-	(*CheckAgentsResponse)(nil),             // 63: aide.local.v1.CheckAgentsResponse
-	(*ListMachineReposRequest)(nil),         // 64: aide.local.v1.ListMachineReposRequest
-	(*ListMachineReposResponse)(nil),        // 65: aide.local.v1.ListMachineReposResponse
-	(*ListMachineFoldersRequest)(nil),       // 66: aide.local.v1.ListMachineFoldersRequest
-	(*TestMachineAgentRequest)(nil),         // 67: aide.local.v1.TestMachineAgentRequest
-	(*ListMachineCustomAgentsRequest)(nil),  // 68: aide.local.v1.ListMachineCustomAgentsRequest
-	(*SaveMachineCustomAgentRequest)(nil),   // 69: aide.local.v1.SaveMachineCustomAgentRequest
-	(*RemoveMachineCustomAgentRequest)(nil), // 70: aide.local.v1.RemoveMachineCustomAgentRequest
-	(*TestMachineCustomAgentRequest)(nil),   // 71: aide.local.v1.TestMachineCustomAgentRequest
-	(*GetDiagnosticsRequest)(nil),           // 72: aide.local.v1.GetDiagnosticsRequest
-	(*GetDiagnosticsResponse)(nil),          // 73: aide.local.v1.GetDiagnosticsResponse
-	(*RemoveMachineRequest)(nil),            // 74: aide.local.v1.RemoveMachineRequest
-	(*RemoveMachineResponse)(nil),           // 75: aide.local.v1.RemoveMachineResponse
-	(*Project)(nil),                         // 76: aide.local.v1.Project
-	(*ListProjectsRequest)(nil),             // 77: aide.local.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),            // 78: aide.local.v1.ListProjectsResponse
-	(*AddProjectRequest)(nil),               // 79: aide.local.v1.AddProjectRequest
-	(*AddProjectResponse)(nil),              // 80: aide.local.v1.AddProjectResponse
-	(*RemoveProjectRequest)(nil),            // 81: aide.local.v1.RemoveProjectRequest
-	(*RemoveProjectResponse)(nil),           // 82: aide.local.v1.RemoveProjectResponse
-	(*Client)(nil),                          // 83: aide.local.v1.Client
-	(*ListClientsRequest)(nil),              // 84: aide.local.v1.ListClientsRequest
-	(*ListClientsResponse)(nil),             // 85: aide.local.v1.ListClientsResponse
-	(*UpdateClientRequest)(nil),             // 86: aide.local.v1.UpdateClientRequest
-	(*UpdateClientResponse)(nil),            // 87: aide.local.v1.UpdateClientResponse
-	(*RenameClientRequest)(nil),             // 88: aide.local.v1.RenameClientRequest
-	(*RenameClientResponse)(nil),            // 89: aide.local.v1.RenameClientResponse
-	(*RevokeClientRequest)(nil),             // 90: aide.local.v1.RevokeClientRequest
-	(*RevokeClientResponse)(nil),            // 91: aide.local.v1.RevokeClientResponse
-	(*Wake)(nil),                            // 92: aide.local.v1.Wake
-	(*WakeRing)(nil),                        // 93: aide.local.v1.WakeRing
-	(*WakeCheck)(nil),                       // 94: aide.local.v1.WakeCheck
-	(*ListWakesRequest)(nil),                // 95: aide.local.v1.ListWakesRequest
-	(*ListWakesResponse)(nil),               // 96: aide.local.v1.ListWakesResponse
-	(*SetWakeRequest)(nil),                  // 97: aide.local.v1.SetWakeRequest
-	(*SetWakeResponse)(nil),                 // 98: aide.local.v1.SetWakeResponse
-	(*CheckWakeRequest)(nil),                // 99: aide.local.v1.CheckWakeRequest
-	(*CheckWakeResponse)(nil),               // 100: aide.local.v1.CheckWakeResponse
-	(*ClearWakeRequest)(nil),                // 101: aide.local.v1.ClearWakeRequest
-	(*ClearWakeResponse)(nil),               // 102: aide.local.v1.ClearWakeResponse
-	(*OpenWakeLinkRequest)(nil),             // 103: aide.local.v1.OpenWakeLinkRequest
-	(*OpenWakeLinkResponse)(nil),            // 104: aide.local.v1.OpenWakeLinkResponse
-	(*MachineAck)(nil),                      // 105: aide.local.v1.MachineAck
-	(*ListExecLogRequest)(nil),              // 106: aide.local.v1.ListExecLogRequest
-	(*ExecLogEntry)(nil),                    // 107: aide.local.v1.ExecLogEntry
-	(*ListExecLogResponse)(nil),             // 108: aide.local.v1.ListExecLogResponse
-	(*Unreachable)(nil),                     // 109: aide.local.v1.Unreachable
-	(*ListSessionsRequest)(nil),             // 110: aide.local.v1.ListSessionsRequest
-	(*ListSessionsResponse)(nil),            // 111: aide.local.v1.ListSessionsResponse
-	(*WatchSessionsRequest)(nil),            // 112: aide.local.v1.WatchSessionsRequest
-	(*WatchSessionsResponse)(nil),           // 113: aide.local.v1.WatchSessionsResponse
-	(*StreamSessionEventsRequest)(nil),      // 114: aide.local.v1.StreamSessionEventsRequest
-	(*AnswerQuestionRequest)(nil),           // 115: aide.local.v1.AnswerQuestionRequest
-	(*AnswerQuestionResponse)(nil),          // 116: aide.local.v1.AnswerQuestionResponse
-	(*StartSessionRequest)(nil),             // 117: aide.local.v1.StartSessionRequest
-	(*SendMessageRequest)(nil),              // 118: aide.local.v1.SendMessageRequest
-	(*InterruptSessionRequest)(nil),         // 119: aide.local.v1.InterruptSessionRequest
-	(*ArchiveSessionRequest)(nil),           // 120: aide.local.v1.ArchiveSessionRequest
-	(*UnarchiveSessionRequest)(nil),         // 121: aide.local.v1.UnarchiveSessionRequest
-	(*DeleteSessionRequest)(nil),            // 122: aide.local.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),           // 123: aide.local.v1.DeleteSessionResponse
-	(*RenameSessionRequest)(nil),            // 124: aide.local.v1.RenameSessionRequest
-	(*SessionResponse)(nil),                 // 125: aide.local.v1.SessionResponse
-	(*QueryWorkRequest)(nil),                // 126: aide.local.v1.QueryWorkRequest
-	(*WorkGroup)(nil),                       // 127: aide.local.v1.WorkGroup
-	(*SessionCount)(nil),                    // 128: aide.local.v1.SessionCount
-	(*TurnCount)(nil),                       // 129: aide.local.v1.TurnCount
-	(*WorkSource)(nil),                      // 130: aide.local.v1.WorkSource
-	(*QueryWorkResponse)(nil),               // 131: aide.local.v1.QueryWorkResponse
-	(*GetDiffRequest)(nil),                  // 132: aide.local.v1.GetDiffRequest
-	(*PushSessionRequest)(nil),              // 133: aide.local.v1.PushSessionRequest
-	(*RollbackSessionRequest)(nil),          // 134: aide.local.v1.RollbackSessionRequest
-	(*StopScreenRequest)(nil),               // 135: aide.local.v1.StopScreenRequest
-	(*StopScreenResponse)(nil),              // 136: aide.local.v1.StopScreenResponse
-	(*ListDSHSessionsRequest)(nil),          // 137: aide.local.v1.ListDSHSessionsRequest
-	(*ListDSHSessionsResponse)(nil),         // 138: aide.local.v1.ListDSHSessionsResponse
-	(*DSHSessionEntry)(nil),                 // 139: aide.local.v1.DSHSessionEntry
-	(*DSHBridgeEntry)(nil),                  // 140: aide.local.v1.DSHBridgeEntry
-	(*ListClaudeSessionsRequest)(nil),       // 141: aide.local.v1.ListClaudeSessionsRequest
-	(*ListClaudeSessionsResponse)(nil),      // 142: aide.local.v1.ListClaudeSessionsResponse
-	(*ClaudeSessionEntry)(nil),              // 143: aide.local.v1.ClaudeSessionEntry
-	(*ClaudeIndexEntry)(nil),                // 144: aide.local.v1.ClaudeIndexEntry
-	(*ReadClaudeSessionRequest)(nil),        // 145: aide.local.v1.ReadClaudeSessionRequest
-	(*SetDSHTakeoverRequest)(nil),           // 146: aide.local.v1.SetDSHTakeoverRequest
-	(*SendDSHMessageRequest)(nil),           // 147: aide.local.v1.SendDSHMessageRequest
-	(*DSHSessionOptionsRequest)(nil),        // 148: aide.local.v1.DSHSessionOptionsRequest
-	(*InterruptDSHSessionRequest)(nil),      // 149: aide.local.v1.InterruptDSHSessionRequest
-	(*PrepareDSHBridgeRequest)(nil),         // 150: aide.local.v1.PrepareDSHBridgeRequest
-	(*ReadDSHSessionRequest)(nil),           // 151: aide.local.v1.ReadDSHSessionRequest
-	(*ListPersonasRequest)(nil),             // 152: aide.local.v1.ListPersonasRequest
-	(*ListPersonasResponse)(nil),            // 153: aide.local.v1.ListPersonasResponse
-	(*SavePersonaRequest)(nil),              // 154: aide.local.v1.SavePersonaRequest
-	(*SavePersonaResponse)(nil),             // 155: aide.local.v1.SavePersonaResponse
-	(*DeletePersonaRequest)(nil),            // 156: aide.local.v1.DeletePersonaRequest
-	(*DeletePersonaResponse)(nil),           // 157: aide.local.v1.DeletePersonaResponse
-	(*TalkToPersonaRequest)(nil),            // 158: aide.local.v1.TalkToPersonaRequest
-	(*TalkToPersonaResponse)(nil),           // 159: aide.local.v1.TalkToPersonaResponse
-	(*v1.Session)(nil),                      // 160: aide.session.v1.Session
-	(*v1.SessionCursor)(nil),                // 161: aide.session.v1.SessionCursor
-	(v1.EventView)(0),                       // 162: aide.session.v1.EventView
-	(*v1.SessionEvent)(nil),                 // 163: aide.session.v1.SessionEvent
-	(*timestamppb.Timestamp)(nil),           // 164: google.protobuf.Timestamp
-	(v11.TaskVisibility)(0),                 // 165: aide.identity.v1.TaskVisibility
-	(*v12.MachineStatus)(nil),               // 166: aide.machine.v1.MachineStatus
-	(*v11.AgentDefaults)(nil),               // 167: aide.identity.v1.AgentDefaults
-	(*v12.Repo)(nil),                        // 168: aide.machine.v1.Repo
-	(*v12.CustomAgent)(nil),                 // 169: aide.machine.v1.CustomAgent
-	(v11.Workspace)(0),                      // 170: aide.identity.v1.Workspace
-	(*v12.ExecRecord)(nil),                  // 171: aide.machine.v1.ExecRecord
-	(v1.SessionView)(0),                     // 172: aide.session.v1.SessionView
-	(*v1.Answer)(nil),                       // 173: aide.session.v1.Answer
-	(*v1.StartSessionRequest)(nil),          // 174: aide.session.v1.StartSessionRequest
-	(*v1.Attachment)(nil),                   // 175: aide.session.v1.Attachment
-	(*v12.DSHSession)(nil),                  // 176: aide.machine.v1.DSHSession
-	(*v12.DSHBridge)(nil),                   // 177: aide.machine.v1.DSHBridge
-	(*v12.ClaudeSession)(nil),               // 178: aide.machine.v1.ClaudeSession
-	(*v12.DSHModel)(nil),                    // 179: aide.machine.v1.DSHModel
-	(*v11.Persona)(nil),                     // 180: aide.identity.v1.Persona
-	(*v1.MarkSessionSeenRequest)(nil),       // 181: aide.session.v1.MarkSessionSeenRequest
-	(*v1.GetSessionInsightsRequest)(nil),    // 182: aide.session.v1.GetSessionInsightsRequest
-	(*v12.ListFoldersResponse)(nil),         // 183: aide.machine.v1.ListFoldersResponse
-	(*v12.TestAgentResponse)(nil),           // 184: aide.machine.v1.TestAgentResponse
-	(*v1.ToolOutputChunk)(nil),              // 185: aide.session.v1.ToolOutputChunk
-	(*v1.GetDiffResponse)(nil),              // 186: aide.session.v1.GetDiffResponse
-	(*v1.SessionInsights)(nil),              // 187: aide.session.v1.SessionInsights
-	(*v1.PushSessionResponse)(nil),          // 188: aide.session.v1.PushSessionResponse
-	(*v12.ReadDSHSessionResponse)(nil),      // 189: aide.machine.v1.ReadDSHSessionResponse
-	(*v12.SetDSHTakeoverResponse)(nil),      // 190: aide.machine.v1.SetDSHTakeoverResponse
-	(*v12.SendDSHMessageResponse)(nil),      // 191: aide.machine.v1.SendDSHMessageResponse
-	(*v12.InterruptDSHSessionResponse)(nil), // 192: aide.machine.v1.InterruptDSHSessionResponse
-	(*v12.PrepareDSHBridgeResponse)(nil),    // 193: aide.machine.v1.PrepareDSHBridgeResponse
-	(*v12.DSHSessionOptionsResponse)(nil),   // 194: aide.machine.v1.DSHSessionOptionsResponse
-	(*v12.ReadClaudeSessionResponse)(nil),   // 195: aide.machine.v1.ReadClaudeSessionResponse
-	(*v12.ListCustomAgentsResponse)(nil),    // 196: aide.machine.v1.ListCustomAgentsResponse
-	(*v12.SaveCustomAgentResponse)(nil),     // 197: aide.machine.v1.SaveCustomAgentResponse
-	(*v12.RemoveCustomAgentResponse)(nil),   // 198: aide.machine.v1.RemoveCustomAgentResponse
-	(*v12.TestCustomAgentResponse)(nil),     // 199: aide.machine.v1.TestCustomAgentResponse
+	(*SetAgentPausedRequest)(nil),           // 63: aide.local.v1.SetAgentPausedRequest
+	(*SetAgentPausedResponse)(nil),          // 64: aide.local.v1.SetAgentPausedResponse
+	(*CheckAgentsResponse)(nil),             // 65: aide.local.v1.CheckAgentsResponse
+	(*ListMachineReposRequest)(nil),         // 66: aide.local.v1.ListMachineReposRequest
+	(*ListMachineReposResponse)(nil),        // 67: aide.local.v1.ListMachineReposResponse
+	(*ListMachineFoldersRequest)(nil),       // 68: aide.local.v1.ListMachineFoldersRequest
+	(*TestMachineAgentRequest)(nil),         // 69: aide.local.v1.TestMachineAgentRequest
+	(*ListMachineCustomAgentsRequest)(nil),  // 70: aide.local.v1.ListMachineCustomAgentsRequest
+	(*SaveMachineCustomAgentRequest)(nil),   // 71: aide.local.v1.SaveMachineCustomAgentRequest
+	(*RemoveMachineCustomAgentRequest)(nil), // 72: aide.local.v1.RemoveMachineCustomAgentRequest
+	(*TestMachineCustomAgentRequest)(nil),   // 73: aide.local.v1.TestMachineCustomAgentRequest
+	(*GetDiagnosticsRequest)(nil),           // 74: aide.local.v1.GetDiagnosticsRequest
+	(*GetDiagnosticsResponse)(nil),          // 75: aide.local.v1.GetDiagnosticsResponse
+	(*RemoveMachineRequest)(nil),            // 76: aide.local.v1.RemoveMachineRequest
+	(*RemoveMachineResponse)(nil),           // 77: aide.local.v1.RemoveMachineResponse
+	(*Project)(nil),                         // 78: aide.local.v1.Project
+	(*ListProjectsRequest)(nil),             // 79: aide.local.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),            // 80: aide.local.v1.ListProjectsResponse
+	(*AddProjectRequest)(nil),               // 81: aide.local.v1.AddProjectRequest
+	(*AddProjectResponse)(nil),              // 82: aide.local.v1.AddProjectResponse
+	(*RemoveProjectRequest)(nil),            // 83: aide.local.v1.RemoveProjectRequest
+	(*RemoveProjectResponse)(nil),           // 84: aide.local.v1.RemoveProjectResponse
+	(*Client)(nil),                          // 85: aide.local.v1.Client
+	(*ListClientsRequest)(nil),              // 86: aide.local.v1.ListClientsRequest
+	(*ListClientsResponse)(nil),             // 87: aide.local.v1.ListClientsResponse
+	(*UpdateClientRequest)(nil),             // 88: aide.local.v1.UpdateClientRequest
+	(*UpdateClientResponse)(nil),            // 89: aide.local.v1.UpdateClientResponse
+	(*RenameClientRequest)(nil),             // 90: aide.local.v1.RenameClientRequest
+	(*RenameClientResponse)(nil),            // 91: aide.local.v1.RenameClientResponse
+	(*RevokeClientRequest)(nil),             // 92: aide.local.v1.RevokeClientRequest
+	(*RevokeClientResponse)(nil),            // 93: aide.local.v1.RevokeClientResponse
+	(*Wake)(nil),                            // 94: aide.local.v1.Wake
+	(*WakeRing)(nil),                        // 95: aide.local.v1.WakeRing
+	(*WakeCheck)(nil),                       // 96: aide.local.v1.WakeCheck
+	(*ListWakesRequest)(nil),                // 97: aide.local.v1.ListWakesRequest
+	(*ListWakesResponse)(nil),               // 98: aide.local.v1.ListWakesResponse
+	(*SetWakeRequest)(nil),                  // 99: aide.local.v1.SetWakeRequest
+	(*SetWakeResponse)(nil),                 // 100: aide.local.v1.SetWakeResponse
+	(*CheckWakeRequest)(nil),                // 101: aide.local.v1.CheckWakeRequest
+	(*CheckWakeResponse)(nil),               // 102: aide.local.v1.CheckWakeResponse
+	(*ClearWakeRequest)(nil),                // 103: aide.local.v1.ClearWakeRequest
+	(*ClearWakeResponse)(nil),               // 104: aide.local.v1.ClearWakeResponse
+	(*OpenWakeLinkRequest)(nil),             // 105: aide.local.v1.OpenWakeLinkRequest
+	(*OpenWakeLinkResponse)(nil),            // 106: aide.local.v1.OpenWakeLinkResponse
+	(*MachineAck)(nil),                      // 107: aide.local.v1.MachineAck
+	(*ListExecLogRequest)(nil),              // 108: aide.local.v1.ListExecLogRequest
+	(*ExecLogEntry)(nil),                    // 109: aide.local.v1.ExecLogEntry
+	(*ListExecLogResponse)(nil),             // 110: aide.local.v1.ListExecLogResponse
+	(*Unreachable)(nil),                     // 111: aide.local.v1.Unreachable
+	(*ListSessionsRequest)(nil),             // 112: aide.local.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),            // 113: aide.local.v1.ListSessionsResponse
+	(*WatchSessionsRequest)(nil),            // 114: aide.local.v1.WatchSessionsRequest
+	(*WatchSessionsResponse)(nil),           // 115: aide.local.v1.WatchSessionsResponse
+	(*StreamSessionEventsRequest)(nil),      // 116: aide.local.v1.StreamSessionEventsRequest
+	(*AnswerQuestionRequest)(nil),           // 117: aide.local.v1.AnswerQuestionRequest
+	(*AnswerQuestionResponse)(nil),          // 118: aide.local.v1.AnswerQuestionResponse
+	(*StartSessionRequest)(nil),             // 119: aide.local.v1.StartSessionRequest
+	(*SendMessageRequest)(nil),              // 120: aide.local.v1.SendMessageRequest
+	(*InterruptSessionRequest)(nil),         // 121: aide.local.v1.InterruptSessionRequest
+	(*ArchiveSessionRequest)(nil),           // 122: aide.local.v1.ArchiveSessionRequest
+	(*UnarchiveSessionRequest)(nil),         // 123: aide.local.v1.UnarchiveSessionRequest
+	(*DeleteSessionRequest)(nil),            // 124: aide.local.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),           // 125: aide.local.v1.DeleteSessionResponse
+	(*RenameSessionRequest)(nil),            // 126: aide.local.v1.RenameSessionRequest
+	(*SessionResponse)(nil),                 // 127: aide.local.v1.SessionResponse
+	(*QueryWorkRequest)(nil),                // 128: aide.local.v1.QueryWorkRequest
+	(*WorkGroup)(nil),                       // 129: aide.local.v1.WorkGroup
+	(*SessionCount)(nil),                    // 130: aide.local.v1.SessionCount
+	(*TurnCount)(nil),                       // 131: aide.local.v1.TurnCount
+	(*WorkSource)(nil),                      // 132: aide.local.v1.WorkSource
+	(*QueryWorkResponse)(nil),               // 133: aide.local.v1.QueryWorkResponse
+	(*GetDiffRequest)(nil),                  // 134: aide.local.v1.GetDiffRequest
+	(*PushSessionRequest)(nil),              // 135: aide.local.v1.PushSessionRequest
+	(*RollbackSessionRequest)(nil),          // 136: aide.local.v1.RollbackSessionRequest
+	(*StopScreenRequest)(nil),               // 137: aide.local.v1.StopScreenRequest
+	(*StopScreenResponse)(nil),              // 138: aide.local.v1.StopScreenResponse
+	(*ListDSHSessionsRequest)(nil),          // 139: aide.local.v1.ListDSHSessionsRequest
+	(*ListDSHSessionsResponse)(nil),         // 140: aide.local.v1.ListDSHSessionsResponse
+	(*DSHSessionEntry)(nil),                 // 141: aide.local.v1.DSHSessionEntry
+	(*DSHBridgeEntry)(nil),                  // 142: aide.local.v1.DSHBridgeEntry
+	(*ListClaudeSessionsRequest)(nil),       // 143: aide.local.v1.ListClaudeSessionsRequest
+	(*ListClaudeSessionsResponse)(nil),      // 144: aide.local.v1.ListClaudeSessionsResponse
+	(*ClaudeSessionEntry)(nil),              // 145: aide.local.v1.ClaudeSessionEntry
+	(*ClaudeIndexEntry)(nil),                // 146: aide.local.v1.ClaudeIndexEntry
+	(*ReadClaudeSessionRequest)(nil),        // 147: aide.local.v1.ReadClaudeSessionRequest
+	(*SetDSHTakeoverRequest)(nil),           // 148: aide.local.v1.SetDSHTakeoverRequest
+	(*SendDSHMessageRequest)(nil),           // 149: aide.local.v1.SendDSHMessageRequest
+	(*DSHSessionOptionsRequest)(nil),        // 150: aide.local.v1.DSHSessionOptionsRequest
+	(*InterruptDSHSessionRequest)(nil),      // 151: aide.local.v1.InterruptDSHSessionRequest
+	(*PrepareDSHBridgeRequest)(nil),         // 152: aide.local.v1.PrepareDSHBridgeRequest
+	(*ReadDSHSessionRequest)(nil),           // 153: aide.local.v1.ReadDSHSessionRequest
+	(*ListPersonasRequest)(nil),             // 154: aide.local.v1.ListPersonasRequest
+	(*ListPersonasResponse)(nil),            // 155: aide.local.v1.ListPersonasResponse
+	(*SavePersonaRequest)(nil),              // 156: aide.local.v1.SavePersonaRequest
+	(*SavePersonaResponse)(nil),             // 157: aide.local.v1.SavePersonaResponse
+	(*DeletePersonaRequest)(nil),            // 158: aide.local.v1.DeletePersonaRequest
+	(*DeletePersonaResponse)(nil),           // 159: aide.local.v1.DeletePersonaResponse
+	(*TalkToPersonaRequest)(nil),            // 160: aide.local.v1.TalkToPersonaRequest
+	(*TalkToPersonaResponse)(nil),           // 161: aide.local.v1.TalkToPersonaResponse
+	(*v1.Session)(nil),                      // 162: aide.session.v1.Session
+	(*v1.SessionCursor)(nil),                // 163: aide.session.v1.SessionCursor
+	(v1.EventView)(0),                       // 164: aide.session.v1.EventView
+	(*v1.SessionEvent)(nil),                 // 165: aide.session.v1.SessionEvent
+	(*timestamppb.Timestamp)(nil),           // 166: google.protobuf.Timestamp
+	(v11.TaskVisibility)(0),                 // 167: aide.identity.v1.TaskVisibility
+	(*v12.MachineStatus)(nil),               // 168: aide.machine.v1.MachineStatus
+	(*v11.AgentDefaults)(nil),               // 169: aide.identity.v1.AgentDefaults
+	(*v12.Repo)(nil),                        // 170: aide.machine.v1.Repo
+	(*v12.CustomAgent)(nil),                 // 171: aide.machine.v1.CustomAgent
+	(v11.Workspace)(0),                      // 172: aide.identity.v1.Workspace
+	(*v12.ExecRecord)(nil),                  // 173: aide.machine.v1.ExecRecord
+	(v1.SessionView)(0),                     // 174: aide.session.v1.SessionView
+	(*v1.Answer)(nil),                       // 175: aide.session.v1.Answer
+	(*v1.StartSessionRequest)(nil),          // 176: aide.session.v1.StartSessionRequest
+	(*v1.Attachment)(nil),                   // 177: aide.session.v1.Attachment
+	(*v12.DSHSession)(nil),                  // 178: aide.machine.v1.DSHSession
+	(*v12.DSHBridge)(nil),                   // 179: aide.machine.v1.DSHBridge
+	(*v12.ClaudeSession)(nil),               // 180: aide.machine.v1.ClaudeSession
+	(*v12.DSHModel)(nil),                    // 181: aide.machine.v1.DSHModel
+	(*v11.Persona)(nil),                     // 182: aide.identity.v1.Persona
+	(*v1.MarkSessionSeenRequest)(nil),       // 183: aide.session.v1.MarkSessionSeenRequest
+	(*v1.GetSessionInsightsRequest)(nil),    // 184: aide.session.v1.GetSessionInsightsRequest
+	(*v12.ListFoldersResponse)(nil),         // 185: aide.machine.v1.ListFoldersResponse
+	(*v12.TestAgentResponse)(nil),           // 186: aide.machine.v1.TestAgentResponse
+	(*v1.ToolOutputChunk)(nil),              // 187: aide.session.v1.ToolOutputChunk
+	(*v1.GetDiffResponse)(nil),              // 188: aide.session.v1.GetDiffResponse
+	(*v1.SessionInsights)(nil),              // 189: aide.session.v1.SessionInsights
+	(*v1.PushSessionResponse)(nil),          // 190: aide.session.v1.PushSessionResponse
+	(*v12.ReadDSHSessionResponse)(nil),      // 191: aide.machine.v1.ReadDSHSessionResponse
+	(*v12.SetDSHTakeoverResponse)(nil),      // 192: aide.machine.v1.SetDSHTakeoverResponse
+	(*v12.SendDSHMessageResponse)(nil),      // 193: aide.machine.v1.SendDSHMessageResponse
+	(*v12.InterruptDSHSessionResponse)(nil), // 194: aide.machine.v1.InterruptDSHSessionResponse
+	(*v12.PrepareDSHBridgeResponse)(nil),    // 195: aide.machine.v1.PrepareDSHBridgeResponse
+	(*v12.DSHSessionOptionsResponse)(nil),   // 196: aide.machine.v1.DSHSessionOptionsResponse
+	(*v12.ReadClaudeSessionResponse)(nil),   // 197: aide.machine.v1.ReadClaudeSessionResponse
+	(*v12.ListCustomAgentsResponse)(nil),    // 198: aide.machine.v1.ListCustomAgentsResponse
+	(*v12.SaveCustomAgentResponse)(nil),     // 199: aide.machine.v1.SaveCustomAgentResponse
+	(*v12.RemoveCustomAgentResponse)(nil),   // 200: aide.machine.v1.RemoveCustomAgentResponse
+	(*v12.TestCustomAgentResponse)(nil),     // 201: aide.machine.v1.TestCustomAgentResponse
 }
 var file_aide_local_v1_local_proto_depIdxs = []int32{
 	11,  // 0: aide.local.v1.WatchResponse.status:type_name -> aide.local.v1.GetStatusResponse
 	49,  // 1: aide.local.v1.WatchResponse.machines:type_name -> aide.local.v1.Machine
-	83,  // 2: aide.local.v1.WatchResponse.clients:type_name -> aide.local.v1.Client
+	85,  // 2: aide.local.v1.WatchResponse.clients:type_name -> aide.local.v1.Client
 	31,  // 3: aide.local.v1.WatchResponse.devices:type_name -> aide.local.v1.Device
-	76,  // 4: aide.local.v1.WatchResponse.projects:type_name -> aide.local.v1.Project
+	78,  // 4: aide.local.v1.WatchResponse.projects:type_name -> aide.local.v1.Project
 	7,   // 5: aide.local.v1.WatchResponse.removed_projects:type_name -> aide.local.v1.ProjectRef
-	160, // 6: aide.local.v1.WatchResponse.sessions:type_name -> aide.session.v1.Session
-	161, // 7: aide.local.v1.WatchResponse.next:type_name -> aide.session.v1.SessionCursor
-	162, // 8: aide.local.v1.ListSessionEventsRequest.view:type_name -> aide.session.v1.EventView
-	163, // 9: aide.local.v1.ListSessionEventsResponse.events:type_name -> aide.session.v1.SessionEvent
+	162, // 6: aide.local.v1.WatchResponse.sessions:type_name -> aide.session.v1.Session
+	163, // 7: aide.local.v1.WatchResponse.next:type_name -> aide.session.v1.SessionCursor
+	164, // 8: aide.local.v1.ListSessionEventsRequest.view:type_name -> aide.session.v1.EventView
+	165, // 9: aide.local.v1.ListSessionEventsResponse.events:type_name -> aide.session.v1.SessionEvent
 	45,  // 10: aide.local.v1.GetStatusResponse.erased:type_name -> aide.local.v1.Erased
 	51,  // 11: aide.local.v1.GetStatusResponse.state_limits:type_name -> aide.local.v1.StateLimits
 	14,  // 12: aide.local.v1.ListProfilesResponse.profiles:type_name -> aide.local.v1.Profile
 	31,  // 13: aide.local.v1.ListDevicesResponse.devices:type_name -> aide.local.v1.Device
 	42,  // 14: aide.local.v1.EraseStatusResponse.items:type_name -> aide.local.v1.EraseItem
-	164, // 15: aide.local.v1.Erased.at:type_name -> google.protobuf.Timestamp
-	165, // 16: aide.local.v1.GrantSpec.task_visibility:type_name -> aide.identity.v1.TaskVisibility
-	164, // 17: aide.local.v1.Machine.last_seen:type_name -> google.protobuf.Timestamp
-	166, // 18: aide.local.v1.Machine.status:type_name -> aide.machine.v1.MachineStatus
-	164, // 19: aide.local.v1.Machine.heard_at:type_name -> google.protobuf.Timestamp
-	164, // 20: aide.local.v1.Machine.unreachable_since:type_name -> google.protobuf.Timestamp
+	166, // 15: aide.local.v1.Erased.at:type_name -> google.protobuf.Timestamp
+	167, // 16: aide.local.v1.GrantSpec.task_visibility:type_name -> aide.identity.v1.TaskVisibility
+	166, // 17: aide.local.v1.Machine.last_seen:type_name -> google.protobuf.Timestamp
+	168, // 18: aide.local.v1.Machine.status:type_name -> aide.machine.v1.MachineStatus
+	166, // 19: aide.local.v1.Machine.heard_at:type_name -> google.protobuf.Timestamp
+	166, // 20: aide.local.v1.Machine.unreachable_since:type_name -> google.protobuf.Timestamp
 	50,  // 21: aide.local.v1.Machine.lost_spans:type_name -> aide.local.v1.LostSpan
-	164, // 22: aide.local.v1.LostSpan.from:type_name -> google.protobuf.Timestamp
-	164, // 23: aide.local.v1.LostSpan.to:type_name -> google.protobuf.Timestamp
+	166, // 22: aide.local.v1.LostSpan.from:type_name -> google.protobuf.Timestamp
+	166, // 23: aide.local.v1.LostSpan.to:type_name -> google.protobuf.Timestamp
 	49,  // 24: aide.local.v1.ListMachinesResponse.machines:type_name -> aide.local.v1.Machine
-	167, // 25: aide.local.v1.SetAgentDefaultsRequest.defaults:type_name -> aide.identity.v1.AgentDefaults
-	168, // 26: aide.local.v1.ListMachineReposResponse.repos:type_name -> aide.machine.v1.Repo
-	169, // 27: aide.local.v1.SaveMachineCustomAgentRequest.agent:type_name -> aide.machine.v1.CustomAgent
-	169, // 28: aide.local.v1.TestMachineCustomAgentRequest.agent:type_name -> aide.machine.v1.CustomAgent
-	170, // 29: aide.local.v1.Project.workspace:type_name -> aide.identity.v1.Workspace
-	76,  // 30: aide.local.v1.ListProjectsResponse.projects:type_name -> aide.local.v1.Project
-	109, // 31: aide.local.v1.ListProjectsResponse.unreachable:type_name -> aide.local.v1.Unreachable
-	170, // 32: aide.local.v1.AddProjectRequest.workspace:type_name -> aide.identity.v1.Workspace
-	48,  // 33: aide.local.v1.Client.spec:type_name -> aide.local.v1.GrantSpec
-	164, // 34: aide.local.v1.Client.expires_at:type_name -> google.protobuf.Timestamp
-	164, // 35: aide.local.v1.Client.last_seen:type_name -> google.protobuf.Timestamp
-	83,  // 36: aide.local.v1.ListClientsResponse.clients:type_name -> aide.local.v1.Client
-	48,  // 37: aide.local.v1.UpdateClientRequest.spec:type_name -> aide.local.v1.GrantSpec
-	105, // 38: aide.local.v1.UpdateClientResponse.acks:type_name -> aide.local.v1.MachineAck
-	105, // 39: aide.local.v1.RevokeClientResponse.acks:type_name -> aide.local.v1.MachineAck
-	164, // 40: aide.local.v1.Wake.last_ring_at:type_name -> google.protobuf.Timestamp
-	93,  // 41: aide.local.v1.Wake.recent:type_name -> aide.local.v1.WakeRing
-	164, // 42: aide.local.v1.WakeRing.at:type_name -> google.protobuf.Timestamp
-	92,  // 43: aide.local.v1.ListWakesResponse.wakes:type_name -> aide.local.v1.Wake
-	92,  // 44: aide.local.v1.SetWakeResponse.wake:type_name -> aide.local.v1.Wake
-	94,  // 45: aide.local.v1.SetWakeResponse.check:type_name -> aide.local.v1.WakeCheck
-	92,  // 46: aide.local.v1.CheckWakeResponse.wake:type_name -> aide.local.v1.Wake
-	94,  // 47: aide.local.v1.CheckWakeResponse.check:type_name -> aide.local.v1.WakeCheck
-	164, // 48: aide.local.v1.OpenWakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
-	171, // 49: aide.local.v1.ExecLogEntry.record:type_name -> aide.machine.v1.ExecRecord
-	107, // 50: aide.local.v1.ListExecLogResponse.entries:type_name -> aide.local.v1.ExecLogEntry
-	109, // 51: aide.local.v1.ListExecLogResponse.unreachable:type_name -> aide.local.v1.Unreachable
-	161, // 52: aide.local.v1.ListSessionsRequest.before:type_name -> aide.session.v1.SessionCursor
-	172, // 53: aide.local.v1.ListSessionsRequest.view:type_name -> aide.session.v1.SessionView
-	160, // 54: aide.local.v1.ListSessionsResponse.sessions:type_name -> aide.session.v1.Session
-	109, // 55: aide.local.v1.ListSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
-	161, // 56: aide.local.v1.ListSessionsResponse.next:type_name -> aide.session.v1.SessionCursor
-	160, // 57: aide.local.v1.WatchSessionsResponse.sessions:type_name -> aide.session.v1.Session
-	109, // 58: aide.local.v1.WatchSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
-	162, // 59: aide.local.v1.StreamSessionEventsRequest.view:type_name -> aide.session.v1.EventView
-	173, // 60: aide.local.v1.AnswerQuestionRequest.answers:type_name -> aide.session.v1.Answer
-	160, // 61: aide.local.v1.AnswerQuestionResponse.session:type_name -> aide.session.v1.Session
-	174, // 62: aide.local.v1.StartSessionRequest.session:type_name -> aide.session.v1.StartSessionRequest
-	175, // 63: aide.local.v1.SendMessageRequest.attachments:type_name -> aide.session.v1.Attachment
-	160, // 64: aide.local.v1.SessionResponse.session:type_name -> aide.session.v1.Session
-	0,   // 65: aide.local.v1.QueryWorkRequest.bucket:type_name -> aide.local.v1.WorkBucket
-	1,   // 66: aide.local.v1.QueryWorkRequest.group_by:type_name -> aide.local.v1.WorkDimension
-	127, // 67: aide.local.v1.SessionCount.group:type_name -> aide.local.v1.WorkGroup
-	127, // 68: aide.local.v1.TurnCount.group:type_name -> aide.local.v1.WorkGroup
-	164, // 69: aide.local.v1.WorkSource.synced_at:type_name -> google.protobuf.Timestamp
-	128, // 70: aide.local.v1.QueryWorkResponse.sessions:type_name -> aide.local.v1.SessionCount
-	128, // 71: aide.local.v1.QueryWorkResponse.range_sessions:type_name -> aide.local.v1.SessionCount
-	129, // 72: aide.local.v1.QueryWorkResponse.turns:type_name -> aide.local.v1.TurnCount
-	129, // 73: aide.local.v1.QueryWorkResponse.range_turns:type_name -> aide.local.v1.TurnCount
-	130, // 74: aide.local.v1.QueryWorkResponse.sources:type_name -> aide.local.v1.WorkSource
-	139, // 75: aide.local.v1.ListDSHSessionsResponse.sessions:type_name -> aide.local.v1.DSHSessionEntry
-	109, // 76: aide.local.v1.ListDSHSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
-	140, // 77: aide.local.v1.ListDSHSessionsResponse.bridges:type_name -> aide.local.v1.DSHBridgeEntry
-	176, // 78: aide.local.v1.DSHSessionEntry.session:type_name -> aide.machine.v1.DSHSession
-	164, // 79: aide.local.v1.DSHSessionEntry.read_at:type_name -> google.protobuf.Timestamp
-	177, // 80: aide.local.v1.DSHBridgeEntry.bridge:type_name -> aide.machine.v1.DSHBridge
-	143, // 81: aide.local.v1.ListClaudeSessionsResponse.sessions:type_name -> aide.local.v1.ClaudeSessionEntry
-	109, // 82: aide.local.v1.ListClaudeSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
-	144, // 83: aide.local.v1.ListClaudeSessionsResponse.indexes:type_name -> aide.local.v1.ClaudeIndexEntry
-	178, // 84: aide.local.v1.ClaudeSessionEntry.session:type_name -> aide.machine.v1.ClaudeSession
-	164, // 85: aide.local.v1.ClaudeSessionEntry.read_at:type_name -> google.protobuf.Timestamp
-	162, // 86: aide.local.v1.ReadClaudeSessionRequest.view:type_name -> aide.session.v1.EventView
-	179, // 87: aide.local.v1.SendDSHMessageRequest.model:type_name -> aide.machine.v1.DSHModel
-	162, // 88: aide.local.v1.ReadDSHSessionRequest.view:type_name -> aide.session.v1.EventView
-	180, // 89: aide.local.v1.ListPersonasResponse.personas:type_name -> aide.identity.v1.Persona
-	180, // 90: aide.local.v1.SavePersonaRequest.persona:type_name -> aide.identity.v1.Persona
-	180, // 91: aide.local.v1.SavePersonaResponse.persona:type_name -> aide.identity.v1.Persona
-	175, // 92: aide.local.v1.TalkToPersonaRequest.attachments:type_name -> aide.session.v1.Attachment
-	160, // 93: aide.local.v1.TalkToPersonaResponse.session:type_name -> aide.session.v1.Session
-	180, // 94: aide.local.v1.TalkToPersonaResponse.persona:type_name -> aide.identity.v1.Persona
-	10,  // 95: aide.local.v1.LocalService.GetStatus:input_type -> aide.local.v1.GetStatusRequest
-	2,   // 96: aide.local.v1.LocalService.Watch:input_type -> aide.local.v1.WatchRequest
-	12,  // 97: aide.local.v1.LocalService.ListProfiles:input_type -> aide.local.v1.ListProfilesRequest
-	15,  // 98: aide.local.v1.LocalService.SwitchProfile:input_type -> aide.local.v1.SwitchProfileRequest
-	17,  // 99: aide.local.v1.LocalService.AddProfile:input_type -> aide.local.v1.AddProfileRequest
-	19,  // 100: aide.local.v1.LocalService.SignOut:input_type -> aide.local.v1.SignOutRequest
-	21,  // 101: aide.local.v1.LocalService.SignIn:input_type -> aide.local.v1.SignInRequest
-	23,  // 102: aide.local.v1.LocalService.Setup:input_type -> aide.local.v1.SetupRequest
-	25,  // 103: aide.local.v1.LocalService.LogIn:input_type -> aide.local.v1.LogInRequest
-	27,  // 104: aide.local.v1.LocalService.GetLogin:input_type -> aide.local.v1.GetLoginRequest
-	29,  // 105: aide.local.v1.LocalService.SetLogin:input_type -> aide.local.v1.SetLoginRequest
-	32,  // 106: aide.local.v1.LocalService.ListDevices:input_type -> aide.local.v1.ListDevicesRequest
-	34,  // 107: aide.local.v1.LocalService.RemoveDevice:input_type -> aide.local.v1.RemoveDeviceRequest
-	36,  // 108: aide.local.v1.LocalService.Leave:input_type -> aide.local.v1.LeaveRequest
-	38,  // 109: aide.local.v1.LocalService.EraseEverything:input_type -> aide.local.v1.EraseEverythingRequest
-	40,  // 110: aide.local.v1.LocalService.EraseStatus:input_type -> aide.local.v1.EraseStatusRequest
-	43,  // 111: aide.local.v1.LocalService.FinishErase:input_type -> aide.local.v1.FinishEraseRequest
-	46,  // 112: aide.local.v1.LocalService.SetLocalMachine:input_type -> aide.local.v1.SetLocalMachineRequest
-	52,  // 113: aide.local.v1.LocalService.ListMachines:input_type -> aide.local.v1.ListMachinesRequest
-	54,  // 114: aide.local.v1.LocalService.RenameMachine:input_type -> aide.local.v1.RenameMachineRequest
-	56,  // 115: aide.local.v1.LocalService.SetMachinePaused:input_type -> aide.local.v1.SetMachinePausedRequest
-	58,  // 116: aide.local.v1.LocalService.SetAgentDefaults:input_type -> aide.local.v1.SetAgentDefaultsRequest
-	74,  // 117: aide.local.v1.LocalService.RemoveMachine:input_type -> aide.local.v1.RemoveMachineRequest
-	60,  // 118: aide.local.v1.LocalService.CheckAgents:input_type -> aide.local.v1.CheckAgentsRequest
-	61,  // 119: aide.local.v1.LocalService.SetAgentHidden:input_type -> aide.local.v1.SetAgentHiddenRequest
-	64,  // 120: aide.local.v1.LocalService.ListMachineRepos:input_type -> aide.local.v1.ListMachineReposRequest
-	66,  // 121: aide.local.v1.LocalService.ListMachineFolders:input_type -> aide.local.v1.ListMachineFoldersRequest
-	67,  // 122: aide.local.v1.LocalService.TestMachineAgent:input_type -> aide.local.v1.TestMachineAgentRequest
-	106, // 123: aide.local.v1.LocalService.ListExecLog:input_type -> aide.local.v1.ListExecLogRequest
-	72,  // 124: aide.local.v1.LocalService.GetDiagnostics:input_type -> aide.local.v1.GetDiagnosticsRequest
-	135, // 125: aide.local.v1.LocalService.StopScreen:input_type -> aide.local.v1.StopScreenRequest
-	77,  // 126: aide.local.v1.LocalService.ListProjects:input_type -> aide.local.v1.ListProjectsRequest
-	79,  // 127: aide.local.v1.LocalService.AddProject:input_type -> aide.local.v1.AddProjectRequest
-	81,  // 128: aide.local.v1.LocalService.RemoveProject:input_type -> aide.local.v1.RemoveProjectRequest
-	84,  // 129: aide.local.v1.LocalService.ListClients:input_type -> aide.local.v1.ListClientsRequest
-	86,  // 130: aide.local.v1.LocalService.UpdateClient:input_type -> aide.local.v1.UpdateClientRequest
-	88,  // 131: aide.local.v1.LocalService.RenameClient:input_type -> aide.local.v1.RenameClientRequest
-	90,  // 132: aide.local.v1.LocalService.RevokeClient:input_type -> aide.local.v1.RevokeClientRequest
-	95,  // 133: aide.local.v1.LocalService.ListWakes:input_type -> aide.local.v1.ListWakesRequest
-	97,  // 134: aide.local.v1.LocalService.SetWake:input_type -> aide.local.v1.SetWakeRequest
-	99,  // 135: aide.local.v1.LocalService.CheckWake:input_type -> aide.local.v1.CheckWakeRequest
-	101, // 136: aide.local.v1.LocalService.ClearWake:input_type -> aide.local.v1.ClearWakeRequest
-	103, // 137: aide.local.v1.LocalService.OpenWakeLink:input_type -> aide.local.v1.OpenWakeLinkRequest
-	152, // 138: aide.local.v1.LocalService.ListPersonas:input_type -> aide.local.v1.ListPersonasRequest
-	154, // 139: aide.local.v1.LocalService.SavePersona:input_type -> aide.local.v1.SavePersonaRequest
-	156, // 140: aide.local.v1.LocalService.DeletePersona:input_type -> aide.local.v1.DeletePersonaRequest
-	158, // 141: aide.local.v1.LocalService.TalkToPersona:input_type -> aide.local.v1.TalkToPersonaRequest
-	110, // 142: aide.local.v1.LocalService.ListSessions:input_type -> aide.local.v1.ListSessionsRequest
-	112, // 143: aide.local.v1.LocalService.WatchSessions:input_type -> aide.local.v1.WatchSessionsRequest
-	114, // 144: aide.local.v1.LocalService.StreamSessionEvents:input_type -> aide.local.v1.StreamSessionEventsRequest
-	4,   // 145: aide.local.v1.LocalService.ListSessionEvents:input_type -> aide.local.v1.ListSessionEventsRequest
-	6,   // 146: aide.local.v1.LocalService.ReadToolOutput:input_type -> aide.local.v1.ReadToolOutputRequest
-	117, // 147: aide.local.v1.LocalService.StartSession:input_type -> aide.local.v1.StartSessionRequest
-	118, // 148: aide.local.v1.LocalService.SendMessage:input_type -> aide.local.v1.SendMessageRequest
-	119, // 149: aide.local.v1.LocalService.InterruptSession:input_type -> aide.local.v1.InterruptSessionRequest
-	120, // 150: aide.local.v1.LocalService.ArchiveSession:input_type -> aide.local.v1.ArchiveSessionRequest
-	121, // 151: aide.local.v1.LocalService.UnarchiveSession:input_type -> aide.local.v1.UnarchiveSessionRequest
-	122, // 152: aide.local.v1.LocalService.DeleteSession:input_type -> aide.local.v1.DeleteSessionRequest
-	124, // 153: aide.local.v1.LocalService.RenameSession:input_type -> aide.local.v1.RenameSessionRequest
-	181, // 154: aide.local.v1.LocalService.MarkSessionSeen:input_type -> aide.session.v1.MarkSessionSeenRequest
-	115, // 155: aide.local.v1.LocalService.AnswerQuestion:input_type -> aide.local.v1.AnswerQuestionRequest
-	132, // 156: aide.local.v1.LocalService.GetDiff:input_type -> aide.local.v1.GetDiffRequest
-	182, // 157: aide.local.v1.LocalService.GetSessionInsights:input_type -> aide.session.v1.GetSessionInsightsRequest
-	133, // 158: aide.local.v1.LocalService.PushSession:input_type -> aide.local.v1.PushSessionRequest
-	134, // 159: aide.local.v1.LocalService.RollbackSession:input_type -> aide.local.v1.RollbackSessionRequest
-	137, // 160: aide.local.v1.LocalService.ListDSHSessions:input_type -> aide.local.v1.ListDSHSessionsRequest
-	151, // 161: aide.local.v1.LocalService.ReadDSHSession:input_type -> aide.local.v1.ReadDSHSessionRequest
-	146, // 162: aide.local.v1.LocalService.SetDSHTakeover:input_type -> aide.local.v1.SetDSHTakeoverRequest
-	147, // 163: aide.local.v1.LocalService.SendDSHMessage:input_type -> aide.local.v1.SendDSHMessageRequest
-	149, // 164: aide.local.v1.LocalService.InterruptDSHSession:input_type -> aide.local.v1.InterruptDSHSessionRequest
-	150, // 165: aide.local.v1.LocalService.PrepareDSHBridge:input_type -> aide.local.v1.PrepareDSHBridgeRequest
-	148, // 166: aide.local.v1.LocalService.DSHSessionOptions:input_type -> aide.local.v1.DSHSessionOptionsRequest
-	141, // 167: aide.local.v1.LocalService.ListClaudeSessions:input_type -> aide.local.v1.ListClaudeSessionsRequest
-	145, // 168: aide.local.v1.LocalService.ReadClaudeSession:input_type -> aide.local.v1.ReadClaudeSessionRequest
-	68,  // 169: aide.local.v1.LocalService.ListMachineCustomAgents:input_type -> aide.local.v1.ListMachineCustomAgentsRequest
-	69,  // 170: aide.local.v1.LocalService.SaveMachineCustomAgent:input_type -> aide.local.v1.SaveMachineCustomAgentRequest
-	70,  // 171: aide.local.v1.LocalService.RemoveMachineCustomAgent:input_type -> aide.local.v1.RemoveMachineCustomAgentRequest
-	71,  // 172: aide.local.v1.LocalService.TestMachineCustomAgent:input_type -> aide.local.v1.TestMachineCustomAgentRequest
-	126, // 173: aide.local.v1.LocalService.QueryWork:input_type -> aide.local.v1.QueryWorkRequest
-	8,   // 174: aide.local.v1.LocalService.RegisterPush:input_type -> aide.local.v1.RegisterPushRequest
-	11,  // 175: aide.local.v1.LocalService.GetStatus:output_type -> aide.local.v1.GetStatusResponse
-	3,   // 176: aide.local.v1.LocalService.Watch:output_type -> aide.local.v1.WatchResponse
-	13,  // 177: aide.local.v1.LocalService.ListProfiles:output_type -> aide.local.v1.ListProfilesResponse
-	16,  // 178: aide.local.v1.LocalService.SwitchProfile:output_type -> aide.local.v1.SwitchProfileResponse
-	18,  // 179: aide.local.v1.LocalService.AddProfile:output_type -> aide.local.v1.AddProfileResponse
-	20,  // 180: aide.local.v1.LocalService.SignOut:output_type -> aide.local.v1.SignOutResponse
-	22,  // 181: aide.local.v1.LocalService.SignIn:output_type -> aide.local.v1.SignInResponse
-	24,  // 182: aide.local.v1.LocalService.Setup:output_type -> aide.local.v1.SetupResponse
-	26,  // 183: aide.local.v1.LocalService.LogIn:output_type -> aide.local.v1.LogInResponse
-	28,  // 184: aide.local.v1.LocalService.GetLogin:output_type -> aide.local.v1.GetLoginResponse
-	30,  // 185: aide.local.v1.LocalService.SetLogin:output_type -> aide.local.v1.SetLoginResponse
-	33,  // 186: aide.local.v1.LocalService.ListDevices:output_type -> aide.local.v1.ListDevicesResponse
-	35,  // 187: aide.local.v1.LocalService.RemoveDevice:output_type -> aide.local.v1.RemoveDeviceResponse
-	37,  // 188: aide.local.v1.LocalService.Leave:output_type -> aide.local.v1.LeaveResponse
-	39,  // 189: aide.local.v1.LocalService.EraseEverything:output_type -> aide.local.v1.EraseEverythingResponse
-	41,  // 190: aide.local.v1.LocalService.EraseStatus:output_type -> aide.local.v1.EraseStatusResponse
-	44,  // 191: aide.local.v1.LocalService.FinishErase:output_type -> aide.local.v1.FinishEraseResponse
-	47,  // 192: aide.local.v1.LocalService.SetLocalMachine:output_type -> aide.local.v1.SetLocalMachineResponse
-	53,  // 193: aide.local.v1.LocalService.ListMachines:output_type -> aide.local.v1.ListMachinesResponse
-	55,  // 194: aide.local.v1.LocalService.RenameMachine:output_type -> aide.local.v1.RenameMachineResponse
-	57,  // 195: aide.local.v1.LocalService.SetMachinePaused:output_type -> aide.local.v1.SetMachinePausedResponse
-	59,  // 196: aide.local.v1.LocalService.SetAgentDefaults:output_type -> aide.local.v1.SetAgentDefaultsResponse
-	75,  // 197: aide.local.v1.LocalService.RemoveMachine:output_type -> aide.local.v1.RemoveMachineResponse
-	63,  // 198: aide.local.v1.LocalService.CheckAgents:output_type -> aide.local.v1.CheckAgentsResponse
-	62,  // 199: aide.local.v1.LocalService.SetAgentHidden:output_type -> aide.local.v1.SetAgentHiddenResponse
-	65,  // 200: aide.local.v1.LocalService.ListMachineRepos:output_type -> aide.local.v1.ListMachineReposResponse
-	183, // 201: aide.local.v1.LocalService.ListMachineFolders:output_type -> aide.machine.v1.ListFoldersResponse
-	184, // 202: aide.local.v1.LocalService.TestMachineAgent:output_type -> aide.machine.v1.TestAgentResponse
-	108, // 203: aide.local.v1.LocalService.ListExecLog:output_type -> aide.local.v1.ListExecLogResponse
-	73,  // 204: aide.local.v1.LocalService.GetDiagnostics:output_type -> aide.local.v1.GetDiagnosticsResponse
-	136, // 205: aide.local.v1.LocalService.StopScreen:output_type -> aide.local.v1.StopScreenResponse
-	78,  // 206: aide.local.v1.LocalService.ListProjects:output_type -> aide.local.v1.ListProjectsResponse
-	80,  // 207: aide.local.v1.LocalService.AddProject:output_type -> aide.local.v1.AddProjectResponse
-	82,  // 208: aide.local.v1.LocalService.RemoveProject:output_type -> aide.local.v1.RemoveProjectResponse
-	85,  // 209: aide.local.v1.LocalService.ListClients:output_type -> aide.local.v1.ListClientsResponse
-	87,  // 210: aide.local.v1.LocalService.UpdateClient:output_type -> aide.local.v1.UpdateClientResponse
-	89,  // 211: aide.local.v1.LocalService.RenameClient:output_type -> aide.local.v1.RenameClientResponse
-	91,  // 212: aide.local.v1.LocalService.RevokeClient:output_type -> aide.local.v1.RevokeClientResponse
-	96,  // 213: aide.local.v1.LocalService.ListWakes:output_type -> aide.local.v1.ListWakesResponse
-	98,  // 214: aide.local.v1.LocalService.SetWake:output_type -> aide.local.v1.SetWakeResponse
-	100, // 215: aide.local.v1.LocalService.CheckWake:output_type -> aide.local.v1.CheckWakeResponse
-	102, // 216: aide.local.v1.LocalService.ClearWake:output_type -> aide.local.v1.ClearWakeResponse
-	104, // 217: aide.local.v1.LocalService.OpenWakeLink:output_type -> aide.local.v1.OpenWakeLinkResponse
-	153, // 218: aide.local.v1.LocalService.ListPersonas:output_type -> aide.local.v1.ListPersonasResponse
-	155, // 219: aide.local.v1.LocalService.SavePersona:output_type -> aide.local.v1.SavePersonaResponse
-	157, // 220: aide.local.v1.LocalService.DeletePersona:output_type -> aide.local.v1.DeletePersonaResponse
-	159, // 221: aide.local.v1.LocalService.TalkToPersona:output_type -> aide.local.v1.TalkToPersonaResponse
-	111, // 222: aide.local.v1.LocalService.ListSessions:output_type -> aide.local.v1.ListSessionsResponse
-	113, // 223: aide.local.v1.LocalService.WatchSessions:output_type -> aide.local.v1.WatchSessionsResponse
-	163, // 224: aide.local.v1.LocalService.StreamSessionEvents:output_type -> aide.session.v1.SessionEvent
-	5,   // 225: aide.local.v1.LocalService.ListSessionEvents:output_type -> aide.local.v1.ListSessionEventsResponse
-	185, // 226: aide.local.v1.LocalService.ReadToolOutput:output_type -> aide.session.v1.ToolOutputChunk
-	125, // 227: aide.local.v1.LocalService.StartSession:output_type -> aide.local.v1.SessionResponse
-	125, // 228: aide.local.v1.LocalService.SendMessage:output_type -> aide.local.v1.SessionResponse
-	125, // 229: aide.local.v1.LocalService.InterruptSession:output_type -> aide.local.v1.SessionResponse
-	125, // 230: aide.local.v1.LocalService.ArchiveSession:output_type -> aide.local.v1.SessionResponse
-	125, // 231: aide.local.v1.LocalService.UnarchiveSession:output_type -> aide.local.v1.SessionResponse
-	123, // 232: aide.local.v1.LocalService.DeleteSession:output_type -> aide.local.v1.DeleteSessionResponse
-	125, // 233: aide.local.v1.LocalService.RenameSession:output_type -> aide.local.v1.SessionResponse
-	125, // 234: aide.local.v1.LocalService.MarkSessionSeen:output_type -> aide.local.v1.SessionResponse
-	116, // 235: aide.local.v1.LocalService.AnswerQuestion:output_type -> aide.local.v1.AnswerQuestionResponse
-	186, // 236: aide.local.v1.LocalService.GetDiff:output_type -> aide.session.v1.GetDiffResponse
-	187, // 237: aide.local.v1.LocalService.GetSessionInsights:output_type -> aide.session.v1.SessionInsights
-	188, // 238: aide.local.v1.LocalService.PushSession:output_type -> aide.session.v1.PushSessionResponse
-	125, // 239: aide.local.v1.LocalService.RollbackSession:output_type -> aide.local.v1.SessionResponse
-	138, // 240: aide.local.v1.LocalService.ListDSHSessions:output_type -> aide.local.v1.ListDSHSessionsResponse
-	189, // 241: aide.local.v1.LocalService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
-	190, // 242: aide.local.v1.LocalService.SetDSHTakeover:output_type -> aide.machine.v1.SetDSHTakeoverResponse
-	191, // 243: aide.local.v1.LocalService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
-	192, // 244: aide.local.v1.LocalService.InterruptDSHSession:output_type -> aide.machine.v1.InterruptDSHSessionResponse
-	193, // 245: aide.local.v1.LocalService.PrepareDSHBridge:output_type -> aide.machine.v1.PrepareDSHBridgeResponse
-	194, // 246: aide.local.v1.LocalService.DSHSessionOptions:output_type -> aide.machine.v1.DSHSessionOptionsResponse
-	142, // 247: aide.local.v1.LocalService.ListClaudeSessions:output_type -> aide.local.v1.ListClaudeSessionsResponse
-	195, // 248: aide.local.v1.LocalService.ReadClaudeSession:output_type -> aide.machine.v1.ReadClaudeSessionResponse
-	196, // 249: aide.local.v1.LocalService.ListMachineCustomAgents:output_type -> aide.machine.v1.ListCustomAgentsResponse
-	197, // 250: aide.local.v1.LocalService.SaveMachineCustomAgent:output_type -> aide.machine.v1.SaveCustomAgentResponse
-	198, // 251: aide.local.v1.LocalService.RemoveMachineCustomAgent:output_type -> aide.machine.v1.RemoveCustomAgentResponse
-	199, // 252: aide.local.v1.LocalService.TestMachineCustomAgent:output_type -> aide.machine.v1.TestCustomAgentResponse
-	131, // 253: aide.local.v1.LocalService.QueryWork:output_type -> aide.local.v1.QueryWorkResponse
-	9,   // 254: aide.local.v1.LocalService.RegisterPush:output_type -> aide.local.v1.RegisterPushResponse
-	175, // [175:255] is the sub-list for method output_type
-	95,  // [95:175] is the sub-list for method input_type
-	95,  // [95:95] is the sub-list for extension type_name
-	95,  // [95:95] is the sub-list for extension extendee
-	0,   // [0:95] is the sub-list for field type_name
+	169, // 25: aide.local.v1.SetAgentDefaultsRequest.defaults:type_name -> aide.identity.v1.AgentDefaults
+	166, // 26: aide.local.v1.SetAgentPausedRequest.resume_at:type_name -> google.protobuf.Timestamp
+	170, // 27: aide.local.v1.ListMachineReposResponse.repos:type_name -> aide.machine.v1.Repo
+	171, // 28: aide.local.v1.SaveMachineCustomAgentRequest.agent:type_name -> aide.machine.v1.CustomAgent
+	171, // 29: aide.local.v1.TestMachineCustomAgentRequest.agent:type_name -> aide.machine.v1.CustomAgent
+	172, // 30: aide.local.v1.Project.workspace:type_name -> aide.identity.v1.Workspace
+	78,  // 31: aide.local.v1.ListProjectsResponse.projects:type_name -> aide.local.v1.Project
+	111, // 32: aide.local.v1.ListProjectsResponse.unreachable:type_name -> aide.local.v1.Unreachable
+	172, // 33: aide.local.v1.AddProjectRequest.workspace:type_name -> aide.identity.v1.Workspace
+	48,  // 34: aide.local.v1.Client.spec:type_name -> aide.local.v1.GrantSpec
+	166, // 35: aide.local.v1.Client.expires_at:type_name -> google.protobuf.Timestamp
+	166, // 36: aide.local.v1.Client.last_seen:type_name -> google.protobuf.Timestamp
+	85,  // 37: aide.local.v1.ListClientsResponse.clients:type_name -> aide.local.v1.Client
+	48,  // 38: aide.local.v1.UpdateClientRequest.spec:type_name -> aide.local.v1.GrantSpec
+	107, // 39: aide.local.v1.UpdateClientResponse.acks:type_name -> aide.local.v1.MachineAck
+	107, // 40: aide.local.v1.RevokeClientResponse.acks:type_name -> aide.local.v1.MachineAck
+	166, // 41: aide.local.v1.Wake.last_ring_at:type_name -> google.protobuf.Timestamp
+	95,  // 42: aide.local.v1.Wake.recent:type_name -> aide.local.v1.WakeRing
+	166, // 43: aide.local.v1.WakeRing.at:type_name -> google.protobuf.Timestamp
+	94,  // 44: aide.local.v1.ListWakesResponse.wakes:type_name -> aide.local.v1.Wake
+	94,  // 45: aide.local.v1.SetWakeResponse.wake:type_name -> aide.local.v1.Wake
+	96,  // 46: aide.local.v1.SetWakeResponse.check:type_name -> aide.local.v1.WakeCheck
+	94,  // 47: aide.local.v1.CheckWakeResponse.wake:type_name -> aide.local.v1.Wake
+	96,  // 48: aide.local.v1.CheckWakeResponse.check:type_name -> aide.local.v1.WakeCheck
+	166, // 49: aide.local.v1.OpenWakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
+	173, // 50: aide.local.v1.ExecLogEntry.record:type_name -> aide.machine.v1.ExecRecord
+	109, // 51: aide.local.v1.ListExecLogResponse.entries:type_name -> aide.local.v1.ExecLogEntry
+	111, // 52: aide.local.v1.ListExecLogResponse.unreachable:type_name -> aide.local.v1.Unreachable
+	163, // 53: aide.local.v1.ListSessionsRequest.before:type_name -> aide.session.v1.SessionCursor
+	174, // 54: aide.local.v1.ListSessionsRequest.view:type_name -> aide.session.v1.SessionView
+	162, // 55: aide.local.v1.ListSessionsResponse.sessions:type_name -> aide.session.v1.Session
+	111, // 56: aide.local.v1.ListSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
+	163, // 57: aide.local.v1.ListSessionsResponse.next:type_name -> aide.session.v1.SessionCursor
+	162, // 58: aide.local.v1.WatchSessionsResponse.sessions:type_name -> aide.session.v1.Session
+	111, // 59: aide.local.v1.WatchSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
+	164, // 60: aide.local.v1.StreamSessionEventsRequest.view:type_name -> aide.session.v1.EventView
+	175, // 61: aide.local.v1.AnswerQuestionRequest.answers:type_name -> aide.session.v1.Answer
+	162, // 62: aide.local.v1.AnswerQuestionResponse.session:type_name -> aide.session.v1.Session
+	176, // 63: aide.local.v1.StartSessionRequest.session:type_name -> aide.session.v1.StartSessionRequest
+	177, // 64: aide.local.v1.SendMessageRequest.attachments:type_name -> aide.session.v1.Attachment
+	162, // 65: aide.local.v1.SessionResponse.session:type_name -> aide.session.v1.Session
+	0,   // 66: aide.local.v1.QueryWorkRequest.bucket:type_name -> aide.local.v1.WorkBucket
+	1,   // 67: aide.local.v1.QueryWorkRequest.group_by:type_name -> aide.local.v1.WorkDimension
+	129, // 68: aide.local.v1.SessionCount.group:type_name -> aide.local.v1.WorkGroup
+	129, // 69: aide.local.v1.TurnCount.group:type_name -> aide.local.v1.WorkGroup
+	166, // 70: aide.local.v1.WorkSource.synced_at:type_name -> google.protobuf.Timestamp
+	130, // 71: aide.local.v1.QueryWorkResponse.sessions:type_name -> aide.local.v1.SessionCount
+	130, // 72: aide.local.v1.QueryWorkResponse.range_sessions:type_name -> aide.local.v1.SessionCount
+	131, // 73: aide.local.v1.QueryWorkResponse.turns:type_name -> aide.local.v1.TurnCount
+	131, // 74: aide.local.v1.QueryWorkResponse.range_turns:type_name -> aide.local.v1.TurnCount
+	132, // 75: aide.local.v1.QueryWorkResponse.sources:type_name -> aide.local.v1.WorkSource
+	141, // 76: aide.local.v1.ListDSHSessionsResponse.sessions:type_name -> aide.local.v1.DSHSessionEntry
+	111, // 77: aide.local.v1.ListDSHSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
+	142, // 78: aide.local.v1.ListDSHSessionsResponse.bridges:type_name -> aide.local.v1.DSHBridgeEntry
+	178, // 79: aide.local.v1.DSHSessionEntry.session:type_name -> aide.machine.v1.DSHSession
+	166, // 80: aide.local.v1.DSHSessionEntry.read_at:type_name -> google.protobuf.Timestamp
+	179, // 81: aide.local.v1.DSHBridgeEntry.bridge:type_name -> aide.machine.v1.DSHBridge
+	145, // 82: aide.local.v1.ListClaudeSessionsResponse.sessions:type_name -> aide.local.v1.ClaudeSessionEntry
+	111, // 83: aide.local.v1.ListClaudeSessionsResponse.unreachable:type_name -> aide.local.v1.Unreachable
+	146, // 84: aide.local.v1.ListClaudeSessionsResponse.indexes:type_name -> aide.local.v1.ClaudeIndexEntry
+	180, // 85: aide.local.v1.ClaudeSessionEntry.session:type_name -> aide.machine.v1.ClaudeSession
+	166, // 86: aide.local.v1.ClaudeSessionEntry.read_at:type_name -> google.protobuf.Timestamp
+	164, // 87: aide.local.v1.ReadClaudeSessionRequest.view:type_name -> aide.session.v1.EventView
+	181, // 88: aide.local.v1.SendDSHMessageRequest.model:type_name -> aide.machine.v1.DSHModel
+	164, // 89: aide.local.v1.ReadDSHSessionRequest.view:type_name -> aide.session.v1.EventView
+	182, // 90: aide.local.v1.ListPersonasResponse.personas:type_name -> aide.identity.v1.Persona
+	182, // 91: aide.local.v1.SavePersonaRequest.persona:type_name -> aide.identity.v1.Persona
+	182, // 92: aide.local.v1.SavePersonaResponse.persona:type_name -> aide.identity.v1.Persona
+	177, // 93: aide.local.v1.TalkToPersonaRequest.attachments:type_name -> aide.session.v1.Attachment
+	162, // 94: aide.local.v1.TalkToPersonaResponse.session:type_name -> aide.session.v1.Session
+	182, // 95: aide.local.v1.TalkToPersonaResponse.persona:type_name -> aide.identity.v1.Persona
+	10,  // 96: aide.local.v1.LocalService.GetStatus:input_type -> aide.local.v1.GetStatusRequest
+	2,   // 97: aide.local.v1.LocalService.Watch:input_type -> aide.local.v1.WatchRequest
+	12,  // 98: aide.local.v1.LocalService.ListProfiles:input_type -> aide.local.v1.ListProfilesRequest
+	15,  // 99: aide.local.v1.LocalService.SwitchProfile:input_type -> aide.local.v1.SwitchProfileRequest
+	17,  // 100: aide.local.v1.LocalService.AddProfile:input_type -> aide.local.v1.AddProfileRequest
+	19,  // 101: aide.local.v1.LocalService.SignOut:input_type -> aide.local.v1.SignOutRequest
+	21,  // 102: aide.local.v1.LocalService.SignIn:input_type -> aide.local.v1.SignInRequest
+	23,  // 103: aide.local.v1.LocalService.Setup:input_type -> aide.local.v1.SetupRequest
+	25,  // 104: aide.local.v1.LocalService.LogIn:input_type -> aide.local.v1.LogInRequest
+	27,  // 105: aide.local.v1.LocalService.GetLogin:input_type -> aide.local.v1.GetLoginRequest
+	29,  // 106: aide.local.v1.LocalService.SetLogin:input_type -> aide.local.v1.SetLoginRequest
+	32,  // 107: aide.local.v1.LocalService.ListDevices:input_type -> aide.local.v1.ListDevicesRequest
+	34,  // 108: aide.local.v1.LocalService.RemoveDevice:input_type -> aide.local.v1.RemoveDeviceRequest
+	36,  // 109: aide.local.v1.LocalService.Leave:input_type -> aide.local.v1.LeaveRequest
+	38,  // 110: aide.local.v1.LocalService.EraseEverything:input_type -> aide.local.v1.EraseEverythingRequest
+	40,  // 111: aide.local.v1.LocalService.EraseStatus:input_type -> aide.local.v1.EraseStatusRequest
+	43,  // 112: aide.local.v1.LocalService.FinishErase:input_type -> aide.local.v1.FinishEraseRequest
+	46,  // 113: aide.local.v1.LocalService.SetLocalMachine:input_type -> aide.local.v1.SetLocalMachineRequest
+	52,  // 114: aide.local.v1.LocalService.ListMachines:input_type -> aide.local.v1.ListMachinesRequest
+	54,  // 115: aide.local.v1.LocalService.RenameMachine:input_type -> aide.local.v1.RenameMachineRequest
+	56,  // 116: aide.local.v1.LocalService.SetMachinePaused:input_type -> aide.local.v1.SetMachinePausedRequest
+	58,  // 117: aide.local.v1.LocalService.SetAgentDefaults:input_type -> aide.local.v1.SetAgentDefaultsRequest
+	76,  // 118: aide.local.v1.LocalService.RemoveMachine:input_type -> aide.local.v1.RemoveMachineRequest
+	60,  // 119: aide.local.v1.LocalService.CheckAgents:input_type -> aide.local.v1.CheckAgentsRequest
+	61,  // 120: aide.local.v1.LocalService.SetAgentHidden:input_type -> aide.local.v1.SetAgentHiddenRequest
+	63,  // 121: aide.local.v1.LocalService.SetAgentPaused:input_type -> aide.local.v1.SetAgentPausedRequest
+	66,  // 122: aide.local.v1.LocalService.ListMachineRepos:input_type -> aide.local.v1.ListMachineReposRequest
+	68,  // 123: aide.local.v1.LocalService.ListMachineFolders:input_type -> aide.local.v1.ListMachineFoldersRequest
+	69,  // 124: aide.local.v1.LocalService.TestMachineAgent:input_type -> aide.local.v1.TestMachineAgentRequest
+	108, // 125: aide.local.v1.LocalService.ListExecLog:input_type -> aide.local.v1.ListExecLogRequest
+	74,  // 126: aide.local.v1.LocalService.GetDiagnostics:input_type -> aide.local.v1.GetDiagnosticsRequest
+	137, // 127: aide.local.v1.LocalService.StopScreen:input_type -> aide.local.v1.StopScreenRequest
+	79,  // 128: aide.local.v1.LocalService.ListProjects:input_type -> aide.local.v1.ListProjectsRequest
+	81,  // 129: aide.local.v1.LocalService.AddProject:input_type -> aide.local.v1.AddProjectRequest
+	83,  // 130: aide.local.v1.LocalService.RemoveProject:input_type -> aide.local.v1.RemoveProjectRequest
+	86,  // 131: aide.local.v1.LocalService.ListClients:input_type -> aide.local.v1.ListClientsRequest
+	88,  // 132: aide.local.v1.LocalService.UpdateClient:input_type -> aide.local.v1.UpdateClientRequest
+	90,  // 133: aide.local.v1.LocalService.RenameClient:input_type -> aide.local.v1.RenameClientRequest
+	92,  // 134: aide.local.v1.LocalService.RevokeClient:input_type -> aide.local.v1.RevokeClientRequest
+	97,  // 135: aide.local.v1.LocalService.ListWakes:input_type -> aide.local.v1.ListWakesRequest
+	99,  // 136: aide.local.v1.LocalService.SetWake:input_type -> aide.local.v1.SetWakeRequest
+	101, // 137: aide.local.v1.LocalService.CheckWake:input_type -> aide.local.v1.CheckWakeRequest
+	103, // 138: aide.local.v1.LocalService.ClearWake:input_type -> aide.local.v1.ClearWakeRequest
+	105, // 139: aide.local.v1.LocalService.OpenWakeLink:input_type -> aide.local.v1.OpenWakeLinkRequest
+	154, // 140: aide.local.v1.LocalService.ListPersonas:input_type -> aide.local.v1.ListPersonasRequest
+	156, // 141: aide.local.v1.LocalService.SavePersona:input_type -> aide.local.v1.SavePersonaRequest
+	158, // 142: aide.local.v1.LocalService.DeletePersona:input_type -> aide.local.v1.DeletePersonaRequest
+	160, // 143: aide.local.v1.LocalService.TalkToPersona:input_type -> aide.local.v1.TalkToPersonaRequest
+	112, // 144: aide.local.v1.LocalService.ListSessions:input_type -> aide.local.v1.ListSessionsRequest
+	114, // 145: aide.local.v1.LocalService.WatchSessions:input_type -> aide.local.v1.WatchSessionsRequest
+	116, // 146: aide.local.v1.LocalService.StreamSessionEvents:input_type -> aide.local.v1.StreamSessionEventsRequest
+	4,   // 147: aide.local.v1.LocalService.ListSessionEvents:input_type -> aide.local.v1.ListSessionEventsRequest
+	6,   // 148: aide.local.v1.LocalService.ReadToolOutput:input_type -> aide.local.v1.ReadToolOutputRequest
+	119, // 149: aide.local.v1.LocalService.StartSession:input_type -> aide.local.v1.StartSessionRequest
+	120, // 150: aide.local.v1.LocalService.SendMessage:input_type -> aide.local.v1.SendMessageRequest
+	121, // 151: aide.local.v1.LocalService.InterruptSession:input_type -> aide.local.v1.InterruptSessionRequest
+	122, // 152: aide.local.v1.LocalService.ArchiveSession:input_type -> aide.local.v1.ArchiveSessionRequest
+	123, // 153: aide.local.v1.LocalService.UnarchiveSession:input_type -> aide.local.v1.UnarchiveSessionRequest
+	124, // 154: aide.local.v1.LocalService.DeleteSession:input_type -> aide.local.v1.DeleteSessionRequest
+	126, // 155: aide.local.v1.LocalService.RenameSession:input_type -> aide.local.v1.RenameSessionRequest
+	183, // 156: aide.local.v1.LocalService.MarkSessionSeen:input_type -> aide.session.v1.MarkSessionSeenRequest
+	117, // 157: aide.local.v1.LocalService.AnswerQuestion:input_type -> aide.local.v1.AnswerQuestionRequest
+	134, // 158: aide.local.v1.LocalService.GetDiff:input_type -> aide.local.v1.GetDiffRequest
+	184, // 159: aide.local.v1.LocalService.GetSessionInsights:input_type -> aide.session.v1.GetSessionInsightsRequest
+	135, // 160: aide.local.v1.LocalService.PushSession:input_type -> aide.local.v1.PushSessionRequest
+	136, // 161: aide.local.v1.LocalService.RollbackSession:input_type -> aide.local.v1.RollbackSessionRequest
+	139, // 162: aide.local.v1.LocalService.ListDSHSessions:input_type -> aide.local.v1.ListDSHSessionsRequest
+	153, // 163: aide.local.v1.LocalService.ReadDSHSession:input_type -> aide.local.v1.ReadDSHSessionRequest
+	148, // 164: aide.local.v1.LocalService.SetDSHTakeover:input_type -> aide.local.v1.SetDSHTakeoverRequest
+	149, // 165: aide.local.v1.LocalService.SendDSHMessage:input_type -> aide.local.v1.SendDSHMessageRequest
+	151, // 166: aide.local.v1.LocalService.InterruptDSHSession:input_type -> aide.local.v1.InterruptDSHSessionRequest
+	152, // 167: aide.local.v1.LocalService.PrepareDSHBridge:input_type -> aide.local.v1.PrepareDSHBridgeRequest
+	150, // 168: aide.local.v1.LocalService.DSHSessionOptions:input_type -> aide.local.v1.DSHSessionOptionsRequest
+	143, // 169: aide.local.v1.LocalService.ListClaudeSessions:input_type -> aide.local.v1.ListClaudeSessionsRequest
+	147, // 170: aide.local.v1.LocalService.ReadClaudeSession:input_type -> aide.local.v1.ReadClaudeSessionRequest
+	70,  // 171: aide.local.v1.LocalService.ListMachineCustomAgents:input_type -> aide.local.v1.ListMachineCustomAgentsRequest
+	71,  // 172: aide.local.v1.LocalService.SaveMachineCustomAgent:input_type -> aide.local.v1.SaveMachineCustomAgentRequest
+	72,  // 173: aide.local.v1.LocalService.RemoveMachineCustomAgent:input_type -> aide.local.v1.RemoveMachineCustomAgentRequest
+	73,  // 174: aide.local.v1.LocalService.TestMachineCustomAgent:input_type -> aide.local.v1.TestMachineCustomAgentRequest
+	128, // 175: aide.local.v1.LocalService.QueryWork:input_type -> aide.local.v1.QueryWorkRequest
+	8,   // 176: aide.local.v1.LocalService.RegisterPush:input_type -> aide.local.v1.RegisterPushRequest
+	11,  // 177: aide.local.v1.LocalService.GetStatus:output_type -> aide.local.v1.GetStatusResponse
+	3,   // 178: aide.local.v1.LocalService.Watch:output_type -> aide.local.v1.WatchResponse
+	13,  // 179: aide.local.v1.LocalService.ListProfiles:output_type -> aide.local.v1.ListProfilesResponse
+	16,  // 180: aide.local.v1.LocalService.SwitchProfile:output_type -> aide.local.v1.SwitchProfileResponse
+	18,  // 181: aide.local.v1.LocalService.AddProfile:output_type -> aide.local.v1.AddProfileResponse
+	20,  // 182: aide.local.v1.LocalService.SignOut:output_type -> aide.local.v1.SignOutResponse
+	22,  // 183: aide.local.v1.LocalService.SignIn:output_type -> aide.local.v1.SignInResponse
+	24,  // 184: aide.local.v1.LocalService.Setup:output_type -> aide.local.v1.SetupResponse
+	26,  // 185: aide.local.v1.LocalService.LogIn:output_type -> aide.local.v1.LogInResponse
+	28,  // 186: aide.local.v1.LocalService.GetLogin:output_type -> aide.local.v1.GetLoginResponse
+	30,  // 187: aide.local.v1.LocalService.SetLogin:output_type -> aide.local.v1.SetLoginResponse
+	33,  // 188: aide.local.v1.LocalService.ListDevices:output_type -> aide.local.v1.ListDevicesResponse
+	35,  // 189: aide.local.v1.LocalService.RemoveDevice:output_type -> aide.local.v1.RemoveDeviceResponse
+	37,  // 190: aide.local.v1.LocalService.Leave:output_type -> aide.local.v1.LeaveResponse
+	39,  // 191: aide.local.v1.LocalService.EraseEverything:output_type -> aide.local.v1.EraseEverythingResponse
+	41,  // 192: aide.local.v1.LocalService.EraseStatus:output_type -> aide.local.v1.EraseStatusResponse
+	44,  // 193: aide.local.v1.LocalService.FinishErase:output_type -> aide.local.v1.FinishEraseResponse
+	47,  // 194: aide.local.v1.LocalService.SetLocalMachine:output_type -> aide.local.v1.SetLocalMachineResponse
+	53,  // 195: aide.local.v1.LocalService.ListMachines:output_type -> aide.local.v1.ListMachinesResponse
+	55,  // 196: aide.local.v1.LocalService.RenameMachine:output_type -> aide.local.v1.RenameMachineResponse
+	57,  // 197: aide.local.v1.LocalService.SetMachinePaused:output_type -> aide.local.v1.SetMachinePausedResponse
+	59,  // 198: aide.local.v1.LocalService.SetAgentDefaults:output_type -> aide.local.v1.SetAgentDefaultsResponse
+	77,  // 199: aide.local.v1.LocalService.RemoveMachine:output_type -> aide.local.v1.RemoveMachineResponse
+	65,  // 200: aide.local.v1.LocalService.CheckAgents:output_type -> aide.local.v1.CheckAgentsResponse
+	62,  // 201: aide.local.v1.LocalService.SetAgentHidden:output_type -> aide.local.v1.SetAgentHiddenResponse
+	64,  // 202: aide.local.v1.LocalService.SetAgentPaused:output_type -> aide.local.v1.SetAgentPausedResponse
+	67,  // 203: aide.local.v1.LocalService.ListMachineRepos:output_type -> aide.local.v1.ListMachineReposResponse
+	185, // 204: aide.local.v1.LocalService.ListMachineFolders:output_type -> aide.machine.v1.ListFoldersResponse
+	186, // 205: aide.local.v1.LocalService.TestMachineAgent:output_type -> aide.machine.v1.TestAgentResponse
+	110, // 206: aide.local.v1.LocalService.ListExecLog:output_type -> aide.local.v1.ListExecLogResponse
+	75,  // 207: aide.local.v1.LocalService.GetDiagnostics:output_type -> aide.local.v1.GetDiagnosticsResponse
+	138, // 208: aide.local.v1.LocalService.StopScreen:output_type -> aide.local.v1.StopScreenResponse
+	80,  // 209: aide.local.v1.LocalService.ListProjects:output_type -> aide.local.v1.ListProjectsResponse
+	82,  // 210: aide.local.v1.LocalService.AddProject:output_type -> aide.local.v1.AddProjectResponse
+	84,  // 211: aide.local.v1.LocalService.RemoveProject:output_type -> aide.local.v1.RemoveProjectResponse
+	87,  // 212: aide.local.v1.LocalService.ListClients:output_type -> aide.local.v1.ListClientsResponse
+	89,  // 213: aide.local.v1.LocalService.UpdateClient:output_type -> aide.local.v1.UpdateClientResponse
+	91,  // 214: aide.local.v1.LocalService.RenameClient:output_type -> aide.local.v1.RenameClientResponse
+	93,  // 215: aide.local.v1.LocalService.RevokeClient:output_type -> aide.local.v1.RevokeClientResponse
+	98,  // 216: aide.local.v1.LocalService.ListWakes:output_type -> aide.local.v1.ListWakesResponse
+	100, // 217: aide.local.v1.LocalService.SetWake:output_type -> aide.local.v1.SetWakeResponse
+	102, // 218: aide.local.v1.LocalService.CheckWake:output_type -> aide.local.v1.CheckWakeResponse
+	104, // 219: aide.local.v1.LocalService.ClearWake:output_type -> aide.local.v1.ClearWakeResponse
+	106, // 220: aide.local.v1.LocalService.OpenWakeLink:output_type -> aide.local.v1.OpenWakeLinkResponse
+	155, // 221: aide.local.v1.LocalService.ListPersonas:output_type -> aide.local.v1.ListPersonasResponse
+	157, // 222: aide.local.v1.LocalService.SavePersona:output_type -> aide.local.v1.SavePersonaResponse
+	159, // 223: aide.local.v1.LocalService.DeletePersona:output_type -> aide.local.v1.DeletePersonaResponse
+	161, // 224: aide.local.v1.LocalService.TalkToPersona:output_type -> aide.local.v1.TalkToPersonaResponse
+	113, // 225: aide.local.v1.LocalService.ListSessions:output_type -> aide.local.v1.ListSessionsResponse
+	115, // 226: aide.local.v1.LocalService.WatchSessions:output_type -> aide.local.v1.WatchSessionsResponse
+	165, // 227: aide.local.v1.LocalService.StreamSessionEvents:output_type -> aide.session.v1.SessionEvent
+	5,   // 228: aide.local.v1.LocalService.ListSessionEvents:output_type -> aide.local.v1.ListSessionEventsResponse
+	187, // 229: aide.local.v1.LocalService.ReadToolOutput:output_type -> aide.session.v1.ToolOutputChunk
+	127, // 230: aide.local.v1.LocalService.StartSession:output_type -> aide.local.v1.SessionResponse
+	127, // 231: aide.local.v1.LocalService.SendMessage:output_type -> aide.local.v1.SessionResponse
+	127, // 232: aide.local.v1.LocalService.InterruptSession:output_type -> aide.local.v1.SessionResponse
+	127, // 233: aide.local.v1.LocalService.ArchiveSession:output_type -> aide.local.v1.SessionResponse
+	127, // 234: aide.local.v1.LocalService.UnarchiveSession:output_type -> aide.local.v1.SessionResponse
+	125, // 235: aide.local.v1.LocalService.DeleteSession:output_type -> aide.local.v1.DeleteSessionResponse
+	127, // 236: aide.local.v1.LocalService.RenameSession:output_type -> aide.local.v1.SessionResponse
+	127, // 237: aide.local.v1.LocalService.MarkSessionSeen:output_type -> aide.local.v1.SessionResponse
+	118, // 238: aide.local.v1.LocalService.AnswerQuestion:output_type -> aide.local.v1.AnswerQuestionResponse
+	188, // 239: aide.local.v1.LocalService.GetDiff:output_type -> aide.session.v1.GetDiffResponse
+	189, // 240: aide.local.v1.LocalService.GetSessionInsights:output_type -> aide.session.v1.SessionInsights
+	190, // 241: aide.local.v1.LocalService.PushSession:output_type -> aide.session.v1.PushSessionResponse
+	127, // 242: aide.local.v1.LocalService.RollbackSession:output_type -> aide.local.v1.SessionResponse
+	140, // 243: aide.local.v1.LocalService.ListDSHSessions:output_type -> aide.local.v1.ListDSHSessionsResponse
+	191, // 244: aide.local.v1.LocalService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
+	192, // 245: aide.local.v1.LocalService.SetDSHTakeover:output_type -> aide.machine.v1.SetDSHTakeoverResponse
+	193, // 246: aide.local.v1.LocalService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
+	194, // 247: aide.local.v1.LocalService.InterruptDSHSession:output_type -> aide.machine.v1.InterruptDSHSessionResponse
+	195, // 248: aide.local.v1.LocalService.PrepareDSHBridge:output_type -> aide.machine.v1.PrepareDSHBridgeResponse
+	196, // 249: aide.local.v1.LocalService.DSHSessionOptions:output_type -> aide.machine.v1.DSHSessionOptionsResponse
+	144, // 250: aide.local.v1.LocalService.ListClaudeSessions:output_type -> aide.local.v1.ListClaudeSessionsResponse
+	197, // 251: aide.local.v1.LocalService.ReadClaudeSession:output_type -> aide.machine.v1.ReadClaudeSessionResponse
+	198, // 252: aide.local.v1.LocalService.ListMachineCustomAgents:output_type -> aide.machine.v1.ListCustomAgentsResponse
+	199, // 253: aide.local.v1.LocalService.SaveMachineCustomAgent:output_type -> aide.machine.v1.SaveCustomAgentResponse
+	200, // 254: aide.local.v1.LocalService.RemoveMachineCustomAgent:output_type -> aide.machine.v1.RemoveCustomAgentResponse
+	201, // 255: aide.local.v1.LocalService.TestMachineCustomAgent:output_type -> aide.machine.v1.TestCustomAgentResponse
+	133, // 256: aide.local.v1.LocalService.QueryWork:output_type -> aide.local.v1.QueryWorkResponse
+	9,   // 257: aide.local.v1.LocalService.RegisterPush:output_type -> aide.local.v1.RegisterPushResponse
+	177, // [177:258] is the sub-list for method output_type
+	96,  // [96:177] is the sub-list for method input_type
+	96,  // [96:96] is the sub-list for extension type_name
+	96,  // [96:96] is the sub-list for extension extendee
+	0,   // [0:96] is the sub-list for field type_name
 }
 
 func init() { file_aide_local_v1_local_proto_init() }
@@ -10429,14 +10547,14 @@ func file_aide_local_v1_local_proto_init() {
 	if File_aide_local_v1_local_proto != nil {
 		return
 	}
-	file_aide_local_v1_local_proto_msgTypes[86].OneofWrappers = []any{}
+	file_aide_local_v1_local_proto_msgTypes[88].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_local_v1_local_proto_rawDesc), len(file_aide_local_v1_local_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   158,
+			NumMessages:   160,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
