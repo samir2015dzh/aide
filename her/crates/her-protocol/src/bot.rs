@@ -220,6 +220,62 @@ pub struct BotMemoryResult {
     /// The other files of the memory folder, by name.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pages: Vec<BotMemoryPage>,
+    /// Knowledge entries, by name: recalled only when the owner's words hit their trigger
+    /// (docs/her-memory.md §10).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entries: Vec<BotMemoryEntry>,
+    /// Entries Her proposed, oldest first. None takes effect until the owner saves it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub proposals: Vec<BotMemoryProposal>,
+}
+
+/// A knowledge entry: its text, and the phrases that bring it up.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotMemoryEntry {
+    /// Letters, digits, `-` and `_`.
+    pub name: String,
+    /// Phrases separated by `;`. Empty for a file written by hand without one: never recalled.
+    pub trigger: String,
+    pub text: String,
+}
+
+/// An entry Her proposed, waiting for the owner.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotMemoryProposal {
+    pub id: String,
+    pub name: String,
+    pub trigger: String,
+    pub text: String,
+    /// RFC 3339.
+    pub created_at: String,
+    /// Saving it replaces the entry of that name.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub replaces: bool,
+}
+
+/// Parameters of `bots/memory_entry_set`: saves an entry, in place of one of that name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotMemoryEntrySetParams {
+    pub bot_id: String,
+    pub name: String,
+    pub trigger: String,
+    pub text: String,
+}
+
+/// Parameters of `bots/memory_entry_delete`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotMemoryEntryDeleteParams {
+    pub bot_id: String,
+    pub name: String,
+}
+
+/// Parameters of `bots/memory_proposal_answer`: the owner saves a proposal as an entry, or
+/// declines it. Either way it waits no more.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotMemoryProposalAnswerParams {
+    pub bot_id: String,
+    pub proposal_id: String,
+    pub accept: bool,
 }
 
 /// What a confirmation rule is about (docs/her-confirm-rules.md §2).

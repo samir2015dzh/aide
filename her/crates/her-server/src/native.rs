@@ -885,6 +885,33 @@ impl NativeProtocol {
                 }
                 Err(err) => conn.send_error(Some(id), &err),
             },
+            method::BOTS_MEMORY_ENTRY_SET => match her_rpc::params::<her_protocol::bot::BotMemoryEntrySetParams>(params) {
+                Ok(p) => {
+                    let (conn, id) = (conn.clone(), id.clone());
+                    tokio::spawn(async move {
+                        conn.send(reply(&id, server.bots_memory_entry_set(p).await.map(|()| json!({}))));
+                    });
+                }
+                Err(err) => conn.send_error(Some(id), &err),
+            },
+            method::BOTS_MEMORY_ENTRY_DELETE => match her_rpc::params::<her_protocol::bot::BotMemoryEntryDeleteParams>(params) {
+                Ok(p) => {
+                    let (conn, id) = (conn.clone(), id.clone());
+                    tokio::spawn(async move {
+                        conn.send(reply(&id, server.bots_memory_entry_delete(p).await.map(|()| json!({}))));
+                    });
+                }
+                Err(err) => conn.send_error(Some(id), &err),
+            },
+            method::BOTS_MEMORY_PROPOSAL_ANSWER => match her_rpc::params::<her_protocol::bot::BotMemoryProposalAnswerParams>(params) {
+                Ok(p) => {
+                    let (conn, id) = (conn.clone(), id.clone());
+                    tokio::spawn(async move {
+                        conn.send(reply(&id, server.bots_memory_proposal_answer(p).await.map(|()| json!({}))));
+                    });
+                }
+                Err(err) => conn.send_error(Some(id), &err),
+            },
             method::DELIVERIES_LIST => match her_rpc::params::<her_protocol::bot::DeliveriesListParams>(params) {
                 Ok(p) => {
                     let (conn, id) = (conn.clone(), id.clone());

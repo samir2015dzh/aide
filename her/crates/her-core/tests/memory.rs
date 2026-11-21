@@ -482,3 +482,101 @@ async fn a_session_the_bot_starts_cannot_write_its_memory() {
     assert_eq!(std::fs::read_to_string(&file).unwrap(), KEPT);
     assert!(!h.home.bot_memory_dir("b1").join("page.md").exists());
 }
+
+/// What the user messages of a request say, the owner's and her's alike.
+fn user_texts(request: &Context) -> String {
+    let mut out = Vec::new();
+    for message in &request.messages {
+        if let Message::User(user) = message {
+            for part in &user.content {
+                if let UserContent::Text { text } = part {
+                    out.push(text.as_str());
+                }
+            }
+        }
+    }
+    out.join("\n")
+}
+
+const WEEKLY: &str = "周报周五下午发到团队群，PDF 格式，标题写周数。(2026-11-20)";
+const LAUNCH: &str = "发布会定在 12 月 8 日，场地在西湖边。(2026-11-20)";
+
+/// Entries with a trigger stay out of the context until the owner's words hit one; what has no
+/// trigger behaves as before: MEMORY.md always in the prompt, a page never (§10).
+#[tokio::test]
+async fn an_entry_is_recalled_only_when_the_owners_words_hit_its_trigger() {
+    let mut h = bot(Some(KEPT), vec![send_last("c1", "晴。"), send_last("c2", "好。"), send_last("c3", "好。"), send_last("c4", "好。")]).await;
+    let memory = h.home.bot_memory_dir("b1");
+    her_core::knowledge::save(&memory, "weekly-report", "周报; weekly report", WEEKLY).unwrap();
+    her_core::knowledge::save(&memory, "launch", "发布会", LAUNCH).unwrap();
+    std::fs::write(memory.join("people.md"), "老王是主人的同事，管财务。").unwrap();
+    h.kernel.refresh_memory();
+    h.kernel.run(prompt("今天天气怎样")).await.unwrap();
+    h.kernel.run(prompt("这周的周报怎么写？")).await.unwrap();
+    h.kernel.run(prompt("周报再说一遍")).await.unwrap();
+    h.kernel.run(prompt("THE WEEKLY REPORT and 发布会")).await.unwrap();
+
+    let requests = h.api.requests();
+    let catalog = format!(
+        "<knowledge path=\"{}\">\n- launch: 发布会\n- weekly-report: 周报; weekly report\n</knowledge>\n",
+        memory.join("knowledge").display()
+    );
+    for request in &requests {
+        assert!(request.system.contains(&h.memory(KEPT.trim_end()).trim_end().to_string()), "MEMORY.md stays in the prompt");
+        assert!(request.system.ends_with(&catalog), "{}", request.system);
+        assert!(!request.system.contains(WEEKLY) && !request.system.contains(LAUNCH), "no entry's text in the prompt");
+        assert!(!user_texts(request).contains("老王"), "a page is read when needed, as before");
+    }
+    let (first, second, third, fourth) = (user_texts(&requests[0]), user_texts(&requests[1]), user_texts(&requests[2]), user_texts(&requests[3]));
+    assert!(!first.contains("<recall"), "{first}");
+    assert!(second.contains("<recall entry=\"weekly-report\">") && second.contains(WEEKLY), "{second}");
+    assert!(!second.contains(LAUNCH), "{second}");
+    assert_eq!(third.matches("<recall").count(), 1, "the context holds it already: {third}");
+    assert_eq!(fourth.matches("<recall entry=\"weekly-report\">").count(), 1, "{fourth}");
+    assert!(fourth.contains("<recall entry=\"launch\">") && fourth.contains(LAUNCH), "{fourth}");
+}
+
+/// Her proposes an entry; nothing of it reaches her until the owner saves it. Saved, it is
+/// recalled when its trigger is hit; declined, never (§10).
+#[tokio::test]
+async fn a_proposal_takes_effect_only_once_the_owner_saves_it() {
+    let mut h = bot(None, vec![]).await;
+    let memory = h.home.bot_memory_dir("b1");
+    h.api.push(Script::tool_call("c1", "propose_memory", json!({ "name": "weekly-report", "trigger": "周报; weekly report", "text": WEEKLY })));
+    h.api.push(send_last("c2", "提议了一条，你可以在记忆页保存。"));
+    h.api.push(Script::tool_call("c3", "propose_memory", json!({ "name": "launch", "trigger": "发布会", "text": LAUNCH })));
+    h.api.push(send_last("c4", "提议了。"));
+    h.api.push(send_last("c5", "好。"));
+    h.kernel.run(prompt("周报以后都发 PDF")).await.unwrap();
+    h.kernel.run(prompt("发布会在 12 月 8 日")).await.unwrap();
+    h.kernel.run(prompt("周报和发布会")).await.unwrap();
+    let requests = h.api.requests();
+    assert!(!last_result(&requests[1]).0, "{:?}", last_result(&requests[1]));
+    assert!(!user_texts(&requests[4]).contains("<recall"), "nothing is recalled before the owner saves it");
+    assert!(!requests[4].system.contains("<knowledge path="), "nor listed");
+    let waiting = her_core::knowledge::proposals(&memory);
+    assert_eq!(waiting.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["weekly-report", "launch"]);
+    assert!(her_core::knowledge::entries(&memory).is_empty());
+
+    her_core::knowledge::answer(&memory, &waiting[0].id, true).unwrap();
+    her_core::knowledge::answer(&memory, &waiting[1].id, false).unwrap();
+    h.api.push(send_last("c6", "好。"));
+    h.kernel.run(prompt("周报和发布会，再说一次")).await.unwrap();
+    let text = user_texts(&h.api.requests()[5]);
+    assert!(text.contains("<recall entry=\"weekly-report\">") && text.contains(WEEKLY), "{text}");
+    assert!(!text.contains(LAUNCH), "declined, so never recalled: {text}");
+    assert!(her_core::knowledge::proposals(&memory).is_empty());
+}
+
+/// The bot cannot save an entry itself with its file tools: the owner saves them (§10).
+#[tokio::test]
+async fn the_bot_cannot_write_an_entry_with_its_file_tools() {
+    let mut h = bot(None, vec![]).await;
+    let file = h.home.bot_memory_dir("b1").join("knowledge").join("tea.md");
+    h.api.push(Script::tool_call("c1", "write", json!({ "path": file, "content": "---\ntrigger: 茶\n---\n只喝绿茶。" })));
+    h.api.push(send_last("c2", "好。"));
+    h.kernel.run(prompt("记住我只喝绿茶")).await.unwrap();
+    let (error, text) = last_result(&h.api.requests()[1]);
+    assert!(error && text.contains("propose_memory"), "{text}");
+    assert!(!file.exists());
+}

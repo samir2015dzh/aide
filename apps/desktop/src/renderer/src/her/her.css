@@ -126,6 +126,12 @@ html.blurred .her-id-n{color:var(--l2)}
 .mem-doc .md>:is(h1,h2,h3,h4,h5,h6):first-child{margin-top:0}
 .mem-doc .md :is(ul,ol){padding-left:18px}
 .bfiles.mem-pages{width:100%}
+.mem-entry{display:flex;flex-direction:column;gap:6px;padding:10px 14px}
+.mem-entry+.mem-entry{margin-top:8px}
+.mem-name{font-size:13px;font-weight:600}
+.mem-trigger{font-size:12px;color:var(--l2)}
+.mem-entry .field{width:100%}
+.mem-text{min-height:80px;resize:vertical;font:inherit}
 .bpn-pick{align-self:stretch;display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:12px 14px}
 .bpn-pick .bs-shapes{margin:0}
 
