@@ -1,5 +1,8 @@
 package io.aide.android.ui
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -122,22 +125,27 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
     var homes by remember { mutableStateOf<List<DSHBridgeEntry>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var archived by remember { mutableStateOf(false) }
+    suspend fun load() {
+        try {
+            val r = model.api?.listDSHSessions()
+            if (r != null) {
+                entries = r.sessions
+                unreachable = r.unreachable
+                homes = r.bridges.filter { it.dshHome.isNotEmpty() }
+                error = null
+            }
+        } catch (e: ApiError) {
+            error = e.message.ifEmpty { e.code }
+        }
+    }
     LaunchedEffect(Unit) {
         while (true) {
-            try {
-                val r = model.api?.listDSHSessions()
-                if (r != null) {
-                    entries = r.sessions
-                    unreachable = r.unreachable
-                    homes = r.bridges.filter { it.dshHome.isNotEmpty() }
-                    error = null
-                }
-            } catch (e: ApiError) {
-                error = e.message.ifEmpty { e.code }
-            }
+            load()
             delay(15_000)
         }
     }
+    var refreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(t("DeepSeek sessions", "DeepSeek 会话")) },
@@ -151,7 +159,8 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
         }
         val shown = all.filter { archived || !it.session.archived }
         val hidden = all.size - shown.size
-        LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } }, modifier = Modifier.fillMaxSize().padding(pad)) {
+        LazyColumn(Modifier.fillMaxSize()) {
             item {
                 Text(
                     t("Sessions DeepSeek Harness has of its own. Read only, until you turn on Take Over for one.", "DeepSeek Harness 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以给它发消息。"),
@@ -189,7 +198,8 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
             if (many) item(key = "g-" + g.machineId) { MachineGroupHeader(g.name, g.items.size) }
             items(g.items, key = { it.machineId + "/" + it.session.sessionId }) { e ->
                 val s = e.session
-                Row(Modifier.fillMaxWidth().clickable { open(e) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))) {
+                Row(Modifier.fillMaxWidth().pressable { open(e) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     DSHDot(s, e.lost)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -202,6 +212,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                     }
                 }
                 HorizontalDivider(Modifier.padding(start = 16.dp))
+                }
             }
             }
             if (hidden > 0 || archived) {
@@ -211,6 +222,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                     }
                 }
             }
+        }
         }
     }
 }
@@ -299,7 +311,13 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
             if (loading) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
             } else {
-                LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val list = rememberLazyListState()
+                LaunchedEffect(items.size) {
+                    val info = list.layoutInfo
+                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: return@LaunchedEffect
+                    if (info.totalItemsCount > 0 && last >= info.totalItemsCount - 3) list.animateScrollToItem(info.totalItemsCount - 1)
+                }
+                LazyColumn(Modifier.fillMaxSize(), state = list, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     error?.let { item { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error) } }
                     if (more) {
                         item {
@@ -308,7 +326,9 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                             }
                         }
                     }
-                    items(items, key = { it.key }) { ItemView(it, dsh = true) }
+                    items(items, key = { it.key }) {
+                        Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, dsh = true) }
+                    }
                     if (entry.lost) {
                         val name = entry.machineName.ifEmpty { entry.machineId }
                         item { Text(t("$name can't be reached: what is shown is as last read. Its conversation can be read once it is back.", "$name 连不上：这里显示的是最后一次读到的样子，内容要等它重新连上才能读。"), Modifier.padding(12.dp)) }

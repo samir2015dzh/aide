@@ -104,7 +104,9 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
     LaunchedEffect(items.size, items.lastOrNull()) {
         // Follow the end while it is in view (or on first load).
         val last = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        if (items.isNotEmpty() && (last < 0 || last >= items.size - 3)) list.scrollToItem(items.size - 1)
+        // The first time, straight to the end; after, a message arriving while the owner is at the end eases into view.
+        if (items.isNotEmpty() && last < 0) list.scrollToItem(items.size - 1)
+        else if (items.isNotEmpty() && last >= items.size - 3) list.animateScrollToItem(items.size - 1)
     }
     Scaffold(
         topBar = {
