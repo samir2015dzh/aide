@@ -103,6 +103,10 @@ func (s *sessionService) GetDiff(ctx context.Context, req *sessionv1.GetDiffRequ
 	return s.n.sessions.Diff(ctx, principalFrom(ctx), req)
 }
 
+func (s *sessionService) GetSessionInsights(ctx context.Context, req *sessionv1.GetSessionInsightsRequest) (*sessionv1.SessionInsights, error) {
+	return s.n.sessions.Insights(ctx, principalFrom(ctx), req)
+}
+
 func (s *sessionService) AnswerQuestion(ctx context.Context, req *sessionv1.AnswerQuestionRequest) (*sessionv1.Session, error) {
 	return s.n.sessions.AnswerQuestion(ctx, principalFrom(ctx), req)
 }

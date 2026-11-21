@@ -445,3 +445,39 @@ func eventView(e *sessionv1.SessionEvent) object {
 	}
 	return typed("unknown")
 }
+
+// insightsView is a session's review (docs/cli-output.md §4, Insights).
+func insightsView(in *sessionv1.SessionInsights) object {
+	turns := []object{}
+	for _, t := range in.Turns {
+		turns = append(turns, object{{"turn", t.Turn}, {"started_at", tsJSON(t.StartedAt)}, {"ended_at", tsJSON(t.EndedAt)},
+			{"duration_ms", t.DurationMs}, {"question_wait_ms", t.QuestionWaitMs}, {"tool_calls", t.ToolCalls}, {"tool_errors", t.ToolErrors},
+			{"auto_retries", t.AutoRetries}, {"failure", failureName(t.Failure)}, {"diff_stat", diffStatView(t.DiffStat)}, {"usage", usageView(t.Usage)}})
+	}
+	failures := []object{}
+	for _, f := range in.Failures {
+		failures = append(failures, object{{"kind", failureName(f.Kind)}, {"count", f.Count}})
+	}
+	questions := []object{}
+	for _, q := range in.Questions {
+		res := ""
+		if q.Resolution != sessionv1.QuestionResolution_QUESTION_RESOLUTION_UNSPECIFIED {
+			res = enumName(q.Resolution, "QUESTION_RESOLUTION_")
+		}
+		questions = append(questions, object{{"question_id", q.QuestionId}, {"turn", q.Turn}, {"asked_at", tsJSON(q.AskedAt)},
+			{"resolution", res}, {"wait_ms", q.WaitMs}, {"texts", append([]string{}, q.Texts...)}})
+	}
+	tools := []object{}
+	for _, t := range in.Tools {
+		tools = append(tools, object{{"kind", t.Kind}, {"calls", t.Calls}, {"errors", t.Errors}})
+	}
+	findings := []object{}
+	for _, f := range in.Findings {
+		findings = append(findings, object{{"code", f.Code}, {"text", f.Text}})
+	}
+	return object{{"session_id", in.SessionId}, {"last_event_seq", in.LastEventSeq}, {"generated_at", tsJSON(in.GeneratedAt)},
+		{"turns", turns}, {"busy_ms", in.BusyMs}, {"question_wait_ms", in.QuestionWaitMs}, {"failed_turns", in.FailedTurns},
+		{"failures", failures}, {"auto_retries", in.AutoRetries}, {"retried_turns", in.RetriedTurns}, {"stalls", in.Stalls}, {"interrupts", in.Interrupts},
+		{"questions", questions}, {"tools", tools}, {"diff_stat", diffStatView(in.DiffStat)}, {"usage", usageView(in.Usage)},
+		{"findings", findings}, {"suggested_prompt", in.SuggestedPrompt}, {"markdown", in.Markdown}}
+}

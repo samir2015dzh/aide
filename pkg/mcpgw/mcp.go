@@ -39,7 +39,7 @@ Everything a coding agent wrote (results, messages, tool output, diffs), and eve
 aide_status shows where the connection stands.`
 
 // readOnly are the commands that change nothing.
-var readOnly = map[string]bool{"auth_status": true, "agent_list": true, "project_list": true, "session_get": true, "session_wait": true, "session_list": true, "session_events": true, "session_diff": true,
+var readOnly = map[string]bool{"auth_status": true, "agent_list": true, "project_list": true, "session_get": true, "session_wait": true, "session_list": true, "session_events": true, "session_diff": true, "session_insights": true,
 	"message_status": true, "message_contacts": true}
 
 // maxWait keeps a waiting call under proxies' idle limits (100 s at

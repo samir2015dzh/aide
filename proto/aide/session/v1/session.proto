@@ -107,6 +107,16 @@ service SessionService {
   rpc MarkSessionSeen(MarkSessionSeenRequest) returns (Session) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // GetSessionInsights reviews a session from its stored events
+  // (docs/session-insights.md): each turn's time, failures and retries,
+  // stalls and interrupts, questions and how long they waited, tool calls,
+  // changes and tokens, what the review finds, and a better prompt to
+  // dispatch such work with. Worked out by rules, never by a model; made
+  // when the session is archived or when asked, and kept until a new event
+  // comes.
+  rpc GetSessionInsights(GetSessionInsightsRequest) returns (SessionInsights) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
 }
 
 enum SessionStatus {
@@ -887,4 +897,95 @@ message PushSessionResponse {
   string branch = 1;
   // Where to open a pull request of it, when the remote is on GitHub.
   string pull_request_url = 2;
+}
+
+message GetSessionInsightsRequest {
+  string session_id = 1;
+}
+
+// SessionInsights is a session's review (GetSessionInsights). Times are
+// the machine's clock; a turn still running counts up to its last event.
+message SessionInsights {
+  string session_id = 1;
+  // The review is of the events up to this one.
+  uint64 last_event_seq = 2;
+  google.protobuf.Timestamp generated_at = 3;
+  repeated TurnInsight turns = 4;
+  // The turns' time, and the part of it spent waiting for answers.
+  uint64 busy_ms = 5;
+  uint64 question_wait_ms = 6;
+  uint32 failed_turns = 7;
+  // Failures by kind: the turns that failed (stalled and interrupted ones
+  // too), the failures the machine retried a turn after, and the agent
+  // starts that failed.
+  repeated FailureCount failures = 8;
+  // Times the machine went on with a turn by itself (after a rate limit,
+  // or in a fresh agent session).
+  uint32 auto_retries = 9;
+  // Turns that started after a failed one: the work asked for again.
+  uint32 retried_turns = 10;
+  uint32 stalls = 11;
+  uint32 interrupts = 12;
+  repeated QuestionInsight questions = 13;
+  // Tool calls by kind (ToolCall.kind), most first.
+  repeated ToolCount tools = 14;
+  // The session's changes, cumulative.
+  DiffStat diff_stat = 15;
+  Usage usage = 16;
+  repeated InsightFinding findings = 17;
+  // A better prompt to dispatch such work with: the first prompt, with
+  // what later messages and answers added, and what the findings say it
+  // lacked.
+  string suggested_prompt = 18;
+  // The whole review in Markdown, for a delivery record.
+  string markdown = 19;
+}
+
+message TurnInsight {
+  uint32 turn = 1;
+  google.protobuf.Timestamp started_at = 2;
+  // Unset while the turn runs.
+  google.protobuf.Timestamp ended_at = 3;
+  uint64 duration_ms = 4;
+  uint64 question_wait_ms = 5;
+  uint32 tool_calls = 6;
+  // Tool calls whose result was an error.
+  uint32 tool_errors = 7;
+  uint32 auto_retries = 8;
+  // Why the turn failed; unspecified when it succeeded or runs.
+  FailureKind failure = 9;
+  DiffStat diff_stat = 10;
+  Usage usage = 11;
+}
+
+message FailureCount {
+  FailureKind kind = 1;
+  uint32 count = 2;
+}
+
+message QuestionInsight {
+  string question_id = 1;
+  uint32 turn = 2;
+  google.protobuf.Timestamp asked_at = 3;
+  // Unspecified while it waits.
+  QuestionResolution resolution = 4;
+  // From asked to resolved; 0 while it waits.
+  uint64 wait_ms = 5;
+  // Its questions' texts.
+  repeated string texts = 6;
+}
+
+message ToolCount {
+  string kind = 1;
+  uint32 calls = 2;
+  uint32 errors = 3;
+}
+
+// InsightFinding is something the review found that a better prompt
+// would avoid.
+message InsightFinding {
+  // "clarifying_questions", "follow_ups", "repeated_failures", "stalled",
+  // "interrupted" or "missing_context".
+  string code = 1;
+  string text = 2;
 }

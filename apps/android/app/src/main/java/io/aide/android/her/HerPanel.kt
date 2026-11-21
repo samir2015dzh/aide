@@ -121,6 +121,26 @@ class HerPanel(private val model: AppModel, val machineId: String) {
         }
     }
 
+    /** The owner's word on the memory page (docs/her-memory.md §10): saving or declining a proposal, changing or deleting an entry. False when it failed, the error shown. */
+    suspend fun answerProposal(id: String, accept: Boolean) =
+        memoryCall("bots/memory_proposal_answer", "proposal_id" to JsonPrimitive(id), "accept" to JsonPrimitive(accept))
+
+    suspend fun saveEntry(name: String, trigger: String, text: String) =
+        memoryCall("bots/memory_entry_set", "name" to JsonPrimitive(name), "trigger" to JsonPrimitive(trigger), "text" to JsonPrimitive(text))
+
+    suspend fun deleteEntry(name: String) = memoryCall("bots/memory_entry_delete", "name" to JsonPrimitive(name))
+
+    private suspend fun memoryCall(method: String, vararg params: Pair<String, JsonPrimitive>): Boolean {
+        val b = bot ?: return false
+        return try {
+            her.call(method, JsonObject(mapOf("bot_id" to JsonPrimitive(b.id)) + params), envConnection)
+            true
+        } catch (e: Exception) {
+            _error.value = e.message
+            false
+        }
+    }
+
     suspend fun memory(): HerMemory? {
         val b = bot ?: return null
         return try {
