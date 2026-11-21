@@ -155,7 +155,13 @@ def main():
         for _, (r, _) in ran.get(t, []):
             counts[r] = counts.get(r, 0) + 1
     print("\n".join(lines))
-    print(f"listed {len(tests)}, ran once each: {sum(1 for t in tests if len(ran.get(t, [])) == 1)}; "
+    print("\nlisted test, shard, result, seconds:")
+    for t in tests:
+        for i, (r, s) in ran.get(t, []):
+            print(f"{t} {i} {r} {s:.2f}")
+        if t not in ran:
+            print(f"{t} - MISSING -")
+    print(f"\nlisted {len(tests)}, ran once each: {sum(1 for t in tests if len(ran.get(t, [])) == 1)}; "
           + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
     fresh = {"seconds": {t: round(ran[t][0][1][1], 2) for t in sorted(ran)}}
     print("\nmeasured times (scripts/e2e_shard_times.json):")
