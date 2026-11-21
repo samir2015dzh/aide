@@ -74,6 +74,102 @@ func (s *adminService) SendDSHMessage(ctx context.Context, req *machinev1.SendDS
 	return s.n.SendDSHMessage(ctx, req)
 }
 
+func (s *adminService) DSHSessionOptions(ctx context.Context, req *machinev1.DSHSessionOptionsRequest) (*machinev1.DSHSessionOptionsResponse, error) {
+	if err := ownerOnly(ctx); err != nil {
+		return nil, err
+	}
+	return s.n.DSHSessionOptions(ctx, req.SessionId)
+}
+
+// An agent sends to a DSH session only one it may read (dshVisible) that
+// the owner took over; its messages show as its own. It can't turn
+// takeover on, nor stop a turn.
+
+func (s *machineService) SendDSHMessage(ctx context.Context, req *machinev1.SendDSHMessageRequest) (*machinev1.SendDSHMessageResponse, error) {
+	p := principalFrom(ctx)
+	if err := s.n.dshAgentMay(p, req.SessionId); err != nil {
+		return nil, err
+	}
+	return s.n.sendDSHMessage(ctx, req, p)
+}
+
+func (s *machineService) DSHSessionOptions(ctx context.Context, req *machinev1.DSHSessionOptionsRequest) (*machinev1.DSHSessionOptionsResponse, error) {
+	if err := s.n.dshAgentMay(principalFrom(ctx), req.SessionId); err != nil {
+		return nil, err
+	}
+	return s.n.DSHSessionOptions(ctx, req.SessionId)
+}
+
+// dshAgentMay: p may read DSH session id here, and the owner took it over.
+func (n *Machine) dshAgentMay(p *Principal, id string) error {
+	visible, err := n.dshVisible(p)
+	if err != nil {
+		return err
+	}
+	home, err := dshnative.Home(shellenv.Environ())
+	if err != nil {
+		return err
+	}
+	s, err := n.dshOwnSession(home, id)
+	if connect.CodeOf(err) == connect.CodeNotFound || err == nil && (visible == nil || !visible(s.Cwd)) {
+		return cerr(connect.CodeNotFound, "DSH has no session %q here", id)
+	}
+	if err != nil {
+		return err
+	}
+	if !n.dshTakenOver(id) {
+		return cerr(connect.CodeFailedPrecondition, "the owner has not taken over this DSH session: it is read only until they turn on 接管 for it in the Aide app")
+	}
+	return nil
+}
+
+func dshSentKey(reqID string) string { return "dsh-sent/" + reqID }
+
+// dshSent is who sent a message Aide sent into a DSH session, when not
+// the owner.
+type dshSent struct {
+	From string `json:"from"`
+	Name string `json:"name"`
+}
+
+// dshSender names the agent that sent the message under rpcID ("" for the
+// owner).
+func (n *Machine) dshSender(rpcID string) (from, name string) {
+	b, err := n.st.Get(dshSentKey(rpcID))
+	var s dshSent
+	if err != nil || b == nil || json.Unmarshal(b, &s) != nil {
+		return "", ""
+	}
+	return s.From, s.Name
+}
+
+// DSHSessionOptions are the models and permission presets DSH offers a
+// taken-over session, through the bridge.
+func (n *Machine) DSHSessionOptions(ctx context.Context, id string) (*machinev1.DSHSessionOptionsResponse, error) {
+	_, b, err := n.dshTakeoverBridge(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	defer b.Close()
+	octx, cancel := context.WithTimeout(ctx, dshPromptWait)
+	defer cancel()
+	o, err := b.Options(octx, id)
+	if err != nil {
+		return nil, dshBridgeErr(err)
+	}
+	res := &machinev1.DSHSessionOptionsResponse{CurrentPermission: o.Current.Permission}
+	for _, m := range o.Models {
+		res.Models = append(res.Models, &machinev1.DSHModelOption{Provider: m.Provider, ProviderName: m.ProviderName, Model: m.Model, ModelName: m.ModelName, Efforts: m.Efforts})
+	}
+	for _, p := range o.Permissions {
+		res.Permissions = append(res.Permissions, &machinev1.DSHPermissionOption{Id: p.ID, Name: p.Name, Description: p.Description})
+	}
+	if m := o.Current.Model; m != nil {
+		res.CurrentModel = &machinev1.DSHModel{Provider: m.Provider, Model: m.Model, Effort: m.Effort}
+	}
+	return res, nil
+}
+
 func (s *adminService) InterruptDSHSession(ctx context.Context, req *machinev1.InterruptDSHSessionRequest) (*machinev1.InterruptDSHSessionResponse, error) {
 	if err := ownerOnly(ctx); err != nil {
 		return nil, err
@@ -123,6 +219,12 @@ func (n *Machine) SetDSHTakeover(req *machinev1.SetDSHTakeoverRequest) (*machine
 // SendDSHMessage sends the owner's message into a taken-over DSH session
 // through the bridge: it waits for the next turn there when one runs.
 func (n *Machine) SendDSHMessage(ctx context.Context, req *machinev1.SendDSHMessageRequest) (*machinev1.SendDSHMessageResponse, error) {
+	return n.sendDSHMessage(ctx, req, &Principal{Kind: PrincipalOwner})
+}
+
+// sendDSHMessage is SendDSHMessage from p: an agent's message is recorded
+// as its own before it goes (a retry under the same id keeps it).
+func (n *Machine) sendDSHMessage(ctx context.Context, req *machinev1.SendDSHMessageRequest, p *Principal) (*machinev1.SendDSHMessageResponse, error) {
 	text := req.Text
 	switch {
 	case strings.TrimSpace(text) == "":
@@ -136,11 +238,30 @@ func (n *Machine) SendDSHMessage(ctx context.Context, req *machinev1.SendDSHMess
 	} else if !dshRequestID.MatchString(reqID) {
 		return nil, cerr(connect.CodeInvalidArgument, "request_id must be %q and up to 64 lowercase letters or digits", dshnative.RequestPrefix)
 	}
+	var sel dshnative.Selections
+	if m := req.Model; m != nil && (m.Provider != "" || m.Model != "") {
+		if m.Provider == "" || m.Model == "" {
+			return nil, cerr(connect.CodeInvalidArgument, "a model needs its provider and its name (DSHSessionOptions lists them)")
+		}
+		sel.Model = &dshnative.Model{Provider: m.Provider, Model: m.Model, Effort: m.Effort}
+	}
+	sel.Permission = req.Permission
 	home, b, err := n.dshTakeoverBridge(ctx, req.SessionId)
 	if err != nil {
 		return nil, err
 	}
 	defer b.Close()
+	if p.Kind != PrincipalOwner {
+		if old, _ := n.st.Get(dshSentKey(reqID)); old != nil {
+			if from, _ := n.dshSender(reqID); from != p.ID() {
+				return nil, cerr(connect.CodeInvalidArgument, "request_id %q names another sender's message", reqID)
+			}
+		}
+		b, _ := json.Marshal(dshSent{From: p.ID(), Name: p.Name()})
+		if err := n.st.Set(dshSentKey(reqID), b); err != nil {
+			return nil, err
+		}
+	}
 	// The session's Agent runs in DSH Desktop, or no DSH process has it:
 	// DSH Desktop takes the message. Held by another (a DSH run by a
 	// command, another DSH window), it would refuse, or hang: say so now.
@@ -157,11 +278,18 @@ func (n *Machine) SendDSHMessage(ctx context.Context, req *machinev1.SendDSHMess
 	}
 	pctx, cancel := context.WithTimeout(ctx, dshPromptWait)
 	defer cancel()
-	if err := b.Prompt(pctx, req.SessionId, reqID, text); err != nil {
-		n.audit.Log(AuditRecord{Kind: "dsh.send", Subject: "owner", Session: req.SessionId, Decision: "error", Detail: "request=" + reqID + " message_sha=" + sha(text) + " error=" + err.Error()})
+	detail := "request=" + reqID + " message_sha=" + sha(text)
+	if sel.Model != nil {
+		detail += " model=" + sel.Model.Provider + "/" + sel.Model.Model + "/" + sel.Model.Effort
+	}
+	if sel.Permission != "" {
+		detail += " permission=" + sel.Permission
+	}
+	if err := b.Prompt(pctx, req.SessionId, reqID, text, sel); err != nil {
+		n.audit.Log(AuditRecord{Kind: "dsh.send", Subject: p.ID(), Session: req.SessionId, Decision: "error", Detail: detail + " error=" + err.Error()})
 		return nil, dshBridgeErr(err)
 	}
-	n.audit.Log(AuditRecord{Kind: "dsh.send", Subject: "owner", Session: req.SessionId, Decision: "allow", Detail: "request=" + reqID + " message_sha=" + sha(text)})
+	n.audit.Log(AuditRecord{Kind: "dsh.send", Subject: p.ID(), Session: req.SessionId, Decision: "allow", Detail: detail})
 	return &machinev1.SendDSHMessageResponse{RequestId: reqID}, nil
 }
 
@@ -210,7 +338,7 @@ func dshBridgeErr(err error) error {
 	var be *dshnative.BridgeError
 	var ie *dshnative.IncompatibleError
 	switch {
-	case errors.Is(err, dshnative.ErrBridgeNotInstalled), errors.Is(err, dshnative.ErrBridgeNotRunning):
+	case errors.Is(err, dshnative.ErrBridgeNotInstalled), errors.Is(err, dshnative.ErrBridgeNotRunning), errors.Is(err, dshnative.ErrBridgeTooOld):
 		return cerr(connect.CodeFailedPrecondition, "%s", err.Error())
 	case errors.As(err, &ie):
 		return cerr(connect.CodeFailedPrecondition, "%s", ie.Reason)

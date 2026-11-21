@@ -17,6 +17,8 @@ export type Command =
   | `searchGrant:${string}` | `searchMachine:${string}` | "undo" | "upgrade"
   /** DeepSeek Harness's own sessions (the settings window's Connect guide). */
   | "dsh"
+  /** The Claude desktop app's Claude Code sessions (an Agent page's link). */
+  | "claude"
   /** The Her entry at an environment: `her:<machine id>` (a notification's). */
   | `her:${string}`;
 
@@ -62,7 +64,7 @@ export type Bridge = {
   /** Whether this window has the focus: now, and whenever it changes. */
   onWindowFocus(cb: (focused: boolean) => void): () => void;
   /** Shows the main window with its session list narrowed to a grant (its client id) or a machine; on a session; or on DeepSeek Harness's own sessions. */
-  showInMain(filter: { grant: string } | { machine: string } | { session: string } | { dsh: true }): void;
+  showInMain(filter: { grant: string } | { machine: string } | { session: string } | { dsh: true } | { claude: true }): void;
   /** Shows the main window joining the owner as a trusted device (a machine only becoming one). */
   showUpgrade(): void;
   /** Windows: shows the app menu at x, y (the window's menu bar stays hidden). */

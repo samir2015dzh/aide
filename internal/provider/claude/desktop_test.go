@@ -210,3 +210,82 @@ func TestStartListsSessionInDesktop(t *testing.T) {
 		}
 	})
 }
+
+// writeConfig writes the desktop app's config.json in dir with fields.
+func writeConfig(t *testing.T, dir string, fields map[string]any) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := json.Marshal(fields)
+	if err := os.WriteFile(filepath.Join(dir, "config.json"), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Signed in in the desktop app is read from its settings wherever the app
+// keeps them: the owner's computer (an MSIX app's Claude-Data\claude_<id>,
+// beside its claude-code) is one sample; the classic installer's
+// %APPDATA%\Claude, an MSIX package's redirected folder and macOS are
+// others. Signed out (no token cache, no account, or the app saying so)
+// is not signed in, and neither is a config.json elsewhere.
+func TestDesktopSignedIn(t *testing.T) {
+	signedIn := map[string]any{"oauth:tokenCacheV2": "opaque", "lastKnownAccountUuid": "00000000-0000-4000-8000-000000000000", "windowSizeWasSignedIn": true, "first_launch_at": 1}
+	for _, c := range []struct {
+		name string
+		dir  func(home, appData, local string) string
+		code bool // the app fetched Claude Code (its claude-code folder beside config.json)
+	}{
+		{"MSIX, Claude-Data (the owner's)", func(_, _, local string) string { return filepath.Join(local, "Claude-Data", "claude_pub1hash") }, true},
+		{"installer, %APPDATA%\\Claude, Code never opened", func(_, appData, _ string) string { return filepath.Join(appData, "Claude") }, false},
+		{"MSIX, redirected into its package", func(_, _, local string) string {
+			return filepath.Join(local, "Packages", "Claude_other9", "LocalCache", "Roaming", "Claude")
+		}, true},
+		{"macOS", func(home, _, _ string) string { return filepath.Join(home, "Library", "Application Support", "Claude") }, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			home, appData, local := t.TempDir(), t.TempDir(), t.TempDir()
+			dirs := func() []string { return desktopUserData(home, appData, local) }
+			if desktopSignedIn(dirs()) {
+				t.Fatal("no app: signed in")
+			}
+			dir := c.dir(home, appData, local)
+			if c.code {
+				os.MkdirAll(filepath.Join(dir, "claude-code", "2.1.326", "b1"), 0o755)
+			}
+			writeConfig(t, dir, signedIn)
+			if !desktopSignedIn(dirs()) {
+				t.Fatalf("signed in at %s: not seen in %v", dir, dirs())
+			}
+			// The older token cache alone does as well.
+			writeConfig(t, dir, map[string]any{"oauth:tokenCache": "opaque", "lastKnownAccountUuid": "u", "windowSizeWasSignedIn": true})
+			if !desktopSignedIn(dirs()) {
+				t.Fatal("oauth:tokenCache: not signed in")
+			}
+			for name, f := range map[string]map[string]any{
+				"signed out":        {"oauth:tokenCacheV2": "opaque", "lastKnownAccountUuid": "u", "windowSizeWasSignedIn": false},
+				"no token cache":    {"lastKnownAccountUuid": "u", "windowSizeWasSignedIn": true},
+				"empty token":       {"oauth:tokenCacheV2": "", "lastKnownAccountUuid": "u", "windowSizeWasSignedIn": true},
+				"no account":        {"oauth:tokenCacheV2": "opaque", "windowSizeWasSignedIn": true},
+				"no window flag":    {"oauth:tokenCacheV2": "opaque", "lastKnownAccountUuid": "u"},
+				"not JSON at all":   nil,
+				"first launch only": {"first_launch_at": 1},
+			} {
+				if f == nil {
+					os.WriteFile(filepath.Join(dir, "config.json"), []byte("{oops"), 0o600)
+				} else {
+					writeConfig(t, dir, f)
+				}
+				if desktopSignedIn(dirs()) {
+					t.Errorf("%s: signed in", name)
+				}
+			}
+		})
+	}
+	// A config.json in some other folder of %LOCALAPPDATA% is not the app's.
+	home, appData, local := t.TempDir(), t.TempDir(), t.TempDir()
+	writeConfig(t, filepath.Join(local, "SomethingElse"), signedIn)
+	if desktopSignedIn(desktopUserData(home, appData, local)) {
+		t.Fatal("another app's config.json: signed in")
+	}
+}

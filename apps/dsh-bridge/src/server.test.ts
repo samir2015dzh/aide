@@ -4,12 +4,12 @@ import { connect, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { BridgeError, DshHost, type Host } from "./host.ts";
+import { BridgeError, DshHost, type Host, type Selections, type SessionOptions } from "./host.ts";
 import { bridgeHome } from "./index.ts";
 import { BridgeServer, type Rendezvous } from "./server.ts";
 
 class FakeHost implements Host {
-  prompts: { sessionId: string; requestId: string; text: string }[] = [];
+  prompts: { sessionId: string; requestId: string; text: string; selections?: Selections }[] = [];
   cancelled: string[] = [];
   live = new Set<string>(["s_live"]);
   hang = false;
@@ -20,11 +20,14 @@ class FakeHost implements Host {
   state(id: string) {
     return { live: this.live.has(id), status: this.live.has(id) ? "running" : "" };
   }
-  async prompt(sessionId: string, requestId: string, text: string, signal: AbortSignal) {
+  async prompt(sessionId: string, requestId: string, text: string, signal: AbortSignal, selections?: Selections) {
     if (this.fail) throw this.fail;
     if (this.hang) return new Promise<void>(() => {}); // ignores the signal, as the worst Host would
     void signal;
-    this.prompts.push({ sessionId, requestId, text });
+    this.prompts.push({ sessionId, requestId, text, ...(selections ? { selections } : {}) });
+  }
+  async options(sessionId: string): Promise<SessionOptions> {
+    return { models: [{ provider: "deepseek", providerName: "DeepSeek", model: "m1", modelName: "M1", efforts: ["low", "high"] }], permissions: [{ id: "ask", name: "Ask", description: "" }], current: sessionId === "s_live" ? { permission: "ask" } : {} };
   }
   cancel(id: string) {
     if (!this.live.has(id)) return false;
@@ -191,4 +194,89 @@ test("the bridge's folder follows DSH_HOME as aided reads it", () => {
   assert.match(bridgeHome({}), /\.dsh[\\/]aide-bridge$/);
   assert.match(bridgeHome({ DSH_HOME: "  " }), /\.dsh[\\/]aide-bridge$/);
   assert.match(bridgeHome({ DSH_HOME: "~/other" }), /other[\\/]aide-bridge$/);
+});
+
+test("options and a prompt's model and permission, over the wire; a bad one refused", async () => {
+  const home = mkdtempSync(join(tmpdir(), "hmb-"));
+  const host = new FakeHost();
+  const server = new BridgeServer(host, { home, version: "t" });
+  const r = await server.start();
+  const c = await client(r);
+  try {
+    const hello = (await c.call("hello")).result as { features: string[] };
+    assert.deepEqual(hello.features, ["options", "selections"]);
+    const opts = (await c.call("options", { sessionId: "s_live" })).result as SessionOptions;
+    assert.equal(opts.models[0].model, "m1");
+    assert.deepEqual(opts.current, { permission: "ask" });
+    await c.call("prompt", { sessionId: "s_live", requestId: "aide-1", text: "go", model: { provider: "deepseek", model: "m1", effort: "high" }, permission: "ask" });
+    await c.call("prompt", { sessionId: "s_live", requestId: "aide-2", text: "plain", permission: "" });
+    assert.deepEqual(host.prompts, [
+      { sessionId: "s_live", requestId: "aide-1", text: "go", selections: { model: { provider: "deepseek", model: "m1", effort: "high" }, permission: "ask" } },
+      { sessionId: "s_live", requestId: "aide-2", text: "plain" },
+    ]);
+    const bad = await c.call("prompt", { sessionId: "s_live", requestId: "aide-3", text: "x", model: { provider: "deepseek", model: "a b" } });
+    assert.equal((bad.error as { code: string }).code, "bad-request");
+    assert.equal(host.prompts.length, 2);
+  } finally {
+    c.close();
+    await server.close();
+  }
+});
+
+test("DshHost: options from DSH's services; a prompt sets the model and permission as DSH's pickers do, only when they change", async () => {
+  const log: string[] = [];
+  const session = { id: "s1" };
+  let perm = "ask";
+  let model = { provider: "deepseek", model: "m1" } as { provider: string; model: string; reasoningEffort?: string };
+  const agent = { id: "s1", status: "idle", session, cancel: () => {} };
+  const services: Record<string, unknown> = {
+    sessionController: {
+      prompt: async (req: { requestId: string }) => void log.push("prompt " + req.requestId),
+      resolveAgent: async (id: string) => (id === "s1" ? { agent } : { error: "gone" }),
+      selectModel: async (req: { provider: string; model: string; reasoningEffort?: string }) => {
+        log.push(`select ${req.provider}/${req.model}/${req.reasoningEffort ?? ""}`);
+        model = req;
+      },
+    },
+    agents: { get: (id: string) => (id === "s1" ? agent : undefined) },
+    sessions: { flush: async () => {} },
+    llm: {
+      listProviders: () => [{ id: "deepseek", name: "DeepSeek" }, { id: "broken" }],
+      listModels: async (p: string) => (p === "broken" ? Promise.reject(new Error("no key")) : [{ id: "m1", name: "M1" }, { id: "m2" }]),
+      resolveModelInfo: async (_p: string, m: string) => (m === "m1" ? { reasoning: { efforts: [{ id: "low" }, { id: "high" }] } } : {}),
+      resolveCallConfig: async (sel: { model: string }) => (sel.model === "nope" ? Promise.reject(new Error("unknown")) : {}),
+    },
+    permissionPresets: {
+      catalog: () => ({ options: [{ value: "ask", name: "Ask" }, { value: "auto", name: "Auto", description: "reviewed" }, { value: "custom", name: "Custom" }] }),
+      names: ["ask", "auto"],
+      current: () => perm,
+    },
+    commands: {
+      find: (_a: unknown, name: string) => name === "permission",
+      execute: async (_a: unknown, line: string) => {
+        log.push(line);
+        perm = line.split(" ")[1];
+        return { result: { kind: "success" } };
+      },
+    },
+    sessionProjections: { snapshot: () => ({ values: { modelSelection: { next: model } } }) },
+  };
+  const host = new DshHost({ get: (n) => services[n] });
+  const opts = await host.options("s1");
+  assert.deepEqual(
+    opts.models.map((m) => `${m.provider}/${m.model}:${m.efforts.join(",")}`),
+    ["deepseek/m1:low,high", "deepseek/m2:"],
+  );
+  assert.deepEqual(opts.permissions.map((p) => p.id), ["ask", "auto"]);
+  assert.deepEqual(opts.current, { model: { provider: "deepseek", model: "m1", effort: "" }, permission: "ask" });
+
+  const sig = new AbortController().signal;
+  await host.prompt("s1", "aide-a", "go", sig, { model: { provider: "deepseek", model: "m1", effort: "high" }, permission: "auto" });
+  await host.prompt("s1", "aide-b", "again", sig, { model: { provider: "deepseek", model: "m1", effort: "high" }, permission: "auto" });
+  assert.deepEqual(log, ["select deepseek/m1/high", "/permission auto", "prompt aide-a", "prompt aide-b"]);
+
+  await assert.rejects(host.prompt("s1", "aide-c", "x", sig, { model: { provider: "deepseek", model: "nope" } }), (e: BridgeError) => e.code === "bad-request");
+  await assert.rejects(host.prompt("s1", "aide-d", "x", sig, { permission: "custom" }), (e: BridgeError) => e.code === "bad-request");
+  await assert.rejects(host.prompt("s9", "aide-e", "x", sig, { permission: "ask" }), (e: BridgeError) => e.code === "not-found");
+  assert.equal(log.filter((l) => l.startsWith("prompt")).length, 2, "nothing sent when a selection fails");
 });
