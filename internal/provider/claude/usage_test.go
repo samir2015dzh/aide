@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -370,6 +372,25 @@ func TestOSCryptRoundTrip(t *testing.T) {
 	// A wrong key fails to open.
 	if _, err := oscryptOpen(bytes.Repeat([]byte{1}, oscryptKeyLen), blob); err == nil {
 		t.Fatal("open with wrong key succeeded")
+	}
+}
+
+func TestRedactErr(t *testing.T) {
+	// A transport error wrapping a URL is stripped to op + host + cause;
+	// the path and any query (a token could hide there) never reach the log.
+	ue := &url.Error{Op: "Get", URL: "https://api.anthropic.com/api/oauth/usage?access_token=sk-ant-SECRET", Err: errors.New("connection reset")}
+	got := redactErr(ue)
+	for _, bad := range []string{"SECRET", "access_token", "/api/oauth/usage"} {
+		if strings.Contains(got, bad) {
+			t.Fatalf("redactErr leaked %q: %s", bad, got)
+		}
+	}
+	if !strings.Contains(got, "api.anthropic.com") || !strings.Contains(got, "connection reset") {
+		t.Fatalf("redactErr = %q, want host and cause", got)
+	}
+	// A plain error passes through unchanged.
+	if redactErr(errors.New("usage endpoint: HTTP 403")) != "usage endpoint: HTTP 403" {
+		t.Fatal("redactErr changed a plain error")
 	}
 }
 
