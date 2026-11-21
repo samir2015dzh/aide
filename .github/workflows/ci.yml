@@ -6,9 +6,16 @@ on:
   # By hand, on any branch: Windows work is tried on Windows runners there
   # before it reaches main (docs/windows.md).
   workflow_dispatch:
+  # Every day, the whole Linux line with race-detector binaries (work order #33's
+  # safety net): whatever a pull request's selective run left out is raced here
+  # and on main's push. The Windows lines do not run on it.
+  schedule:
+    - cron: '17 3 * * *'
+# A pull request's newer commit cancels its older run; main's pushes and the
+# daily run are never cancelled half way (they are where every test gets raced).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   go:
     strategy:
@@ -123,6 +130,7 @@ jobs:
           { echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
   # Windows (docs/windows.md): what is ported so far.
   windows:
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -138,6 +146,7 @@ jobs:
   # The end-to-end suite on Windows, being ported (docs/windows.md, W1): its
   # failures do not fail the run yet.
   windows-e2e:
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     continue-on-error: true
     steps:
@@ -177,6 +186,7 @@ jobs:
   # against the real daemon, then the package, installed in Developer Mode
   # with its aliases checked. Its failures do not fail the run yet.
   windows-app:
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     continue-on-error: true
     steps:
