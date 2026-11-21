@@ -6,6 +6,7 @@ import io.aide.android.api.LocalApi
 import io.aide.android.api.SessionEvent
 import io.aide.android.api.SetLoginRequest
 import io.aide.android.api.WatchResponse
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
@@ -169,5 +170,52 @@ class ConnectTest {
         val rm = server.takeRequest()
         assertEquals("/aide.local.v1.LocalService/RemoveDevice", rm.path)
         assertEquals("""{"keyId":"k_2","eraseHer":true}""", rm.body.readUtf8())
+    }
+
+    // An answer is read off the caller's thread: the UI calls from the main thread, where reading a large
+    // body (a DSH session's page of events) is a socket read Android ends the app for (handover: the
+    // Android app quit on opening any DSH session).
+    @Test fun aLargeAnswerIsReadOffTheCallersThread() {
+        val readOn = java.util.concurrent.atomic.AtomicReference<String>()
+        val http = ConnectClient.defaultHttp().newBuilder().eventListener(object : okhttp3.EventListener() {
+            override fun responseBodyEnd(call: okhttp3.Call, byteCount: Long) = readOn.set(Thread.currentThread().name)
+        }).build()
+        val client = ConnectClient("http://127.0.0.1:${server.port}", "tok", "aide.local.v1.LocalService", http)
+        val big = "x".repeat(2_000_000)
+        server.enqueue(MockResponse().setBody("""{"events":[{"seq":"1","agentMessage":{"text":"$big"}}]}""").throttleBody(256 * 1024, 5, java.util.concurrent.TimeUnit.MILLISECONDS))
+        val caller = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "caller-main") }
+        try {
+            val out = runBlocking(caller.asCoroutineDispatcher()) { client.unary("ReadDSHSession", kotlinx.serialization.json.JsonObject(emptyMap())) }
+            assertEquals(1, out.jsonObject["events"]!!.let { it as kotlinx.serialization.json.JsonArray }.size)
+            assertTrue("body read on ${readOn.get()}", readOn.get() != null && !readOn.get().startsWith("caller-main"))
+        } finally {
+            caller.shutdown()
+        }
+    }
+
+    // What a page catches is ApiError: a body cut short, or an answer that is not JSON or not of the
+    // answer's shape, is one too, never an exception that ends the app.
+    @Test fun anAnswerCutShortOrUnreadableIsAnApiError() = runBlocking {
+        server.enqueue(MockResponse().setBody("{\"events\":[" + "{}, ".repeat(100_000)).setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+        try {
+            api().readDSHSession("m_1", "s_1")
+            fail("no error")
+        } catch (e: ApiError) {
+            assertTrue(e.code, e.code == "unavailable" || e.code == "internal")
+        }
+        server.enqueue(MockResponse().setBody("""{"events":[{"seq":"1","""))
+        try {
+            api().readDSHSession("m_1", "s_1")
+            fail("no error")
+        } catch (e: ApiError) {
+            assertEquals("internal", e.code)
+        }
+        server.enqueue(MockResponse().setBody("""{"events":{"not":"a list"}}"""))
+        try {
+            api().readDSHSession("m_1", "s_1")
+            fail("no error")
+        } catch (e: ApiError) {
+            assertEquals("internal", e.code)
+        }
     }
 }
