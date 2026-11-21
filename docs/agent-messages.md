@@ -708,3 +708,60 @@ Review of steps 2 and 3, 2026-10-27:
 - **Unchanged: an interrupt starts the turn another agent's message waits
   for.** That message asked for a turn of its own, not to be part of the
   one interrupted; the owner who wants nothing to run pauses the machine.
+
+## 15. The roster, tiers and delivery
+
+Agent mesh (#26) batch 1: what lets an agent find everyone it can write to,
+write to a session by name, and know when its message will be read. Nothing
+here asks the relay for anything new: it reports what it already knows of
+its own connections, and the sessions are what each machine says end to
+end.
+
+- **Tier.** An inbox's registration says when a message reaches it
+  (`InboxRegistration.tier`, set from `takes_messages` by
+  `identity.TierOf`; a registration from before has none, and readers work
+  it out the same way):
+
+  | takes_messages | tier | when it is read |
+  |---|---|---|
+  | `session` (a machine's sessions), `wait` (a socket), `webhook` | `push` | at once: woken, or the session takes it |
+  | `hook` | `turn` | at the agent's next turn |
+  | `poll`, none said | `pull` | when the agent next checks its inbox |
+
+  A name with a doorbell (agent-names) is `push` whatever its agent's tier.
+- **Presence.** `MessageService.Contacts` adds `presence`: which of the
+  contacts are connected now, and when each other one last was, as the
+  relay knows its connections since it started (`Presence{inbox, online,
+  last_seen}`). Only the contacts' inboxes are listed.
+- **The roster** (`aide roster`, the `roster` tool): every endpoint a
+  message can go to, as the caller may see it.
+  - The owner's agents (kind `cli` or `mcp`), with their tier and presence,
+    and their names with a doorbell, each its own endpoint.
+  - The Aide sessions on the machines the caller reaches (`aide_session`):
+    state, link and stalled seconds exactly as `session list` gives them
+    (docs/session-states.md); `doing`, from the session itself (its tool
+    now, its last words, its title), never its say.
+  - The DeepSeek Harness sessions there (`dsh_session`), mailable once the
+    owner took one over.
+  - `paused_agents`: the coding agents the owner paused on a machine
+    (`AgentStatus.pause`), which start no new session there; a session of
+    one says `agent_paused`.
+  - Not listed: Claude Desktop sessions (only the owner's devices list
+    them; their address mapping is batch 4), and whatever the caller's grant
+    can't see.
+- **A session's name** is its title as names are written
+  (`identity.NormalizeName`, cut to 40), or its id when the title has
+  nothing to keep; on one machine the older of two keeps a name and the
+  later ones take `-2`, `-3`. Names are worked out from the session list
+  each time, not stored. `message send --to` takes `<machine>/<name>`, or
+  the name alone while only one machine has a session of that name (two
+  are refused, naming them). An agent's name comes first: a name that is
+  an agent's is that agent.
+- **Writing to many at once** (`*`, `<machine>/*`, `repo:<repository>`) is
+  refused to agents with `broadcast_owner_only`; it is the owner's alone,
+  and not built yet.
+- **Delivery.** `message send` answers `delivery`, one per recipient:
+  `result` `handed` (a session took it: it started or joined a turn,
+  answered a question, or DSH has it) or `queued` (at the post office, or
+  waiting for a turn of its own); its `tier`; and `expect`, in words, when
+  it will be read. `delivered` and `expect` stay as they were.

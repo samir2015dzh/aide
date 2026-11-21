@@ -212,7 +212,7 @@ var toolCommands = [][]string{
 	{"session", "start"}, {"session", "get"}, {"session", "wait"}, {"session", "list"}, {"session", "events"},
 	{"session", "answer"}, {"session", "interrupt"},
 	{"session", "archive"}, {"session", "unarchive"}, {"session", "rollback"}, {"session", "diff"}, {"session", "insights"}, {"session", "push"},
-	{"message", "send"}, {"message", "list"}, {"message", "ack"}, {"message", "status"}, {"message", "contacts"},
+	{"message", "send"}, {"message", "list"}, {"message", "ack"}, {"message", "status"}, {"message", "contacts"}, {"roster"},
 	{"machine", "exec"},
 }
 

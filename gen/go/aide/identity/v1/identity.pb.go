@@ -2315,6 +2315,12 @@ type InboxRegistration struct {
 	// from an agent, so senders don't write to it.
 	TakesMessages string                 `protobuf:"bytes,4,opt,name=takes_messages,json=takesMessages,proto3" json:"takes_messages,omitempty"`
 	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	// When a message reaches the one it is for (docs/agent-messages.md §15):
+	// "push", it is woken or its session takes it at once; "turn", in its
+	// next turn; "pull", when it next checks its inbox. Set from
+	// takes_messages (identity.TierOf); a registration from before has none,
+	// and readers work it out the same way.
+	Tier          string `protobuf:"bytes,6,opt,name=tier,proto3" json:"tier,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2382,6 +2388,13 @@ func (x *InboxRegistration) GetIssuedAt() *timestamppb.Timestamp {
 		return x.IssuedAt
 	}
 	return nil
+}
+
+func (x *InboxRegistration) GetTier() string {
+	if x != nil {
+		return x.Tier
+	}
+	return ""
 }
 
 // Contact is one of the owner's inboxes as a sender checks it: an agent's
@@ -2634,13 +2647,14 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\x11client_public_key\x18\x03 \x01(\fR\x0fclientPublicKey\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x12\n" +
 	"\x04kind\x18\x05 \x01(\tR\x04kind\x127\n" +
-	"\tissued_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\"\xce\x01\n" +
+	"\tissued_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\"\xe2\x01\n" +
 	"\x11InboxRegistration\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x14\n" +
 	"\x05inbox\x18\x02 \x01(\tR\x05inbox\x12(\n" +
 	"\x10inbox_public_key\x18\x03 \x01(\fR\x0einboxPublicKey\x12%\n" +
 	"\x0etakes_messages\x18\x04 \x01(\tR\rtakesMessages\x127\n" +
-	"\tissued_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\"\xed\x01\n" +
+	"\tissued_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x12\x12\n" +
+	"\x04tier\x18\x06 \x01(\tR\x04tier\"\xed\x01\n" +
 	"\aContact\x12,\n" +
 	"\x04card\x18\x01 \x01(\v2\x18.aide.identity.v1.SignedR\x04card\x129\n" +
 	"\vdevice_cert\x18\x02 \x01(\v2\x18.aide.identity.v1.SignedR\n" +

@@ -779,6 +779,19 @@ message ContactsResponse {
   // Addresses with a doorbell, by agent: senders put the name on the
   // envelope (SealedMessage.ring). Not signed: a wrong one costs a ring.
   repeated Woken woken = 3;
+  // Which of the inboxes are connected now, and when each was last: what
+  // the relay knows of its own connections, for a roster
+  // (docs/agent-messages.md §15). An inbox never connected since the relay
+  // started is left out.
+  repeated Presence presence = 4;
+}
+
+message Presence {
+  // A client id (c_…) or a machine id (m_…).
+  string inbox = 1;
+  bool online = 2;
+  // When it was last connected; unset while it is.
+  google.protobuf.Timestamp last_seen = 3;
 }
 
 message Woken {
