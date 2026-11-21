@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"time"
@@ -286,12 +288,22 @@ func (r *UsageReader) renew(ctx context.Context, t oauthToken) (oauthToken, erro
 	return t, nil
 }
 
-// redactErr keeps an error's shape out of a log that might otherwise carry
-// a URL with a token in it. Our errors never embed the token, but a
-// transport error can quote the request URL; this strips it to the host.
+// redactErr keeps a logged error from carrying anything but an error's
+// shape. Our own errors never embed the token (it travels only in the
+// Authorization header, never in a URL), but a transport error wraps the
+// request URL, so this strips a *url.Error down to its op, the host, and
+// the underlying cause — never the path or any query.
 func redactErr(err error) string {
 	if err == nil {
 		return ""
+	}
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		host := ue.URL
+		if u, perr := url.Parse(ue.URL); perr == nil && u.Host != "" {
+			host = u.Host
+		}
+		return fmt.Sprintf("%s %s: %v", ue.Op, host, ue.Err)
 	}
 	return err.Error()
 }
