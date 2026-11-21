@@ -204,7 +204,7 @@
     "default": "默认",
     "noOffers": "{{agent}} 还没告诉这台机器它的模型或模式；在这里跑过第一个任务后才会出现。现在用它自己的默认值。",
     "prompt": "消息",
-    "promptPlaceholder": "要 {{agent}} 做什么？",
+    "promptPlaceholder": "要 {{agent}} 做什么？（开头可写 !plan 或 !implement；#s_… 引入一个历史会话）",
     "starting": "正在启动…",
     "start": "启动",
     "started": "已启动「{{title}}」",

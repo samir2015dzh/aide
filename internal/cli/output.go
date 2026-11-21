@@ -452,7 +452,7 @@ func insightsView(in *sessionv1.SessionInsights) object {
 	for _, t := range in.Turns {
 		turns = append(turns, object{{"turn", t.Turn}, {"started_at", tsJSON(t.StartedAt)}, {"ended_at", tsJSON(t.EndedAt)},
 			{"duration_ms", t.DurationMs}, {"question_wait_ms", t.QuestionWaitMs}, {"tool_calls", t.ToolCalls}, {"tool_errors", t.ToolErrors},
-			{"auto_retries", t.AutoRetries}, {"failure", failureName(t.Failure)}, {"diff_stat", diffStatView(t.DiffStat)}, {"usage", usageView(t.Usage)}})
+			{"auto_retries", t.AutoRetries}, {"failure", failureName(t.Failure)}, {"diff_stat", diffStatView(t.DiffStat)}, {"usage", usageView(t.Usage)}, {"rolled_back", t.RolledBack}})
 	}
 	failures := []object{}
 	for _, f := range in.Failures {
@@ -478,6 +478,7 @@ func insightsView(in *sessionv1.SessionInsights) object {
 	return object{{"session_id", in.SessionId}, {"last_event_seq", in.LastEventSeq}, {"generated_at", tsJSON(in.GeneratedAt)},
 		{"turns", turns}, {"busy_ms", in.BusyMs}, {"question_wait_ms", in.QuestionWaitMs}, {"failed_turns", in.FailedTurns},
 		{"failures", failures}, {"auto_retries", in.AutoRetries}, {"retried_turns", in.RetriedTurns}, {"stalls", in.Stalls}, {"interrupts", in.Interrupts},
+		{"rollbacks", in.Rollbacks}, {"discarded_turns", in.DiscardedTurns},
 		{"questions", questions}, {"tools", tools}, {"diff_stat", diffStatView(in.DiffStat)}, {"usage", usageView(in.Usage)},
 		{"findings", findings}, {"suggested_prompt", in.SuggestedPrompt}, {"markdown", in.Markdown}}
 }
