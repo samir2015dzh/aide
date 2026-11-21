@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { fixture, launch, navTo, snap } from "./app";
+import { fixture, launch, snap } from "./app";
 
 // DeepSeek 会话 › taking one over (docs/dsh-takeover.md): read only until the owner turns 接管 on
 // for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
@@ -36,19 +36,15 @@ test("this computer not turned on as a machine: the session pages say so, and tu
   try {
     await expect(list.getByRole("status").filter({ hasText: said })).toBeVisible({ timeout: 30_000 });
     await snap(page, "dsh-local-machine-off");
-    // No machine is left to say it has DSH or Claude Code: both entries stay in the sidebar all the same,
-    // or the pages that say why could not be opened.
-    await navTo(page, /^概览/);
-    await expect(page.getByRole("button", { name: "DeepSeek 会话" })).toBeVisible();
+    // The sidebar's entry is there only while a machine is found to have DSH (the owner's ruling, 2026-11-21:
+    // not set up, not shown). This computer was the only one, so the entry goes; the page that is open stays,
+    // with the notice. The entry is back once this computer is on and its agents are found again.
+    await expect(page.getByRole("button", { name: "DeepSeek 会话" })).toHaveCount(0, { timeout: 30_000 });
 
-    // The Claude app's sessions: the same notice.
-    await page.getByRole("button", { name: "Claude 会话" }).click();
-    await expect(page.getByRole("navigation", { name: "Claude 会话" }).getByRole("status").filter({ hasText: said })).toBeVisible();
-
-    await page.getByRole("button", { name: "DeepSeek 会话" }).click();
     await list.getByRole("status").filter({ hasText: said }).getByRole("button", { name: "在这台电脑上开启" }).click();
     await expect(list.getByRole("status").filter({ hasText: said })).toHaveCount(0, { timeout: 30_000 });
     await expect(row).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "DeepSeek 会话" })).toBeVisible({ timeout: 30_000 });
   } finally {
     await call("SetLocalMachine", { enabled: true, machineName: name }).catch(() => {});
     await app.close();
