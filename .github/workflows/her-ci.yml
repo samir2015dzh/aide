@@ -49,6 +49,13 @@ jobs:
           fi
           git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
           echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+      # Cargo's registry and her/target, kept between runs (deleted with her). Saved by main's
+      # pushes alone: a pull request restores main's, and adds none to the cache quota.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: her -> target
+          key: her-ci-test-${{ runner.os }}
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - name: PDFium for the document tests
         run: |
           case "$RUNNER_OS" in
@@ -94,6 +101,13 @@ jobs:
           fi
           git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
           echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+      # Cargo's registry and her/target, kept between runs (deleted with her). Saved by main's
+      # pushes alone: a pull request restores main's, and adds none to the cache quota.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: her -> target
+          key: her-ci-windows-${{ runner.os }}
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - name: PDFium for the document tests
         run: |
           # tar takes "D:" for a host's name: the folder as bash names it.
