@@ -27,7 +27,7 @@ import (
 
 func (a *app) sessionCmd() *cobra.Command {
 	cmd := group(&cobra.Command{Use: "session", Short: "Start and manage coding-agent sessions"})
-	cmd.AddCommand(a.startCmd(), a.getCmd(), a.waitCmd(), a.listCmd(), a.eventsCmd(), a.sendCmd(), a.answerCmd(), a.interruptCmd(), a.archiveCmd(), a.unarchiveCmd(), a.rollbackCmd(), a.diffCmd(), a.pushCmd())
+	cmd.AddCommand(a.startCmd(), a.getCmd(), a.waitCmd(), a.listCmd(), a.eventsCmd(), a.sendCmd(), a.answerCmd(), a.interruptCmd(), a.archiveCmd(), a.unarchiveCmd(), a.rollbackCmd(), a.diffCmd(), a.insightsCmd(), a.pushCmd())
 	return cmd
 }
 
@@ -1292,6 +1292,38 @@ func (a *app) diffCmd() *cobra.Command {
 	cmd.Flags().Uint32Var(&turn, "turn", 0, "only this turn's changes")
 	cmd.Flags().BoolVar(&stat, "stat", false, "summary only")
 	return cmd
+}
+
+func (a *app) insightsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "insights <session id>",
+		Short: "Review a session: each turn's time, failures and retries, questions, tool calls, changes and tokens, and a better prompt for such work (Markdown)",
+		Long: `Review a session from its events, as its machine works it out by rules (no model is
+asked): each turn's time, failures and retries, stalls and interrupts, the
+agent's questions and how long they waited, tool calls by kind, changes and
+tokens; what the review finds, and a better prompt to dispatch such work
+with. The text is Markdown to paste into a delivery record. The machine
+keeps the review from the session's archive, or from the last time it was
+asked, until a new event comes.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.withMachine(cmd.Context(), args[0], func(c *peer.Client, n *peer.Machine, ref machineRef) error {
+				in, err := n.Session.GetSessionInsights(cmd.Context(), &sessionv1.GetSessionInsightsRequest{SessionId: args[0]})
+				if connect.CodeOf(err) == connect.CodeUnimplemented {
+					err = &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("machine %s's version cannot review sessions", ref.Name),
+						hint: "update Aide on that machine"}
+				}
+				if err != nil {
+					return err
+				}
+				if a.output == "json" {
+					return a.report(cmd.OutOrStdout(), nil, field{"insights", insightsView(in)})
+				}
+				fmt.Fprint(cmd.OutOrStdout(), in.Markdown)
+				return nil
+			})
+		},
+	}
 }
 
 func (a *app) pushCmd() *cobra.Command {

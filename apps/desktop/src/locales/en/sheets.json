@@ -207,7 +207,7 @@
     "default": "Default",
     "noOffers": "{{agent}} hasn’t told this machine its models or modes yet; they show after its first task here. Its own defaults apply.",
     "prompt": "Message",
-    "promptPlaceholder": "What should {{agent}} do?",
+    "promptPlaceholder": "What should {{agent}} do? (!plan or !implement first; #s_… brings in an earlier session)",
     "starting": "Starting…",
     "start": "Start",
     "started": "Started “{{title}}”",

@@ -230,6 +230,9 @@ const (
 	LocalServiceAnswerQuestionProcedure = "/aide.local.v1.LocalService/AnswerQuestion"
 	// LocalServiceGetDiffProcedure is the fully-qualified name of the LocalService's GetDiff RPC.
 	LocalServiceGetDiffProcedure = "/aide.local.v1.LocalService/GetDiff"
+	// LocalServiceGetSessionInsightsProcedure is the fully-qualified name of the LocalService's
+	// GetSessionInsights RPC.
+	LocalServiceGetSessionInsightsProcedure = "/aide.local.v1.LocalService/GetSessionInsights"
 	// LocalServicePushSessionProcedure is the fully-qualified name of the LocalService's PushSession
 	// RPC.
 	LocalServicePushSessionProcedure = "/aide.local.v1.LocalService/PushSession"
@@ -458,6 +461,8 @@ type LocalServiceClient interface {
 	MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error)
 	AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error)
 	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
+	// aide.session.v1.SessionService.GetSessionInsights, as the owner.
+	GetSessionInsights(context.Context, *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
 	PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error)
 	// aide.session.v1.SessionService.RollbackSession, as the owner.
@@ -943,6 +948,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("GetDiff")),
 			connect.WithClientOptions(opts...),
 		),
+		getSessionInsights: connect.NewClient[v13.GetSessionInsightsRequest, v13.SessionInsights](
+			httpClient,
+			baseURL+LocalServiceGetSessionInsightsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetSessionInsights")),
+			connect.WithClientOptions(opts...),
+		),
 		pushSession: connect.NewClient[v1.PushSessionRequest, v13.PushSessionResponse](
 			httpClient,
 			baseURL+LocalServicePushSessionProcedure,
@@ -1122,6 +1133,7 @@ type localServiceClient struct {
 	markSessionSeen          *connect.Client[v13.MarkSessionSeenRequest, v1.SessionResponse]
 	answerQuestion           *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	getDiff                  *connect.Client[v1.GetDiffRequest, v13.GetDiffResponse]
+	getSessionInsights       *connect.Client[v13.GetSessionInsightsRequest, v13.SessionInsights]
 	pushSession              *connect.Client[v1.PushSessionRequest, v13.PushSessionResponse]
 	rollbackSession          *connect.Client[v1.RollbackSessionRequest, v1.SessionResponse]
 	listDSHSessions          *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
@@ -1769,6 +1781,15 @@ func (c *localServiceClient) GetDiff(ctx context.Context, req *v1.GetDiffRequest
 	return nil, err
 }
 
+// GetSessionInsights calls aide.local.v1.LocalService.GetSessionInsights.
+func (c *localServiceClient) GetSessionInsights(ctx context.Context, req *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error) {
+	response, err := c.getSessionInsights.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // PushSession calls aide.local.v1.LocalService.PushSession.
 func (c *localServiceClient) PushSession(ctx context.Context, req *v1.PushSessionRequest) (*v13.PushSessionResponse, error) {
 	response, err := c.pushSession.CallUnary(ctx, connect.NewRequest(req))
@@ -2098,6 +2119,8 @@ type LocalServiceHandler interface {
 	MarkSessionSeen(context.Context, *v13.MarkSessionSeenRequest) (*v1.SessionResponse, error)
 	AnswerQuestion(context.Context, *v1.AnswerQuestionRequest) (*v1.AnswerQuestionResponse, error)
 	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
+	// aide.session.v1.SessionService.GetSessionInsights, as the owner.
+	GetSessionInsights(context.Context, *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
 	PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error)
 	// aide.session.v1.SessionService.RollbackSession, as the owner.
@@ -2579,6 +2602,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("GetDiff")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceGetSessionInsightsHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceGetSessionInsightsProcedure,
+		svc.GetSessionInsights,
+		connect.WithSchema(localServiceMethods.ByName("GetSessionInsights")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServicePushSessionHandler := connect.NewUnaryHandlerSimple(
 		LocalServicePushSessionProcedure,
 		svc.PushSession,
@@ -2827,6 +2856,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceAnswerQuestionHandler.ServeHTTP(w, r)
 		case LocalServiceGetDiffProcedure:
 			localServiceGetDiffHandler.ServeHTTP(w, r)
+		case LocalServiceGetSessionInsightsProcedure:
+			localServiceGetSessionInsightsHandler.ServeHTTP(w, r)
 		case LocalServicePushSessionProcedure:
 			localServicePushSessionHandler.ServeHTTP(w, r)
 		case LocalServiceRollbackSessionProcedure:
@@ -3156,6 +3187,10 @@ func (UnimplementedLocalServiceHandler) AnswerQuestion(context.Context, *v1.Answ
 
 func (UnimplementedLocalServiceHandler) GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetDiff is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) GetSessionInsights(context.Context, *v13.GetSessionInsightsRequest) (*v13.SessionInsights, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetSessionInsights is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error) {

@@ -2,7 +2,8 @@ package sqlitedb
 
 import (
 	"path/filepath"
-	"sync/atomic"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 )
@@ -16,21 +17,30 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	var n, spent atomic.Int64 // looks, and the time spent in them
+	var mu sync.Mutex
+	var at []time.Time // when each checkpoint ran
+	since := func(i int) []time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(at[i:])
+	}
 	// 25 ms: well above Windows timer resolution (~15.6 ms), which at a
 	// smaller interval blurs writing and idle together.
-	const interval = 25 * time.Millisecond
-	c, err := StartCheckpointer(path, db, interval, func(d time.Duration) { n.Add(1); spent.Add(int64(d)) })
+	c, err := StartCheckpointer(path, db, 25*time.Millisecond, func(time.Duration) {
+		mu.Lock()
+		at = append(at, time.Now())
+		mu.Unlock()
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 	time.Sleep(time.Second)
 	// At 25 ms it would be ~40; backing off (25, 50, 100, … ms) it is ~5.
-	if idle := n.Load(); idle > 10 {
+	idle := len(since(0))
+	if idle > 10 {
 		t.Fatalf("%d checkpoints in 1 s of nothing written", idle)
 	}
-	idle := n.Load()
 	// Writing: the wait it had backed off to runs out, then it is back at
 	// the interval (counted after that warm-up, while writes go on).
 	write := func(d time.Duration) {
@@ -41,15 +51,19 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 		}
 	}
 	write(time.Second) // longer than the 800 ms it had backed off to
-	before, spentBefore := n.Load(), spent.Load()
+	before := len(since(0))
 	write(time.Second)
-	// Each look waits the interval after the last one ended, so the second
-	// holds (1 s - the time spent checkpointing) / interval of them; a slow
-	// disk (a busy CI runner) makes the checkpoints themselves long. Half
-	// that allows for timer slack; backed off, it would be a handful.
-	busy := n.Load() - before
-	room := time.Second - time.Duration(spent.Load()-spentBefore)
-	if want := int64(room / (2 * interval)); busy < want {
-		t.Fatalf("%d checkpoints in 1 s of writes, want %d (%v of it checkpointing; %d in 1 s of nothing)", busy, want, time.Second-room, idle)
+	// The gap between checkpoints, not their count: a slow runner (Windows:
+	// the timer rounds 25 ms up, a checkpoint takes longer) runs fewer in a
+	// second, but still about one an interval apart, where backed off they
+	// are 800 ms apart or more.
+	busy := since(before)
+	var gaps []time.Duration
+	for i := 1; i < len(busy); i++ {
+		gaps = append(gaps, busy[i].Sub(busy[i-1]))
+	}
+	slices.Sort(gaps)
+	if len(gaps) < 4 || gaps[len(gaps)/2] > 200*time.Millisecond {
+		t.Fatalf("%d checkpoints in 1 s of writes, gaps %v (%d in 1 s of nothing)", len(busy), gaps, idle)
 	}
 }

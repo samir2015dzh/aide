@@ -242,6 +242,29 @@ export type BotIdParams = {
   bot_id: string;
 };
 
+/** A knowledge entry: its text, and the phrases that bring it up. */
+export type BotMemoryEntry = {
+  /** Letters, digits, `-` and `_`. */
+  name: string;
+  text: string;
+  /** Phrases separated by `;`. Empty for a file written by hand without one: never recalled. */
+  trigger: string;
+};
+
+/** Parameters of `bots/memory_entry_delete`. */
+export type BotMemoryEntryDeleteParams = {
+  bot_id: string;
+  name: string;
+};
+
+/** Parameters of `bots/memory_entry_set`: saves an entry, in place of one of that name. */
+export type BotMemoryEntrySetParams = {
+  bot_id: string;
+  name: string;
+  text: string;
+  trigger: string;
+};
+
 /** A file of a bot's memory besides `MEMORY.md`. */
 export type BotMemoryPage = {
   /** RFC 3339. */
@@ -251,12 +274,35 @@ export type BotMemoryPage = {
   path: string;
 };
 
+/** An entry Her proposed, waiting for the owner. */
+export type BotMemoryProposal = {
+  /** RFC 3339. */
+  created_at: string;
+  id: string;
+  name: string;
+  /** Saving it replaces the entry of that name. */
+  replaces?: boolean;
+  text: string;
+  trigger: string;
+};
+
+/** Parameters of `bots/memory_proposal_answer`: the owner saves a proposal as an entry, or declines it. Either way it waits no more. */
+export type BotMemoryProposalAnswerParams = {
+  accept: boolean;
+  bot_id: string;
+  proposal_id: string;
+};
+
 /** What a bot keeps in its memory (docs/her-memory.md): its `MEMORY.md` as written, to show as Markdown whatever its form, and the other files of the folder. */
 export type BotMemoryResult = {
+  /** Knowledge entries, by name: recalled only when the owner's words hit their trigger (docs/her-memory.md §10). */
+  entries?: BotMemoryEntry[];
   /** The other files of the memory folder, by name. */
   pages?: BotMemoryPage[];
   /** Where `MEMORY.md` is on the Her Server, for `files/read`. */
   path: string;
+  /** Entries Her proposed, oldest first. None takes effect until the owner saves it. */
+  proposals?: BotMemoryProposal[];
   /** `MEMORY.md`, empty when nothing is kept. */
   text: string;
 };
@@ -4971,6 +5017,9 @@ export interface Methods {
   "bots/delete": [BotIdParams, Empty];
   "bots/memory": [BotIdParams, BotMemoryResult];
   "bots/memory_clear": [BotIdParams, Empty];
+  "bots/memory_entry_delete": [BotMemoryEntryDeleteParams, Empty];
+  "bots/memory_entry_set": [BotMemoryEntrySetParams, Empty];
+  "bots/memory_proposal_answer": [BotMemoryProposalAnswerParams, Empty];
   "bots/open": [BotOpenParams, SessionNewResult];
   "bots/read": [BotIdParams, Empty];
   "bots/routine": [BotRoutineParams, BotRoutineResult];

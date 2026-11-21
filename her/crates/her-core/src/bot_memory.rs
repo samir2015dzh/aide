@@ -41,12 +41,17 @@ fn load(dir: &Path) -> String {
     )
 }
 
-/// The memory part of a bot's system prompt, from `MEMORY.md` in `dir` as it is now. A bot with
-/// nothing written yet still gets it: it says where to write.
+/// The memory part of a bot's system prompt, from `MEMORY.md` in `dir` as it is now, then the
+/// list of its knowledge entries when it has any (§10). A bot with nothing written yet still
+/// gets it: it says where to write.
 pub(crate) fn section(dir: &Path) -> String {
     let text = load(dir);
     let text = if text.is_empty() { "(empty)" } else { text.as_str() };
-    format!("<memory path=\"{}\">\n{text}\n</memory>", dir.join(FILE).display())
+    let memory = format!("<memory path=\"{}\">\n{text}\n</memory>", dir.join(FILE).display());
+    match crate::knowledge::catalog(dir) {
+        catalog if catalog.is_empty() => memory,
+        catalog => format!("{memory}\n{catalog}"),
+    }
 }
 
 #[cfg(test)]

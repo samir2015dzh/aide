@@ -205,6 +205,40 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   // as written (a list, Markdown), and clear it there, after asking.
   await send("[[mock:remember:- 回复一律用中文。(2026-11-11)]] 以后都用中文");
   await expect(log).toContainText("记下了。", { timeout: 60_000 });
+
+  // Knowledge entries (docs/her-memory.md §10): Her proposes two (her-mock's propose); neither is in her memory until
+  // the owner answers on the memory page. The owner saves one and declines the other, then changes the one saved.
+  await send("[[mock:propose:weekly-report|周报; weekly report|周报周五下午发到团队群。]] 周报以后发团队群");
+  await expect(log).toContainText('提议了：Proposed "weekly-report"', { timeout: 60_000 });
+  await send("[[mock:propose:coffee|咖啡|主人不喝咖啡。]] 我不喝咖啡");
+  await expect(log).toContainText('提议了：Proposed "coffee"', { timeout: 60_000 });
+  await send("[[mock:recalled]] 周报和咖啡");
+  await expect(log).toContainText("没有想起什么。", { timeout: 60_000 });
+  await page.getByRole("button", { name: "助手设置", exact: true }).click();
+  await settings.getByRole("tab", { name: "能力" }).click();
+  await settings.getByTestId("her-memory").click();
+  const known = page.getByRole("complementary", { name: "记忆" });
+  const proposals = known.getByTestId("her-memory-proposal");
+  await expect(proposals).toHaveCount(2, { timeout: 30_000 });
+  await expect(known.getByRole("heading", { name: "待确认的提议" })).toBeVisible();
+  await expect(proposals.first()).toContainText("触发词：周报; weekly report");
+  await proposals.filter({ hasText: "weekly-report" }).getByRole("button", { name: "保存" }).click();
+  await proposals.filter({ hasText: "coffee" }).getByRole("button", { name: "不要" }).click();
+  await expect(proposals).toHaveCount(0, { timeout: 30_000 });
+  const entry = known.getByTestId("her-memory-entry");
+  await expect(entry).toHaveCount(1);
+  await expect(entry).toContainText("周报周五下午发到团队群。");
+  await entry.getByRole("button", { name: "修改" }).click();
+  const editing = known.getByTestId("her-memory-edit");
+  await editing.getByRole("textbox", { name: "内容" }).fill("周报周四下午发到团队群。");
+  await editing.getByRole("button", { name: "保存" }).click();
+  await expect(entry).toContainText("周报周四下午发到团队群。", { timeout: 30_000 });
+  await snap(page, "her-memory-entries");
+  await known.getByRole("button", { name: "返回" }).click();
+  await settings.getByRole("button", { name: "关闭" }).click();
+  // Saved, it is recalled when the owner's words hit its trigger, as it now stands; the declined one is nowhere.
+  await send("[[mock:recalled]] 这周的 Weekly Report，还有咖啡");
+  await expect(log).toContainText("想起：weekly-report=周报周四下午发到团队群。", { timeout: 60_000 });
   await page.getByRole("button", { name: "助手设置", exact: true }).click();
   await settings.getByRole("tab", { name: "能力" }).click();
   const memoryCard = settings.getByTestId("her-memory");
@@ -214,6 +248,11 @@ test("Her: the first run, a chat, a secure card, the console, a second environme
   await expect(memory.locator(".mem-doc li")).toHaveText("回复一律用中文。(2026-11-11)");
   await expect(memory).toContainText("这就是它读到的内容");
   await snap(page, "her-memory");
+  // An entry is deleted after asking.
+  await memory.getByTestId("her-memory-entry").getByRole("button", { name: "删除" }).click();
+  const drop = page.getByRole("dialog", { name: "删除条目「weekly-report」？" });
+  await drop.getByRole("button", { name: "删除" }).click();
+  await expect(memory.getByTestId("her-memory-entry")).toHaveCount(0, { timeout: 30_000 });
   // Clearing it is at the page's foot, with what it clears, and asks first.
   await memory.getByTestId("her-clear-memory").click();
   const forget = page.getByRole("dialog", { name: "清空「Her」记住的事？" });

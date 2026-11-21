@@ -106,6 +106,13 @@
     "effort": "Reasoning effort <b>{{effort}}</b>",
     "sameAs": "Same as {{agent}}"
   },
+  "insights": {
+    "title": "Session Insights",
+    "show": "Review This Task",
+    "copy": "Copy Review",
+    "copyPrompt": "Copy Suggested Prompt",
+    "close": "Close"
+  },
   "markdown": {
     "table": "Data table",
     "copyTable": "Copy table",
@@ -134,7 +141,7 @@
   },
   "composer": {
     "label": "Message to {{agent}}",
-    "placeholder": "Message {{agent}}…",
+    "placeholder": "Message {{agent}}… (!plan or !implement first; #s_… brings in an earlier session)",
     "send": "Send"
   }
 }
