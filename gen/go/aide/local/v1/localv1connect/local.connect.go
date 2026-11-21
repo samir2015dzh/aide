@@ -100,6 +100,9 @@ const (
 	// LocalServiceSetAgentHiddenProcedure is the fully-qualified name of the LocalService's
 	// SetAgentHidden RPC.
 	LocalServiceSetAgentHiddenProcedure = "/aide.local.v1.LocalService/SetAgentHidden"
+	// LocalServiceSetAgentPausedProcedure is the fully-qualified name of the LocalService's
+	// SetAgentPaused RPC.
+	LocalServiceSetAgentPausedProcedure = "/aide.local.v1.LocalService/SetAgentPaused"
 	// LocalServiceListMachineReposProcedure is the fully-qualified name of the LocalService's
 	// ListMachineRepos RPC.
 	LocalServiceListMachineReposProcedure = "/aide.local.v1.LocalService/ListMachineRepos"
@@ -327,6 +330,8 @@ type LocalServiceClient interface {
 	CheckAgents(context.Context, *v1.CheckAgentsRequest) (*v1.CheckAgentsResponse, error)
 	// Hides a coding agent a machine lists, or shows it again (SetAgentHidden).
 	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
+	// Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
+	SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -606,6 +611,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceSetAgentHiddenProcedure,
 			connect.WithSchema(localServiceMethods.ByName("SetAgentHidden")),
+			connect.WithClientOptions(opts...),
+		),
+		setAgentPaused: connect.NewClient[v1.SetAgentPausedRequest, v1.SetAgentPausedResponse](
+			httpClient,
+			baseURL+LocalServiceSetAgentPausedProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetAgentPaused")),
 			connect.WithClientOptions(opts...),
 		),
 		listMachineRepos: connect.NewClient[v1.ListMachineReposRequest, v1.ListMachineReposResponse](
@@ -968,6 +979,7 @@ type localServiceClient struct {
 	removeMachine            *connect.Client[v1.RemoveMachineRequest, v1.RemoveMachineResponse]
 	checkAgents              *connect.Client[v1.CheckAgentsRequest, v1.CheckAgentsResponse]
 	setAgentHidden           *connect.Client[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse]
+	setAgentPaused           *connect.Client[v1.SetAgentPausedRequest, v1.SetAgentPausedResponse]
 	listMachineRepos         *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
 	listMachineFolders       *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
 	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
@@ -1240,6 +1252,15 @@ func (c *localServiceClient) CheckAgents(ctx context.Context, req *v1.CheckAgent
 // SetAgentHidden calls aide.local.v1.LocalService.SetAgentHidden.
 func (c *localServiceClient) SetAgentHidden(ctx context.Context, req *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error) {
 	response, err := c.setAgentHidden.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SetAgentPaused calls aide.local.v1.LocalService.SetAgentPaused.
+func (c *localServiceClient) SetAgentPaused(ctx context.Context, req *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error) {
+	response, err := c.setAgentPaused.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1797,6 +1818,8 @@ type LocalServiceHandler interface {
 	CheckAgents(context.Context, *v1.CheckAgentsRequest) (*v1.CheckAgentsResponse, error)
 	// Hides a coding agent a machine lists, or shows it again (SetAgentHidden).
 	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
+	// Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
+	SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -2072,6 +2095,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceSetAgentHiddenProcedure,
 		svc.SetAgentHidden,
 		connect.WithSchema(localServiceMethods.ByName("SetAgentHidden")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetAgentPausedHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetAgentPausedProcedure,
+		svc.SetAgentPaused,
+		connect.WithSchema(localServiceMethods.ByName("SetAgentPaused")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListMachineReposHandler := connect.NewUnaryHandlerSimple(
@@ -2456,6 +2485,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceCheckAgentsHandler.ServeHTTP(w, r)
 		case LocalServiceSetAgentHiddenProcedure:
 			localServiceSetAgentHiddenHandler.ServeHTTP(w, r)
+		case LocalServiceSetAgentPausedProcedure:
+			localServiceSetAgentPausedHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineReposProcedure:
 			localServiceListMachineReposHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineFoldersProcedure:
@@ -2673,6 +2704,10 @@ func (UnimplementedLocalServiceHandler) CheckAgents(context.Context, *v1.CheckAg
 
 func (UnimplementedLocalServiceHandler) SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentHidden is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentPaused is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error) {

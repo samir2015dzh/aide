@@ -1354,7 +1354,7 @@ func (o *Owner) admin(ctx context.Context, machineID string, build func(*identit
 	req := &machinev1.ApplyAdminCommandRequest{}
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
-		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden:
+		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused:
 		if l := o.local(); l != nil && l.MachineID() == machineID {
 			return l.ApplySettings(ctx, build) // this device's own machine, in process
 		}
@@ -1835,6 +1835,16 @@ func (o *Owner) SetAgentDefaults(ctx context.Context, machineID string, d *ident
 func (o *Owner) SetAgentHidden(ctx context.Context, machineID, agent string, hidden bool) error {
 	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
 		c.Command = &identityv1.AdminCommand_SetAgentHidden{SetAgentHidden: &identityv1.SetAgentHidden{Agent: agent, Hidden: hidden}}
+	})
+	return err
+}
+
+// SetAgentPaused pauses a coding agent on a machine, or resumes it: a
+// setting (no Touch ID), as hiding one is. resumeAt, with paused: when it
+// resumes by itself (nil: when the owner resumes it).
+func (o *Owner) SetAgentPaused(ctx context.Context, machineID, agent string, paused bool, resumeAt *timestamppb.Timestamp) error {
+	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
+		c.Command = &identityv1.AdminCommand_SetAgentPaused{SetAgentPaused: &identityv1.SetAgentPaused{Agent: agent, Paused: paused, ResumeAt: resumeAt}}
 	})
 	return err
 }

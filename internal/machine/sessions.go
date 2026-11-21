@@ -114,6 +114,9 @@ type Sessions struct {
 	// janitorEvery is how often the Janitor checks (default 10s).
 	janitorEvery time.Duration
 	paused       func() bool
+	// agentPaused: the owner paused the agent here (pausedagents.go), until
+	// a time when it resumes by itself.
+	agentPaused func(agent string) (bool, time.Time)
 	// defaults is what an agent's sessions run with when the client names
 	// no model.
 	defaults func(agent string) provider.Settings
@@ -142,6 +145,15 @@ type Sessions struct {
 	mcp func(sessionID string) []provider.MCPServer
 	// requester is a client's name ("" when unknown); nil in tests.
 	requester func(clientID string) string
+}
+
+// agentPausedUntil: the owner paused the agent here, until a time when it
+// resumes by itself (zero: until they resume it).
+func (s *Sessions) agentPausedUntil(agent string) (bool, time.Time) {
+	if s.agentPaused == nil {
+		return false, time.Time{}
+	}
+	return s.agentPaused(agent)
 }
 
 // record adds an event to a live session's conversation (a message its
@@ -435,6 +447,12 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	prov := s.provider(req.Agent)
 	if prov == nil {
 		return nil, cerr(connect.CodeInvalidArgument, "unknown agent %q (one of: %s)", req.Agent, strings.Join(AgentNames(), ", "))
+	}
+	if paused, until := s.agentPausedUntil(req.Agent); paused {
+		if until.IsZero() {
+			return nil, cerr(connect.CodeFailedPrecondition, "%s is paused on this machine by its owner: resume it to start sessions with it", req.Agent)
+		}
+		return nil, cerr(connect.CodeFailedPrecondition, "%s is paused on this machine by its owner until %s", req.Agent, until.UTC().Format(time.RFC3339))
 	}
 	proj, err := s.st.Project(req.ProjectId)
 	if err != nil {

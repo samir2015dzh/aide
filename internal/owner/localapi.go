@@ -352,6 +352,28 @@ func (l *localService) CheckAgents(ctx context.Context, req *localv1.CheckAgents
 	return &localv1.CheckAgentsResponse{}, nil
 }
 
+// SetAgentPaused pauses a coding agent on a machine, or resumes it.
+func (l *localService) SetAgentPaused(ctx context.Context, req *localv1.SetAgentPausedRequest) (*localv1.SetAgentPausedResponse, error) {
+	if req.Agent == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("which coding agent?"))
+	}
+	if !req.Paused && req.ResumeAt != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("resume_at goes with paused"))
+	}
+	cmd := &identityv1.SetAgentPaused{Agent: req.Agent, Paused: req.Paused, ResumeAt: req.ResumeAt}
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err == nil {
+			err = onlyMachineSettings(ctx, m, req.MachineId, func(c *identityv1.AdminCommand) {
+				c.Command = &identityv1.AdminCommand_SetAgentPaused{SetAgentPaused: cmd}
+			})
+		}
+		return &localv1.SetAgentPausedResponse{}, err
+	}
+	err := l.o().SetAgentPaused(ctx, req.MachineId, req.Agent, req.Paused, req.ResumeAt)
+	l.o().wrote(ctx, err, false, req.MachineId)
+	return &localv1.SetAgentPausedResponse{}, err
+}
+
 // SetAgentHidden hides a coding agent a machine lists, or shows it again.
 func (l *localService) SetAgentHidden(ctx context.Context, req *localv1.SetAgentHiddenRequest) (*localv1.SetAgentHiddenResponse, error) {
 	if req.Agent == "" {

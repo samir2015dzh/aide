@@ -299,6 +299,18 @@ message AgentStatus {
   // The owner hid it (SetAgentHidden): the apps leave it out of the lists,
   // and say how many are hidden, to show again.
   bool hidden = 17;
+  // The owner paused it here (SetAgentPaused): no new session starts with
+  // it until it resumes. Unset: not paused; resume_at unset: until the
+  // owner resumes it; set: it resumes by itself then.
+  AgentPause pause = 18;
+  // When it last resumed by itself (a pause's resume_at came), to show.
+  google.protobuf.Timestamp auto_resumed_at = 19;
+}
+
+// AgentPause is an agent paused on a machine.
+message AgentPause {
+  google.protobuf.Timestamp since = 1;
+  google.protobuf.Timestamp resume_at = 2;
 }
 
 // ClaudeUsage is the Claude plan usage (docs/claude-usage.md): the hard
