@@ -92,9 +92,13 @@ type Message struct {
 	// Markdown.
 	Text string `protobuf:"bytes,7,opt,name=text,proto3" json:"text,omitempty"`
 	// Set on messages aided writes about a session's turn.
-	SessionNews   *SessionNews `protobuf:"bytes,8,opt,name=session_news,json=sessionNews,proto3" json:"session_news,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SessionNews *SessionNews `protobuf:"bytes,8,opt,name=session_news,json=sessionNews,proto3" json:"session_news,omitempty"`
+	// Set on a managed workspace's request (from a session to its
+	// coordinator) and on its replies (from the coordinator or provisioner
+	// to the session): docs/workspace-requests.md.
+	WorkspaceRequest *v1.WorkspaceRequest `protobuf:"bytes,9,opt,name=workspace_request,json=workspaceRequest,proto3" json:"workspace_request,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -179,6 +183,13 @@ func (x *Message) GetText() string {
 func (x *Message) GetSessionNews() *SessionNews {
 	if x != nil {
 		return x.SessionNews
+	}
+	return nil
+}
+
+func (x *Message) GetWorkspaceRequest() *v1.WorkspaceRequest {
+	if x != nil {
+		return x.WorkspaceRequest
 	}
 	return nil
 }
@@ -390,7 +401,7 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\x19aide/inbox/v1/inbox.proto\x12\raide.inbox.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1faide/identity/v1/identity.proto\x1a\x1daide/session/v1/session.proto\"9\n" +
 	"\aAddress\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x18\n" +
-	"\asession\x18\x02 \x01(\tR\asession\"\xbe\x02\n" +
+	"\asession\x18\x02 \x01(\tR\asession\"\x8e\x03\n" +
 	"\aMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12*\n" +
@@ -400,7 +411,8 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\vin_reply_to\x18\x05 \x01(\tR\tinReplyTo\x12\x18\n" +
 	"\asubject\x18\x06 \x01(\tR\asubject\x12\x12\n" +
 	"\x04text\x18\a \x01(\tR\x04text\x12=\n" +
-	"\fsession_news\x18\b \x01(\v2\x1a.aide.inbox.v1.SessionNewsR\vsessionNews\"\xc7\x03\n" +
+	"\fsession_news\x18\b \x01(\v2\x1a.aide.inbox.v1.SessionNewsR\vsessionNews\x12N\n" +
+	"\x11workspace_request\x18\t \x01(\v2!.aide.session.v1.WorkspaceRequestR\x10workspaceRequest\"\xc7\x03\n" +
 	"\vSessionNews\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1d\n" +
 	"\n" +
@@ -442,27 +454,29 @@ var file_aide_inbox_v1_inbox_proto_goTypes = []any{
 	(*SessionNews)(nil),           // 2: aide.inbox.v1.SessionNews
 	(*SignedMessage)(nil),         // 3: aide.inbox.v1.SignedMessage
 	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
-	(*v1.DiffStat)(nil),           // 5: aide.session.v1.DiffStat
-	(*v1.Question)(nil),           // 6: aide.session.v1.Question
-	(v1.FailureKind)(0),           // 7: aide.session.v1.FailureKind
-	(*v11.Signed)(nil),            // 8: aide.identity.v1.Signed
-	(*v11.Contact)(nil),           // 9: aide.identity.v1.Contact
+	(*v1.WorkspaceRequest)(nil),   // 5: aide.session.v1.WorkspaceRequest
+	(*v1.DiffStat)(nil),           // 6: aide.session.v1.DiffStat
+	(*v1.Question)(nil),           // 7: aide.session.v1.Question
+	(v1.FailureKind)(0),           // 8: aide.session.v1.FailureKind
+	(*v11.Signed)(nil),            // 9: aide.identity.v1.Signed
+	(*v11.Contact)(nil),           // 10: aide.identity.v1.Contact
 }
 var file_aide_inbox_v1_inbox_proto_depIdxs = []int32{
-	0, // 0: aide.inbox.v1.Message.from:type_name -> aide.inbox.v1.Address
-	0, // 1: aide.inbox.v1.Message.to:type_name -> aide.inbox.v1.Address
-	4, // 2: aide.inbox.v1.Message.sent_at:type_name -> google.protobuf.Timestamp
-	2, // 3: aide.inbox.v1.Message.session_news:type_name -> aide.inbox.v1.SessionNews
-	5, // 4: aide.inbox.v1.SessionNews.diff_stat:type_name -> aide.session.v1.DiffStat
-	6, // 5: aide.inbox.v1.SessionNews.question:type_name -> aide.session.v1.Question
-	7, // 6: aide.inbox.v1.SessionNews.failure:type_name -> aide.session.v1.FailureKind
-	8, // 7: aide.inbox.v1.SignedMessage.message:type_name -> aide.identity.v1.Signed
-	9, // 8: aide.inbox.v1.SignedMessage.sender:type_name -> aide.identity.v1.Contact
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	0,  // 0: aide.inbox.v1.Message.from:type_name -> aide.inbox.v1.Address
+	0,  // 1: aide.inbox.v1.Message.to:type_name -> aide.inbox.v1.Address
+	4,  // 2: aide.inbox.v1.Message.sent_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: aide.inbox.v1.Message.session_news:type_name -> aide.inbox.v1.SessionNews
+	5,  // 4: aide.inbox.v1.Message.workspace_request:type_name -> aide.session.v1.WorkspaceRequest
+	6,  // 5: aide.inbox.v1.SessionNews.diff_stat:type_name -> aide.session.v1.DiffStat
+	7,  // 6: aide.inbox.v1.SessionNews.question:type_name -> aide.session.v1.Question
+	8,  // 7: aide.inbox.v1.SessionNews.failure:type_name -> aide.session.v1.FailureKind
+	9,  // 8: aide.inbox.v1.SignedMessage.message:type_name -> aide.identity.v1.Signed
+	10, // 9: aide.inbox.v1.SignedMessage.sender:type_name -> aide.identity.v1.Contact
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_aide_inbox_v1_inbox_proto_init() }

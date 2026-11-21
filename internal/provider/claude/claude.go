@@ -320,6 +320,9 @@ func Args(spec provider.StartSpec) []string {
 	if spec.Effort != "" {
 		args = append(args, "--effort", spec.Effort)
 	}
+	if spec.Instructions != "" {
+		args = append(args, "--append-system-prompt", spec.Instructions)
+	}
 	if len(spec.MCPServers) > 0 {
 		servers := map[string]any{}
 		for _, m := range spec.MCPServers {

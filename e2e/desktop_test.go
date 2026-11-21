@@ -82,7 +82,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -165,7 +165,12 @@ func TestDesktop(t *testing.T) {
 				claudeAppSession(t, filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), config, "c-site", "改首页", repo, time.Now().Add(-time.Hour), "首页标题改一下", "改好了。")
 				more = append(more, "LOCALAPPDATA="+local, "CLAUDE_CONFIG_DIR="+config)
 			}
-			f := desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
+			var f desktopFixture
+			if name == "workspace" { // a managed workspace's session, on the scripted fake agent (workspaceWorld)
+				f = workspaceWorld(t)
+			} else {
+				f = desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
+			}
 			if name == "dsh" {
 				log := dshDesktopSession(t, dshHome)
 				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log

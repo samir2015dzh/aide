@@ -12,6 +12,7 @@ import io.aide.android.api.ToolResult
 import io.aide.android.api.TurnCompleted
 import io.aide.android.api.Failure
 import io.aide.android.api.UserMessage
+import io.aide.android.api.WorkspaceRequest
 import io.aide.android.model.Item
 import io.aide.android.model.Transcript
 import org.junit.Assert.assertEquals
@@ -19,6 +20,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TranscriptTest {
+    @Test fun aWorkspaceRequestEachChangeAsItStands() {
+        val t = Transcript()
+        t.add(SessionEvent(seq = 1, workspaceRequest = WorkspaceRequest("wr_1", "tool", "pending", "agent", item = "ripgrep")))
+        t.add(SessionEvent(seq = 2, workspaceRequest = WorkspaceRequest("wr_1", "tool", "approved", "c_coord", "muse", "ripgrep", "ok")))
+        val items = t.items()
+        assertEquals(listOf("pending", "approved"), items.map { (it as Item.Workspace).request.status })
+        assertEquals("muse", (items[1] as Item.Workspace).request.fromName)
+    }
+
     @Test fun aRollbackStaysInTheConversation() {
         val t = Transcript()
         t.add(SessionEvent(seq = 1, userMessage = UserMessage("two")))

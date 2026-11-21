@@ -1890,6 +1890,7 @@ func (s *Sessions) prepare(l *live) {
 	if s.mcp != nil {
 		spec.MCPServers = s.mcp(l.id)
 	}
+	spec.Instructions = workspacePrompt(proj.Path)
 	spec.Project = proj.ID
 	if s.requester != nil {
 		spec.Requester = s.requester(l.row.CreatedBy)

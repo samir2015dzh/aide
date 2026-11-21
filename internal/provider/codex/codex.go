@@ -257,6 +257,9 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		}
 		config["mcp_servers"] = servers
 	}
+	if spec.Instructions != "" {
+		config["developer_instructions"] = spec.Instructions
+	}
 	if len(config) > 0 {
 		params["config"] = config
 	}

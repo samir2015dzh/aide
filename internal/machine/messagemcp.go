@@ -93,7 +93,79 @@ func ServeMessageMCP(ctx context.Context) error {
 			b, _ := json.MarshalIndent(list, "", "  ")
 			return toolText(string(b)), nil
 		})
+	if who.Channel {
+		addWorkspaceTools(s, call)
+	}
 	return s.Run(ctx, &mcp.StdioTransport{})
+}
+
+// workspaceView is a managed workspace's request as the tools show it.
+type workspaceView struct {
+	RequestID string `json:"request_id"`
+	Kind      string `json:"kind"`
+	Status    string `json:"status"`
+	Item      string `json:"item"`
+	Version   string `json:"version,omitempty"`
+	Note      string `json:"note,omitempty"`
+	From      string `json:"from"`
+	FromName  string `json:"from_name,omitempty"`
+}
+
+// addWorkspaceTools gives a session in a managed workspace its request
+// channel (workspacereq.go).
+func addWorkspaceTools(s *mcp.Server, call func(ctx context.Context, path string, req ToolRequest, out any) error) {
+	str := func(d string) map[string]any { return map[string]any{"type": "string", "description": d} }
+	s.AddTool(&mcp.Tool{Name: "workspace_request", Title: "Ask the coordinator",
+		Description: "Ask this managed workspace's coordinator for one thing: a tool, a permission, a piece of system information, or a system change. " +
+			"Returns the request's id; the reply comes as an [Aide] message in this conversation. Never ask again for a request that is still open: look at workspace_requests.",
+		InputSchema: map[string]any{"type": "object", "additionalProperties": false, "required": []string{"kind", "item", "purpose"}, "properties": map[string]any{
+			"kind":     map[string]any{"type": "string", "enum": []string{"tool", "permission", "info", "system_change"}, "description": "What kind of request"},
+			"item":     str("The tool's name, the permission, the information, or the change"),
+			"purpose":  str("Why it is needed"),
+			"version":  str("tool: the version"),
+			"repo":     str("tool: the repository it is for"),
+			"source":   str("tool: its official source address"),
+			"scope":    str("permission: what it reaches, and whether it is given back after use"),
+			"rollback": str("system_change: how to undo it"),
+		}}},
+		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var r ToolRequest
+			json.Unmarshal(req.Params.Arguments, &r)
+			var w workspaceView
+			if err := call(ctx, "/workspace/request", r, &w); err != nil {
+				return toolError(err), nil
+			}
+			return toolText(fmt.Sprintf("Request %s sent to the coordinator: %s.", w.RequestID, w.Status)), nil
+		})
+	s.AddTool(&mcp.Tool{Name: "workspace_requests", Title: "Your requests",
+		Description: "List this session's requests to the workspace's coordinator with their status: pending, approved, rejected, provisioned or confirmed, and the reply's words.",
+		InputSchema: map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{}}},
+		func(ctx context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var list []workspaceView
+			if err := call(ctx, "/workspace/list", ToolRequest{}, &list); err != nil {
+				return toolError(err), nil
+			}
+			b, _ := json.MarshalIndent(list, "", "  ")
+			return toolText(string(b)), nil
+		})
+	s.AddTool(&mcp.Tool{Name: "workspace_confirm", Title: "Confirm it works",
+		Description: "Once the coordinator said a request is provisioned and you checked it works (a tool's --version, say), mark it confirmed. Only a provisioned request can be.",
+		InputSchema: map[string]any{"type": "object", "additionalProperties": false, "required": []string{"request_id"}, "properties": map[string]any{
+			"request_id": str("The request's id (wr_…)"),
+			"note":       str("What you checked (optional)"),
+		}}},
+		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args struct {
+				RequestID string `json:"request_id"`
+				Note      string `json:"note"`
+			}
+			json.Unmarshal(req.Params.Arguments, &args)
+			var w workspaceView
+			if err := call(ctx, "/workspace/confirm", ToolRequest{RequestID: args.RequestID, Text: args.Note}, &w); err != nil {
+				return toolError(err), nil
+			}
+			return toolText(fmt.Sprintf("Request %s: %s.", w.RequestID, w.Status)), nil
+		})
 }
 
 func toolText(s string) *mcp.CallToolResult {

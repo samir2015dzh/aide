@@ -55,6 +55,15 @@ func (n *Machine) serveSessionTools(ctx context.Context) {
 	mux.HandleFunc("POST /whoami", n.toolHandler(n.toolWhoAmI))
 	mux.HandleFunc("POST /contacts", n.toolHandler(n.toolContacts))
 	mux.HandleFunc("POST /send", n.toolHandler(n.toolSend))
+	mux.HandleFunc("POST /workspace/request", n.toolHandler(func(_ context.Context, session string, req ToolRequest) (any, error) {
+		return n.workspaceRequest(session, req)
+	}))
+	mux.HandleFunc("POST /workspace/list", n.toolHandler(func(_ context.Context, session string, _ ToolRequest) (any, error) {
+		return n.workspaceList(session)
+	}))
+	mux.HandleFunc("POST /workspace/confirm", n.toolHandler(func(_ context.Context, session string, req ToolRequest) (any, error) {
+		return n.workspaceConfirm(session, req.RequestID, req.Text)
+	}))
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
@@ -96,6 +105,16 @@ type ToolRequest struct {
 	Text    string `json:"text,omitempty"`
 	Subject string `json:"subject,omitempty"`
 	ReplyTo string `json:"reply_to,omitempty"`
+	// A managed workspace's request (workspacereq.go).
+	Kind      string `json:"kind,omitempty"`
+	Item      string `json:"item,omitempty"`
+	Version   string `json:"version,omitempty"`
+	Source    string `json:"source,omitempty"`
+	Repo      string `json:"repo,omitempty"`
+	Purpose   string `json:"purpose,omitempty"`
+	Scope     string `json:"scope,omitempty"`
+	Rollback  string `json:"rollback,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
 // ToolContact is one of the owner's agents a session can write to.
@@ -114,6 +133,9 @@ type ToolWhoAmI struct {
 	Machine     string `json:"machine"`
 	Requester   string `json:"requester"`
 	RequesterID string `json:"requester_address"`
+	// Channel: the session is in a managed workspace whose requests go
+	// through Aide (workspacereq.go).
+	Channel bool `json:"workspace_channel,omitempty"`
 }
 
 // ToolSent is a message a session wrote.
@@ -155,6 +177,9 @@ func (n *Machine) toolWhoAmI(ctx context.Context, session string, _ ToolRequest)
 		return nil, errors.New("no such session")
 	}
 	out := ToolWhoAmI{Session: session, Machine: n.Name(), RequesterID: r.CreatedBy, Requester: n.knownClients()[r.CreatedBy].Label}
+	if ws, err := n.sessionWorkspace(session); err == nil {
+		out.Channel = ws.coordinator() != ""
+	}
 	return out, nil
 }
 

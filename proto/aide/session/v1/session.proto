@@ -613,6 +613,7 @@ message SessionEvent {
     MessageReceived message_received = 21;
     MessageSent message_sent = 22;
     RolledBack rolled_back = 23;
+    WorkspaceRequest workspace_request = 24;
   }
 }
 
@@ -665,6 +666,52 @@ message MessageSent {
   string to_name = 3;
   string text = 4;
   string in_reply_to = 5;
+}
+
+// A request the session's coding agent made, in a managed workspace, to
+// the workspace's coordinator for a tool, a permission, a piece of
+// information or a system change, or a change to one
+// (docs/workspace-requests.md). Each event is the request as it stands
+// after the change. Requests and replies travel as messages (an
+// inbox.v1.Message carries one); the machine changes a request's status
+// only on a reply signed by the coordinator or provisioner the request
+// was made to, never on anything written in a file or a message's text.
+message WorkspaceRequest {
+  // "wr_" and a ULID, chosen by the machine.
+  string request_id = 1;
+  // "tool", "permission", "info" or "system_change".
+  string kind = 2;
+  // "pending", "approved", "rejected", "provisioned" (only the coordinator
+  // or provisioner sets it) or "confirmed" (only the coding agent sets it,
+  // once provisioned).
+  string status = 3;
+  // Who made this change, as UserMessage.from: "agent" (the session's
+  // coding agent) or a client id; from_name is the name to show.
+  string from = 4;
+  string from_name = 5;
+  // What was asked: the tool, permission, information or change.
+  string item = 6;
+  // A tool's version, where it comes from (its official source) and the
+  // repository it is for.
+  string version = 7;
+  string source = 8;
+  string repo = 9;
+  // Why it is needed.
+  string purpose = 10;
+  // A permission's scope (and whether it is given back), a change's way
+  // back.
+  string scope = 11;
+  string rollback = 12;
+  // The reply's words: why it was rejected, the (redacted) information,
+  // where a provisioned tool is and which version.
+  string note = 13;
+  // The coordinator the request went to, and the provisioner who may also
+  // say it is provisioned: client ids, as the workspace named them when
+  // the request was made.
+  string coordinator = 14;
+  string provisioner = 15;
+  // The message that carried this change.
+  string message_id = 16;
 }
 
 message UserMessage {

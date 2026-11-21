@@ -145,6 +145,8 @@ type Machine struct {
 	inboxWake chan struct{}
 	// tools is the sessions' own tools socket (sessiontools.go).
 	tools sessionTools
+	// wsReqs are the managed workspaces' requests (workspacereq.go).
+	wsReqs workspaceRequests
 	// her runs her while Her is on (her.go); herOn is the owner's setting.
 	her   *herhost.Host
 	herOn bool
