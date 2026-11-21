@@ -115,6 +115,10 @@ func (s *sessionService) PushSession(ctx context.Context, req *sessionv1.PushSes
 	return s.n.sessions.Push(ctx, principalFrom(ctx), req.SessionId)
 }
 
+func (s *sessionService) RollbackSession(ctx context.Context, req *sessionv1.RollbackSessionRequest) (*sessionv1.Session, error) {
+	return s.n.sessions.Rollback(ctx, principalFrom(ctx), req.SessionId, req.Turn)
+}
+
 type machineService struct{ n *Machine }
 
 func (s *machineService) GetInfo(ctx context.Context, req *machinev1.GetInfoRequest) (*machinev1.GetInfoResponse, error) {

@@ -83,6 +83,9 @@ const (
 	// SessionServicePushSessionProcedure is the fully-qualified name of the SessionService's
 	// PushSession RPC.
 	SessionServicePushSessionProcedure = "/aide.session.v1.SessionService/PushSession"
+	// SessionServiceRollbackSessionProcedure is the fully-qualified name of the SessionService's
+	// RollbackSession RPC.
+	SessionServiceRollbackSessionProcedure = "/aide.session.v1.SessionService/RollbackSession"
 	// SessionServiceMarkSessionSeenProcedure is the fully-qualified name of the SessionService's
 	// MarkSessionSeen RPC.
 	SessionServiceMarkSessionSeenProcedure = "/aide.session.v1.SessionService/MarkSessionSeen"
@@ -140,6 +143,14 @@ type SessionServiceClient interface {
 	// the machine's own git credentials (never forced). Aide never pushes
 	// otherwise: only the owner or the client that started the session asks.
 	PushSession(context.Context, *v1.PushSessionRequest) (*v1.PushSessionResponse, error)
+	// RollbackSession puts an idle (or crashed) worktree session back to
+	// where an earlier turn left it: its worktree and branch are reset to
+	// that turn's snapshot commit, the later turns' conversation and changes
+	// are discarded, and the next message starts a fresh agent conversation
+	// that is told so. The discarded turns stay in the timeline, after them
+	// a RolledBack event. In-place sessions have no snapshots and are
+	// refused (FAILED_PRECONDITION), as is a session with a turn running.
+	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error)
 	// MarkSessionSeen records what the owner has seen of the session
 	// (Session.seen), on its machine, so every device of the owner agrees.
 	// Only the owner's devices may mark. It is not activity: updated_at
@@ -269,6 +280,12 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("PushSession")),
 			connect.WithClientOptions(opts...),
 		),
+		rollbackSession: connect.NewClient[v1.RollbackSessionRequest, v1.Session](
+			httpClient,
+			baseURL+SessionServiceRollbackSessionProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("RollbackSession")),
+			connect.WithClientOptions(opts...),
+		),
 		markSessionSeen: connect.NewClient[v1.MarkSessionSeenRequest, v1.Session](
 			httpClient,
 			baseURL+SessionServiceMarkSessionSeenProcedure,
@@ -303,6 +320,7 @@ type sessionServiceClient struct {
 	answerQuestion     *connect.Client[v1.AnswerQuestionRequest, v1.Session]
 	readToolOutput     *connect.Client[v1.ReadToolOutputRequest, v1.ToolOutputChunk]
 	pushSession        *connect.Client[v1.PushSessionRequest, v1.PushSessionResponse]
+	rollbackSession    *connect.Client[v1.RollbackSessionRequest, v1.Session]
 	markSessionSeen    *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
 	getSessionInsights *connect.Client[v1.GetSessionInsightsRequest, v1.SessionInsights]
 }
@@ -448,6 +466,15 @@ func (c *sessionServiceClient) PushSession(ctx context.Context, req *v1.PushSess
 	return nil, err
 }
 
+// RollbackSession calls aide.session.v1.SessionService.RollbackSession.
+func (c *sessionServiceClient) RollbackSession(ctx context.Context, req *v1.RollbackSessionRequest) (*v1.Session, error) {
+	response, err := c.rollbackSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // MarkSessionSeen calls aide.session.v1.SessionService.MarkSessionSeen.
 func (c *sessionServiceClient) MarkSessionSeen(ctx context.Context, req *v1.MarkSessionSeenRequest) (*v1.Session, error) {
 	response, err := c.markSessionSeen.CallUnary(ctx, connect.NewRequest(req))
@@ -515,6 +542,14 @@ type SessionServiceHandler interface {
 	// the machine's own git credentials (never forced). Aide never pushes
 	// otherwise: only the owner or the client that started the session asks.
 	PushSession(context.Context, *v1.PushSessionRequest) (*v1.PushSessionResponse, error)
+	// RollbackSession puts an idle (or crashed) worktree session back to
+	// where an earlier turn left it: its worktree and branch are reset to
+	// that turn's snapshot commit, the later turns' conversation and changes
+	// are discarded, and the next message starts a fresh agent conversation
+	// that is told so. The discarded turns stay in the timeline, after them
+	// a RolledBack event. In-place sessions have no snapshots and are
+	// refused (FAILED_PRECONDITION), as is a session with a turn running.
+	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error)
 	// MarkSessionSeen records what the owner has seen of the session
 	// (Session.seen), on its machine, so every device of the owner agrees.
 	// Only the owner's devices may mark. It is not activity: updated_at
@@ -640,6 +675,12 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("PushSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceRollbackSessionHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceRollbackSessionProcedure,
+		svc.RollbackSession,
+		connect.WithSchema(sessionServiceMethods.ByName("RollbackSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sessionServiceMarkSessionSeenHandler := connect.NewUnaryHandlerSimple(
 		SessionServiceMarkSessionSeenProcedure,
 		svc.MarkSessionSeen,
@@ -688,6 +729,8 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServiceReadToolOutputHandler.ServeHTTP(w, r)
 		case SessionServicePushSessionProcedure:
 			sessionServicePushSessionHandler.ServeHTTP(w, r)
+		case SessionServiceRollbackSessionProcedure:
+			sessionServiceRollbackSessionHandler.ServeHTTP(w, r)
 		case SessionServiceMarkSessionSeenProcedure:
 			sessionServiceMarkSessionSeenHandler.ServeHTTP(w, r)
 		case SessionServiceGetSessionInsightsProcedure:
@@ -767,6 +810,10 @@ func (UnimplementedSessionServiceHandler) ReadToolOutput(context.Context, *v1.Re
 
 func (UnimplementedSessionServiceHandler) PushSession(context.Context, *v1.PushSessionRequest) (*v1.PushSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.PushSession is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.RollbackSession is not implemented"))
 }
 
 func (UnimplementedSessionServiceHandler) MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error) {

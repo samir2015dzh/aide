@@ -651,6 +651,11 @@ func (s *Store) WriteBatch(ops []writeOp) error {
 				return err
 			}
 		}
+		if op.dropTurns != nil {
+			if _, err := tx.Exec(`DELETE FROM turns WHERE session_id=? AND turn>?`, op.dropTurns.sessionID, op.dropTurns.turn); err != nil {
+				return err
+			}
+		}
 		if op.idem != nil {
 			if _, err := tx.Exec(`INSERT OR REPLACE INTO idempotency(client_id,key,session_id,created_at) VALUES(?,?,?,?)`,
 				op.idem.clientID, op.idem.key, op.idem.sessionID, now); err != nil {

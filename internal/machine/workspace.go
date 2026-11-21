@@ -635,6 +635,27 @@ func (w *Workspace) Snapshot(ctx context.Context, repo, sessionID string, turn u
 	return head, stat, nil
 }
 
+// Reset puts the worktree and the session branch back at commit (a
+// rollback): tracked files as commit has them, untracked ones removed.
+// Ignored files stay, as snapshots never took them. It returns where the
+// branch was.
+func (w *Workspace) Reset(ctx context.Context, repo, sessionID, commit string) (string, error) {
+	wt := w.Path(sessionID)
+	branch := sessionBranch(ctx, repo, sessionID)
+	was, err := resolveRef(ctx, repo, "refs/heads/"+branch)
+	if err != nil {
+		return "", err
+	}
+	// -B also brings HEAD back to the branch if the agent moved it.
+	if _, err := git(ctx, wt, "checkout", "-q", "-f", "-B", branch, commit); err != nil {
+		return "", err
+	}
+	if _, err := git(ctx, wt, "clean", "-q", "-f", "-d"); err != nil {
+		return "", err
+	}
+	return was, nil
+}
+
 func short(c string) string {
 	if len(c) > 10 {
 		return c[:10]

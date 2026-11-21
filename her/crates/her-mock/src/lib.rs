@@ -57,6 +57,8 @@
 //! | `routine_file:NAME\|SCHEDULE\|FILE` | as `routine`, with a run that writes FILE in its folder (`write`), and each report that wakes it passed on with FILE attached, as a model sends what a routine made |
 //! | `connect:NAME[\|URL]` | Her's `call_tool` on `connector_connect` (`name` NAME, `url` URL); then `send_to_user` of the card it prepared (`type` card); when how the card ended wakes her: if it is done, `call_tool` on the connector's `echo` (`mcp__NAME__echo`); then `转告：<its note>`, with what `echo` said on a line of its own, sent with `end_turn` |
 //! | `say:TEXT` | TEXT, as it is |
+//! | `prefer:ACTION\|TARGET\|WANT` | a bot's `confirm_rules` add (the prompt as its note); then `规则：<its result>` sent with `end_turn` |
+//! | `act:ACTION\|TARGET` | a bot's `confirm_rules` check; then `直接办了：TARGET` when the result says there is no need to ask, else `先问一下：<its result>`, sent with `end_turn` |
 //! | `remember:LINE` | a bot noting LINE in its memory, the `MEMORY.md` its system prompt gives in `<memory path="…">`: a `write` of LINE when nothing is there yet, else an `edit` that puts LINE after the last line; then `记下了。` sent with `end_turn` |
 //! | `recall` | `记得：<what the system prompt's <memory> holds>` sent with `end_turn`, or `什么都不记得。` when it holds nothing |
 //!
@@ -922,6 +924,30 @@ fn plan(shared: &Shared, messages: &[Value], name: &str, arg: &str, prompt: &str
             }
         }
         "say" => Plan::Step(Step::text(arg.to_string())),
+        // The owner's preference about asking first (docs/her-confirm-rules.md).
+        "prefer" => match step {
+            0 => {
+                let mut parts = arg.splitn(3, '|');
+                let (action, target, want) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""), parts.next().unwrap_or(""));
+                Plan::Step(Step::calls(vec![(
+                    "confirm_rules",
+                    json!({ "op": "add", "action": action, "target": target, "want": want, "note": prompt }),
+                )]))
+            }
+            _ => last_words(bot, format!("规则：{}", last_tool_result(messages))),
+        },
+        "act" => match step {
+            0 => {
+                let (action, target) = arg.split_once('|').unwrap_or((arg, ""));
+                Plan::Step(Step::calls(vec![("confirm_rules", json!({ "op": "check", "action": action, "target": target }))]))
+            }
+            _ => {
+                let result = last_tool_result(messages);
+                let target = arg.split_once('|').map_or("", |(_, target)| target);
+                let text = if result.starts_with("No need to ask") { format!("直接办了：{target}") } else { format!("先问一下：{result}") };
+                last_words(bot, text)
+            }
+        },
         // A bot that makes a routine, then passes on what comes back (routine-design §2.3).
         "routine" | "patrol" => match step {
             0 => {

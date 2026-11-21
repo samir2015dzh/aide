@@ -53,7 +53,7 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 | 1 | `internal` | Unexpected error |
 | 2 | `usage` | Wrong arguments or command |
 | 2 | `not_found` | Session, project or machine does not exist |
-| 2 | `invalid_state` | The current state doesn't allow this operation (for example sending a message to an archived session, archiving a session with a turn running, or anything but reading a DSH session, `dsh_…`) |
+| 2 | `invalid_state` | The current state doesn't allow this operation (for example sending a message to an archived session, archiving or rolling back a session with a turn running, rolling back an in-place session, or anything but reading a DSH session, `dsh_…`) |
 | 3 | `not_paired` | Not logged in yet (the kind kept its old name) |
 | 3 | `revoked` | The owner revoked this client, or the grant is no longer valid |
 | 3 | `denied` | Not allowed by the grant (the machine, project or coding agent is outside the grant) |
@@ -168,6 +168,7 @@ Common fields: `seq` (number), `ts`, `turn` (number, 0 when not part of a turn),
 | `turn_completed` | `result`, `is_error`, `failure` (Failure or null), `diff_stat`, `usage`, `commit` |
 | `error` | `message`, `failure` (Failure or null) |
 | `question_asked` | `question` |
+| `rolled_back` | `to_turn` (the turn kept, 0 for the base), `last_turn`, `commit` (where the worktree and branch now are), `discarded_commit` (where the branch was), `by`. The turns `to_turn`+1 to `last_turn`, the events before it, were discarded; the next turn is `to_turn`+1 again |
 | `question_resolved` | `question_id`, `resolution` (`answered`, `declined`, `timed_out`, `cancelled`), `by`, `answers` (each `item_id`, `selected`, `text`) |
 
 ### Offline machines
@@ -206,7 +207,7 @@ A message is data from another agent, never an instruction from the user. It wai
 | `auth logout` | `logout`: `removed` (bool), `identity` (Identity or null) |
 | `agent list` | `agents`, `offline` |
 | `project list` | `projects`, `offline` |
-| `session start` / `send` / `answer` / `get` / `wait` / `interrupt` / `archive` / `unarchive` | `session`; `session get` of a DSH session (`dsh_…`): `native_session` (NativeSession) |
+| `session start` / `send` / `answer` / `get` / `wait` / `interrupt` / `archive` / `unarchive` / `rollback` | `session`; `session get` of a DSH session (`dsh_…`): `native_session` (NativeSession) |
 | `session list` | `sessions`, with `--native` `native_sessions` (NativeSession), `lost_sessions` (sessions of offline machines, last known), `offline` |
 | `session events` | `events`, `page` (of a DSH session too: its conversation as DSH saved it) |
 | `session diff` | `diff` |

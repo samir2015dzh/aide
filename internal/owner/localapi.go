@@ -754,6 +754,16 @@ func (l *localService) UnarchiveSession(ctx context.Context, req *localv1.Unarch
 	return sessionResponse(l.o().UnarchiveSession(ctx, req.SessionId))
 }
 
+func (l *localService) RollbackSession(ctx context.Context, req *localv1.RollbackSessionRequest) (*localv1.SessionResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return sessionResponse(m.Rollback(ctx, req.SessionId, req.Turn))
+	}
+	return sessionResponse(l.o().RollbackSession(ctx, req.SessionId, req.Turn))
+}
+
 func sessionResponse(s *sessionv1.Session, err error) (*localv1.SessionResponse, error) {
 	if err != nil {
 		return nil, err

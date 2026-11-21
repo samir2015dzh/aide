@@ -23,6 +23,23 @@ export async function push(st: Store, s: Session, pr = false) {
   if (ok && pr && url !== "") window.aide?.openExternal(url);
 }
 
+/**
+ * Rolls the session back to the end of turn `to` (0: its base), once confirmed: every message and change after it is
+ * discarded, for the agent too.
+ */
+export function confirmRollback(st: Store, sessionId: string, title: string, to: number, last: number) {
+  st.set({
+    sheet: {
+      kind: "confirm",
+      title: i18n.t("session:actions.rollbackTitle", { turn: to + 1 }),
+      message: i18n.t("session:actions.rollbackMessage", { from: to + 1, to: last }),
+      button: i18n.t("session:actions.rollbackButton"),
+      run: () => local.rollbackSession({ sessionId, turn: to }),
+      done: i18n.t("session:actions.rolledBack", { title, turn: to }),
+    },
+  });
+}
+
 export function copySessionId(st: Store, s: Session) {
   navigator.clipboard.writeText(s.sessionId).then(() => st.show(i18n.t("session:actions.copiedId")));
 }

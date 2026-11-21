@@ -48,7 +48,8 @@
     "toBottom": "Jump to the latest",
     "you": "you",
     "turnDoneYou": "This turn is complete. Send another message below to continue in this task.",
-    "resumeYou": "When you send another message, it will resume from here with all earlier changes preserved."
+    "resumeYou": "When you send another message, it will resume from here with all earlier changes preserved.",
+    "rolledBackNote": "Rolled back to turn {{turn}}: turns {{from}} to {{to}} above were discarded."
   },
   "control": {
     "label": "This turn",
@@ -60,7 +61,12 @@
   "actions": {
     "interrupted": "Interrupted “{{title}}”",
     "copiedId": "Copied task ID",
-    "pushed": "Pushed {{branch}}"
+    "pushed": "Pushed {{branch}}",
+    "rollback": "Roll back to before this message",
+    "rollbackTitle": "Roll back to before turn {{turn}}?",
+    "rollbackMessage": "This discards every message and change from turn {{from}} on (turns {{from}} to {{to}}): the worktree and branch go back to where the turn before left them, and the agent starts a fresh conversation. This can’t be undone in Aide.",
+    "rollbackButton": "Roll back",
+    "rolledBack": "Rolled back “{{title}}” to turn {{turn}}"
   },
   "question": {
     "label": "Question",
