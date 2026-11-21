@@ -1,9 +1,6 @@
 package e2e
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -24,7 +21,8 @@ import (
 // TestWindowsInstall runs install.ps1 as a person would, against a release
 // signed by a key of the test's own: it installs the agents' CLI, installs
 // it again over itself, and refuses a checksum list another key signed. A
-// machine's install puts her and her console beside aided.
+// machine's install over one from a version with Her removes her and her
+// console.
 func TestWindowsInstall(t *testing.T) {
 	bin := binaries(t)
 	rel := t.TempDir()
@@ -40,10 +38,9 @@ func TestWindowsInstall(t *testing.T) {
 		sum := sha256.Sum256(b)
 		list = append(list, hex.EncodeToString(sum[:])+"  "+asset+"\n"...)
 	}
-	for _, name := range []string{"aide", "aided", "aidedw", "her"} {
+	for _, name := range []string{"aide", "aided", "aidedw"} {
 		add(name+"-windows-"+runtime.GOARCH+".exe", prog)
 	}
-	add("her-console.tar.gz", consoleArchive(t))
 	os.WriteFile(filepath.Join(rel, "checksums.txt"), list, 0o644)
 	sign := func(k *ecdsa.PrivateKey) {
 		h := sha256.Sum256(list)
@@ -80,17 +77,22 @@ func TestWindowsInstall(t *testing.T) {
 		}
 	}
 
-	if _, err := os.Stat(filepath.Join(dir, "her.exe")); err == nil {
-		t.Fatal("the CLI's install brought her")
-	}
-
-	// A machine: aided, and her with her console beside it, twice.
+	// A machine, over one from a version with Her: aided, and nothing of
+	// hers left beside it, twice.
 	dir = t.TempDir()
+	os.WriteFile(filepath.Join(dir, "her.exe"), prog, 0o755)
+	os.MkdirAll(filepath.Join(dir, "her-console"), 0o755)
+	os.WriteFile(filepath.Join(dir, "her-console", "index.html"), []byte("<title>Her</title>"), 0o644)
 	for i := 0; i < 2; i++ {
 		r := install(dir, "-Name", "test-pc")
-		for _, f := range []string{"aided.exe", "aidedw.exe", "her.exe", filepath.Join("her-console", "index.html")} {
+		for _, f := range []string{"aided.exe", "aidedw.exe"} {
 			if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 				t.Fatalf("install %d of a machine: no %s: %+v", i+1, f, r)
+			}
+		}
+		for _, f := range []string{"her.exe", "her-console"} {
+			if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
+				t.Fatalf("install %d of a machine: %s left: %+v", i+1, f, r)
 			}
 		}
 	}
@@ -104,19 +106,4 @@ func TestWindowsInstall(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "aide.exe")); err == nil {
 		t.Fatal("the CLI is there all the same")
 	}
-}
-
-// consoleArchive is her console as a release has it: a .tar.gz of its files.
-func consoleArchive(t *testing.T) []byte {
-	var b bytes.Buffer
-	z := gzip.NewWriter(&b)
-	w := tar.NewWriter(z)
-	page := []byte("<title>Her</title>")
-	if err := w.WriteHeader(&tar.Header{Name: "index.html", Mode: 0o644, Size: int64(len(page))}); err != nil {
-		t.Fatal(err)
-	}
-	w.Write(page)
-	w.Close()
-	z.Close()
-	return b.Bytes()
 }

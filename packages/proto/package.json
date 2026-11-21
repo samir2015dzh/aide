@@ -4,7 +4,6 @@
   "type": "module",
   "exports": {
     "./local": "./src/gen/aide/local/v1/local_pb.ts",
-    "./her": "./src/gen/aide/her/v1/her_pb.ts",
     "./session": "./src/gen/aide/session/v1/session_pb.ts",
     "./identity": "./src/gen/aide/identity/v1/identity_pb.ts",
     "./machine": "./src/gen/aide/machine/v1/machine_pb.ts"

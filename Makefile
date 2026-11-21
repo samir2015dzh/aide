@@ -15,13 +15,11 @@ lint:
 test:
 	go test ./cmd/... ./internal/... ./pkg/... -count=1
 
-# The desktop app's pure logic and types, and Her's client packages.
+# The desktop app's pure logic and types.
 test-app:
 	pnpm install --frozen-lockfile
 	pnpm -r typecheck
 	pnpm --filter @aide/core test
-	pnpm --filter @aide/her-protocol test
-	pnpm --filter @aide/her-client test
 	pnpm --filter @aide/desktop test
 
 # End-to-end with real binaries and scripted agents.

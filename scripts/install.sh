@@ -1,9 +1,7 @@
 #!/bin/sh
 # Aide installer. Downloads release binaries from GitHub Releases,
 # verifies them against a signed checksum list, installs them under
-# ~/.local/bin (a Linux machine: with her and her-console/, Her's kernel and
-# its console, her-computer/ and her-pdf/, what her computer use and her PDF
-# tools run) and (for machines) logs the machine in to your server with your
+# ~/.local/bin and (for machines) logs the machine in to your server with your
 # account and password (docs/accounts.md).
 #
 #   Add a machine:   curl -fsSL https://github.com/samir2015dzh/aide/releases/latest/download/install.sh | sh -s -- <server>
@@ -320,42 +318,14 @@ for b in $BINS; do
   fetch "$b-$OS-$ARCH"
   put "$TMP/$b-$OS-$ARCH" "$BIN_DIR/$b"
 done
-# Her's kernel and its console, beside aided, which runs them while Her
-# is on for this machine (docs/her-server.md §6.4): from a release that has
-# them for this system.
-if [ "$MODE" = machine ] && grep -q " her-$OS-$ARCH\$" "$TMP/checksums.txt"; then
-  fetch "her-$OS-$ARCH"
-  fetch her-console.tar.gz
-  mkdir "$TMP/her-console"
-  tar -xzf "$TMP/her-console.tar.gz" -C "$TMP/her-console"
-  put "$TMP/her-$OS-$ARCH" "$BIN_DIR/her"
-  rm -rf "$BIN_DIR/her-console"
-  cp -R "$TMP/her-console" "$BIN_DIR/her-console"
-  [ -z "$AS" ] || chown -R "$FOR_USER:$(id -gn "$FOR_USER")" "$BIN_DIR/her-console"
-fi
-# agent-desktop, which Her's computer use runs on a desktop (docs/linux.md
-# §5), in a folder of its own beside her: its clipboard helper refuses a
-# folder that others can write to. It needs glibc.
-if [ "$MODE" = machine ] && grep -q " her-computer-$OS-$ARCH.tar.gz\$" "$TMP/checksums.txt" \
-  && { [ -e /lib64/ld-linux-x86-64.so.2 ] || [ -e /lib/ld-linux-aarch64.so.1 ]; }; then
-  fetch "her-computer-$OS-$ARCH.tar.gz"
-  mkdir "$TMP/her-computer"
-  tar -xzf "$TMP/her-computer-$OS-$ARCH.tar.gz" -C "$TMP/her-computer"
-  rm -rf "$BIN_DIR/her-computer"
-  cp -R "$TMP/her-computer" "$BIN_DIR/her-computer"
-  chmod -R u+rwX,go-w,go+rX "$BIN_DIR/her-computer"
-  [ -z "$AS" ] || chown -R "$FOR_USER:$(id -gn "$FOR_USER")" "$BIN_DIR/her-computer"
-fi
-# Her's PDF worker and PDFium (docs/linux.md §4), from the same release as
-# her, which is static and cannot load the library itself. They need glibc.
-if [ "$MODE" = machine ] && grep -q " her-pdf-$OS-$ARCH.tar.gz\$" "$TMP/checksums.txt" \
-  && { [ -e /lib64/ld-linux-x86-64.so.2 ] || [ -e /lib/ld-linux-aarch64.so.1 ]; }; then
-  fetch "her-pdf-$OS-$ARCH.tar.gz"
-  mkdir "$TMP/her-pdf"
-  tar -xzf "$TMP/her-pdf-$OS-$ARCH.tar.gz" -C "$TMP/her-pdf"
-  rm -rf "$BIN_DIR/her-pdf"
-  cp -R "$TMP/her-pdf" "$BIN_DIR/her-pdf"
-  [ -z "$AS" ] || chown -R "$FOR_USER:$(id -gn "$FOR_USER")" "$BIN_DIR/her-pdf"
+# Versions with Her put her beside aided, with her console, her computer
+# use and her PDF tools (her-console/, her-computer/, her-pdf/). Aide no
+# longer has Her: installing over one of them removes them, with what an
+# update kept of them (internal/update).
+if [ "$MODE" = machine ]; then
+  for f in her her-console her-computer her-pdf; do
+    rm -rf "${BIN_DIR:?}/$f" "$BIN_DIR/.$f.previous" "$BIN_DIR/.$f.new"
+  done
 fi
 echo "✓ installed to $BIN_DIR"
 if [ -z "$AS" ]; then

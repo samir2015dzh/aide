@@ -1,9 +1,6 @@
 package update
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -23,7 +20,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -85,32 +81,13 @@ func setVar(t *testing.T, v *string, to string) {
 	t.Cleanup(func() { *v = old })
 }
 
-// publish makes version the latest, with programs that say it, and her's
-// console.
+// publish makes version the latest, with programs that say it.
 func (r *release) publish(version string) {
-	r.files = map[string][]byte{"version": []byte(version + "\n"), herConsoleAsset: consoleArchive(r.t, "./", "console "+version)}
+	r.files = map[string][]byte{"version": []byte(version + "\n")}
 	for _, name := range Programs {
 		r.files[asset(name)] = fakeProgram(r.t, version)
 	}
 	r.sign()
-}
-
-// consoleArchive is a console's .tar.gz, as release.sh makes it (tar -C
-// dist .), its index.html in folder.
-func consoleArchive(t *testing.T, folder, index string) []byte {
-	var b bytes.Buffer
-	zw := gzip.NewWriter(&b)
-	tw := tar.NewWriter(zw)
-	tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: folder, Mode: 0o755})
-	tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: folder + "assets/", Mode: 0o755})
-	for name, body := range map[string]string{folder + "index.html": index, folder + "assets/app.js": "app"} {
-		tw.WriteHeader(&tar.Header{Typeflag: tar.TypeReg, Name: name, Mode: 0o644, Size: int64(len(body))})
-		tw.Write([]byte(body))
-	}
-	if tw.Close() != nil || zw.Close() != nil {
-		t.Fatal("console archive")
-	}
-	return b.Bytes()
 }
 
 // aide is the agent CLI among Programs.
@@ -129,22 +106,13 @@ func (r *release) sign() {
 	r.files["checksums.txt.sig"], _ = ecdsa.SignASN1(rand.Reader, r.key, digest[:])
 }
 
-// programsAt is a folder with the programs at version, and her's console.
+// programsAt is a folder with the programs at version.
 func programsAt(t *testing.T, version string) string {
 	dir := t.TempDir()
 	for _, name := range Programs {
 		os.WriteFile(filepath.Join(dir, name), fakeProgram(t, version), 0o755)
 	}
-	os.MkdirAll(filepath.Join(dir, herConsole, "assets"), 0o755)
-	os.WriteFile(filepath.Join(dir, herConsole, "index.html"), []byte("console "+version), 0o644)
-	os.WriteFile(filepath.Join(dir, herConsole, "assets", "old.js"), []byte("old"), 0o644)
 	return dir
-}
-
-// console is the index.html of the console in dir's folder name.
-func console(dir, name string) string {
-	b, _ := os.ReadFile(filepath.Join(dir, name, "index.html"))
-	return string(b)
 }
 
 func TestLatest(t *testing.T) {
@@ -196,21 +164,8 @@ func TestInstall(t *testing.T) {
 	rel, _ := Latest(context.Background())
 	dir := programsAt(t, "0.1.0")
 	names, err := Install(context.Background(), t.TempDir(), dir, rel)
-	if err != nil || strings.Join(names, " ") != strings.Join(append(Programs, herConsole), " ") {
+	if err != nil || strings.Join(names, " ") != strings.Join(Programs, " ") {
 		t.Fatalf("%v %v", names, err)
-	}
-	// The console, whole: the old one's files are gone with it.
-	if c, prev := console(dir, herConsole), console(dir, previousPath(".", herConsole)); c != "console 0.2.0" || prev != "console 0.1.0" {
-		t.Errorf("console %q, previous %q", c, prev)
-	}
-	if _, err := os.Stat(filepath.Join(dir, herConsole, "assets", "old.js")); err == nil {
-		t.Error("the old console's files are left in the new one")
-	}
-	if b, _ := os.ReadFile(filepath.Join(dir, herConsole, "assets", "app.js")); string(b) != "app" {
-		t.Errorf("the new console's assets: %q", b)
-	}
-	if _, err := os.Stat(newPath(dir, herConsole)); err == nil {
-		t.Error("the console's new left behind")
 	}
 	for _, name := range Programs {
 		if b, _ := os.ReadFile(filepath.Join(dir, name)); !strings.Contains(string(b), "0.2.0") {
@@ -239,25 +194,62 @@ func TestInstall(t *testing.T) {
 		t.Errorf("CLI only: %v %v", names, err)
 	}
 
-	// A release without her and its console, as before them: the others
-	// go, they stay.
-	r.publish("0.3.0")
-	delete(r.files, asset("her"))
-	delete(r.files, herConsoleAsset)
-	r.sign()
-	rel, _ = Latest(context.Background())
-	os.WriteFile(filepath.Join(dir, "her"), fakeProgram(t, "0.2.0"), 0o755)
-	if names, err := Install(context.Background(), t.TempDir(), dir, rel); err != nil || slices.Contains(names, "her") || slices.Contains(names, herConsole) {
-		t.Fatalf("a release without her: %v %v", names, err)
+}
+
+// A machine from a version with Her: her and the folders beside her, with
+// what an update kept of them, go with the update; the programs are updated.
+func TestInstallRemovesHerLeftovers(t *testing.T) {
+	r := newRelease(t)
+	r.publish("0.2.0")
+	rel, _ := Latest(context.Background())
+	dir := programsAt(t, "0.1.0")
+	var left []string
+	for _, name := range []string{"her", "her.exe"} {
+		os.WriteFile(filepath.Join(dir, name), fakeProgram(t, "0.1.0"), 0o755)
+		os.WriteFile(previousPath(dir, name), fakeProgram(t, "0.0.9"), 0o755)
+		left = append(left, filepath.Join(dir, name), previousPath(dir, name))
 	}
-	if b, _ := os.ReadFile(filepath.Join(dir, "her")); !strings.Contains(string(b), "0.2.0") || console(dir, herConsole) != "console 0.2.0" {
-		t.Errorf("her %q and its console %q, from a release without them", b, console(dir, herConsole))
+	for _, name := range []string{"her-console", "her-computer", "her-pdf"} {
+		os.MkdirAll(filepath.Join(dir, name, "assets"), 0o755)
+		os.WriteFile(filepath.Join(dir, name, "assets", "a"), []byte("0.1.0"), 0o644)
+		os.MkdirAll(previousPath(dir, name), 0o755)
+		left = append(left, filepath.Join(dir, name), previousPath(dir, name))
+	}
+	// Not Her's: stays.
+	os.WriteFile(filepath.Join(dir, "hermit"), []byte("mine"), 0o644)
+	names, err := Install(context.Background(), t.TempDir(), dir, rel)
+	if err != nil || strings.Join(names, " ") != strings.Join(Programs, " ") {
+		t.Fatalf("%v %v", names, err)
+	}
+	for _, p := range left {
+		if _, err := os.Lstat(p); err == nil {
+			t.Errorf("%s left", filepath.Base(p))
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "hermit")); err != nil {
+		t.Errorf("a file not Her's removed: %v", err)
+	}
+	for _, name := range Programs {
+		if b, _ := os.ReadFile(filepath.Join(dir, name)); !strings.Contains(string(b), "0.2.0") {
+			t.Errorf("%s: %s", name, b)
+		}
+	}
+
+	// A failed update leaves them as they are.
+	r.publish("0.3.0")
+	r.files[asset(aide)] = append(fakeProgram(t, "0.3.0"), ' ')
+	rel, _ = Latest(context.Background())
+	os.WriteFile(filepath.Join(dir, "her"), fakeProgram(t, "0.1.0"), 0o755)
+	if _, err := Install(context.Background(), t.TempDir(), dir, rel); err == nil {
+		t.Fatal("a program that doesn't match its hash: no error")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "her")); err != nil {
+		t.Errorf("her removed by a failed update: %v", err)
 	}
 }
 
-// A program that doesn't match its hash, or doesn't say its version, a her
-// that doesn't start, and a console with a file outside its folder, replace
-// nothing.
+// A program that doesn't match its hash, or doesn't say its version,
+// replaces nothing.
 func TestInstallRefuses(t *testing.T) {
 	r := newRelease(t)
 	cli := asset(aide)
@@ -267,16 +259,6 @@ func TestInstallRefuses(t *testing.T) {
 			r.files[cli] = fakeProgram(t, "0.1.9")
 			r.sign()
 		},
-		"outside": func() {
-			r.files[herConsoleAsset] = consoleArchive(t, "../", "elsewhere")
-			r.sign()
-		},
-	}
-	if runtime.GOOS != "windows" {
-		changes["her does not start"] = func() {
-			r.files[asset("her")] = []byte("#!/bin/sh\nexit 1\n")
-			r.sign()
-		}
 	}
 	for what, change := range changes {
 		r.publish("0.2.0")
@@ -293,15 +275,6 @@ func TestInstallRefuses(t *testing.T) {
 			if _, err := os.Stat(newPath(dir, name)); err == nil {
 				t.Errorf("%s: %s's new left behind", what, name)
 			}
-		}
-		if c := console(dir, herConsole); c != "console 0.1.0" {
-			t.Errorf("%s: the console replaced: %q", what, c)
-		}
-		if _, err := os.Stat(newPath(dir, herConsole)); err == nil {
-			t.Errorf("%s: the console's new left behind", what)
-		}
-		if _, err := os.Stat(filepath.Join(dir, "index.html")); err == nil {
-			t.Errorf("%s: a file written outside", what)
 		}
 	}
 }
@@ -392,62 +365,6 @@ func TestBackground(t *testing.T) {
 // for Her's computer use and her PDF worker (docs/linux.md §4, §5), are
 // replaced whole with her from the same release, their programs still
 // programs; a machine without the folder gets none.
-func TestInstallHerFolders(t *testing.T) {
-	for _, folder := range []string{herComputer, herPDF} {
-		t.Run(folder, func(t *testing.T) { testInstallHerFolder(t, folder) })
-	}
-}
-
-func testInstallHerFolder(t *testing.T, folder string) {
-	r := newRelease(t)
-	r.publish("0.2.0")
-	var b bytes.Buffer
-	zw := gzip.NewWriter(&b)
-	tw := tar.NewWriter(zw)
-	tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: "./", Mode: 0o755})
-	for name, mode := range map[string]int64{"./program": 0o755, "./NOTICE": 0o644} {
-		tw.WriteHeader(&tar.Header{Typeflag: tar.TypeReg, Name: name, Mode: mode, Size: int64(len("0.2.0"))})
-		tw.Write([]byte("0.2.0"))
-	}
-	tw.Close()
-	zw.Close()
-	r.files[folders[folder]] = b.Bytes()
-	r.sign()
-	rel, _ := Latest(context.Background())
-
-	dir := programsAt(t, "0.1.0")
-	if names, err := Install(context.Background(), t.TempDir(), dir, rel); err != nil || slices.Contains(names, folder) {
-		t.Fatalf("a machine without the folder: %v %v", names, err)
-	}
-	if _, err := os.Stat(filepath.Join(dir, folder)); err == nil {
-		t.Fatal("the folder was made where there was none")
-	}
-
-	dir = programsAt(t, "0.1.0")
-	os.MkdirAll(filepath.Join(dir, folder), 0o755)
-	os.WriteFile(filepath.Join(dir, folder, "program"), []byte("0.1.0"), 0o755)
-	os.WriteFile(filepath.Join(dir, folder, "old-helper"), []byte("0.1.0"), 0o755)
-	if names, err := Install(context.Background(), t.TempDir(), dir, rel); err != nil || !slices.Contains(names, folder) {
-		t.Fatalf("%v %v", names, err)
-	}
-	program := filepath.Join(dir, folder, "program")
-	if b, _ := os.ReadFile(program); string(b) != "0.2.0" {
-		t.Errorf("the program is %q", b)
-	}
-	if st, err := os.Stat(program); runtime.GOOS != "windows" && (err != nil || st.Mode().Perm()&0o111 == 0) {
-		t.Errorf("the program is no program: %v %v", st, err)
-	}
-	if st, err := os.Stat(filepath.Join(dir, folder, "NOTICE")); runtime.GOOS != "windows" && (err != nil || st.Mode().Perm()&0o111 != 0) {
-		t.Errorf("NOTICE became a program: %v %v", st, err)
-	}
-	if _, err := os.Stat(filepath.Join(dir, folder, "old-helper")); err == nil {
-		t.Error("the old folder's files are left in the new one")
-	}
-	if b, _ := os.ReadFile(filepath.Join(previousPath(dir, folder), "program")); string(b) != "0.1.0" {
-		t.Errorf("the previous the program is %q", b)
-	}
-}
-
 // An installation from before the rename: its programs under their old
 // names, the new names links to them (Windows: copies), and its service
 // running the old name. The update writes the programs under their new names

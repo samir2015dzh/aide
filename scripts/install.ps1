@@ -107,17 +107,18 @@ try {
     $file = Get-Verified "$b-windows-$Arch.exe"
     Install-Program $file "$b.exe"
   }
-  # Her's kernel and its console, beside aided, which runs them while Her
-  # is on for this PC (docs/her-server.md §6.4): from a release that has them.
-  if (-not $Cli -and $sums.ContainsKey("her-windows-$Arch.exe")) {
-    $console = Get-Verified "her-console.tar.gz"
-    $unpacked = Join-Path $Tmp "her-console"
-    New-Item -ItemType Directory -Path $unpacked | Out-Null
-    # Windows' own tar (10 and later), not another on PATH that takes C: for a host.
-    & (Join-Path $env:SystemRoot "System32\tar.exe") -xzf $console -C $unpacked
-    if ($LASTEXITCODE -ne 0) { throw "aide install: cannot unpack her-console.tar.gz" }
-    Install-Program (Get-Verified "her-windows-$Arch.exe") "her.exe"
-    Install-Program $unpacked "her-console"
+  # Versions with Her put her.exe and her console beside aided. Aide no
+  # longer has Her: installing over one of them removes them (a running
+  # her moves aside, and goes with the next install's old files).
+  if (-not $Cli) {
+    foreach ($name in "her.exe", "her-console", "pdfium.dll", "agent-desktop.exe") {
+      $dest = Join-Path $BinDir $name
+      Get-ChildItem -Path $BinDir -Filter "$name.*.old" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+      if (Test-Path $dest) {
+        Remove-Item -Recurse -Force $dest -ErrorAction SilentlyContinue
+        if (Test-Path $dest) { Move-Item $dest "$dest.$(Get-Random).old" }
+      }
+    }
   }
   Write-Host "installed to $BinDir"
 } finally {

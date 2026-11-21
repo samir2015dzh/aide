@@ -18,8 +18,7 @@ import type { Platform, WindowKind } from "./types";
 // Setup.exe (Squirrel.Windows, docs/windows.md §6.1) installs the app for
 // this user into %LOCALAPPDATA%\AideApp: a folder per version, app-<version>,
 // with Aide.exe and Update.exe above them, which start the newest one.
-// Each version copies aided, aidedw and aide, and her beside them,
-// where they stay, the folder install.ps1 uses, on PATH; aided's logon task runs aidedw
+// Each version copies aided, aidedw and aide where they stay, the folder install.ps1 uses, on PATH; aided's logon task runs aidedw
 // from there (aided service install --owner). Open Aide at login is
 // the user's Run value, which Startup apps lists and switches. Development
 // and test runs use a daemon of their own and touch none of it.
@@ -58,47 +57,33 @@ function answers(): Promise<boolean> {
 }
 
 /**
- * Copies this version's aided, aidedw and aide to binDir, and her
- * with what is hers where the app has it (package-win.mjs), unless they are
- * there already. A running program can be renamed, not overwritten: it
- * moves aside, and goes once nothing runs it.
+ * Copies this version's aided, aidedw and aide to binDir (package-win.mjs),
+ * unless they are there already. A running program can be renamed, not
+ * overwritten: it moves aside, and goes once nothing runs it. What versions
+ * with Her left there (her and what was hers) moves aside the same way.
  */
 function placePrograms() {
   fs.mkdirSync(binDir, { recursive: true });
   for (const f of fs.readdirSync(binDir)) {
     if (f.endsWith(".old")) fs.rm(path.join(binDir, f), { recursive: true, force: true }, () => {});
   }
-  const hers = ["her.exe", "agent-desktop.exe", "pdfium.dll"].filter((name) => fs.existsSync(program(name)));
-  const names: [string, string][] = ["aided.exe", "aidedw.exe", "aide.exe", ...hers].map((n) => [n, n]);
-  for (const [name, as] of names) {
+  for (const name of herLeftovers) {
+    const to = path.join(binDir, name);
+    if (fs.existsSync(to)) fs.renameSync(to, `${to}.${Date.now()}.old`);
+  }
+  for (const name of ["aided.exe", "aidedw.exe", "aide.exe"]) {
     const from = fs.statSync(program(name));
-    const to = path.join(binDir, as);
+    const to = path.join(binDir, name);
     const there = fs.statSync(to, { throwIfNoEntry: false });
     if (there && there.size === from.size && there.mtimeMs === from.mtimeMs) continue;
     if (there) fs.renameSync(to, `${to}.${Date.now()}.old`);
     fs.copyFileSync(program(name), to);
     fs.utimesSync(to, from.atime, from.mtime);
   }
-  // Her's console, a folder aided serves from beside her: replaced whole.
-  const from = program("her-console");
-  const to = path.join(binDir, "her-console");
-  if (fs.existsSync(from) && filesOf(from) !== filesOf(to)) {
-    if (fs.existsSync(to)) fs.renameSync(to, `${to}.${Date.now()}.old`);
-    fs.cpSync(from, to, { recursive: true, preserveTimestamps: true });
-  }
 }
 
-/** The files under dir, with their sizes and times: equal for a folder and its copy. */
-function filesOf(dir: string): string {
-  if (!fs.existsSync(dir)) return "";
-  return (fs.readdirSync(dir, { recursive: true }) as string[])
-    .sort()
-    .map((f) => {
-      const s = fs.statSync(path.join(dir, f));
-      return s.isFile() ? `${f} ${s.size} ${s.mtimeMs}` : f;
-    })
-    .join("\n");
-}
+/** What versions with Her placed beside aided: gone from the app, removed on the next start. */
+const herLeftovers = ["her.exe", "agent-desktop.exe", "pdfium.dll", "her-console"];
 
 /** Registers aided's logon task, the owner's and this PC's machine, and starts it. */
 function installDaemon() {
