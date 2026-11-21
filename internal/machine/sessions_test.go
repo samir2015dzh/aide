@@ -473,13 +473,15 @@ func TestStartFailureKeepsPrompt(t *testing.T) {
 // keeps the prompt for the next message.
 func TestStalledStartStops(t *testing.T) {
 	lim := DefaultLimits()
-	lim.StartTimeout = 300 * time.Millisecond
+	// Far above a normal start (up to ~450 ms seen on the Windows runner),
+	// so only the deliberately stalled start runs out of it.
+	lim.StartTimeout = 3 * time.Second
 	p := &startTrouble{}
 	p.set(0, nil, true)
 	h := newHarnessWith(t, lim, map[string]provider.Provider{"flaky": p})
 	id := h.startAgent("flaky", "say one")
 	f := h.wait(id, crashed).Progress.LastFailure
-	if f.GetKind() != sessionv1.FailureKind_FAILURE_KIND_STALLED || !strings.Contains(f.GetMessage(), "did not finish starting in 300ms") {
+	if f.GetKind() != sessionv1.FailureKind_FAILURE_KIND_STALLED || !strings.Contains(f.GetMessage(), "did not finish starting in 3s") {
 		t.Fatalf("failure: %v", f)
 	}
 	p.set(0, nil, false)

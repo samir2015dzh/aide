@@ -197,7 +197,7 @@ pub struct BotUpdateParams {
 }
 
 /// Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`,
-/// `bots/memory` and `bots/memory_clear`.
+/// `bots/memory`, `bots/memory_clear` and `bots/confirm_rules`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct BotIdParams {
     pub bot_id: String,
@@ -220,6 +220,71 @@ pub struct BotMemoryResult {
     /// The other files of the memory folder, by name.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pages: Vec<BotMemoryPage>,
+}
+
+/// What a confirmation rule is about (docs/her-confirm-rules.md §2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ConfirmAction {
+    /// Sending something to other people: a message, an email, a reply.
+    Send,
+    /// Publishing or posting something where others see it.
+    Publish,
+    /// Paying or buying.
+    Pay,
+    /// Deleting data. A hard floor: asked every time, whatever the rules say.
+    Delete,
+    /// Installing software. A hard floor.
+    Install,
+    /// Giving a new client or a new permission access. A hard floor.
+    Grant,
+}
+
+impl ConfirmAction {
+    /// The actions no rule may take the question away from (docs/her-confirm-rules.md §3).
+    pub fn is_hard_floor(self) -> bool {
+        matches!(self, ConfirmAction::Delete | ConfirmAction::Install | ConfirmAction::Grant)
+    }
+}
+
+/// What a confirmation rule says to do before a matching action.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ConfirmWant {
+    /// Do it without asking in the conversation first.
+    Skip,
+    /// Always ask first.
+    Ask,
+}
+
+/// One of an assistant's confirmation rules: the owner's preference about asking first before
+/// an action of a kind, on targets that match a pattern (docs/her-confirm-rules.md).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ConfirmRule {
+    pub id: String,
+    pub action: ConfirmAction,
+    /// Which targets: words with `*` for any run of characters, matched whole and ignoring case;
+    /// `*` alone is every target.
+    pub target: String,
+    pub want: ConfirmWant,
+    /// What the owner said, in their words.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub note: String,
+    /// RFC 3339.
+    pub created_at: String,
+}
+
+/// `bots/confirm_rules`: an assistant's confirmation rules, oldest first.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotConfirmRulesResult {
+    pub rules: Vec<ConfirmRule>,
+}
+
+/// Parameters of `bots/confirm_rule_delete`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BotConfirmRuleParams {
+    pub bot_id: String,
+    pub rule_id: String,
 }
 
 /// What a file a bot sent is, by its name; a picture by its contents (docs/her-deliverables.md §4.2).

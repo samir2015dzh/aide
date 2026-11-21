@@ -23,8 +23,32 @@ jobs:
         run: |
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           ls "$SDK"/ndk >/dev/null 2>&1 || yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724"
+      # The app's own key (docs/android-app.md §6.1), from the secrets: every APK is
+      # signed with it, so each version installs over the last.
+      # A pull request from a fork, given no secrets, builds with a throwaway key.
+      - name: the app's signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+              echo "::warning::no ANDROID_KEYSTORE_BASE64 (a pull request from a fork is given no secrets): this APK is signed with a throwaway debug key and will not install over the app"
+              exit 0
+            fi
+            echo "::error::the repository secret ANDROID_KEYSTORE_BASE64 is not set (docs/android-app.md §6.1)"
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/app.p12"
+          echo "AIDE_ANDROID_KEYSTORE=$RUNNER_TEMP/app.p12" >> "$GITHUB_ENV"
       - name: build and test
+        env:
+          AIDE_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          AIDE_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          AIDE_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: VERSION="0.0.0-${GITHUB_SHA::8}" apps/android/scripts/build.sh
+      - name: the APK's signature
+        if: env.AIDE_ANDROID_KEYSTORE != ''
+        run: apps/android/scripts/check-signature.sh apps/android/build/*.apk
       # The installed identity, read back from the APK itself (io.aide.android;
       # the debug build adds .debug).
       - name: the APK's application id

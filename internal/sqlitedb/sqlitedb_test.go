@@ -17,15 +17,17 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 	}
 	defer db.Close()
 	var n atomic.Int64
-	c, err := StartCheckpointer(path, db, 5*time.Millisecond, func(time.Duration) { n.Add(1) })
+	// 25 ms: well above Windows timer resolution (~15.6 ms), which at a
+	// smaller interval blurs writing and idle together.
+	c, err := StartCheckpointer(path, db, 25*time.Millisecond, func(time.Duration) { n.Add(1) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	time.Sleep(600 * time.Millisecond)
-	// At 5 ms it would be ~120; backing off (5, 10, 20, … ms) it is under 10.
-	if idle := n.Load(); idle > 12 {
-		t.Fatalf("%d checkpoints in 600 ms of nothing written", idle)
+	time.Sleep(time.Second)
+	// At 25 ms it would be ~40; backing off (25, 50, 100, … ms) it is ~5.
+	if idle := n.Load(); idle > 10 {
+		t.Fatalf("%d checkpoints in 1 s of nothing written", idle)
 	}
 	idle := n.Load()
 	// Writing: the wait it had backed off to runs out, then it is back at
@@ -37,10 +39,10 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 			}
 		}
 	}
-	write(400 * time.Millisecond)
+	write(time.Second) // longer than the 800 ms it had backed off to
 	before := n.Load()
-	write(600 * time.Millisecond)
-	if busy := n.Load() - before; busy < 15 || busy < 2*idle {
-		t.Fatalf("%d checkpoints in 600 ms of writes (%d in 600 ms of nothing)", busy, idle)
+	write(time.Second)
+	if busy := n.Load() - before; busy < 20 || busy < 2*idle {
+		t.Fatalf("%d checkpoints in 1 s of writes (%d in 1 s of nothing)", busy, idle)
 	}
 }

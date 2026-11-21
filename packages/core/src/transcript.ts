@@ -28,6 +28,8 @@ export type TranscriptItem =
   | { kind: "question"; seq: bigint; question: Question; resolution: QuestionResolved | undefined }
   | { kind: "turnEnd"; seq: bigint; end: TurnCompleted }
   | { kind: "error"; seq: bigint; error: ErrorEvent }
+  /** The session was rolled back to the end of turn (0: its base): turns turn+1 to lastTurn, above, were discarded. */
+  | { kind: "rollback"; seq: bigint; turn: number; lastTurn: number; by: string }
   /**
    * A message between the session and one of the owner's agents
    * (docs/agent-messages.md): in, written to the session (delivered: what
@@ -84,6 +86,9 @@ export function transcript(events: SessionEvent[], running: boolean): Transcript
       case "error":
         items.push({ kind: "error", seq, error: e.kind.value });
         break;
+      case "rolledBack":
+        items.push({ kind: "rollback", seq, turn: e.kind.value.turn, lastTurn: e.kind.value.lastTurn, by: e.kind.value.by });
+        break;
       case "messageReceived": {
         const m = e.kind.value;
         items.push({ kind: "message", seq, direction: "in", name: m.fromName, address: m.from, text: m.text, delivered: m.delivered });
@@ -97,6 +102,28 @@ export function transcript(events: SessionEvent[], running: boolean): Transcript
     }
   }
   return items;
+}
+
+/**
+ * The checkpoints a session can be rolled back to: each turn's first message (its prompt), by seq, with the turn
+ * that rolling back there keeps (the one before it, 0 for the first). Turns a rollback discarded have none.
+ */
+export function checkpoints(items: readonly { kind: string; seq: bigint; turn?: number }[]): Map<bigint, number> {
+  const out = new Map<bigint, number>();
+  let turn = 0;
+  let first = false;
+  for (const it of items) {
+    if (it.kind === "turn") {
+      turn = it.turn ?? 0;
+      first = true;
+    } else if (it.kind === "user" && first) {
+      out.set(it.seq, turn - 1);
+      first = false;
+    } else if (it.kind === "rollback") {
+      for (const [seq, kept] of out) if (kept >= (it.turn ?? 0)) out.delete(seq);
+    }
+  }
+  return out;
 }
 
 /** When the latest turn started, if the events tell. */

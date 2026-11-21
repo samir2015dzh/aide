@@ -48,7 +48,8 @@
     "toBottom": "回到底部",
     "you": "你",
     "turnDoneYou": "这一轮已完成。在下面再发一条消息即可在这个任务里继续。",
-    "resumeYou": "你再发一条消息时，会从这里接着做，之前的改动都保留。"
+    "resumeYou": "你再发一条消息时，会从这里接着做，之前的改动都保留。",
+    "rolledBackNote": "已回滚到第 {{turn}} 轮：上面第 {{from}}–{{to}} 轮已丢弃。"
   },
   "control": {
     "label": "这一轮",
@@ -60,7 +61,12 @@
   "actions": {
     "interrupted": "已打断「{{title}}」",
     "copiedId": "已拷贝任务 ID",
-    "pushed": "已推送 {{branch}}"
+    "pushed": "已推送 {{branch}}",
+    "rollback": "回滚到这条消息之前",
+    "rollbackTitle": "回滚到第 {{turn}} 轮之前？",
+    "rollbackMessage": "会丢弃第 {{from}} 轮起其后轮次的对话与改动（第 {{from}}–{{to}} 轮）：工作区和分支回到上一轮结束时的样子，agent 另起一段对话。在 Aide 里无法撤销。",
+    "rollbackButton": "回滚",
+    "rolledBack": "已把「{{title}}」回滚到第 {{turn}} 轮"
   },
   "question": {
     "label": "问题",
