@@ -155,6 +155,17 @@ service LocalService {
   rpc ClearWake(ClearWakeRequest) returns (ClearWakeResponse);
   rpc OpenWakeLink(OpenWakeLinkRequest) returns (OpenWakeLinkResponse);
 
+  // Contacts (docs/personas.md), kept on the owner's server for all their
+  // devices.
+  rpc ListPersonas(ListPersonasRequest) returns (ListPersonasResponse);
+  rpc SavePersona(SavePersonaRequest) returns (SavePersonaResponse);
+  // Forgets a contact; its sessions stay.
+  rpc DeletePersona(DeletePersonaRequest) returns (DeletePersonaResponse);
+  // TalkToPersona sends a message to a contact: to the session it talks in
+  // if that can still take one, else to a new session started with the
+  // contact's presets (docs/personas.md §3).
+  rpc TalkToPersona(TalkToPersonaRequest) returns (TalkToPersonaResponse);
+
   // Sessions (read across all reachable machines over E2E).
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   // WatchSessions pushes session changes from every reachable machine as
@@ -1402,4 +1413,44 @@ message ReadDSHSessionRequest {
   uint64 before_seq = 4;
   uint32 limit = 5;
   aide.session.v1.EventView view = 6;
+}
+
+message ListPersonasRequest {}
+
+message ListPersonasResponse {
+  repeated aide.identity.v1.Persona personas = 1;
+}
+
+message SavePersonaRequest {
+  aide.identity.v1.Persona persona = 1;
+}
+
+message SavePersonaResponse {
+  aide.identity.v1.Persona persona = 1;
+}
+
+message DeletePersonaRequest {
+  string persona_id = 1;
+}
+
+message DeletePersonaResponse {}
+
+message TalkToPersonaRequest {
+  string persona_id = 1;
+  string text = 2;
+  repeated aide.session.v1.Attachment attachments = 3;
+  // For a new session: the same key starts it once.
+  string idempotency_key = 4;
+}
+
+message TalkToPersonaResponse {
+  aide.session.v1.Session session = 1;
+  // A new session was started (else the message went to the one the
+  // contact talks in).
+  bool started = 2;
+  // Why it was started: "first" (the contact had none), "archived",
+  // "gone" (deleted from its machine), "changed" (another machine or
+  // project than the contact's now).
+  string reason = 3;
+  aide.identity.v1.Persona persona = 4;
 }

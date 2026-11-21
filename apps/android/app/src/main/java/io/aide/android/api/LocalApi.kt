@@ -86,6 +86,20 @@ class LocalApi(port: Long, token: String) {
     suspend fun interrupt(sessionId: String): Session? =
         call<SessionIdRequest, SessionResponse>("InterruptSession", SessionIdRequest(sessionId)).session
 
+    // Contacts (docs/personas.md), kept on the owner's server for every device.
+
+    suspend fun listPersonas(): List<Persona> = call<Empty, ListPersonasResponse>("ListPersonas", Empty()).personas
+
+    suspend fun savePersona(p: Persona): Persona? = call<SavePersonaRequest, SavePersonaResponse>("SavePersona", SavePersonaRequest(p)).persona
+
+    suspend fun deletePersona(id: String) {
+        call<DeletePersonaRequest, JsonElement>("DeletePersona", DeletePersonaRequest(id))
+    }
+
+    /** Its session goes on, or one starts on its machine (which may take a while to answer). */
+    suspend fun talkToPersona(id: String, text: String, key: String): TalkToPersonaResponse =
+        call("TalkToPersona", TalkToPersonaRequest(id, text, key), timeoutSeconds = 60)
+
     suspend fun checkAgents(machineId: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)
     }

@@ -178,6 +178,11 @@ func (l *Local) ListEvents(req *sessionv1.ListEventsRequest) (*sessionv1.ListEve
 	return l.n.sessions.ListEvents(l.p, req)
 }
 
+// Get is one session, as the owner sees it.
+func (l *Local) Get(id string) (*sessionv1.Session, error) {
+	return l.n.sessions.Get(l.p, id)
+}
+
 // Start starts a session as the owner (created_by "owner").
 func (l *Local) Start(ctx context.Context, req *sessionv1.StartSessionRequest) (*sessionv1.Session, error) {
 	return l.n.sessions.Start(ctx, l.p, req)

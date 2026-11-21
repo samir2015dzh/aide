@@ -143,6 +143,18 @@ const (
 	// OwnerControlServiceGetScreenServersProcedure is the fully-qualified name of the
 	// OwnerControlService's GetScreenServers RPC.
 	OwnerControlServiceGetScreenServersProcedure = "/aide.relay.v1.OwnerControlService/GetScreenServers"
+	// OwnerControlServiceListPersonasProcedure is the fully-qualified name of the OwnerControlService's
+	// ListPersonas RPC.
+	OwnerControlServiceListPersonasProcedure = "/aide.relay.v1.OwnerControlService/ListPersonas"
+	// OwnerControlServiceSavePersonaProcedure is the fully-qualified name of the OwnerControlService's
+	// SavePersona RPC.
+	OwnerControlServiceSavePersonaProcedure = "/aide.relay.v1.OwnerControlService/SavePersona"
+	// OwnerControlServiceDeletePersonaProcedure is the fully-qualified name of the
+	// OwnerControlService's DeletePersona RPC.
+	OwnerControlServiceDeletePersonaProcedure = "/aide.relay.v1.OwnerControlService/DeletePersona"
+	// OwnerControlServiceBindPersonaSessionProcedure is the fully-qualified name of the
+	// OwnerControlService's BindPersonaSession RPC.
+	OwnerControlServiceBindPersonaSessionProcedure = "/aide.relay.v1.OwnerControlService/BindPersonaSession"
 	// MessageServiceRegisterProcedure is the fully-qualified name of the MessageService's Register RPC.
 	MessageServiceRegisterProcedure = "/aide.relay.v1.MessageService/Register"
 	// MessageServiceContactsProcedure is the fully-qualified name of the MessageService's Contacts RPC.
@@ -741,6 +753,18 @@ type OwnerControlServiceClient interface {
 	// Where Computer Control looks for a path to a machine
 	// (docs/computer-control.md §7).
 	GetScreenServers(context.Context, *v1.GetScreenServersRequest) (*v1.GetScreenServersResponse, error)
+	// Contacts (docs/personas.md): the owner's long-lived names to hand work
+	// to, kept here so that every device of the owner has the same ones. Set
+	// by a trusted device; a relay that keeps none answers Unimplemented.
+	ListPersonas(context.Context, *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error)
+	// Adds a contact (no persona_id) or changes one. A change to what its
+	// sessions start with (machine, project, agent, model, effort, mode)
+	// forgets its session: the next message starts a new one.
+	SavePersona(context.Context, *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error)
+	// Forgets a contact. Its sessions stay.
+	DeletePersona(context.Context, *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error)
+	// Records the session a contact talks in now.
+	BindPersonaSession(context.Context, *v1.BindPersonaSessionRequest) (*v1.BindPersonaSessionResponse, error)
 }
 
 // NewOwnerControlServiceClient constructs a client for the aide.relay.v1.OwnerControlService
@@ -886,6 +910,30 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(ownerControlServiceMethods.ByName("GetScreenServers")),
 			connect.WithClientOptions(opts...),
 		),
+		listPersonas: connect.NewClient[v1.ListPersonasRequest, v1.ListPersonasResponse](
+			httpClient,
+			baseURL+OwnerControlServiceListPersonasProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("ListPersonas")),
+			connect.WithClientOptions(opts...),
+		),
+		savePersona: connect.NewClient[v1.SavePersonaRequest, v1.SavePersonaResponse](
+			httpClient,
+			baseURL+OwnerControlServiceSavePersonaProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("SavePersona")),
+			connect.WithClientOptions(opts...),
+		),
+		deletePersona: connect.NewClient[v1.DeletePersonaRequest, v1.DeletePersonaResponse](
+			httpClient,
+			baseURL+OwnerControlServiceDeletePersonaProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("DeletePersona")),
+			connect.WithClientOptions(opts...),
+		),
+		bindPersonaSession: connect.NewClient[v1.BindPersonaSessionRequest, v1.BindPersonaSessionResponse](
+			httpClient,
+			baseURL+OwnerControlServiceBindPersonaSessionProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("BindPersonaSession")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -913,6 +961,10 @@ type ownerControlServiceClient struct {
 	clearWake          *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
 	openWakeLink       *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
 	getScreenServers   *connect.Client[v1.GetScreenServersRequest, v1.GetScreenServersResponse]
+	listPersonas       *connect.Client[v1.ListPersonasRequest, v1.ListPersonasResponse]
+	savePersona        *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
+	deletePersona      *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
+	bindPersonaSession *connect.Client[v1.BindPersonaSessionRequest, v1.BindPersonaSessionResponse]
 }
 
 // Sign calls aide.relay.v1.OwnerControlService.Sign.
@@ -1109,6 +1161,42 @@ func (c *ownerControlServiceClient) GetScreenServers(ctx context.Context, req *v
 	return nil, err
 }
 
+// ListPersonas calls aide.relay.v1.OwnerControlService.ListPersonas.
+func (c *ownerControlServiceClient) ListPersonas(ctx context.Context, req *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error) {
+	response, err := c.listPersonas.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SavePersona calls aide.relay.v1.OwnerControlService.SavePersona.
+func (c *ownerControlServiceClient) SavePersona(ctx context.Context, req *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error) {
+	response, err := c.savePersona.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// DeletePersona calls aide.relay.v1.OwnerControlService.DeletePersona.
+func (c *ownerControlServiceClient) DeletePersona(ctx context.Context, req *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error) {
+	response, err := c.deletePersona.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// BindPersonaSession calls aide.relay.v1.OwnerControlService.BindPersonaSession.
+func (c *ownerControlServiceClient) BindPersonaSession(ctx context.Context, req *v1.BindPersonaSessionRequest) (*v1.BindPersonaSessionResponse, error) {
+	response, err := c.bindPersonaSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // OwnerControlServiceHandler is an implementation of the aide.relay.v1.OwnerControlService service.
 type OwnerControlServiceHandler interface {
 	// The server signs what a device of the owner asks (docs/accounts.md §3):
@@ -1169,6 +1257,18 @@ type OwnerControlServiceHandler interface {
 	// Where Computer Control looks for a path to a machine
 	// (docs/computer-control.md §7).
 	GetScreenServers(context.Context, *v1.GetScreenServersRequest) (*v1.GetScreenServersResponse, error)
+	// Contacts (docs/personas.md): the owner's long-lived names to hand work
+	// to, kept here so that every device of the owner has the same ones. Set
+	// by a trusted device; a relay that keeps none answers Unimplemented.
+	ListPersonas(context.Context, *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error)
+	// Adds a contact (no persona_id) or changes one. A change to what its
+	// sessions start with (machine, project, agent, model, effort, mode)
+	// forgets its session: the next message starts a new one.
+	SavePersona(context.Context, *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error)
+	// Forgets a contact. Its sessions stay.
+	DeletePersona(context.Context, *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error)
+	// Records the session a contact talks in now.
+	BindPersonaSession(context.Context, *v1.BindPersonaSessionRequest) (*v1.BindPersonaSessionResponse, error)
 }
 
 // NewOwnerControlServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1310,6 +1410,30 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 		connect.WithSchema(ownerControlServiceMethods.ByName("GetScreenServers")),
 		connect.WithHandlerOptions(opts...),
 	)
+	ownerControlServiceListPersonasHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceListPersonasProcedure,
+		svc.ListPersonas,
+		connect.WithSchema(ownerControlServiceMethods.ByName("ListPersonas")),
+		connect.WithHandlerOptions(opts...),
+	)
+	ownerControlServiceSavePersonaHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceSavePersonaProcedure,
+		svc.SavePersona,
+		connect.WithSchema(ownerControlServiceMethods.ByName("SavePersona")),
+		connect.WithHandlerOptions(opts...),
+	)
+	ownerControlServiceDeletePersonaHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceDeletePersonaProcedure,
+		svc.DeletePersona,
+		connect.WithSchema(ownerControlServiceMethods.ByName("DeletePersona")),
+		connect.WithHandlerOptions(opts...),
+	)
+	ownerControlServiceBindPersonaSessionHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceBindPersonaSessionProcedure,
+		svc.BindPersonaSession,
+		connect.WithSchema(ownerControlServiceMethods.ByName("BindPersonaSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.relay.v1.OwnerControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OwnerControlServiceSignProcedure:
@@ -1356,6 +1480,14 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 			ownerControlServiceOpenWakeLinkHandler.ServeHTTP(w, r)
 		case OwnerControlServiceGetScreenServersProcedure:
 			ownerControlServiceGetScreenServersHandler.ServeHTTP(w, r)
+		case OwnerControlServiceListPersonasProcedure:
+			ownerControlServiceListPersonasHandler.ServeHTTP(w, r)
+		case OwnerControlServiceSavePersonaProcedure:
+			ownerControlServiceSavePersonaHandler.ServeHTTP(w, r)
+		case OwnerControlServiceDeletePersonaProcedure:
+			ownerControlServiceDeletePersonaHandler.ServeHTTP(w, r)
+		case OwnerControlServiceBindPersonaSessionProcedure:
+			ownerControlServiceBindPersonaSessionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1451,6 +1583,22 @@ func (UnimplementedOwnerControlServiceHandler) OpenWakeLink(context.Context, *v1
 
 func (UnimplementedOwnerControlServiceHandler) GetScreenServers(context.Context, *v1.GetScreenServersRequest) (*v1.GetScreenServersResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.GetScreenServers is not implemented"))
+}
+
+func (UnimplementedOwnerControlServiceHandler) ListPersonas(context.Context, *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.ListPersonas is not implemented"))
+}
+
+func (UnimplementedOwnerControlServiceHandler) SavePersona(context.Context, *v1.SavePersonaRequest) (*v1.SavePersonaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.SavePersona is not implemented"))
+}
+
+func (UnimplementedOwnerControlServiceHandler) DeletePersona(context.Context, *v1.DeletePersonaRequest) (*v1.DeletePersonaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.DeletePersona is not implemented"))
+}
+
+func (UnimplementedOwnerControlServiceHandler) BindPersonaSession(context.Context, *v1.BindPersonaSessionRequest) (*v1.BindPersonaSessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.BindPersonaSession is not implemented"))
 }
 
 // MessageServiceClient is a client for the aide.relay.v1.MessageService service.

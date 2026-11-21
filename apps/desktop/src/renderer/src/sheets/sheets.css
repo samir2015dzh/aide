@@ -40,3 +40,8 @@
 .sheet .erase-spin{width:11px;height:11px;border-radius:50%;border:2px solid var(--fill2);border-top-color:var(--l1);animation:wk-spin .8s linear infinite}
 /* New Session (sheets/NewSession.tsx). */
 .sheet .ns-prompt{height:auto;min-height:96px;padding:7px 9px;line-height:1.5;resize:vertical}
+.sheet .contacts{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-height:240px;overflow:auto}
+.sheet .contact{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;cursor:default}
+.sheet .contact.on{background:var(--fill2)}
+.sheet .contact-t{display:flex;flex-direction:column;flex:1;min-width:0;font-size:13px}
+.sheet .contact-t .muted{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

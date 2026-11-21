@@ -287,6 +287,32 @@ message AgentDefaults {
   string mode = 5;
 }
 
+// Persona is a contact (docs/personas.md): a name the owner hands work to,
+// with what the sessions it starts run with. It grants nothing: the
+// sessions are the owner's, started by the owner's device, and their mode
+// is one of the agent's own per-session presets.
+message Persona {
+  // "p_…", given by the relay.
+  string persona_id = 1;
+  string name = 2;
+  // Its avatar: one of the built-in icons (docs/personas.md §2) and a
+  // colour, "#rrggbb".
+  string icon = 3;
+  string color = 4;
+  // Where its sessions run, and with what (aide.session.v1.StartSessionRequest):
+  // empty model, effort and mode follow the machine's defaults for the agent.
+  string machine_id = 5;
+  string project_id = 6;
+  string agent = 7;
+  string model = 8;
+  string effort = 9;
+  string mode = 10;
+  // The session it talks in now; "" before its first message, or once
+  // what its sessions start with changed.
+  string session_id = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
 enum AgentSpeed {
   // The agent's own setting.
   AGENT_SPEED_UNSPECIFIED = 0;
