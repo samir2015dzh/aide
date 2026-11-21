@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,9 +48,7 @@ func binaries(t *testing.T) string {
 		for _, pkg := range []string{"./cmd/aide-relay", "./cmd/aided", "./cmd/aide", "./internal/provider/acp/fakeacp", "./bench/fakecodex"} {
 			cmd := filepath.Base(pkg)
 			args := []string{"build", "-o", filepath.Join(binDir, cmd+exe)}
-			// AIDE_E2E_RACE: 1 for every binary, or the ones named, comma-separated
-			// (a pull request races what its changes reach: scripts/ci_select.py).
-			if r := os.Getenv("AIDE_E2E_RACE"); r == "1" || slices.Contains(strings.Split(r, ","), cmd) {
+			if os.Getenv("AIDE_E2E_RACE") != "" {
 				args = append(args, "-race") // the binaries exit 66 on a data race
 			}
 			out, err := exec.Command("go", append(args, pkg)...).CombinedOutput()

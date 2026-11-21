@@ -124,15 +124,15 @@ jobs:
       - name: end-to-end (scripted agents)
         shell: bash
         env:
-          # Race-detector binaries (a data race fails the test): every one on
-          # main's pushes and the daily run; on a pull request, those select
-          # found its changes reach.
+          # Race-detector binaries (a data race fails the test): on main's pushes
+          # and the daily run; on a pull request, when its changes reach any of
+          # them (select).
           AIDE_E2E_RACE: ${{ needs.select.outputs.race }}
         run: |
           go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
           run=$(python3 scripts/e2e_shards.py run-pattern --of ${{ strategy.job-total }} --shard ${{ matrix.shard }} "$RUNNER_TEMP/e2e-tests.txt")
           echo "this shard: $run"
-          echo "race detector: ${AIDE_E2E_RACE:-none} (1 = every binary)"
+          echo "race detector: ${AIDE_E2E_RACE:-off} (1 = on, every binary)"
           # make e2e, with this shard's tests and -v for the ledger.
           go test ./e2e/ -count=1 -timeout 45m -v -run "$run" 2>&1 | tee "$RUNNER_TEMP/e2e.log"
       - if: always()
@@ -164,7 +164,7 @@ jobs:
           logs=()  # one per shard of the e2e matrix, in order
           for i in 1 2 3 4; do logs+=("$RUNNER_TEMP/shards/e2e-shard-$i/e2e.log"); done
           python3 scripts/e2e_shards.py ledger --of 4 "$RUNNER_TEMP/e2e-tests.txt" "${logs[@]}" | tee "$RUNNER_TEMP/ledger.txt"
-          { echo "race detector in every shard: ${RACE:-none} (1 = every binary)"; echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "race detector in every shard: ${RACE:-off} (1 = on, every binary)"; echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
         env:
           RACE: ${{ needs.select.outputs.race }}
   # One check for the whole Linux line, whatever select skipped: red when any
