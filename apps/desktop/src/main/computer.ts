@@ -24,3 +24,5 @@ export async function openComputerPermission(kind: unknown) {
   }
   await shell.openExternal(panes[kind]);
 }
+
+// CI sample for work order #33, not to be merged.
