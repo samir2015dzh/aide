@@ -1,5 +1,10 @@
 # Her on Linux
 
+> **Gone (2026-11-22):** Aide no longer has Her (work order #17). §3 to §6
+> and §8 describe her as she was; the release has no her, her PDF
+> component or agent-desktop any more, and `install.sh` and updates remove
+> them from a machine that had them. Kept as the record.
+
 > **Superseded in part (2026-11-20) by [accounts.md](accounts.md):** a Linux
 > computer logs in with the server, the account and the password like any
 > other (`install.sh <server>`, `aided login`). There is no trusted device

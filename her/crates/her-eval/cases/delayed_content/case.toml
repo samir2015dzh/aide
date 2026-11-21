@@ -1,4 +1,0 @@
-description = "The answer appears only after a few seconds"
-prompt = "On {base}/ start the report and tell me the confirmation code it gives you."
-[[expect]]
-answer = "RPT-58213"

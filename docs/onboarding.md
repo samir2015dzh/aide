@@ -756,8 +756,9 @@ comfortable and widen who can use it.
   the code `/app-login?cli=1` shows, another joining by its code with the
   digits, approving a machine and an agent with the passphrase, removing a
   lost device, and a machine's user refused.
-- **Wording**: `internal/words` fails on "your Mac", "Aide.app" or
-  "Touch ID" in Go strings, outside code that picks a device's words.
+- **Wording**: `internal/words` failed on "your Mac", "Aide.app" or
+  "Touch ID" in Go strings, outside code that picks a device's words
+  (removed 2026-11-22 with the code reduction, work order #17).
 
 ## 12. Decisions
 
