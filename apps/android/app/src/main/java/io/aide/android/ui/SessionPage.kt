@@ -156,7 +156,11 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
     when (item) {
         is Item.User -> Column(pad.fillMaxWidth(), horizontalAlignment = Alignment.End) {
             val by = when {
-                dsh -> if (item.from == "owner") t("Sent from Aide", "经 Aide 发送") else null
+                dsh -> when (item.from) {
+                    "owner" -> t("Sent from Aide", "经 Aide 发送")
+                    "" -> null
+                    else -> item.fromName.ifEmpty { item.from }.let { t("$it via Aide", "$it 经 Aide 发送") }
+                }
                 item.from.isEmpty() || item.from == starter -> null
                 item.from == "owner" -> t("You", "你")
                 else -> item.fromName.ifEmpty { item.from }

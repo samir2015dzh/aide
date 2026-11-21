@@ -100,8 +100,15 @@ func List(home string, skip func(id, cwd string) bool) ([]*machinev1.DSHSession,
 }
 
 // Read reads one session: what List tells of it, and its conversation as
-// session events (seq: DSH's own, plus one).
+// session events (seq: DSH's own, plus one). Messages sent from Aide are
+// the owner's.
 func Read(home, id string) (*machinev1.DSHSession, []*sessionv1.SessionEvent, error) {
+	return ReadAs(home, id, nil)
+}
+
+// ReadAs is Read, with who naming the agents that sent messages from
+// Aide.
+func ReadAs(home, id string, who Sender) (*machinev1.DSHSession, []*sessionv1.SessionEvent, error) {
 	if id == "" {
 		return nil, nil, ErrNotFound
 	}
@@ -130,7 +137,7 @@ func Read(home, id string) (*machinev1.DSHSession, []*sessionv1.SessionEvent, er
 		if log.problem != "" {
 			return s, nil, nil
 		}
-		return s, log.transcript(), nil
+		return s, log.transcript(who), nil
 	}
 	return nil, nil, ErrNotFound
 }

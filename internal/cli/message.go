@@ -852,7 +852,7 @@ type sentJSON struct {
 }
 
 func (a *app) messageSendCmd() *cobra.Command {
-	var to, text, file, subject, replyTo, request, status string
+	var to, text, file, subject, replyTo, model, permission, request, status string
 	var files []string
 	var wait bool
 	var timeout time.Duration
@@ -866,6 +866,11 @@ running now, it joins it (and answers its question); otherwise it waits for a tu
 machine is offline it waits at the post office. Files (-f) need the machine online.
 
 To an agent: the message waits in its inbox until it reads it. --wait waits for its reply.
+
+To a DeepSeek Harness session Aide did not start (dsh_…): only one the owner took over (接管 in the
+Aide app; "aide session get" says takeover). It goes through the Aide plugin in DSH Desktop, after the
+turn running there, shown as yours. --model provider/model[/effort] and --permission <preset> set what
+the session goes on with first (the choices: "aide session get <dsh_…>").
 
 A managed workspace's coordinator answers a session's request with --workspace-request and --status
 (approved, rejected or provisioned); the message is the reply's words (docs/workspace-requests.md).`,
@@ -891,6 +896,15 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithTimeout(ctx, timeout)
 				defer cancel()
+			}
+			if _, session, _ := strings.Cut(to, "/"); isNative(to) || isNative(session) {
+				if len(atts) > 0 || wait || subject != "" || replyTo != "" {
+					return &exitError{code: exitUsage, kind: "usage", err: errors.New("a DSH session takes text only: no -f, --wait, --subject or --reply-to")}
+				}
+				return a.sendNative(ctx, cmd, firstNonEmpty(session, to), body, model, permission)
+			}
+			if model != "" || permission != "" {
+				return &exitError{code: exitUsage, kind: "usage", err: errors.New("--model and --permission are for a DSH session (dsh_…)")}
 			}
 			c, machines, err := a.connect(ctx, nil)
 			if err != nil {
@@ -952,6 +966,8 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 	cmd.Flags().StringVar(&status, "status", "", "with --workspace-request: approved, rejected or provisioned")
 	cmd.Flags().BoolVar(&wait, "wait", false, "to a session: wait for the turn the message is in; to an agent: wait for its reply")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, timeoutHelp)
+	cmd.Flags().StringVar(&model, "model", "", "to a DSH session: the model it goes on with, provider/model[/effort]")
+	cmd.Flags().StringVar(&permission, "permission", "", "to a DSH session: the permission preset it goes on with")
 	cmd.MarkFlagRequired("to")
 	return cmd
 }

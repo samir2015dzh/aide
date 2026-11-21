@@ -11,7 +11,7 @@ import { DshHost, type DshContext } from "./host.ts";
 import { BridgeServer } from "./server.ts";
 
 export const name = "aide-dsh-bridge";
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 
 interface Context extends DshContext {
   effect(execute: () => () => Promise<void> | void, label?: string): unknown;

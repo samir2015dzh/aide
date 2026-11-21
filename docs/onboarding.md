@@ -495,6 +495,16 @@ agent is shown in one of three states:
 
 Aide never signs in for them (the onboarding concepts).
 
+Claude Code counts as signed in when its own `claude auth status` says so,
+with `ANTHROPIC_API_KEY` set, or when the Claude desktop app is signed in:
+the owner who uses only the app has no sign-in of the CLI's own. The app's
+is read from its settings (`config.json` in its data folder, found as its
+Claude Code is: `%APPDATA%\Claude`, `%LOCALAPPDATA%\Claude-Data\claude_<id>`,
+an MSIX package's redirected copy, or `~/Library/Application Support/Claude`):
+an OAuth token cache (`oauth:tokenCacheV2` or `oauth:tokenCache`), the
+account it last knew (`lastKnownAccountUuid`) and `windowSizeWasSignedIn`,
+all three; only whether they are there is read, never the token.
+
 ### 6.7 Projects on the machine
 
 `aided project add <folder> [--name] [--in-place] [--base main] [--agents

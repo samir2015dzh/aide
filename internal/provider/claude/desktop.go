@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,6 +52,54 @@ func desktopIndexes(home, appData, localAppData string) []string {
 		dirs = append(dirs, foldersNamed(root, "claude-code-sessions")...)
 	}
 	return dirs
+}
+
+// desktopUserData are the folders the desktop app may keep its settings
+// (config.json) in: Claude and Claude-3p under ~/Library/Application
+// Support on macOS; on Windows each of windowsRoots, and each folder at
+// most two down one that holds its claude-code or claude-code-sessions
+// (such as Claude-Data\claude_<package id>), found by that rule, not by
+// the names seen on one computer.
+func desktopUserData(home, appData, localAppData string) []string {
+	dirs := []string{filepath.Join(home, "Library", "Application Support", "Claude"), filepath.Join(home, "Library", "Application Support", "Claude-3p")}
+	for _, root := range windowsRoots(appData, localAppData) {
+		dirs = append(dirs, root)
+		for _, d := range append(foldersNamed(root, "claude-code"), foldersNamed(root, "claude-code-sessions")...) {
+			if p := filepath.Dir(d); !slices.Contains(dirs, p) {
+				dirs = append(dirs, p)
+			}
+		}
+	}
+	return dirs
+}
+
+// desktopSignedIn: the desktop app is signed in, as the config.json in one
+// of dirs says: an OAuth token cache (oauth:tokenCacheV2, or the older
+// oauth:tokenCache), the account it last knew (lastKnownAccountUuid), and
+// windowSizeWasSignedIn true, all three. Only whether they are there is
+// read, never what the token is.
+func desktopSignedIn(dirs []string) bool {
+	for _, d := range dirs {
+		b, err := os.ReadFile(filepath.Join(d, "config.json"))
+		if err != nil {
+			continue
+		}
+		var c map[string]json.RawMessage
+		if json.Unmarshal(b, &c) != nil {
+			continue
+		}
+		str := func(k string) string {
+			var v string
+			json.Unmarshal(c[k], &v)
+			return v
+		}
+		var signedIn bool
+		json.Unmarshal(c["windowSizeWasSignedIn"], &signedIn)
+		if (str("oauth:tokenCacheV2") != "" || str("oauth:tokenCache") != "") && str("lastKnownAccountUuid") != "" && signedIn {
+			return true
+		}
+	}
+	return false
 }
 
 // desktopAccountDir is the <account>/<organization> folder new records go

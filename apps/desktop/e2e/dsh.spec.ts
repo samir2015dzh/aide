@@ -7,7 +7,7 @@ import { fixture, launch, snap } from "./app";
 // for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
 // (here the real plugin in a stand-in DSH Host, which writes it into the session as DSH would) and
 // comes back marked as sent from Aide. With DSH Desktop gone, the send fails saying so and the
-// text stays. Off again, read only.
+// text stays. Off again, read only. With no session of DSH's found, the page names the DSH home it read.
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -39,9 +39,19 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   const box = page.getByRole("textbox", { name: "给 DSH 的消息" });
   await expect(box).toBeVisible();
   await expect(page.getByText("DSH Desktop 里还没有 Aide 插件")).toHaveCount(0);
+  // What the session goes on with: DSH's models (with their efforts) and permission presets, as the plugin lists them.
+  const model = page.getByRole("combobox", { name: "模型" });
+  const perm = page.getByRole("combobox", { name: "权限" });
+  await expect(model).toBeVisible({ timeout: 30_000 });
+  await model.selectOption({ label: "DeepSeek V4 · high" });
+  await perm.selectOption({ label: "Auto review" });
+  await snap(page, "dsh-takeover-picks");
   await box.fill("接着把测试补上");
   await page.getByRole("button", { name: "发送" }).click();
   await expect(page.getByRole("status").filter({ hasText: "已发送。" })).toBeVisible({ timeout: 30_000 });
+  const actions = fs.readFileSync(fixture.dshLog! + ".actions", "utf8");
+  expect(actions).toContain('"reasoningEffort":"high"');
+  expect(actions).toContain('"/permission auto"');
   await expect(box).toHaveValue("");
   const sent = page.locator(".dsh-msg.user").filter({ hasText: "接着把测试补上" });
   await expect(sent).toBeVisible({ timeout: 30_000 });
@@ -77,5 +87,13 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await takeover.click();
   await expect(takeover).toHaveAttribute("aria-checked", "false");
   await expect(box).toHaveCount(0);
+
+  // No session of DSH's found: the page says which DSH home it read, and how to point Aide at another.
+  fs.rmSync(path.join(fixture.dshHome!, "sessions"), { recursive: true });
+  await expect(list).toContainText("你的机器上没有 DeepSeek Harness 自己的会话。", { timeout: 30_000 });
+  await expect(list).toContainText("上读取的目录：");
+  await expect(list.locator(".dsh-home .mono")).toHaveText(fixture.dshHome!);
+  await expect(list).toContainText("DSH_HOME");
+  await snap(page, "dsh-none-home");
   await app.close();
 });

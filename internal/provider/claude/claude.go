@@ -269,6 +269,12 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	if !info.LoggedIn && os.Getenv("ANTHROPIC_API_KEY") != "" {
 		info.LoggedIn = true
 	}
+	// Signed in in the Claude desktop app, which keeps its sign-in in its
+	// own settings, not where the CLI looks (the owner uses only the app).
+	if !info.LoggedIn {
+		home, _ := os.UserHomeDir()
+		info.LoggedIn = desktopSignedIn(desktopUserData(home, os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA")))
+	}
 	info.Models = Models
 	return info
 }

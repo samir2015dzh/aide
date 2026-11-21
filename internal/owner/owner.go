@@ -129,6 +129,25 @@ type Owner struct {
 	directMu   sync.Mutex
 	direct     map[string][]string // machineID -> normalized direct_addrs, persisted under kDirectAddrs
 	lastDirect map[string]string   // machineID -> last winning direct address, tried first on reconnect
+
+	// dshSeen: each machine's DSH sessions as ListDSHSessions last read
+	// them, listed as lost while it can't be reached (in memory only).
+	dshMu   sync.Mutex
+	dshSeen map[string]dshSeen
+	// claudeSeen: the same for the Claude desktop app's sessions.
+	claudeSeen map[string]claudeSeen
+}
+
+// claudeSeen is a machine's Claude sessions, and when they were read.
+type claudeSeen struct {
+	at      time.Time
+	entries []*localv1.ClaudeSessionEntry
+}
+
+// dshSeen is a machine's DSH sessions, and when they were read.
+type dshSeen struct {
+	at      time.Time
+	entries []*localv1.DSHSessionEntry
 }
 
 const (
@@ -1519,7 +1538,9 @@ func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.Lis
 }
 
 // ListDSHSessions gathers the DeepSeek Harness sessions Aide did not
-// start on the machines, newest activity first.
+// start on the machines, newest activity first. A machine that can't be
+// reached has its sessions as last read here, marked lost: their state is
+// last known, never taken for what they do now (docs/session-states.md).
 func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1.ListDSHSessionsResponse, error) {
 	on, off, err := o.onlineMachines(ctx, machineID)
 	if err != nil {
@@ -1527,12 +1548,20 @@ func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1
 	}
 	var mu sync.Mutex
 	out := &localv1.ListDSHSessionsResponse{Unreachable: off}
+	now := time.Now()
 	add := func(res *machinev1.ListDSHSessionsResponse, meta *localv1.Machine) {
+		entries := dshEntries(res, meta.MachineId, meta.MachineName, now)
+		o.dshMu.Lock()
+		if o.dshSeen == nil {
+			o.dshSeen = map[string]dshSeen{}
+		}
+		o.dshSeen[meta.MachineId] = dshSeen{at: now, entries: entries}
+		o.dshMu.Unlock()
 		mu.Lock()
 		defer mu.Unlock()
-		out.Sessions = append(out.Sessions, dshEntries(res, meta.MachineId, meta.MachineName)...)
-		if res.Bridge != nil {
-			out.Bridges = append(out.Bridges, &localv1.DSHBridgeEntry{MachineId: meta.MachineId, Bridge: res.Bridge})
+		out.Sessions = append(out.Sessions, entries...)
+		if res.Bridge != nil || res.DshHome != "" {
+			out.Bridges = append(out.Bridges, &localv1.DSHBridgeEntry{MachineId: meta.MachineId, Bridge: res.Bridge, DshHome: res.DshHome})
 		}
 	}
 	bad, err := o.fanOut(ctx, on, func(l *machine.Local, meta *localv1.Machine) error {
@@ -1548,20 +1577,128 @@ func (o *Owner) ListDSHSessions(ctx context.Context, machineID string) (*localv1
 		}
 		return err
 	})
+	if err != nil {
+		// The relay can't be reached: neither can the other machines, whose
+		// sessions are then lost, as Aide's own are; this one's still read.
+		for _, n := range on {
+			if !n.Local {
+				bad = append(bad, &localv1.Unreachable{MachineId: n.MachineId, MachineName: n.MachineName, Error: err.Error()})
+			}
+		}
+	}
 	out.Unreachable = append(out.Unreachable, bad...)
+	out.Sessions = append(out.Sessions, o.lostDSHEntries(out.Unreachable)...)
 	slices.SortStableFunc(out.Sessions, func(a, b *localv1.DSHSessionEntry) int {
 		return b.Session.LastActivityAt.AsTime().Compare(a.Session.LastActivityAt.AsTime())
 	})
 	slices.SortFunc(out.Bridges, func(a, b *localv1.DSHBridgeEntry) int { return strings.Compare(a.MachineId, b.MachineId) })
-	return out, err
+	return out, nil
 }
 
-func dshEntries(res *machinev1.ListDSHSessionsResponse, machineID, machineName string) []*localv1.DSHSessionEntry {
+func dshEntries(res *machinev1.ListDSHSessionsResponse, machineID, machineName string, readAt time.Time) []*localv1.DSHSessionEntry {
 	var out []*localv1.DSHSessionEntry
 	for _, s := range res.Sessions {
-		out = append(out, &localv1.DSHSessionEntry{MachineId: machineID, MachineName: machineName, Session: s})
+		out = append(out, &localv1.DSHSessionEntry{MachineId: machineID, MachineName: machineName, Session: s, ReadAt: timestamppb.New(readAt)})
 	}
 	return out
+}
+
+// lostDSHEntries is the DSH sessions last read of the machines in off,
+// marked lost.
+func (o *Owner) lostDSHEntries(off []*localv1.Unreachable) []*localv1.DSHSessionEntry {
+	o.dshMu.Lock()
+	defer o.dshMu.Unlock()
+	var out []*localv1.DSHSessionEntry
+	for _, u := range off {
+		for _, e := range o.dshSeen[u.MachineId].entries {
+			l := proto.Clone(e).(*localv1.DSHSessionEntry)
+			l.Lost = true
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// ListClaudeSessions gathers the Claude Code sessions the Claude desktop
+// app lists on the machines (but those Aide started), newest activity
+// first; a machine that can't be reached has them as last read here,
+// lost, as ListDSHSessions does.
+func (o *Owner) ListClaudeSessions(ctx context.Context, machineID string) (*localv1.ListClaudeSessionsResponse, error) {
+	on, off, err := o.onlineMachines(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	var mu sync.Mutex
+	out := &localv1.ListClaudeSessionsResponse{Unreachable: off}
+	now := time.Now()
+	add := func(res *machinev1.ListClaudeSessionsResponse, meta *localv1.Machine) {
+		var entries []*localv1.ClaudeSessionEntry
+		for _, s := range res.Sessions {
+			entries = append(entries, &localv1.ClaudeSessionEntry{MachineId: meta.MachineId, MachineName: meta.MachineName, Session: s, ReadAt: timestamppb.New(now)})
+		}
+		o.dshMu.Lock()
+		if o.claudeSeen == nil {
+			o.claudeSeen = map[string]claudeSeen{}
+		}
+		o.claudeSeen[meta.MachineId] = claudeSeen{at: now, entries: entries}
+		o.dshMu.Unlock()
+		mu.Lock()
+		defer mu.Unlock()
+		out.Sessions = append(out.Sessions, entries...)
+		out.Indexes = append(out.Indexes, &localv1.ClaudeIndexEntry{MachineId: meta.MachineId, Indexes: res.Indexes})
+	}
+	bad, err := o.fanOut(ctx, on, func(l *machine.Local, meta *localv1.Machine) error {
+		res, err := l.ClaudeSessions()
+		if err == nil {
+			add(res, meta)
+		}
+		return err
+	}, func(ctx context.Context, n *peer.Machine, meta *localv1.Machine) error {
+		res, err := n.Admin.ListClaudeSessions(ctx, &machinev1.ListClaudeSessionsRequest{})
+		if err == nil {
+			add(res, meta)
+		}
+		return err
+	})
+	if err != nil {
+		for _, n := range on {
+			if !n.Local {
+				bad = append(bad, &localv1.Unreachable{MachineId: n.MachineId, MachineName: n.MachineName, Error: err.Error()})
+			}
+		}
+	}
+	out.Unreachable = append(out.Unreachable, bad...)
+	o.dshMu.Lock()
+	for _, u := range out.Unreachable {
+		for _, e := range o.claudeSeen[u.MachineId].entries {
+			l := proto.Clone(e).(*localv1.ClaudeSessionEntry)
+			l.Lost = true
+			out.Sessions = append(out.Sessions, l)
+		}
+	}
+	o.dshMu.Unlock()
+	slices.SortStableFunc(out.Sessions, func(a, b *localv1.ClaudeSessionEntry) int {
+		return b.Session.LastActivityAt.AsTime().Compare(a.Session.LastActivityAt.AsTime())
+	})
+	slices.SortFunc(out.Indexes, func(a, b *localv1.ClaudeIndexEntry) int { return strings.Compare(a.MachineId, b.MachineId) })
+	return out, nil
+}
+
+// ReadClaudeSession reads one of them on a machine.
+func (o *Owner) ReadClaudeSession(ctx context.Context, req *localv1.ReadClaudeSessionRequest) (*machinev1.ReadClaudeSessionResponse, error) {
+	r := &machinev1.ReadClaudeSessionRequest{SessionId: req.SessionId, AfterSeq: req.AfterSeq, BeforeSeq: req.BeforeSeq, Limit: req.Limit, View: req.View}
+	m, err := o.findMachine(ctx, req.MachineId)
+	if err != nil {
+		return nil, err
+	}
+	if l := o.local(); m.Local && l != nil {
+		return l.ReadClaudeSession(r)
+	}
+	n, err := o.machineClient(ctx, m.MachineId)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.ReadClaudeSession(ctx, r)
 }
 
 // ReadDSHSession reads a DeepSeek Harness session on a machine.
@@ -1592,7 +1729,7 @@ func (o *Owner) SetDSHTakeover(ctx context.Context, req *localv1.SetDSHTakeoverR
 }
 
 func (o *Owner) SendDSHMessage(ctx context.Context, req *localv1.SendDSHMessageRequest) (*machinev1.SendDSHMessageResponse, error) {
-	r := &machinev1.SendDSHMessageRequest{SessionId: req.SessionId, Text: req.Text, RequestId: req.RequestId}
+	r := dshSend(req)
 	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.SendDSHMessageResponse, error) { return l.SendDSHMessage(ctx, r) },
 		func(n *peer.Machine) (*machinev1.SendDSHMessageResponse, error) {
 			return n.Admin.SendDSHMessage(ctx, r)
@@ -1631,6 +1768,21 @@ func onDSHMachine[T any](ctx context.Context, o *Owner, machineID string, local 
 		return zero, err
 	}
 	return remote(n)
+}
+
+// DSHSessionOptions are the models and permission presets DSH offers a
+// taken-over session on a machine.
+func (o *Owner) DSHSessionOptions(ctx context.Context, req *localv1.DSHSessionOptionsRequest) (*machinev1.DSHSessionOptionsResponse, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.DSHSessionOptionsResponse, error) {
+		return l.DSHSessionOptions(ctx, req.SessionId)
+	},
+		func(n *peer.Machine) (*machinev1.DSHSessionOptionsResponse, error) {
+			return n.Admin.DSHSessionOptions(ctx, &machinev1.DSHSessionOptionsRequest{SessionId: req.SessionId})
+		})
+}
+
+func dshSend(req *localv1.SendDSHMessageRequest) *machinev1.SendDSHMessageRequest {
+	return &machinev1.SendDSHMessageRequest{SessionId: req.SessionId, Text: req.Text, RequestId: req.RequestId, Model: req.Model, Permission: req.Permission}
 }
 
 func dshRead(req *localv1.ReadDSHSessionRequest) *machinev1.ReadDSHSessionRequest {

@@ -43,6 +43,17 @@ service MachineService {
   rpc ReadDSHSession(ReadDSHSessionRequest) returns (ReadDSHSessionResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // MachineAdminService.SendDSHMessage for an agent: only to a DSH session
+  // it may read (as ReadDSHSession) that the owner took over
+  // (SetDSHTakeover); the message is shown as the agent's. Nothing else
+  // an agent does reaches a DSH session.
+  rpc SendDSHMessage(SendDSHMessageRequest) returns (SendDSHMessageResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  // MachineAdminService.DSHSessionOptions, on the same terms.
+  rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (DSHSessionOptionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
 }
 
 message WatchRequest {
@@ -507,6 +518,24 @@ service MachineAdminService {
   rpc ReadDSHSession(ReadDSHSessionRequest) returns (ReadDSHSessionResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // The Claude Code sessions the Claude desktop app lists on this machine
+  // (its own index), that Aide did not start, newest activity first: read
+  // from the app's and Claude Code's files, which nothing here writes.
+  // Owner only.
+  // The models (with their reasoning efforts) and permission presets DSH
+  // offers a taken-over session, and the ones it has now, through the
+  // bridge plugin: what SendDSHMessage may set.
+  rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (DSHSessionOptionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  rpc ListClaudeSessions(ListClaudeSessionsRequest) returns (ListClaudeSessionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // One of them and a page of its conversation, from Claude Code's
+  // transcript, as session events. Read only. Owner only.
+  rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (ReadClaudeSessionResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
   // Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
   // on for one session (off for every session until then), then sends it
   // messages and stops its turn through the Aide bridge plugin in DSH
@@ -627,6 +656,9 @@ message ListDSHSessionsResponse {
   // The Aide bridge plugin in DSH Desktop, through which a session
   // taken over is sent messages (unset for an agent's call).
   DSHBridge bridge = 2;
+  // The DSH home the sessions are read from (unset for an agent's call):
+  // where to look when DSH Desktop has sessions this list lacks.
+  string dsh_home = 3;
 }
 
 // DSHBridge is the Aide bridge plugin as aided finds it.
@@ -669,6 +701,46 @@ message SendDSHMessageRequest {
   // Names the message for DSH, which drops a second one with the same id
   // (a retry); it starts "aide-". Empty: a new one.
   string request_id = 3;
+  // The model (and reasoning effort) the session goes on with, set in DSH
+  // before the message, as DSH's own model picker does; unset: as it is.
+  DSHModel model = 4;
+  // The permission preset the session goes on with (DSH's /permission);
+  // "": as it is.
+  string permission = 5;
+}
+
+// DSHModel is a model as DSH names it: its provider, the model, and the
+// reasoning effort ("" for the model's default).
+message DSHModel {
+  string provider = 1;
+  string model = 2;
+  string effort = 3;
+}
+
+message DSHSessionOptionsRequest {
+  string session_id = 1;
+}
+
+message DSHSessionOptionsResponse {
+  repeated DSHModelOption models = 1;
+  repeated DSHPermissionOption permissions = 2;
+  // What the session has now, as far as DSH tells (unset / "": not known).
+  DSHModel current_model = 3;
+  string current_permission = 4;
+}
+
+message DSHModelOption {
+  string provider = 1;
+  string provider_name = 2;
+  string model = 3;
+  string model_name = 4;
+  repeated string efforts = 5;
+}
+
+message DSHPermissionOption {
+  string id = 1;
+  string name = 2;
+  string description = 3;
 }
 
 message SendDSHMessageResponse {
@@ -760,6 +832,61 @@ message ReadDSHSessionResponse {
   // cut there, truncated set; its whole is not kept apart, so
   // ReadToolOutput can't read it), and a StatusChanged with reason
   // "compacted" where DSH compacted the conversation.
+  repeated aide.session.v1.SessionEvent events = 2;
+  bool has_more_before = 3;
+  bool has_more_after = 4;
+}
+
+message ListClaudeSessionsRequest {}
+
+message ListClaudeSessionsResponse {
+  repeated ClaudeSession sessions = 1;
+  // The Claude desktop app's index folders read (claude-code-sessions):
+  // where to look when the app has sessions this list lacks.
+  repeated string indexes = 2;
+}
+
+// ClaudeSession is a Claude Code session as the Claude desktop app lists
+// it (docs/claude-sessions.md).
+message ClaudeSession {
+  // The app's id of it ("local_…").
+  string session_id = 1;
+  // Claude Code's own id: its transcript's name.
+  string cli_session_id = 2;
+  // Its title in the app.
+  string title = 3;
+  // The folder it works in.
+  string cwd = 4;
+  // "owner/repo" of the GitHub repository the folder is a checkout of, as
+  // its own origin remote says; "" when it has none (no checkout, no
+  // origin, or not on GitHub). Never guessed from the conversation.
+  string repo = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_activity_at = 7;
+  // Archived in the app.
+  bool archived = 8;
+  string model = 9;
+  // The app's last word on it, after its last turn ("completed",
+  // "blocked", …); "" when it has none.
+  string status = 10;
+  // Why its conversation can't be read (no transcript here); "" when it
+  // can.
+  string error = 11;
+}
+
+message ReadClaudeSessionRequest {
+  string session_id = 1;
+  uint64 after_seq = 2;
+  uint64 before_seq = 3;
+  // 1 to 1000; 0 means 50.
+  uint32 limit = 4;
+  aide.session.v1.EventView view = 5;
+}
+
+message ReadClaudeSessionResponse {
+  ClaudeSession session = 1;
+  // Oldest first: the owner's prompts, Claude's replies, tool calls and
+  // their results (a result longer than 16 KiB is cut there).
   repeated aide.session.v1.SessionEvent events = 2;
   bool has_more_before = 3;
   bool has_more_after = 4;

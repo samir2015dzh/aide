@@ -5,6 +5,7 @@ import { agentName } from "@aide/ui";
 import { local } from "./api";
 import { Overview } from "./Overview";
 import { DSHSessions } from "./dsh/DSHSessions";
+import { ClaudeSessions } from "./claude/ClaudeSessions";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -89,6 +90,8 @@ export function MainWindow() {
           <SessionPage s={session} />
         ) : st.selection.kind === "dsh" && !st.status?.machineOnly ? (
           <DSHSessions />
+        ) : st.selection.kind === "claude" && !st.status?.machineOnly ? (
+          <ClaudeSessions />
         ) : (st.selection.kind === "her" || st.selection.kind === "progress") && !st.status?.machineOnly ? (
           <Suspense fallback={<div className="ctool drag" />}>
             <HerPage />

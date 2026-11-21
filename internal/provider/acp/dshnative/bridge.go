@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,9 @@ var (
 	ErrBridgeNotInstalled = errors.New("the Aide plugin has not run in DSH Desktop here: install it, then restart DSH Desktop")
 	// ErrBridgeNotRunning: one ran, and does not answer now.
 	ErrBridgeNotRunning = errors.New("the Aide plugin in DSH Desktop does not answer: open DSH Desktop (and check the plugin is on in its Plugins page)")
+	// ErrBridgeTooOld: the plugin in DSH Desktop predates choosing a
+	// session's model and permissions from Aide.
+	ErrBridgeTooOld = errors.New("the Aide plugin in DSH Desktop is older than this Aide and can't set a session's model or permissions: install the new one (准备安装…), then restart DSH Desktop")
 )
 
 // BridgeError is a refusal the bridge (or DSH behind it) answered with:
@@ -72,6 +76,46 @@ type Hello struct {
 		SessionController bool `json:"sessionController"`
 		Agents            bool `json:"agents"`
 	} `json:"services"`
+	// Features beyond the first version: "options" (Options), "selections"
+	// (a prompt's model and permission). An older plugin has none.
+	Features []string `json:"features"`
+}
+
+// Has: the bridge has feature f.
+func (h Hello) Has(f string) bool { return slices.Contains(h.Features, f) }
+
+// Model is a model as DSH names it (effort "": the model's default).
+type Model struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Effort   string `json:"effort,omitempty"`
+}
+
+// Selections are what a prompt sets on the session first: unset, as it is.
+type Selections struct {
+	Model      *Model `json:"model,omitempty"`
+	Permission string `json:"permission,omitempty"`
+}
+
+// Options are the models and permission presets DSH offers a session, and
+// its own now.
+type Options struct {
+	Models []struct {
+		Provider     string   `json:"provider"`
+		ProviderName string   `json:"providerName"`
+		Model        string   `json:"model"`
+		ModelName    string   `json:"modelName"`
+		Efforts      []string `json:"efforts"`
+	} `json:"models"`
+	Permissions []struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	} `json:"permissions"`
+	Current struct {
+		Model      *Model `json:"model"`
+		Permission string `json:"permission"`
+	} `json:"current"`
 }
 
 // Bridge is one connection to the bridge. Not for concurrent use.
@@ -147,10 +191,37 @@ func (c *Bridge) State(ctx context.Context, sessionID string) (live bool, status
 	return r.Live, r.Status, err
 }
 
-// Prompt queues text as the owner's next message in the session, named by
-// requestID (DSH drops a second one with the same id).
-func (c *Bridge) Prompt(ctx context.Context, sessionID, requestID, text string) error {
-	return c.call(ctx, "prompt", map[string]string{"sessionId": sessionID, "requestId": requestID, "text": text}, nil)
+// Prompt queues text as the next message in the session, named by
+// requestID (DSH drops a second one with the same id), after setting the
+// model and permission preset sel names. A bridge without "selections"
+// is not sent any: ErrBridgeTooOld.
+func (c *Bridge) Prompt(ctx context.Context, sessionID, requestID, text string, sel Selections) error {
+	p := map[string]any{"sessionId": sessionID, "requestId": requestID, "text": text}
+	if sel.Model != nil || sel.Permission != "" {
+		if !c.Hello.Has("selections") {
+			return ErrBridgeTooOld
+		}
+		if sel.Model != nil {
+			p["model"] = sel.Model
+		}
+		if sel.Permission != "" {
+			p["permission"] = sel.Permission
+		}
+	}
+	return c.call(ctx, "prompt", p, nil)
+}
+
+// Options are the models and permission presets the session may be set
+// to; ErrBridgeTooOld from a bridge without "options".
+func (c *Bridge) Options(ctx context.Context, sessionID string) (*Options, error) {
+	if !c.Hello.Has("options") {
+		return nil, ErrBridgeTooOld
+	}
+	var o Options
+	if err := c.call(ctx, "options", map[string]string{"sessionId": sessionID}, &o); err != nil {
+		return nil, err
+	}
+	return &o, nil
 }
 
 // Cancel stops the session's current turn; false when no Agent runs it in

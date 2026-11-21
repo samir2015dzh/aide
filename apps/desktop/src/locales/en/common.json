@@ -26,6 +26,7 @@
     "passwordArg": "password"
   },
   "sidebar": {
+    "claude": "Claude sessions",
     "label": "Sidebar",
     "search": "Search",
     "attention_one": "{{count}} item needs you",
@@ -223,6 +224,14 @@
     "notRunningBody": "Her is on, but isn’t running on that computer yet; it may be starting. Give it a moment, and this comes back by itself; if it doesn’t, restart Aide on that computer.",
     "failedBody": "Her is on, but couldn’t start on that computer: {{error}}. Restart Aide there; if that doesn’t help, turn Her off and on again in Settings › Machines."
   },
+  "claude": {
+    "title": "Claude sessions",
+    "note": "The Claude Code sessions the Claude app has on your machines (not those Aide started). Read only.",
+    "none": "The Claude app lists no Claude Code sessions on your machines.",
+    "noApp": "{{name}}: no Claude app data found.",
+    "completed": "Done",
+    "blocked": "Needs you"
+  },
   "dsh": {
     "title": "DeepSeek sessions",
     "note": "Sessions on your machines that DeepSeek Harness has of its own (opened in DSH, or by another tool). Read only, until you turn on Take Over for one: then you can send it messages from here.",
@@ -238,6 +247,10 @@
     "none": "No DeepSeek Harness sessions of its own on your machines.",
     "pick": "Choose a session to read it.",
     "unreachable": "{{name}} doesn't answer.",
+    "unreachableLastKnown": "{{name}} is lost: its sessions below are as last read.",
+    "lostNote": "{{name}} can't be reached: what is shown is as last read. Its conversation can be read once it is back.",
+    "readFrom": "Read from on {{name}}:",
+    "homeHint": "If DSH Desktop has sessions that are not here, it keeps them in another folder: set the user environment variable DSH_HOME to that folder, and Aide reads there.",
     "earlier": "Earlier",
     "empty": "Nothing written yet.",
     "turnFailed": "The turn failed.",
@@ -266,6 +279,10 @@
       "unknown": "Not known yet whether the Aide plugin in DSH Desktop runs."
     },
     "viaAide": "Sent from Aide",
+    "viaAideBy": "{{name}} via Aide",
+    "model": "Model",
+    "permission": "Permissions",
+    "asItIs": "As it is",
     "notSent": "Not sent: {{reason}}",
     "install": {
       "title": "Install the Aide plugin",
