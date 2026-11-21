@@ -5,10 +5,17 @@
       "Status, redone: a session's state and its connection are shown separately. When a machine drops for more than 30 seconds, its sessions are marked Lost, with the last known state and how long ago it was, instead of pretending to still run; a session that runs with nothing new for a while is marked too.",
       "The interface as the design settled it: desktop and Android both get the new colours and layout, and on Android Needs you is now the second tab.",
       "The relay's hosted mode is gone altogether: a server belongs to its owner alone, claimed with a code, and no client has a default server — the address is always typed in.",
-      "The tray's Needs-you badge on Windows is now orange, the same orange as Needs you in the app, so it reads as a state, not as part of the mark."
+      "The tray's Needs-you badge on Windows is now orange, the same orange as Needs you in the app, so it reads as a state, not as part of the mark.",
+      "The Her page shows this computer's Her: while she is off here, the page turns her on right there; another machine's Her shows only once you pick it, and the page says whose she is for as long as it does.",
+      "Several machines, told apart at a glance: session lists are grouped by machine (filtered by machine on Android), a session's machine shows beside its title, and where you message or take over a session it says which machine it goes to. With one machine none of it shows.",
+      "A coding agent listed on a machine's page now shows the program found for it, so one still listed after it was uninstalled can be told apart."
     ],
     "fixes": [
-      "Windows: the tray icon's translucent edge no longer glows light on a dark taskbar (pixels are now written premultiplied, in BGRA)."
+      "Windows: the tray icon's translucent edge no longer glows light on a dark taskbar (pixels are now written premultiplied, in BGRA).",
+      "Android: opening any DSH session no longer closes the app (the network is no longer read on the main thread).",
+      "The Grants page no longer lists a machine's Her twice (one of them already revoked); turning Her on again also ends any extra grant she held.",
+      "Windows: an installer at a version not above 0.0.0 (such as 0.0.0-local) left the Start menu shortcut and aide: links crashing as they started; packaging now refuses such a version.",
+      "Relay: contacts added in quick succession could be listed out of order; they are now listed in the order added."
     ]
   },
   "0.2.2": {
