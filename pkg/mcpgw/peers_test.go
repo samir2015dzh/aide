@@ -166,6 +166,21 @@ func TestConnectionsKeepTheirPeers(t *testing.T) {
 		t.Fatal(err)
 	}
 	until("the relay to drop the old grant's connection", func() bool { return !online() })
+	// ...and the gateway to see it gone, before the next call goes out on it.
+	until("the gateway to see the old connection dropped", func() bool {
+		f.g.mu.Lock()
+		k := f.g.peers[conn.ID]
+		f.g.mu.Unlock()
+		if k == nil {
+			return true
+		}
+		select {
+		case <-k.p.Lost():
+			return true
+		default:
+			return false
+		}
+	})
 	call()
 	call()
 	if n := dials.Load(); n != 3 || !online() {

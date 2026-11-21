@@ -128,6 +128,17 @@ func (p *Peer) Close() {
 	}
 }
 
+// Lost is closed once the kept relay connection is lost (the relay dropped
+// it); nil while there is none.
+func (p *Peer) Lost() <-chan struct{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.client == nil {
+		return nil
+	}
+	return p.client.Done()
+}
+
 // open returns the kept relay connection for a's command, connecting it
 // with a's credentials first. The command closes it when done; it stays
 // open for the next one.

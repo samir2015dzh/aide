@@ -510,7 +510,8 @@ test("settings 账号与设备 shows the identity, the devices logged in, the ac
   await page.evaluate(() => window.aide?.openSettings("devices"));
   await expect(nav(settings, "账号与设备")).toHaveAttribute("aria-current", "page");
   expect(app.windows()).toHaveLength(2);
-  await Promise.all([settings.waitForEvent("close"), settings.keyboard.down("Escape")]); // closes the window
+  // Escape closes the window, which can go before the key press reports back.
+  await Promise.all([settings.waitForEvent("close"), settings.keyboard.down("Escape").catch(() => {})]);
   expect(app.windows()).toHaveLength(1);
   await app.close();
 });
