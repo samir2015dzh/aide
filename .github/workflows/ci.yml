@@ -35,11 +35,6 @@ jobs:
         run: docker build -f deploy/relay/Dockerfile .
       - name: installer terminal interaction
         run: python3 scripts/test_install.py
-      - name: end-to-end (scripted agents)
-        run: make e2e
-        env:
-          # Race-detector binaries on one runner: a data race fails the test.
-          AIDE_E2E_RACE: '1'
       # The desktop app's and Her's TypeScript: types and unit tests (they ran on
       # the macOS app job, gone with the Mac app). After the end-to-end tests:
       # with pnpm here, TestDesktop would run, and Electron's sandbox can't on
@@ -57,6 +52,64 @@ jobs:
           pnpm --filter @aide/her-client test
           pnpm --filter @aide/desktop test
           pnpm --filter @aide/dsh-bridge test
+  # The end-to-end suite (make e2e), split into shards that run side by side:
+  # scripts/e2e_shards.py gives each shard its tests, balanced by the times in
+  # scripts/e2e_shard_times.json, and e2e-ledger checks that every test ran
+  # exactly once. No pnpm in these jobs: with it TestDesktop would run, and
+  # Electron's sandbox can't on this runner (it runs on windows-app).
+  e2e:
+    name: e2e (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      # A red shard leaves the others running: one run shows every failure.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: end-to-end (scripted agents)
+        shell: bash
+        env:
+          # Race-detector binaries in every shard: a data race fails the test.
+          AIDE_E2E_RACE: '1'
+        run: |
+          go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
+          run=$(python3 scripts/e2e_shards.py run-pattern --of ${{ strategy.job-total }} --shard ${{ matrix.shard }} "$RUNNER_TEMP/e2e-tests.txt")
+          echo "this shard: $run"
+          # make e2e, with this shard's tests and -v for the ledger.
+          go test ./e2e/ -count=1 -timeout 45m -v -run "$run" 2>&1 | tee "$RUNNER_TEMP/e2e.log"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/e2e.log
+          retention-days: 7
+  # Every listed test ran exactly once, in the shard it was given to; the
+  # summary carries the times measured, for scripts/e2e_shard_times.json.
+  e2e-ledger:
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-shard-*
+          path: ${{ runner.temp }}/shards
+      - name: every test exactly once
+        shell: bash
+        run: |
+          go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
+          logs=()  # one per shard of the e2e matrix, in order
+          for i in 1 2 3 4; do logs+=("$RUNNER_TEMP/shards/e2e-shard-$i/e2e.log"); done
+          python3 scripts/e2e_shards.py ledger --of 4 "$RUNNER_TEMP/e2e-tests.txt" "${logs[@]}" | tee "$RUNNER_TEMP/ledger.txt"
+          { echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
   # Windows (docs/windows.md): what is ported so far.
   windows:
     runs-on: windows-latest
