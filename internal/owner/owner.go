@@ -2043,23 +2043,49 @@ func (o *Owner) keptClients() []*localv1.Client {
 }
 
 // clientsFrom is the agents the relay listed (ListClients, or WatchOwner)
-// whose grants this owner signed.
+// whose grants this owner signed; those revoked here are marked revoked, as
+// the relay's own: it can keep listing a grant it was never told of the end
+// of (a revocation that reached the machines but not it), and such a one
+// showed beside the grant that replaced it, "Her on <machine>" twice.
 func (o *Owner) clientsFrom(res *relayv1.ListClientsResponse) []*localv1.Client {
+	return clientsFrom(res, o.ownerID, o.trust, o.revokedHere())
+}
+
+// revokedHere are the grants this device knows are revoked: those it
+// revoked, and those the owner's revocations its own machine applied name.
+func (o *Owner) revokedHere() map[string]bool {
+	out := map[string]bool{}
+	if rows, err := o.st.grants(); err == nil {
+		for _, r := range rows {
+			if r.revoked && r.grant != nil {
+				out[r.grant.GrantId] = true
+			}
+		}
+	}
+	if l := o.local(); l != nil {
+		for _, id := range l.RevokedGrants() {
+			out[id] = true
+		}
+	}
+	return out
+}
+
+func clientsFrom(res *relayv1.ListClientsResponse, ownerID string, trust *identity.Trust, revoked map[string]bool) []*localv1.Client {
 	byGrant := map[string]*localv1.Client{}
 	var out []*localv1.Client
 	for _, c := range res.Clients {
-		g, _, err := o.trust.VerifyGrant(c.Grant, time.Now())
+		g, _, err := trust.VerifyGrant(c.Grant, time.Now())
 		expired := false
 		if err != nil {
 			// Expired grants still show up so they can be renewed.
 			g = &identityv1.Grant{}
-			if identity.Unverified(c.Grant, g) != nil || g.OwnerId != o.ownerID {
+			if identity.Unverified(c.Grant, g) != nil || g.OwnerId != ownerID {
 				continue
 			}
 			expired = true
 		}
 		a := &localv1.Client{ClientId: g.ClientId, GrantId: g.GrantId, Label: g.ClientLabel, Fingerprint: identity.ShortFingerprint(g.ClientPublicKey),
-			Spec: specFromGrant(g), GrantVersion: g.Version, ExpiresAt: g.ExpiresAt, Online: c.Online && !expired, LastSeen: c.LastSeen, Revoked: c.Revoked,
+			Spec: specFromGrant(g), GrantVersion: g.Version, ExpiresAt: g.ExpiresAt, Online: c.Online && !expired, LastSeen: c.LastSeen, Revoked: c.Revoked || revoked[g.GrantId],
 			Custodian: g.Custodian, Icon: g.ClientIcon, Image: g.ClientImage, HerMachineId: g.HerMachineId}
 		if len(c.MachineIds) > 0 { // without removed machines; an update signs them away
 			a.Spec.MachineIds = c.MachineIds

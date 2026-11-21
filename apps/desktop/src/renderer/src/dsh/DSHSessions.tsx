@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MachineGroupHead, MachineTag, WritesTo } from "../MachineTag";
+import { groupByMachine, showGroups } from "../machineScope";
 import { useTranslation } from "react-i18next";
 import { agoText, dateOf, lostLine, transcript } from "@aide/core";
 import { DSHSessionState, type DSHBridge, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
@@ -71,6 +73,8 @@ export function DSHSessions() {
         : s.state === DSHSessionState.DSH_SESSION_STATE_ENDED
           ? t(s.turnOpen ? "dsh.endedMidTurn" : "dsh.ended")
           : t("dsh.unknown");
+  // Several machines: the list by machine, each group its header, so no two machines' sessions run together.
+  const grouped = showGroups(st.machines);
   return (
     <>
       <div className="ctool drag">
@@ -97,7 +101,10 @@ export function DSHSessions() {
               {homes.length > 0 && <p className="dsh-home">{t("dsh.homeHint")}</p>}
             </div>
           )}
-          {shown.map((e) => {
+          {groupByMachine(shown, (e) => e.machineId, st.machines).map((g) => (
+            <div key={g.machineId} role="group" aria-label={g.name}>
+              {grouped && <MachineGroupHead name={g.name} local={g.local} count={g.items.length} />}
+              {g.items.map((e) => {
             const s = e.session!;
             const at = dateOf(s.lastActivityAt);
             return (
@@ -111,12 +118,14 @@ export function DSHSessions() {
                 <span className="t">
                   <b>{s.title || s.sessionId}</b>
                   <span>
-                    {[stateText(e), at ? agoText(at, now) : "", e.machineName, baseName(s.cwd), s.archived ? t("dsh.archived") : ""].filter(Boolean).join(" · ")}
+                    {[stateText(e), at ? agoText(at, now) : "", grouped ? "" : e.machineName, baseName(s.cwd), s.archived ? t("dsh.archived") : ""].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               </button>
             );
-          })}
+              })}
+            </div>
+          ))}
           {nArchived > 0 || archived ? (
             <button className="link dsh-toggle" onClick={() => setArchived(!archived)}>
               {archived ? t("dsh.hideArchived") : t("dsh.showArchived", { count: nArchived })}
@@ -148,6 +157,7 @@ function LostSession({ entry, stateText }: { entry: DSHSessionEntry; stateText: 
       <div className="dsh-head">
         <div className="dsh-head-row">
           <h2>{s.title || s.sessionId}</h2>
+          <MachineTag machineId={entry.machineId} />
         </div>
         <span>{[stateText, entry.machineName, s.cwd].filter(Boolean).join(" · ")}</span>
       </div>
@@ -203,6 +213,7 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
       <div className="dsh-head">
         <div className="dsh-head-row">
           <h2>{s.title || s.sessionId}</h2>
+          <MachineTag machineId={entry.machineId} />
           <label className="dsh-takeover">
             {t("dsh.takeover")}
             <Switch on={takeover} label={t("dsh.takeover")} set={(on) => (on ? setAsking(true) : (setAsking(false), setOn(false)))} />
@@ -213,6 +224,7 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
       {asking && !takeover && (
         <div className="dsh-confirm" role="dialog" aria-label={t("dsh.takeoverAsk")}>
           <b>{t("dsh.takeoverAsk")}</b>
+          <WritesTo machineId={entry.machineId} />
           <ul>
             <li>{t("dsh.takeoverNote1")}</li>
             <li>{t("dsh.takeoverNote2")}</li>
@@ -430,6 +442,7 @@ function Composer({ entry, bridge, sent, failed }: { entry: DSHSessionEntry; bri
           )}
         </div>
       )}
+      <WritesTo machineId={entry.machineId} />
       <textarea
         aria-label={t("dsh.message")}
         placeholder={t(running ? "dsh.placeholderRunning" : "dsh.placeholder")}

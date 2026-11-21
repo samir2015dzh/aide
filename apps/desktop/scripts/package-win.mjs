@@ -24,7 +24,7 @@
 // so the files made elsewhere are an app without Her.
 //
 // Environment:
-//   VERSION                     version (default: package.json's)
+//   VERSION                     version (default: package.json's); above 0.0.0, as 0.0.1-local for one's own build (windows-version.mjs)
 //   AIDE_ARCH                x64 (default) or arm64
 //   AIDE_DIST                where to put it all (default: dist/)
 //   AIDE_RELEASE_URL         where the release's files are downloaded from, for the feed
@@ -47,6 +47,7 @@ import { agentDesktopBinaries, agentDesktopRelease } from "./agent-desktop.mjs";
 import { minimalPdf, pdfiumFor, pdfiumLibraryIn, pdfiumRelease } from "./pdfium.mjs";
 import { windowsIcons } from "./windows-icons.mjs";
 import { installSplash } from "./windows-splash.mjs";
+import { windowsVersionProblem } from "./windows-version.mjs";
 
 const desktop = path.resolve(import.meta.dirname, "..");
 const root = path.resolve(desktop, "../..");
@@ -54,6 +55,9 @@ const dist = path.resolve(process.env.AIDE_DIST || path.join(root, "dist"));
 const tmp = path.join(dist, "tmp-win");
 const pkg = JSON.parse(fs.readFileSync(path.join(desktop, "package.json"), "utf8"));
 const version = process.env.VERSION || pkg.version;
+// Before anything is built: an app at a version Squirrel's launcher can't start (windows-version.mjs).
+const versionProblem = windowsVersionProblem(version);
+if (versionProblem) throw new Error(`VERSION: ${versionProblem}`);
 const electronVersion = JSON.parse(fs.readFileSync(path.join(desktop, "node_modules/electron/package.json"), "utf8")).version;
 const arch = process.env.AIDE_ARCH || "x64";
 if (!["x64", "arm64"].includes(arch)) throw new Error(`AIDE_ARCH: ${arch}`);

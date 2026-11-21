@@ -4,6 +4,7 @@ import type { Session } from "@aide/proto/session";
 import { displayTitle, openedNews } from "@aide/core";
 import { local } from "./api";
 import { Icon } from "./icons";
+import { MachineTag } from "./MachineTag";
 import { layoutOf, setCard } from "./layout";
 import { keys, ownKeys } from "./platform";
 import { useStore } from "./store";
@@ -26,8 +27,12 @@ export function SessionPage({ s }: { s: Session }) {
   return (
     <>
       <div className="ctool drag">
-        <div className="ctitle">
-          <h2>{displayTitle(s)}</h2>
+        {/* The title line is the session's name alone; its machine (several machines only) sits right after it, in the bar. */}
+        <div className="ctitle-wrap">
+          <div className="ctitle">
+            <h2>{displayTitle(s)}</h2>
+          </div>
+          <MachineTag machineId={s.machineId} />
         </div>
         {/* A toolbar button as the sidebar's toggle is, highlighted while the info shows. */}
         <button
