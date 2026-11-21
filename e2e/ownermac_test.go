@@ -38,6 +38,7 @@ type ownerMac struct {
 	relayEnv   []string
 	relayDebug string // where the relay serves /metrics
 	ownerDebug string // where the owner's aided serves /metrics
+	vpsDebug   string // where vps-1 (farOwnerWithVPS) serves /metrics
 	repoHead   string // the owner's HEAD, which sessions must never move
 	addr       string // the owner's server, as a connection address (any login takes it)
 	server     string // the owner's server
