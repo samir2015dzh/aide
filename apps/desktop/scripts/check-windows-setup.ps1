@@ -36,11 +36,9 @@ foreach ($cli in "aide", "aided") {
   & (Join-Path $bin "$cli.exe") version
   if ($LASTEXITCODE -ne 0) { Fail "$cli version" }
 }
-# Her beside aided, which runs it from there, with what is hers.
-& (Join-Path $bin "her.exe") --version
-if ($LASTEXITCODE -ne 0) { Fail "her --version" }
-foreach ($f in "her-console\index.html", "pdfium.dll", "agent-desktop.exe") {
-  if (-not (Test-Path (Join-Path $bin $f))) { Fail "no $f beside her" }
+# Her is gone from the app: nothing of hers beside aided.
+foreach ($f in "her.exe", "her-console", "pdfium.dll", "agent-desktop.exe") {
+  if (Test-Path (Join-Path $bin $f)) { Fail "$f beside aided" }
 }
 $action = (Get-ScheduledTask -TaskName $task).Actions[0]
 Write-Host "logon task: $($action.Execute) $($action.Arguments)"

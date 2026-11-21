@@ -4,9 +4,7 @@
 package update
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
@@ -43,15 +41,14 @@ var (
 )
 
 // Programs are the programs an update replaces, where they are (Windows:
-// with aidedw, the windowless aided its service runs; elsewhere with her,
-// Her's kernel, which aided runs from beside itself).
+// with aidedw, the windowless aided its service runs).
 var Programs = programs()
 
 func programs() []string {
 	if runtime.GOOS == "windows" {
 		return []string{"aided.exe", "aidedw.exe", "aide.exe"}
 	}
-	return []string{"aided", "aide", "her"}
+	return []string{"aided", "aide"}
 }
 
 // legacyNames are the names the programs had before the rename
@@ -138,24 +135,20 @@ func placeLegacy(dir string, names []string) error {
 	return nil
 }
 
-// herConsole is the folder of her's console beside her, and
-// herConsoleAsset its archive in a release (docs/her-server.md §6.4).
-// herComputer is the folder of agent-desktop, which her's computer use
-// runs on a Linux desktop (docs/linux.md §5), and herPDF the folder of her
-// PDF worker and PDFium (§4), which must be her's own release's.
-const (
-	herConsole      = "her-console"
-	herConsoleAsset = "her-console.tar.gz"
-	herComputer     = "her-computer"
-	herPDF          = "her-pdf"
-)
+// herLeftovers are what versions with Her placed beside aided: her, Her's
+// kernel, and the folders beside her (her console, her computer use, her
+// PDF worker), with what an update kept of each as its previous. Aide no
+// longer has Her: an update removes them (docs/machine-updates.md).
+var herLeftovers = []string{"her", "her.exe", "her-console", "her-computer", "her-pdf"}
 
-// folders are the folders beside her that an update replaces whole, each
-// with its archive in a release.
-var folders = map[string]string{
-	herConsole:  herConsoleAsset,
-	herComputer: herComputer + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tar.gz",
-	herPDF:      herPDF + "-" + runtime.GOOS + "-" + runtime.GOARCH + ".tar.gz",
+// removeHerLeftovers removes herLeftovers from dir. One that runs (an
+// old her on Windows) stays until the next update.
+func removeHerLeftovers(dir string) {
+	for _, name := range herLeftovers {
+		for _, p := range []string{filepath.Join(dir, name), previousPath(dir, name), newPath(dir, name)} {
+			os.RemoveAll(p)
+		}
+	}
 }
 
 // asset is a program's file in a release: aided-linux-arm64,
@@ -279,11 +272,10 @@ func Dir() (string, error) {
 }
 
 // Install puts r's programs in dir over the ones there, keeping each old
-// one as .<name>.previous, and her's console with them. Each new program
-// must start and say r's version (her: start) before any is replaced. her
-// and its console go only from a release that carries them. On Windows a
-// running program can't be replaced, only renamed: the old one moves aside
-// instead.
+// one as .<name>.previous. Each new program must start and say r's version
+// before any is replaced. On Windows a running program can't be replaced,
+// only renamed: the old one moves aside instead. Once they are in place,
+// what versions with Her left in dir goes (herLeftovers).
 func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, error) {
 	lock, err := flock.Acquire(filepath.Join(dataDir, "update"))
 	if err != nil {
@@ -292,22 +284,17 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 	defer lock.Release()
 	var names []string
 	for _, name := range Programs {
-		if present(dir, name) && (!ownVersion(name) || r.sums[asset(name)] != "") {
+		if present(dir, name) {
 			names = append(names, name)
 		}
 	}
 	if names == nil {
 		return nil, fmt.Errorf("no Aide programs in %s", dir)
 	}
-	for _, name := range []string{herConsole, herComputer, herPDF} {
-		if st, err := os.Stat(filepath.Join(dir, name)); err == nil && st.IsDir() && r.sums[folders[name]] != "" {
-			names = append(names, name)
-		}
-	}
 	for _, name := range names {
 		if err := download(ctx, dir, name, r); err != nil {
 			for _, n := range names {
-				os.RemoveAll(newPath(dir, n))
+				os.Remove(newPath(dir, n))
 			}
 			return nil, err
 		}
@@ -315,13 +302,9 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 	for _, name := range names {
 		path := filepath.Join(dir, name)
 		prev := previousPath(dir, name)
-		os.RemoveAll(prev)
+		os.Remove(prev)
 		if !exists(path) {
 			// Only under its old name until now: nothing to move aside.
-		} else if folders[name] != "" { // a folder, moved aside whole
-			if err := os.Rename(path, prev); err != nil {
-				return nil, err
-			}
 		} else if runtime.GOOS == "windows" {
 			older, _ := filepath.Glob(prev + ".*")
 			for _, o := range older {
@@ -341,6 +324,7 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 			return nil, err
 		}
 	}
+	removeHerLeftovers(dir)
 	if err := placeLegacy(dir, names); err != nil {
 		return names, fmt.Errorf("updated, but not the programs' old names: %w", err)
 	}
@@ -350,9 +334,6 @@ func Install(ctx context.Context, dataDir, dir string, r *Release) ([]string, er
 // download puts name's next version beside it, checked.
 func download(ctx context.Context, dir, name string, r *Release) error {
 	file := asset(name)
-	if folders[name] != "" {
-		file = folders[name]
-	}
 	want := r.sums[file]
 	if want == "" {
 		return fmt.Errorf("%s is not in the release's signed checksum list", file)
@@ -365,77 +346,16 @@ func download(ctx context.Context, dir, name string, r *Release) error {
 		return fmt.Errorf("%s does not match its checksum", file)
 	}
 	tmp := newPath(dir, name)
-	if folders[name] != "" {
-		os.RemoveAll(tmp)
-		if err := unpack(body, tmp); err != nil {
-			return fmt.Errorf("cannot unpack %s: %w", file, err)
-		}
-		return nil
-	}
 	if err := os.WriteFile(tmp, body, 0o755); err != nil {
 		return fmt.Errorf("cannot write %s: %w", dir, err)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if ownVersion(name) {
-		if out, err := exec.CommandContext(ctx, tmp, "--version").Output(); err != nil {
-			return fmt.Errorf("the downloaded %s does not start: %v %s", name, err, bytes.TrimSpace(out))
-		}
-		return nil
-	}
 	out, err := exec.CommandContext(ctx, tmp, "version").Output()
 	if err != nil || strings.TrimSpace(string(out)) != r.Version {
 		return fmt.Errorf("the downloaded %s does not start as %s: %v %s", name, r.Version, err, bytes.TrimSpace(out))
 	}
 	return nil
-}
-
-// ownVersion: her has a version of its own, and goes only from a release
-// that carries it.
-func ownVersion(name string) bool { return name == "her" }
-
-// unpack writes the folders and files of a .tar.gz into dir, its programs
-// as programs.
-func unpack(body []byte, dir string) error {
-	zr, err := gzip.NewReader(bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	tr := tar.NewReader(zr)
-	for {
-		h, err := tr.Next()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		name := filepath.FromSlash(h.Name)
-		if !filepath.IsLocal(name) {
-			return fmt.Errorf("%q is outside the archive's folder", h.Name)
-		}
-		path := filepath.Join(dir, name)
-		switch h.Typeflag {
-		case tar.TypeDir:
-			err = os.MkdirAll(path, 0o755)
-		case tar.TypeReg:
-			var b []byte
-			if b, err = io.ReadAll(tr); err == nil {
-				os.MkdirAll(filepath.Dir(path), 0o755)
-				mode := os.FileMode(0o644)
-				if h.Mode&0o111 != 0 {
-					mode = 0o755
-				}
-				err = os.WriteFile(path, b, mode)
-			}
-		}
-		if err != nil {
-			return err
-		}
-	}
 }
 
 // State is what the updater keeps in <data dir>/update/update.json.

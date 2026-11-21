@@ -342,6 +342,103 @@ Decided not to fix (2026-10-19):
 - **The local socket admits every process of the same user**, including coding agents running with full access on the owner's Mac. Checking callers' code signatures (as Codex's and Claude's apps do for some of their sockets) would not change what such an agent can reach: it runs as the owner and can read aided's files (the device key, the session database) and drive the app's UI. What it cannot do is add trust: every grant, machine, device or wider scope needs the root key, i.e. the owner's Touch ID on the signer's panel, which shows what is really signed. So letting agents work on the owner's Mac means trusting them with everything on it except the root key. Stronger isolation, if ever needed, means running the agents sandboxed or as another user, not guarding the socket.
 - **`AddProject` is unsigned**, though it widens grants whose projects are `*`: the owner removed its signature on purpose.
 
+## 13. The window: sidebar, rail and overview
+
+Moved here on 2026-11-22 from `docs/her-team.md` §14 and §16, when Her was
+taken off the product (work order #17, batch B) and the Her documents were
+deleted. What follows is the part of those decisions the app still runs
+on; what only concerned Her (her page, her name tag, the team panel, her
+cards, the start page's Her rule) went with her. Code comments that still
+point at `docs/her-team.md` §14 or §16 mean this section.
+
+### 13.1 Decisions that stand
+
+- **The sidebar is navigation and the session list; it manages nothing**
+  (owner, 2026-11-17, on `docs/sidebar-b-demo.html`). It looks the same
+  with one agent on one machine as with twenty.
+- **Words** (2026-11-17): what the list holds is a **task** (任务) wherever
+  the owner reads it, in Chinese and English; "session" stays the name in
+  code, the protocol and the CLI. The page that was Work is **Overview**
+  (概览).
+- **New windows open 1240 × 800.** A window that quit on a session opens
+  on it again, with its unfinished answer (owner, 2026-11-15); otherwise
+  the window opens on the overview (`start.ts`).
+- **The rail.** The sidebar is expanded (272 px) or a 74 px rail; it is
+  never hidden, and which of the two is the owner's choice, kept from page
+  to page as in Mail and Finder: no click changes it (owner, 2026-11-15).
+  View › Expand Sidebar / Collapse Sidebar switches them.
+
+### 13.2 What the sidebar holds
+
+| Part | Rows | Marks |
+|---|---|---|
+| Top band | The sidebar toggle; Search (⌘K) at its end | |
+| Places | Overview (⌘1); DeepSeek Harness and Claude Desktop sessions, each only while that agent is found on a machine | Overview: an orange dot when something needs the owner, a ring while anything runs |
+| Sessions | The heading with the view menu at its end; every session, as the view lays them out | Per row, below |
+| Foot | The account ("Connected", no count of machines) | A dot only when not connected |
+
+**No numbers** anywhere in it: no unread count, no count of sessions, of
+groups or of machines. Counts are on the overview.
+
+**A row** is the coding agent's logo, the title (one line, cut), and one
+mark: orange, it waits for the owner; red, it failed; a ring, it runs;
+nothing, it is done. The state in words is for screen readers. With the
+view's metadata on, a second line says who sent the work to which agent,
+the project and the time ("Grok → Codex · aide": the arrow says who sent
+the work to whom). A click opens the session; hovering shows ⋯ in the
+mark's place; right-click for rename, archive and delete.
+
+**The view menu**: group (by who sent the work, status, date, project,
+agent, machine), sort, show. Until the owner picks a view (`viewChosen`)
+the list is **by status, titles alone**. Group headings collapse and carry
+no count.
+
+**Empty.** With no session at all the list says so, with a line on where
+sessions come from (a machine alone has its own line). By status, **In
+Progress stays** while nothing runs, with "None right now" under it
+(`alwaysActive` in `sessionSections`); Needs You shows only when something
+does. Archived sessions on request, older ones loaded at the end.
+
+Machines and agents are managed in Settings › Machines and Grants, from
+the account menu; their pages show a session count as a value.
+
+### 13.3 The rail
+
+The overview, then one logo for each coding agent with sessions at hand
+(waiting, failed, at work; `liveByAgent`), what waits first: the rail says
+who is at work, the sidebar on what. One session: the logo opens it.
+More: a menu beside it names the agent and lists each session's title and
+mark; one click opens it (the keyboard as in a native menu). The logo's
+tooltip says how its sessions stand ("Codex · 1 waiting for you · 1
+working"). Search and Expand are at its foot. The current place has the
+sidebar's fill and an accent bar on its left.
+
+### 13.4 The narrow window
+
+The info card gives way first, then the sidebar shrinks to its rail;
+asked for there, the sidebar shows over the conversation until it is put
+away, a page or a session is chosen, or the selection changes. With the
+card: 1102 px (the expanded sidebar, the conversation's 560 and the
+card's 270); the expanded sidebar alone 832 px (`layout.ts`).
+
+### 13.5 The overview
+
+Top to bottom: the tiles; unreachable machines; Attention (**Needs You**,
+answering in place: one click answers a simple question, `quickChoice`;
+sessions whose last turn failed; requests to connect and grants that
+end); the link map ("链路", kept as it is at the owner's request,
+2026-11-15); Working; **Recently Finished** (three); Usage. There is no
+All Sessions link: the sidebar's list is all sessions.
+
+### 13.6 Tests
+
+- Units: `liveByAgent`, `alwaysActive` and `quickChoice` in `@aide/core`;
+  the layouts (`layout.test.ts`); the start page (`start.test.ts`).
+- e2e (`apps/desktop/e2e`): `frame.spec.ts` (groups, rhythm, rows and
+  marks, view menu, collapse, row menu, narrow window), `team.spec.ts`
+  (places, marks, the rail and its agent menu), `sessionlist.spec.ts`,
+  `overview.spec.ts`, `onboarding.spec.ts` (the empty states).
+
 ## Appendix: sources
 
 **Frameworks and tooling**

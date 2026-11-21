@@ -32,9 +32,6 @@ env:
   TAG: ${{ github.ref_name }}
   # No build names a server (they are given to others; owner's ruling of
   # 2026-11-19): every login and pairing asks for the server's address.
-  # The secret of her's GitHub OAuth app, built into her (her-mcp oauth/client.rs): public once
-  # shipped, as a native app's is. Without it, signing in to GitHub's MCP server needs the user's own client.
-  HER_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.HER_GITHUB_OAUTH_CLIENT_SECRET }}
 jobs:
   # The version's highlights for users, in English and Chinese, from the app's
   # catalogs (apps/desktop/src/locales/*/releases.json): nothing is built
@@ -80,151 +77,21 @@ jobs:
             false) echo "::error::$TAG is published already; tag a new version"; exit 1 ;;
             *) gh release create "$TAG" --draft --prerelease --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" ;;
           esac
-  # her for Linux (docs/her-server.md §6.4), static with musl and without
-  # local-accounts as the Mac app's, built on a runner of each architecture
-  # in rust:alpine with her's toolchain; the binaries job signs it.
-  her:
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: build her
-        # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
-        env:
-          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
-        run: |
-          toolchain="$(sed -n 's/^channel = "\(.*\)"/\1/p' her/rust-toolchain.toml)"
-          docker run --rm -v "$PWD/her:/src" -w /src -e NIMBLEOFFICE_TOKEN -e HER_GITHUB_OAUTH_CLIENT_SECRET -e CARGO_NET_GIT_FETCH_WITH_CLI=true -e RUSTUP_TOOLCHAIN="$toolchain-$(uname -m)-unknown-linux-musl" "rust:$toolchain-alpine" \
-            sh -c 'apk add --no-cache build-base perl linux-headers git >/dev/null && { [ -z "$NIMBLEOFFICE_TOKEN" ] || git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf https://github.com/Eliseowzy/nimbleoffice; } && cargo build --profile dist --locked -p her-cli --bin her --no-default-features'
-          cp her/target/dist/her her-linux-${{ matrix.arch }}
-          ./her-linux-${{ matrix.arch }} --version
-      # her's PDF worker (docs/linux.md §4): the static her cannot load PDFium, so
-      # this second program does, linked against glibc 2.28 with cargo-zigbuild,
-      # as her's own release builds it (her/tools/release/release.mjs).
-      # RUSTUP_TOOLCHAIN, as for her above: the image's own toolchain. Without it
-      # rustup reads her/rust-toolchain.toml and adds its clippy and rustfmt on
-      # the first call, and cargo-zigbuild's first calls run at the same time,
-      # so two installs race ("detected conflict: 'bin/cargo-fmt'", v0.2.2).
-      - name: build her PDF worker
-        env:
-          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
-        run: |
-          toolchain="$(sed -n 's/^channel = "\(.*\)"/\1/p' her/rust-toolchain.toml)"
-          docker run --rm -v "$PWD/her:/src" -w /src -e NIMBLEOFFICE_TOKEN -e CARGO_NET_GIT_FETCH_WITH_CLI=true -e RUSTUP_TOOLCHAIN="$toolchain-$(uname -m)-unknown-linux-gnu" "rust:$toolchain-bookworm" \
-            sh -c 'apt-get update -qq >/dev/null && apt-get install -y -qq python3-pip >/dev/null && pip3 install --quiet --break-system-packages cargo-zigbuild && { [ -z "$NIMBLEOFFICE_TOKEN" ] || git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf https://github.com/Eliseowzy/nimbleoffice; } && cargo zigbuild --profile dist --locked -p her-docs --bin her-doc-worker --target "$(uname -m)-unknown-linux-gnu.2.28"'
-          cp "her/target/$(uname -m)-unknown-linux-gnu/dist/her-doc-worker" her-doc-worker-linux-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: her-linux-${{ matrix.arch }}
-          path: her-linux-${{ matrix.arch }}
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: her-doc-worker-linux-${{ matrix.arch }}
-          path: her-doc-worker-linux-${{ matrix.arch }}
-          if-no-files-found: error
-  # her for Windows, which install.ps1 puts beside aided on a PC that is
-  # only a machine (the app carries its own): built as her's releases are,
-  # with MSVC, for x64 alone (the fork has no Windows on Arm). The binaries job signs it.
-  her-windows:
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            triple: x86_64-pc-windows-msvc
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - name: Read access to the NimbleOffice fork
-        env:
-          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
-        run: |
-          # The fork's CI builds her without it too: warn, and let cargo say what it can't fetch.
-          if [ -z "$NIMBLEOFFICE_TOKEN" ]; then
-            echo "::warning::NIMBLEOFFICE_TOKEN is not set: cargo cannot fetch github.com/Eliseowzy/nimbleoffice if it is private"
-            exit 0
-          fi
-          git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
-          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
-      - name: build her
-        working-directory: her
-        run: |
-          rustup target add ${{ matrix.triple }}
-          cargo build --profile dist --locked -p her-cli --bin her --no-default-features --target ${{ matrix.triple }}
-          cp target/${{ matrix.triple }}/dist/her.exe ../her-windows-${{ matrix.arch }}.exe
-      - if: matrix.arch == 'amd64'
-        run: ./her-windows-amd64.exe --version
-      - uses: actions/upload-artifact@v4
-        with:
-          name: her-windows-${{ matrix.arch }}
-          path: her-windows-${{ matrix.arch }}.exe
-          if-no-files-found: error
   binaries:
-    needs: [notes, her, her-windows]
+    needs: notes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        id: setup-node-cache
-        with:
-          node-version: 24
-          cache: pnpm
-      # One readable line per cache, in the log and the run summary.
-      - name: cache hit
-        shell: bash
-        run: |
-          echo "cache hit, setup-node (pnpm) in binaries: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: her console
-        run: pnpm install --frozen-lockfile --filter "@aide/her-console..." && pnpm --dir her/apps/console build
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: her-*
-          path: ${{ runner.temp }}/her
-          merge-multiple: true
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: her-doc-worker-linux-*
-          path: ${{ runner.temp }}/pdf-worker
-          merge-multiple: true
-      # Her's PDF component for Linux (docs/linux.md §4): the worker, and the
-      # PDFium the Mac app pins, checked by its digest.
-      - name: her PDF component for Linux
-        run: |
-          for pair in amd64:x64 arm64:arm64; do
-            node apps/desktop/scripts/pdfium.mjs linux "${pair#*:}" "$RUNNER_TEMP/pdf/${pair%:*}"
-            install -m 0755 "$RUNNER_TEMP/pdf-worker/her-doc-worker-linux-${pair%:*}" "$RUNNER_TEMP/pdf/${pair%:*}/her-doc-worker"
-          done
-      # agent-desktop for Linux, which Her's computer use runs (docs/linux.md §5):
-      # the pinned npm package, checked by its integrity, as the Mac app's.
-      - name: agent-desktop for Linux
-        run: |
-          node apps/desktop/scripts/agent-desktop.mjs linux x64 "$RUNNER_TEMP/computer/amd64"
-          node apps/desktop/scripts/agent-desktop.mjs linux arm64 "$RUNNER_TEMP/computer/arm64"
       - name: build and sign
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: |
           umask 077
           printf '%s\n' "$RELEASE_SIGNING_KEY" > /tmp/release.key
-          VERSION=${GITHUB_REF_NAME} RELEASE_SIGNING_KEY_FILE=/tmp/release.key \
-            HER_LINUX_AMD64="$RUNNER_TEMP/her/her-linux-amd64" HER_LINUX_ARM64="$RUNNER_TEMP/her/her-linux-arm64" HER_CONSOLE=her/apps/console/dist \
-            HER_WINDOWS_AMD64="$RUNNER_TEMP/her/her-windows-amd64.exe" \
-            HER_PDF_LINUX_AMD64="$RUNNER_TEMP/pdf/amd64" HER_PDF_LINUX_ARM64="$RUNNER_TEMP/pdf/arm64" \
-            HER_COMPUTER_LINUX_AMD64="$RUNNER_TEMP/computer/amd64" HER_COMPUTER_LINUX_ARM64="$RUNNER_TEMP/computer/arm64" ./scripts/release.sh
+          VERSION=${GITHUB_REF_NAME} RELEASE_SIGNING_KEY_FILE=/tmp/release.key ./scripts/release.sh
           rm -f /tmp/release.key
       - run: gh release upload "$TAG" dist/release/* --clobber
   # This version's image, on ghcr.io; promoting the release copies it to
@@ -260,18 +127,6 @@ jobs:
         run: |
           echo "cache hit, setup-node (pnpm) in windows-app: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: pnpm install --frozen-lockfile
-      # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
-      - name: Read access to the NimbleOffice fork
-        shell: bash
-        env:
-          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
-        run: |
-          if [ -z "$NIMBLEOFFICE_TOKEN" ]; then
-            echo "::warning::NIMBLEOFFICE_TOKEN is not set: cargo cannot fetch github.com/Eliseowzy/nimbleoffice"
-            exit 0
-          fi
-          git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
-          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
       - name: build, and sign the feed
         shell: bash
         env:

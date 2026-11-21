@@ -51,7 +51,7 @@ Automatic updates are off. `aided update` still updates.
 
 | Command | Does |
 |---|---|
-| `aided update` | Updates `aided` and `aide` in the folder they are in, with `her` and `her-console/` where they are there, and restarts the service; asks first when a session would be stopped (`--yes` does not ask) |
+| `aided update` | Updates `aided` and `aide` in the folder they are in, removes what a version with Her left there, and restarts the service; asks first when a session would be stopped (`--yes` does not ask) |
 | `aided update --check` | Says whether a newer version exists; exit 0 either way |
 | `aided update auto on`, `auto off`, `auto` | Turns automatic updates on or off, or says which |
 | `aide update` | The same, for a computer with only the agent CLI |
@@ -72,8 +72,8 @@ Looking for an update reads three small files from `https://github.com/samir2015
 
 1. Find the folder: the running program's own, links resolved. Refuse inside an app bundle ("Aide.app updates itself") and when the folder cannot be written ("installed by another user; run the install command as them").
 2. Take a lock in `update/` in the data directory, so a manual and a background update never overlap.
-3. For each of `aided` and `aide` present in the folder: download `<name>-<os>-<arch>` next to it as `.<name>.new`, check its hash, make it executable, and run it with `version`: it must start and say the expected version. `her`, when it is there and the release has it, the same, but `her --version` only has to start (her has a version of its own); `her-console/`, then, is unpacked from `her-console.tar.gz` as `.her-console.new/`. A release without them (from before her) updates the others and leaves them.
-4. Keep the current program as `.<name>.previous` (the console: `.her-console.previous/`, moved whole), then `rename` the new one over it.
+3. For each of `aided` and `aide` present in the folder: download `<name>-<os>-<arch>` next to it as `.<name>.new`, check its hash, make it executable, and run it with `version`: it must start and say the expected version. (Until 2026-11-22 `her` and `her-console/` were updated here too; Aide no longer has Her, and an update now removes them, their `.previous` and her other folders, `her-computer/` and `her-pdf/`, once the programs are in place.)
+4. Keep the current program as `.<name>.previous`, then `rename` the new one over it.
 5. Restart: `aided update` restarts the service (`service.Restart`) and waits for the control socket to report the new version; the background updater exits instead (§5.3). Her, when on, starts again with the new aided, on the new her.
 
 ### 5.3 In the background

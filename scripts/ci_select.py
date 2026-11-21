@@ -35,8 +35,8 @@ import sys
 FULL_FILES = {"go.mod", "go.sum", "Makefile", ".dockerignore",
               "buf.yaml", "buf.gen.yaml", "buf.gen.ts.yaml"}
 FULL_PREFIXES = (".github/", "scripts/", "deploy/", "proto/", "gen/")
-# The shared core: packages that half or more of cmd/, internal/ and pkg/
-# depend on (go list, 2026-11-22). The dependency graph already reaches their
+# The shared core: packages that about half or more of cmd/, internal/ and
+# pkg/ depend on (go list, 2026-11-22, after Her's removal). The dependency graph already reaches their
 # dependents; a change here runs everything all the same.
 CORE = {"internal/legacy", "internal/brandenv", "internal/shellenv",
         "internal/spawn", "internal/provider", "pkg/metrics"}
@@ -44,9 +44,9 @@ CORE = {"internal/legacy", "internal/brandenv", "internal/shellenv",
 DOCS_PREFIXES = ("docs/", "assets/")
 DOCS_FILES = {"LICENSE"}
 ANDROID_PREFIXES = ("apps/android/",)  # android.yml builds and tests it
-# Read by the end-to-end suite (the desktop app, the DSH bridge, Her), not by
+# Read by the end-to-end suite (the desktop app, the DSH bridge), not by
 # Go's unit tests: the suite runs, without race on their account.
-E2E_READS_PREFIXES = ("apps/", "packages/", "her/")
+E2E_READS_PREFIXES = ("apps/", "packages/")
 E2E_READS_FILES = {"package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
                    "tsconfig.base.json"}
 # The binaries e2e/harness_test.go builds (AIDE_E2E_RACE=1 races them all).

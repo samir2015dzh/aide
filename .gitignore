@@ -10,6 +10,6 @@ node_modules/
 /apps/desktop/playwright-report/
 xcuserdata/
 
-# local secrets (HER_GITHUB_OAUTH_CLIENT_SECRET and API keys)
+# local secrets (API keys)
 .env
 .claude/worktrees/

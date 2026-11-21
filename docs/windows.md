@@ -437,6 +437,10 @@ Left for later, each its own change:
 
 ## 15. Her on a PC
 
+> **Gone (2026-11-22):** Aide no longer has Her (work order #17). The app
+> and `install.ps1` carry no her, her console, agent-desktop or PDFium,
+> and remove them from a PC that had them. Kept as the record.
+
 her (her/, the kernel of Her: [her-server.md](her-server.md)) runs on Windows as on a Mac: aided starts it while Her is on for the PC, and the apps offer the PC as a place for Her. Its differences sit behind seams of its own, as aided's do (§4). A PC whose Aide is from before says `windows` for why it can't run Her, and the apps then say to update it.
 
 | Seam | On Unix | On Windows | Where |
