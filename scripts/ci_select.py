@@ -10,12 +10,17 @@ run by hand). A pull request runs everything too when it touches a file in
 FULL, or a file this script cannot place; otherwise it runs the unit tests of
 the packages its changes reach (Go's dependency graph, tests' imports
 included), the end-to-end suite when a binary it builds or a file it reads is
-changed, and the race detector on the binaries the changes reach. When in
-doubt it runs more, never less.
+changed, and the race detector on every binary when the changes reach any of
+them (none when they reach none). When in doubt it runs more, never less.
+
+All or none, not binary by binary: with some binaries raced and others not,
+the slower ones change the suite's timing (2026-11-22, a pull request racing
+aide alone failed TestDSHPermissionPresets twice in a row; it passes with
+every binary raced, or none).
 
 It prints what it chose and why, and writes for the workflow, in
 $GITHUB_OUTPUT: mode (full, selective, docs), unit (packages, or empty),
-e2e (true/false), race (AIDE_E2E_RACE: 1 for all, a comma list, or empty);
+e2e (true/false), race (AIDE_E2E_RACE: 1, or empty for none);
 and the same report to $GITHUB_STEP_SUMMARY.
 """
 
@@ -44,7 +49,7 @@ ANDROID_PREFIXES = ("apps/android/",)  # android.yml builds and tests it
 E2E_READS_PREFIXES = ("apps/", "packages/", "her/")
 E2E_READS_FILES = {"package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
                    "tsconfig.base.json"}
-# The binaries e2e/harness_test.go builds; AIDE_E2E_RACE names them.
+# The binaries e2e/harness_test.go builds (AIDE_E2E_RACE=1 races them all).
 BINARIES = ["./cmd/aide-relay", "./cmd/aided", "./cmd/aide",
             "./internal/provider/acp/fakeacp", "./bench/fakecodex"]
 UNIT_ROOTS = ("cmd/", "internal/", "pkg/")  # make test's packages
@@ -164,8 +169,9 @@ def choose(files, mod, dirs):
     report.append("Unit tests skipped (%d): %s" % (len(skipped), " ".join(p[len(mod) + 1:] for p in skipped) or "none"))
     report.append("End-to-end suite: " + ("runs, every shard" if e2e else "skipped (no binary it builds, no file it reads, changed)"))
     if e2e:
-        report.append("Race detector on: " + (", ".join(race) or "none (no binary's code changed); main's push and the daily run race them all"))
-    race_env = "1" if len(race) == len(BINARIES) else ",".join(race)
+        report.append("Race detector: " + ("on every binary (the changes reach %s)" % ", ".join(race) if race
+                      else "off (no binary's code changed); main's push and the daily run race them all"))
+    race_env = "1" if race else ""
     return "selective", unit, e2e, race_env, report
 
 
