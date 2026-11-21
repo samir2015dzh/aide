@@ -12,12 +12,58 @@ export interface DshContext {
 
 interface SessionController {
   prompt(request: { sessionId: string; requestId: string; mode: "queue" | "steer"; content: { type: "text"; text: string }[] }, signal: AbortSignal): Promise<unknown>;
+  resolveAgent?(sessionId: string): Promise<{ agent: Agent } | { error: unknown }>;
+  selectModel?(request: { sessionId: string; provider: string; model: string; reasoningEffort?: string }): Promise<unknown>;
 }
 
 interface Agent {
+  id?: string;
   status?: string;
   session?: unknown;
   cancel(reason: { kind: "user" }): unknown;
+}
+
+// DSH's model service, permission presets, commands and projections, as Agents Anywhere's bridge uses them.
+interface Llm {
+  listProviders(): { id: string; name?: string }[];
+  listModels(provider: string): Promise<{ id: string; name?: string }[]>;
+  resolveModelInfo(provider: string, model: string): Promise<{ reasoning?: { efforts?: { id: string; name?: string }[] } }>;
+  resolveCallConfig(selection: { provider: string; model: string; reasoningEffort?: string }): Promise<unknown>;
+}
+
+interface PermissionPresets {
+  catalog(): { options: { value: string; name: string; description?: string }[] };
+  names: readonly string[];
+  current(session: unknown): string | undefined;
+}
+
+interface Commands {
+  find(agent: Agent, name: string): unknown;
+  execute(agent: Agent, line: string, args: unknown[], signal: AbortSignal): Promise<{ result: { kind: string } } | undefined>;
+}
+
+interface Projections {
+  snapshot(session: unknown, keys: string[]): { values: { modelSelection?: { next?: Model & { reasoningEffort?: string } } } };
+}
+
+/** A model as DSH names it; effort "" for the model's default. */
+export interface Model {
+  provider: string;
+  model: string;
+  effort?: string;
+}
+
+/** What the session goes on with, set before a message (unset: as it is). */
+export interface Selections {
+  model?: Model;
+  permission?: string;
+}
+
+/** The models and permission presets DSH offers, and what the session has now. */
+export interface SessionOptions {
+  models: { provider: string; providerName: string; model: string; modelName: string; efforts: string[] }[];
+  permissions: { id: string; name: string; description: string }[];
+  current: { model?: Model; permission?: string };
 }
 
 interface Agents {
@@ -43,8 +89,10 @@ export interface Host {
   services(): { sessionController: boolean; agents: boolean };
   /** live: the session's Agent runs in this Host (it holds the session); status: its own word for it. */
   state(sessionId: string): { live: boolean; status: string };
-  /** Queues text as the owner's next message in the session (a new turn when idle). */
-  prompt(sessionId: string, requestId: string, text: string, signal: AbortSignal): Promise<void>;
+  /** Queues text as the next message in the session (a new turn when idle), after setting what selections name. */
+  prompt(sessionId: string, requestId: string, text: string, signal: AbortSignal, selections?: Selections): Promise<void>;
+  /** The models and permission presets the session may be set to, and its own. */
+  options(sessionId: string): Promise<SessionOptions>;
   /** Stops the session's current turn; false when no Agent runs it here. */
   cancel(sessionId: string): boolean;
 }
@@ -75,9 +123,90 @@ export class DshHost implements Host {
     return { live: agent !== undefined, status: agent?.status ?? "" };
   }
 
-  async prompt(sessionId: string, requestId: string, text: string, signal: AbortSignal) {
+  private get<T>(name: string): T | undefined {
+    return (this.ctx.get(name) ?? undefined) as T | undefined;
+  }
+
+  async options(sessionId: string): Promise<SessionOptions> {
+    const llm = this.get<Llm>("llm");
+    const presets = this.get<PermissionPresets>("permissionPresets");
+    const models: SessionOptions["models"] = [];
+    for (const p of llm?.listProviders() ?? []) {
+      let list: { id: string; name?: string }[] = [];
+      try {
+        list = await llm!.listModels(p.id);
+      } catch {
+        continue; // a provider DSH can't list now (no key, offline): left out, as DSH's own picker does
+      }
+      for (const m of list) {
+        let efforts: string[] = [];
+        try {
+          efforts = ((await llm!.resolveModelInfo(p.id, m.id)).reasoning?.efforts ?? []).map((e) => e.id);
+        } catch {
+          // its efforts not known: the model's default only
+        }
+        models.push({ provider: p.id, providerName: p.name || p.id, model: m.id, modelName: m.name || m.id, efforts });
+      }
+    }
+    const permissions = (presets?.catalog().options ?? [])
+      .filter((o) => o.value !== "custom")
+      .map((o) => ({ id: o.value, name: o.name || o.value, description: o.description ?? "" }));
+    const current: SessionOptions["current"] = {};
+    const agent = this.agents()?.get(sessionId);
+    if (agent?.session !== undefined) {
+      const next = this.get<Projections>("sessionProjections")?.snapshot(agent.session, ["modelSelection"]).values.modelSelection?.next;
+      if (next) current.model = { provider: next.provider, model: next.model, effort: next.reasoningEffort ?? "" };
+      const perm = presets?.current(agent.session);
+      if (perm) current.permission = perm;
+    }
+    return { models, permissions, current };
+  }
+
+  /** Sets the model and permission preset selections name on the session, as DSH's own pickers do (and Agents Anywhere). */
+  private async select(sessionId: string, sel: Selections, signal: AbortSignal) {
+    const controller = this.controller()!;
+    if (typeof controller.resolveAgent !== "function") throw new BridgeError("unavailable", "this DSH can't set a session's model or permissions from a plugin");
+    const found = await controller.resolveAgent(sessionId);
+    if ("error" in found) throw new BridgeError("not-found", "DSH could not open this session to set its model or permissions");
+    const agent = found.agent;
+    signal.throwIfAborted();
+    if (sel.model) {
+      const llm = this.get<Llm>("llm");
+      if (!llm || typeof controller.selectModel !== "function") throw new BridgeError("unavailable", "this DSH has no model service a plugin can use");
+      const want = { provider: sel.model.provider, model: sel.model.model, ...(sel.model.effort ? { reasoningEffort: sel.model.effort } : {}) };
+      try {
+        await llm.resolveCallConfig(want);
+      } catch {
+        throw new BridgeError("bad-request", `DSH does not offer ${sel.model.provider}/${sel.model.model}${sel.model.effort ? ` (${sel.model.effort})` : ""}`);
+      }
+      const now = this.get<Projections>("sessionProjections")?.snapshot(agent.session, ["modelSelection"]).values.modelSelection?.next;
+      if (!now || now.provider !== want.provider || now.model !== want.model || (now.reasoningEffort ?? "") !== (sel.model.effort ?? "")) {
+        await controller.selectModel({ sessionId, ...want });
+      }
+    }
+    if (sel.permission) {
+      const presets = this.get<PermissionPresets>("permissionPresets");
+      if (!presets || !presets.names.includes(sel.permission) || sel.permission === "custom") throw new BridgeError("bad-request", `DSH has no permission preset ${sel.permission}`);
+      if (presets.current(agent.session) !== sel.permission) {
+        const commands = this.get<Commands>("commands");
+        if (!commands?.find(agent, "permission")) throw new BridgeError("unavailable", "this session has no /permission command");
+        const r = await commands.execute(agent, `/permission ${sel.permission}`, [], signal);
+        if (r?.result.kind !== "success") throw new BridgeError("failed", `DSH did not switch the permission preset to ${sel.permission}`);
+      }
+    }
+  }
+
+  async prompt(sessionId: string, requestId: string, text: string, signal: AbortSignal, selections?: Selections) {
     const controller = this.controller();
     if (!controller) throw new BridgeError("unavailable", "this DSH has no session controller (a profile without the Web/Desktop surface)");
+    if (selections?.model || selections?.permission) {
+      try {
+        await this.select(sessionId, selections, signal);
+      } catch (e) {
+        if (signal.aborted) throw new BridgeError("timeout", "DSH did not take the model or permissions in time");
+        throw e instanceof BridgeError ? e : new BridgeError(dshCode(e), dshMessage(e));
+      }
+    }
     try {
       await controller.prompt({ sessionId, requestId, mode: "queue", content: [{ type: "text", text }] }, signal);
     } catch (e) {

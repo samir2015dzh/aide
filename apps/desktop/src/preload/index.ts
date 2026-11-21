@@ -33,7 +33,7 @@ const bridge: Bridge = {
   openSettings: (tab?: string) => ipcRenderer.send("open-settings", tab),
   onSettingsTab: (cb: (tab: string) => void) => listen("settings-tab", cb),
   onWindowFocus: (cb: (focused: boolean) => void) => listen("window-focus", cb),
-  showInMain: (filter: { grant: string } | { machine: string } | { session: string } | { dsh: true }) => ipcRenderer.send("show-in-main", filter),
+  showInMain: (filter: { grant: string } | { machine: string } | { session: string } | { dsh: true } | { claude: true }) => ipcRenderer.send("show-in-main", filter),
   showUpgrade: () => ipcRenderer.send("show-upgrade"),
   showAppMenu: (x: number, y: number) => ipcRenderer.send("app-menu", x, y),
   popupMenu: (items: MenuItem[]) => ipcRenderer.invoke("popup-menu", items),

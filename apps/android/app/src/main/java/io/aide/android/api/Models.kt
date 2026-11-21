@@ -376,14 +376,16 @@ data class SessionEvent(
 )
 /** The Aide bridge plugin in DSH Desktop (aide.machine.v1.DSHBridge). */
 @Serializable data class DSHBridge(val state: String = "", val version: String = "", val detail: String = "")
-@Serializable data class DSHBridgeEntry(val machineId: String = "", val bridge: DSHBridge = DSHBridge())
+/** dshHome: the DSH home that machine reads DSH's sessions from. */
+@Serializable data class DSHBridgeEntry(val machineId: String = "", val bridge: DSHBridge = DSHBridge(), val dshHome: String = "")
 @Serializable data class SetDSHTakeoverRequest(val machineId: String, val sessionId: String, val on: Boolean)
 @Serializable data class SetDSHTakeoverResponse(val session: DSHSession = DSHSession())
 @Serializable data class SendDSHMessageRequest(val machineId: String, val sessionId: String, val text: String, val requestId: String)
 @Serializable data class SendDSHMessageResponse(val requestId: String = "")
 @Serializable data class InterruptDSHSessionRequest(val machineId: String, val sessionId: String)
 @Serializable data class InterruptDSHSessionResponse(val interrupted: Boolean = false)
-@Serializable data class DSHSessionEntry(val machineId: String = "", val machineName: String = "", val session: DSHSession = DSHSession())
+/** lost: its machine can't be reached, and the session is as last read (readAt): its state last known, nothing can be sent. */
+@Serializable data class DSHSessionEntry(val machineId: String = "", val machineName: String = "", val session: DSHSession = DSHSession(), val lost: Boolean = false, val readAt: String = "")
 @Serializable data class DSHUnreachable(val machineId: String = "", val machineName: String = "")
 @Serializable data class ListDSHSessionsResponse(val sessions: List<DSHSessionEntry> = emptyList(), val unreachable: List<DSHUnreachable> = emptyList(), val bridges: List<DSHBridgeEntry> = emptyList())
 @Serializable data class ReadDSHSessionRequest(
