@@ -190,7 +190,7 @@ message MachineStatus {
   // What keeps this machine from working as it should (none while healthy),
   // so every screen of the owner can say what is wrong and how to fix it.
   repeated MachineProblem problems = 13;
-  // Her on this machine (docs/her-server.md §6.2). Sent to the owner's
+  // Her on this machine. Sent to the owner's
   // devices only, never to agents.
   HerStatus her = 14;
   // Computer Control on this machine (docs/computer-control.md). Sent to
@@ -215,64 +215,19 @@ message ScreenStatus {
 
 // HerStatus is Her on a machine, as its aided last saw her.
 message HerStatus {
-  // The owner turned Her on for this machine (SetHer).
+  // The owner turned Her on for this machine (SetHer): set by an aided from
+  // before Aide dropped Her.
   bool enabled = 1;
-  // her is running and answers.
-  bool running = 2;
-  // her's version.
-  string version = 3;
-  // At least one model connection works, so the assistants can answer.
-  bool model_ready = 4;
-  // Why this machine can't run Her ("windows", "no her"), or empty.
+  // Why this machine can't run Her: "removed" from every aided since Aide
+  // dropped her ("windows", "no her" from older ones).
   string unsupported = 5;
-  // Messages and secure cards the owner has not looked at, over all
-  // assistants, as her counts them (bots/read).
-  uint32 unread = 6;
-  // The newest message from an assistant, for a notification.
-  HerLatest latest = 7;
-  // Why her is not running although Her is on, or empty.
-  string error = 8;
-  // Her's client key on this machine (SPKI DER), for the owner's device to
-  // sign her grant with (docs/her-mesh.md §3); empty on a machine that
-  // can't run her.
-  bytes client_public_key = 9;
-  // Her holds a grant this machine accepts: she can use the owner's
-  // computers and agents.
-  bool mesh = 10;
-  // Her was on here once and her data is still on the machine: turned on
-  // again she carries on, or it can be erased (SetHer erase,
-  // docs/her-server.md §5.6).
+  // Her was on here once and her data is still on the machine: it can be
+  // erased (SetHer erase).
   bool data = 11;
-  // The methods of her's protocol the owner's devices may call here: those
-  // this her answers and this aided lets through (docs/version-skew.md
-  // §6.1). Empty means unknown (her not running, or one too old to list
-  // them), never "none".
-  repeated string methods = 12;
-}
-
-// HerLatest is the newest thing an assistant sent the owner.
-message HerLatest {
-  // her's bot id, and the assistant's name.
-  string bot_id = 1;
-  string bot_name = 2;
-  // Its first words, at most 200 characters.
-  string text = 3;
-  google.protobuf.Timestamp at = 4;
-  HerLatestKind kind = 5;
-  // The owner muted the assistant (her's BotSummary.muted): no device
-  // notifies them of it.
-  bool muted = 6;
-}
-
-enum HerLatestKind {
-  HER_LATEST_KIND_UNSPECIFIED = 0;
-  HER_LATEST_KIND_MESSAGE = 1;
-  // It asks the owner to choose.
-  HER_LATEST_KIND_QUESTION = 2;
-  // A secure card waits for the owner: a secret to enter or a connector to
-  // sign in to. Her runs actions without asking, so nothing else waits; the
-  // name is from when she asked first, and is kept.
-  HER_LATEST_KIND_APPROVAL = 3;
+  // What an aided with Her said of her.
+  reserved 2, 3, 4, 6, 7, 8, 9, 10, 12;
+  reserved "running", "version", "model_ready", "unread", "latest", "error",
+    "client_public_key", "mesh", "methods";
 }
 
 message MachineProblem {
@@ -544,12 +499,6 @@ service MachineAdminService {
   // One short fixed turn of a coding agent in a scratch folder, to prove it
   // is installed and signed in: no session, project or grant is involved.
   rpc TestAgent(TestAgentRequest) returns (TestAgentResponse) {
-    option (aide.options.v1.access) = ACCESS_WRITE;
-  }
-  // Gives this machine's Her her grant (docs/her-mesh.md §3.3). The owner's
-  // devices only; the grant is root-signed and checked by the machine: for
-  // its own Her key, with its own machine id.
-  rpc SetHerGrant(SetHerGrantRequest) returns (SetHerGrantResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
   // The machine's ops log (MachineOpsService), newest first.
@@ -1031,13 +980,3 @@ message PushRevocationsRequest {
 message PushRevocationsResponse {
   bool applied = 1;
 }
-
-message SetHerGrantRequest {
-  // Signed Grant with her_machine_id.
-  aide.identity.v1.Signed grant = 1;
-  // The owner's root chain, when the grant's signing key is newer than the
-  // one the machine knows.
-  aide.identity.v1.RootChain root_chain = 2;
-}
-
-message SetHerGrantResponse {}

@@ -7,15 +7,14 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/coder/websocket"
 	"github.com/hashicorp/yamux"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
-	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	"github.com/samir2015dzh/aide/pkg/identity"
@@ -88,22 +87,14 @@ func TestHold(t *testing.T) {
 	}
 }
 
-type herCalls struct {
-	herv1connect.UnimplementedHerServiceHandler
-}
-
-func (herCalls) Call(_ context.Context, req *herv1.CallRequest) (*herv1.CallResponse, error) {
-	return &herv1.CallResponse{Response: &herv1.Response{Result: []byte(strconv.Quote(req.Request.Method))}}, nil
-}
-
-// A machine's Her service and its console's plain HTTP go over the tunnel's
+// A machine's services and its plain HTTP routes go over the tunnel's
 // HTTP/2 connection, to the machine's own routes.
-func TestMachineHer(t *testing.T) {
+func TestMachineRoutes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	mux := http.NewServeMux()
-	mux.Handle(herv1connect.NewHerServiceHandler(herCalls{}))
-	mux.HandleFunc("/her/console/", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "console at "+r.URL.Path) })
+	mux.Handle(echoHandler())
+	mux.HandleFunc("/plain/", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "plain at "+r.URL.Path) })
 	machineSide, ownerSide := net.Pipe()
 	go transport.ServeH2(ctx, machineSide, mux)
 	h2, err := transport.NewH2Client(ownerSide)
@@ -112,18 +103,18 @@ func TestMachineHer(t *testing.T) {
 	}
 	defer h2.Close()
 	n := newMachine("m_1", "box", h2)
-	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}})
-	if err != nil || string(res.Response.Result) != `"models/list"` {
-		t.Fatalf("Her.Call: %v %v", res, err)
+	res, err := echoOf(n).Call(ctx, wrapperspb.String("models/list"))
+	if err != nil || res.Value != "models/list" {
+		t.Fatalf("echo: %v %v", res, err)
 	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://machine/her/console/index.html", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://machine/plain/index.html", nil)
 	resp, err := n.HTTP().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	if b, _ := io.ReadAll(resp.Body); string(b) != "console at /her/console/index.html" {
-		t.Fatalf("console: %d %q", resp.StatusCode, b)
+	if b, _ := io.ReadAll(resp.Body); string(b) != "plain at /plain/index.html" {
+		t.Fatalf("plain: %d %q", resp.StatusCode, b)
 	}
 }
 
@@ -136,7 +127,7 @@ func TestLink(t *testing.T) {
 	defer cancel()
 	// The link's end: what it carries to, by where the command asked for.
 	mux := http.NewServeMux()
-	mux.Handle(herv1connect.NewHerServiceHandler(herCalls{}))
+	mux.Handle(echoHandler())
 	mux.HandleFunc("/whoami", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "the relay, through the link") })
 	var asked []string
 	fails := false
@@ -175,7 +166,7 @@ func TestLink(t *testing.T) {
 	if err != nil || n.Name != "box" {
 		t.Fatalf("machine: %+v %v", n, err)
 	}
-	if res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}}); err != nil || string(res.Response.Result) != `"models/list"` {
+	if res, err := echoOf(n).Call(ctx, wrapperspb.String("models/list")); err != nil || res.Value != "models/list" {
 		t.Fatalf("a call to the machine: %v %v", res, err)
 	}
 	if again, _ := c.Machine(ctx, "m_1"); again != n {
@@ -248,9 +239,29 @@ func TestLocalMachineNotHere(t *testing.T) {
 	}
 }
 
-// echoOf is a unary call over n's tunnel for these tests to make: the
-// generated client of HerService, which the machines here serve as herCalls
-// (it answers with the method's name). Nothing else in Aide calls it now.
-func echoOf(n *Machine) herv1connect.HerServiceClient {
-	return herv1connect.NewHerServiceClient(n.h2, "https://machine", transport.ClientNoCompression)
+// echoPath is the one procedure of the echo service the machines in these
+// tests serve: it answers with what it was sent.
+const echoPath = "/aide.test.Echo/Call"
+
+func echoHandler() (string, http.Handler) {
+	return echoPath, connect.NewUnaryHandler(echoPath, func(_ context.Context, req *connect.Request[wrapperspb.StringValue]) (*connect.Response[wrapperspb.StringValue], error) {
+		return connect.NewResponse(wrapperspb.String(req.Msg.Value)), nil
+	})
+}
+
+// echo is a unary call over a machine's tunnel for these tests to make.
+type echo struct {
+	c *connect.Client[wrapperspb.StringValue, wrapperspb.StringValue]
+}
+
+func (e echo) Call(ctx context.Context, req *wrapperspb.StringValue) (*wrapperspb.StringValue, error) {
+	res, err := e.c.CallUnary(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+func echoOf(n *Machine) echo {
+	return echo{connect.NewClient[wrapperspb.StringValue, wrapperspb.StringValue](n.h2, "https://machine"+echoPath, transport.ClientNoCompression)}
 }

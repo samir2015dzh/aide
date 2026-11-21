@@ -153,7 +153,7 @@ message Grant {
   // A square PNG or JPEG of at most 256 px, re-encoded by the owner's
   // device, when client_icon is "image".
   bytes client_image = 17;
-  // Set on Her's own grant (docs/her-mesh.md §3.2): the machine she runs
+  // Set on Her's own grant: the machine she runs
   // on, whose aided holds the client key. Turning Her off there or
   // removing that machine revokes it. "" for every other agent.
   string her_machine_id = 18;
@@ -205,12 +205,11 @@ message AdminCommand {
     SetName set_name = 14;
     AgentDefaults set_agent_defaults = 15;
     SetHer set_her = 16;
-    SetHerCommandConnector set_her_command_connector = 18;
     SetWorkspaceRoots set_workspace_roots = 19;
     SetAgentHidden set_agent_hidden = 20;
   }
-  reserved 12, 17;
-  reserved "rename_machine", "set_her_assistant_mode";
+  reserved 12, 17, 18;
+  reserved "rename_machine", "set_her_assistant_mode", "set_her_command_connector";
 }
 
 message AddProject {
@@ -260,7 +259,7 @@ message SetPaused {
   bool paused = 1;
 }
 
-// SetHer turns Her on or off for the machine (docs/her-server.md §5.2): on, its
+// SetHer turns Her on or off for the machine: on, its
 // aided keeps her running; off, it stops her and keeps her data, unless
 // erase (§5.6). Root-signed only, never a setting.
 message SetHer {
@@ -268,20 +267,6 @@ message SetHer {
   // With enabled false only: her data is deleted too, her home and, on a
   // Mac, her Keychain items. Refused with enabled true.
   bool erase = 2;
-}
-
-// SetHerCommandConnector adds, changes or removes a connector that her starts
-// as a command on the machine: an MCP server over stdio in her's user
-// configuration. The console can add connectors by address only
-// (docs/her-server.md §8).
-message SetHerCommandConnector {
-  // The connector's name in her's configuration.
-  string name = 1;
-  string command = 2;
-  repeated string args = 3;
-  map<string, string> env = 4;
-  // Removes the connector of that name; the other fields are ignored.
-  bool remove = 5;
 }
 
 // AgentDefaults is what a coding agent's sessions on the machine run with
@@ -390,7 +375,7 @@ message InboxRegistration {
   // How the inbox takes its messages, for senders to know what to expect:
   // "session", "hook", "wait", "webhook" or "poll". Informational, but for
   // "her": Her's inbox takes the news of her own sessions and no message
-  // from an agent (docs/her-mesh.md §6.6), so senders don't write to it.
+  // from an agent, so senders don't write to it.
   string takes_messages = 4;
   google.protobuf.Timestamp issued_at = 5;
 }

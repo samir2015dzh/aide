@@ -690,8 +690,7 @@ func (o *Owner) Status() *localv1.GetStatusResponse {
 func (o *Owner) ownerStatus() *localv1.GetStatusResponse {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	st := &localv1.GetStatusResponse{Initialized: o.ownerID != "", OwnerId: o.ownerID, RelayUrl: o.relayURL, Version: machine.Version,
-		Abilities: []string{"her_reply"}}
+	st := &localv1.GetStatusResponse{Initialized: o.ownerID != "", OwnerId: o.ownerID, RelayUrl: o.relayURL, Version: machine.Version}
 	if o.client != nil {
 		select {
 		case <-o.client.Done():
@@ -1329,6 +1328,20 @@ func (o *Owner) findMachine(ctx context.Context, idOrName string) (*localv1.Mach
 		}
 	}
 	return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no machine %q", idOrName))
+}
+
+// olderMachine is a machine's answer to an admin command it doesn't know.
+// Those up to 0.1.5 said so with invalid_argument; that answer is made
+// unimplemented, as later ones give and the devices show as "update Aide
+// there" (docs/version-skew.md §6.3). Any other error is as it came.
+func olderMachine(err error) error {
+	if connect.CodeOf(err) == connect.CodeInvalidArgument {
+		var ce *connect.Error
+		if errors.As(err, &ce) && ce.Message() == "unknown admin command" {
+			return connect.NewError(connect.CodeUnimplemented, errors.New("Aide on this machine is older and doesn't know this command: update it there, then try again"))
+		}
+	}
+	return err
 }
 
 // admin sends a machine an admin command. Settings (projects, pausing, name,

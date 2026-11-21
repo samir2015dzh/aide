@@ -75,9 +75,6 @@ const (
 	// MachineAdminServiceTestAgentProcedure is the fully-qualified name of the MachineAdminService's
 	// TestAgent RPC.
 	MachineAdminServiceTestAgentProcedure = "/aide.machine.v1.MachineAdminService/TestAgent"
-	// MachineAdminServiceSetHerGrantProcedure is the fully-qualified name of the MachineAdminService's
-	// SetHerGrant RPC.
-	MachineAdminServiceSetHerGrantProcedure = "/aide.machine.v1.MachineAdminService/SetHerGrant"
 	// MachineAdminServiceListExecLogProcedure is the fully-qualified name of the MachineAdminService's
 	// ListExecLog RPC.
 	MachineAdminServiceListExecLogProcedure = "/aide.machine.v1.MachineAdminService/ListExecLog"
@@ -531,10 +528,6 @@ type MachineAdminServiceClient interface {
 	// One short fixed turn of a coding agent in a scratch folder, to prove it
 	// is installed and signed in: no session, project or grant is involved.
 	TestAgent(context.Context, *v1.TestAgentRequest) (*v1.TestAgentResponse, error)
-	// Gives this machine's Her her grant (docs/her-mesh.md §3.3). The owner's
-	// devices only; the grant is root-signed and checked by the machine: for
-	// its own Her key, with its own machine id.
-	SetHerGrant(context.Context, *v1.SetHerGrantRequest) (*v1.SetHerGrantResponse, error)
 	// The machine's ops log (MachineOpsService), newest first.
 	ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error)
 	// The sessions DeepSeek Harness (DSH) keeps on this machine that Aide
@@ -632,12 +625,6 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("TestAgent")),
 			connect.WithClientOptions(opts...),
 		),
-		setHerGrant: connect.NewClient[v1.SetHerGrantRequest, v1.SetHerGrantResponse](
-			httpClient,
-			baseURL+MachineAdminServiceSetHerGrantProcedure,
-			connect.WithSchema(machineAdminServiceMethods.ByName("SetHerGrant")),
-			connect.WithClientOptions(opts...),
-		),
 		listExecLog: connect.NewClient[v1.ListExecLogRequest, v1.ListExecLogResponse](
 			httpClient,
 			baseURL+MachineAdminServiceListExecLogProcedure,
@@ -732,7 +719,6 @@ type machineAdminServiceClient struct {
 	listRepos           *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
 	listFolders         *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
 	testAgent           *connect.Client[v1.TestAgentRequest, v1.TestAgentResponse]
-	setHerGrant         *connect.Client[v1.SetHerGrantRequest, v1.SetHerGrantResponse]
 	listExecLog         *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
 	listDSHSessions     *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
 	readDSHSession      *connect.Client[v1.ReadDSHSessionRequest, v1.ReadDSHSessionResponse]
@@ -788,15 +774,6 @@ func (c *machineAdminServiceClient) ListFolders(ctx context.Context, req *v1.Lis
 // TestAgent calls aide.machine.v1.MachineAdminService.TestAgent.
 func (c *machineAdminServiceClient) TestAgent(ctx context.Context, req *v1.TestAgentRequest) (*v1.TestAgentResponse, error) {
 	response, err := c.testAgent.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
-// SetHerGrant calls aide.machine.v1.MachineAdminService.SetHerGrant.
-func (c *machineAdminServiceClient) SetHerGrant(ctx context.Context, req *v1.SetHerGrantRequest) (*v1.SetHerGrantResponse, error) {
-	response, err := c.setHerGrant.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -943,10 +920,6 @@ type MachineAdminServiceHandler interface {
 	// One short fixed turn of a coding agent in a scratch folder, to prove it
 	// is installed and signed in: no session, project or grant is involved.
 	TestAgent(context.Context, *v1.TestAgentRequest) (*v1.TestAgentResponse, error)
-	// Gives this machine's Her her grant (docs/her-mesh.md §3.3). The owner's
-	// devices only; the grant is root-signed and checked by the machine: for
-	// its own Her key, with its own machine id.
-	SetHerGrant(context.Context, *v1.SetHerGrantRequest) (*v1.SetHerGrantResponse, error)
 	// The machine's ops log (MachineOpsService), newest first.
 	ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error)
 	// The sessions DeepSeek Harness (DSH) keeps on this machine that Aide
@@ -1038,12 +1011,6 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		MachineAdminServiceTestAgentProcedure,
 		svc.TestAgent,
 		connect.WithSchema(machineAdminServiceMethods.ByName("TestAgent")),
-		connect.WithHandlerOptions(opts...),
-	)
-	machineAdminServiceSetHerGrantHandler := connect.NewUnaryHandlerSimple(
-		MachineAdminServiceSetHerGrantProcedure,
-		svc.SetHerGrant,
-		connect.WithSchema(machineAdminServiceMethods.ByName("SetHerGrant")),
 		connect.WithHandlerOptions(opts...),
 	)
 	machineAdminServiceListExecLogHandler := connect.NewUnaryHandlerSimple(
@@ -1142,8 +1109,6 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceListFoldersHandler.ServeHTTP(w, r)
 		case MachineAdminServiceTestAgentProcedure:
 			machineAdminServiceTestAgentHandler.ServeHTTP(w, r)
-		case MachineAdminServiceSetHerGrantProcedure:
-			machineAdminServiceSetHerGrantHandler.ServeHTTP(w, r)
 		case MachineAdminServiceListExecLogProcedure:
 			machineAdminServiceListExecLogHandler.ServeHTTP(w, r)
 		case MachineAdminServiceListDSHSessionsProcedure:
@@ -1199,10 +1164,6 @@ func (UnimplementedMachineAdminServiceHandler) ListFolders(context.Context, *v1.
 
 func (UnimplementedMachineAdminServiceHandler) TestAgent(context.Context, *v1.TestAgentRequest) (*v1.TestAgentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.TestAgent is not implemented"))
-}
-
-func (UnimplementedMachineAdminServiceHandler) SetHerGrant(context.Context, *v1.SetHerGrantRequest) (*v1.SetHerGrantResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.SetHerGrant is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error) {

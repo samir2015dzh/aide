@@ -5,10 +5,10 @@ import type { Machine } from "@aide/proto/local";
 // offers to erase it there.
 
 /**
- * Whether Her's data is on the machine: as it says while it answers, else as last seen. A machine whose
- * Aide still has Her counts while she is on there, whatever it says of her data.
+ * Whether Her's data is on the machine, as its status says while it answers (an offline machine can't
+ * erase it). A machine whose Aide still has Her counts while she is on there, whatever it says of her data.
  */
-export function herDataLeft(m: Pick<Machine, "status" | "her">): boolean {
-  const her = m.status?.her ?? m.her;
+export function herDataLeft(m: Pick<Machine, "status">): boolean {
+  const her = m.status?.her;
   return !!her && (her.enabled || her.data);
 }

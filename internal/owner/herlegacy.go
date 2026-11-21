@@ -9,64 +9,12 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
-	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
-
-// Her is no longer part of Aide. LocalService still names her calls (the
-// protocol is not changed here), so an app from before gets an answer it
-// knows: unimplemented, as a daemon older than the call would say.
-
-var errNoHer = connect.NewError(connect.CodeUnimplemented, errors.New("Aide no longer has Her"))
-
-func (l *localService) SetHer(context.Context, *localv1.SetHerRequest) (*localv1.SetHerResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) SetHerCommandConnector(context.Context, *localv1.SetHerCommandConnectorRequest) (*localv1.SetHerCommandConnectorResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) HerOpen(context.Context, *localv1.HerOpenRequest, *connect.ServerStream[herv1.OpenEvent]) error {
-	return errNoHer
-}
-
-func (l *localService) HerCall(context.Context, *localv1.HerCallRequest) (*herv1.CallResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) HerSend(context.Context, *localv1.HerSendRequest) (*localv1.HerSendResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) ListHerWaiting(context.Context, *localv1.ListHerWaitingRequest) (*localv1.ListHerWaitingResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) DeleteHerWaiting(context.Context, *localv1.DeleteHerWaitingRequest) (*localv1.DeleteHerWaitingResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) GetHerConversation(context.Context, *localv1.GetHerConversationRequest) (*localv1.GetHerConversationResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) HerUpload(context.Context, *localv1.HerUploadRequest) (*localv1.HerUploadResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) HerDownload(context.Context, *localv1.HerDownloadRequest) (*localv1.HerDownloadResponse, error) {
-	return nil, errNoHer
-}
-
-func (l *localService) GetHerConsole(context.Context, *localv1.GetHerConsoleRequest) (*localv1.GetHerConsoleResponse, error) {
-	return nil, errNoHer
-}
 
 // The steps of the owner's store that made Her's tables. The store counts
 // its steps, so they stay where they were: a store made before keeps its
@@ -104,20 +52,6 @@ CREATE TABLE her_deliveries (
   page BLOB NOT NULL
 );
 `
-
-// olderMachine is a machine's answer to an admin command it doesn't know.
-// Those up to 0.1.5 said so with invalid_argument; that answer is made
-// unimplemented, as later ones give and the devices show as "update Aide
-// there" (docs/version-skew.md §6.3). Any other error is as it came.
-func olderMachine(err error) error {
-	if connect.CodeOf(err) == connect.CodeInvalidArgument {
-		var ce *connect.Error
-		if errors.As(err, &ce) && ce.Message() == "unknown admin command" {
-			return connect.NewError(connect.CodeUnimplemented, errors.New("Aide on this machine is older and doesn't know this command: update it there, then try again"))
-		}
-	}
-	return err
-}
 
 // What a machine that ran Her once may still hold, and the owner's devices
 // still clear away: her data there, erased when the owner removes the

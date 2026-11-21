@@ -11,9 +11,8 @@ import (
 	"github.com/coder/websocket"
 	"github.com/hashicorp/yamux"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
-	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	"github.com/samir2015dzh/aide/pkg/identity"
@@ -84,7 +83,7 @@ func setupDirectFixture(t *testing.T, relayTunnelDelay time.Duration, directAddr
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle(herv1connect.NewHerServiceHandler(herCalls{}))
+	mux.Handle(echoHandler())
 	serveMachine := func(raw net.Conn) {
 		defer raw.Close()
 		tc, _, err := transport.ServerHandshake(t.Context(), raw, machKey.CryptoSigner(), machineCreds, machTrust, func(*identity.Subject) error { return nil })
@@ -211,9 +210,9 @@ func TestMachineDirectWinsOverSlowRelay(t *testing.T) {
 	if wonAddr == "" {
 		t.Fatal("expected OnDirectSuccess callback with winning address")
 	}
-	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
-	if err != nil || string(res.Response.Result) != `"ping"` {
-		t.Fatalf("Her.Call over direct tunnel = (%v, %v)", res, err)
+	res, err := echoOf(n).Call(ctx, wrapperspb.String("ping"))
+	if err != nil || res.Value != "ping" {
+		t.Fatalf("echo over direct tunnel = (%v, %v)", res, err)
 	}
 }
 
@@ -240,9 +239,9 @@ func TestMachineDirectFallsBackToRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
-	if err != nil || string(res.Response.Result) != `"ping"` {
-		t.Fatalf("Her.Call over fallback relay tunnel = (%v, %v)", res, err)
+	res, err := echoOf(n).Call(ctx, wrapperspb.String("ping"))
+	if err != nil || res.Value != "ping" {
+		t.Fatalf("echo over fallback relay tunnel = (%v, %v)", res, err)
 	}
 }
 
@@ -313,9 +312,9 @@ func TestClientRelayMachineSkipsDirect(t *testing.T) {
 	if n.direct {
 		t.Fatal("RelayMachine should connect via relay without using direct path")
 	}
-	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
-	if err != nil || string(res.Response.Result) != `"ping"` {
-		t.Fatalf("Her.Call over RelayMachine = (%v, %v)", res, err)
+	res, err := echoOf(n).Call(ctx, wrapperspb.String("ping"))
+	if err != nil || res.Value != "ping" {
+		t.Fatalf("echo over RelayMachine = (%v, %v)", res, err)
 	}
 }
 
@@ -354,7 +353,7 @@ func TestAdoptDirect(t *testing.T) {
 	if c.AdoptDirect(fx.machineID, dup) {
 		t.Fatal("AdoptDirect should reject duplicate when live tunnel exists")
 	}
-	if _, err := echoOf(dup).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}}); err == nil {
+	if _, err := echoOf(dup).Call(ctx, wrapperspb.String("ping")); err == nil {
 		t.Fatal("rejected duplicate tunnel should be closed")
 	}
 }

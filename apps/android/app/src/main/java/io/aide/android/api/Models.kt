@@ -80,30 +80,15 @@ data class AgentModel(val id: String = "", val name: String = "", val efforts: L
 @Serializable
 data class AgentMode(val id: String = "", val name: String = "")
 
+/** aide.machine.v1.HerStatus: what a machine says of Her, which Aide no longer has. */
 @Serializable
 data class HerStatus(
+    /** Her is on there: said by a machine whose Aide still has her. */
     val enabled: Boolean = false,
-    val running: Boolean = false,
-    val version: String = "",
-    val modelReady: Boolean = false,
+    /** Why it can't run Her: "removed" from every machine since Aide dropped her. */
     val unsupported: String = "",
-    val unread: Int = 0,
-    val latest: HerLatest? = null,
-    val error: String = "",
     /** Her was on there once and her data is still there. */
     val data: Boolean = false,
-)
-
-/** An assistant's newest message, for a notification (HerStatus.latest). */
-@Serializable
-data class HerLatest(
-    val botId: String = "",
-    val botName: String = "",
-    val text: String = "",
-    val at: String = "",
-    /** HER_LATEST_KIND_MESSAGE, _QUESTION or _APPROVAL (a secure card waits). */
-    val kind: String = "",
-    val muted: Boolean = false,
 )
 
 @Serializable
@@ -115,6 +100,7 @@ data class MachineStatus(
     val maxSessions: Int = 0,
     val paused: Boolean = false,
     val version: String = "",
+    val her: HerStatus? = null,
 )
 
 @Serializable
@@ -129,7 +115,6 @@ data class Machine(
     val version: String = "",
     val unreachable: String = "",
     val syncing: Boolean = false,
-    val her: HerStatus? = null,
     /** When this phone last knew it was there, once it no longer is. */
     val heardAt: String = "",
     val unreachableSince: String = "",
@@ -440,11 +425,6 @@ data class Notice(
     val failureMessage: String = "",
     val turn: Int = 0,
     val diffStat: DiffStat? = null,
-    val herKind: String = "",
-    val machineId: String = "",
-    val botId: String = "",
-    val botName: String = "",
-    val text: String = "",
 )
 
 // Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.
