@@ -229,6 +229,7 @@ func (o *Owner) SetHer(ctx context.Context, machineID string, enabled, erase boo
 		Command:   &identityv1.AdminCommand_SetHer{SetHer: &identityv1.SetHer{Enabled: enabled, Erase: erase}}}
 	msgs := []proto.Message{cmd}
 	var grant *identityv1.Grant
+	var heldKey string // her client's id, when she holds a grant
 	if enabled {
 		// Asked before Face ID, which would be for nothing on a machine
 		// that can't be reached, or is from before Her.
@@ -241,6 +242,8 @@ func (o *Owner) SetHer(ctx context.Context, machineID string, enabled, erase boo
 		}
 		if grant = herGrant(o.ownerID, machineID, st); grant != nil {
 			msgs = append(msgs, grant)
+		} else if key := st.GetHer().GetClientPublicKey(); len(key) > 0 {
+			heldKey = identity.ClientID(key)
 		}
 	}
 	signed, err := o.signRoot(ctx, msgs...)
@@ -268,6 +271,13 @@ func (o *Owner) SetHer(ctx context.Context, machineID string, enabled, erase boo
 		return o.herTurnedOff(ctx, machineID, erase, res.GetMessage())
 	}
 	if grant == nil {
+		// She holds a grant: those for a key her machine no longer keeps
+		// (from before its data started over) are of no Her; they go. Two
+		// for the key she keeps wait for her next grant, which ends both:
+		// which one her machine holds is not known here.
+		if heldKey != "" {
+			o.pruneHer(ctx, machineID, func(g *identityv1.Grant) bool { return g.ClientId == heldKey })
+		}
 		return nil
 	}
 	// Her is on from here; what follows only gives her the mesh, and the
@@ -290,6 +300,8 @@ func (o *Owner) SetHer(ctx context.Context, machineID string, enabled, erase boo
 		return nil
 	}
 	o.st.putGrant(signed[1], false)
+	// Her's machine holds this grant now: any other of hers there goes.
+	o.pruneHer(ctx, machineID, func(g *identityv1.Grant) bool { return g.GrantId == grant.GrantId })
 	go o.refreshCards()
 	return nil
 }
@@ -381,6 +393,11 @@ func HerGrant(ownerID, machineID, machineName string, clientKey []byte) *identit
 
 // herGrants are the ids of the grants Her holds on a machine.
 func (o *Owner) herGrants(ctx context.Context, machineID string) []string {
+	return herGrantsIn(o.herClients(ctx), o.ownerID, machineID, nil)
+}
+
+// herClients is the relay's list of clients, nil when it can't be read.
+func (o *Owner) herClients(ctx context.Context) []*relayv1.ClientEntry {
 	ctl, _, err := o.control(ctx)
 	if err != nil {
 		return nil
@@ -389,10 +406,19 @@ func (o *Owner) herGrants(ctx context.Context, machineID string) []string {
 	if err != nil {
 		return nil
 	}
+	return res.Clients
+}
+
+// herGrantsIn are the ids of the grants, among clients, that Her holds on
+// a machine and stand, those keep is true of left out.
+func herGrantsIn(clients []*relayv1.ClientEntry, ownerID, machineID string, keep func(*identityv1.Grant) bool) []string {
 	var ids []string
-	for _, c := range res.Clients {
+	for _, c := range clients {
 		g := &identityv1.Grant{}
-		if identity.Unverified(c.Grant, g) == nil && g.OwnerId == o.ownerID && g.HerMachineId == machineID && !c.Revoked && !slices.Contains(ids, g.GrantId) {
+		if identity.Unverified(c.Grant, g) != nil || g.OwnerId != ownerID || g.HerMachineId != machineID || c.Revoked || slices.Contains(ids, g.GrantId) {
+			continue
+		}
+		if keep == nil || !keep(g) {
 			ids = append(ids, g.GrantId)
 		}
 	}
@@ -401,9 +427,24 @@ func (o *Owner) herGrants(ctx context.Context, machineID string) []string {
 
 // revokeHer revokes the grants of a machine's Her: she was turned off.
 func (o *Owner) revokeHer(ctx context.Context, machineID string) {
-	for _, id := range o.herGrants(ctx, machineID) {
+	o.revokeHerGrants(ctx, machineID, o.herGrants(ctx, machineID), "Her was turned off")
+}
+
+// pruneHer revokes the grants of a machine's Her that keep is false of:
+// a machine has one Her, who holds one grant (docs/her-mesh.md §3.2). Her
+// turned on again while her machine held no grant (its data started over,
+// or the last grant never reached it) was given another, and the one
+// before stood beside it: the owner saw "Her on <machine>" twice.
+func (o *Owner) pruneHer(ctx context.Context, machineID string, keep func(*identityv1.Grant) bool) {
+	o.revokeHerGrants(ctx, machineID, herGrantsIn(o.herClients(ctx), o.ownerID, machineID, keep), "another grant of Her on this machine stands")
+}
+
+func (o *Owner) revokeHerGrants(ctx context.Context, machineID string, ids []string, why string) {
+	for _, id := range ids {
 		if _, err := o.RevokeClient(ctx, id); err != nil {
-			o.log.Warn("revoking Her's grant", "machine", machineID, "grant", id, "err", err)
+			o.log.Warn("revoking Her's grant", "machine", machineID, "grant", id, "why", why, "err", err)
+		} else {
+			o.log.Info("revoked Her's grant", "machine", machineID, "grant", id, "why", why)
 		}
 	}
 }
