@@ -3,6 +3,7 @@ package e2e
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"slices"
@@ -120,6 +121,8 @@ func TestOwnerReplica(t *testing.T) {
 	// follows its WatchOwner.
 	const span = 30 * time.Second
 	before := ownerRPCs(t, w)
+	// Nor vps-1: what it is asked (a list it serves) goes through the relay.
+	vpsBefore := metric(t, w.vpsDebug, "aide_machine_rpc_seconds_count{")
 	pollCtx, stop := context.WithTimeout(ctx, span)
 	var wg sync.WaitGroup
 	for range 3 {
@@ -145,6 +148,11 @@ func TestOwnerReplica(t *testing.T) {
 	t.Logf("relay control calls with three windows: %d in %v (%.0f a minute)", n, span, perMinute)
 	if n > 0 {
 		t.Errorf("%d relay control calls while nothing changed, want none", n)
+	}
+	vpsCalls := metric(t, w.vpsDebug, "aide_machine_rpc_seconds_count{") - vpsBefore
+	t.Logf("calls vps-1 answered meanwhile: %d", vpsCalls)
+	if vpsCalls > 0 {
+		t.Errorf("vps-1 answered %d calls while nothing changed, want none: the lists did not come from the replica", vpsCalls)
 	}
 
 	// A session started on the other machine shows in a moment (pushed by
@@ -182,8 +190,9 @@ func farOwnerWithVPS(t *testing.T, oneWay time.Duration) (w *ownerMac, vpsID str
 	if c := pair.wait(t, 30*time.Second); c != 0 {
 		t.Fatalf("pair: %s", pair.output())
 	}
+	w.vpsDebug = fmt.Sprintf("127.0.0.1:%d", freePort(t))
 	run := func() *proc {
-		p := start(t, "vps-1", env, daemon, "run", "--data-dir", data)
+		p := start(t, "vps-1", env, daemon, "run", "--data-dir", data, "--debug-addr", w.vpsDebug)
 		w.logs = append(w.logs, p)
 		return p
 	}
