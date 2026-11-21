@@ -133,8 +133,12 @@ func (o *ownerControl) BindPersonaSession(ctx context.Context, req *relayv1.Bind
 
 var _ PersonaStore = (*Store)(nil)
 
+// Personas are in the order added. created_at is the clock's, which on
+// Windows ticks coarsely (about 0.5 to 15.6 ms): two added one after the
+// other can have the same, and the persona ids are random, so the row's
+// rowid (which grows as rows are inserted, and an update keeps) breaks the tie.
 func (s *Store) Personas(string) ([]*identityv1.Persona, error) {
-	rows, err := s.db.Query(`SELECT persona FROM personas ORDER BY created_at, persona_id`)
+	rows, err := s.db.Query(`SELECT persona FROM personas ORDER BY created_at, rowid`)
 	if err != nil {
 		return nil, err
 	}
