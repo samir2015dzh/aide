@@ -1,4 +1,5 @@
 import { ConnectLink } from "./components";
+import { shortPath } from "./agentPath";
 import { lines } from "./connectGuideLogic";
 import { useState, type ReactNode } from "react";
 import type { TFunction } from "i18next";
@@ -32,7 +33,7 @@ export const broken = (a: AgentStatus) => !a.available && !a.checking && a.probl
 
 /** Why a broken agent can't run, and what to do. */
 export function whyBroken(a: AgentStatus, t: TFunction<"firstrun">): string {
-  const v = { agent: codingAgentTitle(a.name), binary: a.binary.replace(/^\/(Users|home)\/[^/]+/, "~"), detail: a.detail };
+  const v = { agent: codingAgentTitle(a.name), binary: shortPath(a.binary), detail: a.detail };
   switch (a.problem) {
     case AgentProblem.APP_WITHOUT_CLI:
       return t("prepare.why.appWithoutCli", { ...v, app: a.detail.replace(/\.app$/, "") });
@@ -111,6 +112,12 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                     {set && <span>{set}</span>}
                     {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
                   </span>
+                  {/* Which program was found and answered: what tells an installed agent from one uninstalled elsewhere. */}
+                  {a.binary && (
+                    <span className="mono ag-path" title={a.binary}>
+                      {shortPath(a.binary)}
+                    </span>
+                  )}
                 </span>
                 <Icon name="chevR" className="ag-chev" />
               </button>
