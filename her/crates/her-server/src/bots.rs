@@ -27,6 +27,7 @@ use her_protocol::bot::BotMemoryEntrySetParams;
 use her_protocol::bot::BotMemoryPage;
 use her_protocol::bot::BotMemoryProposal;
 use her_protocol::bot::BotMemoryProposalAnswerParams;
+use her_protocol::bot::BotConfirmRulesResult;
 use her_protocol::bot::BotMemoryResult;
 use her_protocol::bot::BotResult;
 use her_protocol::bot::BotSummary;
@@ -719,6 +720,31 @@ impl Server {
             .await
             .map_err(|e| RpcError::internal(e.to_string()))?
             .map_err(|e| RpcError::internal(format!("cannot read the memory: {e}")))
+    }
+
+    /// `bots/confirm_rules`: the bot's confirmation rules (docs/her-confirm-rules.md).
+    pub async fn bots_confirm_rules(&self, id: &str) -> Result<BotConfirmRulesResult, RpcError> {
+        self.bot_exists(id)?;
+        let path = self.0.home.bot_confirm_rules(id);
+        tokio::task::spawn_blocking(move || her_core::confirm_rules::load(&path))
+            .await
+            .map_err(|e| RpcError::internal(e.to_string()))?
+            .map(|rules| BotConfirmRulesResult { rules })
+            .map_err(|e| RpcError::internal(format!("cannot read the confirmation rules: {e}")))
+    }
+
+    /// `bots/confirm_rule_delete`: the bot asks first again before what the rule covered.
+    pub async fn bots_confirm_rule_delete(&self, id: &str, rule: &str) -> Result<(), RpcError> {
+        self.bot_exists(id)?;
+        let (path, rule) = (self.0.home.bot_confirm_rules(id), rule.to_string());
+        let removed = tokio::task::spawn_blocking(move || her_core::confirm_rules::remove(&path, &rule))
+            .await
+            .map_err(|e| RpcError::internal(e.to_string()))?
+            .map_err(|e| RpcError::internal(format!("cannot change the confirmation rules: {e}")))?;
+        match removed {
+            Some(_) => Ok(()),
+            None => Err(RpcError::invalid_params("no such confirmation rule")),
+        }
     }
 
     /// `bots/memory_clear`: the bot's memory goes to `trash/memory/`, and its conversation's

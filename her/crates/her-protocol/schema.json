@@ -23,6 +23,12 @@
       "$ref": "#/definitions/BotAvatarResult"
     },
     {
+      "$ref": "#/definitions/BotConfirmRuleParams"
+    },
+    {
+      "$ref": "#/definitions/BotConfirmRulesResult"
+    },
+    {
       "$ref": "#/definitions/BotCreateParams"
     },
     {
@@ -1634,6 +1640,37 @@
       ],
       "type": "object"
     },
+    "BotConfirmRuleParams": {
+      "description": "Parameters of `bots/confirm_rule_delete`.",
+      "properties": {
+        "bot_id": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bot_id",
+        "rule_id"
+      ],
+      "type": "object"
+    },
+    "BotConfirmRulesResult": {
+      "description": "`bots/confirm_rules`: an assistant's confirmation rules, oldest first.",
+      "properties": {
+        "rules": {
+          "items": {
+            "$ref": "#/definitions/ConfirmRule"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "rules"
+      ],
+      "type": "object"
+    },
     "BotCreateParams": {
       "properties": {
         "avatar": {
@@ -1669,7 +1706,7 @@
       "type": "object"
     },
     "BotIdParams": {
-      "description": "Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`.",
+      "description": "Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory`, `bots/memory_clear` and `bots/confirm_rules`.",
       "properties": {
         "bot_id": {
           "type": "string"
@@ -4292,6 +4329,106 @@
           "description": "Written, but a layer above sets some of the keys, so they do not take effect there.",
           "enum": [
             "overridden"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "ConfirmAction": {
+      "description": "What a confirmation rule is about (docs/her-confirm-rules.md §2).",
+      "oneOf": [
+        {
+          "description": "Sending something to other people: a message, an email, a reply.",
+          "enum": [
+            "send"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Publishing or posting something where others see it.",
+          "enum": [
+            "publish"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Paying or buying.",
+          "enum": [
+            "pay"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Deleting data. A hard floor: asked every time, whatever the rules say.",
+          "enum": [
+            "delete"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Installing software. A hard floor.",
+          "enum": [
+            "install"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Giving a new client or a new permission access. A hard floor.",
+          "enum": [
+            "grant"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "ConfirmRule": {
+      "description": "One of an assistant's confirmation rules: the owner's preference about asking first before an action of a kind, on targets that match a pattern (docs/her-confirm-rules.md).",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/ConfirmAction"
+        },
+        "created_at": {
+          "description": "RFC 3339.",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "note": {
+          "description": "What the owner said, in their words.",
+          "type": "string"
+        },
+        "target": {
+          "description": "Which targets: words with `*` for any run of characters, matched whole and ignoring case; `*` alone is every target.",
+          "type": "string"
+        },
+        "want": {
+          "$ref": "#/definitions/ConfirmWant"
+        }
+      },
+      "required": [
+        "action",
+        "created_at",
+        "id",
+        "target",
+        "want"
+      ],
+      "type": "object"
+    },
+    "ConfirmWant": {
+      "description": "What a confirmation rule says to do before a matching action.",
+      "oneOf": [
+        {
+          "description": "Do it without asking in the conversation first.",
+          "enum": [
+            "skip"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Always ask first.",
+          "enum": [
+            "ask"
           ],
           "type": "string"
         }
@@ -21262,6 +21399,14 @@
       "params": "BotIdParams",
       "result": "Empty"
     },
+    "bots/confirm_rule_delete": {
+      "params": "BotConfirmRuleParams",
+      "result": "Empty"
+    },
+    "bots/confirm_rules": {
+      "params": "BotIdParams",
+      "result": "BotConfirmRulesResult"
+    },
     "bots/create": {
       "params": "BotCreateParams",
       "result": "BotResult"
@@ -21895,6 +22040,8 @@
       "auth/set": "stable",
       "bots/avatar": "experimental",
       "bots/clear": "experimental",
+      "bots/confirm_rule_delete": "experimental",
+      "bots/confirm_rules": "experimental",
       "bots/create": "experimental",
       "bots/delete": "experimental",
       "bots/memory": "experimental",

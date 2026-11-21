@@ -210,6 +210,10 @@ func (l *Local) Push(ctx context.Context, id string) (*sessionv1.PushSessionResp
 	return l.n.sessions.Push(ctx, l.p, id)
 }
 
+func (l *Local) Rollback(ctx context.Context, id string, turn uint32) (*sessionv1.Session, error) {
+	return l.n.sessions.Rollback(ctx, l.p, id, turn)
+}
+
 // WorkSeq is where this machine's work counts are (work.go).
 func (l *Local) WorkSeq() int64 { return l.n.st.WorkSeq() }
 

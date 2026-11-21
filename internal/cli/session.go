@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
@@ -26,7 +27,7 @@ import (
 
 func (a *app) sessionCmd() *cobra.Command {
 	cmd := group(&cobra.Command{Use: "session", Short: "Start and manage coding-agent sessions"})
-	cmd.AddCommand(a.startCmd(), a.getCmd(), a.waitCmd(), a.listCmd(), a.eventsCmd(), a.sendCmd(), a.answerCmd(), a.interruptCmd(), a.archiveCmd(), a.unarchiveCmd(), a.diffCmd(), a.pushCmd())
+	cmd.AddCommand(a.startCmd(), a.getCmd(), a.waitCmd(), a.listCmd(), a.eventsCmd(), a.sendCmd(), a.answerCmd(), a.interruptCmd(), a.archiveCmd(), a.unarchiveCmd(), a.rollbackCmd(), a.diffCmd(), a.pushCmd())
 	return cmd
 }
 
@@ -572,6 +573,9 @@ func (a *app) printEvent(w io.Writer, e *sessionv1.SessionEvent) {
 		} else {
 			fmt.Fprintf(w, "✓ turn %d done%s\n", tc.Turn, st)
 		}
+	case *sessionv1.SessionEvent_RolledBack:
+		r := k.RolledBack
+		fmt.Fprintf(w, "↺ rolled back to turn %d by %s: turns %d to %d discarded (were at %s)\n", r.Turn, r.By, r.Turn+1, r.LastTurn, short(r.DiscardedCommit))
 	case *sessionv1.SessionEvent_Error:
 		fmt.Fprintf(w, "!%s %s\n", kindNote(k.Error.Failure), k.Error.Message)
 	case *sessionv1.SessionEvent_QuestionAsked:
@@ -1185,6 +1189,47 @@ func (a *app) unarchiveCmd() *cobra.Command {
 		func(ctx context.Context, n *peer.Machine, id string) (*sessionv1.Session, error) {
 			return n.Session.UnarchiveSession(ctx, &sessionv1.UnarchiveSessionRequest{SessionId: id})
 		})
+}
+
+func (a *app) rollbackCmd() *cobra.Command {
+	var turn uint32
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rollback <session id>",
+		Short: "Put an idle worktree session back to where turn N left it, discarding the later turns' conversation and changes",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.withMachine(cmd.Context(), args[0], func(c *peer.Client, n *peer.Machine, ref machineRef) error {
+				ctx := cmd.Context()
+				before, err := n.Session.GetSession(ctx, &sessionv1.GetSessionRequest{SessionId: args[0]})
+				if err != nil {
+					return err
+				}
+				if last := before.GetProgress().GetTurnCount(); !yes && turn < last {
+					warning := fmt.Sprintf("rolling back to turn %d discards every message and change after it (turns %d to %d), for the agent too", turn, turn+1, last)
+					if a.output == "json" || !term.IsTerminal(int(os.Stdin.Fd())) {
+						return &exitError{code: exitUsage, kind: "usage", err: errors.New(warning), hint: "add --yes to roll back"}
+					}
+					answer, err := ask(cmd, warning+". Roll back? [y/N] ")
+					if err != nil {
+						return err
+					}
+					if a := strings.ToLower(answer); a != "y" && a != "yes" {
+						return &exitError{code: exitUsage, kind: "usage", err: errors.New("not rolled back")}
+					}
+				}
+				s, err := n.Session.RollbackSession(ctx, &sessionv1.RollbackSessionRequest{SessionId: args[0], Turn: turn})
+				if err != nil {
+					return err
+				}
+				return a.showSession(cmd, s, ref.Name, false)
+			})
+		},
+	}
+	cmd.Flags().Uint32Var(&turn, "turn", 0, "the turn to keep, with the turns before it (0: roll every turn back)")
+	cmd.Flags().BoolVar(&yes, "yes", false, "roll back without asking: the later turns are discarded")
+	cmd.MarkFlagRequired("turn")
+	return cmd
 }
 
 // sessionVerb is a command that does one thing to a session and prints it.

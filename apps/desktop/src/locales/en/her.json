@@ -334,6 +334,30 @@
     "button": "Clear",
     "done": "Memory cleared"
   },
+  "confirmRules": {
+    "title": "Asking first",
+    "note": "From the chat: tell it “don’t ask me about this again”. Deleting data, installing software and giving a new client or permission access are asked every time, whatever the rules say.",
+    "empty": "It asks before sending, publishing or paying. Tell it “don’t ask me about this again” and the rule shows here. Deleting data, installing software and giving access are asked every time.",
+    "anyTarget": "anything",
+    "action": {
+      "send": "Send",
+      "publish": "Publish",
+      "pay": "Pay",
+      "delete": "Delete",
+      "install": "Install",
+      "grant": "Give access"
+    },
+    "want": {
+      "skip": "Doesn’t ask",
+      "ask": "Always asks"
+    },
+    "delete": {
+      "title": "Delete this rule?",
+      "message": "It asks first again before what the rule covered.",
+      "button": "Delete",
+      "done": "Rule deleted"
+    }
+  },
   "memory": {
     "title": "Memory",
     "back": "Back",

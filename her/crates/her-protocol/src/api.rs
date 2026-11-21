@@ -250,6 +250,9 @@ pub mod method {
     pub const BOTS_MEMORY_ENTRY_DELETE: &str = "bots/memory_entry_delete";
     /// Saves or declines an entry the bot proposed.
     pub const BOTS_MEMORY_PROPOSAL_ANSWER: &str = "bots/memory_proposal_answer";
+    /// A bot's confirmation rules (docs/her-confirm-rules.md); new ones come from the chat.
+    pub const BOTS_CONFIRM_RULES: &str = "bots/confirm_rules";
+    pub const BOTS_CONFIRM_RULE_DELETE: &str = "bots/confirm_rule_delete";
     /// Server notification to `bots/subscribe`rs.
     pub const BOTS_CHANGED: &str = "bots/changed";
     /// The files a bot sent its owner, newest first (docs/her-deliverables.md §4.3).

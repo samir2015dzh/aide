@@ -23,6 +23,8 @@ func init() {
 		// Knowledge entries the owner saves, changes and deletes, and Her's proposals they answer
 		// (docs/her-memory.md §10).
 		"bots/memory_entry_set", "bots/memory_entry_delete", "bots/memory_proposal_answer",
+		// The owner's confirmation rules: listed and deleted in the apps, added in the chat (docs/her-confirm-rules.md).
+		"bots/confirm_rules", "bots/confirm_rule_delete",
 		"session/op", "session/history", "session/detach", "models/list", "files/list", "files/read",
 		// The files an assistant sent, in a list of their own (docs/her-deliverables.md §4.3).
 		"deliveries/list", "deliveries/seen", "deliveries/sources",
