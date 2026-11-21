@@ -350,7 +350,7 @@ func lineEvents(n uint64, line []byte) []*sessionv1.SessionEvent {
 			}
 		case l.Type == "assistant" && b.Type == "tool_use":
 			args, _ := provider.Truncate(string(b.Input), 500)
-			add(&sessionv1.ToolCall{CallId: b.ID, Kind: string(provider.ToolOther), Name: b.Name, Summary: args})
+			add(&sessionv1.ToolCall{CallId: b.ID, Kind: string(provider.ToolOther), Name: b.Name, Summary: args, Title: provider.ToolTitle(b.Name, b.Input)})
 		}
 	}
 	return out

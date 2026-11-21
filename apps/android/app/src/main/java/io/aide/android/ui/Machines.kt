@@ -1,5 +1,8 @@
 package io.aide.android.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +38,9 @@ fun MachinesTab(model: AppModel) {
         SyncLine(model)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (world.machines.isEmpty() && world.watched) item { Text(t("No machines yet.", "还没有机器。"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            items(world.machines, key = { it.machineId }) { MachineCard(model, it) }
+            items(world.machines, key = { it.machineId }) {
+                Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { MachineCard(model, it) }
+            }
             // Coding agents are connected where they run: on a computer, through the desktop app's guide.
             item { SectionHeader(t("Connecting a coding agent", "连接编码 Agent")) }
             item {
@@ -54,8 +59,8 @@ fun MachinesTab(model: AppModel) {
 @Composable
 private fun MachineCard(model: AppModel, m: Machine) {
     val scope = rememberCoroutineScope()
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Box(Modifier.fillMaxWidth().aideCard()) {
+        Column(Modifier.padding(16.dp).animateContentSize(tween(Motion.Medium, easing = Motion.EaseOut)), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row {
                 Text(m.machineName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text(
@@ -80,7 +85,7 @@ private fun MachineCard(model: AppModel, m: Machine) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (m.unreachable.isNotEmpty() && m.online) Text(m.unreachable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            s?.agents?.filter { it.available }?.forEach { a ->
+            s?.agents?.filter { it.available && !it.hidden }?.forEach { a ->
                 Row {
                     Text(agentTitle(a.name), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))

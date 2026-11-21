@@ -747,6 +747,11 @@ message ToolCall {
   // allow | deny
   string decision = 5;
   string reason = 6;
+  // The line the call shows by, when summary is its raw arguments (a session
+  // read from DSH's or Claude Desktop's records): the call's description, or
+  // a natural summary (an edit's file and lines, the command's first line).
+  // Empty: summary reads as it is.
+  string title = 7;
 }
 
 message ToolResult {

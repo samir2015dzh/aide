@@ -258,7 +258,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
         />
         {m.local && (
           <p className="set-note">
-            <button className="link" onClick={() => void local.checkAgents({}).catch(() => {})}>{t("machines.recheck")}</button>
+            <button className="link" onClick={() => void local.checkAgents({ rescanHidden: true }).catch(() => {})}>{t("machines.recheck")}</button>
           </p>
         )}
       </div>

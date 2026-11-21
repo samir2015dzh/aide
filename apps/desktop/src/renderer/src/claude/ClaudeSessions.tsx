@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { ToolRow } from "../dsh/ToolRow";
 import { MachineGroupHead, MachineTag } from "../MachineTag";
 import { groupByMachine, showGroups } from "../machineScope";
 import { useTranslation } from "react-i18next";
@@ -195,16 +196,7 @@ function ClaudeTranscript({ entry, line }: { entry: ClaudeSessionEntry; line: st
                   </div>
                 );
               case "tool":
-                return (
-                  <div key={String(it.seq)} className="dsh-msg tool">
-                    <details>
-                      <summary>
-                        {it.call.name} {it.call.summary}
-                      </summary>
-                      {it.result && <pre>{it.result.summary}</pre>}
-                    </details>
-                  </div>
-                );
+                return <ToolRow key={String(it.seq)} call={it.call} result={it.result} />;
               default:
                 return null;
             }

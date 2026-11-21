@@ -112,7 +112,8 @@ func (p *parsed) transcript(who Sender) []*sessionv1.SessionEvent {
 			var d struct{ CallID, Name, Arguments string }
 			json.Unmarshal(e.Data, &d)
 			args, _ := provider.Truncate(d.Arguments, 500)
-			ev.Kind = &sessionv1.SessionEvent_ToolCall{ToolCall: &sessionv1.ToolCall{CallId: d.CallID, Kind: string(provider.ToolOther), Name: d.Name, Summary: args}}
+			ev.Kind = &sessionv1.SessionEvent_ToolCall{ToolCall: &sessionv1.ToolCall{CallId: d.CallID, Kind: string(provider.ToolOther), Name: d.Name, Summary: args,
+				Title: provider.ToolTitle(d.Name, []byte(d.Arguments))}}
 		case "tool/result":
 			var d struct{ Message message }
 			if json.Unmarshal(e.Data, &d) != nil {

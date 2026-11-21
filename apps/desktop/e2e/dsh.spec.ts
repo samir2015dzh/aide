@@ -18,10 +18,14 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await list.getByRole("button", { name: /看一下 README/ }).click({ timeout: 30_000 });
   await expect(page.getByText("README 写的是安装步骤。")).toBeVisible();
 
-  // Read only: the switch is off, no box to write in.
+  // Read only: the switch is off, in the message area, whose box is there but can't be written in
+  // (the owner's ruling, 2026-11-21: the area never disappears, the switch is beside sending).
   const takeover = page.getByRole("switch", { name: "接管" });
   await expect(takeover).toHaveAttribute("aria-checked", "false");
-  await expect(page.getByRole("textbox", { name: "给 DSH 的消息" })).toHaveCount(0);
+  const box = page.getByRole("textbox", { name: "给 DSH 的消息" });
+  await expect(box).toBeDisabled();
+  await expect(box).toHaveAttribute("placeholder", "开启接管后可向此会话发送消息");
+  await expect(page.locator(".dsh-head").getByRole("switch")).toHaveCount(0);
 
   // Turning it on asks first; Cancel leaves it off.
   await takeover.click();
@@ -36,8 +40,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await expect(takeover).toHaveAttribute("aria-checked", "true");
 
   // The plugin runs: a message goes, and comes back in the conversation marked as from Aide.
-  const box = page.getByRole("textbox", { name: "给 DSH 的消息" });
-  await expect(box).toBeVisible();
+  await expect(box).toBeEnabled();
   await expect(page.getByText("DSH Desktop 里还没有 Aide 插件")).toHaveCount(0);
   // What the session goes on with: DSH's models (with their efforts) and permission presets, as the plugin lists them.
   const model = page.getByRole("combobox", { name: "模型" });
@@ -46,8 +49,12 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await model.selectOption({ label: "DeepSeek V4 · high" });
   await perm.selectOption({ label: "Auto review" });
   await snap(page, "dsh-takeover-picks");
+  // Shift+Enter is a new line; Enter sends, as chat apps do.
+  await box.fill("接着把测试");
+  await box.press("Shift+Enter");
+  await expect(box).toHaveValue("接着把测试\n");
   await box.fill("接着把测试补上");
-  await page.getByRole("button", { name: "发送" }).click();
+  await box.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "已发送。" })).toBeVisible({ timeout: 30_000 });
   const actions = fs.readFileSync(fixture.dshLog! + ".actions", "utf8");
   expect(actions).toContain('"reasoningEffort":"high"');
@@ -83,10 +90,10 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   expect(fs.statSync(pkg).size).toBeGreaterThan(0);
   await snap(page, "dsh-takeover-install");
 
-  // Off again: read only.
+  // Off again: read only, the box still there.
   await takeover.click();
   await expect(takeover).toHaveAttribute("aria-checked", "false");
-  await expect(box).toHaveCount(0);
+  await expect(box).toBeDisabled();
 
   // No session of DSH's found: the page says which DSH home it read, and how to point Aide at another.
   fs.rmSync(path.join(fixture.dshHome!, "sessions"), { recursive: true });
