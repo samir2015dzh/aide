@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/oklog/ulid/v2"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
@@ -68,6 +69,14 @@ func (n *Machine) checkLetter(m *inboxv1.Message, from, session string) error {
 
 // deliverLetter hands a checked message to its session.
 func (n *Machine) deliverLetter(ctx context.Context, p *Principal, m *inboxv1.Message, name string, atts []*sessionv1.Attachment) (*sessionv1.Session, string, error) {
+	text, err := n.sessions.expandPrompt(p, m.Text) // as session send does: the macro, the sessions it references
+	if err != nil {
+		return nil, "", err
+	}
+	if text != m.Text {
+		m = proto.CloneOf(m)
+		m.Text = text
+	}
 	n.mu.Lock()
 	if _, seen := n.lettersSeen[m.MessageId]; seen {
 		n.mu.Unlock()

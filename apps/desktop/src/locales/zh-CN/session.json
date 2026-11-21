@@ -141,7 +141,7 @@
   },
   "composer": {
     "label": "发给 {{agent}} 的消息",
-    "placeholder": "给 {{agent}} 发消息…",
+    "placeholder": "给 {{agent}} 发消息…（开头可写 !plan 或 !implement；#s_… 引入一个历史会话）",
     "send": "发送"
   }
 }
