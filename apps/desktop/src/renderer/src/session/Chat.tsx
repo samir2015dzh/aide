@@ -15,6 +15,7 @@ import { Icon } from "../icons";
 import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
 import { keys } from "../platform";
 import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
+import { WritesTo } from "../MachineTag";
 import { useNow, useStore } from "../store";
 import { confirmRollback, interrupt } from "./actions";
 import { Code } from "./Code";
@@ -828,6 +829,7 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
   };
   return (
     <div className="mbox" ref={ref}>
+      <WritesTo machineId={s.machineId} />
       <div className="mbox-in">
         <textarea
           ref={area}

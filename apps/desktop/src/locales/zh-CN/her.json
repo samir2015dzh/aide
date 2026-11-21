@@ -34,6 +34,15 @@
     "paired": "刚刚加入",
     "notNow": "以后再说"
   },
+  "scope": {
+    "offTitle": "本机 Her 未开启",
+    "offSub": "在这里开启后，Her 就在 {{name}} 上为你工作。其他机器的 Her 归各自的机器，想看可以在下面手动切换。",
+    "turnOnHere": "在本机开启 Her",
+    "others": "其他机器上的 Her",
+    "view": "查看",
+    "viewing": "你正在看 {{name}} 上的 Her，不是本机的。",
+    "backHere": "回到本机 Her"
+  },
   "grant": {
     "runs": "Her 在这台电脑上运行，电脑开着时她一直可用。",
     "desc": "Her 可以使用你的所有电脑：在任意项目里启动编程 agent，查看并回复它们的任务。这项授权不会到期，关闭 Her 即结束。",

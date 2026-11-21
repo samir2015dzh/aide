@@ -360,6 +360,7 @@ message ClaudeUsage {
   // Why there is no reading at all, or empty when windows are present:
   // "signed_out" (no signed-in token found), "no_token" (a token was found
   // but could not be read), "api_error" (the endpoint failed),
+  // "parse_error" (the endpoint answered, but not with a JSON object),
   // "unsupported" (this OS can't open the token cache). Shown as "读不到".
   string unavailable = 4;
   // The last auto-renew outcome, or empty when none was needed:

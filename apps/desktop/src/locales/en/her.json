@@ -34,6 +34,15 @@
     "paired": "Added just now",
     "notNow": "Not Now"
   },
+  "scope": {
+    "offTitle": "Her is off on this computer",
+    "offSub": "Her runs on {{name}} once you turn her on here. Other machines' Her stays theirs: open one below to look at it.",
+    "turnOnHere": "Turn On Her Here",
+    "others": "Her on other machines",
+    "view": "Open",
+    "viewing": "This is Her on {{name}}, not on this computer.",
+    "backHere": "Back to this computer's Her"
+  },
   "grant": {
     "runs": "Her runs on this computer and works whenever it is on.",
     "desc": "Her can use all your computers: start coding agents in any project, read their tasks and answer them. This doesn't expire. Turn Her off to end it.",
