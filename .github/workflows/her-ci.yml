@@ -52,10 +52,16 @@ jobs:
       # Cargo's registry and her/target, kept between runs (deleted with her). Saved by main's
       # pushes alone: a pull request restores main's, and adds none to the cache quota.
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
         with:
           workspaces: her -> target
           key: her-ci-test-${{ runner.os }}
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, rust-cache (rust) in test: ${{ steps.rust-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: PDFium for the document tests
         run: |
           case "$RUNNER_OS" in
@@ -104,10 +110,16 @@ jobs:
       # Cargo's registry and her/target, kept between runs (deleted with her). Saved by main's
       # pushes alone: a pull request restores main's, and adds none to the cache quota.
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
         with:
           workspaces: her -> target
           key: her-ci-windows-${{ runner.os }}
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, rust-cache (rust) in windows: ${{ steps.rust-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: PDFium for the document tests
         run: |
           # tar takes "D:" for a host's name: the folder as bash names it.

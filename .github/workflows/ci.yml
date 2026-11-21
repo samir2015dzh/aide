@@ -50,9 +50,15 @@ jobs:
       # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
+        id: setup-node-cache
         with:
           node-version: 24
           cache: pnpm
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-node (pnpm) in go: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: types and unit tests (TypeScript)
         run: |
           pnpm install --frozen-lockfile
@@ -89,11 +95,17 @@ jobs:
       # her's debug build, kept apart from her-ci's and windows-app's (deleted with her).
       # Saved when the tests after it fail too: this job's failures are allowed for now.
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
         with:
           workspaces: her -> target
           key: ci-windows-e2e
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           cache-on-failure: true
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, rust-cache (rust) in windows-e2e: ${{ steps.rust-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Build Her for its end-to-end tests
         shell: bash
         env:
@@ -122,9 +134,15 @@ jobs:
       # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
+        id: setup-node-cache
         with:
           node-version: 24
           cache: pnpm
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-node (pnpm) in windows-app: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: pnpm install --frozen-lockfile
       - name: end-to-end (desktop app)
         run: go test ./e2e -run '^TestDesktop$' -count=1 -v -timeout 30m
@@ -143,10 +161,16 @@ jobs:
       # The package's her build (release profile, MSVC target), kept apart from the others
       # (deleted with her).
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
         with:
           workspaces: her -> target
           key: ci-windows-app
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, rust-cache (rust) in windows-app: ${{ steps.rust-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       # her is built once, with the profile that takes the least of this job's time.
       - name: package
         run: node apps/desktop/scripts/package-win.mjs
