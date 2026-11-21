@@ -13,6 +13,8 @@ type Tauri = {
   };
 };
 const tauri = (window as unknown as { __TAURI__?: Tauri }).__TAURI__;
+// Without the shell's global the transport below falls back to app://aide/api, which nothing answers.
+if (!tauri) console.error("[aide] window.__TAURI__ is missing: this renderer is not running in the Tauri shell.");
 let nextId = 1;
 
 async function shellFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {

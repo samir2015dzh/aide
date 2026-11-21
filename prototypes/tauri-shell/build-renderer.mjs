@@ -18,15 +18,17 @@ const tailwindcss = (await load("@tailwindcss/vite")).default;
 
 const realApi = path.join(renderer, "src/api.ts");
 const shimApi = path.join(here, "shim/api.ts");
+// Vite/rolldown ids always use forward slashes; path.join on Windows does not, so compare normalized.
+const same = (a, b) => path.resolve(a).replace(/\\/g, "/") === path.resolve(b).replace(/\\/g, "/");
 const swapApi = {
   name: "aide-tauri-api",
   enforce: "pre",
   async resolveId(source, importer, options) {
     // The shim's own imports resolve as the real api.ts's would (the desktop app's dependencies).
-    if (importer === shimApi) return this.resolve(source, realApi, { ...options, skipSelf: true });
+    if (importer && same(importer, shimApi)) return this.resolve(source, realApi, { ...options, skipSelf: true });
     if (!importer || !/(^|\/)api(\.ts)?$/.test(source)) return null;
     const r = await this.resolve(source, importer, { ...options, skipSelf: true });
-    return r && r.id === realApi ? shimApi : null;
+    return r && same(r.id, realApi) ? shimApi : null;
   },
 };
 
