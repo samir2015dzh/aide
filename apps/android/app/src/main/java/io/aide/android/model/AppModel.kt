@@ -340,6 +340,19 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /**
+     * Pulled down: the status and the latest page of sessions read again now, merged into what the Watch
+     * holds; the Watch keeps them current after.
+     */
+    suspend fun refresh() {
+        refreshStatus()
+        report {
+            val page = api!!.listSessions()
+            val w = _world.value
+            _world.value = w.copy(sessions = mergeSessions(w.sessions, page.sessions), next = w.next ?: page.next)
+        }
+    }
+
     /** The next older page of sessions. */
     suspend fun loadOlder() {
         val cursor = _world.value.next ?: return
