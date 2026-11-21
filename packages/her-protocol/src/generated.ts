@@ -216,6 +216,17 @@ export type BotAvatarResult = {
   data: string;
 };
 
+/** Parameters of `bots/confirm_rule_delete`. */
+export type BotConfirmRuleParams = {
+  bot_id: string;
+  rule_id: string;
+};
+
+/** `bots/confirm_rules`: an assistant's confirmation rules, oldest first. */
+export type BotConfirmRulesResult = {
+  rules: ConfirmRule[];
+};
+
 export type BotCreateParams = {
   avatar: AvatarInput;
   /** The model its conversation starts with; the configured one without it. */
@@ -226,7 +237,7 @@ export type BotCreateParams = {
   thinking?: ThinkingLevel | null;
 };
 
-/** Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory` and `bots/memory_clear`. */
+/** Parameters of `bots/avatar`, `bots/read`, `bots/unread`, `bots/clear`, `bots/delete`, `bots/memory`, `bots/memory_clear` and `bots/confirm_rules`. */
 export type BotIdParams = {
   bot_id: string;
 };
@@ -868,6 +879,25 @@ export type ConfigWriteResult = {
 };
 
 export type ConfigWriteStatus = "ok" | "overridden";
+
+/** What a confirmation rule is about (docs/her-confirm-rules.md §2). */
+export type ConfirmAction = "send" | "publish" | "pay" | "delete" | "install" | "grant";
+
+/** One of an assistant's confirmation rules: the owner's preference about asking first before an action of a kind, on targets that match a pattern (docs/her-confirm-rules.md). */
+export type ConfirmRule = {
+  action: ConfirmAction;
+  /** RFC 3339. */
+  created_at: string;
+  id: string;
+  /** What the owner said, in their words. */
+  note?: string;
+  /** Which targets: words with `*` for any run of characters, matched whole and ignoring case; `*` alone is every target. */
+  target: string;
+  want: ConfirmWant;
+};
+
+/** What a confirmation rule says to do before a matching action. */
+export type ConfirmWant = "skip" | "ask";
 
 /** A `connect` card's body. */
 export type ConnectBody = {
@@ -4935,6 +4965,8 @@ export interface Methods {
   "auth/set": [AuthSetParams, AuthSetResult];
   "bots/avatar": [BotIdParams, BotAvatarResult];
   "bots/clear": [BotIdParams, Empty];
+  "bots/confirm_rule_delete": [BotConfirmRuleParams, Empty];
+  "bots/confirm_rules": [BotIdParams, BotConfirmRulesResult];
   "bots/create": [BotCreateParams, BotResult];
   "bots/delete": [BotIdParams, Empty];
   "bots/memory": [BotIdParams, BotMemoryResult];
