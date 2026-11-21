@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { BotMemoryPage, BotMemoryResult, BotSummary } from "@aide/her-protocol";
+import type { BotMemoryPage, BotMemoryResult, BotSummary, ConfirmRule } from "@aide/her-protocol";
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
 import { errorText, useStore } from "../store";
@@ -103,6 +103,7 @@ export function MemoryPage({ bot, files, onBack, onClose }: { bot: BotSummary; f
             </section>
           </div>
         )}
+        {memory && <ConfirmRules bot={bot} />}
       </div>
     </aside>
   );
@@ -123,6 +124,67 @@ function Pages({ bot, files, pages }: { bot: BotSummary; files: FileScope; pages
         ))}
       </div>
       {shown && <FilePreview scope={files} path={shown.path} name={shown.name} onSave={() => void save(shown.path, shown.name)} onClose={() => setShown(null)} />}
+    </section>
+  );
+}
+
+/**
+ * The owner's confirmation rules (docs/her-confirm-rules.md): when the assistant does not need to ask
+ * first, or always does. They come from the chat; here they are read and deleted. A machine whose her
+ * has none of them shows nothing.
+ */
+function ConfirmRules({ bot }: { bot: BotSummary }) {
+  const { t } = useTranslation("her");
+  const her = useHer();
+  const st = useStore();
+  const answers = herAnswers(her.machine, "bots/confirm_rules");
+  const [rules, setRules] = useState<ConfirmRule[] | null>(null);
+  const [round, setRound] = useState(0);
+  const last = JSON.stringify(bot.last ?? null);
+  useEffect(() => {
+    if (answers === false || !her.env.rpc) return;
+    let live = true;
+    her.call("bots/confirm_rules", { bot_id: bot.id }).then(
+      (r) => live && setRules(r.rules),
+      () => live && setRules(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [bot.id, last, round, answers, her.env.rpc]);
+  if (!rules) return null;
+  const remove = (rule: ConfirmRule) =>
+    st.set({
+      sheet: {
+        kind: "confirm",
+        title: t("confirmRules.delete.title"),
+        message: t("confirmRules.delete.message"),
+        button: t("confirmRules.delete.button"),
+        run: () => her.call("bots/confirm_rule_delete", { bot_id: bot.id, rule_id: rule.id }).then(() => setRound((n) => n + 1)),
+        done: t("confirmRules.delete.done"),
+      },
+    });
+  return (
+    <section data-testid="her-confirm-rules">
+      <h3 className="fhead">{t("confirmRules.title")}</h3>
+      {rules.length > 0 && (
+        <div className="fgroup">
+          {rules.map((r) => (
+            <div className="frow" key={r.id} data-testid={`her-confirm-rule-${r.id}`}>
+              <span className="fl">
+                {t(`confirmRules.action.${r.action}`)} · {r.target === "*" ? t("confirmRules.anyTarget") : r.target}
+              </span>
+              <span className="fv">
+                <span className="hp-val">{t(`confirmRules.want.${r.want}`)}</span>
+                <button className="link" onClick={() => remove(r)}>
+                  {t("confirmRules.delete.button")}
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="set-note">{rules.length ? t("confirmRules.note") : t("confirmRules.empty")}</p>
     </section>
   );
 }

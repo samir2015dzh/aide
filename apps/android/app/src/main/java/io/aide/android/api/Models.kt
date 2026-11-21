@@ -292,6 +292,7 @@ data class WatchResponse(
 @Serializable data class QuestionAsked(val question: Question? = null)
 @Serializable data class QuestionResolved(val questionId: String = "", val resolution: String = "", val by: String = "", val answers: List<Answer> = emptyList())
 @Serializable data class MessageReceived(val messageId: String = "", val from: String = "", val fromName: String = "", val text: String = "")
+@Serializable data class RolledBack(val turn: Int = 0, val lastTurn: Int = 0, val by: String = "")
 @Serializable data class MessageSent(val messageId: String = "", val to: String = "", val toName: String = "", val text: String = "")
 
 @Serializable
@@ -312,6 +313,7 @@ data class SessionEvent(
     val agentDraft: AgentDraft? = null,
     val messageReceived: MessageReceived? = null,
     val messageSent: MessageSent? = null,
+    val rolledBack: RolledBack? = null,
 )
 
 // Requests and the answers the app reads.

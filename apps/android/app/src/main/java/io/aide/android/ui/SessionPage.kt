@@ -185,6 +185,10 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
         )
         is Item.Error -> Text(item.text, pad, color = MaterialTheme.colorScheme.error)
         is Item.TurnEnd -> Text(t("The turn failed: ", "本轮失败：") + item.text, pad, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        is Item.Rollback -> Text(
+            t("Rolled back to turn ${item.turn}: turns ${item.turn + 1} to ${item.lastTurn} above were discarded.", "已回滚到第 ${item.turn} 轮：上面第 ${item.turn + 1}–${item.lastTurn} 轮已丢弃。"),
+            pad, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

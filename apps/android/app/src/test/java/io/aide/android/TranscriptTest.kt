@@ -5,6 +5,7 @@ import io.aide.android.api.AgentMessage
 import io.aide.android.api.Question
 import io.aide.android.api.QuestionAsked
 import io.aide.android.api.QuestionResolved
+import io.aide.android.api.RolledBack
 import io.aide.android.api.SessionEvent
 import io.aide.android.api.ToolCall
 import io.aide.android.api.ToolResult
@@ -18,6 +19,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TranscriptTest {
+    @Test fun aRollbackStaysInTheConversation() {
+        val t = Transcript()
+        t.add(SessionEvent(seq = 1, userMessage = UserMessage("two")))
+        t.add(SessionEvent(seq = 2, rolledBack = RolledBack(turn = 1, lastTurn = 3, by = "owner")))
+        assertEquals(listOf(Item.User("e1", "two"), Item.Rollback("e2", 1, 3)), t.items())
+    }
+
     @Test fun aTurnAsThePageShowsIt() {
         val t = Transcript()
         t.add(SessionEvent(seq = 1, userMessage = UserMessage("fix the test")))
