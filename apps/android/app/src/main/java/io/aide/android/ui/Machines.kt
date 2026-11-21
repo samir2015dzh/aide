@@ -80,7 +80,7 @@ private fun MachineCard(model: AppModel, m: Machine) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (m.unreachable.isNotEmpty() && m.online) Text(m.unreachable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            s?.agents?.filter { it.available }?.forEach { a ->
+            s?.agents?.filter { it.available && !it.hidden }?.forEach { a ->
                 Row {
                     Text(agentTitle(a.name), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))

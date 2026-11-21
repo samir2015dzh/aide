@@ -62,6 +62,8 @@ data class LostSpan(val from: String = "", val to: String = "")
 data class AgentStatus(
     val name: String = "",
     val available: Boolean = false,
+    /** The owner hid it (SetAgentHidden): left out of the machine's list, as on the desktop. */
+    val hidden: Boolean = false,
     val version: String = "",
     val loggedIn: Boolean = false,
     val detail: String = "",

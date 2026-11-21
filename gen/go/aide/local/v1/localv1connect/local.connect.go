@@ -98,6 +98,9 @@ const (
 	// LocalServiceCheckAgentsProcedure is the fully-qualified name of the LocalService's CheckAgents
 	// RPC.
 	LocalServiceCheckAgentsProcedure = "/aide.local.v1.LocalService/CheckAgents"
+	// LocalServiceSetAgentHiddenProcedure is the fully-qualified name of the LocalService's
+	// SetAgentHidden RPC.
+	LocalServiceSetAgentHiddenProcedure = "/aide.local.v1.LocalService/SetAgentHidden"
 	// LocalServiceListMachineReposProcedure is the fully-qualified name of the LocalService's
 	// ListMachineRepos RPC.
 	LocalServiceListMachineReposProcedure = "/aide.local.v1.LocalService/ListMachineRepos"
@@ -351,6 +354,8 @@ type LocalServiceClient interface {
 	// Checks this Mac's coding agents again (installed, version, signed in),
 	// in the background: they are only checked when something needs them.
 	CheckAgents(context.Context, *v1.CheckAgentsRequest) (*v1.CheckAgentsResponse, error)
+	// Hides a coding agent a machine lists, or shows it again (SetAgentHidden).
+	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -658,6 +663,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceCheckAgentsProcedure,
 			connect.WithSchema(localServiceMethods.ByName("CheckAgents")),
+			connect.WithClientOptions(opts...),
+		),
+		setAgentHidden: connect.NewClient[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse](
+			httpClient,
+			baseURL+LocalServiceSetAgentHiddenProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetAgentHidden")),
 			connect.WithClientOptions(opts...),
 		),
 		listMachineRepos: connect.NewClient[v1.ListMachineReposRequest, v1.ListMachineReposResponse](
@@ -1085,6 +1096,7 @@ type localServiceClient struct {
 	setAgentDefaults         *connect.Client[v1.SetAgentDefaultsRequest, v1.SetAgentDefaultsResponse]
 	removeMachine            *connect.Client[v1.RemoveMachineRequest, v1.RemoveMachineResponse]
 	checkAgents              *connect.Client[v1.CheckAgentsRequest, v1.CheckAgentsResponse]
+	setAgentHidden           *connect.Client[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse]
 	listMachineRepos         *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
 	listMachineFolders       *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
 	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
@@ -1359,6 +1371,15 @@ func (c *localServiceClient) RemoveMachine(ctx context.Context, req *v1.RemoveMa
 // CheckAgents calls aide.local.v1.LocalService.CheckAgents.
 func (c *localServiceClient) CheckAgents(ctx context.Context, req *v1.CheckAgentsRequest) (*v1.CheckAgentsResponse, error) {
 	response, err := c.checkAgents.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SetAgentHidden calls aide.local.v1.LocalService.SetAgentHidden.
+func (c *localServiceClient) SetAgentHidden(ctx context.Context, req *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error) {
+	response, err := c.setAgentHidden.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -2009,6 +2030,8 @@ type LocalServiceHandler interface {
 	// Checks this Mac's coding agents again (installed, version, signed in),
 	// in the background: they are only checked when something needs them.
 	CheckAgents(context.Context, *v1.CheckAgentsRequest) (*v1.CheckAgentsResponse, error)
+	// Hides a coding agent a machine lists, or shows it again (SetAgentHidden).
+	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -2312,6 +2335,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceCheckAgentsProcedure,
 		svc.CheckAgents,
 		connect.WithSchema(localServiceMethods.ByName("CheckAgents")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetAgentHiddenHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetAgentHiddenProcedure,
+		svc.SetAgentHidden,
+		connect.WithSchema(localServiceMethods.ByName("SetAgentHidden")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListMachineReposHandler := connect.NewUnaryHandlerSimple(
@@ -2760,6 +2789,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceRemoveMachineHandler.ServeHTTP(w, r)
 		case LocalServiceCheckAgentsProcedure:
 			localServiceCheckAgentsHandler.ServeHTTP(w, r)
+		case LocalServiceSetAgentHiddenProcedure:
+			localServiceSetAgentHiddenHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineReposProcedure:
 			localServiceListMachineReposHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineFoldersProcedure:
@@ -2995,6 +3026,10 @@ func (UnimplementedLocalServiceHandler) RemoveMachine(context.Context, *v1.Remov
 
 func (UnimplementedLocalServiceHandler) CheckAgents(context.Context, *v1.CheckAgentsRequest) (*v1.CheckAgentsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.CheckAgents is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentHidden is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error) {
