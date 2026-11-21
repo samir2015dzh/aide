@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { fixture, launch, snap } from "./app";
+import { fixture, launch, navTo, snap } from "./app";
 
 // DeepSeek 会话 › taking one over (docs/dsh-takeover.md): read only until the owner turns 接管 on
 // for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
@@ -10,6 +10,50 @@ import { fixture, launch, snap } from "./app";
 // text stays. Off again, read only. With no session of DSH's found, the page names the DSH home it read.
 
 test.describe.configure({ timeout: 120_000 });
+
+// This computer not turned on as a machine (Settings › Machines, its sharing switch): it is none of the
+// owner's machines then, so its sessions are not listed. The pages that list them (this one, and the Claude
+// app's) say so instead of looking empty, with the button that turns it on; turned on, the sessions are back.
+// First in this file: the test after it ends with DSH's sessions gone. Whatever happens here, this computer is
+// a machine again when it ends, as the next test needs.
+test("this computer not turned on as a machine: the session pages say so, and turn it on", async () => {
+  const { app, page } = await launch();
+  const call = (method: string, body: object) =>
+    page.evaluate(
+      async ([m, b]) => (await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) })).json(),
+      [method, body] as const,
+    );
+  await page.getByRole("button", { name: "DeepSeek 会话" }).click();
+  const list = page.getByRole("navigation", { name: "DeepSeek 会话" });
+  const row = list.getByRole("button", { name: /看一下 README/ });
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  const said = "这台电脑还没有作为机器开启";
+  await expect(list.getByRole("status").filter({ hasText: said })).toHaveCount(0);
+
+  const status = (await call("GetStatus", {})) as { localMachineName?: string };
+  const name = status.localMachineName ?? "";
+  await call("SetLocalMachine", { enabled: false, machineName: name });
+  try {
+    await expect(list.getByRole("status").filter({ hasText: said })).toBeVisible({ timeout: 30_000 });
+    await snap(page, "dsh-local-machine-off");
+    // No machine is left to say it has DSH or Claude Code: both entries stay in the sidebar all the same,
+    // or the pages that say why could not be opened.
+    await navTo(page, /^概览/);
+    await expect(page.getByRole("button", { name: "DeepSeek 会话" })).toBeVisible();
+
+    // The Claude app's sessions: the same notice.
+    await page.getByRole("button", { name: "Claude 会话" }).click();
+    await expect(page.getByRole("navigation", { name: "Claude 会话" }).getByRole("status").filter({ hasText: said })).toBeVisible();
+
+    await page.getByRole("button", { name: "DeepSeek 会话" }).click();
+    await list.getByRole("status").filter({ hasText: said }).getByRole("button", { name: "在这台电脑上开启" }).click();
+    await expect(list.getByRole("status").filter({ hasText: said })).toHaveCount(0, { timeout: 30_000 });
+    await expect(row).toBeVisible({ timeout: 30_000 });
+  } finally {
+    await call("SetLocalMachine", { enabled: true, machineName: name }).catch(() => {});
+    await app.close();
+  }
+});
 
 test("taking over a DSH session: off by default, asked, a message through the plugin, DSH Desktop gone, off again", async () => {
   const { app, page } = await launch();

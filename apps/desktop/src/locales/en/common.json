@@ -246,6 +246,8 @@
     "showArchived_other": "Show {{count}} archived",
     "hideArchived": "Hide archived",
     "none": "No DeepSeek Harness sessions of its own on your machines.",
+    "localOff": "This computer is not turned on as a machine, so its sessions don’t show here. Once on, you can turn it off again in Settings › Machines.",
+    "localOffTurnOn": "Turn On for This Computer",
     "pick": "Choose a session to read it.",
     "unreachable": "{{name}} doesn't answer.",
     "unreachableLastKnown": "{{name}} is lost: its sessions below are as last read.",
