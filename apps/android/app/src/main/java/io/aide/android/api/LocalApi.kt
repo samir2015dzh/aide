@@ -1,7 +1,10 @@
 package io.aide.android.api
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -13,13 +16,22 @@ import kotlinx.serialization.json.encodeToJsonElement
 class LocalApi(port: Long, token: String) {
     val client = ConnectClient("http://127.0.0.1:$port", token, "aide.local.v1.LocalService")
 
+    /** The answer decoded off the caller's (the UI's) thread; one that does not fit Res is an ApiError, as callers expect. */
     suspend inline fun <reified Req, reified Res> call(method: String, req: Req, timeoutSeconds: Long = 30): Res {
         val out = client.unary(method, ConnectClient.json.encodeToJsonElement(req), timeoutSeconds)
-        return ConnectClient.json.decodeFromJsonElement(out)
+        return withContext(Dispatchers.Default) { decode<Res>(method, out) }
     }
 
     inline fun <reified Req, reified Res> stream(method: String, req: Req): Flow<Res> =
-        client.stream(method, ConnectClient.json.encodeToJsonElement(req)).map { ConnectClient.json.decodeFromJsonElement<Res>(it) }
+        client.stream(method, ConnectClient.json.encodeToJsonElement(req)).map { decode<Res>(method, it) }
+
+    inline fun <reified Res> decode(method: String, e: JsonElement): Res = try {
+        ConnectClient.json.decodeFromJsonElement(e)
+    } catch (x: SerializationException) {
+        throw ApiError("internal", "unreadable answer to $method: ${x.message}")
+    } catch (x: IllegalArgumentException) { // what a JSON element of the wrong kind throws
+        throw ApiError("internal", "unreadable answer to $method: ${x.message}")
+    }
 
     /** A call to which only the answer's raw JSON matters (Her's). */
     suspend inline fun <reified Req> raw(method: String, req: Req, timeoutSeconds: Long = 30): JsonElement =

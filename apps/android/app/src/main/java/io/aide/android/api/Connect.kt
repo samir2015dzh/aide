@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -99,18 +101,35 @@ class ConnectClient(
             .post(body.toRequestBody(if (streaming) STREAM_JSON else JSON))
             .build()
 
-    /** A unary call; timeoutSeconds 0 waits as long as it takes (the person signing, a long poll). */
+    /**
+     * A unary call; timeoutSeconds 0 waits as long as it takes (the person signing, a long poll).
+     *
+     * The answer's body is read and parsed off the caller's thread: callers are the UI's coroutines, and
+     * a large answer (a DSH session's page of events) read there is a socket read on the main thread,
+     * which Android stops the app for. Any failure past the headers (the body cut short, JSON that does
+     * not parse) is an ApiError, as every caller expects, never an exception that ends the app.
+     */
     suspend fun unary(method: String, req: JsonElement, timeoutSeconds: Long = 30): JsonElement {
         val call = http.newCall(request(method, req.toString().encodeToByteArray(), streaming = false))
         if (timeoutSeconds > 0) call.timeout().timeout(timeoutSeconds, TimeUnit.SECONDS)
         val res = call.await()
-        res.use {
-            val text = it.body?.string().orEmpty()
-            if (!it.isSuccessful) {
-                val e = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
-                throw if (e != null) errorOf(e) else ApiError("unknown", "HTTP ${it.code}")
+        return withContext(Dispatchers.IO) {
+            res.use {
+                val text = try {
+                    it.body?.string().orEmpty()
+                } catch (e: IOException) {
+                    throw ApiError("unavailable", e.message ?: "the core's answer was cut short")
+                }
+                if (!it.isSuccessful) {
+                    val e = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
+                    throw if (e != null) errorOf(e) else ApiError("unknown", "HTTP ${it.code}")
+                }
+                try {
+                    json.parseToJsonElement(text.ifEmpty { "{}" })
+                } catch (e: SerializationException) {
+                    throw ApiError("internal", "unreadable answer to $method: ${e.message}")
+                }
             }
-            return json.parseToJsonElement(text.ifEmpty { "{}" })
         }
     }
 
@@ -138,6 +157,8 @@ class ConnectClient(
                 close()
             } catch (e: ApiError) {
                 close(e)
+            } catch (e: SerializationException) { // uncaught here, it would end the app from this thread
+                close(ApiError("internal", "unreadable message from $method: ${e.message}"))
             } catch (e: IOException) {
                 close(if (call.isCanceled()) null else ApiError("unavailable", e.message ?: "the core is not reachable"))
             }
