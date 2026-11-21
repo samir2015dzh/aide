@@ -90,6 +90,24 @@ type ContactInfo struct {
 	InboxKey []byte
 	// TakesMessages is how the inbox said it takes them.
 	TakesMessages string
+	// Tier is when a message reaches it: "push", "turn" or "pull" (TierOf).
+	Tier string
+}
+
+// TierOf is when a message reaches an inbox that takes them as takes says
+// (InboxRegistration.takes_messages): "push" for a session's (the machine
+// hands it in at once, starting a turn if none runs), a socket's ("wait")
+// and a doorbell's ("webhook"); "turn" for hooks, read at the agent's next
+// turn; "pull" for an inbox read when its agent next checks it ("poll", or
+// none said).
+func TierOf(takes string) string {
+	switch takes {
+	case "session", "wait", "webhook":
+		return "push"
+	case "hook":
+		return "turn"
+	}
+	return "pull"
 }
 
 // VerifyCard checks an agent's contact card: signed by the device key of a
@@ -144,14 +162,17 @@ func (t *Trust) VerifyContact(c *identityv1.Contact) (*ContactInfo, error) {
 		if reg.OwnerId != t.ownerID || reg.Inbox != info.Inbox || len(reg.InboxPublicKey) != 32 {
 			return nil, errors.New("inbox registration: not this inbox's")
 		}
-		info.InboxKey, info.TakesMessages = reg.InboxPublicKey, reg.TakesMessages
+		info.InboxKey, info.TakesMessages, info.Tier = reg.InboxPublicKey, reg.TakesMessages, reg.Tier
+		if info.Tier == "" { // a registration from before tiers
+			info.Tier = TierOf(reg.TakesMessages)
+		}
 	}
 	return &info, nil
 }
 
 // SignRegistration signs an inbox's registration with its identity key.
 func SignRegistration(key Signer, ownerID, inbox string, inboxKey []byte, takes string) (*identityv1.Signed, error) {
-	return Sign(&identityv1.InboxRegistration{OwnerId: ownerID, Inbox: inbox, InboxPublicKey: inboxKey, TakesMessages: takes,
+	return Sign(&identityv1.InboxRegistration{OwnerId: ownerID, Inbox: inbox, InboxPublicKey: inboxKey, TakesMessages: takes, Tier: TierOf(takes),
 		IssuedAt: timestamppb.Now()}, key)
 }
 

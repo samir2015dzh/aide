@@ -212,7 +212,10 @@ func (a *app) sendNative(ctx context.Context, cmd *cobra.Command, id, text, mode
 			return nativeErr(ref, err)
 		}
 		if a.output == "json" {
-			return a.report(cmd.OutOrStdout(), nil, field{"sent", map[string]string{"session_id": id, "request_id": res.RequestId}})
+			// Handed to DSH, which takes it after the turn running there
+			// (docs/agent-messages.md §15).
+			return a.report(cmd.OutOrStdout(), nil, field{"sent", map[string]any{"session_id": id, "request_id": res.RequestId,
+				"delivery": []deliveryJSON{{To: id, Result: "handed", Tier: "push", Expect: "DSH takes it after the turn running there, or now if none runs"}}}})
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "sent to %s on %s (DSH takes it after the turn running there)\n", id, ref.Name)
 		return nil

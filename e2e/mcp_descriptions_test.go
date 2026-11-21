@@ -32,7 +32,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"session_wait":      {"session_get", "wait_timeout", "changes nothing", "returns at once", "never answers a question", "capped at 50s"},
 		"session_list":      {"own", "all", "other clients", "only sessions it started", "archived=true"},
 		"session_events":    {"after", "before", "page.last_seq", "has_more_after"},
-		"message_send":      {"non-empty message", "one way to tell a session", "joins that turn", "turn of its own", "inbox", "message.delivered"},
+		"message_send":      {"non-empty message", "one way to tell a session", "joins that turn", "turn of its own", "inbox", "message.delivered", "message.delivery", "<machine>/<session name>"},
 		"session_answer":    {"choose as an array", "item as an array", "decline=true"},
 		"session_interrupt": {"session started by this connection", "message_send"},
 		"session_archive":   {"session started by this connection", "read-only"},
@@ -45,6 +45,7 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"message_ack":       {"held=true", "refused=true"},
 		"message_status":    {"waiting", "handled", "expired"},
 		"message_contacts":  {"addresses"},
+		"roster":            {"tier", "<machine>/<session name>", "paused_agents", "mailable only once", "message_send"},
 		"message_wake":      {"webhook", "link for your owner", "never passes through you", "as with your own name", "Grok Bot"},
 		"machine_exec":      {"PowerShell", "sh", "session_start", "Run commands", "denied", "ops log", "exit_code", "command_failed", "timed_out", "1 MiB"},
 	}

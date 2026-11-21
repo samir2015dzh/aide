@@ -814,6 +814,17 @@ func (a *app) resolveHandle(handle string, contacts []contactRec) (target, error
 		hint: "write the agent and the name (<agent>/<name>)"}
 }
 
+// readable reports whether to is a readable name rather than an address or
+// an id (c_…, m_…, s_…, dsh_…, @name): what a session's name may stand for.
+func readable(to string) bool {
+	for _, p := range []string{"c_", "m_", "s_", "@"} {
+		if strings.HasPrefix(to, p) {
+			return false
+		}
+	}
+	return !isNative(to)
+}
+
 // agentCalled reports whether one of the owner's agents is called name.
 func agentCalled(contacts []contactRec, name string) bool {
 	for _, c := range contacts {
@@ -849,6 +860,46 @@ type sentJSON struct {
 	Name      string `json:"name"`
 	Delivered string `json:"delivered"`
 	Expect    string `json:"expect"`
+	// Delivery says, for each recipient, what became of it and when it is
+	// read (docs/agent-messages.md §15): result "handed" (in the recipient's
+	// hands: a session took it) or "queued" (waiting at the post office or
+	// for a turn); tier "push", "turn" or "pull"; expect, in words.
+	Delivery []deliveryJSON `json:"delivery"`
+}
+
+type deliveryJSON struct {
+	To     string `json:"to"`
+	Result string `json:"result"`
+	Tier   string `json:"tier"`
+	Expect string `json:"expect"`
+}
+
+// delivery is what became of a message sent to one recipient, as sent
+// says it (delivered: a session's DeliverMessage answer, or "queued").
+func delivery(sent sentJSON, tier string) []deliveryJSON {
+	result := "handed"
+	if sent.Delivered == "queued" {
+		result = "queued"
+	}
+	expect := sent.Expect
+	if expect == "" && result == "handed" {
+		expect = "the session has it: " + deliveredText(sent.Delivered)
+	}
+	return []deliveryJSON{{To: sent.To, Result: result, Tier: tier, Expect: expect}}
+}
+
+// tierOf is when a message to t reaches it: a session's at once ("push"),
+// an agent's as its inbox takes them, a doorbell's at once.
+func tierOf(t target) string {
+	switch {
+	case t.machine != nil, t.woken:
+		return "push"
+	case t.contact != nil && t.contact.info.Tier != "":
+		return t.contact.info.Tier
+	case t.contact != nil:
+		return identity.TierOf(t.contact.info.TakesMessages)
+	}
+	return "pull"
 }
 
 func (a *app) messageSendCmd() *cobra.Command {
@@ -859,7 +910,10 @@ func (a *app) messageSendCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "send",
 		Short: "Write to one of the owner's agents, or to a session: the one way to tell a session anything",
-		Long: `Write to one of the owner's agents (by name, or address c_…), or to a session (s_…, or m_…/s_…).
+		Long: `Write to one of the owner's agents (by name, or address c_…), or to a session (s_…, m_…/s_…, or
+<machine>/<session name> as "aide roster" lists it). Writing to many at once (*, <machine>/*,
+repo:…) is refused. The answer's delivery says, for each recipient, whether it was handed over or
+waits, and when it is read (tier push, turn or pull).
 
 To a session: the message goes straight to its machine when it is online. If you asked for the turn
 running now, it joins it (and answers its question); otherwise it waits for a turn of its own. While the
@@ -897,6 +951,9 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				ctx, cancel = context.WithTimeout(ctx, timeout)
 				defer cancel()
 			}
+			if isBroadcast(to) {
+				return broadcastRefused(to)
+			}
 			if _, session, _ := strings.Cut(to, "/"); isNative(to) || isNative(session) {
 				if len(atts) > 0 || wait || subject != "" || replyTo != "" {
 					return &exitError{code: exitUsage, kind: "usage", err: errors.New("a DSH session takes text only: no -f, --wait, --subject or --reply-to")}
@@ -920,6 +977,25 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				return err
 			}
 			t, err := a.resolveTarget(to, contacts, machines)
+			if ee := (*exitError)(nil); errors.As(err, &ee) && ee.kind == "not_found" && readable(to) {
+				// Not an agent: a session by its readable name (aide roster).
+				r, rerr := a.gatherRoster(ctx, c, machines, ms)
+				if rerr != nil {
+					return rerr
+				}
+				e, ok, rerr := sessionByName(to, r.Endpoints)
+				switch {
+				case rerr != nil:
+					return rerr
+				case ok && e.Kind == "dsh_session":
+					if len(atts) > 0 || wait || subject != "" || replyTo != "" {
+						return &exitError{code: exitUsage, kind: "usage", err: errors.New("a DSH session takes text only: no -f, --wait, --subject or --reply-to")}
+					}
+					return a.sendNative(ctx, cmd, e.Address, body, "", "")
+				case ok:
+					t, err = a.resolveTarget(e.Address, contacts, machines)
+				}
+			}
 			if err != nil {
 				return err
 			}
@@ -950,13 +1026,14 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 			if t.machine != nil {
 				sent.Expect = "the machine is offline: the message waits for it, and the turn's news comes to your inbox"
 			}
+			sent.Delivery = delivery(sent, tierOf(t))
 			if wait && t.machine == nil {
 				return a.waitReply(ctx, cmd, ms, sent)
 			}
 			return a.showSent(cmd, sent)
 		},
 	}
-	cmd.Flags().StringVar(&to, "to", "", "who: an agent's name or address (c_…), a session (s_…, m_…/s_…)")
+	cmd.Flags().StringVar(&to, "to", "", "who: an agent's name or address (c_…), a session (s_…, m_…/s_…, or <machine>/<session name> as `aide roster` lists it)")
 	cmd.Flags().StringVar(&text, "message", "", "message text")
 	cmd.Flags().StringVar(&file, "message-file", "", "read the message from a file (- for stdin)")
 	cmd.Flags().StringArrayVarP(&files, "file", "f", nil, "attach a file, to a session on an online machine (repeatable)")
@@ -1036,6 +1113,7 @@ func (a *app) deliverDirect(ctx context.Context, cmd *cobra.Command, c *peer.Cli
 		if delivered == "queued" {
 			sent.Expect = "another agent's turn is running: this waits for a turn of its own, whose news comes to your inbox"
 		}
+		sent.Delivery = delivery(sent, "push")
 		if !wait || delivered == "queued" {
 			if a.output == "json" {
 				return a.report(cmd.OutOrStdout(), nil, field{"message", sent}, field{"session", sessionView(sess, ref.Name)})

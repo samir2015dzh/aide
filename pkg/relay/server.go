@@ -654,8 +654,8 @@ func (s *Server) register(p *peer) {
 	if p.role == relayv1.Role_ROLE_MACHINE {
 		old = t.machines[p.subject.ID]
 		t.machines[p.subject.ID] = p
-		t.lastSeen[p.subject.ID] = time.Now()
 	}
+	t.lastSeen[p.subject.ID] = time.Now()
 	s.wakeOwnerLocked(t)
 	s.mu.Unlock()
 	if old != nil {
@@ -681,6 +681,8 @@ func (s *Server) unregister(p *peer) {
 			}
 		}
 		t.lastSeen[p.subject.ID] = seen
+	} else if p.role == relayv1.Role_ROLE_CLIENT {
+		t.lastSeen[p.subject.ID] = time.Now() // an agent: when it left
 	}
 	s.wakeOwnerLocked(t)
 	s.mu.Unlock()
@@ -1283,3 +1285,27 @@ func (s *Server) Store() *Store { return s.sqlite }
 
 // Backend exposes the relay's storage.
 func (s *Server) Backend() Backend { return s.store }
+
+// presence is which of the owner's inboxes are connected now (its machines,
+// its agents), and when the others were last: what the relay knows of its
+// own connections since it started, for a roster.
+func (s *Server) presence(t *tenant) []*relayv1.Presence {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	online := map[string]bool{}
+	for p := range t.peers {
+		if p.role == relayv1.Role_ROLE_CLIENT || p.role == relayv1.Role_ROLE_MACHINE {
+			online[p.subject.ID] = true
+		}
+	}
+	var out []*relayv1.Presence
+	for id := range online {
+		out = append(out, &relayv1.Presence{Inbox: id, Online: true})
+	}
+	for id, seen := range t.lastSeen {
+		if !online[id] {
+			out = append(out, &relayv1.Presence{Inbox: id, LastSeen: timestamppb.New(seen)})
+		}
+	}
+	return out
+}
