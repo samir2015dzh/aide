@@ -1,5 +1,10 @@
 package io.aide.android.ui
 
+import io.aide.android.model.onMachine
+import io.aide.android.model.Buckets
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,11 +55,17 @@ import kotlinx.coroutines.launch
 @Composable
 fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
     val world by model.world.collectAsState()
-    val b = world.buckets
+    // Several machines: the list of one, or all (the owner's rule, 2026-11-21); the buckets stay as they are.
+    var picked by rememberSaveable { mutableStateOf<String?>(null) }
+    val ids = world.machines.map { it.machineId }
+    val all = world.buckets
+    val on = { l: List<Session> -> onMachine(l, { it.machineId }, picked, ids) }
+    val b = Buckets(on(all.needsYou), on(all.unseen), on(all.inProgress), on(all.recent))
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize()) {
         PageTitle(t("Sessions", "会话"))
         SyncLine(model)
+        MachineFilter(world, picked) { picked = it }
         LazyColumn(Modifier.fillMaxSize()) {
             // DeepSeek Harness's own sessions, on a machine that has it.
             if (world.machines.any { m -> m.status?.agents.orEmpty().any { it.name == "deepseek" } }) {

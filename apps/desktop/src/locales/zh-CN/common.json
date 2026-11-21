@@ -288,5 +288,10 @@
     "toolArgs": "参数",
     "toolResult": "结果",
     "toolFailed": "失败"
+  },
+  "machineTag": {
+    "here": "{{name}}（本机）",
+    "on": "在 {{name}} 上",
+    "to": "发往 {{name}} 上的这个会话"
   }
 }

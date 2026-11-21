@@ -54,7 +54,9 @@ import io.aide.android.api.SessionEvent
 import io.aide.android.model.AppModel
 import io.aide.android.model.Transcript
 import io.aide.android.model.durationText
+import io.aide.android.model.groupByMachine
 import io.aide.android.model.instantOrNull
+import io.aide.android.model.manyMachines
 import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -181,7 +183,11 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                     )
                 }
             }
-            items(shown, key = { it.machineId + "/" + it.session.sessionId }) { e ->
+            // Several machines: the list by machine, each group its header (the owner's rule, 2026-11-21).
+            val many = manyMachines(model.world.value.machines.size)
+            for (g in groupByMachine(shown, { it.machineId }, { id -> shown.firstOrNull { it.machineId == id }?.machineName.orEmpty().ifEmpty { model.world.value.machineName(id) } })) {
+            if (many) item(key = "g-" + g.machineId) { MachineGroupHeader(g.name, g.items.size) }
+            items(g.items, key = { it.machineId + "/" + it.session.sessionId }) { e ->
                 val s = e.session
                 Row(Modifier.fillMaxWidth().clickable { open(e) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     DSHDot(s, e.lost)
@@ -189,13 +195,14 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                     Column(Modifier.weight(1f)) {
                         Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            listOf(dshEntryStateText(e), relativeTime(s.lastActivityAt), e.machineName, s.cwd.split('/', '\\').lastOrNull { it.isNotEmpty() }.orEmpty(),
+                            listOf(dshEntryStateText(e), relativeTime(s.lastActivityAt), if (many) "" else e.machineName, s.cwd.split('/', '\\').lastOrNull { it.isNotEmpty() }.orEmpty(),
                                 if (s.archived) t("archived", "已归档") else "").filter { it.isNotEmpty() }.joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
                 HorizontalDivider(Modifier.padding(start = 16.dp))
+            }
             }
             if (hidden > 0 || archived) {
                 item {
@@ -253,12 +260,15 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
             onDismissRequest = { asking = false },
             title = { Text(t("Take over this session?", "开启接管？")) },
             text = {
+                Column {
+                WritesTo(model.world.value, entry.machineId, Modifier.padding(bottom = 8.dp))
                 Text(
                     t(
                         "You can send this session messages and stop its turn from Aide; they go to DSH through the Aide plugin in DSH Desktop and show there too.\n\nWhile a turn runs, a message waits for the next turn, as one typed in DSH would.\n\nTurning it off makes it read only again; the session in DSH is unaffected.",
                         "开启后可以从 Aide 给这个会话发消息、打断它；消息经 DSH Desktop 里的 Aide 插件交给 DSH，DSH Desktop 里同步可见。\n\n会话正在运行时，消息会排到这一轮之后，和在 DSH 里输入一样。\n\n关闭接管后回到只读，DSH 里的会话不受影响。",
                     ),
                 )
+                }
             },
             confirmButton = { TextButton(onClick = { scope.launch { setOn(true) } }) { Text(t("Take Over", "开启接管")) } },
             dismissButton = { TextButton(onClick = { asking = false }) { Text(t("Cancel", "取消")) } },
@@ -269,6 +279,7 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
             title = {
                 Column {
                     Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    MachineTag(model.world.value, entry.machineId)
                     Text(listOf(dshEntryStateText(entry), entry.machineName).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
                 }
             },
@@ -324,6 +335,7 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxWidth().padding(12.dp)) {
+        WritesTo(model.world.value, entry.machineId, Modifier.padding(bottom = 4.dp))
         problem?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Warning) }
         error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }

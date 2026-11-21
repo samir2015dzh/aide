@@ -301,5 +301,10 @@
     "toolArgs": "Arguments",
     "toolResult": "Result",
     "toolFailed": "failed"
+  },
+  "machineTag": {
+    "here": "{{name}} (this computer)",
+    "on": "On {{name}}",
+    "to": "Goes to the session on {{name}}"
   }
 }
