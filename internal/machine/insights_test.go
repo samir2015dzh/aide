@@ -2,6 +2,7 @@ package machine
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -197,5 +198,54 @@ func TestSessionInsights(t *testing.T) {
 	}
 	if b, _ := h.n.st.Get(insightsKey(id)); b != nil {
 		t.Fatal("review outlived its session")
+	}
+}
+
+// A rollback discards the latest turns of its numbers, which come again;
+// each question's wait stays with the turn it was asked in.
+func TestReviewRollback(t *testing.T) {
+	t0 := time.Date(2026, 11, 21, 9, 0, 0, 0, time.UTC)
+	var evs []*sessionv1.SessionEvent
+	add := func(ms int, e *sessionv1.SessionEvent) {
+		e.Seq, e.Ts = uint64(len(evs)+1), timestamppb.New(t0.Add(time.Duration(ms)*time.Millisecond))
+		evs = append(evs, e)
+	}
+	turn := func(ms int, n uint32, q string, waitMs int) {
+		add(ms, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_TurnStarted{TurnStarted: &sessionv1.TurnStarted{Turn: n}}})
+		if q != "" {
+			add(ms+100, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_QuestionAsked{QuestionAsked: &sessionv1.QuestionAsked{Question: &sessionv1.Question{
+				QuestionId: q, Turn: n, AskedAt: timestamppb.New(t0.Add(time.Duration(ms+100) * time.Millisecond)), Items: []*sessionv1.QuestionItem{{Id: "i", Text: q}}}}}})
+			add(ms+100+waitMs, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_QuestionResolved{QuestionResolved: &sessionv1.QuestionResolved{
+				QuestionId: q, Resolution: sessionv1.QuestionResolution_QUESTION_RESOLUTION_ANSWERED}}})
+		}
+		add(ms+500+waitMs, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_TurnCompleted{TurnCompleted: &sessionv1.TurnCompleted{Turn: n}}})
+	}
+	turn(0, 1, "", 0)
+	turn(1000, 2, "q1", 1000)
+	turn(3000, 3, "", 0)
+	add(4000, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_RolledBack{RolledBack: &sessionv1.RolledBack{Turn: 1, LastTurn: 3}}})
+	turn(5000, 2, "q2", 2000)
+
+	in := reviewSession("s_1", "", nil, evs, t0.Add(time.Hour))
+	if len(in.Turns) != 4 || in.Rollbacks != 1 || in.DiscardedTurns != 2 || in.QuestionWaitMs != 3000 {
+		t.Fatalf("totals: %v", in)
+	}
+	rolled := []bool{false, true, true, false}
+	for i, tu := range in.Turns {
+		if tu.RolledBack != rolled[i] {
+			t.Fatalf("turn %d (%d) rolled back %v, want %v", i, tu.Turn, tu.RolledBack, rolled[i])
+		}
+	}
+	if in.Turns[1].QuestionWaitMs != 1000 || in.Turns[3].QuestionWaitMs != 2000 {
+		t.Fatalf("question waits by turn: %v", in.Turns)
+	}
+	if !slices.ContainsFunc(in.Findings, func(f *sessionv1.InsightFinding) bool { return f.Code == "rolled_back" }) ||
+		!strings.Contains(in.SuggestedPrompt, "rolled back, not to take again") {
+		t.Fatalf("findings %v, prompt:\n%s", in.Findings, in.SuggestedPrompt)
+	}
+	for _, want := range []string{"| Rollbacks | 1 (2 turn(s) discarded) |", "| ok, rolled back |"} {
+		if !strings.Contains(in.Markdown, want) {
+			t.Fatalf("markdown lacks %q:\n%s", want, in.Markdown)
+		}
 	}
 }

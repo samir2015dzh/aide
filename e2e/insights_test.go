@@ -55,7 +55,7 @@ func TestSessionInsights(t *testing.T) {
 	var keys struct{ Insights orderedKeys }
 	json.Unmarshal([]byte(r.stdout), &keys)
 	want := []string{"session_id", "last_event_seq", "generated_at", "turns", "busy_ms", "question_wait_ms", "failed_turns", "failures",
-		"auto_retries", "retried_turns", "stalls", "interrupts", "questions", "tools", "diff_stat", "usage", "findings", "suggested_prompt", "markdown"}
+		"auto_retries", "retried_turns", "stalls", "interrupts", "rollbacks", "discarded_turns", "questions", "tools", "diff_stat", "usage", "findings", "suggested_prompt", "markdown"}
 	if !slices.Equal(keys.Insights, want) {
 		t.Fatalf("insights keys %v, want %v", keys.Insights, want)
 	}
@@ -186,6 +186,71 @@ func TestSessionInsights(t *testing.T) {
 	r = run(t, other, time.Minute, filepath.Join(w.bin, "aide"), "session", "insights", id, "-o", "json")
 	if d := jsonDoc(t, r); r.code != 2 || d["ok"] != false || d["error"].(map[string]any)["kind"] != "not_found" || d["insights"] != nil {
 		t.Fatalf("another agent: %+v", r)
+	}
+}
+
+// TestSessionInsightsRollback reviews a session that was rolled back: the
+// review counts the rollback, marks the turns it discarded, and says so in
+// its findings, the Markdown and the suggested prompt.
+func TestSessionInsightsRollback(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	s, r := w.startSession(time.Minute, "--wait", "--prompt", "write a.txt one\nsay one")
+	if r.code != 0 {
+		t.Fatalf("start: %+v", r)
+	}
+	id := s.SessionID
+	for _, m := range []string{"write b.txt two\nsay two", "write c.txt three\nsay three"} {
+		if _, r := w.send(time.Minute, id, m); r.code != 0 {
+			t.Fatalf("send: %+v", r)
+		}
+	}
+	if r := w.cli(time.Minute, "session", "rollback", id, "--turn", "1", "--yes", "-o", "json"); r.code != 0 {
+		t.Fatalf("rollback: %+v", r)
+	}
+	if _, r := w.send(time.Minute, id, "write d.txt four\nsay four"); r.code != 0 {
+		t.Fatalf("send after the rollback: %+v", r)
+	}
+
+	r = w.cli(time.Minute, "session", "insights", id, "-o", "json")
+	var got struct {
+		Insights struct {
+			Turns []struct {
+				Turn       uint32 `json:"turn"`
+				RolledBack bool   `json:"rolled_back"`
+			} `json:"turns"`
+			Rollbacks      uint32 `json:"rollbacks"`
+			DiscardedTurns uint32 `json:"discarded_turns"`
+			Findings       []struct {
+				Code string `json:"code"`
+			} `json:"findings"`
+			SuggestedPrompt string `json:"suggested_prompt"`
+			Markdown        string `json:"markdown"`
+		} `json:"insights"`
+	}
+	if jsonDoc(t, r); r.code != 0 || json.Unmarshal([]byte(r.stdout), &got) != nil {
+		t.Fatalf("insights: %+v", r)
+	}
+	g := got.Insights
+	type turn struct {
+		n      uint32
+		rolled bool
+	}
+	var turns []turn
+	for _, tu := range g.Turns {
+		turns = append(turns, turn{tu.Turn, tu.RolledBack})
+	}
+	if !slices.Equal(turns, []turn{{1, false}, {2, true}, {3, true}, {2, false}}) || g.Rollbacks != 1 || g.DiscardedTurns != 2 {
+		t.Fatalf("turns %v, rollbacks %d, discarded %d\n%s", turns, g.Rollbacks, g.DiscardedTurns, r.stdout)
+	}
+	if !slices.ContainsFunc(g.Findings, func(f struct {
+		Code string `json:"code"`
+	}) bool {
+		return f.Code == "rolled_back"
+	}) || !strings.Contains(g.SuggestedPrompt, "not to take again") || !strings.Contains(g.Markdown, "| Rollbacks | 1 (2 turn(s) discarded) |") {
+		t.Fatalf("findings %v\n%s", g.Findings, g.Markdown)
 	}
 }
 
