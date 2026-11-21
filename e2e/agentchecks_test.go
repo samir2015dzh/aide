@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -106,4 +107,50 @@ func TestClaudeFromDesktopApp(t *testing.T) {
 		}
 		return false
 	})
+}
+
+// TestClaudeSignedInInDesktopApp: the owner uses only the Claude desktop
+// app, signed in there; its Claude Code has no sign-in of its own (`auth
+// status` says logged out). Aide shows Claude Code signed in, read from
+// the app's settings (its data folder found as the app keeps it on
+// Windows, here an MSIX package's Claude-Data\claude_<id>); signed out in
+// the app, it shows not signed in once checked again.
+func TestClaudeSignedInInDesktopApp(t *testing.T) {
+	unixOnly(t, "its fake Claude Code is a shell script")
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	home, local := t.TempDir(), t.TempDir()
+	claude := filepath.Join(t.TempDir(), "claude")
+	os.WriteFile(claude, []byte("#!/bin/sh\ncase \"$1\" in --version) echo \"2.1.326 (Claude Code)\";; auth) echo '{\"loggedIn\":false}';; esac\n"), 0o755)
+	data := filepath.Join(local, "Claude-Data", "claude_somepub")
+	os.MkdirAll(filepath.Join(data, "claude-code", "2.1.326"), 0o755)
+	config := func(signedIn bool) {
+		b, _ := json.Marshal(map[string]any{"oauth:tokenCacheV2": "opaque", "lastKnownAccountUuid": "00000000-0000-4000-8000-000000000000", "windowSizeWasSignedIn": signedIn})
+		if err := os.WriteFile(filepath.Join(data, "config.json"), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config(true)
+	w := newOwnerMac(t, []string{"AIDE_CLAUDE_BIN=" + claude, "HOME=" + home, "LOCALAPPDATA=" + local}, &localv1.GrantSpec{Agents: []string{"claude"}})
+	ctx := context.Background()
+	state := func() (bool, bool) {
+		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+		if err != nil || len(res.Machines) == 0 {
+			return false, false
+		}
+		for _, a := range res.Machines[0].Status.GetAgents() {
+			if a.Name == "claude" {
+				return a.Available, a.LoggedIn
+			}
+		}
+		return false, false
+	}
+	eventually(t, 30*time.Second, "Claude Code signed in, through the app", func() bool { ok, in := state(); return ok && in })
+
+	config(false)
+	if _, err := w.app.client.CheckAgents(ctx, &localv1.CheckAgentsRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 30*time.Second, "Claude Code not signed in, the app signed out", func() bool { ok, in := state(); return ok && !in })
 }

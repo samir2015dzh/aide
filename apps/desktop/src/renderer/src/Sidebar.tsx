@@ -118,6 +118,12 @@ export function Sidebar() {
             <span>{t("sidebar.dsh")}</span>
           </button>
         )}
+        {!st.status?.machineOnly && hasClaude(st) && (
+          <button className={`nav-i ${st.selection.kind === "claude" ? "sel" : ""}`} onClick={() => st.selection.kind !== "claude" && st.set({ selection: { kind: "claude" } })}>
+            <Icon name="terminal" />
+            <span>{t("sidebar.claude")}</span>
+          </button>
+        )}
         {/* How DSH, Claude Desktop and the others connect: the Connect guide (Settings › Connect). */}
         {!st.status?.machineOnly && (
           <button className="nav-i" onClick={() => window.aide?.openSettings("connect")}>
@@ -150,6 +156,11 @@ export function Sidebar() {
 /** Whether a machine has DeepSeek Harness, whose own sessions the DSH page lists. */
 export function hasDSH(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
   return st.machines.some((m) => m.status?.agents.some((a) => a.name === "deepseek"));
+}
+
+/** Claude Code is on a machine: the Claude desktop app's sessions may be read there. */
+export function hasClaude(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
+  return st.machines.some((m) => m.status?.agents.some((a) => a.name === "claude"));
 }
 
 /**

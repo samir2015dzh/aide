@@ -254,6 +254,15 @@ const (
 	// LocalServicePrepareDSHBridgeProcedure is the fully-qualified name of the LocalService's
 	// PrepareDSHBridge RPC.
 	LocalServicePrepareDSHBridgeProcedure = "/aide.local.v1.LocalService/PrepareDSHBridge"
+	// LocalServiceDSHSessionOptionsProcedure is the fully-qualified name of the LocalService's
+	// DSHSessionOptions RPC.
+	LocalServiceDSHSessionOptionsProcedure = "/aide.local.v1.LocalService/DSHSessionOptions"
+	// LocalServiceListClaudeSessionsProcedure is the fully-qualified name of the LocalService's
+	// ListClaudeSessions RPC.
+	LocalServiceListClaudeSessionsProcedure = "/aide.local.v1.LocalService/ListClaudeSessions"
+	// LocalServiceReadClaudeSessionProcedure is the fully-qualified name of the LocalService's
+	// ReadClaudeSession RPC.
+	LocalServiceReadClaudeSessionProcedure = "/aide.local.v1.LocalService/ReadClaudeSession"
 	// LocalServiceListMachineCustomAgentsProcedure is the fully-qualified name of the LocalService's
 	// ListMachineCustomAgents RPC.
 	LocalServiceListMachineCustomAgentsProcedure = "/aide.local.v1.LocalService/ListMachineCustomAgents"
@@ -466,6 +475,15 @@ type LocalServiceClient interface {
 	SendDSHMessage(context.Context, *v1.SendDSHMessageRequest) (*v11.SendDSHMessageResponse, error)
 	InterruptDSHSession(context.Context, *v1.InterruptDSHSessionRequest) (*v11.InterruptDSHSessionResponse, error)
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error)
+	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
+	// The Claude Code sessions the Claude desktop app lists on the machines
+	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
+	// activity first; a machine that can't be reached has them as last read,
+	// lost.
+	ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error)
+	// One of them and a page of its conversation
+	// (aide.machine.v1.MachineAdminService.ReadClaudeSession).
+	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error)
 	// A machine's custom agents (MachineAdminService.ListCustomAgents and
 	// the rest); this device's own machine in process.
 	ListMachineCustomAgents(context.Context, *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error)
@@ -973,6 +991,24 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("PrepareDSHBridge")),
 			connect.WithClientOptions(opts...),
 		),
+		dSHSessionOptions: connect.NewClient[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse](
+			httpClient,
+			baseURL+LocalServiceDSHSessionOptionsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("DSHSessionOptions")),
+			connect.WithClientOptions(opts...),
+		),
+		listClaudeSessions: connect.NewClient[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse](
+			httpClient,
+			baseURL+LocalServiceListClaudeSessionsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListClaudeSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		readClaudeSession: connect.NewClient[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse](
+			httpClient,
+			baseURL+LocalServiceReadClaudeSessionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ReadClaudeSession")),
+			connect.WithClientOptions(opts...),
+		),
 		listMachineCustomAgents: connect.NewClient[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse](
 			httpClient,
 			baseURL+LocalServiceListMachineCustomAgentsProcedure,
@@ -1094,6 +1130,9 @@ type localServiceClient struct {
 	sendDSHMessage           *connect.Client[v1.SendDSHMessageRequest, v11.SendDSHMessageResponse]
 	interruptDSHSession      *connect.Client[v1.InterruptDSHSessionRequest, v11.InterruptDSHSessionResponse]
 	prepareDSHBridge         *connect.Client[v1.PrepareDSHBridgeRequest, v11.PrepareDSHBridgeResponse]
+	dSHSessionOptions        *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
+	listClaudeSessions       *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
+	readClaudeSession        *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
 	listMachineCustomAgents  *connect.Client[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse]
 	saveMachineCustomAgent   *connect.Client[v1.SaveMachineCustomAgentRequest, v11.SaveCustomAgentResponse]
 	removeMachineCustomAgent *connect.Client[v1.RemoveMachineCustomAgentRequest, v11.RemoveCustomAgentResponse]
@@ -1802,6 +1841,33 @@ func (c *localServiceClient) PrepareDSHBridge(ctx context.Context, req *v1.Prepa
 	return nil, err
 }
 
+// DSHSessionOptions calls aide.local.v1.LocalService.DSHSessionOptions.
+func (c *localServiceClient) DSHSessionOptions(ctx context.Context, req *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {
+	response, err := c.dSHSessionOptions.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListClaudeSessions calls aide.local.v1.LocalService.ListClaudeSessions.
+func (c *localServiceClient) ListClaudeSessions(ctx context.Context, req *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error) {
+	response, err := c.listClaudeSessions.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ReadClaudeSession calls aide.local.v1.LocalService.ReadClaudeSession.
+func (c *localServiceClient) ReadClaudeSession(ctx context.Context, req *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error) {
+	response, err := c.readClaudeSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListMachineCustomAgents calls aide.local.v1.LocalService.ListMachineCustomAgents.
 func (c *localServiceClient) ListMachineCustomAgents(ctx context.Context, req *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error) {
 	response, err := c.listMachineCustomAgents.CallUnary(ctx, connect.NewRequest(req))
@@ -2049,6 +2115,15 @@ type LocalServiceHandler interface {
 	SendDSHMessage(context.Context, *v1.SendDSHMessageRequest) (*v11.SendDSHMessageResponse, error)
 	InterruptDSHSession(context.Context, *v1.InterruptDSHSessionRequest) (*v11.InterruptDSHSessionResponse, error)
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error)
+	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
+	// The Claude Code sessions the Claude desktop app lists on the machines
+	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
+	// activity first; a machine that can't be reached has them as last read,
+	// lost.
+	ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error)
+	// One of them and a page of its conversation
+	// (aide.machine.v1.MachineAdminService.ReadClaudeSession).
+	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error)
 	// A machine's custom agents (MachineAdminService.ListCustomAgents and
 	// the rest); this device's own machine in process.
 	ListMachineCustomAgents(context.Context, *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error)
@@ -2552,6 +2627,24 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("PrepareDSHBridge")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceDSHSessionOptionsHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceDSHSessionOptionsProcedure,
+		svc.DSHSessionOptions,
+		connect.WithSchema(localServiceMethods.ByName("DSHSessionOptions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceListClaudeSessionsHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListClaudeSessionsProcedure,
+		svc.ListClaudeSessions,
+		connect.WithSchema(localServiceMethods.ByName("ListClaudeSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceReadClaudeSessionHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceReadClaudeSessionProcedure,
+		svc.ReadClaudeSession,
+		connect.WithSchema(localServiceMethods.ByName("ReadClaudeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListMachineCustomAgentsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListMachineCustomAgentsProcedure,
 		svc.ListMachineCustomAgents,
@@ -2750,6 +2843,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceInterruptDSHSessionHandler.ServeHTTP(w, r)
 		case LocalServicePrepareDSHBridgeProcedure:
 			localServicePrepareDSHBridgeHandler.ServeHTTP(w, r)
+		case LocalServiceDSHSessionOptionsProcedure:
+			localServiceDSHSessionOptionsHandler.ServeHTTP(w, r)
+		case LocalServiceListClaudeSessionsProcedure:
+			localServiceListClaudeSessionsHandler.ServeHTTP(w, r)
+		case LocalServiceReadClaudeSessionProcedure:
+			localServiceReadClaudeSessionHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineCustomAgentsProcedure:
 			localServiceListMachineCustomAgentsHandler.ServeHTTP(w, r)
 		case LocalServiceSaveMachineCustomAgentProcedure:
@@ -3089,6 +3188,18 @@ func (UnimplementedLocalServiceHandler) InterruptDSHSession(context.Context, *v1
 
 func (UnimplementedLocalServiceHandler) PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.PrepareDSHBridge is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.DSHSessionOptions is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListClaudeSessions is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadClaudeSession is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListMachineCustomAgents(context.Context, *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error) {

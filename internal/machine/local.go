@@ -94,12 +94,26 @@ func (l *Local) SendDSHMessage(ctx context.Context, req *machinev1.SendDSHMessag
 	return l.n.SendDSHMessage(ctx, req)
 }
 
+func (l *Local) DSHSessionOptions(ctx context.Context, id string) (*machinev1.DSHSessionOptionsResponse, error) {
+	return l.n.DSHSessionOptions(ctx, id)
+}
+
 func (l *Local) PrepareDSHBridge() (*machinev1.PrepareDSHBridgeResponse, error) {
 	return l.n.PrepareDSHBridge()
 }
 
 func (l *Local) InterruptDSHSession(ctx context.Context, req *machinev1.InterruptDSHSessionRequest) (*machinev1.InterruptDSHSessionResponse, error) {
 	return l.n.InterruptDSHSession(ctx, req)
+}
+
+// ClaudeSessions and ReadClaudeSession are the Claude desktop app's Claude
+// Code sessions here (claudesessions.go).
+func (l *Local) ClaudeSessions() (*machinev1.ListClaudeSessionsResponse, error) {
+	return l.n.ClaudeSessions()
+}
+
+func (l *Local) ReadClaudeSession(req *machinev1.ReadClaudeSessionRequest) (*machinev1.ReadClaudeSessionResponse, error) {
+	return l.n.ReadClaudeSession(req)
 }
 
 func (l *Local) ReadDSHSession(req *machinev1.ReadDSHSessionRequest) (*machinev1.ReadDSHSessionResponse, error) {

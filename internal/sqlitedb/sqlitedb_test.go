@@ -16,10 +16,11 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	var n atomic.Int64
+	var n, spent atomic.Int64 // looks, and the time spent in them
 	// 25 ms: well above Windows timer resolution (~15.6 ms), which at a
 	// smaller interval blurs writing and idle together.
-	c, err := StartCheckpointer(path, db, 25*time.Millisecond, func(time.Duration) { n.Add(1) })
+	const interval = 25 * time.Millisecond
+	c, err := StartCheckpointer(path, db, interval, func(d time.Duration) { n.Add(1); spent.Add(int64(d)) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,9 +41,15 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 		}
 	}
 	write(time.Second) // longer than the 800 ms it had backed off to
-	before := n.Load()
+	before, spentBefore := n.Load(), spent.Load()
 	write(time.Second)
-	if busy := n.Load() - before; busy < 20 || busy < 2*idle {
-		t.Fatalf("%d checkpoints in 1 s of writes (%d in 1 s of nothing)", busy, idle)
+	// Each look waits the interval after the last one ended, so the second
+	// holds (1 s - the time spent checkpointing) / interval of them; a slow
+	// disk (a busy CI runner) makes the checkpoints themselves long. Half
+	// that allows for timer slack; backed off, it would be a handful.
+	busy := n.Load() - before
+	room := time.Second - time.Duration(spent.Load()-spentBefore)
+	if want := int64(room / (2 * interval)); busy < want {
+		t.Fatalf("%d checkpoints in 1 s of writes, want %d (%v of it checkpointing; %d in 1 s of nothing)", busy, want, time.Second-room, idle)
 	}
 }

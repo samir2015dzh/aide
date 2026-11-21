@@ -32,6 +32,8 @@ export type Selection =
   | { kind: "session"; id: string }
   /** DeepSeek Harness's own sessions (dsh/DSHSessions.tsx), one of them chosen. */
   | { kind: "dsh"; machine?: string; id?: string }
+  /** The Claude desktop app's Claude Code sessions (claude/ClaudeSessions.tsx), one of them chosen. */
+  | { kind: "claude"; machine?: string; id?: string }
   | { kind: "her"; machine?: string }
   | { kind: "progress"; machine?: string; task?: ProgressTaskRef };
 

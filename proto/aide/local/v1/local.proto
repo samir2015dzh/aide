@@ -214,6 +214,15 @@ service LocalService {
   rpc SendDSHMessage(SendDSHMessageRequest) returns (aide.machine.v1.SendDSHMessageResponse);
   rpc InterruptDSHSession(InterruptDSHSessionRequest) returns (aide.machine.v1.InterruptDSHSessionResponse);
   rpc PrepareDSHBridge(PrepareDSHBridgeRequest) returns (aide.machine.v1.PrepareDSHBridgeResponse);
+  rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (aide.machine.v1.DSHSessionOptionsResponse);
+  // The Claude Code sessions the Claude desktop app lists on the machines
+  // (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
+  // activity first; a machine that can't be reached has them as last read,
+  // lost.
+  rpc ListClaudeSessions(ListClaudeSessionsRequest) returns (ListClaudeSessionsResponse);
+  // One of them and a page of its conversation
+  // (aide.machine.v1.MachineAdminService.ReadClaudeSession).
+  rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (aide.machine.v1.ReadClaudeSessionResponse);
   // A machine's custom agents (MachineAdminService.ListCustomAgents and
   // the rest); this device's own machine in process.
   rpc ListMachineCustomAgents(ListMachineCustomAgentsRequest) returns (aide.machine.v1.ListCustomAgentsResponse);
@@ -1313,11 +1322,55 @@ message DSHSessionEntry {
   string machine_id = 1;
   string machine_name = 2;
   aide.machine.v1.DSHSession session = 3;
+  // Its machine can't be reached now: the session is as it was last read
+  // (read_at), its state last known, never running now
+  // (docs/session-states.md: 失联 · 最后已知 …). Nothing can be sent to it.
+  bool lost = 4;
+  // When this device last read it from its machine.
+  google.protobuf.Timestamp read_at = 5;
 }
 
 message DSHBridgeEntry {
   string machine_id = 1;
   aide.machine.v1.DSHBridge bridge = 2;
+  // The DSH home that machine's aided reads DSH's sessions from.
+  string dsh_home = 3;
+}
+
+message ListClaudeSessionsRequest {
+  // One machine (its id or name); empty: every machine that can be reached.
+  string machine_id = 1;
+}
+
+message ListClaudeSessionsResponse {
+  // Newest activity first, over all the machines.
+  repeated ClaudeSessionEntry sessions = 1;
+  repeated Unreachable unreachable = 2;
+  // The app's index folders each machine that answered read.
+  repeated ClaudeIndexEntry indexes = 3;
+}
+
+message ClaudeSessionEntry {
+  string machine_id = 1;
+  string machine_name = 2;
+  aide.machine.v1.ClaudeSession session = 3;
+  // Its machine can't be reached now: as last read (read_at).
+  bool lost = 4;
+  google.protobuf.Timestamp read_at = 5;
+}
+
+message ClaudeIndexEntry {
+  string machine_id = 1;
+  repeated string indexes = 2;
+}
+
+message ReadClaudeSessionRequest {
+  string machine_id = 1;
+  string session_id = 2;
+  uint64 after_seq = 3;
+  uint64 before_seq = 4;
+  uint32 limit = 5;
+  aide.session.v1.EventView view = 6;
 }
 
 message SetDSHTakeoverRequest {
@@ -1331,6 +1384,13 @@ message SendDSHMessageRequest {
   string session_id = 2;
   string text = 3;
   string request_id = 4;
+  aide.machine.v1.DSHModel model = 5;
+  string permission = 6;
+}
+
+message DSHSessionOptionsRequest {
+  string machine_id = 1;
+  string session_id = 2;
 }
 
 message InterruptDSHSessionRequest {

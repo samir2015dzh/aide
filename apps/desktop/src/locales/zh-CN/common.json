@@ -26,6 +26,7 @@
     "passwordArg": "密码"
   },
   "sidebar": {
+    "claude": "Claude 会话",
     "label": "边栏",
     "search": "搜索",
     "attention_other": "{{count}} 项需要处理",
@@ -213,6 +214,14 @@
     "notRunningBody": "Her 已经开启，但还没在那台电脑上运行，可能正在启动。稍等片刻，这里会自动恢复；一直不行，就在那台电脑上重启 Aide。",
     "failedBody": "Her 已经开启，但没能在那台电脑上启动：{{error}}。在那台电脑上重启 Aide；还是不行，在 设置 › 机器 里把 Her 关掉再打开。"
   },
+  "claude": {
+    "title": "Claude 会话",
+    "note": "Claude 桌面应用里你机器上的 Claude Code 会话（不含 Aide 派的）。只读。",
+    "none": "Claude 桌面应用在你的机器上没有 Claude Code 会话。",
+    "noApp": "{{name}}：没有找到 Claude 桌面应用的数据。",
+    "completed": "已完成",
+    "blocked": "等你处理"
+  },
   "dsh": {
     "title": "DeepSeek 会话",
     "note": "你机器上 DeepSeek Harness 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以从这里给它发消息。",
@@ -227,6 +236,10 @@
     "none": "你的机器上没有 DeepSeek Harness 自己的会话。",
     "pick": "选一个会话查看内容。",
     "unreachable": "{{name}} 没有响应。",
+    "unreachableLastKnown": "{{name}} 失联：下面是最后一次读到的会话。",
+    "lostNote": "{{name}} 连不上：这里显示的是最后一次读到的样子，内容要等它重新连上才能读。",
+    "readFrom": "{{name}} 上读取的目录：",
+    "homeHint": "如果 DSH Desktop 里有会话却不在这里，说明它的数据在别的目录：把用户环境变量 DSH_HOME 设成那个目录，Aide 就会改读那里。",
     "earlier": "更早",
     "empty": "还没有内容。",
     "turnFailed": "这一轮失败了。",
@@ -255,6 +268,10 @@
       "unknown": "还不知道 DSH Desktop 里的 Aide 插件是否在运行。"
     },
     "viaAide": "经 Aide 发送",
+    "viaAideBy": "{{name}} 经 Aide 发送",
+    "model": "模型",
+    "permission": "权限",
+    "asItIs": "保持不变",
     "notSent": "没有发出去：{{reason}}",
     "install": {
       "title": "安装 Aide 插件",
