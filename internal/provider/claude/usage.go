@@ -44,7 +44,8 @@ type Usage struct {
 	Windows   []Window
 	FetchedAt time.Time
 	// Unavailable is empty on success, else why there is no reading:
-	// "signed_out", "no_token", "api_error", "unsupported".
+	// "signed_out", "no_token", "api_error", "parse_error", "unsupported".
+	// parse_error: the endpoint answered, but not with a JSON object.
 	Unavailable string
 	// Renew is the last auto-renew outcome: "", "renewed", "renew_failed".
 	Renew string
@@ -138,6 +139,10 @@ func (r *UsageReader) Read(ctx context.Context) Usage {
 		}
 	}
 	windows, err := r.fetchUsage(ctx, tok.access)
+	if errors.Is(err, errUsageParse) {
+		r.log().Warn("Claude usage: the usage endpoint's answer could not be parsed", "err", redactErr(err))
+		return Usage{Unavailable: "parse_error", FetchedAt: now, Renew: renew}
+	}
 	if err != nil {
 		r.log().Warn("Claude usage: the usage endpoint failed", "err", redactErr(err))
 		return Usage{Unavailable: "api_error", FetchedAt: now, Renew: renew}
@@ -168,6 +173,42 @@ type windowJSON struct {
 	ResetsAt    time.Time `json:"resets_at"`
 }
 
+// errUsageParse: the usage endpoint answered 200, but not with a JSON
+// object; told apart from the endpoint failing (parse_error, not api_error).
+var errUsageParse = errors.New("usage endpoint: the answer is not a JSON object")
+
+// windowsFromBody reads the windows out of the endpoint's answer, leniently:
+// the endpoint adds keys over time (limits, weekly_scoped_shares and
+// member_dashboard_available came as arrays and a bool, and decoding every
+// key as a window failed the whole reading). A key is a window when its
+// value is an object with a numeric utilization; any other key is skipped,
+// and a resets_at that is missing, null or not a time leaves the time
+// unknown rather than the window out. Only an answer that is no JSON object
+// at all is an error.
+func windowsFromBody(body []byte) ([]Window, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(body, &top); err != nil || top == nil {
+		return nil, errUsageParse
+	}
+	raw := map[string]*windowJSON{}
+	for k, v := range top {
+		var w struct {
+			Utilization *float64        `json:"utilization"`
+			ResetsAt    json.RawMessage `json:"resets_at"`
+		}
+		if json.Unmarshal(v, &w) != nil || w.Utilization == nil {
+			continue // null, an array, a bool, or an object that is no window
+		}
+		win := &windowJSON{Utilization: *w.Utilization}
+		var at time.Time
+		if json.Unmarshal(w.ResetsAt, &at) == nil {
+			win.ResetsAt = at
+		}
+		raw[k] = win
+	}
+	return windowsFromResponse(raw), nil
+}
+
 func (r *UsageReader) fetchUsage(ctx context.Context, access string) ([]Window, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.usageURL(), nil)
 	if err != nil {
@@ -188,11 +229,7 @@ func (r *UsageReader) fetchUsage(ctx context.Context, access string) ([]Window, 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("usage endpoint: HTTP %d", resp.StatusCode)
 	}
-	var raw map[string]*windowJSON
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, fmt.Errorf("usage endpoint: bad JSON")
-	}
-	return windowsFromResponse(raw), nil
+	return windowsFromBody(body)
 }
 
 // windowsFromResponse turns the response map into windows, skipping nulls,
