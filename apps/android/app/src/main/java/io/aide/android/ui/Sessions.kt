@@ -1,5 +1,6 @@
 package io.aide.android.ui
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -103,8 +104,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
     if (sessions.isEmpty()) return
     item(key = "h-$title") { SectionHeader("$title · ${sessions.size}", color ?: MaterialTheme.colorScheme.primary) }
     items(sessions, key = { it.sessionId }) { s ->
-        SessionRow(s, world) { open(s.sessionId) }
-        HorizontalDivider(Modifier.padding(start = 16.dp))
+        // A session moving between groups, or arriving, eases into place rather than jumping (Motion, as the desktop's).
+        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))) {
+            SessionRow(s, world) { open(s.sessionId) }
+            HorizontalDivider(Modifier.padding(start = 16.dp))
+        }
     }
 }
 
