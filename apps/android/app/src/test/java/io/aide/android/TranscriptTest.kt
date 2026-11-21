@@ -5,6 +5,7 @@ import io.aide.android.api.AgentMessage
 import io.aide.android.api.Question
 import io.aide.android.api.QuestionAsked
 import io.aide.android.api.QuestionResolved
+import io.aide.android.api.RolledBack
 import io.aide.android.api.SessionEvent
 import io.aide.android.api.ToolCall
 import io.aide.android.api.ToolResult
@@ -26,6 +27,13 @@ class TranscriptTest {
         val items = t.items()
         assertEquals(listOf("pending", "approved"), items.map { (it as Item.Workspace).request.status })
         assertEquals("muse", (items[1] as Item.Workspace).request.fromName)
+    }
+
+    @Test fun aRollbackStaysInTheConversation() {
+        val t = Transcript()
+        t.add(SessionEvent(seq = 1, userMessage = UserMessage("two")))
+        t.add(SessionEvent(seq = 2, rolledBack = RolledBack(turn = 1, lastTurn = 3, by = "owner")))
+        assertEquals(listOf(Item.User("e1", "two"), Item.Rollback("e2", 1, 3)), t.items())
     }
 
     @Test fun aTurnAsThePageShowsIt() {

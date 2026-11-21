@@ -509,10 +509,12 @@ fn memory_dir(home: &HerHome, bot: &str) -> PathBuf {
     crate::protected::canonical_lossy(&home.bot_memory_dir(bot))
 }
 
-/// A bot's session keeps a copy of each file it sends (docs/her-deliverables.md §4.1).
+/// A bot's session keeps a copy of each file it sends (docs/her-deliverables.md §4.1), and
+/// reaches its confirmation rules (docs/her-confirm-rules.md).
 fn link_sent(session: &Session, home: &HerHome, bot: Option<&str>) {
     if let Some(bot) = bot {
         session.tool_state.insert(Arc::new(crate::bot::SentDir(home.bot_sent_dir(bot))));
+        session.tool_state.insert(Arc::new(crate::confirm_rules::RulesFile(home.bot_confirm_rules(bot))));
     }
 }
 

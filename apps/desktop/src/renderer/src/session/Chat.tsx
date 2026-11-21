@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client, Machine } from "@aide/proto/local";
+import { Workspace } from "@aide/proto/identity";
 import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
 import {
-  agoText, clockText, dateOf, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
+  agoText, checkpoints, clockText, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
   turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, type Step,
 } from "@aide/core";
@@ -15,7 +16,7 @@ import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
 import { keys } from "../platform";
 import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
 import { useNow, useStore } from "../store";
-import { interrupt } from "./actions";
+import { confirmRollback, interrupt } from "./actions";
 import { Code } from "./Code";
 import { Markdown } from "./Markdown";
 import { partialOutput, useToolOutput } from "./output";
@@ -42,6 +43,10 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const items = useMemo(() => groupSteps(transcript(events, running)), [events, running]);
   const ends = useMemo(() => replyEnds(items, running), [items, running]);
   const live = isInterruptible(s);
+  // Each turn's prompt can roll the session back to before it, while no turn runs (not in place: no snapshots there).
+  const points = useMemo(() => checkpoints(items), [items]);
+  const lastTurn = s.progress?.turnCount ?? 0;
+  const rollable = s.workspace !== Workspace.IN_PLACE && (s.status === SessionStatus.IDLE || s.status === SessionStatus.CRASHED);
 
   // The session's current failure is told once, at the end; the rows leave it out.
   const failure = s.progress?.lastFailure;
@@ -72,7 +77,11 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
             </div>
           )
         }
-        row={(r) => <Row it={r.it} rowKey={r.key} end={r.end} live={r.live} sessionId={s.sessionId} clients={st.clients} grant={who} starter={s.createdBy} previous={r.previous} />}
+        row={(r) => {
+          const to = rollable ? points.get(r.it.seq) : undefined;
+          const rollback = to !== undefined && to < lastTurn ? () => confirmRollback(st, s.sessionId, displayTitle(s), to, lastTurn) : undefined;
+          return <Row it={r.it} rowKey={r.key} end={r.end} live={r.live} sessionId={s.sessionId} clients={st.clients} grant={who} starter={s.createdBy} previous={r.previous} rollback={rollback} />;
+        }}
         foot={
           <>
             <Stale s={s} behind={(events.at(-1)?.seq ?? 0n) < (s.progress?.lastEventSeq ?? 0n)} />
@@ -344,7 +353,7 @@ function previousTurn(items: Step[], i: number): Date | undefined {
 type ChatRow = VirtualRow & { it: Step; end: boolean; live: boolean; previous: Date | undefined };
 
 /** Each kind's height until rows of it are measured: only how long the scrollbar is depends on it. */
-const rowHeights: Record<string, number> = { turn: 30, user: 64, agent: 220, tools: 32, question: 80, turnEnd: 36, message: 100, error: 36 };
+const rowHeights: Record<string, number> = { turn: 30, user: 64, agent: 220, tools: 32, question: 80, turnEnd: 36, message: 100, error: 36, rollback: 36 };
 
 /**
  * The rows the conversation draws, in order: the items but those that draw nothing (a time line within half an hour of
@@ -381,8 +390,10 @@ function draws(it: Step, previous: Date | undefined, current: Failure | undefine
   }
 }
 
-/** starter: who started the session ("owner" or a client id). */
-type RowProps = { it: Step; rowKey: string; end: boolean; live: boolean; sessionId: string; clients: Client[]; grant: string; starter: string; previous: Date | undefined };
+/** starter: who started the session ("owner" or a client id). rollback: rolls back to before this turn's prompt, once confirmed. */
+type RowProps = {
+  it: Step; rowKey: string; end: boolean; live: boolean; sessionId: string; clients: Client[]; grant: string; starter: string; previous: Date | undefined; rollback?: () => void;
+};
 
 /**
  * A row renders again only when what it shows changed: the conversation's
@@ -393,7 +404,8 @@ const Row = memo(
   RowView,
   (a, b) =>
     sameStep(a.it, b.it) && a.rowKey === b.rowKey && a.end === b.end && a.live === b.live && a.sessionId === b.sessionId &&
-    a.clients === b.clients && a.grant === b.grant && a.starter === b.starter && a.previous?.getTime() === b.previous?.getTime(),
+    a.clients === b.clients && a.grant === b.grant && a.starter === b.starter && a.previous?.getTime() === b.previous?.getTime() &&
+    !a.rollback === !b.rollback,
 );
 
 function sameStep(a: Step, b: Step): boolean {
@@ -414,7 +426,7 @@ function sameStep(a: Step, b: Step): boolean {
   }
 }
 
-function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, previous }: RowProps) {
+function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, previous, rollback }: RowProps) {
   const { t } = useTranslation("session");
   switch (it.kind) {
     case "turn":
@@ -428,7 +440,7 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
           : it.from === "owner"
             ? t("chat.fromYou")
             : agentName(it.fromName || clients.find((c) => c.clientId === it.from)?.label || it.from);
-      return <UserBubble text={it.text} at={it.at} by={by} />;
+      return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} />;
     }
     case "agent":
       // A turn's reply is one, however many times it writes: when it is over, its last words say when and Copy.
@@ -457,6 +469,8 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
       // A turn that went well needs no line: the next message shows it went on.
       return null;
     }
+    case "rollback":
+      return <div className="tnote">{t("chat.rolledBackNote", { turn: it.turn, from: it.turn + 1, to: it.lastTurn })}</div>;
     case "message":
       // A message between the session and another of the owner's agents: who, and what became of it.
       return (
@@ -495,12 +509,12 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
 
 /** What was sent to the agent, on the right; no name (the info card says who). On hover, when it was sent, and Copy. */
 /** by: who wrote it, when that isn't who the conversation belongs to. */
-export function UserBubble({ text, at, by }: { text: string; at?: Date; by?: string }) {
+export function UserBubble({ text, at, by, rollback }: { text: string; at?: Date; by?: string; rollback?: () => void }) {
   return (
     <div className="um">
       {by && <div className="um-by">{by}</div>}
       <div className="bub sel-text">{text}</div>
-      <Copy text={text} at={at} />
+      <Copy text={text} at={at} rollback={rollback} />
     </div>
   );
 }
@@ -531,13 +545,18 @@ export function TimeLine({ at, previous }: { at: Date | undefined; previous: Dat
   return text ? <div className="tdiv">{text}</div> : null;
 }
 
-/** Under a message on hover: when it was sent, and Copy. */
-function Copy({ text, at }: { text: string; at?: Date }) {
+/** Under a message on hover: when it was sent, Copy, and for a turn's prompt, rolling back to before it. */
+function Copy({ text, at, rollback }: { text: string; at?: Date; rollback?: () => void }) {
   const { t } = useTranslation("session");
   const [done, setDone] = useState(false);
   return (
     <div className="msg-act">
       {at && <SentAt at={at} />}
+      {rollback && (
+        <button className="tb" aria-label={t("actions.rollback")} title={t("actions.rollback")} onClick={rollback}>
+          <Icon name="undo" className="sm" />
+        </button>
+      )}
       <button
         className="tb"
         aria-label={t("chat.copy")}

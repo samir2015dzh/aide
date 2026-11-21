@@ -422,6 +422,10 @@ func eventView(e *sessionv1.SessionEvent) object {
 		tc := k.TurnCompleted
 		return typed("turn_completed", field{"result", tc.Result}, field{"is_error", tc.IsError}, field{"failure", failureView(tc.Failure)},
 			field{"diff_stat", diffStatView(tc.DiffStat)}, field{"usage", usageView(tc.Usage)}, field{"commit", tc.Commit})
+	case *sessionv1.SessionEvent_RolledBack:
+		r := k.RolledBack
+		return typed("rolled_back", field{"to_turn", r.Turn}, field{"last_turn", r.LastTurn}, field{"commit", r.Commit},
+			field{"discarded_commit", r.DiscardedCommit}, field{"by", r.By})
 	case *sessionv1.SessionEvent_Error:
 		return typed("error", field{"message", k.Error.Message}, field{"failure", failureView(k.Error.Failure)})
 	case *sessionv1.SessionEvent_QuestionAsked:

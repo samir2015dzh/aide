@@ -21,6 +21,8 @@ sealed interface Item {
     data class Workspace(override val key: String, val request: WorkspaceRequest) : Item
     data class Error(override val key: String, val text: String) : Item
     data class TurnEnd(override val key: String, val failed: Boolean, val text: String) : Item
+    /** The session was rolled back to the end of turn: turns turn+1 to lastTurn, above, were discarded. */
+    data class Rollback(override val key: String, val turn: Int, val lastTurn: Int) : Item
 }
 
 data class Tool(val callId: String, val name: String, val summary: String, val result: String? = null, val isError: Boolean = false)
@@ -71,6 +73,7 @@ class Transcript {
             e.messageReceived != null -> items += Item.Message(key, e.messageReceived.fromName.ifEmpty { e.messageReceived.from }, e.messageReceived.text, sent = false)
             e.messageSent != null -> items += Item.Message(key, e.messageSent.toName.ifEmpty { e.messageSent.to }, e.messageSent.text, sent = true)
             e.workspaceRequest != null -> items += Item.Workspace(key, e.workspaceRequest)
+            e.rolledBack != null -> items += Item.Rollback(key, e.rolledBack.turn, e.rolledBack.lastTurn)
             e.error != null -> items += Item.Error(key, e.error.message.ifEmpty { e.error.failure?.message.orEmpty() })
             e.turnCompleted != null -> {
                 val f = e.turnCompleted.failure

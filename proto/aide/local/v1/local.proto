@@ -188,6 +188,8 @@ service LocalService {
   rpc GetDiff(GetDiffRequest) returns (aide.session.v1.GetDiffResponse);
   // aide.session.v1.SessionService.PushSession, as the owner.
   rpc PushSession(PushSessionRequest) returns (aide.session.v1.PushSessionResponse);
+  // aide.session.v1.SessionService.RollbackSession, as the owner.
+  rpc RollbackSession(RollbackSessionRequest) returns (SessionResponse);
   // The DeepSeek Harness sessions Aide did not start, on the machines
   // (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
   // activity first. Read only.
@@ -1103,6 +1105,11 @@ message GetDiffRequest {
 
 message PushSessionRequest {
   string session_id = 1;
+}
+
+message RollbackSessionRequest {
+  string session_id = 1;
+  uint32 turn = 2;
 }
 
 // Her (docs/her-server.md).
