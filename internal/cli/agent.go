@@ -31,6 +31,46 @@ type machineAgent struct {
 	DefaultEffort string              `json:"default_effort"`
 	DefaultMode   string              `json:"default_mode,omitempty"`
 	ModelCatalogs []agentModelCatalog `json:"model_catalogs,omitempty"`
+	// Usage is the Claude plan usage read on that machine (Claude Code
+	// only), for the scheduler to pace work by.
+	Usage *agentUsage `json:"usage,omitempty"`
+}
+
+// agentUsage is the machine-readable Claude plan usage: each window's fill
+// and reset, when it was read, whether it is a stale fallback, and why it
+// is missing. No token is ever here.
+type agentUsage struct {
+	Windows     []usageWindow `json:"windows"`
+	FetchedAt   int64         `json:"fetched_at_unix_ms,omitempty"`
+	Stale       bool          `json:"stale,omitempty"`
+	Unavailable string        `json:"unavailable,omitempty"`
+	Renew       string        `json:"renew,omitempty"`
+}
+
+type usageWindow struct {
+	Key            string  `json:"key"`
+	Utilization    float64 `json:"utilization"`
+	ResetsAtUnixMs int64   `json:"resets_at_unix_ms,omitempty"`
+}
+
+// usageFrom converts the status message to the CLI shape, or nil when the
+// agent carries no usage.
+func usageFrom(u *machinev1.ClaudeUsage) *agentUsage {
+	if u == nil {
+		return nil
+	}
+	out := &agentUsage{Stale: u.Stale, Unavailable: u.Unavailable, Renew: u.Renew, Windows: []usageWindow{}}
+	if u.FetchedAt != nil {
+		out.FetchedAt = u.FetchedAt.AsTime().UnixMilli()
+	}
+	for _, w := range u.Windows {
+		uw := usageWindow{Key: w.Key, Utilization: w.Utilization}
+		if w.ResetsAt != nil {
+			uw.ResetsAtUnixMs = w.ResetsAt.AsTime().UnixMilli()
+		}
+		out.Windows = append(out.Windows, uw)
+	}
+	return out
 }
 
 type agentModelCatalog struct {
@@ -191,7 +231,7 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 			}
 			e := machineAgent{Agent: ag.Name, Machine: cmp.Or(names[m.ID], m.Name), MachineID: m.ID, Version: ag.Version, Models: []agentModel{},
 				DefaultModel: cmp.Or(ag.Defaults.GetModel(), ag.Own.GetModel()), DefaultEffort: cmp.Or(ag.Defaults.GetEffort(), ag.Own.GetEffort()),
-				DefaultMode: cmp.Or(ag.Defaults.GetMode(), ag.Own.GetMode())}
+				DefaultMode: cmp.Or(ag.Defaults.GetMode(), ag.Own.GetMode()), Usage: usageFrom(ag.GetUsage())}
 			for _, x := range ag.Models {
 				e.Models = append(e.Models, agentModel{ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...)})
 			}

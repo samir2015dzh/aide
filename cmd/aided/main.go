@@ -158,6 +158,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 		her := herBin()
 		return machine.Config{DataDir: filepath.Join(dataDir, "machine"), Logger: logger(verbose), Providers: providers(), Limits: lim, WorkspaceMode: workspaceMode,
 			HerBin: her, HerConsole: herConsole(her), HerExtensionHost: herExtensionHost(), NewHerLink: herlink.New,
+			ClaudeUsage:   os.Getenv("AIDE_NO_CLAUDE_USAGE") != "1",
 			TestBeforeHer: os.Getenv("AIDE_TEST_BEFORE_HER") == "1"}
 	}
 	openMachine := func() (*machine.Machine, error) { return machine.Open(machineConfig()) }

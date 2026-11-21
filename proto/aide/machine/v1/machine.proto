@@ -333,6 +333,49 @@ message AgentStatus {
   repeated AgentMode modes = 14;
   // One the owner added on this machine (ListCustomAgents).
   bool custom = 15;
+  // Claude plan usage read on this machine (Claude Code only, else unset),
+  // for the scheduler to pace work by. Read from the signed-in Claude
+  // Desktop's token here; the token never leaves the machine, only these
+  // windows' utilization and reset times are reported.
+  ClaudeUsage usage = 16;
+}
+
+// ClaudeUsage is the Claude plan usage (docs/claude-usage.md): the hard
+// caps the scheduler has to stay under. aided reads it on the machine from
+// the account's OAuth token (standard Claude Code credentials, else the
+// signed-in Claude Desktop's token cache), calls Anthropic's usage
+// endpoint, and caches the reading. The token and its refresh token are
+// used only in aided's memory on the machine and never leave it: nothing
+// here carries the token, only the windows and when they reset.
+message ClaudeUsage {
+  // Each window Anthropic reports: "five_hour", "seven_day", and the
+  // model-specific weekly caps when present ("seven_day_opus", ...). A
+  // window the account has none of is left out (the UI tolerates gaps).
+  repeated UsageWindow windows = 1;
+  // When aided last fetched a fresh reading.
+  google.protobuf.Timestamp fetched_at = 2;
+  // The reading is the last good one and the latest fetch failed, so the
+  // numbers may be behind.
+  bool stale = 3;
+  // Why there is no reading at all, or empty when windows are present:
+  // "signed_out" (no signed-in token found), "no_token" (a token was found
+  // but could not be read), "api_error" (the endpoint failed),
+  // "unsupported" (this OS can't open the token cache). Shown as "读不到".
+  string unavailable = 4;
+  // The last auto-renew outcome, or empty when none was needed:
+  // "renewed" (the access token was refreshed and the cache rewritten),
+  // "renew_failed" (refresh or write-back failed; the owner may need to
+  // sign in to Claude Desktop again). A failed renew never leaves the
+  // Desktop cache unreadable: aided restores the old entry.
+  string renew = 5;
+}
+
+// UsageWindow is one rate-limit window's reading: how full it is (0-100)
+// and when it resets.
+message UsageWindow {
+  string key = 1;
+  double utilization = 2;
+  google.protobuf.Timestamp resets_at = 3;
 }
 
 message AgentModelCatalog {
