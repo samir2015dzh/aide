@@ -233,6 +233,9 @@ const (
 	// LocalServicePushSessionProcedure is the fully-qualified name of the LocalService's PushSession
 	// RPC.
 	LocalServicePushSessionProcedure = "/aide.local.v1.LocalService/PushSession"
+	// LocalServiceRollbackSessionProcedure is the fully-qualified name of the LocalService's
+	// RollbackSession RPC.
+	LocalServiceRollbackSessionProcedure = "/aide.local.v1.LocalService/RollbackSession"
 	// LocalServiceListDSHSessionsProcedure is the fully-qualified name of the LocalService's
 	// ListDSHSessions RPC.
 	LocalServiceListDSHSessionsProcedure = "/aide.local.v1.LocalService/ListDSHSessions"
@@ -448,6 +451,8 @@ type LocalServiceClient interface {
 	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
 	PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error)
+	// aide.session.v1.SessionService.RollbackSession, as the owner.
+	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error)
 	// The DeepSeek Harness sessions Aide did not start, on the machines
 	// (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
 	// activity first. Read only.
@@ -926,6 +931,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("PushSession")),
 			connect.WithClientOptions(opts...),
 		),
+		rollbackSession: connect.NewClient[v1.RollbackSessionRequest, v1.SessionResponse](
+			httpClient,
+			baseURL+LocalServiceRollbackSessionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("RollbackSession")),
+			connect.WithClientOptions(opts...),
+		),
 		listDSHSessions: connect.NewClient[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse](
 			httpClient,
 			baseURL+LocalServiceListDSHSessionsProcedure,
@@ -1076,6 +1087,7 @@ type localServiceClient struct {
 	answerQuestion           *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	getDiff                  *connect.Client[v1.GetDiffRequest, v13.GetDiffResponse]
 	pushSession              *connect.Client[v1.PushSessionRequest, v13.PushSessionResponse]
+	rollbackSession          *connect.Client[v1.RollbackSessionRequest, v1.SessionResponse]
 	listDSHSessions          *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
 	readDSHSession           *connect.Client[v1.ReadDSHSessionRequest, v11.ReadDSHSessionResponse]
 	setDSHTakeover           *connect.Client[v1.SetDSHTakeoverRequest, v11.SetDSHTakeoverResponse]
@@ -1727,6 +1739,15 @@ func (c *localServiceClient) PushSession(ctx context.Context, req *v1.PushSessio
 	return nil, err
 }
 
+// RollbackSession calls aide.local.v1.LocalService.RollbackSession.
+func (c *localServiceClient) RollbackSession(ctx context.Context, req *v1.RollbackSessionRequest) (*v1.SessionResponse, error) {
+	response, err := c.rollbackSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListDSHSessions calls aide.local.v1.LocalService.ListDSHSessions.
 func (c *localServiceClient) ListDSHSessions(ctx context.Context, req *v1.ListDSHSessionsRequest) (*v1.ListDSHSessionsResponse, error) {
 	response, err := c.listDSHSessions.CallUnary(ctx, connect.NewRequest(req))
@@ -2013,6 +2034,8 @@ type LocalServiceHandler interface {
 	GetDiff(context.Context, *v1.GetDiffRequest) (*v13.GetDiffResponse, error)
 	// aide.session.v1.SessionService.PushSession, as the owner.
 	PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error)
+	// aide.session.v1.SessionService.RollbackSession, as the owner.
+	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error)
 	// The DeepSeek Harness sessions Aide did not start, on the machines
 	// (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
 	// activity first. Read only.
@@ -2487,6 +2510,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("PushSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceRollbackSessionHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceRollbackSessionProcedure,
+		svc.RollbackSession,
+		connect.WithSchema(localServiceMethods.ByName("RollbackSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListDSHSessionsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListDSHSessionsProcedure,
 		svc.ListDSHSessions,
@@ -2707,6 +2736,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceGetDiffHandler.ServeHTTP(w, r)
 		case LocalServicePushSessionProcedure:
 			localServicePushSessionHandler.ServeHTTP(w, r)
+		case LocalServiceRollbackSessionProcedure:
+			localServiceRollbackSessionHandler.ServeHTTP(w, r)
 		case LocalServiceListDSHSessionsProcedure:
 			localServiceListDSHSessionsHandler.ServeHTTP(w, r)
 		case LocalServiceReadDSHSessionProcedure:
@@ -3030,6 +3061,10 @@ func (UnimplementedLocalServiceHandler) GetDiff(context.Context, *v1.GetDiffRequ
 
 func (UnimplementedLocalServiceHandler) PushSession(context.Context, *v1.PushSessionRequest) (*v13.PushSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.PushSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RollbackSession is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListDSHSessions(context.Context, *v1.ListDSHSessionsRequest) (*v1.ListDSHSessionsResponse, error) {

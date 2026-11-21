@@ -32,7 +32,7 @@ export function replyEnds(steps: Step[], running: boolean): Set<bigint> {
   let last: bigint | undefined;
   for (const it of steps) {
     if (it.kind === "agent") last = it.seq;
-    else if ((it.kind === "turnEnd" || it.kind === "turn") && last !== undefined) {
+    else if ((it.kind === "turnEnd" || it.kind === "turn" || it.kind === "rollback") && last !== undefined) {
       ends.add(last);
       last = undefined;
     }

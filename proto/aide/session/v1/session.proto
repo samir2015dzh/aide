@@ -89,6 +89,16 @@ service SessionService {
   rpc PushSession(PushSessionRequest) returns (PushSessionResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // RollbackSession puts an idle (or crashed) worktree session back to
+  // where an earlier turn left it: its worktree and branch are reset to
+  // that turn's snapshot commit, the later turns' conversation and changes
+  // are discarded, and the next message starts a fresh agent conversation
+  // that is told so. The discarded turns stay in the timeline, after them
+  // a RolledBack event. In-place sessions have no snapshots and are
+  // refused (FAILED_PRECONDITION), as is a session with a turn running.
+  rpc RollbackSession(RollbackSessionRequest) returns (Session) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
   // MarkSessionSeen records what the owner has seen of the session
   // (Session.seen), on its machine, so every device of the owner agrees.
   // Only the owner's devices may mark. It is not activity: updated_at
@@ -592,7 +602,22 @@ message SessionEvent {
     AgentDraft agent_draft = 20;
     MessageReceived message_received = 21;
     MessageSent message_sent = 22;
+    RolledBack rolled_back = 23;
   }
+}
+
+// The session was rolled back to the end of turn `turn` (0: its base):
+// turns turn+1 to last_turn, the events before this one, are discarded,
+// and the next turn is turn+1 again.
+message RolledBack {
+  uint32 turn = 1;
+  uint32 last_turn = 2;
+  // The worktree and branch are now at commit; discarded_commit is where
+  // the branch was (still in the repository's reflog).
+  string commit = 3;
+  string discarded_commit = 4;
+  // Who rolled it back (a client id, or "owner").
+  string by = 5;
 }
 
 message StatusChanged {
@@ -790,6 +815,12 @@ message GetDiffResponse {
 
 message PushSessionRequest {
   string session_id = 1;
+}
+
+message RollbackSessionRequest {
+  string session_id = 1;
+  // The turn to keep, and everything before it; 0 rolls every turn back.
+  uint32 turn = 2;
 }
 
 message MarkSessionSeenRequest {

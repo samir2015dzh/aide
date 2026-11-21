@@ -14,6 +14,7 @@ pub mod cards;
 pub mod commands;
 mod compaction;
 pub mod config;
+pub mod confirm_rules;
 pub mod config_edit;
 pub mod connect;
 pub mod connectors;
