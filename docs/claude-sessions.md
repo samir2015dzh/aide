@@ -1,0 +1,66 @@
+# The Claude app's sessions in Aide
+
+The owner sees in Aide the Claude Code sessions the Claude desktop app has
+on each of their machines, the ones Aide did not start: listed by their
+title in the app, with the GitHub repository their folder is a checkout of
+when the checkout says so, and opened read only. Work order: the handover
+repository's "Claude Desktop / Claude Code 既有会话在 Aide 内的可见性"
+(inventory: `reports/2026-11-20-forensics-visibility-loginstate.md` §3,
+grade A; the owner's ruling on what is shown, 2026-11-20).
+
+## 1. Where they are read from
+
+- **The list**: the app's own index, one record a session,
+  `<index>/<account>/<workspace>/local_<id>.json`: `title`, `cwd` (else
+  `originCwd`, else the first `gitAnchors[].gitRoot`), `createdAt` and
+  `lastActivityAt` (Unix ms), `isArchived`, `model`,
+  `postTurnSummary.status_category`. The index folders
+  (`claude-code-sessions`) are found as the app's own Claude Code is found
+  (`internal/provider/claude`: `desktopIndexes`): on macOS under
+  `~/Library/Application Support/Claude` (and `Claude-3p`); on Windows in
+  any folder whose name begins with Claude in `%APPDATA%`, `%LOCALAPPDATA%`
+  and an MSIX package's `LocalCache\{Roaming,Local}`, at most two folders
+  down (such as `Claude-Data\claude_<package id>`): by that rule, never by
+  names seen on one computer.
+  - A session archived in `archived-sessions.idx` beside the records is
+    archived; one with a `deleted_<id>` beside it is not listed; one listed
+    under two accounts is listed once, as its newest record says.
+  - Those Aide started (it lists them in the app too) are left out: by
+    Claude Code's id (the session's `provider_ref`), and by folder (one of
+    Aide's worktrees).
+- **The conversation**: Claude Code's transcript,
+  `<config>/projects/<folder>/<cliSessionId>.jsonl`, config being
+  `$CLAUDE_CONFIG_DIR` or `~/.claude`; the folder's name is not worked
+  out, every project folder is looked in. Plain JSON lines: `user` and
+  `assistant` lines give the owner's prompts (not what Claude Code adds:
+  `isMeta` lines, command output, reminders), Claude's text, tool calls and
+  results (cut at 16 KiB); a subagent's lines (`isSidechain`) are left out.
+  A session with no transcript on that machine is listed with an error
+  saying so.
+- **The repository**: "owner/repo" from the `origin` remote of the git
+  checkout the session's folder is in (its `.git` folder, or a worktree's
+  `.git` file and its `commondir`), when that url is on github.com; empty
+  otherwise (no checkout, no origin, another host). Never guessed from the
+  conversation; the app itself keeps no repository of its own
+  (`git-worktrees.json` `originUrls.url` is empty on the owner's computer).
+
+Nothing in the app's or Claude Code's folders is written.
+
+## 2. The API
+
+- `MachineAdminService.ListClaudeSessions` / `ReadClaudeSession` (owner
+  only): the sessions, and the index folders read; one session and a page
+  of its conversation (as `ReadDSHSession` pages).
+- `LocalService.ListClaudeSessions` gathers them over the machines; a
+  machine that can't be reached keeps its sessions as last read, `lost`
+  (as DSH's: docs/dsh-takeover.md §6). `ReadClaudeSession` reads one.
+
+## 3. The desktop app
+
+"Claude 会话" in the sidebar (where Claude Code is on a machine), and a
+link from Claude Code's Agent page: the list by last activity (title, the
+app's word after the last turn, machine, repository or folder; archived on
+request), and a session's conversation, read only. With none, the page
+says which index folders were read, or that no app data was found.
+
+Android: not yet (the work order asked for the desktop app).

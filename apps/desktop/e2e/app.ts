@@ -39,6 +39,7 @@ export type Fixture = {
   dshHost?: number;
   /** Its DSH home. */
   dshHome?: string;
+  dshLog?: string;
 };
 
 /** Loaded first in every launch: the app's windows open without taking focus. */

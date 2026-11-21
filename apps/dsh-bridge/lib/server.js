@@ -7,8 +7,10 @@
 // with a random name. Every request carries the token: knowing where the
 // pipe is is not enough. One JSON object per line each way.
 //
-// Methods: hello; state {sessionId}; prompt {sessionId, requestId, text};
-// cancel {sessionId}. A prompt waits at most promptTimeoutMs for DSH to
+// Methods: hello; state {sessionId}; prompt {sessionId, requestId, text,
+// model?: {provider, model, effort?}, permission?}; options {sessionId};
+// cancel {sessionId}. hello lists the features beyond the first version
+// ("options", "selections"), so aided knows what an older bridge lacks. A prompt waits at most promptTimeoutMs for DSH to
 // accept it and then fails as "timeout": the caller is never left with a
 // message that silently hangs.
 import { randomBytes, timingSafeEqual } from "node:crypto";
@@ -132,7 +134,9 @@ export class BridgeServer {
     async call(method, p) {
         switch (method) {
             case "hello":
-                return { protocol: PROTOCOL, version: this.opts.version, pid: process.pid, services: this.host.services() };
+                return { protocol: PROTOCOL, version: this.opts.version, pid: process.pid, services: this.host.services(), features: ["options", "selections"] };
+            case "options":
+                return await this.host.options(id(p.sessionId, "sessionId"));
             case "state":
                 return this.host.state(id(p.sessionId, "sessionId"));
             case "prompt": {
@@ -143,12 +147,13 @@ export class BridgeServer {
                     throw new BridgeError("bad-request", "the message is empty");
                 if (text.length > MAX_TEXT)
                     throw new BridgeError("bad-request", `the message is ${text.length} characters; at most ${MAX_TEXT}`);
+                const selections = selectionsOf(p);
                 const ac = new AbortController();
                 this.inflight.add(ac);
                 const timer = setTimeout(() => ac.abort(), this.opts.promptTimeoutMs);
                 try {
                     await Promise.race([
-                        this.host.prompt(sessionId, requestId, text, ac.signal),
+                        this.host.prompt(sessionId, requestId, text, ac.signal, selections),
                         // A Host that ignores the signal still doesn't hold the caller.
                         new Promise((_, reject) => ac.signal.addEventListener("abort", () => reject(new BridgeError("timeout", "DSH did not accept the message in time")))),
                     ]);
@@ -165,6 +170,24 @@ export class BridgeServer {
                 throw new BridgeError("bad-request", `no method ${method}`);
         }
     }
+}
+// selectionsOf reads a prompt's model and permission, refusing what isn't a plain name.
+function selectionsOf(p) {
+    const name = (v, what) => {
+        if (typeof v !== "string" || v === "" || v.length > MAX_ID || /[\s]/.test(v))
+            throw new BridgeError("bad-request", `bad ${what}`);
+        return v;
+    };
+    const sel = {};
+    if (p.model !== undefined && p.model !== null) {
+        const m = p.model;
+        if (typeof m !== "object")
+            throw new BridgeError("bad-request", "bad model");
+        sel.model = { provider: name(m.provider, "model provider"), model: name(m.model, "model"), ...(m.effort ? { effort: name(m.effort, "effort") } : {}) };
+    }
+    if (p.permission !== undefined && p.permission !== null && p.permission !== "")
+        sel.permission = name(p.permission, "permission");
+    return sel.model || sel.permission ? sel : undefined;
 }
 function id(v, name) {
     if (typeof v !== "string" || v === "" || v.length > MAX_ID || /[\s/\\]/.test(v))

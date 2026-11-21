@@ -55,21 +55,30 @@ func appended(e event) bool { return string(e.SurfaceOp) == `"append"` }
 // The messages sent before the rename have the old prefix (internal/legacy).
 const RequestPrefix = "aide-"
 
-// userText is what the owner wrote, when e is a prompt of theirs (DSH
-// also logs as user messages the context it adds itself); viaAide: the
-// owner sent it from Aide (its rpcId is one Aide made).
-func userText(e event) (text string, viaAide, ok bool) {
+// userText is what was written, when e is a prompt (DSH also logs as user
+// messages the context it adds itself); rpcID: the id it came with, when
+// sent from Aide (one Aide made), else "".
+func userText(e event) (text, rpcID string, ok bool) {
 	var m message
 	if e.Type != "user/message" || !appended(e) || json.Unmarshal(e.Data, &m) != nil || m.Source.Kind != "user" {
-		return "", false, false
+		return "", "", false
 	}
-	return m.text(true), strings.HasPrefix(m.Source.RPCID, RequestPrefix) || strings.HasPrefix(m.Source.RPCID, legacy.DSHRequest), true
+	if strings.HasPrefix(m.Source.RPCID, RequestPrefix) || strings.HasPrefix(m.Source.RPCID, legacy.DSHRequest) {
+		rpcID = m.Source.RPCID
+	}
+	return m.text(true), rpcID, true
 }
+
+// Sender is who sent the message Aide sent under rpcID: an agent's
+// client id and name, as the machine recorded them; "" for the owner (and
+// any message it has no record of: only the owner sent before agents
+// could).
+type Sender func(rpcID string) (from, name string)
 
 // transcript is the conversation as Aide's session events: turns
 // started and completed, the owner's prompts, DSH's replies, tool calls
 // and results, and its compactions (a StatusChanged, reason "compacted").
-func (p *parsed) transcript() []*sessionv1.SessionEvent {
+func (p *parsed) transcript(who Sender) []*sessionv1.SessionEvent {
 	var out []*sessionv1.SessionEvent
 	for _, e := range p.events {
 		ev := &sessionv1.SessionEvent{Seq: e.Seq + 1, Ts: timestamppb.New(time.UnixMilli(e.Time))}
@@ -79,13 +88,18 @@ func (p *parsed) transcript() []*sessionv1.SessionEvent {
 			json.Unmarshal(e.Data, &d)
 			ev.Kind = &sessionv1.SessionEvent_TurnStarted{TurnStarted: &sessionv1.TurnStarted{Turn: d.Turn}}
 		case "user/message":
-			text, viaAide, ok := userText(e)
+			text, rpcID, ok := userText(e)
 			if !ok {
 				continue
 			}
 			um := &sessionv1.UserMessage{Text: text}
-			if viaAide { // only the owner sends through the bridge
+			if rpcID != "" { // sent from Aide: the owner, or an agent the machine recorded
 				um.From = "owner"
+				if who != nil {
+					if from, name := who(rpcID); from != "" {
+						um.From, um.FromName = from, name
+					}
+				}
 			}
 			ev.Kind = &sessionv1.SessionEvent_UserMessage{UserMessage: um}
 		case "assistant/message":

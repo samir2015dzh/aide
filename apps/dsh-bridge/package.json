@@ -1,6 +1,6 @@
 {
   "name": "@aide/dsh-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Aide takeover of DeepSeek Harness sessions: lets this computer's Aide queue the owner's messages into DSH sessions and interrupt them, from inside the DSH Host",
   "license": "MIT",
   "type": "module",
