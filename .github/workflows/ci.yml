@@ -145,7 +145,8 @@ jobs:
   # summary carries the times measured, for scripts/e2e_shard_times.json.
   e2e-ledger:
     needs: [select, e2e]
-    if: always() && needs.select.outputs.e2e == 'true'
+    # Not on a cancelled run: its shards' logs are cut short, and would read as missing tests.
+    if: ${{ !cancelled() && needs.select.outputs.e2e == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
