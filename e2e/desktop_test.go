@@ -80,7 +80,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -167,6 +167,9 @@ func TestDesktop(t *testing.T) {
 				f.OtherMac = otherMacSession(t, f)
 				inPlaceSessions(t, f)
 				repoSession(t, f)
+			}
+			if name == "rollback" { // an in-place session, which has nothing to roll back to
+				inPlaceSessions(t, f)
 			}
 			if name == "newsession" { // acme/widget on its GitHub, and an agent's session there
 				repoSession(t, f)

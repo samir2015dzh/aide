@@ -20,7 +20,9 @@ type writeOp struct {
 	row  *sessionRow
 	idem *idemKey
 	turn *turnRec
-	done chan error
+	// dropTurns: a rollback forgets the turns after dropTurns.turn.
+	dropTurns *turnRec
+	done      chan error
 
 	// draft is delivered in order with the events around it, never stored.
 	draft *sessionv1.SessionEvent
