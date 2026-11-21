@@ -25,7 +25,14 @@ sealed interface Item {
     data class Rollback(override val key: String, val turn: Int, val lastTurn: Int) : Item
 }
 
-data class Tool(val callId: String, val name: String, val summary: String, val result: String? = null, val isError: Boolean = false)
+data class Tool(val callId: String, val name: String, val summary: String, val result: String? = null, val isError: Boolean = false, val title: String = "") {
+    /**
+     * The line it shows by: the machine's title, else its summary when that reads as one (Aide's own
+     * sessions), never raw arguments spread across the row (a machine from before titles): "" then,
+     * the name alone shows and the arguments fold under it.
+     */
+    val line: String get() = title.ifEmpty { if (summary.trimStart().startsWith("{")) "" else summary.lineSequence().firstOrNull().orEmpty() }
+}
 
 /**
  * A session's events folded into what its page shows (as the iPhone's
@@ -52,7 +59,7 @@ class Transcript {
             e.userMessage != null -> items += Item.User(key, e.userMessage.text, e.userMessage.from, e.userMessage.fromName)
             e.agentMessage != null -> if (e.agentMessage.text.isNotBlank()) items += Item.Agent(key, e.agentMessage.text)
             e.toolCall != null -> {
-                val t = Tool(e.toolCall.callId, e.toolCall.name.ifEmpty { e.toolCall.kind }, e.toolCall.summary)
+                val t = Tool(e.toolCall.callId, e.toolCall.name.ifEmpty { e.toolCall.kind }, e.toolCall.summary, title = e.toolCall.title)
                 val last = items.lastOrNull()
                 if (last is Item.Tools) items[items.lastIndex] = last.copy(calls = last.calls + t) else items += Item.Tools(key, listOf(t))
             }

@@ -207,6 +207,7 @@ message AdminCommand {
     SetHer set_her = 16;
     SetHerCommandConnector set_her_command_connector = 18;
     SetWorkspaceRoots set_workspace_roots = 19;
+    SetAgentHidden set_agent_hidden = 20;
   }
   reserved 12, 17;
   reserved "rename_machine", "set_her_assistant_mode";
@@ -226,6 +227,18 @@ message AddProject {
 
 message RemoveProject {
   string project_id = 1;
+}
+
+// SetAgentHidden hides a coding agent the machine lists, or shows it again:
+// the owner's say over a listing they don't trust (an agent uninstalled that
+// something left behind still answers for). A setting: it hides the entry,
+// grants and takes away nothing. The machine's checks go on; a hidden agent
+// shows again only when the owner rescans (CheckAgents rescan_hidden) and it
+// then runs where it did not when hidden, or is found elsewhere.
+message SetAgentHidden {
+  // "claude" | "codex" | an ACP agent ("copilot", "deepseek", ...)
+  string agent = 1;
+  bool hidden = 2;
 }
 
 // SetWorkspaceRoots sets the folders the machine's owner devices may browse,

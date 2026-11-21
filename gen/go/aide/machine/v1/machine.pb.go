@@ -1099,7 +1099,10 @@ type GetInfoRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An owner's device asks the machine to check its coding agents again
 	// now (installed, version, signed in), and waits for it: Check Again.
-	Recheck       bool `protobuf:"varint,1,opt,name=recheck,proto3" json:"recheck,omitempty"`
+	Recheck bool `protobuf:"varint,1,opt,name=recheck,proto3" json:"recheck,omitempty"`
+	// With recheck, the owner rescans on purpose: a hidden agent that now
+	// runs where it did not when hidden, or is found elsewhere, shows again.
+	RescanHidden  bool `protobuf:"varint,2,opt,name=rescan_hidden,json=rescanHidden,proto3" json:"rescan_hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1137,6 +1140,13 @@ func (*GetInfoRequest) Descriptor() ([]byte, []int) {
 func (x *GetInfoRequest) GetRecheck() bool {
 	if x != nil {
 		return x.Recheck
+	}
+	return false
+}
+
+func (x *GetInfoRequest) GetRescanHidden() bool {
+	if x != nil {
+		return x.RescanHidden
 	}
 	return false
 }
@@ -1785,7 +1795,10 @@ type AgentStatus struct {
 	// for the scheduler to pace work by. Read from the signed-in Claude
 	// Desktop's token here; the token never leaves the machine, only these
 	// windows' utilization and reset times are reported.
-	Usage         *ClaudeUsage `protobuf:"bytes,16,opt,name=usage,proto3" json:"usage,omitempty"`
+	Usage *ClaudeUsage `protobuf:"bytes,16,opt,name=usage,proto3" json:"usage,omitempty"`
+	// The owner hid it (SetAgentHidden): the apps leave it out of the lists,
+	// and say how many are hidden, to show again.
+	Hidden        bool `protobuf:"varint,17,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1923,6 +1936,13 @@ func (x *AgentStatus) GetUsage() *ClaudeUsage {
 		return x.Usage
 	}
 	return nil
+}
+
+func (x *AgentStatus) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
 }
 
 // ClaudeUsage is the Claude plan usage (docs/claude-usage.md): the hard
@@ -5790,9 +5810,10 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\ffailed_turns\x18\x04 \x01(\rR\vfailedTurns\x12!\n" +
 	"\finput_tokens\x18\x05 \x01(\x04R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x06 \x01(\x04R\foutputTokens\x12!\n" +
-	"\fbusy_seconds\x18\a \x01(\rR\vbusySeconds\"*\n" +
+	"\fbusy_seconds\x18\a \x01(\rR\vbusySeconds\"O\n" +
 	"\x0eGetInfoRequest\x12\x18\n" +
-	"\arecheck\x18\x01 \x01(\bR\arecheck\"\x8b\x01\n" +
+	"\arecheck\x18\x01 \x01(\bR\arecheck\x12#\n" +
+	"\rrescan_hidden\x18\x02 \x01(\bR\frescanHidden\"\x8b\x01\n" +
 	"\x0fGetInfoResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
@@ -5849,7 +5870,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x04R\x05limit\x12\x18\n" +
 	"\aculprit\x18\x04 \x01(\tR\aculprit\x12#\n" +
 	"\rculprit_count\x18\x05 \x01(\rR\fculpritCount\x12\x16\n" +
-	"\x06detail\x18\x06 \x01(\tR\x06detail\"\x82\x05\n" +
+	"\x06detail\x18\x06 \x01(\tR\x06detail\"\x9a\x05\n" +
 	"\vAgentStatus\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tavailable\x18\x02 \x01(\bR\tavailable\x12\x18\n" +
@@ -5866,7 +5887,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x0emodel_catalogs\x18\r \x03(\v2\".aide.machine.v1.AgentModelCatalogR\rmodelCatalogs\x120\n" +
 	"\x05modes\x18\x0e \x03(\v2\x1a.aide.machine.v1.AgentModeR\x05modes\x12\x16\n" +
 	"\x06custom\x18\x0f \x01(\bR\x06custom\x122\n" +
-	"\x05usage\x18\x10 \x01(\v2\x1c.aide.machine.v1.ClaudeUsageR\x05usageJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
+	"\x05usage\x18\x10 \x01(\v2\x1c.aide.machine.v1.ClaudeUsageR\x05usage\x12\x16\n" +
+	"\x06hidden\x18\x11 \x01(\bR\x06hiddenJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
 	"\vClaudeUsage\x126\n" +
 	"\awindows\x18\x01 \x03(\v2\x1c.aide.machine.v1.UsageWindowR\awindows\x129\n" +
 	"\n" +

@@ -130,6 +130,9 @@ func (s *machineService) GetInfo(ctx context.Context, req *machinev1.GetInfoRequ
 	case req.Recheck && principalFrom(ctx).Kind == PrincipalOwner:
 		select {
 		case <-s.n.CheckAgents(true, 0):
+			if req.RescanHidden { // the owner rescans on purpose
+				s.n.rescanHidden()
+			}
 		case <-ctx.Done():
 		}
 	case principalFrom(ctx).Kind == PrincipalClient:
@@ -322,10 +325,10 @@ func (n *Machine) ApplyAdminCommand(ctx context.Context, signed *identityv1.Sign
 func (n *Machine) ApplySettings(ctx context.Context, cmd *identityv1.AdminCommand) (string, error) {
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
-		*identityv1.AdminCommand_SetAgentDefaults:
+		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden:
 	default:
 		n.audit.Log(AuditRecord{Kind: "admin", Decision: "deny", Reason: "unsigned command that is not a setting"})
-		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only settings (projects, pausing, the name, agent defaults) may be sent without a signature"))
+		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only settings (projects, pausing, the name, agent defaults, hiding an agent) may be sent without a signature"))
 	}
 	if cmd.OwnerId != n.OwnerID() || cmd.TargetMachineId != n.machineID {
 		return "", connect.NewError(connect.CodePermissionDenied, errors.New("settings for another owner or machine"))
@@ -417,6 +420,15 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		}
 		n.kickStatus()
 		return "defaults set for " + c.SetAgentDefaults.Agent, nil
+	case *identityv1.AdminCommand_SetAgentHidden:
+		if err := n.setAgentHidden(c.SetAgentHidden); err != nil {
+			return "", connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		n.kickStatus()
+		if c.SetAgentHidden.Hidden {
+			return c.SetAgentHidden.Agent + " hidden", nil
+		}
+		return c.SetAgentHidden.Agent + " shown", nil
 	case *identityv1.AdminCommand_SetPaused:
 		n.mu.Lock()
 		n.paused = c.SetPaused.Paused

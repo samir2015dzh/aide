@@ -147,7 +147,12 @@
     "usage5h": "5h",
     "usageWeek": "周",
     "usageStale": "旧值",
-    "usageUnreadable": "套餐用量读不到"
+    "usageUnreadable": "套餐用量读不到",
+    "hide": "从列表中隐藏",
+    "hideNote": "只能隐藏：检测到的 agent 没有可编辑的内容。例行检查不会让它重新出现；点「再检查」且它确实能运行了（之前跑不起来，或换了一份程序）才会自动回来。隐藏不影响用它开会话。",
+    "hiddenList_one": "已隐藏 {{count}} 个：",
+    "hiddenList_other": "已隐藏 {{count}} 个：",
+    "show": "显示"
   },
   "erased": {
     "done": "Aide 已全部清空",

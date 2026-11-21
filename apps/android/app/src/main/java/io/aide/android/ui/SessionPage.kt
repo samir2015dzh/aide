@@ -254,7 +254,7 @@ private fun ToolsView(item: Item.Tools) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    if (item.calls.size == 1) "${first.name} ${first.summary}" else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
+                    if (item.calls.size == 1) listOf(first.name, first.line).filter { it.isNotEmpty() }.joinToString(" · ") else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -266,7 +266,16 @@ private fun ToolsView(item: Item.Tools) {
                 Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.calls.forEach { c ->
                         HorizontalDivider(color = aide.separator)
-                        Text("${c.name} ${c.summary}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                        Text(listOf(c.name, c.line).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        // The raw arguments, under the line, when the line is not all they say (#37), in the same block as the result.
+                        if (c.summary.isNotBlank() && c.summary != c.line) {
+                            Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
+                                Text(
+                                    c.summary, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 8, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
                         c.result?.let {
                             Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
                                 Text(

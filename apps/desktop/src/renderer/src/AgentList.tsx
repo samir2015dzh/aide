@@ -69,12 +69,15 @@ const order = (name: string) => codingAgentIds.indexOf(name);
  * known once the machine has said which it has.
  */
 export function sortAgents(agents: AgentStatus[] | undefined) {
-  const installed = (agents ?? []).filter((a) => a.available).sort((a, b) => Number(ready(b)) - Number(ready(a)) || order(a.name) - order(b.name));
-  const troubled = (agents ?? []).filter(broken).sort((a, b) => order(a.name) - order(b.name));
-  const checking = (agents ?? []).filter((a) => a.checking && !a.available).sort((a, b) => order(a.name) - order(b.name));
-  const listed = (id: string) => [...installed, ...troubled, ...checking].some((a) => a.name === id);
+  // The ones the owner hid (SetAgentHidden) are left out of every group, and listed apart to be shown again.
+  const shown = (agents ?? []).filter((a) => !a.hidden);
+  const hidden = (agents ?? []).filter((a) => a.hidden).sort((a, b) => order(a.name) - order(b.name));
+  const installed = shown.filter((a) => a.available).sort((a, b) => Number(ready(b)) - Number(ready(a)) || order(a.name) - order(b.name));
+  const troubled = shown.filter(broken).sort((a, b) => order(a.name) - order(b.name));
+  const checking = shown.filter((a) => a.checking && !a.available).sort((a, b) => order(a.name) - order(b.name));
+  const listed = (id: string) => [...installed, ...troubled, ...checking, ...hidden].some((a) => a.name === id);
   const missing = codingAgentIds.filter((id) => !listed(id));
-  return { installed, troubled, checking, missing, searching: !agents || (installed.length === 0 && checking.length > 0), known: !!agents?.length };
+  return { installed, troubled, checking, missing, hidden, searching: !agents || (installed.length === 0 && checking.length > 0), known: !!agents?.length };
 }
 
 /**
@@ -87,7 +90,7 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
   const { t } = useTranslation("firstrun");
   const st = useStore();
   const projects = st.projects.filter((p) => p.machineId === m.machineId);
-  const { installed, troubled, checking, missing, known } = agents;
+  const { installed, troubled, checking, missing, hidden, known } = agents;
   const others = projects.filter((p) => !installed.some((a) => projectsFor([p], a.name).length > 0));
   const othersTitle = known ? t("prepare.otherProjects") : t("prepare.allProjects");
   return (
@@ -166,6 +169,20 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
             ))}
           </div>
         </>
+      )}
+      {hidden.length > 0 && (
+        <p className="ag-note" role="note">
+          {t("prepare.hiddenList", { count: hidden.length })}{" "}
+          {hidden.map((a, i) => (
+            <span key={a.name}>
+              {i > 0 && " · "}
+              {codingAgentTitle(a.name)}{" "}
+              <button className="link" onClick={() => void st.run(() => local.setAgentHidden({ machineId: m.machineId, agent: a.name, hidden: false }))}>
+                {t("prepare.show")}
+              </button>
+            </span>
+          ))}
+        </p>
       )}
       {known && missing.length > 0 && (
         <>
@@ -314,6 +331,15 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
           {busy ? t("prepare.adding") : t("prepare.addProject")}
         </button>
       </section>
+      {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
+      {a && !a.hidden && (
+        <section className="ag-hide" aria-label={t("prepare.hide")}>
+          <button className="btn sm" onClick={() => void st.run(() => local.setAgentHidden({ machineId: m.machineId, agent, hidden: true }))}>
+            {t("prepare.hide")}
+          </button>
+          <p className="ag-note">{t("prepare.hideNote")}</p>
+        </section>
+      )}
       {/* The Claude app's own sessions are read in the main window's Claude page. */}
       {agent === "claude" && (
         <section className="ag-dsh" aria-label={t("prepare.claudeSessions")}>
