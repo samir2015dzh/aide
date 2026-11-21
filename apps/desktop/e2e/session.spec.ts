@@ -153,6 +153,25 @@ test("the title is 14px medium, bright in front and grey while the window is beh
   await app.close();
 });
 
+test("the session's review opens from under its card, as Markdown, with the suggested prompt to copy", async () => {
+  const { app, page } = await launch();
+  await page.setViewportSize({ width: 1440, height: 800 });
+  await open(page, "写 hello");
+  const review = page.getByRole("complementary", { name: "复盘" });
+  await review.getByRole("button", { name: "复盘这个任务" }).click();
+  // The machine's review of the session's events, as it goes into a delivery record.
+  const dialog = page.getByRole("dialog", { name: "复盘" });
+  await expect(dialog.getByRole("heading", { name: /^Session insights: 写 hello/ })).toBeVisible();
+  await expect(dialog.getByRole("table").first()).toContainText("Turns");
+  await expect(dialog.getByRole("heading", { name: "Suggested prompt" })).toBeVisible();
+  await expect(dialog).toContainText("say 先写文件");
+  await dialog.getByRole("button", { name: "拷贝改进版派单提示" }).click();
+  await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toMatch(/^say 先写文件/);
+  await dialog.getByRole("button", { name: "关闭" }).click();
+  await expect(dialog).toHaveCount(0);
+  await app.close();
+});
+
 test("the session card floats over the conversation with what a glance needs, and the toolbar hides it", async () => {
   const { app, page } = await launch();
   // The card docks only when there is room beside the conversation, regardless of the runner's display size.

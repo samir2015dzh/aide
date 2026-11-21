@@ -11,6 +11,7 @@ import { copy } from "../settings/common";
 import { grantLabel, machineName } from "../Sidebar";
 import { useStore } from "../store";
 import { push } from "./actions";
+import { Insights } from "./Insights";
 
 type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean };
 
@@ -115,6 +116,7 @@ export function Inspector({ s }: { s: Session }) {
         {menu && <PopMenu label={t(`inspector.${menu.of}Menu`)} items={items} anchor={menu.anchor} keyboard={menu.keyboard} onClose={() => setMenu(undefined)} />}
       </aside>
       {(s.model !== "" || s.effort !== "") && <Context s={s} models={m?.status?.agents.find((a) => a.name === s.agent)?.models} />}
+      <Insights s={s} />
     </div>
   );
 }

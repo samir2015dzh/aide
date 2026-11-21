@@ -295,6 +295,14 @@ func TestMCPGateway(t *testing.T) {
 		!strings.Contains(string(doc.raw), "notes.txt") || strings.Contains(string(doc.raw), "Signing.local") {
 		t.Fatalf("session_diff at a tag: %s", doc.raw)
 	}
+	// session_insights reviews the session, and is read-only.
+	if i := slices.IndexFunc(tools.Tools, func(tl *mcp.Tool) bool { return tl.Name == "session_insights" }); i < 0 || !tools.Tools[i].Annotations.ReadOnlyHint {
+		t.Fatal("session_insights is not read-only")
+	}
+	if doc = callTool(t, session, "session_insights", map[string]any{"session_id": release}); !doc.OK ||
+		!strings.Contains(string(doc.raw), `"suggested_prompt"`) || !strings.Contains(string(doc.raw), "## Session insights") {
+		t.Fatalf("session_insights: %s", doc.raw)
+	}
 
 	// --- The Mac goes offline ----------------------------------------------
 	ownerArgs := []string{"run", "--owner", "--data-dir", filepath.Join(tmp, "owner-mac"), "--socket", sock}

@@ -496,7 +496,7 @@ fixed order with `ttlMs` set, as 2026-07-28 asks.
 | `aide_status` | the connection's state and next step (§5.7); once active, also `auth status` and the inbox (`messages`: its webhook, waiting messages) |
 | `auth_status` | `aide auth status` |
 | `project_list` | `aide project list` |
-| `session_start`, `session_get`, `session_wait`, `session_list`, `session_events`, `session_answer`, `session_interrupt`, `session_archive`, `session_unarchive`, `session_rollback`, `session_diff` | `aide session <verb>` |
+| `session_start`, `session_get`, `session_wait`, `session_list`, `session_events`, `session_answer`, `session_interrupt`, `session_archive`, `session_unarchive`, `session_rollback`, `session_diff`, `session_insights` | `aide session <verb>` |
 | `message_send`, `message_list`, `message_ack`, `message_status`, `message_contacts` | `aide message <verb>`, with the connection's inbox key ([agent-messages.md](agent-messages.md)); `message_send` is how a session is told anything more (`session_send` is gone) |
 | `machine_exec` | `aide machine exec`: a one-shot shell command on a machine, refused unless the owner turned on Run commands for this connection ([machine-ops.md](machine-ops.md)) |
 | `message_wake` | the gateway's own: a one-time link for the owner to set up the caller's doorbell, the webhook rung when messages arrive ([agent-names.md](agent-names.md) §7) |
@@ -538,7 +538,8 @@ fixed order with `ttlMs` set, as 2026-07-28 asks.
   needs `yes=true` (without: `usage`, nothing changes). Refused while a
   turn runs and for `in_place` sessions (no per-turn snapshots).
 - Annotations: `auth_status`, `project_list`, `session_get`, `session_wait`,
-  `session_list`, `session_events`, `session_diff` are `readOnlyHint`; the others
+  `session_list`, `session_events`, `session_diff`, `session_insights` are
+  `readOnlyHint`; the others
   `openWorldHint`, `session_interrupt`, `session_archive` and
   `session_rollback` `destructiveHint`. Each tool carries `_meta.securitySchemes:
   [{"type": "oauth2"}]` for ChatGPT.
