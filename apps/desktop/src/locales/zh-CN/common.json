@@ -234,6 +234,8 @@
     "showArchived": "显示 {{count}} 个已归档",
     "hideArchived": "隐藏已归档",
     "none": "你的机器上没有 DeepSeek Harness 自己的会话。",
+    "localOff": "这台电脑还没有作为机器开启，所以它上面的会话不会出现在这里。开启后可以在「设置 › 机器」里随时关掉。",
+    "localOffTurnOn": "在这台电脑上开启",
     "pick": "选一个会话查看内容。",
     "unreachable": "{{name}} 没有响应。",
     "unreachableLastKnown": "{{name}} 失联：下面是最后一次读到的会话。",
