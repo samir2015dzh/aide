@@ -297,5 +297,10 @@
       "copied": "Copied",
       "restart": "Restart DSH Desktop. You can turn it off or remove it on the same page later."
     }
+  },
+  "machineTag": {
+    "here": "{{name}} (this computer)",
+    "on": "On {{name}}",
+    "to": "Goes to the session on {{name}}"
   }
 }

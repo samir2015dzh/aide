@@ -112,6 +112,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
                 title = {
                     Column {
                         Text(s?.let(::displayTitle) ?: id.take(12), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (s != null) MachineTag(world, s.machineId)
                         if (s != null) {
                             Text(
                                 "${world.senderName(s)} → ${agentTitle(s.agent)} · ${s.projectId} · ${world.machineName(s.machineId)}",

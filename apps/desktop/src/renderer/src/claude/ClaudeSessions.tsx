@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { MachineGroupHead, MachineTag } from "../MachineTag";
+import { groupByMachine, showGroups } from "../machineScope";
 import { useTranslation } from "react-i18next";
 import { agoText, dateOf, lostLine, transcript } from "@aide/core";
 import type { ClaudeSessionEntry, ClaudeIndexEntry, Unreachable } from "@aide/proto/local";
@@ -38,6 +40,8 @@ export function ClaudeSessions() {
   const shown = (entries ?? []).filter((e) => archived || !e.session?.archived);
   const nArchived = (entries ?? []).length - shown.length;
   const chosen = sel?.id ? entries?.find((e) => e.machineId === sel.machine && e.session?.sessionId === sel.id) : undefined;
+  // Several machines: the list by machine, each group its header, so no two machines' sessions run together.
+  const grouped = showGroups(st.machines);
   const nameOf = (id: string) => st.machines.find((m) => m.machineId === id)?.machineName || id;
   // The app's own word after the session's last turn; lost, that word as last known (never as now).
   const statusText = (status: string) =>
@@ -49,7 +53,7 @@ export function ClaudeSessions() {
     return [
       e.lost ? lostLine(statusText(s.status) || t("dsh.unknown"), read ? now.getTime() - read.getTime() : 0) : statusText(s.status),
       withTime && at ? agoText(at, now) : "",
-      e.machineName,
+      withTime && grouped ? "" : e.machineName,
       s.repo || baseName(s.cwd),
       s.archived ? t("dsh.archived") : "",
     ]
@@ -87,7 +91,10 @@ export function ClaudeSessions() {
               ))}
             </div>
           )}
-          {shown.map((e) => {
+          {groupByMachine(shown, (e) => e.machineId, st.machines).map((g) => (
+            <div key={g.machineId} role="group" aria-label={g.name}>
+              {grouped && <MachineGroupHead name={g.name} local={g.local} count={g.items.length} />}
+              {g.items.map((e) => {
             const s = e.session!;
             return (
               <button
@@ -103,7 +110,9 @@ export function ClaudeSessions() {
                 </span>
               </button>
             );
-          })}
+              })}
+            </div>
+          ))}
           {nArchived > 0 || archived ? (
             <button className="link dsh-toggle" onClick={() => setArchived(!archived)}>
               {archived ? t("dsh.hideArchived") : t("dsh.showArchived", { count: nArchived })}
@@ -157,6 +166,7 @@ function ClaudeTranscript({ entry, line }: { entry: ClaudeSessionEntry; line: st
       <div className="dsh-head">
         <div className="dsh-head-row">
           <h2>{s.title || s.sessionId}</h2>
+          <MachineTag machineId={entry.machineId} />
         </div>
         <span>{[line, s.model, s.cwd].filter(Boolean).join(" · ")}</span>
       </div>
