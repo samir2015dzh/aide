@@ -46,12 +46,17 @@ fn show_main(app: &AppHandle) {
         let _ = w.set_focus();
         return;
     }
-    let built = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+    let mut w = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("Aide")
         .inner_size(1240.0, 800.0)
         .min_inner_size(480.0, 620.0)
-        .initialization_script(&bridge())
-        .build();
+        .initialization_script(&bridge());
+    // Eval only (TAURI-EVAL.md §2.1): AIDE_WEBVIEW_ARGS reaches WebView2's own switches, e.g.
+    // --remote-debugging-port=9333 to read console and network over CDP. Unset: the defaults.
+    if let Ok(args) = std::env::var("AIDE_WEBVIEW_ARGS") {
+        w = w.additional_browser_args(&args);
+    }
+    let built = w.build();
     if let Err(e) = built {
         eprintln!("main window: {e}");
     }
