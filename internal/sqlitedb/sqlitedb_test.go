@@ -50,7 +50,16 @@ func TestCheckpointerBacksOffWhileIdle(t *testing.T) {
 			}
 		}
 	}
-	write(time.Second) // longer than the 800 ms it had backed off to
+	// Warm-up: until two checkpoints ran after the writes began (the first
+	// ends the backed-off wait, however long the timers made it), not for
+	// a fixed time: on a slow runner the wait can outlast one.
+	started := len(since(0))
+	for deadline := time.Now().Add(10 * time.Second); len(since(started)) < 2; {
+		if time.Now().After(deadline) {
+			t.Fatalf("no checkpoint in 10 s of writes after %d idle", idle)
+		}
+		write(50 * time.Millisecond)
+	}
 	before := len(since(0))
 	write(time.Second)
 	// The gap between checkpoints, not their count: a slow runner (Windows:
