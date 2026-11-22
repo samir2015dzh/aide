@@ -50,7 +50,8 @@ func (o *Owner) syncCards(entries []*relayv1.ClientEntry) {
 		if err != nil {
 			continue // expired: it reaches nobody until renewed
 		}
-		want := &identityv1.ContactCard{OwnerId: ownerID, ClientId: g.ClientId, ClientPublicKey: g.ClientPublicKey, Name: g.ClientLabel, Kind: "cli"}
+		want := &identityv1.ContactCard{OwnerId: ownerID, ClientId: g.ClientId, ClientPublicKey: g.ClientPublicKey, Name: g.ClientLabel, Kind: "cli",
+			Category: g.ClientCategory, CategoryMachineId: g.ClientCategoryMachineId}
 		if g.Custodian != "" {
 			want.Kind = "mcp"
 		}

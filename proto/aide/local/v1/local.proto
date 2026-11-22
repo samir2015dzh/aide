@@ -91,6 +91,9 @@ service LocalService {
   rpc ListMachineFolders(ListMachineFoldersRequest) returns (aide.machine.v1.ListFoldersResponse);
   // One fixed turn of a coding agent on a machine (Test).
   rpc TestMachineAgent(TestMachineAgentRequest) returns (aide.machine.v1.TestAgentResponse);
+  // Signs a coding agent's command line in on a machine, in a browser that
+  // opens there (MachineAdminService.StartAgentLogin, 工单 #51).
+  rpc StartMachineAgentLogin(StartMachineAgentLoginRequest) returns (aide.machine.v1.StartAgentLoginResponse);
   // The ops log: the commands agents ran, or were refused, on the
   // machines (docs/machine-ops.md), newest first, as each machine keeps it.
   rpc ListExecLog(ListExecLogRequest) returns (ListExecLogResponse);
@@ -117,6 +120,8 @@ service LocalService {
   // Gives an agent another name: its grant signed again with that alone
   // changed (Touch ID).
   rpc RenameClient(RenameClientRequest) returns (RenameClientResponse);
+  // The kind of agent a client is, as the owner sets it (工单 #52).
+  rpc SetClientCategory(SetClientCategoryRequest) returns (SetClientCategoryResponse);
   rpc RevokeClient(RevokeClientRequest) returns (RevokeClientResponse);
   // This computer's `aide` CLI, logged in through this device (work order
   // #39, docs/accounts.md §3.1): no account or password asked again.
@@ -704,6 +709,12 @@ message ListMachineFoldersRequest {
   bool hidden = 3;
 }
 
+message StartMachineAgentLoginRequest {
+  string machine_id = 1;
+  string agent = 2;
+  bool cancel = 3;
+}
+
 message TestMachineAgentRequest {
   string machine_id = 1;
   string agent = 2;
@@ -817,6 +828,11 @@ message Client {
   // Her's own grant (identity.v1.Grant her_machine_id): the machine she
   // runs on. It doesn't expire, and ends when Her is turned off there.
   string her_machine_id = 14;
+  // The kind the owner set for it (identity.v1.Grant client_category):
+  // "personal", "local", or "" to tell from its name (工单 #52).
+  string category = 15;
+  // With "local": the machine it runs on ("" when not said).
+  string category_machine_id = 16;
 }
 
 message ListClientsRequest {}
@@ -842,6 +858,20 @@ message RenameClientRequest {
   // unset keeps the icon it has.
   optional string icon = 3;
   bytes image = 4;
+}
+
+// SetClientCategoryRequest sets the kind of agent a grant's client is, or
+// ("") gives it back to its name (工单 #52).
+message SetClientCategoryRequest {
+  string grant_id = 1;
+  // "personal", "local" or "".
+  string category = 2;
+  // With "local": the machine it runs on, or "".
+  string machine_id = 3;
+}
+
+message SetClientCategoryResponse {
+  uint64 grant_version = 1;
 }
 
 message RenameClientResponse {

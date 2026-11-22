@@ -75,6 +75,9 @@ const (
 	// MachineAdminServiceListFoldersProcedure is the fully-qualified name of the MachineAdminService's
 	// ListFolders RPC.
 	MachineAdminServiceListFoldersProcedure = "/aide.machine.v1.MachineAdminService/ListFolders"
+	// MachineAdminServiceStartAgentLoginProcedure is the fully-qualified name of the
+	// MachineAdminService's StartAgentLogin RPC.
+	MachineAdminServiceStartAgentLoginProcedure = "/aide.machine.v1.MachineAdminService/StartAgentLogin"
 	// MachineAdminServiceTestAgentProcedure is the fully-qualified name of the MachineAdminService's
 	// TestAgent RPC.
 	MachineAdminServiceTestAgentProcedure = "/aide.machine.v1.MachineAdminService/TestAgent"
@@ -576,6 +579,12 @@ type MachineAdminServiceClient interface {
 	ListFolders(context.Context, *v1.ListFoldersRequest) (*v1.ListFoldersResponse, error)
 	// One short fixed turn of a coding agent in a scratch folder, to prove it
 	// is installed and signed in: no session, project or grant is involved.
+	// Signs a coding agent's command line in on this machine (Claude Code:
+	// `claude auth login`), started here in the background: the browser
+	// opens on this machine and the owner signs in there. Aide never sees
+	// the account, the password or the token (工单 #51). Again while one is
+	// under way: its state; cancel stops it.
+	StartAgentLogin(context.Context, *v1.StartAgentLoginRequest) (*v1.StartAgentLoginResponse, error)
 	TestAgent(context.Context, *v1.TestAgentRequest) (*v1.TestAgentResponse, error)
 	// The machine's ops log (MachineOpsService), newest first.
 	ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error)
@@ -676,6 +685,13 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+MachineAdminServiceListFoldersProcedure,
 			connect.WithSchema(machineAdminServiceMethods.ByName("ListFolders")),
+			connect.WithClientOptions(opts...),
+		),
+		startAgentLogin: connect.NewClient[v1.StartAgentLoginRequest, v1.StartAgentLoginResponse](
+			httpClient,
+			baseURL+MachineAdminServiceStartAgentLoginProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("StartAgentLogin")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		testAgent: connect.NewClient[v1.TestAgentRequest, v1.TestAgentResponse](
@@ -789,6 +805,7 @@ type machineAdminServiceClient struct {
 	pushRevocations     *connect.Client[v1.PushRevocationsRequest, v1.PushRevocationsResponse]
 	listRepos           *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
 	listFolders         *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	startAgentLogin     *connect.Client[v1.StartAgentLoginRequest, v1.StartAgentLoginResponse]
 	testAgent           *connect.Client[v1.TestAgentRequest, v1.TestAgentResponse]
 	listExecLog         *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
 	listDSHSessions     *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
@@ -838,6 +855,15 @@ func (c *machineAdminServiceClient) ListRepos(ctx context.Context, req *v1.ListR
 // ListFolders calls aide.machine.v1.MachineAdminService.ListFolders.
 func (c *machineAdminServiceClient) ListFolders(ctx context.Context, req *v1.ListFoldersRequest) (*v1.ListFoldersResponse, error) {
 	response, err := c.listFolders.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// StartAgentLogin calls aide.machine.v1.MachineAdminService.StartAgentLogin.
+func (c *machineAdminServiceClient) StartAgentLogin(ctx context.Context, req *v1.StartAgentLoginRequest) (*v1.StartAgentLoginResponse, error) {
+	response, err := c.startAgentLogin.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1010,6 +1036,12 @@ type MachineAdminServiceHandler interface {
 	ListFolders(context.Context, *v1.ListFoldersRequest) (*v1.ListFoldersResponse, error)
 	// One short fixed turn of a coding agent in a scratch folder, to prove it
 	// is installed and signed in: no session, project or grant is involved.
+	// Signs a coding agent's command line in on this machine (Claude Code:
+	// `claude auth login`), started here in the background: the browser
+	// opens on this machine and the owner signs in there. Aide never sees
+	// the account, the password or the token (工单 #51). Again while one is
+	// under way: its state; cancel stops it.
+	StartAgentLogin(context.Context, *v1.StartAgentLoginRequest) (*v1.StartAgentLoginResponse, error)
 	TestAgent(context.Context, *v1.TestAgentRequest) (*v1.TestAgentResponse, error)
 	// The machine's ops log (MachineOpsService), newest first.
 	ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error)
@@ -1106,6 +1138,13 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		MachineAdminServiceListFoldersProcedure,
 		svc.ListFolders,
 		connect.WithSchema(machineAdminServiceMethods.ByName("ListFolders")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceStartAgentLoginHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceStartAgentLoginProcedure,
+		svc.StartAgentLogin,
+		connect.WithSchema(machineAdminServiceMethods.ByName("StartAgentLogin")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	machineAdminServiceTestAgentHandler := connect.NewUnaryHandlerSimple(
@@ -1220,6 +1259,8 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceListReposHandler.ServeHTTP(w, r)
 		case MachineAdminServiceListFoldersProcedure:
 			machineAdminServiceListFoldersHandler.ServeHTTP(w, r)
+		case MachineAdminServiceStartAgentLoginProcedure:
+			machineAdminServiceStartAgentLoginHandler.ServeHTTP(w, r)
 		case MachineAdminServiceTestAgentProcedure:
 			machineAdminServiceTestAgentHandler.ServeHTTP(w, r)
 		case MachineAdminServiceListExecLogProcedure:
@@ -1277,6 +1318,10 @@ func (UnimplementedMachineAdminServiceHandler) ListRepos(context.Context, *v1.Li
 
 func (UnimplementedMachineAdminServiceHandler) ListFolders(context.Context, *v1.ListFoldersRequest) (*v1.ListFoldersResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ListFolders is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) StartAgentLogin(context.Context, *v1.StartAgentLoginRequest) (*v1.StartAgentLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.StartAgentLogin is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) TestAgent(context.Context, *v1.TestAgentRequest) (*v1.TestAgentResponse, error) {

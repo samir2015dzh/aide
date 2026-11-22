@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -859,4 +860,18 @@ func Classify(name string, input json.RawMessage) provider.ToolAction {
 	}
 	a.Summary, _ = provider.Truncate(a.Summary, 500)
 	return a
+}
+
+// LoginCommand is Claude Code's own sign-in, `claude auth login`, as Aide
+// starts it on the owner's word (工单 #51): it opens the browser on this
+// machine, where the owner signs in. Its output is never kept: Aide does
+// not see the account, the password or the token. Nil: not installed.
+func (p *Provider) LoginCommand(ctx context.Context) *exec.Cmd {
+	bin := p.binary()
+	if !provider.Exists(bin) {
+		return nil
+	}
+	cmd := provider.Command(ctx, bin, "auth", "login")
+	cmd.Env = provider.ProbeEnv(p.PathEnv)
+	return cmd
 }

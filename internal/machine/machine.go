@@ -111,6 +111,7 @@ type Machine struct {
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
 	dshBridge   *machinev1.DSHBridge     // the DSH bridge plugin, as the last check of DSH found it
+	logins      map[string]*agentLogin   // sign-ins started from Aide (agentlogin.go)
 	hidden      map[string]hiddenAgent   // the coding agents the owner hid (hiddenagents.go)
 	// The coding agents the owner paused, when each last resumed by itself,
 	// and the timers that resume them (pausedagents.go).
@@ -244,7 +245,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
+		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
@@ -560,6 +561,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 			}
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
+				a.Login = n.loginOfLocked(name)
 				if ok {
 					a.Desktop = &machinev1.ClaudeDesktop{Installed: i.DesktopInstalled, SignedIn: i.DesktopSignedIn}
 				}
