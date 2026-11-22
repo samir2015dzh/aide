@@ -7,6 +7,7 @@ import { Overview } from "./Overview";
 import { DSHSessions } from "./dsh/DSHSessions";
 import { ClaudeSessions } from "./claude/ClaudeSessions";
 import { HeldMessages } from "./held/HeldMessages";
+import { TasksPage } from "./TasksPage";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -92,6 +93,8 @@ export function MainWindow() {
           <ClaudeSessions />
         ) : st.selection.kind === "held" ? (
           <HeldMessages />
+        ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
+          <TasksPage />
         ) : (
           <Overview />
         )}

@@ -59,7 +59,8 @@
     "searchHint": "Search tasks, machines, agents",
     "machinesOnline": "{{online}}/{{total}} machines online",
     "connect": "Connect Agents",
-    "howToConnect": "How to Connect DSH, Claude Desktop…"
+    "howToConnect": "How to Connect DSH, Claude Desktop…",
+    "tasks": "Tasks"
   },
   "accountMenu": {
     "settings": "Settings…",
@@ -213,16 +214,16 @@
     "text": "Aide on that computer is older and doesn’t have this yet. Update Aide there, then try again."
   },
   "held": {
-      "title": "Held messages",
-      "note": "Messages other agents wrote to sessions, held by your rules first: from an agent let in less than 7 days ago, at hop 3 or more of a chain, or matching your information boundary. Released, they go to the session; discarded, the sender is told. Not handled within a day, they expire.",
-      "none": "No message waits for you.",
-      "release": "Release",
-      "discard": "Discard",
-      "expires": "expires {{time}}",
-      "to": "to {{session}}",
-      "reason_new_agent": "a new agent",
-      "reason_long_chain": "a long chain",
-      "reason_boundary": "information boundary"
+    "title": "Held messages",
+    "note": "Messages other agents wrote to sessions, held by your rules first: from an agent let in less than 7 days ago, at hop 3 or more of a chain, or matching your information boundary. Released, they go to the session; discarded, the sender is told. Not handled within a day, they expire.",
+    "none": "No message waits for you.",
+    "release": "Release",
+    "discard": "Discard",
+    "expires": "expires {{time}}",
+    "to": "to {{session}}",
+    "reason_new_agent": "a new agent",
+    "reason_long_chain": "a long chain",
+    "reason_boundary": "information boundary"
   },
   "claude": {
     "title": "Claude sessions",
@@ -309,5 +310,22 @@
     "here": "{{name}} (this computer)",
     "on": "On {{name}}",
     "to": "Goes to the session on {{name}}"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "note": "What your agents (Muse and the others) handed out through Aide, and how each is going: from the session itself (its tool now, its last words, its title), never from what an agent says. What needs a look comes first; finished work stays a day. Click a row to open the session.",
+    "summary": "Summary",
+    "needLook": "{{count}} need a look",
+    "atWork": "{{count}} at work",
+    "doneUnseen": "{{count}} done, not opened",
+    "done": "{{count}} done",
+    "dispatchers": "Given out by",
+    "everyone": "Everyone · {{count}}",
+    "none": "No work handed out by an agent yet. Sessions Muse and other agents start through Aide show here.",
+    "list": "Work handed out",
+    "usingTool": "Using {{tool}}",
+    "started": "started {{ago}}",
+    "lastActivity": "last activity {{ago}}",
+    "open": "Open the session"
   }
 }

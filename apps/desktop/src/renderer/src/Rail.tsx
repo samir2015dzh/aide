@@ -86,6 +86,8 @@ export function Rail() {
         {owner &&
           hasClaude(st) &&
           button({ label: t("sidebar.claude"), current: sel.kind === "claude", onClick: () => sel.kind !== "claude" && st.set({ selection: { kind: "claude" } }), children: <Icon name="terminal" /> })}
+        {owner &&
+          button({ label: t("sidebar.tasks"), current: sel.kind === "tasks", onClick: () => sel.kind !== "tasks" && st.set({ selection: { kind: "tasks" } }), children: <Icon name="persons" /> })}
         {(held > 0 || sel.kind === "held") &&
           button({ label: t("sidebar.held"), current: sel.kind === "held", onClick: () => sel.kind !== "held" && st.set({ selection: { kind: "held" } }), children: <Icon name="bell" /> })}
         {groups.length > 0 && <div className="rail-sep" role="separator" />}
