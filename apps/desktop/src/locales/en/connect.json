@@ -2,7 +2,7 @@
   "title": "Connect Your Agents",
   "lede": "Each agent connects its own way. Pick one and follow its steps. Aide runs the agent on the computer where it is installed, and you give it tasks from here, from your phone, or through your assistants.",
   "lines": {
-    "deepseek": "DSH (DeepSeek Harness)",
+    "deepseek": "DSH",
     "claude": "Claude Desktop",
     "codex": "Codex",
     "custom": "Other Agent",
@@ -59,24 +59,24 @@
     "notLoggedIn": "Didn't work: Claude Code's command line is not signed in. The desktop app's sign-in doesn't carry over, so tasks for Claude fail on this machine."
   },
   "deepseek": {
-    "intro": "DSH is the DeepSeek Harness desktop app, DeepSeek’s coding agent. Aide runs the DSH installed on your computer: the one in the desktop app, or the dsh command.",
-    "need1": "DeepSeek Harness installed on the computer that runs it: the DSH desktop app (installed anywhere), or the dsh command.",
+    "intro": "DSH is a coding agent (a desktop app that works with your DeepSeek account or API key). Aide runs the DSH installed on your computer: the one in the desktop app, or the dsh command.",
+    "need1": "DSH installed on the computer that runs it: the DSH desktop app (installed anywhere), or the dsh command.",
     "need2": "DSH set up with your DeepSeek account or API key: open DSH once and send it a message to be sure it answers.",
     "need3": "Aide open on that computer and signed in to your account (this computer already is).",
     "step1": "Choose the computer that runs DSH above (this one is chosen for you).",
     "step2": "Look at Status: it should say “Detected”. If it doesn’t, follow the list under it, then click Check Again.",
-    "step3": "If DeepSeek has no project yet, click Add Project… and choose a folder it may work in.",
+    "step3": "If DSH has no project yet, click Add Project… and choose a folder it may work in.",
     "step4": "Click Run Test. DSH answers one short question.",
     "step5": "Click Start Test Task. A real task starts and opens in Aide.",
-    "fixInstall": "Is DeepSeek Harness installed on {{machine}}? Install the DSH desktop app from DeepSeek, or the dsh command, and open it once.",
+    "fixInstall": "Is DSH installed on {{machine}}? Install the DSH desktop app or the dsh command, and open it once.",
     "fixWhere": "Installed and still not found? Aide finds the DSH app where Windows says it is: in its list of installed programs, and the DSH running now. Open DSH once, then check again here. The dsh command counts only if a new terminal finds it (type dsh --version there).",
     "fixAppOnly": "The DSH app is there, but the dsh it carries isn’t found in it. Update DSH, open it once, then check again here. If it still isn’t found, install the dsh command (npm install -g @deepseek-ai/dsh), or add it under Other Agent by dsh’s full path.",
     "fixSignIn": "Open DSH and sign in or set up your DeepSeek API key there.",
     "testFailedHint": "If the reason mentions a key, an account or a sign-in, open DSH, set up your DeepSeek account or API key there, and run the test again.",
-    "where1": "Tasks you start in Aide with DeepSeek are in Aide’s task list, on every device of yours.",
-    "where2": "DSH’s own sessions (the ones you open in DSH, or another tool does) are on the DeepSeek Sessions page in Aide’s sidebar, read only.",
+    "where1": "Tasks you start in Aide with DSH are in Aide’s task list, on every device of yours.",
+    "where2": "DSH’s own sessions (the ones you open in DSH, or another tool does) are on the DSH Sessions page in Aide’s sidebar, read only.",
     "where3": "DSH also saves each task Aide starts in its own session history on that computer, next to yours. DSH Desktop may not list them: each task works in its own copy of the project folder that Aide makes.",
-    "openSessions": "Open DeepSeek Sessions"
+    "openSessions": "Open DSH Sessions"
   },
   "claude": {
     "intro": "Claude here is Claude Desktop, Anthropic’s desktop app. Aide runs the Claude Code that Claude Desktop uses on its Code tab: nothing else to install.",

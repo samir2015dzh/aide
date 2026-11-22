@@ -29,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -119,11 +120,14 @@ fun ContactsPage(model: AppModel, open: (Persona) -> Unit, dispatch: (Target) ->
             }
             items(groups, key = { it.machine.machineId }) { g ->
                 Column(Modifier.fillMaxWidth().aideCard().padding(vertical = 6.dp)) {
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(g.machine.machineName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        val on = g.machine.online || g.machine.local
-                        Text(if (on) t("online", "在线") else t("offline", "离线"), style = MaterialTheme.typography.labelMedium, color = if (on) Positive else MaterialTheme.colorScheme.onSurfaceVariant)
+                    val on = g.machine.online || g.machine.local
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MachineMark(g.machine.machineName, on, 32)
+                        HSpace(10)
+                        Text(g.machine.machineName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                        StatusPill(if (on) t("Online", "在线") else t("Offline", "离线"), if (on) Tone.Good else Tone.Quiet)
                     }
+                    HorizontalDivider(thickness = 0.5.dp, color = aide.separator)
                     g.targets.forEach { x ->
                         Row(
                             Modifier.fillMaxWidth().pressable { if (x.persona != null && x.ready) open(x.persona) else if (x.ready) dispatch(x) }.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -131,14 +135,16 @@ fun ContactsPage(model: AppModel, open: (Persona) -> Unit, dispatch: (Target) ->
                         ) {
                             if (x.persona != null) PersonaAvatar(x.persona) else AgentFace(x.agent, 40)
                             Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(x.persona?.name ?: agentTitle(x.agent), fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    listOfNotNull(if (x.persona != null) agentTitle(x.agent) else null, whyText(x.why) ?: t("ready", "可以派活")).joinToString(" · "),
-                                    style = MaterialTheme.typography.bodySmall, color = if (x.ready) Positive else Warning, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                )
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                // One root, the instance by its suffix (BotArk reference §2): "DSH · alexwork" while there are several machines.
+                                Text(x.persona?.name ?: (agentTitle(x.agent) + if (io.aide.android.model.manyMachines(world.machines.size)) " · ${g.machine.machineName}" else ""), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    StatusPill(whyText(x.why) ?: t("Ready", "可以派活"), if (x.ready) Tone.Good else Tone.Warn)
+                                    if (x.persona != null) { HSpace(8); Text(agentTitle(x.agent), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                }
                             }
                             if (x.persona != null && x.ready) TextButton(onClick = { dispatch(x) }) { Text(t("New task", "新任务")) }
+                            else if (x.ready) Text("›", style = MaterialTheme.typography.titleLarge, color = aide.faint)
                         }
                     }
                 }

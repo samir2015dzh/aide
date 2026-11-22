@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -35,15 +36,25 @@ data class AideTokens(
     /** A quiet fill under a row or a chip, as --fill and --fill2. */
     val fill: Color,
     val fill2: Color,
+    /** A card, clearly a step above the page (工单 #54: the old card was one shade off the page and read as none). */
+    val card: Color,
+    /** A card's edge. */
+    val cardEdge: Color,
+    /** A block inside a card (an agent under its machine), a step above the card. */
+    val inset: Color,
+    /** The third text step: times, counts, what was checked when. */
+    val faint: Color,
 )
 
 private val DarkTokens = AideTokens(
     bubble = Color(0xFF232326), onBubble = Color(0xEBFFFFFF),
     separator = Color(0x14FFFFFF), fill = Color(0x0DFFFFFF), fill2 = Color(0x16FFFFFF),
+    card = Color(0xFF161618), cardEdge = Color(0x1FFFFFFF), inset = Color(0xFF202023), faint = Color(0xFF6E6E76),
 )
 private val LightTokens = AideTokens(
     bubble = Color(0xFFF0F0F1), onBubble = Color(0xE6000000),
     separator = Color(0x14000000), fill = Color(0x0A000000), fill2 = Color(0x12000000),
+    card = Color.White, cardEdge = Color(0x14000000), inset = Color(0xFFF4F4F6), faint = Color(0xFF8E8E96),
 )
 
 val LocalAideTokens = staticCompositionLocalOf { LightTokens }
@@ -99,8 +110,8 @@ private val Light = lightColorScheme(
     secondaryContainer = Color(0xFFF0F0F1), onSecondaryContainer = Brand,
     tertiary = Color(0xFFB4691C), onTertiary = Color.White,
     tertiaryContainer = Color(0xFFFBEFE2), onTertiaryContainer = Color(0xFF5C340B),
-    background = Color.White, onBackground = Color(0xFF111113),
-    surface = Color.White, onSurface = Color(0xFF111113),
+    background = Color(0xFFF4F4F6), onBackground = Color(0xFF111113),
+    surface = Color(0xFFF4F4F6), onSurface = Color(0xFF111113),
     surfaceVariant = Color(0xFFF7F7F8), onSurfaceVariant = Color(0xFF5F5F66),
     surfaceDim = Color(0xFFEDEDEF), surfaceBright = Color.White,
     surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFFBFBFC),
@@ -121,6 +132,9 @@ private val AideType = Typography().let { d ->
         bodySmall = d.bodySmall.copy(fontSize = 12.5.sp, lineHeight = 18.sp),
         labelSmall = d.labelSmall.copy(fontSize = 11.5.sp, lineHeight = 16.sp, letterSpacing = 0.1.sp),
         titleMedium = d.titleMedium.copy(fontSize = 16.sp, lineHeight = 22.sp),
+        // The page's name, heavy and tight (Grok reference note §2), well above everything under it (工单 #54).
+        headlineMedium = d.headlineMedium.copy(fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp),
+        titleLarge = d.titleLarge.copy(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp),
     )
 }
 

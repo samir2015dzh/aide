@@ -56,3 +56,6 @@
 .ag-path{display:block;font-size:11px;color:var(--l3,var(--l2));margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 /* Why a found agent can't run, under its line of facts. */
 .ag-why{font-size:11.5px;color:var(--l2);line-height:1.45;margin-top:2px}
+/* An entry's one state on the machine page (工单 #53), from the connections: beside the facts, not pushed right. */
+.ag-sub .ag-state{margin-left:0;font-size:11.5px}
+.ag-sub .ag-state i{margin-right:0}

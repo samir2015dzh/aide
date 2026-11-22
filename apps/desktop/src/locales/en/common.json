@@ -55,7 +55,7 @@
     "sentByYou": "Sent by You",
     "newSession": "New Task",
     "contacts": "Hand Work",
-    "dsh": "DeepSeek Sessions",
+    "dsh": "DSH Sessions",
     "searchHint": "Search tasks, machines, agents",
     "machinesOnline": "{{online}}/{{total}} machines online",
     "connect": "Connect Agents",
@@ -236,8 +236,8 @@
     "noAddress": "Takes no messages (this machine's aide hooks have not reported this conversation)"
   },
   "dsh": {
-    "title": "DeepSeek sessions",
-    "note": "Sessions on your machines that DeepSeek Harness has of its own (opened in DSH, or by another tool). Read only, until you turn on Take Over for one: then you can send it messages from here.",
+    "title": "DSH sessions",
+    "note": "Sessions on your machines that DSH has of its own (opened in DSH, or by another tool). Read only, until you turn on Take Over for one: then you can send it messages from here.",
     "running": "Running",
     "idle": "Open in DSH",
     "ended": "Ended",
@@ -247,7 +247,7 @@
     "showArchived_one": "Show {{count}} archived",
     "showArchived_other": "Show {{count}} archived",
     "hideArchived": "Hide archived",
-    "none": "No DeepSeek Harness sessions of its own on your machines.",
+    "none": "No DSH sessions of its own on your machines.",
     "localOff": "This computer is not turned on as a machine, so its sessions don’t show here. Once on, you can turn it off again in Settings › Machines.",
     "localOffTurnOn": "Turn On for This Computer",
     "pick": "Choose a session to read it.",

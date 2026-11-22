@@ -342,6 +342,12 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /** Asks each machine whose findings are old to check its agents again, quietly: nothing is said if one can't. */
+    suspend fun checkStaleAgents(now: java.time.Instant) {
+        val api = api ?: return
+        coroutineScope { world.value.machines.filter { needsCheck(it, now) }.forEach { m -> launch { runCatching { api.checkAgents(m.machineId) } } } }
+    }
+
     /** Hides a coding agent a machine lists (one the owner doesn't trust, as on the desktop), or shows it again. */
     suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
         report { api!!.setAgentHidden(machineId, agent, hidden) }

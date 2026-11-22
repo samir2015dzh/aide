@@ -221,6 +221,13 @@
     "loginFailed": "The last sign-in didn't finish: {{why}}. Try again.",
     "loginNoReason": "no reason given",
     "loginTimedOut": "The last sign-in waited 10 minutes for the browser and was stopped. Try again.",
-    "loginCancelled": "The last sign-in was cancelled."
+    "loginCancelled": "The last sign-in was cancelled.",
+    "dshModels": "Models: {{models}}",
+    "entry": {
+      "ok": "Ready",
+      "partial": "Partly ready",
+      "missing": "Not ready",
+      "unknown": "Unknown"
+    }
   }
 }

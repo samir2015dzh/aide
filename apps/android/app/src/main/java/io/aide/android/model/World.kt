@@ -141,7 +141,8 @@ fun agentTitle(id: String): String = when (id) {
     "claude" -> "Claude Code"
     "codex" -> "Codex"
     "gemini" -> "Gemini CLI"
-    "deepseek" -> "DeepSeek"
+    // DSH is the tool; DeepSeek is the account in it (工单 #53), said on its own line, never as the agent's name.
+    "deepseek" -> "DSH"
     "cursor" -> "Cursor"
     "copilot" -> "Copilot"
     "opencode" -> "OpenCode"

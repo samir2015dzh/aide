@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fixture, launch, snap } from "./app";
 
-// DeepSeek 会话 › taking one over (docs/dsh-takeover.md): read only until the owner turns 接管 on
+// DSH 会话 › taking one over (docs/dsh-takeover.md): read only until the owner turns 接管 on
 // for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
 // (here the real plugin in a stand-in DSH Host, which writes it into the session as DSH would) and
 // comes back marked as sent from Aide. With DSH Desktop gone, the send fails saying so and the
@@ -23,8 +23,8 @@ test("this computer not turned on as a machine: the session pages say so, and tu
       async ([m, b]) => (await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) })).json(),
       [method, body] as const,
     );
-  await page.getByRole("button", { name: "DeepSeek 会话" }).click();
-  const list = page.getByRole("navigation", { name: "DeepSeek 会话" });
+  await page.getByRole("button", { name: "DSH 会话" }).click();
+  const list = page.getByRole("navigation", { name: "DSH 会话" });
   const row = list.getByRole("button", { name: /看一下 README/ });
   await expect(row).toBeVisible({ timeout: 30_000 });
   const said = "这台电脑还没有作为机器开启";
@@ -39,12 +39,12 @@ test("this computer not turned on as a machine: the session pages say so, and tu
     // The sidebar's entry is there only while a machine is found to have DSH (the owner's ruling, 2026-11-21:
     // not set up, not shown). This computer was the only one, so the entry goes; the page that is open stays,
     // with the notice. The entry is back once this computer is on and its agents are found again.
-    await expect(page.getByRole("button", { name: "DeepSeek 会话" })).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "DSH 会话" })).toHaveCount(0, { timeout: 30_000 });
 
     await list.getByRole("status").filter({ hasText: said }).getByRole("button", { name: "在这台电脑上开启" }).click();
     await expect(list.getByRole("status").filter({ hasText: said })).toHaveCount(0, { timeout: 30_000 });
     await expect(row).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "DeepSeek 会话" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "DSH 会话" })).toBeVisible({ timeout: 30_000 });
   } finally {
     await call("SetLocalMachine", { enabled: true, machineName: name }).catch(() => {});
     await app.close();
@@ -53,8 +53,8 @@ test("this computer not turned on as a machine: the session pages say so, and tu
 
 test("taking over a DSH session: off by default, asked, a message through the plugin, DSH Desktop gone, off again", async () => {
   const { app, page } = await launch();
-  await page.getByRole("button", { name: "DeepSeek 会话" }).click();
-  const list = page.getByRole("navigation", { name: "DeepSeek 会话" });
+  await page.getByRole("button", { name: "DSH 会话" }).click();
+  const list = page.getByRole("navigation", { name: "DSH 会话" });
   await list.getByRole("button", { name: /看一下 README/ }).click({ timeout: 30_000 });
   await expect(page.getByText("README 写的是安装步骤。")).toBeVisible();
 
@@ -137,7 +137,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
 
   // No session of DSH's found: the page says which DSH home it read, and how to point Aide at another.
   fs.rmSync(path.join(fixture.dshHome!, "sessions"), { recursive: true });
-  await expect(list).toContainText("你的机器上没有 DeepSeek Harness 自己的会话。", { timeout: 30_000 });
+  await expect(list).toContainText("你的机器上没有 DSH 自己的会话。", { timeout: 30_000 });
   await expect(list).toContainText("上读取的目录：");
   await expect(list.locator(".dsh-home .mono")).toHaveText(fixture.dshHome!);
   await expect(list).toContainText("DSH_HOME");

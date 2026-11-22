@@ -39,37 +39,10 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
       <div className="fgroup">
         {rows.length === 0 && <div className="frow muted">{m.online || m.local ? t("conn.noneYet") : t("conn.offline")}</div>}
         {rows.map((r) => (
-          <div key={r.id} className="frow conn-row" data-state={r.state}>
-            <span className="conn-logo"><AgentLogo agent={r.agent} size={18} /></span>
-            <div className="conn-main">
-              <div className="conn-line">
-                <b>{r.title}</b>
-                <span className="conn-state" data-state={r.state}>
-                  <i className={`dotc ${dot[r.state]}`} />
-                  {r.text}
-                </span>
-              </div>
-              {r.lacks && <p className="conn-lacks">{r.lacks}</p>}
-              <Fix r={r} m={m} recheck={recheck} />
-              <small className="conn-when">{r.checkedAt ? t("conn.checkedAt", { when: agoText(r.checkedAt, now) }) : r.state === "checking" ? "" : t("conn.neverChecked")}</small>
-            </div>
-          </div>
+          <ConnRowView key={r.id} r={r} m={m} recheck={recheck} />
         ))}
         {grants.map((g) => (
-          <div key={g.clientId} className="frow conn-row" data-state="ok">
-            <span className="conn-logo"><GrantAvatar c={g} size="sm" /></span>
-            <div className="conn-main">
-              <div className="conn-line">
-                <b>{agentName(g.label)}</b>
-                <span className="conn-state" data-state="ok">
-                  <i className={`dotc ${g.online ? "on" : ""}`} />
-                  {g.online ? t("conn.grantOnline") : t("conn.grantIdle")}
-                </span>
-              </div>
-              <p className="conn-lacks">{t("conn.localGrant")}</p>
-              <CategoryControl c={g} />
-            </div>
-          </div>
+          <GrantRow key={g.clientId} g={g} />
         ))}
       </div>
       {!only && (
@@ -78,6 +51,71 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
           {(m.online || m.local) && <button className="link" onClick={recheck}>{t("conn.recheck")}</button>}
         </p>
       )}
+    </div>
+  );
+}
+
+/** One connection row: what it is, its state, what that means, its fix, and when it was checked. */
+export function ConnRowView({ r, m, recheck, logo = true, bare = false }: { r: ConnRow; m: Machine; recheck: () => void; logo?: boolean; bare?: boolean }) {
+  const { t } = useTranslation("common");
+  const now = useNow(30_000);
+  return (
+    <div className="frow conn-row" data-state={r.state} role="group" aria-label={r.title}>
+      {logo && <span className="conn-logo"><AgentLogo agent={r.agent} size={18} /></span>}
+      <div className="conn-main">
+        {/* bare: the entry it sits under already says its name and state (an agent with one row, 工单 #53). */}
+        {!bare && (
+          <div className="conn-line">
+            <b>{r.title}</b>
+            <span className="conn-state" data-state={r.state}>
+              <i className={`dotc ${dot[r.state]}`} />
+              {r.text}
+            </span>
+          </div>
+        )}
+        {r.note && <p className="conn-note">{r.note}</p>}
+        {r.lacks && <p className="conn-lacks">{r.lacks}</p>}
+        <Fix r={r} m={m} recheck={recheck} />
+        <small className="conn-when">{r.checkedAt ? t("conn.checkedAt", { when: agoText(r.checkedAt, now) }) : r.state === "checking" ? "" : t("conn.neverChecked")}</small>
+      </div>
+    </div>
+  );
+}
+
+/** The state dot's class for a connection state. */
+export const connDot = (s: ConnState) => dot[s];
+
+/** A coding agent connected to Aide from a machine with a grant of its own (DSH on …): it follows the machine. */
+function GrantRow({ g }: { g: Client }) {
+  const { t } = useTranslation("common");
+  return (
+    <div className="frow conn-row" data-state="ok">
+      <span className="conn-logo"><GrantAvatar c={g} size="sm" /></span>
+      <div className="conn-main">
+        <div className="conn-line">
+          <b>{agentName(g.label)}</b>
+          <span className="conn-state" data-state="ok">
+            <i className={`dotc ${g.online ? "on" : ""}`} />
+            {g.online ? t("conn.grantOnline") : t("conn.grantIdle")}
+          </span>
+        </div>
+        <p className="conn-lacks">{t("conn.localGrant")}</p>
+        <CategoryControl c={g} />
+      </div>
+    </div>
+  );
+}
+
+/** The coding agents connected from machine m with grants of their own, on its one list (工单 #53). */
+export function LocalGrants({ m }: { m: Machine }) {
+  const st = useStore();
+  const grants = grantsByCategory(st.clients, st.machines).local.get(m.machineId) ?? [];
+  if (!grants.length) return null;
+  return (
+    <div className="fgroup">
+      {grants.map((g) => (
+        <GrantRow key={g.clientId} g={g} />
+      ))}
     </div>
   );
 }

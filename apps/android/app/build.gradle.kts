@@ -54,9 +54,14 @@ android {
             applicationIdSuffix = ".debug"
             if (appKeystore.isNotEmpty()) signingConfig = signingConfigs.getByName("app")
         }
+        // What is published and installed (工单 #55): not debuggable, so the system compiles the app and Compose's
+        // own startup and scrolling profiles apply — a debuggable build scrolls far worse on a phone. It keeps the
+        // identity the published APKs have had (io.aide.android.debug), so it installs over them, keeping the login;
+        // without the app's key (a build on one's own computer) it is signed with Gradle's debug key, as before.
         release {
             isMinifyEnabled = false
-            if (appKeystore.isNotEmpty()) signingConfig = signingConfigs.getByName("app")
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName(if (appKeystore.isNotEmpty()) "app" else "debug")
         }
     }
     compileOptions {
@@ -76,6 +81,22 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // The page pictures (工单 #54, src/test/.../shots) render with Robolectric: only when asked (-Pshots), as
+        // they fetch an Android image of their own and take a while; the unit tests run without them.
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            if (project.hasProperty("shots")) {
+                it.systemProperty("roborazzi.test.record", "true")
+                // -ProbolectricDir=<dir>: Robolectric's Android image fetched by hand, where it can't download it itself.
+                (project.findProperty("robolectricDir") as String?)?.let { dir ->
+                    it.systemProperty("robolectric.offline", "true")
+                    it.systemProperty("robolectric.dependency.dir", dir)
+                }
+                it.filter.includeTestsMatching("io.aide.android.shots.*")
+            } else {
+                it.exclude("**/shots/**")
+            }
+        }
     }
 }
 
@@ -90,6 +111,7 @@ dependencies {
 
     val composeBom = platform("androidx.compose:compose-bom:2025.08.00")
     implementation(composeBom)
+    testImplementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
@@ -109,4 +131,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    // The page pictures (-Pshots).
+    testImplementation("org.robolectric:robolectric:4.15.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.46.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.46.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

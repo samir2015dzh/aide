@@ -148,7 +148,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
     val scope = rememberCoroutineScope()
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text(t("DeepSeek sessions", "DeepSeek 会话")) },
+            title = { Text(t("DSH sessions", "DSH 会话")) },
             navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
         )
     }) { pad ->
@@ -163,7 +163,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
         LazyColumn(Modifier.fillMaxSize()) {
             item {
                 Text(
-                    t("Sessions DeepSeek Harness has of its own. Read only, until you turn on Take Over for one.", "DeepSeek Harness 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以给它发消息。"),
+                    t("Sessions DSH has of its own. Read only, until you turn on Take Over for one.", "DSH 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以给它发消息。"),
                     Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -177,7 +177,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
                 )
             }
             if (shown.isEmpty()) {
-                item { Text(t("No DeepSeek Harness sessions of its own.", "没有 DeepSeek Harness 自己的会话。"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(t("No DSH sessions of its own.", "没有 DSH 自己的会话。"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 // Which DSH home each machine read: where to look when DSH Desktop has sessions this lacks.
                 items(homes) { h ->
                     val name = model.world.value.machineName(h.machineId)
