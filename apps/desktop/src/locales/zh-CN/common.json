@@ -207,7 +207,9 @@
     "none": "Claude 桌面应用在你的机器上没有 Claude Code 会话。",
     "noApp": "{{name}}：没有找到 Claude 桌面应用的数据。",
     "completed": "已完成",
-    "blocked": "等你处理"
+    "blocked": "等你处理",
+    "address": "可寄信：{{address}}",
+    "noAddress": "不可寄信（这台机器的 aide hooks 还没报到过这个对话）"
   },
   "dsh": {
     "title": "DeepSeek 会话",

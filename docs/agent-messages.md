@@ -846,3 +846,29 @@ to it, and it answers them.
   DSH session writing to another session, and DSH sessions as roster
   `woken` endpoints.
 
+### 15.4 Hosted agents and the Claude app's sessions (batch 4)
+
+- **Hosted agents** (Muse, a hosted Hermes, Grok Bot): nothing new. They
+  join through the MCP gateway (consent page, OAuth), get a contact card
+  from the owner's device and show in `roster` with their tier: an agent
+  that sets a webhook is `push`, one that polls `pull`. Muse polls (it has
+  no process that stays up to be woken: its coordinator's answer,
+  2026-11-21), so it is `pull`: after giving out work it waits with
+  `message_list` (`wait`).
+- **The Claude app's sessions.** A Claude Code conversation the Claude app
+  runs is a conversation of this computer's CLI agent once the owner
+  installed its hooks (`aide message hook claude --install`): messages to
+  `c_<that agent>/<conversation key>` reach it (§6.2). The app's session
+  list shows it by the app's id (`local_…`), so the machine maps the two:
+  the SessionStart hook records the conversation's key, under the agent's
+  address, in the CLI's home (`conversations.json`, the last 90 days, at
+  most 5000), and the machine, listing the app's sessions, gives a session
+  whose Claude Code id is recorded its `address`. Only that report counts:
+  nothing is worked out from the app's data, and a conversation the hooks
+  never saw has no address (the app shows "不可寄信"). The machine reads
+  the CLI's home where the CLI keeps it (`AIDE_HOME`, else the system's
+  place).
+- The Claude app's sessions stay the owner's to see (the owner's ruling of
+  2026-11-20): an agent's `roster` does not list them. A conversation that
+  takes messages is reached by its address, as any agent conversation; the
+  CLI agent's own endpoint is in the roster.

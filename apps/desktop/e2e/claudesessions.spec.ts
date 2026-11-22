@@ -16,6 +16,8 @@ test("the Claude app's sessions: listed by title with their repository, opened r
   await row.click();
   await expect(page.locator(".dsh-msg.user").filter({ hasText: "首页标题改一下" })).toBeVisible();
   await expect(page.getByText("改好了。")).toBeVisible();
+  // No aide hooks reported its conversation on this machine: it takes no messages, and says so.
+  await expect(page.getByText(/不可寄信/)).toBeVisible();
   // Read only: nothing to write in, no takeover.
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expect(page.getByRole("switch")).toHaveCount(0);

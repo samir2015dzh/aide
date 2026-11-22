@@ -8,8 +8,11 @@ import (
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/convreport"
+	"github.com/samir2015dzh/aide/internal/paths"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 	"github.com/samir2015dzh/aide/internal/shellenv"
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // The Claude Code sessions the Claude desktop app lists here, beside the
@@ -49,7 +52,24 @@ func (n *Machine) ClaudeSessions() (*machinev1.ListClaudeSessionsResponse, error
 		return nil, err
 	}
 	p := claude.PlacesFor(shellenv.Environ())
-	return &machinev1.ListClaudeSessionsResponse{Sessions: claude.List(p, skip), Indexes: p.Indexes}, nil
+	ss := claude.List(p, skip)
+	claudeAddresses(ss...)
+	return &machinev1.ListClaudeSessionsResponse{Sessions: ss, Indexes: p.Indexes}, nil
+}
+
+// claudeAddresses gives each session whose conversation this computer's CLI
+// agent's hooks reported its address (convreport); the others none.
+func claudeAddresses(ss ...*machinev1.ClaudeSession) {
+	r := convreport.Load(paths.CLIHome())
+	for _, s := range ss {
+		if s == nil {
+			continue
+		}
+		s.Address = ""
+		if key, err := identity.NormalizeName(s.CliSessionId); err == nil {
+			s.Address = r.Address(key)
+		}
+	}
 }
 
 // ReadClaudeSession reads one and pages through its conversation as
@@ -76,6 +96,7 @@ func (n *Machine) ReadClaudeSession(req *machinev1.ReadClaudeSessionRequest) (*m
 	if err != nil {
 		return nil, err
 	}
+	claudeAddresses(s)
 	res := &machinev1.ReadClaudeSessionResponse{Session: s}
 	res.Events, res.HasMoreBefore, res.HasMoreAfter = eventPage(evs, req.AfterSeq, req.BeforeSeq, limit)
 	if req.View == sessionv1.EventView_EVENT_VIEW_BASIC {

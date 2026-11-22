@@ -172,6 +172,8 @@ function ClaudeTranscript({ entry, line }: { entry: ClaudeSessionEntry; line: st
           <MachineTag machineId={entry.machineId} />
         </div>
         <span>{[line, s.model, s.cwd].filter(Boolean).join(" · ")}</span>
+        {/* Where an agent's message to it goes, once this machine's aide hooks reported it (docs/agent-messages.md §15.4). */}
+        <span className={s.address ? "mono sel-text" : undefined}>{s.address ? t("claude.address", { address: s.address }) : t("claude.noAddress")}</span>
       </div>
       {entry.lost ? (
         <p className="dsh-empty">{t("dsh.lostNote", { name: entry.machineName || entry.machineId })}</p>

@@ -44,6 +44,10 @@ grade A; the owner's ruling on what is shown, 2026-11-20).
   conversation; the app itself keeps no repository of its own
   (`git-worktrees.json` `originUrls.url` is empty on the owner's computer).
 
+- **Its address**: `c_…/<conversation key>`, the conversation under this
+  computer's CLI agent, once that agent's SessionStart hook reported it
+  (docs/agent-messages.md §15.4); empty before. `ClaudeSession.address`.
+
 Nothing in the app's or Claude Code's folders is written.
 
 ## 2. The API
@@ -60,7 +64,8 @@ Nothing in the app's or Claude Code's folders is written.
 "Claude 会话" in the sidebar (where Claude Code is on a machine), and a
 link from Claude Code's Agent page: the list by last activity (title, the
 app's word after the last turn, machine, repository or folder; archived on
-request), and a session's conversation, read only. With none, the page
+request), and a session's conversation, read only, with where a message to
+it goes ("可寄信：c_…/…") or that it takes none ("不可寄信"). With none, the page
 says which index folders were read, or that no app data was found.
 
 Android: not yet (the work order asked for the desktop app).

@@ -217,7 +217,9 @@
     "none": "The Claude app lists no Claude Code sessions on your machines.",
     "noApp": "{{name}}: no Claude app data found.",
     "completed": "Done",
-    "blocked": "Needs you"
+    "blocked": "Needs you",
+    "address": "Takes messages at {{address}}",
+    "noAddress": "Takes no messages (this machine's aide hooks have not reported this conversation)"
   },
   "dsh": {
     "title": "DeepSeek sessions",
