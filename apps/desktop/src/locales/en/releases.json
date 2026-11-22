@@ -1,4 +1,22 @@
 {
+  "0.2.5": {
+    "improvements": [
+      "One place that tells the truth about connections: a new \"Connections on this machine\" section at the top of Settings › Machines shows, for this computer, whether DSH, Claude Desktop and the Claude Code command line are connected, what is missing, and what that missing piece affects. Anything not re-checked for over 15 minutes is honestly labelled \"Status unknown\" instead of reusing a stale result.",
+      "Dispatching work no longer needs contacts first: \"Who should do it\" now lists the agents detected on each machine automatically — pick one, write the task, send. Contacts remain as an optional customisation, merged into the same row.",
+      "The DSH bridge plugin is part of the connect flow now: not prepared / prepared but not installed / installed / out of date are all really detected; you can prepare the package right in the UI, and the page spells out which half of the capability is missing without it.",
+      "Claude Code can sign in from the UI: when the command line is signed out, click \"Sign in\" on the Connect page and that computer opens a browser to finish — no terminal needed. Claude Desktop and command-line sign-in states are now shown separately instead of being conflated.",
+      "Projects can be renamed: edit the display name right in the project row and it takes effect in the map, dispatch and new-task views; map project nodes also show which machine and agent they belong to.",
+      "The interface moves — driven by real state: links with traffic flowing through them animate, the centre Aide icon turns gently while work is running and rests when idle; animation pauses entirely when the window is hidden and honours the system's reduce-motion setting.",
+      "Android visual polish: card hierarchy, corner radii and agent avatars reworked; running tasks get a steady pulsing indicator, and the dispatch list shows each agent's avatar, name and a one-line status.",
+      "Agent categories are yours to fix: the category is inferred from the name first, and if it is wrong you can change it on the entry itself — your value wins, survives re-inference, and can be reset back to automatic."
+    ],
+    "fixes": [
+      "The Android dispatch page's raw \"404 Not Found\" popup is fixed: while the relay has not been upgraded with contact support, the page explains in plain words that contacts are waiting on the relay upgrade, inside the page instead of a popup on the way back. Other Android errors were humanised the same way — no more raw status codes.",
+      "The map no longer renders everything grey by default: connected links show at full brightness, and only genuinely offline ones go grey, labelled \"Offline\".",
+      "Local agents such as \"DSH on …\" are no longer mislabelled as personal agents; on the map they are drawn under their own machine again.",
+      "Agent type chips all have icons now, and the layout can no longer make \"Assistant\" look like a wrapped second line of the previous chip."
+    ]
+  },
   "0.2.4": {
     "improvements": [
       "Agents can talk to each other: a roster lists every agent by person, machine and session, and a message's state — queued, delivered, answered — is visible. The Claude, DSH and other agents on your machines can now reach each other through your relay.",
