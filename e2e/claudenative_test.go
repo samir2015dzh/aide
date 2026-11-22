@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -133,5 +134,68 @@ func TestClaudeNativeSessions(t *testing.T) {
 		if lost := e.MachineName == "work-pc"; e.Lost != lost {
 			t.Errorf("%s %s: lost %v", e.MachineName, e.Session.SessionId, e.Lost)
 		}
+	}
+}
+
+// TestClaudeSessionAddress: a Claude app session takes messages at the
+// address of its conversation under this computer's CLI agent once that
+// agent's hooks reported the conversation (its SessionStart); before, and
+// for the others, it has none (docs/agent-messages.md §15.4).
+func TestClaudeSessionAddress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	now := time.Now().Truncate(time.Millisecond)
+	home, local, cliHome := t.TempDir(), t.TempDir(), t.TempDir()
+	index, config := filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), filepath.Join(home, ".claude")
+	work := t.TempDir()
+	claudeAppSession(t, index, config, "c-site", "改首页", work, now.Add(-time.Hour), "首页标题改一下", "改好了。")
+	claudeAppSession(t, index, config, "c-notes", "整理笔记", work, now, "列一下待办", "三件。")
+	// This computer's aided finds the CLI agent's home where the agent keeps it.
+	w := newOwnerMac(t, []string{"HOME=" + home, "USERPROFILE=" + home, "LOCALAPPDATA=" + local, "AIDE_HOME=" + cliHome}, &localv1.GrantSpec{})
+	env := []string{"AIDE_HOME=" + cliHome}
+	w.loginAgent(env, "desk", &localv1.GrantSpec{})
+	ctx := context.Background()
+	addresses := func() map[string]string {
+		got := map[string]string{}
+		if list, err := w.app.client.ListClaudeSessions(ctx, &localv1.ListClaudeSessionsRequest{}); err == nil {
+			for _, e := range list.Sessions {
+				got[e.Session.SessionId] = e.Session.Address
+			}
+		}
+		return got
+	}
+	eventually(t, time.Minute, "the sessions listed", func() bool { return len(addresses()) == 2 })
+	if a := addresses(); a["local_c-site"] != "" || a["local_c-notes"] != "" {
+		t.Fatalf("addresses before any hook ran: %v", a)
+	}
+
+	hookRun(t, w, env, "claude", map[string]any{"session_id": "c-site", "hook_event_name": "SessionStart", "source": "startup"})
+	var me string
+	var c struct {
+		Contacts []struct {
+			Address string
+			You     bool
+		}
+	}
+	json.Unmarshal([]byte(run(t, append(slices.Clone(w.cliEnv), env...), time.Minute, filepath.Join(w.bin, "aide"), "message", "contacts", "-o", "json").stdout), &c)
+	for _, x := range c.Contacts {
+		if x.You {
+			me = x.Address
+		}
+	}
+	if !strings.HasPrefix(me, "c_") {
+		t.Fatalf("the agent's address: %q", me)
+	}
+	if a := addresses(); a["local_c-site"] != me+"/c-site" || a["local_c-notes"] != "" {
+		t.Fatalf("addresses once c-site's hook ran: %v, want %s/c-site and none", a, me)
+	}
+	list, err := w.app.client.ListClaudeSessions(ctx, &localv1.ListClaudeSessionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := w.app.client.ReadClaudeSession(ctx, &localv1.ReadClaudeSessionRequest{MachineId: list.Sessions[0].MachineId, SessionId: "local_c-site"})
+	if err != nil || res.Session.GetAddress() != me+"/c-site" {
+		t.Fatalf("read: %v %v", res.GetSession(), err)
 	}
 }

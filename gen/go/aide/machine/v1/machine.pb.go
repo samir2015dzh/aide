@@ -4486,7 +4486,13 @@ type ClaudeSession struct {
 	Status string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"`
 	// Why its conversation can't be read (no transcript here); "" when it
 	// can.
-	Error         string `protobuf:"bytes,11,opt,name=error,proto3" json:"error,omitempty"`
+	Error string `protobuf:"bytes,11,opt,name=error,proto3" json:"error,omitempty"`
+	// Where a message to it goes: the address of its conversation under this
+	// computer's CLI agent (c_…/<conversation key>), once that agent's hooks
+	// reported the conversation here (`aide message hook claude`, its
+	// SessionStart); "" before, when it takes no message
+	// (docs/agent-messages.md §15.4). Never worked out from the app's data.
+	Address       string `protobuf:"bytes,12,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4594,6 +4600,13 @@ func (x *ClaudeSession) GetStatus() string {
 func (x *ClaudeSession) GetError() string {
 	if x != nil {
 		return x.Error
+	}
+	return ""
+}
+
+func (x *ClaudeSession) GetAddress() string {
+	if x != nil {
+		return x.Address
 	}
 	return ""
 }
@@ -5825,7 +5838,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x19ListClaudeSessionsRequest\"r\n" +
 	"\x1aListClaudeSessionsResponse\x12:\n" +
 	"\bsessions\x18\x01 \x03(\v2\x1e.aide.machine.v1.ClaudeSessionR\bsessions\x12\x18\n" +
-	"\aindexes\x18\x02 \x03(\tR\aindexes\"\xf1\x02\n" +
+	"\aindexes\x18\x02 \x03(\tR\aindexes\"\x8b\x03\n" +
 	"\rClaudeSession\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12$\n" +
@@ -5840,7 +5853,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05model\x18\t \x01(\tR\x05model\x12\x16\n" +
 	"\x06status\x18\n" +
 	" \x01(\tR\x06status\x12\x14\n" +
-	"\x05error\x18\v \x01(\tR\x05error\"\xbb\x01\n" +
+	"\x05error\x18\v \x01(\tR\x05error\x12\x18\n" +
+	"\aaddress\x18\f \x01(\tR\aaddress\"\xbb\x01\n" +
 	"\x18ReadClaudeSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +

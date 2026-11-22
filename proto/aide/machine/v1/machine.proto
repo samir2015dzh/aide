@@ -883,6 +883,12 @@ message ClaudeSession {
   // Why its conversation can't be read (no transcript here); "" when it
   // can.
   string error = 11;
+  // Where a message to it goes: the address of its conversation under this
+  // computer's CLI agent (c_…/<conversation key>), once that agent's hooks
+  // reported the conversation here (`aide message hook claude`, its
+  // SessionStart); "" before, when it takes no message
+  // (docs/agent-messages.md §15.4). Never worked out from the app's data.
+  string address = 12;
 }
 
 message ReadClaudeSessionRequest {
