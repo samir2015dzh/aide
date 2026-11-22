@@ -16,3 +16,6 @@
 .conn-lacks,.conn-fix{margin:0;font-size:12px;line-height:1.5;color:var(--l2)}
 .conn-when{font-size:11px;color:var(--l3)}
 .conn-row .dsh-install{margin-top:4px}
+.conn-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.conn-cat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px}
+.conn-cat label{display:inline-flex;align-items:center;gap:6px}

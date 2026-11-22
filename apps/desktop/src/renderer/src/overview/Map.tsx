@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { Trans, useTranslation } from "react-i18next";
 import type { Client, Machine, QueryWorkResponse } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
-import { agoText, codingAgentTitle, createdDate, dateOf, grantCategory, isActive, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
+import { agoText, codingAgentTitle, createdDate, clientCategory, dateOf, isActive, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
 import { AgentLogo, agentName, grantColor, kindNamed, Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { grantFace } from "../components";
@@ -69,10 +69,9 @@ function layout(st: Store, live: Session[]) {
   // The two kinds of agent (所有者 2026-11-22): personal ones on the account's side (the left column); a coding
   // agent on a machine that connects with a grant of its own (DSH on …) is drawn in its machine's node, its
   // sessions starting there, so where it sits says whose it is (工单 #50).
-  const names = st.machines.map((m) => m.machineName);
   const homeOf = new Map<string, string>();
   for (const c of st.clients) {
-    const k = grantCategory(c.label, names);
+    const k = clientCategory(c, st.machines); // what the owner set wins over the name (工单 #52)
     const m = k.category === "local" ? st.machines.find((x) => x.machineName === k.machine) : undefined;
     if (m && !only) homeOf.set(c.clientId, m.machineId);
   }
@@ -379,7 +378,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <GrantIcon c={n.client} />
               <span className="lm-t">
                 <b>{agentName(n.client.label)}</b>
-                {only && !n.client.lastSeen ? <small>{t("map.notYet")}</small> : <Expiry c={n.client} now={now} local={grantCategory(n.client.label, []).category === "local" && !kindNamed(n.client.label)} />}
+                {only && !n.client.lastSeen ? <small>{t("map.notYet")}</small> : <Expiry c={n.client} now={now} local={clientCategory(n.client, st.machines).category === "local"} />}
               </span>
               <Tail online quiet running={runningCount(L.paths, n.key)} />
             </Node>

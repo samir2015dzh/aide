@@ -190,8 +190,8 @@
     "readyVersion": "可以用 · {{version}}",
     "claudeCLI": "Claude Code 命令行",
     "desktopSignedOut": "请在 Claude Desktop 里登录：登录后它自己的会话才会出现在 Aide 里。",
-    "cliSignedOutDesktopIn": "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。它登录之前，这台机器上不能把任务派给 Claude；Claude Desktop 里自己开的会话照样能在 Aide 里看到。",
-    "cliSignedOut": "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：这台机器上暂时不能把任务派给 Claude。",
+    "cliSignedOutDesktopIn": "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。点下面的按钮给它登录（会在那台电脑上打开浏览器）；Claude Desktop 和它的会话不受影响。",
+    "cliSignedOut": "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：点下面的按钮给它登录（会在那台电脑上打开浏览器）。",
     "appWithoutCLI": "这台机器只有 Claude Desktop，没有 Aide 要用的 Claude Code 命令行：在 Claude Desktop 里打开一次 Code 页，它会自动下载。",
     "cliNotFound": "派给 Claude 的任务要用 Claude Code 命令行跑，这台机器上没有。",
     "bridge": "DSH 桥接插件",
@@ -206,6 +206,12 @@
     "bridgeGap": "能用：Aide 发起的 DSH 任务。不能用：看见、接管你在 DSH Desktop 里自己开的会话——装好插件后才行。",
     "bridgeNotRunning": "打开 DSH Desktop（插件保持开启），才能看见、接管它自己开的会话。",
     "bridgeOutdated": "重新备包，到 DSH Desktop › 插件 里装新包：旧版接管不了会话。",
-    "agentSignedOut": "{{agent}} 装了但没登录：这台机器上暂时不能把任务派给它。"
+    "agentSignedOut": "{{agent}} 装了但没登录：这台机器上暂时不能把任务派给它。",
+    "loginWaiting": "正在登录…",
+    "loginWaitingHint": "那台电脑上已打开浏览器：请在那里完成登录。这一行会自己更新。",
+    "loginFailed": "上次登录没完成：{{why}}。可以再试一次。",
+    "loginNoReason": "没有给出原因",
+    "loginTimedOut": "上次登录等浏览器等了 10 分钟，已停止。可以再试一次。",
+    "loginCancelled": "上次登录已取消。"
   }
 }

@@ -1,9 +1,9 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { MachineSchema, type Machine } from "@aide/proto/local";
-import { AgentProblem, DSHBridgeState } from "@aide/proto/machine";
+import { AgentLoginState, AgentProblem, DSHBridgeState } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
-import { bridgeView, grantCategory, grantsByCategory, machineConnections } from "./connections";
+import { bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
 
 const now = new Date("2026-11-22T10:00:00Z");
 const checked = timestampFromDate(new Date("2026-11-22T09:58:00Z"));
@@ -98,5 +98,29 @@ describe("agent categories", () => {
     expect(g.personal.map((c) => c.clientId)).toEqual(["a"]);
     expect(g.local.get("m1")?.map((c) => c.clientId)).toEqual(["b"]);
     expect(g.local.get("")?.map((c) => c.clientId)).toEqual(["c"]);
+  });
+});
+
+describe("signing Claude Code in from Aide (工单 #51)", () => {
+  const claude = (login: object) => machineConnections(machine([{ name: "claude", available: true, loggedIn: false, login }]), now).rows.find((r) => r.id === "claude-cli")!;
+  test("while the browser is open there, it says so and offers to stop", () => {
+    const r = claude({ state: AgentLoginState.WAITING });
+    expect([r.state, r.text, r.fix]).toEqual(["checking", "正在登录…", "claudeLogin"]);
+  });
+  test("one that failed, timed out or was cancelled says so, and can be tried again", () => {
+    expect(claude({ state: AgentLoginState.FAILED, detail: "the browser was closed" }).lacks).toContain("the browser was closed");
+    expect(claude({ state: AgentLoginState.TIMED_OUT }).lacks).toContain("10 分钟");
+    expect(claude({ state: AgentLoginState.CANCELLED }).fix).toBe("claudeLogin");
+  });
+});
+
+describe("the kind the owner set (工单 #52)", () => {
+  const m = machine([]);
+  test("wins over the name, everywhere; none set, the name tells", () => {
+    expect(clientCategory({ label: "Muse", category: "local", categoryMachineId: "m1" }, [m])).toEqual({ category: "local", machine: "work-pc", set: true });
+    expect(clientCategory({ label: "DSH on work-pc", category: "personal", categoryMachineId: "" }, [m])).toEqual({ category: "personal", machine: undefined, set: true });
+    expect(clientCategory({ label: "DSH on work-pc", category: "", categoryMachineId: "" }, [m])).toEqual({ category: "local", machine: "work-pc", set: false });
+    const g = grantsByCategory([{ clientId: "a", label: "Muse", category: "local", categoryMachineId: "m1" }] as never, [m]);
+    expect(g.local.get("m1")?.map((c) => c.clientId)).toEqual(["a"]);
   });
 });

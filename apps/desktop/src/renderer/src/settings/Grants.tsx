@@ -1,3 +1,4 @@
+import { CategoryControl } from "../Connections";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "@bufbuild/protobuf";
@@ -142,6 +143,14 @@ function GrantDetail({ c }: { c: Client }) {
           {c.custodian && <Row k={t("grants.through")}>{t("grants.throughValue", { server: hostOf(c.custodian) })}</Row>}
         </div>
       </div>
+      {/* Its kind (工单 #52): told from its name until the owner says otherwise here. */}
+      {!c.herMachineId && (
+        <div className="fgroup">
+          <div className="frow">
+            <CategoryControl c={c} />
+          </div>
+        </div>
+      )}
       {/* The ops channel (docs/machine-ops.md): a scope of its own, off until the owner turns it on here. */}
       {!c.herMachineId && (
         <div className="fgroup">

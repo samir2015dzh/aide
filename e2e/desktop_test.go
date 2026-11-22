@@ -130,6 +130,19 @@ func TestDesktop(t *testing.T) {
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
 			}
+			if name == "batche" { // Claude Code here, its command line not signed in; `auth login` signs it in (工单 #51)
+				dir := t.TempDir()
+				signed := filepath.Join(dir, "signed-in")
+				claude := filepath.Join(dir, "claude")
+				os.WriteFile(claude, []byte(`#!/bin/sh
+case "$1 $2" in
+"--version ") echo "2.1.330 (Claude Code)";;
+"auth status") if [ -f `+signed+` ]; then echo '{"loggedIn":true}'; else echo '{"loggedIn":false}'; fi;;
+"auth login") sleep 2; touch `+signed+`;;
+esac
+`), 0o755)
+				more = append(more, "AIDE_CLAUDE_BIN="+claude)
+			}
 			var dshHome string
 			if name == "states" { // a short stall limit, so a quiet turn reads stalled within the spec
 				more = append(more, "AIDE_STALL_AFTER=5")

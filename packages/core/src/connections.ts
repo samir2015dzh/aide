@@ -1,5 +1,5 @@
 import type { Client, Machine } from "@aide/proto/local";
-import { AgentProblem, DSHBridgeState, type AgentStatus, type DSHBridge } from "@aide/proto/machine";
+import { AgentLoginState, AgentProblem, DSHBridgeState, type AgentStatus, type DSHBridge } from "@aide/proto/machine";
 import { kindNamed } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
@@ -23,7 +23,7 @@ export const STALE_AFTER_MS = 15 * 60_000;
 export type ConnState = "ok" | "partial" | "missing" | "unknown" | "checking";
 
 /** What a fix takes the owner to. */
-export type ConnFix = "prepareBridge" | "installBridge" | "openDSH" | "claudeCLI" | "signIn" | "install";
+export type ConnFix = "prepareBridge" | "installBridge" | "openDSH" | "claudeCLI" | "claudeLogin" | "signIn" | "install";
 
 export type ConnRow = {
   /** "claude-desktop", "claude-cli", "deepseek", "deepseek-bridge", or the agent's name. */
@@ -140,11 +140,27 @@ function claudeRows(a: AgentStatus): ConnRow[] {
   const cli: ConnRow = { id: "claude-cli", agent: "claude", title: t("conn.claudeCLI"), state: "ok", text: "", checkedAt };
   if (a.available && a.loggedIn) {
     cli.text = a.version ? t("conn.signedInVersion", { version: a.version }) : t("conn.signedIn");
+  } else if (a.available && a.login?.state === AgentLoginState.WAITING) {
+    // Signing in from Aide (工单 #51): the browser is open on that machine.
+    cli.state = "checking";
+    cli.text = t("conn.loginWaiting");
+    cli.lacks = t("conn.loginWaitingHint");
+    cli.fix = "claudeLogin";
   } else if (a.available) {
     cli.state = "missing";
     cli.text = t("conn.signedOut");
-    cli.lacks = d?.signedIn ? t("conn.cliSignedOutDesktopIn") : t("conn.cliSignedOut");
-    cli.fix = "claudeCLI";
+    const ended = a.login?.state;
+    cli.lacks =
+      ended === AgentLoginState.FAILED
+        ? t("conn.loginFailed", { why: a.login?.detail || t("conn.loginNoReason") })
+        : ended === AgentLoginState.TIMED_OUT
+          ? t("conn.loginTimedOut")
+          : ended === AgentLoginState.CANCELLED
+            ? t("conn.loginCancelled")
+            : d?.signedIn
+              ? t("conn.cliSignedOutDesktopIn")
+              : t("conn.cliSignedOut");
+    cli.fix = "claudeLogin";
   } else if (a.problem === AgentProblem.APP_WITHOUT_CLI) {
     cli.state = "missing";
     cli.text = t("conn.notInstalled");
@@ -238,14 +254,25 @@ export function grantCategory(label: string, machineNames: readonly string[]): {
   return { category: "personal" };
 }
 
+/**
+ * Which kind of agent a client is (工单 #52): what the owner set, kept with
+ * its grant, else what its name tells (grantCategory). Every screen asks
+ * this, so the map, the machine page and Hand Work To never disagree.
+ */
+export function clientCategory(c: Pick<Client, "label" | "category" | "categoryMachineId">, machines: readonly Machine[]): { category: AgentCategory; machine?: string; set: boolean } {
+  if (c.category === "personal" || c.category === "local") {
+    return { category: c.category, machine: machines.find((m) => m.machineId === c.categoryMachineId)?.machineName, set: true };
+  }
+  return { ...grantCategory(c.label, machines.map((m) => m.machineName)), set: false };
+}
+
 /** The grants split by kind: personal ones (the account's), and coding agents by the machine id they run on ("" when it is not known). */
 export function grantsByCategory(clients: readonly Client[], machines: readonly Machine[]): { personal: Client[]; local: Map<string, Client[]> } {
-  const names = machines.map((m) => m.machineName);
   const personal: Client[] = [];
   const local = new Map<string, Client[]>();
   for (const c of clients) {
     if (c.revoked) continue;
-    const k = grantCategory(c.label, names);
+    const k = clientCategory(c, machines);
     if (k.category === "personal") {
       personal.push(c);
       continue;
