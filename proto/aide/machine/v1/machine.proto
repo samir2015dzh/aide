@@ -313,6 +313,25 @@ message AgentStatus {
   AgentPause pause = 18;
   // When it last resumed by itself (a pause's resume_at came), to show.
   google.protobuf.Timestamp auto_resumed_at = 19;
+  // When the check the rest says came from ended: what the owner's screens
+  // show as "checked at", and past which they call it unknown instead of
+  // passing an old finding off as now. Unset: never checked.
+  google.protobuf.Timestamp checked_at = 20;
+  // Claude only: the Claude desktop app on this machine, apart from the
+  // command line tool (logged_in is the command line's own sign-in, which
+  // the app's does not give it).
+  ClaudeDesktop desktop = 21;
+  // DSH ("deepseek") only: the Aide bridge plugin in DSH Desktop, as the
+  // same check found it.
+  DSHBridge dsh_bridge = 22;
+}
+
+// ClaudeDesktop is the Claude desktop app, as aided finds it.
+message ClaudeDesktop {
+  // Its settings are on this machine: it is installed, or was.
+  bool installed = 1;
+  // It is signed in (its settings say so; the token is never read).
+  bool signed_in = 2;
 }
 
 // AgentPause is an agent paused on a machine.
@@ -432,6 +451,8 @@ message Project {
   uint32 active_sessions = 7;
   // The coding agents that may work in it; empty: all.
   repeated string agents = 8;
+  // The name the owner gave it (SetProjectName); empty: shown by its id.
+  string name = 9;
 }
 
 message ListProjectsResponse {
@@ -706,6 +727,12 @@ message DSHBridge {
   string version = 2;
   // What is wrong, or what to do, for the person.
   string detail = 3;
+  // The plugin's package Aide prepared in the DSH home (PrepareDSHBridge),
+  // when one of the version this aided ships is there; empty: none yet.
+  string package_path = 4;
+  // The version this aided ships: a running plugin of an older one is out
+  // of date.
+  string latest_version = 5;
 }
 
 enum DSHBridgeState {

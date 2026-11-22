@@ -172,7 +172,7 @@ func (s *machineService) projects(ctx context.Context, p *Principal, base bool) 
 			continue
 		}
 		mp := &machinev1.Project{ProjectId: pr.ID, DefaultBaseRef: pr.DefaultBaseRef, Workspace: pr.Workspace,
-			Path: pr.Path, Description: pr.Description, ActiveSessions: active[pr.ID], Agents: pr.Agents}
+			Path: pr.Path, Description: pr.Description, ActiveSessions: active[pr.ID], Agents: pr.Agents, Name: pr.Name}
 		if base {
 			mp.Base = projectBase(ctx, pr)
 		}
@@ -230,6 +230,9 @@ var projectIDRE = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
 // maxDescription is the longest project description, in characters.
 const maxDescription = 200
+
+// maxProjectName is the longest name the owner gives a project, in characters.
+const maxProjectName = 64
 
 func (s *adminService) ApplyAdminCommand(ctx context.Context, req *machinev1.ApplyAdminCommandRequest) (*machinev1.ApplyAdminCommandResponse, error) {
 	if principalFrom(ctx).Kind != PrincipalOwner {
@@ -325,10 +328,11 @@ func (n *Machine) ApplyAdminCommand(ctx context.Context, signed *identityv1.Sign
 func (n *Machine) ApplySettings(ctx context.Context, cmd *identityv1.AdminCommand) (string, error) {
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
-		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused:
+		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused,
+		*identityv1.AdminCommand_SetProjectName:
 	default:
 		n.audit.Log(AuditRecord{Kind: "admin", Decision: "deny", Reason: "unsigned command that is not a setting"})
-		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only settings (projects, pausing, the name, agent defaults, hiding or pausing an agent) may be sent without a signature"))
+		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only settings (projects and their names, pausing, the name, agent defaults, hiding or pausing an agent) may be sent without a signature"))
 	}
 	if cmd.OwnerId != n.OwnerID() || cmd.TargetMachineId != n.machineID {
 		return "", connect.NewError(connect.CodePermissionDenied, errors.New("settings for another owner or machine"))
@@ -423,6 +427,23 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 			return c.SetAgentHidden.Agent + " hidden", nil
 		}
 		return c.SetAgentHidden.Agent + " shown", nil
+	case *identityv1.AdminCommand_SetProjectName:
+		name := strings.TrimSpace(c.SetProjectName.Name)
+		if utf8.RuneCountInString(name) > maxProjectName {
+			return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the name is longer than %d characters", maxProjectName))
+		}
+		ok, err := n.st.SetProjectName(c.SetProjectName.ProjectId, name)
+		if err != nil {
+			return "", err
+		}
+		if !ok {
+			return "", connect.NewError(connect.CodeNotFound, fmt.Errorf("no project %q here", c.SetProjectName.ProjectId))
+		}
+		n.sessions.changes().project(c.SetProjectName.ProjectId)
+		if name == "" {
+			return "project " + c.SetProjectName.ProjectId + " shown by its id", nil
+		}
+		return "project " + c.SetProjectName.ProjectId + " named " + name, nil
 	case *identityv1.AdminCommand_SetAgentPaused:
 		if err := n.setAgentPaused(c.SetAgentPaused); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)

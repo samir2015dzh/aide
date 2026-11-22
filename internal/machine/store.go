@@ -183,6 +183,8 @@ CREATE TABLE session_ports (
 ALTER TABLE sessions ADD COLUMN seen_turns INTEGER NOT NULL DEFAULT -1;
 ALTER TABLE sessions ADD COLUMN seen_question TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN seen_present INTEGER NOT NULL DEFAULT 0;
+`, `
+ALTER TABLE projects ADD COLUMN name TEXT NOT NULL DEFAULT '';
 `}
 
 // Store uses one writer connection (db) and a pool of readers (rdb), so
@@ -280,6 +282,8 @@ type Project struct {
 	Description    string
 	// Agents are the coding agents that may work in it; empty: all.
 	Agents []string
+	// Name is what the owner calls it (SetProjectName); empty: its ID.
+	Name string
 }
 
 // InPlace: sessions work directly in the project directory.
@@ -301,7 +305,7 @@ func splitAgents(s string) []string {
 }
 
 func (s *Store) Projects() ([]Project, error) {
-	rows, err := s.rdb.Query(`SELECT project_id, path, default_base_ref, workspace, description, agents FROM projects ORDER BY project_id`)
+	rows, err := s.rdb.Query(`SELECT project_id, path, default_base_ref, workspace, description, agents, name FROM projects ORDER BY project_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +314,7 @@ func (s *Store) Projects() ([]Project, error) {
 	for rows.Next() {
 		var p Project
 		var agents string
-		if err := rows.Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents); err != nil {
+		if err := rows.Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents, &p.Name); err != nil {
 			return nil, err
 		}
 		p.Agents = splitAgents(agents)
@@ -322,7 +326,7 @@ func (s *Store) Projects() ([]Project, error) {
 func (s *Store) Project(id string) (*Project, error) {
 	p := &Project{}
 	var agents string
-	err := s.rdb.QueryRow(`SELECT project_id, path, default_base_ref, workspace, description, agents FROM projects WHERE project_id=?`, id).Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents)
+	err := s.rdb.QueryRow(`SELECT project_id, path, default_base_ref, workspace, description, agents, name FROM projects WHERE project_id=?`, id).Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents, &p.Name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -335,6 +339,16 @@ func (s *Store) PutProject(p Project) error {
 		ON CONFLICT(project_id) DO UPDATE SET path=excluded.path, default_base_ref=excluded.default_base_ref, workspace=excluded.workspace, description=excluded.description, agents=excluded.agents`,
 		p.ID, p.Path, p.DefaultBaseRef, int(p.Workspace), p.Description, joinAgents(p.Agents), time.Now().Unix())
 	return err
+}
+
+// SetProjectName names a project as the owner knows it; false: no such project.
+func (s *Store) SetProjectName(id, name string) (bool, error) {
+	r, err := s.db.Exec(`UPDATE projects SET name=? WHERE project_id=?`, name, id)
+	if err != nil {
+		return false, err
+	}
+	n, err := r.RowsAffected()
+	return n > 0, err
 }
 
 func (s *Store) DeleteProject(id string) error {

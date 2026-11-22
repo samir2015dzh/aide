@@ -31,6 +31,22 @@ func (o *Owner) personaControl(ctx context.Context) (relayv1connect.OwnerControl
 	return c, err
 }
 
+// ContactsUnavailable starts the message of the error a contacts call
+// answers when the owner's server has no contacts to keep: a relay older
+// than contacts (it answers 404, which the client reads as unimplemented)
+// or one without their store. The apps match it to say so in words, never
+// the raw "404 Not Found".
+const ContactsUnavailable = "contacts_unavailable"
+
+// contactsErr is a relay's answer to a contacts call, with "the server has
+// none" said the same way whichever relay said it.
+func contactsErr(err error) error {
+	if connect.CodeOf(err) != connect.CodeUnimplemented {
+		return err
+	}
+	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("%s: the server does not keep contacts yet; update it (%v)", ContactsUnavailable, err))
+}
+
 func (l *localService) ListPersonas(ctx context.Context, _ *localv1.ListPersonasRequest) (*localv1.ListPersonasResponse, error) {
 	c, err := l.o().personaControl(ctx)
 	if err != nil {
@@ -38,7 +54,7 @@ func (l *localService) ListPersonas(ctx context.Context, _ *localv1.ListPersonas
 	}
 	res, err := c.ListPersonas(ctx, &relayv1.ListPersonasRequest{})
 	if err != nil {
-		return nil, err
+		return nil, contactsErr(err)
 	}
 	return &localv1.ListPersonasResponse{Personas: res.Personas}, nil
 }
@@ -50,7 +66,7 @@ func (l *localService) SavePersona(ctx context.Context, req *localv1.SavePersona
 	}
 	res, err := c.SavePersona(ctx, &relayv1.SavePersonaRequest{Persona: req.Persona})
 	if err != nil {
-		return nil, err
+		return nil, contactsErr(err)
 	}
 	return &localv1.SavePersonaResponse{Persona: res.Persona}, nil
 }
@@ -61,7 +77,10 @@ func (l *localService) DeletePersona(ctx context.Context, req *localv1.DeletePer
 		return nil, err
 	}
 	_, err = c.DeletePersona(ctx, &relayv1.DeletePersonaRequest{PersonaId: req.PersonaId})
-	return &localv1.DeletePersonaResponse{}, err
+	if err != nil {
+		return nil, contactsErr(err)
+	}
+	return &localv1.DeletePersonaResponse{}, nil
 }
 
 func (l *localService) TalkToPersona(ctx context.Context, req *localv1.TalkToPersonaRequest) (*localv1.TalkToPersonaResponse, error) {
@@ -76,7 +95,7 @@ func (o *Owner) TalkToPersona(ctx context.Context, req *localv1.TalkToPersonaReq
 	}
 	list, err := c.ListPersonas(ctx, &relayv1.ListPersonasRequest{})
 	if err != nil {
-		return nil, err
+		return nil, contactsErr(err)
 	}
 	var p *identityv1.Persona
 	for _, x := range list.Personas {

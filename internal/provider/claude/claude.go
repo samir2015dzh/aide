@@ -237,6 +237,10 @@ var versionRE = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 func (p *Provider) Discover(ctx context.Context) provider.Info {
 	info := provider.Info{Name: "claude"}
+	// The desktop app on its own: its sign-in is not the command line's,
+	// so both are told apart wherever they are shown.
+	home, _ := os.UserHomeDir()
+	info.DesktopInstalled, info.DesktopSignedIn = desktopState(desktopUserData(home, os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA")))
 	bin := p.binary()
 	if !provider.Exists(bin) {
 		info.Problem, info.Detail = provider.ProblemNotFound, "claude not found"
@@ -258,22 +262,23 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	}
 	info.Available = true
 	info.Version = versionRE.FindString(string(out))
+	told := false // the CLI said whether it is signed in
 	if out, problem, _ := provider.Probe(ctx, env, bin, "auth", "status"); problem == provider.ProblemNone {
 		var st struct {
-			LoggedIn bool `json:"loggedIn"`
+			LoggedIn *bool `json:"loggedIn"`
 		}
-		if json.Unmarshal(out, &st) == nil {
-			info.LoggedIn = st.LoggedIn
+		if json.Unmarshal(out, &st) == nil && st.LoggedIn != nil {
+			info.LoggedIn, told = *st.LoggedIn, true
 		}
 	}
 	if !info.LoggedIn && os.Getenv("ANTHROPIC_API_KEY") != "" {
 		info.LoggedIn = true
 	}
-	// Signed in in the Claude desktop app, which keeps its sign-in in its
-	// own settings, not where the CLI looks (the owner uses only the app).
-	if !info.LoggedIn {
-		home, _ := os.UserHomeDir()
-		info.LoggedIn = desktopSignedIn(desktopUserData(home, os.Getenv("APPDATA"), os.Getenv("LOCALAPPDATA")))
+	// A CLI too old to say: the desktop app's sign-in is the best guess
+	// left. One that says it is signed out is (the app's sign-in does not
+	// reach it: its sessions would fail "Not logged in").
+	if !info.LoggedIn && !told {
+		info.LoggedIn = info.DesktopSignedIn
 	}
 	info.Models = Models
 	return info

@@ -635,6 +635,23 @@ func (l *localService) AddProject(ctx context.Context, req *localv1.AddProjectRe
 	return &localv1.AddProjectResponse{}, err
 }
 
+func (l *localService) RenameProject(ctx context.Context, req *localv1.RenameProjectRequest) (*localv1.RenameProjectResponse, error) {
+	if req.ProjectId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("which project?"))
+	}
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err == nil {
+			err = onlyMachineSettings(ctx, m, req.MachineId, func(c *identityv1.AdminCommand) {
+				c.Command = &identityv1.AdminCommand_SetProjectName{SetProjectName: &identityv1.SetProjectName{ProjectId: req.ProjectId, Name: req.Name}}
+			})
+		}
+		return &localv1.RenameProjectResponse{}, err
+	}
+	err := l.o().RenameProject(ctx, req)
+	l.o().wrote(ctx, err, false, req.MachineId)
+	return &localv1.RenameProjectResponse{}, err
+}
+
 func (l *localService) RemoveProject(ctx context.Context, req *localv1.RemoveProjectRequest) (*localv1.RemoveProjectResponse, error) {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err == nil {

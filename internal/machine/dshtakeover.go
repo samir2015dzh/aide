@@ -389,9 +389,19 @@ func (n *Machine) PrepareDSHBridge() (*machinev1.PrepareDSHBridgeResponse, error
 	return &machinev1.PrepareDSHBridgeResponse{PackagePath: p.Package, Version: p.Version, BackupDir: p.Backup, BackedUp: p.BackedUp, DesktopProfile: p.DesktopProfile}, nil
 }
 
-// dshBridge is the bridge's state in the DSH home, as ListDSHSessions
-// shows it.
+// dshBridge is the bridge's state in the DSH home, as ListDSHSessions and
+// the DSH agent's status show it: whether it answers, and whether its
+// package was prepared and which version this aided ships, so the owner
+// can tell not prepared, prepared but not installed, installed, and out of
+// date apart (工单 #46).
 func dshBridge(ctx context.Context, home string) *machinev1.DSHBridge {
+	b := dialDSHBridge(ctx, home)
+	b.PackagePath = dshnative.PreparedPackage(home)
+	b.LatestVersion = dshnative.ShippedVersion()
+	return b
+}
+
+func dialDSHBridge(ctx context.Context, home string) *machinev1.DSHBridge {
 	ctx, cancel := context.WithTimeout(ctx, dshBridgeDial)
 	defer cancel()
 	b, err := dshnative.DialBridge(ctx, home)

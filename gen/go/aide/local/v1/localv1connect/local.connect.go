@@ -128,6 +128,9 @@ const (
 	// LocalServiceRemoveProjectProcedure is the fully-qualified name of the LocalService's
 	// RemoveProject RPC.
 	LocalServiceRemoveProjectProcedure = "/aide.local.v1.LocalService/RemoveProject"
+	// LocalServiceRenameProjectProcedure is the fully-qualified name of the LocalService's
+	// RenameProject RPC.
+	LocalServiceRenameProjectProcedure = "/aide.local.v1.LocalService/RenameProject"
 	// LocalServiceListClientsProcedure is the fully-qualified name of the LocalService's ListClients
 	// RPC.
 	LocalServiceListClientsProcedure = "/aide.local.v1.LocalService/ListClients"
@@ -371,6 +374,8 @@ type LocalServiceClient interface {
 	ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error)
 	AddProject(context.Context, *v1.AddProjectRequest) (*v1.AddProjectResponse, error)
 	RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error)
+	// Names a project as the owner knows it, in place of its id.
+	RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error)
 	// Agents.
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
 	UpdateClient(context.Context, *v1.UpdateClientRequest) (*v1.UpdateClientResponse, error)
@@ -706,6 +711,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceRemoveProjectProcedure,
 			connect.WithSchema(localServiceMethods.ByName("RemoveProject")),
+			connect.WithClientOptions(opts...),
+		),
+		renameProject: connect.NewClient[v1.RenameProjectRequest, v1.RenameProjectResponse](
+			httpClient,
+			baseURL+LocalServiceRenameProjectProcedure,
+			connect.WithSchema(localServiceMethods.ByName("RenameProject")),
 			connect.WithClientOptions(opts...),
 		),
 		listClients: connect.NewClient[v1.ListClientsRequest, v1.ListClientsResponse](
@@ -1060,6 +1071,7 @@ type localServiceClient struct {
 	listProjects             *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
 	addProject               *connect.Client[v1.AddProjectRequest, v1.AddProjectResponse]
 	removeProject            *connect.Client[v1.RemoveProjectRequest, v1.RemoveProjectResponse]
+	renameProject            *connect.Client[v1.RenameProjectRequest, v1.RenameProjectResponse]
 	listClients              *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
 	updateClient             *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
 	renameClient             *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
@@ -1419,6 +1431,15 @@ func (c *localServiceClient) AddProject(ctx context.Context, req *v1.AddProjectR
 // RemoveProject calls aide.local.v1.LocalService.RemoveProject.
 func (c *localServiceClient) RemoveProject(ctx context.Context, req *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error) {
 	response, err := c.removeProject.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// RenameProject calls aide.local.v1.LocalService.RenameProject.
+func (c *localServiceClient) RenameProject(ctx context.Context, req *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error) {
+	response, err := c.renameProject.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1972,6 +1993,8 @@ type LocalServiceHandler interface {
 	ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error)
 	AddProject(context.Context, *v1.AddProjectRequest) (*v1.AddProjectResponse, error)
 	RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error)
+	// Names a project as the owner knows it, in place of its id.
+	RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error)
 	// Agents.
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
 	UpdateClient(context.Context, *v1.UpdateClientRequest) (*v1.UpdateClientResponse, error)
@@ -2303,6 +2326,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceRemoveProjectProcedure,
 		svc.RemoveProject,
 		connect.WithSchema(localServiceMethods.ByName("RemoveProject")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceRenameProjectHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceRenameProjectProcedure,
+		svc.RenameProject,
+		connect.WithSchema(localServiceMethods.ByName("RenameProject")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListClientsHandler := connect.NewUnaryHandlerSimple(
@@ -2689,6 +2718,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceAddProjectHandler.ServeHTTP(w, r)
 		case LocalServiceRemoveProjectProcedure:
 			localServiceRemoveProjectHandler.ServeHTTP(w, r)
+		case LocalServiceRenameProjectProcedure:
+			localServiceRenameProjectHandler.ServeHTTP(w, r)
 		case LocalServiceListClientsProcedure:
 			localServiceListClientsHandler.ServeHTTP(w, r)
 		case LocalServiceUpdateClientProcedure:
@@ -2940,6 +2971,10 @@ func (UnimplementedLocalServiceHandler) AddProject(context.Context, *v1.AddProje
 
 func (UnimplementedLocalServiceHandler) RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RemoveProject is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RenameProject is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error) {
