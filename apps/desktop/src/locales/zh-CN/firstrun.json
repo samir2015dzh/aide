@@ -101,7 +101,7 @@
     "runInTerminal": "在终端运行",
     "adding": "正在添加…",
     "addProject": "添加项目…",
-    "dshSessions": "DeepSeek Harness 里已有的会话",
+    "dshSessions": "DSH 里已有的会话",
     "dshSessionsOpen": "查看",
     "claudeSessions": "Claude 桌面应用里已有的会话",
     "otherProjects": "其他项目 · 给没有安装的 agent",

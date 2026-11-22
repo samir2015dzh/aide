@@ -2,7 +2,7 @@
   "title": "连接你的 Agent",
   "lede": "每个 Agent 的连接方式不一样。选一个，按它的步骤来。Agent 装在哪台电脑上，Aide 就在哪台电脑上运行它；你在这里、在手机上，或者通过你的助手给它派任务。",
   "lines": {
-    "deepseek": "DSH（DeepSeek Harness）",
+    "deepseek": "DSH",
     "claude": "Claude Desktop",
     "codex": "Codex",
     "custom": "其他 Agent",
@@ -58,24 +58,24 @@
     "notLoggedIn": "没成功：Claude Code 命令行还没登录。Claude Desktop 的登录不会续给它，派给 Claude 的任务在这台机器上会失败。"
   },
   "deepseek": {
-    "intro": "DSH 指 DeepSeek Harness 桌面应用，DeepSeek 的编码 Agent。Aide 运行你电脑上装的 DSH：桌面应用里自带的那个，或者 dsh 命令。",
-    "need1": "运行它的电脑上装好 DeepSeek Harness：DSH 桌面应用（装在哪里都可以），或者 dsh 命令。",
+    "intro": "DSH 是一个编码 Agent（桌面应用，用你的 DeepSeek 账号或 API 密钥工作）。Aide 运行你电脑上装的 DSH：桌面应用里自带的那个，或者 dsh 命令。",
+    "need1": "运行它的电脑上装好 DSH：DSH 桌面应用（装在哪里都可以），或者 dsh 命令。",
     "need2": "DSH 已经配好你的 DeepSeek 账号或 API 密钥：先打开 DSH 发一条消息，确认它能回答。",
     "need3": "那台电脑上打开了 Aide，并登录了你的账号（这台电脑已经登录）。",
     "step1": "在上面选运行 DSH 的电脑（默认就是这台）。",
     "step2": "看「状态」：应该显示「已检测到」。如果没有，按下面的清单逐项检查，然后点「重新检查」。",
-    "step3": "如果 DeepSeek 还没有项目，点「添加项目…」，选一个允许它工作的文件夹。",
+    "step3": "如果 DSH 还没有项目，点「添加项目…」，选一个允许它工作的文件夹。",
     "step4": "点「运行测试」。DSH 会回答一个简短的问题。",
     "step5": "点「开始测试任务」。一个真正的任务会开始，并在 Aide 里打开。",
-    "fixInstall": "{{machine}} 上装了 DeepSeek Harness 吗？从 DeepSeek 装好 DSH 桌面应用或 dsh 命令，并打开一次。",
+    "fixInstall": "{{machine}} 上装了 DSH 吗？装好 DSH 桌面应用或 dsh 命令，并打开一次。",
     "fixWhere": "装好了还是没检测到？Aide 按 Windows 记下的位置找 DSH 应用：已安装的程序列表，以及正在运行的 DSH。先打开一次 DSH，再回这里重新检测。dsh 命令要新开的终端能找到才行（在终端里输入 dsh --version 试试）。",
     "fixAppOnly": "找到了 DSH 应用，但没在里面找到它自带的 dsh。把 DSH 更新到最新版、打开一次，再回这里重新检测。还不行的话，可以另装 dsh 命令（npm install -g @deepseek-ai/dsh），或者在「其他 Agent」里填 dsh 的完整路径。",
     "fixSignIn": "打开 DSH，在里面登录或者配好你的 DeepSeek API 密钥。",
     "testFailedHint": "如果原因里提到密钥、账号或登录，打开 DSH 配好你的 DeepSeek 账号或 API 密钥，再测试一次。",
-    "where1": "你在 Aide 里用 DeepSeek 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。",
-    "where2": "DSH 自己的会话（你在 DSH 里开的，或者其他工具开的）在 Aide 侧边栏的「DeepSeek 会话」页面里，只读。",
+    "where1": "你在 Aide 里用 DSH 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。",
+    "where2": "DSH 自己的会话（你在 DSH 里开的，或者其他工具开的）在 Aide 侧边栏的「DSH 会话」页面里，只读。",
     "where3": "Aide 开的每个任务，DSH 也会存进那台电脑上它自己的会话记录里，和你的会话放在一起。但 DSH 桌面应用不一定会列出它们：每个任务都在 Aide 为它准备的项目副本文件夹里工作。",
-    "openSessions": "打开 DeepSeek 会话"
+    "openSessions": "打开 DSH 会话"
   },
   "claude": {
     "intro": "Claude 指 Claude Desktop，Anthropic 的桌面应用。Aide 运行 Claude Desktop 在 Code 标签页里用的 Claude Code，不用另装。",

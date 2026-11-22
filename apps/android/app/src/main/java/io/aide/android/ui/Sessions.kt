@@ -31,6 +31,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.CompositionLocalProvider
+import io.aide.android.model.manyMachines
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -73,24 +78,43 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
     val on = { l: List<Session> -> onMachine(l, { it.machineId }, picked, ids) }
     val b = Buckets(on(all.needsYou), on(all.unseen), on(all.inProgress), on(all.recent))
     val scope = rememberCoroutineScope()
+    val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
-        PageTitle(t("Sessions", "会话"))
+        val working = all.inProgress.size
+        PageTitle(t("Sessions", "会话"), listOfNotNull(
+            all.needsYou.size.takeIf { it > 0 }?.let { t("$it need you", "$it 个等你处理") },
+            t("$working at work", "$working 个进行中"),
+        ).joinToString(" · "))
         SyncLine(model)
         MachineFilter(world, picked) { picked = it }
         // Pulled down: read again now (the Watch keeps the list current otherwise).
         var refreshing by remember { mutableStateOf(false) }
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize()) {
-            // DeepSeek Harness's own sessions, on a machine that has it.
+        CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+            // DSH's own sessions, on a machine that has it.
             if (world.machines.any { m -> m.status?.agents.orEmpty().any { it.name == "deepseek" } }) {
                 item(key = "dsh") {
-                    TextButton(onClick = openDSH, modifier = Modifier.padding(horizontal = 8.dp)) { Text(t("DeepSeek’s own sessions ›", "DeepSeek 自己的会话 ›")) }
+                    Row(Modifier.padding(top = 8.dp).fillMaxWidth().aideCard().pressable(openDSH).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        AgentFace("deepseek", 28)
+                        HSpace(12)
+                        Text(t("DSH’s own sessions", "DSH 自己的会话"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                        Text("›", style = MaterialTheme.typography.titleLarge, color = aide.faint)
+                    }
                 }
             }
-            section(t("Needs You", "需要你处理"), b.needsYou, world, open, Warning)
-            section(t("New Results", "有新结果未看"), b.unseen, world, open, null)
-            section(t("In Progress", "进行中"), b.inProgress, world, open, null)
-            section(t("Recent", "最近"), b.recent, world, open, Color.Gray)
+            // The overview first (BotArk reference §4): what waits for you, what is at work, what is new.
+            item(key = "overview") {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile(t("Need you", "等你处理"), "${b.needsYou.size}", Modifier.weight(1f), tone = if (b.needsYou.isEmpty()) Tone.Quiet else Tone.Warn)
+                    StatTile(t("At work", "进行中"), "${b.inProgress.size}", Modifier.weight(1f), tone = if (b.inProgress.isEmpty()) Tone.Quiet else Tone.Live)
+                    StatTile(t("New results", "新结果"), "${b.unseen.size}", Modifier.weight(1f))
+                }
+            }
+            section(t("Needs You", "需要你处理"), b.needsYou, world, open, Tone.Warn)
+            section(t("New Results", "有新结果未看"), b.unseen, world, open, Tone.Live)
+            section(t("In Progress", "进行中"), b.inProgress, world, open, Tone.Live)
+            section(t("Recent", "最近"), b.recent, world, open, Tone.Quiet)
             if (world.sessions.isEmpty() && world.watched) {
                 item { Text(t("No sessions yet.", "还没有会话。"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
@@ -101,6 +125,7 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
             }
         }
         }
+        }
     }
 }
 
@@ -109,64 +134,77 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
 fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
     val world by model.world.collectAsState()
     val sessions = world.buckets.needsYou
+    val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
-        PageTitle(t("Needs you", "需要你"))
+        PageTitle(t("Needs you", "需要你"), if (sessions.isEmpty()) null else t("${sessions.size} waiting for an answer", "${sessions.size} 个在等你回答"))
         SyncLine(model)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp)) {
             if (sessions.isEmpty()) {
-                item { Text(t("Nothing waits for you.", "没有等你处理的事。"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(t("Nothing waits for you.", "没有等你处理的事。"), Modifier.padding(top = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                item(key = "h-sessions") { SectionHeader(t("Tasks waiting for you", "等你处理的任务") + " · ${sessions.size}") }
+                section(t("Tasks waiting for you", "等你处理的任务"), sessions, world, open, Tone.Warn)
             }
-            items(sessions, key = { it.sessionId }) { s ->
-                Box(
-                    Modifier.fillMaxWidth()
-                        .animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))
-                        .aideCard(),
-                ) { SessionRow(s, world) { open(s.sessionId) } }
-            }
+        }
         }
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String, sessions: List<Session>, world: World, open: (String) -> Unit, color: Color?) {
+/** A group of sessions: a heading with its count, then its rows as one card (each row a list item of its own). */
+private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String, sessions: List<Session>, world: World, open: (String) -> Unit, tone: Tone) {
     if (sessions.isEmpty()) return
-    item(key = "h-$title") { SectionHeader("$title · ${sessions.size}", color ?: MaterialTheme.colorScheme.primary) }
-    items(sessions, key = { it.sessionId }) { s ->
+    item(key = "h-$title", contentType = "heading") { SectionHeader(title, count = sessions.size, tone = tone) }
+    itemsIndexed(sessions, key = { _, s -> s.sessionId }, contentType = { _, _ -> "session" }) { i, s ->
         // A session moving between groups, or arriving, eases into place rather than jumping (Motion, as the desktop's).
-        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))) {
+        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short)).groupRow(i, sessions.size)) {
             SessionRow(s, world) { open(s.sessionId) }
-            HorizontalDivider(Modifier.padding(start = 16.dp))
+            if (i < sessions.size - 1) HorizontalDivider(Modifier.padding(start = 66.dp), thickness = 0.5.dp, color = aide.separator)
         }
     }
 }
 
 @Composable
 fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().pressable(onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        // Waiting for the owner: a bar at the row's start, as on the desktop.
-        if (needsYou(s)) {
-            Box(Modifier.width(3.dp).height(36.dp).background(Warning, RoundedCornerShape(2.dp)))
-            Spacer(Modifier.width(9.dp))
-        }
+    val waits = needsYou(s)
+    Row(Modifier.fillMaxWidth().pressable(onClick).padding(start = 14.dp, end = 14.dp, top = 13.dp, bottom = 13.dp), verticalAlignment = Alignment.Top) {
         // Who works on it, by its face (the same on every screen), its state on the face's corner.
         Box {
-            AgentFace(s.agent, 34)
-            Box(Modifier.align(Alignment.BottomEnd).padding(0.dp)) { StatusDot(s) }
+            AgentFace(s.agent, 40)
+            Box(Modifier.align(Alignment.BottomEnd).offset(x = 3.dp, y = 3.dp)) { StatusDot(s) }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(displayTitle(s), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (needsYou(s)) FontWeight.SemiBold else FontWeight.Normal)
+        HSpace(12)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(displayTitle(s), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                HSpace(8)
+                Text(relativeTime(s.updatedAt), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1)
+            }
             Text(
                 "${world.senderName(s)} → ${agentTitle(s.agent)} · ${world.projectTitle(s.machineId, s.projectId)}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                listOf(world.machineName(s.machineId), statusLine(s, world), relativeTime(s.updatedAt)).filter { it.isNotEmpty() }.joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
-            )
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatusPill(statusLine(s, world), sessionTone(s))
+                if (manyMachines(world.machines.size)) {
+                    HSpace(8)
+                    Text(world.machineName(s.machineId), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        if (waits) {
+            HSpace(8)
+            Box(Modifier.padding(top = 4.dp).width(3.dp).height(32.dp).background(Warning, RoundedCornerShape(2.dp)))
         }
     }
+}
+
+/** The weight a session's state is said with. */
+fun sessionTone(s: Session): Tone = when {
+    needsYou(s) -> Tone.Warn
+    isLive(s) -> Tone.Live
+    s.status == SessionStatus.CRASHED || s.progress?.lastFailure != null -> Tone.Bad
+    s.status == SessionStatus.IDLE -> Tone.Good
+    else -> Tone.Quiet
 }
 
 /**
@@ -177,20 +215,23 @@ fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
 fun StatusDot(s: Session) {
     val color = when {
         needsYou(s) -> Warning
-        isLive(s) -> MaterialTheme.colorScheme.primary
+        isLive(s) -> BrandCyan
         s.status == SessionStatus.CRASHED || s.progress?.lastFailure != null -> MaterialTheme.colorScheme.error
         else -> Color.Gray.copy(alpha = 0.5f)
     }
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val still = android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    // Read once, not on every composition (a call into the system's settings, 工单 #55).
+    val still = remember(ctx) { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+    // While the list scrolls, the ring stops: nothing moves by itself then (工单 #55 §4).
+    val scrolling = LocalScrolling.current
     Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
-        if (isLive(s) && !still) {
+        if (isLive(s) && !still && !scrolling) {
             val ping by androidx.compose.animation.core.rememberInfiniteTransition(label = "live").animateFloat(
                 0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2000, easing = Motion.EaseOut)), label = "ping",
             )
             Box(Modifier.size(10.dp).graphicsLayer { scaleX = 1f + ping * 1.3f; scaleY = 1f + ping * 1.3f; alpha = 0.45f * (1f - ping) }.background(color, CircleShape))
         }
-        Box(Modifier.size(10.dp).background(color, CircleShape).border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape))
+        Box(Modifier.size(12.dp).background(aide.card, CircleShape).padding(2.dp).background(color, CircleShape))
     }
 }
 
@@ -220,18 +261,25 @@ fun statusText(s: Session): String = when (s.status) {
     else -> ""
 }
 
+/** A page's name, heavy and large, and under it one quiet line of what is on it now (工单 #54). */
 @Composable
-fun PageTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp))
+fun PageTitle(text: String, summary: String? = null) {
+    Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp)) {
+        Text(text, style = MaterialTheme.typography.headlineMedium)
+        summary?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp)) }
+    }
 }
 
+/** A group's heading: a label above its rows, its count beside it in the group's colour, not a title competing with them. */
 @Composable
-fun SectionHeader(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    // Quiet, as the desktop's group headings: a label above its rows, not a title competing with them.
-    Text(
-        text, style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.4.sp), color = color, fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp),
-    )
+fun SectionHeader(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant, count: Int? = null, tone: Tone = Tone.Quiet) {
+    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.3.sp), color = if (count != null && tone != Tone.Quiet) toneColor(tone) else color, fontWeight = FontWeight.Bold)
+        count?.let {
+            HSpace(8)
+            CountBadge(it, tone)
+        }
+    }
 }
 
 @Composable

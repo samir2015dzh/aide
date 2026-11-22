@@ -186,8 +186,8 @@ jobs:
           AIDE_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: VERSION="$TAG" apps/android/scripts/build.sh
       - name: the APK's signature
-        run: apps/android/scripts/check-signature.sh apps/android/build/Aide-${TAG#v}-debug.apk
-      - run: gh release upload "$TAG" apps/android/build/Aide-${TAG#v}-debug.apk --clobber
+        run: apps/android/scripts/check-signature.sh apps/android/build/Aide-${TAG#v}.apk
+      - run: gh release upload "$TAG" apps/android/build/Aide-${TAG#v}.apk --clobber
   # Every file there and right, then a prerelease.
   publish:
     needs: [binaries, relay-image, windows-app, android]

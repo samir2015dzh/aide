@@ -274,7 +274,7 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   await page.getByRole("button", { name: "下一步：连接你的 Agent" }).click();
   // A guide for each coding agent, DSH's first; the assistants on their own tab.
   await expect(page.getByRole("heading", { name: "连接你的 Agent" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "DSH（DeepSeek Harness）" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "DSH", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "助手" }).click();
   // One tab: the assistants as icons (Grok Bot chosen), what to send right below; only the name in it differs.
   const kinds = page.getByRole("radiogroup", { name: "选择助手" });

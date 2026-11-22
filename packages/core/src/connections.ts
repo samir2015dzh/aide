@@ -40,6 +40,8 @@ export type ConnRow = {
   fix?: ConnFix;
   /** When it was checked; unset: never. */
   checkedAt?: Date;
+  /** What it works with, apart from its state: DSH's DeepSeek models (DSH is the agent, DeepSeek its account's models, 工单 #53). */
+  note?: string;
 };
 
 export type MachineConnections = {
@@ -120,6 +122,19 @@ export function machineConnections(m: Machine, now: Date): MachineConnections {
   return { reachable, rows, state, summary };
 }
 
+/**
+ * One agent's entry on a machine's single list (工单 #53): its rows (Claude: Desktop and the command line; DSH: itself
+ * and its bridge plugin; any other: its one row) under one name and one state, the worst of them. A one-row entry says
+ * its row's words; a several-row one says the state in a word, the rows saying the rest.
+ */
+export function agentEntry(c: MachineConnections, agent: string): { rows: ConnRow[]; state: ConnState; text: string } | undefined {
+  const rows = c.rows.filter((r) => r.agent === agent);
+  if (!rows.length) return undefined;
+  const state = order.find((s) => rows.some((r) => r.state === s))!;
+  const text = rows.length === 1 || state === "checking" ? rows.find((r) => r.state === state)!.text : t(`conn.entry.${state}`);
+  return { rows, state, text };
+}
+
 function claudeRows(a: AgentStatus): ConnRow[] {
   const checkedAt = checkedDate(a);
   if (a.checking && !checkedAt) return [{ id: "claude-cli", agent: "claude", title: t("conn.claudeCLI"), state: "checking", text: t("conn.checking") }];
@@ -185,8 +200,10 @@ function dshRows(a: AgentStatus): ConnRow[] {
       text: a.problem === AgentProblem.NOT_FOUND ? t("conn.notInstalled") : t("conn.broken"),
       lacks: a.problem === AgentProblem.NOT_FOUND ? undefined : a.detail }];
   }
+  const models = [...new Set(a.models.map((x) => x.name || x.id).filter(Boolean))];
   const rows: ConnRow[] = [{ id: "deepseek", agent: "deepseek", title, state: "ok", checkedAt,
-    text: a.version ? t("conn.detectedVersion", { version: a.version }) : t("conn.detected") }];
+    text: a.version ? t("conn.detectedVersion", { version: a.version }) : t("conn.detected"),
+    note: models.length ? t("conn.dshModels", { models: models.slice(0, 3).join(" · ") }) : undefined }];
   const b = a.dshBridge;
   const v = bridgeView(b);
   const bridge: ConnRow = { id: "deepseek-bridge", agent: "deepseek", title: t("conn.bridge"), state: "partial", text: t(`conn.bridgeState.${v}`, { version: b?.version ?? "", latest: b?.latestVersion ?? "" }), checkedAt };

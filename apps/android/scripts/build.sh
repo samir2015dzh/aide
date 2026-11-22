@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Build the Android app, debug-signed, in one command:
-#   apps/android/scripts/build.sh   →   apps/android/build/Aide-<version>-debug.apk
+# Build the Android app in one command:
+#   apps/android/scripts/build.sh   →   apps/android/build/Aide-<version>.apk
+# The APK is the release build (not debuggable: a debuggable one scrolls far
+# worse on a phone, 工单 #55), signed with the app's key when the environment
+# names it, else with Gradle's debug key.
 # It builds the shared Go core first (build-core.sh, through Gradle's preBuild),
 # then the app and its JVM unit tests. Needs Go, a JDK 17+, and the Android
 # SDK in ANDROID_HOME (or ANDROID_SDK_ROOT) with platforms;android-36,
@@ -15,10 +18,10 @@ if [[ -z "$ANDROID_HOME" ]]; then
 fi
 VERSION="${VERSION:-0.0.0-dev}"
 export VERSION
-tasks=(:app:assembleDebug)
+tasks=(:app:assembleRelease)
 [[ -n "${SKIP_TESTS:-}" ]] || tasks+=(:app:testDebugUnitTest)
 ./gradlew --console=plain "${tasks[@]}" -PappVersion="${VERSION#v}"
-out="build/Aide-${VERSION#v}-debug.apk"
+out="build/Aide-${VERSION#v}.apk"
 mkdir -p build
-cp app/build/outputs/apk/debug/app-debug.apk "$out"
+cp app/build/outputs/apk/release/app-release.apk "$out"
 echo "› apps/android/$out"

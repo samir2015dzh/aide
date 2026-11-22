@@ -7,12 +7,13 @@ import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
 import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
-import { codingAgentIds, codingAgentTitle, defaultProjectName, projectIdFromFolder, projectTitle } from "@aide/core";
+import { agentEntry, codingAgentIds, codingAgentTitle, defaultProjectName, machineConnections, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
 import { autoResumedAt, pauseOf, usageResetAt } from "./agentPause";
 import { local } from "./api";
+import { connDot, ConnRowView } from "./Connections";
 import { Icon } from "./icons";
 import { useNow, useStore } from "./store";
 import "./agentlist.css";
@@ -87,13 +88,40 @@ export function sortAgents(agents: AgentStatus[] | undefined) {
  * it has, unknown instead. Projects none of the installed agents may use
  * (theirs is gone, or not known yet) follow, so they can still be removed.
  */
-export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: ReturnType<typeof sortAgents>; unknown?: ReactNode; onOpen: (agent: string) => void }) {
+export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Machine; agents: ReturnType<typeof sortAgents>; unknown?: ReactNode; onOpen: (agent: string) => void; connections?: MachineConnections }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
   const projects = st.projects.filter((p) => p.machineId === m.machineId);
   const { installed, troubled, checking, missing, hidden, known } = agents;
   const others = projects.filter((p) => !installed.some((a) => projectsFor([p], a.name).length > 0));
   const othersTitle = known ? t("prepare.otherProjects") : t("prepare.allProjects");
+  // With the machine's connections (工单 #53, the machine page), each agent is one entry: its one state is the
+  // connections' (stale or out of reach: unknown), and its connection rows (Claude Desktop and the command line, DSH's
+  // bridge plugin) are details under it, not a second list.
+  const entry = (name: string) => (connections ? agentEntry(connections, name) : undefined);
+  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId }).catch(() => {});
+  const details = (name: string, why = false) => {
+    const e = entry(name);
+    // An agent that can't run says why in its own words above (whyBroken): its one row doesn't say it again. Claude's
+    // rows always say which part they are (Claude Desktop, the command line), even with the command line alone.
+    const rows = why && e?.rows.length === 1 ? [{ ...e.rows[0], lacks: undefined }] : e?.rows;
+    return e && rows ? (
+      <div className="ag-conn">
+        {rows.map((r) => (
+          <ConnRowView key={r.id} r={r} m={m} recheck={recheck} logo={false} bare={rows.length === 1 && name !== "claude"} part />
+        ))}
+      </div>
+    ) : null;
+  };
+  const stateOf = (name: string) => {
+    const e = entry(name);
+    return e ? (
+      <span className="conn-state ag-state" data-state={e.state}>
+        <i className={`dotc ${connDot(e.state)}`} />
+        {e.text}
+      </span>
+    ) : null;
+  };
   return (
     <>
       <div className="ag-list" role="list" aria-label={t("prepare.agents")}>
@@ -107,11 +135,14 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                 <span className="ag-text">
                   <b>{codingAgentTitle(a.name)}</b>
                   <span className="ag-sub">
-                    {a.version && <span className="mono">{a.version}</span>}
-                    <span className={a.loggedIn ? "ok" : "warn"}>
-                      <i />
-                      {a.loggedIn ? t("prepare.signedIn") : t("prepare.notSignedIn")}
-                    </span>
+                    {/* With the connections, the version is in its state's words ("已登录 · 2.1.330"): not said twice. */}
+                    {a.version && !entry(a.name) && <span className="mono">{a.version}</span>}
+                    {stateOf(a.name) ?? (
+                      <span className={a.loggedIn ? "ok" : "warn"}>
+                        <i />
+                        {a.loggedIn ? t("prepare.signedIn") : t("prepare.notSignedIn")}
+                      </span>
+                    )}
                     <PausedTag a={a} />
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
@@ -130,6 +161,7 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                 </span>
                 <Icon name="chevR" className="ag-chev" />
               </button>
+              {details(a.name)}
             </div>
           );
         })}
@@ -140,14 +172,15 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
               <span className="ag-text">
                 <b>{codingAgentTitle(a.name)}</b>
                 <span className="ag-sub">
-                  <BrokenState a={a} />
+                  {stateOf(a.name) ?? <BrokenState a={a} />}
                   <PausedTag a={a} />
                   {projectsFor(projects, a.name).length > 0 && <span>{t("prepare.projects", { count: projectsFor(projects, a.name).length })}</span>}
                 </span>
-                <span className="ag-why">{whyBroken(a, t)}</span>
+                {(entry(a.name)?.rows.length ?? 0) <= 1 && <span className="ag-why">{whyBroken(a, t)}</span>}
               </span>
               <Icon name="chevR" className="ag-chev" />
             </button>
+            {details(a.name, true)}
           </div>
         ))}
         {checking.map((a) => (
@@ -260,6 +293,9 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
   const title = codingAgentTitle(agent);
   const projects = st.projects.filter((p) => p.machineId === m.machineId);
   const mine = projectsFor(projects, agent);
+  // Its state in the same words as its entry on the machine's list (工单 #53): one account, never two.
+  const now = useNow(30_000);
+  const e = agentEntry(machineConnections(m, now), agent);
   // Logging in runs in this Mac's Terminal: another machine's agent is logged in there.
   const login = m.local ? logins[agent] : undefined;
 
@@ -289,7 +325,12 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
           <span className="ag-sub">
             <span>{m.machineName}</span>
             {a?.version && <span className="mono">{a.version}</span>}
-            {a && (broken(a) ? <BrokenState a={a} /> : (
+            {a && e ? (
+              <span className="conn-state ag-state" data-state={e.state}>
+                <i className={`dotc ${connDot(e.state)}`} />
+                {e.text}
+              </span>
+            ) : a && (broken(a) ? <BrokenState a={a} /> : (
               <span className={a.loggedIn ? "ok" : "warn"}>
                 <i />
                 {a.loggedIn ? t("prepare.signedIn") : t("prepare.notSignedIn")}

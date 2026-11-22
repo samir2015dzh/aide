@@ -50,7 +50,7 @@ import io.aide.android.model.AppModel
 /** A page over the tabs. */
 sealed interface Route {
     data class Session(val id: String) : Route
-    /** DeepSeek Harness's own sessions, and one of them. */
+    /** DSH's own sessions, and one of them. */
     data object DSH : Route
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
     /** Handing work over (docs/personas.md): pick a contact, then write to it. */
@@ -133,10 +133,13 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         snackbarHost = { SnackbarHost(snackbar) },
         // Handing work over: a contact first, then what to do.
         floatingActionButton = {
-            if (tab == Tab.Sessions) ExtendedFloatingActionButton(onClick = { stack.add(Route.Contacts) }, icon = { Icon(Icons.Filled.Person, null) }, text = { Text(t("Hand Work", "派活")) })
+            if (tab == Tab.Sessions) ExtendedFloatingActionButton(onClick = { stack.add(Route.Contacts) }, shape = androidx.compose.foundation.shape.CircleShape, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, icon = { Icon(Icons.Filled.Person, null) }, text = { Text(t("Hand Work", "派活")) })
         },
         bottomBar = {
-            NavigationBar {
+            // A bar a step off the page with a hairline over it, so the page ends where the bar starts (工单 #54).
+            Column {
+            androidx.compose.material3.HorizontalDivider(thickness = 0.5.dp, color = aide.separator)
+            NavigationBar(containerColor = aide.card, tonalElevation = 0.dp) {
                 NavigationBarItem(tab == Tab.Sessions, { tab = Tab.Sessions }, icon = { Icon(Icons.AutoMirrored.Filled.List, null) }, label = { Text(t("Tasks", "任务")) })
                 // Needs you: the sessions waiting for an answer, in one place.
                 NavigationBarItem(tab == Tab.NeedsYou, { tab = Tab.NeedsYou }, icon = {
@@ -144,6 +147,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                 }, label = { Text(t("Needs you", "需要你")) })
                 NavigationBarItem(tab == Tab.Machines, { tab = Tab.Machines }, icon = { Icon(Icons.Filled.Home, null) }, label = { Text(t("Machines", "机器")) })
                 NavigationBarItem(tab == Tab.Settings, { tab = Tab.Settings }, icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(t("Settings", "设置")) })
+            }
             }
         },
     ) { pad ->

@@ -212,6 +212,13 @@
     "loginFailed": "上次登录没完成：{{why}}。可以再试一次。",
     "loginNoReason": "没有给出原因",
     "loginTimedOut": "上次登录等浏览器等了 10 分钟，已停止。可以再试一次。",
-    "loginCancelled": "上次登录已取消。"
+    "loginCancelled": "上次登录已取消。",
+    "dshModels": "模型：{{models}}",
+    "entry": {
+      "ok": "可以用",
+      "partial": "部分可用",
+      "missing": "不可用",
+      "unknown": "状态未知"
+    }
   }
 }

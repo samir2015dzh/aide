@@ -102,7 +102,7 @@
     "runInTerminal": "Run in Terminal",
     "adding": "Adding…",
     "addProject": "Add Project…",
-    "dshSessions": "Sessions already in DeepSeek Harness",
+    "dshSessions": "Sessions already in DSH",
     "dshSessionsOpen": "Show",
     "claudeSessions": "Sessions already in the Claude app",
     "otherProjects": "Other projects · for agents not installed",

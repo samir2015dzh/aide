@@ -59,14 +59,17 @@ jobs:
       - name: the APK's signature
         if: env.AIDE_ANDROID_KEYSTORE != ''
         run: apps/android/scripts/check-signature.sh apps/android/build/*.apk
-      # The installed identity, read back from the APK itself (io.aide.android;
-      # the debug build adds .debug).
+      # The installed identity, read back from the APK itself (io.aide.android.debug,
+      # as every published APK has had), and that it is not debuggable (工单 #55:
+      # a debuggable build scrolls far worse on a phone).
       - name: the APK's application id
         run: |
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           AAPT2="$(ls -d "$SDK"/build-tools/*/aapt2 | sort -V | tail -1)"
           "$AAPT2" dump badging apps/android/build/*.apk | head -1 | tee badging.txt
           grep -q "^package: name='io.aide.android.debug'" badging.txt
+          "$AAPT2" dump badging apps/android/build/*.apk > all-badging.txt
+          if grep -q "^application-debuggable" all-badging.txt; then echo "::error::the APK is debuggable"; exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
           name: aide-android-debug

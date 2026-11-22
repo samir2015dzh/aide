@@ -327,7 +327,8 @@ test("settings 机器 opens this Mac: its sharing, its agents each opening a pag
   // The agents as the first run shows them, each opening its page: the projects it may work in.
   const agents = panel.getByRole("list", { name: "编码 Agent" });
   const gemini = agents.getByRole("listitem", { name: "Gemini CLI" });
-  await expect(gemini).toContainText("已登录", { timeout: 30_000 });
+  // Its one state is the connections' (工单 #53), the same words as everywhere.
+  await expect(gemini).toContainText("可以用", { timeout: 30_000 });
   await expect(agents).not.toContainText("正在检查…", { timeout: 30_000 });
   await snap(settings, "settings-machine");
   await gemini.getByRole("button", { name: /^Gemini CLI/ }).click();
@@ -413,7 +414,7 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
   const panel = page_(settings, "机器");
   await panel.getByRole("list", { name: "机器" }).getByRole("button", { name: /^owner-mac/ }).click();
   const codex = panel.getByRole("list", { name: "编码 Agent" }).getByRole("listitem", { name: "Codex" });
-  await expect(codex).toContainText("还没登录", { timeout: 30_000 });
+  await expect(codex).toContainText("未登录", { timeout: 30_000 });
   await codex.getByRole("button", { name: /^Codex/ }).click();
   const row = (name: string) => panel.getByRole("region", { name: "Codex" }).getByRole("group", { name });
   // Each follows Codex, saying what that is.

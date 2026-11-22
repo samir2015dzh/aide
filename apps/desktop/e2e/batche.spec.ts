@@ -27,7 +27,7 @@ test("Claude Code's command line signed in from this Mac's page, no terminal", a
   const { app, page } = await launch();
   const { machines } = await api<{ machines: { machineId: string; local?: boolean }[] }>(page, "ListMachines");
   const settings = await openSettings(app, page, `machines/${machines.find((m) => m.local)!.machineId}`);
-  const row = settings.getByRole("region", { name: "本机连接状态" }).locator(".conn-row").filter({ hasText: "Claude Code 命令行" });
+  const row = settings.getByRole("list", { name: "编码 Agent" }).getByRole("group", { name: "Claude Code 命令行" });
   await expect(row).toContainText("未登录", { timeout: 30_000 });
   await expect(row).toContainText("会在这台电脑上打开浏览器");
   await snap(settings, "batche-login-before");

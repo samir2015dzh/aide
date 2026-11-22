@@ -3,10 +3,10 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { Machine } from "@aide/proto/local";
 import { SessionStatus } from "@aide/proto/session";
-import { agoText, dateOf, isActive, platformTitle } from "@aide/core";
+import { agoText, dateOf, isActive, machineConnections, platformTitle } from "@aide/core";
 import { Mark } from "@aide/ui";
 import { AgentList, AgentPage, sortAgents } from "../AgentList";
-import { ConnectionsCard } from "../Connections";
+import { LocalGrants } from "../Connections";
 import { useCheckAgents } from "../agents";
 import { local } from "../api";
 import { Problems } from "../health";
@@ -184,7 +184,6 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
         </div>
       </div>
       <Problems m={m} />
-      <ConnectionsCard m={m} />
       {/* A machine only is there to share them. */}
       {m.local && !st.status?.machineOnly && (
         <div className="fgroup">
@@ -192,11 +191,14 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
         </div>
       )}
       <div>
+        {/* One list of this machine's agents (工单 #53): each once, by one name, with one state (the connections'), its
+            connection details and what manages it on the same entry; agents connected from here with a grant follow. */}
         <div className="fhead">{t("machines.codingAgents")}</div>
         <AgentList
           m={m}
           agents={agents}
           onOpen={open}
+          connections={machineConnections(m, now)}
           unknown={
             <div className="frow muted">
               {(m.online || m.local) && <Mark size={14} variant="seq" />}
@@ -204,11 +206,13 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
             </div>
           }
         />
-        {m.local && (
-          <p className="set-note">
-            <button className="link" onClick={() => void local.checkAgents({ rescanHidden: true }).catch(() => {})}>{t("machines.recheck")}</button>
-          </p>
-        )}
+        <LocalGrants m={m} />
+        <p className="set-note">
+          {t("conn.personalNote", { ns: "common" })}{" "}
+          {(m.local || m.online) && (
+            <button className="link" onClick={() => void local.checkAgents(m.local ? { rescanHidden: true } : { machineId: m.machineId }).catch(() => {})}>{t("machines.recheck")}</button>
+          )}
+        </p>
       </div>
       <div>
         <div className="fhead">{t("machines.sessions")}</div>

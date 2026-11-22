@@ -36,7 +36,7 @@ Aide has no server of its own: each owner runs one ([Run your own server](#run-y
 | Platform | Download |
 |---|---|
 | **Windows** | `Aide-windows-x64-setup.exe` from the [latest release](https://github.com/samir2015dzh/aide/releases/latest) |
-| **Android** | `Aide-<version>-debug.apk` from the same release |
+| **Android** | `Aide-<version>.apk` from the same release |
 
 Open the app and choose **Log In**: your server, account and password. The first time, choose **Set Up a New Server** instead, with the setup code the server printed (below). The Windows app also makes that PC a machine your agents can run coding agents on. The Windows installer is not code-signed yet: click **More info › Run anyway** if SmartScreen asks.
 

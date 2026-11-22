@@ -36,7 +36,7 @@ Aide 没有官方服务器：每个使用者自己运行一台（见[运行你�
 | 平台 | 下载 |
 |---|---|
 | **Windows** | [最新发布](https://github.com/samir2015dzh/aide/releases/latest)里的 `Aide-windows-x64-setup.exe` |
-| **Android** | 同一个发布里的 `Aide-<版本>-debug.apk` |
+| **Android** | 同一个发布里的 `Aide-<版本>.apk` |
 
 打开应用，选「登录」：填服务器、账号和密码。第一次用时改选「设置新的服务器」，填服务器启动时打印的设置码（见下）。Windows 应用同时把这台电脑变成能跑编码 agent 的机器。Windows 安装包还没有代码签名：SmartScreen 拦的话，点「更多信息 › 仍要运行」。
 

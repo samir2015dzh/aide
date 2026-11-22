@@ -3,7 +3,8 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { MachineSchema, type Machine } from "@aide/proto/local";
 import { AgentLoginState, AgentProblem, DSHBridgeState } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
-import { bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
+import { agentEntry, bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
+import { codingAgentShort, codingAgentTitle } from "./agents";
 
 const now = new Date("2026-11-22T10:00:00Z");
 const checked = timestampFromDate(new Date("2026-11-22T09:58:00Z"));
@@ -44,6 +45,32 @@ describe("connections", () => {
     expect(r[0].state).toBe("partial");
     expect(r[1].lacks).toContain("能用：Aide 发起的 DSH 任务");
     expect(r[1].fix).toBe("prepareBridge");
+  });
+
+  test("one entry per agent, one name, one state (工单 #53): DSH is DSH, DeepSeek only its models", () => {
+    expect(codingAgentTitle("deepseek")).toBe("DSH");
+    expect(codingAgentShort("deepseek")).toBe("DSH");
+    const c = machineConnections(
+      machine([
+        { name: "claude", available: true, version: "2.1.330", loggedIn: true, desktop: { installed: true, signedIn: true } },
+        { name: "deepseek", available: true, loggedIn: true, version: "1.4.0", models: [{ id: "v4", name: "DeepSeek V4" }], dshBridge: { state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED } },
+        { name: "codex", available: true, loggedIn: true },
+      ]),
+      now,
+    );
+    const claude = agentEntry(c, "claude")!;
+    expect(claude.rows.map((r) => r.id)).toEqual(["claude-desktop", "claude-cli"]);
+    expect([claude.state, claude.text]).toEqual(["ok", "可以用"]);
+    const dsh = agentEntry(c, "deepseek")!;
+    expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 桥接插件"]);
+    expect(dsh.rows[0].note).toBe("模型：DeepSeek V4");
+    expect([dsh.state, dsh.text]).toEqual(["partial", "部分可用"]);
+    expect(c.rows.some((r) => r.title.includes("DeepSeek"))).toBe(false);
+    expect(agentEntry(c, "codex")!.text).toBe("可以用");
+    expect(agentEntry(c, "gemini")).toBeUndefined();
+    // Stale: the entry is unknown, never "signed in" beside "unknown".
+    const old = machineConnections(machine([{ name: "claude", available: true, loggedIn: true, checkedAt: timestampFromDate(new Date("2026-11-22T08:00:00Z")) }]), now);
+    expect([agentEntry(old, "claude")!.state, agentEntry(old, "claude")!.text]).toEqual(["unknown", "状态未知"]);
   });
 
   test("a finding is not passed off as now: offline, or checked too long ago, it is unknown with when", () => {

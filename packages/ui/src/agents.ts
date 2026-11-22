@@ -32,7 +32,7 @@ const titles = new Map([
   ["kimi", "Kimi"],
   ["kiro", "Kiro"],
   ["qoder", "Qoder"],
-  ["deepseek", "DeepSeek Harness"],
+  ["deepseek", "DSH"],
   ["codebuddy", "CodeBuddy Code"],
   ["grok", "Grok"],
 ]);
@@ -41,7 +41,6 @@ const shortTitles = new Map([
   ["claude", "Claude"],
   ["copilot", "Copilot"],
   ["codebuddy", "CodeBuddy"],
-  ["deepseek", "DeepSeek"],
   ["gemini", "Gemini"],
 ]);
 

@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -67,15 +69,24 @@ fun SettingsTab(model: AppModel) {
     var editing by remember { mutableStateOf<AccountChange?>(null) }
     var signingOut by remember { mutableStateOf<Device?>(null) }
     Column(Modifier.fillMaxSize()) {
-        PageTitle(t("Settings", "设置"))
+        PageTitle(t("Settings", "设置"), (login?.account?.ifEmpty { null } ?: st.account).takeIf { it.isNotEmpty() }?.let { t("Signed in as $it", "已登录账号 $it") })
         SyncLine(model)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp)) {
             item { SectionHeader(t("Account", "账号")) }
             item {
-                Column(Modifier.fillMaxWidth().aideCard().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.fillMaxWidth().aideCard().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     val l = login
-                    Labeled(t("Account", "账号"), l?.account?.ifEmpty { null } ?: st.account)
-                    Labeled(t("Server", "服务器"), l?.server?.ifEmpty { null } ?: st.relayUrl)
+                    // Who is signed in, said as a person's card (工单 #54): the account large, its server under it.
+                    val account = l?.account?.ifEmpty { null } ?: st.account
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        MachineMark(account.ifEmpty { "?" }, online = true, size = 48)
+                        HSpace(14)
+                        Column(Modifier.weight(1f)) {
+                            Text(account, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+                            Text(l?.server?.ifEmpty { null } ?: st.relayUrl, style = MaterialTheme.typography.bodySmall, color = aide.faint, maxLines = 1)
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp, color = aide.separator)
                     Text(
                         t("Log in on a new device, computer or agent with this server, account and password.", "在新的设备、电脑或 Agent 上，用这个服务器、账号和密码登录。"),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -103,20 +114,31 @@ fun SettingsTab(model: AppModel) {
                             Spacer(Modifier.width(12.dp))
                             Switch(checked = !l.off, onCheckedChange = { editing = AccountChange.Logins(off = !it) })
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { editing = AccountChange.Name }) { Text(t("Change account name…", "修改账号…")) }
-                            TextButton(onClick = { editing = AccountChange.Password }) { Text(t("Change password…", "修改密码…")) }
+                        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            androidx.compose.material3.FilledTonalButton(onClick = { editing = AccountChange.Name }) { Text(t("Change account name…", "修改账号…")) }
+                            androidx.compose.material3.FilledTonalButton(onClick = { editing = AccountChange.Password }) { Text(t("Change password…", "修改密码…")) }
                         }
                     }
                 }
             }
 
-            item { SectionHeader(t("Devices", "设备")) }
-            items(world.devices, key = { it.keyId }) { d -> DeviceRow(d, signOut = { signingOut = d }) }
+            item { SectionHeader(t("Devices", "设备"), count = world.devices.size) }
+            itemsIndexed(world.devices, key = { _, d -> d.keyId }) { i, d ->
+                Column(Modifier.groupRow(i, world.devices.size)) {
+                    DeviceRow(d, signOut = { signingOut = d })
+                    if (i < world.devices.size - 1) HorizontalDivider(Modifier.padding(start = 64.dp), thickness = 0.5.dp, color = aide.separator)
+                }
+            }
 
             item {
                 SectionHeader(t("This phone", "这台手机"))
-                Column(Modifier.fillMaxWidth().aideCard().padding(horizontal = 14.dp, vertical = 6.dp)) {
+                Column(Modifier.fillMaxWidth().aideCard().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(Modifier.padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(t("Aide on this phone", "这台手机上的 Aide"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        // The same state the Connection line under it says (KeepaliveSettings).
+                        val link by model.link.collectAsState()
+                        if (link == io.aide.android.connection.Link.Connected) StatusPill(t("Connected", "已连接"), Tone.Good) else StatusPill(linkText(link), Tone.Quiet)
+                    }
                     Labeled(t("Server", "服务器"), st.relayUrl)
                     if (st.account.isNotEmpty()) Labeled(t("Account", "账号"), st.account)
                     Labeled(t("Core version", "核心版本"), st.version)
@@ -138,9 +160,14 @@ fun SettingsTab(model: AppModel) {
 
 @Composable
 private fun DeviceRow(d: Device, signOut: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        MachineMark(d.label, d.thisDevice || d.machineOnline, 36)
+        HSpace(12)
         Column(Modifier.weight(1f)) {
-            Text(d.label + if (d.thisDevice) t(" (this phone)", "（这台手机）") else "", fontWeight = if (d.thisDevice) FontWeight.SemiBold else FontWeight.Normal)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(d.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                if (d.thisDevice) { HSpace(8); StatusPill(t("This phone", "这台手机"), Tone.Live) }
+            }
             Text(
                 listOfNotNull(
                     d.platform.takeIf { it.isNotEmpty() },

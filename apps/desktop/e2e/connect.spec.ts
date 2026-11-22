@@ -32,11 +32,11 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
   const { app, page } = await launch();
   const settings = await openSettings(app, page, "connect");
   const main = settings.getByRole("main", { name: "连接" });
-  await expect(main.getByRole("tab", { name: "DSH（DeepSeek Harness）" })).toHaveAttribute("aria-selected", "true");
+  await expect(main.getByRole("tab", { name: "DSH", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(main.getByText("开始之前")).toBeVisible();
   await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到 · 版本 1.2.3" })).toBeVisible({ timeout: 30_000 });
   await main.getByRole("button", { name: "运行测试" }).click();
-  await expect(main.getByText(/^可以用：DeepSeek Harness 在 [\d.]+ 秒内回答了「ready」。$/)).toBeVisible({ timeout: 60_000 });
+  await expect(main.getByText(/^可以用：DSH 在 [\d.]+ 秒内回答了「ready」。$/)).toBeVisible({ timeout: 60_000 });
   await snap(settings, "connect-deepseek");
 
   await main.getByRole("button", { name: "开始测试任务" }).click();
@@ -44,8 +44,8 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
   await expect
     .poll(async () => (await api<{ sessions?: { agent: string; createdBy: string }[] }>(settings, "ListSessions")).sessions?.some((s) => s.agent === "deepseek" && s.createdBy === "owner"))
     .toBe(true);
-  await main.getByRole("button", { name: "打开 DeepSeek 会话" }).click();
-  await expect(page.getByRole("navigation", { name: "DeepSeek 会话" })).toBeVisible();
+  await main.getByRole("button", { name: "打开 DSH 会话" }).click();
+  await expect(page.getByRole("navigation", { name: "DSH 会话" })).toBeVisible();
 
   await main.getByRole("tab", { name: "Claude Desktop" }).click();
   await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上没有检测到" })).toBeVisible({ timeout: 30_000 });
@@ -107,7 +107,7 @@ test("the guide from the sidebar, and opened at a line: the assistants' shows on
   const [settings] = await Promise.all([app.waitForEvent("window"), page.locator(".side-nav").getByRole("button", { name: "连接 Agent" }).click()]);
   await settings.waitForLoadState();
   const main = settings.getByRole("main", { name: "连接" });
-  await expect(main.getByRole("tab", { name: "DSH（DeepSeek Harness）" })).toHaveAttribute("aria-selected", "true");
+  await expect(main.getByRole("tab", { name: "DSH", exact: true })).toHaveAttribute("aria-selected", "true");
   for (const name of ["Claude Desktop", "Codex", "其他 Agent", "助手"]) await expect(main.getByRole("tab", { name })).toHaveAttribute("aria-selected", "false");
 
   // A link names its line (connect/<line>): the same window, on that line.

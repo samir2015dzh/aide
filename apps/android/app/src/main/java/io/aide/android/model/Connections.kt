@@ -27,6 +27,8 @@ data class ConnRow(
     val checkedAt: Instant? = null,
     /** Signing it in from Aide is offered (Claude Code's command line, 工单 #51). */
     val login: Boolean = false,
+    /** Not known now: what it said when last checked (工单 #53: said as such under its entry, never as now). */
+    val was: String? = null,
 )
 
 data class MachineConnections(val reachable: Boolean, val rows: List<ConnRow>, val state: ConnState)
@@ -77,6 +79,7 @@ fun machineConnections(m: Machine, now: Instant): MachineConnections {
         r.copy(
             state = ConnState.UNKNOWN,
             text = t("Unknown", "状态未知"),
+            was = r.text,
             lacks = if (!reachable) t("The machine can't be reached now: last known “${r.text}” ($whenText)", "机器暂时连不上：上次知道的是「${r.text}」（$whenText）")
             else t("Not checked again since $whenText (it said “${r.text}”)", "${whenText}之后没有再检测过（当时是「${r.text}」）"),
         )
@@ -188,4 +191,79 @@ fun agoText(d: Instant, now: Instant): String {
         s < 86400 -> t("${s / 3600} hr ago", "${s / 3600} 小时前")
         else -> t("${s / 86400} days ago", "${s / 86400} 天前")
     }
+}
+
+/**
+ * One coding agent on a machine, as its page lists it (工单 #53): one entry, one name, one state. The connection
+ * rows of one agent (Claude Desktop and the command line; DSH and its bridge plugin) are its parts, under it, never
+ * a second list beside it; its state is its main row's — the command line for Claude (what Aide runs), DSH itself
+ * for DSH — so the page never says "unknown" above and "signed in" below of one thing.
+ */
+data class AgentEntry(
+    val agent: String,
+    val title: String,
+    val state: ConnState,
+    val text: String,
+    /** What the state means, or why it is not known now. */
+    val lacks: String?,
+    val checkedAt: Instant?,
+    /** What it works with, on a line of its own: DSH's models (DeepSeek), never as a second agent. */
+    val account: String?,
+    /** Its other rows, said quietly under it (Claude Desktop, the command line, DSH's bridge plugin). */
+    val parts: List<ConnRow>,
+    /** Its main row offers signing in from Aide (工单 #51). */
+    val login: Boolean,
+    /** What the machine said of it, for its pause and the Manage menu; null: nothing to manage. */
+    val status: AgentStatus?,
+)
+
+/** A machine's agents, one entry each, in the order its connections list them. */
+fun machineAgents(m: Machine, now: Instant): List<AgentEntry> {
+    val c = machineConnections(m, now)
+    val statuses = m.status?.agents.orEmpty().associateBy { it.name }
+    return c.rows.groupBy { it.agent }.map { (agent, rows) ->
+        val main = rows.firstOrNull { it.id == agent || it.id == "$agent-cli" } ?: rows.first()
+        val s = statuses[agent]
+        val unknown = main.state == ConnState.UNKNOWN
+        AgentEntry(
+            agent = agent,
+            title = agentTitle(agent),
+            state = main.state,
+            text = main.text,
+            // Not known only for want of a recent check: said shortly, as the page checks again by itself; its
+            // parts say what it was.
+            lacks = if (unknown && c.reachable) t("Not checked lately: checking again…", "有一阵没检测了：正在重新检测…") else main.lacks,
+            checkedAt = main.checkedAt,
+            // DSH's models (DeepSeek's), as the desktop says them: never "signed in", which the machine can't know
+            // for DSH before a session (ACP reports it as signed in whatever the truth).
+            account = if (agent == "deepseek" && s?.available == true && s.models.isNotEmpty()) {
+                val models = t("Models: ", "模型：") + s.models.take(3).joinToString(" · ") { it.name.ifEmpty { it.id } }
+                if (unknown) t("Last known: $models", "上次检测：$models") else models
+            } else null,
+            // Claude's two rows are its skeleton (工单 #53): the command line is the state above, said again here by name.
+            parts = rows.filter { it !== main || agent == "claude" && rows.size > 1 },
+            login = main.login,
+            status = s?.takeIf { it.available },
+        )
+    }
+}
+
+/**
+ * Whether a machine's findings are too old to show as now (or were never made): the machines page asks it to check
+ * again by itself while it is open, as the desktop does on showing its own (工单 #53: every row "unknown" only
+ * because nothing had asked lately).
+ */
+fun needsCheck(m: Machine, now: Instant): Boolean {
+    if (!m.online || m.unreachable.isNotEmpty()) return false
+    val agents = m.status?.agents.orEmpty().filter { !it.hidden }
+    if (agents.any { it.checking }) return false
+    return agents.any { a -> val at = checked(a); at == null || Duration.between(at, now) > STALE_AFTER }
+}
+
+/** A part's short name under its entry. */
+fun partTitle(r: ConnRow): String = when (r.id) {
+    "claude-cli" -> t("Command line", "命令行")
+    "claude-desktop" -> "Claude Desktop"
+    "deepseek-bridge" -> t("Bridge plugin", "桥接插件")
+    else -> r.title
 }

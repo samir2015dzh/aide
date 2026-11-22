@@ -45,7 +45,7 @@ apps/android/
 │   └── ui/        Compose screens
 ├── app/src/test/  JVM unit tests
 ├── scripts/build-core.sh   gomobile bind → build/core/aidecore.aar
-└── scripts/build.sh        the core, the app and its tests → build/Aide-<version>-debug.apk
+└── scripts/build.sh        the core, the app and its tests → build/Aide-<version>.apk
 cmd/aide-mobile/android/  the Go package bound for Android (package aidecore)
 ```
 
@@ -220,16 +220,20 @@ Needs Go (the module's version), a JDK 17 or later, and the Android SDK with
 
 ```
 sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "build-tools;35.0.0" "ndk;27.3.13750724"
-ANDROID_HOME=<sdk> apps/android/scripts/build.sh          # → apps/android/build/Aide-0.0.0-dev-debug.apk
-adb install -r apps/android/build/Aide-0.0.0-dev-debug.apk
+ANDROID_HOME=<sdk> apps/android/scripts/build.sh          # → apps/android/build/Aide-0.0.0-dev.apk
+adb install -r apps/android/build/Aide-0.0.0-dev.apk
 ```
 
 `build.sh` runs Gradle (`./gradlew`, its wrapper fetches Gradle 8.14.3),
 whose `preBuild` runs `build-core.sh` (gomobile bind for `android/arm64`
 and `android/amd64`, skipped when nothing in Go changed; `FORCE=1` builds
-again), then `assembleDebug` and the unit tests (`SKIP_TESTS=1` skips them).
-`VERSION=0.1.2` stamps the version. The APK is a debug build (application id
-`io.aide.android.debug`); outputs and caches stay out of git
+again), then `assembleRelease` and the unit tests (`SKIP_TESTS=1` skips them).
+`VERSION=0.1.2` stamps the version. The APK is the release build — not
+debuggable, so the system compiles it and Compose's own profiles apply (a
+debuggable build scrolls far worse on a phone, 工单 #55) — with the application
+id the published APKs have always had (`io.aide.android.debug`), so it installs
+over them. `-Pshots` with the unit-test task renders each main page as a
+picture instead (`app/build/outputs/roborazzi`, Robolectric). Outputs and caches stay out of git
 (`apps/android/.gitignore`).
 
 ### 6.1 The app's signing key

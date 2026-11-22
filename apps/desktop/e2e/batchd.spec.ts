@@ -31,14 +31,16 @@ test("this Mac's connections in one place, and the same rows on Connect Agent; e
   const { machines } = await api<{ machines: { machineId: string; local?: boolean }[] }>(page, "ListMachines");
   const mine = machines.find((m) => m.local)!;
   const settings = await openSettings(app, page, `machines/${mine.machineId}`);
-  const card = settings.getByRole("region", { name: "本机连接状态" });
+  // One list of this Mac's agents (工单 #53): no second "connections" list beside it.
+  await expect(settings.getByRole("region", { name: "本机连接状态" })).toHaveCount(0);
+  const card = settings.getByRole("list", { name: "编码 Agent" });
   await expect(card).toBeVisible({ timeout: 30_000 });
-  // Each coding agent here in words (the command line Claude Code apart from the app), with when it was checked;
-  // personal agents are said to follow the account.
-  await expect(card.locator(".conn-row").filter({ hasText: "Claude Code 命令行" })).toContainText("已登录", { timeout: 30_000 });
-  await expect(card.locator(".conn-row").filter({ hasText: "Codex" })).toContainText("未登录");
+  // Each coding agent here in words (the command line Claude Code apart from the app, as a detail of Claude Code's
+  // entry), with when it was checked; personal agents are said to follow the account.
+  await expect(card.getByRole("listitem", { name: "Claude Code" }).getByRole("group", { name: "Claude Code 命令行" })).toContainText("已登录", { timeout: 30_000 });
+  await expect(card.getByRole("listitem", { name: "Codex" })).toContainText("未登录");
   await expect(card.getByText(/检测$/).first()).toBeVisible({ timeout: 30_000 });
-  await expect(card).toContainText("个人 Agent（Muse、Grok Bot 等）跟着账号走");
+  await expect(settings.getByText(/个人 Agent（Muse、Grok Bot 等）跟着账号走/)).toBeVisible();
   await snap(settings, "batchd-machine-connections");
 
   await settings.close();
