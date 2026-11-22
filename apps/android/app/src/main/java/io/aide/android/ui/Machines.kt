@@ -26,13 +26,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.AgentStatus
 import io.aide.android.api.Machine
 import io.aide.android.model.AppModel
+import io.aide.android.model.ConnState
 import io.aide.android.model.agentTitle
+import io.aide.android.model.agoText
+import io.aide.android.model.machineConnections
 import io.aide.android.model.instantOrNull
 import io.aide.android.model.pausedUntil
 import io.aide.android.model.usageResetAt
@@ -98,6 +102,7 @@ private fun MachineCard(model: AppModel, m: Machine) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (m.unreachable.isNotEmpty() && m.online) Text(m.unreachable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            ConnectionsBlock(m)
             s?.agents?.filter { it.available && !it.hidden }?.forEach { a -> AgentRow(model, m, a) }
             // Hidden by the owner (SetAgentHidden): named, to show again, as at the end of the desktop's list.
             s?.agents?.filter { it.hidden }?.takeIf { it.isNotEmpty() }?.let { hidden ->
@@ -113,6 +118,41 @@ private fun MachineCard(model: AppModel, m: Machine) {
     }
 }
 
+/**
+ * This machine's connections (工单 #49), in the same rows and words as the desktop's machine page: what is connected,
+ * what is not, what that means, and when it was checked — read without opening anything.
+ */
+@Composable
+private fun ConnectionsBlock(m: Machine) {
+    val c = machineConnections(m, Instant.now())
+    if (c.rows.isEmpty()) return
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(t("Connections on this machine", "本机连接状态"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        c.rows.forEach { r ->
+            Row(verticalAlignment = Alignment.Top) {
+                AgentFace(r.agent, 24)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(r.title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Text(r.text, style = MaterialTheme.typography.labelMedium, color = connColor(r.state))
+                    }
+                    r.lacks?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    r.checkedAt?.let { Text(t("Checked ${agoText(it, Instant.now())}", "${agoText(it, Instant.now())}检测"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun connColor(s: ConnState) = when (s) {
+    ConnState.OK -> Positive
+    ConnState.PARTIAL -> Warning
+    ConnState.MISSING -> MaterialTheme.colorScheme.error
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
 private val whenFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
 
 /**
@@ -125,7 +165,9 @@ private fun AgentRow(model: AppModel, m: Machine, a: AgentStatus) {
     val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf(false) }
     val until = pausedUntil(a)
-    Row {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AgentFace(a.name, 28)
+        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(agentTitle(a.name), style = MaterialTheme.typography.bodyMedium)
             Text(

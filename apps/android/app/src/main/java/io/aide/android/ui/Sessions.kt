@@ -1,5 +1,11 @@
 package io.aide.android.ui
 
+import androidx.compose.foundation.border
+
+import androidx.compose.ui.graphics.graphicsLayer
+
+import androidx.compose.animation.core.animateFloat
+
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.animation.core.tween
@@ -143,12 +149,16 @@ fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
             Box(Modifier.width(3.dp).height(36.dp).background(Warning, RoundedCornerShape(2.dp)))
             Spacer(Modifier.width(9.dp))
         }
-        StatusDot(s)
+        // Who works on it, by its face (the same on every screen), its state on the face's corner.
+        Box {
+            AgentFace(s.agent, 34)
+            Box(Modifier.align(Alignment.BottomEnd).padding(0.dp)) { StatusDot(s) }
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(displayTitle(s), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (needsYou(s)) FontWeight.SemiBold else FontWeight.Normal)
             Text(
-                "${world.senderName(s)} → ${agentTitle(s.agent)} · ${s.projectId}",
+                "${world.senderName(s)} → ${agentTitle(s.agent)} · ${world.projectTitle(s.machineId, s.projectId)}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
@@ -159,6 +169,10 @@ fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
     }
 }
 
+/**
+ * A session's state as a dot; while it works, a ring grows out of it and fades (the desktop's running ping, 工单 #47):
+ * motion only while something runs, none when the system asks for less.
+ */
 @Composable
 fun StatusDot(s: Session) {
     val color = when {
@@ -167,7 +181,17 @@ fun StatusDot(s: Session) {
         s.status == SessionStatus.CRASHED || s.progress?.lastFailure != null -> MaterialTheme.colorScheme.error
         else -> Color.Gray.copy(alpha = 0.5f)
     }
-    Box(Modifier.size(10.dp).background(color, CircleShape))
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val still = android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
+        if (isLive(s) && !still) {
+            val ping by androidx.compose.animation.core.rememberInfiniteTransition(label = "live").animateFloat(
+                0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2000, easing = Motion.EaseOut)), label = "ping",
+            )
+            Box(Modifier.size(10.dp).graphicsLayer { scaleX = 1f + ping * 1.3f; scaleY = 1f + ping * 1.3f; alpha = 0.45f * (1f - ping) }.background(color, CircleShape))
+        }
+        Box(Modifier.size(10.dp).background(color, CircleShape).border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape))
+    }
 }
 
 /**

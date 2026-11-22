@@ -64,8 +64,9 @@ object Motion {
 object Radius {
     val Sm = 8.dp
     val Md = 10.dp
-    val Lg = 14.dp
-    val Xl = 18.dp
+    // Cards a little rounder, as the reference the owner gave (工单 #48: Grok reference note §2, 16–24).
+    val Lg = 16.dp
+    val Xl = 20.dp
 }
 
 // Every surface slot set, in both modes: a slot left out falls back to Material's purple-grey, which showed

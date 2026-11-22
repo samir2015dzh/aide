@@ -57,6 +57,8 @@ sealed interface Route {
     data object Contacts : Route
     data class Contact(val id: String) : Route
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
+    /** A task for an agent on a machine, with no contact (工单 #41). */
+    data class Dispatch(val machineId: String, val agent: String) : Route
 }
 
 enum class Tab { Sessions, NeedsYou, Machines, Settings }
@@ -113,7 +115,8 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
             Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
-            Route.Contacts -> ContactsPage(model, open = { stack.add(Route.Contact(it.personaId)) }, add = { stack.add(Route.EditContact(io.aide.android.api.Persona(icon = "robot", color = io.aide.android.model.personaColors.first()))) }, back = { stack.removeAt(stack.lastIndex) })
+            Route.Contacts -> ContactsPage(model, open = { stack.add(Route.Contact(it.personaId)) }, dispatch = { stack.add(Route.Dispatch(it.machineId, it.agent)) }, add = { stack.add(Route.EditContact(io.aide.android.api.Persona(icon = "robot", color = io.aide.android.model.personaColors.first()))) }, back = { stack.removeAt(stack.lastIndex) })
+            is Route.Dispatch -> DispatchPage(model, top.machineId, top.agent, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
             // Written to, the real session opens over the contact.
             is Route.Contact -> ContactPage(model, top.id, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.EditContact -> ContactEditPage(model, top.persona) { kept ->

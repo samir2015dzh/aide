@@ -78,7 +78,18 @@ data class AgentStatus(
     val autoResumedAt: String = "",
     /** Claude plan usage read on that machine (Claude Code only). */
     val usage: ClaudeUsage? = null,
+    /** Why it is not available: an AgentProblem name ("AGENT_PROBLEM_NOT_FOUND", …); "" when it is. */
+    val problem: String = "",
+    /** When the check the rest says came from ended (RFC 3339); "" never checked. */
+    val checkedAt: String = "",
+    /** Claude only: the Claude desktop app, apart from the command line (loggedIn is the command line's own sign-in). */
+    val desktop: ClaudeDesktop? = null,
+    /** DSH only: the Aide bridge plugin in DSH Desktop. */
+    val dshBridge: DSHBridge? = null,
 )
+
+@Serializable
+data class ClaudeDesktop(val installed: Boolean = false, val signedIn: Boolean = false)
 
 /** aide.machine.v1.AgentPause; resumeAt empty: only the owner resumes it. Times are RFC 3339. */
 @Serializable
@@ -183,7 +194,12 @@ data class Project(
     val path: String = "",
     /** The coding agents that may work in it; empty: all. */
     val agents: List<String> = emptyList(),
+    /** What the owner calls it (工单 #50); empty: its id. */
+    val name: String = "",
 )
+
+/** A project as the owner knows it: the name they gave it, else its id. */
+fun Project.title(): String = name.trim().ifEmpty { projectId }
 
 @Serializable
 data class ProjectRef(val machineId: String = "", val projectId: String = "")
@@ -404,7 +420,15 @@ data class SessionEvent(
     val takeover: Boolean = false,
 )
 /** The Aide bridge plugin in DSH Desktop (aide.machine.v1.DSHBridge). */
-@Serializable data class DSHBridge(val state: String = "", val version: String = "", val detail: String = "")
+@Serializable data class DSHBridge(
+    val state: String = "",
+    val version: String = "",
+    val detail: String = "",
+    /** The package Aide prepared, when there is one of the version it ships (工单 #46). */
+    val packagePath: String = "",
+    /** The version this machine's Aide ships: a running plugin of an older one is out of date. */
+    val latestVersion: String = "",
+)
 /** dshHome: the DSH home that machine reads DSH's sessions from. */
 @Serializable data class DSHBridgeEntry(val machineId: String = "", val bridge: DSHBridge = DSHBridge(), val dshHome: String = "")
 @Serializable data class SetDSHTakeoverRequest(val machineId: String, val sessionId: String, val on: Boolean)
@@ -447,6 +471,9 @@ data class Notice(
     val turn: Int = 0,
     val diffStat: DiffStat? = null,
 )
+
+@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String)
+@Serializable data class StartSessionRequest(val machineId: String, val session: StartSessionBody)
 
 // Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.
 
