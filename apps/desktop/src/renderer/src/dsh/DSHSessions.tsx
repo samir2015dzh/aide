@@ -275,7 +275,7 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
  * against the DSH there, restoring the profile when it fails, and turning it off or removing it later.
  * Aide prepares: it backs up DSH's configuration and writes the plugin's package, whose path it shows.
  */
-function Install({ machineId }: { machineId: string }) {
+export function Install({ machineId, onPrepared, packagePath }: { machineId: string; onPrepared?: () => void; packagePath?: string }) {
   const { t } = useTranslation("common");
   const [prepared, setPrepared] = useState<PrepareDSHBridgeResponse>();
   const [busy, setBusy] = useState(false);
@@ -285,10 +285,29 @@ function Install({ machineId }: { machineId: string }) {
     setBusy(true);
     setError("");
     local.prepareDSHBridge({ machineId }).then(
-      (r) => (setPrepared(r), setBusy(false)),
+      (r) => (setPrepared(r), setBusy(false), onPrepared?.()),
       (e) => (setError(errorText(e)), setBusy(false)),
     );
   };
+  // Prepared before (the machine says where): how to install it, without preparing again.
+  if (!prepared && packagePath) {
+    return (
+      <div className="dsh-install" role="region" aria-label={t("dsh.install.title")}>
+        <ol>
+          <li>
+            {t("dsh.install.step")}
+            <span className="dsh-path">
+              <span className="mono sel-text">{packagePath}</span>
+              <button className="btn sm" onClick={() => navigator.clipboard.writeText(packagePath).then(() => setCopied(true))}>
+                {copied ? t("dsh.install.copied") : t("dsh.install.copy")}
+              </button>
+            </span>
+          </li>
+          <li>{t("dsh.install.restart")}</li>
+        </ol>
+      </div>
+    );
+  }
   if (!prepared) {
     return (
       <div className="dsh-install">

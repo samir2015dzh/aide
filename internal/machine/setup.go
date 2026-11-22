@@ -8,6 +8,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -226,6 +227,9 @@ const testPrompt = "Reply with the single word ready, and nothing else. Use no t
 // testTimeout bounds a test turn, sign-in prompts and slow starts included.
 const testTimeout = 90 * time.Second
 
+// notSignedInReply is an agent's reply saying it is not signed in.
+var notSignedInReply = regexp.MustCompile(`(?i)not logged in|please run /login|invalid api key`)
+
 // TestAgent runs one short turn of a coding agent in a scratch folder and
 // reports its answer: proof that it is installed and signed in. Nothing is
 // kept and no tool may run.
@@ -274,7 +278,10 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 				if reply == "" {
 					reply = strings.TrimSpace(e.Text)
 				}
-				return &machinev1.TestAgentResponse{Ok: !e.IsError && reply != "", Reply: reply, Millis: uint32(time.Since(start).Milliseconds())}, nil
+				// Claude Code answers "Not logged in · Please run /login" as a
+				// message: that is no answer (工单 #44).
+				ok := !e.IsError && reply != "" && !notSignedInReply.MatchString(reply)
+				return &machinev1.TestAgentResponse{Ok: ok, Reply: reply, Millis: uint32(time.Since(start).Milliseconds())}, nil
 			}
 		}
 	}

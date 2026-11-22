@@ -327,5 +327,20 @@
     "started": "started {{ago}}",
     "lastActivity": "last activity {{ago}}",
     "open": "Open the session"
+  },
+  "contactsUnavailable": "Contacts need a newer server: the owner's relay doesn't keep them yet. Tasks can still be handed to the agents listed here.",
+  "conn": {
+    "title": "Connections on this machine",
+    "followsMachine": "Coding agents follow the machine they run on",
+    "noneYet": "Checking what is installed…",
+    "offline": "The machine is offline: what it last said can't be confirmed now.",
+    "checkedAt": "Checked {{when}}",
+    "neverChecked": "Not checked yet",
+    "grantOnline": "Connected now",
+    "grantIdle": "Connected (idle)",
+    "localGrant": "A coding agent on this machine that connects to Aide on its own (with its own access).",
+    "personalNote": "Personal agents (Muse, Grok Bot, …) follow your account, not a machine: they are in Settings › Access.",
+    "recheck": "Check again",
+    "fixClaudeCLI": "The command line needs Claude Code's own sign-in once; Aide can't do that for you here yet. Until then, hand Claude's tasks to a machine where it is signed in."
   }
 }

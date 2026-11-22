@@ -1,5 +1,6 @@
 import { ConnectLink } from "../components";
 import { useEffect, useState, type FormEvent } from "react";
+import { Icon } from "../icons";
 import { useTranslation } from "react-i18next";
 import { codingAgentTitle, displayTitle } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
@@ -98,6 +99,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="seg" role="group" aria-label={t("newSession.machine")}>
                 {online.map((m) => (
                   <button type="button" key={m.machineId} className={m.machineId === mid ? "on" : ""} aria-pressed={m.machineId === mid} onClick={() => pickMachine(m.machineId)}>
+                    <Icon name={m.local ? "laptop" : (m.status?.platform ?? "").startsWith("darwin") ? "mini" : "server"} />
                     {m.machineName}
                   </button>
                 ))}

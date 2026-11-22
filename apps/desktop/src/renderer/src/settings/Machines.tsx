@@ -6,6 +6,7 @@ import { SessionStatus } from "@aide/proto/session";
 import { agoText, dateOf, isActive, platformTitle } from "@aide/core";
 import { Mark } from "@aide/ui";
 import { AgentList, AgentPage, sortAgents } from "../AgentList";
+import { ConnectionsCard } from "../Connections";
 import { useCheckAgents } from "../agents";
 import { local } from "../api";
 import { Problems } from "../health";
@@ -183,6 +184,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
         </div>
       </div>
       <Problems m={m} />
+      <ConnectionsCard m={m} />
       {/* A machine only is there to share them. */}
       {m.local && !st.status?.machineOnly && (
         <div className="fgroup">

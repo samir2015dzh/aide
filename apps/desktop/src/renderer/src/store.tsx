@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { ConnectError } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, Wake } from "@aide/proto/local";
 import type { Session } from "@aide/proto/session";
 import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@aide/core";
@@ -126,9 +126,16 @@ export function useStore(): Store {
 
 /** Message of an error from aided, for the person. */
 export function errorText(e: unknown): string {
+  // The owner's server has no contacts yet (a relay older than them answers 404): said as such, never raw (工单 #42).
+  if (contactsUnavailable(e)) return i18n.t("common:contactsUnavailable");
   if (needsUpdate(e)) return i18n.t("common:needsUpdate.text");
   if (e instanceof ConnectError) return e.rawMessage;
   return e instanceof Error ? e.message : String(e);
+}
+
+/** The error says the owner's server keeps no contacts yet (its relay is older than them). */
+export function contactsUnavailable(e: unknown): boolean {
+  return e instanceof ConnectError && e.code === Code.Unimplemented && e.rawMessage.startsWith("contacts_unavailable");
 }
 
 function saved(key: string, fallback: boolean): boolean {

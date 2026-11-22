@@ -5,8 +5,9 @@ import type { Machine } from "@aide/proto/local";
 import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@aide/core";
 import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
+import { ConnectionsCard } from "./Connections";
 import { local } from "./api";
-import { agentOf, detect, fixes, formOf, formProblem, lines, looksSecret, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
+import { agentOf, detect, fixes, formOf, formProblem, lines, looksSecret, notLoggedIn, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
 import { Icon } from "./icons";
 import { needsUpdate } from "./skew";
 import { errorText, useStore } from "./store";
@@ -29,11 +30,21 @@ export function LinePicker({ tab, set }: { tab: Tab; set: (t: Tab) => void }) {
     <div className="seg cg-tabs" role="tablist" aria-label={t("title")}>
       {[...lines, "assistants" as const].map((x) => (
         <button key={x} type="button" role="tab" className={x === tab ? "on" : ""} aria-selected={x === tab} onClick={() => set(x)}>
-          {x !== "custom" && x !== "assistants" && <AgentTile agent={x} size={16} />}
-          {t(`lines.${x}`)}
+          {/* Every tab with its icon, the same size and baseline (工单 #45): those without a logo get a generic one. */}
+          {x === "custom" ? <IconTile name="puzzle" size={18} /> : x === "assistants" ? <IconTile name="persons" size={18} /> : <AgentTile agent={x} size={18} />}
+          <span>{t(`lines.${x}`)}</span>
         </button>
       ))}
     </div>
+  );
+}
+
+/** A generic icon drawn as an agent's logo tile is, for the tabs without a logo of their own. */
+function IconTile({ name, size }: { name: string; size: number }) {
+  return (
+    <span className="cg-itile" style={{ width: size, height: size, borderRadius: size * 0.28 }} aria-hidden="true">
+      <Icon name={name} />
+    </span>
   );
 }
 
@@ -112,7 +123,7 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
   const v = { machine: m.machineName, agent: codingAgentTitle(agent), app: a?.detail.replace(/\.app$/, "") ?? "", version: a?.version ?? "" };
   const windows = (m.status?.platform ?? "").startsWith("windows");
   const login = agent === "claude" ? "" : agent === "codex" ? "login" : undefined;
-  const state = d === "ready" && a?.version ? t("state.readyVersion", v) : t(`state.${d}`, v);
+  const state = d === "ready" && a?.version ? t("state.readyVersion", v) : d === "signIn" && agent === "claude" ? t("state.signInClaude", v) : t(`state.${d}`, v);
   return (
     <>
       <section className="cg-sec" aria-label={t("status")}>
@@ -140,6 +151,13 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
           </div>
         )}
       </section>
+      {/* The same rows as the machine's page: Claude Desktop and Claude Code apart, DSH and its plugin (工单 #44, #46, #49). */}
+      {(agent === "claude" || agent === "deepseek") && d !== "offline" && (
+        <section className="cg-sec" aria-label={t("details")}>
+          <div className="fhead">{t("details")}</div>
+          <ConnectionsCard m={m} only={(r) => r.agent === agent} />
+        </section>
+      )}
       <Verify m={m} agent={agent} line={line} ready={d === "ready"} place={place} />
       <Steps
         title={t("where")}
@@ -199,7 +217,9 @@ function Verify({ m, agent, line, ready, place }: { m: Machine; agent: string; l
     setTest({ busy: true });
     try {
       const r = await local.testMachineAgent({ machineId: m.machineId, agent });
-      setTest({ ok: r.ok, text: r.ok ? t("test.ok", { agent: title, reply: r.reply, seconds: (r.millis / 1000).toFixed(1) }) : t("test.failed", { reason: r.reply }) });
+      // Its own "Not logged in · Please run /login" is said in words, never as it printed it (工单 #44).
+      if (agent === "claude" && notLoggedIn(r.reply)) setTest({ ok: false, text: t("test.notLoggedIn") });
+      else setTest({ ok: r.ok, text: r.ok ? t("test.ok", { agent: title, reply: r.reply, seconds: (r.millis / 1000).toFixed(1) }) : t("test.failed", { reason: r.reply }) });
     } catch (e) {
       setTest({ ok: false, text: t("test.failed", { reason: errorText(e) }) });
     }

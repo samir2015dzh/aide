@@ -68,6 +68,11 @@ export function fixes(line: Line, d: Detected): string[] {
   }
 }
 
+/** Claude Code's answer says it is not signed in ("Not logged in · Please run /login"): a failure, whatever its exit said. */
+export function notLoggedIn(reply: string): boolean {
+  return /not logged in|please run \/login|invalid api key/i.test(reply);
+}
+
 /** The command that runs a program at path in a terminal: PowerShell's call operator on Windows. */
 export function terminalCommand(path: string, args: string, windows: boolean): string {
   const quoted = `"${path}"`;

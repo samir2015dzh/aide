@@ -24,7 +24,8 @@
     "signIn": "在 {{machine}} 上找到了，但还没登录",
     "appOnly": "{{machine}} 上只有 {{app}} 应用，还没有 Aide 要运行的那部分",
     "broken": "在 {{machine}} 上找到了，但运行不了",
-    "missing": "在 {{machine}} 上没有检测到"
+    "missing": "在 {{machine}} 上没有检测到",
+    "signInClaude": "在 {{machine}} 上找到了 Claude Code 命令行，但它还没登录（Claude Desktop 的登录不会续给它）"
   },
   "tryThis": "检查这些：",
   "checkAgain": "重新检查",
@@ -53,7 +54,8 @@
     "prompt": "这是来自 Aide 的测试。请用一句话回复：打个招呼，并说出你正在工作的文件夹。不要修改任何文件。",
     "started": "测试任务已开始，在 Aide 的任务列表里。",
     "open": "在 Aide 中打开",
-    "needsProject": "先添加一个项目：测试任务要在项目里进行。"
+    "needsProject": "先添加一个项目：测试任务要在项目里进行。",
+    "notLoggedIn": "没成功：Claude Code 命令行还没登录。Claude Desktop 的登录不会续给它，派给 Claude 的任务在这台机器上会失败。"
   },
   "deepseek": {
     "intro": "DSH 指 DeepSeek Harness 桌面应用，DeepSeek 的编码 Agent。Aide 运行你电脑上装的 DSH：桌面应用里自带的那个，或者 dsh 命令。",
@@ -88,8 +90,8 @@
     "fixInstall": "从 claude.ai/download 装好 Claude Desktop 并登录（或者单独装 Claude Code）。",
     "fixWhere": "已经装了 Claude Desktop？打开它的 Code 标签页，开一个简短的会话：应用只有这时才会下载 Claude Code。",
     "fixCodeTab": "Claude Desktop 还没有下载 Claude Code。打开 Claude Desktop 并登录，进入 Code 标签页，在那里开一个简短的会话。",
-    "fixSignIn": "给 Claude Code 登录一次：打开终端（Windows 上是 PowerShell），粘贴下面的命令回车，然后输入 /login，按浏览器里的提示操作。",
-    "testFailedHint": "如果原因是没登录，按上面「状态」里的说明给 Claude Code 登录，再测试一次。",
+    "fixSignIn": "Aide 派活用的是 Claude Code 命令行，它要用自己的账号登录一次；Claude Desktop 已登录也不算。目前 Aide 还做不到在界面里替你登录，能用的办法只有下面这一条：打开终端（Windows 上是 PowerShell），粘贴命令回车，输入 /login，按浏览器里的提示操作。",
+    "testFailedHint": "如果原因是「Not logged in」，那是 Claude Code 命令行没登录（与 Claude Desktop 是否登录无关），见上面「状态」里的说明。",
     "where1": "你在 Aide 里用 Claude 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。",
     "where2": "Claude Desktop 重启后，它的 Code 标签页里也会列出这些任务，前提是你自己在那里开过会话。微软应用商店版的 Claude Desktop 不会列出。",
     "where3": "要在 Claude Desktop 里接着做，等 Aide 用完再继续：它的标题结尾写着是谁「via Aide」开的。",
@@ -196,5 +198,6 @@
     "connected": "{{name}} 已连接",
     "connectedBody": "它现在可以在你所有机器的项目里开始任务，只看得到它自己开的任务，直到你登出它。",
     "scope": "调整它能用什么…"
-  }
+  },
+  "details": "连接细项"
 }
