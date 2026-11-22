@@ -733,8 +733,13 @@ func (a *app) resolveTarget(to string, contacts []contactRec, machines []machine
 		return target{}, &exitError{code: exitUsage, kind: "not_found", err: errors.New(why), hint: "see `aide message contacts`, or `aide session list` for sessions"}
 	}
 	inbox, session, _ := strings.Cut(to, "/")
-	if isNative(to) || strings.HasPrefix(inbox, "m_") && isNative(session) {
-		return target{}, readOnly(firstNonEmpty(session, to))
+	if isNative(to) {
+		// A DSH session by its id alone: its machine is in the id.
+		ref, ok := nativeMachine(machines, to)
+		if !ok {
+			return notFound(fmt.Sprintf("no machine this agent can reach has the DSH session %s", to))
+		}
+		inbox, session = ref.ID, to
 	}
 	if strings.HasPrefix(to, "s_") && session == "" {
 		ref, err := resolveMachine(machines, "", to)
@@ -930,8 +935,11 @@ To an agent: the message waits in its inbox until it reads it. --wait waits for 
 
 To a DeepSeek Harness session Aide did not start (dsh_…): only one the owner took over (接管 in the
 Aide app; "aide session get" says takeover). It goes through the Aide plugin in DSH Desktop, after the
-turn running there, shown as yours. --model provider/model[/effort] and --permission <preset> set what
-the session goes on with first (the choices: "aide session get <dsh_…>").
+turn running there, shown as yours; the session's model reads who wrote it and answers you with its
+aide_message_send tool (a message in your inbox, answering yours). While DSH Desktop is closed it waits
+at the post office and goes once it is open. Text only, each message a turn. --model
+provider/model[/effort] and --permission <preset> set what the session goes on with first (the choices:
+"aide session get <dsh_…>"; DSH Desktop must be open).
 
 A managed workspace's coordinator answers a session's request with --workspace-request and --status
 (approved, rejected or provisioned); the message is the reply's words (docs/workspace-requests.md).`,
@@ -961,9 +969,11 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 			if isBroadcast(to) {
 				return broadcastRefused(to)
 			}
-			if _, session, _ := strings.Cut(to, "/"); isNative(to) || isNative(session) {
-				if len(atts) > 0 || wait || subject != "" || replyTo != "" {
-					return &exitError{code: exitUsage, kind: "usage", err: errors.New("a DSH session takes text only: no -f, --wait, --subject or --reply-to")}
+			if _, session, _ := strings.Cut(to, "/"); (isNative(to) || isNative(session)) && (model != "" || permission != "") {
+				// The model and permission it goes on with: straight to
+				// DSH Desktop, on an online machine.
+				if len(atts) > 0 || wait || subject != "" || replyTo != "" || fyi {
+					return &exitError{code: exitUsage, kind: "usage", err: errors.New("with --model or --permission, a DSH session takes text only: no -f, --wait, --subject, --reply-to or --fyi")}
 				}
 				return a.sendNative(ctx, cmd, firstNonEmpty(session, to), body, model, permission)
 			}
@@ -994,11 +1004,6 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				switch {
 				case rerr != nil:
 					return rerr
-				case ok && e.Kind == "dsh_session":
-					if len(atts) > 0 || wait || subject != "" || replyTo != "" {
-						return &exitError{code: exitUsage, kind: "usage", err: errors.New("a DSH session takes text only: no -f, --wait, --subject or --reply-to")}
-					}
-					return a.sendNative(ctx, cmd, e.Address, body, "", "")
 				case ok:
 					t, err = a.resolveTarget(e.Address, contacts, machines)
 				}
@@ -1017,8 +1022,19 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 			if err != nil {
 				return err
 			}
+			dsh := isNative(t.session)
+			if dsh && (len(atts) > 0 || wait || fyi || subject != "") {
+				return &exitError{code: exitUsage, kind: "usage", err: errors.New("a DSH session takes text only, each message a turn: no -f, --wait, --fyi or --subject")}
+			}
 			if t.session != "" && t.machine != nil && t.machine.Online {
-				return a.deliverDirect(ctx, cmd, c, t, signed, m, atts, wait)
+				if !dsh {
+					return a.deliverDirect(ctx, cmd, c, t, signed, m, atts, wait)
+				}
+				// Straight to DSH Desktop over the tunnel; while it is not
+				// running, through the post office.
+				if done, err := a.deliverDSH(ctx, cmd, c, t, signed, m); done || err != nil {
+					return err
+				}
 			}
 			if len(atts) > 0 {
 				what := "an agent"
@@ -1032,7 +1048,12 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				return err
 			}
 			sent := sentJSON{ID: m.MessageId, To: address(m.To), Name: t.name, Delivered: "queued", Expect: expectation(t)}
-			if t.machine != nil {
+			switch {
+			case dsh:
+				// Through the post office; the machine hands it to DSH
+				// Desktop's Aide plugin (docs/agent-messages.md §15.3).
+				sent.Expect = "the machine hands it to DSH Desktop (handed, then handled once the turn ends there); it waits while DSH Desktop is closed, and is refused, with a message saying why, if the owner has not taken the session over. The session answers with aide_message_send"
+			case t.machine != nil:
 				sent.Expect = "the machine is offline: the message waits for it, and the turn's news comes to your inbox"
 			}
 			sent.Delivery = delivery(sent, tierOf(t))
@@ -1091,6 +1112,43 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 	}
 	_, err = ms.Send(ctx, &relayv1.SendSealedRequest{Message: sm})
 	return err
+}
+
+// deliverDSH hands a message to a DSH session over the end-to-end tunnel:
+// its machine gives it to DSH Desktop's Aide plugin at once (handed), or
+// refuses it and says why. done is false when DSH Desktop is not running:
+// the message goes through the post office then.
+func (a *app) deliverDSH(ctx context.Context, cmd *cobra.Command, c *peer.Client, t target, signed *identityv1.Signed, m *inboxv1.Message) (done bool, err error) {
+	err = a.onMachine(ctx, c, *t.machine, func(c *peer.Client, n *peer.Machine, ref machineRef) error {
+		res, err := n.Session.DeliverMessage(ctx, &sessionv1.DeliverMessageRequest{SessionId: t.session, Message: signed})
+		delivered := res.GetDelivered()
+		var ce *connect.Error
+		errors.As(err, &ce)
+		switch connect.CodeOf(err) {
+		case connect.CodeUnavailable:
+			return nil // not done: posted
+		case connect.CodeAlreadyExists:
+			delivered, err = "already", nil
+		case connect.CodeNotFound:
+			return &exitError{code: exitUsage, kind: "not_found", err: fmt.Errorf("no DSH session %s this agent may read on %s", t.session, ref.Name), hint: "see `aide session list --native`"}
+		case connect.CodeFailedPrecondition, connect.CodeInvalidArgument:
+			return &exitError{code: exitUsage, kind: "invalid_state", err: errors.New(ce.Message()), hint: fmt.Sprintf("read it meanwhile with `aide session events %s`", t.session)}
+		}
+		if err != nil {
+			return nativeErr(ref, err)
+		}
+		done = true
+		sent := sentJSON{ID: m.MessageId, To: address(m.To), Name: ref.Name, Delivered: delivered,
+			Expect: "DSH takes it after the turn running there, or now if none runs; the session answers with aide_message_send"}
+		sent.Delivery = delivery(sent, "push")
+		if a.output == "json" {
+			return a.report(cmd.OutOrStdout(), nil, field{"message", sent})
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s → %s (%s): %s\n", sent.ID, sent.To, sent.Name, deliveredText(delivered))
+		fmt.Fprintln(cmd.ErrOrStderr(), sent.Expect)
+		return nil
+	})
+	return done, err
 }
 
 // deliverDirect hands a message to its session's machine over the
@@ -1156,6 +1214,8 @@ func deliveredText(d string) string {
 		return "it waits for a turn of its own"
 	case "already":
 		return "the session had it already (sent again)"
+	case "handed":
+		return "handed to DSH Desktop"
 	}
 	return d
 }

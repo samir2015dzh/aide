@@ -63,11 +63,23 @@ func userText(e event) (text, rpcID string, ok bool) {
 	if e.Type != "user/message" || !appended(e) || json.Unmarshal(e.Data, &m) != nil || m.Source.Kind != "user" {
 		return "", "", false
 	}
+	text = m.text(true)
 	if strings.HasPrefix(m.Source.RPCID, RequestPrefix) || strings.HasPrefix(m.Source.RPCID, legacy.DSHRequest) {
 		rpcID = m.Source.RPCID
+		// An agent's message, which the bridge prefaced for the model with
+		// who wrote it: shown as the agent's (Sender), without it.
+		if strings.HasPrefix(text, fromPreface) {
+			if _, rest, ok := strings.Cut(text, "\n\n"); ok {
+				text = rest
+			}
+		}
 	}
-	return m.text(true), rpcID, true
+	return text, rpcID, true
 }
+
+// fromPreface starts what the bridge puts before an agent's message for the
+// session's model (apps/dsh-bridge, "from").
+const fromPreface = "[Aide] A message "
 
 // Sender is who sent the message Aide sent under rpcID: an agent's
 // client id and name, as the machine recorded them; "" for the owner (and

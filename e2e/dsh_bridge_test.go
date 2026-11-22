@@ -116,6 +116,11 @@ func TestDSHBridgePlugin(t *testing.T) {
 		t.Fatalf("plugin: %v", hello)
 	}
 	nodeStarted := time.Since(began)
+	// Where DSH has a tool registry, the plugin registers the tool a
+	// taken-over session answers with, as it starts.
+	if m := next("the tool registered"); m["registered"] != "aide_message_send" {
+		t.Fatalf("plugin: %v", m)
+	}
 	if m := next("start"); m["ready"] != true {
 		t.Fatalf("plugin: %v", m)
 	}

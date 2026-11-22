@@ -93,3 +93,28 @@ func TestPrepareBridge(t *testing.T) {
 		t.Error("no DSH home: no error")
 	}
 }
+
+// An agent's message reads in Aide as it was written: the bridge's preface
+// for the model is not part of it.
+func TestUserMessageFromAgentWithoutPreface(t *testing.T) {
+	home := t.TempDir()
+	prefaced := ev("user/message", map[string]any{"id": "m2", "role": "user",
+		"content": text("[Aide] A message (msg_01abc) from the agent Muse (c_muse), through the owner's Aide. To answer, call aide_message_send.\n\nhow far?"),
+		"source":  map[string]any{"kind": "user", "rpcId": "aide-01abc"}}, "surfaceOp", "append")
+	typed := ev("user/message", map[string]any{"id": "m3", "role": "user", "content": text("[Aide] A message typed in DSH\n\nkept"),
+		"source": map[string]any{"kind": "user"}}, "surfaceOp", "append")
+	writeSession(t, home, map[string]any{"id": "s"}, true, events(0, prefaced, typed))
+	_, evs, err := ReadAs(home, "s", func(string) (string, string) { return "c_muse", "Muse" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range evs {
+		if m, ok := e.Kind.(*sessionv1.SessionEvent_UserMessage); ok {
+			got = append(got, m.UserMessage.Text+"|"+m.UserMessage.From)
+		}
+	}
+	if want := "how far?|c_muse;[Aide] A message typed in DSH\n\nkept|"; strings.Join(got, ";") != want {
+		t.Fatalf("%q, want %q", strings.Join(got, ";"), want)
+	}
+}

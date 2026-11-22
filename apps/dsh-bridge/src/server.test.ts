@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { BridgeError, DshHost, type Host, type Selections, type SessionOptions } from "./host.ts";
 import { bridgeHome } from "./index.ts";
 import { BridgeServer, type Rendezvous } from "./server.ts";
+import { Outbox, replyTool, type Send } from "./outbox.ts";
 
 class FakeHost implements Host {
   prompts: { sessionId: string; requestId: string; text: string; selections?: Selections }[] = [];
@@ -204,7 +205,7 @@ test("options and a prompt's model and permission, over the wire; a bad one refu
   const c = await client(r);
   try {
     const hello = (await c.call("hello")).result as { features: string[] };
-    assert.deepEqual(hello.features, ["options", "selections"]);
+    assert.deepEqual(hello.features, ["options", "selections", "from", "outbox"]);
     const opts = (await c.call("options", { sessionId: "s_live" })).result as SessionOptions;
     assert.equal(opts.models[0].model, "m1");
     assert.deepEqual(opts.current, { permission: "ask" });
@@ -279,4 +280,101 @@ test("DshHost: options from DSH's services; a prompt sets the model and permissi
   await assert.rejects(host.prompt("s1", "aide-d", "x", sig, { permission: "custom" }), (e: BridgeError) => e.code === "bad-request");
   await assert.rejects(host.prompt("s9", "aide-e", "x", sig, { permission: "ask" }), (e: BridgeError) => e.code === "not-found");
   assert.equal(log.filter((l) => l.startsWith("prompt")).length, 2, "nothing sent when a selection fails");
+});
+
+test("a prompt from an agent tells the model who wrote it and how to answer; a bad sender refused", async () => {
+  const host = new FakeHost();
+  const { server, r } = await started(host);
+  const c = await client(r);
+  try {
+    await c.call("prompt", { sessionId: "s_live", requestId: "aide-m1", text: "how far?", from: { address: "c_muse", name: "Muse\nthe agent" }, messageId: "msg_01abc" });
+    await c.call("prompt", { sessionId: "s_live", requestId: "aide-m2", text: "the owner's" });
+    assert.equal(host.prompts[0].text, "[Aide] A message (msg_01abc) from the agent Muse the agent (c_muse), through the owner's Aide. To answer, call aide_message_send.\n\nhow far?");
+    assert.equal(host.prompts[1].text, "the owner's");
+    const bad = await c.call("prompt", { sessionId: "s_live", requestId: "aide-m3", text: "x", from: { address: "c muse" } });
+    assert.equal((bad.error as { code: string }).code, "bad-request");
+    assert.equal(host.prompts.length, 2);
+  } finally {
+    c.close();
+    await server.close();
+  }
+});
+
+test("the outbox: a session's send waits for aided, which takes it once and answers it; unanswered, it fails", async () => {
+  const host = new FakeHost();
+  const home = join(mkdtempSync(join(tmpdir(), "hmbo-")), "aide-bridge");
+  const server = new BridgeServer(host, { home, version: "t" }, new Outbox(300));
+  const r = await server.start();
+  const c = await client(r);
+  const c2 = await client(r);
+  try {
+    const tool = replyTool(server.outbox);
+    assert.equal(tool.name, "aide_message_send");
+    assert.deepEqual(tool.parameters.required, ["text"]);
+    // A session's model calls the tool; aided, polling, takes the send.
+    const taking = c.call("outbox", { waitMs: 2000 });
+    const sending = tool.execute({ text: "done: 3 of 4", reply_to: "msg_01abc" }, { agent: { id: "s_live" } });
+    const took = (await taking).result as { sends: Send[] };
+    assert.equal(took.sends.length, 1);
+    const s = took.sends[0];
+    assert.deepEqual({ ...s, id: "" }, { id: "", sessionId: "s_live", text: "done: 3 of 4", replyTo: "msg_01abc" });
+    // Handed out once.
+    assert.deepEqual(((await c.call("outbox", { waitMs: 0 })).result as { sends: Send[] }).sends, []);
+    assert.deepEqual((await c2.call("outboxDone", { id: s.id, ok: true, messageId: "msg_02def", to: "c_muse" })).result, { found: true });
+    assert.deepEqual(await sending, { message_id: "msg_02def", to: "c_muse" });
+    assert.deepEqual(tool.output.render({}, { message_id: "msg_02def", to: "c_muse" }), [{ type: "text", text: "Sent msg_02def to c_muse through Aide." }]);
+
+    // Refused by aided: the tool fails with its reason.
+    const refused = tool.execute({ text: "to a session", to: "m_x/s_y" }, { agent: { session: { id: "s_live" } } });
+    const refusal = assert.rejects(refused, (e: BridgeError) => e.code === "refused" && /not to sessions/.test(e.message));
+    const t2 = ((await c.call("outbox", { waitMs: 2000 })).result as { sends: Send[] }).sends[0];
+    assert.equal(t2.to, "m_x/s_y");
+    await c.call("outboxDone", { id: t2.id, ok: false, error: { code: "refused", message: "a DSH session writes to agents, not to sessions" } });
+    await refusal;
+
+    // No aided taking it: it fails in time, and is no longer handed out.
+    await assert.rejects(tool.execute({ text: "anyone?" }, { agent: { id: "s_live" } }), (e: BridgeError) => e.code === "timeout");
+    assert.deepEqual(((await c.call("outbox", { waitMs: 0 })).result as { sends: Send[] }).sends, []);
+    // Not in a session, or empty: refused here.
+    await assert.rejects(tool.execute({ text: "x" }, {}), /runs in a session/);
+    await assert.rejects(tool.execute({ text: " " }, { agent: { id: "s_live" } }), (e: BridgeError) => e.code === "bad-request");
+    // An answer to no send.
+    assert.deepEqual((await c.call("outboxDone", { id: "out_nope", ok: true })).result, { found: false });
+  } finally {
+    c.close();
+    c2.close();
+    await server.close();
+  }
+});
+
+test("the plugin registers aide_message_send where DSH has a tool registry, and removes it when disposed", async () => {
+  const { apply } = await import("./index.ts");
+  const registered: string[] = [];
+  let disposed = 0;
+  let cleanup: (() => Promise<void> | void) | undefined;
+  const dsh = mkdtempSync(join(tmpdir(), "hmbt-"));
+  const prev = process.env.DSH_HOME;
+  process.env.DSH_HOME = dsh;
+  try {
+    apply({
+      get: (n: string) =>
+        n === "tools"
+          ? {
+              register: (d: { name: string }) => {
+                registered.push(d.name);
+                return () => void disposed++;
+              },
+            }
+          : undefined,
+      effect: (f: () => () => Promise<void> | void) => {
+        cleanup = f();
+      },
+    });
+    assert.deepEqual(registered, ["aide_message_send"]);
+    await cleanup?.();
+    assert.equal(disposed, 1);
+  } finally {
+    if (prev === undefined) delete process.env.DSH_HOME;
+    else process.env.DSH_HOME = prev;
+  }
 });

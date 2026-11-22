@@ -42,10 +42,29 @@ func dshID(id string) string {
 	return parts[2]
 }
 
+// nativeMachine is the machine whose DSH session id names, by the part of
+// its id the address carries.
+func nativeMachine(machines []machineRef, id string) (machineRef, bool) {
+	parts := strings.SplitN(id, "_", 3)
+	if len(parts) < 3 || parts[1] == "" {
+		return machineRef{}, false
+	}
+	var found []machineRef
+	for _, m := range machines {
+		if nativeID(m.ID, parts[2]) == id {
+			found = append(found, m)
+		}
+	}
+	if len(found) != 1 {
+		return machineRef{}, false
+	}
+	return found[0], true
+}
+
 // readOnly is the error of anything but reading a DSH session.
 func readOnly(id string) error {
 	return &exitError{code: exitUsage, kind: "invalid_state",
-		err:  fmt.Errorf("%s is a DeepSeek Harness session Aide did not start: agents read it, and send it messages only once the owner took it over; it takes no answers, and can't be interrupted, archived or taken over from here", id),
+		err:  fmt.Errorf("%s is a DeepSeek Harness session Aide did not start: agents read it, and send it messages only once the owner took it over; it can't be interrupted, archived or taken over from here", id),
 		hint: fmt.Sprintf("read it with `aide session get %s` and `aide session events %s`; taken over, `aide message send --to %s`; for work of your own, `aide session start`", id, id, id)}
 }
 

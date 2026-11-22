@@ -73,6 +73,10 @@ func (n *Machine) checkLetter(m *inboxv1.Message, from, session string) error {
 
 // deliverLetter hands a checked message to its session.
 func (n *Machine) deliverLetter(ctx context.Context, p *Principal, m *inboxv1.Message, name string, atts []*sessionv1.Attachment) (*sessionv1.Session, string, error) {
+	if strings.HasPrefix(m.GetTo().GetSession(), "dsh_") { // a DSH session the owner took over (dshmail.go)
+		delivered, err := n.deliverDSHLetter(ctx, p, m, name, atts)
+		return nil, delivered, err
+	}
 	text, err := n.sessions.expandPrompt(p, m.Text) // as session send does: the macro, the sessions it references
 	if err != nil {
 		return nil, "", err
@@ -313,7 +317,11 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 		}
 		return bounce(err.Error())
 	}
-	n.handedToTurn(m.To.Session, m.MessageId)
+	if id := n.dshOf(m.To.Session); id != "" {
+		n.watchDSHTurn(id, m.To.Session, m.MessageId)
+	} else {
+		n.handedToTurn(m.To.Session, m.MessageId)
+	}
 	return "handed" // handled once its turn ends (turnEnded)
 }
 

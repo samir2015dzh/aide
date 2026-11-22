@@ -77,7 +77,9 @@ type Hello struct {
 		Agents            bool `json:"agents"`
 	} `json:"services"`
 	// Features beyond the first version: "options" (Options), "selections"
-	// (a prompt's model and permission). An older plugin has none.
+	// (a prompt's model and permission), "from" (a prompt names the agent
+	// it is from: PromptFrom), "outbox" (the sessions' sends through Aide:
+	// Outbox, OutboxDone). An older plugin has none.
 	Features []string `json:"features"`
 }
 
@@ -209,6 +211,66 @@ func (c *Bridge) Prompt(ctx context.Context, sessionID, requestID, text string, 
 		}
 	}
 	return c.call(ctx, "prompt", p, nil)
+}
+
+// From is the agent a prompt is from, as the session's model reads it.
+type From struct {
+	Address string `json:"address"`
+	Name    string `json:"name,omitempty"`
+}
+
+// PromptFrom is Prompt of a message from an agent: the session's model
+// reads who wrote it, its id, and how to answer, before the text. A bridge
+// without "from" gets the text alone.
+func (c *Bridge) PromptFrom(ctx context.Context, sessionID, requestID, text string, from From, messageID string) error {
+	p := map[string]any{"sessionId": sessionID, "requestId": requestID, "text": text}
+	if c.Hello.Has("from") {
+		p["from"] = from
+		if messageID != "" {
+			p["messageId"] = messageID
+		}
+	}
+	return c.call(ctx, "prompt", p, nil)
+}
+
+// Send is one send a session asked for through Aide (its model called
+// aide_message_send).
+type Send struct {
+	ID        string `json:"id"`
+	SessionID string `json:"sessionId"`
+	Text      string `json:"text"`
+	To        string `json:"to,omitempty"`
+	ReplyTo   string `json:"replyTo,omitempty"`
+}
+
+// Outbox waits up to wait for the sessions' sends (none when it runs
+// out); each is handed out once. ErrBridgeTooOld from a bridge without
+// "outbox". Give ctx a deadline beyond wait.
+func (c *Bridge) Outbox(ctx context.Context, wait time.Duration) ([]Send, error) {
+	if !c.Hello.Has("outbox") {
+		return nil, ErrBridgeTooOld
+	}
+	var r struct {
+		Sends []Send `json:"sends"`
+	}
+	err := c.call(ctx, "outbox", map[string]any{"waitMs": wait.Milliseconds()}, &r)
+	return r.Sends, err
+}
+
+// OutboxDone answers send id: sent as messageID to to, or refused (code,
+// why). found is false when the session no longer waits for it.
+func (c *Bridge) OutboxDone(ctx context.Context, id string, messageID, to string, refused *BridgeError) (found bool, err error) {
+	p := map[string]any{"id": id, "ok": refused == nil}
+	if refused == nil {
+		p["messageId"], p["to"] = messageID, to
+	} else {
+		p["error"] = map[string]string{"code": refused.Code, "message": refused.Message}
+	}
+	var r struct {
+		Found bool `json:"found"`
+	}
+	err = c.call(ctx, "outboxDone", p, &r)
+	return r.Found, err
 }
 
 // Options are the models and permission presets the session may be set

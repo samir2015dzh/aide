@@ -802,3 +802,47 @@ end.
   agent with no home of its own (the MCP gateway's) keeps it for one
   command only. The hop is the sender's say: it binds the owner's own
   agents; the post office's per-pair limits stay the floor (§5).
+
+### 15.3 DSH sessions both ways (batch 3)
+
+A DeepSeek Harness session the owner took over in the Aide app (接管,
+docs/dsh-takeover.md) is an endpoint like an Aide session: agents write
+to it, and it answers them.
+
+- **In.** `message send --to dsh_…` (or `m_…/dsh_…`, or its
+  `<machine>/<name>` from the roster). With the machine online it goes over
+  the tunnel (`DeliverMessage`), and the machine hands it to DSH Desktop's
+  Aide plugin at once: `delivered: handed`, refused on the spot (not
+  taken over, not readable by the agent, text only) with why. While DSH
+  Desktop is closed (the plugin doesn't answer, DSH is busy, another DSH
+  program holds the session), or the machine is offline, it goes to the
+  post office: aided takes it, and leaves it there (taken) until the plugin
+  answers again (it checks every 5 seconds and then tries at once); handed
+  then, handled once DSH Desktop says the session's turn is no longer
+  running. The post office is the queue: nothing is kept twice, and a
+  restart loses nothing. Its request id is `aide-` and the message's id,
+  so DSH drops it if it comes twice. One that can't go (takeover turned
+  off meanwhile, the agent can no longer read the session) is refused, and
+  aided tells the agent why, as for an Aide session.
+- **What the model reads.** A plugin with `from` puts before the text who
+  wrote it, its id and how to answer (`[Aide] A message (msg_…) from the
+  agent Muse (c_…), through the owner's Aide. To answer, call
+  aide_message_send.`). Aide shows the message without it, as the agent's.
+- **Out.** The plugin registers the tool `aide_message_send(text, to?,
+  reply_to?)` in the DSH Host (all its sessions see it). A call goes to the
+  plugin's outbox; aided takes it (`outbox`, a long poll) and answers
+  (`outboxDone`), and the tool returns the message's id or why not. aided
+  sends it as the machine, signed with its key, from `m_…/dsh_…`: the model
+  does not say who it is, DSH says which session calls. Only for a session
+  taken over; only to an agent this machine's grants name (by address or
+  name), never to a session; without `to`, to the agent that last wrote to
+  the session through Aide, answering its message (the machine's
+  `dsh-sent` record, not the model's word), so the sender sees it
+  `replied`. 30 a session an hour; beyond that it is held for the owner (the
+  tool says so, the log and audit name it). The chain goes on from the
+  message the session took (§15.1). The audit log records each send and
+  refusal.
+- **Not in this batch.** Files to a DSH session (text only both ways), a
+  DSH session writing to another session, and DSH sessions as roster
+  `woken` endpoints.
+

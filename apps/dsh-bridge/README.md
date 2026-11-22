@@ -16,6 +16,12 @@ DSH's back.
   request id, which DSH records as the message's `rpcId` and uses to drop a
   retry), `cancel`. A prompt DSH has not accepted within 20 seconds fails as
   `timeout`; nothing is left silently pending.
+- **Agents both ways** (0.3.0): a prompt from one of the owner's agents
+  says, before the text, who wrote it; the plugin registers the tool
+  `aide_message_send`, whose sends it keeps for aided (`outbox`,
+  `outboxDone`). aided decides who a send may go to (an agent, only from a
+  session the owner took over) and sends it; the plugin sends nothing
+  itself.
 - **What it does not do**: read or write DSH's session files, change
   settings, start sessions, or talk to anything off this computer.
 - **Install / remove**: from Aide (it backs up the profile first), or
