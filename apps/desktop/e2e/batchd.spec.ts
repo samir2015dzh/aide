@@ -72,7 +72,7 @@ test("the roster lists the detected agents by machine; the map's links read as c
   await snap(page, "batchd-map");
 
   // Whom to hand work to is the roster (批 G): the detected agents by machine.
-  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: /^owner-mac/ });
+  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: "编码 agent · 跟机器走" });
   await expect(here.getByRole("button").first()).toBeVisible();
   await snap(page, "batchd-hand-work");
   await app.close();

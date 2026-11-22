@@ -23,9 +23,9 @@ test("starting a session in a project, then writing to it under the conversation
   await expect(sheet.getByRole("group", { name: "机器" }).getByRole("button", { name: "owner-mac" })).toHaveAttribute("aria-pressed", "true");
   await sheet.getByRole("group", { name: "Agent" }).getByRole("button", { name: "Gemini CLI" }).click();
   await expect(sheet.getByRole("group", { name: "工作位置" }).getByRole("button", { name: "项目" })).toHaveAttribute("aria-pressed", "true");
-  await expect(sheet.getByLabel("项目", { exact: true })).toHaveValue("demo");
+  await expect(sheet.locator("button.picker[aria-label=\"项目\"]")).toHaveText("demo");
   // Gemini told this machine its models in an earlier session: they can be picked, the default unset.
-  await expect(sheet.getByLabel("模型", { exact: true })).toHaveValue("");
+  await expect(sheet.getByRole("button", { name: "模型", exact: true })).toHaveText("默认");
   await expect(sheet.getByRole("button", { name: "启动" })).toBeDisabled();
   await sheet.getByLabel("消息", { exact: true }).fill("say 从桌面发起");
   await sheet.getByRole("button", { name: "启动" }).click();

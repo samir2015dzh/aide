@@ -70,7 +70,9 @@
     "tasks": "任务动态",
     "held": "等你放行的消息",
     "newSession": "新任务…",
-    "sessions": "全部任务"
+    "sessions": "全部任务",
+    "dsh": "DSH 会话",
+    "claude": "Claude 会话"
   },
   "sessionMenu": {
     "open": "打开",
@@ -485,7 +487,6 @@
     "not_set_up": "Aide 还没有设置好。",
     "signed_out": "这台设备上的账号已经登出：请重新登录。",
     "no_relay": "还没有配置服务器（中继）。",
-    "relay_unreachable": "连不上服务器（中继）{{host}}。",
     "machine_older": "那台机器上的 Aide 版本较旧，还不认识这个操作：先在那台机器上更新 Aide，再试一次。",
     "no_host_online": "没有在线的机器能主持这场对话：先在一台机器上打开 Aide。",
     "no_room_host_online": "没有在线的机器能主持这个房间：先在一台机器上打开 Aide。",

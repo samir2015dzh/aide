@@ -84,6 +84,7 @@ test("while nothing happens, the page changes only its clocks, all in the same f
   for (const c of batches.flat()) expect(c).toMatch(/^wc-time characterData$/);
   // The sidebar beside it has no clock while its rows are titles alone (docs/her-team.md §16). With their
   // metadata, a running row's clock ticks with the card's.
+  await sessionList(page); // the list is the page 全部任务 now (工单 #63)
   await page.getByRole("button", { name: "视图选项" }).click();
   await page.getByRole("menu", { name: "视图选项" }).getByRole("menuitem", { name: /显示/ }).hover();
   await page.getByRole("menu", { name: "显示" }).getByRole("menuitemcheckbox", { name: "元数据" }).click();

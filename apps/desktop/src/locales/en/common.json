@@ -72,7 +72,9 @@
     "tasks": "Task feed",
     "held": "Held messages",
     "newSession": "New Task…",
-    "sessions": "All Tasks"
+    "sessions": "All Tasks",
+    "dsh": "DSH Sessions",
+    "claude": "Claude sessions"
   },
   "sessionMenu": {
     "open": "Open",
@@ -505,7 +507,6 @@
     "not_set_up": "Aide is not set up yet.",
     "signed_out": "This account is signed out on this device: sign in again.",
     "no_relay": "No server (relay) is set up yet.",
-    "relay_unreachable": "Can’t reach the server (relay) {{host}}.",
     "machine_older": "Aide on that machine is older and doesn’t know this yet: update it there, then try again.",
     "no_host_online": "No machine of yours is online to keep the conversation: start Aide on one.",
     "no_room_host_online": "No machine of yours is online to keep the room: start Aide on one.",

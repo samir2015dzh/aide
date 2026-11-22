@@ -98,19 +98,19 @@ describe("the roster (工单 #57)", () => {
 describe("who gets on the roster (工单 #64)", () => {
   test("client@<machine> is Aide's own client, not an agent: set aside under its machine, whatever it was filed as", () => {
     const machines = [
-      machine("m1", "BigAlex", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true }]),
+      machine("m1", "Work-PC", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true }]),
     ];
-    const clients = [client("c1", "client@BigAlex", { online: true }), client("c2", "client@laptop", { category: "personal" }), client("c3", "Muse")];
+    const clients = [client("c1", "client@Work-PC", { online: true }), client("c2", "client@laptop", { category: "personal" }), client("c3", "Muse")];
     const r = roster(machines, clients, [], now);
     expect(allBots(r).map((b) => b.name)).toEqual(["Muse", "Claude Code", "DSH"]);
-    expect(r.aside.map((a) => [a.client.label, a.machineId])).toEqual([["client@BigAlex", "m1"], ["client@laptop", ""]]);
+    expect(r.aside.map((a) => [a.client.label, a.machineId])).toEqual([["client@Work-PC", "m1"], ["client@laptop", ""]]);
   });
 
-  test("a grant filed as on a machine that names no coding agent (the old “Her on alexwork” ghost): set aside", () => {
-    const machines = [machine("m1", "alexwork", [{ name: "claude", available: true, loggedIn: true }])];
-    const r = roster(machines, [client("c1", "Her on alexwork"), client("c2", "Something on nowhere")], [], now);
+  test("a grant filed as on a machine that names no coding agent (the old “Her on studio” ghost): set aside", () => {
+    const machines = [machine("m1", "studio", [{ name: "claude", available: true, loggedIn: true }])];
+    const r = roster(machines, [client("c1", "Her on studio"), client("c2", "Something on nowhere")], [], now);
     expect(r.machines[0].bots.map((b) => b.name)).toEqual(["Claude Code"]);
-    expect(r.aside.map((a) => a.client.label)).toEqual(["Her on alexwork"]);
+    expect(r.aside.map((a) => a.client.label)).toEqual(["Her on studio"]);
     // "Something on nowhere": no machine of that name, a name that is no coding agent → personal (the owner's own say aside).
     expect(r.personal.map((b) => b.name)).toEqual(["Something on nowhere"]);
   });

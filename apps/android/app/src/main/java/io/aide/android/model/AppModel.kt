@@ -597,7 +597,6 @@ fun reasonText(reason: String, args: Map<String, String>, raw: String): String? 
         "not_set_up" -> t("Aide is not set up yet.", "Aide 还没有设置好。")
         "signed_out" -> t("This account is signed out on this device: sign in again.", "这台设备上的账号已经登出：请重新登录。")
         "no_relay" -> t("No server (relay) is set up yet.", "还没有配置服务器（中继）。")
-        "relay_unreachable" -> t("Can’t reach the server (relay) ${a("host")}.", "连不上服务器（中继）${a("host")}。")
         "machine_older" -> t("Aide on that machine is older and doesn’t know this yet: update it there, then try again.", "那台机器上的 Aide 版本较旧，还不认识这个操作：先在那台机器上更新 Aide，再试一次。")
         "no_host_online" -> t("No machine of yours is online to keep the conversation: start Aide on one.", "没有在线的机器能主持这场对话：先在一台机器上打开 Aide。")
         "no_room_host_online" -> t("No machine of yours is online to keep the room: start Aide on one.", "没有在线的机器能主持这个房间：先在一台机器上打开 Aide。")

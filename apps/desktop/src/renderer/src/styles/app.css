@@ -72,10 +72,10 @@ html[data-platform=win]{--caption:calc(100vw - env(titlebar-area-x, 0px) - env(t
 .tl-room{width:62px;flex:none}
 /* Windows 11's type and corners: 14 px body text; 4 px controls and rows, 8 px boxes, cards and panels. */
 html[data-platform=win]{--fs-text:14px;--fs-text-l:14.5px;--r-ctl:4px;--r-box:8px;--r-card:8px;--r-panel:8px}
-html[data-platform=win] .nav-i,html[data-platform=win] .srow{border-radius:4px}
+html[data-platform=win] .nav-i,html[data-platform=win] .srow,html[data-platform=win] .bot-row{border-radius:4px}
 /* The selected row's accent bar, as Windows 11's navigation marks it. */
-html[data-platform=win] .nav-i.sel,html[data-platform=win] .srow.sel{position:relative}
-html[data-platform=win] .nav-i.sel::before,html[data-platform=win] .srow.sel::before{content:"";position:absolute;left:0;top:50%;height:16px;margin-top:-8px;width:3px;border-radius:2px;background:var(--accent)}
+html[data-platform=win] .nav-i.sel,html[data-platform=win] .srow.sel,html[data-platform=win] .bot-row.sel{position:relative}
+html[data-platform=win] .nav-i.sel::before,html[data-platform=win] .srow.sel::before,html[data-platform=win] .bot-row.sel::before{content:"";position:absolute;left:0;top:50%;height:16px;margin-top:-8px;width:3px;border-radius:2px;background:var(--accent)}
 html[data-platform=win] .tl-room{display:none}
 html[data-platform=win] .side-top{padding-left:8px;justify-content:flex-start;gap:2px}
 html[data-platform=win] .side-top>:last-child{margin-left:auto}

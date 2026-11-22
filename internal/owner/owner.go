@@ -741,7 +741,7 @@ func (o *Owner) checkRelay(ctx context.Context, relayURL string) error {
 		err = errors.New(ce.Message()) // "403 Forbidden", from whatever answered instead of the relay
 	}
 	// The apps recognise this form and say it in the person's language.
-	return reason.New(connect.CodeUnavailable, "relay_unreachable", fmt.Sprintf("relay unreachable (%s): %v", host, err), "host", host)
+	return connect.NewError(connect.CodeUnavailable, fmt.Errorf("relay unreachable (%s): %w", host, err))
 }
 
 func (o *Owner) publicClient(relayURL string) relayv1connect.RelayPublicServiceClient {

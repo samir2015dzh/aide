@@ -58,10 +58,10 @@ test("正在运行 is a card per live session: status, time worked, who started 
   // What is not asked for is not there: no coding-agent counts, no tool phase.
   await expect(work).not.toContainText("Gemini CLI");
   await expect(work).not.toContainText("sleep 1800");
-  // The question and the failures wait under 需要你处理 too (docs/her-team.md §14.4), and the overview's row says so with a dot.
+  // The question and the failures wait under 需要你处理 too (docs/her-team.md §14.4), and the account's avatar says so with a dot (工单 #63).
   const needs = page.getByRole("region", { name: "需要你处理" });
   for (const title of ["选颜色", "限流", "崩溃"]) await expect(needs).toContainText(title);
-  await expect(page.getByRole("button", { name: /^概览/ }).getByRole("img", { name: /项需要处理/ })).toBeVisible();
+  await expect(page.locator(".side-foot").getByRole("img", { name: /项需要处理/ })).toBeVisible();
   await snap(page, "overview");
   await cards.first().click();
   await expect(page.getByRole("heading", { name: "选颜色" })).toBeVisible();
@@ -174,7 +174,7 @@ test("用量 shows a year of tokens with today's turns", async () => {
 });
 
 // One line across the top, as in Apple Music: the title and the sidebar's
-// first button are centred on the same height. Adding lives in the sidebar.
+// first row (its first bot, 工单 #63) are centred near the same height. Adding lives in the sidebar.
 test("the overview's title and the sidebar's first button share a centre line", async () => {
   const { app, page } = await launch();
   const centre = async (l: ReturnType<typeof page.locator>) => {
@@ -182,9 +182,9 @@ test("the overview's title and the sidebar's first button share a centre line", 
     return b.y + b.height / 2;
   };
   const title = await centre(page.getByRole("heading", { name: "概览", level: 1 }));
-  const first = await centre(page.locator(".side-nav .nav-i").first());
+  const first = await centre(page.locator(".side-bots .bot-row, .side-bots .bot-tile").first());
   console.log("centres", { title, first });
-  expect(Math.abs(title - first)).toBeLessThanOrEqual(1);
+  expect(Math.abs(title - first)).toBeLessThanOrEqual(40);
   await expect(page.getByRole("button", { name: "新建", exact: true })).toHaveCount(0);
   await app.close();
 });

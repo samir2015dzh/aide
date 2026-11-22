@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { cli, fixture, launch, onWindows, snap, thisComputer, sessionList } from "./app";
+import { cli, fixture, launch, onWindows, snap, thisComputer, sessionList, navTo } from "./app";
 
 // The session page: the conversation, the changes, the info panel, and the
 // control area where the owner answers the agent or stops it.
@@ -711,7 +711,7 @@ test("a conversation on a machine gone offline says why: one read before shows w
   await expect(page.getByText(/^这个任务的内容保存在那台机器上，连上后会自动显示。.*还在线。$/)).toBeVisible();
   await snap(page, "session-machine-offline");
   // The overview says it as the iPhone does: offline, when it was last seen, no raw error.
-  await page.getByRole("button", { name: /^概览/ }).click();
+  await navTo(page, /^概览/);
   const warn = page.locator(".ov-warn");
   await expect(warn).toContainText("work-mac 离线了，它上面的任务暂时看不到");
   await expect(warn).toContainText("还在线 · 连上后会自动补上");
