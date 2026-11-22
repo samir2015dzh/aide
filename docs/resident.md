@@ -159,5 +159,5 @@ suite's `tray` spec closes the window, waits 45 s, and samples the app's
 processes' private working sets ten times; it prints the table (and adds it
 to the job summary) and fails over its budget (`trayBudgetMB`, or
 `AIDE_TRAY_BUDGET_MB`). A GitHub runner has no GPU, so its numbers are not
-alexwork's; the budget guards against growth, the target is checked on the
-owner's PC.
+the owner's PC's; the budget guards against growth, the target is checked on the
+owner's PC itself.
