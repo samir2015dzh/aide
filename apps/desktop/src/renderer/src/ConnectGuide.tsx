@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Check } from "./Picker";
 import { useTranslation } from "react-i18next";
 import type { CustomAgent } from "@aide/proto/machine";
 import type { Machine } from "@aide/proto/local";
@@ -470,10 +471,10 @@ function CustomFormView({ m, agent, close }: { m: Machine; agent?: CustomAgent; 
                 value={e.value}
                 onChange={(x) => setEnv(i, { value: x.target.value })}
               />
-              <label className="cg-secret">
-                <input type="checkbox" checked={e.secret || looksSecret(e.name)} disabled={e.saved} onChange={(x) => setEnv(i, { secret: x.target.checked })} />
+              <span className="cg-secret">
+                <Check on={e.secret || looksSecret(e.name)} disabled={e.saved} label={t("custom.envSecret")} set={(on) => setEnv(i, { secret: on })} />
                 {t("custom.envSecret")}
-              </label>
+              </span>
               <button className="tb" aria-label={t("custom.envRemove")} onClick={() => set({ env: f.env.filter((_, j) => j !== i) })}>
                 <Icon name="x" />
               </button>

@@ -111,11 +111,12 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
           {s?.mcpUrl && <CopyRow k={t("account.mcpUrl")} text={s.mcpUrl} />}
         </div>
       </More>
-      <div className="set-acts">
+      {/* The way out, as Apple's settings put it: one group of red rows (工单 #68). */}
+      <div className="fgroup">
+        <button className="frow act danger" onClick={leave}>{t("account.signOut")}</button>
         {s && !s.removed && (
-          <button className="btn danger" onClick={() => st.set({ sheet: { kind: "erase" } })}>{t("account.eraseAll")}</button>
+          <button className="frow act danger" onClick={() => st.set({ sheet: { kind: "erase" } })}>{t("account.eraseAll")}</button>
         )}
-        <button className="btn danger push" onClick={leave}>{t("account.signOut")}</button>
       </div>
     </div>
   );
@@ -171,9 +172,11 @@ function MachineAccount() {
           <CopyRow k={t("account.ownerId")} text={s.ownerId} />
         </div>
       </More>
-      <div className="set-acts">
-        <button className="btn" onClick={() => (window.aide?.showUpgrade(), window.close())}>{f("machineOnly.upgrade")}</button>
-        <button className="btn danger push" onClick={leave}>{f("machineOnly.leave")}</button>
+      <div className="fgroup">
+        <button className="frow act" onClick={() => (window.aide?.showUpgrade(), window.close())}>{f("machineOnly.upgrade")}</button>
+      </div>
+      <div className="fgroup">
+        <button className="frow act danger" onClick={leave}>{f("machineOnly.leave")}</button>
       </div>
     </div>
   );

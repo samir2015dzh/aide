@@ -383,30 +383,27 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
       </section>
       {a && <PauseSection a={a} m={m} />}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
+      {/* The Claude app's own sessions are read in the main window's Claude page; DSH's (those opened in DSH Desktop) in its DeepSeek page. */}
+      {(agent === "claude" || agent === "deepseek") && (
+        <section className="ag-dsh" aria-label={t(agent === "claude" ? "prepare.claudeSessions" : "prepare.dshSessions")}>
+          <div className="ag-group">{t(agent === "claude" ? "prepare.claudeSessions" : "prepare.dshSessions")}</div>
+          <div className="fgroup">
+            <button className="frow act" onClick={() => window.aide?.showInMain(agent === "claude" ? { claude: true } : { dsh: true })}>
+              {t("prepare.dshSessionsOpen")}
+              <Icon name="chevR" className="sm chev" />
+            </button>
+          </div>
+        </section>
+      )}
+      {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
       {a && !a.hidden && (
         <section className="ag-hide" aria-label={t("prepare.hide")}>
-          <button className="btn sm" onClick={() => void st.run(() => local.setAgentHidden({ machineId: m.machineId, agent, hidden: true }))}>
-            {t("prepare.hide")}
-          </button>
+          <div className="fgroup">
+            <button className="frow act danger" onClick={() => void st.run(() => local.setAgentHidden({ machineId: m.machineId, agent, hidden: true }))}>
+              {t("prepare.hide")}
+            </button>
+          </div>
           <p className="ag-note">{t("prepare.hideNote")}</p>
-        </section>
-      )}
-      {/* The Claude app's own sessions are read in the main window's Claude page. */}
-      {agent === "claude" && (
-        <section className="ag-dsh" aria-label={t("prepare.claudeSessions")}>
-          <div className="ag-group">{t("prepare.claudeSessions")}</div>
-          <button className="btn sm" onClick={() => window.aide?.showInMain({ claude: true })}>
-            {t("prepare.dshSessionsOpen")}
-          </button>
-        </section>
-      )}
-      {/* DSH's own sessions (those opened in DSH Desktop) are read in the main window's DeepSeek page. */}
-      {agent === "deepseek" && (
-        <section className="ag-dsh" aria-label={t("prepare.dshSessions")}>
-          <div className="ag-group">{t("prepare.dshSessions")}</div>
-          <button className="btn sm" onClick={() => window.aide?.showInMain({ dsh: true })}>
-            {t("prepare.dshSessionsOpen")}
-          </button>
         </section>
       )}
     </div>
@@ -447,21 +444,17 @@ function PauseSection({ a, m }: { a: AgentStatus; m: Machine }) {
       <div className="ag-group">{t("prepare.pauseHead")}</div>
       {p ? (
         <>
+          <div className="fgroup">
+            <button className="frow act" onClick={() => set(false)}>{t("prepare.resume")}</button>
+          </div>
           <p className="ag-note">{p.until ? t("prepare.pausedUntilNote", { when: p.until.toLocaleString() }) : t("prepare.pausedNote")}</p>
-          <button className="btn sm" onClick={() => set(false)}>
-            {t("prepare.resume")}
-          </button>
         </>
       ) : (
         <>
-          <button className="btn sm" onClick={() => set(true)}>
-            {t("prepare.pause")}
-          </button>{" "}
-          {reset && (
-            <button className="btn sm" onClick={() => set(true, reset)}>
-              {t("prepare.pauseUntilReset", { when: reset.toLocaleString() })}
-            </button>
-          )}
+          <div className="fgroup">
+            <button className="frow act" onClick={() => set(true)}>{t("prepare.pause")}</button>
+            {reset && <button className="frow act" onClick={() => set(true, reset)}>{t("prepare.pauseUntilReset", { when: reset.toLocaleString() })}</button>}
+          </div>
           <p className="ag-note">{t("prepare.pauseNote")}</p>
           {resumed && <p className="ag-note">{t("prepare.autoResumed", { when: resumed.toLocaleString() })}</p>}
         </>

@@ -78,8 +78,8 @@ export function Grants({ open, select }: { open: string; select: (id: string) =>
           <div className="frow muted">{t("grants.none")}</div>
         </div>
       )}
-      <div className="set-acts">
-        <button className="btn" onClick={connect}>{t("grants.connect")}</button>
+      <div className="fgroup">
+        <button className="frow act" onClick={connect}>{t("grants.connect")}</button>
       </div>
       <p className="set-note">{t("grants.note")}</p>
     </div>

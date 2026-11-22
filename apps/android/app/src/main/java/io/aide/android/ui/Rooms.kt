@@ -420,8 +420,8 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
             )
         },
     ) { pad ->
-        LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item(key = "name") { OutlinedTextField(name, { name = it.take(64) }, Modifier.fillMaxWidth(), label = { Text(t("Name", "房间名")) }, singleLine = true) }
+        LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp)) {
+            item(key = "name") { OutlinedTextField(name, { name = it.take(64) }, Modifier.fillMaxWidth().padding(bottom = 10.dp), label = { Text(t("Name", "房间名")) }, singleLine = true) }
             item(key = "mode") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -439,10 +439,11 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                 }
             }
             item(key = "pick-h") { SectionHeader(t("Members", "成员")) }
-            bots.forEach { b ->
+            bots.forEachIndexed { i, b ->
                 item(key = b.key) {
                     val on = b.key in picked
-                    Column {
+                    // One card of rows, as every list in the app (工单 #68).
+                    Column(Modifier.groupRow(i, bots.size).padding(horizontal = 14.dp, vertical = 10.dp)) {
                         Row(Modifier.fillMaxWidth().pressable { picked = if (on) picked - b.key else picked + (b.key to (if (b.personal) "" else projectsOf(b).firstOrNull()?.projectId.orEmpty())) },
                             verticalAlignment = Alignment.CenterVertically) {
                             RoundCheck(on)

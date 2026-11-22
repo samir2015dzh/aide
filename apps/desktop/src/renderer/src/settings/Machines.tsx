@@ -78,8 +78,8 @@ export function Machines({ open, select, ask }: { open: string; select: (id: str
           </div>
         )}
       </div>
-      <div className="set-acts">
-        <button className="btn" onClick={() => st.set({ sheet: { kind: "addMachine" } })}>{t("machines.add")}</button>
+      <div className="fgroup">
+        <button className="frow act" onClick={() => st.set({ sheet: { kind: "addMachine" } })}>{t("machines.add")}</button>
       </div>
     </div>
   );
@@ -228,14 +228,16 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
           </div>
         </div>
       </div>
-      <div className="set-acts">
-        <button className="btn" onClick={rename}>{t("machines.rename")}</button>
+      <div className="fgroup">
+        <button className="frow act" onClick={rename}>{t("machines.rename")}</button>
         {/* What to send when something doesn't work; only this Mac's is at hand. */}
-        {m.local && <button className="btn" onClick={copyDiagnostics}>{t("machines.copyDiagnostics")}</button>}
-        {!m.local && !device && (
-          <button className="btn danger push" onClick={remove}>{t("remove")}</button>
-        )}
+        {m.local && <button className="frow act" onClick={copyDiagnostics}>{t("machines.copyDiagnostics")}</button>}
       </div>
+      {!m.local && !device && (
+        <div className="fgroup">
+          <button className="frow act danger" onClick={remove}>{t("remove")}</button>
+        </div>
+      )}
       {device && (
         <p className="set-note">
           <Trans t={t} i18nKey="machines.deviceNote" values={{ name: device.label }} components={{ go: <button className="link" onClick={() => window.aide?.openSettings("account")} /> }} />

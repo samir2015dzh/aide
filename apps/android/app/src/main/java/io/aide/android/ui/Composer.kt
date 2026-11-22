@@ -174,10 +174,12 @@ fun <T> ChipPicker(label: String, value: T, options: List<Pair<T, String>>, onCh
 /** A chip that is on or off (a room's @): a capsule, filled while on. */
 @Composable
 fun ToggleChip(label: String, on: Boolean, onClick: () -> Unit) {
+    // On: filled in the theme's strong colour with a tick, as Material's selected filter chip, so it reads at a glance.
     Text(
-        label,
-        Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else aide.fill2).pressable(onClick).padding(horizontal = 10.dp, vertical = 4.dp),
-        fontSize = 12.sp, color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        if (on) "✓ $label" else label,
+        Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.secondaryContainer else aide.fill2).pressable(onClick).padding(horizontal = 10.dp, vertical = 4.dp),
+        fontSize = 12.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+        color = if (on) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
