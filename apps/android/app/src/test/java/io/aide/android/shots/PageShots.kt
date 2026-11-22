@@ -30,6 +30,8 @@ import io.aide.android.ui.BotsTab
 import io.aide.android.ui.BotPage
 import io.aide.android.api.Client
 import io.aide.android.ui.NeedsYouTab
+import io.aide.android.ui.NewRoomPage
+import io.aide.android.ui.RoomPage
 import io.aide.android.ui.SessionsTab
 import io.aide.android.ui.SettingsTab
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +71,14 @@ class PageShots {
                 // The owner's conversation with Muse (G2-a): its direct room on workstation, two messages.
                 val room = "{\"roomId\":\"room_1\",\"name\":\"Muse\",\"hostMachineId\":\"m1\",\"direct\":true,\"members\":[{\"botKey\":\"c:c1\",\"address\":\"c1\",\"name\":\"Muse\"}]}"
                 if (path.endsWith("OpenDirectRoom")) return MockResponse().setBody("{\"room\":$room}").setHeader("Content-Type", "application/json")
+                // A round table (G2-b/c): DSH on workstation and Muse, DSH handing on to Muse, Muse's agreed result.
+                val table = "{\"roomId\":\"room_2\",\"name\":\"发版评审\",\"hostMachineId\":\"m1\",\"mode\":\"ROOM_MODE_ROUNDTABLE\",\"maxRounds\":6,\"round\":1,\"unread\":2,\"lastLine\":\"Muse：[FINAL] 可以发版\"," +
+                    "\"members\":[{\"botKey\":\"m:m1/deepseek\",\"name\":\"DSH · workstation\",\"agent\":\"deepseek\",\"projectId\":\"aide\",\"sessionId\":\"s2\"},{\"botKey\":\"c:c1\",\"name\":\"Muse\"}]}"
+                if (path.endsWith("ListRooms")) return MockResponse().setBody("{\"rooms\":[$table]}").setHeader("Content-Type", "application/json")
+                if (path.endsWith("ListRoomMessages") && request.body.clone().readUtf8().contains("room_2")) return MockResponse().setBody("{\"room\":$table,\"messages\":[" +
+                    "{\"messageId\":\"msg_1\",\"from\":\"owner\",\"text\":\"跑一遍发版前检查\",\"mentions\":[\"m:m1/deepseek\"],\"deliveries\":[{\"botKey\":\"m:m1/deepseek\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
+                    "{\"messageId\":\"msg_2\",\"from\":\"m:m1/deepseek\",\"fromName\":\"DSH · workstation\",\"text\":\"测试全过，构建产物已签名。@Muse 请确认发版说明\",\"round\":0,\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
+                    "{\"messageId\":\"msg_3\",\"from\":\"c:c1\",\"fromName\":\"Muse\",\"text\":\"[FINAL] 可以发版：测试全过，说明已确认。\",\"final\":true,\"round\":1}]}").setHeader("Content-Type", "application/json")
                 if (path.endsWith("ListRoomMessages")) return MockResponse().setBody("{\"room\":$room,\"messages\":[" +
                     "{\"messageId\":\"msg_1\",\"from\":\"owner\",\"text\":\"批 G 的 PR 评审过了吗？\",\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
                     "{\"messageId\":\"msg_2\",\"from\":\"c:c1\",\"fromName\":\"Muse\",\"text\":\"评审过了：内容通过，等 CI 全绿后成对合并。\",\"inReplyTo\":\"msg_1\"}," +
@@ -103,10 +113,12 @@ class PageShots {
 
     @Test fun tasks() = model().let { m -> shot("1-tasks") { SessionsTab(m, openDSH = {}) {} } }
     @Test fun needsYou() = model().let { m -> shot("2-needs-you") { NeedsYouTab(m) {} } }
-    @Test fun bots() = model().let { m -> shot("3-bots") { BotsTab(m) {} } }
+    @Test fun bots() = model().let { m -> shot("3-bots", waitFor = "发版评审") { BotsTab(m) {} } }
     @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
     @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse", waitFor = "评审过了") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
     @Test fun settings() = model().let { m -> shot("4-settings") { SettingsTab(m) } }
+    @Test fun room() = model().let { m -> shot("8-room", waitFor = "可以发版") { RoomPage(m, "m1", "room_2", openSession = {}) {} } }
+    @Test fun newRoom() = model().let { m -> shot("9-new-room") { NewRoomPage(m, opened = {}) {} } }
 
     companion object {
         private val now: Instant = Instant.now()

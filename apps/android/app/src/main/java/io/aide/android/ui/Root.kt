@@ -55,6 +55,9 @@ sealed interface Route {
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
     /** A bot's own page (工单 #57). */
     data class Bot(val key: String) : Route
+    /** A room of several bots (G2-b/c), and making one. */
+    data class Room(val machineId: String, val roomId: String) : Route
+    data object NewRoom : Route
 }
 
 /** The roster first (工单 #57): it took the machines' place, the machines now its groups' heads. */
@@ -92,6 +95,10 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     LaunchedEffect(opening) {
         val o = opening ?: return@LaunchedEffect
         if (o.session.isNotEmpty()) { stack.clear(); stack.add(Route.Session(o.session)) }
+        if (o.room.isNotEmpty()) {
+            model.loadRooms()
+            model.rooms.value.firstOrNull { it.roomId == o.room }?.let { stack.clear(); stack.add(Route.Room(it.hostMachineId, it.roomId)) }
+        }
         model.opened()
     }
     // A page over the tabs slides in a little from the side and fades, back the other way (Motion, as the desktop's).
@@ -114,6 +121,8 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }
+            is Route.Room -> RoomPage(model, top.machineId, top.roomId, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
+            Route.NewRoom -> NewRoomPage(model, opened = { r -> stack.removeAt(stack.lastIndex); stack.add(Route.Room(r.hostMachineId, r.roomId)) }, back = { stack.removeAt(stack.lastIndex) })
         }
         return@AnimatedContent
     }
@@ -141,7 +150,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                 when (shown) {
                     Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
                     Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
-                    Tab.Bots -> BotsTab(model) { stack.add(Route.Bot(it)) }
+                    Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
                     Tab.Settings -> SettingsTab(model)
                 }
             }

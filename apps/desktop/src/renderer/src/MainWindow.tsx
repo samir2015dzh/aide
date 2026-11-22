@@ -9,6 +9,7 @@ import { ClaudeSessions } from "./claude/ClaudeSessions";
 import { HeldMessages } from "./held/HeldMessages";
 import { TasksPage } from "./TasksPage";
 import { BotPage } from "./bots/Bots";
+import { RoomPage } from "./bots/Rooms";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -98,6 +99,8 @@ export function MainWindow() {
           <TasksPage />
         ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
           <BotPage key={st.selection.key} botKey={st.selection.key} />
+        ) : st.selection.kind === "room" && !st.status?.machineOnly ? (
+          <RoomPage key={st.selection.roomId} machineId={st.selection.machineId} roomId={st.selection.roomId} />
         ) : (
           <Overview />
         )}

@@ -111,7 +111,12 @@ type Message struct {
 	// Set on a room's message (ROOMS-DESIGN-2026-11-22): the room it belongs
 	// to on its host machine. A reply goes back to the room's address, the
 	// host's inbox with the room as its session.
-	Room          *RoomRef `protobuf:"bytes,13,opt,name=room,proto3" json:"room,omitempty"`
+	Room *RoomRef `protobuf:"bytes,13,opt,name=room,proto3" json:"room,omitempty"`
+	// Between machines (G2-b): a room's host waking a coding agent on
+	// another machine of the owner's, or that machine sending back what the
+	// agent said. Taken only with the room's charter.
+	RoomWake      *RoomWake  `protobuf:"bytes,14,opt,name=room_wake,json=roomWake,proto3" json:"room_wake,omitempty"`
+	RoomReply     *RoomReply `protobuf:"bytes,15,opt,name=room_reply,json=roomReply,proto3" json:"room_reply,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -237,6 +242,187 @@ func (x *Message) GetRoom() *RoomRef {
 	return nil
 }
 
+func (x *Message) GetRoomWake() *RoomWake {
+	if x != nil {
+		return x.RoomWake
+	}
+	return nil
+}
+
+func (x *Message) GetRoomReply() *RoomReply {
+	if x != nil {
+		return x.RoomReply
+	}
+	return nil
+}
+
+// RoomWake asks a member machine to hand a room's message to one of its
+// coding agents (in the session it talks in for the room, made the first
+// time), or to stop it (stop).
+type RoomWake struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Charter           *v11.Signed            `protobuf:"bytes,1,opt,name=charter,proto3" json:"charter,omitempty"`
+	CharterDeviceCert *v11.Signed            `protobuf:"bytes,2,opt,name=charter_device_cert,json=charterDeviceCert,proto3" json:"charter_device_cert,omitempty"`
+	Agent             string                 `protobuf:"bytes,3,opt,name=agent,proto3" json:"agent,omitempty"`
+	ProjectId         string                 `protobuf:"bytes,4,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	RoomName          string                 `protobuf:"bytes,5,opt,name=room_name,json=roomName,proto3" json:"room_name,omitempty"`
+	Stop              bool                   `protobuf:"varint,6,opt,name=stop,proto3" json:"stop,omitempty"`
+	// The host's id for this wake, which the reply names.
+	WakeId        string `protobuf:"bytes,7,opt,name=wake_id,json=wakeId,proto3" json:"wake_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomWake) Reset() {
+	*x = RoomWake{}
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomWake) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomWake) ProtoMessage() {}
+
+func (x *RoomWake) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomWake.ProtoReflect.Descriptor instead.
+func (*RoomWake) Descriptor() ([]byte, []int) {
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RoomWake) GetCharter() *v11.Signed {
+	if x != nil {
+		return x.Charter
+	}
+	return nil
+}
+
+func (x *RoomWake) GetCharterDeviceCert() *v11.Signed {
+	if x != nil {
+		return x.CharterDeviceCert
+	}
+	return nil
+}
+
+func (x *RoomWake) GetAgent() string {
+	if x != nil {
+		return x.Agent
+	}
+	return ""
+}
+
+func (x *RoomWake) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *RoomWake) GetRoomName() string {
+	if x != nil {
+		return x.RoomName
+	}
+	return ""
+}
+
+func (x *RoomWake) GetStop() bool {
+	if x != nil {
+		return x.Stop
+	}
+	return false
+}
+
+func (x *RoomWake) GetWakeId() string {
+	if x != nil {
+		return x.WakeId
+	}
+	return ""
+}
+
+// RoomReply is what a coding agent said to a room's message: its turn's
+// result, or why it gave none.
+type RoomReply struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Agent   string                 `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	WakeId  string                 `protobuf:"bytes,2,opt,name=wake_id,json=wakeId,proto3" json:"wake_id,omitempty"`
+	Failure string                 `protobuf:"bytes,3,opt,name=failure,proto3" json:"failure,omitempty"`
+	// The session it talks in for the room, there.
+	SessionId     string `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomReply) Reset() {
+	*x = RoomReply{}
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomReply) ProtoMessage() {}
+
+func (x *RoomReply) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomReply.ProtoReflect.Descriptor instead.
+func (*RoomReply) Descriptor() ([]byte, []int) {
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RoomReply) GetAgent() string {
+	if x != nil {
+		return x.Agent
+	}
+	return ""
+}
+
+func (x *RoomReply) GetWakeId() string {
+	if x != nil {
+		return x.WakeId
+	}
+	return ""
+}
+
+func (x *RoomReply) GetFailure() string {
+	if x != nil {
+		return x.Failure
+	}
+	return ""
+}
+
+func (x *RoomReply) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
 // RoomRef names a room on its host machine.
 type RoomRef struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -249,7 +435,7 @@ type RoomRef struct {
 
 func (x *RoomRef) Reset() {
 	*x = RoomRef{}
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +447,7 @@ func (x *RoomRef) String() string {
 func (*RoomRef) ProtoMessage() {}
 
 func (x *RoomRef) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,7 +460,7 @@ func (x *RoomRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomRef.ProtoReflect.Descriptor instead.
 func (*RoomRef) Descriptor() ([]byte, []int) {
-	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{2}
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *RoomRef) GetRoomId() string {
@@ -325,7 +511,7 @@ type SessionNews struct {
 
 func (x *SessionNews) Reset() {
 	*x = SessionNews{}
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -337,7 +523,7 @@ func (x *SessionNews) String() string {
 func (*SessionNews) ProtoMessage() {}
 
 func (x *SessionNews) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -350,7 +536,7 @@ func (x *SessionNews) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionNews.ProtoReflect.Descriptor instead.
 func (*SessionNews) Descriptor() ([]byte, []int) {
-	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{3}
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SessionNews) GetKind() string {
@@ -456,7 +642,7 @@ type SignedMessage struct {
 
 func (x *SignedMessage) Reset() {
 	*x = SignedMessage{}
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[4]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -468,7 +654,7 @@ func (x *SignedMessage) String() string {
 func (*SignedMessage) ProtoMessage() {}
 
 func (x *SignedMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[4]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -481,7 +667,7 @@ func (x *SignedMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignedMessage.ProtoReflect.Descriptor instead.
 func (*SignedMessage) Descriptor() ([]byte, []int) {
-	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{4}
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SignedMessage) GetMessage() *v11.Signed {
@@ -505,7 +691,7 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\x19aide/inbox/v1/inbox.proto\x12\raide.inbox.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1faide/identity/v1/identity.proto\x1a\x1daide/session/v1/session.proto\"9\n" +
 	"\aAddress\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x18\n" +
-	"\asession\x18\x02 \x01(\tR\asession\"\xf9\x03\n" +
+	"\asession\x18\x02 \x01(\tR\asession\"\xe8\x04\n" +
 	"\aMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12*\n" +
@@ -521,7 +707,25 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	" \x01(\bR\x03fyi\x12\x19\n" +
 	"\btrace_id\x18\v \x01(\tR\atraceId\x12\x10\n" +
 	"\x03hop\x18\f \x01(\rR\x03hop\x12*\n" +
-	"\x04room\x18\r \x01(\v2\x16.aide.inbox.v1.RoomRefR\x04room\"U\n" +
+	"\x04room\x18\r \x01(\v2\x16.aide.inbox.v1.RoomRefR\x04room\x124\n" +
+	"\troom_wake\x18\x0e \x01(\v2\x17.aide.inbox.v1.RoomWakeR\broomWake\x127\n" +
+	"\n" +
+	"room_reply\x18\x0f \x01(\v2\x18.aide.inbox.v1.RoomReplyR\troomReply\"\x87\x02\n" +
+	"\bRoomWake\x122\n" +
+	"\acharter\x18\x01 \x01(\v2\x18.aide.identity.v1.SignedR\acharter\x12H\n" +
+	"\x13charter_device_cert\x18\x02 \x01(\v2\x18.aide.identity.v1.SignedR\x11charterDeviceCert\x12\x14\n" +
+	"\x05agent\x18\x03 \x01(\tR\x05agent\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x04 \x01(\tR\tprojectId\x12\x1b\n" +
+	"\troom_name\x18\x05 \x01(\tR\broomName\x12\x12\n" +
+	"\x04stop\x18\x06 \x01(\bR\x04stop\x12\x17\n" +
+	"\awake_id\x18\a \x01(\tR\x06wakeId\"s\n" +
+	"\tRoomReply\x12\x14\n" +
+	"\x05agent\x18\x01 \x01(\tR\x05agent\x12\x17\n" +
+	"\awake_id\x18\x02 \x01(\tR\x06wakeId\x12\x18\n" +
+	"\afailure\x18\x03 \x01(\tR\afailure\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x04 \x01(\tR\tsessionId\"U\n" +
 	"\aRoomRef\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1b\n" +
 	"\troom_name\x18\x02 \x01(\tR\broomName\x12\x14\n" +
@@ -560,38 +764,44 @@ func file_aide_inbox_v1_inbox_proto_rawDescGZIP() []byte {
 	return file_aide_inbox_v1_inbox_proto_rawDescData
 }
 
-var file_aide_inbox_v1_inbox_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_aide_inbox_v1_inbox_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_aide_inbox_v1_inbox_proto_goTypes = []any{
 	(*Address)(nil),               // 0: aide.inbox.v1.Address
 	(*Message)(nil),               // 1: aide.inbox.v1.Message
-	(*RoomRef)(nil),               // 2: aide.inbox.v1.RoomRef
-	(*SessionNews)(nil),           // 3: aide.inbox.v1.SessionNews
-	(*SignedMessage)(nil),         // 4: aide.inbox.v1.SignedMessage
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
-	(*v1.WorkspaceRequest)(nil),   // 6: aide.session.v1.WorkspaceRequest
-	(*v1.DiffStat)(nil),           // 7: aide.session.v1.DiffStat
-	(*v1.Question)(nil),           // 8: aide.session.v1.Question
-	(v1.FailureKind)(0),           // 9: aide.session.v1.FailureKind
-	(*v11.Signed)(nil),            // 10: aide.identity.v1.Signed
-	(*v11.Contact)(nil),           // 11: aide.identity.v1.Contact
+	(*RoomWake)(nil),              // 2: aide.inbox.v1.RoomWake
+	(*RoomReply)(nil),             // 3: aide.inbox.v1.RoomReply
+	(*RoomRef)(nil),               // 4: aide.inbox.v1.RoomRef
+	(*SessionNews)(nil),           // 5: aide.inbox.v1.SessionNews
+	(*SignedMessage)(nil),         // 6: aide.inbox.v1.SignedMessage
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*v1.WorkspaceRequest)(nil),   // 8: aide.session.v1.WorkspaceRequest
+	(*v11.Signed)(nil),            // 9: aide.identity.v1.Signed
+	(*v1.DiffStat)(nil),           // 10: aide.session.v1.DiffStat
+	(*v1.Question)(nil),           // 11: aide.session.v1.Question
+	(v1.FailureKind)(0),           // 12: aide.session.v1.FailureKind
+	(*v11.Contact)(nil),           // 13: aide.identity.v1.Contact
 }
 var file_aide_inbox_v1_inbox_proto_depIdxs = []int32{
 	0,  // 0: aide.inbox.v1.Message.from:type_name -> aide.inbox.v1.Address
 	0,  // 1: aide.inbox.v1.Message.to:type_name -> aide.inbox.v1.Address
-	5,  // 2: aide.inbox.v1.Message.sent_at:type_name -> google.protobuf.Timestamp
-	3,  // 3: aide.inbox.v1.Message.session_news:type_name -> aide.inbox.v1.SessionNews
-	6,  // 4: aide.inbox.v1.Message.workspace_request:type_name -> aide.session.v1.WorkspaceRequest
-	2,  // 5: aide.inbox.v1.Message.room:type_name -> aide.inbox.v1.RoomRef
-	7,  // 6: aide.inbox.v1.SessionNews.diff_stat:type_name -> aide.session.v1.DiffStat
-	8,  // 7: aide.inbox.v1.SessionNews.question:type_name -> aide.session.v1.Question
-	9,  // 8: aide.inbox.v1.SessionNews.failure:type_name -> aide.session.v1.FailureKind
-	10, // 9: aide.inbox.v1.SignedMessage.message:type_name -> aide.identity.v1.Signed
-	11, // 10: aide.inbox.v1.SignedMessage.sender:type_name -> aide.identity.v1.Contact
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	7,  // 2: aide.inbox.v1.Message.sent_at:type_name -> google.protobuf.Timestamp
+	5,  // 3: aide.inbox.v1.Message.session_news:type_name -> aide.inbox.v1.SessionNews
+	8,  // 4: aide.inbox.v1.Message.workspace_request:type_name -> aide.session.v1.WorkspaceRequest
+	4,  // 5: aide.inbox.v1.Message.room:type_name -> aide.inbox.v1.RoomRef
+	2,  // 6: aide.inbox.v1.Message.room_wake:type_name -> aide.inbox.v1.RoomWake
+	3,  // 7: aide.inbox.v1.Message.room_reply:type_name -> aide.inbox.v1.RoomReply
+	9,  // 8: aide.inbox.v1.RoomWake.charter:type_name -> aide.identity.v1.Signed
+	9,  // 9: aide.inbox.v1.RoomWake.charter_device_cert:type_name -> aide.identity.v1.Signed
+	10, // 10: aide.inbox.v1.SessionNews.diff_stat:type_name -> aide.session.v1.DiffStat
+	11, // 11: aide.inbox.v1.SessionNews.question:type_name -> aide.session.v1.Question
+	12, // 12: aide.inbox.v1.SessionNews.failure:type_name -> aide.session.v1.FailureKind
+	9,  // 13: aide.inbox.v1.SignedMessage.message:type_name -> aide.identity.v1.Signed
+	13, // 14: aide.inbox.v1.SignedMessage.sender:type_name -> aide.identity.v1.Contact
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_aide_inbox_v1_inbox_proto_init() }
@@ -605,7 +815,7 @@ func file_aide_inbox_v1_inbox_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_inbox_v1_inbox_proto_rawDesc), len(file_aide_inbox_v1_inbox_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

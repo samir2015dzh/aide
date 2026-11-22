@@ -14,10 +14,18 @@ val noticeKinds = listOf("session_started", "question", "failure")
 /** A notice opened, as the app's protojson reads it. */
 fun parseNotice(json: String): Notice = ConnectClient.json.decodeFromString(Notice.serializer(), json)
 
-/** What a notice opens: a session. */
-data class NoticeTarget(val session: String = "") {
-    val isEmpty get() = session.isEmpty()
+/** What a notice opens: a session, or a room (G2-b/c). */
+data class NoticeTarget(val session: String = "", val room: String = "") {
+    val isEmpty get() = session.isEmpty() && room.isEmpty()
 }
+
+/**
+ * Rooms read again (G2-b/c): a room with more the owner has not read than before tells of it, in its own thread
+ * (newer replace older), unless its page is open. The host's line says what happened ("bot 交出了共识结果").
+ */
+fun roomNotices(before: List<io.aide.android.api.Room>, now: List<io.aide.android.api.Room>, open: String): List<Notice> =
+    now.filter { r -> r.roomId != open && r.unread > (before.firstOrNull { it.roomId == r.roomId }?.unread ?: 0) }
+        .map { Notice(kind = "room", title = it.name, roomId = it.roomId, roomLine = it.lastLine) }
 
 /** A notice as the phone shows it: its words, the thread newer ones replace, what a tap opens. */
 data class Shown(val title: String, val body: String, val thread: String, val target: NoticeTarget, val urgent: Boolean)
@@ -47,6 +55,7 @@ fun show(n: Notice): Shown = when (n.kind) {
         ).filter { it.isNotEmpty() }.joinToString("\n"),
         n.sessionId, NoticeTarget(session = n.sessionId), urgent = false,
     )
+    "room" -> Shown(n.title, n.roomLine.ifEmpty { t("Something new in the room", "房间里有新消息") }, "room:${n.roomId}", NoticeTarget(room = n.roomId), urgent = false)
     else -> Shown("Aide", t("Something needs you. Open Aide to see it.", "有事需要你处理，打开 Aide 查看。"), n.kind, NoticeTarget(), urgent = false)
 }
 

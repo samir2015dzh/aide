@@ -50,6 +50,35 @@ message Message {
   // to on its host machine. A reply goes back to the room's address, the
   // host's inbox with the room as its session.
   RoomRef room = 13;
+  // Between machines (G2-b): a room's host waking a coding agent on
+  // another machine of the owner's, or that machine sending back what the
+  // agent said. Taken only with the room's charter.
+  RoomWake room_wake = 14;
+  RoomReply room_reply = 15;
+}
+
+// RoomWake asks a member machine to hand a room's message to one of its
+// coding agents (in the session it talks in for the room, made the first
+// time), or to stop it (stop).
+message RoomWake {
+  aide.identity.v1.Signed charter = 1;
+  aide.identity.v1.Signed charter_device_cert = 2;
+  string agent = 3;
+  string project_id = 4;
+  string room_name = 5;
+  bool stop = 6;
+  // The host's id for this wake, which the reply names.
+  string wake_id = 7;
+}
+
+// RoomReply is what a coding agent said to a room's message: its turn's
+// result, or why it gave none.
+message RoomReply {
+  string agent = 1;
+  string wake_id = 2;
+  string failure = 3;
+  // The session it talks in for the room, there.
+  string session_id = 4;
 }
 
 // RoomRef names a room on its host machine.

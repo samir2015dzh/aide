@@ -309,11 +309,16 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 		n.bounce(m, why)
 		return "refused"
 	}
-	if info.Kind == "machine" {
+	// Rooms (rooms.go): a room's host waking one of this machine's coding agents (with the room's charter), or
+	// a member machine sending back what its agent said; a personal agent's answer in a room hosted here.
+	switch {
+	case info.Kind == "machine" && m.RoomWake != nil:
+		return n.takeRoomWake(ctx, m, info)
+	case info.Kind == "machine" && m.RoomReply != nil && strings.HasPrefix(m.GetTo().GetSession(), "room_"):
+		return n.takeRoomLetter(m, info)
+	case info.Kind == "machine":
 		return bounce("sessions take messages from agents, not from other sessions")
-	}
-	// A member's answer in a room this machine hosts (rooms.go).
-	if strings.HasPrefix(m.GetTo().GetSession(), "room_") {
+	case strings.HasPrefix(m.GetTo().GetSession(), "room_"):
 		return n.takeRoomLetter(m, info)
 	}
 	if err := n.checkLetter(m, info.Inbox, ""); err != nil {

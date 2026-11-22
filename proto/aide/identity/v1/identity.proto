@@ -460,3 +460,22 @@ message BoundaryRule {
   // a Claude Code conversation). Empty: every recipient.
   repeated string recipient_kinds = 3;
 }
+
+// RoomCharter is what the owner allows a room (ROOMS-DESIGN-2026-11-22):
+// its host machine may wake these coding agents, on these machines, in
+// these projects, with the room's messages. One of the owner's devices
+// signs it as it makes the room; a member machine checks it before it
+// starts or goes on with the agent's session for the room.
+message RoomCharter {
+  string owner_id = 1;
+  string room_id = 2;
+  string host_machine_id = 3;
+  repeated RoomCharterMember members = 4;
+  google.protobuf.Timestamp issued_at = 5;
+}
+
+message RoomCharterMember {
+  string machine_id = 1;
+  string agent = 2;
+  string project_id = 3;
+}

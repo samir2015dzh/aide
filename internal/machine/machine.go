@@ -277,6 +277,7 @@ func Open(cfg Config) (*Machine, error) {
 	n.sessions.notice = func(s noticeSession, e *sessionv1.SessionEvent) {
 		n.sessionNotice(s, e)
 		n.sessionNews(s, e)
+		n.roomTurn(s, e) // a session that talks for a room (rooms.go)
 		if _, ok := e.Kind.(*sessionv1.SessionEvent_TurnCompleted); ok {
 			n.turnEnded(s.id)
 		}

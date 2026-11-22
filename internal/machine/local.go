@@ -476,3 +476,19 @@ func (l *Local) ListRoomMessages(req *machinev1.ListRoomMessagesRequest) (*machi
 func (l *Local) PostRoomMessage(ctx context.Context, req *machinev1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
 	return l.n.PostRoomMessage(ctx, req)
 }
+
+func (l *Local) CreateRoom(req *machinev1.CreateRoomRequest) (*machinev1.Room, error) {
+	return l.n.CreateRoom(req)
+}
+
+func (l *Local) UpdateRoom(req *machinev1.UpdateRoomRequest) (*machinev1.Room, error) {
+	return l.n.UpdateRoom(req)
+}
+
+func (l *Local) StopRoom(ctx context.Context, id string) (*machinev1.Room, error) {
+	return l.n.StopRoom(ctx, id)
+}
+
+func (l *Local) MarkRoomSeen(id string) (*machinev1.Room, error) { return l.n.MarkRoomSeen(id) }
+
+func (l *Local) DeleteRoom(id string) error { return l.n.DeleteRoom(id) }

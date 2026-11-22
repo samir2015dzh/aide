@@ -231,3 +231,23 @@ func SameCard(a, b *identityv1.ContactCard) bool {
 	return a.OwnerId == b.OwnerId && a.ClientId == b.ClientId && bytes.Equal(a.ClientPublicKey, b.ClientPublicKey) && a.Name == b.Name && a.Kind == b.Kind &&
 		a.Category == b.Category && a.CategoryMachineId == b.CategoryMachineId
 }
+
+// VerifyRoomCharter checks a room's charter (identity.v1.RoomCharter): signed
+// by a device of this owner's, whose certificate the owner's root signed.
+func (t *Trust) VerifyRoomCharter(charter, deviceCert *identityv1.Signed) (*identityv1.RoomCharter, error) {
+	_, dev, err := t.VerifyDeviceCert(deviceCert)
+	if err != nil {
+		return nil, fmt.Errorf("room charter: %w", err)
+	}
+	c := &identityv1.RoomCharter{}
+	if err := VerifyWith(charter, dev, c); err != nil {
+		return nil, fmt.Errorf("room charter: %w", err)
+	}
+	if c.OwnerId != t.ownerID {
+		return nil, errors.New("room charter: wrong owner")
+	}
+	if c.RoomId == "" || c.HostMachineId == "" {
+		return nil, errors.New("room charter: no room or host")
+	}
+	return c, nil
+}

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Persona } from "@aide/proto/identity";
 import { useTranslation } from "react-i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import type { Machine } from "@aide/proto/local";
-import { RoomDeliveryState, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
-import { Markdown } from "../session/Markdown";
+import type { Room, RoomMessage } from "@aide/proto/machine";
+import { RoomTimeline, SidebarRooms } from "./Rooms";
 import { agentEntry, allBots, botCounts, botCountsText, displayTitle, listTime, machineConnections, projectTitle, roster, updatedDate, type Bot, type Roster } from "@aide/core";
 import { AgentTile } from "@aide/ui";
 import { AgentPage, projectsFor } from "../AgentList";
@@ -118,6 +118,8 @@ export function SidebarRoster() {
         <span>{t("bots.title")}</span>
         <span className="bot-counts" title={botCountsText(counts)}>{botCountsText(counts)}</span>
       </div>
+      {/* Rooms beside the bots, first (ROOMS-DESIGN §2). */}
+      <SidebarRooms />
       {r.personal.length > 0 && group("personal", t("bots.personal"), r.personal)}
       {r.machines.map((g) => group(g.machine.machineId, g.machine.local ? t("bots.thisComputer", { name: g.machine.machineName }) : g.machine.machineName, g.bots, g.machine))}
     </section>
@@ -358,7 +360,6 @@ function DirectChat({ b }: { b: Bot }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(() => crypto.randomUUID());
-  const end = useRef<HTMLDivElement>(null);
   const clientId = b.client!.clientId;
   useEffect(() => {
     let gone = false;
@@ -374,10 +375,6 @@ function DirectChat({ b }: { b: Bot }) {
     const every = setInterval(read, 3000);
     return () => ((gone = true), clearInterval(every));
   }, [room]);
-  // A block, not an expression: Chromium's scrollIntoView now returns a promise, which React would take for a cleanup.
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
-  }, [msgs.length]);
   const send = async (e: FormEvent) => {
     e.preventDefault();
     if (!room || !text.trim() || busy) return;
@@ -402,14 +399,7 @@ function DirectChat({ b }: { b: Bot }) {
       <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
         {error && <div className="bot-empty warn">{error}</div>}
         {!error && room && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
-        {msgs.map((m) => (
-          <div key={m.messageId} className={`chat-msg ${m.from === "owner" ? "mine" : ""}`}>
-            {m.from !== "owner" && <span className="chat-who">{m.fromName}</span>}
-            <div className="chat-bubble"><Markdown text={m.text} /></div>
-            {m.from === "owner" && m.deliveries.map((d) => <DeliveryLine key={d.botKey} d={d} name={b.name} />)}
-          </div>
-        ))}
-        <div ref={end} />
+        {room && <RoomTimeline room={room} msgs={msgs} />}
       </div>
       <form className="bot-compose" onSubmit={send}>
         <textarea className="field" rows={3} value={text} placeholder={t("bots.chatPlaceholder", { name: b.name })} aria-label={t("bots.chatPlaceholder", { name: b.name })} disabled={!room}
@@ -423,16 +413,3 @@ function DirectChat({ b }: { b: Bot }) {
   );
 }
 
-/** What became of the owner's message for the agent, in words. */
-function DeliveryLine({ d, name }: { d: RoomDelivery; name: string }) {
-  const { t } = useTranslation("common");
-  const word = {
-    [RoomDeliveryState.SENT]: t("bots.delivery.sent", { name }),
-    [RoomDeliveryState.REPLIED]: t("bots.delivery.replied", { name }),
-    [RoomDeliveryState.REFUSED]: d.reason,
-    [RoomDeliveryState.FAILED]: d.reason,
-    [RoomDeliveryState.UNSPECIFIED]: "",
-  }[d.state];
-  const bad = d.state === RoomDeliveryState.REFUSED || d.state === RoomDeliveryState.FAILED;
-  return <span className={`chat-state ${bad ? "warn" : ""}`} data-state={RoomDeliveryState[d.state]}>{word}</span>;
-}

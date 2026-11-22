@@ -36,7 +36,9 @@ export type Selection =
   /** The work the owner's agents handed out, as it goes (TasksPage.tsx, work order #27). */
   | { kind: "tasks" }
   /** A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>"). */
-  | { kind: "bot"; key: string };
+  | { kind: "bot"; key: string }
+  /** A room (ROOMS-DESIGN, G2-b): its host and id. */
+  | { kind: "room"; machineId: string; roomId: string };
 
 export type Sheet =
   | { kind: "newGrant" }
@@ -47,6 +49,8 @@ export type Sheet =
   /** Contacts (docs/personas.md): write to one, which goes on in its task or starts one. */
   /** A contact, from its bot's page (工单 #57); a blank one adds. */
   | { kind: "persona"; draft: PersonaDraft }
+  /** Making a room of several bots (G2-b). */
+  | { kind: "newRoom" }
   | { kind: "addDevice" }
   | { kind: "scope"; clientId: string; renew: boolean }
   /**
