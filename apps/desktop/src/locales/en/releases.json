@@ -1,4 +1,15 @@
 {
+  "0.2.7": {
+    "improvements": [
+      "Bots are the home page now: the roster is the first thing you see, and every agent is a bot with its own page — state, sessions, tasks, connection details and actions in one place. Machines are a device view, and the standalone dispatch page is gone: dispatching lives on the bot's own page.",
+      "Talk to a personal agent one-to-one: open its page and chat in the middle pane. Its replies land in the same timeline, and every message carries a delivery state (sending, accepted, delivered, replied).",
+      "Collaboration rooms: create a room from the roster and pull several bots in. Dispatch by @mention, or let them run an autonomous roundtable that passes the baton by @mention with a configurable turn cap and a one-click stop. A reply starting with [FINAL] is sealed as a consensus deliverable you can copy or export.",
+      "The DSH bridge plugin installs itself: one click on the connection page hands the install to DSH on that machine — no more picking files inside DSH Desktop's plugin page."
+    ],
+    "fixes": [
+      "One state, everywhere: the machine page, the dispatch entry and the top counts now all read the same state model. An unknown state no longer shows as ready to dispatch, the counts list unknowns separately, and desktop and Android use the same words for the same state."
+    ]
+  },
   "0.2.6": {
     "improvements": [
       "The machines page has a single roster now (desktop and Android): every agent appears once, with one name and one state. DSH is just called DSH, and DeepSeek only shows in the small print of its own row (the model line); Claude Desktop and the Claude Code command line are two detail lines under one entry instead of each carrying its own state. Android also keeps agent checks fresh while the machines page is open, instead of a whole page of \"Status unknown\".",
