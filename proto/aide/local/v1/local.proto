@@ -116,6 +116,18 @@ service LocalService {
   // changed (Touch ID).
   rpc RenameClient(RenameClientRequest) returns (RenameClientResponse);
   rpc RevokeClient(RevokeClientRequest) returns (RevokeClientResponse);
+  // This computer's `aide` CLI, logged in through this device (work order
+  // #39, docs/accounts.md §3.1): no account or password asked again.
+  // IssueLocalClientGrant is the CLI's own call (`aide auth login
+  // --from-app`): it keeps its key, and this device has the server sign
+  // and publish an agent grant for that key, as a password login would
+  // give. The local socket is this user's alone, and whoever can open it
+  // already acts as the owner: it adds no power. The others are the app's
+  // row for it: its state, and logging it in or out (out revokes it).
+  rpc IssueLocalClientGrant(IssueLocalClientGrantRequest) returns (IssueLocalClientGrantResponse);
+  rpc GetLocalCLI(GetLocalCLIRequest) returns (LocalCLI);
+  rpc LogInLocalCLI(LogInLocalCLIRequest) returns (LocalCLI);
+  rpc LogOutLocalCLI(LogOutLocalCLIRequest) returns (LocalCLI);
   // Agents' doorbells (docs/agent-names.md §7): the webhook rung when
   // messages wait for an agent or a name under it.
   rpc ListWakes(ListWakesRequest) returns (ListWakesResponse);
@@ -821,6 +833,50 @@ message RenameClientRequest {
 
 message RenameClientResponse {
   uint64 grant_version = 1;
+}
+
+message IssueLocalClientGrantRequest {
+  // The CLI's public key.
+  bytes public_key = 1;
+  // Its name, as a password login takes it (default client@<host>).
+  string label = 2;
+}
+
+message IssueLocalClientGrantResponse {
+  string relay_url = 1;
+  string owner_id = 2;
+  // The account this device logged in with.
+  string account = 3;
+  aide.identity.v1.RootChain root_chain = 4;
+  // The grant, signed by the server: every machine, project and coding
+  // agent, its own tasks, until revoked (a password login's).
+  aide.identity.v1.Signed grant = 5;
+}
+
+message GetLocalCLIRequest {}
+
+message LogInLocalCLIRequest {
+  // Its name; "" keeps the one it had, else client@<host>.
+  string label = 1;
+}
+
+message LogOutLocalCLIRequest {}
+
+// LocalCLI is this computer's `aide` CLI as the app shows it.
+message LocalCLI {
+  // Its program was found (beside aided): without it the app can't log
+  // it in or out here.
+  bool found = 1;
+  bool logged_in = 2;
+  // To this device's owner; false: logged in to another one.
+  bool same_owner = 3;
+  string label = 4;
+  string client_id = 5;
+  string grant_id = 6;
+  // Where it keeps its key and login.
+  string home = 7;
+  // Why it could not be read or changed; "" when it could.
+  string error = 8;
 }
 
 message RevokeClientRequest {

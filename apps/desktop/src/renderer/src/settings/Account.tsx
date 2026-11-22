@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Device } from "@aide/proto/local";
+import type { Device, LocalCLI } from "@aide/proto/local";
 import { platformTitle } from "@aide/core";
 import { local } from "../api";
 import { herDataLeft } from "../herLegacy";
@@ -94,6 +94,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
         </div>
         <p className="set-note">{t("account.devicesNote")}</p>
         {s && <AccountLogin />}
+        {s && !s.removed && <LocalCLIRow />}
       </div>
       <More label={t("account.advanced")}>
         <div className="fgroup">
@@ -306,6 +307,56 @@ function CopyRow({ k, text }: { k: string; text: string }) {
           {t("copy")}
         </button>
       </span>
+    </div>
+  );
+}
+
+/**
+ * This computer's `aide` CLI (work order #39): logged in through this app
+ * with one click, no account or password typed again; it is an agent of its
+ * own, listed under the same name. Logging it out revokes it; signing this
+ * app out leaves it as it is (it says so).
+ */
+function LocalCLIRow() {
+  const { t } = useTranslation("settings");
+  const st = useStore();
+  const [cli, setCli] = useState<LocalCLI>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    local.getLocalCLI({}).then(setCli, () => {});
+  }, []);
+  if (!cli || !cli.found) return null;
+  const act = async (out: boolean) => {
+    setBusy(true);
+    setError("");
+    try {
+      const r = out ? await local.logOutLocalCLI({}) : await local.logInLocalCLI({});
+      setCli(r);
+      st.show(out ? t("account.cli.loggedOut") : t("account.cli.loggedIn", { name: r.label }));
+      st.refresh();
+    } catch (e) {
+      setError(errorText(e));
+    }
+    setBusy(false);
+  };
+  const title = cli.loggedIn ? (cli.sameOwner ? t("account.cli.signedInAs", { name: cli.label }) : t("account.cli.otherOwner", { name: cli.label })) : t("account.cli.notSignedIn");
+  return (
+    <div>
+      <div className="fhead">{t("account.cli.title")}</div>
+      <div className="fgroup">
+        <SRow title={title} desc={error ? <span className="warn">{error}</span> : cli.loggedIn ? t("account.cli.outNote") : t("account.cli.inNote")}>
+          {cli.loggedIn ? (
+            <button className="btn sm danger" disabled={busy} onClick={() => act(true)}>
+              {t("account.cli.logOut")}
+            </button>
+          ) : (
+            <button className="btn sm primary" disabled={busy} onClick={() => act(false)}>
+              {busy ? t("account.cli.loggingIn") : t("account.cli.logIn")}
+            </button>
+          )}
+        </SRow>
+      </div>
     </div>
   );
 }

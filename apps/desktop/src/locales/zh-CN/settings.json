@@ -125,6 +125,19 @@
         "password": "新密码（不改就留空）",
         "again": "再输一次"
       }
+    },
+    "cli": {
+      "title": "本机命令行（aide CLI）",
+      "notSignedIn": "本机 CLI 未登录",
+      "signedInAs": "本机 CLI 已登录 · {{name}}",
+      "otherOwner": "本机 CLI 登录在另一个账号下 · {{name}}",
+      "inNote": "一键登录：用这台电脑上 Aide 的登录给 CLI 签发授权，不用再输账号和密码。它是一个独立的 agent，在「Agent」里以同一个名字列出。",
+      "outNote": "登出会吊销它的授权，并删掉本机的密钥。退出本应用的登录不会影响它；在终端里运行 aide auth logout 效果相同。",
+      "logIn": "登录 CLI",
+      "loggingIn": "正在登录…",
+      "logOut": "登出 CLI（吊销）",
+      "loggedIn": "本机 CLI 已登录为 {{name}}",
+      "loggedOut": "本机 CLI 已登出，授权已吊销"
     }
   },
   "grants": {

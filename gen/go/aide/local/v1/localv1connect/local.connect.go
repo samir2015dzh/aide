@@ -140,6 +140,18 @@ const (
 	// LocalServiceRevokeClientProcedure is the fully-qualified name of the LocalService's RevokeClient
 	// RPC.
 	LocalServiceRevokeClientProcedure = "/aide.local.v1.LocalService/RevokeClient"
+	// LocalServiceIssueLocalClientGrantProcedure is the fully-qualified name of the LocalService's
+	// IssueLocalClientGrant RPC.
+	LocalServiceIssueLocalClientGrantProcedure = "/aide.local.v1.LocalService/IssueLocalClientGrant"
+	// LocalServiceGetLocalCLIProcedure is the fully-qualified name of the LocalService's GetLocalCLI
+	// RPC.
+	LocalServiceGetLocalCLIProcedure = "/aide.local.v1.LocalService/GetLocalCLI"
+	// LocalServiceLogInLocalCLIProcedure is the fully-qualified name of the LocalService's
+	// LogInLocalCLI RPC.
+	LocalServiceLogInLocalCLIProcedure = "/aide.local.v1.LocalService/LogInLocalCLI"
+	// LocalServiceLogOutLocalCLIProcedure is the fully-qualified name of the LocalService's
+	// LogOutLocalCLI RPC.
+	LocalServiceLogOutLocalCLIProcedure = "/aide.local.v1.LocalService/LogOutLocalCLI"
 	// LocalServiceListWakesProcedure is the fully-qualified name of the LocalService's ListWakes RPC.
 	LocalServiceListWakesProcedure = "/aide.local.v1.LocalService/ListWakes"
 	// LocalServiceSetWakeProcedure is the fully-qualified name of the LocalService's SetWake RPC.
@@ -366,6 +378,18 @@ type LocalServiceClient interface {
 	// changed (Touch ID).
 	RenameClient(context.Context, *v1.RenameClientRequest) (*v1.RenameClientResponse, error)
 	RevokeClient(context.Context, *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error)
+	// This computer's `aide` CLI, logged in through this device (work order
+	// #39, docs/accounts.md §3.1): no account or password asked again.
+	// IssueLocalClientGrant is the CLI's own call (`aide auth login
+	// --from-app`): it keeps its key, and this device has the server sign
+	// and publish an agent grant for that key, as a password login would
+	// give. The local socket is this user's alone, and whoever can open it
+	// already acts as the owner: it adds no power. The others are the app's
+	// row for it: its state, and logging it in or out (out revokes it).
+	IssueLocalClientGrant(context.Context, *v1.IssueLocalClientGrantRequest) (*v1.IssueLocalClientGrantResponse, error)
+	GetLocalCLI(context.Context, *v1.GetLocalCLIRequest) (*v1.LocalCLI, error)
+	LogInLocalCLI(context.Context, *v1.LogInLocalCLIRequest) (*v1.LocalCLI, error)
+	LogOutLocalCLI(context.Context, *v1.LogOutLocalCLIRequest) (*v1.LocalCLI, error)
 	// Agents' doorbells (docs/agent-names.md §7): the webhook rung when
 	// messages wait for an agent or a name under it.
 	ListWakes(context.Context, *v1.ListWakesRequest) (*v1.ListWakesResponse, error)
@@ -708,6 +732,30 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("RevokeClient")),
 			connect.WithClientOptions(opts...),
 		),
+		issueLocalClientGrant: connect.NewClient[v1.IssueLocalClientGrantRequest, v1.IssueLocalClientGrantResponse](
+			httpClient,
+			baseURL+LocalServiceIssueLocalClientGrantProcedure,
+			connect.WithSchema(localServiceMethods.ByName("IssueLocalClientGrant")),
+			connect.WithClientOptions(opts...),
+		),
+		getLocalCLI: connect.NewClient[v1.GetLocalCLIRequest, v1.LocalCLI](
+			httpClient,
+			baseURL+LocalServiceGetLocalCLIProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetLocalCLI")),
+			connect.WithClientOptions(opts...),
+		),
+		logInLocalCLI: connect.NewClient[v1.LogInLocalCLIRequest, v1.LocalCLI](
+			httpClient,
+			baseURL+LocalServiceLogInLocalCLIProcedure,
+			connect.WithSchema(localServiceMethods.ByName("LogInLocalCLI")),
+			connect.WithClientOptions(opts...),
+		),
+		logOutLocalCLI: connect.NewClient[v1.LogOutLocalCLIRequest, v1.LocalCLI](
+			httpClient,
+			baseURL+LocalServiceLogOutLocalCLIProcedure,
+			connect.WithSchema(localServiceMethods.ByName("LogOutLocalCLI")),
+			connect.WithClientOptions(opts...),
+		),
 		listWakes: connect.NewClient[v1.ListWakesRequest, v1.ListWakesResponse](
 			httpClient,
 			baseURL+LocalServiceListWakesProcedure,
@@ -1016,6 +1064,10 @@ type localServiceClient struct {
 	updateClient             *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
 	renameClient             *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
 	revokeClient             *connect.Client[v1.RevokeClientRequest, v1.RevokeClientResponse]
+	issueLocalClientGrant    *connect.Client[v1.IssueLocalClientGrantRequest, v1.IssueLocalClientGrantResponse]
+	getLocalCLI              *connect.Client[v1.GetLocalCLIRequest, v1.LocalCLI]
+	logInLocalCLI            *connect.Client[v1.LogInLocalCLIRequest, v1.LocalCLI]
+	logOutLocalCLI           *connect.Client[v1.LogOutLocalCLIRequest, v1.LocalCLI]
 	listWakes                *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
 	setWake                  *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
 	checkWake                *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
@@ -1403,6 +1455,42 @@ func (c *localServiceClient) RenameClient(ctx context.Context, req *v1.RenameCli
 // RevokeClient calls aide.local.v1.LocalService.RevokeClient.
 func (c *localServiceClient) RevokeClient(ctx context.Context, req *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error) {
 	response, err := c.revokeClient.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// IssueLocalClientGrant calls aide.local.v1.LocalService.IssueLocalClientGrant.
+func (c *localServiceClient) IssueLocalClientGrant(ctx context.Context, req *v1.IssueLocalClientGrantRequest) (*v1.IssueLocalClientGrantResponse, error) {
+	response, err := c.issueLocalClientGrant.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// GetLocalCLI calls aide.local.v1.LocalService.GetLocalCLI.
+func (c *localServiceClient) GetLocalCLI(ctx context.Context, req *v1.GetLocalCLIRequest) (*v1.LocalCLI, error) {
+	response, err := c.getLocalCLI.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// LogInLocalCLI calls aide.local.v1.LocalService.LogInLocalCLI.
+func (c *localServiceClient) LogInLocalCLI(ctx context.Context, req *v1.LogInLocalCLIRequest) (*v1.LocalCLI, error) {
+	response, err := c.logInLocalCLI.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// LogOutLocalCLI calls aide.local.v1.LocalService.LogOutLocalCLI.
+func (c *localServiceClient) LogOutLocalCLI(ctx context.Context, req *v1.LogOutLocalCLIRequest) (*v1.LocalCLI, error) {
+	response, err := c.logOutLocalCLI.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1891,6 +1979,18 @@ type LocalServiceHandler interface {
 	// changed (Touch ID).
 	RenameClient(context.Context, *v1.RenameClientRequest) (*v1.RenameClientResponse, error)
 	RevokeClient(context.Context, *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error)
+	// This computer's `aide` CLI, logged in through this device (work order
+	// #39, docs/accounts.md §3.1): no account or password asked again.
+	// IssueLocalClientGrant is the CLI's own call (`aide auth login
+	// --from-app`): it keeps its key, and this device has the server sign
+	// and publish an agent grant for that key, as a password login would
+	// give. The local socket is this user's alone, and whoever can open it
+	// already acts as the owner: it adds no power. The others are the app's
+	// row for it: its state, and logging it in or out (out revokes it).
+	IssueLocalClientGrant(context.Context, *v1.IssueLocalClientGrantRequest) (*v1.IssueLocalClientGrantResponse, error)
+	GetLocalCLI(context.Context, *v1.GetLocalCLIRequest) (*v1.LocalCLI, error)
+	LogInLocalCLI(context.Context, *v1.LogInLocalCLIRequest) (*v1.LocalCLI, error)
+	LogOutLocalCLI(context.Context, *v1.LogOutLocalCLIRequest) (*v1.LocalCLI, error)
 	// Agents' doorbells (docs/agent-names.md §7): the webhook rung when
 	// messages wait for an agent or a name under it.
 	ListWakes(context.Context, *v1.ListWakesRequest) (*v1.ListWakesResponse, error)
@@ -2227,6 +2327,30 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceRevokeClientProcedure,
 		svc.RevokeClient,
 		connect.WithSchema(localServiceMethods.ByName("RevokeClient")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceIssueLocalClientGrantHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceIssueLocalClientGrantProcedure,
+		svc.IssueLocalClientGrant,
+		connect.WithSchema(localServiceMethods.ByName("IssueLocalClientGrant")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceGetLocalCLIHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceGetLocalCLIProcedure,
+		svc.GetLocalCLI,
+		connect.WithSchema(localServiceMethods.ByName("GetLocalCLI")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceLogInLocalCLIHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceLogInLocalCLIProcedure,
+		svc.LogInLocalCLI,
+		connect.WithSchema(localServiceMethods.ByName("LogInLocalCLI")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceLogOutLocalCLIHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceLogOutLocalCLIProcedure,
+		svc.LogOutLocalCLI,
+		connect.WithSchema(localServiceMethods.ByName("LogOutLocalCLI")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListWakesHandler := connect.NewUnaryHandlerSimple(
@@ -2573,6 +2697,14 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceRenameClientHandler.ServeHTTP(w, r)
 		case LocalServiceRevokeClientProcedure:
 			localServiceRevokeClientHandler.ServeHTTP(w, r)
+		case LocalServiceIssueLocalClientGrantProcedure:
+			localServiceIssueLocalClientGrantHandler.ServeHTTP(w, r)
+		case LocalServiceGetLocalCLIProcedure:
+			localServiceGetLocalCLIHandler.ServeHTTP(w, r)
+		case LocalServiceLogInLocalCLIProcedure:
+			localServiceLogInLocalCLIHandler.ServeHTTP(w, r)
+		case LocalServiceLogOutLocalCLIProcedure:
+			localServiceLogOutLocalCLIHandler.ServeHTTP(w, r)
 		case LocalServiceListWakesProcedure:
 			localServiceListWakesHandler.ServeHTTP(w, r)
 		case LocalServiceSetWakeProcedure:
@@ -2824,6 +2956,22 @@ func (UnimplementedLocalServiceHandler) RenameClient(context.Context, *v1.Rename
 
 func (UnimplementedLocalServiceHandler) RevokeClient(context.Context, *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RevokeClient is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) IssueLocalClientGrant(context.Context, *v1.IssueLocalClientGrantRequest) (*v1.IssueLocalClientGrantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.IssueLocalClientGrant is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) GetLocalCLI(context.Context, *v1.GetLocalCLIRequest) (*v1.LocalCLI, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.GetLocalCLI is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) LogInLocalCLI(context.Context, *v1.LogInLocalCLIRequest) (*v1.LocalCLI, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.LogInLocalCLI is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) LogOutLocalCLI(context.Context, *v1.LogOutLocalCLIRequest) (*v1.LocalCLI, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.LogOutLocalCLI is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListWakes(context.Context, *v1.ListWakesRequest) (*v1.ListWakesResponse, error) {

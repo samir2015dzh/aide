@@ -26,6 +26,7 @@ import (
 // ServeLocal serves LocalService on a local endpoint that only the same
 // user may connect to. It blocks until ctx is done.
 func (d *Device) ServeLocal(ctx context.Context, sockPath string) error {
+	d.sock = sockPath
 	ln, err := localipc.Listen(sockPath)
 	if err != nil {
 		return err
@@ -681,6 +682,24 @@ func (l *localService) UpdateClient(ctx context.Context, req *localv1.UpdateClie
 		return nil, err
 	}
 	return &localv1.UpdateClientResponse{GrantVersion: v, Acks: acks}, nil
+}
+
+func (l *localService) IssueLocalClientGrant(ctx context.Context, req *localv1.IssueLocalClientGrantRequest) (*localv1.IssueLocalClientGrantResponse, error) {
+	res, err := l.o().IssueLocalClient(ctx, req.PublicKey, req.Label)
+	l.o().wrote(ctx, err, true)
+	return res, err
+}
+
+func (l *localService) GetLocalCLI(ctx context.Context, _ *localv1.GetLocalCLIRequest) (*localv1.LocalCLI, error) {
+	return l.d.LocalCLI(ctx), nil
+}
+
+func (l *localService) LogInLocalCLI(ctx context.Context, req *localv1.LogInLocalCLIRequest) (*localv1.LocalCLI, error) {
+	return l.d.LogInLocalCLI(ctx, req.Label)
+}
+
+func (l *localService) LogOutLocalCLI(ctx context.Context, _ *localv1.LogOutLocalCLIRequest) (*localv1.LocalCLI, error) {
+	return l.d.LogOutLocalCLI(ctx)
 }
 
 func (l *localService) RevokeClient(ctx context.Context, req *localv1.RevokeClientRequest) (*localv1.RevokeClientResponse, error) {
