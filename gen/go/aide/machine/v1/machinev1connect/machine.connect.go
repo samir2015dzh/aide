@@ -93,6 +93,12 @@ const (
 	// MachineAdminServiceReadClaudeSessionProcedure is the fully-qualified name of the
 	// MachineAdminService's ReadClaudeSession RPC.
 	MachineAdminServiceReadClaudeSessionProcedure = "/aide.machine.v1.MachineAdminService/ReadClaudeSession"
+	// MachineAdminServiceListHeldMessagesProcedure is the fully-qualified name of the
+	// MachineAdminService's ListHeldMessages RPC.
+	MachineAdminServiceListHeldMessagesProcedure = "/aide.machine.v1.MachineAdminService/ListHeldMessages"
+	// MachineAdminServiceReleaseHeldMessageProcedure is the fully-qualified name of the
+	// MachineAdminService's ReleaseHeldMessage RPC.
+	MachineAdminServiceReleaseHeldMessageProcedure = "/aide.machine.v1.MachineAdminService/ReleaseHeldMessage"
 	// MachineAdminServiceSetDSHTakeoverProcedure is the fully-qualified name of the
 	// MachineAdminService's SetDSHTakeover RPC.
 	MachineAdminServiceSetDSHTakeoverProcedure = "/aide.machine.v1.MachineAdminService/SetDSHTakeover"
@@ -550,6 +556,16 @@ type MachineAdminServiceClient interface {
 	// One of them and a page of its conversation, from Claude Code's
 	// transcript, as session events. Read only. Owner only.
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error)
+	// Messages held for the owner before they reach a session
+	// (docs/agent-messages.md §15.5): from an agent let in less than 7 days
+	// ago, in a chain at hop 3 or more, or matching the owner's information
+	// boundary for the session's agent. Kept on this machine, not at the
+	// post office; one not released within a day expires. Owner only.
+	ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error)
+	// Releases one to its session (it goes on as if never held), or discards
+	// it (refused; its sender is told). Only messages, never an action: a
+	// release is recorded in the audit log.
+	ReleaseHeldMessage(context.Context, *v1.ReleaseHeldMessageRequest) (*v1.ReleaseHeldMessageResponse, error)
 	// Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
 	// on for one session (off for every session until then), then sends it
 	// messages and stops its turn through the Aide bridge plugin in DSH
@@ -661,6 +677,18 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("ReadClaudeSession")),
 			connect.WithClientOptions(opts...),
 		),
+		listHeldMessages: connect.NewClient[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse](
+			httpClient,
+			baseURL+MachineAdminServiceListHeldMessagesProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ListHeldMessages")),
+			connect.WithClientOptions(opts...),
+		),
+		releaseHeldMessage: connect.NewClient[v1.ReleaseHeldMessageRequest, v1.ReleaseHeldMessageResponse](
+			httpClient,
+			baseURL+MachineAdminServiceReleaseHeldMessageProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ReleaseHeldMessage")),
+			connect.WithClientOptions(opts...),
+		),
 		setDSHTakeover: connect.NewClient[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse](
 			httpClient,
 			baseURL+MachineAdminServiceSetDSHTakeoverProcedure,
@@ -725,6 +753,8 @@ type machineAdminServiceClient struct {
 	dSHSessionOptions   *connect.Client[v1.DSHSessionOptionsRequest, v1.DSHSessionOptionsResponse]
 	listClaudeSessions  *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession   *connect.Client[v1.ReadClaudeSessionRequest, v1.ReadClaudeSessionResponse]
+	listHeldMessages    *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
+	releaseHeldMessage  *connect.Client[v1.ReleaseHeldMessageRequest, v1.ReleaseHeldMessageResponse]
 	setDSHTakeover      *connect.Client[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse]
 	sendDSHMessage      *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
 	interruptDSHSession *connect.Client[v1.InterruptDSHSessionRequest, v1.InterruptDSHSessionResponse]
@@ -828,6 +858,24 @@ func (c *machineAdminServiceClient) ListClaudeSessions(ctx context.Context, req 
 // ReadClaudeSession calls aide.machine.v1.MachineAdminService.ReadClaudeSession.
 func (c *machineAdminServiceClient) ReadClaudeSession(ctx context.Context, req *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error) {
 	response, err := c.readClaudeSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListHeldMessages calls aide.machine.v1.MachineAdminService.ListHeldMessages.
+func (c *machineAdminServiceClient) ListHeldMessages(ctx context.Context, req *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {
+	response, err := c.listHeldMessages.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ReleaseHeldMessage calls aide.machine.v1.MachineAdminService.ReleaseHeldMessage.
+func (c *machineAdminServiceClient) ReleaseHeldMessage(ctx context.Context, req *v1.ReleaseHeldMessageRequest) (*v1.ReleaseHeldMessageResponse, error) {
+	response, err := c.releaseHeldMessage.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -942,6 +990,16 @@ type MachineAdminServiceHandler interface {
 	// One of them and a page of its conversation, from Claude Code's
 	// transcript, as session events. Read only. Owner only.
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error)
+	// Messages held for the owner before they reach a session
+	// (docs/agent-messages.md §15.5): from an agent let in less than 7 days
+	// ago, in a chain at hop 3 or more, or matching the owner's information
+	// boundary for the session's agent. Kept on this machine, not at the
+	// post office; one not released within a day expires. Owner only.
+	ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error)
+	// Releases one to its session (it goes on as if never held), or discards
+	// it (refused; its sender is told). Only messages, never an action: a
+	// release is recorded in the audit log.
+	ReleaseHeldMessage(context.Context, *v1.ReleaseHeldMessageRequest) (*v1.ReleaseHeldMessageResponse, error)
 	// Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
 	// on for one session (off for every session until then), then sends it
 	// messages and stops its turn through the Aide bridge plugin in DSH
@@ -1049,6 +1107,18 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		connect.WithSchema(machineAdminServiceMethods.ByName("ReadClaudeSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineAdminServiceListHeldMessagesHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceListHeldMessagesProcedure,
+		svc.ListHeldMessages,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ListHeldMessages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceReleaseHeldMessageHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceReleaseHeldMessageProcedure,
+		svc.ReleaseHeldMessage,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ReleaseHeldMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	machineAdminServiceSetDSHTakeoverHandler := connect.NewUnaryHandlerSimple(
 		MachineAdminServiceSetDSHTakeoverProcedure,
 		svc.SetDSHTakeover,
@@ -1121,6 +1191,10 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceListClaudeSessionsHandler.ServeHTTP(w, r)
 		case MachineAdminServiceReadClaudeSessionProcedure:
 			machineAdminServiceReadClaudeSessionHandler.ServeHTTP(w, r)
+		case MachineAdminServiceListHeldMessagesProcedure:
+			machineAdminServiceListHeldMessagesHandler.ServeHTTP(w, r)
+		case MachineAdminServiceReleaseHeldMessageProcedure:
+			machineAdminServiceReleaseHeldMessageHandler.ServeHTTP(w, r)
 		case MachineAdminServiceSetDSHTakeoverProcedure:
 			machineAdminServiceSetDSHTakeoverHandler.ServeHTTP(w, r)
 		case MachineAdminServiceSendDSHMessageProcedure:
@@ -1188,6 +1262,14 @@ func (UnimplementedMachineAdminServiceHandler) ListClaudeSessions(context.Contex
 
 func (UnimplementedMachineAdminServiceHandler) ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ReadClaudeSession is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ListHeldMessages is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ReleaseHeldMessage(context.Context, *v1.ReleaseHeldMessageRequest) (*v1.ReleaseHeldMessageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ReleaseHeldMessage is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) SetDSHTakeover(context.Context, *v1.SetDSHTakeoverRequest) (*v1.SetDSHTakeoverResponse, error) {

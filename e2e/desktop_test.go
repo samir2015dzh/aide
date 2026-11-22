@@ -138,6 +138,9 @@ func TestDesktop(t *testing.T) {
 				dshHome = dshDesktopHome(t)
 				more = append(more, "DSH_HOME="+dshHome, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}
+			if name == "held" { // the owner's ruling as it stands: a new agent's message to another's session waits for them
+				more = append(more, "AIDE_TEST_NEW_AGENT_DAYS=")
+			}
 			if name == "claudesessions" { // the Claude app's own session, in a checkout of a GitHub repository
 				local, config, repo := t.TempDir(), t.TempDir(), t.TempDir()
 				os.MkdirAll(filepath.Join(repo, ".git"), 0o755)
@@ -162,6 +165,9 @@ func TestDesktop(t *testing.T) {
 				f.OtherMac = otherMacSession(t, f)
 				inPlaceSessions(t, f)
 				repoSession(t, f)
+			}
+			if name == "held" {
+				heldMessage(t, f)
 			}
 			if name == "rollback" { // an in-place session, which has nothing to roll back to
 				inPlaceSessions(t, f)

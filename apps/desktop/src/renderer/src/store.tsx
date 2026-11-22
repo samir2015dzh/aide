@@ -29,7 +29,9 @@ export type Selection =
   /** DeepSeek Harness's own sessions (dsh/DSHSessions.tsx), one of them chosen. */
   | { kind: "dsh"; machine?: string; id?: string }
   /** The Claude desktop app's Claude Code sessions (claude/ClaudeSessions.tsx), one of them chosen. */
-  | { kind: "claude"; machine?: string; id?: string };
+  | { kind: "claude"; machine?: string; id?: string }
+  /** The messages held for the owner before they reach a session (held/HeldMessages.tsx). */
+  | { kind: "held" };
 
 export type Sheet =
   | { kind: "newGrant" }

@@ -151,7 +151,9 @@ type Machine struct {
 	// dshPending: a message waits for DSH Desktop (dshmail.go); dshOut:
 	// when each DSH session sent through Aide, the last hour.
 	dshPending bool
-	dshOut     map[string][]time.Time
+	// heldMu: one change to the messages held for the owner at a time (held.go).
+	heldMu sync.Mutex
+	dshOut map[string][]time.Time
 	// tools is the sessions' own tools socket (sessiontools.go).
 	tools sessionTools
 	// wsReqs are the managed workspaces' requests (workspacereq.go).
@@ -579,6 +581,7 @@ func (n *Machine) Run(ctx context.Context) error {
 	go n.serveLocal(ctx)
 	go n.serveDirect(ctx)
 	go n.serveDSH(ctx)
+	go n.serveHeld(ctx)
 	n.log.Info("aided machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
 	n.runLink(ctx)
 	n.mu.Lock()

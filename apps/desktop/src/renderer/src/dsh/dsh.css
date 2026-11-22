@@ -79,3 +79,9 @@
 .dsh-path .mono{font-family:var(--mono);overflow-wrap:anywhere;color:var(--l1)}
 
 
+/* Messages held for the owner (held/HeldMessages.tsx). */
+.held-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.held-row{align-items:flex-start}
+.held-row .t{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.held-row .dsh-msg{white-space:pre-wrap;overflow-wrap:anywhere;margin:2px 0 0}
+.held-actions{display:flex;gap:6px;flex-shrink:0}

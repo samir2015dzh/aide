@@ -20,6 +20,10 @@ func TestMain(m *testing.M) {
 	// run on this one beside the machines: they reach them through the
 	// relay. TestLocalAgent turns the local way on for its own.
 	os.Setenv("AIDE_LOCAL", "off")
+	// Every agent here was let in a moment before: none is new, but in
+	// TestHeldForTheOwner, which holds a new one's messages as the owner
+	// ruled (docs/agent-messages.md §15.5).
+	os.Setenv("AIDE_TEST_NEW_AGENT_DAYS", "0")
 	code := m.Run()
 	cleanup()
 	os.Exit(code)

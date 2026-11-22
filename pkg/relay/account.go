@@ -545,7 +545,8 @@ func DefaultGrant(ownerID string, clientKey []byte, label string, now time.Time)
 		ClientId: identity.ClientID(clientKey), ClientPublicKey: clientKey, ClientLabel: label,
 		MachineIds: []string{"*"}, ProjectIds: []string{"*"}, Agents: []string{"*"},
 		TaskVisibility: identityv1.TaskVisibility_TASK_VISIBILITY_OWN,
-		NotBefore:      timestamppb.New(now.Add(-time.Minute)), ExpiresAt: timestamppb.New(identity.NoExpiry)}
+		NotBefore:      timestamppb.New(now.Add(-time.Minute)), ExpiresAt: timestamppb.New(identity.NoExpiry),
+		FirstIssuedAt: timestamppb.New(now)}
 }
 
 // IssueGrant signs in an agent whose key a server holds for it (the MCP

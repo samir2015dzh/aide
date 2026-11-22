@@ -1,3 +1,4 @@
+import { useHeldCount } from "./held/HeldMessages";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
@@ -26,6 +27,7 @@ export function Rail() {
   const now = useNow(30_000);
   const [tip, setTip] = useState<Tip>(null);
   const [menu, setMenu] = useState<AgentMenuAt | null>(null);
+  const held = useHeldCount(!!st.status);
   const show = (text: string) => ({
     onMouseEnter: (e: MouseEvent<HTMLElement>) => setTip({ text, top: e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2 }),
     onFocus: (e: FocusEvent<HTMLElement>) => setTip({ text, top: e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2 }),
@@ -84,6 +86,8 @@ export function Rail() {
         {owner &&
           hasClaude(st) &&
           button({ label: t("sidebar.claude"), current: sel.kind === "claude", onClick: () => sel.kind !== "claude" && st.set({ selection: { kind: "claude" } }), children: <Icon name="terminal" /> })}
+        {(held > 0 || sel.kind === "held") &&
+          button({ label: t("sidebar.held"), current: sel.kind === "held", onClick: () => sel.kind !== "held" && st.set({ selection: { kind: "held" } }), children: <Icon name="bell" /> })}
         {groups.length > 0 && <div className="rail-sep" role="separator" />}
         {groups.map((g) => (
           <div key={g.agent}>

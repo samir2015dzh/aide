@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/boundary"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,8 +49,14 @@ type seenMachine struct {
 }
 
 type app struct {
-	home   string
-	output string
+	// boundary is the owner's information boundary, as the post office
+	// last handed it with the contacts (docs/agent-messages.md §15.5).
+	boundary *boundary.Checker
+	// recipientKind is the kind of model this command hands messages to (a
+	// hook's, a watch's: "claude", "codex"), "" for any other command.
+	recipientKind string
+	home          string
+	output        string
 	// as is the caller's name under this agent (--as, docs/agent-names.md).
 	as string
 	hc *http.Client

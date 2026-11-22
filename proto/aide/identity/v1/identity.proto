@@ -161,6 +161,11 @@ message Grant {
   // (MachineOpsService.Exec, docs/machine-ops.md). A scope of its own, off
   // unless the owner turns it on for this client: sessions don't need it.
   bool machine_exec = 19;
+  // When the owner first let this client in (version 1 of the grant); later
+  // versions keep it. Unset on a grant from before it was kept: such an
+  // agent is not new. Machines hold a new agent's messages to sessions for
+  // the owner (docs/agent-messages.md §15.5).
+  google.protobuf.Timestamp first_issued_at = 20;
 }
 
 // EraseOrder is the owner's order to erase Aide everywhere
@@ -408,4 +413,29 @@ message Contact {
   Signed device_cert = 2;
   Signed machine_cert = 3;
   Signed registration = 4;
+}
+
+// BoundaryPolicy is the owner's information boundary for messages between
+// their agents (docs/agent-messages.md §15.5), signed by a trusted device's
+// device key: what must not reach which kinds of recipient. The rules
+// themselves are the owner's, kept on their side: none is in this
+// repository. Senders check a message against it before it goes (refused,
+// naming the rule's category); recipients check it again before a model
+// reads it (held for the owner). Best effort, not a cryptographic guarantee.
+message BoundaryPolicy {
+  string owner_id = 1;
+  repeated BoundaryRule rules = 2;
+  google.protobuf.Timestamp issued_at = 3;
+}
+
+message BoundaryRule {
+  // The owner's name for what it keeps in ("代理与远程控制", say): shown
+  // when it refuses or holds a message; the words it matched never are.
+  string category = 1;
+  // RE2 regular expressions (Go's syntax); a message matching any is in.
+  repeated string patterns = 2;
+  // The kinds of recipient it holds for: the coding agent a session runs
+  // ("claude", "codex", "deepseek", …), or a CLI agent's own ("claude" for
+  // a Claude Code conversation). Empty: every recipient.
+  repeated string recipient_kinds = 3;
 }

@@ -70,7 +70,9 @@ type MessageStore interface {
 	WaitingMessages(ownerID, inbox string) ([]Message, error)
 	// SetMessageStates records what became of messages of an inbox:
 	// "taken" keeps a message waiting, any other state drops its body; a
-	// "handed" one may still be acknowledged handled, held or refused.
+	// "handed" one may still be acknowledged handled, held or refused, and a
+	// "held" one (waiting for the owner on its recipient's side) handed,
+	// handled, refused or expired.
 	SetMessageStates(ownerID, inbox string, ids []string, state string, at time.Time) error
 	MessageStates(ownerID string, ids []string) (map[string]MessageState, error)
 	// ExpireMessages drops bodies past their expiry (state "expired") and
@@ -83,6 +85,10 @@ type MessageStore interface {
 	// PutCard keeps an agent's card with the cert of the device that signed it.
 	PutCard(ownerID, clientID string, card, deviceCert *identityv1.Signed) error
 	Cards(ownerID string) (map[string]StoredCard, error)
+	// PutBoundary keeps the owner's information boundary (Card: the signed
+	// policy) with the cert of the device that signed it; Boundary reads it.
+	PutBoundary(ownerID string, b StoredCard) error
+	Boundary(ownerID string) (StoredCard, bool, error)
 }
 
 // StoredCard is an agent's card and the cert of the device that signed it.
@@ -164,6 +170,11 @@ func (m *messageService) Contacts(ctx context.Context, _ *relayv1.ContactsReques
 		return nil, err
 	}
 	res := &relayv1.ContactsResponse{Contacts: contacts, RootChain: t.trust.RootChain()}
+	if b, ok, err := m.s.messageStore().Boundary(t.ownerID); err != nil {
+		return nil, err
+	} else if ok {
+		res.Boundary = &relayv1.Boundary{Policy: b.Card, DeviceCert: b.DeviceCert}
+	}
 	listed := map[string]bool{}
 	for _, c := range contacts {
 		listed[contactInbox(c)] = true
@@ -360,10 +371,10 @@ func (m *messageService) Ack(ctx context.Context, req *relayv1.AckMessagesReques
 	byOutcome := map[string][]string{}
 	for _, a := range req.Acks {
 		switch a.Outcome {
-		case "handed", "handled", "held", "refused":
+		case "handed", "handled", "held", "refused", "expired":
 			byOutcome[a.Outcome] = append(byOutcome[a.Outcome], a.MessageId)
 		default:
-			return nil, errf(connect.CodeInvalidArgument, "an outcome is handed, handled, held or refused")
+			return nil, errf(connect.CodeInvalidArgument, "an outcome is handed, handled, held, refused or expired")
 		}
 	}
 	now := time.Now()
@@ -459,6 +470,35 @@ func (o *ownerControl) PublishCards(ctx context.Context, req *relayv1.PublishCar
 	return &relayv1.PublishCardsResponse{}, nil
 }
 
+// PublishBoundaryPolicy keeps the owner's information boundary a trusted
+// device signed (docs/agent-messages.md §15.5), unless the one kept is
+// newer. The relay never reads a message, so it checks nothing against it:
+// it only hands it to every inbox with its contacts.
+func (o *ownerControl) PublishBoundaryPolicy(ctx context.Context, req *relayv1.PublishBoundaryPolicyRequest) (*relayv1.PublishBoundaryPolicyResponse, error) {
+	p := peerFrom(ctx)
+	t := p.t
+	if p.deviceCert == nil {
+		return nil, errf(connect.CodePermissionDenied, "only one of the owner's devices signs the information boundary")
+	}
+	signed := req.GetBoundary().GetPolicy()
+	pol, err := t.trust.VerifyBoundary(signed, p.deviceCert)
+	if err != nil {
+		return nil, errf(connect.CodeInvalidArgument, err.Error())
+	}
+	ms := o.s.messageStore()
+	if cur, ok, err := ms.Boundary(t.ownerID); err != nil {
+		return nil, err
+	} else if ok {
+		if have, err := t.trust.VerifyBoundary(cur.Card, cur.DeviceCert); err == nil && have.IssuedAt.AsTime().After(pol.IssuedAt.AsTime()) {
+			return nil, errf(connect.CodeFailedPrecondition, "a newer information boundary is kept")
+		}
+	}
+	if err := ms.PutBoundary(t.ownerID, StoredCard{Card: signed, DeviceCert: p.deviceCert}); err != nil {
+		return nil, err
+	}
+	return &relayv1.PublishBoundaryPolicyResponse{}, nil
+}
+
 // maybeExpire drops expired messages, at most once an hour: the post office
 // is swept as it is used.
 func (s *Server) maybeExpire() {
@@ -498,6 +538,8 @@ type memoryMessages struct {
 	msgs  map[string]map[string]*memMessage // owner → id
 	regs  map[string]map[string]*identityv1.Signed
 	cards map[string]map[string]StoredCard
+	// boundaries: the owner's information boundary, by owner.
+	boundaries map[string]StoredCard
 }
 
 type memMessage struct {
@@ -557,7 +599,8 @@ func (m *memoryMessages) SetMessageStates(ownerID, inbox string, ids []string, s
 	defer m.mu.Unlock()
 	for _, id := range ids {
 		msg := m.msgs[ownerID][id]
-		if msg == nil || msg.Inbox != inbox || (msg.Sealed == nil && (msg.state.State != "handed" || state == "taken")) {
+		open := msg != nil && (msg.state.State == "handed" || msg.state.State == "held")
+		if msg == nil || msg.Inbox != inbox || (msg.Sealed == nil && (!open || state == "taken")) {
 			continue
 		}
 		msg.state = MessageState{State: state, At: at, Sender: msg.Sender}
@@ -633,6 +676,23 @@ func (m *memoryMessages) PutCard(ownerID, clientID string, card, deviceCert *ide
 	m.init(ownerID)
 	m.cards[ownerID][clientID] = StoredCard{Card: card, DeviceCert: deviceCert}
 	return nil
+}
+
+func (m *memoryMessages) PutBoundary(ownerID string, b StoredCard) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.boundaries == nil {
+		m.boundaries = map[string]StoredCard{}
+	}
+	m.boundaries[ownerID] = b
+	return nil
+}
+
+func (m *memoryMessages) Boundary(ownerID string) (StoredCard, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	b, ok := m.boundaries[ownerID]
+	return b, ok, nil
 }
 
 func (m *memoryMessages) Cards(ownerID string) (map[string]StoredCard, error) {

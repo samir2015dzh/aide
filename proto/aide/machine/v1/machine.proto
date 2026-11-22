@@ -547,6 +547,20 @@ service MachineAdminService {
   rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (ReadClaudeSessionResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // Messages held for the owner before they reach a session
+  // (docs/agent-messages.md §15.5): from an agent let in less than 7 days
+  // ago, in a chain at hop 3 or more, or matching the owner's information
+  // boundary for the session's agent. Kept on this machine, not at the
+  // post office; one not released within a day expires. Owner only.
+  rpc ListHeldMessages(ListHeldMessagesRequest) returns (ListHeldMessagesResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // Releases one to its session (it goes on as if never held), or discards
+  // it (refused; its sender is told). Only messages, never an action: a
+  // release is recorded in the audit log.
+  rpc ReleaseHeldMessage(ReleaseHeldMessageRequest) returns (ReleaseHeldMessageResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
   // Taking over a DSH session (docs/dsh-takeover.md): the owner turns it
   // on for one session (off for every session until then), then sends it
   // messages and stops its turn through the Aide bridge plugin in DSH
@@ -998,3 +1012,37 @@ message PushRevocationsRequest {
 message PushRevocationsResponse {
   bool applied = 1;
 }
+
+message ListHeldMessagesRequest {}
+
+message ListHeldMessagesResponse {
+  // Oldest first.
+  repeated HeldMessage messages = 1;
+}
+
+message HeldMessage {
+  string message_id = 1;
+  // The sender's address (c_…, c_…/<name>) and name.
+  string from = 2;
+  string from_name = 3;
+  // The session it is for (s_…, dsh_…).
+  string session_id = 4;
+  string text = 5;
+  string subject = 6;
+  // Why: "new_agent", "long_chain" or "boundary".
+  string reason = 7;
+  // In words; for "boundary", the rule's category (never what matched).
+  string detail = 8;
+  google.protobuf.Timestamp held_at = 9;
+  // When it expires if not released.
+  google.protobuf.Timestamp expires_at = 10;
+  uint32 hop = 11;
+}
+
+message ReleaseHeldMessageRequest {
+  string message_id = 1;
+  // false: discard it.
+  bool release = 2;
+}
+
+message ReleaseHeldMessageResponse {}

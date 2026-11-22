@@ -35,6 +35,7 @@ func (o *Owner) refreshCards() {
 // syncCards signs and publishes the cards the listed agents lack, or whose
 // card says something else or no longer verifies.
 func (o *Owner) syncCards(entries []*relayv1.ClientEntry) {
+	defer o.syncBoundary() // and the owner's information boundary, when it changed (boundary.go)
 	o.cardsMu.Lock()
 	defer o.cardsMu.Unlock()
 	o.mu.Lock()

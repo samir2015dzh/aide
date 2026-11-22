@@ -467,6 +467,40 @@ func (l *localService) ListClaudeSessions(ctx context.Context, req *localv1.List
 	return l.o().ListClaudeSessions(ctx, req.MachineId)
 }
 
+// ListHeldMessages and ReleaseHeldMessage: the messages held for the owner
+// before they reach a session (held.go); on a Mac that is only a machine,
+// its own.
+func (l *localService) ListHeldMessages(ctx context.Context, _ *localv1.ListHeldMessagesRequest) (*localv1.ListHeldMessagesResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		info := m.Info()
+		out := &localv1.ListHeldMessagesResponse{}
+		for _, h := range m.HeldMessages().Messages {
+			out.Messages = append(out.Messages, &localv1.HeldMessageEntry{MachineId: info.MachineId, MachineName: info.MachineName, Message: h})
+		}
+		return out, nil
+	}
+	return l.o().ListHeldMessages(ctx)
+}
+
+func (l *localService) ReleaseHeldMessage(ctx context.Context, req *localv1.ReleaseHeldMessageRequest) (*machinev1.ReleaseHeldMessageResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		if err := m.ReleaseHeldMessage(ctx, req.MessageId, req.Release); err != nil {
+			return nil, err
+		}
+		return &machinev1.ReleaseHeldMessageResponse{}, nil
+	}
+	if err := l.o().ReleaseHeldMessage(ctx, req); err != nil {
+		return nil, err
+	}
+	return &machinev1.ReleaseHeldMessageResponse{}, nil
+}
+
 func (l *localService) ReadClaudeSession(ctx context.Context, req *localv1.ReadClaudeSessionRequest) (*machinev1.ReadClaudeSessionResponse, error) {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err != nil {

@@ -791,7 +791,12 @@ type Grant struct {
 	// Lets the client run one-shot commands on its machines
 	// (MachineOpsService.Exec, docs/machine-ops.md). A scope of its own, off
 	// unless the owner turns it on for this client: sessions don't need it.
-	MachineExec   bool `protobuf:"varint,19,opt,name=machine_exec,json=machineExec,proto3" json:"machine_exec,omitempty"`
+	MachineExec bool `protobuf:"varint,19,opt,name=machine_exec,json=machineExec,proto3" json:"machine_exec,omitempty"`
+	// When the owner first let this client in (version 1 of the grant); later
+	// versions keep it. Unset on a grant from before it was kept: such an
+	// agent is not new. Machines hold a new agent's messages to sessions for
+	// the owner (docs/agent-messages.md §15.5).
+	FirstIssuedAt *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=first_issued_at,json=firstIssuedAt,proto3" json:"first_issued_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -950,6 +955,13 @@ func (x *Grant) GetMachineExec() bool {
 		return x.MachineExec
 	}
 	return false
+}
+
+func (x *Grant) GetFirstIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstIssuedAt
+	}
+	return nil
 }
 
 // EraseOrder is the owner's order to erase Aide everywhere
@@ -2468,6 +2480,139 @@ func (x *Contact) GetRegistration() *Signed {
 	return nil
 }
 
+// BoundaryPolicy is the owner's information boundary for messages between
+// their agents (docs/agent-messages.md §15.5), signed by a trusted device's
+// device key: what must not reach which kinds of recipient. The rules
+// themselves are the owner's, kept on their side: none is in this
+// repository. Senders check a message against it before it goes (refused,
+// naming the rule's category); recipients check it again before a model
+// reads it (held for the owner). Best effort, not a cryptographic guarantee.
+type BoundaryPolicy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Rules         []*BoundaryRule        `protobuf:"bytes,2,rep,name=rules,proto3" json:"rules,omitempty"`
+	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BoundaryPolicy) Reset() {
+	*x = BoundaryPolicy{}
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BoundaryPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BoundaryPolicy) ProtoMessage() {}
+
+func (x *BoundaryPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BoundaryPolicy.ProtoReflect.Descriptor instead.
+func (*BoundaryPolicy) Descriptor() ([]byte, []int) {
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *BoundaryPolicy) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *BoundaryPolicy) GetRules() []*BoundaryRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+func (x *BoundaryPolicy) GetIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return nil
+}
+
+type BoundaryRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The owner's name for what it keeps in ("代理与远程控制", say): shown
+	// when it refuses or holds a message; the words it matched never are.
+	Category string `protobuf:"bytes,1,opt,name=category,proto3" json:"category,omitempty"`
+	// RE2 regular expressions (Go's syntax); a message matching any is in.
+	Patterns []string `protobuf:"bytes,2,rep,name=patterns,proto3" json:"patterns,omitempty"`
+	// The kinds of recipient it holds for: the coding agent a session runs
+	// ("claude", "codex", "deepseek", …), or a CLI agent's own ("claude" for
+	// a Claude Code conversation). Empty: every recipient.
+	RecipientKinds []string `protobuf:"bytes,3,rep,name=recipient_kinds,json=recipientKinds,proto3" json:"recipient_kinds,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *BoundaryRule) Reset() {
+	*x = BoundaryRule{}
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BoundaryRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BoundaryRule) ProtoMessage() {}
+
+func (x *BoundaryRule) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BoundaryRule.ProtoReflect.Descriptor instead.
+func (*BoundaryRule) Descriptor() ([]byte, []int) {
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *BoundaryRule) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *BoundaryRule) GetPatterns() []string {
+	if x != nil {
+		return x.Patterns
+	}
+	return nil
+}
+
+func (x *BoundaryRule) GetRecipientKinds() []string {
+	if x != nil {
+		return x.RecipientKinds
+	}
+	return nil
+}
+
 var File_aide_identity_v1_identity_proto protoreflect.FileDescriptor
 
 const file_aide_identity_v1_identity_proto_rawDesc = "" +
@@ -2511,7 +2656,7 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12,\n" +
 	"\x12machine_public_key\x18\x03 \x01(\fR\x10machinePublicKey\x127\n" +
 	"\tissued_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x12\"\n" +
-	"\rdevice_key_id\x18\x06 \x01(\tR\vdeviceKeyIdJ\x04\b\x04\x10\x05R\fmachine_name\"\xcf\x05\n" +
+	"\rdevice_key_id\x18\x06 \x01(\tR\vdeviceKeyIdJ\x04\b\x04\x10\x05R\fmachine_name\"\x93\x06\n" +
 	"\x05Grant\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x19\n" +
 	"\bgrant_id\x18\x02 \x01(\tR\agrantId\x12\x18\n" +
@@ -2535,7 +2680,8 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"clientIcon\x12!\n" +
 	"\fclient_image\x18\x11 \x01(\fR\vclientImage\x12$\n" +
 	"\x0eher_machine_id\x18\x12 \x01(\tR\fherMachineId\x12!\n" +
-	"\fmachine_exec\x18\x13 \x01(\bR\vmachineExecJ\x04\b\n" +
+	"\fmachine_exec\x18\x13 \x01(\bR\vmachineExec\x12B\n" +
+	"\x0ffirst_issued_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\rfirstIssuedAtJ\x04\b\n" +
 	"\x10\vR\x06preset\"\x8b\x01\n" +
 	"\n" +
 	"EraseOrder\x12\x19\n" +
@@ -2660,7 +2806,15 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\vdevice_cert\x18\x02 \x01(\v2\x18.aide.identity.v1.SignedR\n" +
 	"deviceCert\x12;\n" +
 	"\fmachine_cert\x18\x03 \x01(\v2\x18.aide.identity.v1.SignedR\vmachineCert\x12<\n" +
-	"\fregistration\x18\x04 \x01(\v2\x18.aide.identity.v1.SignedR\fregistration*d\n" +
+	"\fregistration\x18\x04 \x01(\v2\x18.aide.identity.v1.SignedR\fregistration\"\x9a\x01\n" +
+	"\x0eBoundaryPolicy\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x124\n" +
+	"\x05rules\x18\x02 \x03(\v2\x1e.aide.identity.v1.BoundaryRuleR\x05rules\x127\n" +
+	"\tissued_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\"o\n" +
+	"\fBoundaryRule\x12\x1a\n" +
+	"\bcategory\x18\x01 \x01(\tR\bcategory\x12\x1a\n" +
+	"\bpatterns\x18\x02 \x03(\tR\bpatterns\x12'\n" +
+	"\x0frecipient_kinds\x18\x03 \x03(\tR\x0erecipientKinds*d\n" +
 	"\x12SignatureAlgorithm\x12#\n" +
 	"\x1fSIGNATURE_ALGORITHM_UNSPECIFIED\x10\x00\x12)\n" +
 	"%SIGNATURE_ALGORITHM_ECDSA_P256_SHA256\x10\x01*V\n" +
@@ -2692,7 +2846,7 @@ func file_aide_identity_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_identity_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_aide_identity_v1_identity_proto_goTypes = []any{
 	(SignatureAlgorithm)(0),       // 0: aide.identity.v1.SignatureAlgorithm
 	(Workspace)(0),                // 1: aide.identity.v1.Workspace
@@ -2724,52 +2878,57 @@ var file_aide_identity_v1_identity_proto_goTypes = []any{
 	(*ContactCard)(nil),           // 27: aide.identity.v1.ContactCard
 	(*InboxRegistration)(nil),     // 28: aide.identity.v1.InboxRegistration
 	(*Contact)(nil),               // 29: aide.identity.v1.Contact
-	nil,                           // 30: aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	(*timestamppb.Timestamp)(nil), // 31: google.protobuf.Timestamp
+	(*BoundaryPolicy)(nil),        // 30: aide.identity.v1.BoundaryPolicy
+	(*BoundaryRule)(nil),          // 31: aide.identity.v1.BoundaryRule
+	nil,                           // 32: aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	(*timestamppb.Timestamp)(nil), // 33: google.protobuf.Timestamp
 }
 var file_aide_identity_v1_identity_proto_depIdxs = []int32{
 	0,  // 0: aide.identity.v1.Signed.alg:type_name -> aide.identity.v1.SignatureAlgorithm
 	5,  // 1: aide.identity.v1.RootCert.root_keys:type_name -> aide.identity.v1.RootKey
-	31, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
+	33, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 3: aide.identity.v1.RootChain.certs:type_name -> aide.identity.v1.Signed
-	31, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
-	31, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	31, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
+	33, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
+	33, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	33, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
 	2,  // 7: aide.identity.v1.Grant.task_visibility:type_name -> aide.identity.v1.TaskVisibility
-	31, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
-	31, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
-	31, // 10: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
-	4,  // 11: aide.identity.v1.EraseAck.device_cert:type_name -> aide.identity.v1.Signed
-	31, // 12: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
-	15, // 13: aide.identity.v1.AdminCommand.add_project:type_name -> aide.identity.v1.AddProject
-	16, // 14: aide.identity.v1.AdminCommand.remove_project:type_name -> aide.identity.v1.RemoveProject
-	21, // 15: aide.identity.v1.AdminCommand.set_paused:type_name -> aide.identity.v1.SetPaused
-	20, // 16: aide.identity.v1.AdminCommand.set_name:type_name -> aide.identity.v1.SetName
-	23, // 17: aide.identity.v1.AdminCommand.set_agent_defaults:type_name -> aide.identity.v1.AgentDefaults
-	22, // 18: aide.identity.v1.AdminCommand.set_her:type_name -> aide.identity.v1.SetHer
-	19, // 19: aide.identity.v1.AdminCommand.set_workspace_roots:type_name -> aide.identity.v1.SetWorkspaceRoots
-	17, // 20: aide.identity.v1.AdminCommand.set_agent_hidden:type_name -> aide.identity.v1.SetAgentHidden
-	18, // 21: aide.identity.v1.AdminCommand.set_agent_paused:type_name -> aide.identity.v1.SetAgentPaused
-	1,  // 22: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
-	31, // 23: aide.identity.v1.SetAgentPaused.resume_at:type_name -> google.protobuf.Timestamp
-	3,  // 24: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
-	31, // 25: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
-	30, // 26: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	7,  // 27: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
-	4,  // 28: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
-	4,  // 29: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
-	4,  // 30: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
-	31, // 31: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
-	31, // 32: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	4,  // 33: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
-	4,  // 34: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
-	4,  // 35: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
-	4,  // 36: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
-	37, // [37:37] is the sub-list for method output_type
-	37, // [37:37] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	33, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
+	33, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
+	33, // 10: aide.identity.v1.Grant.first_issued_at:type_name -> google.protobuf.Timestamp
+	33, // 11: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
+	4,  // 12: aide.identity.v1.EraseAck.device_cert:type_name -> aide.identity.v1.Signed
+	33, // 13: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
+	15, // 14: aide.identity.v1.AdminCommand.add_project:type_name -> aide.identity.v1.AddProject
+	16, // 15: aide.identity.v1.AdminCommand.remove_project:type_name -> aide.identity.v1.RemoveProject
+	21, // 16: aide.identity.v1.AdminCommand.set_paused:type_name -> aide.identity.v1.SetPaused
+	20, // 17: aide.identity.v1.AdminCommand.set_name:type_name -> aide.identity.v1.SetName
+	23, // 18: aide.identity.v1.AdminCommand.set_agent_defaults:type_name -> aide.identity.v1.AgentDefaults
+	22, // 19: aide.identity.v1.AdminCommand.set_her:type_name -> aide.identity.v1.SetHer
+	19, // 20: aide.identity.v1.AdminCommand.set_workspace_roots:type_name -> aide.identity.v1.SetWorkspaceRoots
+	17, // 21: aide.identity.v1.AdminCommand.set_agent_hidden:type_name -> aide.identity.v1.SetAgentHidden
+	18, // 22: aide.identity.v1.AdminCommand.set_agent_paused:type_name -> aide.identity.v1.SetAgentPaused
+	1,  // 23: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
+	33, // 24: aide.identity.v1.SetAgentPaused.resume_at:type_name -> google.protobuf.Timestamp
+	3,  // 25: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
+	33, // 26: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
+	32, // 27: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	7,  // 28: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
+	4,  // 29: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
+	4,  // 30: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
+	4,  // 31: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
+	33, // 32: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
+	33, // 33: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	4,  // 34: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
+	4,  // 35: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
+	4,  // 36: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
+	4,  // 37: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
+	31, // 38: aide.identity.v1.BoundaryPolicy.rules:type_name -> aide.identity.v1.BoundaryRule
+	33, // 39: aide.identity.v1.BoundaryPolicy.issued_at:type_name -> google.protobuf.Timestamp
+	40, // [40:40] is the sub-list for method output_type
+	40, // [40:40] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_aide_identity_v1_identity_proto_init() }
@@ -2799,7 +2958,7 @@ func file_aide_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_identity_v1_identity_proto_rawDesc), len(file_aide_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   27,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

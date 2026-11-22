@@ -194,6 +194,11 @@ service LocalService {
   // One of them and a page of its conversation
   // (aide.machine.v1.MachineAdminService.ReadClaudeSession).
   rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (aide.machine.v1.ReadClaudeSessionResponse);
+  // The messages each machine holds for the owner before they reach a
+  // session, over the machines (aide.machine.v1.MachineAdminService.ListHeldMessages).
+  rpc ListHeldMessages(ListHeldMessagesRequest) returns (ListHeldMessagesResponse);
+  // Releases one to its session, or discards it.
+  rpc ReleaseHeldMessage(ReleaseHeldMessageRequest) returns (aide.machine.v1.ReleaseHeldMessageResponse);
   // A machine's custom agents (MachineAdminService.ListCustomAgents and
   // the rest); this device's own machine in process.
   rpc ListMachineCustomAgents(ListMachineCustomAgentsRequest) returns (aide.machine.v1.ListCustomAgentsResponse);
@@ -1276,4 +1281,23 @@ message TalkToPersonaResponse {
   // project than the contact's now).
   string reason = 3;
   aide.identity.v1.Persona persona = 4;
+}
+
+message ListHeldMessagesRequest {}
+
+message ListHeldMessagesResponse {
+  repeated HeldMessageEntry messages = 1;
+  repeated Unreachable unreachable = 2;
+}
+
+message HeldMessageEntry {
+  string machine_id = 1;
+  string machine_name = 2;
+  aide.machine.v1.HeldMessage message = 3;
+}
+
+message ReleaseHeldMessageRequest {
+  string machine_id = 1;
+  string message_id = 2;
+  bool release = 3;
 }

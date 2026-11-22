@@ -217,6 +217,7 @@ html.vibrant .rail{background:var(--side-tint)}
 /* Her and the overview, rows 32 high, 34 apart; a hairline under them, then the sessions. */
 .side-nav{padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;flex:none;border-bottom:.5px solid var(--sep)}
 .nav-i{display:flex;align-items:center;gap:9px;height:32px;padding:0 9px;border-radius:8px;font-size:14px;border:0;background:none;width:100%;text-align:left}
+.nav-i .nav-count{margin-left:auto;font-size:12px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--fill);text-align:center}
 .nav-i .ic{width:18px;height:18px;color:var(--l1)}
 /* The shortcut shows on hover only: the menus say it too. */
 .nav-i .kbd{margin-left:auto;opacity:0;transition:opacity .12s}

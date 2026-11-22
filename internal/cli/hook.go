@@ -62,6 +62,7 @@ func (a *app) messageHookCmd() *cobra.Command {
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 15*time.Second)
 			defer cancel()
+			a.recipientKind = agent
 			out := a.hook(ctx, agent, in)
 			if out != nil {
 				json.NewEncoder(cmd.OutOrStdout()).Encode(out)
@@ -270,6 +271,7 @@ func (a *app) messageWatchCmd() *cobra.Command {
 			if err := a.load(); err != nil {
 				return err
 			}
+			a.recipientKind = "claude"
 			if a.watching(conv) {
 				return nil
 			}

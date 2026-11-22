@@ -48,6 +48,16 @@ func (s *sessionService) DeliverMessage(ctx context.Context, req *sessionv1.Deli
 	if why := s.n.chainCheck(m); why != "" {
 		return nil, cerr(connect.CodeFailedPrecondition, "held for the owner: %s", why)
 	}
+	if reason, detail := s.n.holdWhy(p.Grant, m, time.Now()); reason != "" {
+		// Kept here until the owner releases it (held.go); files are not kept.
+		if len(req.Attachments) > 0 {
+			return nil, cerr(connect.CodeFailedPrecondition, "held for the owner (%s), and a held message keeps no files: send it without them", detail)
+		}
+		if _, err := s.n.hold(m, p.ClientID, p.Grant.ClientLabel, reason, detail, false); err != nil {
+			return nil, err
+		}
+		return &sessionv1.DeliverMessageResponse{Delivered: "held"}, nil
+	}
 	sess, delivered, err := s.n.deliverLetter(ctx, p, m, p.Grant.ClientLabel, req.Attachments)
 	if err != nil {
 		return nil, err
@@ -306,6 +316,13 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 	if why := n.chainCheck(m); why != "" {
 		n.log.Info("a message held for the owner", "message", m.MessageId, "session", m.To.Session, "why", why)
 		n.tell(m, "Held", fmt.Sprintf("Your message %s to %s is held for the owner: %s", m.MessageId, inboxAddress(m.To), why))
+		return "held"
+	}
+	if reason, detail := n.holdWhy(g, m, time.Now()); reason != "" {
+		if _, err := n.hold(m, g.ClientId, info.Name, reason, detail, true); err != nil {
+			return "" // the queue is full: it waits at the post office
+		}
+		n.tell(m, "Held", fmt.Sprintf("Your message %s to %s is held for the owner: %s. It reaches the session if they release it within a day.", m.MessageId, inboxAddress(m.To), detail))
 		return "held"
 	}
 	if _, _, err := n.deliverLetter(ctx, &Principal{Kind: PrincipalClient, ClientID: g.ClientId, Grant: g}, m, info.Name, nil); err != nil {

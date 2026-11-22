@@ -872,3 +872,43 @@ to it, and it answers them.
   2026-11-20): an agent's `roster` does not list them. A conversation that
   takes messages is reached by its address, as any agent conversation; the
   CLI agent's own endpoint is in the roster.
+
+### 15.5 Trust: the information boundary and held messages (batch 5)
+
+- **The owner's information boundary** (`identity.v1.BoundaryPolicy`):
+  rules, each a category, RE2 patterns, and the kinds of recipient it
+  holds for (the coding agent a session runs, `claude`, `codex`,
+  `deepseek`, …; none: every recipient). The owner writes them on their
+  device, in `boundary.json` in the owner's data directory
+  (`{"rules": [{"category": …, "patterns": […], "recipient_kinds": […]}]}`);
+  the device signs them with its device key and publishes them when they
+  change (on connecting, when the owner's agents change, and every two
+  minutes). The post office keeps the latest and hands it with the
+  contacts; it never reads a message, so it checks nothing. **The rules
+  themselves are the owner's and never in this repository**: the tests use
+  placeholders.
+- **Both ends check.** A sender refuses a message that matches a rule for
+  its recipient (`refused: boundary (<category>)`; what matched is never
+  shown): the CLI and the MCP gateway (any recipient; a session's own
+  coding agent once known, a DSH session's `deepseek`), aided for what a
+  session or a DSH session sends (any recipient). The recipient checks
+  again before a model reads it: aided for a session's coding agent (held
+  for the owner, below), the CLI's hooks and watch for their agent
+  (`claude`, `codex`: held, acknowledged `held`, not shown). Best effort,
+  not a cryptographic guarantee: a sender that skips its check is caught by
+  the recipient's.
+- **Held for the owner** (the owner's ruling, option 丙, no setting): a
+  message to a session another started (every DSH session is the owner's)
+  from an agent let in less than 7 days ago (`Grant.first_issued_at`, kept
+  across a grant's versions; a grant from before it is not new), or at hop
+  3 or more of a chain, waits on the machine; so does one that matches the
+  boundary for the session's agent. The post office knows it `held`; the
+  sender is told. The owner sees it under 待放行 in the app (with why) and
+  releases it to its session (it goes on as if never held: handed, then
+  handled) or discards it (refused, its sender told); one not handled
+  within a day expires (its sender told). Release and discard are the
+  owner's devices' only, and recorded in the audit log. Only messages are
+  held: no action waits for approval (hard boundary ④). A message an agent
+  writes to a session it started itself is its own work, never held but by
+  the boundary. The hop rule of §15.1 (beyond 4, or a fourth pass) still
+  holds a message outright.
