@@ -102,7 +102,7 @@ private fun MachineCard(model: AppModel, m: Machine) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (m.unreachable.isNotEmpty() && m.online) Text(m.unreachable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            ConnectionsBlock(m)
+            ConnectionsBlock(model, m)
             s?.agents?.filter { it.available && !it.hidden }?.forEach { a -> AgentRow(model, m, a) }
             // Hidden by the owner (SetAgentHidden): named, to show again, as at the end of the desktop's list.
             s?.agents?.filter { it.hidden }?.takeIf { it.isNotEmpty() }?.let { hidden ->
@@ -123,7 +123,8 @@ private fun MachineCard(model: AppModel, m: Machine) {
  * what is not, what that means, and when it was checked — read without opening anything.
  */
 @Composable
-private fun ConnectionsBlock(m: Machine) {
+private fun ConnectionsBlock(model: AppModel, m: Machine) {
+    val scope = rememberCoroutineScope()
     val c = machineConnections(m, Instant.now())
     if (c.rows.isEmpty()) return
     Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -138,6 +139,15 @@ private fun ConnectionsBlock(m: Machine) {
                         Text(r.text, style = MaterialTheme.typography.labelMedium, color = connColor(r.state))
                     }
                     r.lacks?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    // Signed in on that computer, in a browser that opens there: the phone starts it and shows how it goes (工单 #51).
+                    if (r.login && c.reachable) {
+                        if (r.state == ConnState.CHECKING) {
+                            TextButton(onClick = { scope.launch { model.startAgentLogin(m.machineId, "claude", cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
+                        } else {
+                            TextButton(onClick = { scope.launch { model.startAgentLogin(m.machineId, "claude") } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
+                            Text(t("A browser opens on ${m.machineName}; you sign in there. Aide never handles the account or the token.", "会在 ${m.machineName} 上打开浏览器，你在那里登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                    }
                     r.checkedAt?.let { Text(t("Checked ${agoText(it, Instant.now())}", "${agoText(it, Instant.now())}检测"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline) }
                 }
             }

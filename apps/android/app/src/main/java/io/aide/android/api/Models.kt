@@ -86,7 +86,16 @@ data class AgentStatus(
     val desktop: ClaudeDesktop? = null,
     /** DSH only: the Aide bridge plugin in DSH Desktop. */
     val dshBridge: DSHBridge? = null,
+    /** Its sign-in started from Aide (工单 #51); null: none. */
+    val login: AgentLogin? = null,
 )
+
+/** aide.machine.v1.AgentLogin; state is an AgentLoginState name. */
+@Serializable
+data class AgentLogin(val state: String = "", val detail: String = "", val startedAt: String = "", val endedAt: String = "")
+
+@Serializable data class StartAgentLoginRequest(val machineId: String, val agent: String, val cancel: Boolean = false)
+@Serializable data class StartAgentLoginResponse(val login: AgentLogin? = null)
 
 @Serializable
 data class ClaudeDesktop(val installed: Boolean = false, val signedIn: Boolean = false)

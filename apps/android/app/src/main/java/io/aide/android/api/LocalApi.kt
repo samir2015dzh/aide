@@ -116,6 +116,10 @@ class LocalApi(port: Long, token: String) {
     suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String): Session? =
         call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt)), timeoutSeconds = 60).session
 
+    /** Signs a coding agent in on a machine, in a browser that opens there (工单 #51), or stops it. */
+    suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean): AgentLogin? =
+        call<StartAgentLoginRequest, StartAgentLoginResponse>("StartMachineAgentLogin", StartAgentLoginRequest(machineId, agent, cancel), timeoutSeconds = 60).login
+
     suspend fun checkAgents(machineId: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)
     }
