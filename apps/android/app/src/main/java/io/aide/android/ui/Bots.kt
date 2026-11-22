@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -110,7 +111,7 @@ fun botTone(b: Bot): Tone = when (b.state.usable) {
 }
 
 @Composable
-fun BotsTab(model: AppModel, open: (String) -> Unit) {
+fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, newRoom: () -> Unit = {}, open: (String) -> Unit) {
     val world by model.world.collectAsState()
     // Findings too old to show as now are checked again while the roster is open (工单 #53), as the desktop does.
     LaunchedEffect(Unit) {
@@ -141,6 +142,8 @@ fun BotsTab(model: AppModel, open: (String) -> Unit) {
                 if (r.all.isEmpty() && world.watched) item {
                     Text(t("No bot yet: connect a coding agent on a computer (Aide › Settings › Connect), or a personal agent to your account.", "还没有 bot：先在电脑上的 Aide 里连接一个编码 agent（设置 › 连接），或把个人 agent 连到你的账号。"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 12.dp))
                 }
+                // Rooms beside the bots, first (ROOMS-DESIGN §2).
+                if (r.all.isNotEmpty()) roomItems(world.rooms, openRoom, newRoom)
                 if (r.personal.isNotEmpty()) {
                     item(key = "personal-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(t("Personal agents · follow your account", "个人 agent · 跟账号走"), count = r.personal.size) } }
                     r.personal.forEachIndexed { i, b ->
@@ -217,6 +220,8 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
         val work = world.sessions.values
             .filter { it.status != SessionStatus.ARCHIVED && if (b.coding) it.machineId == b.machineId && it.agent == b.agent else it.createdBy == b.client?.clientId }
             .sortedByDescending { instant(it.updatedAt) }
+        // An agent with an inbox (a personal agent): its conversation with the owner in the middle (ROOMS-DESIGN, G2-a).
+        val chat = if (!b.coding && b.client != null) rememberDirectChat(model, b.client.clientId) else null
         Column(Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
                 item(key = "head") {
@@ -234,7 +239,8 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                         }
                     }
                 }
-                item(key = "work-h") { SectionHeader(t("Its work", "它的任务"), count = work.size) }
+                if (chat != null) chatItems(chat, b, world)
+                item(key = "work-h") { SectionHeader(if (b.coding) t("Its work", "它的任务") else t("Work it handed out", "它派出的任务"), count = work.size) }
                 if (work.isEmpty()) item(key = "work-none") {
                     Text(
                         if (b.coding) t("Nothing for ${b.name} yet: write a task below.", "${b.name} 还没有任务：在下面写一个派给它。") else t("Nothing from ${b.name} yet.", "${b.name} 还没有派出过任务。"),
@@ -245,9 +251,6 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                     item(key = "s-${s.sessionId}", contentType = "session") {
                         Box(Modifier.groupRow(i, work.size)) { SessionRow(s, world) { openSession(s.sessionId) } }
                     }
-                }
-                if (!b.coding) item(key = "chat") {
-                    Text(t("Talking with ${b.name} directly comes with rooms; for now this lists the work it handed out.", "和 ${b.name} 直接对话会随协作房间一起上线；这里先列它派出、经手的任务。"), style = MaterialTheme.typography.bodySmall, color = aide.faint, modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp))
                 }
                 item(key = "bench-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(t("Workbench", "工作台")) } }
                 if (m != null && b.coding) {
@@ -268,6 +271,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                 }
             }
             if (m != null && b.coding) Compose(model, b, m, openSession)
+            if (chat != null) ChatCompose(model, chat, b)
         }
     }
 }
@@ -349,6 +353,89 @@ private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
                 }
                 Text(t("Edit", "编辑"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
+        }
+    }
+}
+
+/** The owner's conversation with a personal agent: its direct room on its host, read again every few seconds. */
+class DirectChat {
+    var room by mutableStateOf<io.aide.android.api.Room?>(null)
+    var messages by mutableStateOf<List<io.aide.android.api.RoomMessage>>(emptyList())
+    var failed by mutableStateOf(false)
+}
+
+@Composable
+private fun rememberDirectChat(model: AppModel, clientId: String): DirectChat {
+    val chat = remember(clientId) { DirectChat() }
+    LaunchedEffect(clientId) {
+        val r = model.openDirectRoom(clientId)
+        chat.room = r
+        chat.failed = r == null
+        while (r != null) {
+            model.roomMessages(r)?.let { chat.messages = it }
+            delay(3_000)
+        }
+    }
+    return chat
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.chatItems(chat: DirectChat, b: Bot, world: io.aide.android.model.World) {
+    item(key = "chat-h") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { SectionHeader(t("Conversation", "对话")) }
+            chat.room?.let { r -> Text(t("kept on ${world.machineName(r.hostMachineId)}", "保存在 ${world.machineName(r.hostMachineId)}"), style = MaterialTheme.typography.labelSmall, color = aide.faint) }
+        }
+    }
+    if (chat.failed) item(key = "chat-failed") { Text(t("No machine of yours is online to keep the conversation.", "没有在线的机器来保存这段对话。"), style = MaterialTheme.typography.bodySmall, color = Warning) }
+    else if (chat.room != null && chat.messages.isEmpty()) item(key = "chat-none") {
+        Text(t("Write to ${b.name}: it answers here.", "给 ${b.name} 写点什么：它的回信会出现在这里。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
+    }
+    chat.messages.forEach { m ->
+        item(key = "m-${m.messageId}", contentType = "chat") {
+            val mine = m.from == "owner"
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (!mine) Text(m.fromName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
+                    .background(if (mine) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else aide.inset, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(m.text, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (mine) m.deliveries.forEach { d ->
+                    val (words, bad) = when (d.state) {
+                        "ROOM_DELIVERY_STATE_SENT" -> t("Sent: waiting for ${b.name} to read it", "已发出：等 ${b.name} 取信") to false
+                        "ROOM_DELIVERY_STATE_REPLIED" -> t("${b.name} answered", "${b.name} 已回复") to false
+                        else -> d.reason to true
+                    }
+                    Text(words, style = MaterialTheme.typography.labelSmall, color = if (bad) Warning else aide.faint)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatCompose(model: AppModel, chat: DirectChat, b: Bot) {
+    val scope = rememberCoroutineScope()
+    var text by rememberSaveable { mutableStateOf("") }
+    var key by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    var busy by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().imePadding()) {
+        HorizontalDivider(thickness = 0.5.dp, color = aide.separator)
+        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(text, { text = it }, Modifier.weight(1f), placeholder = { Text(t("Write to ${b.name}…", "写给 ${b.name}…")) }, maxLines = 6, enabled = chat.room != null)
+            Spacer(Modifier.width(4.dp))
+            IconButton(enabled = text.isNotBlank() && !busy && chat.room != null, onClick = {
+                val r = chat.room ?: return@IconButton
+                busy = true
+                scope.launch {
+                    val m = model.postRoomMessage(r, text.trim(), key)
+                    busy = false
+                    if (m != null) {
+                        chat.messages = chat.messages.filter { it.messageId != m.messageId } + m
+                        text = ""
+                        key = UUID.randomUUID().toString()
+                    }
+                }
+            }) { Icon(Icons.AutoMirrored.Filled.Send, t("Send", "发送")) }
         }
     }
 }

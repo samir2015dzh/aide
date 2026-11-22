@@ -588,6 +588,42 @@ func (l *localService) InstallDSHBridge(ctx context.Context, req *localv1.Instal
 	return l.o().InstallDSHBridge(ctx, req)
 }
 
+func (l *localService) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomRequest) (*localv1.OpenDirectRoomResponse, error) {
+	return l.o().OpenDirectRoom(ctx, req)
+}
+
+func (l *localService) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	return l.o().ListRoomMessages(ctx, req)
+}
+
+func (l *localService) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
+	return l.o().PostRoomMessage(ctx, req)
+}
+
+func (l *localService) ListRooms(ctx context.Context, _ *localv1.ListRoomsRequest) (*localv1.ListRoomsResponse, error) {
+	return l.o().ListRooms(ctx)
+}
+
+func (l *localService) CreateRoom(ctx context.Context, req *localv1.CreateRoomRequest) (*machinev1.Room, error) {
+	return l.o().CreateRoom(ctx, req)
+}
+
+func (l *localService) UpdateRoom(ctx context.Context, req *localv1.UpdateRoomRequest) (*machinev1.Room, error) {
+	return l.o().UpdateRoom(ctx, req)
+}
+
+func (l *localService) StopRoom(ctx context.Context, req *localv1.RoomRef) (*machinev1.Room, error) {
+	return l.o().StopRoom(ctx, req)
+}
+
+func (l *localService) MarkRoomSeen(ctx context.Context, req *localv1.RoomRef) (*machinev1.Room, error) {
+	return l.o().MarkRoomSeen(ctx, req)
+}
+
+func (l *localService) DeleteRoom(ctx context.Context, req *localv1.RoomRef) (*machinev1.DeleteRoomResponse, error) {
+	return l.o().DeleteRoom(ctx, req)
+}
+
 // GetDiagnostics describes this Mac: what it is to its owner, then its
 // machine, when it shares its coding agents.
 func (l *localService) GetDiagnostics(ctx context.Context, _ *localv1.GetDiagnosticsRequest) (*localv1.GetDiagnosticsResponse, error) {

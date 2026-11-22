@@ -303,7 +303,7 @@ message StartSessionResponse {
 // key end to end (identity.v1.PushRegistration): the relay forwards it
 // without reading it.
 message Notice {
-  // "question", "failure", "turn_done" or "session_started"; "her" from
+  // "question", "failure", "turn_done", "session_started" or "room"; "her" from
   // an aided from before Aide dropped Her.
   string kind = 1;
   google.protobuf.Timestamp at = 2;
@@ -329,6 +329,10 @@ message Notice {
   // Her's notices (kind "her"), from an aided from before Aide dropped her.
   reserved 18 to 22;
   reserved "her_kind", "machine_id", "bot_id", "bot_name", "text";
+  // kind "room" (ROOMS-DESIGN, G2-c): a room's agreed result came, or a bot
+  // named the owner; the room, and what happened in a line.
+  string room_id = 23;
+  string room_line = 24;
 }
 
 message DiffStat {

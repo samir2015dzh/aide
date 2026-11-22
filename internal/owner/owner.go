@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/oklog/ulid/v2"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
@@ -1781,6 +1783,175 @@ func (o *Owner) InstallDSHBridge(ctx context.Context, req *localv1.InstallDSHBri
 		func(n *peer.Machine) (*machinev1.InstallDSHBridgeResponse, error) {
 			return n.Admin.InstallDSHBridge(ctx, &machinev1.InstallDSHBridgeRequest{})
 		})
+}
+
+// OpenDirectRoom is the direct room with a personal agent (ROOMS-DESIGN, G2-a):
+// the one a machine of the owner's hosts already, else one made on this
+// device's own machine, else on the first machine online (by name), so the
+// desktop and the phone find the same conversation.
+func (o *Owner) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomRequest) (*localv1.OpenDirectRoomResponse, error) {
+	machines, err := o.machines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(machines, func(i, j int) bool {
+		a, b := machines[i], machines[j]
+		if a.Local != b.Local {
+			return a.Local
+		}
+		return a.MachineName < b.MachineName
+	})
+	var host *localv1.Machine
+	for _, m := range machines {
+		if !m.Online && !m.Local {
+			continue
+		}
+		rooms, err := onDSHMachine(ctx, o, m.MachineId, func(l *machine.Local) (*machinev1.ListRoomsResponse, error) { return l.ListRooms(), nil },
+			func(n *peer.Machine) (*machinev1.ListRoomsResponse, error) {
+				return n.Admin.ListRooms(ctx, &machinev1.ListRoomsRequest{})
+			})
+		if err != nil {
+			continue // an older machine, or out of reach now
+		}
+		for _, r := range rooms.Rooms {
+			if r.Direct && len(r.Members) == 1 && r.Members[0].Address == req.ClientId {
+				return &localv1.OpenDirectRoomResponse{Room: r}, nil
+			}
+		}
+		if host == nil {
+			host = m
+		}
+	}
+	if host == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no machine of yours is online to keep the conversation: start Aide on one"))
+	}
+	r, err := onDSHMachine(ctx, o, host.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.OpenDirectRoom(req.ClientId) },
+		func(n *peer.Machine) (*machinev1.Room, error) {
+			return n.Admin.OpenDirectRoom(ctx, &machinev1.OpenDirectRoomRequest{ClientId: req.ClientId})
+		})
+	if err != nil {
+		return nil, err
+	}
+	return &localv1.OpenDirectRoomResponse{Room: r}, nil
+}
+
+func (o *Owner) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	r := &machinev1.ListRoomMessagesRequest{RoomId: req.RoomId, Limit: req.Limit}
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.ListRoomMessagesResponse, error) { return l.ListRoomMessages(r) },
+		func(n *peer.Machine) (*machinev1.ListRoomMessagesResponse, error) {
+			return n.Admin.ListRoomMessages(ctx, r)
+		})
+}
+
+func (o *Owner) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
+	r := &machinev1.PostRoomMessageRequest{RoomId: req.RoomId, Text: req.Text, IdempotencyKey: req.IdempotencyKey, Mentions: req.Mentions}
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.RoomMessage, error) { return l.PostRoomMessage(ctx, r) },
+		func(n *peer.Machine) (*machinev1.RoomMessage, error) { return n.Admin.PostRoomMessage(ctx, r) })
+}
+
+// roomMachines are the owner's machines that answer now, this device's own first, then by name: where rooms are.
+func (o *Owner) roomMachines(ctx context.Context) ([]*localv1.Machine, error) {
+	machines, err := o.machines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []*localv1.Machine
+	for _, m := range machines {
+		if m.Online || m.Local {
+			out = append(out, m)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Local != out[j].Local {
+			return out[i].Local
+		}
+		return out[i].MachineName < out[j].MachineName
+	})
+	return out, nil
+}
+
+// ListRooms is every room on the machines that answer now (G2-b), each
+// with its host; a machine that can't be asked leaves its rooms out.
+func (o *Owner) ListRooms(ctx context.Context) (*localv1.ListRoomsResponse, error) {
+	machines, err := o.roomMachines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := &localv1.ListRoomsResponse{}
+	for _, m := range machines {
+		rooms, err := onDSHMachine(ctx, o, m.MachineId, func(l *machine.Local) (*machinev1.ListRoomsResponse, error) { return l.ListRooms(), nil },
+			func(n *peer.Machine) (*machinev1.ListRoomsResponse, error) {
+				return n.Admin.ListRooms(ctx, &machinev1.ListRoomsRequest{})
+			})
+		if err == nil {
+			res.Rooms = append(res.Rooms, rooms.Rooms...)
+		}
+	}
+	return res, nil
+}
+
+// CreateRoom makes a room of several bots on this device's own machine,
+// else the first one online. Its coding agents, on whatever machines, it
+// may wake with the charter this device signs for it (identity.v1
+// RoomCharter): each member machine takes the room's wake only with it.
+func (o *Owner) CreateRoom(ctx context.Context, req *localv1.CreateRoomRequest) (*machinev1.Room, error) {
+	machines, err := o.roomMachines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(machines) == 0 {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no machine of yours is online to keep the room: start Aide on one"))
+	}
+	host := machines[0]
+	r := &machinev1.CreateRoomRequest{Name: req.Name, Members: req.Members, Mode: req.Mode, MaxRounds: req.MaxRounds}
+	c := &identityv1.RoomCharter{OwnerId: o.ownerID, RoomId: "room_" + strings.ToLower(ulid.Make().String()), HostMachineId: host.MachineId, IssuedAt: timestamppb.Now()}
+	for _, m := range req.Members {
+		if mid, agent, ok := strings.Cut(strings.TrimPrefix(m.BotKey, "m:"), "/"); ok && strings.HasPrefix(m.BotKey, "m:") {
+			c.Members = append(c.Members, &identityv1.RoomCharterMember{MachineId: mid, Agent: agent, ProjectId: m.ProjectId})
+		}
+	}
+	if len(c.Members) > 0 {
+		o.mu.Lock()
+		dev, cert := o.device, o.deviceCert
+		o.mu.Unlock()
+		if dev == nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this device can't sign a room's charter: it is not one of the owner's devices"))
+		}
+		signed, err := identity.Sign(c, dev)
+		if err != nil {
+			return nil, err
+		}
+		r.Charter, r.CharterDeviceCert = signed, cert
+	}
+	return onDSHMachine(ctx, o, host.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.CreateRoom(r) },
+		func(n *peer.Machine) (*machinev1.Room, error) { return n.Admin.CreateRoom(ctx, r) })
+}
+
+func (o *Owner) UpdateRoom(ctx context.Context, req *localv1.UpdateRoomRequest) (*machinev1.Room, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.UpdateRoom(req.Room) },
+		func(n *peer.Machine) (*machinev1.Room, error) { return n.Admin.UpdateRoom(ctx, req.Room) })
+}
+
+func (o *Owner) StopRoom(ctx context.Context, req *localv1.RoomRef) (*machinev1.Room, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.StopRoom(ctx, req.RoomId) },
+		func(n *peer.Machine) (*machinev1.Room, error) {
+			return n.Admin.StopRoom(ctx, &machinev1.StopRoomRequest{RoomId: req.RoomId})
+		})
+}
+
+func (o *Owner) MarkRoomSeen(ctx context.Context, req *localv1.RoomRef) (*machinev1.Room, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.MarkRoomSeen(req.RoomId) },
+		func(n *peer.Machine) (*machinev1.Room, error) {
+			return n.Admin.MarkRoomSeen(ctx, &machinev1.MarkRoomSeenRequest{RoomId: req.RoomId})
+		})
+}
+
+func (o *Owner) DeleteRoom(ctx context.Context, req *localv1.RoomRef) (*machinev1.DeleteRoomResponse, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.DeleteRoomResponse, error) {
+		return &machinev1.DeleteRoomResponse{}, l.DeleteRoom(req.RoomId)
+	}, func(n *peer.Machine) (*machinev1.DeleteRoomResponse, error) {
+		return n.Admin.DeleteRoom(ctx, &machinev1.DeleteRoomRequest{RoomId: req.RoomId})
+	})
 }
 
 // onDSHMachine runs local on this device's own machine, remote on another.

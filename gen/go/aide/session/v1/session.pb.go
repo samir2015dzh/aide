@@ -974,7 +974,7 @@ func (x *StartSessionResponse) GetSession() *Session {
 // without reading it.
 type Notice struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "question", "failure", "turn_done" or "session_started"; "her" from
+	// "question", "failure", "turn_done", "session_started" or "room"; "her" from
 	// an aided from before Aide dropped Her.
 	Kind string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	At   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=at,proto3" json:"at,omitempty"`
@@ -993,8 +993,12 @@ type Notice struct {
 	Failure        FailureKind `protobuf:"varint,10,opt,name=failure,proto3,enum=aide.session.v1.FailureKind" json:"failure,omitempty"`
 	FailureMessage string      `protobuf:"bytes,11,opt,name=failure_message,json=failureMessage,proto3" json:"failure_message,omitempty"`
 	// kind "turn_done": the turn and what it changed.
-	Turn          uint32    `protobuf:"varint,12,opt,name=turn,proto3" json:"turn,omitempty"`
-	DiffStat      *DiffStat `protobuf:"bytes,13,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
+	Turn     uint32    `protobuf:"varint,12,opt,name=turn,proto3" json:"turn,omitempty"`
+	DiffStat *DiffStat `protobuf:"bytes,13,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
+	// kind "room" (ROOMS-DESIGN, G2-c): a room's agreed result came, or a bot
+	// named the owner; the room, and what happened in a line.
+	RoomId        string `protobuf:"bytes,23,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	RoomLine      string `protobuf:"bytes,24,opt,name=room_line,json=roomLine,proto3" json:"room_line,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1118,6 +1122,20 @@ func (x *Notice) GetDiffStat() *DiffStat {
 		return x.DiffStat
 	}
 	return nil
+}
+
+func (x *Notice) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *Notice) GetRoomLine() string {
+	if x != nil {
+		return x.RoomLine
+	}
+	return ""
 }
 
 type DiffStat struct {
@@ -5748,7 +5766,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x06sha256\x18\x05 \x01(\tR\x06sha256\x12\x14\n" +
 	"\x05image\x18\x06 \x01(\bR\x05image\"J\n" +
 	"\x14StartSessionResponse\x122\n" +
-	"\asession\x18\x01 \x01(\v2\x18.aide.session.v1.SessionR\asession\"\xb9\x04\n" +
+	"\asession\x18\x01 \x01(\v2\x18.aide.session.v1.SessionR\asession\"\xef\x04\n" +
 	"\x06Notice\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12*\n" +
 	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x1d\n" +
@@ -5764,7 +5782,9 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	" \x01(\x0e2\x1c.aide.session.v1.FailureKindR\afailure\x12'\n" +
 	"\x0ffailure_message\x18\v \x01(\tR\x0efailureMessage\x12\x12\n" +
 	"\x04turn\x18\f \x01(\rR\x04turn\x126\n" +
-	"\tdiff_stat\x18\r \x01(\v2\x19.aide.session.v1.DiffStatR\bdiffStatJ\x04\b\x0e\x10\x12J\x04\b\x12\x10\x17R\fpairing_kindR\rpairing_labelR\x11verification_codeR\fpairing_codeR\bher_kindR\n" +
+	"\tdiff_stat\x18\r \x01(\v2\x19.aide.session.v1.DiffStatR\bdiffStat\x12\x17\n" +
+	"\aroom_id\x18\x17 \x01(\tR\x06roomId\x12\x1b\n" +
+	"\troom_line\x18\x18 \x01(\tR\broomLineJ\x04\b\x0e\x10\x12J\x04\b\x12\x10\x17R\fpairing_kindR\rpairing_labelR\x11verification_codeR\fpairing_codeR\bher_kindR\n" +
 	"machine_idR\x06bot_idR\bbot_nameR\x04text\"m\n" +
 	"\bDiffStat\x12#\n" +
 	"\rfiles_changed\x18\x01 \x01(\rR\ffilesChanged\x12\x1e\n" +

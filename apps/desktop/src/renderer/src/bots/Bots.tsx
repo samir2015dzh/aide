@@ -3,6 +3,8 @@ import type { Persona } from "@aide/proto/identity";
 import { useTranslation } from "react-i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import type { Machine } from "@aide/proto/local";
+import type { Room, RoomMessage } from "@aide/proto/machine";
+import { RoomTimeline, SidebarRooms } from "./Rooms";
 import { agentEntry, allBots, botCounts, botCountsText, displayTitle, listTime, machineConnections, projectTitle, roster, updatedDate, type Bot, type Roster } from "@aide/core";
 import { AgentTile } from "@aide/ui";
 import { AgentPage, projectsFor } from "../AgentList";
@@ -116,6 +118,8 @@ export function SidebarRoster() {
         <span>{t("bots.title")}</span>
         <span className="bot-counts" title={botCountsText(counts)}>{botCountsText(counts)}</span>
       </div>
+      {/* Rooms beside the bots, first (ROOMS-DESIGN §2). */}
+      <SidebarRooms />
       {r.personal.length > 0 && group("personal", t("bots.personal"), r.personal)}
       {r.machines.map((g) => group(g.machine.machineId, g.machine.local ? t("bots.thisComputer", { name: g.machine.machineName }) : g.machine.machineName, g.bots, g.machine))}
     </section>
@@ -138,6 +142,7 @@ export function BotPage({ botKey }: { botKey: string }) {
   const work = st.sessions
     .filter((s) => s.status !== SessionStatus.ARCHIVED && (b.kind === "local" && b.agent && !b.key.startsWith("c:") ? s.machineId === b.machineId && s.agent === b.agent : s.createdBy === b.client?.clientId))
     .sort((x, y) => updatedDate(y).getTime() - updatedDate(x).getTime());
+  const coding = !!m && !!b.agent && !b.key.startsWith("c:");
   const where = m ? (m.local ? t("bots.thisComputer", { name: m.machineName }) : m.machineName) : t("bots.follows");
   return (
     <div className="bot-page" role="region" aria-label={b.name}>
@@ -155,16 +160,30 @@ export function BotPage({ botKey }: { botKey: string }) {
         </div>
       </header>
       <div className="bot-body">
-        <main className="bot-main">
-          <div className="bot-sec-h">{t("bots.work")}</div>
-          <div className="bot-stream" role="list" aria-label={t("bots.work")}>
-            {work.length === 0 && <div className="bot-empty">{t(b.kind === "personal" ? "bots.noWorkPersonal" : "bots.noWork", { name: b.name })}</div>}
-            {work.map((s) => <WorkRow key={s.sessionId} s={s} />)}
-          </div>
-          {m && b.agent && !b.key.startsWith("c:") ? <Compose b={b} m={m} /> : <div className="bot-chat-soon">{t("bots.chatSoon", { name: b.name })}</div>}
-        </main>
+        {coding ? (
+          <main className="bot-main">
+            <div className="bot-sec-h">{t("bots.work")}</div>
+            <div className="bot-stream" role="list" aria-label={t("bots.work")}>
+              {work.length === 0 && <div className="bot-empty">{t("bots.noWork", { name: b.name })}</div>}
+              {work.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+            </div>
+            <Compose b={b} m={m!} />
+          </main>
+        ) : (
+          // An agent with an inbox (a personal agent): its conversation with the owner in the middle (ROOMS-DESIGN, G2-a).
+          <DirectChat b={b} />
+        )}
         <aside className="bot-bench" aria-label={t("bots.bench")}>
-          {m && b.agent && !b.key.startsWith("c:") && <LocalBench b={b} m={m} />}
+          {coding && <LocalBench b={b} m={m!} />}
+          {!coding && (
+            <section>
+              <div className="bot-sec-h">{t("bots.handedOut")}</div>
+              <div className="bot-stream" role="list" aria-label={t("bots.handedOut")}>
+                {work.length === 0 && <div className="bot-empty">{t("bots.noWorkPersonal", { name: b.name })}</div>}
+                {work.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+              </div>
+            </section>
+          )}
           {b.client && (
             <section>
               <div className="bot-sec-h">{t("bots.grant")}</div>
@@ -326,3 +345,71 @@ function Identity({ b, m }: { b: Bot; m: Machine }) {
     </section>
   );
 }
+
+/**
+ * The owner's conversation with a personal agent (ROOMS-DESIGN-2026-11-22, G2-a): its direct room, kept on a machine
+ * of the owner's (the host). The owner writes; the host sends it the words (unless the owner's information boundary
+ * keeps them from its kind) and puts its answers here. Each of the owner's messages says what became of it.
+ */
+function DirectChat({ b }: { b: Bot }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const [room, setRoom] = useState<Room>();
+  const [msgs, setMsgs] = useState<RoomMessage[]>([]);
+  const [error, setError] = useState("");
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [key, setKey] = useState(() => crypto.randomUUID());
+  const clientId = b.client!.clientId;
+  useEffect(() => {
+    let gone = false;
+    local.openDirectRoom({ clientId }).then((r) => !gone && (setRoom(r.room), setError("")), (e) => !gone && setError(errorText(e)));
+    return () => void (gone = true);
+  }, [clientId]);
+  // Its answers come in on the host: read again every few seconds while the page is open.
+  useEffect(() => {
+    if (!room) return;
+    let gone = false;
+    const read = () => local.listRoomMessages({ machineId: room.hostMachineId, roomId: room.roomId, limit: 200 }).then((r) => !gone && setMsgs(r.messages), () => {});
+    read();
+    const every = setInterval(read, 3000);
+    return () => ((gone = true), clearInterval(every));
+  }, [room]);
+  const send = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!room || !text.trim() || busy) return;
+    setBusy(true);
+    try {
+      const m = await local.postRoomMessage({ machineId: room.hostMachineId, roomId: room.roomId, text, idempotencyKey: key });
+      setMsgs((x) => [...x.filter((y) => y.messageId !== m.messageId), m]);
+      setText("");
+      setKey(crypto.randomUUID());
+    } catch (err) {
+      st.show(errorText(err));
+    }
+    setBusy(false);
+  };
+  const host = room && st.machines.find((m) => m.machineId === room.hostMachineId);
+  return (
+    <main className="bot-main bot-chat">
+      <div className="bot-sec-h">
+        {t("bots.chat")}
+        {host && <span className="muted">{t("bots.chatHost", { machine: host.machineName })}</span>}
+      </div>
+      <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
+        {error && <div className="bot-empty warn">{error}</div>}
+        {!error && room && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
+        {room && <RoomTimeline room={room} msgs={msgs} />}
+      </div>
+      <form className="bot-compose" onSubmit={send}>
+        <textarea className="field" rows={3} value={text} placeholder={t("bots.chatPlaceholder", { name: b.name })} aria-label={t("bots.chatPlaceholder", { name: b.name })} disabled={!room}
+          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && void send(e)} />
+        <div className="bot-compose-bar">
+          <span className="muted">{t("bots.chatNote")}</span>
+          <button type="submit" className="btn primary sm" disabled={!room || !text.trim() || busy}>{busy ? t("bots.sending") : t("bots.chatSend")}</button>
+        </div>
+      </form>
+    </main>
+  );
+}
+

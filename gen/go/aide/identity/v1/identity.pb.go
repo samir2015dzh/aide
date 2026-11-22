@@ -2724,6 +2724,147 @@ func (x *BoundaryRule) GetRecipientKinds() []string {
 	return nil
 }
 
+// RoomCharter is what the owner allows a room (ROOMS-DESIGN-2026-11-22):
+// its host machine may wake these coding agents, on these machines, in
+// these projects, with the room's messages. One of the owner's devices
+// signs it as it makes the room; a member machine checks it before it
+// starts or goes on with the agent's session for the room.
+type RoomCharter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	RoomId        string                 `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	HostMachineId string                 `protobuf:"bytes,3,opt,name=host_machine_id,json=hostMachineId,proto3" json:"host_machine_id,omitempty"`
+	Members       []*RoomCharterMember   `protobuf:"bytes,4,rep,name=members,proto3" json:"members,omitempty"`
+	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomCharter) Reset() {
+	*x = RoomCharter{}
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomCharter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomCharter) ProtoMessage() {}
+
+func (x *RoomCharter) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomCharter.ProtoReflect.Descriptor instead.
+func (*RoomCharter) Descriptor() ([]byte, []int) {
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *RoomCharter) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *RoomCharter) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *RoomCharter) GetHostMachineId() string {
+	if x != nil {
+		return x.HostMachineId
+	}
+	return ""
+}
+
+func (x *RoomCharter) GetMembers() []*RoomCharterMember {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+func (x *RoomCharter) GetIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return nil
+}
+
+type RoomCharterMember struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Agent         string                 `protobuf:"bytes,2,opt,name=agent,proto3" json:"agent,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomCharterMember) Reset() {
+	*x = RoomCharterMember{}
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomCharterMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomCharterMember) ProtoMessage() {}
+
+func (x *RoomCharterMember) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomCharterMember.ProtoReflect.Descriptor instead.
+func (*RoomCharterMember) Descriptor() ([]byte, []int) {
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *RoomCharterMember) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *RoomCharterMember) GetAgent() string {
+	if x != nil {
+		return x.Agent
+	}
+	return ""
+}
+
+func (x *RoomCharterMember) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
 var File_aide_identity_v1_identity_proto protoreflect.FileDescriptor
 
 const file_aide_identity_v1_identity_proto_rawDesc = "" +
@@ -2934,7 +3075,19 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\fBoundaryRule\x12\x1a\n" +
 	"\bcategory\x18\x01 \x01(\tR\bcategory\x12\x1a\n" +
 	"\bpatterns\x18\x02 \x03(\tR\bpatterns\x12'\n" +
-	"\x0frecipient_kinds\x18\x03 \x03(\tR\x0erecipientKinds*d\n" +
+	"\x0frecipient_kinds\x18\x03 \x03(\tR\x0erecipientKinds\"\xe1\x01\n" +
+	"\vRoomCharter\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x17\n" +
+	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x12&\n" +
+	"\x0fhost_machine_id\x18\x03 \x01(\tR\rhostMachineId\x12=\n" +
+	"\amembers\x18\x04 \x03(\v2#.aide.identity.v1.RoomCharterMemberR\amembers\x127\n" +
+	"\tissued_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\"g\n" +
+	"\x11RoomCharterMember\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +
+	"\x05agent\x18\x02 \x01(\tR\x05agent\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x03 \x01(\tR\tprojectId*d\n" +
 	"\x12SignatureAlgorithm\x12#\n" +
 	"\x1fSIGNATURE_ALGORITHM_UNSPECIFIED\x10\x00\x12)\n" +
 	"%SIGNATURE_ALGORITHM_ECDSA_P256_SHA256\x10\x01*V\n" +
@@ -2966,7 +3119,7 @@ func file_aide_identity_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_identity_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_aide_identity_v1_identity_proto_goTypes = []any{
 	(SignatureAlgorithm)(0),       // 0: aide.identity.v1.SignatureAlgorithm
 	(Workspace)(0),                // 1: aide.identity.v1.Workspace
@@ -3001,24 +3154,26 @@ var file_aide_identity_v1_identity_proto_goTypes = []any{
 	(*Contact)(nil),               // 30: aide.identity.v1.Contact
 	(*BoundaryPolicy)(nil),        // 31: aide.identity.v1.BoundaryPolicy
 	(*BoundaryRule)(nil),          // 32: aide.identity.v1.BoundaryRule
-	nil,                           // 33: aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	(*timestamppb.Timestamp)(nil), // 34: google.protobuf.Timestamp
+	(*RoomCharter)(nil),           // 33: aide.identity.v1.RoomCharter
+	(*RoomCharterMember)(nil),     // 34: aide.identity.v1.RoomCharterMember
+	nil,                           // 35: aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	(*timestamppb.Timestamp)(nil), // 36: google.protobuf.Timestamp
 }
 var file_aide_identity_v1_identity_proto_depIdxs = []int32{
 	0,  // 0: aide.identity.v1.Signed.alg:type_name -> aide.identity.v1.SignatureAlgorithm
 	5,  // 1: aide.identity.v1.RootCert.root_keys:type_name -> aide.identity.v1.RootKey
-	34, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 3: aide.identity.v1.RootChain.certs:type_name -> aide.identity.v1.Signed
-	34, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
-	34, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	34, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
 	2,  // 7: aide.identity.v1.Grant.task_visibility:type_name -> aide.identity.v1.TaskVisibility
-	34, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
-	34, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
-	34, // 10: aide.identity.v1.Grant.first_issued_at:type_name -> google.protobuf.Timestamp
-	34, // 11: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
+	36, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
+	36, // 10: aide.identity.v1.Grant.first_issued_at:type_name -> google.protobuf.Timestamp
+	36, // 11: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 12: aide.identity.v1.EraseAck.device_cert:type_name -> aide.identity.v1.Signed
-	34, // 13: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
+	36, // 13: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
 	15, // 14: aide.identity.v1.AdminCommand.add_project:type_name -> aide.identity.v1.AddProject
 	16, // 15: aide.identity.v1.AdminCommand.remove_project:type_name -> aide.identity.v1.RemoveProject
 	22, // 16: aide.identity.v1.AdminCommand.set_paused:type_name -> aide.identity.v1.SetPaused
@@ -3030,27 +3185,29 @@ var file_aide_identity_v1_identity_proto_depIdxs = []int32{
 	18, // 22: aide.identity.v1.AdminCommand.set_agent_paused:type_name -> aide.identity.v1.SetAgentPaused
 	19, // 23: aide.identity.v1.AdminCommand.set_project_name:type_name -> aide.identity.v1.SetProjectName
 	1,  // 24: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
-	34, // 25: aide.identity.v1.SetAgentPaused.resume_at:type_name -> google.protobuf.Timestamp
+	36, // 25: aide.identity.v1.SetAgentPaused.resume_at:type_name -> google.protobuf.Timestamp
 	3,  // 26: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
-	34, // 27: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
-	33, // 28: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	36, // 27: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
+	35, // 28: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
 	7,  // 29: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
 	4,  // 30: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
 	4,  // 31: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
 	4,  // 32: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
-	34, // 33: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
-	34, // 34: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 33: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
+	36, // 34: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 35: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
 	4,  // 36: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
 	4,  // 37: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
 	4,  // 38: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
 	32, // 39: aide.identity.v1.BoundaryPolicy.rules:type_name -> aide.identity.v1.BoundaryRule
-	34, // 40: aide.identity.v1.BoundaryPolicy.issued_at:type_name -> google.protobuf.Timestamp
-	41, // [41:41] is the sub-list for method output_type
-	41, // [41:41] is the sub-list for method input_type
-	41, // [41:41] is the sub-list for extension type_name
-	41, // [41:41] is the sub-list for extension extendee
-	0,  // [0:41] is the sub-list for field type_name
+	36, // 40: aide.identity.v1.BoundaryPolicy.issued_at:type_name -> google.protobuf.Timestamp
+	34, // 41: aide.identity.v1.RoomCharter.members:type_name -> aide.identity.v1.RoomCharterMember
+	36, // 42: aide.identity.v1.RoomCharter.issued_at:type_name -> google.protobuf.Timestamp
+	43, // [43:43] is the sub-list for method output_type
+	43, // [43:43] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_aide_identity_v1_identity_proto_init() }
@@ -3081,7 +3238,7 @@ func file_aide_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_identity_v1_identity_proto_rawDesc), len(file_aide_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   30,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

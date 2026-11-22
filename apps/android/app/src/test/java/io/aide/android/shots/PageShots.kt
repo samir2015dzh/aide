@@ -6,6 +6,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -29,6 +30,8 @@ import io.aide.android.ui.BotsTab
 import io.aide.android.ui.BotPage
 import io.aide.android.api.Client
 import io.aide.android.ui.NeedsYouTab
+import io.aide.android.ui.NewRoomPage
+import io.aide.android.ui.RoomPage
 import io.aide.android.ui.SessionsTab
 import io.aide.android.ui.SettingsTab
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +67,22 @@ class PageShots {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 // The devices are read again when Settings opens: the same ones the world has.
-                val body = if (request.path.orEmpty().endsWith("ListDevices")) {
+                val path = request.path.orEmpty()
+                // The owner's conversation with Muse (G2-a): its direct room on workstation, two messages.
+                val room = "{\"roomId\":\"room_1\",\"name\":\"Muse\",\"hostMachineId\":\"m1\",\"direct\":true,\"members\":[{\"botKey\":\"c:c1\",\"address\":\"c1\",\"name\":\"Muse\"}]}"
+                if (path.endsWith("OpenDirectRoom")) return MockResponse().setBody("{\"room\":$room}").setHeader("Content-Type", "application/json")
+                // A round table (G2-b/c): DSH on workstation and Muse, DSH handing on to Muse, Muse's agreed result.
+                val table = "{\"roomId\":\"room_2\",\"name\":\"发版评审\",\"hostMachineId\":\"m1\",\"mode\":\"ROOM_MODE_ROUNDTABLE\",\"maxRounds\":6,\"round\":1,\"unread\":2,\"lastLine\":\"Muse：[FINAL] 可以发版\"," +
+                    "\"members\":[{\"botKey\":\"m:m1/deepseek\",\"name\":\"DSH · workstation\",\"agent\":\"deepseek\",\"projectId\":\"aide\",\"sessionId\":\"s2\"},{\"botKey\":\"c:c1\",\"name\":\"Muse\"}]}"
+                if (path.endsWith("ListRoomMessages") && request.body.clone().readUtf8().contains("room_2")) return MockResponse().setBody("{\"room\":$table,\"messages\":[" +
+                    "{\"messageId\":\"msg_1\",\"from\":\"owner\",\"text\":\"跑一遍发版前检查\",\"mentions\":[\"m:m1/deepseek\"],\"deliveries\":[{\"botKey\":\"m:m1/deepseek\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
+                    "{\"messageId\":\"msg_2\",\"from\":\"m:m1/deepseek\",\"fromName\":\"DSH · workstation\",\"text\":\"测试全过，构建产物已签名。@Muse 请确认发版说明\",\"round\":0,\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
+                    "{\"messageId\":\"msg_3\",\"from\":\"c:c1\",\"fromName\":\"Muse\",\"text\":\"[FINAL] 可以发版：测试全过，说明已确认。\",\"final\":true,\"round\":1}]}").setHeader("Content-Type", "application/json")
+                if (path.endsWith("ListRoomMessages")) return MockResponse().setBody("{\"room\":$room,\"messages\":[" +
+                    "{\"messageId\":\"msg_1\",\"from\":\"owner\",\"text\":\"批 G 的 PR 评审过了吗？\",\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
+                    "{\"messageId\":\"msg_2\",\"from\":\"c:c1\",\"fromName\":\"Muse\",\"text\":\"评审过了：内容通过，等 CI 全绿后成对合并。\",\"inReplyTo\":\"msg_1\"}," +
+                    "{\"messageId\":\"msg_3\",\"from\":\"owner\",\"text\":\"好，合了告诉我\",\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_SENT\"}]}]}").setHeader("Content-Type", "application/json")
+                val body = if (path.endsWith("ListDevices")) {
                     "{\"devices\":[{\"keyId\":\"k1\",\"label\":\"我的手机\",\"platform\":\"android\",\"thisDevice\":true},{\"keyId\":\"k2\",\"label\":\"workstation\",\"platform\":\"windows\",\"machineId\":\"m1\",\"machineOnline\":true},{\"keyId\":\"k3\",\"label\":\"laptop\",\"platform\":\"linux\",\"machineId\":\"m2\",\"machineOnline\":true}]}"
                 } else "{}"
                 return MockResponse().setBody(body).setHeader("Content-Type", "application/json")
@@ -83,19 +101,23 @@ class PageShots {
         return m
     }
 
-    private fun shot(name: String, content: @Composable () -> Unit) {
+    private fun shot(name: String, waitFor: String? = null, content: @Composable () -> Unit) {
         // A Surface, as the app's Scaffold: the page's colour and the text colour on it.
         rule.setContent { AideTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() } } }
         rule.waitForIdle()
+        // What a page reads from the machine after it opens (the conversation): there before the picture.
+        waitFor?.let { text -> rule.waitUntil(10_000) { rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() } }
         rule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
     }
 
     @Test fun tasks() = model().let { m -> shot("1-tasks") { SessionsTab(m, openDSH = {}) {} } }
     @Test fun needsYou() = model().let { m -> shot("2-needs-you") { NeedsYouTab(m) {} } }
-    @Test fun bots() = model().let { m -> shot("3-bots") { BotsTab(m) {} } }
+    @Test fun bots() = model().let { m -> shot("3-bots", waitFor = "发版评审") { BotsTab(m) {} } }
     @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
-    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
+    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse", waitFor = "评审过了") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
     @Test fun settings() = model().let { m -> shot("4-settings") { SettingsTab(m) } }
+    @Test fun room() = model().let { m -> shot("8-room", waitFor = "可以发版") { RoomPage(m, "m1", "room_2", openSession = {}) {} } }
+    @Test fun newRoom() = model().let { m -> shot("9-new-room") { NewRoomPage(m, opened = {}) {} } }
 
     companion object {
         private val now: Instant = Instant.now()
@@ -106,6 +128,9 @@ class PageShots {
                 machineId = "m1", machineName = "workstation", online = true, version = "0.2.5",
                 status = MachineStatus(
                     platform = "windows/amd64", runningSessions = 2, maxSessions = 4, version = "0.2.5",
+                    // The round table it hosts (G2-b/c), as its status brings it on the Watch.
+                    rooms = listOf(io.aide.android.api.Room(roomId = "room_2", name = "发版评审", hostMachineId = "m1", mode = "ROOM_MODE_ROUNDTABLE", maxRounds = 6, round = 1, unread = 2, lastLine = "Muse：[FINAL] 可以发版",
+                        members = listOf(io.aide.android.api.RoomMember(botKey = "m:m1/deepseek", name = "DSH · workstation"), io.aide.android.api.RoomMember(botKey = "c:c1", name = "Muse")))),
                     agents = listOf(
                         AgentStatus("claude", available = true, loggedIn = true, version = "2.1.330", checkedAt = ago(40), desktop = ClaudeDesktop(installed = true, signedIn = true)),
                         AgentStatus("deepseek", available = true, loggedIn = true, version = "1.4.0", checkedAt = ago(40), models = listOf(io.aide.android.api.AgentModel("deepseek-v4", "DeepSeek V4"), io.aide.android.api.AgentModel("deepseek-v4-flash", "DeepSeek V4 Flash")), dshBridge = DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.3.1", latestVersion = "0.3.1")),

@@ -207,6 +207,12 @@ message MachineStatus {
   // Direct LAN IPv4 / public IPv6 E2E tunnel endpoints (host:port) for
   // bypassing the relay when reachable. Sent to the owner's devices only.
   repeated string direct_addrs = 16;
+  // The rooms this machine hosts (docs/rooms.md), as the roster shows them:
+  // each with its state, last line and what the owner has not read; without
+  // their charters. A change to one sends the status again, so the owner's
+  // devices follow rooms on the Watch they have, asking nothing. Sent to the
+  // owner's devices only.
+  repeated Room rooms = 17;
 }
 
 // ScreenStatus is whether the owner's devices can see and operate this
@@ -565,6 +571,46 @@ message ExecRecord {
 
 // MachineAdminService is only available to the owner device principal.
 service MachineAdminService {
+  // Rooms (ROOMS-DESIGN-2026-11-22, G2-a): the owner and bots talking, kept
+  // and run by this machine, the room's host. A direct room is the owner and
+  // one personal agent: its conversation. Owner only.
+  rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // The direct room with a personal agent, made the first time.
+  rpc OpenDirectRoom(OpenDirectRoomRequest) returns (Room) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  rpc ListRoomMessages(ListRoomMessagesRequest) returns (ListRoomMessagesResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // The owner says something in the room; the members it is for are woken.
+  // Sent again with the same idempotency key, it is not said twice.
+  rpc PostRoomMessage(PostRoomMessageRequest) returns (RoomMessage) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  // A room of several bots (G2-b): the personal agents and this machine's
+  // coding agents the owner picked, each coding agent in a project of its
+  // own here.
+  rpc CreateRoom(CreateRoomRequest) returns (Room) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  // Its name, how it is run, its round limit.
+  rpc UpdateRoom(UpdateRoomRequest) returns (Room) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  // Stops a round table: nobody more is woken, coding agents at work are
+  // interrupted, answers that come after are kept but hand nothing on.
+  rpc StopRoom(StopRoomRequest) returns (Room) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  // The owner read the room up to now.
+  rpc MarkRoomSeen(MarkRoomSeenRequest) returns (Room) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
   rpc ApplyAdminCommand(ApplyAdminCommandRequest) returns (ApplyAdminCommandResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
@@ -1180,3 +1226,196 @@ message ReleaseHeldMessageRequest {
 }
 
 message ReleaseHeldMessageResponse {}
+
+// Rooms (ROOMS-DESIGN-2026-11-22).
+
+message Room {
+  // "room_" and a ULID.
+  string room_id = 1;
+  string name = 2;
+  // The machine that keeps and runs it.
+  string host_machine_id = 3;
+  repeated RoomMember members = 4;
+  // The owner and one personal agent: the agent's conversation, shown on
+  // its bot page rather than among the rooms.
+  bool direct = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  RoomMode mode = 8;
+  // A round table's limit: so many hand-ons after the owner speaks (1–20).
+  uint32 max_rounds = 9;
+  // Hand-ons since the owner last spoke.
+  uint32 round = 10;
+  RoomRun run = 11;
+  // Messages since the owner last read the room (MarkRoomSeen).
+  uint32 unread = 12;
+  // The last message, in a line, for the roster.
+  string last_line = 13;
+  // The chain the room's messages go on now (the owner's word starts one).
+  string trace_id = 14;
+  string seen_message_id = 15;
+  // What the owner signed for a room with coding agents (identity.v1
+  // RoomCharter, signed by one of the owner's devices): which machines'
+  // agents it may wake, in which projects. Machines check it before they
+  // take a room's wake.
+  aide.identity.v1.Signed charter = 16;
+  aide.identity.v1.Signed charter_device_cert = 17;
+}
+
+enum RoomMode {
+  // Unset: as manual.
+  ROOM_MODE_UNSPECIFIED = 0;
+  // Only the bots the owner names (@) are woken.
+  ROOM_MODE_MANUAL = 1;
+  // Bots hand on to each other by naming one (@), up to the round limit.
+  ROOM_MODE_ROUNDTABLE = 2;
+}
+
+enum RoomRun {
+  // Unset: nothing under way, waiting for the owner.
+  ROOM_RUN_UNSPECIFIED = 0;
+  // A bot was woken and the owner waits for it.
+  ROOM_RUN_RUNNING = 1;
+  // A round table stopped at its round limit.
+  ROOM_RUN_STOPPED_LIMIT = 2;
+  // The owner stopped it.
+  ROOM_RUN_STOPPED_OWNER = 3;
+}
+
+message RoomMember {
+  // The bot's key as the roster has it: "c:<client id>" for an agent with
+  // an inbox, "m:<machine id>/<agent>" for a coding agent of the host's.
+  string bot_key = 1;
+  // Its inbox (c_…); "" for a coding agent.
+  string address = 2;
+  string name = 3;
+  // A coding agent's: its machine, the project it works in there, and the
+  // session it talks in (made the first time it is woken).
+  string agent = 4;
+  string project_id = 5;
+  string session_id = 6;
+  string machine_id = 7;
+}
+
+enum RoomDeliveryState {
+  ROOM_DELIVERY_STATE_UNSPECIFIED = 0;
+  // Sent: waiting at the post office for the member to take it.
+  ROOM_DELIVERY_STATE_SENT = 1;
+  // The member answered it.
+  ROOM_DELIVERY_STATE_REPLIED = 2;
+  // Not sent: the reason says why (the owner's information boundary for
+  // this member's kind, the member unreachable…).
+  ROOM_DELIVERY_STATE_REFUSED = 3;
+  // Sending failed for now; the owner can send it again.
+  ROOM_DELIVERY_STATE_FAILED = 4;
+}
+
+message RoomDelivery {
+  string bot_key = 1;
+  RoomDeliveryState state = 2;
+  // In words, when it was not sent.
+  string reason = 3;
+  // The id of the member's own copy (one message per recipient), which its
+  // answer is in reply to.
+  string copy_id = 4;
+}
+
+message RoomMessage {
+  string message_id = 1;
+  string room_id = 2;
+  // "owner", or the member's bot key.
+  string from = 3;
+  string from_name = 4;
+  // Markdown.
+  string text = 5;
+  google.protobuf.Timestamp at = 6;
+  // The owner's: what became of it for each member it went to.
+  repeated RoomDelivery deliveries = 7;
+  // A member's: the message it answers.
+  string in_reply_to = 8;
+  // The bots the owner named (@), by bot key: the ones woken.
+  repeated string mentions = 9;
+  // The round it was said in.
+  uint32 round = 10;
+  // A reply that starts with [FINAL]: the room's agreed result, sealed
+  // (its text's SHA-256; nothing changes it).
+  bool final = 11;
+  string final_sha256 = 12;
+  // Came after the owner stopped the room: kept, hands nothing on.
+  bool late = 13;
+  // In manual mode, the bots a member named (@): the owner may hand it on.
+  repeated string asks = 14;
+  // From the host itself ("from" is "system"): the round limit reached…
+  bool system = 15;
+}
+
+message ListRoomsRequest {}
+
+message ListRoomsResponse {
+  repeated Room rooms = 1;
+}
+
+message OpenDirectRoomRequest {
+  // The personal agent's client id (c_…).
+  string client_id = 1;
+}
+
+message ListRoomMessagesRequest {
+  string room_id = 1;
+  // The newest this many, oldest first; 0: all.
+  uint32 limit = 2;
+}
+
+message ListRoomMessagesResponse {
+  Room room = 1;
+  repeated RoomMessage messages = 2;
+}
+
+message PostRoomMessageRequest {
+  string room_id = 1;
+  string text = 2;
+  string idempotency_key = 3;
+  // The bots named (@), by bot key.
+  repeated string mentions = 4;
+}
+
+message CreateRoomMember {
+  string bot_key = 1;
+  // A coding agent's project, on its machine.
+  string project_id = 2;
+  // Its name as the roster shows it ("DSH · work-pc").
+  string name = 3;
+}
+
+message CreateRoomRequest {
+  string name = 1;
+  repeated CreateRoomMember members = 2;
+  RoomMode mode = 3;
+  uint32 max_rounds = 4;
+  // With coding agents: the charter the owner's device signed, and its
+  // device certificate.
+  aide.identity.v1.Signed charter = 5;
+  aide.identity.v1.Signed charter_device_cert = 6;
+}
+
+message UpdateRoomRequest {
+  string room_id = 1;
+  // Unset: left as it is.
+  optional string name = 2;
+  optional RoomMode mode = 3;
+  optional uint32 max_rounds = 4;
+}
+
+message StopRoomRequest {
+  string room_id = 1;
+}
+
+message MarkRoomSeenRequest {
+  string room_id = 1;
+}
+
+message DeleteRoomRequest {
+  string room_id = 1;
+}
+
+message DeleteRoomResponse {}

@@ -124,6 +124,14 @@ class LocalApi(port: Long, token: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)
     }
 
+    suspend fun openDirectRoom(clientId: String): OpenDirectRoomResponse = call("OpenDirectRoom", OpenDirectRoomRequest(clientId))
+    suspend fun listRoomMessages(machineId: String, roomId: String): ListRoomMessagesResponse = call("ListRoomMessages", ListRoomMessagesRequest(machineId, roomId))
+    suspend fun postRoomMessage(machineId: String, roomId: String, text: String, key: String, mentions: List<String> = emptyList()): RoomMessage = call("PostRoomMessage", PostRoomMessageRequest(machineId, roomId, text, key, mentions))
+    suspend fun createRoom(req: CreateRoomRequest): Room = call("CreateRoom", req)
+    suspend fun updateRoom(machineId: String, patch: RoomPatch): Room = call("UpdateRoom", UpdateRoomRequest(machineId, patch))
+    suspend fun stopRoom(machineId: String, roomId: String): Room = call("StopRoom", RoomRef(machineId, roomId))
+    suspend fun markRoomSeen(machineId: String, roomId: String): Room = call("MarkRoomSeen", RoomRef(machineId, roomId))
+
     /** Hands installing the DSH bridge plugin to DSH on the machine (工单 #59). */
     suspend fun installDSHBridge(machineId: String): InstallDSHBridgeResponse =
         call("InstallDSHBridge", MachineIdRequest(machineId), timeoutSeconds = 60)

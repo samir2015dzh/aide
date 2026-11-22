@@ -63,6 +63,33 @@ const (
 	MachineServiceListClaudeSessionsProcedure = "/aide.machine.v1.MachineService/ListClaudeSessions"
 	// MachineOpsServiceExecProcedure is the fully-qualified name of the MachineOpsService's Exec RPC.
 	MachineOpsServiceExecProcedure = "/aide.machine.v1.MachineOpsService/Exec"
+	// MachineAdminServiceListRoomsProcedure is the fully-qualified name of the MachineAdminService's
+	// ListRooms RPC.
+	MachineAdminServiceListRoomsProcedure = "/aide.machine.v1.MachineAdminService/ListRooms"
+	// MachineAdminServiceOpenDirectRoomProcedure is the fully-qualified name of the
+	// MachineAdminService's OpenDirectRoom RPC.
+	MachineAdminServiceOpenDirectRoomProcedure = "/aide.machine.v1.MachineAdminService/OpenDirectRoom"
+	// MachineAdminServiceListRoomMessagesProcedure is the fully-qualified name of the
+	// MachineAdminService's ListRoomMessages RPC.
+	MachineAdminServiceListRoomMessagesProcedure = "/aide.machine.v1.MachineAdminService/ListRoomMessages"
+	// MachineAdminServicePostRoomMessageProcedure is the fully-qualified name of the
+	// MachineAdminService's PostRoomMessage RPC.
+	MachineAdminServicePostRoomMessageProcedure = "/aide.machine.v1.MachineAdminService/PostRoomMessage"
+	// MachineAdminServiceCreateRoomProcedure is the fully-qualified name of the MachineAdminService's
+	// CreateRoom RPC.
+	MachineAdminServiceCreateRoomProcedure = "/aide.machine.v1.MachineAdminService/CreateRoom"
+	// MachineAdminServiceUpdateRoomProcedure is the fully-qualified name of the MachineAdminService's
+	// UpdateRoom RPC.
+	MachineAdminServiceUpdateRoomProcedure = "/aide.machine.v1.MachineAdminService/UpdateRoom"
+	// MachineAdminServiceStopRoomProcedure is the fully-qualified name of the MachineAdminService's
+	// StopRoom RPC.
+	MachineAdminServiceStopRoomProcedure = "/aide.machine.v1.MachineAdminService/StopRoom"
+	// MachineAdminServiceMarkRoomSeenProcedure is the fully-qualified name of the MachineAdminService's
+	// MarkRoomSeen RPC.
+	MachineAdminServiceMarkRoomSeenProcedure = "/aide.machine.v1.MachineAdminService/MarkRoomSeen"
+	// MachineAdminServiceDeleteRoomProcedure is the fully-qualified name of the MachineAdminService's
+	// DeleteRoom RPC.
+	MachineAdminServiceDeleteRoomProcedure = "/aide.machine.v1.MachineAdminService/DeleteRoom"
 	// MachineAdminServiceApplyAdminCommandProcedure is the fully-qualified name of the
 	// MachineAdminService's ApplyAdminCommand RPC.
 	MachineAdminServiceApplyAdminCommandProcedure = "/aide.machine.v1.MachineAdminService/ApplyAdminCommand"
@@ -572,6 +599,28 @@ func (UnimplementedMachineOpsServiceHandler) Exec(context.Context, *v1.ExecReque
 
 // MachineAdminServiceClient is a client for the aide.machine.v1.MachineAdminService service.
 type MachineAdminServiceClient interface {
+	// Rooms (ROOMS-DESIGN-2026-11-22, G2-a): the owner and bots talking, kept
+	// and run by this machine, the room's host. A direct room is the owner and
+	// one personal agent: its conversation. Owner only.
+	ListRooms(context.Context, *v1.ListRoomsRequest) (*v1.ListRoomsResponse, error)
+	// The direct room with a personal agent, made the first time.
+	OpenDirectRoom(context.Context, *v1.OpenDirectRoomRequest) (*v1.Room, error)
+	ListRoomMessages(context.Context, *v1.ListRoomMessagesRequest) (*v1.ListRoomMessagesResponse, error)
+	// The owner says something in the room; the members it is for are woken.
+	// Sent again with the same idempotency key, it is not said twice.
+	PostRoomMessage(context.Context, *v1.PostRoomMessageRequest) (*v1.RoomMessage, error)
+	// A room of several bots (G2-b): the personal agents and this machine's
+	// coding agents the owner picked, each coding agent in a project of its
+	// own here.
+	CreateRoom(context.Context, *v1.CreateRoomRequest) (*v1.Room, error)
+	// Its name, how it is run, its round limit.
+	UpdateRoom(context.Context, *v1.UpdateRoomRequest) (*v1.Room, error)
+	// Stops a round table: nobody more is woken, coding agents at work are
+	// interrupted, answers that come after are kept but hand nothing on.
+	StopRoom(context.Context, *v1.StopRoomRequest) (*v1.Room, error)
+	// The owner read the room up to now.
+	MarkRoomSeen(context.Context, *v1.MarkRoomSeenRequest) (*v1.Room, error)
+	DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error)
 	ApplyAdminCommand(context.Context, *v1.ApplyAdminCommandRequest) (*v1.ApplyAdminCommandResponse, error)
 	PushRevocations(context.Context, *v1.PushRevocationsRequest) (*v1.PushRevocationsResponse, error)
 	// The git repositories under the home folder, for Add a Project: read
@@ -674,6 +723,60 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	machineAdminServiceMethods := v1.File_aide_machine_v1_machine_proto.Services().ByName("MachineAdminService").Methods()
 	return &machineAdminServiceClient{
+		listRooms: connect.NewClient[v1.ListRoomsRequest, v1.ListRoomsResponse](
+			httpClient,
+			baseURL+MachineAdminServiceListRoomsProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ListRooms")),
+			connect.WithClientOptions(opts...),
+		),
+		openDirectRoom: connect.NewClient[v1.OpenDirectRoomRequest, v1.Room](
+			httpClient,
+			baseURL+MachineAdminServiceOpenDirectRoomProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("OpenDirectRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		listRoomMessages: connect.NewClient[v1.ListRoomMessagesRequest, v1.ListRoomMessagesResponse](
+			httpClient,
+			baseURL+MachineAdminServiceListRoomMessagesProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ListRoomMessages")),
+			connect.WithClientOptions(opts...),
+		),
+		postRoomMessage: connect.NewClient[v1.PostRoomMessageRequest, v1.RoomMessage](
+			httpClient,
+			baseURL+MachineAdminServicePostRoomMessageProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("PostRoomMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		createRoom: connect.NewClient[v1.CreateRoomRequest, v1.Room](
+			httpClient,
+			baseURL+MachineAdminServiceCreateRoomProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("CreateRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		updateRoom: connect.NewClient[v1.UpdateRoomRequest, v1.Room](
+			httpClient,
+			baseURL+MachineAdminServiceUpdateRoomProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("UpdateRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		stopRoom: connect.NewClient[v1.StopRoomRequest, v1.Room](
+			httpClient,
+			baseURL+MachineAdminServiceStopRoomProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("StopRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		markRoomSeen: connect.NewClient[v1.MarkRoomSeenRequest, v1.Room](
+			httpClient,
+			baseURL+MachineAdminServiceMarkRoomSeenProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("MarkRoomSeen")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteRoom: connect.NewClient[v1.DeleteRoomRequest, v1.DeleteRoomResponse](
+			httpClient,
+			baseURL+MachineAdminServiceDeleteRoomProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("DeleteRoom")),
+			connect.WithClientOptions(opts...),
+		),
 		applyAdminCommand: connect.NewClient[v1.ApplyAdminCommandRequest, v1.ApplyAdminCommandResponse](
 			httpClient,
 			baseURL+MachineAdminServiceApplyAdminCommandProcedure,
@@ -818,6 +921,15 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // machineAdminServiceClient implements MachineAdminServiceClient.
 type machineAdminServiceClient struct {
+	listRooms           *connect.Client[v1.ListRoomsRequest, v1.ListRoomsResponse]
+	openDirectRoom      *connect.Client[v1.OpenDirectRoomRequest, v1.Room]
+	listRoomMessages    *connect.Client[v1.ListRoomMessagesRequest, v1.ListRoomMessagesResponse]
+	postRoomMessage     *connect.Client[v1.PostRoomMessageRequest, v1.RoomMessage]
+	createRoom          *connect.Client[v1.CreateRoomRequest, v1.Room]
+	updateRoom          *connect.Client[v1.UpdateRoomRequest, v1.Room]
+	stopRoom            *connect.Client[v1.StopRoomRequest, v1.Room]
+	markRoomSeen        *connect.Client[v1.MarkRoomSeenRequest, v1.Room]
+	deleteRoom          *connect.Client[v1.DeleteRoomRequest, v1.DeleteRoomResponse]
 	applyAdminCommand   *connect.Client[v1.ApplyAdminCommandRequest, v1.ApplyAdminCommandResponse]
 	pushRevocations     *connect.Client[v1.PushRevocationsRequest, v1.PushRevocationsResponse]
 	listRepos           *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
@@ -841,6 +953,87 @@ type machineAdminServiceClient struct {
 	saveCustomAgent     *connect.Client[v1.SaveCustomAgentRequest, v1.SaveCustomAgentResponse]
 	removeCustomAgent   *connect.Client[v1.RemoveCustomAgentRequest, v1.RemoveCustomAgentResponse]
 	testCustomAgent     *connect.Client[v1.TestCustomAgentRequest, v1.TestCustomAgentResponse]
+}
+
+// ListRooms calls aide.machine.v1.MachineAdminService.ListRooms.
+func (c *machineAdminServiceClient) ListRooms(ctx context.Context, req *v1.ListRoomsRequest) (*v1.ListRoomsResponse, error) {
+	response, err := c.listRooms.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// OpenDirectRoom calls aide.machine.v1.MachineAdminService.OpenDirectRoom.
+func (c *machineAdminServiceClient) OpenDirectRoom(ctx context.Context, req *v1.OpenDirectRoomRequest) (*v1.Room, error) {
+	response, err := c.openDirectRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListRoomMessages calls aide.machine.v1.MachineAdminService.ListRoomMessages.
+func (c *machineAdminServiceClient) ListRoomMessages(ctx context.Context, req *v1.ListRoomMessagesRequest) (*v1.ListRoomMessagesResponse, error) {
+	response, err := c.listRoomMessages.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// PostRoomMessage calls aide.machine.v1.MachineAdminService.PostRoomMessage.
+func (c *machineAdminServiceClient) PostRoomMessage(ctx context.Context, req *v1.PostRoomMessageRequest) (*v1.RoomMessage, error) {
+	response, err := c.postRoomMessage.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// CreateRoom calls aide.machine.v1.MachineAdminService.CreateRoom.
+func (c *machineAdminServiceClient) CreateRoom(ctx context.Context, req *v1.CreateRoomRequest) (*v1.Room, error) {
+	response, err := c.createRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// UpdateRoom calls aide.machine.v1.MachineAdminService.UpdateRoom.
+func (c *machineAdminServiceClient) UpdateRoom(ctx context.Context, req *v1.UpdateRoomRequest) (*v1.Room, error) {
+	response, err := c.updateRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// StopRoom calls aide.machine.v1.MachineAdminService.StopRoom.
+func (c *machineAdminServiceClient) StopRoom(ctx context.Context, req *v1.StopRoomRequest) (*v1.Room, error) {
+	response, err := c.stopRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// MarkRoomSeen calls aide.machine.v1.MachineAdminService.MarkRoomSeen.
+func (c *machineAdminServiceClient) MarkRoomSeen(ctx context.Context, req *v1.MarkRoomSeenRequest) (*v1.Room, error) {
+	response, err := c.markRoomSeen.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// DeleteRoom calls aide.machine.v1.MachineAdminService.DeleteRoom.
+func (c *machineAdminServiceClient) DeleteRoom(ctx context.Context, req *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error) {
+	response, err := c.deleteRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
 }
 
 // ApplyAdminCommand calls aide.machine.v1.MachineAdminService.ApplyAdminCommand.
@@ -1053,6 +1246,28 @@ func (c *machineAdminServiceClient) TestCustomAgent(ctx context.Context, req *v1
 // MachineAdminServiceHandler is an implementation of the aide.machine.v1.MachineAdminService
 // service.
 type MachineAdminServiceHandler interface {
+	// Rooms (ROOMS-DESIGN-2026-11-22, G2-a): the owner and bots talking, kept
+	// and run by this machine, the room's host. A direct room is the owner and
+	// one personal agent: its conversation. Owner only.
+	ListRooms(context.Context, *v1.ListRoomsRequest) (*v1.ListRoomsResponse, error)
+	// The direct room with a personal agent, made the first time.
+	OpenDirectRoom(context.Context, *v1.OpenDirectRoomRequest) (*v1.Room, error)
+	ListRoomMessages(context.Context, *v1.ListRoomMessagesRequest) (*v1.ListRoomMessagesResponse, error)
+	// The owner says something in the room; the members it is for are woken.
+	// Sent again with the same idempotency key, it is not said twice.
+	PostRoomMessage(context.Context, *v1.PostRoomMessageRequest) (*v1.RoomMessage, error)
+	// A room of several bots (G2-b): the personal agents and this machine's
+	// coding agents the owner picked, each coding agent in a project of its
+	// own here.
+	CreateRoom(context.Context, *v1.CreateRoomRequest) (*v1.Room, error)
+	// Its name, how it is run, its round limit.
+	UpdateRoom(context.Context, *v1.UpdateRoomRequest) (*v1.Room, error)
+	// Stops a round table: nobody more is woken, coding agents at work are
+	// interrupted, answers that come after are kept but hand nothing on.
+	StopRoom(context.Context, *v1.StopRoomRequest) (*v1.Room, error)
+	// The owner read the room up to now.
+	MarkRoomSeen(context.Context, *v1.MarkRoomSeenRequest) (*v1.Room, error)
+	DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error)
 	ApplyAdminCommand(context.Context, *v1.ApplyAdminCommandRequest) (*v1.ApplyAdminCommandResponse, error)
 	PushRevocations(context.Context, *v1.PushRevocationsRequest) (*v1.PushRevocationsResponse, error)
 	// The git repositories under the home folder, for Add a Project: read
@@ -1151,6 +1366,60 @@ type MachineAdminServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	machineAdminServiceMethods := v1.File_aide_machine_v1_machine_proto.Services().ByName("MachineAdminService").Methods()
+	machineAdminServiceListRoomsHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceListRoomsProcedure,
+		svc.ListRooms,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ListRooms")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceOpenDirectRoomHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceOpenDirectRoomProcedure,
+		svc.OpenDirectRoom,
+		connect.WithSchema(machineAdminServiceMethods.ByName("OpenDirectRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceListRoomMessagesHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceListRoomMessagesProcedure,
+		svc.ListRoomMessages,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ListRoomMessages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServicePostRoomMessageHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServicePostRoomMessageProcedure,
+		svc.PostRoomMessage,
+		connect.WithSchema(machineAdminServiceMethods.ByName("PostRoomMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceCreateRoomHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceCreateRoomProcedure,
+		svc.CreateRoom,
+		connect.WithSchema(machineAdminServiceMethods.ByName("CreateRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceUpdateRoomHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceUpdateRoomProcedure,
+		svc.UpdateRoom,
+		connect.WithSchema(machineAdminServiceMethods.ByName("UpdateRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceStopRoomHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceStopRoomProcedure,
+		svc.StopRoom,
+		connect.WithSchema(machineAdminServiceMethods.ByName("StopRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceMarkRoomSeenHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceMarkRoomSeenProcedure,
+		svc.MarkRoomSeen,
+		connect.WithSchema(machineAdminServiceMethods.ByName("MarkRoomSeen")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceDeleteRoomHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceDeleteRoomProcedure,
+		svc.DeleteRoom,
+		connect.WithSchema(machineAdminServiceMethods.ByName("DeleteRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
 	machineAdminServiceApplyAdminCommandHandler := connect.NewUnaryHandlerSimple(
 		MachineAdminServiceApplyAdminCommandProcedure,
 		svc.ApplyAdminCommand,
@@ -1292,6 +1561,24 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 	)
 	return "/aide.machine.v1.MachineAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case MachineAdminServiceListRoomsProcedure:
+			machineAdminServiceListRoomsHandler.ServeHTTP(w, r)
+		case MachineAdminServiceOpenDirectRoomProcedure:
+			machineAdminServiceOpenDirectRoomHandler.ServeHTTP(w, r)
+		case MachineAdminServiceListRoomMessagesProcedure:
+			machineAdminServiceListRoomMessagesHandler.ServeHTTP(w, r)
+		case MachineAdminServicePostRoomMessageProcedure:
+			machineAdminServicePostRoomMessageHandler.ServeHTTP(w, r)
+		case MachineAdminServiceCreateRoomProcedure:
+			machineAdminServiceCreateRoomHandler.ServeHTTP(w, r)
+		case MachineAdminServiceUpdateRoomProcedure:
+			machineAdminServiceUpdateRoomHandler.ServeHTTP(w, r)
+		case MachineAdminServiceStopRoomProcedure:
+			machineAdminServiceStopRoomHandler.ServeHTTP(w, r)
+		case MachineAdminServiceMarkRoomSeenProcedure:
+			machineAdminServiceMarkRoomSeenHandler.ServeHTTP(w, r)
+		case MachineAdminServiceDeleteRoomProcedure:
+			machineAdminServiceDeleteRoomHandler.ServeHTTP(w, r)
 		case MachineAdminServiceApplyAdminCommandProcedure:
 			machineAdminServiceApplyAdminCommandHandler.ServeHTTP(w, r)
 		case MachineAdminServicePushRevocationsProcedure:
@@ -1346,6 +1633,42 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 
 // UnimplementedMachineAdminServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMachineAdminServiceHandler struct{}
+
+func (UnimplementedMachineAdminServiceHandler) ListRooms(context.Context, *v1.ListRoomsRequest) (*v1.ListRoomsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ListRooms is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) OpenDirectRoom(context.Context, *v1.OpenDirectRoomRequest) (*v1.Room, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.OpenDirectRoom is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ListRoomMessages(context.Context, *v1.ListRoomMessagesRequest) (*v1.ListRoomMessagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ListRoomMessages is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) PostRoomMessage(context.Context, *v1.PostRoomMessageRequest) (*v1.RoomMessage, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.PostRoomMessage is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) CreateRoom(context.Context, *v1.CreateRoomRequest) (*v1.Room, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.CreateRoom is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) UpdateRoom(context.Context, *v1.UpdateRoomRequest) (*v1.Room, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.UpdateRoom is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) StopRoom(context.Context, *v1.StopRoomRequest) (*v1.Room, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.StopRoom is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) MarkRoomSeen(context.Context, *v1.MarkRoomSeenRequest) (*v1.Room, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.MarkRoomSeen is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.DeleteRoom is not implemented"))
+}
 
 func (UnimplementedMachineAdminServiceHandler) ApplyAdminCommand(context.Context, *v1.ApplyAdminCommandRequest) (*v1.ApplyAdminCommandResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ApplyAdminCommand is not implemented"))

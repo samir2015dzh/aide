@@ -5,6 +5,7 @@ package io.aide.android.api
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -137,6 +138,8 @@ data class MachineStatus(
     val paused: Boolean = false,
     val version: String = "",
     val her: HerStatus? = null,
+    /** The rooms of several bots it hosts (G2-b/c), followed on the Watch. */
+    val rooms: List<Room> = emptyList(),
 )
 
 @Serializable
@@ -488,6 +491,8 @@ data class Notice(
     val failureMessage: String = "",
     val turn: Int = 0,
     val diffStat: DiffStat? = null,
+    val roomId: String = "",
+    val roomLine: String = "",
 )
 
 @Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String)
@@ -526,3 +531,28 @@ data class TalkToPersonaResponse(
     val reason: String = "",
     val persona: Persona? = null,
 )
+
+// Rooms (ROOMS-DESIGN-2026-11-22, G2-a): the owner's conversation with a personal agent, kept on a host machine.
+@Serializable data class RoomMember(val botKey: String = "", val address: String = "", val name: String = "", val agent: String = "", val projectId: String = "", val sessionId: String = "", val machineId: String = "")
+// G2-b/c: rooms of several bots, run by hand (only those the owner names are woken) or as a round table.
+@Serializable data class Room(
+    val roomId: String = "", val name: String = "", val hostMachineId: String = "", val members: List<RoomMember> = emptyList(), val direct: Boolean = false,
+    val mode: String = "", val maxRounds: Int = 0, val round: Int = 0, val run: String = "", val unread: Int = 0, val lastLine: String = "", val seenMessageId: String = "",
+    val updatedAt: String = "",
+)
+@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "")
+@Serializable data class RoomMessage(
+    val messageId: String = "", val roomId: String = "", val from: String = "", val fromName: String = "", val text: String = "", val at: String = "",
+    val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "", val mentions: List<String> = emptyList(), val round: Int = 0,
+    @SerialName("final") val isFinal: Boolean = false, val finalSha256: String = "", val late: Boolean = false, val asks: List<String> = emptyList(), val system: Boolean = false,
+)
+@Serializable data class OpenDirectRoomRequest(val clientId: String)
+@Serializable data class OpenDirectRoomResponse(val room: Room? = null)
+@Serializable data class ListRoomMessagesRequest(val machineId: String, val roomId: String, val limit: Int = 200)
+@Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList())
+@Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList())
+@Serializable data class CreateRoomMember(val botKey: String, val projectId: String = "", val name: String = "")
+@Serializable data class CreateRoomRequest(val name: String, val members: List<CreateRoomMember>, val mode: String, val maxRounds: Int)
+@Serializable data class RoomPatch(val roomId: String, val name: String? = null, val mode: String? = null, val maxRounds: Int? = null)
+@Serializable data class UpdateRoomRequest(val machineId: String, val room: RoomPatch)
+@Serializable data class RoomRef(val machineId: String, val roomId: String)
