@@ -1,4 +1,13 @@
 {
+  "0.2.6": {
+    "improvements": [
+      "The machines page has a single roster now (desktop and Android): every agent appears once, with one name and one state. DSH is just called DSH, and DeepSeek only shows in the small print of its own row (the model line); Claude Desktop and the Claude Code command line are two detail lines under one entry instead of each carrying its own state. Android also keeps agent checks fresh while the machines page is open, instead of a whole page of \"Status unknown\".",
+      "Android's visual hierarchy was reworked as a system: cards have clear outlines, borders and inner blocks, titles carry real weight, states are coloured pills with dots, and groups show counts. Modelled on BotArk's roster layout, still in the dark palette — visibly different from before, not just a new background colour."
+    ],
+    "fixes": [
+      "The main cause of Android scroll jank is fixed: the shipped package had always been a debuggable build, which runs at a permanent performance discount; from this version it is a proper release build. The machine card also renders row by row now, status dots no longer read system settings on every redraw, and the running pulse settles while you scroll."
+    ]
+  },
   "0.2.5": {
     "improvements": [
       "One place that tells the truth about connections: a new \"Connections on this machine\" section at the top of Settings › Machines shows, for this computer, whether DSH, Claude Desktop and the Claude Code command line are connected, what is missing, and what that missing piece affects. Anything not re-checked for over 15 minutes is honestly labelled \"Status unknown\" instead of reusing a stale result.",
