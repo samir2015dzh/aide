@@ -342,6 +342,11 @@ message ClaudeUsage {
   // sign in to Claude Desktop again). A failed renew never leaves the
   // Desktop cache unreadable: aided restores the old entry.
   string renew = 5;
+  // What lies behind an unavailable reading, or behind the last refresh
+  // that failed while a stale reading is kept: one line for the diagnosis,
+  // e.g. "HTTP 401: authentication_error: OAuth token has expired" or the
+  // transport error with its host. Never a token, a header or a URL path.
+  string detail = 6;
 }
 
 // UsageWindow is one rate-limit window's reading: how full it is (0-100)

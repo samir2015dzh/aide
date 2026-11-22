@@ -98,7 +98,7 @@ func TestStatusAttachesUsage(t *testing.T) {
 func TestUsageStaleFallback(t *testing.T) {
 	n := openTestMachine(t)
 	good := claude.Usage{Windows: []claude.Window{{Key: "five_hour", Utilization: 42}}, FetchedAt: time.Now()}
-	f := &fakeUsage{out: []claude.Usage{good, {Unavailable: "api_error", FetchedAt: time.Now()}}}
+	f := &fakeUsage{out: []claude.Usage{good, {Unavailable: "api_error", Detail: "usage endpoint: HTTP 500: overloaded", FetchedAt: time.Now()}}}
 	n.usageSrc = f
 
 	first := waitUsage(t, n)
@@ -117,6 +117,10 @@ func TestUsageStaleFallback(t *testing.T) {
 		if u != nil && u.Stale {
 			if len(u.Windows) != 1 || u.Windows[0].Utilization != 42 {
 				t.Fatalf("stale windows = %+v", u.Windows)
+			}
+			// Why the refresh failed rides along with the kept figures (#35).
+			if u.Detail != "usage endpoint: HTTP 500: overloaded" {
+				t.Fatalf("stale detail = %q", u.Detail)
 			}
 			return
 		}

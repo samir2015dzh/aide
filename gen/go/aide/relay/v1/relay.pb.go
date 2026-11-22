@@ -5962,7 +5962,9 @@ type MessageAck struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	MessageId string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
 	// "handed" (in its agent's hands, not yet done with: it may be
-	// acknowledged handled after), "handled", "held" or "refused".
+	// acknowledged handled after), "handled", "held" (waiting for the owner on
+	// the recipient's side: it may be acknowledged handed, handled, refused or
+	// "expired" after), or "refused".
 	Outcome       string `protobuf:"bytes,2,opt,name=outcome,proto3" json:"outcome,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

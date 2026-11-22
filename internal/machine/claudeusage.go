@@ -70,12 +70,14 @@ func usageToProto(u claude.Usage, prev *machinev1.ClaudeUsage) *machinev1.Claude
 		out := proto.Clone(prev).(*machinev1.ClaudeUsage)
 		out.Stale = true
 		out.Renew = u.Renew
+		out.Detail = u.Detail
 		return out
 	}
 	pb := &machinev1.ClaudeUsage{
 		FetchedAt:   timestamppb.New(u.FetchedAt),
 		Unavailable: u.Unavailable,
 		Renew:       u.Renew,
+		Detail:      u.Detail,
 	}
 	for _, w := range u.Windows {
 		uw := &machinev1.UsageWindow{Key: w.Key, Utilization: w.Utilization}
@@ -93,15 +95,15 @@ func (n *Machine) logUsage(now, prev *machinev1.ClaudeUsage) {
 	if now == nil {
 		return
 	}
-	prevUnavail, prevRenew := "", ""
+	prevUnavail, prevRenew, prevDetail := "", "", ""
 	if prev != nil {
-		prevUnavail, prevRenew = prev.Unavailable, prev.Renew
+		prevUnavail, prevRenew, prevDetail = prev.Unavailable, prev.Renew, prev.Detail
 	}
-	if now.Unavailable != prevUnavail {
+	if now.Unavailable != prevUnavail || (now.Unavailable != "" && now.Detail != prevDetail) {
 		if now.Unavailable == "" {
 			n.log.Info("Claude plan usage readable again")
 		} else {
-			n.log.Info("Claude plan usage not readable", "why", now.Unavailable)
+			n.log.Info("Claude plan usage not readable", "why", now.Unavailable, "detail", now.Detail)
 		}
 	}
 	if now.Renew != "" && now.Renew != prevRenew {

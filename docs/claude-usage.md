@@ -92,6 +92,20 @@ key; no real token or response sample is needed to build or test this.
 `unavailable` says why, and the UI shows "read-fail" / "读不到" rather than
 a number: `signed_out` (no signed-in token found), `no_token` (a cache was
 found but could not be read), `api_error` (the endpoint failed),
-`unsupported` (this OS can't open the desktop token cache). Local transcript
+`unsupported` (this OS can't open the desktop token cache), `parse_error`
+(the endpoint answered 200 but not with a JSON object).
+
+`api_error` and `parse_error` never come alone: `detail` carries what lay
+behind them — the HTTP status and a summary of the answer (Anthropic's
+`error.type: error.message` when the body is its error JSON, else the first
+200 characters with whitespace collapsed and anything token-like masked), or
+the transport error with only its host. `AIDE_CLAUDE_USAGE_URL` in aided's
+environment points the reading at a stand-in endpoint (the end-to-end test
+uses one; it is also a way to see what a proxy in the way answers). The same line goes to aided's log,
+`aide usage` prints it after the reason, and the desktop shows it on hover
+over the "unavailable" note. A stale reading carries the detail of the
+refresh that failed. A failed auto-renew adds `renew: …` with the token
+endpoint's status and error code — its body is otherwise never shown,
+since a successful answer carries tokens. Local transcript
 token counts are never substituted for the plan figure — they miss other
 devices and the web, so the cap they imply is wrong.

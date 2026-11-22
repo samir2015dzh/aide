@@ -1815,7 +1815,12 @@ type ClaudeUsage struct {
 	// "renew_failed" (refresh or write-back failed; the owner may need to
 	// sign in to Claude Desktop again). A failed renew never leaves the
 	// Desktop cache unreadable: aided restores the old entry.
-	Renew         string `protobuf:"bytes,5,opt,name=renew,proto3" json:"renew,omitempty"`
+	Renew string `protobuf:"bytes,5,opt,name=renew,proto3" json:"renew,omitempty"`
+	// What lies behind an unavailable reading, or behind the last refresh
+	// that failed while a stale reading is kept: one line for the diagnosis,
+	// e.g. "HTTP 401: authentication_error: OAuth token has expired" or the
+	// transport error with its host. Never a token, a header or a URL path.
+	Detail        string `protobuf:"bytes,6,opt,name=detail,proto3" json:"detail,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1881,6 +1886,13 @@ func (x *ClaudeUsage) GetUnavailable() string {
 func (x *ClaudeUsage) GetRenew() string {
 	if x != nil {
 		return x.Renew
+	}
+	return ""
+}
+
+func (x *ClaudeUsage) GetDetail() string {
+	if x != nil {
+		return x.Detail
 	}
 	return ""
 }
@@ -5941,14 +5953,15 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"AgentPause\x120\n" +
 	"\x05since\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x127\n" +
-	"\tresume_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\xce\x01\n" +
+	"\tresume_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\xe6\x01\n" +
 	"\vClaudeUsage\x126\n" +
 	"\awindows\x18\x01 \x03(\v2\x1c.aide.machine.v1.UsageWindowR\awindows\x129\n" +
 	"\n" +
 	"fetched_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tfetchedAt\x12\x14\n" +
 	"\x05stale\x18\x03 \x01(\bR\x05stale\x12 \n" +
 	"\vunavailable\x18\x04 \x01(\tR\vunavailable\x12\x14\n" +
-	"\x05renew\x18\x05 \x01(\tR\x05renew\"z\n" +
+	"\x05renew\x18\x05 \x01(\tR\x05renew\x12\x16\n" +
+	"\x06detail\x18\x06 \x01(\tR\x06detail\"z\n" +
 	"\vUsageWindow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12 \n" +
 	"\vutilization\x18\x02 \x01(\x01R\vutilization\x127\n" +
