@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 )
 
@@ -73,7 +74,10 @@ func (n *Machine) StartAgentLogin(name string, cancel bool) (*machinev1.AgentLog
 	}
 	var tail lastLine
 	cmd.Stdout, cmd.Stderr = io.Discard, &tail
-	if err := cmd.Start(); err != nil {
+	// Cancelled or out of time, it ends with what it started, and its state
+	// says so at once (no child left holding its output open).
+	wait, err := provider.StartInGroup(cmd)
+	if err != nil {
 		stop()
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("could not start Claude Code's sign-in: %w", err))
 	}
@@ -84,7 +88,7 @@ func (n *Machine) StartAgentLogin(name string, cancel bool) (*machinev1.AgentLog
 	n.audit.Log(AuditRecord{Kind: "agent.login", Subject: "owner", Decision: "allow", Detail: name})
 	n.kickStatus()
 	go func() {
-		err := cmd.Wait()
+		err := wait()
 		cancelled := errors.Is(ctx.Err(), context.Canceled)
 		timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 		stop()

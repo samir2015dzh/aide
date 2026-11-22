@@ -38,7 +38,7 @@ case "$1 $2" in
 "auth login") case "$(cat `+mode+`)" in
   ok) sleep 1; touch `+signed+`;;
   fail) echo "Login failed: the browser was closed (sk-ant-oat01-SECRETSECRETSECRETSECRETSECRET)" >&2; exit 1;;
-  wait) sleep 60;;
+  wait) sleep 60 & wait;; # a child left holding its output, as a browser opener may be
   esac;;
 esac
 `), 0o755)
