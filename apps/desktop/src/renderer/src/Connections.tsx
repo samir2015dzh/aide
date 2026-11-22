@@ -56,7 +56,7 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
 }
 
 /** One connection row: what it is, its state, what that means, its fix, and when it was checked. */
-export function ConnRowView({ r, m, recheck, logo = true, bare = false }: { r: ConnRow; m: Machine; recheck: () => void; logo?: boolean; bare?: boolean }) {
+export function ConnRowView({ r, m, recheck, logo = true, bare = false, part = false }: { r: ConnRow; m: Machine; recheck: () => void; logo?: boolean; bare?: boolean; part?: boolean }) {
   const { t } = useTranslation("common");
   const now = useNow(30_000);
   return (
@@ -64,7 +64,14 @@ export function ConnRowView({ r, m, recheck, logo = true, bare = false }: { r: C
       {logo && <span className="conn-logo"><AgentLogo agent={r.agent} size={18} /></span>}
       <div className="conn-main">
         {/* bare: the entry it sits under already says its name and state (an agent with one row, 工单 #53). */}
-        {!bare && (
+        {/* part: one of its entry's rows, by its short name, in plain words: the entry above has the one state (工单 #53). */}
+        {!bare && part && (
+          <div className="conn-line conn-part">
+            <span className="conn-part-name">{r.id === "claude-cli" ? t("conn.partCli") : r.id === "deepseek-bridge" ? t("conn.partBridge") : r.title}</span>
+            <span>{r.text}</span>
+          </div>
+        )}
+        {!bare && !part && (
           <div className="conn-line">
             <b>{r.title}</b>
             <span className="conn-state" data-state={r.state}>

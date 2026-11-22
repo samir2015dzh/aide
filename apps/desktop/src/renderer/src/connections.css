@@ -25,3 +25,5 @@
 .ag-conn{box-shadow:0 -.5px 0 var(--sep);margin:0 0 0 58px}
 .ag-conn .frow.conn-row{background:transparent}
 .ag-conn .frow.conn-row{padding-left:0;padding-right:12px}
+.conn-part{gap:14px;font-size:12.5px}
+.conn-part-name{color:var(--l3,var(--l2));min-width:7em}

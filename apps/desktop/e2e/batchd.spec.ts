@@ -37,7 +37,7 @@ test("this Mac's connections in one place, and the same rows on Connect Agent; e
   await expect(card).toBeVisible({ timeout: 30_000 });
   // Each coding agent here in words (the command line Claude Code apart from the app, as a detail of Claude Code's
   // entry), with when it was checked; personal agents are said to follow the account.
-  await expect(card.getByRole("listitem", { name: "Claude Code" }).locator(".conn-row").filter({ hasText: "Claude Code 命令行" })).toContainText("已登录", { timeout: 30_000 });
+  await expect(card.getByRole("listitem", { name: "Claude Code" }).getByRole("group", { name: "Claude Code 命令行" })).toContainText("已登录", { timeout: 30_000 });
   await expect(card.getByRole("listitem", { name: "Codex" })).toContainText("未登录");
   await expect(card.getByText(/检测$/).first()).toBeVisible({ timeout: 30_000 });
   await expect(settings.getByText(/个人 Agent（Muse、Grok Bot 等）跟着账号走/)).toBeVisible();

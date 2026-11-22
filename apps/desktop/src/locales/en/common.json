@@ -334,6 +334,8 @@
     "followsMachine": "Coding agents follow the machine they run on",
     "noneYet": "Checking what is installed…",
     "offline": "The machine is offline: what it last said can't be confirmed now.",
+    "partCli": "Command line",
+    "partBridge": "Bridge plugin",
     "checkedAt": "Checked {{when}}",
     "neverChecked": "Not checked yet",
     "grantOnline": "Connected now",

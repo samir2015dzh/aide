@@ -322,6 +322,8 @@
     "followsMachine": "编码 Agent 跟着它所在的机器走",
     "noneYet": "正在检测装了什么…",
     "offline": "机器离线：它上次报告的状态现在无法确认。",
+    "partCli": "命令行",
+    "partBridge": "桥接插件",
     "checkedAt": "{{when}}检测",
     "neverChecked": "尚未检测",
     "grantOnline": "正连着",

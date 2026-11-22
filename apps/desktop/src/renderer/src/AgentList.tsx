@@ -108,7 +108,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
     return e && rows ? (
       <div className="ag-conn">
         {rows.map((r) => (
-          <ConnRowView key={r.id} r={r} m={m} recheck={recheck} logo={false} bare={rows.length === 1 && name !== "claude"} />
+          <ConnRowView key={r.id} r={r} m={m} recheck={recheck} logo={false} bare={rows.length === 1 && name !== "claude"} part />
         ))}
       </div>
     ) : null;
