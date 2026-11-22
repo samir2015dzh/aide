@@ -1,4 +1,23 @@
 {
+  "0.2.8": {
+    "improvements": [
+      "The Bots page holds only bots and rooms: the stat cards and machine cards moved to a dedicated Devices page, and the desktop sidebar is roster-only, visible in one screen.",
+      "Every bot's conversation has clear rules now: messages continue the current conversation by default; an explicit New conversation button starts fresh; switching project or model starts a new conversation and says so on the spot; past conversations can be reopened and continued, and archive state stays in sync with the agent side.",
+      "Avatars redrawn from each app's own icon — no more letter tiles. A working bot's avatar animates, offline goes desaturated, and the online dot stays.",
+      "The task composer is rebuilt chat-style: one rounded bar, the project picker inside it, the send button at hand.",
+      "Management and settings surfaces are Apple-style now: grouped cards and drawn controls instead of raw forms.",
+      "Delivery states are complete: a message now shows 'fetched by it' from the post office's real receipt, not a guess.",
+      "Room messages raise desktop system notifications; one click lands in the room.",
+      "Deleting a room lets you choose what happens to member sessions, and replies queued while the host machine is offline are visible in the room instead of vanishing."
+    ],
+    "fixes": [
+      "Feedback appears where the action happened: saving on the Add contact page reports on that page, not in a banner back on the Bots home.",
+      "A batch of English prompts is localized, including backend errors like the no-machine-online one — both apps translate by code instead of showing raw English.",
+      "The roster has an admission rule: only personal agents and local coding agents get listed; client@machine connection entries are off the roster and belong to the Devices page.",
+      "Project rows no longer carry a whole instruction sentence as the name; renaming uses an edit icon with the explanation in a tooltip.",
+      "A global concurrency cap, plus a one-time nudge when a woken bot stays silent for 2 minutes."
+    ]
+  },
   "0.2.7": {
     "improvements": [
       "Bots are the home page now: the roster is the first thing you see, and every agent is a bot with its own page — state, sessions, tasks, connection details and actions in one place. Machines are a device view, and the standalone dispatch page is gone: dispatching lives on the bot's own page.",
