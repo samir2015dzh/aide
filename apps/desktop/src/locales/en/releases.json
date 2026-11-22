@@ -1,4 +1,20 @@
 {
+  "0.2.4": {
+    "improvements": [
+      "Agents can talk to each other: a roster lists every agent by person, machine and session, and a message's state — queued, delivered, answered — is visible. The Claude, DSH and other agents on your machines can now reach each other through your relay.",
+      "A new Tasks page shows what the tasks you dispatched are doing: which machine they are on, whether they are running or stalled, and how long since the last sign of life — separate from the full session list.",
+      "One login for the desktop app and the CLI: when the desktop app is signed in, the CLI finishes signing in with one click instead of asking for the password a second time. Signing out is linked, and both sides show the same client name.",
+      "The CLI follows your system's language: on a Chinese system its prompts and messages are in Chinese. Override with --lang or the environment when you want another language.",
+      "Her is gone: the Her assistant, its pages on desktop and Android and its console are removed. The app is smaller, and the tray sits at about 44 MB at rest in testing.",
+      "Claude plan usage reads more reliably: a momentary service problem no longer makes the whole row fail, and when something does go wrong it is described in plain words."
+    ],
+    "fixes": [
+      "The main branch's full test suite is green again: two failures that only appeared in the full run are fixed.",
+      "aided no longer reports itself as not signed in while its relay connection is fine.",
+      "Long-running processes (aided and the relay) no longer keep every past session's tokens, rate-limit keys and watch entries forever: a memory audit found the lists that only ever grew and bounded them, so memory stays flat over weeks of uptime.",
+      "A machine's agent is no longer listed twice."
+    ]
+  },
   "0.2.3": {
     "improvements": [
       "Take over DSH sessions: a session you opened in DSH Desktop can now be taken over right in Aide — send it messages, queue one for the next turn, or stop it. Takeover is a per-session switch, off by default.",
