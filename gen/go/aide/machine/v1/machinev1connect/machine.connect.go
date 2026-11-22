@@ -58,6 +58,9 @@ const (
 	// MachineServiceDSHSessionOptionsProcedure is the fully-qualified name of the MachineService's
 	// DSHSessionOptions RPC.
 	MachineServiceDSHSessionOptionsProcedure = "/aide.machine.v1.MachineService/DSHSessionOptions"
+	// MachineServiceListClaudeSessionsProcedure is the fully-qualified name of the MachineService's
+	// ListClaudeSessions RPC.
+	MachineServiceListClaudeSessionsProcedure = "/aide.machine.v1.MachineService/ListClaudeSessions"
 	// MachineOpsServiceExecProcedure is the fully-qualified name of the MachineOpsService's Exec RPC.
 	MachineOpsServiceExecProcedure = "/aide.machine.v1.MachineOpsService/Exec"
 	// MachineAdminServiceApplyAdminCommandProcedure is the fully-qualified name of the
@@ -156,6 +159,12 @@ type MachineServiceClient interface {
 	SendDSHMessage(context.Context, *v1.SendDSHMessageRequest) (*v1.SendDSHMessageResponse, error)
 	// MachineAdminService.DSHSessionOptions, on the same terms.
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v1.DSHSessionOptionsResponse, error)
+	// MachineAdminService.ListClaudeSessions for an agent, for its roster
+	// (docs/agent-messages.md §15.4; the owner's ruling of 2026-11-22): the
+	// Claude app's sessions as ListDSHSessions shows DSH's, to a grant that
+	// sees all sessions, in the projects it covers. No index folders. Their
+	// conversations stay the owner's to read: nothing here reads one.
+	ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error)
 }
 
 // NewMachineServiceClient constructs a client for the aide.machine.v1.MachineService service. By
@@ -217,19 +226,26 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(machineServiceMethods.ByName("DSHSessionOptions")),
 			connect.WithClientOptions(opts...),
 		),
+		listClaudeSessions: connect.NewClient[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse](
+			httpClient,
+			baseURL+MachineServiceListClaudeSessionsProcedure,
+			connect.WithSchema(machineServiceMethods.ByName("ListClaudeSessions")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // machineServiceClient implements MachineServiceClient.
 type machineServiceClient struct {
-	getInfo           *connect.Client[v1.GetInfoRequest, v1.GetInfoResponse]
-	listProjects      *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
-	watch             *connect.Client[v1.WatchRequest, v1.WatchResponse]
-	pullWork          *connect.Client[v1.PullWorkRequest, v1.PullWorkResponse]
-	listDSHSessions   *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
-	readDSHSession    *connect.Client[v1.ReadDSHSessionRequest, v1.ReadDSHSessionResponse]
-	sendDSHMessage    *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
-	dSHSessionOptions *connect.Client[v1.DSHSessionOptionsRequest, v1.DSHSessionOptionsResponse]
+	getInfo            *connect.Client[v1.GetInfoRequest, v1.GetInfoResponse]
+	listProjects       *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	watch              *connect.Client[v1.WatchRequest, v1.WatchResponse]
+	pullWork           *connect.Client[v1.PullWorkRequest, v1.PullWorkResponse]
+	listDSHSessions    *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
+	readDSHSession     *connect.Client[v1.ReadDSHSessionRequest, v1.ReadDSHSessionResponse]
+	sendDSHMessage     *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
+	dSHSessionOptions  *connect.Client[v1.DSHSessionOptionsRequest, v1.DSHSessionOptionsResponse]
+	listClaudeSessions *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 }
 
 // GetInfo calls aide.machine.v1.MachineService.GetInfo.
@@ -300,6 +316,15 @@ func (c *machineServiceClient) DSHSessionOptions(ctx context.Context, req *v1.DS
 	return nil, err
 }
 
+// ListClaudeSessions calls aide.machine.v1.MachineService.ListClaudeSessions.
+func (c *machineServiceClient) ListClaudeSessions(ctx context.Context, req *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error) {
+	response, err := c.listClaudeSessions.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // MachineServiceHandler is an implementation of the aide.machine.v1.MachineService service.
 type MachineServiceHandler interface {
 	GetInfo(context.Context, *v1.GetInfoRequest) (*v1.GetInfoResponse, error)
@@ -331,6 +356,12 @@ type MachineServiceHandler interface {
 	SendDSHMessage(context.Context, *v1.SendDSHMessageRequest) (*v1.SendDSHMessageResponse, error)
 	// MachineAdminService.DSHSessionOptions, on the same terms.
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v1.DSHSessionOptionsResponse, error)
+	// MachineAdminService.ListClaudeSessions for an agent, for its roster
+	// (docs/agent-messages.md §15.4; the owner's ruling of 2026-11-22): the
+	// Claude app's sessions as ListDSHSessions shows DSH's, to a grant that
+	// sees all sessions, in the projects it covers. No index folders. Their
+	// conversations stay the owner's to read: nothing here reads one.
+	ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error)
 }
 
 // NewMachineServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -388,6 +419,12 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 		connect.WithSchema(machineServiceMethods.ByName("DSHSessionOptions")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineServiceListClaudeSessionsHandler := connect.NewUnaryHandlerSimple(
+		MachineServiceListClaudeSessionsProcedure,
+		svc.ListClaudeSessions,
+		connect.WithSchema(machineServiceMethods.ByName("ListClaudeSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.machine.v1.MachineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MachineServiceGetInfoProcedure:
@@ -406,6 +443,8 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 			machineServiceSendDSHMessageHandler.ServeHTTP(w, r)
 		case MachineServiceDSHSessionOptionsProcedure:
 			machineServiceDSHSessionOptionsHandler.ServeHTTP(w, r)
+		case MachineServiceListClaudeSessionsProcedure:
+			machineServiceListClaudeSessionsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -445,6 +484,10 @@ func (UnimplementedMachineServiceHandler) SendDSHMessage(context.Context, *v1.Se
 
 func (UnimplementedMachineServiceHandler) DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v1.DSHSessionOptionsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineService.DSHSessionOptions is not implemented"))
+}
+
+func (UnimplementedMachineServiceHandler) ListClaudeSessions(context.Context, *v1.ListClaudeSessionsRequest) (*v1.ListClaudeSessionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineService.ListClaudeSessions is not implemented"))
 }
 
 // MachineOpsServiceClient is a client for the aide.machine.v1.MachineOpsService service.

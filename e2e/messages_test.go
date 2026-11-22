@@ -1076,7 +1076,10 @@ func hookRun(t *testing.T, w *ownerMac, env []string, agent string, in map[strin
 	t.Helper()
 	b, _ := json.Marshal(in)
 	cmd := exec.Command(filepath.Join(w.bin, "aide"), "message", "hook", agent)
-	cmd.Env = append(append(os.Environ(), w.cliEnv...), env...)
+	// Not the socket of a Claude Code session the tests run in: its watcher
+	// would hand the test's messages to that real conversation. A test that
+	// wants one passes it in env.
+	cmd.Env = append(append(append(os.Environ(), "CLAUDE_CODE_MESSAGING_SOCKET="), w.cliEnv...), env...)
 	cmd.Stdin = bytes.NewReader(b)
 	out, err := cmd.Output()
 	if err != nil {

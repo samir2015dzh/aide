@@ -54,6 +54,14 @@ service MachineService {
   rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (DSHSessionOptionsResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // MachineAdminService.ListClaudeSessions for an agent, for its roster
+  // (docs/agent-messages.md §15.4; the owner's ruling of 2026-11-22): the
+  // Claude app's sessions as ListDSHSessions shows DSH's, to a grant that
+  // sees all sessions, in the projects it covers. No index folders. Their
+  // conversations stay the owner's to read: nothing here reads one.
+  rpc ListClaudeSessions(ListClaudeSessionsRequest) returns (ListClaudeSessionsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
 }
 
 message WatchRequest {

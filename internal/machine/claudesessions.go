@@ -32,6 +32,26 @@ func (s *adminService) ReadClaudeSession(ctx context.Context, req *machinev1.Rea
 	return s.n.ReadClaudeSession(req)
 }
 
+// ListClaudeSessions for an agent: those it may see as it sees DSH's
+// (dshVisible), for its roster; the index folders are the owner's.
+func (s *machineService) ListClaudeSessions(ctx context.Context, _ *machinev1.ListClaudeSessionsRequest) (*machinev1.ListClaudeSessionsResponse, error) {
+	visible, err := s.n.dshVisible(principalFrom(ctx))
+	if err != nil || visible == nil {
+		return &machinev1.ListClaudeSessionsResponse{}, err
+	}
+	all, err := s.n.ClaudeSessions()
+	if err != nil {
+		return nil, err
+	}
+	out := &machinev1.ListClaudeSessionsResponse{}
+	for _, cs := range all.Sessions {
+		if visible(cs.Cwd) {
+			out.Sessions = append(out.Sessions, cs)
+		}
+	}
+	return out, nil
+}
+
 // claudeSkip leaves out the sessions Aide started, which it lists in the
 // app too: by Claude Code's id (provider_ref), and by the folder (one of
 // Aide's worktrees).
