@@ -1442,6 +1442,23 @@ func (o *Owner) MachineFolders(ctx context.Context, machineID, path string, hidd
 	return n.Admin.ListFolders(ctx, &machinev1.ListFoldersRequest{Path: path, Hidden: hidden})
 }
 
+// StartMachineAgentLogin signs a coding agent in on a machine, in a browser
+// that opens there (工单 #51); this device's own machine in process.
+func (o *Owner) StartMachineAgentLogin(ctx context.Context, machineID, agent string, cancel bool) (*machinev1.StartAgentLoginResponse, error) {
+	if l := o.local(); l != nil && l.MachineID() == machineID {
+		st, err := l.StartAgentLogin(agent, cancel)
+		if err != nil {
+			return nil, err
+		}
+		return &machinev1.StartAgentLoginResponse{Login: st}, nil
+	}
+	n, err := o.machineClient(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.StartAgentLogin(ctx, &machinev1.StartAgentLoginRequest{Agent: agent, Cancel: cancel})
+}
+
 // TestMachineAgent runs Test with a coding agent on a machine.
 func (o *Owner) TestMachineAgent(ctx context.Context, machineID, agent string) (*machinev1.TestAgentResponse, error) {
 	if l := o.local(); l != nil && l.MachineID() == machineID {
@@ -2118,7 +2135,8 @@ func clientsFrom(res *relayv1.ListClientsResponse, ownerID string, trust *identi
 		}
 		a := &localv1.Client{ClientId: g.ClientId, GrantId: g.GrantId, Label: g.ClientLabel, Fingerprint: identity.ShortFingerprint(g.ClientPublicKey),
 			Spec: specFromGrant(g), GrantVersion: g.Version, ExpiresAt: g.ExpiresAt, Online: c.Online && !expired, LastSeen: c.LastSeen, Revoked: c.Revoked || revoked[g.GrantId],
-			Custodian: g.Custodian, Icon: g.ClientIcon, Image: g.ClientImage, HerMachineId: g.HerMachineId}
+			Custodian: g.Custodian, Icon: g.ClientIcon, Image: g.ClientImage, HerMachineId: g.HerMachineId,
+			Category: g.ClientCategory, CategoryMachineId: g.ClientCategoryMachineId}
 		if len(c.MachineIds) > 0 { // without removed machines; an update signs them away
 			a.Spec.MachineIds = c.MachineIds
 		}
@@ -2205,6 +2223,31 @@ func (o *Owner) RenameClient(ctx context.Context, grantID, label string, icon *s
 	if icon != nil {
 		g.ClientIcon, g.ClientImage = *icon, img
 	}
+	v, _, err := o.publishGrant(ctx, g, cur.Version)
+	return v, err
+}
+
+// SetClientCategory sets the kind of agent a grant's client is (工单 #52):
+// "personal", "local" (on machineID, or none said), or "" for its name to
+// tell. A label, as the icon: a new version of the grant, granting nothing
+// new, kept with the grant so every device and the roster read the same.
+func (o *Owner) SetClientCategory(ctx context.Context, grantID, category, machineID string) (uint64, error) {
+	switch category {
+	case "", "personal":
+		machineID = ""
+	case "local":
+	default:
+		return 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown kind %q: personal, local or none", category))
+	}
+	cur, err := o.latestGrant(ctx, grantID)
+	if err != nil {
+		return 0, err
+	}
+	if cur.ClientCategory == category && cur.ClientCategoryMachineId == machineID {
+		return cur.Version, nil
+	}
+	g := proto.Clone(cur).(*identityv1.Grant)
+	g.ClientCategory, g.ClientCategoryMachineId = category, machineID
 	v, _, err := o.publishGrant(ctx, g, cur.Version)
 	return v, err
 }

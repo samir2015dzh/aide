@@ -276,6 +276,17 @@ func (s *adminService) ListFolders(ctx context.Context, req *machinev1.ListFolde
 	return ListFolders(s.n.WorkspaceRoots(), req.Path, req.Hidden)
 }
 
+func (s *adminService) StartAgentLogin(ctx context.Context, req *machinev1.StartAgentLoginRequest) (*machinev1.StartAgentLoginResponse, error) {
+	if principalFrom(ctx).Kind != PrincipalOwner {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
+	}
+	l, err := s.n.StartAgentLogin(req.Agent, req.Cancel)
+	if err != nil {
+		return nil, err
+	}
+	return &machinev1.StartAgentLoginResponse{Login: l}, nil
+}
+
 func (s *adminService) TestAgent(ctx context.Context, req *machinev1.TestAgentRequest) (*machinev1.TestAgentResponse, error) {
 	if principalFrom(ctx).Kind != PrincipalOwner {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))

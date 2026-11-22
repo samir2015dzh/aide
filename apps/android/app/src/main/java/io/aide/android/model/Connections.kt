@@ -25,6 +25,8 @@ data class ConnRow(
     val text: String,
     val lacks: String? = null,
     val checkedAt: Instant? = null,
+    /** Signing it in from Aide is offered (Claude Code's command line, 工单 #51). */
+    val login: Boolean = false,
 )
 
 data class MachineConnections(val reachable: Boolean, val rows: List<ConnRow>, val state: ConnState)
@@ -101,13 +103,27 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
     }
     rows += when {
         a.available && a.loggedIn -> ConnRow("claude-cli", "claude", cliTitle, ConnState.OK, if (a.version.isNotEmpty()) t("Signed in · ${a.version}", "已登录 · ${a.version}") else t("Signed in", "已登录"), null, at)
+        a.available && a.login?.state == "AGENT_LOGIN_STATE_WAITING" -> ConnRow(
+            "claude-cli", "claude", cliTitle, ConnState.CHECKING, t("Signing in…", "正在登录…"),
+            t("A browser opened on that computer: finish signing in there. This line updates by itself.", "那台电脑上已打开浏览器：请在那里完成登录。这一行会自己更新。"),
+            at, login = true,
+        )
+        a.available && a.login?.state in setOf("AGENT_LOGIN_STATE_FAILED", "AGENT_LOGIN_STATE_TIMED_OUT", "AGENT_LOGIN_STATE_CANCELLED") -> ConnRow(
+            "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not signed in", "未登录"),
+            when (a.login?.state) {
+                "AGENT_LOGIN_STATE_FAILED" -> t("The last sign-in didn't finish: ${a.login.detail.ifEmpty { "no reason given" }}. Try again.", "上次登录没完成：${a.login.detail.ifEmpty { "没有给出原因" }}。可以再试一次。")
+                "AGENT_LOGIN_STATE_TIMED_OUT" -> t("The last sign-in waited 10 minutes for the browser and was stopped. Try again.", "上次登录等浏览器等了 10 分钟，已停止。可以再试一次。")
+                else -> t("The last sign-in was cancelled.", "上次登录已取消。")
+            },
+            at, login = true,
+        )
         a.available -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not signed in", "未登录"),
             if (d?.signedIn == true) t(
-                "Claude Desktop is signed in, but tasks Aide hands out run with the Claude Code command line, which keeps its own sign-in: the app's does not carry over. Until it is signed in, no task can go to Claude here; the app's own sessions still show in Aide.",
-                "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。它登录之前，这台机器上不能把任务派给 Claude；Claude Desktop 里自己开的会话照样能在 Aide 里看到。",
-            ) else t("Tasks Aide hands out run with the Claude Code command line, which is not signed in: none can go to Claude here yet.", "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：这台机器上暂时不能把任务派给 Claude。"),
-            at,
+                "Claude Desktop is signed in, but tasks Aide hands out run with the Claude Code command line, which keeps its own sign-in: the app's does not carry over. Sign it in below (a browser opens on that computer); the app and its sessions are not touched.",
+                "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。点下面的按钮给它登录（会在那台电脑上打开浏览器）；Claude Desktop 和它的会话不受影响。",
+            ) else t("Tasks Aide hands out run with the Claude Code command line, which is not signed in: sign it in below (a browser opens on that computer).", "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：点下面的按钮给它登录（会在那台电脑上打开浏览器）。"),
+            at, login = true,
         )
         a.problem == APP_WITHOUT_CLI -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not installed", "未安装"),

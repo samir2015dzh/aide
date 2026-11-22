@@ -324,6 +324,45 @@ message AgentStatus {
   // DSH ("deepseek") only: the Aide bridge plugin in DSH Desktop, as the
   // same check found it.
   DSHBridge dsh_bridge = 22;
+  // Its sign-in started from Aide (StartAgentLogin), the last one or the
+  // one under way; unset: none since aided started.
+  AgentLogin login = 23;
+}
+
+// AgentLogin is a sign-in of a coding agent's command line that Aide
+// started on the machine (工单 #51).
+message AgentLogin {
+  AgentLoginState state = 1;
+  // Why it failed, in the words of what failed (no token, no URL path).
+  string detail = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp ended_at = 4;
+}
+
+enum AgentLoginState {
+  AGENT_LOGIN_STATE_UNSPECIFIED = 0;
+  // Started: the browser is opening, or open, on the machine; waiting for
+  // the owner to finish there.
+  AGENT_LOGIN_STATE_WAITING = 1;
+  // Done, and the agent checked again says it is signed in.
+  AGENT_LOGIN_STATE_SUCCEEDED = 2;
+  // It ended without the agent signed in (detail says what it said).
+  AGENT_LOGIN_STATE_FAILED = 3;
+  // The owner cancelled it.
+  AGENT_LOGIN_STATE_CANCELLED = 4;
+  // Not finished in time; stopped.
+  AGENT_LOGIN_STATE_TIMED_OUT = 5;
+}
+
+message StartAgentLoginRequest {
+  // "claude" (the only one so far).
+  string agent = 1;
+  // Stop the one under way.
+  bool cancel = 2;
+}
+
+message StartAgentLoginResponse {
+  AgentLogin login = 1;
 }
 
 // ClaudeDesktop is the Claude desktop app, as aided finds it.
@@ -544,6 +583,14 @@ service MachineAdminService {
   }
   // One short fixed turn of a coding agent in a scratch folder, to prove it
   // is installed and signed in: no session, project or grant is involved.
+  // Signs a coding agent's command line in on this machine (Claude Code:
+  // `claude auth login`), started here in the background: the browser
+  // opens on this machine and the owner signs in there. Aide never sees
+  // the account, the password or the token (工单 #51). Again while one is
+  // under way: its state; cancel stops it.
+  rpc StartAgentLogin(StartAgentLoginRequest) returns (StartAgentLoginResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
   rpc TestAgent(TestAgentRequest) returns (TestAgentResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }

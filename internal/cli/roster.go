@@ -168,6 +168,15 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 			tier = "push" // its doorbell wakes it
 		}
 		cat, home := agentCategory(info.Name, machineNames(machines))
+		// What the owner set wins over the name (工单 #52).
+		if info.Category != "" {
+			cat, home = info.Category, ""
+			for _, m := range machines {
+				if m.ID == info.CategoryMachineID {
+					home = m.Name
+				}
+			}
+		}
 		e := endpointJSON{Address: info.Inbox, Name: info.Name, Kind: info.Kind, Category: cat, Machine: home, Tier: tier, Mailable: info.InboxKey != nil, You: info.Inbox == a.g.ClientId}
 		if p := presence[info.Inbox]; p != nil {
 			online := p.Online

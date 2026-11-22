@@ -1,5 +1,6 @@
 package io.aide.android
 
+import io.aide.android.api.AgentLogin
 import io.aide.android.api.AgentPause
 import io.aide.android.api.AgentStatus
 import io.aide.android.api.ApiError
@@ -80,5 +81,14 @@ class BatchDTest {
         assertFalse(humanError(ApiError("unimplemented", "404 Not Found")).contains("404"))
         assertFalse(humanError(ApiError("unknown", "HTTP 404")).contains("404"))
         assertEquals("machine is offline", humanError(ApiError("unavailable", "machine is offline")))
+    }
+
+    @Test
+    fun signingClaudeCodeInFromAide() {
+        fun row(login: AgentLogin?) = machineConnections(machine(AgentStatus("claude", available = true, loggedIn = false, checkedAt = checked, login = login)), now).rows.single { it.id == "claude-cli" }
+        assertTrue(row(null).login)
+        assertEquals(ConnState.CHECKING to "Signing in…", row(AgentLogin("AGENT_LOGIN_STATE_WAITING")).let { it.state to it.text })
+        assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_FAILED", "the browser was closed")).lacks!!.contains("the browser was closed"))
+        assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_TIMED_OUT")).lacks!!.contains("10 minutes"))
     }
 }

@@ -797,8 +797,14 @@ type Grant struct {
 	// agent is not new. Machines hold a new agent's messages to sessions for
 	// the owner (docs/agent-messages.md §15.5).
 	FirstIssuedAt *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=first_issued_at,json=firstIssuedAt,proto3" json:"first_issued_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The kind of agent the owner set it to be (工单 #52): "personal" (it
+	// follows the account) or "local" (a coding agent on a machine); "": as
+	// its name tells. A label, like the icon: it grants nothing.
+	ClientCategory string `protobuf:"bytes,21,opt,name=client_category,json=clientCategory,proto3" json:"client_category,omitempty"`
+	// With "local": the machine it runs on ("" when not said).
+	ClientCategoryMachineId string `protobuf:"bytes,22,opt,name=client_category_machine_id,json=clientCategoryMachineId,proto3" json:"client_category_machine_id,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Grant) Reset() {
@@ -962,6 +968,20 @@ func (x *Grant) GetFirstIssuedAt() *timestamppb.Timestamp {
 		return x.FirstIssuedAt
 	}
 	return nil
+}
+
+func (x *Grant) GetClientCategory() string {
+	if x != nil {
+		return x.ClientCategory
+	}
+	return ""
+}
+
+func (x *Grant) GetClientCategoryMachineId() string {
+	if x != nil {
+		return x.ClientCategoryMachineId
+	}
+	return ""
 }
 
 // EraseOrder is the owner's order to erase Aide everywhere
@@ -2307,10 +2327,14 @@ type ContactCard struct {
 	ClientPublicKey []byte                 `protobuf:"bytes,3,opt,name=client_public_key,json=clientPublicKey,proto3" json:"client_public_key,omitempty"`
 	Name            string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// "mcp" for a connection whose key a server holds, else "cli".
-	Kind          string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
-	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Kind     string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	IssuedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	// The kind of agent the owner set (Grant client_category), "" for none,
+	// and with "local" its machine.
+	Category          string `protobuf:"bytes,7,opt,name=category,proto3" json:"category,omitempty"`
+	CategoryMachineId string `protobuf:"bytes,8,opt,name=category_machine_id,json=categoryMachineId,proto3" json:"category_machine_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ContactCard) Reset() {
@@ -2383,6 +2407,20 @@ func (x *ContactCard) GetIssuedAt() *timestamppb.Timestamp {
 		return x.IssuedAt
 	}
 	return nil
+}
+
+func (x *ContactCard) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *ContactCard) GetCategoryMachineId() string {
+	if x != nil {
+		return x.CategoryMachineId
+	}
+	return ""
 }
 
 // InboxRegistration is an inbox's key, signed by the inbox's identity key
@@ -2729,7 +2767,7 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12,\n" +
 	"\x12machine_public_key\x18\x03 \x01(\fR\x10machinePublicKey\x127\n" +
 	"\tissued_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x12\"\n" +
-	"\rdevice_key_id\x18\x06 \x01(\tR\vdeviceKeyIdJ\x04\b\x04\x10\x05R\fmachine_name\"\x93\x06\n" +
+	"\rdevice_key_id\x18\x06 \x01(\tR\vdeviceKeyIdJ\x04\b\x04\x10\x05R\fmachine_name\"\xf9\x06\n" +
 	"\x05Grant\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x19\n" +
 	"\bgrant_id\x18\x02 \x01(\tR\agrantId\x12\x18\n" +
@@ -2754,7 +2792,9 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\fclient_image\x18\x11 \x01(\fR\vclientImage\x12$\n" +
 	"\x0eher_machine_id\x18\x12 \x01(\tR\fherMachineId\x12!\n" +
 	"\fmachine_exec\x18\x13 \x01(\bR\vmachineExec\x12B\n" +
-	"\x0ffirst_issued_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\rfirstIssuedAtJ\x04\b\n" +
+	"\x0ffirst_issued_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\rfirstIssuedAt\x12'\n" +
+	"\x0fclient_category\x18\x15 \x01(\tR\x0eclientCategory\x12;\n" +
+	"\x1aclient_category_machine_id\x18\x16 \x01(\tR\x17clientCategoryMachineIdJ\x04\b\n" +
 	"\x10\vR\x06preset\"\x8b\x01\n" +
 	"\n" +
 	"EraseOrder\x12\x19\n" +
@@ -2864,14 +2904,16 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\x05grant\x18\x03 \x01(\v2\x18.aide.identity.v1.SignedH\x00R\x05grant\x12;\n" +
 	"\vdevice_cert\x18\x04 \x01(\v2\x18.aide.identity.v1.SignedH\x00R\n" +
 	"deviceCertB\t\n" +
-	"\asubjectJ\x04\b\x01\x10\x02R\troot_cert\"\xd2\x01\n" +
+	"\asubjectJ\x04\b\x01\x10\x02R\troot_cert\"\x9e\x02\n" +
 	"\vContactCard\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1b\n" +
 	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12*\n" +
 	"\x11client_public_key\x18\x03 \x01(\fR\x0fclientPublicKey\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x12\n" +
 	"\x04kind\x18\x05 \x01(\tR\x04kind\x127\n" +
-	"\tissued_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\"\xe2\x01\n" +
+	"\tissued_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x12\x1a\n" +
+	"\bcategory\x18\a \x01(\tR\bcategory\x12.\n" +
+	"\x13category_machine_id\x18\b \x01(\tR\x11categoryMachineId\"\xe2\x01\n" +
 	"\x11InboxRegistration\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x14\n" +
 	"\x05inbox\x18\x02 \x01(\tR\x05inbox\x12(\n" +

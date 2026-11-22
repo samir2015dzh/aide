@@ -341,6 +341,22 @@
     "localGrant": "A coding agent on this machine that connects to Aide on its own (with its own access).",
     "personalNote": "Personal agents (Muse, Grok Bot, …) follow your account, not a machine: they are in Settings › Access.",
     "recheck": "Check again",
-    "fixClaudeCLI": "The command line needs Claude Code's own sign-in once; Aide can't do that for you here yet. Until then, hand Claude's tasks to a machine where it is signed in."
+    "fixClaudeCLI": "Open Code in the Claude desktop app once so it fetches the command line; then a Sign in button shows here.",
+    "thisComputer": "this computer",
+    "loginOn": "Sign in on {{where}}",
+    "loginNote": "A browser opens on {{where}} and you sign in there; Aide never handles the account or the token.",
+    "loginCancel": "Cancel sign-in"
+  },
+  "category": {
+    "label": "Kind",
+    "auto": "Told from its name{{kind}}",
+    "personal": "Personal agent",
+    "local": "Coding agent on a machine",
+    "localOn": "Coding agent on {{machine}}",
+    "personalMeans": "A personal agent follows your account and shows on every device.",
+    "localMeans": "A coding agent on a machine belongs to that machine: handing it work starts with picking the machine.",
+    "cleared": "Told from its name again",
+    "setPersonal": "Set to personal agent",
+    "setLocal": "Set to coding agent on a machine"
   }
 }

@@ -402,6 +402,10 @@ func (l *localService) ListMachineFolders(ctx context.Context, req *localv1.List
 	return l.o().MachineFolders(ctx, req.MachineId, req.Path, req.Hidden)
 }
 
+func (l *localService) StartMachineAgentLogin(ctx context.Context, req *localv1.StartMachineAgentLoginRequest) (*machinev1.StartAgentLoginResponse, error) {
+	return l.o().StartMachineAgentLogin(ctx, req.MachineId, req.Agent, req.Cancel)
+}
+
 func (l *localService) TestMachineAgent(ctx context.Context, req *localv1.TestMachineAgentRequest) (*machinev1.TestAgentResponse, error) {
 	return l.o().TestMachineAgent(ctx, req.MachineId, req.Agent)
 }
@@ -687,6 +691,15 @@ func (l *localService) RenameClient(ctx context.Context, req *localv1.RenameClie
 		return nil, err
 	}
 	return &localv1.RenameClientResponse{GrantVersion: v}, nil
+}
+
+func (l *localService) SetClientCategory(ctx context.Context, req *localv1.SetClientCategoryRequest) (*localv1.SetClientCategoryResponse, error) {
+	v, err := l.o().SetClientCategory(ctx, req.GrantId, req.Category, req.MachineId)
+	l.o().wrote(ctx, err, true)
+	if err != nil {
+		return nil, err
+	}
+	return &localv1.SetClientCategoryResponse{GrantVersion: v}, nil
 }
 
 func (l *localService) UpdateClient(ctx context.Context, req *localv1.UpdateClientRequest) (*localv1.UpdateClientResponse, error) {

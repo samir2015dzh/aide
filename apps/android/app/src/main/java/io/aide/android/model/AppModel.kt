@@ -333,6 +333,11 @@ class AppModel(private val context: Context) {
         report { api!!.interrupt(s.sessionId)?.let { replace(it) } }
     }
 
+    /** Signs Claude Code in on that machine: its browser opens there, the phone only shows how it goes (工单 #51). */
+    suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean = false) {
+        report { api!!.startAgentLogin(machineId, agent, cancel) }
+    }
+
     suspend fun recheck(machineId: String) {
         report { api!!.checkAgents(machineId) }
     }

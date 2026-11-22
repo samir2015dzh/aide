@@ -122,7 +122,8 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
   useEffect(() => void check(), [check]);
   const v = { machine: m.machineName, agent: codingAgentTitle(agent), app: a?.detail.replace(/\.app$/, "") ?? "", version: a?.version ?? "" };
   const windows = (m.status?.platform ?? "").startsWith("windows");
-  const login = agent === "claude" ? "" : agent === "codex" ? "login" : undefined;
+  // Claude Code signs in from Aide (工单 #51: Connection details below); Codex still in a terminal.
+  const login = agent === "codex" ? "login" : undefined;
   const state = d === "ready" && a?.version ? t("state.readyVersion", v) : d === "signIn" && agent === "claude" ? t("state.signInClaude", v) : t(`state.${d}`, v);
   return (
     <>

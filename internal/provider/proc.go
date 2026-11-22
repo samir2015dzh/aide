@@ -137,6 +137,30 @@ func RunCommandTo(ctx context.Context, bin string, args []string, dir string, en
 	return runTo(ctx, bin, args, dir, env, stdout, stderr)
 }
 
+// StartInGroup starts cmd (made with CommandContext) so that, once its
+// context is done, it ends with every process it started (a browser opener,
+// sh's children), and waiting on it stops soon after: without that a child
+// holding the output pipes keeps Wait from ever returning. As runTo does,
+// for a command waited on apart; wait is its Wait.
+func StartInGroup(cmd *exec.Cmd) (wait func() error, err error) {
+	setGroup(cmd)
+	cmd.Cancel = func() error { return killGroup(cmd.Process.Pid) }
+	cmd.WaitDelay = drainGrace
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	if err := joinGroup(cmd); err != nil {
+		cmd.Process.Kill()
+		cmd.Wait()
+		return nil, err
+	}
+	return func() error {
+		err := cmd.Wait()
+		releaseGroup(cmd.Process.Pid)
+		return err
+	}, nil
+}
+
 func runTo(ctx context.Context, bin string, args []string, dir string, env []string, stdout, stderr io.Writer) error {
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Dir, cmd.Env = dir, env

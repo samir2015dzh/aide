@@ -93,6 +93,9 @@ type ContactInfo struct {
 	TakesMessages string
 	// Tier is when a message reaches it: "push", "turn" or "pull" (TierOf).
 	Tier string
+	// Category is the kind of agent the owner set ("personal", "local"),
+	// "" for none; CategoryMachineID, with "local", its machine.
+	Category, CategoryMachineID string
 }
 
 // TierOf is when a message reaches an inbox that takes them as takes says
@@ -191,7 +194,7 @@ func (t *Trust) VerifyContact(c *identityv1.Contact) (*ContactInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		info = ContactInfo{Inbox: card.ClientId, Name: card.Name, Kind: card.Kind, Key: pub}
+		info = ContactInfo{Inbox: card.ClientId, Name: card.Name, Kind: card.Kind, Key: pub, Category: card.Category, CategoryMachineID: card.CategoryMachineId}
 	case c.GetMachineCert() != nil:
 		mc, pub, err := t.VerifyMachineCert(c.MachineCert)
 		if err != nil {
@@ -225,5 +228,6 @@ func SignRegistration(key Signer, ownerID, inbox string, inboxKey []byte, takes 
 
 // SameCard reports whether two cards say the same (issued_at aside).
 func SameCard(a, b *identityv1.ContactCard) bool {
-	return a.OwnerId == b.OwnerId && a.ClientId == b.ClientId && bytes.Equal(a.ClientPublicKey, b.ClientPublicKey) && a.Name == b.Name && a.Kind == b.Kind
+	return a.OwnerId == b.OwnerId && a.ClientId == b.ClientId && bytes.Equal(a.ClientPublicKey, b.ClientPublicKey) && a.Name == b.Name && a.Kind == b.Kind &&
+		a.Category == b.Category && a.CategoryMachineId == b.CategoryMachineId
 }

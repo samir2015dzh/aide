@@ -329,6 +329,22 @@
     "localGrant": "这台机器上自己连到 Aide 的编码 Agent（有它自己的授权）。",
     "personalNote": "个人 Agent（Muse、Grok Bot 等）跟着账号走、不属于哪台机器：在 设置 › 访问 里。",
     "recheck": "重新检测",
-    "fixClaudeCLI": "命令行需要用 Claude Code 自己的账号登录一次，Aide 目前还不能在这里替你完成。在那之前，派给 Claude 的任务请选它已登录的机器。"
+    "fixClaudeCLI": "先在 Claude Desktop 里打开一次 Code 页，让它下载命令行；装好后这里会出现「登录」按钮。",
+    "thisComputer": "这台电脑",
+    "loginOn": "在{{where}}上登录",
+    "loginNote": "会在{{where}}上打开浏览器，你在浏览器里登录；Aide 不经手账号和令牌。",
+    "loginCancel": "取消登录"
+  },
+  "category": {
+    "label": "类别",
+    "auto": "自动判断{{kind}}",
+    "personal": "个人 Agent",
+    "local": "本机编码 Agent",
+    "localOn": "本机编码 Agent · {{machine}}",
+    "personalMeans": "个人 Agent 跟着账号走，在哪台设备上都显示。",
+    "localMeans": "本机编码 Agent 归属它所在的机器，派活要先选那台机器。",
+    "cleared": "已恢复按名字自动判断",
+    "setPersonal": "已改为个人 Agent",
+    "setLocal": "已改为本机编码 Agent"
   }
 }

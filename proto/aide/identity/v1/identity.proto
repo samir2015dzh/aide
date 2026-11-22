@@ -166,6 +166,12 @@ message Grant {
   // agent is not new. Machines hold a new agent's messages to sessions for
   // the owner (docs/agent-messages.md §15.5).
   google.protobuf.Timestamp first_issued_at = 20;
+  // The kind of agent the owner set it to be (工单 #52): "personal" (it
+  // follows the account) or "local" (a coding agent on a machine); "": as
+  // its name tells. A label, like the icon: it grants nothing.
+  string client_category = 21;
+  // With "local": the machine it runs on ("" when not said).
+  string client_category_machine_id = 22;
 }
 
 // EraseOrder is the owner's order to erase Aide everywhere
@@ -392,6 +398,10 @@ message ContactCard {
   // "mcp" for a connection whose key a server holds, else "cli".
   string kind = 5;
   google.protobuf.Timestamp issued_at = 6;
+  // The kind of agent the owner set (Grant client_category), "" for none,
+  // and with "local" its machine.
+  string category = 7;
+  string category_machine_id = 8;
 }
 
 // InboxRegistration is an inbox's key, signed by the inbox's identity key

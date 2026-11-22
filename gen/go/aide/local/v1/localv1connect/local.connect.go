@@ -112,6 +112,9 @@ const (
 	// LocalServiceTestMachineAgentProcedure is the fully-qualified name of the LocalService's
 	// TestMachineAgent RPC.
 	LocalServiceTestMachineAgentProcedure = "/aide.local.v1.LocalService/TestMachineAgent"
+	// LocalServiceStartMachineAgentLoginProcedure is the fully-qualified name of the LocalService's
+	// StartMachineAgentLogin RPC.
+	LocalServiceStartMachineAgentLoginProcedure = "/aide.local.v1.LocalService/StartMachineAgentLogin"
 	// LocalServiceListExecLogProcedure is the fully-qualified name of the LocalService's ListExecLog
 	// RPC.
 	LocalServiceListExecLogProcedure = "/aide.local.v1.LocalService/ListExecLog"
@@ -140,6 +143,9 @@ const (
 	// LocalServiceRenameClientProcedure is the fully-qualified name of the LocalService's RenameClient
 	// RPC.
 	LocalServiceRenameClientProcedure = "/aide.local.v1.LocalService/RenameClient"
+	// LocalServiceSetClientCategoryProcedure is the fully-qualified name of the LocalService's
+	// SetClientCategory RPC.
+	LocalServiceSetClientCategoryProcedure = "/aide.local.v1.LocalService/SetClientCategory"
 	// LocalServiceRevokeClientProcedure is the fully-qualified name of the LocalService's RevokeClient
 	// RPC.
 	LocalServiceRevokeClientProcedure = "/aide.local.v1.LocalService/RevokeClient"
@@ -359,6 +365,9 @@ type LocalServiceClient interface {
 	ListMachineFolders(context.Context, *v1.ListMachineFoldersRequest) (*v11.ListFoldersResponse, error)
 	// One fixed turn of a coding agent on a machine (Test).
 	TestMachineAgent(context.Context, *v1.TestMachineAgentRequest) (*v11.TestAgentResponse, error)
+	// Signs a coding agent's command line in on a machine, in a browser that
+	// opens there (MachineAdminService.StartAgentLogin, 工单 #51).
+	StartMachineAgentLogin(context.Context, *v1.StartMachineAgentLoginRequest) (*v11.StartAgentLoginResponse, error)
 	// The ops log: the commands agents ran, or were refused, on the
 	// machines (docs/machine-ops.md), newest first, as each machine keeps it.
 	ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error)
@@ -382,6 +391,8 @@ type LocalServiceClient interface {
 	// Gives an agent another name: its grant signed again with that alone
 	// changed (Touch ID).
 	RenameClient(context.Context, *v1.RenameClientRequest) (*v1.RenameClientResponse, error)
+	// The kind of agent a client is, as the owner sets it (工单 #52).
+	SetClientCategory(context.Context, *v1.SetClientCategoryRequest) (*v1.SetClientCategoryResponse, error)
 	RevokeClient(context.Context, *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error)
 	// This computer's `aide` CLI, logged in through this device (work order
 	// #39, docs/accounts.md §3.1): no account or password asked again.
@@ -677,6 +688,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("TestMachineAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		startMachineAgentLogin: connect.NewClient[v1.StartMachineAgentLoginRequest, v11.StartAgentLoginResponse](
+			httpClient,
+			baseURL+LocalServiceStartMachineAgentLoginProcedure,
+			connect.WithSchema(localServiceMethods.ByName("StartMachineAgentLogin")),
+			connect.WithClientOptions(opts...),
+		),
 		listExecLog: connect.NewClient[v1.ListExecLogRequest, v1.ListExecLogResponse](
 			httpClient,
 			baseURL+LocalServiceListExecLogProcedure,
@@ -735,6 +752,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceRenameClientProcedure,
 			connect.WithSchema(localServiceMethods.ByName("RenameClient")),
+			connect.WithClientOptions(opts...),
+		),
+		setClientCategory: connect.NewClient[v1.SetClientCategoryRequest, v1.SetClientCategoryResponse](
+			httpClient,
+			baseURL+LocalServiceSetClientCategoryProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetClientCategory")),
 			connect.WithClientOptions(opts...),
 		),
 		revokeClient: connect.NewClient[v1.RevokeClientRequest, v1.RevokeClientResponse](
@@ -1065,6 +1088,7 @@ type localServiceClient struct {
 	listMachineRepos         *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
 	listMachineFolders       *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
 	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
+	startMachineAgentLogin   *connect.Client[v1.StartMachineAgentLoginRequest, v11.StartAgentLoginResponse]
 	listExecLog              *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
 	getDiagnostics           *connect.Client[v1.GetDiagnosticsRequest, v1.GetDiagnosticsResponse]
 	stopScreen               *connect.Client[v1.StopScreenRequest, v1.StopScreenResponse]
@@ -1075,6 +1099,7 @@ type localServiceClient struct {
 	listClients              *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
 	updateClient             *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
 	renameClient             *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
+	setClientCategory        *connect.Client[v1.SetClientCategoryRequest, v1.SetClientCategoryResponse]
 	revokeClient             *connect.Client[v1.RevokeClientRequest, v1.RevokeClientResponse]
 	issueLocalClientGrant    *connect.Client[v1.IssueLocalClientGrantRequest, v1.IssueLocalClientGrantResponse]
 	getLocalCLI              *connect.Client[v1.GetLocalCLIRequest, v1.LocalCLI]
@@ -1383,6 +1408,15 @@ func (c *localServiceClient) TestMachineAgent(ctx context.Context, req *v1.TestM
 	return nil, err
 }
 
+// StartMachineAgentLogin calls aide.local.v1.LocalService.StartMachineAgentLogin.
+func (c *localServiceClient) StartMachineAgentLogin(ctx context.Context, req *v1.StartMachineAgentLoginRequest) (*v11.StartAgentLoginResponse, error) {
+	response, err := c.startMachineAgentLogin.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListExecLog calls aide.local.v1.LocalService.ListExecLog.
 func (c *localServiceClient) ListExecLog(ctx context.Context, req *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error) {
 	response, err := c.listExecLog.CallUnary(ctx, connect.NewRequest(req))
@@ -1467,6 +1501,15 @@ func (c *localServiceClient) UpdateClient(ctx context.Context, req *v1.UpdateCli
 // RenameClient calls aide.local.v1.LocalService.RenameClient.
 func (c *localServiceClient) RenameClient(ctx context.Context, req *v1.RenameClientRequest) (*v1.RenameClientResponse, error) {
 	response, err := c.renameClient.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SetClientCategory calls aide.local.v1.LocalService.SetClientCategory.
+func (c *localServiceClient) SetClientCategory(ctx context.Context, req *v1.SetClientCategoryRequest) (*v1.SetClientCategoryResponse, error) {
+	response, err := c.setClientCategory.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1978,6 +2021,9 @@ type LocalServiceHandler interface {
 	ListMachineFolders(context.Context, *v1.ListMachineFoldersRequest) (*v11.ListFoldersResponse, error)
 	// One fixed turn of a coding agent on a machine (Test).
 	TestMachineAgent(context.Context, *v1.TestMachineAgentRequest) (*v11.TestAgentResponse, error)
+	// Signs a coding agent's command line in on a machine, in a browser that
+	// opens there (MachineAdminService.StartAgentLogin, 工单 #51).
+	StartMachineAgentLogin(context.Context, *v1.StartMachineAgentLoginRequest) (*v11.StartAgentLoginResponse, error)
 	// The ops log: the commands agents ran, or were refused, on the
 	// machines (docs/machine-ops.md), newest first, as each machine keeps it.
 	ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error)
@@ -2001,6 +2047,8 @@ type LocalServiceHandler interface {
 	// Gives an agent another name: its grant signed again with that alone
 	// changed (Touch ID).
 	RenameClient(context.Context, *v1.RenameClientRequest) (*v1.RenameClientResponse, error)
+	// The kind of agent a client is, as the owner sets it (工单 #52).
+	SetClientCategory(context.Context, *v1.SetClientCategoryRequest) (*v1.SetClientCategoryResponse, error)
 	RevokeClient(context.Context, *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error)
 	// This computer's `aide` CLI, logged in through this device (work order
 	// #39, docs/accounts.md §3.1): no account or password asked again.
@@ -2292,6 +2340,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("TestMachineAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceStartMachineAgentLoginHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceStartMachineAgentLoginProcedure,
+		svc.StartMachineAgentLogin,
+		connect.WithSchema(localServiceMethods.ByName("StartMachineAgentLogin")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListExecLogHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListExecLogProcedure,
 		svc.ListExecLog,
@@ -2350,6 +2404,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceRenameClientProcedure,
 		svc.RenameClient,
 		connect.WithSchema(localServiceMethods.ByName("RenameClient")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetClientCategoryHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetClientCategoryProcedure,
+		svc.SetClientCategory,
+		connect.WithSchema(localServiceMethods.ByName("SetClientCategory")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceRevokeClientHandler := connect.NewUnaryHandlerSimple(
@@ -2706,6 +2766,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListMachineFoldersHandler.ServeHTTP(w, r)
 		case LocalServiceTestMachineAgentProcedure:
 			localServiceTestMachineAgentHandler.ServeHTTP(w, r)
+		case LocalServiceStartMachineAgentLoginProcedure:
+			localServiceStartMachineAgentLoginHandler.ServeHTTP(w, r)
 		case LocalServiceListExecLogProcedure:
 			localServiceListExecLogHandler.ServeHTTP(w, r)
 		case LocalServiceGetDiagnosticsProcedure:
@@ -2726,6 +2788,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceUpdateClientHandler.ServeHTTP(w, r)
 		case LocalServiceRenameClientProcedure:
 			localServiceRenameClientHandler.ServeHTTP(w, r)
+		case LocalServiceSetClientCategoryProcedure:
+			localServiceSetClientCategoryHandler.ServeHTTP(w, r)
 		case LocalServiceRevokeClientProcedure:
 			localServiceRevokeClientHandler.ServeHTTP(w, r)
 		case LocalServiceIssueLocalClientGrantProcedure:
@@ -2949,6 +3013,10 @@ func (UnimplementedLocalServiceHandler) TestMachineAgent(context.Context, *v1.Te
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.TestMachineAgent is not implemented"))
 }
 
+func (UnimplementedLocalServiceHandler) StartMachineAgentLogin(context.Context, *v1.StartMachineAgentLoginRequest) (*v11.StartAgentLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.StartMachineAgentLogin is not implemented"))
+}
+
 func (UnimplementedLocalServiceHandler) ListExecLog(context.Context, *v1.ListExecLogRequest) (*v1.ListExecLogResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListExecLog is not implemented"))
 }
@@ -2987,6 +3055,10 @@ func (UnimplementedLocalServiceHandler) UpdateClient(context.Context, *v1.Update
 
 func (UnimplementedLocalServiceHandler) RenameClient(context.Context, *v1.RenameClientRequest) (*v1.RenameClientResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RenameClient is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetClientCategory(context.Context, *v1.SetClientCategoryRequest) (*v1.SetClientCategoryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetClientCategory is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) RevokeClient(context.Context, *v1.RevokeClientRequest) (*v1.RevokeClientResponse, error) {
