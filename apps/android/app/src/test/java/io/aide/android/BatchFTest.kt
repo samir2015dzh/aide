@@ -28,7 +28,7 @@ class BatchFTest {
     fun english() = Locale.setDefault(Locale.ENGLISH)
 
     private fun machine(vararg agents: AgentStatus, online: Boolean = true) =
-        Machine("m1", "alexwork", online = online, status = MachineStatus(agents = agents.toList()))
+        Machine("m1", "workstation", online = online, status = MachineStatus(agents = agents.toList()))
 
     private val claude = AgentStatus("claude", available = true, loggedIn = true, version = "2.1.330", checkedAt = fresh, desktop = ClaudeDesktop(installed = true, signedIn = true))
     private val dsh = AgentStatus("deepseek", available = true, loggedIn = true, version = "1.4.0", checkedAt = fresh, models = listOf(AgentModel("deepseek-v4", "DeepSeek V4")), dshBridge = DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.3.1"))

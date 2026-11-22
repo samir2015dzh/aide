@@ -136,7 +136,7 @@ fun ContactsPage(model: AppModel, open: (Persona) -> Unit, dispatch: (Target) ->
                             if (x.persona != null) PersonaAvatar(x.persona) else AgentFace(x.agent, 40)
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                // One root, the instance by its suffix (BotArk reference §2): "DSH · alexwork" while there are several machines.
+                                // One root, the instance by its suffix (BotArk reference §2): "DSH · workstation" while there are several machines.
                                 Text(x.persona?.name ?: (agentTitle(x.agent) + if (io.aide.android.model.manyMachines(world.machines.size)) " · ${g.machine.machineName}" else ""), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     StatusPill(whyText(x.why) ?: t("Ready", "可以派活"), if (x.ready) Tone.Good else Tone.Warn)

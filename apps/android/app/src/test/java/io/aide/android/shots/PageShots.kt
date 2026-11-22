@@ -64,7 +64,7 @@ class PageShots {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 // The devices are read again when Settings opens: the same ones the world has.
                 val body = if (request.path.orEmpty().endsWith("ListDevices")) {
-                    "{\"devices\":[{\"keyId\":\"k1\",\"label\":\"荣耀 Magic4\",\"platform\":\"android\",\"thisDevice\":true},{\"keyId\":\"k2\",\"label\":\"alexwork\",\"platform\":\"windows\",\"machineId\":\"m1\",\"machineOnline\":true},{\"keyId\":\"k3\",\"label\":\"bigalex\",\"platform\":\"linux\",\"machineId\":\"m2\",\"machineOnline\":true}]}"
+                    "{\"devices\":[{\"keyId\":\"k1\",\"label\":\"我的手机\",\"platform\":\"android\",\"thisDevice\":true},{\"keyId\":\"k2\",\"label\":\"workstation\",\"platform\":\"windows\",\"machineId\":\"m1\",\"machineOnline\":true},{\"keyId\":\"k3\",\"label\":\"laptop\",\"platform\":\"linux\",\"machineId\":\"m2\",\"machineOnline\":true}]}"
                 } else "{}"
                 return MockResponse().setBody(body).setHeader("Content-Type", "application/json")
             }
@@ -101,7 +101,7 @@ class PageShots {
 
         fun world(): World {
             val alex = Machine(
-                machineId = "m1", machineName = "alexwork", online = true, version = "0.2.5",
+                machineId = "m1", machineName = "workstation", online = true, version = "0.2.5",
                 status = MachineStatus(
                     platform = "windows/amd64", runningSessions = 2, maxSessions = 4, version = "0.2.5",
                     agents = listOf(
@@ -111,7 +111,7 @@ class PageShots {
                 ),
             )
             val big = Machine(
-                machineId = "m2", machineName = "bigalex", online = true, version = "0.2.5",
+                machineId = "m2", machineName = "laptop", online = true, version = "0.2.5",
                 status = MachineStatus(
                     platform = "linux/amd64", runningSessions = 1, maxSessions = 4, version = "0.2.5",
                     agents = listOf(
@@ -134,7 +134,7 @@ class PageShots {
             return World(
                 status = GetStatusResponse(initialized = true, relayUrl = "https://relay.example", relayConnected = true, version = "0.2.5", account = "owner"),
                 machines = listOf(alex, big),
-                devices = listOf(Device("k1", "荣耀 Magic4", "android", thisDevice = true), Device("k2", "alexwork", "windows", machineId = "m1", machineOnline = true), Device("k3", "bigalex", "linux", machineId = "m2", machineOnline = true)),
+                devices = listOf(Device("k1", "我的手机", "android", thisDevice = true), Device("k2", "workstation", "windows", machineId = "m1", machineOnline = true), Device("k3", "laptop", "linux", machineId = "m2", machineOnline = true)),
                 projects = listOf(Project("m1", "aide", name = "Aide"), Project("m2", "aide", name = "Aide")),
                 sessions = sessions,
                 watched = true,
