@@ -306,9 +306,9 @@
       "openTask": "Open the install task",
       "manual": "If DSH can't: install it by hand",
       "state": {
-        "DSH_BRIDGE_INSTALL_STATE_RUNNING": "DSH is installing it and tells Aide when it is done.",
-        "DSH_BRIDGE_INSTALL_STATE_FAILED": "DSH couldn't install it:",
-        "DSH_BRIDGE_INSTALL_STATE_RESTART": "Installed: takes effect once DSH Desktop restarts."
+        "DSH_BRIDGE_INSTALL_STATE_RUNNING": "DSH is installing it and tells Aide when it is done. ",
+        "DSH_BRIDGE_INSTALL_STATE_FAILED": "DSH couldn't install it: ",
+        "DSH_BRIDGE_INSTALL_STATE_RESTART": "Installed: takes effect once DSH Desktop restarts. "
       }
     },
     "takeoverToSend": "Turn on Take Over to send this session messages",

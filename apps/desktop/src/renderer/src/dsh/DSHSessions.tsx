@@ -304,7 +304,7 @@ export function Install({ machineId, onPrepared, packagePath, install, said = tr
   const at = install?.state === DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RUNNING;
   const pkg = prepared?.packagePath ?? packagePath;
   const state = !said && install && install.state !== DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_DONE
-    ? [t(`dsh.install.state.${DSHBridgeInstallState[install.state]}`, { defaultValue: "" }), install.reason].filter(Boolean).join(" ")
+    ? t(`dsh.install.state.${DSHBridgeInstallState[install.state]}`, { defaultValue: "" }) + install.reason
     : "";
   return (
     <div className="dsh-install" role="region" aria-label={t("dsh.install.title")}>
