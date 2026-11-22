@@ -3,7 +3,7 @@
 .conn-head{display:flex;align-items:baseline;gap:8px}
 .conn-head b{font-size:13px;font-weight:600}
 .conn-head span{font-size:11.5px;color:var(--l3)}
-.conn-row{align-items:flex-start;gap:12px}
+.frow.conn-row{align-items:flex-start;gap:12px}
 .conn-logo{flex:none;display:flex;width:22px;justify-content:center;padding-top:1px}
 .conn-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .conn-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -18,4 +18,5 @@
 .conn-row .dsh-install{margin-top:4px}
 .conn-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
 .conn-cat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px}
-.conn-cat label{display:inline-flex;align-items:center;gap:6px}
+.conn-cat label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.conn-cat label>span{flex:none}
