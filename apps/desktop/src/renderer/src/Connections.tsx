@@ -25,6 +25,7 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
   const rows = only ? c.rows.filter(only) : c.rows;
   // Coding agents connected to Aide from this machine with a grant of their own (DSH on …): they follow the machine, not the account.
   const grants = only ? [] : (grantsByCategory(st.clients, st.machines).local.get(m.machineId) ?? []);
+  if (only && rows.length === 0) return null;
   const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId }).catch(() => {});
   return (
     <div className="conn" role="region" aria-label={t("conn.title")}>
@@ -37,12 +38,12 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
       <div className="fgroup">
         {rows.length === 0 && <div className="frow muted">{m.online || m.local ? t("conn.noneYet") : t("conn.offline")}</div>}
         {rows.map((r) => (
-          <div key={r.id} className={`frow conn-row ${r.state}`}>
+          <div key={r.id} className="frow conn-row" data-state={r.state}>
             <span className="conn-logo"><AgentLogo agent={r.agent} size={18} /></span>
             <div className="conn-main">
               <div className="conn-line">
                 <b>{r.title}</b>
-                <span className={`conn-state ${r.state}`}>
+                <span className="conn-state" data-state={r.state}>
                   <i className={`dotc ${dot[r.state]}`} />
                   {r.text}
                 </span>
@@ -54,12 +55,12 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
           </div>
         ))}
         {grants.map((g) => (
-          <div key={g.clientId} className="frow conn-row ok">
+          <div key={g.clientId} className="frow conn-row" data-state="ok">
             <span className="conn-logo"><GrantAvatar c={g} size="sm" /></span>
             <div className="conn-main">
               <div className="conn-line">
                 <b>{agentName(g.label)}</b>
-                <span className="conn-state ok">
+                <span className="conn-state" data-state="ok">
                   <i className={`dotc ${g.online ? "on" : ""}`} />
                   {g.online ? t("conn.grantOnline") : t("conn.grantIdle")}
                 </span>

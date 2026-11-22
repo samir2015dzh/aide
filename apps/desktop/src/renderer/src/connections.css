@@ -9,9 +9,9 @@
 .conn-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .conn-line b{font-weight:500}
 .conn-state{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--l2);margin-left:auto}
-.conn-state.ok{color:var(--green)}
-.conn-state.partial{color:var(--orange)}
-.conn-state.missing{color:var(--red)}
+.conn-state[data-state=ok]{color:var(--green)}
+.conn-state[data-state=partial]{color:var(--orange)}
+.conn-state[data-state=missing]{color:var(--red)}
 .dotc.bad{background:var(--red)}
 .conn-lacks,.conn-fix{margin:0;font-size:12px;line-height:1.5;color:var(--l2)}
 .conn-when{font-size:11px;color:var(--l3)}
