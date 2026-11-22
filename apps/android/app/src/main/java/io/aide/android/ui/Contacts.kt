@@ -61,6 +61,10 @@ import io.aide.android.model.personaColors
 import io.aide.android.model.personaGlyph
 import io.aide.android.model.personaIcons
 import io.aide.android.model.personaReady
+import io.aide.android.model.NotReady
+import io.aide.android.model.Target
+import io.aide.android.model.dispatchTargets
+import io.aide.android.api.title
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -75,43 +79,137 @@ fun PersonaAvatar(p: Persona, size: Int = 40) {
     }
 }
 
-/** The contacts, to pick one to write to. */
+/**
+ * Hand Work To (工单 #41): every coding agent the machines detected, grouped by machine, with no contact to make
+ * first — pick one and write. A contact is only a custom face for one of them, on the same line. When the owner's
+ * server keeps no contacts yet (an older relay), the page says so in words and lists the agents all the same (#42).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContactsPage(model: AppModel, open: (Persona) -> Unit, add: () -> Unit, back: () -> Unit) {
+fun ContactsPage(model: AppModel, open: (Persona) -> Unit, dispatch: (Target) -> Unit, add: () -> Unit, back: () -> Unit) {
     val world by model.world.collectAsState()
     val list by model.personas.collectAsState()
+    val error by model.personasError.collectAsState()
     LaunchedEffect(Unit) { model.loadPersonas() }
+    val groups = dispatchTargets(world.machines, list.orEmpty())
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(t("Hand Work To", "派活给谁")) },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-                actions = { IconButton(onClick = add) { Icon(Icons.Filled.Add, t("Add Contact", "添加联系人")) } },
+                actions = { if (error == null) IconButton(onClick = add) { Icon(Icons.Filled.Add, t("Add Contact", "添加联系人")) } },
             )
         },
     ) { pad ->
-        LazyColumn(Modifier.fillMaxSize().padding(pad)) {
-            if (list?.isEmpty() == true) {
+        LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Text(
+                    t("Every agent your computers detected is here: pick one, choose the project, write.", "各台电脑上检测到的 Agent 都在这里：选一个、选项目、写任务，直接开工。"),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            error?.let { item { Text(it, style = MaterialTheme.typography.bodySmall, color = Warning) } }
+            if (groups.isEmpty() && world.watched) {
                 item {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(t("No contacts yet. Add one: name it, pick its machine, project and agent.", "还没有联系人。添加一个：给它起名，选好机器、项目和 Agent。"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Button(onClick = add) { Text(t("Add Contact", "添加联系人")) }
+                    Text(
+                        t("No agent detected yet: connect one on a computer (Aide › Settings › Connect).", "还没有检测到 Agent：先在电脑上的 Aide 里连接一个（设置 › 连接）。"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            items(groups, key = { it.machine.machineId }) { g ->
+                Column(Modifier.fillMaxWidth().aideCard().padding(vertical = 6.dp)) {
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(g.machine.machineName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        val on = g.machine.online || g.machine.local
+                        Text(if (on) t("online", "在线") else t("offline", "离线"), style = MaterialTheme.typography.labelMedium, color = if (on) Positive else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    g.targets.forEach { x ->
+                        Row(
+                            Modifier.fillMaxWidth().pressable { if (x.persona != null && x.ready) open(x.persona) else if (x.ready) dispatch(x) }.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (x.persona != null) PersonaAvatar(x.persona) else AgentFace(x.agent, 40)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(x.persona?.name ?: agentTitle(x.agent), fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    listOfNotNull(if (x.persona != null) agentTitle(x.agent) else null, whyText(x.why) ?: t("ready", "可以派活")).joinToString(" · "),
+                                    style = MaterialTheme.typography.bodySmall, color = if (x.ready) Positive else Warning, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (x.persona != null && x.ready) TextButton(onClick = { dispatch(x) }) { Text(t("New task", "新任务")) }
+                        }
                     }
                 }
             }
-            items(list.orEmpty(), key = { it.personaId }) { p ->
-                Row(Modifier.fillMaxWidth().clickable { open(p) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    PersonaAvatar(p)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(p.name, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "${agentTitle(p.agent)} · ${p.projectId} · ${world.machineName(p.machineId)}",
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
+        }
+    }
+}
+
+private fun whyText(w: NotReady?): String? = when (w) {
+    null -> null
+    NotReady.OFFLINE -> t("its computer is offline", "电脑离线，暂时派不了")
+    NotReady.SIGNED_OUT -> t("not signed in", "没登录，暂时派不了")
+    NotReady.PAUSED -> t("paused", "已暂停")
+    NotReady.MISSING -> t("not detected there now", "这台电脑上现在没检测到它")
+}
+
+/** Writing a task for an agent on a machine (工单 #41): its project, then the task; the session then opens. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun DispatchPage(model: AppModel, machineId: String, agent: String, openSession: (String) -> Unit, back: () -> Unit) {
+    val world by model.world.collectAsState()
+    val scope = rememberCoroutineScope()
+    val projects = world.projects.filter { it.machineId == machineId && (it.agents.isEmpty() || agent in it.agents) }
+    var project by rememberSaveable { mutableStateOf("") }
+    val chosen = projects.firstOrNull { it.projectId == project } ?: projects.firstOrNull()
+    var text by rememberSaveable { mutableStateOf("") }
+    var key by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    var busy by remember { mutableStateOf(false) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AgentFace(agent, 30)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(agentTitle(agent), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(world.machineName(machineId), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
+                },
+                navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
+            )
+        },
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad)) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionHeader(t("Project", "项目"))
+                if (projects.isEmpty()) {
+                    Text(t("No project here for this agent yet: add one in Aide on the computer.", "这台电脑上还没有给它用的项目：在电脑上的 Aide 里添加一个。"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    projects.forEach { pr -> FilterChip(selected = pr.projectId == chosen?.projectId, onClick = { project = pr.projectId }, label = { Text(pr.title()) }) }
+                }
+                chosen?.let { Text(t("A new task starts in “${it.title()}”.", "会在项目「${it.title()}」里新开一个任务。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            Row(Modifier.fillMaxWidth().imePadding().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(text, { text = it }, Modifier.weight(1f), placeholder = { Text(t("What should ${agentTitle(agent)} do?", "要 ${agentTitle(agent)} 做什么？")) }, maxLines = 6)
+                IconButton(enabled = text.isNotBlank() && !busy && chosen != null, onClick = {
+                    val pr = chosen ?: return@IconButton
+                    busy = true
+                    scope.launch {
+                        val sid = model.startTask(machineId, pr.projectId, agent, text.trim(), key)
+                        busy = false
+                        if (sid != null) {
+                            text = ""
+                            key = UUID.randomUUID().toString()
+                            openSession(sid)
+                        }
+                    }
+                }) { Icon(Icons.AutoMirrored.Filled.Send, t("Send", "发送")) }
             }
         }
     }
@@ -150,7 +248,7 @@ fun ContactPage(model: AppModel, id: String, openSession: (String) -> Unit, edit
         Column(Modifier.fillMaxSize().padding(pad)) {
             Column(Modifier.weight(1f).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Labeled(t("Works with", "用"), listOf(agentTitle(p.agent), p.model, p.effort).filter { it.isNotEmpty() }.joinToString(" · "))
-                Labeled(t("In", "在"), "${p.projectId} · ${world.machineName(p.machineId)}")
+                Labeled(t("In", "在"), "${world.projects.firstOrNull { it.machineId == p.machineId && it.projectId == p.projectId }?.title() ?: p.projectId} · ${world.machineName(p.machineId)}")
                 if (p.mode.isNotEmpty()) Labeled(t("Mode", "模式"), p.mode)
                 // The real session underneath, which the next message goes on in.
                 val s = world.sessions[p.sessionId]

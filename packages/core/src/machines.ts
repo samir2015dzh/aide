@@ -48,3 +48,13 @@ export function modelTitle(id: string, models: AgentStatus["models"] = []): stri
   if (!c) return id;
   return `${c[1][0].toUpperCase()}${c[1].slice(1)} ${c[2]}${c[3] ? `.${c[3]}` : ""}${c[4] ? " (1M)" : ""}`;
 }
+
+/** A project as the owner knows it: the name they gave it (工单 #50), else its id. */
+export function projectTitle(p: { name?: string; projectId: string }): string {
+  return p.name?.trim() || p.projectId;
+}
+
+/** A project id the owner most likely did not choose (an agent's default folder name): its screens suggest naming it. */
+export function defaultProjectName(p: { name?: string; projectId: string }): boolean {
+  return !p.name?.trim() && /^(project|projects|workspace|workspaces|default|untitled|new-project|my-project|code|repo|src|test|tmp)(-\d+)?$/.test(p.projectId);
+}

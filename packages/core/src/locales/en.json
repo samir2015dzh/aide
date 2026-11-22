@@ -181,5 +181,40 @@
     "minutes": "{{count}} min",
     "hours": "{{count}} h",
     "days": "{{count}} d"
+  },
+  "conn": {
+    "never": "never",
+    "unknown": "Unknown",
+    "checking": "Checking…",
+    "machineAway": "The machine can't be reached now: last known “{{text}}” ({{when}})",
+    "stale": "Not checked again since {{when}} (it said “{{text}}”)",
+    "signedIn": "Signed in",
+    "signedInVersion": "Signed in · {{version}}",
+    "signedOut": "Not signed in",
+    "notInstalled": "Not installed",
+    "broken": "Can't run",
+    "detected": "Detected",
+    "detectedVersion": "Detected · {{version}}",
+    "ready": "Ready",
+    "readyVersion": "Ready · {{version}}",
+    "claudeCLI": "Claude Code (command line)",
+    "desktopSignedOut": "Sign in in the Claude desktop app: its own sessions show in Aide only then.",
+    "cliSignedOutDesktopIn": "Claude Desktop is signed in, but tasks Aide hands out run with the Claude Code command line, which keeps its own sign-in: the app's does not carry over. Until it is signed in, no task can go to Claude here; the app's own sessions still show in Aide.",
+    "cliSignedOut": "Tasks Aide hands out run with the Claude Code command line, which is not signed in: none can go to Claude here yet.",
+    "appWithoutCLI": "Only the Claude desktop app is here, not the Claude Code command line Aide runs: open Code in the Claude app once and it fetches it.",
+    "cliNotFound": "Tasks for Claude run with the Claude Code command line, which is not on this machine.",
+    "bridge": "DSH bridge plugin",
+    "bridgeState": {
+      "unprepared": "Not prepared",
+      "prepared": "Prepared, not installed",
+      "installed": "Installed · {{version}}",
+      "notRunning": "Installed, DSH Desktop not open",
+      "outdated": "Out of date ({{version}}; latest {{latest}})",
+      "unknown": "Unknown"
+    },
+    "bridgeGap": "Works: DSH tasks Aide starts. Doesn't: seeing or taking over the sessions you open in DSH Desktop yourself, until the plugin is installed.",
+    "bridgeNotRunning": "Open DSH Desktop (with the plugin turned on) to see and take over its own sessions.",
+    "bridgeOutdated": "Prepare the new package and install it in DSH Desktop › Plugins: the old one can't be used to take over sessions.",
+    "agentSignedOut": "{{agent}} is installed but not signed in: no task can go to it here."
   }
 }

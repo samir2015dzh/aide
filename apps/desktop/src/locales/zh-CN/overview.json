@@ -49,7 +49,9 @@
     "expiresIn_other": "{{count}} 天后到期",
     "machineSettings": "机器设置…",
     "notYet": "尚无任务",
-    "accepting": "接新任务"
+    "accepting": "接新任务",
+    "localAgent": "本机编码 Agent",
+    "online": "在线"
   },
   "working": {
     "title": "正在运行",

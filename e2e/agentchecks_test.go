@@ -111,10 +111,11 @@ func TestClaudeFromDesktopApp(t *testing.T) {
 
 // TestClaudeSignedInInDesktopApp: the owner uses only the Claude desktop
 // app, signed in there; its Claude Code has no sign-in of its own (`auth
-// status` says logged out). Aide shows Claude Code signed in, read from
-// the app's settings (its data folder found as the app keeps it on
-// Windows, here an MSIX package's Claude-Data\claude_<id>); signed out in
-// the app, it shows not signed in once checked again.
+// status` says logged out). The two are told apart (工单 #44): the app
+// shows signed in (read from its settings, its data folder found as the app
+// keeps it on Windows, here an MSIX package's Claude-Data\claude_<id>), the
+// command line Aide runs does not, since its sessions would fail "Not
+// logged in". Signed out in the app, the app shows so once checked again.
 func TestClaudeSignedInInDesktopApp(t *testing.T) {
 	unixOnly(t, "its fake Claude Code is a shell script")
 	if testing.Short() {
@@ -134,23 +135,27 @@ func TestClaudeSignedInInDesktopApp(t *testing.T) {
 	config(true)
 	w := newOwnerMac(t, []string{"AIDE_CLAUDE_BIN=" + claude, "HOME=" + home, "LOCALAPPDATA=" + local}, &localv1.GrantSpec{Agents: []string{"claude"}})
 	ctx := context.Background()
-	state := func() (bool, bool) {
+	// Found, the command line signed in, the app signed in, and when checked.
+	state := func() (bool, bool, bool, bool) {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
 		if err != nil || len(res.Machines) == 0 {
-			return false, false
+			return false, false, false, false
 		}
 		for _, a := range res.Machines[0].Status.GetAgents() {
 			if a.Name == "claude" {
-				return a.Available, a.LoggedIn
+				return a.Available, a.LoggedIn, a.GetDesktop().GetSignedIn(), a.CheckedAt != nil
 			}
 		}
-		return false, false
+		return false, false, false, false
 	}
-	eventually(t, 30*time.Second, "Claude Code signed in, through the app", func() bool { ok, in := state(); return ok && in })
+	eventually(t, 30*time.Second, "the app signed in, its command line not", func() bool {
+		ok, cli, app, checked := state()
+		return ok && !cli && app && checked
+	})
 
 	config(false)
 	if _, err := w.app.client.CheckAgents(ctx, &localv1.CheckAgentsRequest{}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 30*time.Second, "Claude Code not signed in, the app signed out", func() bool { ok, in := state(); return ok && !in })
+	eventually(t, 30*time.Second, "the app signed out", func() bool { ok, cli, app, _ := state(); return ok && !cli && !app })
 }

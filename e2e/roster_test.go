@@ -12,10 +12,10 @@ import (
 
 type rosterJSON struct {
 	Endpoints []struct {
-		Address, Name, Kind, Tier, State, Machine, Doing string
-		Mailable, You                                    bool
-		Online                                           *bool
-		AgentPaused                                      bool `json:"agent_paused"`
+		Address, Name, Kind, Category, Tier, State, Machine, Doing string
+		Mailable, You                                              bool
+		Online                                                     *bool
+		AgentPaused                                                bool `json:"agent_paused"`
 	}
 	PausedAgents []struct{ Machine, Agent string } `json:"paused_agents"`
 }
@@ -53,8 +53,9 @@ func TestRoster(t *testing.T) {
 		roster = read()
 		me, sess := false, false
 		for _, e := range roster.Endpoints {
-			me = me || (e.You && e.Kind == "cli" && e.Mailable && e.Online != nil && *e.Online && e.Tier == "pull")
-			sess = sess || (e.Kind == "aide_session" && e.Name == "owner-mac/fix-ci" && e.Address == w.machineID()+"/"+s.SessionID && e.Machine == "owner-mac" && e.State != "" && e.Tier == "push")
+			// Every entry says which kind it is (工单 #26/#49): a session is the machine's.
+			me = me || (e.You && e.Kind == "cli" && e.Category != "" && e.Mailable && e.Online != nil && *e.Online && e.Tier == "pull")
+			sess = sess || (e.Kind == "aide_session" && e.Category == "local" && e.Name == "owner-mac/fix-ci" && e.Address == w.machineID()+"/"+s.SessionID && e.Machine == "owner-mac" && e.State != "" && e.Tier == "push")
 		}
 		return me && sess
 	})

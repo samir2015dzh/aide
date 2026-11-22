@@ -245,11 +245,8 @@ class AppModel(private val context: Context) {
 
     private inline fun <T> report(block: () -> T): T? = try {
         block()
-    } catch (e: ApiError) {
-        say(e.message.ifEmpty { e.code })
-        null
     } catch (e: Exception) {
-        say(e.message ?: e.toString())
+        say(humanError(e))
         null
     }
 
@@ -378,8 +375,27 @@ class AppModel(private val context: Context) {
     private val _personas = MutableStateFlow<List<Persona>?>(null)
     val personas = _personas.asStateFlow()
 
+    private val _personasError = MutableStateFlow<String?>(null)
+    /** Why the contacts could not be read, in words (工单 #42); the agents are listed all the same. */
+    val personasError = _personasError.asStateFlow()
+
+    /** Contacts are extras: failing to read them is said on the page, never as a raw error that pops up later. */
     suspend fun loadPersonas() {
-        report { _personas.value = api!!.listPersonas() }
+        try {
+            _personas.value = api!!.listPersonas()
+            _personasError.value = null
+        } catch (e: Exception) {
+            _personas.value = emptyList()
+            _personasError.value = humanError(e)
+        }
+    }
+
+    /** Starts a task with an agent on a machine, in a project (工单 #41: no contact needed); returns its id, or null (said). */
+    suspend fun startTask(machineId: String, projectId: String, agent: String, text: String, key: String): String? = report {
+        val s = api!!.startSession(machineId, projectId, agent, text, key)
+        s?.let { replace(it) }
+        say(t("${agentTitle(agent)} started a task", "${agentTitle(agent)} 已开始任务"))
+        s?.sessionId
     }
 
     /** Keeps a contact; returns it as kept, or null (said). */
@@ -404,6 +420,23 @@ class AppModel(private val context: Context) {
     private fun replace(s: Session) {
         val w = _world.value
         _world.value = w.copy(sessions = mergeSessions(w.sessions, listOf(s)))
+    }
+}
+
+/**
+ * An error as the person reads it (工单 #42): never a raw status like "404 Not Found". The owner's server without
+ * contacts yet (an older relay) says so; a call the other side doesn't know says an update is due; else what it said.
+ */
+fun humanError(e: Exception): String {
+    val code = (e as? ApiError)?.code ?: ""
+    val msg = (e as? ApiError)?.message ?: e.message ?: e.toString()
+    return when {
+        code == "unimplemented" && msg.startsWith("contacts_unavailable") ->
+            t("Contacts need a newer server: your relay doesn't keep them yet. Work can still go to the agents listed here.", "联系人功能待中继升级：你的服务器（中继）还不支持保存联系人。下面列出的 Agent 照样可以直接派活。")
+        code == "unimplemented" || Regex("""^(HTTP )?\d{3}( [A-Za-z ]+)?$""").matches(msg.trim()) ->
+            t("The other side's Aide is older and doesn't know this yet: update Aide there (the server or the computer).", "对方的 Aide 版本较旧，还不支持这个操作：请更新那边（服务器或电脑）上的 Aide。")
+        msg.isEmpty() -> code
+        else -> msg
     }
 }
 

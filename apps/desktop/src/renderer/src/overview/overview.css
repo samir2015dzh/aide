@@ -19,8 +19,8 @@
 .arow .at span.wrap{white-space:normal;line-height:1.5}
 
 /* Connections: one muted ink for what runs, soft amber and brick for what waits or failed. */
-:root{--live:#5f6b85;--live-wait:#b88a4a;--live-fail:#bf5b55;--lm-node:#ffffff;--lm-node-bd:rgba(0,0,0,.09);--lm-line:rgba(0,0,0,.12);--lm-hover:rgba(0,0,0,.28)}
-@media (prefers-color-scheme:dark){:root{--live:#a7b1c7;--live-wait:#d2aa70;--live-fail:#d98680;--lm-node:#1c1c1f;--lm-node-bd:rgba(255,255,255,.08);--lm-line:rgba(255,255,255,.13);--lm-hover:rgba(255,255,255,.3)}}
+:root{--live:#5f6b85;--live-wait:#b88a4a;--live-fail:#bf5b55;--lm-node:#ffffff;--lm-node-bd:rgba(0,0,0,.09);--lm-line:rgba(0,0,0,.12);--lm-up:color-mix(in srgb,var(--green) 55%,transparent);--lm-hover:rgba(0,0,0,.28)}
+@media (prefers-color-scheme:dark){:root{--live:#a7b1c7;--live-wait:#d2aa70;--live-fail:#d98680;--lm-node:#1c1c1f;--lm-node-bd:rgba(255,255,255,.08);--lm-line:rgba(255,255,255,.13);--lm-up:color-mix(in srgb,var(--green) 60%,transparent);--lm-hover:rgba(255,255,255,.3)}}
 .lmap{background:var(--win2);border-radius:14px;overflow:hidden}
 .lmap-top{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 0;flex-wrap:wrap}
 .lmap-top b{font-size:14px;font-weight:600}
@@ -39,12 +39,15 @@
 .lmap-front{pointer-events:none}
 .lm-edge{fill:none;stroke:var(--lm-line);stroke-width:1;transition:opacity .25s}
 .lm-edge.off{stroke-dasharray:2 5}
+/* Connected reads as connected without a hover (工单 #43): only what is offline or not connected is grey and dashed. */
+.lm-edge.up{stroke:var(--lm-up);stroke-width:1.3}
 .lm-edge.scope{stroke:var(--live);stroke-dasharray:3 4;stroke-width:1.2;opacity:.75}
 .lm-flow{fill:none;stroke:var(--live);stroke-width:1.3;stroke-linecap:round;opacity:.55;transition:opacity .25s}
 .lm-flow.wait{stroke:var(--live-wait);stroke-dasharray:2 4;opacity:.7}
 .lm-flow.fail{stroke:var(--live-fail);stroke-dasharray:2 4;opacity:.6}
 .lmap-comets,.lmap-pings,.lm-comet,.lm-comet i,.lmap-pings>span{position:absolute;left:0;top:0}
-.lm-comet i{border-radius:50%;background:var(--live);opacity:0}
+.lm-comet i{border-radius:50%;background:var(--c,var(--live));opacity:0}
+.lmap-mark{display:inline-flex}
 .lm-mark.wait circle{fill:var(--live-wait)}
 .lm-mark.fail circle{fill:var(--live-fail)}
 .lm-mark.fail text{fill:#fff;font-size:10px;font-weight:700;font-family:var(--font)}
@@ -79,11 +82,19 @@
 .lm-agents{display:flex;gap:4px}
 .lm-agents .out{opacity:.35}
 .lm-meta{font-size:10.5px;color:var(--l2);flex:none}
+.lm-meta.up{display:inline-flex;align-items:center;gap:4px;color:var(--green)}
+.lm-meta.up .dotc{width:6px;height:6px}
+.lm-tail{display:inline-flex;align-items:center;gap:5px;flex:none}
+.lm-gap{width:7px;height:7px;border-radius:50%;background:var(--orange)}
+.lm-gap.missing{background:var(--red)}
+.lm-home{display:inline-flex;border-radius:4px;box-shadow:0 0 0 1px var(--lm-node-bd)}
 .lm-badge{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:9px;background:var(--fill2);color:var(--l2);font-size:10.5px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
 .lm-badge i{width:5px;height:5px;border-radius:50%;background:var(--live)}
 .lm-node.ghost{justify-content:center;background:none;box-shadow:none;outline:1px dashed var(--l3);outline-offset:-1px;color:var(--accent-t);font-size:12px}
 .lm-node.more{justify-content:center;background:none;box-shadow:none;color:var(--l2);font-size:12px}
-.lmap.focus .lm-edge:not(.on),.lmap.focus .lm-flow:not(.on),.lmap.focus .lm-node:not(.on),.lmap.focus .lm-mark:not(.on){opacity:.12}
+/* Hovering only adds: the rest stays readable, just quieter. */
+.lmap.focus .lm-edge:not(.on),.lmap.focus .lm-flow:not(.on),.lmap.focus .lm-node:not(.on),.lmap.focus .lm-mark:not(.on){opacity:.4}
+.lmap.focus .lm-edge.on{stroke-width:1.8}
 .lmap-foot{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;padding:0 var(--sp-3) var(--sp-3);font-size:11.5px;color:var(--l2);min-height:16px}
 .lmap-foot span{display:inline-flex;align-items:center;gap:6px}
 .lmap-foot i{width:14px;height:2px;border-radius:2px;display:inline-block}

@@ -1,0 +1,18 @@
+/* A machine's connections (工单 #49): a row per thing, its state in words and colour, never colour alone. */
+.conn{display:flex;flex-direction:column;gap:6px}
+.conn-head{display:flex;align-items:baseline;gap:8px}
+.conn-head b{font-size:13px;font-weight:600}
+.conn-head span{font-size:11.5px;color:var(--l3)}
+.conn-row{align-items:flex-start;gap:12px}
+.conn-logo{flex:none;display:flex;width:22px;justify-content:center;padding-top:1px}
+.conn-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.conn-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.conn-line b{font-weight:500}
+.conn-state{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--l2);margin-left:auto}
+.conn-state[data-state=ok]{color:var(--green)}
+.conn-state[data-state=partial]{color:var(--orange)}
+.conn-state[data-state=missing]{color:var(--red)}
+.dotc.bad{background:var(--red)}
+.conn-lacks,.conn-fix{margin:0;font-size:12px;line-height:1.5;color:var(--l2)}
+.conn-when{font-size:11px;color:var(--l3)}
+.conn-row .dsh-install{margin-top:4px}

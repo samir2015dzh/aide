@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
@@ -32,9 +33,11 @@ import (
 	"github.com/samir2015dzh/aide/internal/msgchain"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
+	"github.com/samir2015dzh/aide/internal/provider/acp/dshnative"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 	"github.com/samir2015dzh/aide/internal/provider/codex"
 	"github.com/samir2015dzh/aide/internal/resident"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/pkg/identity"
 	"github.com/samir2015dzh/aide/pkg/transport"
 )
@@ -107,6 +110,7 @@ type Machine struct {
 	usageSrc    usageSource                 // reads plan usage; nil disables it
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
+	dshBridge   *machinev1.DSHBridge     // the DSH bridge plugin, as the last check of DSH found it
 	hidden      map[string]hiddenAgent   // the coding agents the owner hid (hiddenagents.go)
 	// The coding agents the owner paused, when each last resumed by itself,
 	// and the timers that resume them (pausedagents.go).
@@ -425,6 +429,7 @@ func (n *Machine) providerInfo(name string) provider.Info {
 		return i
 	}
 	i = p.Discover(context.Background())
+	i.CheckedAt = time.Now()
 	n.mu.Lock()
 	i = n.withOffers(name, i)
 	n.infos[name] = i
@@ -486,9 +491,21 @@ func (n *Machine) CheckAgents(force bool, maxAge time.Duration) <-chan struct{} 
 			go func() {
 				defer wg.Done()
 				info := p.Discover(context.Background())
+				info.CheckedAt = time.Now()
+				var bridge *machinev1.DSHBridge
+				if name == "deepseek" && info.Available {
+					// The plugin, with DSH: its part of whether DSH is
+					// fully connected here (工单 #46, #49).
+					if home, err := dshnative.Home(shellenv.Environ()); err == nil {
+						bridge = dshBridge(context.Background(), home)
+					}
+				}
 				n.mu.Lock()
 				if n.provider(name) == p { // not removed or changed meanwhile
 					n.infos[name] = n.withOffers(name, info)
+					if name == "deepseek" {
+						n.dshBridge = bridge
+					}
 				}
 				delete(n.pending, name)
 				n.mu.Unlock()
@@ -538,8 +555,17 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 				Hidden: n.isHiddenLocked(name)}
 			a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 			n.agentModels(a, i)
+			if !i.CheckedAt.IsZero() {
+				a.CheckedAt = timestamppb.New(i.CheckedAt)
+			}
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
+				if ok {
+					a.Desktop = &machinev1.ClaudeDesktop{Installed: i.DesktopInstalled, SignedIn: i.DesktopSignedIn}
+				}
+			}
+			if name == "deepseek" {
+				a.DshBridge = n.dshBridge
 			}
 			st.Agents = append(st.Agents, a)
 		}
@@ -550,6 +576,9 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		i, ok := n.infos[name]
 		a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version, LoggedIn: i.LoggedIn, Detail: i.Detail,
 			Checking: n.pending[name] || !ok, Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary, Custom: true, Hidden: n.isHiddenLocked(name)}
+		if !i.CheckedAt.IsZero() {
+			a.CheckedAt = timestamppb.New(i.CheckedAt)
+		}
 		a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 		n.agentModels(a, i)
 		st.Agents = append(st.Agents, a)

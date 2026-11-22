@@ -163,7 +163,10 @@
     "pausedNote": "已暂停：这台电脑上不会用它开新会话，直到你点「恢复」。",
     "pausedUntilNote": "已暂停：这台电脑上不会用它开新会话，{{when}} 额度重置时自动恢复；也可以现在就恢复。",
     "autoResumed": "上次于 {{when}} 到点自动恢复。",
-    "allPaused": "这台电脑上的 agent 都已暂停，恢复后才能开新会话。"
+    "allPaused": "这台电脑上的 agent 都已暂停，恢复后才能开新会话。",
+    "renameItem": "改名…",
+    "renamed": "已改名",
+    "defaultName": "默认名，点这里改名"
   },
   "erased": {
     "done": "Aide 已全部清空",

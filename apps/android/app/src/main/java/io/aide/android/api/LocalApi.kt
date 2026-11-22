@@ -112,6 +112,10 @@ class LocalApi(port: Long, token: String) {
     suspend fun talkToPersona(id: String, text: String, key: String): TalkToPersonaResponse =
         call("TalkToPersona", TalkToPersonaRequest(id, text, key), timeoutSeconds = 60)
 
+    /** Starts a task: an agent on a machine, in one of its projects (工单 #41: no contact needed first). */
+    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String): Session? =
+        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt)), timeoutSeconds = 60).session
+
     suspend fun checkAgents(machineId: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)
     }

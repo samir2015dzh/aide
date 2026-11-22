@@ -52,7 +52,7 @@
     "running_other": "{{count}} 个在忙",
     "sentByYou": "你派的",
     "newSession": "新建任务",
-    "contacts": "联系人",
+    "contacts": "派活",
     "dsh": "DeepSeek 会话",
     "searchHint": "搜索任务、机器、Agent",
     "machinesOnline": "机器 {{online}}/{{total}} 在线",
@@ -315,5 +315,20 @@
     "started": "{{ago}}开始",
     "lastActivity": "最近动静 {{ago}}",
     "open": "打开会话"
+  },
+  "contactsUnavailable": "联系人功能待中继升级：你的服务器（中继）还不支持保存联系人。下面列出的 Agent 照样可以直接派活。",
+  "conn": {
+    "title": "本机连接状态",
+    "followsMachine": "编码 Agent 跟着它所在的机器走",
+    "noneYet": "正在检测装了什么…",
+    "offline": "机器离线：它上次报告的状态现在无法确认。",
+    "checkedAt": "{{when}}检测",
+    "neverChecked": "尚未检测",
+    "grantOnline": "正连着",
+    "grantIdle": "已连接（空闲）",
+    "localGrant": "这台机器上自己连到 Aide 的编码 Agent（有它自己的授权）。",
+    "personalNote": "个人 Agent（Muse、Grok Bot 等）跟着账号走、不属于哪台机器：在 设置 › 访问 里。",
+    "recheck": "重新检测",
+    "fixClaudeCLI": "命令行需要用 Claude Code 自己的账号登录一次，Aide 目前还不能在这里替你完成。在那之前，派给 Claude 的任务请选它已登录的机器。"
   }
 }

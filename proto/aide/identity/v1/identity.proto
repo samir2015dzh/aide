@@ -213,6 +213,7 @@ message AdminCommand {
     SetWorkspaceRoots set_workspace_roots = 19;
     SetAgentHidden set_agent_hidden = 20;
     SetAgentPaused set_agent_paused = 21;
+    SetProjectName set_project_name = 22;
   }
   reserved 12, 17, 18;
   reserved "rename_machine", "set_her_assistant_mode", "set_her_command_connector";
@@ -257,6 +258,16 @@ message SetAgentPaused {
   // With paused: when it resumes by itself (a plan's usage reset), else
   // only the owner resumes it. In the future.
   google.protobuf.Timestamp resume_at = 3;
+}
+
+// SetProjectName gives a project the name the owner's screens show it by,
+// in place of its id (a folder's name such as "project", which the owner
+// did not choose and the id cannot change): a setting, as hiding an agent
+// is. Its id, folder and sessions stay as they are.
+message SetProjectName {
+  string project_id = 1;
+  // At most 64 characters; empty: shown by its id again.
+  string name = 2;
 }
 
 // SetWorkspaceRoots sets the folders the machine's owner devices may browse,

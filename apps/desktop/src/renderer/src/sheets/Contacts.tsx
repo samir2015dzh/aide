@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { codingAgentTitle, displayTitle } from "@aide/core";
+import { codingAgentTitle, displayTitle, projectTitle } from "@aide/core";
+import { AgentTile } from "@aide/ui";
 import type { Persona } from "@aide/proto/identity";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
-import { useStore } from "../store";
+import { dispatchTargets, type Target } from "../dispatch";
+import { Icon } from "../icons";
+import { errorText, useStore } from "../store";
 import { ErrorLine, useAction } from "./common";
 
 /** The built-in avatars a contact can have (docs/personas.md §2), the same on the phone. */
@@ -23,25 +26,47 @@ type Draft = Pick<Persona, "personaId" | "name" | "icon" | "color" | "machineId"
 const blank: Draft = { personaId: "", name: "", icon: "robot", color: personaColors[0], machineId: "", projectId: "", agent: "", model: "", effort: "", mode: "" };
 
 /**
- * Contacts (docs/personas.md): the owner picks one and writes to it. The message goes on in the session the contact
- * talks in, or starts one with the contact's machine, project, agent, model, effort and mode; that session then
- * opens, as any other. Contacts are kept on the owner's server, the same on every device.
+ * Hand Work To (工单 #41, docs/personas.md): every coding agent the machines detected, grouped by machine, ready
+ * to be written to with no contact made first (pick, choose its project, write: a task starts there). A contact
+ * is only a custom face for one of them (name, avatar, its own presets), shown on the same line; writing to it
+ * goes on in the session it talks in. Contacts are kept on the owner's server; when it keeps none yet (an older
+ * relay), the agents are listed all the same and the note says so in words.
  */
+/** Whom work was handed to last, while the app runs. */
+let lastChosen = "";
+
 export function ContactsSheet() {
   const { t } = useTranslation("sheets");
   const st = useStore();
   const [list, setList] = useState<Persona[]>();
-  const [chosen, setChosen] = useState("");
+  const [listError, setListError] = useState("");
+  // Opened again, it is on whom work went last.
+  const [chosen, setChosenState] = useState(lastChosen);
+  const setChosen = (k: string) => setChosenState((lastChosen = k));
+  const [project, setProject] = useState("");
   const [editing, setEditing] = useState<Draft>();
   const [text, setText] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [opened, setOpened] = useState<string>();
   const act = useAction();
 
-  const load = useCallback(() => act.go(async () => setList((await local.listPersonas({})).personas)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Contacts are extras: failing to read them never empties the list of agents.
+  const load = useCallback(
+    () =>
+      local.listPersonas({}).then(
+        (r) => (setList(r.personas), setListError("")),
+        (e) => (setList([]), setListError(errorText(e))),
+      ),
+    [],
+  );
   useEffect(() => void load(), [load]);
-  const p = list?.find((x) => x.personaId === chosen) ?? list?.[0];
+  const groups = dispatchTargets(st.machines, list ?? []);
+  const all = groups.flatMap((g) => g.targets);
+  const target = all.find((x) => x.key === chosen || (chosen.startsWith("p:") && x.persona?.personaId === chosen.slice(2))) ?? all.find((x) => x.ready);
+  const p = target?.persona;
   const current = p?.sessionId ? st.sessions.find((s) => s.sessionId === p.sessionId) : undefined;
+  const projects = target ? projectsFor(st.projects.filter((x) => x.machineId === target.machineId), target.agent) : [];
+  const proj = projects.find((x) => x.projectId === project) ?? projects.find((x) => x.projectId === p?.projectId) ?? projects[0];
 
   // The session opens once the list has it, as after New Task.
   const { set } = st;
@@ -54,50 +79,100 @@ export function ContactsSheet() {
     return () => clearTimeout(late);
   }, [opened, has, set]);
 
+  const canSend = !!target?.ready && !!text.trim() && !act.busy && !opened && (!!p || !!proj);
   const send = async (e: FormEvent) => {
     e.preventDefault();
-    if (!p || !text.trim() || act.busy) return;
+    if (!target || !canSend) return;
+    setChosen(target.persona ? `p:${target.persona.personaId}` : target.key);
     await act.go(async () => {
-      const res = await local.talkToPersona({ personaId: p.personaId, text, idempotencyKey: key });
-      st.show(t(res.started ? "contacts.started" : "contacts.sent", { name: p.name, title: displayTitle(res.session!) }));
+      if (p && (!proj || proj.projectId === p.projectId)) {
+        const res = await local.talkToPersona({ personaId: p.personaId, text, idempotencyKey: key });
+        st.show(t(res.started ? "contacts.started" : "contacts.sent", { name: p.name, title: displayTitle(res.session!) }));
+        setOpened(res.session!.sessionId);
+      } else {
+        const res = await local.startSession({ machineId: target.machineId, session: { idempotencyKey: key, agent: target.agent, projectId: proj!.projectId, prompt: text } });
+        st.show(t("contacts.startedAgent", { agent: codingAgentTitle(target.agent), title: displayTitle(res.session!) }));
+        setOpened(res.session!.sessionId);
+      }
       setKey(crypto.randomUUID());
-      setOpened(res.session!.sessionId);
     });
   };
 
-  if (editing) return <ContactForm draft={editing} done={(saved) => (setEditing(undefined), saved !== undefined && (setChosen(saved), load()))} />;
+  if (editing) return <ContactForm draft={editing} done={(saved) => (setEditing(undefined), saved !== undefined && (setChosen(saved ? `p:${saved}` : ""), load()))} />;
+  const why = (x: Target) => (x.why ? t(`contacts.why.${x.why}`) : "");
   return (
     <form onSubmit={send}>
       <h3 id="sheet-title">{t("contacts.title")}</h3>
       <p className="sub">{t("contacts.sub")}</p>
-      {list && list.length === 0 && <p className="sheet-note muted">{t("contacts.none")}</p>}
+      {listError && <p className="sheet-note muted" role="status">{listError}</p>}
+      {groups.length === 0 && <p className="sheet-note muted">{t("contacts.none")}</p>}
       <div className="contacts" role="listbox" aria-label={t("contacts.title")}>
-        {list?.map((x) => (
-          <div key={x.personaId} role="option" aria-selected={x.personaId === p?.personaId} className={`contact ${x.personaId === p?.personaId ? "on" : ""}`} onClick={() => setChosen(x.personaId)}>
-            <PersonaAvatar p={x} />
-            <span className="contact-t">
-              <b>{x.name}</b>
-              <span className="muted">
-                {codingAgentTitle(x.agent)} · {x.projectId} · {st.machines.find((m) => m.machineId === x.machineId)?.machineName ?? x.machineId}
-              </span>
-            </span>
-            <button type="button" className="link" onClick={() => setEditing({ ...x })}>{t("contacts.edit")}</button>
+        {groups.map((g) => (
+          <div key={g.machine.machineId} className="contact-group" role="group" aria-label={g.machine.machineName}>
+            <div className="contact-gh">
+              <Icon name={g.machine.local ? "laptop" : "server"} />
+              <b>{g.machine.machineName}</b>
+              <span className="muted">{g.machine.online || g.machine.local ? t("contacts.online") : t("contacts.offline")}</span>
+            </div>
+            {g.targets.map((x) => (
+              <div
+                key={x.key}
+                role="option"
+                aria-selected={x.key === target?.key}
+                aria-disabled={!x.ready}
+                className={`contact ${x.key === target?.key ? "on" : ""} ${x.ready ? "" : "off"}`}
+                onClick={() => (setChosen(x.key), setProject(""))}
+              >
+                {x.persona ? <PersonaAvatar p={x.persona} /> : <AgentTile agent={x.agent} size={30} />}
+                <span className="contact-t">
+                  <b>{x.persona ? x.persona.name : codingAgentTitle(x.agent)}</b>
+                  <span className="muted">
+                    {x.persona ? `${codingAgentTitle(x.agent)} · ` : ""}
+                    <span className={x.ready ? "ok" : "warn"}>{x.ready ? t("contacts.ready") : why(x)}</span>
+                  </span>
+                </span>
+                {x.persona ? (
+                  <button type="button" className="link" onClick={() => setEditing({ ...x.persona! })}>{t("contacts.edit")}</button>
+                ) : (
+                  !listError && (
+                    <button type="button" className="link" onClick={() => setEditing({ ...blank, machineId: x.machineId, agent: x.agent, name: codingAgentTitle(x.agent) })}>{t("contacts.customize")}</button>
+                  )
+                )}
+              </div>
+            ))}
           </div>
         ))}
       </div>
-      {p && (
+      {target?.ready && (
         <>
+          {projects.length > 1 && (
+            <div className="fgroup">
+              <div className="frow">
+                <label className="fl" htmlFor="ct-project">{t("newSession.project")}</label>
+                <span className="fv">
+                  <select id="ct-project" className="field" value={proj?.projectId ?? ""} onChange={(e) => setProject(e.target.value)}>
+                    {projects.map((x) => (
+                      <option key={x.projectId} value={x.projectId}>{projectTitle(x)}</option>
+                    ))}
+                  </select>
+                </span>
+              </div>
+            </div>
+          )}
+          {projects.length === 0 && !p && <p className="sheet-note muted">{t("contacts.noProject", { agent: codingAgentTitle(target.agent) })}</p>}
           <p className="sheet-note muted">
             {current ? (
               <>
                 {t("contacts.current")}{" "}
                 <button type="button" className="link" onClick={() => set({ sheet: null, selection: { kind: "session", id: current.sessionId } })}>{displayTitle(current)}</button>
               </>
+            ) : proj ? (
+              t("contacts.freshIn", { project: projectTitle(proj) })
             ) : (
               t("contacts.fresh")
             )}
           </p>
-          <label className="wk-lab" htmlFor="ct-text">{t("contacts.message", { name: p.name })}</label>
+          <label className="wk-lab" htmlFor="ct-text">{t("contacts.message", { name: p?.name ?? codingAgentTitle(target.agent) })}</label>
           <textarea
             id="ct-text"
             className="field ns-prompt"
@@ -110,9 +185,9 @@ export function ContactsSheet() {
       )}
       <ErrorLine text={act.error} />
       <div className="sheet-foot">
-        <button type="button" className="btn" onClick={() => setEditing({ ...blank })}>{t("contacts.add")}</button>
+        {!listError && <button type="button" className="btn" onClick={() => setEditing({ ...blank })}>{t("contacts.add")}</button>}
         <button type="button" className="btn" onClick={() => st.set({ sheet: null })}>{t("cancel")}</button>
-        <button type="submit" className="btn primary" disabled={!p || !text.trim() || act.busy || !!opened}>{t("contacts.send")}</button>
+        <button type="submit" className="btn primary" disabled={!canSend}>{t("contacts.send")}</button>
       </div>
     </form>
   );

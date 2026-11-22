@@ -43,6 +43,10 @@ data class World(
 
     fun machineName(id: String): String = machines.firstOrNull { it.machineId == id }?.machineName ?: id.take(12)
 
+    /** A project as the owner knows it (工单 #50): the name they gave it, else its id. */
+    fun projectTitle(machineId: String, projectId: String): String =
+        projects.firstOrNull { it.machineId == machineId && it.projectId == projectId }?.name?.trim()?.ifEmpty { null } ?: projectId
+
     /** Who sent a session's work, as the person knows them: "You", or the agent's grant name. */
     fun senderName(s: Session): String {
         val who = when {

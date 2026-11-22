@@ -24,7 +24,8 @@
     "signIn": "Found on {{machine}}, but not signed in",
     "appOnly": "Only the {{app}} app is on {{machine}}, not the part Aide runs",
     "broken": "Found on {{machine}}, but it can’t run",
-    "missing": "Not detected on {{machine}}"
+    "missing": "Not detected on {{machine}}",
+    "signInClaude": "Claude Code's command line is on {{machine}}, but not signed in (the Claude desktop app's sign-in does not carry over)"
   },
   "tryThis": "What to check:",
   "checkAgain": "Check Again",
@@ -54,7 +55,8 @@
     "prompt": "This is a test from Aide. Reply with one short sentence: say hello and name the folder you are working in. Do not change any files.",
     "started": "Test task started. It shows in Aide’s task list.",
     "open": "Open It in Aide",
-    "needsProject": "Add a project first: a test task works in one."
+    "needsProject": "Add a project first: a test task works in one.",
+    "notLoggedIn": "Didn't work: Claude Code's command line is not signed in. The desktop app's sign-in doesn't carry over, so tasks for Claude fail on this machine."
   },
   "deepseek": {
     "intro": "DSH is the DeepSeek Harness desktop app, DeepSeek’s coding agent. Aide runs the DSH installed on your computer: the one in the desktop app, or the dsh command.",
@@ -89,8 +91,8 @@
     "fixInstall": "Install Claude Desktop from claude.ai/download and sign in (or install Claude Code on its own).",
     "fixWhere": "Have Claude Desktop already? Open its Code tab once and start a short session: the app downloads Claude Code only then.",
     "fixCodeTab": "Claude Desktop hasn’t downloaded Claude Code yet. Open Claude Desktop, sign in, open its Code tab and start a short session there.",
-    "fixSignIn": "Sign Claude Code in once: open a terminal (PowerShell on Windows), paste the command below and press Enter, then type /login and follow the browser.",
-    "testFailedHint": "If the reason says it isn’t logged in, sign Claude Code in (see Status above) and run the test again.",
+    "fixSignIn": "Tasks Aide hands out run with the Claude Code command line, which needs its own sign-in once; the Claude desktop app being signed in doesn't count. Aide can't sign it in from here yet; the one way for now: open a terminal (PowerShell on Windows), paste the command below, press Enter, type /login and follow the browser.",
+    "testFailedHint": "If it says “Not logged in”, Claude Code's command line is not signed in (whether the desktop app is doesn't matter): see Status above.",
     "where1": "Tasks you start in Aide with Claude are in Aide’s task list, on every device of yours.",
     "where2": "Claude Desktop lists them too, on its Code tab, after it restarts, once you have opened a session there yourself. The Microsoft Store version of Claude Desktop doesn’t.",
     "where3": "Continue one in Claude Desktop only once Aide is done with it: its title ends with who started it “via Aide”.",
@@ -197,5 +199,6 @@
     "connected": "{{name}} Is Connected",
     "connectedBody": "It can now start tasks in the projects on all your machines and sees only its own tasks, until you sign it out.",
     "scope": "Change What It Can Use…"
-  }
+  },
+  "details": "Connection details"
 }

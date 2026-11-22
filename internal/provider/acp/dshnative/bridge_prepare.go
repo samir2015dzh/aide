@@ -37,6 +37,19 @@ type Prepared struct {
 // not sessions, not installed packages) into BridgeDir(home)/backups/<time>,
 // and writes the plugin's package into BridgeDir(home). It changes nothing
 // DSH reads.
+// ShippedVersion is the plugin's version this build ships (and prepares).
+func ShippedVersion() string { return dshbridge.Version() }
+
+// PreparedPackage is the plugin's package PrepareBridge wrote in home, of
+// the version this build ships; "" when there is none.
+func PreparedPackage(home string) string {
+	p := filepath.Join(BridgeDir(home), "aide-dsh-bridge-"+dshbridge.Version()+".tgz")
+	if st, err := os.Stat(p); err != nil || !st.Mode().IsRegular() || st.Size() == 0 {
+		return ""
+	}
+	return p
+}
+
 func PrepareBridge(home string, now time.Time) (*Prepared, error) {
 	if st, err := os.Stat(home); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("no DSH home at %s: open DSH Desktop once first", home)

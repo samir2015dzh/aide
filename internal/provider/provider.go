@@ -20,6 +20,14 @@ type Info struct {
 	Binary    string
 	Version   string
 	LoggedIn  bool
+	// Claude only: the Claude desktop app's settings are on the machine,
+	// and it is signed in. Its sign-in is not the command line's
+	// (LoggedIn): the CLI Aide runs keeps its own.
+	DesktopInstalled bool
+	DesktopSignedIn  bool
+	// CheckedAt is when the check that found this ended (set by the
+	// machine that ran it).
+	CheckedAt time.Time
 	// Problem is why it is not available; Detail, what was printed.
 	Problem Problem
 	Detail  string

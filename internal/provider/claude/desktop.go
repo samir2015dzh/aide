@@ -79,11 +79,19 @@ func desktopUserData(home, appData, localAppData string) []string {
 // windowSizeWasSignedIn true, all three. Only whether they are there is
 // read, never what the token is.
 func desktopSignedIn(dirs []string) bool {
+	_, in := desktopState(dirs)
+	return in
+}
+
+// desktopState: the desktop app's settings (config.json) are in one of
+// dirs (installed), and they say it is signed in (desktopSignedIn).
+func desktopState(dirs []string) (installed, signedIn bool) {
 	for _, d := range dirs {
 		b, err := os.ReadFile(filepath.Join(d, "config.json"))
 		if err != nil {
 			continue
 		}
+		installed = true
 		var c map[string]json.RawMessage
 		if json.Unmarshal(b, &c) != nil {
 			continue
@@ -96,10 +104,10 @@ func desktopSignedIn(dirs []string) bool {
 		var signedIn bool
 		json.Unmarshal(c["windowSizeWasSignedIn"], &signedIn)
 		if (str("oauth:tokenCacheV2") != "" || str("oauth:tokenCache") != "") && str("lastKnownAccountUuid") != "" && signedIn {
-			return true
+			return true, true
 		}
 	}
-	return false
+	return installed, false
 }
 
 // desktopAccountDir is the <account>/<organization> folder new records go
