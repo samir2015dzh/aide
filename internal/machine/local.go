@@ -461,3 +461,18 @@ func (l *Local) HeldMessages() *machinev1.ListHeldMessagesResponse { return l.n.
 func (l *Local) ReleaseHeldMessage(ctx context.Context, id string, release bool) error {
 	return l.n.ReleaseHeldMessage(ctx, id, release)
 }
+
+// Rooms this machine hosts (rooms.go), for the owner on this device.
+func (l *Local) ListRooms() *machinev1.ListRoomsResponse { return l.n.ListRooms() }
+
+func (l *Local) OpenDirectRoom(clientID string) (*machinev1.Room, error) {
+	return l.n.OpenDirectRoom(clientID)
+}
+
+func (l *Local) ListRoomMessages(req *machinev1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	return l.n.ListRoomMessages(req)
+}
+
+func (l *Local) PostRoomMessage(ctx context.Context, req *machinev1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
+	return l.n.PostRoomMessage(ctx, req)
+}

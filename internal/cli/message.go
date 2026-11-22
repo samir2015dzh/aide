@@ -1200,6 +1200,23 @@ func (a *app) deliverDSH(ctx context.Context, cmd *cobra.Command, c *peer.Client
 // end-to-end tunnel and says at once what became of it.
 func (a *app) deliverDirect(ctx context.Context, cmd *cobra.Command, c *peer.Client, t target, signed *identityv1.Signed, m *inboxv1.Message, atts []*sessionv1.Attachment, wait bool) error {
 	return a.onMachine(ctx, c, *t.machine, func(c *peer.Client, n *peer.Machine, ref machineRef) error {
+		// A room on its host machine (an answer in the owner's conversation, ROOMS-DESIGN): no session to look up;
+		// the owner reads it, and the owner's information boundary is for what reaches agents.
+		if strings.HasPrefix(t.session, "room_") {
+			if len(atts) > 0 {
+				return &exitError{code: exitUsage, kind: "usage", err: errors.New("a room takes text only: no -f")}
+			}
+			res, err := n.Session.DeliverMessage(ctx, &sessionv1.DeliverMessageRequest{SessionId: t.session, Message: signed})
+			if err != nil {
+				return err
+			}
+			sent := sentJSON{ID: m.MessageId, To: address(m.To), Name: ref.Name, Delivered: res.Delivered}
+			if a.output == "json" {
+				return a.report(cmd.OutOrStdout(), nil, field{"message", sent})
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%s → %s (%s): %s\n", sent.ID, sent.To, sent.Name, deliveredText(res.Delivered))
+			return nil
+		}
 		before, err := n.Session.GetSession(ctx, &sessionv1.GetSessionRequest{SessionId: t.session})
 		if err != nil {
 			return err

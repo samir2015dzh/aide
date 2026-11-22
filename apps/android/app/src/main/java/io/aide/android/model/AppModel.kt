@@ -342,6 +342,12 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /** The direct room with a personal agent (ROOMS-DESIGN, G2-a); null, said, when it can't be had. */
+    suspend fun openDirectRoom(clientId: String): io.aide.android.api.Room? = report { api!!.openDirectRoom(clientId).room }
+    /** A room's messages, quietly: null when they can't be read now. */
+    suspend fun roomMessages(room: io.aide.android.api.Room): List<io.aide.android.api.RoomMessage>? = runCatching { api!!.listRoomMessages(room.hostMachineId, room.roomId).messages }.getOrNull()
+    suspend fun postRoomMessage(room: io.aide.android.api.Room, text: String, key: String): io.aide.android.api.RoomMessage? = report { api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key) }
+
     /** Hands installing the DSH bridge plugin to DSH there (工单 #59); the bridge's row follows by itself. */
     suspend fun installDSHBridge(machineId: String): Boolean = report { api!!.installDSHBridge(machineId) } != null
 

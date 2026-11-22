@@ -368,7 +368,6 @@
     "work": "它的任务",
     "noWork": "{{name}} 还没有任务：在下面写一个派给它。",
     "noWorkPersonal": "{{name}} 还没有派出过任务。",
-    "chatSoon": "和 {{name}} 直接对话会随协作房间一起上线；这里先列它派出、经手的任务。",
     "bench": "工作台",
     "connection": "连接",
     "device": "机器页",
@@ -390,6 +389,17 @@
     "identity": "名字与头像",
     "identityAdd": "新建",
     "identityEdit": "编辑",
-    "identityNone": "给它起个名字、换个头像、设好项目和模型，就能以这个身份和它接着同一个会话聊。"
+    "identityNone": "给它起个名字、换个头像、设好项目和模型，就能以这个身份和它接着同一个会话聊。",
+    "handedOut": "它派出的任务",
+    "chat": "对话",
+    "chatHost": "保存在 {{machine}}",
+    "chatEmpty": "给 {{name}} 写点什么：它的回信会出现在这里。",
+    "chatPlaceholder": "写给 {{name}}…",
+    "chatNote": "它下次查信时会读到",
+    "chatSend": "发送",
+    "delivery": {
+      "sent": "已发出：等 {{name}} 取信",
+      "replied": "{{name}} 已回复"
+    }
   }
 }

@@ -106,8 +106,12 @@ type Message struct {
 	// a chain of its own at hop 1. The recipient holds a chain gone too far
 	// (more than 4 hops, or the same chain through it more than 3 times an
 	// hour) for the owner, and the owner's own messages start chains anew.
-	TraceId       string `protobuf:"bytes,11,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	Hop           uint32 `protobuf:"varint,12,opt,name=hop,proto3" json:"hop,omitempty"`
+	TraceId string `protobuf:"bytes,11,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Hop     uint32 `protobuf:"varint,12,opt,name=hop,proto3" json:"hop,omitempty"`
+	// Set on a room's message (ROOMS-DESIGN-2026-11-22): the room it belongs
+	// to on its host machine. A reply goes back to the room's address, the
+	// host's inbox with the room as its session.
+	Room          *RoomRef `protobuf:"bytes,13,opt,name=room,proto3" json:"room,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -226,6 +230,74 @@ func (x *Message) GetHop() uint32 {
 	return 0
 }
 
+func (x *Message) GetRoom() *RoomRef {
+	if x != nil {
+		return x.Room
+	}
+	return nil
+}
+
+// RoomRef names a room on its host machine.
+type RoomRef struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	RoomName      string                 `protobuf:"bytes,2,opt,name=room_name,json=roomName,proto3" json:"room_name,omitempty"`
+	Round         uint32                 `protobuf:"varint,3,opt,name=round,proto3" json:"round,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomRef) Reset() {
+	*x = RoomRef{}
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomRef) ProtoMessage() {}
+
+func (x *RoomRef) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomRef.ProtoReflect.Descriptor instead.
+func (*RoomRef) Descriptor() ([]byte, []int) {
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RoomRef) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *RoomRef) GetRoomName() string {
+	if x != nil {
+		return x.RoomName
+	}
+	return ""
+}
+
+func (x *RoomRef) GetRound() uint32 {
+	if x != nil {
+		return x.Round
+	}
+	return 0
+}
+
 // SessionNews tells whoever asked for a turn how it went: it ended, it
 // asks something, or it failed.
 type SessionNews struct {
@@ -253,7 +325,7 @@ type SessionNews struct {
 
 func (x *SessionNews) Reset() {
 	*x = SessionNews{}
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -265,7 +337,7 @@ func (x *SessionNews) String() string {
 func (*SessionNews) ProtoMessage() {}
 
 func (x *SessionNews) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[2]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -278,7 +350,7 @@ func (x *SessionNews) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionNews.ProtoReflect.Descriptor instead.
 func (*SessionNews) Descriptor() ([]byte, []int) {
-	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{2}
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SessionNews) GetKind() string {
@@ -384,7 +456,7 @@ type SignedMessage struct {
 
 func (x *SignedMessage) Reset() {
 	*x = SignedMessage{}
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +468,7 @@ func (x *SignedMessage) String() string {
 func (*SignedMessage) ProtoMessage() {}
 
 func (x *SignedMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[3]
+	mi := &file_aide_inbox_v1_inbox_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +481,7 @@ func (x *SignedMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignedMessage.ProtoReflect.Descriptor instead.
 func (*SignedMessage) Descriptor() ([]byte, []int) {
-	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{3}
+	return file_aide_inbox_v1_inbox_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SignedMessage) GetMessage() *v11.Signed {
@@ -433,7 +505,7 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\x19aide/inbox/v1/inbox.proto\x12\raide.inbox.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1faide/identity/v1/identity.proto\x1a\x1daide/session/v1/session.proto\"9\n" +
 	"\aAddress\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x18\n" +
-	"\asession\x18\x02 \x01(\tR\asession\"\xcd\x03\n" +
+	"\asession\x18\x02 \x01(\tR\asession\"\xf9\x03\n" +
 	"\aMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12*\n" +
@@ -448,7 +520,12 @@ const file_aide_inbox_v1_inbox_proto_rawDesc = "" +
 	"\x03fyi\x18\n" +
 	" \x01(\bR\x03fyi\x12\x19\n" +
 	"\btrace_id\x18\v \x01(\tR\atraceId\x12\x10\n" +
-	"\x03hop\x18\f \x01(\rR\x03hop\"\xc7\x03\n" +
+	"\x03hop\x18\f \x01(\rR\x03hop\x12*\n" +
+	"\x04room\x18\r \x01(\v2\x16.aide.inbox.v1.RoomRefR\x04room\"U\n" +
+	"\aRoomRef\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1b\n" +
+	"\troom_name\x18\x02 \x01(\tR\broomName\x12\x14\n" +
+	"\x05round\x18\x03 \x01(\rR\x05round\"\xc7\x03\n" +
 	"\vSessionNews\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1d\n" +
 	"\n" +
@@ -483,36 +560,38 @@ func file_aide_inbox_v1_inbox_proto_rawDescGZIP() []byte {
 	return file_aide_inbox_v1_inbox_proto_rawDescData
 }
 
-var file_aide_inbox_v1_inbox_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_aide_inbox_v1_inbox_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_aide_inbox_v1_inbox_proto_goTypes = []any{
 	(*Address)(nil),               // 0: aide.inbox.v1.Address
 	(*Message)(nil),               // 1: aide.inbox.v1.Message
-	(*SessionNews)(nil),           // 2: aide.inbox.v1.SessionNews
-	(*SignedMessage)(nil),         // 3: aide.inbox.v1.SignedMessage
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
-	(*v1.WorkspaceRequest)(nil),   // 5: aide.session.v1.WorkspaceRequest
-	(*v1.DiffStat)(nil),           // 6: aide.session.v1.DiffStat
-	(*v1.Question)(nil),           // 7: aide.session.v1.Question
-	(v1.FailureKind)(0),           // 8: aide.session.v1.FailureKind
-	(*v11.Signed)(nil),            // 9: aide.identity.v1.Signed
-	(*v11.Contact)(nil),           // 10: aide.identity.v1.Contact
+	(*RoomRef)(nil),               // 2: aide.inbox.v1.RoomRef
+	(*SessionNews)(nil),           // 3: aide.inbox.v1.SessionNews
+	(*SignedMessage)(nil),         // 4: aide.inbox.v1.SignedMessage
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*v1.WorkspaceRequest)(nil),   // 6: aide.session.v1.WorkspaceRequest
+	(*v1.DiffStat)(nil),           // 7: aide.session.v1.DiffStat
+	(*v1.Question)(nil),           // 8: aide.session.v1.Question
+	(v1.FailureKind)(0),           // 9: aide.session.v1.FailureKind
+	(*v11.Signed)(nil),            // 10: aide.identity.v1.Signed
+	(*v11.Contact)(nil),           // 11: aide.identity.v1.Contact
 }
 var file_aide_inbox_v1_inbox_proto_depIdxs = []int32{
 	0,  // 0: aide.inbox.v1.Message.from:type_name -> aide.inbox.v1.Address
 	0,  // 1: aide.inbox.v1.Message.to:type_name -> aide.inbox.v1.Address
-	4,  // 2: aide.inbox.v1.Message.sent_at:type_name -> google.protobuf.Timestamp
-	2,  // 3: aide.inbox.v1.Message.session_news:type_name -> aide.inbox.v1.SessionNews
-	5,  // 4: aide.inbox.v1.Message.workspace_request:type_name -> aide.session.v1.WorkspaceRequest
-	6,  // 5: aide.inbox.v1.SessionNews.diff_stat:type_name -> aide.session.v1.DiffStat
-	7,  // 6: aide.inbox.v1.SessionNews.question:type_name -> aide.session.v1.Question
-	8,  // 7: aide.inbox.v1.SessionNews.failure:type_name -> aide.session.v1.FailureKind
-	9,  // 8: aide.inbox.v1.SignedMessage.message:type_name -> aide.identity.v1.Signed
-	10, // 9: aide.inbox.v1.SignedMessage.sender:type_name -> aide.identity.v1.Contact
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	5,  // 2: aide.inbox.v1.Message.sent_at:type_name -> google.protobuf.Timestamp
+	3,  // 3: aide.inbox.v1.Message.session_news:type_name -> aide.inbox.v1.SessionNews
+	6,  // 4: aide.inbox.v1.Message.workspace_request:type_name -> aide.session.v1.WorkspaceRequest
+	2,  // 5: aide.inbox.v1.Message.room:type_name -> aide.inbox.v1.RoomRef
+	7,  // 6: aide.inbox.v1.SessionNews.diff_stat:type_name -> aide.session.v1.DiffStat
+	8,  // 7: aide.inbox.v1.SessionNews.question:type_name -> aide.session.v1.Question
+	9,  // 8: aide.inbox.v1.SessionNews.failure:type_name -> aide.session.v1.FailureKind
+	10, // 9: aide.inbox.v1.SignedMessage.message:type_name -> aide.identity.v1.Signed
+	11, // 10: aide.inbox.v1.SignedMessage.sender:type_name -> aide.identity.v1.Contact
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_aide_inbox_v1_inbox_proto_init() }
@@ -526,7 +605,7 @@ func file_aide_inbox_v1_inbox_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_inbox_v1_inbox_proto_rawDesc), len(file_aide_inbox_v1_inbox_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

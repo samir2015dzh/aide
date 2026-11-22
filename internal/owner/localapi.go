@@ -588,6 +588,18 @@ func (l *localService) InstallDSHBridge(ctx context.Context, req *localv1.Instal
 	return l.o().InstallDSHBridge(ctx, req)
 }
 
+func (l *localService) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomRequest) (*localv1.OpenDirectRoomResponse, error) {
+	return l.o().OpenDirectRoom(ctx, req)
+}
+
+func (l *localService) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	return l.o().ListRoomMessages(ctx, req)
+}
+
+func (l *localService) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
+	return l.o().PostRoomMessage(ctx, req)
+}
+
 // GetDiagnostics describes this Mac: what it is to its owner, then its
 // machine, when it shares its coding agents.
 func (l *localService) GetDiagnostics(ctx context.Context, _ *localv1.GetDiagnosticsRequest) (*localv1.GetDiagnosticsResponse, error) {

@@ -45,6 +45,17 @@ func (s *sessionService) DeliverMessage(ctx context.Context, req *sessionv1.Deli
 	if err := s.n.checkLetter(m, p.ClientID, req.SessionId); err != nil {
 		return nil, err
 	}
+	// A member's answer in a room this machine hosts (rooms.go), handed straight over.
+	if strings.HasPrefix(m.GetTo().GetSession(), "room_") {
+		switch s.n.takeRoomLetter(m, &identity.ContactInfo{Inbox: p.ClientID, Name: p.Grant.ClientLabel}) {
+		case "handled":
+			return &sessionv1.DeliverMessageResponse{Delivered: "handled"}, nil
+		case "":
+			return nil, cerr(connect.CodeUnavailable, "the room could not keep it now: send it again")
+		default:
+			return nil, cerr(connect.CodeFailedPrecondition, "not taken: you are not in this room, or there is no such room here")
+		}
+	}
 	if why := s.n.chainCheck(m); why != "" {
 		return nil, cerr(connect.CodeFailedPrecondition, "held for the owner: %s", why)
 	}
@@ -300,6 +311,10 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 	}
 	if info.Kind == "machine" {
 		return bounce("sessions take messages from agents, not from other sessions")
+	}
+	// A member's answer in a room this machine hosts (rooms.go).
+	if strings.HasPrefix(m.GetTo().GetSession(), "room_") {
+		return n.takeRoomLetter(m, info)
 	}
 	if err := n.checkLetter(m, info.Inbox, ""); err != nil {
 		return bounce(err.Error())

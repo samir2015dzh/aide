@@ -206,6 +206,12 @@ service LocalService {
   rpc PrepareDSHBridge(PrepareDSHBridgeRequest) returns (aide.machine.v1.PrepareDSHBridgeResponse);
   // Hands installing the bridge plugin to DSH on the machine (工单 #59).
   rpc InstallDSHBridge(InstallDSHBridgeRequest) returns (aide.machine.v1.InstallDSHBridgeResponse);
+  // Rooms (ROOMS-DESIGN-2026-11-22, G2-a), on their host machine. The
+  // direct room with a personal agent is found on any machine that hosts it,
+  // or made on this device's own machine (else the first one online).
+  rpc OpenDirectRoom(OpenDirectRoomRequest) returns (OpenDirectRoomResponse);
+  rpc ListRoomMessages(ListRoomMessagesRequest) returns (aide.machine.v1.ListRoomMessagesResponse);
+  rpc PostRoomMessage(PostRoomMessageRequest) returns (aide.machine.v1.RoomMessage);
   rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (aide.machine.v1.DSHSessionOptionsResponse);
   // The Claude Code sessions the Claude desktop app lists on the machines
   // (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -1405,4 +1411,26 @@ message ReleaseHeldMessageRequest {
   string machine_id = 1;
   string message_id = 2;
   bool release = 3;
+}
+
+message OpenDirectRoomRequest {
+  string client_id = 1;
+}
+
+message OpenDirectRoomResponse {
+  aide.machine.v1.Room room = 1;
+}
+
+message ListRoomMessagesRequest {
+  // The room's host.
+  string machine_id = 1;
+  string room_id = 2;
+  uint32 limit = 3;
+}
+
+message PostRoomMessageRequest {
+  string machine_id = 1;
+  string room_id = 2;
+  string text = 3;
+  string idempotency_key = 4;
 }

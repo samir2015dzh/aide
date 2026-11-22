@@ -6,6 +6,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -64,7 +65,15 @@ class PageShots {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 // The devices are read again when Settings opens: the same ones the world has.
-                val body = if (request.path.orEmpty().endsWith("ListDevices")) {
+                val path = request.path.orEmpty()
+                // The owner's conversation with Muse (G2-a): its direct room on workstation, two messages.
+                val room = "{\"roomId\":\"room_1\",\"name\":\"Muse\",\"hostMachineId\":\"m1\",\"direct\":true,\"members\":[{\"botKey\":\"c:c1\",\"address\":\"c1\",\"name\":\"Muse\"}]}"
+                if (path.endsWith("OpenDirectRoom")) return MockResponse().setBody("{\"room\":$room}").setHeader("Content-Type", "application/json")
+                if (path.endsWith("ListRoomMessages")) return MockResponse().setBody("{\"room\":$room,\"messages\":[" +
+                    "{\"messageId\":\"msg_1\",\"from\":\"owner\",\"text\":\"批 G 的 PR 评审过了吗？\",\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
+                    "{\"messageId\":\"msg_2\",\"from\":\"c:c1\",\"fromName\":\"Muse\",\"text\":\"评审过了：内容通过，等 CI 全绿后成对合并。\",\"inReplyTo\":\"msg_1\"}," +
+                    "{\"messageId\":\"msg_3\",\"from\":\"owner\",\"text\":\"好，合了告诉我\",\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_SENT\"}]}]}").setHeader("Content-Type", "application/json")
+                val body = if (path.endsWith("ListDevices")) {
                     "{\"devices\":[{\"keyId\":\"k1\",\"label\":\"我的手机\",\"platform\":\"android\",\"thisDevice\":true},{\"keyId\":\"k2\",\"label\":\"workstation\",\"platform\":\"windows\",\"machineId\":\"m1\",\"machineOnline\":true},{\"keyId\":\"k3\",\"label\":\"laptop\",\"platform\":\"linux\",\"machineId\":\"m2\",\"machineOnline\":true}]}"
                 } else "{}"
                 return MockResponse().setBody(body).setHeader("Content-Type", "application/json")
@@ -83,10 +92,12 @@ class PageShots {
         return m
     }
 
-    private fun shot(name: String, content: @Composable () -> Unit) {
+    private fun shot(name: String, waitFor: String? = null, content: @Composable () -> Unit) {
         // A Surface, as the app's Scaffold: the page's colour and the text colour on it.
         rule.setContent { AideTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() } } }
         rule.waitForIdle()
+        // What a page reads from the machine after it opens (the conversation): there before the picture.
+        waitFor?.let { text -> rule.waitUntil(10_000) { rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() } }
         rule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
     }
 
@@ -94,7 +105,7 @@ class PageShots {
     @Test fun needsYou() = model().let { m -> shot("2-needs-you") { NeedsYouTab(m) {} } }
     @Test fun bots() = model().let { m -> shot("3-bots") { BotsTab(m) {} } }
     @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
-    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
+    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse", waitFor = "评审过了") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
     @Test fun settings() = model().let { m -> shot("4-settings") { SettingsTab(m) } }
 
     companion object {

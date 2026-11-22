@@ -380,7 +380,6 @@
     "work": "Its work",
     "noWork": "Nothing for {{name}} yet: write a task below.",
     "noWorkPersonal": "Nothing from {{name}} yet.",
-    "chatSoon": "Talking with {{name}} directly comes with rooms; for now this lists the work it handed out.",
     "bench": "Workbench",
     "connection": "Connection",
     "device": "Machine page",
@@ -402,6 +401,17 @@
     "identity": "Names and faces",
     "identityAdd": "Add",
     "identityEdit": "Edit",
-    "identityNone": "Give it a name, an avatar and presets (project, model) to talk to it as that, in one session that goes on."
+    "identityNone": "Give it a name, an avatar and presets (project, model) to talk to it as that, in one session that goes on.",
+    "handedOut": "Work it handed out",
+    "chat": "Conversation",
+    "chatHost": "kept on {{machine}}",
+    "chatEmpty": "Write to {{name}}: it answers here.",
+    "chatPlaceholder": "Write to {{name}}…",
+    "chatNote": "It reads this the next time it checks its messages",
+    "chatSend": "Send",
+    "delivery": {
+      "sent": "Sent: waiting for {{name}} to read it",
+      "replied": "{{name}} answered"
+    }
   }
 }

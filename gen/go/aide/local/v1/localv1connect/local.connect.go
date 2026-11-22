@@ -258,6 +258,15 @@ const (
 	// LocalServiceInstallDSHBridgeProcedure is the fully-qualified name of the LocalService's
 	// InstallDSHBridge RPC.
 	LocalServiceInstallDSHBridgeProcedure = "/aide.local.v1.LocalService/InstallDSHBridge"
+	// LocalServiceOpenDirectRoomProcedure is the fully-qualified name of the LocalService's
+	// OpenDirectRoom RPC.
+	LocalServiceOpenDirectRoomProcedure = "/aide.local.v1.LocalService/OpenDirectRoom"
+	// LocalServiceListRoomMessagesProcedure is the fully-qualified name of the LocalService's
+	// ListRoomMessages RPC.
+	LocalServiceListRoomMessagesProcedure = "/aide.local.v1.LocalService/ListRoomMessages"
+	// LocalServicePostRoomMessageProcedure is the fully-qualified name of the LocalService's
+	// PostRoomMessage RPC.
+	LocalServicePostRoomMessageProcedure = "/aide.local.v1.LocalService/PostRoomMessage"
 	// LocalServiceDSHSessionOptionsProcedure is the fully-qualified name of the LocalService's
 	// DSHSessionOptions RPC.
 	LocalServiceDSHSessionOptionsProcedure = "/aide.local.v1.LocalService/DSHSessionOptions"
@@ -478,6 +487,12 @@ type LocalServiceClient interface {
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error)
 	// Hands installing the bridge plugin to DSH on the machine (工单 #59).
 	InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error)
+	// Rooms (ROOMS-DESIGN-2026-11-22, G2-a), on their host machine. The
+	// direct room with a personal agent is found on any machine that hosts it,
+	// or made on this device's own machine (else the first one online).
+	OpenDirectRoom(context.Context, *v1.OpenDirectRoomRequest) (*v1.OpenDirectRoomResponse, error)
+	ListRoomMessages(context.Context, *v1.ListRoomMessagesRequest) (*v11.ListRoomMessagesResponse, error)
+	PostRoomMessage(context.Context, *v1.PostRoomMessageRequest) (*v11.RoomMessage, error)
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
 	// The Claude Code sessions the Claude desktop app lists on the machines
 	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -999,6 +1014,24 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("InstallDSHBridge")),
 			connect.WithClientOptions(opts...),
 		),
+		openDirectRoom: connect.NewClient[v1.OpenDirectRoomRequest, v1.OpenDirectRoomResponse](
+			httpClient,
+			baseURL+LocalServiceOpenDirectRoomProcedure,
+			connect.WithSchema(localServiceMethods.ByName("OpenDirectRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		listRoomMessages: connect.NewClient[v1.ListRoomMessagesRequest, v11.ListRoomMessagesResponse](
+			httpClient,
+			baseURL+LocalServiceListRoomMessagesProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListRoomMessages")),
+			connect.WithClientOptions(opts...),
+		),
+		postRoomMessage: connect.NewClient[v1.PostRoomMessageRequest, v11.RoomMessage](
+			httpClient,
+			baseURL+LocalServicePostRoomMessageProcedure,
+			connect.WithSchema(localServiceMethods.ByName("PostRoomMessage")),
+			connect.WithClientOptions(opts...),
+		),
 		dSHSessionOptions: connect.NewClient[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse](
 			httpClient,
 			baseURL+LocalServiceDSHSessionOptionsProcedure,
@@ -1150,6 +1183,9 @@ type localServiceClient struct {
 	interruptDSHSession      *connect.Client[v1.InterruptDSHSessionRequest, v11.InterruptDSHSessionResponse]
 	prepareDSHBridge         *connect.Client[v1.PrepareDSHBridgeRequest, v11.PrepareDSHBridgeResponse]
 	installDSHBridge         *connect.Client[v1.InstallDSHBridgeRequest, v11.InstallDSHBridgeResponse]
+	openDirectRoom           *connect.Client[v1.OpenDirectRoomRequest, v1.OpenDirectRoomResponse]
+	listRoomMessages         *connect.Client[v1.ListRoomMessagesRequest, v11.ListRoomMessagesResponse]
+	postRoomMessage          *connect.Client[v1.PostRoomMessageRequest, v11.RoomMessage]
 	dSHSessionOptions        *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions       *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession        *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
@@ -1867,6 +1903,33 @@ func (c *localServiceClient) InstallDSHBridge(ctx context.Context, req *v1.Insta
 	return nil, err
 }
 
+// OpenDirectRoom calls aide.local.v1.LocalService.OpenDirectRoom.
+func (c *localServiceClient) OpenDirectRoom(ctx context.Context, req *v1.OpenDirectRoomRequest) (*v1.OpenDirectRoomResponse, error) {
+	response, err := c.openDirectRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListRoomMessages calls aide.local.v1.LocalService.ListRoomMessages.
+func (c *localServiceClient) ListRoomMessages(ctx context.Context, req *v1.ListRoomMessagesRequest) (*v11.ListRoomMessagesResponse, error) {
+	response, err := c.listRoomMessages.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// PostRoomMessage calls aide.local.v1.LocalService.PostRoomMessage.
+func (c *localServiceClient) PostRoomMessage(ctx context.Context, req *v1.PostRoomMessageRequest) (*v11.RoomMessage, error) {
+	response, err := c.postRoomMessage.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // DSHSessionOptions calls aide.local.v1.LocalService.DSHSessionOptions.
 func (c *localServiceClient) DSHSessionOptions(ctx context.Context, req *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {
 	response, err := c.dSHSessionOptions.CallUnary(ctx, connect.NewRequest(req))
@@ -2152,6 +2215,12 @@ type LocalServiceHandler interface {
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error)
 	// Hands installing the bridge plugin to DSH on the machine (工单 #59).
 	InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error)
+	// Rooms (ROOMS-DESIGN-2026-11-22, G2-a), on their host machine. The
+	// direct room with a personal agent is found on any machine that hosts it,
+	// or made on this device's own machine (else the first one online).
+	OpenDirectRoom(context.Context, *v1.OpenDirectRoomRequest) (*v1.OpenDirectRoomResponse, error)
+	ListRoomMessages(context.Context, *v1.ListRoomMessagesRequest) (*v11.ListRoomMessagesResponse, error)
+	PostRoomMessage(context.Context, *v1.PostRoomMessageRequest) (*v11.RoomMessage, error)
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
 	// The Claude Code sessions the Claude desktop app lists on the machines
 	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -2669,6 +2738,24 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("InstallDSHBridge")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceOpenDirectRoomHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceOpenDirectRoomProcedure,
+		svc.OpenDirectRoom,
+		connect.WithSchema(localServiceMethods.ByName("OpenDirectRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceListRoomMessagesHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListRoomMessagesProcedure,
+		svc.ListRoomMessages,
+		connect.WithSchema(localServiceMethods.ByName("ListRoomMessages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServicePostRoomMessageHandler := connect.NewUnaryHandlerSimple(
+		LocalServicePostRoomMessageProcedure,
+		svc.PostRoomMessage,
+		connect.WithSchema(localServiceMethods.ByName("PostRoomMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceDSHSessionOptionsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceDSHSessionOptionsProcedure,
 		svc.DSHSessionOptions,
@@ -2897,6 +2984,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServicePrepareDSHBridgeHandler.ServeHTTP(w, r)
 		case LocalServiceInstallDSHBridgeProcedure:
 			localServiceInstallDSHBridgeHandler.ServeHTTP(w, r)
+		case LocalServiceOpenDirectRoomProcedure:
+			localServiceOpenDirectRoomHandler.ServeHTTP(w, r)
+		case LocalServiceListRoomMessagesProcedure:
+			localServiceListRoomMessagesHandler.ServeHTTP(w, r)
+		case LocalServicePostRoomMessageProcedure:
+			localServicePostRoomMessageHandler.ServeHTTP(w, r)
 		case LocalServiceDSHSessionOptionsProcedure:
 			localServiceDSHSessionOptionsHandler.ServeHTTP(w, r)
 		case LocalServiceListClaudeSessionsProcedure:
@@ -3246,6 +3339,18 @@ func (UnimplementedLocalServiceHandler) PrepareDSHBridge(context.Context, *v1.Pr
 
 func (UnimplementedLocalServiceHandler) InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.InstallDSHBridge is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) OpenDirectRoom(context.Context, *v1.OpenDirectRoomRequest) (*v1.OpenDirectRoomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.OpenDirectRoom is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListRoomMessages(context.Context, *v1.ListRoomMessagesRequest) (*v11.ListRoomMessagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListRoomMessages is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) PostRoomMessage(context.Context, *v1.PostRoomMessageRequest) (*v11.RoomMessage, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.PostRoomMessage is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {

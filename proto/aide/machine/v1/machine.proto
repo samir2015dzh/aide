@@ -565,6 +565,24 @@ message ExecRecord {
 
 // MachineAdminService is only available to the owner device principal.
 service MachineAdminService {
+  // Rooms (ROOMS-DESIGN-2026-11-22, G2-a): the owner and bots talking, kept
+  // and run by this machine, the room's host. A direct room is the owner and
+  // one personal agent: its conversation. Owner only.
+  rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // The direct room with a personal agent, made the first time.
+  rpc OpenDirectRoom(OpenDirectRoomRequest) returns (Room) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
+  rpc ListRoomMessages(ListRoomMessagesRequest) returns (ListRoomMessagesResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // The owner says something in the room; the members it is for are woken.
+  // Sent again with the same idempotency key, it is not said twice.
+  rpc PostRoomMessage(PostRoomMessageRequest) returns (RoomMessage) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
   rpc ApplyAdminCommand(ApplyAdminCommandRequest) returns (ApplyAdminCommandResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
@@ -1180,3 +1198,94 @@ message ReleaseHeldMessageRequest {
 }
 
 message ReleaseHeldMessageResponse {}
+
+// Rooms (ROOMS-DESIGN-2026-11-22).
+
+message Room {
+  // "room_" and a ULID.
+  string room_id = 1;
+  string name = 2;
+  // The machine that keeps and runs it.
+  string host_machine_id = 3;
+  repeated RoomMember members = 4;
+  // The owner and one personal agent: the agent's conversation, shown on
+  // its bot page rather than among the rooms.
+  bool direct = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message RoomMember {
+  // The bot's key as the roster has it: "c:<client id>" for an agent with
+  // an inbox.
+  string bot_key = 1;
+  // Its inbox (c_…).
+  string address = 2;
+  string name = 3;
+}
+
+enum RoomDeliveryState {
+  ROOM_DELIVERY_STATE_UNSPECIFIED = 0;
+  // Sent: waiting at the post office for the member to take it.
+  ROOM_DELIVERY_STATE_SENT = 1;
+  // The member answered it.
+  ROOM_DELIVERY_STATE_REPLIED = 2;
+  // Not sent: the reason says why (the owner's information boundary for
+  // this member's kind, the member unreachable…).
+  ROOM_DELIVERY_STATE_REFUSED = 3;
+  // Sending failed for now; the owner can send it again.
+  ROOM_DELIVERY_STATE_FAILED = 4;
+}
+
+message RoomDelivery {
+  string bot_key = 1;
+  RoomDeliveryState state = 2;
+  // In words, when it was not sent.
+  string reason = 3;
+  // The id of the member's own copy (one message per recipient), which its
+  // answer is in reply to.
+  string copy_id = 4;
+}
+
+message RoomMessage {
+  string message_id = 1;
+  string room_id = 2;
+  // "owner", or the member's bot key.
+  string from = 3;
+  string from_name = 4;
+  // Markdown.
+  string text = 5;
+  google.protobuf.Timestamp at = 6;
+  // The owner's: what became of it for each member it went to.
+  repeated RoomDelivery deliveries = 7;
+  // A member's: the message it answers.
+  string in_reply_to = 8;
+}
+
+message ListRoomsRequest {}
+
+message ListRoomsResponse {
+  repeated Room rooms = 1;
+}
+
+message OpenDirectRoomRequest {
+  // The personal agent's client id (c_…).
+  string client_id = 1;
+}
+
+message ListRoomMessagesRequest {
+  string room_id = 1;
+  // The newest this many, oldest first; 0: all.
+  uint32 limit = 2;
+}
+
+message ListRoomMessagesResponse {
+  Room room = 1;
+  repeated RoomMessage messages = 2;
+}
+
+message PostRoomMessageRequest {
+  string room_id = 1;
+  string text = 2;
+  string idempotency_key = 3;
+}

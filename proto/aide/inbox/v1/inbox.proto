@@ -46,6 +46,17 @@ message Message {
   // hour) for the owner, and the owner's own messages start chains anew.
   string trace_id = 11;
   uint32 hop = 12;
+  // Set on a room's message (ROOMS-DESIGN-2026-11-22): the room it belongs
+  // to on its host machine. A reply goes back to the room's address, the
+  // host's inbox with the room as its session.
+  RoomRef room = 13;
+}
+
+// RoomRef names a room on its host machine.
+message RoomRef {
+  string room_id = 1;
+  string room_name = 2;
+  uint32 round = 3;
 }
 
 // SessionNews tells whoever asked for a turn how it went: it ended, it

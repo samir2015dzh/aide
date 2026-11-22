@@ -86,6 +86,9 @@ func AgentNames() []string {
 }
 
 type Machine struct {
+	// Rooms this machine hosts (rooms.go), read on first use.
+	roomsOnce sync.Once
+	roomsBook *roomBook
 	cfg       Config
 	log       *slog.Logger
 	st        *Store

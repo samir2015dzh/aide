@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -1781,6 +1782,70 @@ func (o *Owner) InstallDSHBridge(ctx context.Context, req *localv1.InstallDSHBri
 		func(n *peer.Machine) (*machinev1.InstallDSHBridgeResponse, error) {
 			return n.Admin.InstallDSHBridge(ctx, &machinev1.InstallDSHBridgeRequest{})
 		})
+}
+
+// OpenDirectRoom is the direct room with a personal agent (ROOMS-DESIGN, G2-a):
+// the one a machine of the owner's hosts already, else one made on this
+// device's own machine, else on the first machine online (by name), so the
+// desktop and the phone find the same conversation.
+func (o *Owner) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomRequest) (*localv1.OpenDirectRoomResponse, error) {
+	machines, err := o.machines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(machines, func(i, j int) bool {
+		a, b := machines[i], machines[j]
+		if a.Local != b.Local {
+			return a.Local
+		}
+		return a.MachineName < b.MachineName
+	})
+	var host *localv1.Machine
+	for _, m := range machines {
+		if !m.Online && !m.Local {
+			continue
+		}
+		rooms, err := onDSHMachine(ctx, o, m.MachineId, func(l *machine.Local) (*machinev1.ListRoomsResponse, error) { return l.ListRooms(), nil },
+			func(n *peer.Machine) (*machinev1.ListRoomsResponse, error) {
+				return n.Admin.ListRooms(ctx, &machinev1.ListRoomsRequest{})
+			})
+		if err != nil {
+			continue // an older machine, or out of reach now
+		}
+		for _, r := range rooms.Rooms {
+			if r.Direct && len(r.Members) == 1 && r.Members[0].Address == req.ClientId {
+				return &localv1.OpenDirectRoomResponse{Room: r}, nil
+			}
+		}
+		if host == nil {
+			host = m
+		}
+	}
+	if host == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no machine of yours is online to keep the conversation: start Aide on one"))
+	}
+	r, err := onDSHMachine(ctx, o, host.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.OpenDirectRoom(req.ClientId) },
+		func(n *peer.Machine) (*machinev1.Room, error) {
+			return n.Admin.OpenDirectRoom(ctx, &machinev1.OpenDirectRoomRequest{ClientId: req.ClientId})
+		})
+	if err != nil {
+		return nil, err
+	}
+	return &localv1.OpenDirectRoomResponse{Room: r}, nil
+}
+
+func (o *Owner) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	r := &machinev1.ListRoomMessagesRequest{RoomId: req.RoomId, Limit: req.Limit}
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.ListRoomMessagesResponse, error) { return l.ListRoomMessages(r) },
+		func(n *peer.Machine) (*machinev1.ListRoomMessagesResponse, error) {
+			return n.Admin.ListRoomMessages(ctx, r)
+		})
+}
+
+func (o *Owner) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
+	r := &machinev1.PostRoomMessageRequest{RoomId: req.RoomId, Text: req.Text, IdempotencyKey: req.IdempotencyKey}
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.RoomMessage, error) { return l.PostRoomMessage(ctx, r) },
+		func(n *peer.Machine) (*machinev1.RoomMessage, error) { return n.Admin.PostRoomMessage(ctx, r) })
 }
 
 // onDSHMachine runs local on this device's own machine, remote on another.

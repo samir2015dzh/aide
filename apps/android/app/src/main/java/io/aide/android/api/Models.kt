@@ -526,3 +526,15 @@ data class TalkToPersonaResponse(
     val reason: String = "",
     val persona: Persona? = null,
 )
+
+// Rooms (ROOMS-DESIGN-2026-11-22, G2-a): the owner's conversation with a personal agent, kept on a host machine.
+@Serializable data class RoomMember(val botKey: String = "", val address: String = "", val name: String = "")
+@Serializable data class Room(val roomId: String = "", val name: String = "", val hostMachineId: String = "", val members: List<RoomMember> = emptyList(), val direct: Boolean = false)
+/** state: ROOM_DELIVERY_STATE_SENT, _REPLIED, _REFUSED, _FAILED. */
+@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "")
+@Serializable data class RoomMessage(val messageId: String = "", val roomId: String = "", val from: String = "", val fromName: String = "", val text: String = "", val at: String = "", val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "")
+@Serializable data class OpenDirectRoomRequest(val clientId: String)
+@Serializable data class OpenDirectRoomResponse(val room: Room? = null)
+@Serializable data class ListRoomMessagesRequest(val machineId: String, val roomId: String, val limit: Int = 200)
+@Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList())
+@Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String)
