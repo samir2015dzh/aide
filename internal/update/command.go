@@ -47,6 +47,9 @@ func Run(ctx context.Context, in io.Reader, out io.Writer, dataDir string, check
 			fmt.Fprintf(out, "%d sessions are running here; restarting the service ends their turns.\n", c.Busy)
 		}
 		fmt.Fprint(out, "Update now? [y/N] ")
+		if f, ok := out.(interface{ Flush() error }); ok { // the CLI's writer holds a line until it ends
+			f.Flush()
+		}
 		answer, _ := bufio.NewReader(in).ReadString('\n')
 		if a := strings.ToLower(strings.TrimSpace(answer)); a != "y" && a != "yes" {
 			if answer == "" {

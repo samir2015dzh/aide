@@ -39,6 +39,10 @@ type Device struct {
 	// lock holds the data directory for this process.
 	lock *flock.Lock
 
+	// sock is the local API's endpoint, once served (ServeLocal): the CLI
+	// this device runs finds it there (localcli.go).
+	sock string
+
 	// The network this device is on: its addresses as last seen.
 	nmu   sync.Mutex
 	addrs string

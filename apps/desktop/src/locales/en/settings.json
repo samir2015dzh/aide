@@ -125,6 +125,19 @@
         "password": "New password (empty: unchanged)",
         "again": "Again"
       }
+    },
+    "cli": {
+      "title": "Command line on this computer (aide CLI)",
+      "notSignedIn": "This computer's CLI is not logged in",
+      "signedInAs": "This computer's CLI is logged in · {{name}}",
+      "otherOwner": "This computer's CLI is logged in to another account · {{name}}",
+      "inNote": "One click: this app's login has the server sign the CLI in, with no account or password to type. It is an agent of its own, listed under Agents with the same name.",
+      "outNote": "Logging it out revokes it and removes its key here. Signing this app out leaves it as it is; aide auth logout in a terminal does the same.",
+      "logIn": "Log the CLI in",
+      "loggingIn": "Logging in…",
+      "logOut": "Log the CLI out (revoke)",
+      "loggedIn": "This computer's CLI is logged in as {{name}}",
+      "loggedOut": "This computer's CLI is logged out and revoked"
     }
   },
   "grants": {

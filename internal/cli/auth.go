@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
+	"github.com/samir2015dzh/aide/internal/brandenv"
 	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/pkg/identity"
 	"github.com/samir2015dzh/aide/pkg/transport"
@@ -29,7 +30,7 @@ const maxLabel = 64
 
 func (a *app) loginCmd() *cobra.Command {
 	var name, account string
-	var yes, passwordStdin bool
+	var yes, passwordStdin, fromApp bool
 	cmd := &cobra.Command{
 		Use:   "login [server]",
 		Short: "Log in to the owner's server with the account and password",
@@ -48,12 +49,26 @@ Already logged in to this server, it checks with it and does nothing while
 the owner still admits this agent; once the owner revoked it, it logs in
 again as a new agent. To log in to another owner, run ` + "`aide auth logout`" + `
 first, unless the old owner is gone from its server (it erased
-everything): then login goes to the new one directly.`,
+everything): then login goes to the new one directly.
+
+On a computer where the Aide app is logged in, there is nothing to type:
+with no server given (no argument, no $AIDE_SERVER, no --account), or with
+--from-app, this agent logs in through the app, which has the server sign
+its grant; no account or password is asked. It is an agent of its own all
+the same, with its own key, listed and revoked in the app like any other.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var arg string
 			if len(args) > 0 {
 				arg = args[0]
+			}
+			if fromApp {
+				return a.appLogin(cmd, name)
+			}
+			if arg == "" && brandenv.Get("SERVER") == "" && account == "" && !passwordStdin {
+				if c, _ := appLoggedIn(cmd.Context()); c != nil {
+					return a.appLogin(cmd, name)
+				}
 			}
 			return a.accountLogin(cmd, arg, account, name, passwordStdin)
 		},
@@ -61,6 +76,7 @@ everything): then login goes to the new one directly.`,
 	cmd.Flags().StringVar(&name, "name", "", "name shown to the owner (default: the current name when logging in again, else client@<hostname>; at most 64 bytes)")
 	cmd.Flags().StringVar(&account, "account", "", "the owner's account (default: $AIDE_ACCOUNT, else asked for)")
 	cmd.Flags().BoolVar(&passwordStdin, "password-stdin", false, "read the password from stdin")
+	cmd.Flags().BoolVar(&fromApp, "from-app", false, "log in through the Aide app logged in on this computer: no account or password")
 	cmd.Flags().BoolVar(&yes, "yes", false, "")
 	cmd.Flags().MarkDeprecated("yes", "it did nothing on a server of one's own")
 	return cmd
@@ -146,10 +162,22 @@ func (a *app) loggedIn(cmd *cobra.Command) error {
 func (a *app) logoutCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
-		Short: "Forget this client's key and grant on this computer (the owner revokes the client in the Aide app or the console)",
-		Args:  cobra.NoArgs,
+		Short: "Log this client out: the Aide app on this computer revokes it, and its key and grant here are forgotten",
+		Long: `Log this client out. When the Aide app on this computer is logged in to
+the same owner, it revokes the client's grant first (logging out ends the
+agent, as the app's own log-out button does); otherwise the owner revokes it
+in the Aide app. Either way the key and grant on this computer are
+forgotten. The app's own login is not touched.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			paired := a.load() == nil
+			var revoked bool
+			if paired {
+				var rerr error
+				if revoked, rerr = a.revokeThroughApp(cmd.Context()); rerr != nil {
+					fmt.Fprintln(cmd.ErrOrStderr(), "warning: the Aide app could not revoke this client:", rerr)
+				}
+			}
 			removed, err := a.forget()
 			if err != nil {
 				return err
@@ -160,11 +188,13 @@ func (a *app) logoutCmd() *cobra.Command {
 				if paired {
 					id, _ = a.identityAndGrant()
 				}
-				return a.report(w, nil, field{"logout", object{{"removed", removed}, {"identity", id}}})
+				return a.report(w, nil, field{"logout", object{{"removed", removed}, {"revoked", revoked}, {"identity", id}}})
 			}
 			switch {
 			case !removed:
 				fmt.Fprintln(w, "Not logged in: nothing to forget.")
+			case paired && revoked:
+				fmt.Fprintf(w, "Logged out: the Aide app revoked client %q (%s), and its key and grant here are forgotten.\n", a.g.ClientLabel, a.g.ClientId)
 			case paired:
 				fmt.Fprintf(w, "Forgot this client's key and grant. Owner %s still lists client %q (%s) until they revoke it in the Aide app or the console.\n",
 					a.st.OwnerID, a.g.ClientLabel, a.g.ClientId)
@@ -263,7 +293,7 @@ func (a *app) authStatus(ctx context.Context) *authReport {
 	}
 	err := a.load()
 	if errors.Is(err, errNotLoggedIn) {
-		id.set("fail", "not logged in", "run `aide auth login <your server> --account <account>`: it logs in with the owner's account and password", exitDenied)
+		id.set("fail", "not logged in", "run `aide auth login`: with the Aide app logged in on this computer there is nothing to type; elsewhere `aide auth login <your server> --account <account>` logs in with the owner's account and password", exitDenied)
 		skip("not logged in", grant, relay, sync)
 		return r
 	}

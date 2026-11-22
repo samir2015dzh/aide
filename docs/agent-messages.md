@@ -868,10 +868,23 @@ to it, and it answers them.
   never saw has no address (the app shows "不可寄信"). The machine reads
   the CLI's home where the CLI keeps it (`AIDE_HOME`, else the system's
   place).
-- The Claude app's sessions stay the owner's to see (the owner's ruling of
-  2026-11-20): an agent's `roster` does not list them. A conversation that
-  takes messages is reached by its address, as any agent conversation; the
-  CLI agent's own endpoint is in the roster.
+- **In the roster** (the owner's ruling of 2026-11-22, replacing that of
+  2026-11-20 which kept them out): an agent whose grant sees all sessions
+  lists the Claude app's sessions, as it lists DSH's (in the projects it
+  covers; anywhere with all of them; none with a grant that sees only its
+  own), from `MachineService.ListClaudeSessions`. Each is an entry of kind
+  `claude_app_session`: `name` `<machine>/<session name>` (the app's title
+  as names are written, numbered among the machine's other sessions),
+  `agent` `claude`, `state` the app's last word on it (`completed`,
+  `blocked`, …; `unknown` without one), `doing` its title, `tier` `turn`
+  (the hooks bring messages in at a turn's start and end, and between tool
+  calls). Its `address` is the conversation's under the CLI agent,
+  `c_…/<conversation key>`, and it is `mailable`, once the hooks reported
+  it; before, the address is `<machine id>/local_…` and it is not mailable:
+  `message send --to <machine>/<name>` says so (`invalid_state`) and to run
+  `aide message hook claude --install` there. A message to its name goes to
+  its address, the agent conversation's inbox. Their conversations stay the
+  owner's to read: no agent call reads one.
 
 ### 15.5 Trust: the information boundary and held messages (batch 5)
 

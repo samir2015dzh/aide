@@ -87,6 +87,7 @@ account name (`relay.CheckNewLogin`).
 | Android app | Onboarding: server, account, password | A device cert |
 | `aide auth login [server] --account A` | The password from `--password-stdin`, `$AIDE_PASSWORD`, or asked for on the terminal | A grant |
 | `aided login [server] --account A` (and `install.sh <server>`, `install.ps1 <server>`) | As the CLI; the install scripts hand `$AIDE_ACCOUNT` / `$AIDE_PASSWORD` to it, the password on its stdin | A machine cert; the background service is installed |
+| `aide auth login` on a computer whose desktop app is logged in (no server, no `--account`; or `--from-app`), or the app's 设置 › 账号与设备 › 本机命令行 button | Nothing to type: the CLI asks the app over its local socket (§3.1) | A grant, signed for the app's device (Sign) and published |
 | An MCP app (Claude, ChatGPT…) | The gateway's consent page asks for the account and password (docs/mcp-gateway.md) | A grant whose key the gateway holds (`relay.IssueGrant`), connected at once |
 | Her | Her's grant is signed for the owner's device that turns her on (Sign) | — |
 
@@ -95,6 +96,44 @@ name), unless another of the owner's machines has it: then the server gives
 it the next free one (`-2`, `-3`…; `LogInResponse.machine_name`), so agents
 can still address `machine/project`. A removed machine's id never comes
 back: a machine removed is erased first (`aided erase`), then logs in again under a new key.
+
+### 3.1 This computer's CLI, through the app (work order #39)
+
+Typing the account and password a second time on a computer whose app is
+logged in already is pointless, so the CLI there logs in through the app:
+
+- **The CLI keeps its own key.** `aide auth login` with no server (no
+  argument, no `$AIDE_SERVER`, no `--account`) asks the app's local API
+  whether it is logged in (`$AIDE_APP_SOCKET`, else where the app's aided
+  serves it); `--from-app` insists. It sends its public key and name to
+  `IssueLocalClientGrant`; the app builds the grant a password login gives
+  (every machine, project and coding agent, its own tasks, until revoked),
+  has the server sign it for its device (Sign) and publishes it, and hands
+  back the grant and the root chain. The CLI checks them and keeps them as
+  after any login. Nothing about the account or password reaches the CLI;
+  nothing crosses the network but the grant to sign, over the app's own
+  connection.
+- **Why that is safe.** The local socket is this user's alone (a Unix
+  socket in the user's data folder, a named pipe only this user can open),
+  and whatever can open it already acts as the owner: it could widen any
+  agent's grant with `UpdateClient`. Issuing one more grant adds no power.
+- **The app's button** (设置 › 账号与设备 › 本机命令行) runs the `aide`
+  installed beside aided with `auth login --from-app`, pointed at its
+  socket, and shows `auth status`: logged in or not, and the name, which
+  is the grant's, the same in the app's Agents list and in `aide auth
+  status`.
+- **Logging out.** The button, or `aide auth logout` while the app here is
+  logged in to the same owner, revokes the CLI's grant (as #19 put it:
+  logging out ends the agent) and forgets its key and grant. Signing the
+  app out, or out of this computer, leaves the CLI logged in: it is an
+  agent of its own, revoked only by itself or in the Agents list. The row
+  says so.
+- **Limits.** A grant issued this way is not a password login: changing the
+  password does not sign it out (revoke it in the Agents list). A CLI whose
+  home is not the one the app's aided sees (`AIDE_HOME` set differently)
+  is logged in from its own terminal with `--from-app`, not from the button.
+  The other way round — the app reusing a CLI's login — is not done: the
+  CLI holds an agent's grant, which cannot act as the owner's device.
 
 ## 4. The account and the devices, from any device logged in
 

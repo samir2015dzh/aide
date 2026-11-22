@@ -31,7 +31,9 @@ export type Selection =
   /** The Claude desktop app's Claude Code sessions (claude/ClaudeSessions.tsx), one of them chosen. */
   | { kind: "claude"; machine?: string; id?: string }
   /** The messages held for the owner before they reach a session (held/HeldMessages.tsx). */
-  | { kind: "held" };
+  | { kind: "held" }
+  /** The work the owner's agents handed out, as it goes (TasksPage.tsx, work order #27). */
+  | { kind: "tasks" };
 
 export type Sheet =
   | { kind: "newGrant" }

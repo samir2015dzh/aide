@@ -16,3 +16,7 @@ xcuserdata/
 
 # An agent's chain book (internal/cli/chains.go) belongs in its home, never here.
 /chains.json
+# Programs built at the root by `go build ./cmd/...` (not to be committed).
+/aided
+/aide
+/aide-relay

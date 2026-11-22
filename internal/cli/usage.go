@@ -89,8 +89,15 @@ func printUsageRow(tw *tabwriter.Writer, r machineUsage) {
 		note = joinNote(note, "renew="+u.Renew)
 	}
 	if u.Unavailable != "" {
-		fmt.Fprintf(tw, "%s\t-\t-\t-\t%s\n", r.Machine, joinNote("read-fail: "+u.Unavailable, note))
+		why := "read-fail: " + u.Unavailable
+		if u.Detail != "" {
+			why += " (" + u.Detail + ")"
+		}
+		fmt.Fprintf(tw, "%s\t-\t-\t-\t%s\n", r.Machine, joinNote(why, note))
 		return
+	}
+	if u.Stale && u.Detail != "" {
+		note = joinNote(note, "last refresh: "+u.Detail)
 	}
 	if len(u.Windows) == 0 {
 		fmt.Fprintf(tw, "%s\t-\t-\t-\t%s\n", r.Machine, joinNote("no windows", note))

@@ -72,6 +72,26 @@ jobs:
       - name: installer terminal interaction
         if: needs.select.outputs.mode != 'docs'
         run: python3 scripts/test_install.py
+      # The agents' CLI as this commit builds it, for a dispatcher to fetch
+      # from the run before a release carries it (work order #15): the same
+      # flags as scripts/release.sh, so no build names a server.
+      - name: agent CLI
+        if: needs.select.outputs.mode != 'docs'
+        run: |
+          v="$(git describe --tags --always)-ci"
+          for p in linux/amd64 linux/arm64 windows/amd64; do
+            ext=""; [ "${p%/*}" = windows ] && ext=.exe
+            GOOS=${p%/*} GOARCH=${p#*/} CGO_ENABLED=0 go build -trimpath \
+              -ldflags "-s -w -X github.com/samir2015dzh/aide/internal/machine.Version=${v#v}" \
+              -o "dist/cli/aide-${p%/*}-${p#*/}$ext" ./cmd/aide
+          done
+          (cd dist/cli && sha256sum aide-* > checksums.txt)
+      - uses: actions/upload-artifact@v4
+        if: needs.select.outputs.mode != 'docs'
+        with:
+          name: aide-cli
+          path: dist/cli/
+          retention-days: 30
       # The desktop app's TypeScript: types and unit tests (they ran on
       # the macOS app job, gone with the Mac app). After the end-to-end tests:
       # with pnpm here, TestDesktop would run, and Electron's sandbox can't on

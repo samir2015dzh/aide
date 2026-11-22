@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -49,6 +51,10 @@ type Usage struct {
 	Unavailable string
 	// Renew is the last auto-renew outcome: "", "renewed", "renew_failed".
 	Renew string
+	// Detail is the one-line diagnosis behind api_error / parse_error (and a
+	// failed renew): the HTTP status and a summary of the answer, or the
+	// transport error with its host. Never a token, header or URL path.
+	Detail string
 }
 
 // UsageReader reads plan usage. The zero value works (real endpoints, real
@@ -122,16 +128,16 @@ func (r *UsageReader) Read(ctx context.Context) Usage {
 	if reason != "" {
 		return Usage{Unavailable: reason, FetchedAt: now}
 	}
-	var renew string
+	var renew, renewDetail string
 	if r.AutoRenew && r.needsRenew(tok) {
 		newTok, err := r.renew(ctx, tok)
 		if err != nil {
-			renew = "renew_failed"
+			renew, renewDetail = "renew_failed", "renew: "+redactErr(err)
 			r.log().Warn("Claude usage: could not renew the access token; the owner may need to sign in to Claude Desktop again",
 				"err", redactErr(err))
 			if !tok.expiresAt.IsZero() && !tok.expiresAt.After(now) {
 				// Already expired and we could not renew: nothing to read.
-				return Usage{Unavailable: "signed_out", FetchedAt: now, Renew: renew}
+				return Usage{Unavailable: "signed_out", FetchedAt: now, Renew: renew, Detail: renewDetail}
 			}
 			// Not yet expired: try the current token anyway.
 		} else {
@@ -139,15 +145,16 @@ func (r *UsageReader) Read(ctx context.Context) Usage {
 		}
 	}
 	windows, err := r.fetchUsage(ctx, tok.access)
-	if errors.Is(err, errUsageParse) {
-		r.log().Warn("Claude usage: the usage endpoint's answer could not be parsed", "err", redactErr(err))
-		return Usage{Unavailable: "parse_error", FetchedAt: now, Renew: renew}
-	}
 	if err != nil {
-		r.log().Warn("Claude usage: the usage endpoint failed", "err", redactErr(err))
-		return Usage{Unavailable: "api_error", FetchedAt: now, Renew: renew}
+		detail := joinDetail(redactErr(err), renewDetail)
+		if errors.Is(err, errUsageParse) {
+			r.log().Warn("Claude usage: the usage endpoint's answer could not be parsed", "detail", detail)
+			return Usage{Unavailable: "parse_error", FetchedAt: now, Renew: renew, Detail: detail}
+		}
+		r.log().Warn("Claude usage: the usage endpoint failed", "detail", detail)
+		return Usage{Unavailable: "api_error", FetchedAt: now, Renew: renew, Detail: detail}
 	}
-	return Usage{Windows: windows, FetchedAt: now, Renew: renew}
+	return Usage{Windows: windows, FetchedAt: now, Renew: renew, Detail: renewDetail}
 }
 
 func (r *UsageReader) needsRenew(t oauthToken) bool {
@@ -162,6 +169,10 @@ func (r *UsageReader) needsRenew(t oauthToken) bool {
 func (r *UsageReader) usageURL() string {
 	if r.UsageURL != "" {
 		return r.UsageURL
+	}
+	// A stand-in endpoint for tests and diagnosis (docs/claude-usage.md).
+	if u := os.Getenv("AIDE_CLAUDE_USAGE_URL"); u != "" {
+		return u
 	}
 	return defaultUsageURL
 }
@@ -188,7 +199,7 @@ var errUsageParse = errors.New("usage endpoint: the answer is not a JSON object"
 func windowsFromBody(body []byte) ([]Window, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(body, &top); err != nil || top == nil {
-		return nil, errUsageParse
+		return nil, fmt.Errorf("%w: %s", errUsageParse, bodySummary(body))
 	}
 	raw := map[string]*windowJSON{}
 	for k, v := range top {
@@ -227,9 +238,13 @@ func (r *UsageReader) fetchUsage(ctx context.Context, access string) ([]Window, 
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("usage endpoint: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("usage endpoint: HTTP %d: %s", resp.StatusCode, bodySummary(body))
 	}
-	return windowsFromBody(body)
+	ws, err := windowsFromBody(body)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP 200 (%s): %w", resp.Header.Get("Content-Type"), err)
+	}
+	return ws, nil
 }
 
 // windowsFromResponse turns the response map into windows, skipping nulls,
@@ -298,7 +313,7 @@ func (r *UsageReader) renew(ctx context.Context, t oauthToken) (oauthToken, erro
 		return oauthToken{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return oauthToken{}, fmt.Errorf("token endpoint: HTTP %d", resp.StatusCode)
+		return oauthToken{}, fmt.Errorf("token endpoint: HTTP %d: %s", resp.StatusCode, errorSummary(body))
 	}
 	var tr struct {
 		AccessToken  string `json:"access_token"`
@@ -343,4 +358,83 @@ func redactErr(err error) string {
 		return fmt.Sprintf("%s %s: %v", ue.Op, host, ue.Err)
 	}
 	return err.Error()
+}
+
+// bodySummary is a short, safe look at an answer for the diagnosis: the
+// error type and message when it is Anthropic's error JSON, else the first
+// bytes of the body with anything token-like masked.
+func bodySummary(body []byte) string {
+	if s := errorSummary(body); s != "" {
+		return s
+	}
+	return clip(body)
+}
+
+// errorSummary reads Anthropic's error shape — {"type":"error","error":
+// {"type":..., "message":...}} — or the OAuth one ({"error":...,
+// "error_description":...}); "" when the body is neither. Only the token
+// endpoint's errors use this alone: its successful answer carries tokens,
+// so its raw body is never shown.
+func errorSummary(body []byte) string {
+	var e struct {
+		Error json.RawMessage `json:"error"`
+		Desc  string          `json:"error_description"`
+	}
+	if json.Unmarshal(body, &e) != nil || len(e.Error) == 0 {
+		return ""
+	}
+	var inner struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	}
+	var code string
+	if json.Unmarshal(e.Error, &inner) == nil && (inner.Type != "" || inner.Message != "") {
+		return string(clip([]byte(joinDetailColon(inner.Type, inner.Message))))
+	}
+	if json.Unmarshal(e.Error, &code) == nil && code != "" {
+		return string(clip([]byte(joinDetailColon(code, e.Desc))))
+	}
+	return ""
+}
+
+// summaryMax is how much of an answer the diagnosis keeps.
+const summaryMax = 200
+
+// tokenLike masks anything that could be a credential if an answer ever
+// echoed one: Anthropic's key/token prefixes and any long unbroken run of
+// token characters.
+var tokenLike = regexp.MustCompile(`sk-ant-[A-Za-z0-9_\-]+|[A-Za-z0-9_\-\.+/=]{40,}`)
+
+// clip collapses whitespace, drops control characters, masks token-like
+// runs and cuts to summaryMax.
+func clip(body []byte) string {
+	if len(bytes.TrimSpace(body)) == 0 {
+		return "(empty body)"
+	}
+	s := strings.Join(strings.Fields(strings.ToValidUTF8(string(body), "?")), " ")
+	s = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, s)
+	s = tokenLike.ReplaceAllString(s, "[redacted]")
+	if r := []rune(s); len(r) > summaryMax {
+		s = string(r[:summaryMax]) + "…"
+	}
+	return s
+}
+
+func joinDetailColon(a, b string) string {
+	if a == "" || b == "" {
+		return a + b
+	}
+	return a + ": " + b
+}
+
+func joinDetail(a, b string) string {
+	if a == "" || b == "" {
+		return a + b
+	}
+	return a + "; " + b
 }

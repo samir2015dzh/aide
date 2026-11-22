@@ -24,6 +24,9 @@ func TestMain(m *testing.M) {
 	// TestHeldForTheOwner, which holds a new one's messages as the owner
 	// ruled (docs/agent-messages.md §15.5).
 	os.Setenv("AIDE_TEST_NEW_AGENT_DAYS", "0")
+	// The CLI's words are read in English here, whatever this computer's
+	// language (work order #38); TestCLIInChinese asks for Chinese.
+	os.Setenv("AIDE_LANG", "en")
 	code := m.Run()
 	cleanup()
 	os.Exit(code)

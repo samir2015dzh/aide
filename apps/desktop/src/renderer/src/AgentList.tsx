@@ -115,7 +115,11 @@ export function AgentList({ m, agents, unknown, onOpen }: { m: Machine; agents: 
                     <PausedTag a={a} />
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
-                    {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
+                    {a.name === "claude" && usageText(a, t) && (
+                      <span className="mono ag-usage" title={a.usage?.detail || undefined}>
+                        {usageText(a, t)}
+                      </span>
+                    )}
                   </span>
                   {/* Which program was found and answered: what tells an installed agent from one uninstalled elsewhere. */}
                   {a.binary && (

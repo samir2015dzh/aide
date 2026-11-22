@@ -1,0 +1,11 @@
+/* The tasks page (TasksPage.tsx): rows as the held messages', each one button to its session. */
+.tasks-who { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.task-row { padding: 0; }
+.task-open { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; text-align: start; color: inherit; text-decoration: none; }
+.task-open:hover { background: var(--hover, rgba(127, 127, 127, 0.08)); }
+.task-open .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.task-open .t > span:not(.dsh-msg) { color: var(--text-2, inherit); font-size: 12px; }
+.task-open .dsh-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-state { flex: none; font-size: 12px; white-space: nowrap; }
+.task-state.warn { color: var(--warn, #c77c00); font-weight: 600; }
+.task-state.busy { color: var(--accent, inherit); }

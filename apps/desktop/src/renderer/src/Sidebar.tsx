@@ -1,4 +1,5 @@
 import { useHeldCount } from "./held/HeldMessages";
+import { useTaskLook } from "./TasksPage";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { SessionLink, SessionStatus, type Session } from "@aide/proto/session";
@@ -89,6 +90,7 @@ export function Sidebar() {
   const { t } = useTranslation("common");
   const now = useNow(30_000);
   const held = useHeldCount(!!st.status);
+  const taskLook = useTaskLook();
   return (
     <aside className="side" aria-label={t("sidebar.label")}>
       <div className="side-top drag">
@@ -116,6 +118,14 @@ export function Sidebar() {
           <button className={`nav-i ${st.selection.kind === "claude" ? "sel" : ""}`} onClick={() => st.selection.kind !== "claude" && st.set({ selection: { kind: "claude" } })}>
             <Icon name="terminal" />
             <span>{t("sidebar.claude")}</span>
+          </button>
+        )}
+        {/* The work the owner's agents handed out (work order #27), with how many need a look. */}
+        {!st.status?.machineOnly && (
+          <button className={`nav-i ${st.selection.kind === "tasks" ? "sel" : ""}`} onClick={() => st.selection.kind !== "tasks" && st.set({ selection: { kind: "tasks" } })}>
+            <Icon name="persons" />
+            <span>{t("sidebar.tasks")}</span>
+            {taskLook > 0 && <span className="nav-count">{taskLook}</span>}
           </button>
         )}
         {/* Messages held for the owner (docs/agent-messages.md §15.5): there while one waits, or while open. */}

@@ -113,9 +113,20 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		defaultOutput = "json"
 	}
 	root := a.root(defaultOutput)
+	// Words a person reads in their language (lang.go); -o json never.
+	lang := language(langArg(args))
+	localize(root, lang)
+	if lang == "zh-CN" {
+		// Not what hooks and watch hand a model (recipientKind): that is
+		// the model's to read, as it was.
+		text := func() bool { return a.output != "json" && a.recipientKind == "" }
+		stdout, stderr = &translator{w: stdout, on: text}, &translator{w: stderr, on: text}
+	}
 	root.SetArgs(args)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
+	defer flush(stderr)
+	defer flush(stdout)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return a.execute(ctx, root, stdout, stderr)
@@ -127,6 +138,7 @@ func (a *app) root(defaultOutput string) *cobra.Command {
 		SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().StringVarP(&a.output, "output", "o", defaultOutput, "output format: text (to read) or json (one document, see docs/cli-output.md); AIDE_OUTPUT=json makes json the default")
 	root.PersistentFlags().StringVar(&a.as, "as", "", asHelp)
+	root.PersistentFlags().String("lang", "", langHelp)
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return &exitError{code: exitUsage, err: err} })
 	root.PersistentPreRunE = func(*cobra.Command, []string) error {
 		if a.output != "text" && a.output != "json" {

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 )
@@ -197,5 +198,78 @@ func TestClaudeSessionAddress(t *testing.T) {
 	res, err := w.app.client.ReadClaudeSession(ctx, &localv1.ReadClaudeSessionRequest{MachineId: list.Sessions[0].MachineId, SessionId: "local_c-site"})
 	if err != nil || res.Session.GetAddress() != me+"/c-site" {
 		t.Fatalf("read: %v %v", res.GetSession(), err)
+	}
+}
+
+// TestRosterListsClaudeAppSessions (the owner's ruling of 2026-11-22, work
+// order #26): an agent that sees all sessions finds the Claude app's
+// sessions in its roster, kind claude_app_session: the one whose
+// conversation the CLI agent's hooks reported is mailable at that
+// conversation's address, and a message to its roster name goes there; the
+// other is listed, not mailable, and writing to it says how to make it so.
+// An agent that sees only its own sessions lists none.
+func TestRosterListsClaudeAppSessions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	now := time.Now().Truncate(time.Millisecond)
+	home, local, cliHome := t.TempDir(), t.TempDir(), t.TempDir()
+	index, config := filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), filepath.Join(home, ".claude")
+	work := t.TempDir()
+	claudeAppSession(t, index, config, "c-site", "fix the home page", work, now.Add(-time.Hour), "the title", "done.")
+	claudeAppSession(t, index, config, "c-notes", "sort the notes", work, now, "list the todos", "three.")
+	all := &localv1.GrantSpec{TaskVisibility: identityv1.TaskVisibility_TASK_VISIBILITY_ALL}
+	w := newOwnerMac(t, []string{"HOME=" + home, "USERPROFILE=" + home, "LOCALAPPDATA=" + local, "AIDE_HOME=" + cliHome}, all)
+	desk := []string{"AIDE_HOME=" + cliHome}
+	w.loginAgent(desk, "desk", &localv1.GrantSpec{})
+	hookRun(t, w, desk, "claude", map[string]any{"session_id": "c-site", "hook_event_name": "SessionStart", "source": "startup"})
+
+	type entry struct {
+		Address, Name, Kind, Tier, Agent, Machine string
+		Mailable                                  bool
+	}
+	roster := func(env []string) []entry {
+		var out struct{ Endpoints []entry }
+		r := run(t, env, time.Minute, filepath.Join(w.bin, "aide"), "roster", "-o", "json")
+		if err := json.Unmarshal([]byte(r.stdout), &out); err != nil {
+			t.Fatalf("roster: %v\n%s%s", err, r.stdout, r.stderr)
+		}
+		var apps []entry
+		for _, e := range out.Endpoints {
+			if e.Kind == "claude_app_session" {
+				apps = append(apps, e)
+			}
+		}
+		return apps
+	}
+	var apps []entry
+	eventually(t, time.Minute, "the Claude app's sessions in the roster", func() bool { apps = roster(w.cliEnv); return len(apps) == 2 })
+	byName := map[string]entry{}
+	for _, e := range apps {
+		byName[e.Name] = e
+	}
+	site, notes := byName["owner-mac/fix-the-home-page"], byName["owner-mac/sort-the-notes"]
+	if !site.Mailable || !strings.HasPrefix(site.Address, "c_") || !strings.HasSuffix(site.Address, "/c-site") || site.Agent != "claude" || site.Tier != "turn" {
+		t.Fatalf("the reported one: %+v (all %+v)", site, apps)
+	}
+	if notes.Mailable || !strings.HasSuffix(notes.Address, "/local_c-notes") {
+		t.Fatalf("the unreported one: %+v", notes)
+	}
+
+	if r := w.cli(time.Minute, "message", "send", "--to", "owner-mac/fix-the-home-page", "--message", "the tests pass"); r.code != 0 {
+		t.Fatalf("send to the mailable one: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	in := run(t, desk, time.Minute, filepath.Join(w.bin, "aide"), "--as", "c-site", "message", "list", "-o", "json")
+	if !strings.Contains(in.stdout, "the tests pass") {
+		t.Fatalf("the conversation's inbox:\n%s%s", in.stdout, in.stderr)
+	}
+	r := w.cli(time.Minute, "message", "send", "--to", "owner-mac/sort-the-notes", "--message", "hi")
+	if r.code != 2 || !strings.Contains(r.stderr+r.stdout, "takes no messages yet") || !strings.Contains(r.stderr+r.stdout, "aide message hook claude --install") {
+		t.Fatalf("send to the unmailable one: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+
+	own := w.addAgent("own", &localv1.GrantSpec{})
+	if got := roster(own); len(got) != 0 {
+		t.Fatalf("an agent that sees only its own sessions: %+v", got)
 	}
 }

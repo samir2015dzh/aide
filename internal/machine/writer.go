@@ -181,6 +181,9 @@ func (w *writer) run() {
 				op.done <- err
 			}
 		}
+		// The ops (a tool's whole output among them) go now, not when the
+		// next batch writes over them (work order #40).
+		clear(batch)
 	}
 }
 

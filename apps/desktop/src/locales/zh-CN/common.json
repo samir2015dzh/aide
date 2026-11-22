@@ -57,7 +57,8 @@
     "searchHint": "搜索任务、机器、Agent",
     "machinesOnline": "机器 {{online}}/{{total}} 在线",
     "connect": "连接 Agent",
-    "howToConnect": "怎么连接 DSH、Claude Desktop…"
+    "howToConnect": "怎么连接 DSH、Claude Desktop…",
+    "tasks": "任务动态"
   },
   "accountMenu": {
     "settings": "设置…",
@@ -203,16 +204,16 @@
     "text": "那台电脑上的 Aide 版本较旧，还没有这项功能。在那台电脑上更新 Aide 后再试。"
   },
   "held": {
-      "title": "待放行",
-      "note": "其他 agent 写给会话、按你的规则先拦下的消息：新上册不满 7 天的 agent、链上第 3 跳及以后，或命中你的信息边界。放行后照常送进会话；丢弃后发信方会收到说明。一天内不处理即过期。",
-      "none": "没有待放行的消息。",
-      "release": "放行",
-      "discard": "丢弃",
-      "expires": "{{time}} 过期",
-      "to": "写给 {{session}}",
-      "reason_new_agent": "新上册的 agent",
-      "reason_long_chain": "长链消息",
-      "reason_boundary": "命中信息边界"
+    "title": "待放行",
+    "note": "其他 agent 写给会话、按你的规则先拦下的消息：新上册不满 7 天的 agent、链上第 3 跳及以后，或命中你的信息边界。放行后照常送进会话；丢弃后发信方会收到说明。一天内不处理即过期。",
+    "none": "没有待放行的消息。",
+    "release": "放行",
+    "discard": "丢弃",
+    "expires": "{{time}} 过期",
+    "to": "写给 {{session}}",
+    "reason_new_agent": "新上册的 agent",
+    "reason_long_chain": "长链消息",
+    "reason_boundary": "命中信息边界"
   },
   "claude": {
     "title": "Claude 会话",
@@ -297,5 +298,22 @@
     "here": "{{name}}（本机）",
     "on": "在 {{name}} 上",
     "to": "发往 {{name}} 上的这个会话"
+  },
+  "tasks": {
+    "title": "任务动态",
+    "note": "你的 agent（Muse 等）经 Aide 派出去的活，正在干什么、到哪一步：内容取自会话本身（当前工具、最后的话、标题），不靠 agent 自报。需要你看一眼的排在最前；已完成的保留一天。点一行打开会话。",
+    "summary": "概况",
+    "needLook": "{{count}} 个要看一眼",
+    "atWork": "{{count}} 个在干活",
+    "doneUnseen": "{{count}} 个完成未看",
+    "done": "{{count}} 个已完成",
+    "dispatchers": "派活方",
+    "everyone": "全部 · {{count}}",
+    "none": "还没有 agent 派出的活。Muse 等 agent 经 Aide 开会话后，会出现在这里。",
+    "list": "派出的活",
+    "usingTool": "正在用 {{tool}}",
+    "started": "{{ago}}开始",
+    "lastActivity": "最近动静 {{ago}}",
+    "open": "打开会话"
   }
 }

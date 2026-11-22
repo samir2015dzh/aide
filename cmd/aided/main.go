@@ -156,6 +156,11 @@ A computer that runs no coding agents can approve instead: aided device.`}
 			ClaudeUsage: os.Getenv("AIDE_NO_CLAUDE_USAGE") != "1"}
 	}
 	openMachine := func() (*machine.Machine, error) { return machine.Open(machineConfig()) }
+	openMachineAt := func(dir string) (*machine.Machine, error) {
+		cfg := machineConfig()
+		cfg.DataDir = dir
+		return machine.Open(cfg)
+	}
 
 	var ownerMode, noMachine, supervise bool
 	var socket string
@@ -471,7 +476,7 @@ installs the background service.`,
 				fmt.Print(text)
 				return nil
 			}
-			c, running, err := machineCheck(cmd.Context(), dataDir, openMachine)
+			c, running, err := machineReport(cmd.Context(), dataDir, openMachine, openMachineAt)
 			if err != nil {
 				return err
 			}
@@ -528,7 +533,7 @@ installs the background service.`,
 		Short: "Show this machine: its name, whether it is connected, the service and its projects",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, running, err := machineCheck(cmd.Context(), dataDir, openMachine)
+			c, running, err := machineReport(cmd.Context(), dataDir, openMachine, openMachineAt)
 			if err != nil {
 				return err
 			}
@@ -740,6 +745,36 @@ func machineCheck(ctx context.Context, dataDir string, open func() (*machine.Mac
 	}
 	defer n.Close()
 	return n.Check(ctx), false, nil
+}
+
+// machineReport is machineCheck for what status and doctor show (work
+// order #36). With nothing running, machineCheck opens aided login's own
+// record at the top of the data folder; on the app's PC that one is from
+// before its owner profile and never logged in, while the machine in use is
+// the profile's: status said "not logged in" about a PC that is. So when
+// the top record is not logged in, the profiles' machines are opened too,
+// the current one first, and the first logged in is the one reported.
+func machineReport(ctx context.Context, dataDir string, open func() (*machine.Machine, error), openAt func(string) (*machine.Machine, error)) (machine.Check, bool, error) {
+	c, running, err := machineCheck(ctx, dataDir, open)
+	if running || (err == nil && c.Paired) {
+		return c, running, err
+	}
+	for _, dir := range machineDirs(dataDir)[1:] {
+		if _, serr := os.Stat(machine.KeyPath(dir)); serr != nil {
+			continue // never a machine: opening it would make one
+		}
+		n, oerr := openAt(dir)
+		if oerr != nil {
+			continue // in use by a process that does not answer: not ours to say
+		}
+		if n.Paired() {
+			pc := n.Check(ctx)
+			n.Close()
+			return pc, false, nil
+		}
+		n.Close()
+	}
+	return c, running, err
 }
 
 // serviceCheck asks the aided that just started for its check, once it

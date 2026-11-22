@@ -32,7 +32,8 @@ type endpointJSON struct {
 	// also takes (an agent's name, <machine>/<session name>).
 	Address string `json:"address"`
 	Name    string `json:"name"`
-	// Kind: "cli" or "mcp" (an agent), "aide_session", "dsh_session".
+	// Kind: "cli" or "mcp" (an agent), "aide_session", "dsh_session",
+	// "claude_app_session" (a Claude Code conversation the Claude app runs).
 	Kind string `json:"kind"`
 	// Tier is when a message reaches it: "push", "turn" or "pull".
 	Tier string `json:"tier"`
@@ -174,6 +175,7 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 	type machineRead struct {
 		sessions []*sessionv1.Session
 		dsh      []*machinev1.DSHSession
+		claude   []*machinev1.ClaudeSession
 		status   *machinev1.MachineStatus
 	}
 	read := map[string]*machineRead{}
@@ -195,6 +197,15 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 		case connect.CodeOf(err) == connect.CodeUnimplemented, connect.CodeOf(err) == connect.CodePermissionDenied:
 			// From before agents read them, or a grant that sees no
 			// sessions it did not start: none listed.
+		default:
+			return err
+		}
+		cs, err := n.Info.ListClaudeSessions(ctx, &machinev1.ListClaudeSessionsRequest{})
+		switch {
+		case err == nil:
+			r.claude = cs.Sessions
+		case connect.CodeOf(err) == connect.CodeUnimplemented, connect.CodeOf(err) == connect.CodePermissionDenied:
+			// From before the roster listed them: none.
 		default:
 			return err
 		}
@@ -228,6 +239,11 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 				toName = append(toName, namedSession{nativeID(m.ID, s.SessionId), s.Title, s.CreatedAt.AsTime()})
 			}
 		}
+		for _, s := range r.claude {
+			if !s.Archived {
+				toName = append(toName, namedSession{claudeAppID(m.ID, s.SessionId), s.Title, s.CreatedAt.AsTime()})
+			}
+		}
 		named := sessionNames(toName)
 		for _, s := range r.sessions {
 			if s.Status == sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED {
@@ -249,9 +265,27 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 				Agent: "deepseek", Machine: names[m.ID], MachineID: m.ID, State: nativeState(s.State), Doing: oneLine(s.Title, 120),
 				StartedAt: tsJSON(s.CreatedAt), LastActivity: tsJSON(s.LastActivityAt), Takeover: &takeover})
 		}
+		// The Claude app's sessions (docs/agent-messages.md §15.4): mailable
+		// at the address its CLI agent's hooks reported for the conversation,
+		// a conversation of that agent; one the hooks never saw has only the
+		// app's id here, and takes no message.
+		for _, s := range r.claude {
+			if s.Archived {
+				continue
+			}
+			id := claudeAppID(m.ID, s.SessionId)
+			addr := firstNonEmpty(s.Address, id)
+			out.Endpoints = append(out.Endpoints, endpointJSON{Address: addr, Name: names[m.ID] + "/" + named[id], Kind: "claude_app_session", Tier: "turn",
+				Mailable: s.Address != "", Agent: "claude", Machine: names[m.ID], MachineID: m.ID, State: firstNonEmpty(s.Status, "unknown"),
+				Doing: oneLine(s.Title, 120), StartedAt: tsJSON(s.CreatedAt), LastActivity: tsJSON(s.LastActivityAt)})
+		}
 	}
 	return out, nil
 }
+
+// claudeAppID is a Claude app session's id in the roster while it has no
+// address: its machine and the app's id (local_…).
+func claudeAppID(machineID, appID string) string { return machineID + "/" + appID }
 
 // rosterContacts is the part of the message service the roster reads.
 type rosterContacts interface {
@@ -277,7 +311,9 @@ func (a *app) rosterCmd() *cobra.Command {
   (tier: push, it is woken or takes it at once; turn, in its next turn; pull, when it next checks);
 - the Aide sessions on the machines you reach (kind aide_session): their state as session list gives
   it, and what they are doing, from their own title, tool or last words, never their say;
-- the DeepSeek Harness sessions there (kind dsh_session), mailable once the owner took one over.
+- the DeepSeek Harness sessions there (kind dsh_session), mailable once the owner took one over;
+- the Claude app's sessions there (kind claude_app_session), mailable once that computer's CLI agent's
+  hooks reported the conversation (aide message hook claude --install), at that agent's address.
 
 Each has an address and a name, both of which message send --to takes: an agent's name, or
 <machine>/<session name> (a session's title as names are written, -2, -3 for a second and third of
@@ -353,10 +389,14 @@ func broadcastRefused(to string) error {
 func sessionByName(to string, endpoints []endpointJSON) (endpointJSON, bool, error) {
 	var found []endpointJSON
 	for _, e := range endpoints {
-		if e.Kind != "aide_session" && e.Kind != "dsh_session" {
+		if e.Kind != "aide_session" && e.Kind != "dsh_session" && e.Kind != "claude_app_session" {
 			continue
 		}
 		if e.Name == to {
+			if !e.Mailable && e.Kind == "claude_app_session" {
+				return endpointJSON{}, false, &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("%s is a Claude app session that takes no messages yet", to),
+					hint: "on its computer, run `aide message hook claude --install`: its next conversation start reports where it takes messages"}
+			}
 			return e, true, nil // <machine>/<name> is one at most
 		}
 		if _, name, _ := strings.Cut(e.Name, "/"); name == to && !strings.Contains(to, "/") {
