@@ -498,7 +498,7 @@ func (n *Machine) CheckAgents(force bool, maxAge time.Duration) <-chan struct{} 
 					// The plugin, with DSH: its part of whether DSH is
 					// fully connected here (工单 #46, #49).
 					if home, err := dshnative.Home(shellenv.Environ()); err == nil {
-						bridge = dshBridge(context.Background(), home)
+						bridge = n.dshBridgeState(context.Background(), home)
 					}
 				}
 				n.mu.Lock()

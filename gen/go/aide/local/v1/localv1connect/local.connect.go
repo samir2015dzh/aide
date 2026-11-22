@@ -255,6 +255,9 @@ const (
 	// LocalServicePrepareDSHBridgeProcedure is the fully-qualified name of the LocalService's
 	// PrepareDSHBridge RPC.
 	LocalServicePrepareDSHBridgeProcedure = "/aide.local.v1.LocalService/PrepareDSHBridge"
+	// LocalServiceInstallDSHBridgeProcedure is the fully-qualified name of the LocalService's
+	// InstallDSHBridge RPC.
+	LocalServiceInstallDSHBridgeProcedure = "/aide.local.v1.LocalService/InstallDSHBridge"
 	// LocalServiceDSHSessionOptionsProcedure is the fully-qualified name of the LocalService's
 	// DSHSessionOptions RPC.
 	LocalServiceDSHSessionOptionsProcedure = "/aide.local.v1.LocalService/DSHSessionOptions"
@@ -473,6 +476,8 @@ type LocalServiceClient interface {
 	SendDSHMessage(context.Context, *v1.SendDSHMessageRequest) (*v11.SendDSHMessageResponse, error)
 	InterruptDSHSession(context.Context, *v1.InterruptDSHSessionRequest) (*v11.InterruptDSHSessionResponse, error)
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error)
+	// Hands installing the bridge plugin to DSH on the machine (工单 #59).
+	InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error)
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
 	// The Claude Code sessions the Claude desktop app lists on the machines
 	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -988,6 +993,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("PrepareDSHBridge")),
 			connect.WithClientOptions(opts...),
 		),
+		installDSHBridge: connect.NewClient[v1.InstallDSHBridgeRequest, v11.InstallDSHBridgeResponse](
+			httpClient,
+			baseURL+LocalServiceInstallDSHBridgeProcedure,
+			connect.WithSchema(localServiceMethods.ByName("InstallDSHBridge")),
+			connect.WithClientOptions(opts...),
+		),
 		dSHSessionOptions: connect.NewClient[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse](
 			httpClient,
 			baseURL+LocalServiceDSHSessionOptionsProcedure,
@@ -1138,6 +1149,7 @@ type localServiceClient struct {
 	sendDSHMessage           *connect.Client[v1.SendDSHMessageRequest, v11.SendDSHMessageResponse]
 	interruptDSHSession      *connect.Client[v1.InterruptDSHSessionRequest, v11.InterruptDSHSessionResponse]
 	prepareDSHBridge         *connect.Client[v1.PrepareDSHBridgeRequest, v11.PrepareDSHBridgeResponse]
+	installDSHBridge         *connect.Client[v1.InstallDSHBridgeRequest, v11.InstallDSHBridgeResponse]
 	dSHSessionOptions        *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions       *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession        *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
@@ -1846,6 +1858,15 @@ func (c *localServiceClient) PrepareDSHBridge(ctx context.Context, req *v1.Prepa
 	return nil, err
 }
 
+// InstallDSHBridge calls aide.local.v1.LocalService.InstallDSHBridge.
+func (c *localServiceClient) InstallDSHBridge(ctx context.Context, req *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error) {
+	response, err := c.installDSHBridge.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // DSHSessionOptions calls aide.local.v1.LocalService.DSHSessionOptions.
 func (c *localServiceClient) DSHSessionOptions(ctx context.Context, req *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {
 	response, err := c.dSHSessionOptions.CallUnary(ctx, connect.NewRequest(req))
@@ -2129,6 +2150,8 @@ type LocalServiceHandler interface {
 	SendDSHMessage(context.Context, *v1.SendDSHMessageRequest) (*v11.SendDSHMessageResponse, error)
 	InterruptDSHSession(context.Context, *v1.InterruptDSHSessionRequest) (*v11.InterruptDSHSessionResponse, error)
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error)
+	// Hands installing the bridge plugin to DSH on the machine (工单 #59).
+	InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error)
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
 	// The Claude Code sessions the Claude desktop app lists on the machines
 	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -2640,6 +2663,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("PrepareDSHBridge")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceInstallDSHBridgeHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceInstallDSHBridgeProcedure,
+		svc.InstallDSHBridge,
+		connect.WithSchema(localServiceMethods.ByName("InstallDSHBridge")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceDSHSessionOptionsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceDSHSessionOptionsProcedure,
 		svc.DSHSessionOptions,
@@ -2866,6 +2895,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceInterruptDSHSessionHandler.ServeHTTP(w, r)
 		case LocalServicePrepareDSHBridgeProcedure:
 			localServicePrepareDSHBridgeHandler.ServeHTTP(w, r)
+		case LocalServiceInstallDSHBridgeProcedure:
+			localServiceInstallDSHBridgeHandler.ServeHTTP(w, r)
 		case LocalServiceDSHSessionOptionsProcedure:
 			localServiceDSHSessionOptionsHandler.ServeHTTP(w, r)
 		case LocalServiceListClaudeSessionsProcedure:
@@ -3211,6 +3242,10 @@ func (UnimplementedLocalServiceHandler) InterruptDSHSession(context.Context, *v1
 
 func (UnimplementedLocalServiceHandler) PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v11.PrepareDSHBridgeResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.PrepareDSHBridge is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v11.InstallDSHBridgeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.InstallDSHBridge is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {

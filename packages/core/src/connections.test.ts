@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { MachineSchema, type Machine } from "@aide/proto/local";
-import { AgentLoginState, AgentProblem, DSHBridgeState } from "@aide/proto/machine";
+import { AgentLoginState, AgentProblem, DSHBridgeInstallState, DSHBridgeState } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
 import { agentEntry, bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
 import { codingAgentShort, codingAgentTitle } from "./agents";
@@ -33,8 +33,9 @@ describe("connections", () => {
   test("DSH with its plugin in each of its states (工单 #46)", () => {
     const dsh = (bridge: object) => machineConnections(machine([{ name: "deepseek", available: true, version: "1.4.0", dshBridge: { latestVersion: "0.3.0", ...bridge } }]), now).rows;
     const st = (b: object) => dsh(b).map((r) => [r.id, r.state, r.text]);
-    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED })[1]).toEqual(["deepseek-bridge", "partial", "未备包"]);
-    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED, packagePath: "/x.tgz" })[1]).toEqual(["deepseek-bridge", "partial", "已备包，未安装"]);
+    // Prepared or not is Aide's business, not the owner's (工单 #59): not installed either way.
+    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED })[1]).toEqual(["deepseek-bridge", "partial", "未安装"]);
+    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED, packagePath: "/x.tgz" })[1]).toEqual(["deepseek-bridge", "partial", "未安装"]);
     expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.0" })).toEqual([
       ["deepseek", "ok", "已检测到 · 1.4.0"],
       ["deepseek-bridge", "ok", "已安装 · 0.3.0"],
@@ -45,6 +46,19 @@ describe("connections", () => {
     expect(r[0].state).toBe("partial");
     expect(r[1].lacks).toContain("能用：Aide 发起的 DSH 任务");
     expect(r[1].fix).toBe("prepareBridge");
+  });
+
+  test("the install handed to DSH (工单 #59): at it, failed with DSH's reason, waiting for a restart; answering wins", () => {
+    const row = (bridge: object) => machineConnections(machine([{ name: "deepseek", available: true, dshBridge: { latestVersion: "0.3.1", ...bridge } }]), now).rows[1];
+    const notInstalled = { state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED };
+    const at = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RUNNING, sessionId: "s1" } });
+    expect([at.state, at.text, at.fix]).toEqual(["checking", "DSH 正在代装…", "installBridge"]);
+    const failed = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED, reason: "别的插件的常驻连接器占着 uv.exe" } });
+    expect([failed.state, failed.text, failed.lacks]).toEqual(["partial", "代装没成功", "别的插件的常驻连接器占着 uv.exe"]);
+    const restart = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RESTART } });
+    expect([restart.text, restart.fix]).toEqual(["已装好，等 DSH Desktop 重启", "openDSH"]);
+    const done = row({ state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.1", install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED } });
+    expect([done.state, done.text]).toEqual(["ok", "已安装 · 0.3.1"]);
   });
 
   test("one entry per agent, one name, one state (工单 #53): DSH is DSH, DeepSeek only its models", () => {

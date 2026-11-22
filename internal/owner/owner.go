@@ -1775,6 +1775,14 @@ func (o *Owner) PrepareDSHBridge(ctx context.Context, req *localv1.PrepareDSHBri
 		})
 }
 
+// InstallDSHBridge hands installing the bridge plugin to DSH on the machine (工单 #59).
+func (o *Owner) InstallDSHBridge(ctx context.Context, req *localv1.InstallDSHBridgeRequest) (*machinev1.InstallDSHBridgeResponse, error) {
+	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.InstallDSHBridgeResponse, error) { return l.InstallDSHBridge(ctx) },
+		func(n *peer.Machine) (*machinev1.InstallDSHBridgeResponse, error) {
+			return n.Admin.InstallDSHBridge(ctx, &machinev1.InstallDSHBridgeRequest{})
+		})
+}
+
 // onDSHMachine runs local on this device's own machine, remote on another.
 func onDSHMachine[T any](ctx context.Context, o *Owner, machineID string, local func(*machine.Local) (T, error), remote func(*peer.Machine) (T, error)) (T, error) {
 	var zero T

@@ -117,6 +117,9 @@ const (
 	// MachineAdminServicePrepareDSHBridgeProcedure is the fully-qualified name of the
 	// MachineAdminService's PrepareDSHBridge RPC.
 	MachineAdminServicePrepareDSHBridgeProcedure = "/aide.machine.v1.MachineAdminService/PrepareDSHBridge"
+	// MachineAdminServiceInstallDSHBridgeProcedure is the fully-qualified name of the
+	// MachineAdminService's InstallDSHBridge RPC.
+	MachineAdminServiceInstallDSHBridgeProcedure = "/aide.machine.v1.MachineAdminService/InstallDSHBridge"
 	// MachineAdminServiceListCustomAgentsProcedure is the fully-qualified name of the
 	// MachineAdminService's ListCustomAgents RPC.
 	MachineAdminServiceListCustomAgentsProcedure = "/aide.machine.v1.MachineAdminService/ListCustomAgents"
@@ -639,6 +642,14 @@ type MachineAdminServiceClient interface {
 	// and writes the plugin's package into the DSH home. Changes nothing DSH
 	// reads. Owner only.
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v1.PrepareDSHBridgeResponse, error)
+	// Installs the bridge plugin by handing it to DSH (工单 #59): prepares the
+	// package as PrepareDSHBridge does, then starts a DSH session in the
+	// plugin's folder whose task is to install it in DSH Desktop's profile,
+	// find and clear what stops it (a file a running program holds, a broken
+	// package left by an earlier failure), restart DSH Desktop, check the
+	// plugin answers, and report with `aided dsh-bridge report`. How it goes
+	// is DSHBridge.install. Owner only.
+	InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v1.InstallDSHBridgeResponse, error)
 	// The coding agents the owner added on this machine (custom agents):
 	// ACP agents started with the command given, listed and run as the
 	// built-in ones are. Kept in the machine's agents.json; the values of
@@ -772,6 +783,12 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("PrepareDSHBridge")),
 			connect.WithClientOptions(opts...),
 		),
+		installDSHBridge: connect.NewClient[v1.InstallDSHBridgeRequest, v1.InstallDSHBridgeResponse](
+			httpClient,
+			baseURL+MachineAdminServiceInstallDSHBridgeProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("InstallDSHBridge")),
+			connect.WithClientOptions(opts...),
+		),
 		listCustomAgents: connect.NewClient[v1.ListCustomAgentsRequest, v1.ListCustomAgentsResponse](
 			httpClient,
 			baseURL+MachineAdminServiceListCustomAgentsProcedure,
@@ -819,6 +836,7 @@ type machineAdminServiceClient struct {
 	sendDSHMessage      *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
 	interruptDSHSession *connect.Client[v1.InterruptDSHSessionRequest, v1.InterruptDSHSessionResponse]
 	prepareDSHBridge    *connect.Client[v1.PrepareDSHBridgeRequest, v1.PrepareDSHBridgeResponse]
+	installDSHBridge    *connect.Client[v1.InstallDSHBridgeRequest, v1.InstallDSHBridgeResponse]
 	listCustomAgents    *connect.Client[v1.ListCustomAgentsRequest, v1.ListCustomAgentsResponse]
 	saveCustomAgent     *connect.Client[v1.SaveCustomAgentRequest, v1.SaveCustomAgentResponse]
 	removeCustomAgent   *connect.Client[v1.RemoveCustomAgentRequest, v1.RemoveCustomAgentResponse]
@@ -987,6 +1005,15 @@ func (c *machineAdminServiceClient) PrepareDSHBridge(ctx context.Context, req *v
 	return nil, err
 }
 
+// InstallDSHBridge calls aide.machine.v1.MachineAdminService.InstallDSHBridge.
+func (c *machineAdminServiceClient) InstallDSHBridge(ctx context.Context, req *v1.InstallDSHBridgeRequest) (*v1.InstallDSHBridgeResponse, error) {
+	response, err := c.installDSHBridge.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListCustomAgents calls aide.machine.v1.MachineAdminService.ListCustomAgents.
 func (c *machineAdminServiceClient) ListCustomAgents(ctx context.Context, req *v1.ListCustomAgentsRequest) (*v1.ListCustomAgentsResponse, error) {
 	response, err := c.listCustomAgents.CallUnary(ctx, connect.NewRequest(req))
@@ -1096,6 +1123,14 @@ type MachineAdminServiceHandler interface {
 	// and writes the plugin's package into the DSH home. Changes nothing DSH
 	// reads. Owner only.
 	PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v1.PrepareDSHBridgeResponse, error)
+	// Installs the bridge plugin by handing it to DSH (工单 #59): prepares the
+	// package as PrepareDSHBridge does, then starts a DSH session in the
+	// plugin's folder whose task is to install it in DSH Desktop's profile,
+	// find and clear what stops it (a file a running program holds, a broken
+	// package left by an earlier failure), restart DSH Desktop, check the
+	// plugin answers, and report with `aided dsh-bridge report`. How it goes
+	// is DSHBridge.install. Owner only.
+	InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v1.InstallDSHBridgeResponse, error)
 	// The coding agents the owner added on this machine (custom agents):
 	// ACP agents started with the command given, listed and run as the
 	// built-in ones are. Kept in the machine's agents.json; the values of
@@ -1225,6 +1260,12 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		connect.WithSchema(machineAdminServiceMethods.ByName("PrepareDSHBridge")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineAdminServiceInstallDSHBridgeHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceInstallDSHBridgeProcedure,
+		svc.InstallDSHBridge,
+		connect.WithSchema(machineAdminServiceMethods.ByName("InstallDSHBridge")),
+		connect.WithHandlerOptions(opts...),
+	)
 	machineAdminServiceListCustomAgentsHandler := connect.NewUnaryHandlerSimple(
 		MachineAdminServiceListCustomAgentsProcedure,
 		svc.ListCustomAgents,
@@ -1287,6 +1328,8 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceInterruptDSHSessionHandler.ServeHTTP(w, r)
 		case MachineAdminServicePrepareDSHBridgeProcedure:
 			machineAdminServicePrepareDSHBridgeHandler.ServeHTTP(w, r)
+		case MachineAdminServiceInstallDSHBridgeProcedure:
+			machineAdminServiceInstallDSHBridgeHandler.ServeHTTP(w, r)
 		case MachineAdminServiceListCustomAgentsProcedure:
 			machineAdminServiceListCustomAgentsHandler.ServeHTTP(w, r)
 		case MachineAdminServiceSaveCustomAgentProcedure:
@@ -1374,6 +1417,10 @@ func (UnimplementedMachineAdminServiceHandler) InterruptDSHSession(context.Conte
 
 func (UnimplementedMachineAdminServiceHandler) PrepareDSHBridge(context.Context, *v1.PrepareDSHBridgeRequest) (*v1.PrepareDSHBridgeResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.PrepareDSHBridge is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) InstallDSHBridge(context.Context, *v1.InstallDSHBridgeRequest) (*v1.InstallDSHBridgeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.InstallDSHBridge is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) ListCustomAgents(context.Context, *v1.ListCustomAgentsRequest) (*v1.ListCustomAgentsResponse, error) {

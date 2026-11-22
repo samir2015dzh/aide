@@ -253,7 +253,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                 if (m != null && b.coding) {
                     item(key = "identity") { Identity(b, m, edit) }
                     item(key = "bench") {
-                        machineAgents(m, now).firstOrNull { it.agent == b.agent }?.let { AgentWorkbench(model, m, it) }
+                        machineAgents(m, now).firstOrNull { it.agent == b.agent }?.let { AgentWorkbench(model, m, it, openSession) }
                     }
                 }
                 b.client?.let { c ->

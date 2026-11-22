@@ -298,7 +298,18 @@
       "step": "In DSH Desktop's Plugins page, install from a file or path:",
       "copy": "Copy",
       "copied": "Copied",
-      "restart": "Restart DSH Desktop. You can turn it off or remove it on the same page later."
+      "restart": "Restart DSH Desktop. You can turn it off or remove it on the same page later.",
+      "handOver": "Have DSH install it",
+      "again": "Have DSH try again",
+      "handing": "Handing it to DSH…",
+      "handOverNote": "DSH installs it on that computer, restarts DSH Desktop, and tells Aide when it is done: no Plugins page for you.",
+      "openTask": "Open the install task",
+      "manual": "If DSH can't: install it by hand",
+      "state": {
+        "DSH_BRIDGE_INSTALL_STATE_RUNNING": "DSH is installing it and tells Aide when it is done.",
+        "DSH_BRIDGE_INSTALL_STATE_FAILED": "DSH couldn't install it:",
+        "DSH_BRIDGE_INSTALL_STATE_RESTART": "Installed: takes effect once DSH Desktop restarts."
+      }
     },
     "takeoverToSend": "Turn on Take Over to send this session messages",
     "toolArgs": "Arguments",

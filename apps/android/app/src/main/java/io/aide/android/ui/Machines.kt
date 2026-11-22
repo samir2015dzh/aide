@@ -112,7 +112,7 @@ private val whenFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT
  * with it there, those under way run on, nothing is removed.
  */
 @Composable
-internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry) {
+internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSession: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val now = Instant.now()
     Column(Modifier.fillMaxWidth().aideInset().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -129,6 +129,13 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry) {
                         Text(p.was?.let { t("Last: $it", "上次：$it") } ?: p.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(0.58f))
                     }
                     if (p.was == null) p.lacks?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = aide.faint) }
+                    // The bridge plugin (工单 #59): handed to DSH with one press; its task to open while it works or after.
+                    if (p.was == null && (p.install || p.installSession.isNotEmpty())) Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (p.install && m.online && m.unreachable.isEmpty()) TextButton(onClick = { scope.launch { model.installDSHBridge(m.machineId) } }) {
+                            Text(if (p.installSession.isNotEmpty()) t("Have DSH try again", "再让 DSH 试一次") else t("Have DSH install it", "让 DSH 装好它"))
+                        }
+                        if (p.installSession.isNotEmpty()) TextButton(onClick = { openSession(p.installSession) }) { Text(t("Open the install task", "看代装任务")) }
+                    }
                 }
             }
         }

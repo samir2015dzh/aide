@@ -578,6 +578,16 @@ func (l *localService) PrepareDSHBridge(ctx context.Context, req *localv1.Prepar
 	return l.o().PrepareDSHBridge(ctx, req)
 }
 
+func (l *localService) InstallDSHBridge(ctx context.Context, req *localv1.InstallDSHBridgeRequest) (*machinev1.InstallDSHBridgeResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.InstallDSHBridge(ctx)
+	}
+	return l.o().InstallDSHBridge(ctx, req)
+}
+
 // GetDiagnostics describes this Mac: what it is to its owner, then its
 // machine, when it shares its coding agents.
 func (l *localService) GetDiagnostics(ctx context.Context, _ *localv1.GetDiagnosticsRequest) (*localv1.GetDiagnosticsResponse, error) {

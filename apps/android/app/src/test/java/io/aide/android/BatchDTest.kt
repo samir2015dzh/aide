@@ -44,8 +44,10 @@ class BatchDTest {
     @Test
     fun dshAndItsPluginInEachState() {
         fun rows(b: DSHBridge) = machineConnections(machine(AgentStatus("deepseek", available = true, loggedIn = true, version = "1.4.0", checkedAt = checked, dshBridge = b)), now).rows
-        assertEquals("Not prepared", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", latestVersion = "0.3.0"))[1].text)
-        assertEquals("Prepared, not installed", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", packagePath = "/x.tgz"))[1].text)
+        // Prepared or not is Aide's business (工单 #59): not installed either way, and DSH can be asked to install it.
+        assertEquals("Not installed", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", latestVersion = "0.3.0"))[1].text)
+        assertEquals("Not installed", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", packagePath = "/x.tgz"))[1].text)
+        assertTrue(rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED"))[1].install)
         val ok = rows(DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.3.0", latestVersion = "0.3.0"))
         assertEquals(listOf(ConnState.OK, ConnState.OK), ok.map { it.state })
         assertEquals(BridgeView.OUTDATED, bridgeView(DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.2.9", latestVersion = "0.3.0")))

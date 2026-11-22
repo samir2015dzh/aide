@@ -286,7 +286,18 @@
       "step": "在 DSH Desktop 的「插件」页，从文件或路径安装：",
       "copy": "复制",
       "copied": "已复制",
-      "restart": "重启 DSH Desktop。以后在同一页可以关闭或移除它。"
+      "restart": "重启 DSH Desktop。以后在同一页可以关闭或移除它。",
+      "handOver": "让 DSH 装好它",
+      "again": "再让 DSH 试一次",
+      "handing": "正在交给 DSH…",
+      "handOverNote": "DSH 会在那台电脑上自己装、自己重启 DSH Desktop，装完告诉 Aide；你不用去插件页。",
+      "openTask": "看代装任务",
+      "manual": "DSH 装不了时：手动安装",
+      "state": {
+        "DSH_BRIDGE_INSTALL_STATE_RUNNING": "DSH 正在代装，装完会告诉 Aide。",
+        "DSH_BRIDGE_INSTALL_STATE_FAILED": "代装没成功：",
+        "DSH_BRIDGE_INSTALL_STATE_RESTART": "已装好，重启 DSH Desktop 后生效。"
+      }
     },
     "takeoverToSend": "开启接管后可向此会话发送消息",
     "toolArgs": "参数",

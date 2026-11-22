@@ -102,7 +102,7 @@ func (n *Machine) DSHSessions(ctx context.Context) (*machinev1.ListDSHSessionsRe
 		return nil, err
 	}
 	if home, err := dshnative.Home(shellenv.Environ()); err == nil {
-		res.Bridge = dshBridge(ctx, home)
+		res.Bridge = n.dshBridgeState(ctx, home)
 		res.DshHome = home
 	}
 	return res, nil

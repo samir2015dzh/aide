@@ -342,6 +342,9 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /** Hands installing the DSH bridge plugin to DSH there (工单 #59); the bridge's row follows by itself. */
+    suspend fun installDSHBridge(machineId: String): Boolean = report { api!!.installDSHBridge(machineId) } != null
+
     /** Asks each machine whose findings are old to check its agents again, quietly: nothing is said if one can't. */
     suspend fun checkStaleAgents(now: java.time.Instant) {
         val api = api ?: return

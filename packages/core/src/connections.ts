@@ -1,5 +1,5 @@
 import type { Client, Machine } from "@aide/proto/local";
-import { AgentLoginState, AgentProblem, DSHBridgeState, type AgentStatus, type DSHBridge } from "@aide/proto/machine";
+import { AgentLoginState, AgentProblem, DSHBridgeInstallState, DSHBridgeState, type AgentStatus, type DSHBridge } from "@aide/proto/machine";
 import { kindNamed } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
@@ -57,10 +57,24 @@ export type MachineConnections = {
 const order: ConnState[] = ["missing", "unknown", "partial", "checking", "ok"];
 
 /** The DSH bridge plugin's state as the owner tells it apart (工单 #46). */
-export type BridgeView = "unprepared" | "prepared" | "installed" | "notRunning" | "outdated" | "unknown";
+export type BridgeView = "unprepared" | "prepared" | "installed" | "notRunning" | "outdated" | "unknown" | "installing" | "installFailed" | "installRestart";
 
+/**
+ * The bridge as the owner tells it apart (工单 #46), and the install handed to DSH while it is not answering yet
+ * (工单 #59): DSH at it, it failed (and why), or installed and waiting for DSH Desktop to restart.
+ */
 export function bridgeView(b: DSHBridge | undefined): BridgeView {
   if (!b) return "unknown";
+  if (b.state !== DSHBridgeState.DSH_BRIDGE_STATE_RUNNING) {
+    switch (b.install?.state) {
+      case DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RUNNING:
+        return "installing";
+      case DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED:
+        return "installFailed";
+      case DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RESTART:
+        return "installRestart";
+    }
+  }
   switch (b.state) {
     case DSHBridgeState.DSH_BRIDGE_STATE_RUNNING:
       return b.latestVersion && b.version && newer(b.latestVersion, b.version) ? "outdated" : "installed";
@@ -226,6 +240,19 @@ function dshRows(a: AgentStatus): ConnRow[] {
     case "outdated":
       bridge.lacks = t("conn.bridgeOutdated");
       bridge.fix = "prepareBridge";
+      break;
+    case "installing":
+      bridge.state = "checking";
+      bridge.lacks = t("conn.bridgeInstalling");
+      bridge.fix = "installBridge";
+      break;
+    case "installFailed":
+      bridge.lacks = b?.install?.reason || t("conn.bridgeInstallFailed");
+      bridge.fix = "installBridge";
+      break;
+    case "installRestart":
+      bridge.lacks = [t("conn.bridgeInstallRestart"), b?.install?.reason].filter(Boolean).join(" ");
+      bridge.fix = "openDSH";
       break;
     default:
       bridge.state = "unknown";

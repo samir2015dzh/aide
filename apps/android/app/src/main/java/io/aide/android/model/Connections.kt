@@ -29,6 +29,10 @@ data class ConnRow(
     val login: Boolean = false,
     /** Not known now: what it said when last checked (工单 #53: said as such under its entry, never as now). */
     val was: String? = null,
+    /** Installing it can be handed to DSH from here (the DSH bridge plugin, 工单 #59). */
+    val install: Boolean = false,
+    /** The DSH session installing it, or that last tried. */
+    val installSession: String = "",
 )
 
 data class MachineConnections(val reachable: Boolean, val rows: List<ConnRow>, val state: ConnState)
@@ -36,9 +40,16 @@ data class MachineConnections(val reachable: Boolean, val rows: List<ConnRow>, v
 private const val NOT_FOUND = "AGENT_PROBLEM_NOT_FOUND"
 private const val APP_WITHOUT_CLI = "AGENT_PROBLEM_APP_WITHOUT_CLI"
 
-enum class BridgeView { UNPREPARED, PREPARED, INSTALLED, NOT_RUNNING, OUTDATED, UNKNOWN }
+enum class BridgeView { UNPREPARED, PREPARED, INSTALLED, NOT_RUNNING, OUTDATED, UNKNOWN, INSTALLING, INSTALL_FAILED, INSTALL_RESTART }
 
-fun bridgeView(b: DSHBridge?): BridgeView = when (b?.state) {
+/** As the desktop's bridgeView: the install handed to DSH (工单 #59) while the plugin does not answer yet. */
+fun bridgeView(b: DSHBridge?): BridgeView = if (b != null && b.state != "DSH_BRIDGE_STATE_RUNNING" && b.install?.state in setOf("DSH_BRIDGE_INSTALL_STATE_RUNNING", "DSH_BRIDGE_INSTALL_STATE_FAILED", "DSH_BRIDGE_INSTALL_STATE_RESTART")) {
+    when (b.install?.state) {
+        "DSH_BRIDGE_INSTALL_STATE_RUNNING" -> BridgeView.INSTALLING
+        "DSH_BRIDGE_INSTALL_STATE_FAILED" -> BridgeView.INSTALL_FAILED
+        else -> BridgeView.INSTALL_RESTART
+    }
+} else when (b?.state) {
     null -> BridgeView.UNKNOWN
     "DSH_BRIDGE_STATE_RUNNING" -> if (b.latestVersion.isNotEmpty() && b.version.isNotEmpty() && newer(b.latestVersion, b.version)) BridgeView.OUTDATED else BridgeView.INSTALLED
     "DSH_BRIDGE_STATE_INCOMPATIBLE" -> BridgeView.OUTDATED
@@ -152,16 +163,19 @@ private fun dshRows(a: AgentStatus): List<ConnRow> {
     val b = a.dshBridge
     val v = bridgeView(b)
     val gap = t(
-        "Works: DSH tasks Aide starts. Doesn't: seeing or taking over the sessions you open in DSH Desktop yourself, until the plugin is installed.",
-        "能用：Aide 发起的 DSH 任务。不能用：看见、接管你在 DSH Desktop 里自己开的会话——装好插件后才行。",
+        "Works: DSH tasks Aide starts. Doesn't: seeing or taking over the sessions you open in DSH Desktop yourself, until the plugin is installed. Press “Have DSH install it”: DSH installs it, restarts, and tells Aide when it is done.",
+        "能用：Aide 发起的 DSH 任务。不能用：看见、接管你在 DSH Desktop 里自己开的会话——装好插件后才行。点「让 DSH 装好它」，DSH 会自己装、自己重启、装完告诉 Aide。",
     )
     val bridgeTitle = t("DSH bridge plugin", "DSH 桥接插件")
+    val session = b?.install?.sessionId.orEmpty()
     val bridge = when (v) {
         BridgeView.INSTALLED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.OK, t("Installed · ${b?.version}", "已安装 · ${b?.version}"), null, at)
         BridgeView.NOT_RUNNING -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Installed, DSH Desktop not open", "已安装，DSH Desktop 没开"), t("Open DSH Desktop (with the plugin turned on) to see and take over its own sessions.", "打开 DSH Desktop（插件保持开启），才能看见、接管它自己开的会话。"), at)
-        BridgeView.UNPREPARED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Not prepared", "未备包"), "$gap " + t("Prepare it in Aide on the computer: Settings › Connect › DSH.", "在电脑上的 Aide 里备包：设置 › 连接 › DSH。"), at)
-        BridgeView.PREPARED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Prepared, not installed", "已备包，未安装"), "$gap " + t("Install ${b?.packagePath} in DSH Desktop › Plugins.", "到 DSH Desktop › 插件 里安装 ${b?.packagePath}。"), at)
-        BridgeView.OUTDATED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Out of date (${b?.version}; latest ${b?.latestVersion})", "版本过旧（${b?.version}，最新 ${b?.latestVersion}）"), t("Prepare the new package and install it in DSH Desktop › Plugins: the old one can't be used to take over sessions.", "重新备包，到 DSH Desktop › 插件 里装新包：旧版接管不了会话。"), at)
+        BridgeView.UNPREPARED, BridgeView.PREPARED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Not installed", "未安装"), gap, at, install = true)
+        BridgeView.OUTDATED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Out of date (${b?.version}; latest ${b?.latestVersion})", "版本过旧（${b?.version}，最新 ${b?.latestVersion}）"), t("The old one can't take over sessions: press “Have DSH install it” and DSH puts in the new one.", "旧版接管不了会话：点「让 DSH 装好它」，DSH 会自己换上新版。"), at, install = true)
+        BridgeView.INSTALLING -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.CHECKING, t("DSH is installing it…", "DSH 正在代装…"), t("DSH installs the plugin on that computer and restarts DSH Desktop; it tells Aide when it is done, and this line updates by itself.", "DSH 在那台电脑上装插件、重启 DSH Desktop，装完会告诉 Aide，这一行会自己更新。"), at, installSession = session)
+        BridgeView.INSTALL_FAILED -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("DSH couldn't install it", "代装没成功"), b?.install?.reason?.ifEmpty { null } ?: t("DSH didn't install it and didn't say why: open its install task to see how far it got.", "DSH 没装上，也没说原因：打开它的代装任务看做到了哪一步。"), at, install = true, installSession = session)
+        BridgeView.INSTALL_RESTART -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Installed, waiting for DSH Desktop to restart", "已装好，等 DSH Desktop 重启"), listOfNotNull(t("Takes effect once DSH Desktop restarts (this line turns “Installed” as soon as the plugin answers).", "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。"), b?.install?.reason?.ifEmpty { null }).joinToString(" "), at, installSession = session)
         BridgeView.UNKNOWN -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.UNKNOWN, t("Unknown", "状态未知"), null, at)
     }
     val dsh = ConnRow(
