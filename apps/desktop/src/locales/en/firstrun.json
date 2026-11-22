@@ -164,7 +164,10 @@
     "pausedNote": "Paused: no new session starts with it on this computer until you resume it.",
     "pausedUntilNote": "Paused: no new session starts with it on this computer; it resumes by itself when its usage resets, {{when}}. You can resume it now too.",
     "autoResumed": "Last resumed by itself at {{when}}.",
-    "allPaused": "Every agent on this computer is paused: resume one to start a session."
+    "allPaused": "Every agent on this computer is paused: resume one to start a session.",
+    "renameItem": "Rename…",
+    "renamed": "Renamed",
+    "defaultName": "Default name: rename it"
   },
   "erased": {
     "done": "Aide erased everything",

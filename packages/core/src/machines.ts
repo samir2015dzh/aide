@@ -53,3 +53,8 @@ export function modelTitle(id: string, models: AgentStatus["models"] = []): stri
 export function projectTitle(p: { name?: string; projectId: string }): string {
   return p.name?.trim() || p.projectId;
 }
+
+/** A project id the owner most likely did not choose (an agent's default folder name): its screens suggest naming it. */
+export function defaultProjectName(p: { name?: string; projectId: string }): boolean {
+  return !p.name?.trim() && /^(project|projects|workspace|workspaces|default|untitled|new-project|my-project|code|repo|src|test|tmp)(-\d+)?$/.test(p.projectId);
+}

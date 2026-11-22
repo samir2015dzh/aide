@@ -1,19 +1,29 @@
 import { expect, test } from "@playwright/test";
 import { launch, sessionList } from "./app";
 
-// Contacts (docs/personas.md): the owner adds a contact and writes to it.
-// The first message starts a task with the contact's machine, project and
-// agent, which opens as any other; the next goes on in the same task.
-// Deleting the contact keeps its task.
-test("adding a contact, writing to it twice, deleting it", async () => {
+// Hand Work To (工单 #41, docs/personas.md): every agent the machines detected
+// is there with no contact made first, and work goes to it at once. A contact
+// is a custom face for one of them, on the same line: the first message starts
+// a task with the contact's machine, project and agent, which opens as any
+// other; the next goes on in the same task. Deleting the contact keeps its task.
+test("handing work to a detected agent with no contact; adding a contact, writing to it twice, deleting it", async () => {
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1440, height: 800 });
   const list = await sessionList(page);
   await list.waitFor();
-  const contacts = page.locator(".side-h").getByRole("button", { name: "联系人" });
+  const contacts = page.locator(".side-h").getByRole("button", { name: "派活" });
   await contacts.click();
-  const sheet = page.getByRole("dialog", { name: "联系人" });
-  await expect(sheet.getByText("还没有联系人")).toBeVisible();
+  const sheet = page.getByRole("dialog", { name: "派活给谁" });
+  // No contact yet, and the agents are all there, by machine: work goes to one at once.
+  const gemini = sheet.getByRole("option", { name: /^Gemini CLI/ });
+  await expect(gemini).toBeVisible();
+  await expect(sheet.getByRole("group", { name: "owner-mac" })).toBeVisible();
+  await gemini.click();
+  await sheet.getByLabel("发给 Gemini CLI 的消息").fill("say 直接派活");
+  await sheet.getByRole("button", { name: "发送" }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByRole("heading", { name: "say 直接派活" })).toBeVisible();
+  await contacts.click();
 
   // Added: a name, an avatar, its machine, agent and project.
   await sheet.getByRole("button", { name: "添加联系人…" }).click();
@@ -27,7 +37,7 @@ test("adding a contact, writing to it twice, deleting it", async () => {
 
   // Written to: a new task, opened.
   await expect(sheet.getByRole("option", { name: /前端助手/ })).toHaveAttribute("aria-selected", "true");
-  await expect(sheet.getByText("下一条消息会按它的设置新开一个任务。")).toBeVisible();
+  await expect(sheet.getByText("会在项目「demo」里新开一个任务。")).toBeVisible();
   await sheet.getByLabel("发给 前端助手 的消息").fill("say 联系人第一句");
   await sheet.getByRole("button", { name: "发送" }).click();
   await expect(sheet).toBeHidden();
@@ -52,7 +62,8 @@ test("adding a contact, writing to it twice, deleting it", async () => {
   await contacts.click();
   await sheet.getByRole("option", { name: /前端助手/ }).getByRole("button", { name: "编辑" }).click();
   await page.getByRole("dialog", { name: "编辑联系人" }).getByRole("button", { name: "删除联系人" }).click();
-  await expect(sheet.getByText("还没有联系人")).toBeVisible();
+  await expect(sheet.getByRole("option", { name: /前端助手/ })).toHaveCount(0);
+  await expect(gemini).toBeVisible(); // the agent itself stays
   await sheet.getByRole("button", { name: "取消" }).click();
   await expect(list.getByText("say 联系人第一句")).toBeVisible();
   await app.close();

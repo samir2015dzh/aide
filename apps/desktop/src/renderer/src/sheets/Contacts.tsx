@@ -32,12 +32,17 @@ const blank: Draft = { personaId: "", name: "", icon: "robot", color: personaCol
  * goes on in the session it talks in. Contacts are kept on the owner's server; when it keeps none yet (an older
  * relay), the agents are listed all the same and the note says so in words.
  */
+/** Whom work was handed to last, while the app runs. */
+let lastChosen = "";
+
 export function ContactsSheet() {
   const { t } = useTranslation("sheets");
   const st = useStore();
   const [list, setList] = useState<Persona[]>();
   const [listError, setListError] = useState("");
-  const [chosen, setChosen] = useState("");
+  // Opened again, it is on whom work went last.
+  const [chosen, setChosenState] = useState(lastChosen);
+  const setChosen = (k: string) => setChosenState((lastChosen = k));
   const [project, setProject] = useState("");
   const [editing, setEditing] = useState<Draft>();
   const [text, setText] = useState("");
@@ -57,7 +62,7 @@ export function ContactsSheet() {
   useEffect(() => void load(), [load]);
   const groups = dispatchTargets(st.machines, list ?? []);
   const all = groups.flatMap((g) => g.targets);
-  const target = all.find((x) => x.key === chosen) ?? all.find((x) => x.ready);
+  const target = all.find((x) => x.key === chosen || (chosen.startsWith("p:") && x.persona?.personaId === chosen.slice(2))) ?? all.find((x) => x.ready);
   const p = target?.persona;
   const current = p?.sessionId ? st.sessions.find((s) => s.sessionId === p.sessionId) : undefined;
   const projects = target ? projectsFor(st.projects.filter((x) => x.machineId === target.machineId), target.agent) : [];
@@ -78,6 +83,7 @@ export function ContactsSheet() {
   const send = async (e: FormEvent) => {
     e.preventDefault();
     if (!target || !canSend) return;
+    setChosen(target.persona ? `p:${target.persona.personaId}` : target.key);
     await act.go(async () => {
       if (p && (!proj || proj.projectId === p.projectId)) {
         const res = await local.talkToPersona({ personaId: p.personaId, text, idempotencyKey: key });

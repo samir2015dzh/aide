@@ -56,7 +56,9 @@
     "expiresIn_other": "Expires in {{count}} days",
     "machineSettings": "Machine Settings…",
     "notYet": "No tasks yet",
-    "accepting": "Taking new tasks"
+    "accepting": "Taking new tasks",
+    "localAgent": "Coding agent on this machine",
+    "online": "Online"
   },
   "working": {
     "title": "Active Now",

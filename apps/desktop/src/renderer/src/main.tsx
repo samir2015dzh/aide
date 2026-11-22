@@ -4,8 +4,10 @@ import { createRoot } from "react-dom/client";
 import { i18n } from "../../shared/i18n";
 import { App } from "./App";
 import { releaseWhileHidden } from "./memory";
+import { stillWhileHidden } from "./motion";
 import { platform } from "./platform";
 import "./styles.css";
+import "./motion.css";
 
 document.documentElement.dataset.platform = platform;
 
@@ -13,6 +15,8 @@ document.documentElement.dataset.platform = platform;
 window.aide?.onWindowFocus((focused) => document.documentElement.classList.toggle("blurred", !focused));
 // Memory a long conversation held goes back while the window is hidden (memory.ts).
 releaseWhileHidden();
+// Nothing moves while the window is hidden (motion.ts).
+stillWhileHidden();
 
 createRoot(document.getElementById("root")!).render(
   <I18nextProvider i18n={i18n}>

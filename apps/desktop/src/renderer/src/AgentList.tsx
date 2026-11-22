@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
 import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
-import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@aide/core";
+import { codingAgentIds, codingAgentTitle, defaultProjectName, projectIdFromFolder, projectTitle } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
@@ -568,15 +568,25 @@ const save = (p: Project, agents: string[], workspace = p.workspace) =>
 function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
+  // Its name as the owner knows it (工单 #50): changed in place; empty goes back to its id.
+  const [naming, setNaming] = useState<string>();
+  const rename = async (name: string) => {
+    setNaming(undefined);
+    if (name.trim() === (p.name ?? "")) return;
+    await st.run(() => local.renameProject({ machineId: p.machineId, projectId: p.projectId, name: name.trim() }), t("prepare.renamed"));
+  };
   const worktree = p.workspace !== Workspace.IN_PLACE;
   const how = worktree ? t("prepare.worktree") : t("prepare.inPlace");
   const more = async () => {
     const id = await window.aide?.popupMenu([
+      { id: "rename", label: t("prepare.renameItem") },
+      { separator: true },
       { id: "worktree", label: t("prepare.worktreeItem"), checked: worktree },
       { id: "inPlace", label: t("prepare.inPlaceItem"), checked: !worktree },
       { separator: true },
       { id: "remove", label: agent ? t("prepare.removeItem", { agent: codingAgentTitle(agent) }) : t("machineOnly.removeProject") },
     ]);
+    if (id === "rename") return setNaming(projectTitle(p));
     if (id === "worktree" && !worktree) await st.run(() => save(p, p.agents, Workspace.WORKTREE));
     if (id === "inPlace" && worktree) await st.run(() => save(p, p.agents, Workspace.IN_PLACE));
     if (id === "remove") {
@@ -586,11 +596,27 @@ function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
     }
   };
   return (
-    <div className="ag-prj" role="group" aria-label={p.projectId}>
+    <div className="ag-prj" role="group" aria-label={projectTitle(p)}>
       <Icon name="folder" />
       <div className="ag-prj-t">
         <span>
-          <b>{p.projectId}</b>
+          {naming !== undefined ? (
+            <input
+              className="field sm"
+              autoFocus
+              maxLength={64}
+              aria-label={t("prepare.renameItem")}
+              value={naming}
+              onChange={(e) => setNaming(e.target.value)}
+              onBlur={() => void rename(naming)}
+              onKeyDown={(e) => (e.key === "Enter" ? void rename(naming) : e.key === "Escape" && setNaming(undefined))}
+            />
+          ) : (
+            <b title={p.name ? p.projectId : undefined}>{projectTitle(p)}</b>
+          )}
+          {naming === undefined && defaultProjectName(p) && (
+            <button className="link sm" onClick={() => setNaming("")}>{t("prepare.defaultName")}</button>
+          )}
           <em>{agent ? how : [how, ...p.agents.map(codingAgentTitle)].join(" · ")}</em>
         </span>
         <span className="mono" title={p.path}>

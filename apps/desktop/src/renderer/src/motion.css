@@ -1,0 +1,11 @@
+/* The app's motion language (工单 #47), the same as the Android app's (Theme.kt Motion): three durations and one
+   easing; "working" is one gentle turn now and then, the same wherever something is at work (the map's hub, a
+   running task's mark), never a spinner here and a blink there. Motion comes from state: these classes go on only
+   while something runs. */
+:root{--motion-short:150ms;--motion-medium:240ms;--motion-long:320ms;--motion-ease:cubic-bezier(.2,0,0,1);--motion-work:7s}
+/* Working: still most of the time, then one turn (about a second of the period), so it reads as alive, not busy. */
+@keyframes aide-work{0%,84%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+.is-working{animation:aide-work var(--motion-work) var(--motion-ease) infinite;transform-origin:50% 50%}
+/* Hidden or minimized: nothing moves (motion.ts pauses the rest). */
+.window-hidden *,.window-hidden *::before,.window-hidden *::after{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){.is-working{animation:none}}

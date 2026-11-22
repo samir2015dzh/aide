@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { Trans, useTranslation } from "react-i18next";
 import type { Client, Machine, QueryWorkResponse } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
-import { agoText, codingAgentTitle, createdDate, dateOf, isActive, isFailed, longLived, monthDay, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
-import { AgentLogo, agentName, grantColor, Mark, type GrantLook } from "@aide/ui";
+import { agoText, codingAgentTitle, createdDate, dateOf, grantCategory, isActive, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
+import { AgentLogo, agentName, grantColor, kindNamed, Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { grantFace } from "../components";
 import { problemShort, problemsOf, severe } from "../health";
@@ -35,7 +35,7 @@ type Kind = "g" | "m" | "p";
 type Spot = { key: string; kind: Kind; x: number; y: number; w: number; h: number };
 type GrantNode = Spot & { kind: "g"; client: Client };
 type MachineNode = Spot & { kind: "m"; machine: Machine };
-type ProjectNode = Spot & { kind: "p"; machineId: string; projectId: string; online: boolean };
+type ProjectNode = Spot & { kind: "p"; machineId: string; projectId: string; online: boolean; name: string; agent?: string; machineName: string };
 type Extra = Spot & ExtraItem;
 type ExtraItem = { key: string; label: string; action?: () => void };
 type Path = { s: Session; keys: string[]; d: string };
@@ -65,18 +65,33 @@ function layout(st: Store, live: Session[]) {
   const byMachine = count((s) => s.machineId);
   const byProject = count((s) => projectKey(s.machineId, s.projectId));
 
-  const clients = st.clients
-    .filter((c) => !c.revoked)
-    .sort((a, b) => (byGrant.get(b.clientId) ?? 0) - (byGrant.get(a.clientId) ?? 0));
   const machines = only ? [] : [...st.machines].sort((a, b) => Number(b.local) - Number(a.local) || Number(b.online) - Number(a.online));
-  const projects = new Map<string, { machineId: string; projectId: string }>();
-  for (const s of live) projects.set(projectKey(s.machineId, s.projectId), { machineId: s.machineId, projectId: s.projectId });
-  for (const p of st.projects) projects.set(projectKey(p.machineId, p.projectId), { machineId: p.machineId, projectId: p.projectId });
+  // The two kinds of agent (所有者 2026-11-22): personal ones on the account's side (the left column); a coding
+  // agent on a machine that connects with a grant of its own (DSH on …) is drawn in its machine's node, its
+  // sessions starting there, so where it sits says whose it is (工单 #50).
+  const names = st.machines.map((m) => m.machineName);
+  const homeOf = new Map<string, string>();
+  for (const c of st.clients) {
+    const k = grantCategory(c.label, names);
+    const m = k.category === "local" ? st.machines.find((x) => x.machineName === k.machine) : undefined;
+    if (m && !only) homeOf.set(c.clientId, m.machineId);
+  }
+  const clients = st.clients
+    .filter((c) => !c.revoked && !homeOf.has(c.clientId))
+    .sort((a, b) => (byGrant.get(b.clientId) ?? 0) - (byGrant.get(a.clientId) ?? 0));
+  // A project is shown as machine + coding agent + project (工单 #50): by the name the owner gave it, with the
+  // agent it is for when it is for one, and kept beside the other projects of its machine.
+  type P = { machineId: string; projectId: string; name: string; agent?: string; machineName: string };
+  const projects = new Map<string, P>();
+  const machineName = (id: string) => st.machines.find((m) => m.machineId === id)?.machineName ?? "";
+  for (const s of live) projects.set(projectKey(s.machineId, s.projectId), { machineId: s.machineId, projectId: s.projectId, name: s.projectId, agent: s.agent, machineName: machineName(s.machineId) });
+  for (const p of st.projects)
+    projects.set(projectKey(p.machineId, p.projectId), { machineId: p.machineId, projectId: p.projectId, name: projectTitle(p), agent: p.agents.length === 1 ? p.agents[0] : undefined, machineName: machineName(p.machineId) });
   const machineRank = new Map(machines.map((m, i) => [m.machineId, i]));
   const projectList = [...projects.entries()].sort(
     ([ka, a], [kb, b]) =>
-      Number((byProject.get(kb) ?? 0) > 0) - Number((byProject.get(ka) ?? 0) > 0) ||
-      (machineRank.get(a.machineId) ?? 99) - (machineRank.get(b.machineId) ?? 99),
+      (machineRank.get(a.machineId) ?? 99) - (machineRank.get(b.machineId) ?? 99) ||
+      Number((byProject.get(kb) ?? 0) > 0) - Number((byProject.get(ka) ?? 0) > 0),
   );
 
   const extras: Extra[] = [];
@@ -127,9 +142,14 @@ function layout(st: Store, live: Session[]) {
   }
   const paths: Path[] = [];
   for (const s of live) {
-    const a = at.get(grantKey(s.createdBy));
     const b = at.get(machineKey(s.machineId));
     const c = at.get(projectKey(s.machineId, s.projectId));
+    // Started by a coding agent on this machine: from its machine to the project.
+    if (homeOf.get(s.createdBy) === s.machineId && b && c) {
+      paths.push({ s, keys: [b.key, b.key, c.key], d: `M${b.x + b.w} ${b.y} ${curve(b.x + b.w, b.y, c.x, c.y)}` });
+      continue;
+    }
+    const a = at.get(grantKey(s.createdBy));
     if (only && a && c) {
       paths.push({ s, keys: [a.key, c.key], d: `M${a.x + a.w} ${a.y} ${curve(a.x + a.w, a.y, hub.l, hub.y)} L${hub.r} ${hub.y} ${curve(hub.r, hub.y, c.x, c.y)}` });
       continue;
@@ -140,7 +160,7 @@ function layout(st: Store, live: Session[]) {
       `${curve(hub.r, hub.y, b.x, b.y)} L${b.x + b.w} ${b.y} ${curve(b.x + b.w, b.y, c.x, c.y)}`;
     paths.push({ s, keys: [a.key, b.key, c.key], d });
   }
-  return { H, hub, grants, machines: machineNodes, projects: projectNodes, extras, edges, paths, byGrant, byMachine, byProject, at };
+  return { H, hub, grants, machines: machineNodes, projects: projectNodes, extras, edges, paths, byGrant, byMachine, byProject, at, homeOf };
 }
 
 /** The keys of the nodes a session runs through: its grant, machine and project. */
@@ -297,7 +317,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
           />
           <svg className="lmap-back" viewBox={`0 0 ${W} ${L.H}`} width={W} height={L.H} aria-hidden="true">
             {L.edges.map((e, i) => (
-              <path key={i} className={`lm-edge ${e.off ? "off" : ""} ${on(e.keys)} ${inScope(e.keys)}`} d={e.d} />
+              <path key={i} className={`lm-edge ${e.off ? "off" : "up"} ${on(e.keys)} ${inScope(e.keys)}`} d={e.d} />
             ))}
             {L.paths.map((p) => (
               <path
@@ -312,7 +332,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               !isRunning(p.s)
                 ? null
                 : [0, 1].map((j) => (
-                    <div key={`${p.s.sessionId}-${j}`} className="lm-comet" data-i={i} data-o={j / 2} data-dur={4200 + i * 600}>
+                    <div key={`${p.s.sessionId}-${j}`} className="lm-comet" style={cometColor(st, p.s)} data-i={i} data-o={j / 2} data-dur={4200 + i * 600}>
                       {[5, 4, 3, 2, 1, 0].map((t) => (
                         <i key={t} data-t={t} data-a={t ? 0.4 - t * 0.07 : 1} style={dot(t)} />
                       ))}
@@ -331,8 +351,11 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <ThisMacHub />
             ) : (
               <>
+                {/* At work while a task runs through it: the mark turns now and then; idle, it is still (工单 #47). */}
                 <div className="lmap-icon" style={{ width: HUB.s * 2, height: HUB.s * 2 }}>
-                  <Mark size={46} />
+                  <span className={running.length ? "is-working lmap-mark" : "lmap-mark"}>
+                    <Mark size={46} />
+                  </span>
                 </div>
                 <b>Aide</b>
                 <span>
@@ -356,9 +379,9 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <GrantIcon c={n.client} />
               <span className="lm-t">
                 <b>{agentName(n.client.label)}</b>
-                {only && !n.client.lastSeen ? <small>{t("map.notYet")}</small> : <Expiry c={n.client} now={now} />}
+                {only && !n.client.lastSeen ? <small>{t("map.notYet")}</small> : <Expiry c={n.client} now={now} local={grantCategory(n.client.label, []).category === "local" && !kindNamed(n.client.label)} />}
               </span>
-              <Tail online running={runningCount(L.paths, n.key)} />
+              <Tail online quiet running={runningCount(L.paths, n.key)} />
             </Node>
           ))}
           {L.machines.map((n) => (
@@ -377,13 +400,19 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
                 <b>{n.machine.local ? t("thisMac") : n.machine.machineName}</b>
                 <span className="lm-agents">
                   {(n.machine.status?.agents ?? []).filter((a) => a.available && !a.hidden).map((a) => (
-                    <span key={a.name} className={a.loggedIn ? "" : "out"} title={a.loggedIn ? undefined : t("map.notSignedIn")}>
+                    <span key={a.name} className={a.loggedIn ? "" : "out"} title={a.loggedIn ? codingAgentTitle(a.name) : `${codingAgentTitle(a.name)} · ${t("map.notSignedIn")}`}>
                       <AgentLogo agent={a.name} size={13} />
+                    </span>
+                  ))}
+                  {/* Coding agents of this machine with a grant of their own (DSH on …): drawn here, where they run. */}
+                  {st.clients.filter((c) => L.homeOf.get(c.clientId) === n.machine.machineId && !c.revoked).map((c) => (
+                    <span key={c.clientId} className="lm-home" title={`${agentName(c.label)} · ${t("map.localAgent")}`}>
+                      <GrantIcon c={c} size={13} />
                     </span>
                   ))}
                 </span>
               </span>
-              <MachineMeta m={n.machine} running={runningCount(L.paths, n.key)} />
+              <MachineMeta m={n.machine} running={runningCount(L.paths, n.key)} now={now} />
             </Node>
           ))}
           {L.projects.map((n) => (
@@ -391,13 +420,16 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               key={n.key}
               n={n}
               className={`p ${n.online ? "" : "off"} ${lightNode(n.key)}`}
-              label={n.projectId}
+              label={n.name}
               pinned={pick === n.key}
               onFocus={setHover}
               onClick={() => toggle(n.key)}
             >
-              <span className="lm-ic"><Icon name="folder" /></span>
-              <span className="lm-t"><b>{n.projectId}</b></span>
+              <span className="lm-ic">{n.agent ? <AgentLogo agent={n.agent} size={14} /> : <Icon name="folder" />}</span>
+              <span className="lm-t">
+                <b>{n.name}</b>
+                {L.machines.length > 1 && <small>{n.agent ? `${codingAgentTitle(n.agent)} · ` : ""}{n.machineName}</small>}
+              </span>
               <Tail online={n.online} running={runningCount(L.paths, n.key)} />
             </Node>
           ))}
@@ -514,11 +546,12 @@ function Today({ now, usage, running }: { now: Date; usage: QueryWorkResponse | 
 }
 
 /** A grant's second line: Personal agent, or how soon it expires once that is within a week. */
-function Expiry({ c, now }: { c: Client; now: Date }) {
+function Expiry({ c, now, local }: { c: Client; now: Date; local?: boolean }) {
   const { t } = useTranslation("overview");
   const until = dateOf(c.expiresAt);
   const days = until ? Math.ceil((until.getTime() - now.getTime()) / 86_400_000) : Infinity;
-  if (days > 7) return <small>{t("map.personalAgent")}</small>;
+  // Its kind, never a guess from how long it lasts: a coding agent on a machine is not a personal agent (工单 #50).
+  if (days > 7) return <small>{local ? t("map.localAgent") : t("map.personalAgent")}</small>;
   return <small className="soon">{days <= 0 ? t("map.expiresToday") : t("map.expiresIn", { count: days })}</small>;
 }
 
@@ -553,12 +586,20 @@ function ThisMacHub() {
 }
 
 /** A machine node's last word: what keeps it from working, paused, offline, or how many run. */
-function MachineMeta({ m, running }: { m: Machine; running: number }) {
+function MachineMeta({ m, running, now }: { m: Machine; running: number; now: Date }) {
   const { t } = useTranslation("overview");
   const p = problemsOf(m)[0];
   if (p && m.online) return <small className={`lm-meta ${severe(p) ? "bad" : "warn"}`}>{problemShort(p)}</small>;
   if (m.status?.paused) return <small className="lm-meta">{t("map.paused")}</small>;
-  return <Tail online={m.online} running={running} />;
+  // What its agents are connected to, the same account as its page's (工单 #49): a gap shows as a mark, the rows on hover.
+  const c = machineConnections(m, now);
+  const gap = m.online && (c.state === "missing" || c.state === "partial");
+  return (
+    <span className="lm-tail" title={c.summary}>
+      {gap && <i className={`lm-gap ${c.state}`} aria-label={c.summary} />}
+      <Tail online={m.online} running={running} />
+    </span>
+  );
 }
 
 /**
@@ -610,11 +651,11 @@ async function machineMenu(m: Machine) {
   if (id === "settings") window.aide?.openSettings(`machines/${m.machineId}`);
 }
 
-/** Offline, or how many of its sessions run now. */
-function Tail({ online, running }: { online: boolean; running: number }) {
+/** Offline, or how many of its sessions run now; else online, said, not left to a colour (工单 #43). quiet: say nothing then. */
+function Tail({ online, running, quiet }: { online: boolean; running: number; quiet?: boolean }) {
   const { t } = useTranslation("overview");
   if (!online) return <small className="lm-meta">{t("map.offline")}</small>;
-  if (!running) return null;
+  if (!running) return quiet ? null : <small className="lm-meta up"><i className="dotc on" />{t("map.online")}</small>;
   return (
     <span className="lm-badge" aria-label={t("runningCount", { count: running })}>
       <i />
@@ -623,15 +664,24 @@ function Tail({ online, running }: { online: boolean; running: number }) {
   );
 }
 
-function GrantIcon({ c }: { c: GrantLook }) {
+function GrantIcon({ c, size = 26 }: { c: GrantLook; size?: number }) {
   const label = c.label;
-  const face = grantFace(c, 26);
+  const face = grantFace(c, size);
   if (face) return face;
   return (
-    <span className="av" style={{ width: 26, height: 26, background: grantColor(label) }} aria-hidden="true">
+    <span className="av" style={{ width: size, height: size, fontSize: size < 20 ? 8 : undefined, background: grantColor(label) }} aria-hidden="true">
       {label.slice(0, 1).toUpperCase()}
     </span>
   );
+}
+
+/** A comet in the colour of who acts (the grant that started the session), when it has one of its own (工单 #47). */
+function cometColor(st: Store, s: Session): CSSProperties | undefined {
+  const c = st.clients.find((x) => x.clientId === s.createdBy);
+  const k = c ? kindNamed(c.label) : undefined;
+  // Too dark to see on the dark map (Grok Bot's near-black): the map's own ink.
+  if (!k?.color.startsWith("#") || parseInt(k.color.slice(1, 3), 16) + parseInt(k.color.slice(3, 5), 16) + parseInt(k.color.slice(5, 7), 16) < 120) return undefined;
+  return { "--c": k.color } as CSSProperties;
 }
 
 const pos = (n: Spot) => ({ left: n.x, top: n.y - n.h / 2, width: n.w, height: n.h });
