@@ -208,17 +208,6 @@
     "howToConnect": "How to Connect DSH, Claude Desktop…"
   },
   "contacts": {
-    "title": "Hand Work To",
-    "sub": "Every agent your machines detected is here, no contact needed first: pick one, choose the project, write, and it starts. A contact only gives one of them a name, an avatar and its own presets.",
-    "none": "No agent to hand work to is detected yet: connect one on a machine in Settings › Connect Agent.",
-    "edit": "Edit",
-    "current": "Working in:",
-    "fresh": "The next message starts a new task with its settings.",
-    "message": "Message to {{name}}",
-    "send": "Send",
-    "add": "Add Contact…",
-    "started": "{{name}} started “{{title}}”",
-    "sent": "Sent to {{name}} (“{{title}}”)",
     "addTitle": "Add Contact",
     "editTitle": "Edit Contact",
     "name": "Name",
@@ -226,20 +215,7 @@
     "color": "Colour",
     "presetsNote": "Changing the machine, project, agent, model, effort or mode starts a new task with the next message; a new name or avatar keeps the task. Deleting a contact keeps its tasks.",
     "delete": "Delete Contact",
-    "save": "Save",
-    "online": "Online",
-    "offline": "Offline",
-    "ready": "Ready",
-    "customize": "Customize…",
-    "why": {
-      "offline": "Its machine is offline",
-      "signedOut": "Not signed in",
-      "paused": "Paused",
-      "missing": "Not detected on this machine now"
-    },
-    "startedAgent": "{{agent}} started “{{title}}”",
-    "freshIn": "A new task starts in the project “{{project}}”.",
-    "noProject": "{{agent}} has no project on this machine yet: add one in Settings › Connect Agent."
+    "save": "Save"
   },
   "working": "Working…"
 }

@@ -6,7 +6,7 @@ import { MachineGroupHead, MachineTag, WritesTo } from "../MachineTag";
 import { groupByMachine, showGroups } from "../machineScope";
 import { useTranslation } from "react-i18next";
 import { agoText, dateOf, lostLine, transcript } from "@aide/core";
-import { DSHSessionState, type DSHBridge, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
+import { DSHBridgeInstallState, DSHSessionState, type DSHBridge, type DSHBridgeInstall, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
 import type { DSHSessionEntry, Unreachable } from "@aide/proto/local";
 import { EventView, type SessionEvent } from "@aide/proto/session";
 import { local } from "../api";
@@ -271,16 +271,28 @@ function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DSHSessio
 }
 
 /**
- * Installing the bridge plugin: DSH Desktop's own plugin manager does it (Plugins page), checking it
- * against the DSH there, restoring the profile when it fails, and turning it off or removing it later.
- * Aide prepares: it backs up DSH's configuration and writes the plugin's package, whose path it shows.
+ * Installing the bridge plugin (工单 #59): one button hands it to DSH on that machine, which installs it, finds and
+ * clears what stops it, restarts DSH Desktop and tells Aide how it went; the row above follows by itself. The way by
+ * hand (prepare the package, install it in DSH Desktop's Plugins page) stays, folded, for when DSH can't do it.
  */
-export function Install({ machineId, onPrepared, packagePath }: { machineId: string; onPrepared?: () => void; packagePath?: string }) {
+export function Install({ machineId, onPrepared, packagePath, install, said = true }: {
+  machineId: string; onPrepared?: () => void; packagePath?: string; install?: DSHBridgeInstall;
+  /** The row above already says how the install goes (the Connect page); false: this says it. */
+  said?: boolean;
+}) {
   const { t } = useTranslation("common");
   const [prepared, setPrepared] = useState<PrepareDSHBridgeResponse>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const handOver = () => {
+    setBusy(true);
+    setError("");
+    local.installDSHBridge({ machineId }).then(
+      () => (setBusy(false), onPrepared?.()),
+      (e) => (setError(errorText(e)), setBusy(false)),
+    );
+  };
   const prepare = () => {
     setBusy(true);
     setError("");
@@ -289,52 +301,47 @@ export function Install({ machineId, onPrepared, packagePath }: { machineId: str
       (e) => (setError(errorText(e)), setBusy(false)),
     );
   };
-  // Prepared before (the machine says where): how to install it, without preparing again.
-  if (!prepared && packagePath) {
-    return (
-      <div className="dsh-install" role="region" aria-label={t("dsh.install.title")}>
-        <ol>
-          <li>
-            {t("dsh.install.step")}
-            <span className="dsh-path">
-              <span className="mono sel-text">{packagePath}</span>
-              <button className="btn sm" onClick={() => navigator.clipboard.writeText(packagePath).then(() => setCopied(true))}>
-                {copied ? t("dsh.install.copied") : t("dsh.install.copy")}
-              </button>
-            </span>
-          </li>
-          <li>{t("dsh.install.restart")}</li>
-        </ol>
-      </div>
-    );
-  }
-  if (!prepared) {
-    return (
-      <div className="dsh-install">
-        <button className="btn sm" onClick={prepare} disabled={busy}>
-          {busy ? t("dsh.install.preparing") : t("dsh.install.prepare")}
-        </button>
-        {error && <span className="err" role="alert">{error}</span>}
-      </div>
-    );
-  }
+  const at = install?.state === DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RUNNING;
+  const pkg = prepared?.packagePath ?? packagePath;
+  const state = !said && install && install.state !== DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_DONE
+    ? t(`dsh.install.state.${DSHBridgeInstallState[install.state]}`, { defaultValue: "" }) + install.reason
+    : "";
   return (
     <div className="dsh-install" role="region" aria-label={t("dsh.install.title")}>
-      <b>{t("dsh.install.title")}</b>
-      <ol>
-        <li>{t("dsh.install.backedUp", { count: prepared.backedUp.length, dir: prepared.backupDir })}</li>
-        {!prepared.desktopProfile && <li className="warn">{t("dsh.install.noProfile")}</li>}
-        <li>
-          {t("dsh.install.step")}
-          <span className="dsh-path">
-            <span className="mono sel-text">{prepared.packagePath}</span>
-            <button className="btn sm" onClick={() => navigator.clipboard.writeText(prepared.packagePath).then(() => setCopied(true))}>
-              {copied ? t("dsh.install.copied") : t("dsh.install.copy")}
-            </button>
-          </span>
-        </li>
-        <li>{t("dsh.install.restart")}</li>
-      </ol>
+      {state && <p className={`dsh-install-state ${install?.state === DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED ? "warn" : ""}`} role="status">{state}</p>}
+      <div className="conn-acts">
+        {!at && (
+          <button className="btn sm primary" onClick={handOver} disabled={busy}>
+            {busy ? t("dsh.install.handing") : install?.state === DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED ? t("dsh.install.again") : t("dsh.install.handOver")}
+          </button>
+        )}
+        {install?.sessionId && (
+          <button className="btn sm" onClick={() => window.aide?.showInMain({ session: install.sessionId })}>{t("dsh.install.openTask")}</button>
+        )}
+        {!at && <span className="muted">{t("dsh.install.handOverNote")}</span>}
+      </div>
+      {error && <span className="err" role="alert">{error}</span>}
+      <details className="dsh-manual">
+        <summary>{t("dsh.install.manual")}</summary>
+        {!pkg ? (
+          <button className="btn sm" onClick={prepare} disabled={busy}>{busy ? t("dsh.install.preparing") : t("dsh.install.prepare")}</button>
+        ) : (
+          <ol>
+            {prepared && <li>{t("dsh.install.backedUp", { count: prepared.backedUp.length, dir: prepared.backupDir })}</li>}
+            {prepared && !prepared.desktopProfile && <li className="warn">{t("dsh.install.noProfile")}</li>}
+            <li>
+              {t("dsh.install.step")}
+              <span className="dsh-path">
+                <span className="mono sel-text">{pkg}</span>
+                <button className="btn sm" onClick={() => navigator.clipboard.writeText(pkg).then(() => setCopied(true))}>
+                  {copied ? t("dsh.install.copied") : t("dsh.install.copy")}
+                </button>
+              </span>
+            </li>
+            <li>{t("dsh.install.restart")}</li>
+          </ol>
+        )}
+      </details>
     </div>
   );
 }
@@ -437,7 +444,7 @@ function Composer({
           {b.key === "incompatible" && b.detail && <span>{b.detail}</span>}
         </p>
       )}
-      {takeover && (b.key === "notInstalled" || b.key === "incompatible") && <Install machineId={entry.machineId} />}
+      {takeover && (b.key === "notInstalled" || b.key === "incompatible") && <Install machineId={entry.machineId} packagePath={bridge?.packagePath} install={bridge?.install} said={false} onPrepared={failed} />}
       {asking && off && (
         <div className="dsh-confirm" role="dialog" aria-label={t("dsh.takeoverAsk")}>
           <b>{t("dsh.takeoverAsk")}</b>

@@ -187,7 +187,7 @@
     "unknown": "Unknown",
     "checking": "Checking…",
     "machineAway": "The machine can't be reached now: last known “{{text}}” ({{when}})",
-    "stale": "Not checked again since {{when}} (it said “{{text}}”)",
+    "stale": "Last checked {{when}}, not confirmed since (it said “{{text}}”)",
     "signedIn": "Signed in",
     "signedInVersion": "Signed in · {{version}}",
     "signedOut": "Not signed in",
@@ -205,16 +205,19 @@
     "cliNotFound": "Tasks for Claude run with the Claude Code command line, which is not on this machine.",
     "bridge": "DSH bridge plugin",
     "bridgeState": {
-      "unprepared": "Not prepared",
-      "prepared": "Prepared, not installed",
+      "unprepared": "Not installed",
+      "prepared": "Not installed",
       "installed": "Installed · {{version}}",
       "notRunning": "Installed, DSH Desktop not open",
       "outdated": "Out of date ({{version}}; latest {{latest}})",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "installing": "DSH is installing it…",
+      "installFailed": "DSH couldn't install it",
+      "installRestart": "Installed, waiting for DSH Desktop to restart"
     },
-    "bridgeGap": "Works: DSH tasks Aide starts. Doesn't: seeing or taking over the sessions you open in DSH Desktop yourself, until the plugin is installed.",
+    "bridgeGap": "Works: DSH tasks Aide starts. Doesn't: seeing or taking over the sessions you open in DSH Desktop yourself, until the plugin is installed. Press “Have DSH install it”: DSH installs it, restarts, and tells Aide when it is done.",
     "bridgeNotRunning": "Open DSH Desktop (with the plugin turned on) to see and take over its own sessions.",
-    "bridgeOutdated": "Prepare the new package and install it in DSH Desktop › Plugins: the old one can't be used to take over sessions.",
+    "bridgeOutdated": "The old one can't take over sessions: press “Have DSH install it” and DSH puts in the new one.",
     "agentSignedOut": "{{agent}} is installed but not signed in: no task can go to it here.",
     "loginWaiting": "Signing in…",
     "loginWaitingHint": "A browser opened on that computer: finish signing in there. This line updates by itself.",
@@ -223,11 +226,23 @@
     "loginTimedOut": "The last sign-in waited 10 minutes for the browser and was stopped. Try again.",
     "loginCancelled": "The last sign-in was cancelled.",
     "dshModels": "Models: {{models}}",
-    "entry": {
-      "ok": "Ready",
-      "partial": "Partly ready",
-      "missing": "Not ready",
-      "unknown": "Unknown"
-    }
+    "bridgeInstalling": "DSH installs the plugin on that computer and restarts DSH Desktop; it tells Aide when it is done, and this line updates by itself.",
+    "bridgeInstallFailed": "DSH didn't install it and didn't say why: open its install task to see how far it got.",
+    "bridgeInstallRestart": "Takes effect once DSH Desktop restarts (this line turns “Installed” as soon as the plugin answers)."
+  },
+  "roster": {
+    "online": "Online",
+    "onlineLine": "Connected to your account now",
+    "away": "Not online",
+    "seen": "Last seen {{when}}",
+    "neverSeen": "Not connected yet",
+    "paused": "Paused",
+    "pausedLine": "Paused: no new task starts with it until it resumes",
+    "waiting": "{{count}} waiting for you",
+    "running": "{{count}} running",
+    "last": "Last: {{title}} · {{when}}",
+    "countReady": "{{count}} ready",
+    "countUnknown": "{{count}} unknown",
+    "countOf": "of {{count}}"
   }
 }

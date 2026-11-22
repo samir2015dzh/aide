@@ -204,6 +204,8 @@ service LocalService {
   rpc SendDSHMessage(SendDSHMessageRequest) returns (aide.machine.v1.SendDSHMessageResponse);
   rpc InterruptDSHSession(InterruptDSHSessionRequest) returns (aide.machine.v1.InterruptDSHSessionResponse);
   rpc PrepareDSHBridge(PrepareDSHBridgeRequest) returns (aide.machine.v1.PrepareDSHBridgeResponse);
+  // Hands installing the bridge plugin to DSH on the machine (工单 #59).
+  rpc InstallDSHBridge(InstallDSHBridgeRequest) returns (aide.machine.v1.InstallDSHBridgeResponse);
   rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (aide.machine.v1.DSHSessionOptionsResponse);
   // The Claude Code sessions the Claude desktop app lists on the machines
   // (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -1328,6 +1330,10 @@ message InterruptDSHSessionRequest {
 }
 
 message PrepareDSHBridgeRequest {
+  string machine_id = 1;
+}
+
+message InstallDSHBridgeRequest {
   string machine_id = 1;
 }
 

@@ -8,6 +8,7 @@ import { DSHSessions } from "./dsh/DSHSessions";
 import { ClaudeSessions } from "./claude/ClaudeSessions";
 import { HeldMessages } from "./held/HeldMessages";
 import { TasksPage } from "./TasksPage";
+import { BotPage } from "./bots/Bots";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -95,6 +96,8 @@ export function MainWindow() {
           <HeldMessages />
         ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
           <TasksPage />
+        ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
+          <BotPage key={st.selection.key} botKey={st.selection.key} />
         ) : (
           <Overview />
         )}

@@ -108,6 +108,11 @@ func (l *Local) PrepareDSHBridge() (*machinev1.PrepareDSHBridgeResponse, error) 
 	return l.n.PrepareDSHBridge()
 }
 
+// InstallDSHBridge hands installing the bridge plugin to DSH here (工单 #59).
+func (l *Local) InstallDSHBridge(ctx context.Context) (*machinev1.InstallDSHBridgeResponse, error) {
+	return l.n.InstallDSHBridge(ctx)
+}
+
 func (l *Local) InterruptDSHSession(ctx context.Context, req *machinev1.InterruptDSHSessionRequest) (*machinev1.InterruptDSHSessionResponse, error) {
 	return l.n.InterruptDSHSession(ctx, req)
 }

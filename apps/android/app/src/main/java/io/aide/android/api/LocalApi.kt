@@ -124,6 +124,10 @@ class LocalApi(port: Long, token: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)
     }
 
+    /** Hands installing the DSH bridge plugin to DSH on the machine (工单 #59). */
+    suspend fun installDSHBridge(machineId: String): InstallDSHBridgeResponse =
+        call("InstallDSHBridge", MachineIdRequest(machineId), timeoutSeconds = 60)
+
     suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
         call<SetAgentHiddenRequest, JsonElement>("SetAgentHidden", SetAgentHiddenRequest(machineId, agent, hidden))
     }

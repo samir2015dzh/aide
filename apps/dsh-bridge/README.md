@@ -24,9 +24,10 @@ DSH's back.
   itself.
 - **What it does not do**: read or write DSH's session files, change
   settings, start sessions, or talk to anything off this computer.
-- **Install / remove**: from Aide (it backs up the profile first), or
-  `dsh plugin --profile desktop add <path to the package>` and
-  `dsh plugin --profile desktop remove @aide/dsh-bridge`; or turn it off
-  in DSH's Plugins page. Restart DSH after installing.
+- **Install / remove**: from Aide, which hands installing it to DSH (it
+  backs up the profile first, then a DSH task installs it with DSH Desktop's
+  plugin manager, restarts DSH Desktop and reports with
+  `aided dsh-bridge report`); by hand, in DSH Desktop's Plugins page from the
+  package Aide prepared. Turn it off or remove it there too.
 
 Design: Aide's `docs/dsh-takeover.md`.

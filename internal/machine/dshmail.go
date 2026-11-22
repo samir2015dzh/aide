@@ -181,6 +181,13 @@ func (n *Machine) watchDSHTurn(id, address, messageID string) {
 // outbox), and wakes the inbox for messages that wait for DSH Desktop once
 // the plugin answers again.
 func (n *Machine) serveDSH(ctx context.Context) {
+	// The agents are checked again when the plugin starts answering (DSH
+	// Desktop restarted with it installed) and when DSH reports an install
+	// (工单 #59): the Connect page follows without the owner asking.
+	up, stamp := false, time.Time{}
+	if home, err := dshnative.Home(shellenv.Environ()); err == nil {
+		stamp = dshnative.ReportStamp(home)
+	}
 	for ctx.Err() == nil {
 		home, err := dshnative.Home(shellenv.Environ())
 		if err == nil {
@@ -188,6 +195,12 @@ func (n *Machine) serveDSH(ctx context.Context) {
 			var b *dshnative.Bridge
 			b, err = dshnative.DialBridge(dctx, home)
 			cancel()
+			if s := dshnative.ReportStamp(home); (err == nil) != up || !s.Equal(stamp) {
+				if err == nil || !s.Equal(stamp) {
+					n.CheckAgents(true, 0)
+				}
+				up, stamp = err == nil, s
+			}
 			if err == nil {
 				n.mu.Lock()
 				wake := n.dshPending

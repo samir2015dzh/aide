@@ -18,6 +18,7 @@ import { expiringClients } from "./overview/Attention";
 import { keys, ownKeys } from "./platform";
 import { useNow, useStore, type Store } from "./store";
 import { ConnectLink, StateText, useStateView } from "./components";
+import { SidebarRoster } from "./bots/Bots";
 
 export function grantLabel(st: Store, s: Session): string {
   if (s.createdBy === "owner") return i18n.t("common:sidebar.you");
@@ -144,18 +145,14 @@ export function Sidebar() {
           </button>
         )}
       </nav>
+      {/* The roster (工单 #57): every bot, synced from the account and the machines, first thing under the pages. */}
+      {!st.status?.machineOnly && <SidebarRoster />}
       <div className="side-h">
         <span>{t("sidebar.sessions")}</span>
         {/* New Task (docs/technical-design.md §3.4): the owner starts a coding agent on a machine of theirs. */}
         <button className="tb side-new" title={`${t("sidebar.newSession")} ${keys("CmdOrCtrl+N")}`} aria-label={t("sidebar.newSession")} onClick={() => st.set({ sheet: { kind: "newSession" } })}>
           <Icon name="plus" />
         </button>
-        {/* Contacts (docs/personas.md): write to one; its task goes on or starts. */}
-        {!st.status?.machineOnly && (
-          <button className="tb side-new" title={t("sidebar.contacts")} aria-label={t("sidebar.contacts")} onClick={() => st.set({ sheet: { kind: "contacts" } })}>
-            <Icon name="persons" />
-          </button>
-        )}
         <ListViewMenu />
       </div>
       <Sessions now={now} />

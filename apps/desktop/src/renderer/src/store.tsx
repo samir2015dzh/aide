@@ -4,6 +4,7 @@ import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, 
 import type { Session } from "@aide/proto/session";
 import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@aide/core";
 import type { Peek } from "./layout";
+import type { PersonaDraft } from "./sheets/Contacts";
 import { startPage } from "./start";
 import { useWorld } from "./useWorld";
 import { i18n } from "../../shared/i18n";
@@ -33,7 +34,9 @@ export type Selection =
   /** The messages held for the owner before they reach a session (held/HeldMessages.tsx). */
   | { kind: "held" }
   /** The work the owner's agents handed out, as it goes (TasksPage.tsx, work order #27). */
-  | { kind: "tasks" };
+  | { kind: "tasks" }
+  /** A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>"). */
+  | { kind: "bot"; key: string };
 
 export type Sheet =
   | { kind: "newGrant" }
@@ -42,7 +45,8 @@ export type Sheet =
   /** New Session (docs/technical-design.md §3.4): a machine and agent picked first when given. */
   | { kind: "newSession"; machineId?: string; agent?: string }
   /** Contacts (docs/personas.md): write to one, which goes on in its task or starts one. */
-  | { kind: "contacts" }
+  /** A contact, from its bot's page (工单 #57); a blank one adds. */
+  | { kind: "persona"; draft: PersonaDraft }
   | { kind: "addDevice" }
   | { kind: "scope"; clientId: string; renew: boolean }
   /**

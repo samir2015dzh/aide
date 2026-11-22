@@ -85,3 +85,8 @@
 .held-row .t{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
 .held-row .dsh-msg{white-space:pre-wrap;overflow-wrap:anywhere;margin:2px 0 0}
 .held-actions{display:flex;gap:6px;flex-shrink:0}
+.dsh-install .conn-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.dsh-install-state{margin:0 0 6px;color:var(--l2)}
+.dsh-install-state.warn{color:var(--orange)}
+.dsh-manual{margin-top:6px;color:var(--l2)}
+.dsh-manual summary{cursor:pointer;font-size:12px}

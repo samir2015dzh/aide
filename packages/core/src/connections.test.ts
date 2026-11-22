@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { MachineSchema, type Machine } from "@aide/proto/local";
-import { AgentLoginState, AgentProblem, DSHBridgeState } from "@aide/proto/machine";
+import { AgentLoginState, AgentProblem, DSHBridgeInstallState, DSHBridgeState } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
 import { agentEntry, bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
 import { codingAgentShort, codingAgentTitle } from "./agents";
@@ -33,8 +33,9 @@ describe("connections", () => {
   test("DSH with its plugin in each of its states (工单 #46)", () => {
     const dsh = (bridge: object) => machineConnections(machine([{ name: "deepseek", available: true, version: "1.4.0", dshBridge: { latestVersion: "0.3.0", ...bridge } }]), now).rows;
     const st = (b: object) => dsh(b).map((r) => [r.id, r.state, r.text]);
-    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED })[1]).toEqual(["deepseek-bridge", "partial", "未备包"]);
-    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED, packagePath: "/x.tgz" })[1]).toEqual(["deepseek-bridge", "partial", "已备包，未安装"]);
+    // Prepared or not is Aide's business, not the owner's (工单 #59): not installed either way.
+    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED })[1]).toEqual(["deepseek-bridge", "partial", "未安装"]);
+    expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED, packagePath: "/x.tgz" })[1]).toEqual(["deepseek-bridge", "partial", "未安装"]);
     expect(st({ state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.0" })).toEqual([
       ["deepseek", "ok", "已检测到 · 1.4.0"],
       ["deepseek-bridge", "ok", "已安装 · 0.3.0"],
@@ -45,6 +46,19 @@ describe("connections", () => {
     expect(r[0].state).toBe("partial");
     expect(r[1].lacks).toContain("能用：Aide 发起的 DSH 任务");
     expect(r[1].fix).toBe("prepareBridge");
+  });
+
+  test("the install handed to DSH (工单 #59): at it, failed with DSH's reason, waiting for a restart; answering wins", () => {
+    const row = (bridge: object) => machineConnections(machine([{ name: "deepseek", available: true, dshBridge: { latestVersion: "0.3.1", ...bridge } }]), now).rows[1];
+    const notInstalled = { state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED };
+    const at = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RUNNING, sessionId: "s1" } });
+    expect([at.state, at.text, at.fix]).toEqual(["checking", "DSH 正在代装…", "installBridge"]);
+    const failed = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED, reason: "别的插件的常驻连接器占着 uv.exe" } });
+    expect([failed.state, failed.text, failed.lacks]).toEqual(["partial", "代装没成功", "别的插件的常驻连接器占着 uv.exe"]);
+    const restart = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RESTART } });
+    expect([restart.text, restart.fix]).toEqual(["已装好，等 DSH Desktop 重启", "openDSH"]);
+    const done = row({ state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.1", install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED } });
+    expect([done.state, done.text]).toEqual(["ok", "已安装 · 0.3.1"]);
   });
 
   test("one entry per agent, one name, one state (工单 #53): DSH is DSH, DeepSeek only its models", () => {
@@ -60,11 +74,12 @@ describe("connections", () => {
     );
     const claude = agentEntry(c, "claude")!;
     expect(claude.rows.map((r) => r.id)).toEqual(["claude-desktop", "claude-cli"]);
-    expect([claude.state, claude.text]).toEqual(["ok", "可以用"]);
+    // Its state is its main row's, the command line Aide runs, on the desktop as on the phone (工单 #56).
+    expect([claude.state, claude.text]).toEqual(["ok", "已登录 · 2.1.330"]);
     const dsh = agentEntry(c, "deepseek")!;
     expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 桥接插件"]);
     expect(dsh.rows[0].note).toBe("模型：DeepSeek V4");
-    expect([dsh.state, dsh.text]).toEqual(["partial", "部分可用"]);
+    expect([dsh.state, dsh.text]).toEqual(["partial", "已检测到 · 1.4.0"]);
     expect(c.rows.some((r) => r.title.includes("DeepSeek"))).toBe(false);
     expect(agentEntry(c, "codex")!.text).toBe("可以用");
     expect(agentEntry(c, "gemini")).toBeUndefined();
@@ -79,7 +94,7 @@ describe("connections", () => {
     expect(off.rows[0].lacks).toContain("上次知道的是「可以用」");
     const old = machineConnections(machine([{ name: "codex", available: true, loggedIn: true, checkedAt: timestampFromDate(new Date("2026-11-22T08:00:00Z")) }]), now);
     expect(old.rows[0].state).toBe("unknown");
-    expect(old.rows[0].lacks).toContain("之后没有再检测过");
+    expect(old.rows[0].lacks).toContain("之后没再确认");
   });
 
   test("hidden and absent agents are left out; one found but signed out is missing", () => {

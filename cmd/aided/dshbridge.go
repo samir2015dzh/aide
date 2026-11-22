@@ -73,5 +73,39 @@ which checks it against your DSH, and turns it off or removes it there.`,
 			return nil
 		},
 	})
+	// The report DSH makes after installing the plugin for the owner (工单 #59): aided
+	// reads it, checks the plugin again and shows the outcome on the Connect page.
+	var ok, failed bool
+	var reason string
+	report := &cobra.Command{
+		Use:   "report",
+		Short: "Tell Aide how installing the plugin went: aided checks it again and shows it on the Connect page",
+		Long: `For DSH, at the end of the install Aide handed to it:
+
+  aided dsh-bridge report --ok                        installed, and status says the plugin runs
+  aided dsh-bridge report --ok --reason "<what is left>"   installed, not in effect yet
+  aided dsh-bridge report --failed --reason "<why>"      not installed: the real cause, in words for the owner
+
+The reason is shown as written on the Connect page.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if ok == failed {
+				return errors.New("say --ok or --failed")
+			}
+			h, err := home()
+			if err != nil {
+				return err
+			}
+			if err := dshnative.Report(h, ok, reason, time.Now()); err != nil {
+				return err
+			}
+			fmt.Println("✓ Reported to Aide; it checks the plugin again within a few seconds.")
+			return nil
+		},
+	}
+	report.Flags().BoolVar(&ok, "ok", false, "the plugin is installed")
+	report.Flags().BoolVar(&failed, "failed", false, "the plugin could not be installed")
+	report.Flags().StringVar(&reason, "reason", "", "why it failed, or what is left to do, in words for the owner")
+	cmd.AddCommand(report)
 	return cmd
 }

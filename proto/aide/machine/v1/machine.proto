@@ -671,6 +671,16 @@ service MachineAdminService {
   rpc PrepareDSHBridge(PrepareDSHBridgeRequest) returns (PrepareDSHBridgeResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // Installs the bridge plugin by handing it to DSH (工单 #59): prepares the
+  // package as PrepareDSHBridge does, then starts a DSH session in the
+  // plugin's folder whose task is to install it in DSH Desktop's profile,
+  // find and clear what stops it (a file a running program holds, a broken
+  // package left by an earlier failure), restart DSH Desktop, check the
+  // plugin answers, and report with `aided dsh-bridge report`. How it goes
+  // is DSHBridge.install. Owner only.
+  rpc InstallDSHBridge(InstallDSHBridgeRequest) returns (InstallDSHBridgeResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
   // The coding agents the owner added on this machine (custom agents):
   // ACP agents started with the command given, listed and run as the
   // built-in ones are. Kept in the machine's agents.json; the values of
@@ -780,6 +790,34 @@ message DSHBridge {
   // The version this aided ships: a running plugin of an older one is out
   // of date.
   string latest_version = 5;
+  // The last install handed to DSH (InstallDSHBridge), if any.
+  DSHBridgeInstall install = 6;
+}
+
+// DSHBridgeInstall is how the last install handed to DSH went (工单 #59).
+message DSHBridgeInstall {
+  DSHBridgeInstallState state = 1;
+  // The DSH session doing it, to open and read.
+  string session_id = 2;
+  // In words, for the person: why it failed, or what is left to do.
+  string reason = 3;
+  google.protobuf.Timestamp started_at = 4;
+  // When DSH reported (`aided dsh-bridge report`); unset while it works.
+  google.protobuf.Timestamp reported_at = 5;
+}
+
+enum DSHBridgeInstallState {
+  DSH_BRIDGE_INSTALL_STATE_UNSPECIFIED = 0;
+  // DSH is at it.
+  DSH_BRIDGE_INSTALL_STATE_RUNNING = 1;
+  // DSH reported it installed and the plugin answers.
+  DSH_BRIDGE_INSTALL_STATE_DONE = 2;
+  // DSH reported it installed, but the plugin does not answer yet: DSH
+  // Desktop has not restarted since.
+  DSH_BRIDGE_INSTALL_STATE_RESTART = 3;
+  // DSH reported it could not install it (reason), or its session ended
+  // without a report.
+  DSH_BRIDGE_INSTALL_STATE_FAILED = 4;
 }
 
 enum DSHBridgeState {
@@ -860,6 +898,15 @@ message SendDSHMessageResponse {
 }
 
 message PrepareDSHBridgeRequest {}
+
+message InstallDSHBridgeRequest {}
+
+message InstallDSHBridgeResponse {
+  // The DSH session installing it.
+  string session_id = 1;
+  // The package it installs.
+  string package_path = 2;
+}
 
 message PrepareDSHBridgeResponse {
   // The plugin's package (an npm tarball) on the machine, to install from

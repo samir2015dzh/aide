@@ -178,7 +178,7 @@
     "unknown": "状态未知",
     "checking": "正在检测…",
     "machineAway": "机器暂时连不上：上次知道的是「{{text}}」（{{when}}）",
-    "stale": "{{when}}之后没有再检测过（当时是「{{text}}」）",
+    "stale": "上次检测是{{when}}，之后没再确认（当时是「{{text}}」）",
     "signedIn": "已登录",
     "signedInVersion": "已登录 · {{version}}",
     "signedOut": "未登录",
@@ -196,16 +196,19 @@
     "cliNotFound": "派给 Claude 的任务要用 Claude Code 命令行跑，这台机器上没有。",
     "bridge": "DSH 桥接插件",
     "bridgeState": {
-      "unprepared": "未备包",
-      "prepared": "已备包，未安装",
+      "unprepared": "未安装",
+      "prepared": "未安装",
       "installed": "已安装 · {{version}}",
       "notRunning": "已安装，DSH Desktop 没开",
       "outdated": "版本过旧（{{version}}，最新 {{latest}}）",
-      "unknown": "状态未知"
+      "unknown": "状态未知",
+      "installing": "DSH 正在代装…",
+      "installFailed": "代装没成功",
+      "installRestart": "已装好，等 DSH Desktop 重启"
     },
-    "bridgeGap": "能用：Aide 发起的 DSH 任务。不能用：看见、接管你在 DSH Desktop 里自己开的会话——装好插件后才行。",
+    "bridgeGap": "能用：Aide 发起的 DSH 任务。不能用：看见、接管你在 DSH Desktop 里自己开的会话——装好插件后才行。点「让 DSH 装好它」，DSH 会自己装、自己重启、装完告诉 Aide。",
     "bridgeNotRunning": "打开 DSH Desktop（插件保持开启），才能看见、接管它自己开的会话。",
-    "bridgeOutdated": "重新备包，到 DSH Desktop › 插件 里装新包：旧版接管不了会话。",
+    "bridgeOutdated": "旧版接管不了会话：点「让 DSH 装好它」，DSH 会自己换上新版。",
     "agentSignedOut": "{{agent}} 装了但没登录：这台机器上暂时不能把任务派给它。",
     "loginWaiting": "正在登录…",
     "loginWaitingHint": "那台电脑上已打开浏览器：请在那里完成登录。这一行会自己更新。",
@@ -214,11 +217,23 @@
     "loginTimedOut": "上次登录等浏览器等了 10 分钟，已停止。可以再试一次。",
     "loginCancelled": "上次登录已取消。",
     "dshModels": "模型：{{models}}",
-    "entry": {
-      "ok": "可以用",
-      "partial": "部分可用",
-      "missing": "不可用",
-      "unknown": "状态未知"
-    }
+    "bridgeInstalling": "DSH 在那台电脑上装插件、重启 DSH Desktop，装完会告诉 Aide，这一行会自己更新。",
+    "bridgeInstallFailed": "DSH 没装上，也没说原因：打开它的代装任务看做到了哪一步。",
+    "bridgeInstallRestart": "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。"
+  },
+  "roster": {
+    "online": "在线",
+    "onlineLine": "现在连着你的账号",
+    "away": "不在线",
+    "seen": "上次见到：{{when}}",
+    "neverSeen": "还没连上过",
+    "paused": "已暂停",
+    "pausedLine": "已暂停：恢复之前不会有新任务交给它",
+    "waiting": "{{count}} 个等你回答",
+    "running": "{{count}} 个进行中",
+    "last": "最近：{{title}} · {{when}}",
+    "countReady": "可用 {{count}}",
+    "countUnknown": "未知 {{count}}",
+    "countOf": "共 {{count}}"
   }
 }

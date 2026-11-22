@@ -85,7 +85,7 @@ export function Grants({ open, select }: { open: string; select: (id: string) =>
   );
 }
 
-function GrantDetail({ c }: { c: Client }) {
+export function GrantDetail({ c }: { c: Client }) {
   const { t } = useTranslation("settings");
   const st = useStore();
   const now = useNow(30_000);

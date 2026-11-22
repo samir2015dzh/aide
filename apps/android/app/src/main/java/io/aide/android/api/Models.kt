@@ -181,6 +181,9 @@ data class Client(
     val revoked: Boolean = false,
     val custodian: String = "",
     val herMachineId: String = "",
+    /** The kind the owner set (工单 #52): "personal", "local", or "" to tell from its name. */
+    val category: String = "",
+    val categoryMachineId: String = "",
 )
 
 @Serializable
@@ -437,7 +440,13 @@ data class SessionEvent(
     val packagePath: String = "",
     /** The version this machine's Aide ships: a running plugin of an older one is out of date. */
     val latestVersion: String = "",
+    /** The last install handed to DSH (工单 #59). */
+    val install: DSHBridgeInstall? = null,
 )
+
+/** How the install handed to DSH went (工单 #59): DSH_BRIDGE_INSTALL_STATE_RUNNING, _DONE, _RESTART, _FAILED. */
+@Serializable data class DSHBridgeInstall(val state: String = "", val sessionId: String = "", val reason: String = "", val startedAt: String = "", val reportedAt: String = "")
+@Serializable data class InstallDSHBridgeResponse(val sessionId: String = "", val packagePath: String = "")
 /** dshHome: the DSH home that machine reads DSH's sessions from. */
 @Serializable data class DSHBridgeEntry(val machineId: String = "", val bridge: DSHBridge = DSHBridge(), val dshHome: String = "")
 @Serializable data class SetDSHTakeoverRequest(val machineId: String, val sessionId: String, val on: Boolean)

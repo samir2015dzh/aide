@@ -13,7 +13,6 @@ import io.aide.android.model.BridgeView
 import io.aide.android.model.ConnState
 import io.aide.android.model.NotReady
 import io.aide.android.model.bridgeView
-import io.aide.android.model.dispatchTargets
 import io.aide.android.model.humanError
 import io.aide.android.model.machineConnections
 import org.junit.Assert.assertEquals
@@ -45,8 +44,10 @@ class BatchDTest {
     @Test
     fun dshAndItsPluginInEachState() {
         fun rows(b: DSHBridge) = machineConnections(machine(AgentStatus("deepseek", available = true, loggedIn = true, version = "1.4.0", checkedAt = checked, dshBridge = b)), now).rows
-        assertEquals("Not prepared", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", latestVersion = "0.3.0"))[1].text)
-        assertEquals("Prepared, not installed", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", packagePath = "/x.tgz"))[1].text)
+        // Prepared or not is Aide's business (工单 #59): not installed either way, and DSH can be asked to install it.
+        assertEquals("Not installed", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", latestVersion = "0.3.0"))[1].text)
+        assertEquals("Not installed", rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED", packagePath = "/x.tgz"))[1].text)
+        assertTrue(rows(DSHBridge("DSH_BRIDGE_STATE_NOT_INSTALLED"))[1].install)
         val ok = rows(DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.3.0", latestVersion = "0.3.0"))
         assertEquals(listOf(ConnState.OK, ConnState.OK), ok.map { it.state })
         assertEquals(BridgeView.OUTDATED, bridgeView(DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.2.9", latestVersion = "0.3.0")))
@@ -58,21 +59,7 @@ class BatchDTest {
         val off = machineConnections(machine(AgentStatus("codex", available = true, loggedIn = true, checkedAt = checked), online = false), now)
         assertEquals(ConnState.UNKNOWN, off.rows[0].state)
         val old = machineConnections(machine(AgentStatus("codex", available = true, loggedIn = true, checkedAt = "2026-11-22T08:00:00Z")), now)
-        assertTrue(old.rows[0].lacks!!.startsWith("Not checked again since"))
-    }
-
-    @Test
-    fun everyDetectedAgentIsListedWithNoContact() {
-        val groups = dispatchTargets(
-            listOf(machine(AgentStatus("claude", available = true, loggedIn = true), AgentStatus("deepseek", available = true, loggedIn = true, pause = AgentPause()), AgentStatus("codex", available = false))),
-            listOf(Persona(personaId = "p", name = "Reviewer", machineId = "m1", agent = "claude")),
-        )
-        val t = groups.single().targets
-        assertEquals(listOf("claude", "deepseek"), t.map { it.agent })
-        assertEquals("Reviewer", t[0].persona?.name)
-        assertTrue(t[0].ready)
-        assertEquals(NotReady.PAUSED, t[1].why)
-        assertFalse(t[1].ready)
+        assertTrue(old.rows[0].lacks!!.startsWith("Last checked"))
     }
 
     @Test

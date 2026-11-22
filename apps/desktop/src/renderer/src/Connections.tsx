@@ -133,9 +133,8 @@ function Fix({ r, m, recheck }: { r: ConnRow; m: Machine; recheck: () => void })
   const bridge = m.status?.agents.find((a) => a.name === "deepseek")?.dshBridge;
   switch (r.fix) {
     case "prepareBridge":
-      return <Install machineId={m.machineId} onPrepared={recheck} />;
     case "installBridge":
-      return <Install machineId={m.machineId} packagePath={bridge?.packagePath} onPrepared={recheck} />;
+      return <Install machineId={m.machineId} packagePath={bridge?.packagePath} install={bridge?.install} onPrepared={recheck} />;
     case "claudeCLI":
       return <p className="conn-fix">{t("conn.fixClaudeCLI")}</p>;
     case "claudeLogin":

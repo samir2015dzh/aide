@@ -110,15 +110,44 @@ The audit log records each switch, send (the message's hash) and stop.
 ## 4. Installing
 
 DSH reserves the `desktop` profile for DSH Desktop: the npm `dsh` refuses
-to manage its plugins. Installing is DSH Desktop's job, in its Plugins
-page, whose plugin manager checks the plugin against the running DSH
+to manage its plugins. Installing is DSH's job, through DSH Desktop's
+plugin manager, which checks the plugin against the running DSH
 (`engines.dsh`), restores the profile when an install fails, keeps a plugin
 that won't load from taking the Host down, and turns it off or removes it.
+aided never writes into the profile.
 
-Aide prepares (`aided dsh-bridge prepare`, `PrepareDSHBridge`, or
-"准备安装…" in the desktop app): it backs up DSH's configuration files (the
-DSH home's and each profile's `package.json`, `cordis.patch.yml` and the
-like; not sessions or packages) into
+**Handed to DSH (工单 #59).** The owner presses 让 DSH 装好它 (Connect ›
+DSH, the DSH page, or a bot's workbench on the phone) once. aided
+(`InstallDSHBridge`) prepares, as below, then starts a DSH session in
+`<DSH home>/aide-bridge` (the project `aide-dsh-bridge`, worked in place)
+whose task (`dshnative.InstallPrompt`) is: install the package with DSH's
+plugin manager; when it fails, read the operation's `pnpm.log` rather than
+DSH's message, and find what really stops it; check the profile for
+packages an earlier failure left half removed and repair them; restart DSH
+Desktop; check with `aided dsh-bridge status`; and report with
+`aided dsh-bridge report --ok` or `--failed --reason "<why, for the owner>"`.
+One already under way is not started twice.
+
+What it was written from: on a Windows machine DSH Desktop said "没有写入权限"
+(no write permission), but the folder's ACL was fine. The operation's
+`pnpm.log` had `EPERM … rename <pkg>_tmp_… -> <pkg>` for a package whose
+executable another plugin's resident connector was running: Windows will
+not replace a running image, and DSH sorts every EPERM as a permission
+problem. The failed install had also removed most of another package (its
+`package.json` gone), and the repair after it hit the same lock.
+
+The report lands in `<DSH home>/aide-bridge/install-report.json` (the
+install itself in `install.json`). aided's DSH loop (every 5 s) checks the
+agents again when a report comes and when the plugin starts answering, so
+the Connect page follows without the owner asking: DSH at it (with its
+task to open), failed (DSH's reason as written), installed but not answering
+(restart DSH Desktop), installed. A task that ended without a report shows
+as failed, saying to open it.
+
+**By hand**, folded under 让 DSH 装好它 for when DSH can't: Aide prepares
+(`aided dsh-bridge prepare`, `PrepareDSHBridge`): it backs up DSH's
+configuration files (the DSH home's and each profile's `package.json`,
+`cordis.patch.yml` and the like; not sessions or packages) into
 `<DSH home>/aide-bridge/backups/<time>`, and writes the plugin's package
 there (aided carries it: `apps/dsh-bridge/embed.go`). The owner installs
 that file in DSH Desktop › Plugins and restarts DSH Desktop.
