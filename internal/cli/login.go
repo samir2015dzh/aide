@@ -94,6 +94,7 @@ func ask(cmd *cobra.Command, prompt string) (string, error) {
 		return "", fail(exitUsage, "no terminal to ask for it: use --account or $AIDE_ACCOUNT")
 	}
 	fmt.Fprint(cmd.ErrOrStderr(), prompt)
+	flush(cmd.ErrOrStderr())
 	l, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
 	if err != nil && l == "" {
 		return "", err
@@ -118,6 +119,7 @@ func readPassword(cmd *cobra.Command, fromStdin bool) (string, error) {
 		return "", fail(exitUsage, "no terminal to ask for the password: use --password-stdin or $AIDE_PASSWORD")
 	}
 	fmt.Fprint(cmd.ErrOrStderr(), "Password: ")
+	flush(cmd.ErrOrStderr())
 	b, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Fprintln(cmd.ErrOrStderr())
 	if err != nil {

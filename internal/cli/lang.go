@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -114,18 +115,60 @@ func localize(root *cobra.Command, lang string) {
 // translator rewrites what it is given with the catalog, as a person reads
 // it: only while on() says so (text output).
 type translator struct {
-	w  io.Writer
-	on func() bool
+	w     io.Writer
+	on    func() bool
+	table *tableState
+	// part is a line begun and not yet ended: a table's cells come one
+	// write at a time (text/tabwriter), and a sentence is read whole.
+	part []byte
 }
 
-func (t translator) Write(p []byte) (int, error) {
+func (t *translator) Write(p []byte) (int, error) {
 	if !t.on() {
+		if err := t.Flush(); err != nil {
+			return 0, err
+		}
 		return t.w.Write(p)
 	}
-	if _, err := io.WriteString(t.w, translateZH(string(p))); err != nil {
+	if t.table == nil {
+		t.table = &tableState{}
+	}
+	t.part = append(t.part, p...)
+	end := bytes.LastIndexByte(t.part, '\n')
+	if end < 0 {
+		return len(p), nil
+	}
+	whole := string(t.part[:end+1])
+	t.part = append(t.part[:0], t.part[end+1:]...)
+	if _, err := io.WriteString(t.w, translateLines(whole, t.table)); err != nil {
 		return 0, err
 	}
 	return len(p), nil
+}
+
+// Flush writes out a line begun and not ended (a prompt, the last words
+// of a command).
+func (t *translator) Flush() error {
+	if len(t.part) == 0 {
+		return nil
+	}
+	s := string(t.part)
+	t.part = t.part[:0]
+	if t.on() {
+		if t.table == nil {
+			t.table = &tableState{}
+		}
+		s = translateLines(s, t.table)
+	}
+	_, err := io.WriteString(t.w, s)
+	return err
+}
+
+// flush flushes w when it holds a line begun (a translator).
+func flush(w io.Writer) {
+	if f, ok := w.(interface{ Flush() error }); ok {
+		f.Flush()
+	}
 }
 
 type rule struct {
@@ -179,10 +222,19 @@ func compileRules() {
 }
 
 // translateZH rewrites s line by line with the catalog.
-func translateZH(s string) string {
+func translateZH(s string) string { return translateLines(s, &tableState{}) }
+
+// translateLines is translateZH for a writer that keeps what it saw of the
+// table it prints.
+func translateLines(s string, table *tableState) string {
 	rulesOnce.Do(compileRules)
 	lines := strings.SplitAfter(s, "\n")
 	for i, l := range lines {
+		if l == "" {
+			continue // after the last newline: not a blank line
+		}
+		table.see(l)
+		l = translateCells(translateHeader(l), table.cols)
 		for _, r := range rules {
 			if r.re.MatchString(l) {
 				l = r.re.ReplaceAllString(l, r.zh)

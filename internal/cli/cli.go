@@ -117,12 +117,16 @@ func Main(args []string, stdout, stderr io.Writer) int {
 	lang := language(langArg(args))
 	localize(root, lang)
 	if lang == "zh-CN" {
-		text := func() bool { return a.output != "json" }
-		stdout, stderr = translator{w: stdout, on: text}, translator{w: stderr, on: text}
+		// Not what hooks and watch hand a model (recipientKind): that is
+		// the model's to read, as it was.
+		text := func() bool { return a.output != "json" && a.recipientKind == "" }
+		stdout, stderr = &translator{w: stdout, on: text}, &translator{w: stderr, on: text}
 	}
 	root.SetArgs(args)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
+	defer flush(stderr)
+	defer flush(stdout)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return a.execute(ctx, root, stdout, stderr)

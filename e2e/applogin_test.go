@@ -151,6 +151,17 @@ func TestCLIInChinese(t *testing.T) {
 	if jz != je || !strings.Contains(je, `"check": "identity"`) {
 		t.Fatalf("json differs:\n%s\n%s", jz, je)
 	}
+	// Tables: the header in Chinese, the columns where they were.
+	if p := run(t, zh, time.Minute, aide, "project", "list"); !strings.Contains(p.stdout, "项目") || !strings.Contains(p.stdout, "工作区") || strings.Contains(p.stdout, "WORKSPACE") {
+		t.Fatalf("project list in Chinese:\n%s%s", p.stdout, p.stderr)
+	}
+	if r := run(t, en, 2*time.Minute, aide, "session", "start", "--project", "demo", "--title", "running", "--prompt", "say hi", "--wait"); r.code != 0 {
+		t.Fatalf("session start: %s%s", r.stdout, r.stderr)
+	}
+	sl := run(t, zh, time.Minute, aide, "session", "list")
+	if !strings.Contains(sl.stdout, "会话") || !strings.Contains(sl.stdout, "状态") || !strings.Contains(sl.stdout, "已完成") || !strings.Contains(sl.stdout, " running ") {
+		t.Fatalf("session list in Chinese (its title, running, stays):\n%s", sl.stdout)
+	}
 	if h := run(t, zh, time.Minute, aide, "auth", "--help"); !strings.Contains(h.stdout, "可用命令") || !strings.Contains(h.stdout, "检查本客户端的登录") {
 		t.Fatalf("help in Chinese:\n%s", h.stdout)
 	}

@@ -2,8 +2,10 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
+	"text/tabwriter"
 )
 
 func TestLanguage(t *testing.T) {
@@ -72,5 +74,66 @@ func TestJSONNotTranslated(t *testing.T) {
 	Main([]string{"auth", "status"}, &out, &out)
 	if !strings.Contains(out.String(), "未登录") || strings.Contains(out.String(), "not logged in") {
 		t.Fatalf("text in Chinese:\n%s", out.String())
+	}
+}
+
+// Tables keep their columns in Chinese: the header and the state cells are
+// translated where they stand; a title that happens to say "running" is not.
+func TestTranslateTable(t *testing.T) {
+	var b bytes.Buffer
+	tw := tabwriter.NewWriter(&b, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(tw, "SESSION\tTITLE\tSTATE\tPROJECT\tAGENT\tTURNS\tNOW / LAST")
+	fmt.Fprintln(tw, "s_1\trunning\trunning · quiet 12m\tweb\tclaude\t2\tBash")
+	fmt.Fprintln(tw, "s_22\tfix the page\tlost · last known running · 7m ago\tweb\tcodex\t1\t-")
+	fmt.Fprintln(tw, "s_3\tdone\tdone\tapi\tgemini\t1\tok")
+	tw.Flush()
+	got := translateZH(b.String())
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	if !strings.HasPrefix(lines[0], "会话") || !strings.Contains(lines[0], "状态") || !strings.Contains(lines[0], "现在/最近") {
+		t.Fatalf("header: %q", lines[0])
+	}
+	// Every column starts where the English one did.
+	en := strings.Split(strings.TrimRight(b.String(), "\n"), "\n")
+	col := func(l string, n int) int { // display column of the n-th cell
+		idx := cellGap.FindAllStringIndex(l, -1)
+		return width(l[:idx[n][0]])
+	}
+	for i := range lines {
+		for n := 1; n < 7; n++ {
+			if col(lines[i], n) != col(en[i], n) {
+				t.Errorf("line %d cell %d at %d, was %d:\n%s\n%s", i, n, col(lines[i], n), col(en[i], n), en[i], lines[i])
+			}
+		}
+	}
+	if !strings.Contains(lines[1], "s_1       running ") || !strings.Contains(lines[1], "运行中 · 12m 无新事件") {
+		t.Errorf("row 1: %q", lines[1])
+	}
+	if !strings.Contains(lines[2], "失联 · 最后已知 运行中 · 7m前") {
+		t.Errorf("row 2: %q", lines[2])
+	}
+	if !strings.Contains(lines[3], "s_3       done           已完成") {
+		t.Errorf("row 3 (its title stays): %q", lines[3])
+	}
+}
+
+// A table printed a cell at a time (text/tabwriter writes so) through the
+// writer: its state cells still in Chinese, in their columns.
+func TestTranslatorTableInPieces(t *testing.T) {
+	var out bytes.Buffer
+	tr := &translator{w: &out, on: func() bool { return true }}
+	tw := tabwriter.NewWriter(tr, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(tw, "SESSION\tTITLE\tSTATE\tNOW / LAST")
+	fmt.Fprintln(tw, "s_1\trunning\tdone unseen\thi")
+	tw.Flush()
+	fmt.Fprint(tr, "Password: ")
+	if out.String() == "" || strings.HasSuffix(out.String(), "密码：") {
+		t.Fatalf("a line not ended was written early: %q", out.String())
+	}
+	tr.Flush()
+	got := out.String()
+	for _, want := range []string{"会话", "状态", "s_1       running   已完成未看", "密码："} {
+		if !strings.Contains(got, want) {
+			t.Errorf("lacks %q:\n%s", want, got)
+		}
 	}
 }
