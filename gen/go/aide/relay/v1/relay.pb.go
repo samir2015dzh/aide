@@ -5185,6 +5185,155 @@ func (x *GetMCPResponse) GetUrl() string {
 	return ""
 }
 
+type RoomWaitingRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Inbox         string                 `protobuf:"bytes,1,opt,name=inbox,proto3" json:"inbox,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomWaitingRequest) Reset() {
+	*x = RoomWaitingRequest{}
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[93]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomWaitingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomWaitingRequest) ProtoMessage() {}
+
+func (x *RoomWaitingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[93]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomWaitingRequest.ProtoReflect.Descriptor instead.
+func (*RoomWaitingRequest) Descriptor() ([]byte, []int) {
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{93}
+}
+
+func (x *RoomWaitingRequest) GetInbox() string {
+	if x != nil {
+		return x.Inbox
+	}
+	return ""
+}
+
+type RoomWaitingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rooms         []*RoomWaitingCount    `protobuf:"bytes,1,rep,name=rooms,proto3" json:"rooms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomWaitingResponse) Reset() {
+	*x = RoomWaitingResponse{}
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[94]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomWaitingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomWaitingResponse) ProtoMessage() {}
+
+func (x *RoomWaitingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[94]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomWaitingResponse.ProtoReflect.Descriptor instead.
+func (*RoomWaitingResponse) Descriptor() ([]byte, []int) {
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{94}
+}
+
+func (x *RoomWaitingResponse) GetRooms() []*RoomWaitingCount {
+	if x != nil {
+		return x.Rooms
+	}
+	return nil
+}
+
+type RoomWaitingCount struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	RoomId   string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Messages uint32                 `protobuf:"varint,2,opt,name=messages,proto3" json:"messages,omitempty"`
+	// When the oldest of them came in.
+	Since         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=since,proto3" json:"since,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomWaitingCount) Reset() {
+	*x = RoomWaitingCount{}
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[95]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomWaitingCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomWaitingCount) ProtoMessage() {}
+
+func (x *RoomWaitingCount) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[95]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomWaitingCount.ProtoReflect.Descriptor instead.
+func (*RoomWaitingCount) Descriptor() ([]byte, []int) {
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{95}
+}
+
+func (x *RoomWaitingCount) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *RoomWaitingCount) GetMessages() uint32 {
+	if x != nil {
+		return x.Messages
+	}
+	return 0
+}
+
+func (x *RoomWaitingCount) GetSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Since
+	}
+	return nil
+}
+
 type WakeLinkRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -5194,7 +5343,7 @@ type WakeLinkRequest struct {
 
 func (x *WakeLinkRequest) Reset() {
 	*x = WakeLinkRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[93]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5206,7 +5355,7 @@ func (x *WakeLinkRequest) String() string {
 func (*WakeLinkRequest) ProtoMessage() {}
 
 func (x *WakeLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[93]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5219,7 +5368,7 @@ func (x *WakeLinkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WakeLinkRequest.ProtoReflect.Descriptor instead.
 func (*WakeLinkRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{93}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *WakeLinkRequest) GetName() string {
@@ -5241,7 +5390,7 @@ type WakeLinkResponse struct {
 
 func (x *WakeLinkResponse) Reset() {
 	*x = WakeLinkResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[94]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5253,7 +5402,7 @@ func (x *WakeLinkResponse) String() string {
 func (*WakeLinkResponse) ProtoMessage() {}
 
 func (x *WakeLinkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[94]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5266,7 +5415,7 @@ func (x *WakeLinkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WakeLinkResponse.ProtoReflect.Descriptor instead.
 func (*WakeLinkResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{94}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *WakeLinkResponse) GetLink() string {
@@ -5296,14 +5445,19 @@ type SealedMessage struct {
 	// The doorbell to ring (docs/agent-names.md §7.1): set by the sender when
 	// the address has one, to its name ("" for the agent itself). Otherwise
 	// absent, and the name stays sealed.
-	Ring          *string `protobuf:"bytes,5,opt,name=ring,proto3,oneof" json:"ring,omitempty"`
+	Ring *string `protobuf:"bytes,5,opt,name=ring,proto3,oneof" json:"ring,omitempty"`
+	// The room the message is for, when it goes to a room's host (the
+	// address's session, "room_…"): set by the sender, so the owner's devices
+	// can see what waits at the post office for a host that is away (工单
+	// #74). Only the room's id: its words stay sealed.
+	Room          string `protobuf:"bytes,6,opt,name=room,proto3" json:"room,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SealedMessage) Reset() {
 	*x = SealedMessage{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[95]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5315,7 +5469,7 @@ func (x *SealedMessage) String() string {
 func (*SealedMessage) ProtoMessage() {}
 
 func (x *SealedMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[95]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5328,7 +5482,7 @@ func (x *SealedMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SealedMessage.ProtoReflect.Descriptor instead.
 func (*SealedMessage) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{95}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *SealedMessage) GetInbox() string {
@@ -5366,6 +5520,13 @@ func (x *SealedMessage) GetRing() string {
 	return ""
 }
 
+func (x *SealedMessage) GetRoom() string {
+	if x != nil {
+		return x.Room
+	}
+	return ""
+}
+
 type RegisterInboxRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Registration  *v1.Signed             `protobuf:"bytes,1,opt,name=registration,proto3" json:"registration,omitempty"`
@@ -5375,7 +5536,7 @@ type RegisterInboxRequest struct {
 
 func (x *RegisterInboxRequest) Reset() {
 	*x = RegisterInboxRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[96]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5387,7 +5548,7 @@ func (x *RegisterInboxRequest) String() string {
 func (*RegisterInboxRequest) ProtoMessage() {}
 
 func (x *RegisterInboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[96]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5400,7 +5561,7 @@ func (x *RegisterInboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterInboxRequest.ProtoReflect.Descriptor instead.
 func (*RegisterInboxRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{96}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *RegisterInboxRequest) GetRegistration() *v1.Signed {
@@ -5418,7 +5579,7 @@ type RegisterInboxResponse struct {
 
 func (x *RegisterInboxResponse) Reset() {
 	*x = RegisterInboxResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[97]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5430,7 +5591,7 @@ func (x *RegisterInboxResponse) String() string {
 func (*RegisterInboxResponse) ProtoMessage() {}
 
 func (x *RegisterInboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[97]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5443,7 +5604,7 @@ func (x *RegisterInboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterInboxResponse.ProtoReflect.Descriptor instead.
 func (*RegisterInboxResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{97}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{100}
 }
 
 type ContactsRequest struct {
@@ -5454,7 +5615,7 @@ type ContactsRequest struct {
 
 func (x *ContactsRequest) Reset() {
 	*x = ContactsRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[98]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5466,7 +5627,7 @@ func (x *ContactsRequest) String() string {
 func (*ContactsRequest) ProtoMessage() {}
 
 func (x *ContactsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[98]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5479,7 +5640,7 @@ func (x *ContactsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactsRequest.ProtoReflect.Descriptor instead.
 func (*ContactsRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{98}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{101}
 }
 
 type ContactsResponse struct {
@@ -5503,7 +5664,7 @@ type ContactsResponse struct {
 
 func (x *ContactsResponse) Reset() {
 	*x = ContactsResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[99]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5515,7 +5676,7 @@ func (x *ContactsResponse) String() string {
 func (*ContactsResponse) ProtoMessage() {}
 
 func (x *ContactsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[99]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5528,7 +5689,7 @@ func (x *ContactsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactsResponse.ProtoReflect.Descriptor instead.
 func (*ContactsResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{99}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ContactsResponse) GetContacts() []*v1.Contact {
@@ -5579,7 +5740,7 @@ type Presence struct {
 
 func (x *Presence) Reset() {
 	*x = Presence{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[100]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5591,7 +5752,7 @@ func (x *Presence) String() string {
 func (*Presence) ProtoMessage() {}
 
 func (x *Presence) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[100]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5604,7 +5765,7 @@ func (x *Presence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Presence.ProtoReflect.Descriptor instead.
 func (*Presence) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{100}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *Presence) GetInbox() string {
@@ -5639,7 +5800,7 @@ type Woken struct {
 
 func (x *Woken) Reset() {
 	*x = Woken{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[101]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5651,7 +5812,7 @@ func (x *Woken) String() string {
 func (*Woken) ProtoMessage() {}
 
 func (x *Woken) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[101]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5664,7 +5825,7 @@ func (x *Woken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Woken.ProtoReflect.Descriptor instead.
 func (*Woken) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{101}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *Woken) GetInbox() string {
@@ -5690,7 +5851,7 @@ type SendSealedRequest struct {
 
 func (x *SendSealedRequest) Reset() {
 	*x = SendSealedRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[102]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5702,7 +5863,7 @@ func (x *SendSealedRequest) String() string {
 func (*SendSealedRequest) ProtoMessage() {}
 
 func (x *SendSealedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[102]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5715,7 +5876,7 @@ func (x *SendSealedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendSealedRequest.ProtoReflect.Descriptor instead.
 func (*SendSealedRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{102}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *SendSealedRequest) GetMessage() *SealedMessage {
@@ -5733,7 +5894,7 @@ type SendSealedResponse struct {
 
 func (x *SendSealedResponse) Reset() {
 	*x = SendSealedResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[103]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5745,7 +5906,7 @@ func (x *SendSealedResponse) String() string {
 func (*SendSealedResponse) ProtoMessage() {}
 
 func (x *SendSealedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[103]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5758,7 +5919,7 @@ func (x *SendSealedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendSealedResponse.ProtoReflect.Descriptor instead.
 func (*SendSealedResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{103}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{106}
 }
 
 type FetchMessagesRequest struct {
@@ -5776,7 +5937,7 @@ type FetchMessagesRequest struct {
 
 func (x *FetchMessagesRequest) Reset() {
 	*x = FetchMessagesRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[104]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5788,7 +5949,7 @@ func (x *FetchMessagesRequest) String() string {
 func (*FetchMessagesRequest) ProtoMessage() {}
 
 func (x *FetchMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[104]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5801,7 +5962,7 @@ func (x *FetchMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchMessagesRequest.ProtoReflect.Descriptor instead.
 func (*FetchMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{104}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *FetchMessagesRequest) GetLimit() uint32 {
@@ -5834,7 +5995,7 @@ type TakeMessagesRequest struct {
 
 func (x *TakeMessagesRequest) Reset() {
 	*x = TakeMessagesRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[105]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5846,7 +6007,7 @@ func (x *TakeMessagesRequest) String() string {
 func (*TakeMessagesRequest) ProtoMessage() {}
 
 func (x *TakeMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[105]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5859,7 +6020,7 @@ func (x *TakeMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TakeMessagesRequest.ProtoReflect.Descriptor instead.
 func (*TakeMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{105}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *TakeMessagesRequest) GetMessageIds() []string {
@@ -5877,7 +6038,7 @@ type TakeMessagesResponse struct {
 
 func (x *TakeMessagesResponse) Reset() {
 	*x = TakeMessagesResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[106]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5889,7 +6050,7 @@ func (x *TakeMessagesResponse) String() string {
 func (*TakeMessagesResponse) ProtoMessage() {}
 
 func (x *TakeMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[106]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5902,7 +6063,7 @@ func (x *TakeMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TakeMessagesResponse.ProtoReflect.Descriptor instead.
 func (*TakeMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{106}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{109}
 }
 
 type FetchMessagesResponse struct {
@@ -5916,7 +6077,7 @@ type FetchMessagesResponse struct {
 
 func (x *FetchMessagesResponse) Reset() {
 	*x = FetchMessagesResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[107]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5928,7 +6089,7 @@ func (x *FetchMessagesResponse) String() string {
 func (*FetchMessagesResponse) ProtoMessage() {}
 
 func (x *FetchMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[107]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5941,7 +6102,7 @@ func (x *FetchMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchMessagesResponse.ProtoReflect.Descriptor instead.
 func (*FetchMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{107}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *FetchMessagesResponse) GetMessages() []*SealedMessage {
@@ -5972,7 +6133,7 @@ type MessageAck struct {
 
 func (x *MessageAck) Reset() {
 	*x = MessageAck{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[108]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5984,7 +6145,7 @@ func (x *MessageAck) String() string {
 func (*MessageAck) ProtoMessage() {}
 
 func (x *MessageAck) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[108]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5997,7 +6158,7 @@ func (x *MessageAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageAck.ProtoReflect.Descriptor instead.
 func (*MessageAck) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{108}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *MessageAck) GetMessageId() string {
@@ -6023,7 +6184,7 @@ type AckMessagesRequest struct {
 
 func (x *AckMessagesRequest) Reset() {
 	*x = AckMessagesRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[109]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6035,7 +6196,7 @@ func (x *AckMessagesRequest) String() string {
 func (*AckMessagesRequest) ProtoMessage() {}
 
 func (x *AckMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[109]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6048,7 +6209,7 @@ func (x *AckMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckMessagesRequest.ProtoReflect.Descriptor instead.
 func (*AckMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{109}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *AckMessagesRequest) GetAcks() []*MessageAck {
@@ -6066,7 +6227,7 @@ type AckMessagesResponse struct {
 
 func (x *AckMessagesResponse) Reset() {
 	*x = AckMessagesResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[110]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6078,7 +6239,7 @@ func (x *AckMessagesResponse) String() string {
 func (*AckMessagesResponse) ProtoMessage() {}
 
 func (x *AckMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[110]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6091,7 +6252,7 @@ func (x *AckMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckMessagesResponse.ProtoReflect.Descriptor instead.
 func (*AckMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{110}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{113}
 }
 
 type WatchInboxRequest struct {
@@ -6102,7 +6263,7 @@ type WatchInboxRequest struct {
 
 func (x *WatchInboxRequest) Reset() {
 	*x = WatchInboxRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[111]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6114,7 +6275,7 @@ func (x *WatchInboxRequest) String() string {
 func (*WatchInboxRequest) ProtoMessage() {}
 
 func (x *WatchInboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[111]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6127,7 +6288,7 @@ func (x *WatchInboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchInboxRequest.ProtoReflect.Descriptor instead.
 func (*WatchInboxRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{111}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{114}
 }
 
 type WatchInboxResponse struct {
@@ -6139,7 +6300,7 @@ type WatchInboxResponse struct {
 
 func (x *WatchInboxResponse) Reset() {
 	*x = WatchInboxResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[112]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6151,7 +6312,7 @@ func (x *WatchInboxResponse) String() string {
 func (*WatchInboxResponse) ProtoMessage() {}
 
 func (x *WatchInboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[112]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6164,7 +6325,7 @@ func (x *WatchInboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchInboxResponse.ProtoReflect.Descriptor instead.
 func (*WatchInboxResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{112}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *WatchInboxResponse) GetWaiting() uint32 {
@@ -6183,7 +6344,7 @@ type MessageStatusRequest struct {
 
 func (x *MessageStatusRequest) Reset() {
 	*x = MessageStatusRequest{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[113]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6195,7 +6356,7 @@ func (x *MessageStatusRequest) String() string {
 func (*MessageStatusRequest) ProtoMessage() {}
 
 func (x *MessageStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[113]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6208,7 +6369,7 @@ func (x *MessageStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageStatusRequest.ProtoReflect.Descriptor instead.
 func (*MessageStatusRequest) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{113}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *MessageStatusRequest) GetMessageIds() []string {
@@ -6231,7 +6392,7 @@ type MessageState struct {
 
 func (x *MessageState) Reset() {
 	*x = MessageState{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[114]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6243,7 +6404,7 @@ func (x *MessageState) String() string {
 func (*MessageState) ProtoMessage() {}
 
 func (x *MessageState) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[114]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6256,7 +6417,7 @@ func (x *MessageState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageState.ProtoReflect.Descriptor instead.
 func (*MessageState) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{114}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *MessageState) GetMessageId() string {
@@ -6289,7 +6450,7 @@ type MessageStatusResponse struct {
 
 func (x *MessageStatusResponse) Reset() {
 	*x = MessageStatusResponse{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[115]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6301,7 +6462,7 @@ func (x *MessageStatusResponse) String() string {
 func (*MessageStatusResponse) ProtoMessage() {}
 
 func (x *MessageStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[115]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6314,7 +6475,7 @@ func (x *MessageStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageStatusResponse.ProtoReflect.Descriptor instead.
 func (*MessageStatusResponse) Descriptor() ([]byte, []int) {
-	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{115}
+	return file_aide_relay_v1_relay_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *MessageStatusResponse) GetStates() []*MessageState {
@@ -6336,7 +6497,7 @@ type OldPasswordLogin_Kdf struct {
 
 func (x *OldPasswordLogin_Kdf) Reset() {
 	*x = OldPasswordLogin_Kdf{}
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[116]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6348,7 +6509,7 @@ func (x *OldPasswordLogin_Kdf) String() string {
 func (*OldPasswordLogin_Kdf) ProtoMessage() {}
 
 func (x *OldPasswordLogin_Kdf) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_relay_v1_relay_proto_msgTypes[116]
+	mi := &file_aide_relay_v1_relay_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6719,13 +6880,21 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\"\x0f\n" +
 	"\rGetMCPRequest\"\"\n" +
 	"\x0eGetMCPResponse\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url\"%\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\"*\n" +
+	"\x12RoomWaitingRequest\x12\x14\n" +
+	"\x05inbox\x18\x01 \x01(\tR\x05inbox\"L\n" +
+	"\x13RoomWaitingResponse\x125\n" +
+	"\x05rooms\x18\x01 \x03(\v2\x1f.aide.relay.v1.RoomWaitingCountR\x05rooms\"y\n" +
+	"\x10RoomWaitingCount\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1a\n" +
+	"\bmessages\x18\x02 \x01(\rR\bmessages\x120\n" +
+	"\x05since\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\"%\n" +
 	"\x0fWakeLinkRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"a\n" +
 	"\x10WakeLinkResponse\x12\x12\n" +
 	"\x04link\x18\x01 \x01(\tR\x04link\x129\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xbb\x01\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xcf\x01\n" +
 	"\rSealedMessage\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x1d\n" +
 	"\n" +
@@ -6733,7 +6902,8 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"\x06sealed\x18\x03 \x01(\fR\x06sealed\x12;\n" +
 	"\vreceived_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"receivedAt\x12\x17\n" +
-	"\x04ring\x18\x05 \x01(\tH\x00R\x04ring\x88\x01\x01B\a\n" +
+	"\x04ring\x18\x05 \x01(\tH\x00R\x04ring\x88\x01\x01\x12\x12\n" +
+	"\x04room\x18\x06 \x01(\tR\x04roomB\a\n" +
 	"\x05_ring\"T\n" +
 	"\x14RegisterInboxRequest\x12<\n" +
 	"\fregistration\x18\x01 \x01(\v2\x18.aide.identity.v1.SignedR\fregistration\"\x17\n" +
@@ -6818,8 +6988,9 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"\x14ClientControlService\x12E\n" +
 	"\x06WhoAmI\x12\x1c.aide.relay.v1.WhoAmIRequest\x1a\x1d.aide.relay.v1.WhoAmIResponse\x12W\n" +
 	"\fListMachines\x12\".aide.relay.v1.ListMachinesRequest\x1a#.aide.relay.v1.ListMachinesResponse\x12]\n" +
-	"\x0eGetLatestGrant\x12$.aide.relay.v1.GetLatestGrantRequest\x1a%.aide.relay.v1.GetLatestGrantResponse2\xa8\x12\n" +
-	"\x13OwnerControlService\x12?\n" +
+	"\x0eGetLatestGrant\x12$.aide.relay.v1.GetLatestGrantRequest\x1a%.aide.relay.v1.GetLatestGrantResponse2\xfe\x12\n" +
+	"\x13OwnerControlService\x12T\n" +
+	"\vRoomWaiting\x12!.aide.relay.v1.RoomWaitingRequest\x1a\".aide.relay.v1.RoomWaitingResponse\x12?\n" +
 	"\x04Sign\x12\x1a.aide.relay.v1.SignRequest\x1a\x1b.aide.relay.v1.SignResponse\x12W\n" +
 	"\fListMachines\x12\".aide.relay.v1.ListMachinesRequest\x1a#.aide.relay.v1.ListMachinesResponse\x12T\n" +
 	"\vListClients\x12!.aide.relay.v1.ListClientsRequest\x1a\".aide.relay.v1.ListClientsResponse\x12L\n" +
@@ -6876,7 +7047,7 @@ func file_aide_relay_v1_relay_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_relay_v1_relay_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_aide_relay_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 117)
+var file_aide_relay_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 120)
 var file_aide_relay_v1_relay_proto_goTypes = []any{
 	(Role)(0),                             // 0: aide.relay.v1.Role
 	(StreamKind)(0),                       // 1: aide.relay.v1.StreamKind
@@ -6974,221 +7145,228 @@ var file_aide_relay_v1_relay_proto_goTypes = []any{
 	(*GetAccountResponse)(nil),            // 93: aide.relay.v1.GetAccountResponse
 	(*GetMCPRequest)(nil),                 // 94: aide.relay.v1.GetMCPRequest
 	(*GetMCPResponse)(nil),                // 95: aide.relay.v1.GetMCPResponse
-	(*WakeLinkRequest)(nil),               // 96: aide.relay.v1.WakeLinkRequest
-	(*WakeLinkResponse)(nil),              // 97: aide.relay.v1.WakeLinkResponse
-	(*SealedMessage)(nil),                 // 98: aide.relay.v1.SealedMessage
-	(*RegisterInboxRequest)(nil),          // 99: aide.relay.v1.RegisterInboxRequest
-	(*RegisterInboxResponse)(nil),         // 100: aide.relay.v1.RegisterInboxResponse
-	(*ContactsRequest)(nil),               // 101: aide.relay.v1.ContactsRequest
-	(*ContactsResponse)(nil),              // 102: aide.relay.v1.ContactsResponse
-	(*Presence)(nil),                      // 103: aide.relay.v1.Presence
-	(*Woken)(nil),                         // 104: aide.relay.v1.Woken
-	(*SendSealedRequest)(nil),             // 105: aide.relay.v1.SendSealedRequest
-	(*SendSealedResponse)(nil),            // 106: aide.relay.v1.SendSealedResponse
-	(*FetchMessagesRequest)(nil),          // 107: aide.relay.v1.FetchMessagesRequest
-	(*TakeMessagesRequest)(nil),           // 108: aide.relay.v1.TakeMessagesRequest
-	(*TakeMessagesResponse)(nil),          // 109: aide.relay.v1.TakeMessagesResponse
-	(*FetchMessagesResponse)(nil),         // 110: aide.relay.v1.FetchMessagesResponse
-	(*MessageAck)(nil),                    // 111: aide.relay.v1.MessageAck
-	(*AckMessagesRequest)(nil),            // 112: aide.relay.v1.AckMessagesRequest
-	(*AckMessagesResponse)(nil),           // 113: aide.relay.v1.AckMessagesResponse
-	(*WatchInboxRequest)(nil),             // 114: aide.relay.v1.WatchInboxRequest
-	(*WatchInboxResponse)(nil),            // 115: aide.relay.v1.WatchInboxResponse
-	(*MessageStatusRequest)(nil),          // 116: aide.relay.v1.MessageStatusRequest
-	(*MessageState)(nil),                  // 117: aide.relay.v1.MessageState
-	(*MessageStatusResponse)(nil),         // 118: aide.relay.v1.MessageStatusResponse
-	(*OldPasswordLogin_Kdf)(nil),          // 119: aide.relay.v1.OldPasswordLogin.Kdf
-	(*timestamppb.Timestamp)(nil),         // 120: google.protobuf.Timestamp
-	(*v1.Credentials)(nil),                // 121: aide.identity.v1.Credentials
-	(*v1.RootChain)(nil),                  // 122: aide.identity.v1.RootChain
-	(*v1.Signed)(nil),                     // 123: aide.identity.v1.Signed
-	(*v1.RevocationList)(nil),             // 124: aide.identity.v1.RevocationList
-	(*v1.Persona)(nil),                    // 125: aide.identity.v1.Persona
-	(*v1.Contact)(nil),                    // 126: aide.identity.v1.Contact
+	(*RoomWaitingRequest)(nil),            // 96: aide.relay.v1.RoomWaitingRequest
+	(*RoomWaitingResponse)(nil),           // 97: aide.relay.v1.RoomWaitingResponse
+	(*RoomWaitingCount)(nil),              // 98: aide.relay.v1.RoomWaitingCount
+	(*WakeLinkRequest)(nil),               // 99: aide.relay.v1.WakeLinkRequest
+	(*WakeLinkResponse)(nil),              // 100: aide.relay.v1.WakeLinkResponse
+	(*SealedMessage)(nil),                 // 101: aide.relay.v1.SealedMessage
+	(*RegisterInboxRequest)(nil),          // 102: aide.relay.v1.RegisterInboxRequest
+	(*RegisterInboxResponse)(nil),         // 103: aide.relay.v1.RegisterInboxResponse
+	(*ContactsRequest)(nil),               // 104: aide.relay.v1.ContactsRequest
+	(*ContactsResponse)(nil),              // 105: aide.relay.v1.ContactsResponse
+	(*Presence)(nil),                      // 106: aide.relay.v1.Presence
+	(*Woken)(nil),                         // 107: aide.relay.v1.Woken
+	(*SendSealedRequest)(nil),             // 108: aide.relay.v1.SendSealedRequest
+	(*SendSealedResponse)(nil),            // 109: aide.relay.v1.SendSealedResponse
+	(*FetchMessagesRequest)(nil),          // 110: aide.relay.v1.FetchMessagesRequest
+	(*TakeMessagesRequest)(nil),           // 111: aide.relay.v1.TakeMessagesRequest
+	(*TakeMessagesResponse)(nil),          // 112: aide.relay.v1.TakeMessagesResponse
+	(*FetchMessagesResponse)(nil),         // 113: aide.relay.v1.FetchMessagesResponse
+	(*MessageAck)(nil),                    // 114: aide.relay.v1.MessageAck
+	(*AckMessagesRequest)(nil),            // 115: aide.relay.v1.AckMessagesRequest
+	(*AckMessagesResponse)(nil),           // 116: aide.relay.v1.AckMessagesResponse
+	(*WatchInboxRequest)(nil),             // 117: aide.relay.v1.WatchInboxRequest
+	(*WatchInboxResponse)(nil),            // 118: aide.relay.v1.WatchInboxResponse
+	(*MessageStatusRequest)(nil),          // 119: aide.relay.v1.MessageStatusRequest
+	(*MessageState)(nil),                  // 120: aide.relay.v1.MessageState
+	(*MessageStatusResponse)(nil),         // 121: aide.relay.v1.MessageStatusResponse
+	(*OldPasswordLogin_Kdf)(nil),          // 122: aide.relay.v1.OldPasswordLogin.Kdf
+	(*timestamppb.Timestamp)(nil),         // 123: google.protobuf.Timestamp
+	(*v1.Credentials)(nil),                // 124: aide.identity.v1.Credentials
+	(*v1.RootChain)(nil),                  // 125: aide.identity.v1.RootChain
+	(*v1.Signed)(nil),                     // 126: aide.identity.v1.Signed
+	(*v1.RevocationList)(nil),             // 127: aide.identity.v1.RevocationList
+	(*v1.Persona)(nil),                    // 128: aide.identity.v1.Persona
+	(*v1.Contact)(nil),                    // 129: aide.identity.v1.Contact
 }
 var file_aide_relay_v1_relay_proto_depIdxs = []int32{
-	120, // 0: aide.relay.v1.Challenge.server_time:type_name -> google.protobuf.Timestamp
+	123, // 0: aide.relay.v1.Challenge.server_time:type_name -> google.protobuf.Timestamp
 	0,   // 1: aide.relay.v1.Hello.role:type_name -> aide.relay.v1.Role
-	121, // 2: aide.relay.v1.Hello.credentials:type_name -> aide.identity.v1.Credentials
+	124, // 2: aide.relay.v1.Hello.credentials:type_name -> aide.identity.v1.Credentials
 	1,   // 3: aide.relay.v1.StreamHeader.kind:type_name -> aide.relay.v1.StreamKind
 	0,   // 4: aide.relay.v1.StreamHeader.principal_role:type_name -> aide.relay.v1.Role
 	2,   // 5: aide.relay.v1.Joiner.kind:type_name -> aide.relay.v1.JoinKind
 	7,   // 6: aide.relay.v1.SetUpRequest.joiner:type_name -> aide.relay.v1.Joiner
 	7,   // 7: aide.relay.v1.LogInRequest.joiner:type_name -> aide.relay.v1.Joiner
-	122, // 8: aide.relay.v1.LogInResponse.root_chain:type_name -> aide.identity.v1.RootChain
-	123, // 9: aide.relay.v1.LogInResponse.credential:type_name -> aide.identity.v1.Signed
-	123, // 10: aide.relay.v1.LogInResponse.machine_cert:type_name -> aide.identity.v1.Signed
-	119, // 11: aide.relay.v1.OldPasswordLogin.kdf:type_name -> aide.relay.v1.OldPasswordLogin.Kdf
-	122, // 12: aide.relay.v1.GetInfoResponse.root_chain:type_name -> aide.identity.v1.RootChain
-	123, // 13: aide.relay.v1.GetInfoResponse.erase_order:type_name -> aide.identity.v1.Signed
-	123, // 14: aide.relay.v1.AckEraseRequest.ack:type_name -> aide.identity.v1.Signed
-	123, // 15: aide.relay.v1.MachineEntry.machine_cert:type_name -> aide.identity.v1.Signed
-	120, // 16: aide.relay.v1.MachineEntry.last_seen:type_name -> google.protobuf.Timestamp
-	123, // 17: aide.relay.v1.ClientEntry.grant:type_name -> aide.identity.v1.Signed
-	120, // 18: aide.relay.v1.ClientEntry.last_seen:type_name -> google.protobuf.Timestamp
-	123, // 19: aide.relay.v1.ClientEntry.card:type_name -> aide.identity.v1.Signed
-	123, // 20: aide.relay.v1.ClientEntry.card_device_cert:type_name -> aide.identity.v1.Signed
+	125, // 8: aide.relay.v1.LogInResponse.root_chain:type_name -> aide.identity.v1.RootChain
+	126, // 9: aide.relay.v1.LogInResponse.credential:type_name -> aide.identity.v1.Signed
+	126, // 10: aide.relay.v1.LogInResponse.machine_cert:type_name -> aide.identity.v1.Signed
+	122, // 11: aide.relay.v1.OldPasswordLogin.kdf:type_name -> aide.relay.v1.OldPasswordLogin.Kdf
+	125, // 12: aide.relay.v1.GetInfoResponse.root_chain:type_name -> aide.identity.v1.RootChain
+	126, // 13: aide.relay.v1.GetInfoResponse.erase_order:type_name -> aide.identity.v1.Signed
+	126, // 14: aide.relay.v1.AckEraseRequest.ack:type_name -> aide.identity.v1.Signed
+	126, // 15: aide.relay.v1.MachineEntry.machine_cert:type_name -> aide.identity.v1.Signed
+	123, // 16: aide.relay.v1.MachineEntry.last_seen:type_name -> google.protobuf.Timestamp
+	126, // 17: aide.relay.v1.ClientEntry.grant:type_name -> aide.identity.v1.Signed
+	123, // 18: aide.relay.v1.ClientEntry.last_seen:type_name -> google.protobuf.Timestamp
+	126, // 19: aide.relay.v1.ClientEntry.card:type_name -> aide.identity.v1.Signed
+	126, // 20: aide.relay.v1.ClientEntry.card_device_cert:type_name -> aide.identity.v1.Signed
 	21,  // 21: aide.relay.v1.GetScreenServersResponse.servers:type_name -> aide.relay.v1.IceServer
 	25,  // 22: aide.relay.v1.NotifyRequest.notices:type_name -> aide.relay.v1.SealedNotice
 	27,  // 23: aide.relay.v1.PushTargets.targets:type_name -> aide.relay.v1.PushTarget
-	123, // 24: aide.relay.v1.PushTarget.registration:type_name -> aide.identity.v1.Signed
-	123, // 25: aide.relay.v1.PushTarget.device_cert:type_name -> aide.identity.v1.Signed
-	122, // 26: aide.relay.v1.MachineUpdate.root_chain:type_name -> aide.identity.v1.RootChain
-	124, // 27: aide.relay.v1.MachineUpdate.revocations:type_name -> aide.identity.v1.RevocationList
-	123, // 28: aide.relay.v1.MachineUpdate.machine_cert:type_name -> aide.identity.v1.Signed
+	126, // 24: aide.relay.v1.PushTarget.registration:type_name -> aide.identity.v1.Signed
+	126, // 25: aide.relay.v1.PushTarget.device_cert:type_name -> aide.identity.v1.Signed
+	125, // 26: aide.relay.v1.MachineUpdate.root_chain:type_name -> aide.identity.v1.RootChain
+	127, // 27: aide.relay.v1.MachineUpdate.revocations:type_name -> aide.identity.v1.RevocationList
+	126, // 28: aide.relay.v1.MachineUpdate.machine_cert:type_name -> aide.identity.v1.Signed
 	26,  // 29: aide.relay.v1.MachineUpdate.push_targets:type_name -> aide.relay.v1.PushTargets
 	33,  // 30: aide.relay.v1.MachineUpdate.grants:type_name -> aide.relay.v1.MachineGrants
-	123, // 31: aide.relay.v1.MachineGrants.grants:type_name -> aide.identity.v1.Signed
+	126, // 31: aide.relay.v1.MachineGrants.grants:type_name -> aide.identity.v1.Signed
 	0,   // 32: aide.relay.v1.WhoAmIResponse.role:type_name -> aide.relay.v1.Role
 	17,  // 33: aide.relay.v1.ListMachinesResponse.machines:type_name -> aide.relay.v1.MachineEntry
-	122, // 34: aide.relay.v1.ListMachinesResponse.root_chain:type_name -> aide.identity.v1.RootChain
-	123, // 35: aide.relay.v1.GetLatestGrantResponse.grant:type_name -> aide.identity.v1.Signed
-	122, // 36: aide.relay.v1.GetLatestGrantResponse.root_chain:type_name -> aide.identity.v1.RootChain
-	125, // 37: aide.relay.v1.ListPersonasResponse.personas:type_name -> aide.identity.v1.Persona
-	125, // 38: aide.relay.v1.SavePersonaRequest.persona:type_name -> aide.identity.v1.Persona
-	125, // 39: aide.relay.v1.SavePersonaResponse.persona:type_name -> aide.identity.v1.Persona
-	125, // 40: aide.relay.v1.BindPersonaSessionResponse.persona:type_name -> aide.identity.v1.Persona
-	120, // 41: aide.relay.v1.Wake.last_ring_at:type_name -> google.protobuf.Timestamp
+	125, // 34: aide.relay.v1.ListMachinesResponse.root_chain:type_name -> aide.identity.v1.RootChain
+	126, // 35: aide.relay.v1.GetLatestGrantResponse.grant:type_name -> aide.identity.v1.Signed
+	125, // 36: aide.relay.v1.GetLatestGrantResponse.root_chain:type_name -> aide.identity.v1.RootChain
+	128, // 37: aide.relay.v1.ListPersonasResponse.personas:type_name -> aide.identity.v1.Persona
+	128, // 38: aide.relay.v1.SavePersonaRequest.persona:type_name -> aide.identity.v1.Persona
+	128, // 39: aide.relay.v1.SavePersonaResponse.persona:type_name -> aide.identity.v1.Persona
+	128, // 40: aide.relay.v1.BindPersonaSessionResponse.persona:type_name -> aide.identity.v1.Persona
+	123, // 41: aide.relay.v1.Wake.last_ring_at:type_name -> google.protobuf.Timestamp
 	49,  // 42: aide.relay.v1.Wake.recent:type_name -> aide.relay.v1.WakeRing
-	120, // 43: aide.relay.v1.WakeRing.at:type_name -> google.protobuf.Timestamp
+	123, // 43: aide.relay.v1.WakeRing.at:type_name -> google.protobuf.Timestamp
 	48,  // 44: aide.relay.v1.ListWakesResponse.wakes:type_name -> aide.relay.v1.Wake
 	48,  // 45: aide.relay.v1.SetWakeResponse.wake:type_name -> aide.relay.v1.Wake
 	50,  // 46: aide.relay.v1.SetWakeResponse.check:type_name -> aide.relay.v1.WakeCheck
 	48,  // 47: aide.relay.v1.CheckWakeResponse.wake:type_name -> aide.relay.v1.Wake
 	50,  // 48: aide.relay.v1.CheckWakeResponse.check:type_name -> aide.relay.v1.WakeCheck
-	120, // 49: aide.relay.v1.OpenWakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
-	123, // 50: aide.relay.v1.PublishCardsRequest.cards:type_name -> aide.identity.v1.Signed
+	123, // 49: aide.relay.v1.OpenWakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
+	126, // 50: aide.relay.v1.PublishCardsRequest.cards:type_name -> aide.identity.v1.Signed
 	65,  // 51: aide.relay.v1.PublishBoundaryPolicyRequest.boundary:type_name -> aide.relay.v1.Boundary
-	123, // 52: aide.relay.v1.Boundary.policy:type_name -> aide.identity.v1.Signed
-	123, // 53: aide.relay.v1.Boundary.device_cert:type_name -> aide.identity.v1.Signed
-	123, // 54: aide.relay.v1.RegisterPushRequest.registration:type_name -> aide.identity.v1.Signed
+	126, // 52: aide.relay.v1.Boundary.policy:type_name -> aide.identity.v1.Signed
+	126, // 53: aide.relay.v1.Boundary.device_cert:type_name -> aide.identity.v1.Signed
+	126, // 54: aide.relay.v1.RegisterPushRequest.registration:type_name -> aide.identity.v1.Signed
 	68,  // 55: aide.relay.v1.SignRequest.messages:type_name -> aide.relay.v1.Unsigned
-	123, // 56: aide.relay.v1.SignResponse.signed:type_name -> aide.identity.v1.Signed
-	120, // 57: aide.relay.v1.DeviceEntry.logged_in_at:type_name -> google.protobuf.Timestamp
+	126, // 56: aide.relay.v1.SignResponse.signed:type_name -> aide.identity.v1.Signed
+	123, // 57: aide.relay.v1.DeviceEntry.logged_in_at:type_name -> google.protobuf.Timestamp
 	75,  // 58: aide.relay.v1.ListDevicesResponse.devices:type_name -> aide.relay.v1.DeviceEntry
 	37,  // 59: aide.relay.v1.OwnerUpdate.machines:type_name -> aide.relay.v1.ListMachinesResponse
 	83,  // 60: aide.relay.v1.OwnerUpdate.clients:type_name -> aide.relay.v1.ListClientsResponse
 	77,  // 61: aide.relay.v1.OwnerUpdate.devices:type_name -> aide.relay.v1.ListDevicesResponse
 	18,  // 62: aide.relay.v1.ListClientsResponse.clients:type_name -> aide.relay.v1.ClientEntry
-	123, // 63: aide.relay.v1.PublishGrantRequest.grant:type_name -> aide.identity.v1.Signed
-	123, // 64: aide.relay.v1.PublishMachineCertRequest.machine_cert:type_name -> aide.identity.v1.Signed
-	124, // 65: aide.relay.v1.RevokeRequest.revocations:type_name -> aide.identity.v1.RevocationList
-	123, // 66: aide.relay.v1.EraseOwnerRequest.order:type_name -> aide.identity.v1.Signed
-	120, // 67: aide.relay.v1.WakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
-	120, // 68: aide.relay.v1.SealedMessage.received_at:type_name -> google.protobuf.Timestamp
-	123, // 69: aide.relay.v1.RegisterInboxRequest.registration:type_name -> aide.identity.v1.Signed
-	126, // 70: aide.relay.v1.ContactsResponse.contacts:type_name -> aide.identity.v1.Contact
-	122, // 71: aide.relay.v1.ContactsResponse.root_chain:type_name -> aide.identity.v1.RootChain
-	104, // 72: aide.relay.v1.ContactsResponse.woken:type_name -> aide.relay.v1.Woken
-	103, // 73: aide.relay.v1.ContactsResponse.presence:type_name -> aide.relay.v1.Presence
-	65,  // 74: aide.relay.v1.ContactsResponse.boundary:type_name -> aide.relay.v1.Boundary
-	120, // 75: aide.relay.v1.Presence.last_seen:type_name -> google.protobuf.Timestamp
-	98,  // 76: aide.relay.v1.SendSealedRequest.message:type_name -> aide.relay.v1.SealedMessage
-	98,  // 77: aide.relay.v1.FetchMessagesResponse.messages:type_name -> aide.relay.v1.SealedMessage
-	111, // 78: aide.relay.v1.AckMessagesRequest.acks:type_name -> aide.relay.v1.MessageAck
-	120, // 79: aide.relay.v1.MessageState.at:type_name -> google.protobuf.Timestamp
-	117, // 80: aide.relay.v1.MessageStatusResponse.states:type_name -> aide.relay.v1.MessageState
-	13,  // 81: aide.relay.v1.RelayPublicService.GetInfo:input_type -> aide.relay.v1.GetInfoRequest
-	15,  // 82: aide.relay.v1.RelayPublicService.AckErase:input_type -> aide.relay.v1.AckEraseRequest
-	8,   // 83: aide.relay.v1.RelayPublicService.SetUp:input_type -> aide.relay.v1.SetUpRequest
-	9,   // 84: aide.relay.v1.RelayPublicService.LogIn:input_type -> aide.relay.v1.LogInRequest
-	29,  // 85: aide.relay.v1.MachineControlService.ReportStatus:input_type -> aide.relay.v1.ReportStatusRequest
-	31,  // 86: aide.relay.v1.MachineControlService.WatchUpdates:input_type -> aide.relay.v1.WatchUpdatesRequest
-	22,  // 87: aide.relay.v1.MachineControlService.Leave:input_type -> aide.relay.v1.LeaveRequest
-	23,  // 88: aide.relay.v1.MachineControlService.Notify:input_type -> aide.relay.v1.NotifyRequest
-	19,  // 89: aide.relay.v1.MachineControlService.GetScreenServers:input_type -> aide.relay.v1.GetScreenServersRequest
-	34,  // 90: aide.relay.v1.ClientControlService.WhoAmI:input_type -> aide.relay.v1.WhoAmIRequest
-	36,  // 91: aide.relay.v1.ClientControlService.ListMachines:input_type -> aide.relay.v1.ListMachinesRequest
-	38,  // 92: aide.relay.v1.ClientControlService.GetLatestGrant:input_type -> aide.relay.v1.GetLatestGrantRequest
-	69,  // 93: aide.relay.v1.OwnerControlService.Sign:input_type -> aide.relay.v1.SignRequest
-	36,  // 94: aide.relay.v1.OwnerControlService.ListMachines:input_type -> aide.relay.v1.ListMachinesRequest
-	82,  // 95: aide.relay.v1.OwnerControlService.ListClients:input_type -> aide.relay.v1.ListClientsRequest
-	80,  // 96: aide.relay.v1.OwnerControlService.WatchOwner:input_type -> aide.relay.v1.WatchOwnerRequest
-	84,  // 97: aide.relay.v1.OwnerControlService.PublishGrant:input_type -> aide.relay.v1.PublishGrantRequest
-	86,  // 98: aide.relay.v1.OwnerControlService.PublishMachineCert:input_type -> aide.relay.v1.PublishMachineCertRequest
-	88,  // 99: aide.relay.v1.OwnerControlService.Revoke:input_type -> aide.relay.v1.RevokeRequest
-	71,  // 100: aide.relay.v1.OwnerControlService.GetLogin:input_type -> aide.relay.v1.GetLoginRequest
-	73,  // 101: aide.relay.v1.OwnerControlService.SetLogin:input_type -> aide.relay.v1.SetLoginRequest
-	76,  // 102: aide.relay.v1.OwnerControlService.ListDevices:input_type -> aide.relay.v1.ListDevicesRequest
-	78,  // 103: aide.relay.v1.OwnerControlService.RemoveDevice:input_type -> aide.relay.v1.RemoveDeviceRequest
-	90,  // 104: aide.relay.v1.OwnerControlService.EraseOwner:input_type -> aide.relay.v1.EraseOwnerRequest
-	92,  // 105: aide.relay.v1.OwnerControlService.GetAccount:input_type -> aide.relay.v1.GetAccountRequest
-	94,  // 106: aide.relay.v1.OwnerControlService.GetMCP:input_type -> aide.relay.v1.GetMCPRequest
-	66,  // 107: aide.relay.v1.OwnerControlService.RegisterPush:input_type -> aide.relay.v1.RegisterPushRequest
-	61,  // 108: aide.relay.v1.OwnerControlService.PublishCards:input_type -> aide.relay.v1.PublishCardsRequest
-	63,  // 109: aide.relay.v1.OwnerControlService.PublishBoundaryPolicy:input_type -> aide.relay.v1.PublishBoundaryPolicyRequest
-	51,  // 110: aide.relay.v1.OwnerControlService.ListWakes:input_type -> aide.relay.v1.ListWakesRequest
-	53,  // 111: aide.relay.v1.OwnerControlService.SetWake:input_type -> aide.relay.v1.SetWakeRequest
-	55,  // 112: aide.relay.v1.OwnerControlService.CheckWake:input_type -> aide.relay.v1.CheckWakeRequest
-	57,  // 113: aide.relay.v1.OwnerControlService.ClearWake:input_type -> aide.relay.v1.ClearWakeRequest
-	59,  // 114: aide.relay.v1.OwnerControlService.OpenWakeLink:input_type -> aide.relay.v1.OpenWakeLinkRequest
-	19,  // 115: aide.relay.v1.OwnerControlService.GetScreenServers:input_type -> aide.relay.v1.GetScreenServersRequest
-	40,  // 116: aide.relay.v1.OwnerControlService.ListPersonas:input_type -> aide.relay.v1.ListPersonasRequest
-	42,  // 117: aide.relay.v1.OwnerControlService.SavePersona:input_type -> aide.relay.v1.SavePersonaRequest
-	44,  // 118: aide.relay.v1.OwnerControlService.DeletePersona:input_type -> aide.relay.v1.DeletePersonaRequest
-	46,  // 119: aide.relay.v1.OwnerControlService.BindPersonaSession:input_type -> aide.relay.v1.BindPersonaSessionRequest
-	99,  // 120: aide.relay.v1.MessageService.Register:input_type -> aide.relay.v1.RegisterInboxRequest
-	101, // 121: aide.relay.v1.MessageService.Contacts:input_type -> aide.relay.v1.ContactsRequest
-	105, // 122: aide.relay.v1.MessageService.Send:input_type -> aide.relay.v1.SendSealedRequest
-	107, // 123: aide.relay.v1.MessageService.Fetch:input_type -> aide.relay.v1.FetchMessagesRequest
-	108, // 124: aide.relay.v1.MessageService.Take:input_type -> aide.relay.v1.TakeMessagesRequest
-	112, // 125: aide.relay.v1.MessageService.Ack:input_type -> aide.relay.v1.AckMessagesRequest
-	114, // 126: aide.relay.v1.MessageService.Watch:input_type -> aide.relay.v1.WatchInboxRequest
-	116, // 127: aide.relay.v1.MessageService.Status:input_type -> aide.relay.v1.MessageStatusRequest
-	96,  // 128: aide.relay.v1.MessageService.WakeLink:input_type -> aide.relay.v1.WakeLinkRequest
-	14,  // 129: aide.relay.v1.RelayPublicService.GetInfo:output_type -> aide.relay.v1.GetInfoResponse
-	16,  // 130: aide.relay.v1.RelayPublicService.AckErase:output_type -> aide.relay.v1.AckEraseResponse
-	10,  // 131: aide.relay.v1.RelayPublicService.SetUp:output_type -> aide.relay.v1.LogInResponse
-	10,  // 132: aide.relay.v1.RelayPublicService.LogIn:output_type -> aide.relay.v1.LogInResponse
-	30,  // 133: aide.relay.v1.MachineControlService.ReportStatus:output_type -> aide.relay.v1.ReportStatusResponse
-	32,  // 134: aide.relay.v1.MachineControlService.WatchUpdates:output_type -> aide.relay.v1.MachineUpdate
-	28,  // 135: aide.relay.v1.MachineControlService.Leave:output_type -> aide.relay.v1.LeaveResponse
-	24,  // 136: aide.relay.v1.MachineControlService.Notify:output_type -> aide.relay.v1.NotifyResponse
-	20,  // 137: aide.relay.v1.MachineControlService.GetScreenServers:output_type -> aide.relay.v1.GetScreenServersResponse
-	35,  // 138: aide.relay.v1.ClientControlService.WhoAmI:output_type -> aide.relay.v1.WhoAmIResponse
-	37,  // 139: aide.relay.v1.ClientControlService.ListMachines:output_type -> aide.relay.v1.ListMachinesResponse
-	39,  // 140: aide.relay.v1.ClientControlService.GetLatestGrant:output_type -> aide.relay.v1.GetLatestGrantResponse
-	70,  // 141: aide.relay.v1.OwnerControlService.Sign:output_type -> aide.relay.v1.SignResponse
-	37,  // 142: aide.relay.v1.OwnerControlService.ListMachines:output_type -> aide.relay.v1.ListMachinesResponse
-	83,  // 143: aide.relay.v1.OwnerControlService.ListClients:output_type -> aide.relay.v1.ListClientsResponse
-	81,  // 144: aide.relay.v1.OwnerControlService.WatchOwner:output_type -> aide.relay.v1.OwnerUpdate
-	85,  // 145: aide.relay.v1.OwnerControlService.PublishGrant:output_type -> aide.relay.v1.PublishGrantResponse
-	87,  // 146: aide.relay.v1.OwnerControlService.PublishMachineCert:output_type -> aide.relay.v1.PublishMachineCertResponse
-	89,  // 147: aide.relay.v1.OwnerControlService.Revoke:output_type -> aide.relay.v1.RevokeResponse
-	72,  // 148: aide.relay.v1.OwnerControlService.GetLogin:output_type -> aide.relay.v1.GetLoginResponse
-	74,  // 149: aide.relay.v1.OwnerControlService.SetLogin:output_type -> aide.relay.v1.SetLoginResponse
-	77,  // 150: aide.relay.v1.OwnerControlService.ListDevices:output_type -> aide.relay.v1.ListDevicesResponse
-	79,  // 151: aide.relay.v1.OwnerControlService.RemoveDevice:output_type -> aide.relay.v1.RemoveDeviceResponse
-	91,  // 152: aide.relay.v1.OwnerControlService.EraseOwner:output_type -> aide.relay.v1.EraseOwnerResponse
-	93,  // 153: aide.relay.v1.OwnerControlService.GetAccount:output_type -> aide.relay.v1.GetAccountResponse
-	95,  // 154: aide.relay.v1.OwnerControlService.GetMCP:output_type -> aide.relay.v1.GetMCPResponse
-	67,  // 155: aide.relay.v1.OwnerControlService.RegisterPush:output_type -> aide.relay.v1.RegisterPushResponse
-	62,  // 156: aide.relay.v1.OwnerControlService.PublishCards:output_type -> aide.relay.v1.PublishCardsResponse
-	64,  // 157: aide.relay.v1.OwnerControlService.PublishBoundaryPolicy:output_type -> aide.relay.v1.PublishBoundaryPolicyResponse
-	52,  // 158: aide.relay.v1.OwnerControlService.ListWakes:output_type -> aide.relay.v1.ListWakesResponse
-	54,  // 159: aide.relay.v1.OwnerControlService.SetWake:output_type -> aide.relay.v1.SetWakeResponse
-	56,  // 160: aide.relay.v1.OwnerControlService.CheckWake:output_type -> aide.relay.v1.CheckWakeResponse
-	58,  // 161: aide.relay.v1.OwnerControlService.ClearWake:output_type -> aide.relay.v1.ClearWakeResponse
-	60,  // 162: aide.relay.v1.OwnerControlService.OpenWakeLink:output_type -> aide.relay.v1.OpenWakeLinkResponse
-	20,  // 163: aide.relay.v1.OwnerControlService.GetScreenServers:output_type -> aide.relay.v1.GetScreenServersResponse
-	41,  // 164: aide.relay.v1.OwnerControlService.ListPersonas:output_type -> aide.relay.v1.ListPersonasResponse
-	43,  // 165: aide.relay.v1.OwnerControlService.SavePersona:output_type -> aide.relay.v1.SavePersonaResponse
-	45,  // 166: aide.relay.v1.OwnerControlService.DeletePersona:output_type -> aide.relay.v1.DeletePersonaResponse
-	47,  // 167: aide.relay.v1.OwnerControlService.BindPersonaSession:output_type -> aide.relay.v1.BindPersonaSessionResponse
-	100, // 168: aide.relay.v1.MessageService.Register:output_type -> aide.relay.v1.RegisterInboxResponse
-	102, // 169: aide.relay.v1.MessageService.Contacts:output_type -> aide.relay.v1.ContactsResponse
-	106, // 170: aide.relay.v1.MessageService.Send:output_type -> aide.relay.v1.SendSealedResponse
-	110, // 171: aide.relay.v1.MessageService.Fetch:output_type -> aide.relay.v1.FetchMessagesResponse
-	109, // 172: aide.relay.v1.MessageService.Take:output_type -> aide.relay.v1.TakeMessagesResponse
-	113, // 173: aide.relay.v1.MessageService.Ack:output_type -> aide.relay.v1.AckMessagesResponse
-	115, // 174: aide.relay.v1.MessageService.Watch:output_type -> aide.relay.v1.WatchInboxResponse
-	118, // 175: aide.relay.v1.MessageService.Status:output_type -> aide.relay.v1.MessageStatusResponse
-	97,  // 176: aide.relay.v1.MessageService.WakeLink:output_type -> aide.relay.v1.WakeLinkResponse
-	129, // [129:177] is the sub-list for method output_type
-	81,  // [81:129] is the sub-list for method input_type
-	81,  // [81:81] is the sub-list for extension type_name
-	81,  // [81:81] is the sub-list for extension extendee
-	0,   // [0:81] is the sub-list for field type_name
+	126, // 63: aide.relay.v1.PublishGrantRequest.grant:type_name -> aide.identity.v1.Signed
+	126, // 64: aide.relay.v1.PublishMachineCertRequest.machine_cert:type_name -> aide.identity.v1.Signed
+	127, // 65: aide.relay.v1.RevokeRequest.revocations:type_name -> aide.identity.v1.RevocationList
+	126, // 66: aide.relay.v1.EraseOwnerRequest.order:type_name -> aide.identity.v1.Signed
+	98,  // 67: aide.relay.v1.RoomWaitingResponse.rooms:type_name -> aide.relay.v1.RoomWaitingCount
+	123, // 68: aide.relay.v1.RoomWaitingCount.since:type_name -> google.protobuf.Timestamp
+	123, // 69: aide.relay.v1.WakeLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
+	123, // 70: aide.relay.v1.SealedMessage.received_at:type_name -> google.protobuf.Timestamp
+	126, // 71: aide.relay.v1.RegisterInboxRequest.registration:type_name -> aide.identity.v1.Signed
+	129, // 72: aide.relay.v1.ContactsResponse.contacts:type_name -> aide.identity.v1.Contact
+	125, // 73: aide.relay.v1.ContactsResponse.root_chain:type_name -> aide.identity.v1.RootChain
+	107, // 74: aide.relay.v1.ContactsResponse.woken:type_name -> aide.relay.v1.Woken
+	106, // 75: aide.relay.v1.ContactsResponse.presence:type_name -> aide.relay.v1.Presence
+	65,  // 76: aide.relay.v1.ContactsResponse.boundary:type_name -> aide.relay.v1.Boundary
+	123, // 77: aide.relay.v1.Presence.last_seen:type_name -> google.protobuf.Timestamp
+	101, // 78: aide.relay.v1.SendSealedRequest.message:type_name -> aide.relay.v1.SealedMessage
+	101, // 79: aide.relay.v1.FetchMessagesResponse.messages:type_name -> aide.relay.v1.SealedMessage
+	114, // 80: aide.relay.v1.AckMessagesRequest.acks:type_name -> aide.relay.v1.MessageAck
+	123, // 81: aide.relay.v1.MessageState.at:type_name -> google.protobuf.Timestamp
+	120, // 82: aide.relay.v1.MessageStatusResponse.states:type_name -> aide.relay.v1.MessageState
+	13,  // 83: aide.relay.v1.RelayPublicService.GetInfo:input_type -> aide.relay.v1.GetInfoRequest
+	15,  // 84: aide.relay.v1.RelayPublicService.AckErase:input_type -> aide.relay.v1.AckEraseRequest
+	8,   // 85: aide.relay.v1.RelayPublicService.SetUp:input_type -> aide.relay.v1.SetUpRequest
+	9,   // 86: aide.relay.v1.RelayPublicService.LogIn:input_type -> aide.relay.v1.LogInRequest
+	29,  // 87: aide.relay.v1.MachineControlService.ReportStatus:input_type -> aide.relay.v1.ReportStatusRequest
+	31,  // 88: aide.relay.v1.MachineControlService.WatchUpdates:input_type -> aide.relay.v1.WatchUpdatesRequest
+	22,  // 89: aide.relay.v1.MachineControlService.Leave:input_type -> aide.relay.v1.LeaveRequest
+	23,  // 90: aide.relay.v1.MachineControlService.Notify:input_type -> aide.relay.v1.NotifyRequest
+	19,  // 91: aide.relay.v1.MachineControlService.GetScreenServers:input_type -> aide.relay.v1.GetScreenServersRequest
+	34,  // 92: aide.relay.v1.ClientControlService.WhoAmI:input_type -> aide.relay.v1.WhoAmIRequest
+	36,  // 93: aide.relay.v1.ClientControlService.ListMachines:input_type -> aide.relay.v1.ListMachinesRequest
+	38,  // 94: aide.relay.v1.ClientControlService.GetLatestGrant:input_type -> aide.relay.v1.GetLatestGrantRequest
+	96,  // 95: aide.relay.v1.OwnerControlService.RoomWaiting:input_type -> aide.relay.v1.RoomWaitingRequest
+	69,  // 96: aide.relay.v1.OwnerControlService.Sign:input_type -> aide.relay.v1.SignRequest
+	36,  // 97: aide.relay.v1.OwnerControlService.ListMachines:input_type -> aide.relay.v1.ListMachinesRequest
+	82,  // 98: aide.relay.v1.OwnerControlService.ListClients:input_type -> aide.relay.v1.ListClientsRequest
+	80,  // 99: aide.relay.v1.OwnerControlService.WatchOwner:input_type -> aide.relay.v1.WatchOwnerRequest
+	84,  // 100: aide.relay.v1.OwnerControlService.PublishGrant:input_type -> aide.relay.v1.PublishGrantRequest
+	86,  // 101: aide.relay.v1.OwnerControlService.PublishMachineCert:input_type -> aide.relay.v1.PublishMachineCertRequest
+	88,  // 102: aide.relay.v1.OwnerControlService.Revoke:input_type -> aide.relay.v1.RevokeRequest
+	71,  // 103: aide.relay.v1.OwnerControlService.GetLogin:input_type -> aide.relay.v1.GetLoginRequest
+	73,  // 104: aide.relay.v1.OwnerControlService.SetLogin:input_type -> aide.relay.v1.SetLoginRequest
+	76,  // 105: aide.relay.v1.OwnerControlService.ListDevices:input_type -> aide.relay.v1.ListDevicesRequest
+	78,  // 106: aide.relay.v1.OwnerControlService.RemoveDevice:input_type -> aide.relay.v1.RemoveDeviceRequest
+	90,  // 107: aide.relay.v1.OwnerControlService.EraseOwner:input_type -> aide.relay.v1.EraseOwnerRequest
+	92,  // 108: aide.relay.v1.OwnerControlService.GetAccount:input_type -> aide.relay.v1.GetAccountRequest
+	94,  // 109: aide.relay.v1.OwnerControlService.GetMCP:input_type -> aide.relay.v1.GetMCPRequest
+	66,  // 110: aide.relay.v1.OwnerControlService.RegisterPush:input_type -> aide.relay.v1.RegisterPushRequest
+	61,  // 111: aide.relay.v1.OwnerControlService.PublishCards:input_type -> aide.relay.v1.PublishCardsRequest
+	63,  // 112: aide.relay.v1.OwnerControlService.PublishBoundaryPolicy:input_type -> aide.relay.v1.PublishBoundaryPolicyRequest
+	51,  // 113: aide.relay.v1.OwnerControlService.ListWakes:input_type -> aide.relay.v1.ListWakesRequest
+	53,  // 114: aide.relay.v1.OwnerControlService.SetWake:input_type -> aide.relay.v1.SetWakeRequest
+	55,  // 115: aide.relay.v1.OwnerControlService.CheckWake:input_type -> aide.relay.v1.CheckWakeRequest
+	57,  // 116: aide.relay.v1.OwnerControlService.ClearWake:input_type -> aide.relay.v1.ClearWakeRequest
+	59,  // 117: aide.relay.v1.OwnerControlService.OpenWakeLink:input_type -> aide.relay.v1.OpenWakeLinkRequest
+	19,  // 118: aide.relay.v1.OwnerControlService.GetScreenServers:input_type -> aide.relay.v1.GetScreenServersRequest
+	40,  // 119: aide.relay.v1.OwnerControlService.ListPersonas:input_type -> aide.relay.v1.ListPersonasRequest
+	42,  // 120: aide.relay.v1.OwnerControlService.SavePersona:input_type -> aide.relay.v1.SavePersonaRequest
+	44,  // 121: aide.relay.v1.OwnerControlService.DeletePersona:input_type -> aide.relay.v1.DeletePersonaRequest
+	46,  // 122: aide.relay.v1.OwnerControlService.BindPersonaSession:input_type -> aide.relay.v1.BindPersonaSessionRequest
+	102, // 123: aide.relay.v1.MessageService.Register:input_type -> aide.relay.v1.RegisterInboxRequest
+	104, // 124: aide.relay.v1.MessageService.Contacts:input_type -> aide.relay.v1.ContactsRequest
+	108, // 125: aide.relay.v1.MessageService.Send:input_type -> aide.relay.v1.SendSealedRequest
+	110, // 126: aide.relay.v1.MessageService.Fetch:input_type -> aide.relay.v1.FetchMessagesRequest
+	111, // 127: aide.relay.v1.MessageService.Take:input_type -> aide.relay.v1.TakeMessagesRequest
+	115, // 128: aide.relay.v1.MessageService.Ack:input_type -> aide.relay.v1.AckMessagesRequest
+	117, // 129: aide.relay.v1.MessageService.Watch:input_type -> aide.relay.v1.WatchInboxRequest
+	119, // 130: aide.relay.v1.MessageService.Status:input_type -> aide.relay.v1.MessageStatusRequest
+	99,  // 131: aide.relay.v1.MessageService.WakeLink:input_type -> aide.relay.v1.WakeLinkRequest
+	14,  // 132: aide.relay.v1.RelayPublicService.GetInfo:output_type -> aide.relay.v1.GetInfoResponse
+	16,  // 133: aide.relay.v1.RelayPublicService.AckErase:output_type -> aide.relay.v1.AckEraseResponse
+	10,  // 134: aide.relay.v1.RelayPublicService.SetUp:output_type -> aide.relay.v1.LogInResponse
+	10,  // 135: aide.relay.v1.RelayPublicService.LogIn:output_type -> aide.relay.v1.LogInResponse
+	30,  // 136: aide.relay.v1.MachineControlService.ReportStatus:output_type -> aide.relay.v1.ReportStatusResponse
+	32,  // 137: aide.relay.v1.MachineControlService.WatchUpdates:output_type -> aide.relay.v1.MachineUpdate
+	28,  // 138: aide.relay.v1.MachineControlService.Leave:output_type -> aide.relay.v1.LeaveResponse
+	24,  // 139: aide.relay.v1.MachineControlService.Notify:output_type -> aide.relay.v1.NotifyResponse
+	20,  // 140: aide.relay.v1.MachineControlService.GetScreenServers:output_type -> aide.relay.v1.GetScreenServersResponse
+	35,  // 141: aide.relay.v1.ClientControlService.WhoAmI:output_type -> aide.relay.v1.WhoAmIResponse
+	37,  // 142: aide.relay.v1.ClientControlService.ListMachines:output_type -> aide.relay.v1.ListMachinesResponse
+	39,  // 143: aide.relay.v1.ClientControlService.GetLatestGrant:output_type -> aide.relay.v1.GetLatestGrantResponse
+	97,  // 144: aide.relay.v1.OwnerControlService.RoomWaiting:output_type -> aide.relay.v1.RoomWaitingResponse
+	70,  // 145: aide.relay.v1.OwnerControlService.Sign:output_type -> aide.relay.v1.SignResponse
+	37,  // 146: aide.relay.v1.OwnerControlService.ListMachines:output_type -> aide.relay.v1.ListMachinesResponse
+	83,  // 147: aide.relay.v1.OwnerControlService.ListClients:output_type -> aide.relay.v1.ListClientsResponse
+	81,  // 148: aide.relay.v1.OwnerControlService.WatchOwner:output_type -> aide.relay.v1.OwnerUpdate
+	85,  // 149: aide.relay.v1.OwnerControlService.PublishGrant:output_type -> aide.relay.v1.PublishGrantResponse
+	87,  // 150: aide.relay.v1.OwnerControlService.PublishMachineCert:output_type -> aide.relay.v1.PublishMachineCertResponse
+	89,  // 151: aide.relay.v1.OwnerControlService.Revoke:output_type -> aide.relay.v1.RevokeResponse
+	72,  // 152: aide.relay.v1.OwnerControlService.GetLogin:output_type -> aide.relay.v1.GetLoginResponse
+	74,  // 153: aide.relay.v1.OwnerControlService.SetLogin:output_type -> aide.relay.v1.SetLoginResponse
+	77,  // 154: aide.relay.v1.OwnerControlService.ListDevices:output_type -> aide.relay.v1.ListDevicesResponse
+	79,  // 155: aide.relay.v1.OwnerControlService.RemoveDevice:output_type -> aide.relay.v1.RemoveDeviceResponse
+	91,  // 156: aide.relay.v1.OwnerControlService.EraseOwner:output_type -> aide.relay.v1.EraseOwnerResponse
+	93,  // 157: aide.relay.v1.OwnerControlService.GetAccount:output_type -> aide.relay.v1.GetAccountResponse
+	95,  // 158: aide.relay.v1.OwnerControlService.GetMCP:output_type -> aide.relay.v1.GetMCPResponse
+	67,  // 159: aide.relay.v1.OwnerControlService.RegisterPush:output_type -> aide.relay.v1.RegisterPushResponse
+	62,  // 160: aide.relay.v1.OwnerControlService.PublishCards:output_type -> aide.relay.v1.PublishCardsResponse
+	64,  // 161: aide.relay.v1.OwnerControlService.PublishBoundaryPolicy:output_type -> aide.relay.v1.PublishBoundaryPolicyResponse
+	52,  // 162: aide.relay.v1.OwnerControlService.ListWakes:output_type -> aide.relay.v1.ListWakesResponse
+	54,  // 163: aide.relay.v1.OwnerControlService.SetWake:output_type -> aide.relay.v1.SetWakeResponse
+	56,  // 164: aide.relay.v1.OwnerControlService.CheckWake:output_type -> aide.relay.v1.CheckWakeResponse
+	58,  // 165: aide.relay.v1.OwnerControlService.ClearWake:output_type -> aide.relay.v1.ClearWakeResponse
+	60,  // 166: aide.relay.v1.OwnerControlService.OpenWakeLink:output_type -> aide.relay.v1.OpenWakeLinkResponse
+	20,  // 167: aide.relay.v1.OwnerControlService.GetScreenServers:output_type -> aide.relay.v1.GetScreenServersResponse
+	41,  // 168: aide.relay.v1.OwnerControlService.ListPersonas:output_type -> aide.relay.v1.ListPersonasResponse
+	43,  // 169: aide.relay.v1.OwnerControlService.SavePersona:output_type -> aide.relay.v1.SavePersonaResponse
+	45,  // 170: aide.relay.v1.OwnerControlService.DeletePersona:output_type -> aide.relay.v1.DeletePersonaResponse
+	47,  // 171: aide.relay.v1.OwnerControlService.BindPersonaSession:output_type -> aide.relay.v1.BindPersonaSessionResponse
+	103, // 172: aide.relay.v1.MessageService.Register:output_type -> aide.relay.v1.RegisterInboxResponse
+	105, // 173: aide.relay.v1.MessageService.Contacts:output_type -> aide.relay.v1.ContactsResponse
+	109, // 174: aide.relay.v1.MessageService.Send:output_type -> aide.relay.v1.SendSealedResponse
+	113, // 175: aide.relay.v1.MessageService.Fetch:output_type -> aide.relay.v1.FetchMessagesResponse
+	112, // 176: aide.relay.v1.MessageService.Take:output_type -> aide.relay.v1.TakeMessagesResponse
+	116, // 177: aide.relay.v1.MessageService.Ack:output_type -> aide.relay.v1.AckMessagesResponse
+	118, // 178: aide.relay.v1.MessageService.Watch:output_type -> aide.relay.v1.WatchInboxResponse
+	121, // 179: aide.relay.v1.MessageService.Status:output_type -> aide.relay.v1.MessageStatusResponse
+	100, // 180: aide.relay.v1.MessageService.WakeLink:output_type -> aide.relay.v1.WakeLinkResponse
+	132, // [132:181] is the sub-list for method output_type
+	83,  // [83:132] is the sub-list for method input_type
+	83,  // [83:83] is the sub-list for extension type_name
+	83,  // [83:83] is the sub-list for extension extendee
+	0,   // [0:83] is the sub-list for field type_name
 }
 
 func init() { file_aide_relay_v1_relay_proto_init() }
@@ -7203,14 +7381,14 @@ func file_aide_relay_v1_relay_proto_init() {
 		(*MachineUpdate_PushTargets)(nil),
 		(*MachineUpdate_Grants)(nil),
 	}
-	file_aide_relay_v1_relay_proto_msgTypes[95].OneofWrappers = []any{}
+	file_aide_relay_v1_relay_proto_msgTypes[98].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_relay_v1_relay_proto_rawDesc), len(file_aide_relay_v1_relay_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   117,
+			NumMessages:   120,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

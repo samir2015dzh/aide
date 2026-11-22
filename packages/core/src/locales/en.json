@@ -93,7 +93,10 @@
     "turnDoneTitle": "“{{title}}” finished turn {{turn}}",
     "noChanges": "No files changed",
     "changes_one": "{{count}} file +{{insertions}} −{{deletions}}",
-    "changes_other": "{{count}} files +{{insertions}} −{{deletions}}"
+    "changes_other": "{{count}} files +{{insertions}} −{{deletions}}",
+    "roomNew": "Something new in the room",
+    "quietTitle": "{{agent}} has been quiet for two minutes",
+    "quietBody": "“{{title}}” was handed out two minutes ago and nothing has come from it yet."
   },
   "resolution": {
     "answeredByYou": "You answered: {{answers}}",

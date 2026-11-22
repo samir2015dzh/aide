@@ -28,6 +28,7 @@ import io.aide.android.model.World
 import io.aide.android.ui.AideTheme
 import io.aide.android.ui.BotsTab
 import io.aide.android.ui.BotPage
+import io.aide.android.ui.DevicesTab
 import io.aide.android.api.Client
 import io.aide.android.ui.NeedsYouTab
 import io.aide.android.ui.NewRoomPage
@@ -116,6 +117,7 @@ class PageShots {
     @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
     @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse", waitFor = "评审过了") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
     @Test fun settings() = model().let { m -> shot("4-settings") { SettingsTab(m) } }
+    @Test fun devices() = model().let { m -> shot("5-devices") { DevicesTab(m) {} } }
     @Test fun room() = model().let { m -> shot("8-room", waitFor = "可以发版") { RoomPage(m, "m1", "room_2", openSession = {}) {} } }
     @Test fun newRoom() = model().let { m -> shot("9-new-room") { NewRoomPage(m, opened = {}) {} } }
 

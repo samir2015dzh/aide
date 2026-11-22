@@ -92,7 +92,10 @@
     "failedBody": "{{grant}} · {{agent}} · {{project}}。{{advice}}",
     "turnDoneTitle": "「{{title}}」第 {{turn}} 轮完成",
     "noChanges": "没有改动文件",
-    "changes_other": "{{count}} 个文件 +{{insertions}} −{{deletions}}"
+    "changes_other": "{{count}} 个文件 +{{insertions}} −{{deletions}}",
+    "roomNew": "房间里有新消息",
+    "quietTitle": "{{agent}} 两分钟没动静",
+    "quietBody": "「{{title}}」派出去两分钟了，它还没有任何动静。"
   },
   "resolution": {
     "answeredByYou": "你回答：{{answers}}",

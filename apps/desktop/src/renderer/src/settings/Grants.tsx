@@ -7,6 +7,7 @@ import { agoText, dateOf, longLived, monthDay, sameDay, updatedDate } from "@aid
 import { agentName } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { local } from "../api";
+import { Icon } from "../icons";
 import { AgentName, GrantAvatar } from "../components";
 import { hostOf } from "../sheets/common";
 import { machineName } from "../Sidebar";
@@ -77,8 +78,8 @@ export function Grants({ open, select }: { open: string; select: (id: string) =>
           <div className="frow muted">{t("grants.none")}</div>
         </div>
       )}
-      <div className="set-acts">
-        <button className="btn" onClick={connect}>{t("grants.connect")}</button>
+      <div className="fgroup">
+        <button className="frow act" onClick={connect}>{t("grants.connect")}</button>
       </div>
       <p className="set-note">{t("grants.note")}</p>
     </div>
@@ -159,13 +160,16 @@ export function GrantDetail({ c }: { c: Client }) {
           </SRow>
         </div>
       )}
-      <div className="set-acts">
-        <button className="btn" onClick={rename}>{t("grants.rename")}</button>
+      {/* What can be done to it, as rows of one group, the destructive one apart (工单 #68: Apple's settings, no loose buttons). */}
+      <div className="fgroup">
+        <button className="frow act" onClick={rename}>{t("grants.rename")}<Icon name="chevR" className="sm chev" /></button>
         {/* Her's grant has no scope or expiry to change (UpdateClient refuses it). */}
-        {!c.herMachineId && <button className="btn" onClick={() => scope(false)}>{t("grants.changeScope")}</button>}
-        {!c.herMachineId && !long && <button className="btn" onClick={() => scope(true)}>{t("grants.renew")}</button>}
-        {!c.herMachineId && !long && <button className="btn" onClick={makeLongLived}>{t("grants.makeLongLived")}</button>}
-        <button className="btn danger push" onClick={revoke}>{t("grants.disconnect")}</button>
+        {!c.herMachineId && <button className="frow act" onClick={() => scope(false)}>{t("grants.changeScope")}<Icon name="chevR" className="sm chev" /></button>}
+        {!c.herMachineId && !long && <button className="frow act" onClick={() => scope(true)}>{t("grants.renew")}<Icon name="chevR" className="sm chev" /></button>}
+        {!c.herMachineId && !long && <button className="frow act" onClick={makeLongLived}>{t("grants.makeLongLived")}</button>}
+      </div>
+      <div className="fgroup">
+        <button className="frow act danger" onClick={revoke}>{t("grants.disconnect")}</button>
       </div>
       <Wakes c={c} />
       {editing && <LookSheet c={c} st={st} close={() => setEditing(false)} />}

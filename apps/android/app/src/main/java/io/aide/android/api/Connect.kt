@@ -30,7 +30,13 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** An error the core answered with (Connect's code, e.g. "invalid_argument"), or "unavailable" when it could not be reached. */
-class ApiError(val code: String, override val message: String) : Exception(message)
+class ApiError(
+    val code: String,
+    override val message: String,
+    /** Why, as a key the app says in the person's language (工单 #60: localv1.ErrorReason on the error), "" without one. */
+    val reason: String = "",
+    val args: Map<String, String> = emptyMap(),
+) : Exception(message)
 
 /**
  * A Connect client (the Connect protocol, JSON codec) for one service the
@@ -85,10 +91,18 @@ class ConnectClient(
             return errorOf(e)
         }
 
-        fun errorOf(e: JsonObject): ApiError = ApiError(
-            e["code"]?.jsonPrimitive?.contentOrNull ?: "unknown",
-            e["message"]?.jsonPrimitive?.contentOrNull ?: "",
-        )
+        fun errorOf(e: JsonObject): ApiError {
+            // The reason detail as connect-go puts it in JSON: its message in "debug", as protojson.
+            val r = (e["details"] as? kotlinx.serialization.json.JsonArray)?.firstNotNullOfOrNull { d ->
+                (d as? JsonObject)?.takeIf { it["type"]?.jsonPrimitive?.contentOrNull == "aide.local.v1.ErrorReason" }?.get("debug") as? JsonObject
+            }
+            return ApiError(
+                e["code"]?.jsonPrimitive?.contentOrNull ?: "unknown",
+                e["message"]?.jsonPrimitive?.contentOrNull ?: "",
+                r?.get("reason")?.jsonPrimitive?.contentOrNull.orEmpty(),
+                (r?.get("args") as? JsonObject)?.mapValues { it.value.jsonPrimitive.contentOrNull.orEmpty() }.orEmpty(),
+            )
+        }
 
         const val END_STREAM = 0x02
     }

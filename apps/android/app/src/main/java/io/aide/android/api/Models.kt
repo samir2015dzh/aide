@@ -140,7 +140,14 @@ data class MachineStatus(
     val her: HerStatus? = null,
     /** The rooms of several bots it hosts (G2-b/c), followed on the Watch. */
     val rooms: List<Room> = emptyList(),
+    /** What its coding agents said for rooms an away host keeps, waiting at the post office (工单 #74). */
+    val roomOutbox: List<RoomOutbox> = emptyList(),
 )
+
+@Serializable data class RoomWaiting(val roomId: String = "", val messages: Int = 0, val since: String = "")
+@Serializable data class ListRoomWaitingRequest(val machineId: String)
+@Serializable data class ListRoomWaitingResponse(val rooms: List<RoomWaiting> = emptyList())
+@Serializable data class RoomOutbox(val roomId: String = "", val hostMachineId: String = "", val replies: Int = 0, val since: String = "")
 
 @Serializable
 data class Machine(
@@ -495,7 +502,8 @@ data class Notice(
     val roomLine: String = "",
 )
 
-@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String)
+@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String, val model: String = "", val effort: String = "", val mode: String = "")
+@Serializable data class SendMessageRequest(val sessionId: String, val text: String)
 @Serializable data class StartSessionRequest(val machineId: String, val session: StartSessionBody)
 
 // Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.
@@ -539,8 +547,10 @@ data class TalkToPersonaResponse(
     val roomId: String = "", val name: String = "", val hostMachineId: String = "", val members: List<RoomMember> = emptyList(), val direct: Boolean = false,
     val mode: String = "", val maxRounds: Int = 0, val round: Int = 0, val run: String = "", val unread: Int = 0, val lastLine: String = "", val seenMessageId: String = "",
     val updatedAt: String = "",
+    /** What the host last told the owner of it (工单 #69, #70), and when. */
+    val notice: String = "", val noticeAt: String = "",
 )
-@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "")
+@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "", val reminded: Boolean = false)
 @Serializable data class RoomMessage(
     val messageId: String = "", val roomId: String = "", val from: String = "", val fromName: String = "", val text: String = "", val at: String = "",
     val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "", val mentions: List<String> = emptyList(), val round: Int = 0,

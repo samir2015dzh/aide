@@ -280,6 +280,9 @@ const (
 	LocalServiceMarkRoomSeenProcedure = "/aide.local.v1.LocalService/MarkRoomSeen"
 	// LocalServiceDeleteRoomProcedure is the fully-qualified name of the LocalService's DeleteRoom RPC.
 	LocalServiceDeleteRoomProcedure = "/aide.local.v1.LocalService/DeleteRoom"
+	// LocalServiceListRoomWaitingProcedure is the fully-qualified name of the LocalService's
+	// ListRoomWaiting RPC.
+	LocalServiceListRoomWaitingProcedure = "/aide.local.v1.LocalService/ListRoomWaiting"
 	// LocalServiceDSHSessionOptionsProcedure is the fully-qualified name of the LocalService's
 	// DSHSessionOptions RPC.
 	LocalServiceDSHSessionOptionsProcedure = "/aide.local.v1.LocalService/DSHSessionOptions"
@@ -515,6 +518,9 @@ type LocalServiceClient interface {
 	StopRoom(context.Context, *v1.RoomRef) (*v11.Room, error)
 	MarkRoomSeen(context.Context, *v1.RoomRef) (*v11.Room, error)
 	DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error)
+	// What waits at the post office for a machine that hosts rooms, by room:
+	// every member's reply (personal agents' too) while it is away (工单 #74).
+	ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error)
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
 	// The Claude Code sessions the Claude desktop app lists on the machines
 	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -1090,6 +1096,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("DeleteRoom")),
 			connect.WithClientOptions(opts...),
 		),
+		listRoomWaiting: connect.NewClient[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse](
+			httpClient,
+			baseURL+LocalServiceListRoomWaitingProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListRoomWaiting")),
+			connect.WithClientOptions(opts...),
+		),
 		dSHSessionOptions: connect.NewClient[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse](
 			httpClient,
 			baseURL+LocalServiceDSHSessionOptionsProcedure,
@@ -1250,6 +1262,7 @@ type localServiceClient struct {
 	stopRoom                 *connect.Client[v1.RoomRef, v11.Room]
 	markRoomSeen             *connect.Client[v1.RoomRef, v11.Room]
 	deleteRoom               *connect.Client[v1.RoomRef, v11.DeleteRoomResponse]
+	listRoomWaiting          *connect.Client[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse]
 	dSHSessionOptions        *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions       *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession        *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
@@ -2048,6 +2061,15 @@ func (c *localServiceClient) DeleteRoom(ctx context.Context, req *v1.RoomRef) (*
 	return nil, err
 }
 
+// ListRoomWaiting calls aide.local.v1.LocalService.ListRoomWaiting.
+func (c *localServiceClient) ListRoomWaiting(ctx context.Context, req *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error) {
+	response, err := c.listRoomWaiting.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // DSHSessionOptions calls aide.local.v1.LocalService.DSHSessionOptions.
 func (c *localServiceClient) DSHSessionOptions(ctx context.Context, req *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {
 	response, err := c.dSHSessionOptions.CallUnary(ctx, connect.NewRequest(req))
@@ -2348,6 +2370,9 @@ type LocalServiceHandler interface {
 	StopRoom(context.Context, *v1.RoomRef) (*v11.Room, error)
 	MarkRoomSeen(context.Context, *v1.RoomRef) (*v11.Room, error)
 	DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error)
+	// What waits at the post office for a machine that hosts rooms, by room:
+	// every member's reply (personal agents' too) while it is away (工单 #74).
+	ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error)
 	DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error)
 	// The Claude Code sessions the Claude desktop app lists on the machines
 	// (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -2919,6 +2944,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("DeleteRoom")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceListRoomWaitingHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListRoomWaitingProcedure,
+		svc.ListRoomWaiting,
+		connect.WithSchema(localServiceMethods.ByName("ListRoomWaiting")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceDSHSessionOptionsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceDSHSessionOptionsProcedure,
 		svc.DSHSessionOptions,
@@ -3165,6 +3196,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceMarkRoomSeenHandler.ServeHTTP(w, r)
 		case LocalServiceDeleteRoomProcedure:
 			localServiceDeleteRoomHandler.ServeHTTP(w, r)
+		case LocalServiceListRoomWaitingProcedure:
+			localServiceListRoomWaitingHandler.ServeHTTP(w, r)
 		case LocalServiceDSHSessionOptionsProcedure:
 			localServiceDSHSessionOptionsHandler.ServeHTTP(w, r)
 		case LocalServiceListClaudeSessionsProcedure:
@@ -3550,6 +3583,10 @@ func (UnimplementedLocalServiceHandler) MarkRoomSeen(context.Context, *v1.RoomRe
 
 func (UnimplementedLocalServiceHandler) DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.DeleteRoom is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListRoomWaiting is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) DSHSessionOptions(context.Context, *v1.DSHSessionOptionsRequest) (*v11.DSHSessionOptionsResponse, error) {

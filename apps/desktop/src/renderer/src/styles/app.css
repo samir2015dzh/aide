@@ -72,10 +72,10 @@ html[data-platform=win]{--caption:calc(100vw - env(titlebar-area-x, 0px) - env(t
 .tl-room{width:62px;flex:none}
 /* Windows 11's type and corners: 14 px body text; 4 px controls and rows, 8 px boxes, cards and panels. */
 html[data-platform=win]{--fs-text:14px;--fs-text-l:14.5px;--r-ctl:4px;--r-box:8px;--r-card:8px;--r-panel:8px}
-html[data-platform=win] .nav-i,html[data-platform=win] .srow{border-radius:4px}
+html[data-platform=win] .nav-i,html[data-platform=win] .srow,html[data-platform=win] .bot-row{border-radius:4px}
 /* The selected row's accent bar, as Windows 11's navigation marks it. */
-html[data-platform=win] .nav-i.sel,html[data-platform=win] .srow.sel{position:relative}
-html[data-platform=win] .nav-i.sel::before,html[data-platform=win] .srow.sel::before{content:"";position:absolute;left:0;top:50%;height:16px;margin-top:-8px;width:3px;border-radius:2px;background:var(--accent)}
+html[data-platform=win] .nav-i.sel,html[data-platform=win] .srow.sel,html[data-platform=win] .bot-row.sel{position:relative}
+html[data-platform=win] .nav-i.sel::before,html[data-platform=win] .srow.sel::before,html[data-platform=win] .bot-row.sel::before{content:"";position:absolute;left:0;top:50%;height:16px;margin-top:-8px;width:3px;border-radius:2px;background:var(--accent)}
 html[data-platform=win] .tl-room{display:none}
 html[data-platform=win] .side-top{padding-left:8px;justify-content:flex-start;gap:2px}
 html[data-platform=win] .side-top>:last-child{margin-left:auto}
@@ -682,3 +682,53 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 /* Copied: the check comes in. */
 .tick-in{animation:popin .2s var(--ease-out)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* The app's own pop-up button and tick box (工单 #68, Picker.tsx): no browser form control anywhere. */
+.picker{display:inline-flex;align-items:center;gap:6px;height:26px;max-width:100%;padding:0 8px 0 10px;border:0;border-radius:var(--r-ctl);background:var(--btn);box-shadow:var(--btn-sh);color:var(--l1);font:inherit;font-size:var(--fs-text);text-align:left;cursor:default}
+.picker.sm{height:22px;font-size:12px;padding:0 6px 0 8px}
+.picker:disabled{color:var(--l3)}
+.picker.on,.picker:focus-visible{box-shadow:var(--btn-sh),0 0 0 3px var(--accent-bg)}
+.picker .picker-v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picker .picker-c{flex:none;width:12px;height:12px;color:var(--l2)}
+.picker.chip{height:24px;padding:0 6px 0 9px;border-radius:999px;background:var(--fill2);box-shadow:none;font-size:12px;color:var(--l2)}
+.picker.chip:hover{color:var(--l1)}
+.picker-menu{max-height:min(360px,70vh);overflow-y:auto}
+.picker-menu .mi{height:auto;min-height:28px}
+.picker-menu .picker-l{display:flex;flex-direction:column;padding:4px 0}
+.picker-menu .picker-l small{font-size:11px;color:var(--l2)}
+.picker-menu .mi:disabled{color:var(--l3)}
+.chk{flex:none;width:18px;height:18px;padding:0;border-radius:50%;border:0;background:var(--field);box-shadow:inset 0 0 0 1.5px var(--field-bd);display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.chk.on{background:var(--accent);color:var(--on-accent);box-shadow:none}
+.chk .ic{width:12px;height:12px}
+
+/* A bot's face (工单 #62): its app's icon, round, the same everywhere; a ring turns round it while it really works,
+   and it fades to grey while it is away or its state is unknown. */
+.bav{position:relative;display:inline-flex;flex:none;border-radius:50%}
+.bav-in{display:inline-flex;width:100%;height:100%;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;transition:filter .3s var(--ease-out),opacity .3s var(--ease-out)}
+.bav-in>img,.bav-in>svg{width:100%;height:100%;display:block}
+.bav-in.bav-white{background:#fff;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.bav-in.bav-white>svg{width:62%;height:62%}
+.bav-in.bav-emoji{color:#fff;line-height:1}
+.bav[data-off] .bav-in{filter:grayscale(1);opacity:.55}
+.bav[data-run]::before{content:"";position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 55%,var(--accent) 100%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));animation:bav-spin 1.1s linear infinite}
+.bav>.dotc{position:absolute;right:-1px;bottom:-1px;width:28%;height:28%;min-width:8px;min-height:8px;max-width:12px;max-height:12px;box-shadow:0 0 0 2px var(--bav-ring,var(--side-head,var(--win)))}
+@keyframes bav-spin{to{transform:rotate(1turn)}}
+@media (prefers-reduced-motion:reduce){.bav[data-run]::before{animation:none;background:var(--accent)}}
+.toast.in-sheet{position:sticky;left:auto;right:auto;bottom:0;transform:none;margin:12px auto 0;width:fit-content;max-width:100%}
+
+/* Apple's grouped lists: an action is a row in the group, in the accent (destructive ones red), never a loose button (工单 #68). */
+.frow.act{width:100%;border-left:0;border-right:0;border-bottom:0;background:none;font:inherit;color:var(--accent-t);text-align:left;gap:8px}
+.fgroup>.frow.act:first-child{border-top:0}
+.frow.act:hover{background:var(--fill)}
+.frow.act.danger{color:var(--red)}
+.frow.act .chev{margin-left:auto;color:var(--l3)}
+.frow.choice{width:100%;border-left:0;border-right:0;border-bottom:0;background:none;font:inherit;color:inherit;text-align:left;gap:12px}
+.fgroup>.frow.choice:first-child{border-top:0}
+.frow.choice .ft{display:flex;flex-direction:column}
+.picker:focus-visible{outline:none}
+/* 全部任务 (工单 #63): the session list as a column of its own between the sidebar and the session. */
+.mainwrap.listed{grid-template-columns:272px 300px minmax(0,1fr)}
+.mainwrap.listed.railed{grid-template-columns:74px 300px minmax(0,1fr)}
+.mainwrap.listed>.tasks-col{grid-column:2}
+.mainwrap.listed>.content{grid-column:3}
+.tasks-col>.side-h{height:44px}

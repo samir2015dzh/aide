@@ -28,6 +28,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/reason"
 	"github.com/samir2015dzh/aide/internal/resident"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/pkg/identity"
@@ -106,8 +107,10 @@ type Sessions struct {
 	log       *slog.Logger
 	machineID string
 	dataDir   string
-	provider  func(name string) provider.Provider // built in or custom; nil: none by that name
-	info      func(name string) provider.Info
+	// archives: what the agents' own apps said of archiving at the last look (archivesync.go).
+	archives archiveSync
+	provider func(name string) provider.Provider // built in or custom; nil: none by that name
+	info     func(name string) provider.Info
 	// outOfProcesses says why no program can start on this machine now, or "".
 	outOfProcesses func() string
 	limits         Limits
@@ -427,7 +430,7 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 		}
 	}
 	if s.paused() {
-		return nil, cerr(connect.CodeUnavailable, "this machine is paused by its owner")
+		return nil, reason.New(connect.CodeUnavailable, "machine_paused", "this machine is paused by its owner")
 	}
 	var repo githubRepo
 	if req.Repo != "" {
@@ -456,9 +459,9 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	}
 	if paused, until := s.agentPausedUntil(req.Agent); paused {
 		if until.IsZero() {
-			return nil, cerr(connect.CodeFailedPrecondition, "%s is paused on this machine by its owner: resume it to start sessions with it", req.Agent)
+			return nil, reason.New(connect.CodeFailedPrecondition, "agent_paused", fmt.Sprintf("%s is paused on this machine by its owner: resume it to start sessions with it", req.Agent), "agent", req.Agent)
 		}
-		return nil, cerr(connect.CodeFailedPrecondition, "%s is paused on this machine by its owner until %s", req.Agent, until.UTC().Format(time.RFC3339))
+		return nil, reason.New(connect.CodeFailedPrecondition, "agent_paused_until", fmt.Sprintf("%s is paused on this machine by its owner until %s", req.Agent, until.UTC().Format(time.RFC3339)), "agent", req.Agent, "until", until.UTC().Format(time.RFC3339))
 	}
 	proj, err := s.st.Project(req.ProjectId)
 	if err != nil {
@@ -471,7 +474,7 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 		}
 	}
 	if proj == nil {
-		return nil, cerr(connect.CodeNotFound, "project %q does not exist on this machine", req.ProjectId)
+		return nil, reason.New(connect.CodeNotFound, "project_missing", fmt.Sprintf("project %q does not exist on this machine", req.ProjectId), "project", req.ProjectId)
 	}
 	if !proj.AllowsAgent(req.Agent) {
 		return nil, cerr(connect.CodePermissionDenied, "project %q is not set up for agent %q (it is for: %s)", req.ProjectId, req.Agent, strings.Join(proj.Agents, ", "))
@@ -484,7 +487,7 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	}
 	info := s.info(req.Agent)
 	if !info.Available {
-		return nil, cerr(connect.CodeFailedPrecondition, "%s", unavailable(req.Agent, info))
+		return nil, reason.New(connect.CodeFailedPrecondition, "agent_unavailable", unavailable(req.Agent, info), "agent", req.Agent)
 	}
 	// The client's model, effort and mode, else the machine's defaults;
 	// what neither sets follows the agent's own configuration.
@@ -702,10 +705,10 @@ func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts
 		return nil, err
 	}
 	if l == nil {
-		return nil, cerr(connect.CodeFailedPrecondition, "session %s is archived (read-only); unarchive it to send messages", id)
+		return nil, reason.New(connect.CodeFailedPrecondition, "session_archived", fmt.Sprintf("session %s is archived (read-only); unarchive it to send messages", id))
 	}
 	if s.paused() {
-		return nil, cerr(connect.CodeUnavailable, "this machine is paused by its owner")
+		return nil, reason.New(connect.CodeUnavailable, "machine_paused", "this machine is paused by its owner")
 	}
 	expanded, err := s.expandPrompt(p, text)
 	if err != nil {
@@ -790,7 +793,7 @@ func (s *Sessions) take(ctx context.Context, l *live, m message) (string, error)
 		case sessionv1.SessionStatus_SESSION_STATUS_PREPARING:
 		default:
 			l.mu.Unlock()
-			return "", cerr(connect.CodeFailedPrecondition, "session %s is archived (read-only); unarchive it to send messages", l.id)
+			return "", reason.New(connect.CodeFailedPrecondition, "session_archived", fmt.Sprintf("session %s is archived (read-only); unarchive it to send messages", l.id))
 		}
 		l.followUps = append(l.followUps, m)
 		l.mu.Unlock()
@@ -824,10 +827,10 @@ func (s *Sessions) Deliver(ctx context.Context, p *Principal, id, conv, text str
 		return nil, "", err
 	}
 	if l == nil {
-		return nil, "", cerr(connect.CodeFailedPrecondition, "session %s is archived (read-only); unarchive it to send messages", id)
+		return nil, "", reason.New(connect.CodeFailedPrecondition, "session_archived", fmt.Sprintf("session %s is archived (read-only); unarchive it to send messages", id))
 	}
 	if s.paused() {
-		return nil, "", cerr(connect.CodeUnavailable, "this machine is paused by its owner")
+		return nil, "", reason.New(connect.CodeUnavailable, "machine_paused", "this machine is paused by its owner")
 	}
 	m, err := newMessage(s.attachmentsDir(id), text, atts)
 	if err != nil {
@@ -1071,7 +1074,7 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	l.mu.Lock()
 	if st := l.row.Status; st != sessionv1.SessionStatus_SESSION_STATUS_IDLE && st != sessionv1.SessionStatus_SESSION_STATUS_CRASHED {
 		l.mu.Unlock()
-		return nil, cerr(connect.CodeFailedPrecondition, "session %s has a turn in progress (%s); interrupt it first", id, phaseOf(st))
+		return nil, reason.New(connect.CodeFailedPrecondition, "turn_in_progress", fmt.Sprintf("session %s has a turn in progress (%s); interrupt it first", id, phaseOf(st)))
 	}
 	if len(l.asked) > 0 {
 		l.mu.Unlock()
@@ -1145,7 +1148,7 @@ func (s *Sessions) Unarchive(ctx context.Context, p *Principal, id string) (*ses
 	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && !s.ws.Exists(id) {
 		proj, err := s.st.Project(r.ProjectID)
 		if err != nil || proj == nil {
-			return nil, cerr(connect.CodeFailedPrecondition, "project %q no longer exists", r.ProjectID)
+			return nil, reason.New(connect.CodeFailedPrecondition, "project_gone", fmt.Sprintf("project %q no longer exists", r.ProjectID), "project", r.ProjectID)
 		}
 		if err := s.ws.Restore(ctx, proj.Path, id); err != nil {
 			return nil, fmt.Errorf("restore the worktree: %w", err)
@@ -1194,7 +1197,7 @@ func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn u
 	}
 	proj, err := s.st.Project(r.ProjectID)
 	if err != nil || proj == nil {
-		return nil, cerr(connect.CodeFailedPrecondition, "project %q no longer exists", r.ProjectID)
+		return nil, reason.New(connect.CodeFailedPrecondition, "project_gone", fmt.Sprintf("project %q no longer exists", r.ProjectID), "project", r.ProjectID)
 	}
 	// What the session shows of its last turn becomes the kept turn's.
 	if err := s.w.sync(writeOp{}); err != nil {
@@ -1205,7 +1208,7 @@ func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn u
 	l.mu.Lock()
 	if st := l.row.Status; st != sessionv1.SessionStatus_SESSION_STATUS_IDLE && st != sessionv1.SessionStatus_SESSION_STATUS_CRASHED {
 		l.mu.Unlock()
-		return nil, cerr(connect.CodeFailedPrecondition, "session %s has a turn in progress (%s); interrupt it first", id, phaseOf(st))
+		return nil, reason.New(connect.CodeFailedPrecondition, "turn_in_progress", fmt.Sprintf("session %s has a turn in progress (%s); interrupt it first", id, phaseOf(st)))
 	}
 	if len(l.asked) > 0 {
 		l.mu.Unlock()
@@ -1667,7 +1670,7 @@ func (s *Sessions) Diff(ctx context.Context, p *Principal, req *sessionv1.GetDif
 	}
 	proj, err := s.st.Project(r.ProjectID)
 	if err != nil || proj == nil {
-		return nil, cerr(connect.CodeFailedPrecondition, "project %q no longer exists", r.ProjectID)
+		return nil, reason.New(connect.CodeFailedPrecondition, "project_gone", fmt.Sprintf("project %q no longer exists", r.ProjectID), "project", r.ProjectID)
 	}
 	if r.BaseCommit == "" || len(r.BaseCommit) != 40 {
 		return &sessionv1.GetDiffResponse{}, nil

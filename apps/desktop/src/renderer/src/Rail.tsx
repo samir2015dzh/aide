@@ -8,12 +8,15 @@ import { Icon } from "./icons";
 import { setSidebar } from "./layout";
 import { AppMenuButton } from "./MainWindow";
 import { keys, ownKeys } from "./platform";
-import { AccountMenu, hasClaude, hasDSH, overviewMarks, RowMark } from "./Sidebar";
+import { AccountMenu, overviewMarks, RowMark } from "./Sidebar";
 import { useNow, useStore } from "./store";
+import { allBots } from "@aide/core";
+import { BotFace, usePins, useRoster } from "./bots/Bots";
+import { useRooms } from "./bots/Rooms";
 
-// The sidebar's rail (docs/her-team.md §16): Her and the overview, then one logo for each coding agent with
-// sessions at hand (waiting for the owner, failed, at work), 74 px wide. The rail says who is at work; the
-// sidebar, expanded, says on what. Each button says on hover (or focus) what it is and how it stands.
+// The sidebar's rail (docs/her-team.md §16), 74 px wide: as the sidebar, bots alone (工单 #63) — each bot's face,
+// the pinned first, with its state on it, then the rooms. A machine only (no roster) has the overview and one logo
+// for each coding agent with sessions at hand. Each button says on hover (or focus) what it is and how it stands.
 
 /** What a rail button says beside it while the pointer or the focus is on it. */
 type Tip = { text: string; top: number } | null;
@@ -28,6 +31,10 @@ export function Rail() {
   const [tip, setTip] = useState<Tip>(null);
   const [menu, setMenu] = useState<AgentMenuAt | null>(null);
   const held = useHeldCount(!!st.status);
+  const r = useRoster();
+  const [pins] = usePins();
+  const bots = [...allBots(r)].sort((a, b) => Number(pins.includes(b.key)) - Number(pins.includes(a.key)));
+  const rooms = useRooms();
   const show = (text: string) => ({
     onMouseEnter: (e: MouseEvent<HTMLElement>) => setTip({ text, top: e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2 }),
     onFocus: (e: FocusEvent<HTMLElement>) => setTip({ text, top: e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2 }),
@@ -68,33 +75,49 @@ export function Rail() {
         <AppMenuButton />
       </div>
       <nav className="rail-nav" onScroll={() => (setTip(null), setMenu(null))}>
-        {button({
-          label: overviewLabel,
-          current: sel.kind === "overview",
-          onClick: () => st.set({ selection: { kind: "overview" } }),
-          children: <Icon name="grid" />,
-          marks: (
-            <>
-              {marks.waits > 0 && <i className="rb-dot" aria-hidden="true" />}
-              {marks.running > 0 && <span className="rb-busy" aria-hidden="true"><i /></span>}
-            </>
-          ),
-        })}
-        {/* The roster (工单 #57): one click shows every bot, over the rail. */}
-        {owner &&
-          button({ label: t("bots.title"), current: sel.kind === "bot", onClick: () => setSidebar(st, true), children: <Icon name="person" /> })}
-        {owner &&
-          hasDSH(st) &&
-          button({ label: t("sidebar.dsh"), current: sel.kind === "dsh", onClick: () => sel.kind !== "dsh" && st.set({ selection: { kind: "dsh" } }), children: <Icon name="terminal" /> })}
-        {owner &&
-          hasClaude(st) &&
-          button({ label: t("sidebar.claude"), current: sel.kind === "claude", onClick: () => sel.kind !== "claude" && st.set({ selection: { kind: "claude" } }), children: <Icon name="terminal" /> })}
-        {owner &&
-          button({ label: t("sidebar.tasks"), current: sel.kind === "tasks", onClick: () => sel.kind !== "tasks" && st.set({ selection: { kind: "tasks" } }), children: <Icon name="persons" /> })}
+        {/* The owner's: bots, then rooms (工单 #63). */}
+        {owner && bots.map((b) => (
+          <div key={b.key}>
+            {button({
+              label: [b.name, b.state.word, b.doing].filter(Boolean).join(" · "),
+              current: sel.kind === "bot" && sel.key === b.key,
+              small: true,
+              onClick: () => st.set({ selection: { kind: "bot", key: b.key } }),
+              children: <BotFace b={b} size={26} dot />,
+              marks: b.waiting > 0 ? <i className="rb-dot" aria-hidden="true" /> : null,
+            })}
+          </div>
+        ))}
+        {owner && rooms.length > 0 && <div className="rail-sep" role="separator" />}
+        {owner && rooms.map((x) => (
+          <div key={x.roomId}>
+            {button({
+              label: [x.name, x.unread ? t("rail.unread", { count: x.unread }) : ""].filter(Boolean).join(" · "),
+              current: sel.kind === "room" && sel.roomId === x.roomId,
+              small: true,
+              onClick: () => st.set({ selection: { kind: "room", machineId: x.hostMachineId, roomId: x.roomId } }),
+              children: <Icon name="bubble" />,
+              marks: x.unread > 0 ? <i className="rb-dot" aria-hidden="true" /> : null,
+            })}
+          </div>
+        ))}
+        {!owner &&
+          button({
+            label: overviewLabel,
+            current: sel.kind === "overview",
+            onClick: () => st.set({ selection: { kind: "overview" } }),
+            children: <Icon name="grid" />,
+            marks: (
+              <>
+                {marks.waits > 0 && <i className="rb-dot" aria-hidden="true" />}
+                {marks.running > 0 && <span className="rb-busy" aria-hidden="true"><i /></span>}
+              </>
+            ),
+          })}
         {(held > 0 || sel.kind === "held") &&
           button({ label: t("sidebar.held"), current: sel.kind === "held", onClick: () => sel.kind !== "held" && st.set({ selection: { kind: "held" } }), children: <Icon name="bell" /> })}
-        {groups.length > 0 && <div className="rail-sep" role="separator" />}
-        {groups.map((g) => (
+        {!owner && groups.length > 0 && <div className="rail-sep" role="separator" />}
+        {!owner && groups.map((g) => (
           <div key={g.agent}>
             {button({
               label: [codingAgentTitle(g.agent), ...words(g.sessions)].join(" · "),

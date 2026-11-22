@@ -70,8 +70,8 @@ export function OpsLog() {
       {log && log.unreachable.length > 0 && (
         <p className="set-note warn">{t("ops.unreachable", { machines: log.unreachable.map((u) => u.machineName || u.machineId).join(t("listSeparator")) })}</p>
       )}
-      <div className="set-acts">
-        <button className="btn" onClick={load}>{t("ops.refresh")}</button>
+      <div className="fgroup">
+        <button className="frow act" onClick={load}>{t("ops.refresh")}</button>
       </div>
       <p className="set-note">{t("ops.note")}</p>
     </div>

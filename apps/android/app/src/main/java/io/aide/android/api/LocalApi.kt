@@ -113,8 +113,20 @@ class LocalApi(port: Long, token: String) {
         call("TalkToPersona", TalkToPersonaRequest(id, text, key), timeoutSeconds = 60)
 
     /** Starts a task: an agent on a machine, in one of its projects (工单 #41: no contact needed first). */
-    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String): Session? =
-        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt)), timeoutSeconds = 60).session
+    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String, model: String = "", effort: String = "", mode: String = ""): Session? =
+        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt, model, effort, mode)), timeoutSeconds = 60).session
+
+    /** The owner's next message in a conversation (工单 #67 rule 1: it goes on in it). */
+    suspend fun sendMessage(sessionId: String, text: String): Session? =
+        call<SendMessageRequest, SessionResponse>("SendMessage", SendMessageRequest(sessionId, text), timeoutSeconds = 60).session
+
+    /** Archived on its machine: the one archive Aide and the agent's side share (工单 #67 rule 6). */
+    suspend fun archive(sessionId: String, on: Boolean): Session? =
+        call<SessionIdRequest, SessionResponse>(if (on) "ArchiveSession" else "UnarchiveSession", SessionIdRequest(sessionId)).session
+
+    suspend fun deleteSession(sessionId: String) {
+        call<SessionIdRequest, JsonElement>("DeleteSession", SessionIdRequest(sessionId))
+    }
 
     /** Signs a coding agent in on a machine, in a browser that opens there (工单 #51), or stops it. */
     suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean): AgentLogin? =
@@ -131,6 +143,11 @@ class LocalApi(port: Long, token: String) {
     suspend fun updateRoom(machineId: String, patch: RoomPatch): Room = call("UpdateRoom", UpdateRoomRequest(machineId, patch))
     suspend fun stopRoom(machineId: String, roomId: String): Room = call("StopRoom", RoomRef(machineId, roomId))
     suspend fun markRoomSeen(machineId: String, roomId: String): Room = call("MarkRoomSeen", RoomRef(machineId, roomId))
+    /** What waits at the post office for a room's away host, by room (工单 #74): personal agents' replies too. */
+    suspend fun listRoomWaiting(machineId: String): ListRoomWaitingResponse = call("ListRoomWaiting", ListRoomWaitingRequest(machineId))
+    suspend fun deleteRoom(machineId: String, roomId: String) {
+        call<RoomRef, JsonElement>("DeleteRoom", RoomRef(machineId, roomId))
+    }
 
     /** Hands installing the DSH bridge plugin to DSH on the machine (工单 #59). */
     suspend fun installDSHBridge(machineId: String): InstallDSHBridgeResponse =

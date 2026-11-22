@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { parseAppLink } from "@aide/core";
 import { agentName } from "@aide/ui";
@@ -14,7 +14,7 @@ import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
 import { Rail } from "./Rail";
-import { Sidebar } from "./Sidebar";
+import { Sidebar, TaskColumn } from "./Sidebar";
 import { useCommands } from "./commands";
 import { useLeaving } from "./components";
 import { Icon } from "./icons";
@@ -77,17 +77,27 @@ export function MainWindow() {
     return () => document.removeEventListener("keydown", esc);
   }, [peeking, set]);
   const { sidebar } = layoutOf(st);
+  // The page of every session keeps its list beside the session opened from it (工单 #63: no list in the sidebar).
+  const [fromList, setFromList] = useState(false);
+  useEffect(() => {
+    if (st.selection.kind === "sessions") setFromList(true);
+    else if (st.selection.kind !== "session") setFromList(false);
+  }, [st.selection]);
+  const listed = st.selection.kind === "sessions" || (fromList && !!session);
   // The search, keyed by what it was opened for; closed, it fades out as it was.
   const search = useLeaving(st.searching ? JSON.stringify(st.searchFor) : null);
   return (
-    <div className={`mainwrap ${sidebar === "docked" ? "" : "railed"} ${sidebar === "over" ? "peek" : ""}`}>
+    <div className={`mainwrap ${sidebar === "docked" ? "" : "railed"} ${sidebar === "over" ? "peek" : ""} ${listed ? "listed" : ""}`}>
       {/* The sidebar, or its rail (docs/her-team.md §14.9): asked for while there is no room, it shows over the rail. */}
       {sidebar === "docked" ? <Sidebar /> : <Rail />}
       {sidebar === "over" && <Sidebar />}
       {/* Over the conversation, the sidebar goes again with a click beside it. */}
       {sidebar === "over" && <div className="peek-scrim" onClick={() => setSidebar(st, false)} />}
+      {listed && <TaskColumn />}
       <section className="content">
-        {session ? (
+        {st.selection.kind === "sessions" ? (
+          <div className="ctool drag"><div className="ctitle" /></div>
+        ) : session ? (
           <SessionPage s={session} />
         ) : st.selection.kind === "dsh" && !st.status?.machineOnly ? (
           <DSHSessions />
@@ -131,13 +141,17 @@ export function AppMenuButton() {
   );
 }
 
-export function ToastView() {
+/**
+ * What an action says (st.show, st.run's failures). It shows where the action was (工单 #61, the owner's rule): in
+ * the sheet open over the window when there is one, under its buttons (inSheet), else at the window's foot.
+ */
+export function ToastView({ inSheet = false }: { inSheet?: boolean }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const { shown: toast, leaving } = useLeaving(st.toast);
-  if (!toast) return null;
+  if (!toast || (st.sheet !== null) !== inSheet) return null;
   return (
-    <div className={`toast ${leaving ? "leaving" : ""}`} inert={leaving} role="status">
+    <div className={`toast ${inSheet ? "in-sheet" : ""} ${leaving ? "leaving" : ""}`} inert={leaving} role="status">
       <Icon name="check" />
       <span>{toast.text}</span>
       {toast.undo && (

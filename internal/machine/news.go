@@ -250,6 +250,9 @@ func (n *Machine) sendMessage(m *inboxv1.Message) error {
 		return err
 	}
 	sm := &relayv1.SealedMessage{Inbox: to.Inbox, MessageId: m.MessageId, Sealed: sealed}
+	if s := m.GetTo().GetSession(); strings.HasPrefix(s, "room_") {
+		sm.Room = s // what waits for an away host, counted by room (工单 #74)
+	}
 	if n.isWoken(m.To) {
 		ring := m.To.GetSession()
 		sm.Ring = &ring

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fixture, launch, onWindows, snap } from "./app";
+import { fixture, launch, onWindows, snap, navTo } from "./app";
 
 // Settings › 连接: a guide for each coding agent, as the owner follows it alone,
 // and the assistants'. This Mac has DeepSeek Harness (fakeacp), Codex not
@@ -104,7 +104,7 @@ test("another ACP agent: a wrong command says why; saved, it is listed, tested a
 test("the guide from the sidebar, and opened at a line: the assistants' shows one that logs in with the account", async () => {
   const { app, page } = await launch();
   // The sidebar's 连接 Agent opens it on its first line.
-  const [settings] = await Promise.all([app.waitForEvent("window"), page.locator(".side-nav").getByRole("button", { name: "连接 Agent" }).click()]);
+  const [settings] = await Promise.all([app.waitForEvent("window"), navTo(page, /^连接 DSH、Claude Desktop/)]);
   await settings.waitForLoadState();
   const main = settings.getByRole("main", { name: "连接" });
   await expect(main.getByRole("tab", { name: "DSH", exact: true })).toHaveAttribute("aria-selected", "true");

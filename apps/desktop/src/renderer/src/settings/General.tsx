@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Picker } from "../Picker";
 import { useTranslation } from "react-i18next";
 import { pickLanguage } from "@aide/core";
 import type { Appearance, LoginItem, Preferences } from "../../../shared/bridge";
@@ -112,18 +113,13 @@ function Language({ prefs, setPrefs }: { prefs?: Preferences; setPrefs: (p: Pref
             )
           }
         >
-          <select
-            className="psel"
-            aria-label={t("language.title")}
+          <Picker
+            label={t("language.title")}
             value={prefs?.language ?? "system"}
             disabled={!prefs}
-            onChange={(e) => window.aide?.setPreferences({ language: e.target.value as LanguageChoice }).then(setPrefs)}
-          >
-            <option value="system">{t("language.system", { name: t(`language.names.${system}`) })}</option>
-            {languages.map((l) => (
-              <option key={l} value={l}>{t(`language.names.${l}`)}</option>
-            ))}
-          </select>
+            onChange={(v) => window.aide?.setPreferences({ language: v as LanguageChoice }).then(setPrefs)}
+            options={[{ value: "system", label: t("language.system", { name: t(`language.names.${system}`) }) }, ...languages.map((l) => ({ value: l as string, label: t(`language.names.${l}`) }))]}
+          />
         </SRow>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { launch, onWindows, snap } from "./app";
+import { launch, onWindows, snap, pick } from "./app";
 
 // 批 E (工单 #51/#52), as the owner does it: Claude Code's command line, not
 // signed in, is signed in from this Mac's page with one button (a browser
@@ -47,17 +47,16 @@ test("an agent's kind: told from its name, set by the owner, shown so on the map
   await expect(bot).toContainText("个人 agent");
   const settings = await openSettings(app, page, "grants");
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: /bot/ }).click();
-  const kind = settings.getByRole("combobox", { name: "类别" });
-  await expect(kind).toHaveValue("");
-  await expect(kind.locator("option").first()).toHaveText("自动判断 · 个人 Agent");
-  const { machines } = await api<{ machines: { machineId: string; local?: boolean }[] }>(page, "ListMachines");
-  await kind.selectOption(`local:${machines.find((m) => m.local)!.machineId}`);
+  // The app's own picker (工单 #68), not a browser <select>.
+  const kind = settings.getByRole("button", { name: "类别" });
+  await expect(kind).toHaveText("自动判断 · 个人 Agent");
+  await pick(kind, /^本机编码 Agent · /);
   await expect(settings.getByText("本机编码 Agent 归属它所在的机器，派活要先选那台机器。")).toBeVisible();
   await snap(settings, "batche-kind-set");
   // On the map it is drawn in its machine, no longer on the account's side.
   await expect(bot).toHaveCount(0, { timeout: 30_000 });
   await expect(map.locator(".lm-home")).toHaveCount(1);
-  await kind.selectOption("");
+  await pick(kind, /^自动判断/);
   await expect(bot).toContainText("个人 agent", { timeout: 30_000 });
   await app.close();
 });

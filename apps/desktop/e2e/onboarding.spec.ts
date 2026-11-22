@@ -27,7 +27,7 @@ const password = "correct horse battery";
 /** The window grew into the main window. */
 async function expectMainWindow(app: ElectronApplication, page: Page) {
   // A session on a small display keeps the navigation in its icon rail.
-  await expect(page.locator(".side-nav, .rail-nav")).toBeVisible();
+  await expect(page.locator("aside.side, aside.rail")).toBeVisible();
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0)).toBeGreaterThan(900);
 }
 
@@ -371,7 +371,7 @@ test("a new server's first assistant: it logs in with the account itself, shows 
   await expect(page.getByText("检查 README").first()).toBeVisible();
   await snap(page, "first-12-main");
   // The overview has no setup checklist.
-  await page.getByRole("button", { name: /^概览/ }).click();
+  await navTo(page, /^概览/);
   await expect(page.getByRole("heading", { name: "概览", level: 1 })).toBeVisible();
   await expect(page.getByRole("region", { name: "完成设置" })).toHaveCount(0);
   // Once the first session is done, 正在运行 rests: the mark, what runs (nothing), and what will show there.
@@ -379,11 +379,12 @@ test("a new server's first assistant: it logs in with the account itself, shows 
   await expect(working.getByRole("status")).toContainText("当前没有运行中的任务", { timeout: 30_000 });
   await expect(working.getByRole("status")).toContainText("Agent 开始工作后，任务会显示在这里，链路图也会同步点亮。");
   await expect(working.locator(".hm-mark")).toBeVisible();
-  // The sidebar's 进行中 stays, saying it is empty for now; the session is under 已结束.
-  const sessions = page.getByRole("list", { name: "任务" });
+  await snap(page, "first-13-resting");
+  // The list of every session keeps 进行中, saying it is empty for now; the session is under 已结束.
+  const sessions = await sessionList(page);
   await expect(sessions.getByRole("group", { name: "进行中" })).toHaveText(/^进行中\s*暂时没有$/);
   await expect(sessions.getByRole("group", { name: "已结束" })).toContainText("检查 README");
-  await snap(page, "first-13-resting");
+  await navTo(page, /^概览/);
   // With nothing live, hovering an agent marks what it can reach on the map, which doesn't grow.
   const map = page.getByRole("region", { name: "链路" });
   await page.mouse.move(0, 0);
@@ -501,7 +502,7 @@ test("a work Mac logs in as a machine only (你的设备 off): its own projects 
   // Its settings, from the account menu, are this Mac's: its coding agents,
   // their models and projects, and its account; no access to grant, no other machine.
   await page.getByRole("button", { name: "账号与设置" }).click();
-  await expect(page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem")).toHaveText([/^设置…/, "账号…"]);
+  await expect(page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem")).toHaveText([/^概览/, /^设置…/, "账号…"]);
   const [settings] = await Promise.all([app.waitForEvent("window"), page.getByRole("menuitem", { name: /^设置/ }).click()]);
   await settings.waitForLoadState();
   const nav = settings.getByRole("navigation", { name: "设置" });

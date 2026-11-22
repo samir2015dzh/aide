@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { allBots, displayTitle, projectTitle, type Bot } from "@aide/core";
-import { RoomDeliveryState, RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
+import { agoText, allBots, dateOf, displayTitle, projectTitle, type Bot } from "@aide/core";
+import { RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { StateText } from "../components";
 import { Icon } from "../icons";
 import { Markdown } from "../session/Markdown";
-import { errorText, useStore } from "../store";
-import { BotFace, useRoster } from "./Bots";
+import { Check, Picker } from "../Picker";
+import { errorText, useNow, useStore, type Store } from "../store";
+import { BotFace, deliveryWords, useRoster } from "./Bots";
+import { Composer, type ComposerState } from "./Composer";
 
 // Rooms (ROOMS-DESIGN-2026-11-22, G2-b/c): the owner and several bots, kept on a machine of the owner's (the host).
 // In the roster beside the bots, each with its last line and what the owner has not read; a room's page has its
@@ -31,6 +33,47 @@ export function useRooms(): Room[] {
         .sort((x, y) => Number(y.updatedAt?.seconds ?? 0n) - Number(x.updatedAt?.seconds ?? 0n)),
     [st.machines],
   );
+}
+
+/**
+ * Replies for a room that wait at the post office while its host is away (工单 #74): what the post office counts for
+ * the room (every member's, a personal agent's too: their envelopes name the room), or, from a relay that does not
+ * count them yet, what the other machines say they sent it; and since when.
+ */
+export function waitingReplies(st: Pick<Store, "machines">, roomId: string, post?: ReadonlyMap<string, { count: number; since?: Date }>): { count: number; since?: Date } {
+  let count = 0;
+  let since: Date | undefined;
+  for (const m of st.machines) {
+    for (const o of m.status?.roomOutbox ?? []) {
+      if (o.roomId !== roomId) continue;
+      count += o.replies;
+      const at = dateOf(o.since);
+      if (at && (!since || at < since)) since = at;
+    }
+  }
+  const p = post?.get(roomId);
+  return p && p.count >= count ? p : { count, since };
+}
+
+/** What waits at the post office for these hosts (while they are away), by room; read again every 15 s. */
+export function usePostWaiting(hosts: string[]): ReadonlyMap<string, { count: number; since?: Date }> {
+  const [by, setBy] = useState<ReadonlyMap<string, { count: number; since?: Date }>>(new Map());
+  const key = [...new Set(hosts)].sort().join(",");
+  useEffect(() => {
+    if (!key) return setBy(new Map());
+    let gone = false;
+    const read = () =>
+      Promise.all(key.split(",").map((machineId) => local.listRoomWaiting({ machineId }).then((r) => r.rooms, () => []))).then((all) => {
+        if (gone) return;
+        const m = new Map<string, { count: number; since?: Date }>();
+        for (const r of all.flat()) m.set(r.roomId, { count: r.messages, since: dateOf(r.since) });
+        setBy(m);
+      });
+    read();
+    const every = setInterval(read, 15_000);
+    return () => ((gone = true), clearInterval(every));
+  }, [key]);
+  return by;
 }
 
 /** A room's state in a line, as the roster and its page say it. */
@@ -57,6 +100,8 @@ export function SidebarRooms() {
   const key = "bots:rooms";
   const open = !st.collapsed.includes(key);
   const sel = st.selection.kind === "room" ? st.selection.roomId : "";
+  const away = rooms.map((r) => r.hostMachineId).filter((id) => st.machines.some((m) => m.machineId === id && !m.online && !m.local));
+  const post = usePostWaiting(away);
   return (
     <div role="group" aria-label={t("rooms.title")}>
       <div className="grp-h-row">
@@ -74,12 +119,12 @@ export function SidebarRooms() {
           <span className="room-faces" aria-hidden="true">
             {r.members.slice(0, 3).map((m) => {
               const b = bots.find((x) => x.key === m.botKey);
-              return b ? <BotFace key={m.botKey} b={b} size={18} /> : <span key={m.botKey} className="av sm">{m.name.slice(0, 1)}</span>;
+              return b ? <BotFace key={m.botKey} b={b} size={18} still /> : <span key={m.botKey} className="bav" style={{ width: 18, height: 18 }}><span className="bav-in" style={{ background: "#8E8E93" }} /></span>;
             })}
           </span>
           <span className="bot-t">
             <span className="bot-l1"><b>{r.name}</b></span>
-            <span className="bot-l2">{roomLine(t, r)}</span>
+            <span className="bot-l2">{((w) => (w.count ? t("rooms.waitingShort", { count: w.count }) : roomLine(t, r)))(waitingReplies(st, r.roomId, post))}</span>
           </span>
           {r.unread > 0 && <span className="cnt-w">{r.unread}</span>}
         </button>
@@ -91,15 +136,8 @@ export function SidebarRooms() {
 /** What became of the owner's message for a member, in words. */
 export function DeliveryLine({ d, name }: { d: RoomDelivery; name: string }) {
   const { t } = useTranslation("common");
-  const word = {
-    [RoomDeliveryState.SENT]: t("bots.delivery.sent", { name }),
-    [RoomDeliveryState.REPLIED]: t("bots.delivery.replied", { name }),
-    [RoomDeliveryState.REFUSED]: d.reason,
-    [RoomDeliveryState.FAILED]: d.reason,
-    [RoomDeliveryState.UNSPECIFIED]: "",
-  }[d.state];
-  const bad = d.state === RoomDeliveryState.REFUSED || d.state === RoomDeliveryState.FAILED;
-  return <span className={`chat-state ${bad ? "warn" : ""}`} data-state={RoomDeliveryState[d.state]}>{word}</span>;
+  const w = deliveryWords(t, d.state, name, d.reason, d.reminded);
+  return <span className={`chat-state ${w.bad ? "warn" : ""}`} data-state={d.state}>{w.text}</span>;
 }
 
 /** A sealed [FINAL] reply: the room's agreed result, to copy or export as Markdown. */
@@ -188,15 +226,18 @@ export function RoomTimeline({ room, msgs, handOn }: { room: Room; msgs: RoomMes
 export function RoomPage({ machineId, roomId }: { machineId: string; roomId: string }) {
   const st = useStore();
   const { t } = useTranslation("common");
+  const now = useNow(30_000);
   const bots = allBots(useRoster());
   const [room, setRoom] = useState<Room>();
   const [msgs, setMsgs] = useState<RoomMessage[]>([]);
   const [error, setError] = useState("");
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [state, setState] = useState<ComposerState>({ kind: "idle" });
   const [key, setKey] = useState(() => crypto.randomUUID());
+  const [renaming, setRenaming] = useState<string | null>(null);
   const ref = { machineId, roomId };
+  // What was read last stays shown while the host can't be read (工单 #74): the room is not gone, its host is away.
   const read = () =>
     local.listRoomMessages({ machineId, roomId, limit: 300 }).then(
       (r) => (setRoom(r.room), setMsgs(r.messages), setError("")),
@@ -212,35 +253,78 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   useEffect(() => {
     if (last && room && room.seenMessageId !== last) local.markRoomSeen(ref).catch(() => {});
   }, [last]);
-  if (!room) return <div className="bot-page"><div className="bot-empty">{error || t("rooms.loading")}</div></div>;
+  // Tells the app's notifications this room is in front (工单 #69: no notification for what is read here).
+  useEffect(() => {
+    window.aide?.roomOpen?.(roomId);
+    return () => window.aide?.roomOpen?.("");
+  }, [roomId]);
+  const host = st.machines.find((m) => m.machineId === machineId);
+  const away = !!host && !host.online && !host.local;
+  const post = usePostWaiting(away || error ? [machineId] : []);
+  const waiting = waitingReplies(st, roomId, post);
+  const awayBanner = (away || (error && waiting.count > 0)) && (
+    <div className="room-away" role="status">
+      <Icon name="wifi" className="sm" />
+      <span>
+        {t("rooms.hostAway", { machine: host?.machineName ?? "" })}
+        {waiting.count > 0 && <> {t("rooms.waitingReplies", { count: waiting.count, since: waiting.since ? agoText(waiting.since, now) : "" })}</>}
+      </span>
+    </div>
+  );
+  if (!room)
+    return (
+      <div className="bot-page">
+        {awayBanner}
+        <div className="bot-empty" role={error ? "alert" : undefined}>{error || t("rooms.loading")}</div>
+      </div>
+    );
   const table = room.mode === RoomMode.ROUNDTABLE;
   const update = (patch: { name?: string; mode?: RoomMode; maxRounds?: number }) =>
-    local.updateRoom({ machineId, room: { roomId, ...patch } }).then(setRoom, (e) => st.show(errorText(e)));
-  const send = async (e?: FormEvent, override?: { text: string; mentions: string[] }) => {
-    e?.preventDefault();
+    local.updateRoom({ machineId, room: { roomId, ...patch } }).then(setRoom, (e) => setState({ kind: "error", text: errorText(e) }));
+  const send = async (override?: { text: string; mentions: string[] }) => {
     const body = override?.text ?? text;
-    if (!body.trim() || busy) return;
-    setBusy(true);
+    if (!body.trim() || state.kind === "sending") return;
+    setState({ kind: "sending" });
     try {
       const m = await local.postRoomMessage({ machineId, roomId, text: body, mentions: override?.mentions ?? mentions, idempotencyKey: override ? crypto.randomUUID() : key });
       setMsgs((x) => [...x.filter((y) => y.messageId !== m.messageId), m]);
       if (!override) (setText(""), setMentions([]), setKey(crypto.randomUUID()));
+      setState({ kind: "idle" });
       read();
     } catch (err) {
-      st.show(errorText(err));
+      setState({ kind: "error", text: errorText(err), retry: () => void send(override) });
     }
-    setBusy(false);
   };
   const woken = mentions.length > 0 ? mentions : table && room.members[0] ? [room.members[0].botKey] : [];
   const names = (keys: string[]) => keys.map((k) => room.members.find((x) => x.botKey === k)?.name ?? k).join("、");
-  const host = st.machines.find((m) => m.machineId === room.hostMachineId);
+  const finishRename = (keep: boolean) => {
+    const n = renaming?.trim();
+    setRenaming(null);
+    if (keep && n && n !== room.name) void update({ name: n });
+  };
   return (
     <div className="bot-page room-page" role="region" aria-label={room.name}>
       <header className="bot-head drag">
         <div className="bot-head-t">
           <div className="bot-head-l1">
-            <h1>{room.name}</h1>
-            <button className="link" onClick={() => { const n = prompt(t("rooms.rename"), room.name); if (n?.trim()) update({ name: n.trim() }); }}>{t("rooms.renameShort")}</button>
+            {renaming !== null ? (
+              <input
+                className="field room-rename"
+                autoFocus
+                aria-label={t("rooms.rename")}
+                value={renaming}
+                maxLength={64}
+                onChange={(e) => setRenaming(e.target.value)}
+                onKeyDown={(e) => (e.key === "Enter" && !e.nativeEvent.isComposing ? finishRename(true) : e.key === "Escape" && finishRename(false))}
+                onBlur={() => finishRename(true)}
+              />
+            ) : (
+              <>
+                <h1>{room.name}</h1>
+                {/* Renaming is a pencil, its words in its tip (工单 #65). */}
+                <button className="tb" title={t("rooms.rename")} aria-label={t("rooms.rename")} onClick={() => setRenaming(room.name)}><Icon name="edit" /></button>
+              </>
+            )}
             <span className="bot-pill" data-usable={room.run === RoomRun.RUNNING ? "yes" : ""}>{roomLine(t, room)}</span>
           </div>
           <div className="room-members" role="list" aria-label={t("rooms.members")}>
@@ -248,7 +332,7 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
               const b = bots.find((x) => x.key === m.botKey);
               return (
                 <span key={m.botKey} className="room-member" role="listitem" title={b?.state.line}>
-                  {b ? <BotFace b={b} size={20} /> : <span className="av sm">{m.name.slice(0, 1)}</span>}
+                  {b ? <BotFace b={b} size={20} /> : <span className="bav" style={{ width: 20, height: 20 }}><span className="bav-in" style={{ background: "#8E8E93" }} /></span>}
                   {m.name}
                   {b && <em data-usable={b.state.usable}>{b.state.word}</em>}
                 </span>
@@ -262,47 +346,119 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
             <button className={table ? "on" : ""} aria-pressed={table} onClick={() => update({ mode: RoomMode.ROUNDTABLE })}>{t("rooms.table")}</button>
           </div>
           {table && (
-            <label className="muted">
-              {t("rooms.maxRounds")}
-              <select className="field sm" value={room.maxRounds} aria-label={t("rooms.maxRounds")} onChange={(e) => update({ maxRounds: Number(e.target.value) })}>
-                {Array.from({ length: 20 }, (_, i) => i + 1).map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
-            </label>
+            <Picker size="sm" label={t("rooms.maxRounds")} value={room.maxRounds} onChange={(v) => update({ maxRounds: v })}
+              options={Array.from({ length: 20 }, (_, i) => ({ value: i + 1, label: t("rooms.roundsN", { count: i + 1 }) }))} />
           )}
           {room.run === RoomRun.RUNNING && (
-            <button className="btn sm" onClick={() => local.stopRoom(ref).then((r) => (setRoom(r), read()), (e) => st.show(errorText(e)))}>{t("rooms.stop")}</button>
+            <button className="btn sm" onClick={() => local.stopRoom(ref).then((r) => (setRoom(r), read()), (e) => setState({ kind: "error", text: errorText(e) }))}>{t("rooms.stop")}</button>
           )}
+          <button className="tb" title={t("rooms.delete")} aria-label={t("rooms.delete")} onClick={() => st.set({ sheet: { kind: "deleteRoom", machineId, roomId, name: room.name, members: room.members.filter((m) => m.sessionId).map((m) => ({ name: m.name, sessionId: m.sessionId })) } })}>
+            <Icon name="x" />
+          </button>
         </div>
       </header>
+      {awayBanner}
       <main className="bot-main bot-chat">
-        <div className="bot-sec-h">
-          {t("rooms.timeline")}
-          {host && <span className="muted">{t("bots.chatHost", { machine: host.machineName })}</span>}
-        </div>
         <div className="bot-stream chat-log" role="log" aria-label={t("rooms.timeline")}>
           {msgs.length === 0 && <div className="bot-empty">{t(table ? "rooms.emptyTable" : "rooms.emptyManual")}</div>}
-          <RoomTimeline room={room} msgs={msgs} handOn={(to, m) => send(undefined, { text: t("rooms.handOnText", { from: m.fromName, text: m.text }), mentions: [to] })} />
+          <RoomTimeline room={room} msgs={msgs} handOn={(to, m) => void send({ text: t("rooms.handOnText", { from: m.fromName, text: m.text }), mentions: [to] })} />
+          {/* Replies that wait for the host to come back (工单 #74): in the timeline, where they will come in. */}
+          {waiting.count > 0 && <div className="room-sys" role="note">{t("rooms.waitingInline", { count: waiting.count })}</div>}
         </div>
-        <form className="bot-compose" onSubmit={send}>
-          <div className="room-mentions" role="group" aria-label={t("rooms.mention")}>
-            {room.members.map((m) => {
-              const on = mentions.includes(m.botKey);
-              return (
-                <button type="button" key={m.botKey} className={`chip ${on ? "on" : ""}`} aria-pressed={on} onClick={() => setMentions(on ? mentions.filter((k) => k !== m.botKey) : [...mentions, m.botKey])}>
-                  @{m.name}
-                </button>
-              );
-            })}
-          </div>
-          <textarea className="field" rows={3} value={text} placeholder={t("rooms.placeholder")} aria-label={t("rooms.placeholder")}
-            onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && void send(e)} />
-          <div className="bot-compose-bar">
-            <span className="muted" role="status">{woken.length ? t("rooms.wakes", { names: names(woken) }) : t("rooms.wakesNone")}</span>
-            <button type="submit" className="btn primary sm" disabled={!text.trim() || busy}>{busy ? t("bots.sending") : t("bots.chatSend")}</button>
-          </div>
-        </form>
+        <Composer
+          value={text}
+          onChange={(v) => (setText(v), state.kind === "error" && setState({ kind: "idle" }))}
+          onSend={() => void send()}
+          placeholder={t("rooms.placeholder")}
+          state={state}
+          disabled={away}
+          why={{ text: woken.length ? t("rooms.wakes", { names: names(woken) }) : t("rooms.wakesNone"), tone: "quiet" }}
+          mentions={
+            <div className="room-mentions" role="group" aria-label={t("rooms.mention")}>
+              {room.members.map((m) => {
+                const on = mentions.includes(m.botKey);
+                return (
+                  <button type="button" key={m.botKey} className={`chip ${on ? "on" : ""}`} aria-pressed={on} onClick={() => setMentions(on ? mentions.filter((k) => k !== m.botKey) : [...mentions, m.botKey])}>
+                    @{m.name}
+                  </button>
+                );
+              })}
+            </div>
+          }
+        />
       </main>
     </div>
+  );
+}
+
+/**
+ * Deleting a room (工单 #73): what becomes of its members' sessions is said and chosen, never done quietly — the room
+ * alone (the sessions stay in their projects), or the sessions made for this room too, listed.
+ */
+export function DeleteRoomSheet({ machineId, roomId, name, members }: { machineId: string; roomId: string; name: string; members: { name: string; sessionId: string }[] }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const [withSessions, setWithSessions] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const sessions = members.map((m) => ({ ...m, s: st.sessions.find((x) => x.sessionId === m.sessionId) }));
+  const go = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await local.deleteRoom({ machineId, roomId });
+      const failed: string[] = [];
+      if (withSessions) {
+        for (const m of sessions) await local.deleteSession({ sessionId: m.sessionId }).catch(() => failed.push(m.name));
+      }
+      st.set({ sheet: null, selection: { kind: "overview" } });
+      st.show(failed.length ? t("rooms.deletedSomeKept", { name, names: failed.join("、") }) : t(withSessions ? "rooms.deletedWith" : "rooms.deleted", { name, count: sessions.length }));
+    } catch (e) {
+      setError(errorText(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <h3 id="sheet-title">{t("rooms.deleteTitle", { name })}</h3>
+      <p className="sub">{t("rooms.deleteSub")}</p>
+      <div className="fgroup" role="radiogroup" aria-label={t("rooms.deleteChoice")}>
+        <button type="button" className="frow choice" role="radio" aria-checked={!withSessions} onClick={() => setWithSessions(false)}>
+          <Check on={!withSessions} label={t("rooms.deleteRoomOnly")} set={() => setWithSessions(false)} />
+          <span className="ft">
+            <span>{t("rooms.deleteRoomOnly")}</span>
+            <span className="fdesc">{t("rooms.deleteRoomOnlyDesc", { count: sessions.length })}</span>
+          </span>
+        </button>
+        <button type="button" className="frow choice" role="radio" aria-checked={withSessions} disabled={sessions.length === 0} onClick={() => setWithSessions(true)}>
+          <Check on={withSessions} label={t("rooms.deleteWithSessions")} set={() => setWithSessions(true)} disabled={sessions.length === 0} />
+          <span className="ft">
+            <span>{t("rooms.deleteWithSessions")}</span>
+            <span className="fdesc">{t("rooms.deleteWithSessionsDesc", { count: sessions.length })}</span>
+          </span>
+        </button>
+      </div>
+      {sessions.length > 0 && (
+        <>
+          <div className="fhead">{t("rooms.deleteAffected", { count: sessions.length })}</div>
+          <div className="fgroup" role="list">
+            {sessions.map((m) => (
+              <div key={m.sessionId} className="frow" role="listitem">
+                <span className="ft">
+                  <span>{m.name}</span>
+                  <span className="fdesc">{m.s ? `${displayTitle(m.s)} · ${m.s.projectId}` : t("rooms.sessionElsewhere")}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {error && <p className="err" role="alert">{error}</p>}
+      <div className="sheet-foot">
+        <button type="button" className="btn" onClick={() => st.set({ sheet: null })}>{t("rooms.cancel")}</button>
+        <button type="button" className="btn danger" disabled={busy} onClick={() => void go()}>{busy ? t("rooms.deleting") : t(withSessions ? "rooms.deleteWithButton" : "rooms.deleteButton")}</button>
+      </div>
+    </>
   );
 }
 
@@ -359,32 +515,30 @@ export function NewRoomSheet() {
               <button type="button" className={mode === RoomMode.ROUNDTABLE ? "on" : ""} aria-pressed={mode === RoomMode.ROUNDTABLE} onClick={() => setMode(RoomMode.ROUNDTABLE)}>{t("rooms.table")}</button>
             </div>
             {mode === RoomMode.ROUNDTABLE && (
-              <select className="field sm room-rounds" value={maxRounds} aria-label={t("rooms.maxRounds")} onChange={(e) => setMaxRounds(Number(e.target.value))}>
-                {Array.from({ length: 20 }, (_, i) => i + 1).map((x) => <option key={x} value={x}>{t("rooms.roundsN", { count: x })}</option>)}
-              </select>
+              <Picker size="sm" label={t("rooms.maxRounds")} value={maxRounds} onChange={setMaxRounds}
+                options={Array.from({ length: 20 }, (_, i) => ({ value: i + 1, label: t("rooms.roundsN", { count: i + 1 }) }))} />
             )}
           </span>
         </div>
       </div>
       <p className="sheet-note muted">{t(mode === RoomMode.ROUNDTABLE ? "rooms.tableNote" : "rooms.manualNote")}</p>
       <div className="fhead">{t("rooms.pick")}</div>
-      <div className="room-pick" role="group" aria-label={t("rooms.pick")}>
+      <div className="fgroup room-pick" role="group" aria-label={t("rooms.pick")}>
         {bots.map((b) => {
           const on = b.key in picked;
           const projects = b.kind === "personal" ? [] : projectsOf(b);
           return (
-            <div key={b.key} className={`room-pick-row ${on ? "on" : ""}`}>
-              <label>
-                <input type="checkbox" checked={on} onChange={() => toggle(b)} aria-label={b.name} />
-                <BotFace b={b} size={22} />
-                <b>{b.name}</b>
-                <span className="muted">{b.state.word}</span>
-              </label>
+            <div key={b.key} className={`frow room-pick-row ${on ? "on" : ""}`}>
+              <Check on={on} label={b.name} set={() => toggle(b)} />
+              <BotFace b={b} size={24} still />
+              <span className="ft" onClick={() => toggle(b)}>
+                <span>{b.name}</span>
+                <span className="fdesc">{b.state.word}</span>
+              </span>
               {on && b.kind !== "personal" && (
                 projects.length ? (
-                  <select className="field sm" value={picked[b.key]} aria-label={t("rooms.projectOf", { name: b.name })} onChange={(e) => setPicked({ ...picked, [b.key]: e.target.value })}>
-                    {projects.map((p) => <option key={p.projectId} value={p.projectId}>{projectTitle(p)}</option>)}
-                  </select>
+                  <Picker size="sm" label={t("rooms.projectOf", { name: b.name })} value={picked[b.key]} onChange={(v) => setPicked({ ...picked, [b.key]: v })}
+                    options={projects.map((p) => ({ value: p.projectId, label: projectTitle(p) }))} />
                 ) : <span className="warn">{t("rooms.noProject")}</span>
               )}
             </div>

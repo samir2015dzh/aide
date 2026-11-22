@@ -1,8 +1,10 @@
 // Package dshnative reads the sessions DeepSeek Harness (DSH) keeps in its
 // home, so the owner can see those Aide did not start: the ones they
 // opened in DSH Desktop, or another tool did. It only reads DSH's files,
-// never writes in its home, and never takes a session's write lock: it only
-// looks whether a process holds it.
+// never takes a session's write lock (it only looks whether a process holds
+// it), and writes in its home one thing alone, at the owner's ask: whether a
+// session Aide runs is archived in DSH Desktop's sidebar (SetArchived, 工单
+// #67: archived in Aide is archived there, and back).
 //
 // What it knows of DSH's files comes from its npm packages (0.2.2-rc.1 to
 // rc.4): @deepseek-ai/dsh-home-paths, dsh-session,
@@ -257,6 +259,72 @@ func cachedTitle(home, id string) string {
 	json.Unmarshal(b, &c)
 	t, _ := c.Record.Rows.Title.Val.(string)
 	return t
+}
+
+// ArchivedState is the sessions archived in DSH Desktop's sidebar, and
+// whether DSH Desktop keeps that state here at all.
+func ArchivedState(home string) (map[string]bool, bool) {
+	if _, err := os.Stat(filepath.Join(home, "storages", "workspace.json")); err != nil {
+		return nil, false
+	}
+	return archivedIDs(home), true
+}
+
+// SetArchived archives the session id in DSH Desktop's sidebar, or takes it
+// out of the archived ones: storages/workspace.json's
+// global.archivedSessionIds, everything else in the file kept as it is. It
+// is written whole under another name first, then put in place. No file
+// there (DSH Desktop never ran): nothing to do.
+func SetArchived(home, id string, archived bool) error {
+	path := filepath.Join(home, "storages", "workspace.json")
+	b, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var w map[string]any
+	if err := json.Unmarshal(b, &w); err != nil {
+		return err
+	}
+	g, _ := w["global"].(map[string]any)
+	if g == nil {
+		g = map[string]any{}
+		w["global"] = g
+	}
+	var ids []any
+	present := false
+	if list, ok := g["archivedSessionIds"].([]any); ok {
+		for _, x := range list {
+			if x == id {
+				present = true
+				if !archived {
+					continue
+				}
+			}
+			ids = append(ids, x)
+		}
+	}
+	if present == archived {
+		return nil
+	}
+	if archived {
+		ids = append(ids, id)
+	}
+	if ids == nil {
+		ids = []any{}
+	}
+	g["archivedSessionIds"] = ids
+	out, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := path + ".aide.tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // archivedIDs is the sessions archived in DSH Desktop's sidebar: its

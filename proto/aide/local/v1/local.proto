@@ -221,6 +221,9 @@ service LocalService {
   rpc StopRoom(RoomRef) returns (aide.machine.v1.Room);
   rpc MarkRoomSeen(RoomRef) returns (aide.machine.v1.Room);
   rpc DeleteRoom(RoomRef) returns (aide.machine.v1.DeleteRoomResponse);
+  // What waits at the post office for a machine that hosts rooms, by room:
+  // every member's reply (personal agents' too) while it is away (工单 #74).
+  rpc ListRoomWaiting(ListRoomWaitingRequest) returns (ListRoomWaitingResponse);
   rpc DSHSessionOptions(DSHSessionOptionsRequest) returns (aide.machine.v1.DSHSessionOptionsResponse);
   // The Claude Code sessions the Claude desktop app lists on the machines
   // (aide.machine.v1.MachineAdminService.ListClaudeSessions), newest
@@ -308,6 +311,30 @@ message ReadToolOutputRequest {
 message ProjectRef {
   string machine_id = 1;
   string project_id = 2;
+}
+
+// ErrorReason is why a call failed as a key (工单 #60), on the error as a
+// detail: its message stays English (logs, older apps), and the apps say
+// the reason in the owner's language from the key and its args.
+message ErrorReason {
+  // "no_host_online", "no_room_host_online", …
+  string reason = 1;
+  map<string, string> args = 2;
+}
+
+message ListRoomWaitingRequest {
+  string machine_id = 1;
+}
+
+message ListRoomWaitingResponse {
+  repeated RoomWaiting rooms = 1;
+}
+
+message RoomWaiting {
+  string room_id = 1;
+  uint32 messages = 2;
+  // When the oldest of them came in.
+  google.protobuf.Timestamp since = 3;
 }
 
 message RegisterPushRequest {

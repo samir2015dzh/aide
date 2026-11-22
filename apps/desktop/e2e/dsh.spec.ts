@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { fixture, launch, snap } from "./app";
+import { fixture, launch, snap, navTo, pick } from "./app";
 
 // DSH 会话 › taking one over (docs/dsh-takeover.md): read only until the owner turns 接管 on
 // for it (asked first, with what it means); then a message goes to DSH through the Aide plugin
@@ -23,7 +23,7 @@ test("this computer not turned on as a machine: the session pages say so, and tu
       async ([m, b]) => (await fetch(`app://aide/api/aide.local.v1.LocalService/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) })).json(),
       [method, body] as const,
     );
-  await page.getByRole("button", { name: "DSH 会话" }).click();
+  await navTo(page, /^DSH 会话/);
   const list = page.getByRole("navigation", { name: "DSH 会话" });
   const row = list.getByRole("button", { name: /看一下 README/ });
   await expect(row).toBeVisible({ timeout: 30_000 });
@@ -36,15 +36,21 @@ test("this computer not turned on as a machine: the session pages say so, and tu
   try {
     await expect(list.getByRole("status").filter({ hasText: said })).toBeVisible({ timeout: 30_000 });
     await snap(page, "dsh-local-machine-off");
-    // The sidebar's entry is there only while a machine is found to have DSH (the owner's ruling, 2026-11-21:
+    // The account menu's entry is there only while a machine is found to have DSH (the owner's ruling, 2026-11-21:
     // not set up, not shown). This computer was the only one, so the entry goes; the page that is open stays,
     // with the notice. The entry is back once this computer is on and its agents are found again.
-    await expect(page.getByRole("button", { name: "DSH 会话" })).toHaveCount(0, { timeout: 30_000 });
+    const entry = async () => {
+      await page.locator(".side-foot").first().click();
+      const n = await page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem", { name: /^DSH 会话/ }).count();
+      await page.keyboard.press("Escape");
+      return n;
+    };
+    await expect.poll(entry, { timeout: 30_000 }).toBe(0);
 
     await list.getByRole("status").filter({ hasText: said }).getByRole("button", { name: "在这台电脑上开启" }).click();
     await expect(list.getByRole("status").filter({ hasText: said })).toHaveCount(0, { timeout: 30_000 });
     await expect(row).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "DSH 会话" })).toBeVisible({ timeout: 30_000 });
+    await expect.poll(entry, { timeout: 30_000 }).toBe(1);
   } finally {
     await call("SetLocalMachine", { enabled: true, machineName: name }).catch(() => {});
     await app.close();
@@ -53,7 +59,7 @@ test("this computer not turned on as a machine: the session pages say so, and tu
 
 test("taking over a DSH session: off by default, asked, a message through the plugin, DSH Desktop gone, off again", async () => {
   const { app, page } = await launch();
-  await page.getByRole("button", { name: "DSH 会话" }).click();
+  await navTo(page, /^DSH 会话/);
   const list = page.getByRole("navigation", { name: "DSH 会话" });
   await list.getByRole("button", { name: /看一下 README/ }).click({ timeout: 30_000 });
   await expect(page.getByText("README 写的是安装步骤。")).toBeVisible();
@@ -83,11 +89,11 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await expect(box).toBeEnabled();
   await expect(page.getByText("DSH Desktop 里还没有 Aide 插件")).toHaveCount(0);
   // What the session goes on with: DSH's models (with their efforts) and permission presets, as the plugin lists them.
-  const model = page.getByRole("combobox", { name: "模型" });
-  const perm = page.getByRole("combobox", { name: "权限" });
+  const model = page.getByRole("button", { name: "模型", exact: true });
+  const perm = page.getByRole("button", { name: "权限", exact: true });
   await expect(model).toBeVisible({ timeout: 30_000 });
-  await model.selectOption({ label: "DeepSeek V4 · high" });
-  await perm.selectOption({ label: "Auto review" });
+  await pick(model, "DeepSeek V4 · high");
+  await pick(perm, /^Auto review/);
   await snap(page, "dsh-takeover-picks");
   // Shift+Enter is a new line; Enter sends, as chat apps do.
   await box.fill("接着把测试");

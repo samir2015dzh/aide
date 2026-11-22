@@ -93,3 +93,32 @@ run, and one timeline.
   second: an idle window still makes no calls. Only an open room's page
   reads its messages (every 3 seconds). The phone tells of a room whose
   unread went up on the Watch, unless that room's page is open.
+
+## 批 H (工单 #69–#71, #73, #74)
+
+- **Taken** (#71): a member's copy goes sent → taken → replied. The host asks the
+  post office (relay MessageService.Status) every few seconds what became of
+  the copies it sent: `taken`, `handed`, `handled` or `held` is taken;
+  `refused` and `expired` say so. A coding agent on the host has it at once.
+- **At most 8 at work** (#70): no more than `roomMaxBusy` (8) wakes of the
+  host's rooms wait on their members at once. Past that a wake is queued
+  (`ROOM_DELIVERY_STATE_QUEUED`, kept in the room's file) and goes, oldest
+  first, as soon as one is done (answered, failed, refused, the room
+  stopped; a stopped room's queued wakes fail, said so).
+- **Quiet for two minutes** (#70): a member woken that shows no sign of life
+  for two minutes (a copy not taken; a session here not at work since) is
+  told of once: the delivery is marked `reminded`, the room's `notice` says
+  so, and a `room` notice goes. Sessions handed out directly are told of on
+  the owner's devices (core `quietSessions`, Android `LiveNotices.quietKey`):
+  a turn started two minutes ago with nothing from the agent, once a turn.
+- **Notified** (#69): `Room.notice`/`notice_at` is what the host last told of
+  the room. The desktop's main process posts a notification when it is new,
+  or when more is unread, unless the room's page is in front; a click opens
+  it. Android shows the host's words the same way.
+- **Waiting for the host** (#74): a reply a machine's coding agent sends to a
+  room's host waits at the post office while the host is away; the sending
+  machine lists it in its status (`MachineStatus.room_outbox`) until the host
+  takes it, and the owner's devices show it in the roster and the room.
+- **Deleting** (#73): the owner chooses the room alone (its members'
+  sessions stay in their projects) or with the sessions started for it,
+  listed before deleting.

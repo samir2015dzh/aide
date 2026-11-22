@@ -2,7 +2,7 @@ import { expect, test, type ElectronApplication, type Page } from "@playwright/t
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { launch, sessionList } from "./app";
+import { launch, sessionList, pick } from "./app";
 
 // The app's language: the first of the system's preferred languages it has
 // (English or Simplified Chinese), else English; or the one chosen in
@@ -39,12 +39,11 @@ test("a language chosen in settings takes over from the next start", async () =>
   const [settings] = await Promise.all([first.app.waitForEvent("window"), first.page.evaluate(() => window.aide?.openSettings())]);
   await settings.waitForLoadState();
   const general = settings.getByRole("main", { name: "General" });
-  const select = general.getByRole("combobox", { name: "Language" });
-  await expect(select).toHaveValue("system");
-  await expect(select.getByRole("option", { name: "System (English)" })).toBeAttached();
+  const select = general.getByRole("button", { name: "Language" });
+  await expect(select).toHaveText("System (English)");
   await expect(general.getByRole("button", { name: "Restart Now" })).toHaveCount(0);
 
-  await select.selectOption("zh-CN");
+  await pick(select, /^(简体中文|Chinese)/);
   await expect(general.getByText("Takes effect after Aide restarts.")).toBeVisible();
   await expect(general.getByRole("button", { name: "Restart Now" })).toBeVisible();
   expect((await first.page.evaluate(() => window.aide?.getPreferences()))?.language).toBe("zh-CN");

@@ -74,7 +74,12 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
     if (c.projects.none { it.projectId == p.projectId } && c.projects.isNotEmpty()) p = p.copy(projectId = c.projects.first().projectId)
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
+    // What saving says is said here, on this page (工单 #61): its failure under the button, never later on the tabs.
+    var error by remember { mutableStateOf<String?>(null) }
+    // Known before anything is filled in: the server keeps no contacts (工单 #61 §2).
+    val unavailable by model.personasError.collectAsState()
     Scaffold(
+        snackbarHost = { PageFeedback(model) },
         topBar = {
             TopAppBar(
                 title = { Text(if (start.personaId.isEmpty()) t("Add Contact", "添加联系人") else t("Edit Contact", "编辑联系人")) },
@@ -83,6 +88,9 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
         },
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            unavailable?.let { why ->
+                Text(why, style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.fillMaxWidth().aideInset().padding(12.dp))
+            }
             OutlinedTextField(p.name, { p = p.copy(name = it.take(64)) }, Modifier.fillMaxWidth(), label = { Text(t("Name", "名字")) }, singleLine = true)
             SectionHeader(t("Avatar", "头像"))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -140,12 +148,14 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(enabled = personaReady(p) && !busy, onClick = {
                     busy = true
-                    scope.launch { model.savePersona(p).also { busy = false }?.let { done(it) } }
-                }) { Text(t("Save", "保存")) }
+                    error = null
+                    scope.launch { model.savePersonaOr(p) { error = it }.also { busy = false }?.let { done(it) } }
+                }) { Text(if (busy) t("Saving…", "正在保存…") else t("Save", "保存")) }
                 if (start.personaId.isNotEmpty()) {
                     OutlinedButton(enabled = !busy, onClick = { scope.launch { if (model.deletePersona(p)) done(null) } }) { Text(t("Delete Contact", "删除联系人")) }
                 }
             }
+            error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Warning) }
         }
     }
 }

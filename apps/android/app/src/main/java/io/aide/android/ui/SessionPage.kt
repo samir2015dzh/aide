@@ -109,6 +109,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
         else if (items.isNotEmpty() && last >= items.size - 3) list.animateScrollToItem(items.size - 1)
     }
     Scaffold(
+        snackbarHost = { PageFeedback(model) },
         topBar = {
             TopAppBar(
                 title = {

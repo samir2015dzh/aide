@@ -117,6 +117,8 @@ CREATE TABLE boundary_policy (
   device_cert BLOB NOT NULL,
   updated_at INTEGER NOT NULL
 );
+`, `
+ALTER TABLE messages ADD COLUMN room TEXT NOT NULL DEFAULT '';
 `}
 
 // Store is the Backend of a self-hosted relay: one owner, SQLite. Beside
@@ -414,13 +416,13 @@ func (s *Store) DeletePushTarget(_, deviceKeyID string) error {
 // keep their order of arrival.
 
 func (s *Store) PutMessage(_ string, m Message) error {
-	_, err := s.db.Exec(`INSERT INTO messages (id, inbox, sealed, state, state_at, received_at, expires_at, ring, sender) VALUES (?, ?, ?, 'waiting', ?, ?, ?, ?, ?)
-ON CONFLICT(id) DO NOTHING`, m.ID, m.Inbox, m.Sealed, m.ReceivedAt.UnixNano(), m.ReceivedAt.UnixNano(), m.ExpiresAt.UnixNano(), m.Ring, m.Sender)
+	_, err := s.db.Exec(`INSERT INTO messages (id, inbox, sealed, state, state_at, received_at, expires_at, ring, sender, room) VALUES (?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO NOTHING`, m.ID, m.Inbox, m.Sealed, m.ReceivedAt.UnixNano(), m.ReceivedAt.UnixNano(), m.ExpiresAt.UnixNano(), m.Ring, m.Sender, m.Room)
 	return err
 }
 
 func (s *Store) WaitingMessages(_, inbox string) ([]Message, error) {
-	rows, err := s.db.Query(`SELECT id, sealed, received_at, expires_at, ring FROM messages WHERE inbox = ? AND sealed IS NOT NULL ORDER BY received_at, id`, inbox)
+	rows, err := s.db.Query(`SELECT id, sealed, received_at, expires_at, ring, room FROM messages WHERE inbox = ? AND sealed IS NOT NULL ORDER BY received_at, id`, inbox)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +431,7 @@ func (s *Store) WaitingMessages(_, inbox string) ([]Message, error) {
 	for rows.Next() {
 		m := Message{Inbox: inbox}
 		var received, expires int64
-		if err := rows.Scan(&m.ID, &m.Sealed, &received, &expires, &m.Ring); err != nil {
+		if err := rows.Scan(&m.ID, &m.Sealed, &received, &expires, &m.Ring, &m.Room); err != nil {
 			return nil, err
 		}
 		m.ReceivedAt, m.ExpiresAt = time.Unix(0, received), time.Unix(0, expires)

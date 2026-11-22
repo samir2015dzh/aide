@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launch, snap } from "./app";
+import { launch, snap, navTo } from "./app";
 
 // Claude 会话 (docs/claude-sessions.md): the Claude Code sessions the Claude desktop app has on the
 // owner's machines, listed by their title in the app, with the GitHub repository their folder's own
@@ -7,7 +7,7 @@ import { launch, snap } from "./app";
 
 test("the Claude app's sessions: listed by title with their repository, opened read only", async () => {
   const { app, page } = await launch();
-  await page.getByRole("button", { name: "Claude 会话" }).click();
+  await navTo(page, /^Claude 会话/);
   const list = page.getByRole("navigation", { name: "Claude 会话" });
   const row = list.getByRole("button", { name: /改首页/ });
   await expect(row).toBeVisible({ timeout: 30_000 });

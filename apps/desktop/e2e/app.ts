@@ -70,7 +70,7 @@ export async function launch(
  * keeps it from being picked.
  */
 export async function openWork(app: ElectronApplication, page: Page): Promise<void> {
-  await page.locator(".side-nav").waitFor({ timeout: 30_000 });
+  await page.locator("aside.side").first().waitFor({ timeout: 30_000 });
   await app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById("overview")?.click());
 }
 
@@ -153,4 +153,13 @@ export async function clickToClose(button: Locator): Promise<void> {
       if (!page.isClosed() || !(error instanceof Error) || !/^locator\.click: Target page, context or browser has been closed(?:\n|$)/.test(error.message)) throw error;
     }),
   ]);
+}
+
+/**
+ * Chooses in one of the app's own pop-up buttons (Picker.tsx, 工单 #68: no browser <select>): its button opens a menu,
+ * the option is a menu item by its name. The menu is drawn on the page the button is on.
+ */
+export async function pick(button: Locator, option: string | RegExp): Promise<void> {
+  await button.click();
+  await button.page().getByRole("menuitemradio", { name: option }).first().click();
 }

@@ -48,6 +48,12 @@ function selected(st: Store): Session | undefined {
 
 function run(st: Store, c: Command) {
   const s = selected(st);
+  // A room's notification (工单 #69): its page.
+  if (c.startsWith("room:")) {
+    const [machineId, roomId] = c.slice("room:".length).split("/");
+    if (machineId && roomId) st.set({ selection: { kind: "room", machineId, roomId } });
+    return;
+  }
   switch (c) {
     case "overview":
       return st.set({ selection: { kind: "overview" } });

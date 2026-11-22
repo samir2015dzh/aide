@@ -167,7 +167,7 @@
     "allPaused": "Every agent on this computer is paused: resume one to start a session.",
     "renameItem": "Rename…",
     "renamed": "Renamed",
-    "defaultName": "Default name: rename it"
+    "renameTip": "Rename “{{name}}”"
   },
   "erased": {
     "done": "Aide erased everything",

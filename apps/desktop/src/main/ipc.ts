@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainEvent, ty
 import path from "node:path";
 import type { Command, MenuItem, MenuState, Preferences, TerminalCommand } from "../shared/bridge";
 import { i18n } from "../shared/i18n";
-import { preferences, setPreferences, world } from "./notify";
+import { preferences, setPreferences, setRoomOpen, world } from "./notify";
 import { platform } from "./platform";
 import { errorMessage, takeLinks } from "./links";
 import { catchUp, check, download, install, openUpdates, setAutoDownload, snooze, updateInfo } from "./updater";
@@ -41,6 +41,7 @@ const terminalCommands: Record<TerminalCommand, string> = {
 
 export function registerIPC() {
   ipcMain.on("open-settings", (e, tab?: string) => trusted(e) && showSettings(typeof tab === "string" ? tab : undefined));
+  ipcMain.on("room-open", (e, id: unknown) => trusted(e) && setRoomOpen(typeof id === "string" ? id : ""));
   // From the settings window: the main window's search, narrowed to a grant or a machine; a session; DSH's own sessions; the Claude app's.
   ipcMain.on("show-in-main", (e, f: { grant?: unknown; machine?: unknown; session?: unknown; dsh?: unknown; claude?: unknown }) => {
     if (!trusted(e) || typeof f !== "object" || f === null) return;

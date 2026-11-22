@@ -21,7 +21,9 @@ test("a PC's words, type and corners, and Ctrl shortcuts, the menu button, the n
   await expect(page.locator(".side-top").getByRole("button", { name: "搜索" })).toHaveAttribute("title", "搜索 Ctrl+K");
   await expect(page.getByRole("button", { name: "菜单" })).toBeVisible();
   // Windows 11's type and corners, and its accent bar on the selected row.
-  const overview = page.locator(".side-nav").getByRole("button", { name: /^概览/ });
+  // The selected row: a bot's (工单 #63: the sidebar is bots alone).
+  const overview = page.locator(".side-bots .bot-row").first();
+  await overview.click();
   expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("14px");
   expect(await overview.evaluate((e) => getComputedStyle(e).borderRadius)).toBe("4px");
   expect(await overview.evaluate((e) => getComputedStyle(e, "::before").width)).toBe("3px");

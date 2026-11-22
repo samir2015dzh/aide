@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { launch, snap } from "./app";
+import { launch, snap, navTo } from "./app";
 
 // 任务动态 (work order #27): the work the owner's agents handed out, as it goes. The fixture's agent (bot)
 // started every session there: one asks, two failed, one runs, one is done, one archived.
 
 test("the tasks page: what each agent's work is doing, what needs a look first, and a click to the session", async () => {
   const { app, page } = await launch();
-  const nav = page.getByRole("button", { name: /任务动态/ });
-  await expect(nav).toBeVisible({ timeout: 45_000 });
-  await nav.click();
+  await navTo(page, /^任务动态/);
   const view = page.getByRole("region", { name: "任务动态" });
   const rows = view.getByRole("list", { name: "派出的活" }).getByRole("listitem");
   await expect(rows).toHaveCount(5); // not the archived one

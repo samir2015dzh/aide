@@ -15,6 +15,7 @@ import (
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
+	"github.com/samir2015dzh/aide/internal/reason"
 )
 
 // Signing a coding agent in from Aide (工单 #51, the owner's choice A): on
@@ -64,13 +65,13 @@ func (n *Machine) StartAgentLogin(name string, cancel bool) (*machinev1.AgentLog
 	p, _ := n.provider(name).(*claude.Provider)
 	n.mu.Unlock()
 	if p == nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("Claude Code is not set up on this machine"))
+		return nil, reason.New(connect.CodeNotFound, "claude_not_set_up", "Claude Code is not set up on this machine")
 	}
 	ctx, stop := context.WithTimeout(context.Background(), LoginTimeout)
 	cmd := p.LoginCommand(ctx)
 	if cmd == nil {
 		stop()
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("Claude Code's command line is not installed on this machine"))
+		return nil, reason.New(connect.CodeNotFound, "claude_cli_missing", "Claude Code's command line is not installed on this machine")
 	}
 	var tail lastLine
 	cmd.Stdout, cmd.Stderr = io.Discard, &tail

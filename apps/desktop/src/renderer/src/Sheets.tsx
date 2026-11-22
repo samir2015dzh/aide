@@ -2,7 +2,8 @@ import { useLayoutEffect } from "react";
 import { AddDeviceSheet, AddMachineSheet, AddProjectSheet } from "./sheets/Add";
 import { ConfirmSheet } from "./sheets/Confirm";
 import { PersonaSheet } from "./sheets/Contacts";
-import { NewRoomSheet } from "./bots/Rooms";
+import { DeleteRoomSheet, NewRoomSheet } from "./bots/Rooms";
+import { ToastView } from "./MainWindow";
 import { EraseSheet } from "./sheets/Erase";
 import { NewGrantSheet } from "./sheets/NewGrant";
 import { NewSessionSheet } from "./sheets/NewSession";
@@ -15,7 +16,7 @@ import "./sheets/sheets.css";
 // Sheets over the window: connect an agent, start a session, add machine/project/device, scope, an agent's wake, confirm, erase everything, turning Her off. One at a time, in st.sheet (the app
 // menu's commands open them through commands.ts).
 
-const widths: Record<Sheet["kind"], number> = { newGrant: 620, addMachine: 560, addProject: 540, newSession: 600, persona: 600, newRoom: 620, addDevice: 520, scope: 560, wake: 480, confirm: 440, erase: 520 };
+const widths: Record<Sheet["kind"], number> = { newGrant: 620, addMachine: 560, addProject: 540, newSession: 600, persona: 600, newRoom: 620, addDevice: 520, scope: 560, wake: 480, confirm: 440, erase: 520, deleteRoom: 480 };
 
 export function SheetHost() {
   const st = useStore();
@@ -36,6 +37,7 @@ export function SheetHost() {
       <div className={`sheet-scrim ${leaving ? "leaving" : ""}`} />
       <div className={`sheet ${leaving ? "leaving" : ""}`} inert={leaving} role="dialog" aria-modal="true" aria-labelledby="sheet-title" style={{ width: widths[shown.kind] }}>
         <Body key={shown.kind} sheet={shown} />
+        <ToastView inSheet />
       </div>
     </>
   );
@@ -65,5 +67,7 @@ function Body({ sheet }: { sheet: Sheet }) {
       return <ConfirmSheet sheet={sheet} />;
     case "erase":
       return <EraseSheet />;
+    case "deleteRoom":
+      return <DeleteRoomSheet machineId={sheet.machineId} roomId={sheet.roomId} name={sheet.name} members={sheet.members} />;
   }
 }

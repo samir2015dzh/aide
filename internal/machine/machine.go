@@ -600,6 +600,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 	st.Her = n.herStatus()
 	st.DirectAddrs = n.directAddresses()
 	st.Rooms = n.roomsInStatus()
+	st.RoomOutbox = n.roomOutboxInStatus()
 	return st
 }
 
@@ -619,6 +620,8 @@ func (n *Machine) Run(ctx context.Context) error {
 	go n.serveDirect(ctx)
 	go n.serveDSH(ctx)
 	go n.serveHeld(ctx)
+	go n.roomWatch(ctx)
+	go n.archiveWatch(ctx)
 	n.log.Info("aided machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
 	n.runLink(ctx)
 	n.mu.Lock()

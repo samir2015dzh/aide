@@ -1,11 +1,13 @@
 import { useTranslation } from "react-i18next";
+import { Picker } from "./Picker";
 import { useState } from "react";
 import type { Client, Machine } from "@aide/proto/local";
 import { agentName, AgentLogo } from "@aide/ui";
-import { agoText, clientCategory, grantsByCategory, machineConnections, type ConnRow, type ConnState } from "@aide/core";
+import { agoText, clientCategory, dateOf, grantsByCategory, machineConnections, type ConnRow, type ConnState } from "@aide/core";
 import { Install } from "./dsh/DSHSessions";
 import { local } from "./api";
 import { GrantAvatar } from "./components";
+import { Icon } from "./icons";
 import { errorText, useNow, useStore } from "./store";
 import "./connections.css";
 
@@ -113,17 +115,50 @@ function GrantRow({ g }: { g: Client }) {
   );
 }
 
-/** The coding agents connected from machine m with grants of their own, on its one list (工单 #53). */
+/**
+ * The coding agents connected from machine m with grants of their own, on its one list (工单 #53); then Aide's own
+ * client logged in there (client@<machine>): a connection of the account on this device, not an agent (工单 #64).
+ */
 export function LocalGrants({ m }: { m: Machine }) {
   const st = useStore();
-  const grants = grantsByCategory(st.clients, st.machines).local.get(m.machineId) ?? [];
-  if (!grants.length) return null;
+  const { t } = useTranslation("common");
+  const now = useNow(30_000);
+  const by = grantsByCategory(st.clients, st.machines);
+  const grants = by.local.get(m.machineId) ?? [];
+  const clients = by.aideClients.get(m.machineId) ?? [];
+  if (!grants.length && !clients.length) return null;
   return (
-    <div className="fgroup">
-      {grants.map((g) => (
-        <GrantRow key={g.clientId} g={g} />
-      ))}
-    </div>
+    <>
+      {grants.length > 0 && (
+        <div className="fgroup">
+          {grants.map((g) => (
+            <GrantRow key={g.clientId} g={g} />
+          ))}
+        </div>
+      )}
+      {clients.length > 0 && (
+        <div className="fgroup" role="list" aria-label={t("conn.aideClients")}>
+          {clients.map((c) => {
+            const seen = dateOf(c.lastSeen);
+            return (
+              <div key={c.clientId} className="frow conn-row" role="listitem" data-state={c.online ? "ok" : "unknown"}>
+                <span className="conn-logo"><Icon name="terminal" /></span>
+                <div className="conn-main">
+                  <div className="conn-line">
+                    <b>{t("conn.aideClient")}</b>
+                    <span className="conn-state" data-state={c.online ? "ok" : "unknown"}>
+                      <i className={`dotc ${c.online ? "on" : ""}`} />
+                      {c.online ? t("conn.aideClientOnline") : seen ? t("conn.aideClientSeen", { when: agoText(seen, now) }) : t("conn.aideClientNever")}
+                    </span>
+                  </div>
+                  <p className="conn-lacks">{t("conn.aideClientNote", { label: c.label })}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -197,13 +232,12 @@ export function CategoryControl({ c }: { c: Client }) {
     <div className="conn-cat">
       <label>
         <span className="muted">{t("category.label")}</span>
-        <select className="field sm" value={value} aria-label={t("category.label")} onChange={(e) => set(e.target.value)}>
-          <option value="">{t("category.auto", { kind: k.set ? "" : ` · ${t(k.category === "personal" ? "category.personal" : "category.local")}` })}</option>
-          <option value="personal">{t("category.personal")}</option>
-          {st.machines.map((m) => (
-            <option key={m.machineId} value={`local:${m.machineId}`}>{t("category.localOn", { machine: m.machineName })}</option>
-          ))}
-        </select>
+        <Picker size="sm" value={value} label={t("category.label")} onChange={set}
+          options={[
+            { value: "", label: t("category.auto", { kind: k.set ? "" : ` · ${t(k.category === "personal" ? "category.personal" : "category.local")}` }) },
+            { value: "personal", label: t("category.personal") },
+            ...st.machines.map((m) => ({ value: `local:${m.machineId}`, label: t("category.localOn", { machine: m.machineName }) })),
+          ]} />
       </label>
       <span className="muted">{t(k.category === "personal" ? "category.personalMeans" : "category.localMeans")}</span>
       {error && <span className="err" role="alert">{error}</span>}

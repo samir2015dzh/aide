@@ -1,7 +1,7 @@
 import { SessionLink, SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentShort, codingAgentTitle, isActive, isFailed, livenessOf, sessionStateOf, stateLine, statusTitle, type StateView } from "@aide/core";
 import { useNow, useStore } from "./store";
-import { AgentLogo, AgentTile, grantColor, grantLogo, grantPicture, type GrantLook, type PersonalAgentKind } from "@aide/ui";
+import { AgentLogo, AgentTile, BotGlyph, grantColor, grantLogo, grantPicture, type GrantLook, type PersonalAgentKind } from "@aide/ui";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -72,10 +72,23 @@ export function GrantAvatar({ c, size = "" }: { c: GrantLook; size?: "" | "md" |
   const style = size === "sm" ? { width: 16, height: 16, fontSize: 9 } : undefined;
   const face = grantFace(c, { sm: 16, md: 28, lg: 40, xl: 52, "": 22 }[size]);
   if (face) return face;
+  // No picture and no app (工单 #62): a robot on its colour, never its initial.
+  const px = { sm: 16, md: 28, lg: 40, xl: 52, "": 22 }[size];
   return (
     <span className={`av ${size === "sm" ? "" : size}`} style={{ background: grantColor(c.label), ...style }} aria-hidden="true">
-      {c.label.slice(0, 1).toUpperCase()}
+      <BotGlyph size={Math.round(px * 0.7)} />
     </span>
+  );
+}
+
+/** A grant's face at any size (工单 #62): its picture or app logo, else a robot on its colour — never its initial. */
+export function GrantFaceAt({ c, size, square = false }: { c: GrantLook; size: number; square?: boolean }) {
+  return (
+    grantFace(c, size) ?? (
+      <span className="av" style={{ width: size, height: size, borderRadius: square ? size * 0.28 : undefined, background: grantColor(c.label) }} aria-hidden="true">
+        <BotGlyph size={Math.round(size * 0.7)} />
+      </span>
+    )
   );
 }
 

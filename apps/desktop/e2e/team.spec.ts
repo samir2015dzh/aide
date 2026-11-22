@@ -22,56 +22,35 @@ test("the window opens on the overview, and again the next time", async () => {
   await app.close();
 });
 
-test("the sidebar is the overview and every session; collapsed, its rail shows the agents at work, each a menu of its sessions", async () => {
+test("the sidebar is bots alone; every session is a page of its own, its list beside the one open; collapsed, the rail shows the bots (工单 #63)", async () => {
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1240, height: 800 });
   const sidebar = page.getByRole("complementary", { name: "边栏" });
-  await expect(page.locator(".side-nav .nav-i")).toHaveText([/^概览/, "连接 Agent"]);
-  // The overview's row: a dot while something waits on the owner, and a ring while anything runs; no numbers.
-  const overview = page.locator(".side-nav").getByRole("button", { name: /^概览/ });
-  await expect(overview.getByRole("img", { name: /项需要处理/ })).toBeVisible();
-  await expect(overview.getByRole("img", { name: /个在忙/ })).toBeVisible();
-  await expect(overview).not.toContainText(/\d/);
-  // No map of machines and agents: their settings are in Settings.
-  await expect(page.getByRole("group", { name: "团队" })).toHaveCount(0);
-  await expect(sidebar).not.toContainText("连接的 Agent");
+  await expect(sidebar.getByRole("region", { name: "Bot" })).toBeVisible({ timeout: 30_000 });
+  // No pages, no session list in the sidebar; something waits on the owner: a dot on the account's avatar.
+  await expect(sidebar.locator(".side-nav")).toHaveCount(0);
+  await expect(sidebar.getByRole("list", { name: "任务" })).toHaveCount(0);
+  await expect(sidebar.locator(".acct-due")).toBeVisible();
 
-  // The sessions are in the sidebar itself; one chosen shows beside it, marked in it.
-  const list = page.getByRole("list", { name: "任务" });
-  await expect(sidebar.getByRole("list", { name: "任务" })).toContainText("写 hello");
+  // Every session: 全部任务, from the account menu; one chosen shows beside the list, marked in it.
+  const list = await sessionList(page);
+  await expect(list).toContainText("写 hello");
   const hello = list.getByRole("listitem").filter({ hasText: "写 hello" });
   await hello.click();
   await expect(page.getByRole("heading", { name: "写 hello" })).toBeVisible();
   await expect(hello).toHaveAttribute("aria-current", "true");
-  await expect(page.locator(".slist")).toHaveCount(0);
+  await expect(list).toBeVisible();
   await snap(page, "sidebar-session");
 
-  // Collapsed, the sidebar is its rail, and stays so from page to page: the overview, then one logo for each
-  // coding agent with sessions at hand, saying on hover how they stand.
+  // Collapsed, the sidebar is its rail: each bot's face, saying on hover how it stands; a click opens its page.
   await page.getByRole("button", { name: "收成窄栏" }).click();
   const rail = page.getByRole("complementary", { name: "窄栏" });
-  await expect(rail.getByRole("button", { name: /^概览/ })).toBeVisible();
-  const gemini = rail.getByRole("button", { name: /^Gemini CLI · \d+ 个在等你 · \d+ 个出错 · \d+ 个在忙$/ });
+  const gemini = rail.getByRole("button", { name: /^Gemini CLI · / });
   await gemini.hover();
-  await expect(page.getByRole("tooltip")).toHaveText(/^Gemini CLI · \d+ 个在等你 · \d+ 个出错 · \d+ 个在忙$/);
-  // Its sessions at hand are a menu beside it, what waits first; a click opens one, the rail staying.
+  await expect(page.getByRole("tooltip")).toHaveText(/^Gemini CLI · /);
   await gemini.click();
-  const menu = page.getByRole("menu", { name: "Gemini CLI" });
-  await expect(menu.getByRole("menuitem").first()).toContainText("选颜色");
-  await expect(menu).toContainText("跑很久");
-  await expect(menu).not.toContainText("写 hello");
-  await snap(page, "rail-agent-menu");
-  await menu.getByRole("menuitem", { name: /跑很久/ }).click();
-  await expect(menu).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "跑很久" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /^Gemini CLI/ })).toBeVisible();
   await expect(gemini).toHaveAttribute("aria-current", "true");
-  // From the keyboard: the first is chosen at once; Esc closes back to the logo.
-  await gemini.focus();
-  await page.keyboard.press("Enter");
-  await expect(menu.getByRole("menuitem").first()).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(menu).toHaveCount(0);
-  await expect(gemini).toBeFocused();
   await navTo(page, /^概览/);
   await expect(page.getByRole("heading", { name: "概览", level: 1 })).toBeVisible();
   await expect(rail).toBeVisible();

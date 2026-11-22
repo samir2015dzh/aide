@@ -328,6 +328,15 @@ type Archiver interface {
 	Archive(ctx context.Context, ref string, archived bool) error
 }
 
+// ArchiveReader is an Archiver whose apps keep whether each conversation is
+// archived, which the owner can change there: Aide follows it (工单 #67,
+// archived on one side is archived on the other). Archived answers for the
+// refs its apps know, leaving out those they don't; nil when its apps are
+// not there.
+type ArchiveReader interface {
+	Archived(refs []string) map[string]bool
+}
+
 // Markdown that CleanTitle drops from a title: a line that is only a code
 // fence or a rule, block markers at the start (heading, quote, list item),
 // links (keeping their text), ** * ~~ emphasis and code marks. Underscores

@@ -166,7 +166,7 @@
     "allPaused": "这台电脑上的 agent 都已暂停，恢复后才能开新会话。",
     "renameItem": "改名…",
     "renamed": "已改名",
-    "defaultName": "默认名，点这里改名"
+    "renameTip": "给「{{name}}」改名"
   },
   "erased": {
     "done": "Aide 已全部清空",

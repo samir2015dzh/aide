@@ -24,6 +24,7 @@ import (
 	inboxv1 "github.com/samir2015dzh/aide/gen/go/aide/inbox/v1"
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/reason"
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
@@ -55,6 +56,8 @@ type roomState struct {
 	room *machinev1.Room
 	msgs []*machinev1.RoomMessage
 	keys map[string]string // idempotency key → message id
+	// queue: wakes waiting for a free place (工单 #70), oldest first.
+	queue []roomQueued
 }
 
 // roomLink is a coding agent's session here that talks for a room: where
@@ -76,11 +79,18 @@ type roomBook struct {
 	links map[string]*roomLink
 	// send sends a message (n.sendMessage; a test's own).
 	send func(*inboxv1.Message) error
+	// states asks the post office what became of messages (n.messageStates; a test's own).
+	states func(context.Context, []string) (map[string]string, error)
+	// outbox: replies sent to rooms' hosts, by message id, until their host takes them (工单 #74).
+	outbox map[string]*roomOut
+	// woken: when each copy let go after waiting in a queue was sent (its message is older).
+	woken map[string]time.Time
 }
 
 func (n *Machine) roomBook() *roomBook {
 	n.roomsOnce.Do(func() {
-		b := &roomBook{dir: filepath.Join(n.cfg.DataDir, "rooms"), rooms: map[string]*roomState{}, links: map[string]*roomLink{}, send: n.sendMessage}
+		b := &roomBook{dir: filepath.Join(n.cfg.DataDir, "rooms"), rooms: map[string]*roomState{}, links: map[string]*roomLink{}, send: n.sendMessage,
+			states: n.messageStates, outbox: map[string]*roomOut{}, woken: map[string]time.Time{}}
 		b.load(n)
 		n.roomsBook = b
 	})
@@ -91,6 +101,7 @@ type roomDisk struct {
 	Room     json.RawMessage   `json:"room"`
 	Messages []json.RawMessage `json:"messages"`
 	Keys     map[string]string `json:"keys,omitempty"`
+	Queue    []roomQueued      `json:"queue,omitempty"`
 }
 
 func (b *roomBook) load(n *Machine) {
@@ -112,7 +123,7 @@ func (b *roomBook) load(n *Machine) {
 			n.log.Warn("a room that doesn't read", "file", e.Name(), "err", err)
 			continue
 		}
-		st := &roomState{room: r, keys: d.Keys}
+		st := &roomState{room: r, keys: d.Keys, queue: d.Queue}
 		if st.keys == nil {
 			st.keys = map[string]string{}
 		}
@@ -144,7 +155,7 @@ func (b *roomBook) save(st *roomState) error {
 	if len(st.msgs) > roomKeep {
 		st.msgs = st.msgs[len(st.msgs)-roomKeep:]
 	}
-	d := roomDisk{Keys: st.keys}
+	d := roomDisk{Keys: st.keys, Queue: st.queue}
 	var err error
 	if d.Room, err = protojson.Marshal(st.room); err != nil {
 		return err
@@ -240,7 +251,7 @@ func (n *Machine) grantName(clientID string) string {
 func (n *Machine) OpenDirectRoom(clientID string) (*machinev1.Room, error) {
 	name := n.grantName(clientID)
 	if name == "" {
-		return nil, cerr(connect.CodeNotFound, "no agent %s here: its grant has not reached this machine", clientID)
+		return nil, reason.New(connect.CodeNotFound, "room_no_grant", fmt.Sprintf("no agent %s here: its grant has not reached this machine", clientID))
 	}
 	b := n.roomBook()
 	b.mu.Lock()
@@ -267,10 +278,10 @@ func (n *Machine) OpenDirectRoom(clientID string) (*machinev1.Room, error) {
 func (n *Machine) CreateRoom(req *machinev1.CreateRoomRequest) (*machinev1.Room, error) {
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		return nil, cerr(connect.CodeInvalidArgument, "a room has a name")
+		return nil, reason.New(connect.CodeInvalidArgument, "room_needs_name", "a room has a name")
 	}
 	if len(req.Members) == 0 || len(req.Members) > roomMaxMembers {
-		return nil, cerr(connect.CodeInvalidArgument, "a room has 1 to %d members", roomMaxMembers)
+		return nil, reason.New(connect.CodeInvalidArgument, "room_members_count", fmt.Sprintf("a room has 1 to %d members", roomMaxMembers), "max", fmt.Sprint(roomMaxMembers))
 	}
 	roomID := newID("room_")
 	var charter *identityv1.RoomCharter
@@ -298,7 +309,7 @@ func (n *Machine) CreateRoom(req *machinev1.CreateRoomRequest) (*machinev1.Room,
 			id := strings.TrimPrefix(m.BotKey, "c:")
 			gn := n.grantName(id)
 			if gn == "" {
-				return nil, cerr(connect.CodeNotFound, "no agent %s here: its grant has not reached this machine", id)
+				return nil, reason.New(connect.CodeNotFound, "room_no_grant", fmt.Sprintf("no agent %s here: its grant has not reached this machine", id))
 			}
 			r.Members = append(r.Members, &machinev1.RoomMember{BotKey: m.BotKey, Address: id, Name: cmpOr(m.Name, gn)})
 		case strings.HasPrefix(m.BotKey, "m:"):
@@ -309,7 +320,7 @@ func (n *Machine) CreateRoom(req *machinev1.CreateRoomRequest) (*machinev1.Room,
 			if charter == nil || !slices.ContainsFunc(charter.Members, func(x *identityv1.RoomCharterMember) bool {
 				return x.MachineId == machineID && x.Agent == agent && x.ProjectId == m.ProjectId
 			}) {
-				return nil, cerr(connect.CodePermissionDenied, "%s in %s is not in the room's charter", agent, m.ProjectId)
+				return nil, reason.New(connect.CodePermissionDenied, "room_not_in_charter", fmt.Sprintf("%s in %s is not in the room's charter", agent, m.ProjectId), "agent", agent, "project", m.ProjectId)
 			}
 			r.Members = append(r.Members, &machinev1.RoomMember{BotKey: m.BotKey, Name: cmpOr(m.Name, agent), Agent: agent, ProjectId: m.ProjectId, MachineId: machineID})
 		default:
@@ -351,7 +362,7 @@ func roundsOf(n uint32) uint32 {
 func (b *roomBook) get(id string) (*roomState, error) {
 	st := b.rooms[id]
 	if st == nil {
-		return nil, cerr(connect.CodeNotFound, "no room %s here", id)
+		return nil, reason.New(connect.CodeNotFound, "room_not_found", fmt.Sprintf("no room %s here", id))
 	}
 	return st, nil
 }
@@ -437,7 +448,7 @@ type wake struct {
 func (n *Machine) PostRoomMessage(ctx context.Context, req *machinev1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
 	text := strings.TrimSpace(req.Text)
 	if text == "" {
-		return nil, cerr(connect.CodeInvalidArgument, "nothing to say")
+		return nil, reason.New(connect.CodeInvalidArgument, "nothing_to_say", "nothing to say")
 	}
 	b := n.roomBook()
 	b.mu.Lock()
@@ -473,6 +484,7 @@ func (n *Machine) PostRoomMessage(ctx context.Context, req *machinev1.PostRoomMe
 	// In the room before anyone is woken: an answer that comes back at once finds what it answers.
 	wakes = pending(msg, wakes)
 	st.msgs = append(st.msgs, msg)
+	wakes = b.admit(st, msg, wakes)
 	if req.IdempotencyKey != "" {
 		st.keys[req.IdempotencyKey] = msg.MessageId
 	}
@@ -511,7 +523,8 @@ func pending(msg *machinev1.RoomMessage, wakes []wake) []wake {
 func settle(msg *machinev1.RoomMessage, got []*machinev1.RoomDelivery) {
 	for _, g := range got {
 		for _, d := range msg.Deliveries {
-			if d.CopyId == g.CopyId && g.State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT {
+			// Never back: an answer that came in meanwhile stays answered.
+			if d.CopyId == g.CopyId && g.State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT && d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT {
 				d.State, d.Reason = g.State, g.Reason
 			}
 		}
@@ -545,7 +558,7 @@ func (n *Machine) settleRun(st *roomState) {
 	// Since the owner last spoke: a wake not answered yet.
 	for i := len(st.msgs) - 1; i >= 0; i-- {
 		for _, d := range st.msgs[i].Deliveries {
-			if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT {
+			if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_QUEUED {
 				st.room.Run = machinev1.RoomRun_ROOM_RUN_RUNNING
 				return
 			}
@@ -597,8 +610,12 @@ func (n *Machine) wakeMember(ctx context.Context, room *machinev1.Room, w wake, 
 			// The room's chain; inside the room its rounds hold, not hops (ROOMS-DESIGN §10): each wake is hop 1 of it,
 			// its round in Room.round.
 			TraceId: room.TraceId, Hop: 1})
-	case mem.MachineId == n.machineID: // a coding agent here
-		err = n.roomWakeHere(ctx, room, mem, text, d.CopyId, n.machineID)
+	case mem.MachineId == n.machineID: // a coding agent here: its session has it at once (工单 #71)
+		if err = n.roomWakeHere(ctx, room, mem, text, d.CopyId, n.machineID); err == nil {
+			n.audit.Log(AuditRecord{Kind: "room.out", Subject: "owner", Session: room.RoomId, Decision: "allow", Detail: "to=" + mem.BotKey + " state=taken"})
+			d.State = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN
+			return d
+		}
 	default: // a coding agent on another machine: the room's charter goes with it
 		err = n.roomBook().send(&inboxv1.Message{MessageId: d.CopyId,
 			From: &inboxv1.Address{Inbox: n.machineID, Session: room.RoomId}, To: &inboxv1.Address{Inbox: mem.MachineId, Session: room.RoomId},
@@ -833,6 +850,11 @@ func (n *Machine) roomTurn(s noticeSession, e *sessionv1.SessionEvent) {
 func (n *Machine) roomReply(host, roomID, sessionID, agent, wakeID, text, failure string) {
 	m := &inboxv1.Message{MessageId: newID("msg_"), From: &inboxv1.Address{Inbox: n.machineID, Session: sessionID}, To: &inboxv1.Address{Inbox: host, Session: roomID},
 		SentAt: timestamppb.Now(), Text: cmpOr(text, "（无回复）"), RoomReply: &inboxv1.RoomReply{Agent: agent, WakeId: wakeID, Failure: failure, SessionId: sessionID}}
+	// Until the host takes it, the status says it waits (工单 #74).
+	b := n.roomBook()
+	b.mu.Lock()
+	b.outbox[m.MessageId] = &roomOut{room: roomID, host: host, at: time.Now()}
+	b.mu.Unlock()
 	go func() {
 		for attempt := range 3 {
 			if err := n.roomBook().send(m); err == nil {
@@ -972,6 +994,7 @@ func (n *Machine) roomMemberSaid(roomID, botKey, id, text, answers, failure stri
 	// In the room before the next ones are woken (an answer that comes back at once comes after it).
 	wakes = pending(msg, wakes)
 	st.msgs = append(st.msgs, msg)
+	wakes = b.admit(st, msg, wakes)
 	if limit != nil {
 		limit.At = timestamppb.Now()
 		st.msgs = append(st.msgs, limit)
@@ -994,7 +1017,11 @@ func (n *Machine) roomMemberSaid(roomID, botKey, id, text, answers, failure stri
 		n.log.Warn("a room's message not kept", "room", roomID, "err", err)
 		return false
 	}
+	// One of those at work is done: one waiting goes (工单 #70).
+	go n.drainRooms(context.Background())
 	if notice != "" {
+		st.room.Notice, st.room.NoticeAt = notice, timestamppb.Now()
+		b.save(st)
 		name := st.room.Name
 		go n.notify(&sessionv1.Notice{Kind: "room", At: timestamppb.Now(), Title: name, RoomId: roomID, RoomLine: notice}, "room:"+roomID, func() {})
 	}
@@ -1013,6 +1040,7 @@ func (n *Machine) StopRoom(ctx context.Context, id string) (*machinev1.Room, err
 	}
 	r := st.room
 	r.Run = machinev1.RoomRun_ROOM_RUN_STOPPED_OWNER
+	dropQueued(st)
 	st.msgs = append(st.msgs, &machinev1.RoomMessage{MessageId: newID("msg_"), RoomId: id, From: "system", System: true, At: timestamppb.Now(), Round: r.Round,
 		Text: "你停下了这个房间：不再有人被叫醒，之后到的回复只记下，不再转交。"})
 	room := cloneRoom(r)

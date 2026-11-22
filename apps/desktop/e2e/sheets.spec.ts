@@ -244,9 +244,10 @@ test("a hosted agent shows its app's icon only when it logs in from the app's ow
   const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   const grants = settings.getByRole("list", { name: "授权" }).getByRole("button");
-  // The app by its own name, with its icon; the impostor keeps where it logged in, and a letter.
+  // The app by its own name, with its icon; the impostor keeps where it logged in, and no app's icon: a robot (工单 #62).
   await expect(grants.filter({ has: settings.locator(".fn", { hasText: /^Muse$/ }) }).first().locator("img")).toBeVisible();
-  await expect(grants.filter({ hasText: impostor }).locator(".av")).toHaveText("M");
+  await expect(grants.filter({ hasText: impostor }).locator(".av svg")).toBeVisible();
+  await expect(grants.filter({ hasText: impostor }).locator(".av img")).toHaveCount(0);
   await app.close();
 });
 
