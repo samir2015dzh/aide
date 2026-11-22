@@ -1,6 +1,7 @@
 package dshnative
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -52,7 +53,7 @@ func TestInstallPrompt(t *testing.T) {
 	p := InstallPrompt("/home/u/.dsh", "/home/u/.dsh/aide-bridge/aide-dsh-bridge-0.3.1.tgz", "0.3.1", "/opt/aide/aided")
 	for _, want := range []string{
 		"/home/u/.dsh/aide-bridge/aide-dsh-bridge-0.3.1.tgz",
-		"/home/u/.dsh/profiles/desktop",
+		filepath.Join("/home/u/.dsh", "profiles", "desktop"),
 		// Look past "no write permission": the log, and a running program holding a package's folder (工单 #59).
 		"pnpm.log", "EPERM", "ExecutablePath", "package.json",
 		// Restart, check, and report in every case.
