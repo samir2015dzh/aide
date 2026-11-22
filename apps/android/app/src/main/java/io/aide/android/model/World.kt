@@ -41,6 +41,9 @@ data class World(
         )
     }
 
+    /** The rooms of several bots on the owner's machines (G2-b/c), from their status: newest first. */
+    val rooms: List<io.aide.android.api.Room> get() = machines.flatMap { it.status?.rooms.orEmpty() }.filter { !it.direct }.sortedByDescending { it.updatedAt }
+
     fun machineName(id: String): String = machines.firstOrNull { it.machineId == id }?.machineName ?: id.take(12)
 
     /** A project as the owner knows it (工单 #50): the name they gave it, else its id. */

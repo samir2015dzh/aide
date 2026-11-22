@@ -216,6 +216,13 @@ func TestRoom(t *testing.T) {
 	if r.RoomId != "room_01test" || len(r.Members) != 3 || r.MaxRounds != roomRoundsDflt || r.Direct {
 		t.Fatalf("the room: %v", r)
 	}
+	// In the machine's status, for the owner's roster on its Watch: without its charter, and not for agents.
+	if rs := n.Status().Rooms; len(rs) != 1 || rs[0].RoomId != r.RoomId || rs[0].Charter != nil {
+		t.Fatalf("rooms in the status: %v", rs)
+	}
+	if rs := n.statusFor(nil).Rooms; rs != nil {
+		t.Fatalf("an agent sees rooms: %v", rs)
+	}
 	post := func(text string, mentions ...string) *machinev1.RoomMessage {
 		t.Helper()
 		m, err := n.PostRoomMessage(ctx, &machinev1.PostRoomMessageRequest{RoomId: r.RoomId, Text: text, Mentions: mentions})

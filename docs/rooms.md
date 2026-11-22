@@ -86,5 +86,10 @@ run, and one timeline.
 - **Unread and notices**: what the owner has not read is counted from the
   last message they saw (`MarkRoomSeen`, when the page shows the newest). A
   final result, the round limit, or a member naming the owner (`@所有者`)
-  sends a notice of kind `room`; the phone also tells of a room with more
-  unread when it reads the rooms again, unless that room's page is open.
+  sends a notice of kind `room`.
+- **The roster follows rooms on the Watch, asking nothing.** Each machine
+  puts the rooms it hosts (without their charters) in its status
+  (`MachineStatus.rooms`, owner only), which the Watch already looks at every
+  second: an idle window still makes no calls. Only an open room's page
+  reads its messages (every 3 seconds). The phone tells of a room whose
+  unread went up on the Watch, unless that room's page is open.

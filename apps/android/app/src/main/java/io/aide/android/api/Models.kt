@@ -138,6 +138,8 @@ data class MachineStatus(
     val paused: Boolean = false,
     val version: String = "",
     val her: HerStatus? = null,
+    /** The rooms of several bots it hosts (G2-b/c), followed on the Watch. */
+    val rooms: List<Room> = emptyList(),
 )
 
 @Serializable
@@ -536,6 +538,7 @@ data class TalkToPersonaResponse(
 @Serializable data class Room(
     val roomId: String = "", val name: String = "", val hostMachineId: String = "", val members: List<RoomMember> = emptyList(), val direct: Boolean = false,
     val mode: String = "", val maxRounds: Int = 0, val round: Int = 0, val run: String = "", val unread: Int = 0, val lastLine: String = "", val seenMessageId: String = "",
+    val updatedAt: String = "",
 )
 @Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "")
 @Serializable data class RoomMessage(
@@ -548,8 +551,6 @@ data class TalkToPersonaResponse(
 @Serializable data class ListRoomMessagesRequest(val machineId: String, val roomId: String, val limit: Int = 200)
 @Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList())
 @Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList())
-@Serializable class ListRoomsRequest
-@Serializable data class ListRoomsResponse(val rooms: List<Room> = emptyList())
 @Serializable data class CreateRoomMember(val botKey: String, val projectId: String = "", val name: String = "")
 @Serializable data class CreateRoomRequest(val name: String, val members: List<CreateRoomMember>, val mode: String, val maxRounds: Int)
 @Serializable data class RoomPatch(val roomId: String, val name: String? = null, val mode: String? = null, val maxRounds: Int? = null)

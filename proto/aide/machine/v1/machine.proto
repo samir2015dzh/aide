@@ -207,6 +207,12 @@ message MachineStatus {
   // Direct LAN IPv4 / public IPv6 E2E tunnel endpoints (host:port) for
   // bypassing the relay when reachable. Sent to the owner's devices only.
   repeated string direct_addrs = 16;
+  // The rooms this machine hosts (docs/rooms.md), as the roster shows them:
+  // each with its state, last line and what the owner has not read; without
+  // their charters. A change to one sends the status again, so the owner's
+  // devices follow rooms on the Watch they have, asking nothing. Sent to the
+  // owner's devices only.
+  repeated Room rooms = 17;
 }
 
 // ScreenStatus is whether the owner's devices can see and operate this

@@ -96,8 +96,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         val o = opening ?: return@LaunchedEffect
         if (o.session.isNotEmpty()) { stack.clear(); stack.add(Route.Session(o.session)) }
         if (o.room.isNotEmpty()) {
-            model.loadRooms()
-            model.rooms.value.firstOrNull { it.roomId == o.room }?.let { stack.clear(); stack.add(Route.Room(it.hostMachineId, it.roomId)) }
+            world.rooms.firstOrNull { it.roomId == o.room }?.let { stack.clear(); stack.add(Route.Room(it.hostMachineId, it.roomId)) }
         }
         model.opened()
     }

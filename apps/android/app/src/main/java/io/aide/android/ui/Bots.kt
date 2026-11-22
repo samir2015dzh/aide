@@ -122,13 +122,6 @@ fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, 
     }
     val personas by model.personas.collectAsState()
     LaunchedEffect(Unit) { model.loadPersonas() }
-    val rooms by model.rooms.collectAsState()
-    LaunchedEffect(Unit) {
-        while (true) {
-            model.loadRooms()
-            delay(5_000)
-        }
-    }
     val now = Instant.now()
     val r = roster(world.machines, world.clients, world.sessions.values, now, personas.orEmpty())
     val counts = botCounts(r.all)
@@ -150,7 +143,7 @@ fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, 
                     Text(t("No bot yet: connect a coding agent on a computer (Aide › Settings › Connect), or a personal agent to your account.", "还没有 bot：先在电脑上的 Aide 里连接一个编码 agent（设置 › 连接），或把个人 agent 连到你的账号。"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 12.dp))
                 }
                 // Rooms beside the bots, first (ROOMS-DESIGN §2).
-                if (r.all.isNotEmpty()) roomItems(rooms, openRoom, newRoom)
+                if (r.all.isNotEmpty()) roomItems(world.rooms, openRoom, newRoom)
                 if (r.personal.isNotEmpty()) {
                     item(key = "personal-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(t("Personal agents · follow your account", "个人 agent · 跟账号走"), count = r.personal.size) } }
                     r.personal.forEachIndexed { i, b ->

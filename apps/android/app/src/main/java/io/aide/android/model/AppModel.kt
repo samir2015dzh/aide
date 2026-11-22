@@ -164,18 +164,16 @@ class AppModel(private val context: Context) {
                 if (_world.value.watched) notify(live.look(_world.value))
             }
         }
-        // Rooms (G2-b/c): read now and then; a room that has more the owner has not read tells of it.
-        launch {
-            while (true) {
-                delay(20_000)
-                loadRooms()
-            }
-        }
         while (true) {
             _active.first { it }
             try {
                 api.watch().collect { r ->
+                    val roomsBefore = _world.value.rooms
+                    val wasWatched = _world.value.watched
                     _world.value = _world.value.apply(r)
+                    // A room with more the owner has not read tells of it (G2-b/c), as the machines' status brings it;
+                    // not what was unread before the first look.
+                    if (wasWatched) roomNotices(roomsBefore, _world.value.rooms, roomOpen).forEach { Push.notify(context, show(it)) }
                     if (r.status != null) phaseFor(r.status.initialized, r.status.removed)
                     if (_world.value.watched) notify(live.look(_world.value))
                 }
@@ -356,24 +354,15 @@ class AppModel(private val context: Context) {
     suspend fun roomMessages(room: io.aide.android.api.Room): List<io.aide.android.api.RoomMessage>? = runCatching { api!!.listRoomMessages(room.hostMachineId, room.roomId).messages }.getOrNull()
     suspend fun postRoomMessage(room: io.aide.android.api.Room, text: String, key: String, mentions: List<String> = emptyList()): io.aide.android.api.RoomMessage? = report { api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key, mentions) }
 
-    /** The rooms of several bots on the owner's machines that answer (G2-b), kept here for the roster. */
-    val rooms = MutableStateFlow<List<io.aide.android.api.Room>>(emptyList())
     /** The room whose page is open: what comes in there is read, not told of. */
     var roomOpen: String = ""
-    private var roomsRead = false
-    suspend fun loadRooms() {
-        val now = runCatching { api!!.listRooms().rooms.filter { !it.direct } }.getOrNull() ?: return
-        if (roomsRead) roomNotices(rooms.value, now, roomOpen).forEach { Push.notify(context, show(it)) }
-        roomsRead = true
-        rooms.value = now
-    }
     /** A room as its host has it now, with its messages; null when it can't be read now. */
     suspend fun readRoom(machineId: String, roomId: String): io.aide.android.api.ListRoomMessagesResponse? = runCatching { api!!.listRoomMessages(machineId, roomId) }.getOrNull()
-    suspend fun createRoom(req: io.aide.android.api.CreateRoomRequest): io.aide.android.api.Room? = report { api!!.createRoom(req) }?.also { loadRooms() }
-    suspend fun updateRoom(machineId: String, patch: io.aide.android.api.RoomPatch): io.aide.android.api.Room? = report { api!!.updateRoom(machineId, patch) }?.also { loadRooms() }
-    suspend fun stopRoom(machineId: String, roomId: String): io.aide.android.api.Room? = report { api!!.stopRoom(machineId, roomId) }?.also { loadRooms() }
+    suspend fun createRoom(req: io.aide.android.api.CreateRoomRequest): io.aide.android.api.Room? = report { api!!.createRoom(req) }
+    suspend fun updateRoom(machineId: String, patch: io.aide.android.api.RoomPatch): io.aide.android.api.Room? = report { api!!.updateRoom(machineId, patch) }
+    suspend fun stopRoom(machineId: String, roomId: String): io.aide.android.api.Room? = report { api!!.stopRoom(machineId, roomId) }
     suspend fun markRoomSeen(machineId: String, roomId: String) {
-        runCatching { api!!.markRoomSeen(machineId, roomId) }.onSuccess { loadRooms() }
+        runCatching { api!!.markRoomSeen(machineId, roomId) }
     }
 
     /** Hands installing the DSH bridge plugin to DSH there (工单 #59); the bridge's row follows by itself. */

@@ -209,6 +209,22 @@ func (n *Machine) ListRooms() *machinev1.ListRoomsResponse {
 	return res
 }
 
+// roomsInStatus is the rooms of several bots this machine hosts, for its
+// status (owner only): the roster follows them on the Watch the owner's
+// devices have, which looks at the status every second (feed.go), so no
+// device asks for them over and over. Without their charters.
+func (n *Machine) roomsInStatus() []*machinev1.Room {
+	var out []*machinev1.Room
+	for _, r := range n.ListRooms().Rooms {
+		if !r.Direct {
+			r.Charter, r.CharterDeviceCert = nil, nil
+			out = append(out, r)
+		}
+	}
+	slices.SortFunc(out, func(a, b *machinev1.Room) int { return strings.Compare(a.RoomId, b.RoomId) })
+	return out
+}
+
 // grantName is the name of the personal agent with this client id here, "" when it has no grant here.
 func (n *Machine) grantName(clientID string) string {
 	for _, g := range n.Local().Grants() {

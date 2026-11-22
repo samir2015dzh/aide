@@ -599,6 +599,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 	st.Sessions = n.sessions.Counts()
 	st.Her = n.herStatus()
 	st.DirectAddrs = n.directAddresses()
+	st.Rooms = n.roomsInStatus()
 	return st
 }
 

@@ -74,7 +74,6 @@ class PageShots {
                 // A round table (G2-b/c): DSH on workstation and Muse, DSH handing on to Muse, Muse's agreed result.
                 val table = "{\"roomId\":\"room_2\",\"name\":\"发版评审\",\"hostMachineId\":\"m1\",\"mode\":\"ROOM_MODE_ROUNDTABLE\",\"maxRounds\":6,\"round\":1,\"unread\":2,\"lastLine\":\"Muse：[FINAL] 可以发版\"," +
                     "\"members\":[{\"botKey\":\"m:m1/deepseek\",\"name\":\"DSH · workstation\",\"agent\":\"deepseek\",\"projectId\":\"aide\",\"sessionId\":\"s2\"},{\"botKey\":\"c:c1\",\"name\":\"Muse\"}]}"
-                if (path.endsWith("ListRooms")) return MockResponse().setBody("{\"rooms\":[$table]}").setHeader("Content-Type", "application/json")
                 if (path.endsWith("ListRoomMessages") && request.body.clone().readUtf8().contains("room_2")) return MockResponse().setBody("{\"room\":$table,\"messages\":[" +
                     "{\"messageId\":\"msg_1\",\"from\":\"owner\",\"text\":\"跑一遍发版前检查\",\"mentions\":[\"m:m1/deepseek\"],\"deliveries\":[{\"botKey\":\"m:m1/deepseek\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
                     "{\"messageId\":\"msg_2\",\"from\":\"m:m1/deepseek\",\"fromName\":\"DSH · workstation\",\"text\":\"测试全过，构建产物已签名。@Muse 请确认发版说明\",\"round\":0,\"deliveries\":[{\"botKey\":\"c:c1\",\"state\":\"ROOM_DELIVERY_STATE_REPLIED\"}]}," +
@@ -129,6 +128,9 @@ class PageShots {
                 machineId = "m1", machineName = "workstation", online = true, version = "0.2.5",
                 status = MachineStatus(
                     platform = "windows/amd64", runningSessions = 2, maxSessions = 4, version = "0.2.5",
+                    // The round table it hosts (G2-b/c), as its status brings it on the Watch.
+                    rooms = listOf(io.aide.android.api.Room(roomId = "room_2", name = "发版评审", hostMachineId = "m1", mode = "ROOM_MODE_ROUNDTABLE", maxRounds = 6, round = 1, unread = 2, lastLine = "Muse：[FINAL] 可以发版",
+                        members = listOf(io.aide.android.api.RoomMember(botKey = "m:m1/deepseek", name = "DSH · workstation"), io.aide.android.api.RoomMember(botKey = "c:c1", name = "Muse")))),
                     agents = listOf(
                         AgentStatus("claude", available = true, loggedIn = true, version = "2.1.330", checkedAt = ago(40), desktop = ClaudeDesktop(installed = true, signedIn = true)),
                         AgentStatus("deepseek", available = true, loggedIn = true, version = "1.4.0", checkedAt = ago(40), models = listOf(io.aide.android.api.AgentModel("deepseek-v4", "DeepSeek V4"), io.aide.android.api.AgentModel("deepseek-v4-flash", "DeepSeek V4 Flash")), dshBridge = DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.3.1", latestVersion = "0.3.1")),

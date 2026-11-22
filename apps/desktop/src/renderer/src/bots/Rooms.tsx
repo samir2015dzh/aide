@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { allBots, displayTitle, projectTitle, type Bot } from "@aide/core";
@@ -17,26 +17,20 @@ import { BotFace, useRoster } from "./Bots";
 // naming one, up to the round limit, and the owner can stop it), and one timeline: every message with who said it
 // and what became of it, a [FINAL] reply sealed as the room's result, to copy or export.
 
-let roomCache: Room[] = [];
-const roomSubs = new Set<() => void>();
-export function loadRooms() {
-  local.listRooms({}).then((r) => ((roomCache = r.rooms.filter((x) => !x.direct)), roomSubs.forEach((f) => f())), () => {});
-}
-
-/** The rooms on the owner's machines that answer, read every few seconds while shown. */
+/**
+ * The rooms on the owner's machines, from their status on the Watch the app has (each machine puts the rooms it
+ * hosts there), newest first: nothing is asked for while the window is idle.
+ */
 export function useRooms(): Room[] {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const f = () => tick((x) => x + 1);
-    roomSubs.add(f);
-    loadRooms();
-    const every = setInterval(loadRooms, 5000);
-    return () => {
-      roomSubs.delete(f);
-      clearInterval(every);
-    };
-  }, []);
-  return roomCache;
+  const st = useStore();
+  return useMemo(
+    () =>
+      st.machines
+        .flatMap((m) => m.status?.rooms ?? [])
+        .filter((r) => !r.direct)
+        .sort((x, y) => Number(y.updatedAt?.seconds ?? 0n) - Number(x.updatedAt?.seconds ?? 0n)),
+    [st.machines],
+  );
 }
 
 /** A room's state in a line, as the roster and its page say it. */
@@ -216,12 +210,12 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   // Read up to the newest: what the roster counts as not read goes.
   const last = msgs[msgs.length - 1]?.messageId;
   useEffect(() => {
-    if (last && room && room.seenMessageId !== last) local.markRoomSeen(ref).then(loadRooms, () => {});
+    if (last && room && room.seenMessageId !== last) local.markRoomSeen(ref).catch(() => {});
   }, [last]);
   if (!room) return <div className="bot-page"><div className="bot-empty">{error || t("rooms.loading")}</div></div>;
   const table = room.mode === RoomMode.ROUNDTABLE;
   const update = (patch: { name?: string; mode?: RoomMode; maxRounds?: number }) =>
-    local.updateRoom({ machineId, room: { roomId, ...patch } }).then((r) => (setRoom(r), loadRooms()), (e) => st.show(errorText(e)));
+    local.updateRoom({ machineId, room: { roomId, ...patch } }).then(setRoom, (e) => st.show(errorText(e)));
   const send = async (e?: FormEvent, override?: { text: string; mentions: string[] }) => {
     e?.preventDefault();
     const body = override?.text ?? text;
@@ -276,7 +270,7 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
             </label>
           )}
           {room.run === RoomRun.RUNNING && (
-            <button className="btn sm" onClick={() => local.stopRoom(ref).then((r) => (setRoom(r), read(), loadRooms()), (e) => st.show(errorText(e)))}>{t("rooms.stop")}</button>
+            <button className="btn sm" onClick={() => local.stopRoom(ref).then((r) => (setRoom(r), read()), (e) => st.show(errorText(e)))}>{t("rooms.stop")}</button>
           )}
         </div>
       </header>
@@ -342,7 +336,6 @@ export function NewRoomSheet() {
         name: name.trim(), mode, maxRounds,
         members: keys.map((k) => ({ botKey: k, projectId: picked[k], name: bots.find((b) => b.key === k)?.name ?? "" })),
       });
-      loadRooms();
       st.set({ sheet: null, selection: { kind: "room", machineId: r.hostMachineId, roomId: r.roomId } });
     } catch (err) {
       setError(errorText(err));

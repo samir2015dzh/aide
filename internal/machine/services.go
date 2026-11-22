@@ -498,7 +498,7 @@ var errUnknownAdmin = connect.NewError(connect.CodeUnimplemented, errors.New("un
 func (n *Machine) statusFor(p *Principal) *machinev1.MachineStatus {
 	st := n.Status()
 	if p == nil || p.Kind != PrincipalOwner {
-		st.Her, st.Screen, st.DirectAddrs = nil, nil, nil
+		st.Her, st.Screen, st.DirectAddrs, st.Rooms = nil, nil, nil, nil
 		for _, a := range st.Agents {
 			a.ModelCatalogs = slices.DeleteFunc(a.ModelCatalogs, func(c *machinev1.AgentModelCatalog) bool {
 				if p == nil || p.Grant == nil || !identity.Allows(p.Grant.Agents, a.Name) {
