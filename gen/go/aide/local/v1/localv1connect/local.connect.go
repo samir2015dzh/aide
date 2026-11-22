@@ -243,6 +243,12 @@ const (
 	// LocalServiceReadClaudeSessionProcedure is the fully-qualified name of the LocalService's
 	// ReadClaudeSession RPC.
 	LocalServiceReadClaudeSessionProcedure = "/aide.local.v1.LocalService/ReadClaudeSession"
+	// LocalServiceListHeldMessagesProcedure is the fully-qualified name of the LocalService's
+	// ListHeldMessages RPC.
+	LocalServiceListHeldMessagesProcedure = "/aide.local.v1.LocalService/ListHeldMessages"
+	// LocalServiceReleaseHeldMessageProcedure is the fully-qualified name of the LocalService's
+	// ReleaseHeldMessage RPC.
+	LocalServiceReleaseHeldMessageProcedure = "/aide.local.v1.LocalService/ReleaseHeldMessage"
 	// LocalServiceListMachineCustomAgentsProcedure is the fully-qualified name of the LocalService's
 	// ListMachineCustomAgents RPC.
 	LocalServiceListMachineCustomAgentsProcedure = "/aide.local.v1.LocalService/ListMachineCustomAgents"
@@ -436,6 +442,11 @@ type LocalServiceClient interface {
 	// One of them and a page of its conversation
 	// (aide.machine.v1.MachineAdminService.ReadClaudeSession).
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error)
+	// The messages each machine holds for the owner before they reach a
+	// session, over the machines (aide.machine.v1.MachineAdminService.ListHeldMessages).
+	ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error)
+	// Releases one to its session, or discards it.
+	ReleaseHeldMessage(context.Context, *v1.ReleaseHeldMessageRequest) (*v11.ReleaseHeldMessageResponse, error)
 	// A machine's custom agents (MachineAdminService.ListCustomAgents and
 	// the rest); this device's own machine in process.
 	ListMachineCustomAgents(context.Context, *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error)
@@ -913,6 +924,18 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("ReadClaudeSession")),
 			connect.WithClientOptions(opts...),
 		),
+		listHeldMessages: connect.NewClient[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse](
+			httpClient,
+			baseURL+LocalServiceListHeldMessagesProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListHeldMessages")),
+			connect.WithClientOptions(opts...),
+		),
+		releaseHeldMessage: connect.NewClient[v1.ReleaseHeldMessageRequest, v11.ReleaseHeldMessageResponse](
+			httpClient,
+			baseURL+LocalServiceReleaseHeldMessageProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ReleaseHeldMessage")),
+			connect.WithClientOptions(opts...),
+		),
 		listMachineCustomAgents: connect.NewClient[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse](
 			httpClient,
 			baseURL+LocalServiceListMachineCustomAgentsProcedure,
@@ -1029,6 +1052,8 @@ type localServiceClient struct {
 	dSHSessionOptions        *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions       *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession        *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
+	listHeldMessages         *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
+	releaseHeldMessage       *connect.Client[v1.ReleaseHeldMessageRequest, v11.ReleaseHeldMessageResponse]
 	listMachineCustomAgents  *connect.Client[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse]
 	saveMachineCustomAgent   *connect.Client[v1.SaveMachineCustomAgentRequest, v11.SaveCustomAgentResponse]
 	removeMachineCustomAgent *connect.Client[v1.RemoveMachineCustomAgentRequest, v11.RemoveCustomAgentResponse]
@@ -1696,6 +1721,24 @@ func (c *localServiceClient) ReadClaudeSession(ctx context.Context, req *v1.Read
 	return nil, err
 }
 
+// ListHeldMessages calls aide.local.v1.LocalService.ListHeldMessages.
+func (c *localServiceClient) ListHeldMessages(ctx context.Context, req *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {
+	response, err := c.listHeldMessages.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ReleaseHeldMessage calls aide.local.v1.LocalService.ReleaseHeldMessage.
+func (c *localServiceClient) ReleaseHeldMessage(ctx context.Context, req *v1.ReleaseHeldMessageRequest) (*v11.ReleaseHeldMessageResponse, error) {
+	response, err := c.releaseHeldMessage.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListMachineCustomAgents calls aide.local.v1.LocalService.ListMachineCustomAgents.
 func (c *localServiceClient) ListMachineCustomAgents(ctx context.Context, req *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error) {
 	response, err := c.listMachineCustomAgents.CallUnary(ctx, connect.NewRequest(req))
@@ -1924,6 +1967,11 @@ type LocalServiceHandler interface {
 	// One of them and a page of its conversation
 	// (aide.machine.v1.MachineAdminService.ReadClaudeSession).
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error)
+	// The messages each machine holds for the owner before they reach a
+	// session, over the machines (aide.machine.v1.MachineAdminService.ListHeldMessages).
+	ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error)
+	// Releases one to its session, or discards it.
+	ReleaseHeldMessage(context.Context, *v1.ReleaseHeldMessageRequest) (*v11.ReleaseHeldMessageResponse, error)
 	// A machine's custom agents (MachineAdminService.ListCustomAgents and
 	// the rest); this device's own machine in process.
 	ListMachineCustomAgents(context.Context, *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error)
@@ -2397,6 +2445,18 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("ReadClaudeSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceListHeldMessagesHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListHeldMessagesProcedure,
+		svc.ListHeldMessages,
+		connect.WithSchema(localServiceMethods.ByName("ListHeldMessages")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceReleaseHeldMessageHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceReleaseHeldMessageProcedure,
+		svc.ReleaseHeldMessage,
+		connect.WithSchema(localServiceMethods.ByName("ReleaseHeldMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListMachineCustomAgentsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListMachineCustomAgentsProcedure,
 		svc.ListMachineCustomAgents,
@@ -2585,6 +2645,10 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListClaudeSessionsHandler.ServeHTTP(w, r)
 		case LocalServiceReadClaudeSessionProcedure:
 			localServiceReadClaudeSessionHandler.ServeHTTP(w, r)
+		case LocalServiceListHeldMessagesProcedure:
+			localServiceListHeldMessagesHandler.ServeHTTP(w, r)
+		case LocalServiceReleaseHeldMessageProcedure:
+			localServiceReleaseHeldMessageHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineCustomAgentsProcedure:
 			localServiceListMachineCustomAgentsHandler.ServeHTTP(w, r)
 		case LocalServiceSaveMachineCustomAgentProcedure:
@@ -2904,6 +2968,14 @@ func (UnimplementedLocalServiceHandler) ListClaudeSessions(context.Context, *v1.
 
 func (UnimplementedLocalServiceHandler) ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadClaudeSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListHeldMessages is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ReleaseHeldMessage(context.Context, *v1.ReleaseHeldMessageRequest) (*v11.ReleaseHeldMessageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReleaseHeldMessage is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListMachineCustomAgents(context.Context, *v1.ListMachineCustomAgentsRequest) (*v11.ListCustomAgentsResponse, error) {

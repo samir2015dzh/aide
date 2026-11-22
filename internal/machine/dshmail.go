@@ -288,6 +288,10 @@ func (n *Machine) dshSend(s dshnative.Send) (messageID, to string, refused *dshn
 	m := &inboxv1.Message{MessageId: "msg_" + strings.ToLower(ulid.Make().String()), From: &inboxv1.Address{Inbox: n.machineID, Session: from},
 		To: addr, SentAt: timestamppb.Now(), InReplyTo: replyTo, Text: s.Text}
 	if err := n.sendMessage(m); err != nil {
+		var be *boundaryError
+		if errors.As(err, &be) {
+			return refuse("%s", be.Error())
+		}
 		return "", "", &dshnative.BridgeError{Code: "unavailable", Message: "Aide could not reach the post office now; try again: " + err.Error()}
 	}
 	n.mu.Lock()

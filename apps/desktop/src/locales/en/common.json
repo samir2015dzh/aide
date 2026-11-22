@@ -26,6 +26,7 @@
     "passwordArg": "password"
   },
   "sidebar": {
+    "held": "Held messages",
     "claude": "Claude sessions",
     "label": "Sidebar",
     "search": "Search",
@@ -210,6 +211,18 @@
     "title": "Aide needs an update",
     "body": "Aide on {{machine}} doesn’t have this yet. Update Aide there, and this page loads by itself.",
     "text": "Aide on that computer is older and doesn’t have this yet. Update Aide there, then try again."
+  },
+  "held": {
+      "title": "Held messages",
+      "note": "Messages other agents wrote to sessions, held by your rules first: from an agent let in less than 7 days ago, at hop 3 or more of a chain, or matching your information boundary. Released, they go to the session; discarded, the sender is told. Not handled within a day, they expire.",
+      "none": "No message waits for you.",
+      "release": "Release",
+      "discard": "Discard",
+      "expires": "expires {{time}}",
+      "to": "to {{session}}",
+      "reason_new_agent": "a new agent",
+      "reason_long_chain": "a long chain",
+      "reason_boundary": "information boundary"
   },
   "claude": {
     "title": "Claude sessions",

@@ -1,3 +1,4 @@
+import { useHeldCount } from "./held/HeldMessages";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { SessionLink, SessionStatus, type Session } from "@aide/proto/session";
@@ -87,6 +88,7 @@ export function Sidebar() {
   const st = useStore();
   const { t } = useTranslation("common");
   const now = useNow(30_000);
+  const held = useHeldCount(!!st.status);
   return (
     <aside className="side" aria-label={t("sidebar.label")}>
       <div className="side-top drag">
@@ -114,6 +116,14 @@ export function Sidebar() {
           <button className={`nav-i ${st.selection.kind === "claude" ? "sel" : ""}`} onClick={() => st.selection.kind !== "claude" && st.set({ selection: { kind: "claude" } })}>
             <Icon name="terminal" />
             <span>{t("sidebar.claude")}</span>
+          </button>
+        )}
+        {/* Messages held for the owner (docs/agent-messages.md §15.5): there while one waits, or while open. */}
+        {(held > 0 || st.selection.kind === "held") && (
+          <button className={`nav-i ${st.selection.kind === "held" ? "sel" : ""}`} onClick={() => st.selection.kind !== "held" && st.set({ selection: { kind: "held" } })}>
+            <Icon name="bell" />
+            <span>{t("sidebar.held")}</span>
+            {held > 0 && <span className="nav-count">{held}</span>}
           </button>
         )}
         {/* How DSH, Claude Desktop and the others connect: the Connect guide (Settings › Connect). */}

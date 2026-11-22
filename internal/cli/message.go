@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/boundary"
 	"io"
 	"os"
 	"path/filepath"
@@ -702,6 +703,11 @@ func (a *app) contactRecs(ctx context.Context, ms relayv1connect.MessageServiceC
 	if res.RootChain != nil {
 		a.trust.AcceptRootChain(res.RootChain)
 	}
+	// The owner's information boundary, checked before a message goes
+	// (docs/agent-messages.md §15.5).
+	if b, err := boundary.FromContacts(a.trust, res.Boundary); err == nil {
+		a.boundary = b
+	}
 	woken := map[string][]string{}
 	for _, w := range res.Woken {
 		woken[w.Inbox] = w.Names
@@ -975,6 +981,12 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				if len(atts) > 0 || wait || subject != "" || replyTo != "" || fyi {
 					return &exitError{code: exitUsage, kind: "usage", err: errors.New("with --model or --permission, a DSH session takes text only: no -f, --wait, --subject, --reply-to or --fyi")}
 				}
+				if err := a.loadBoundary(ctx); err != nil {
+					return err
+				}
+				if err := a.boundaryCheck(body, "deepseek"); err != nil {
+					return err
+				}
 				return a.sendNative(ctx, cmd, firstNonEmpty(session, to), body, model, permission)
 			}
 			if model != "" || permission != "" {
@@ -1017,6 +1029,13 @@ A managed workspace's coordinator answers a session's request with --workspace-r
 				Fyi: fyi, TraceId: trace, Hop: hop}
 			if wr != nil && t.session == "" {
 				return &exitError{code: exitUsage, kind: "usage", err: errors.New("a reply to a workspace request goes to its session (s_…)")}
+			}
+			kind := ""
+			if isNative(t.session) {
+				kind = "deepseek"
+			}
+			if err := a.boundaryCheck(m.Text, kind); err != nil {
+				return err
 			}
 			signed, err := identity.Sign(m, a.key)
 			if err != nil {
@@ -1114,6 +1133,32 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 	return err
 }
 
+// loadBoundary reads the owner's information boundary from the post office.
+func (a *app) loadBoundary(ctx context.Context) error {
+	c, _, err := a.connect(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	ms, err := a.messages(c)
+	if err != nil {
+		return err
+	}
+	_, err = a.contactRecs(ctx, ms)
+	return err
+}
+
+// boundaryCheck refuses a message the owner's information boundary keeps
+// from a recipient of kind ("" when not known: the rules for every
+// recipient). It names the rule's category, never what matched.
+func (a *app) boundaryCheck(text, kind string) error {
+	if cat := a.boundary.Check(text, kind); cat != "" {
+		return &exitError{code: exitUsage, kind: "refused", err: fmt.Errorf("refused: boundary (%s): the owner's information boundary keeps this out of messages to this recipient", cat),
+			hint: "leave that out of the message"}
+	}
+	return nil
+}
+
 // deliverDSH hands a message to a DSH session over the end-to-end tunnel:
 // its machine gives it to DSH Desktop's Aide plugin at once (handed), or
 // refuses it and says why. done is false when DSH Desktop is not running:
@@ -1162,6 +1207,10 @@ func (a *app) deliverDirect(ctx context.Context, cmd *cobra.Command, c *peer.Cli
 		if before.Status == sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED {
 			return &exitError{code: exitUsage, kind: "invalid_state", err: fmt.Errorf("session %s is archived (read-only)", t.session),
 				hint: fmt.Sprintf("`aide session unarchive %s` to go on with it", t.session)}
+		}
+		// The session's coding agent is known now: its rules too.
+		if err := a.boundaryCheck(m.Text, before.Agent); err != nil {
+			return err
 		}
 		res, err := n.Session.DeliverMessage(ctx, &sessionv1.DeliverMessageRequest{SessionId: t.session, Message: signed, Attachments: atts})
 		delivered := ""
@@ -1216,6 +1265,8 @@ func deliveredText(d string) string {
 		return "the session had it already (sent again)"
 	case "handed":
 		return "handed to DSH Desktop"
+	case "held":
+		return "held for the owner: it reaches the session if they release it within a day"
 	}
 	return d
 }
@@ -1279,9 +1330,19 @@ func (a *app) fetchAll(ctx context.Context, ms relayv1connect.MessageServiceClie
 	// Chains (docs/agent-messages.md §15): one gone too far is held for
 	// the owner, not handed to this agent.
 	book, now := a.chains(), time.Now()
+	// Handing messages to a model of a kind (a hook, a watch): the owner's
+	// information boundary for that kind holds one first (§15.5).
+	if a.recipientKind != "" && a.boundary == nil && len(good) > 0 {
+		a.contactRecs(ctx, ms)
+	}
 	var kept []opened
 	var held []string
 	for _, o := range good {
+		if cat := a.boundary.Check(o.m.Text, a.recipientKind); a.recipientKind != "" && cat != "" {
+			fmt.Fprintf(os.Stderr, "held for your owner: message %s: it matches the owner's information boundary: %s\n", o.m.MessageId, cat)
+			held = append(held, o.m.MessageId)
+			continue
+		}
 		if why := book.took(a.g.ClientId+"/"+o.m.GetTo().GetSession(), o.m.MessageId, o.m.TraceId, o.m.Hop, o.m.InReplyTo, now); why != "" {
 			fmt.Fprintf(os.Stderr, "held for your owner: message %s: %s\n", o.m.MessageId, why)
 			held = append(held, o.m.MessageId)

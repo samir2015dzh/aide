@@ -412,6 +412,10 @@ service OwnerControlService {
   // Contact cards for the owner's agents, signed by this device's device
   // key (docs/agent-messages.md §4): each replaces the agent's earlier one.
   rpc PublishCards(PublishCardsRequest) returns (PublishCardsResponse);
+  // The owner's information boundary (identity.v1.BoundaryPolicy), signed
+  // by this device's device key: it replaces the one kept, and goes to every
+  // inbox with its contacts (ContactsResponse.boundary).
+  rpc PublishBoundaryPolicy(PublishBoundaryPolicyRequest) returns (PublishBoundaryPolicyResponse);
   // Doorbells (docs/agent-names.md §7), set by a trusted device: the
   // webhook rung when messages wait for an agent or a name under it. Served
   // by the MCP gateway; a relay without it answers Unimplemented.
@@ -572,6 +576,19 @@ message PublishCardsRequest {
 }
 
 message PublishCardsResponse {}
+
+message PublishBoundaryPolicyRequest {
+  Boundary boundary = 1;
+}
+
+message PublishBoundaryPolicyResponse {}
+
+// The owner's information boundary as a trusted device signed it, and that
+// device's cert (as a contact card is kept).
+message Boundary {
+  aide.identity.v1.Signed policy = 1;
+  aide.identity.v1.Signed device_cert = 2;
+}
 
 message RegisterPushRequest {
   aide.identity.v1.Signed registration = 1;
@@ -784,6 +801,9 @@ message ContactsResponse {
   // (docs/agent-messages.md §15). An inbox never connected since the relay
   // started is left out.
   repeated Presence presence = 4;
+  // The owner's information boundary, as last published; unset when there
+  // is none (docs/agent-messages.md §15.5).
+  Boundary boundary = 5;
 }
 
 message Presence {
@@ -831,7 +851,9 @@ message FetchMessagesResponse {
 message MessageAck {
   string message_id = 1;
   // "handed" (in its agent's hands, not yet done with: it may be
-  // acknowledged handled after), "handled", "held" or "refused".
+  // acknowledged handled after), "handled", "held" (waiting for the owner on
+  // the recipient's side: it may be acknowledged handed, handled, refused or
+  // "expired" after), or "refused".
   string outcome = 2;
 }
 

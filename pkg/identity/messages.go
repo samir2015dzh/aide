@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/samir2015dzh/aide/internal/legacy"
+	"regexp"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -132,6 +133,52 @@ func (t *Trust) VerifyCard(card, deviceCert *identityv1.Signed) (*identityv1.Con
 		return nil, nil, err
 	}
 	return c, pub, nil
+}
+
+// VerifyBoundary checks the owner's information boundary
+// (docs/agent-messages.md §15.5): signed by one of the owner's trusted
+// devices, for this owner, its rules readable.
+func (t *Trust) VerifyBoundary(policy, deviceCert *identityv1.Signed) (*identityv1.BoundaryPolicy, error) {
+	_, dev, err := t.VerifyDeviceCert(deviceCert)
+	if err != nil {
+		return nil, fmt.Errorf("information boundary: %w", err)
+	}
+	p := &identityv1.BoundaryPolicy{}
+	if err := VerifyWith(policy, dev, p); err != nil {
+		return nil, fmt.Errorf("information boundary: %w", err)
+	}
+	if p.OwnerId != t.ownerID {
+		return nil, errors.New("information boundary: wrong owner")
+	}
+	if p.IssuedAt == nil {
+		return nil, errors.New("information boundary: no issued_at")
+	}
+	if err := CheckBoundaryRules(p.Rules); err != nil {
+		return nil, fmt.Errorf("information boundary: %w", err)
+	}
+	return p, nil
+}
+
+// CheckBoundaryRules says what is wrong with rules: too many, too long, a
+// pattern that isn't a regular expression.
+func CheckBoundaryRules(rules []*identityv1.BoundaryRule) error {
+	if len(rules) > 100 {
+		return errors.New("more than 100 rules")
+	}
+	for _, r := range rules {
+		if r.Category == "" || len(r.Category) > 100 || len(r.Patterns) == 0 || len(r.Patterns) > 200 || len(r.RecipientKinds) > 20 {
+			return fmt.Errorf("rule %q: a category (at most 100 bytes), 1 to 200 patterns, at most 20 kinds", r.Category)
+		}
+		for _, pat := range r.Patterns {
+			if len(pat) > 1000 {
+				return fmt.Errorf("rule %q: a pattern longer than 1000 bytes", r.Category)
+			}
+			if _, err := regexp.Compile(pat); err != nil {
+				return fmt.Errorf("rule %q: %v", r.Category, err)
+			}
+		}
+	}
+	return nil
 }
 
 // VerifyContact checks a contact: who the inbox is, and its registration if

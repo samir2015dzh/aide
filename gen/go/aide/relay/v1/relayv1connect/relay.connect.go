@@ -125,6 +125,9 @@ const (
 	// OwnerControlServicePublishCardsProcedure is the fully-qualified name of the OwnerControlService's
 	// PublishCards RPC.
 	OwnerControlServicePublishCardsProcedure = "/aide.relay.v1.OwnerControlService/PublishCards"
+	// OwnerControlServicePublishBoundaryPolicyProcedure is the fully-qualified name of the
+	// OwnerControlService's PublishBoundaryPolicy RPC.
+	OwnerControlServicePublishBoundaryPolicyProcedure = "/aide.relay.v1.OwnerControlService/PublishBoundaryPolicy"
 	// OwnerControlServiceListWakesProcedure is the fully-qualified name of the OwnerControlService's
 	// ListWakes RPC.
 	OwnerControlServiceListWakesProcedure = "/aide.relay.v1.OwnerControlService/ListWakes"
@@ -739,6 +742,10 @@ type OwnerControlServiceClient interface {
 	// Contact cards for the owner's agents, signed by this device's device
 	// key (docs/agent-messages.md §4): each replaces the agent's earlier one.
 	PublishCards(context.Context, *v1.PublishCardsRequest) (*v1.PublishCardsResponse, error)
+	// The owner's information boundary (identity.v1.BoundaryPolicy), signed
+	// by this device's device key: it replaces the one kept, and goes to every
+	// inbox with its contacts (ContactsResponse.boundary).
+	PublishBoundaryPolicy(context.Context, *v1.PublishBoundaryPolicyRequest) (*v1.PublishBoundaryPolicyResponse, error)
 	// Doorbells (docs/agent-names.md §7), set by a trusted device: the
 	// webhook rung when messages wait for an agent or a name under it. Served
 	// by the MCP gateway; a relay without it answers Unimplemented.
@@ -874,6 +881,12 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(ownerControlServiceMethods.ByName("PublishCards")),
 			connect.WithClientOptions(opts...),
 		),
+		publishBoundaryPolicy: connect.NewClient[v1.PublishBoundaryPolicyRequest, v1.PublishBoundaryPolicyResponse](
+			httpClient,
+			baseURL+OwnerControlServicePublishBoundaryPolicyProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("PublishBoundaryPolicy")),
+			connect.WithClientOptions(opts...),
+		),
 		listWakes: connect.NewClient[v1.ListWakesRequest, v1.ListWakesResponse](
 			httpClient,
 			baseURL+OwnerControlServiceListWakesProcedure,
@@ -939,32 +952,33 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // ownerControlServiceClient implements OwnerControlServiceClient.
 type ownerControlServiceClient struct {
-	sign               *connect.Client[v1.SignRequest, v1.SignResponse]
-	listMachines       *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
-	listClients        *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
-	watchOwner         *connect.Client[v1.WatchOwnerRequest, v1.OwnerUpdate]
-	publishGrant       *connect.Client[v1.PublishGrantRequest, v1.PublishGrantResponse]
-	publishMachineCert *connect.Client[v1.PublishMachineCertRequest, v1.PublishMachineCertResponse]
-	revoke             *connect.Client[v1.RevokeRequest, v1.RevokeResponse]
-	getLogin           *connect.Client[v1.GetLoginRequest, v1.GetLoginResponse]
-	setLogin           *connect.Client[v1.SetLoginRequest, v1.SetLoginResponse]
-	listDevices        *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
-	removeDevice       *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
-	eraseOwner         *connect.Client[v1.EraseOwnerRequest, v1.EraseOwnerResponse]
-	getAccount         *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
-	getMCP             *connect.Client[v1.GetMCPRequest, v1.GetMCPResponse]
-	registerPush       *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
-	publishCards       *connect.Client[v1.PublishCardsRequest, v1.PublishCardsResponse]
-	listWakes          *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
-	setWake            *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
-	checkWake          *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
-	clearWake          *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
-	openWakeLink       *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
-	getScreenServers   *connect.Client[v1.GetScreenServersRequest, v1.GetScreenServersResponse]
-	listPersonas       *connect.Client[v1.ListPersonasRequest, v1.ListPersonasResponse]
-	savePersona        *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
-	deletePersona      *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
-	bindPersonaSession *connect.Client[v1.BindPersonaSessionRequest, v1.BindPersonaSessionResponse]
+	sign                  *connect.Client[v1.SignRequest, v1.SignResponse]
+	listMachines          *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
+	listClients           *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
+	watchOwner            *connect.Client[v1.WatchOwnerRequest, v1.OwnerUpdate]
+	publishGrant          *connect.Client[v1.PublishGrantRequest, v1.PublishGrantResponse]
+	publishMachineCert    *connect.Client[v1.PublishMachineCertRequest, v1.PublishMachineCertResponse]
+	revoke                *connect.Client[v1.RevokeRequest, v1.RevokeResponse]
+	getLogin              *connect.Client[v1.GetLoginRequest, v1.GetLoginResponse]
+	setLogin              *connect.Client[v1.SetLoginRequest, v1.SetLoginResponse]
+	listDevices           *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
+	removeDevice          *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
+	eraseOwner            *connect.Client[v1.EraseOwnerRequest, v1.EraseOwnerResponse]
+	getAccount            *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
+	getMCP                *connect.Client[v1.GetMCPRequest, v1.GetMCPResponse]
+	registerPush          *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
+	publishCards          *connect.Client[v1.PublishCardsRequest, v1.PublishCardsResponse]
+	publishBoundaryPolicy *connect.Client[v1.PublishBoundaryPolicyRequest, v1.PublishBoundaryPolicyResponse]
+	listWakes             *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
+	setWake               *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
+	checkWake             *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
+	clearWake             *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
+	openWakeLink          *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
+	getScreenServers      *connect.Client[v1.GetScreenServersRequest, v1.GetScreenServersResponse]
+	listPersonas          *connect.Client[v1.ListPersonasRequest, v1.ListPersonasResponse]
+	savePersona           *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
+	deletePersona         *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
+	bindPersonaSession    *connect.Client[v1.BindPersonaSessionRequest, v1.BindPersonaSessionResponse]
 }
 
 // Sign calls aide.relay.v1.OwnerControlService.Sign.
@@ -1107,6 +1121,15 @@ func (c *ownerControlServiceClient) PublishCards(ctx context.Context, req *v1.Pu
 	return nil, err
 }
 
+// PublishBoundaryPolicy calls aide.relay.v1.OwnerControlService.PublishBoundaryPolicy.
+func (c *ownerControlServiceClient) PublishBoundaryPolicy(ctx context.Context, req *v1.PublishBoundaryPolicyRequest) (*v1.PublishBoundaryPolicyResponse, error) {
+	response, err := c.publishBoundaryPolicy.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListWakes calls aide.relay.v1.OwnerControlService.ListWakes.
 func (c *ownerControlServiceClient) ListWakes(ctx context.Context, req *v1.ListWakesRequest) (*v1.ListWakesResponse, error) {
 	response, err := c.listWakes.CallUnary(ctx, connect.NewRequest(req))
@@ -1243,6 +1266,10 @@ type OwnerControlServiceHandler interface {
 	// Contact cards for the owner's agents, signed by this device's device
 	// key (docs/agent-messages.md §4): each replaces the agent's earlier one.
 	PublishCards(context.Context, *v1.PublishCardsRequest) (*v1.PublishCardsResponse, error)
+	// The owner's information boundary (identity.v1.BoundaryPolicy), signed
+	// by this device's device key: it replaces the one kept, and goes to every
+	// inbox with its contacts (ContactsResponse.boundary).
+	PublishBoundaryPolicy(context.Context, *v1.PublishBoundaryPolicyRequest) (*v1.PublishBoundaryPolicyResponse, error)
 	// Doorbells (docs/agent-names.md §7), set by a trusted device: the
 	// webhook rung when messages wait for an agent or a name under it. Served
 	// by the MCP gateway; a relay without it answers Unimplemented.
@@ -1374,6 +1401,12 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 		connect.WithSchema(ownerControlServiceMethods.ByName("PublishCards")),
 		connect.WithHandlerOptions(opts...),
 	)
+	ownerControlServicePublishBoundaryPolicyHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServicePublishBoundaryPolicyProcedure,
+		svc.PublishBoundaryPolicy,
+		connect.WithSchema(ownerControlServiceMethods.ByName("PublishBoundaryPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
 	ownerControlServiceListWakesHandler := connect.NewUnaryHandlerSimple(
 		OwnerControlServiceListWakesProcedure,
 		svc.ListWakes,
@@ -1468,6 +1501,8 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 			ownerControlServiceRegisterPushHandler.ServeHTTP(w, r)
 		case OwnerControlServicePublishCardsProcedure:
 			ownerControlServicePublishCardsHandler.ServeHTTP(w, r)
+		case OwnerControlServicePublishBoundaryPolicyProcedure:
+			ownerControlServicePublishBoundaryPolicyHandler.ServeHTTP(w, r)
 		case OwnerControlServiceListWakesProcedure:
 			ownerControlServiceListWakesHandler.ServeHTTP(w, r)
 		case OwnerControlServiceSetWakeProcedure:
@@ -1559,6 +1594,10 @@ func (UnimplementedOwnerControlServiceHandler) RegisterPush(context.Context, *v1
 
 func (UnimplementedOwnerControlServiceHandler) PublishCards(context.Context, *v1.PublishCardsRequest) (*v1.PublishCardsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.PublishCards is not implemented"))
+}
+
+func (UnimplementedOwnerControlServiceHandler) PublishBoundaryPolicy(context.Context, *v1.PublishBoundaryPolicyRequest) (*v1.PublishBoundaryPolicyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.PublishBoundaryPolicy is not implemented"))
 }
 
 func (UnimplementedOwnerControlServiceHandler) ListWakes(context.Context, *v1.ListWakesRequest) (*v1.ListWakesResponse, error) {

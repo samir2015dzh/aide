@@ -443,3 +443,11 @@ func (n *Machine) Unpair() error {
 	n.audit.Log(AuditRecord{Kind: "unpaired"})
 	return nil
 }
+
+// HeldMessages are the messages held for the owner here (held.go).
+func (l *Local) HeldMessages() *machinev1.ListHeldMessagesResponse { return l.n.HeldMessages() }
+
+// ReleaseHeldMessage releases one to its session, or discards it.
+func (l *Local) ReleaseHeldMessage(ctx context.Context, id string, release bool) error {
+	return l.n.ReleaseHeldMessage(ctx, id, release)
+}

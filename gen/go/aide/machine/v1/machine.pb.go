@@ -5515,6 +5515,305 @@ func (x *PushRevocationsResponse) GetApplied() bool {
 	return false
 }
 
+type ListHeldMessagesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHeldMessagesRequest) Reset() {
+	*x = ListHeldMessagesRequest{}
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[76]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHeldMessagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHeldMessagesRequest) ProtoMessage() {}
+
+func (x *ListHeldMessagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[76]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHeldMessagesRequest.ProtoReflect.Descriptor instead.
+func (*ListHeldMessagesRequest) Descriptor() ([]byte, []int) {
+	return file_aide_machine_v1_machine_proto_rawDescGZIP(), []int{76}
+}
+
+type ListHeldMessagesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Oldest first.
+	Messages      []*HeldMessage `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHeldMessagesResponse) Reset() {
+	*x = ListHeldMessagesResponse{}
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[77]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHeldMessagesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHeldMessagesResponse) ProtoMessage() {}
+
+func (x *ListHeldMessagesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[77]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHeldMessagesResponse.ProtoReflect.Descriptor instead.
+func (*ListHeldMessagesResponse) Descriptor() ([]byte, []int) {
+	return file_aide_machine_v1_machine_proto_rawDescGZIP(), []int{77}
+}
+
+func (x *ListHeldMessagesResponse) GetMessages() []*HeldMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+type HeldMessage struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MessageId string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// The sender's address (c_…, c_…/<name>) and name.
+	From     string `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	FromName string `protobuf:"bytes,3,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	// The session it is for (s_…, dsh_…).
+	SessionId string `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Text      string `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
+	Subject   string `protobuf:"bytes,6,opt,name=subject,proto3" json:"subject,omitempty"`
+	// Why: "new_agent", "long_chain" or "boundary".
+	Reason string `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
+	// In words; for "boundary", the rule's category (never what matched).
+	Detail string                 `protobuf:"bytes,8,opt,name=detail,proto3" json:"detail,omitempty"`
+	HeldAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=held_at,json=heldAt,proto3" json:"held_at,omitempty"`
+	// When it expires if not released.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	Hop           uint32                 `protobuf:"varint,11,opt,name=hop,proto3" json:"hop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeldMessage) Reset() {
+	*x = HeldMessage{}
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[78]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeldMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeldMessage) ProtoMessage() {}
+
+func (x *HeldMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[78]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeldMessage.ProtoReflect.Descriptor instead.
+func (*HeldMessage) Descriptor() ([]byte, []int) {
+	return file_aide_machine_v1_machine_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *HeldMessage) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetFromName() string {
+	if x != nil {
+		return x.FromName
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
+func (x *HeldMessage) GetHeldAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.HeldAt
+	}
+	return nil
+}
+
+func (x *HeldMessage) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *HeldMessage) GetHop() uint32 {
+	if x != nil {
+		return x.Hop
+	}
+	return 0
+}
+
+type ReleaseHeldMessageRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MessageId string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// false: discard it.
+	Release       bool `protobuf:"varint,2,opt,name=release,proto3" json:"release,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReleaseHeldMessageRequest) Reset() {
+	*x = ReleaseHeldMessageRequest{}
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseHeldMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseHeldMessageRequest) ProtoMessage() {}
+
+func (x *ReleaseHeldMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseHeldMessageRequest.ProtoReflect.Descriptor instead.
+func (*ReleaseHeldMessageRequest) Descriptor() ([]byte, []int) {
+	return file_aide_machine_v1_machine_proto_rawDescGZIP(), []int{79}
+}
+
+func (x *ReleaseHeldMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *ReleaseHeldMessageRequest) GetRelease() bool {
+	if x != nil {
+		return x.Release
+	}
+	return false
+}
+
+type ReleaseHeldMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReleaseHeldMessageResponse) Reset() {
+	*x = ReleaseHeldMessageResponse{}
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[80]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseHeldMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseHeldMessageResponse) ProtoMessage() {}
+
+func (x *ReleaseHeldMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_machine_v1_machine_proto_msgTypes[80]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseHeldMessageResponse.ProtoReflect.Descriptor instead.
+func (*ReleaseHeldMessageResponse) Descriptor() ([]byte, []int) {
+	return file_aide_machine_v1_machine_proto_rawDescGZIP(), []int{80}
+}
+
 var File_aide_machine_v1_machine_proto protoreflect.FileDescriptor
 
 const file_aide_machine_v1_machine_proto_rawDesc = "" +
@@ -5912,7 +6211,31 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"root_chain\x18\x02 \x01(\v2\x1b.aide.identity.v1.RootChainR\trootChain\"3\n" +
 	"\x17PushRevocationsResponse\x12\x18\n" +
-	"\aapplied\x18\x01 \x01(\bR\aapplied*\xc2\x01\n" +
+	"\aapplied\x18\x01 \x01(\bR\aapplied\"\x19\n" +
+	"\x17ListHeldMessagesRequest\"T\n" +
+	"\x18ListHeldMessagesResponse\x128\n" +
+	"\bmessages\x18\x01 \x03(\v2\x1c.aide.machine.v1.HeldMessageR\bmessages\"\xdc\x02\n" +
+	"\vHeldMessage\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x12\n" +
+	"\x04from\x18\x02 \x01(\tR\x04from\x12\x1b\n" +
+	"\tfrom_name\x18\x03 \x01(\tR\bfromName\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x04 \x01(\tR\tsessionId\x12\x12\n" +
+	"\x04text\x18\x05 \x01(\tR\x04text\x12\x18\n" +
+	"\asubject\x18\x06 \x01(\tR\asubject\x12\x16\n" +
+	"\x06reason\x18\a \x01(\tR\x06reason\x12\x16\n" +
+	"\x06detail\x18\b \x01(\tR\x06detail\x123\n" +
+	"\aheld_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x06heldAt\x129\n" +
+	"\n" +
+	"expires_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x10\n" +
+	"\x03hop\x18\v \x01(\rR\x03hop\"T\n" +
+	"\x19ReleaseHeldMessageRequest\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x18\n" +
+	"\arelease\x18\x02 \x01(\bR\arelease\"\x1c\n" +
+	"\x1aReleaseHeldMessageResponse*\xc2\x01\n" +
 	"\x12MachineProblemKind\x12$\n" +
 	" MACHINE_PROBLEM_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eMACHINE_PROBLEM_KIND_PROCESSES\x10\x01\x12\x1d\n" +
@@ -5954,7 +6277,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x0eSendDSHMessage\x12&.aide.machine.v1.SendDSHMessageRequest\x1a'.aide.machine.v1.SendDSHMessageResponse\"\x04\x88\xb5\x18\x02\x12p\n" +
 	"\x11DSHSessionOptions\x12).aide.machine.v1.DSHSessionOptionsRequest\x1a*.aide.machine.v1.DSHSessionOptionsResponse\"\x04\x88\xb5\x18\x012^\n" +
 	"\x11MachineOpsService\x12I\n" +
-	"\x04Exec\x12\x1c.aide.machine.v1.ExecRequest\x1a\x1d.aide.machine.v1.ExecResponse\"\x04\x88\xb5\x18\x022\x87\x10\n" +
+	"\x04Exec\x12\x1c.aide.machine.v1.ExecRequest\x1a\x1d.aide.machine.v1.ExecResponse\"\x04\x88\xb5\x18\x022\xeb\x11\n" +
 	"\x13MachineAdminService\x12p\n" +
 	"\x11ApplyAdminCommand\x12).aide.machine.v1.ApplyAdminCommandRequest\x1a*.aide.machine.v1.ApplyAdminCommandResponse\"\x04\x88\xb5\x18\x02\x12j\n" +
 	"\x0fPushRevocations\x12'.aide.machine.v1.PushRevocationsRequest\x1a(.aide.machine.v1.PushRevocationsResponse\"\x04\x88\xb5\x18\x02\x12X\n" +
@@ -5966,7 +6289,9 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x0eReadDSHSession\x12&.aide.machine.v1.ReadDSHSessionRequest\x1a'.aide.machine.v1.ReadDSHSessionResponse\"\x04\x88\xb5\x18\x01\x12p\n" +
 	"\x11DSHSessionOptions\x12).aide.machine.v1.DSHSessionOptionsRequest\x1a*.aide.machine.v1.DSHSessionOptionsResponse\"\x04\x88\xb5\x18\x01\x12s\n" +
 	"\x12ListClaudeSessions\x12*.aide.machine.v1.ListClaudeSessionsRequest\x1a+.aide.machine.v1.ListClaudeSessionsResponse\"\x04\x88\xb5\x18\x01\x12p\n" +
-	"\x11ReadClaudeSession\x12).aide.machine.v1.ReadClaudeSessionRequest\x1a*.aide.machine.v1.ReadClaudeSessionResponse\"\x04\x88\xb5\x18\x01\x12g\n" +
+	"\x11ReadClaudeSession\x12).aide.machine.v1.ReadClaudeSessionRequest\x1a*.aide.machine.v1.ReadClaudeSessionResponse\"\x04\x88\xb5\x18\x01\x12m\n" +
+	"\x10ListHeldMessages\x12(.aide.machine.v1.ListHeldMessagesRequest\x1a).aide.machine.v1.ListHeldMessagesResponse\"\x04\x88\xb5\x18\x01\x12s\n" +
+	"\x12ReleaseHeldMessage\x12*.aide.machine.v1.ReleaseHeldMessageRequest\x1a+.aide.machine.v1.ReleaseHeldMessageResponse\"\x04\x88\xb5\x18\x02\x12g\n" +
 	"\x0eSetDSHTakeover\x12&.aide.machine.v1.SetDSHTakeoverRequest\x1a'.aide.machine.v1.SetDSHTakeoverResponse\"\x04\x88\xb5\x18\x02\x12g\n" +
 	"\x0eSendDSHMessage\x12&.aide.machine.v1.SendDSHMessageRequest\x1a'.aide.machine.v1.SendDSHMessageResponse\"\x04\x88\xb5\x18\x02\x12v\n" +
 	"\x13InterruptDSHSession\x12+.aide.machine.v1.InterruptDSHSessionRequest\x1a,.aide.machine.v1.InterruptDSHSessionResponse\"\x04\x88\xb5\x18\x02\x12m\n" +
@@ -5990,7 +6315,7 @@ func file_aide_machine_v1_machine_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_machine_v1_machine_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_aide_machine_v1_machine_proto_msgTypes = make([]protoimpl.MessageInfo, 77)
+var file_aide_machine_v1_machine_proto_msgTypes = make([]protoimpl.MessageInfo, 82)
 var file_aide_machine_v1_machine_proto_goTypes = []any{
 	(MachineProblemKind)(0),             // 0: aide.machine.v1.MachineProblemKind
 	(AgentProblem)(0),                   // 1: aide.machine.v1.AgentProblem
@@ -6073,63 +6398,68 @@ var file_aide_machine_v1_machine_proto_goTypes = []any{
 	(*ApplyAdminCommandResponse)(nil),   // 78: aide.machine.v1.ApplyAdminCommandResponse
 	(*PushRevocationsRequest)(nil),      // 79: aide.machine.v1.PushRevocationsRequest
 	(*PushRevocationsResponse)(nil),     // 80: aide.machine.v1.PushRevocationsResponse
-	nil,                                 // 81: aide.machine.v1.MachineStatus.SessionsEntry
-	(v1.SessionView)(0),                 // 82: aide.session.v1.SessionView
-	(*timestamppb.Timestamp)(nil),       // 83: google.protobuf.Timestamp
-	(*v1.Session)(nil),                  // 84: aide.session.v1.Session
-	(*v1.SessionCursor)(nil),            // 85: aide.session.v1.SessionCursor
-	(v1.SessionStatus)(0),               // 86: aide.session.v1.SessionStatus
-	(*v11.AgentDefaults)(nil),           // 87: aide.identity.v1.AgentDefaults
-	(v11.Workspace)(0),                  // 88: aide.identity.v1.Workspace
-	(v1.EventView)(0),                   // 89: aide.session.v1.EventView
-	(*v1.SessionEvent)(nil),             // 90: aide.session.v1.SessionEvent
-	(*v11.Signed)(nil),                  // 91: aide.identity.v1.Signed
-	(*v11.AdminCommand)(nil),            // 92: aide.identity.v1.AdminCommand
-	(*v11.RevocationList)(nil),          // 93: aide.identity.v1.RevocationList
-	(*v11.RootChain)(nil),               // 94: aide.identity.v1.RootChain
+	(*ListHeldMessagesRequest)(nil),     // 81: aide.machine.v1.ListHeldMessagesRequest
+	(*ListHeldMessagesResponse)(nil),    // 82: aide.machine.v1.ListHeldMessagesResponse
+	(*HeldMessage)(nil),                 // 83: aide.machine.v1.HeldMessage
+	(*ReleaseHeldMessageRequest)(nil),   // 84: aide.machine.v1.ReleaseHeldMessageRequest
+	(*ReleaseHeldMessageResponse)(nil),  // 85: aide.machine.v1.ReleaseHeldMessageResponse
+	nil,                                 // 86: aide.machine.v1.MachineStatus.SessionsEntry
+	(v1.SessionView)(0),                 // 87: aide.session.v1.SessionView
+	(*timestamppb.Timestamp)(nil),       // 88: google.protobuf.Timestamp
+	(*v1.Session)(nil),                  // 89: aide.session.v1.Session
+	(*v1.SessionCursor)(nil),            // 90: aide.session.v1.SessionCursor
+	(v1.SessionStatus)(0),               // 91: aide.session.v1.SessionStatus
+	(*v11.AgentDefaults)(nil),           // 92: aide.identity.v1.AgentDefaults
+	(v11.Workspace)(0),                  // 93: aide.identity.v1.Workspace
+	(v1.EventView)(0),                   // 94: aide.session.v1.EventView
+	(*v1.SessionEvent)(nil),             // 95: aide.session.v1.SessionEvent
+	(*v11.Signed)(nil),                  // 96: aide.identity.v1.Signed
+	(*v11.AdminCommand)(nil),            // 97: aide.identity.v1.AdminCommand
+	(*v11.RevocationList)(nil),          // 98: aide.identity.v1.RevocationList
+	(*v11.RootChain)(nil),               // 99: aide.identity.v1.RootChain
 }
 var file_aide_machine_v1_machine_proto_depIdxs = []int32{
-	82,  // 0: aide.machine.v1.WatchRequest.view:type_name -> aide.session.v1.SessionView
-	83,  // 1: aide.machine.v1.WatchRequest.held_at:type_name -> google.protobuf.Timestamp
-	84,  // 2: aide.machine.v1.WatchResponse.sessions:type_name -> aide.session.v1.Session
-	85,  // 3: aide.machine.v1.WatchResponse.next:type_name -> aide.session.v1.SessionCursor
+	87,  // 0: aide.machine.v1.WatchRequest.view:type_name -> aide.session.v1.SessionView
+	88,  // 1: aide.machine.v1.WatchRequest.held_at:type_name -> google.protobuf.Timestamp
+	89,  // 2: aide.machine.v1.WatchResponse.sessions:type_name -> aide.session.v1.Session
+	90,  // 3: aide.machine.v1.WatchResponse.next:type_name -> aide.session.v1.SessionCursor
 	28,  // 4: aide.machine.v1.WatchResponse.projects:type_name -> aide.machine.v1.Project
 	16,  // 5: aide.machine.v1.WatchResponse.status:type_name -> aide.machine.v1.MachineStatus
-	83,  // 6: aide.machine.v1.WatchResponse.sent_at:type_name -> google.protobuf.Timestamp
+	88,  // 6: aide.machine.v1.WatchResponse.sent_at:type_name -> google.protobuf.Timestamp
 	9,   // 7: aide.machine.v1.PullWorkResponse.keys:type_name -> aide.machine.v1.WorkKey
 	10,  // 8: aide.machine.v1.PullWorkResponse.sessions:type_name -> aide.machine.v1.WorkSession
 	11,  // 9: aide.machine.v1.PullWorkResponse.hours:type_name -> aide.machine.v1.WorkHour
-	86,  // 10: aide.machine.v1.WorkSession.status:type_name -> aide.session.v1.SessionStatus
+	91,  // 10: aide.machine.v1.WorkSession.status:type_name -> aide.session.v1.SessionStatus
 	12,  // 11: aide.machine.v1.WorkHour.presence:type_name -> aide.machine.v1.WorkPresence
 	13,  // 12: aide.machine.v1.WorkHour.measures:type_name -> aide.machine.v1.WorkMeasure
 	16,  // 13: aide.machine.v1.GetInfoResponse.status:type_name -> aide.machine.v1.MachineStatus
 	20,  // 14: aide.machine.v1.MachineStatus.agents:type_name -> aide.machine.v1.AgentStatus
-	81,  // 15: aide.machine.v1.MachineStatus.sessions:type_name -> aide.machine.v1.MachineStatus.SessionsEntry
+	86,  // 15: aide.machine.v1.MachineStatus.sessions:type_name -> aide.machine.v1.MachineStatus.SessionsEntry
 	19,  // 16: aide.machine.v1.MachineStatus.problems:type_name -> aide.machine.v1.MachineProblem
 	18,  // 17: aide.machine.v1.MachineStatus.her:type_name -> aide.machine.v1.HerStatus
 	17,  // 18: aide.machine.v1.MachineStatus.screen:type_name -> aide.machine.v1.ScreenStatus
 	0,   // 19: aide.machine.v1.MachineProblem.kind:type_name -> aide.machine.v1.MachineProblemKind
 	25,  // 20: aide.machine.v1.AgentStatus.models:type_name -> aide.machine.v1.AgentModel
-	87,  // 21: aide.machine.v1.AgentStatus.defaults:type_name -> aide.identity.v1.AgentDefaults
-	87,  // 22: aide.machine.v1.AgentStatus.own:type_name -> aide.identity.v1.AgentDefaults
+	92,  // 21: aide.machine.v1.AgentStatus.defaults:type_name -> aide.identity.v1.AgentDefaults
+	92,  // 22: aide.machine.v1.AgentStatus.own:type_name -> aide.identity.v1.AgentDefaults
 	1,   // 23: aide.machine.v1.AgentStatus.problem:type_name -> aide.machine.v1.AgentProblem
 	24,  // 24: aide.machine.v1.AgentStatus.model_catalogs:type_name -> aide.machine.v1.AgentModelCatalog
 	26,  // 25: aide.machine.v1.AgentStatus.modes:type_name -> aide.machine.v1.AgentMode
 	22,  // 26: aide.machine.v1.AgentStatus.usage:type_name -> aide.machine.v1.ClaudeUsage
 	21,  // 27: aide.machine.v1.AgentStatus.pause:type_name -> aide.machine.v1.AgentPause
-	83,  // 28: aide.machine.v1.AgentStatus.auto_resumed_at:type_name -> google.protobuf.Timestamp
-	83,  // 29: aide.machine.v1.AgentPause.since:type_name -> google.protobuf.Timestamp
-	83,  // 30: aide.machine.v1.AgentPause.resume_at:type_name -> google.protobuf.Timestamp
+	88,  // 28: aide.machine.v1.AgentStatus.auto_resumed_at:type_name -> google.protobuf.Timestamp
+	88,  // 29: aide.machine.v1.AgentPause.since:type_name -> google.protobuf.Timestamp
+	88,  // 30: aide.machine.v1.AgentPause.resume_at:type_name -> google.protobuf.Timestamp
 	23,  // 31: aide.machine.v1.ClaudeUsage.windows:type_name -> aide.machine.v1.UsageWindow
-	83,  // 32: aide.machine.v1.ClaudeUsage.fetched_at:type_name -> google.protobuf.Timestamp
-	83,  // 33: aide.machine.v1.UsageWindow.resets_at:type_name -> google.protobuf.Timestamp
+	88,  // 32: aide.machine.v1.ClaudeUsage.fetched_at:type_name -> google.protobuf.Timestamp
+	88,  // 33: aide.machine.v1.UsageWindow.resets_at:type_name -> google.protobuf.Timestamp
 	25,  // 34: aide.machine.v1.AgentModelCatalog.models:type_name -> aide.machine.v1.AgentModel
-	88,  // 35: aide.machine.v1.Project.workspace:type_name -> aide.identity.v1.Workspace
+	93,  // 35: aide.machine.v1.Project.workspace:type_name -> aide.identity.v1.Workspace
 	28,  // 36: aide.machine.v1.ListProjectsResponse.projects:type_name -> aide.machine.v1.Project
-	83,  // 37: aide.machine.v1.ExecResponse.started_at:type_name -> google.protobuf.Timestamp
-	83,  // 38: aide.machine.v1.ExecResponse.ended_at:type_name -> google.protobuf.Timestamp
-	83,  // 39: aide.machine.v1.ExecRecord.started_at:type_name -> google.protobuf.Timestamp
-	83,  // 40: aide.machine.v1.ExecRecord.ended_at:type_name -> google.protobuf.Timestamp
+	88,  // 37: aide.machine.v1.ExecResponse.started_at:type_name -> google.protobuf.Timestamp
+	88,  // 38: aide.machine.v1.ExecResponse.ended_at:type_name -> google.protobuf.Timestamp
+	88,  // 39: aide.machine.v1.ExecRecord.started_at:type_name -> google.protobuf.Timestamp
+	88,  // 40: aide.machine.v1.ExecRecord.ended_at:type_name -> google.protobuf.Timestamp
 	2,   // 41: aide.machine.v1.ExecRecord.outcome:type_name -> aide.machine.v1.ExecOutcome
 	34,  // 42: aide.machine.v1.CustomAgent.env:type_name -> aide.machine.v1.AgentEnv
 	33,  // 43: aide.machine.v1.ListCustomAgentsResponse.agents:type_name -> aide.machine.v1.CustomAgent
@@ -6144,86 +6474,93 @@ var file_aide_machine_v1_machine_proto_depIdxs = []int32{
 	53,  // 52: aide.machine.v1.DSHSessionOptionsResponse.permissions:type_name -> aide.machine.v1.DSHPermissionOption
 	49,  // 53: aide.machine.v1.DSHSessionOptionsResponse.current_model:type_name -> aide.machine.v1.DSHModel
 	4,   // 54: aide.machine.v1.DSHSession.state:type_name -> aide.machine.v1.DSHSessionState
-	83,  // 55: aide.machine.v1.DSHSession.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 56: aide.machine.v1.DSHSession.last_activity_at:type_name -> google.protobuf.Timestamp
-	89,  // 57: aide.machine.v1.ReadDSHSessionRequest.view:type_name -> aide.session.v1.EventView
+	88,  // 55: aide.machine.v1.DSHSession.created_at:type_name -> google.protobuf.Timestamp
+	88,  // 56: aide.machine.v1.DSHSession.last_activity_at:type_name -> google.protobuf.Timestamp
+	94,  // 57: aide.machine.v1.ReadDSHSessionRequest.view:type_name -> aide.session.v1.EventView
 	59,  // 58: aide.machine.v1.ReadDSHSessionResponse.session:type_name -> aide.machine.v1.DSHSession
-	90,  // 59: aide.machine.v1.ReadDSHSessionResponse.events:type_name -> aide.session.v1.SessionEvent
+	95,  // 59: aide.machine.v1.ReadDSHSessionResponse.events:type_name -> aide.session.v1.SessionEvent
 	64,  // 60: aide.machine.v1.ListClaudeSessionsResponse.sessions:type_name -> aide.machine.v1.ClaudeSession
-	83,  // 61: aide.machine.v1.ClaudeSession.created_at:type_name -> google.protobuf.Timestamp
-	83,  // 62: aide.machine.v1.ClaudeSession.last_activity_at:type_name -> google.protobuf.Timestamp
-	89,  // 63: aide.machine.v1.ReadClaudeSessionRequest.view:type_name -> aide.session.v1.EventView
+	88,  // 61: aide.machine.v1.ClaudeSession.created_at:type_name -> google.protobuf.Timestamp
+	88,  // 62: aide.machine.v1.ClaudeSession.last_activity_at:type_name -> google.protobuf.Timestamp
+	94,  // 63: aide.machine.v1.ReadClaudeSessionRequest.view:type_name -> aide.session.v1.EventView
 	64,  // 64: aide.machine.v1.ReadClaudeSessionResponse.session:type_name -> aide.machine.v1.ClaudeSession
-	90,  // 65: aide.machine.v1.ReadClaudeSessionResponse.events:type_name -> aide.session.v1.SessionEvent
+	95,  // 65: aide.machine.v1.ReadClaudeSessionResponse.events:type_name -> aide.session.v1.SessionEvent
 	32,  // 66: aide.machine.v1.ListExecLogResponse.records:type_name -> aide.machine.v1.ExecRecord
 	71,  // 67: aide.machine.v1.ListReposResponse.repos:type_name -> aide.machine.v1.Repo
-	83,  // 68: aide.machine.v1.Repo.last_commit:type_name -> google.protobuf.Timestamp
+	88,  // 68: aide.machine.v1.Repo.last_commit:type_name -> google.protobuf.Timestamp
 	74,  // 69: aide.machine.v1.ListFoldersResponse.folders:type_name -> aide.machine.v1.Folder
-	91,  // 70: aide.machine.v1.ApplyAdminCommandRequest.command:type_name -> aide.identity.v1.Signed
-	92,  // 71: aide.machine.v1.ApplyAdminCommandRequest.settings:type_name -> aide.identity.v1.AdminCommand
-	93,  // 72: aide.machine.v1.PushRevocationsRequest.revocations:type_name -> aide.identity.v1.RevocationList
-	94,  // 73: aide.machine.v1.PushRevocationsRequest.root_chain:type_name -> aide.identity.v1.RootChain
-	14,  // 74: aide.machine.v1.MachineService.GetInfo:input_type -> aide.machine.v1.GetInfoRequest
-	27,  // 75: aide.machine.v1.MachineService.ListProjects:input_type -> aide.machine.v1.ListProjectsRequest
-	5,   // 76: aide.machine.v1.MachineService.Watch:input_type -> aide.machine.v1.WatchRequest
-	7,   // 77: aide.machine.v1.MachineService.PullWork:input_type -> aide.machine.v1.PullWorkRequest
-	43,  // 78: aide.machine.v1.MachineService.ListDSHSessions:input_type -> aide.machine.v1.ListDSHSessionsRequest
-	60,  // 79: aide.machine.v1.MachineService.ReadDSHSession:input_type -> aide.machine.v1.ReadDSHSessionRequest
-	48,  // 80: aide.machine.v1.MachineService.SendDSHMessage:input_type -> aide.machine.v1.SendDSHMessageRequest
-	50,  // 81: aide.machine.v1.MachineService.DSHSessionOptions:input_type -> aide.machine.v1.DSHSessionOptionsRequest
-	30,  // 82: aide.machine.v1.MachineOpsService.Exec:input_type -> aide.machine.v1.ExecRequest
-	77,  // 83: aide.machine.v1.MachineAdminService.ApplyAdminCommand:input_type -> aide.machine.v1.ApplyAdminCommandRequest
-	79,  // 84: aide.machine.v1.MachineAdminService.PushRevocations:input_type -> aide.machine.v1.PushRevocationsRequest
-	69,  // 85: aide.machine.v1.MachineAdminService.ListRepos:input_type -> aide.machine.v1.ListReposRequest
-	72,  // 86: aide.machine.v1.MachineAdminService.ListFolders:input_type -> aide.machine.v1.ListFoldersRequest
-	75,  // 87: aide.machine.v1.MachineAdminService.TestAgent:input_type -> aide.machine.v1.TestAgentRequest
-	67,  // 88: aide.machine.v1.MachineAdminService.ListExecLog:input_type -> aide.machine.v1.ListExecLogRequest
-	43,  // 89: aide.machine.v1.MachineAdminService.ListDSHSessions:input_type -> aide.machine.v1.ListDSHSessionsRequest
-	60,  // 90: aide.machine.v1.MachineAdminService.ReadDSHSession:input_type -> aide.machine.v1.ReadDSHSessionRequest
-	50,  // 91: aide.machine.v1.MachineAdminService.DSHSessionOptions:input_type -> aide.machine.v1.DSHSessionOptionsRequest
-	62,  // 92: aide.machine.v1.MachineAdminService.ListClaudeSessions:input_type -> aide.machine.v1.ListClaudeSessionsRequest
-	65,  // 93: aide.machine.v1.MachineAdminService.ReadClaudeSession:input_type -> aide.machine.v1.ReadClaudeSessionRequest
-	46,  // 94: aide.machine.v1.MachineAdminService.SetDSHTakeover:input_type -> aide.machine.v1.SetDSHTakeoverRequest
-	48,  // 95: aide.machine.v1.MachineAdminService.SendDSHMessage:input_type -> aide.machine.v1.SendDSHMessageRequest
-	57,  // 96: aide.machine.v1.MachineAdminService.InterruptDSHSession:input_type -> aide.machine.v1.InterruptDSHSessionRequest
-	55,  // 97: aide.machine.v1.MachineAdminService.PrepareDSHBridge:input_type -> aide.machine.v1.PrepareDSHBridgeRequest
-	35,  // 98: aide.machine.v1.MachineAdminService.ListCustomAgents:input_type -> aide.machine.v1.ListCustomAgentsRequest
-	37,  // 99: aide.machine.v1.MachineAdminService.SaveCustomAgent:input_type -> aide.machine.v1.SaveCustomAgentRequest
-	39,  // 100: aide.machine.v1.MachineAdminService.RemoveCustomAgent:input_type -> aide.machine.v1.RemoveCustomAgentRequest
-	41,  // 101: aide.machine.v1.MachineAdminService.TestCustomAgent:input_type -> aide.machine.v1.TestCustomAgentRequest
-	15,  // 102: aide.machine.v1.MachineService.GetInfo:output_type -> aide.machine.v1.GetInfoResponse
-	29,  // 103: aide.machine.v1.MachineService.ListProjects:output_type -> aide.machine.v1.ListProjectsResponse
-	6,   // 104: aide.machine.v1.MachineService.Watch:output_type -> aide.machine.v1.WatchResponse
-	8,   // 105: aide.machine.v1.MachineService.PullWork:output_type -> aide.machine.v1.PullWorkResponse
-	44,  // 106: aide.machine.v1.MachineService.ListDSHSessions:output_type -> aide.machine.v1.ListDSHSessionsResponse
-	61,  // 107: aide.machine.v1.MachineService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
-	54,  // 108: aide.machine.v1.MachineService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
-	51,  // 109: aide.machine.v1.MachineService.DSHSessionOptions:output_type -> aide.machine.v1.DSHSessionOptionsResponse
-	31,  // 110: aide.machine.v1.MachineOpsService.Exec:output_type -> aide.machine.v1.ExecResponse
-	78,  // 111: aide.machine.v1.MachineAdminService.ApplyAdminCommand:output_type -> aide.machine.v1.ApplyAdminCommandResponse
-	80,  // 112: aide.machine.v1.MachineAdminService.PushRevocations:output_type -> aide.machine.v1.PushRevocationsResponse
-	70,  // 113: aide.machine.v1.MachineAdminService.ListRepos:output_type -> aide.machine.v1.ListReposResponse
-	73,  // 114: aide.machine.v1.MachineAdminService.ListFolders:output_type -> aide.machine.v1.ListFoldersResponse
-	76,  // 115: aide.machine.v1.MachineAdminService.TestAgent:output_type -> aide.machine.v1.TestAgentResponse
-	68,  // 116: aide.machine.v1.MachineAdminService.ListExecLog:output_type -> aide.machine.v1.ListExecLogResponse
-	44,  // 117: aide.machine.v1.MachineAdminService.ListDSHSessions:output_type -> aide.machine.v1.ListDSHSessionsResponse
-	61,  // 118: aide.machine.v1.MachineAdminService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
-	51,  // 119: aide.machine.v1.MachineAdminService.DSHSessionOptions:output_type -> aide.machine.v1.DSHSessionOptionsResponse
-	63,  // 120: aide.machine.v1.MachineAdminService.ListClaudeSessions:output_type -> aide.machine.v1.ListClaudeSessionsResponse
-	66,  // 121: aide.machine.v1.MachineAdminService.ReadClaudeSession:output_type -> aide.machine.v1.ReadClaudeSessionResponse
-	47,  // 122: aide.machine.v1.MachineAdminService.SetDSHTakeover:output_type -> aide.machine.v1.SetDSHTakeoverResponse
-	54,  // 123: aide.machine.v1.MachineAdminService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
-	58,  // 124: aide.machine.v1.MachineAdminService.InterruptDSHSession:output_type -> aide.machine.v1.InterruptDSHSessionResponse
-	56,  // 125: aide.machine.v1.MachineAdminService.PrepareDSHBridge:output_type -> aide.machine.v1.PrepareDSHBridgeResponse
-	36,  // 126: aide.machine.v1.MachineAdminService.ListCustomAgents:output_type -> aide.machine.v1.ListCustomAgentsResponse
-	38,  // 127: aide.machine.v1.MachineAdminService.SaveCustomAgent:output_type -> aide.machine.v1.SaveCustomAgentResponse
-	40,  // 128: aide.machine.v1.MachineAdminService.RemoveCustomAgent:output_type -> aide.machine.v1.RemoveCustomAgentResponse
-	42,  // 129: aide.machine.v1.MachineAdminService.TestCustomAgent:output_type -> aide.machine.v1.TestCustomAgentResponse
-	102, // [102:130] is the sub-list for method output_type
-	74,  // [74:102] is the sub-list for method input_type
-	74,  // [74:74] is the sub-list for extension type_name
-	74,  // [74:74] is the sub-list for extension extendee
-	0,   // [0:74] is the sub-list for field type_name
+	96,  // 70: aide.machine.v1.ApplyAdminCommandRequest.command:type_name -> aide.identity.v1.Signed
+	97,  // 71: aide.machine.v1.ApplyAdminCommandRequest.settings:type_name -> aide.identity.v1.AdminCommand
+	98,  // 72: aide.machine.v1.PushRevocationsRequest.revocations:type_name -> aide.identity.v1.RevocationList
+	99,  // 73: aide.machine.v1.PushRevocationsRequest.root_chain:type_name -> aide.identity.v1.RootChain
+	83,  // 74: aide.machine.v1.ListHeldMessagesResponse.messages:type_name -> aide.machine.v1.HeldMessage
+	88,  // 75: aide.machine.v1.HeldMessage.held_at:type_name -> google.protobuf.Timestamp
+	88,  // 76: aide.machine.v1.HeldMessage.expires_at:type_name -> google.protobuf.Timestamp
+	14,  // 77: aide.machine.v1.MachineService.GetInfo:input_type -> aide.machine.v1.GetInfoRequest
+	27,  // 78: aide.machine.v1.MachineService.ListProjects:input_type -> aide.machine.v1.ListProjectsRequest
+	5,   // 79: aide.machine.v1.MachineService.Watch:input_type -> aide.machine.v1.WatchRequest
+	7,   // 80: aide.machine.v1.MachineService.PullWork:input_type -> aide.machine.v1.PullWorkRequest
+	43,  // 81: aide.machine.v1.MachineService.ListDSHSessions:input_type -> aide.machine.v1.ListDSHSessionsRequest
+	60,  // 82: aide.machine.v1.MachineService.ReadDSHSession:input_type -> aide.machine.v1.ReadDSHSessionRequest
+	48,  // 83: aide.machine.v1.MachineService.SendDSHMessage:input_type -> aide.machine.v1.SendDSHMessageRequest
+	50,  // 84: aide.machine.v1.MachineService.DSHSessionOptions:input_type -> aide.machine.v1.DSHSessionOptionsRequest
+	30,  // 85: aide.machine.v1.MachineOpsService.Exec:input_type -> aide.machine.v1.ExecRequest
+	77,  // 86: aide.machine.v1.MachineAdminService.ApplyAdminCommand:input_type -> aide.machine.v1.ApplyAdminCommandRequest
+	79,  // 87: aide.machine.v1.MachineAdminService.PushRevocations:input_type -> aide.machine.v1.PushRevocationsRequest
+	69,  // 88: aide.machine.v1.MachineAdminService.ListRepos:input_type -> aide.machine.v1.ListReposRequest
+	72,  // 89: aide.machine.v1.MachineAdminService.ListFolders:input_type -> aide.machine.v1.ListFoldersRequest
+	75,  // 90: aide.machine.v1.MachineAdminService.TestAgent:input_type -> aide.machine.v1.TestAgentRequest
+	67,  // 91: aide.machine.v1.MachineAdminService.ListExecLog:input_type -> aide.machine.v1.ListExecLogRequest
+	43,  // 92: aide.machine.v1.MachineAdminService.ListDSHSessions:input_type -> aide.machine.v1.ListDSHSessionsRequest
+	60,  // 93: aide.machine.v1.MachineAdminService.ReadDSHSession:input_type -> aide.machine.v1.ReadDSHSessionRequest
+	50,  // 94: aide.machine.v1.MachineAdminService.DSHSessionOptions:input_type -> aide.machine.v1.DSHSessionOptionsRequest
+	62,  // 95: aide.machine.v1.MachineAdminService.ListClaudeSessions:input_type -> aide.machine.v1.ListClaudeSessionsRequest
+	65,  // 96: aide.machine.v1.MachineAdminService.ReadClaudeSession:input_type -> aide.machine.v1.ReadClaudeSessionRequest
+	81,  // 97: aide.machine.v1.MachineAdminService.ListHeldMessages:input_type -> aide.machine.v1.ListHeldMessagesRequest
+	84,  // 98: aide.machine.v1.MachineAdminService.ReleaseHeldMessage:input_type -> aide.machine.v1.ReleaseHeldMessageRequest
+	46,  // 99: aide.machine.v1.MachineAdminService.SetDSHTakeover:input_type -> aide.machine.v1.SetDSHTakeoverRequest
+	48,  // 100: aide.machine.v1.MachineAdminService.SendDSHMessage:input_type -> aide.machine.v1.SendDSHMessageRequest
+	57,  // 101: aide.machine.v1.MachineAdminService.InterruptDSHSession:input_type -> aide.machine.v1.InterruptDSHSessionRequest
+	55,  // 102: aide.machine.v1.MachineAdminService.PrepareDSHBridge:input_type -> aide.machine.v1.PrepareDSHBridgeRequest
+	35,  // 103: aide.machine.v1.MachineAdminService.ListCustomAgents:input_type -> aide.machine.v1.ListCustomAgentsRequest
+	37,  // 104: aide.machine.v1.MachineAdminService.SaveCustomAgent:input_type -> aide.machine.v1.SaveCustomAgentRequest
+	39,  // 105: aide.machine.v1.MachineAdminService.RemoveCustomAgent:input_type -> aide.machine.v1.RemoveCustomAgentRequest
+	41,  // 106: aide.machine.v1.MachineAdminService.TestCustomAgent:input_type -> aide.machine.v1.TestCustomAgentRequest
+	15,  // 107: aide.machine.v1.MachineService.GetInfo:output_type -> aide.machine.v1.GetInfoResponse
+	29,  // 108: aide.machine.v1.MachineService.ListProjects:output_type -> aide.machine.v1.ListProjectsResponse
+	6,   // 109: aide.machine.v1.MachineService.Watch:output_type -> aide.machine.v1.WatchResponse
+	8,   // 110: aide.machine.v1.MachineService.PullWork:output_type -> aide.machine.v1.PullWorkResponse
+	44,  // 111: aide.machine.v1.MachineService.ListDSHSessions:output_type -> aide.machine.v1.ListDSHSessionsResponse
+	61,  // 112: aide.machine.v1.MachineService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
+	54,  // 113: aide.machine.v1.MachineService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
+	51,  // 114: aide.machine.v1.MachineService.DSHSessionOptions:output_type -> aide.machine.v1.DSHSessionOptionsResponse
+	31,  // 115: aide.machine.v1.MachineOpsService.Exec:output_type -> aide.machine.v1.ExecResponse
+	78,  // 116: aide.machine.v1.MachineAdminService.ApplyAdminCommand:output_type -> aide.machine.v1.ApplyAdminCommandResponse
+	80,  // 117: aide.machine.v1.MachineAdminService.PushRevocations:output_type -> aide.machine.v1.PushRevocationsResponse
+	70,  // 118: aide.machine.v1.MachineAdminService.ListRepos:output_type -> aide.machine.v1.ListReposResponse
+	73,  // 119: aide.machine.v1.MachineAdminService.ListFolders:output_type -> aide.machine.v1.ListFoldersResponse
+	76,  // 120: aide.machine.v1.MachineAdminService.TestAgent:output_type -> aide.machine.v1.TestAgentResponse
+	68,  // 121: aide.machine.v1.MachineAdminService.ListExecLog:output_type -> aide.machine.v1.ListExecLogResponse
+	44,  // 122: aide.machine.v1.MachineAdminService.ListDSHSessions:output_type -> aide.machine.v1.ListDSHSessionsResponse
+	61,  // 123: aide.machine.v1.MachineAdminService.ReadDSHSession:output_type -> aide.machine.v1.ReadDSHSessionResponse
+	51,  // 124: aide.machine.v1.MachineAdminService.DSHSessionOptions:output_type -> aide.machine.v1.DSHSessionOptionsResponse
+	63,  // 125: aide.machine.v1.MachineAdminService.ListClaudeSessions:output_type -> aide.machine.v1.ListClaudeSessionsResponse
+	66,  // 126: aide.machine.v1.MachineAdminService.ReadClaudeSession:output_type -> aide.machine.v1.ReadClaudeSessionResponse
+	82,  // 127: aide.machine.v1.MachineAdminService.ListHeldMessages:output_type -> aide.machine.v1.ListHeldMessagesResponse
+	85,  // 128: aide.machine.v1.MachineAdminService.ReleaseHeldMessage:output_type -> aide.machine.v1.ReleaseHeldMessageResponse
+	47,  // 129: aide.machine.v1.MachineAdminService.SetDSHTakeover:output_type -> aide.machine.v1.SetDSHTakeoverResponse
+	54,  // 130: aide.machine.v1.MachineAdminService.SendDSHMessage:output_type -> aide.machine.v1.SendDSHMessageResponse
+	58,  // 131: aide.machine.v1.MachineAdminService.InterruptDSHSession:output_type -> aide.machine.v1.InterruptDSHSessionResponse
+	56,  // 132: aide.machine.v1.MachineAdminService.PrepareDSHBridge:output_type -> aide.machine.v1.PrepareDSHBridgeResponse
+	36,  // 133: aide.machine.v1.MachineAdminService.ListCustomAgents:output_type -> aide.machine.v1.ListCustomAgentsResponse
+	38,  // 134: aide.machine.v1.MachineAdminService.SaveCustomAgent:output_type -> aide.machine.v1.SaveCustomAgentResponse
+	40,  // 135: aide.machine.v1.MachineAdminService.RemoveCustomAgent:output_type -> aide.machine.v1.RemoveCustomAgentResponse
+	42,  // 136: aide.machine.v1.MachineAdminService.TestCustomAgent:output_type -> aide.machine.v1.TestCustomAgentResponse
+	107, // [107:137] is the sub-list for method output_type
+	77,  // [77:107] is the sub-list for method input_type
+	77,  // [77:77] is the sub-list for extension type_name
+	77,  // [77:77] is the sub-list for extension extendee
+	0,   // [0:77] is the sub-list for field type_name
 }
 
 func init() { file_aide_machine_v1_machine_proto_init() }
@@ -6237,7 +6574,7 @@ func file_aide_machine_v1_machine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_machine_v1_machine_proto_rawDesc), len(file_aide_machine_v1_machine_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   77,
+			NumMessages:   82,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/samir2015dzh/aide/internal/boundary"
 	"os"
 	"path/filepath"
 	"slices"
@@ -95,11 +96,16 @@ type contactBook struct {
 	list []*identityv1.Contact
 	// woken are the names with a doorbell, by inbox (docs/agent-names.md §7.1).
 	woken map[string][]string
+	// boundary is the owner's information boundary as handed with them;
+	// checker, compiled from checkerOf (held.go).
+	boundary  *relayv1.Boundary
+	checker   *boundary.Checker
+	checkerOf *relayv1.Boundary
 }
 
 // keep remembers the owner's contacts as the post office gave them.
 func (b *contactBook) keep(res *relayv1.ContactsResponse) {
-	b.list, b.at, b.woken = res.Contacts, time.Now(), map[string][]string{}
+	b.list, b.at, b.woken, b.boundary = res.Contacts, time.Now(), map[string][]string{}, res.Boundary
 	for _, w := range res.Woken {
 		b.woken[w.Inbox] = w.Names
 	}
@@ -210,6 +216,12 @@ func (n *Machine) newsMessage(to *inboxv1.Address, s noticeSession, e *sessionv1
 // sendMessage signs m with the machine key, seals it to its recipient and
 // hands it to the post office.
 func (n *Machine) sendMessage(m *inboxv1.Message) error {
+	// The owner's information boundary, for any recipient (an agent's
+	// kind is not known here: its own side checks again).
+	if cat := n.boundary().Check(m.Text, ""); cat != "" {
+		n.audit.Log(AuditRecord{Kind: "message.out", Subject: inboxAddress(m.From), Session: m.GetFrom().GetSession(), Decision: "deny", Detail: "boundary=" + cat})
+		return &boundaryError{category: cat}
+	}
 	n.mu.Lock()
 	conn, cert := n.conn, n.machineCert
 	n.mu.Unlock()

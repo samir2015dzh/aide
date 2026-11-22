@@ -6,6 +6,7 @@ import { local } from "./api";
 import { Overview } from "./Overview";
 import { DSHSessions } from "./dsh/DSHSessions";
 import { ClaudeSessions } from "./claude/ClaudeSessions";
+import { HeldMessages } from "./held/HeldMessages";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
@@ -89,6 +90,8 @@ export function MainWindow() {
           <DSHSessions />
         ) : st.selection.kind === "claude" && !st.status?.machineOnly ? (
           <ClaudeSessions />
+        ) : st.selection.kind === "held" ? (
+          <HeldMessages />
         ) : (
           <Overview />
         )}

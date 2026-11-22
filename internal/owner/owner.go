@@ -80,9 +80,14 @@ type Owner struct {
 	mcpOld     bool         // the relay is older than GetMCP
 	pendingMu  sync.Mutex   // pending names (pendingNames)
 	cardsMu    sync.Mutex   // one card sync at a time (cards.go)
-	removed    bool         // the relay no longer counts this device as the owner's
-	signedOut  bool         // SignOut: set up, but it neither connects nor signs
-	account    string       // the account, as the center named it (display)
+	// The information boundary (boundary.go): one publish at a time, the
+	// file's hash as last published, the watch started once.
+	boundaryMu   sync.Mutex
+	boundarySent [32]byte
+	boundaryOnce sync.Once
+	removed      bool   // the relay no longer counts this device as the owner's
+	signedOut    bool   // SignOut: set up, but it neither connects nor signs
+	account      string // the account, as the center named it (display)
 
 	localMachine *machine.Machine
 	// lastMachines: the machines as the relay last listed them, shown

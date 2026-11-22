@@ -110,6 +110,13 @@ CREATE TABLE personas (
 );
 `, `
 ALTER TABLE messages ADD COLUMN sender TEXT;
+`, `
+CREATE TABLE boundary_policy (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  policy BLOB NOT NULL,
+  device_cert BLOB NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `}
 
 // Store is the Backend of a self-hosted relay: one owner, SQLite. Beside
@@ -439,7 +446,9 @@ func (s *Store) SetMessageStates(_, inbox string, ids []string, state string, at
 	defer tx.Rollback()
 	// A message handed to its agent has left the post office, and is
 	// acknowledged handled (or held, refused) after.
-	q := `UPDATE messages SET state = ?, state_at = ?, sealed = NULL WHERE id = ? AND inbox = ? AND (sealed IS NOT NULL OR state = 'handed')`
+	// A held one waits for the owner on its recipient's side, which says
+	// later what became of it.
+	q := `UPDATE messages SET state = ?, state_at = ?, sealed = NULL WHERE id = ? AND inbox = ? AND (sealed IS NOT NULL OR state IN ('handed', 'held'))`
 	if state == "taken" {
 		q = `UPDATE messages SET state = ?, state_at = ? WHERE id = ? AND inbox = ? AND sealed IS NOT NULL`
 	}
@@ -532,6 +541,39 @@ func (s *Store) PutCard(_, clientID string, card, deviceCert *identityv1.Signed)
 	_, err = s.db.Exec(`INSERT INTO contact_cards (client_id, card, device_cert, updated_at) VALUES (?, ?, ?, ?)
 ON CONFLICT(client_id) DO UPDATE SET card = excluded.card, device_cert = excluded.device_cert, updated_at = excluded.updated_at`, clientID, cb, db, time.Now().Unix())
 	return err
+}
+
+func (s *Store) PutBoundary(_ string, b StoredCard) error {
+	pb, err := proto.Marshal(b.Card)
+	if err != nil {
+		return err
+	}
+	db, err := proto.Marshal(b.DeviceCert)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`INSERT INTO boundary_policy (id, policy, device_cert, updated_at) VALUES (1, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET policy = excluded.policy, device_cert = excluded.device_cert, updated_at = excluded.updated_at`, pb, db, time.Now().Unix())
+	return err
+}
+
+func (s *Store) Boundary(string) (StoredCard, bool, error) {
+	var pb, db []byte
+	err := s.db.QueryRow(`SELECT policy, device_cert FROM boundary_policy WHERE id = 1`).Scan(&pb, &db)
+	if errors.Is(err, sql.ErrNoRows) {
+		return StoredCard{}, false, nil
+	}
+	if err != nil {
+		return StoredCard{}, false, err
+	}
+	b := StoredCard{Card: &identityv1.Signed{}, DeviceCert: &identityv1.Signed{}}
+	if err := proto.Unmarshal(pb, b.Card); err != nil {
+		return StoredCard{}, false, err
+	}
+	if err := proto.Unmarshal(db, b.DeviceCert); err != nil {
+		return StoredCard{}, false, err
+	}
+	return b, true, nil
 }
 
 func (s *Store) Cards(string) (map[string]StoredCard, error) {
