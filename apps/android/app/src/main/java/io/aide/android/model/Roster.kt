@@ -2,6 +2,7 @@ package io.aide.android.model
 
 import io.aide.android.api.Client
 import io.aide.android.api.Machine
+import io.aide.android.api.Persona
 import io.aide.android.api.Session
 import io.aide.android.api.SessionStatus
 import io.aide.android.ui.t
@@ -11,6 +12,9 @@ import java.time.Instant
 // shown in. Each coding agent a machine detected is one bot, under its machine; each personal agent (a grant that
 // follows the account) is one bot, on the account. Nobody files them: they come from what the machines and the account
 // report. And one state per bot (工单 #56): the roster, Hand Work To and the counts all read botState, in the same words.
+
+/** Why work can't go to it, or why it is not confirmed. */
+enum class NotReady { OFFLINE, SIGNED_OUT, PAUSED, MISSING, UNKNOWN, CHECKING }
 
 /** Whether work can go to it now: yes; unverified (it can be sent, but whether it is there is not confirmed); no. */
 enum class Usable { YES, UNVERIFIED, NO }
@@ -67,6 +71,8 @@ data class Bot(
     val doing: String,
     val running: Int,
     val waiting: Int,
+    /** The owner's contacts for it (docs/personas.md): the first is its name and face; there is no Hand Work To page. */
+    val personas: List<Persona> = emptyList(),
 ) {
     /** A coding agent its machine lists (not only a grant): its connections, its projects, its tasks to hand out. */
     val coding: Boolean get() = !personal && agent.isNotEmpty() && key.startsWith("m:")
@@ -106,7 +112,7 @@ private fun grantAgent(label: String): String? {
 /** A hosted app's own name, without where it signs in ("Claude (claude.ai)" → "Claude"). */
 private fun grantName(label: String): String = Regex("^(.+) \\(([^()\\s]+)\\)$").find(label)?.groupValues?.get(1) ?: label
 
-fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<Session>, now: Instant): Roster {
+fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<Session>, now: Instant, personas: List<Persona> = emptyList()): Roster {
     val sorted = machines.sortedWith(compareByDescending<Machine> { it.local }.thenByDescending { it.online }.thenBy { it.machineName })
     val personal = mutableListOf<Bot>()
     val localGrants = mutableMapOf<String, MutableList<Client>>()
@@ -126,7 +132,8 @@ fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<
         val bots = mutableListOf<Bot>()
         for (agent in c.rows.map { it.agent }.distinct()) {
             val g = grants.firstOrNull { grantAgent(it.label) == agent }?.also { grants.remove(it) }
-            bots += bot("m:${m.machineId}/$agent", false, botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now)
+            val own = personas.filter { it.machineId == m.machineId && it.agent == agent }
+            bots += bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own)
         }
         for (g in grants) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
         MachineBots(m, bots)

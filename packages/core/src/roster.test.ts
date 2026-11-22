@@ -19,7 +19,7 @@ function client(id: string, label: string, over: object = {}): Client {
 
 describe("one state per agent (工单 #56)", () => {
   test("checked 40 minutes ago: unknown everywhere, can be sent but not confirmed, never green", () => {
-    const m = machine("m1", "alexwork", [{ name: "claude", available: true, loggedIn: true, checkedAt: old }]);
+    const m = machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true, checkedAt: old }]);
     const s = codingBotState(m, "claude", now)!;
     expect([s.state, s.word, s.usable, s.why]).toEqual(["unknown", "状态未知", "unverified", "unknown"]);
     expect(s.line).toContain("之后没再确认");
@@ -27,7 +27,7 @@ describe("one state per agent (工单 #56)", () => {
   });
 
   test("fresh and signed in: ready; paused: not; signed out: not, said as such", () => {
-    const m = machine("m1", "alexwork", [
+    const m = machine("m1", "work-pc", [
       { name: "claude", available: true, loggedIn: true, version: "2.1.3" },
       { name: "codex", available: true, loggedIn: true, pause: {} },
       { name: "gemini", available: true, loggedIn: false },
@@ -38,14 +38,14 @@ describe("one state per agent (工单 #56)", () => {
   });
 
   test("its machine away: unknown, and work can't go", () => {
-    const m = machine("m1", "alexwork", [{ name: "deepseek", available: true, loggedIn: true }], { online: false });
+    const m = machine("m1", "work-pc", [{ name: "deepseek", available: true, loggedIn: true }], { online: false });
     expect(codingBotState(m, "deepseek", now)).toMatchObject({ state: "unknown", word: "状态未知", usable: "no", why: "offline" });
   });
 
   test("the counts at the top: ready over all, unknown apart (the owner's screenshot: 1 ready, 3 unknown, of 4)", () => {
     const r = roster(
       [
-        machine("m1", "alexwork", [{ name: "claude", available: true, loggedIn: true, checkedAt: old }, { name: "deepseek", available: true, loggedIn: true, checkedAt: old }]),
+        machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true, checkedAt: old }, { name: "deepseek", available: true, loggedIn: true, checkedAt: old }]),
         machine("m2", "laptop", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true, checkedAt: old }]),
       ],
       [],
@@ -61,10 +61,10 @@ describe("one state per agent (工单 #56)", () => {
 describe("the roster (工单 #57)", () => {
   test("personal agents on the account, coding agents under their machine, one name each", () => {
     const machines = [
-      machine("m1", "alexwork", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true }]),
+      machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true }]),
       machine("m2", "laptop", [{ name: "claude", available: true, loggedIn: true }], { online: false }),
     ];
-    const clients = [client("c1", "Muse", { online: true }), client("c2", "DSH on alexwork"), client("c3", "Old", { revoked: true })];
+    const clients = [client("c1", "Muse", { online: true }), client("c2", "DSH on work-pc"), client("c3", "Old", { revoked: true })];
     const sessions = [
       create(SessionSchema, { sessionId: "s1", machineId: "m1", agent: "claude", title: "Fix the CI", status: SessionStatus.RUNNING, updatedAt: fresh }),
       create(SessionSchema, { sessionId: "s2", machineId: "m1", agent: "deepseek", title: "Docs", status: SessionStatus.IDLE, updatedAt: old, createdBy: "c1" }),
@@ -72,7 +72,7 @@ describe("the roster (工单 #57)", () => {
     const r = roster(machines, clients, sessions, now);
     expect(r.personal.map((b) => [b.name, b.state.word, b.doing])).toEqual([["Muse", "在线", "最近：Docs · 40 分钟前"]]);
     expect(r.machines.map((g) => [g.machine.machineName, g.bots.map((b) => b.name)])).toEqual([
-      ["alexwork", ["Claude Code · alexwork", "DSH · alexwork"]],
+      ["work-pc", ["Claude Code · work-pc", "DSH · work-pc"]],
       ["laptop", ["Claude Code · laptop"]],
     ]);
     const [claude, dsh] = r.machines[0].bots;
@@ -85,5 +85,12 @@ describe("the roster (工单 #57)", () => {
   test("a personal agent not online: unknown, with when it was last seen", () => {
     const r = roster([], [client("c1", "Grok Bot", { lastSeen: old })], [], now);
     expect(r.personal[0].state).toMatchObject({ word: "不在线", line: "上次见到：40 分钟前", usable: "unverified" });
+  });
+
+  test("a contact is its bot's own name and face, not a second entry (no Hand Work To page beside the roster)", () => {
+    const m = machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true }]);
+    const p = { personaId: "p1", name: "Reviewer", machineId: "m1", agent: "claude" } as never;
+    const r = roster([m], [], [], now, [p]);
+    expect(r.machines[0].bots.map((b) => [b.name, b.personas.length])).toEqual([["Reviewer", 1]]);
   });
 });

@@ -52,7 +52,6 @@
     "running_other": "{{count}} 个在忙",
     "sentByYou": "你派的",
     "newSession": "新建任务",
-    "contacts": "派活",
     "dsh": "DSH 会话",
     "searchHint": "搜索任务、机器、Agent",
     "machinesOnline": "机器 {{online}}/{{total}} 在线",
@@ -372,6 +371,14 @@
     "started": "已派给 {{name}}：{{title}}",
     "cantSend": "{{word}}：现在派不了（{{line}}）",
     "unverified": "还没确认状态——能派，但对方在不在没核实",
-    "noProject": "这台机器上还没有给它用的项目：在「项目与管理」里添加一个。"
+    "noProject": "这台机器上还没有给它用的项目：在「项目与管理」里添加一个。",
+    "via": "以谁的身份写",
+    "viaPersona": "接着「{{name}}」的对话",
+    "viaNew": "开一个新任务",
+    "viaFresh": "下一条会按它的设置新开一个任务",
+    "identity": "名字与头像",
+    "identityAdd": "新建",
+    "identityEdit": "编辑",
+    "identityNone": "给它起个名字、换个头像、设好项目和模型，就能以这个身份和它接着同一个会话聊。"
   }
 }

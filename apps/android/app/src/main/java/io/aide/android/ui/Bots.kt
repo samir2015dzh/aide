@@ -49,6 +49,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.Machine
+import io.aide.android.api.Persona
+import androidx.compose.material3.TextButton
+import io.aide.android.model.personaColors
+import io.aide.android.model.displayTitle
 import io.aide.android.api.SessionStatus
 import io.aide.android.api.title
 import io.aide.android.model.AppModel
@@ -72,6 +76,14 @@ import kotlinx.coroutines.launch
 /** A bot's face: its coding agent's, or a personal agent's initial on its colour. */
 @Composable
 fun BotFace(b: Bot, size: Int, dot: Color? = null) {
+    // The owner's contact for it is its face (docs/personas.md).
+    b.personas.firstOrNull()?.let { p ->
+        Box {
+            PersonaAvatar(p, size)
+            if (dot != null) Box(Modifier.align(Alignment.BottomEnd).size((size / 4).coerceAtLeast(9).dp).background(MaterialTheme.colorScheme.background, CircleShape).padding(2.dp).background(dot, CircleShape))
+        }
+        return
+    }
     if (b.agent.isNotEmpty()) {
         if (dot != null) FaceWithDot(b.agent, size, dot) else AgentFace(b.agent, size)
         return
@@ -107,8 +119,10 @@ fun BotsTab(model: AppModel, open: (String) -> Unit) {
             delay(60_000)
         }
     }
+    val personas by model.personas.collectAsState()
+    LaunchedEffect(Unit) { model.loadPersonas() }
     val now = Instant.now()
-    val r = roster(world.machines, world.clients, world.sessions.values, now)
+    val r = roster(world.machines, world.clients, world.sessions.values, now, personas.orEmpty())
     val counts = botCounts(r.all)
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
@@ -181,10 +195,12 @@ fun BotRow(b: Bot, onClick: () -> Unit) {
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, back: () -> Unit) {
+fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, back: () -> Unit) {
     val world by model.world.collectAsState()
+    val personas by model.personas.collectAsState()
+    LaunchedEffect(Unit) { model.loadPersonas() }
     val now = Instant.now()
-    val b = roster(world.machines, world.clients, world.sessions.values, now).all.firstOrNull { it.key == key }
+    val b = roster(world.machines, world.clients, world.sessions.values, now, personas.orEmpty()).all.firstOrNull { it.key == key }
     val m = b?.let { x -> world.machines.firstOrNull { it.machineId == x.machineId } }
     Scaffold(
         topBar = {
@@ -235,6 +251,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, back: (
                 }
                 item(key = "bench-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(t("Workbench", "工作台")) } }
                 if (m != null && b.coding) {
+                    item(key = "identity") { Identity(b, m, edit) }
                     item(key = "bench") {
                         machineAgents(m, now).firstOrNull { it.agent == b.agent }?.let { AgentWorkbench(model, m, it) }
                     }
@@ -267,6 +284,10 @@ private fun Compose(model: AppModel, b: Bot, m: Machine, openSession: (String) -
     var text by rememberSaveable { mutableStateOf("") }
     var key by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     var busy by remember { mutableStateOf(false) }
+    // With a contact, writing goes on in the session it talks in (or starts one with its presets); null: a new task.
+    var chosenVia by rememberSaveable { mutableStateOf<String?>(null) }
+    val via = chosenVia?.takeIf { v -> v == "new" || b.personas.any { it.personaId == v } } ?: b.personas.firstOrNull()?.personaId ?: "new"
+    val persona = b.personas.firstOrNull { it.personaId == via }
     Column(Modifier.fillMaxWidth().imePadding()) {
         HorizontalDivider(thickness = 0.5.dp, color = aide.separator)
         Column(Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -275,19 +296,28 @@ private fun Compose(model: AppModel, b: Bot, m: Machine, openSession: (String) -
                 Usable.UNVERIFIED -> Text(t("Not confirmed lately — it can be sent, but whether it is there is not checked", "还没确认状态——能派，但对方在不在没核实"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Usable.YES -> {}
             }
-            if (projects.isEmpty()) Text(t("No project here for this agent yet: add one in Aide on the computer.", "这台电脑上还没有给它用的项目：在电脑上的 Aide 里添加一个。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (projects.size > 1) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (b.personas.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                b.personas.forEach { p -> FilterChip(selected = via == p.personaId, onClick = { chosenVia = p.personaId }, label = { Text(t("Go on as ${p.name}", "接着「${p.name}」")) }) }
+                FilterChip(selected = via == "new", onClick = { chosenVia = "new" }, label = { Text(t("A new task", "开新任务")) })
+            }
+            persona?.let { p ->
+                val s = world.sessions[p.sessionId]
+                if (s != null) Text(t("Goes on in: ${displayTitle(s)}", "接着：${displayTitle(s)}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.pressable { openSession(s.sessionId) })
+                else Text(t("Its next message starts a task with its presets", "下一条会按它的设置新开一个任务"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (persona == null && projects.isEmpty()) Text(t("No project here for this agent yet: add one in Aide on the computer.", "这台电脑上还没有给它用的项目：在电脑上的 Aide 里添加一个。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (persona == null && projects.size > 1) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 projects.forEach { pr -> FilterChip(selected = pr.projectId == chosen?.projectId, onClick = { project = pr.projectId }, label = { Text(pr.title()) }) }
             }
         }
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(text, { text = it }, Modifier.weight(1f), placeholder = { Text(t("A task for ${b.name}…", "写给 ${b.name} 的任务…")) }, maxLines = 6, enabled = b.state.usable != Usable.NO && chosen != null)
+            val can = b.state.usable != Usable.NO && (persona != null || chosen != null)
+            OutlinedTextField(text, { text = it }, Modifier.weight(1f), placeholder = { Text(t("A task for ${b.name}…", "写给 ${b.name} 的任务…")) }, maxLines = 6, enabled = can)
             Spacer(Modifier.width(4.dp))
-            IconButton(enabled = text.isNotBlank() && !busy && chosen != null && b.state.usable != Usable.NO, onClick = {
-                val pr = chosen ?: return@IconButton
+            IconButton(enabled = text.isNotBlank() && !busy && can, onClick = {
                 busy = true
                 scope.launch {
-                    val sid = model.startTask(m.machineId, pr.projectId, b.agent, text.trim(), key)
+                    val sid = if (persona != null) model.talk(persona, text.trim(), key) else model.startTask(m.machineId, chosen!!.projectId, b.agent, text.trim(), key)
                     busy = false
                     if (sid != null) {
                         text = ""
@@ -296,6 +326,29 @@ private fun Compose(model: AppModel, b: Bot, m: Machine, openSession: (String) -
                     }
                 }
             }) { Icon(Icons.AutoMirrored.Filled.Send, t("Hand Work", "派活")) }
+        }
+    }
+}
+
+/** Its names and faces (docs/personas.md, once Hand Work To's contacts): the first is its name and face in the roster. */
+@Composable
+private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).aideInset().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(t("Names and faces", "名字与头像"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            TextButton(onClick = { edit(Persona(icon = "robot", color = personaColors.first(), machineId = m.machineId, agent = b.agent, name = if (b.personas.isEmpty()) b.name else "")) }) { Text(t("Add", "新建")) }
+        }
+        if (b.personas.isEmpty()) Text(t("Give it a name, an avatar and presets to talk to it as that, in one session that goes on.", "给它起个名字、换个头像、设好项目和模型，就能以这个身份和它接着同一个会话聊。"), style = MaterialTheme.typography.bodySmall, color = aide.faint)
+        b.personas.forEach { p ->
+            Row(Modifier.fillMaxWidth().pressable { edit(p) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                PersonaAvatar(p, 32)
+                HSpace(10)
+                Column(Modifier.weight(1f)) {
+                    Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(listOf(p.projectId, p.model, p.effort, p.mode).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = aide.faint)
+                }
+                Text(t("Edit", "编辑"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

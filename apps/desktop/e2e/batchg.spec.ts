@@ -4,8 +4,8 @@ import { launch, snap } from "./app";
 // 批 G on the desktop, as the owner reads it (工单 #56/#57): the app opens on the roster in the sidebar — the personal
 // agents on the account, this computer's coding agents under it, a row each with one name and one state; a click
 // opens the bot's own page, its work in the middle with a box to hand it work, its workbench beside it (its
-// connection, its projects, pause and hiding); and Hand Work To says of each agent what the roster says, in the same
-// words. With AIDE_SCREENS the pictures go to the delivery record.
+// connection, its projects, pause and hiding, its names and faces); and a bot's page says of it what the roster says,
+// in the same words — there is no Hand Work To page beside the roster. With AIDE_SCREENS the pictures go to the delivery record.
 
 test("the roster is the first thing in the sidebar, and a bot opens its own page", async () => {
   const { page } = await launch();
@@ -47,20 +47,19 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
   await snap(page, "batchg-personal-page");
 });
 
-test("Hand Work To says of an agent what the roster says (工单 #56)", async () => {
+test("a bot's page says of it what the roster says, and why work can't go to it now (工单 #56)", async () => {
   const { page } = await launch();
-  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: /（这台电脑）$/ });
+  const roster = page.getByRole("region", { name: "Bot" });
+  // No Hand Work To page beside the roster: the roster is whom to, the bot's page is where to write.
+  await expect(page.locator(".side-h").getByRole("button", { name: "派活" })).toHaveCount(0);
+  const here = roster.getByRole("group", { name: /（这台电脑）$/ });
   const codex = here.getByRole("button", { name: /^Codex/ });
   await expect(codex).toContainText("未登录", { timeout: 30_000 });
-  await page.getByRole("button", { name: "派活" }).first().click();
-  const sheet = page.getByRole("dialog");
-  const row = sheet.getByRole("option", { name: /Codex/ });
-  // Not ready: said so, with the machine page's words for it, never a green "可以派活".
-  await expect(row).toContainText("没登录，暂时派不了");
-  await expect(row).toContainText("Codex 装了但没登录");
-  await expect(row.locator(".ok")).toHaveCount(0);
-  const claude = sheet.getByRole("option", { name: /Claude Code/ });
-  await expect(claude).toContainText("可以派活");
-  await expect(claude).toContainText("已登录");
+  await codex.click();
+  const bot = page.getByRole("region", { name: "Codex" });
+  await expect(bot.locator(".bot-pill")).toHaveText("未登录");
+  // Not ready: said so in the machine page's words, and the box can't send.
+  await expect(bot.locator(".bot-compose-why")).toContainText("未登录：现在派不了");
+  await expect(bot.locator(".bot-compose-why")).toContainText("Codex 装了但没登录");
   await snap(page, "batchg-dispatch");
 });

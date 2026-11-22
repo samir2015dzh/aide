@@ -13,7 +13,6 @@ import io.aide.android.model.BridgeView
 import io.aide.android.model.ConnState
 import io.aide.android.model.NotReady
 import io.aide.android.model.bridgeView
-import io.aide.android.model.dispatchTargets
 import io.aide.android.model.humanError
 import io.aide.android.model.machineConnections
 import org.junit.Assert.assertEquals
@@ -59,20 +58,6 @@ class BatchDTest {
         assertEquals(ConnState.UNKNOWN, off.rows[0].state)
         val old = machineConnections(machine(AgentStatus("codex", available = true, loggedIn = true, checkedAt = "2026-11-22T08:00:00Z")), now)
         assertTrue(old.rows[0].lacks!!.startsWith("Last checked"))
-    }
-
-    @Test
-    fun everyDetectedAgentIsListedWithNoContact() {
-        val groups = dispatchTargets(
-            listOf(machine(AgentStatus("claude", available = true, loggedIn = true), AgentStatus("deepseek", available = true, loggedIn = true, pause = AgentPause()), AgentStatus("codex", available = false))),
-            listOf(Persona(personaId = "p", name = "Reviewer", machineId = "m1", agent = "claude")),
-        )
-        val t = groups.single().targets
-        assertEquals(listOf("claude", "deepseek"), t.map { it.agent })
-        assertEquals("Reviewer", t[0].persona?.name)
-        assertTrue(t[0].ready)
-        assertEquals(NotReady.PAUSED, t[1].why)
-        assertFalse(t[1].ready)
     }
 
     @Test

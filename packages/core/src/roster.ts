@@ -1,3 +1,4 @@
+import type { Persona } from "@aide/proto/identity";
 import type { Client, Machine } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { agentName } from "@aide/ui";
@@ -91,6 +92,11 @@ export type Bot = {
   machineId: string;
   /** A personal agent's grant; a coding agent's own grant, when it has one (DSH on work-pc). */
   client?: Client;
+  /**
+   * The owner's contacts for this coding agent on its machine (docs/personas.md): a name, an avatar, presets and the
+   * session they talk in. The first is the bot's face and name; there is no Hand Work To page beside the roster.
+   */
+  personas: Persona[];
   state: BotState;
   /** What it is doing lately, in one line: "2 running · Fix the CI", "Last: Fix the CI · 3 hr ago", or nothing. */
   doing: string;
@@ -118,7 +124,7 @@ function grantAgent(label: string): string | undefined {
 }
 
 /** Every bot: the personal agents, then each machine's coding agents (this computer first, then online, then by name). */
-export function roster(machines: readonly Machine[], clients: readonly Client[], sessions: readonly Session[], now: Date): Roster {
+export function roster(machines: readonly Machine[], clients: readonly Client[], sessions: readonly Session[], now: Date, personas: readonly Persona[] = []): Roster {
   const sorted = [...machines].sort((a, b) => Number(b.local) - Number(a.local) || Number(b.online) - Number(a.online) || a.machineName.localeCompare(b.machineName));
   const personal: Bot[] = [];
   const localGrants = new Map<string, Client[]>();
@@ -127,7 +133,7 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
     const k = clientCategory(c, machines);
     if (k.category === "personal") {
       const mine = sessions.filter((s) => s.createdBy === c.clientId);
-      personal.push({ key: `c:${c.clientId}`, kind: "personal", name: agentName(c.label), agent: "", machineId: "", client: c, state: personalBotState(c, now), ...doing(mine, now) });
+      personal.push({ key: `c:${c.clientId}`, kind: "personal", name: agentName(c.label), agent: "", machineId: "", client: c, personas: [], state: personalBotState(c, now), ...doing(mine, now) });
       continue;
     }
     const id = machines.find((m) => m.machineName === k.machine)?.machineId ?? "";
@@ -143,17 +149,18 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
       const gi = grants.findIndex((g) => grantAgent(g.label) === agent);
       const client = gi >= 0 ? grants.splice(gi, 1)[0] : undefined;
       const mine = sessions.filter((s) => s.machineId === m.machineId && s.agent === agent);
-      bots.push({ key: `m:${m.machineId}/${agent}`, kind: "local", name: botName(agent, m, machines.length), agent, machineId: m.machineId, client, state, ...doing(mine, now) });
+      const own = personas.filter((p) => p.machineId === m.machineId && p.agent === agent);
+      bots.push({ key: `m:${m.machineId}/${agent}`, kind: "local", name: own[0]?.name || botName(agent, m, machines.length), agent, machineId: m.machineId, client, personas: own, state, ...doing(mine, now) });
     }
     // A coding agent with a grant of its own that its machine does not list (another kind, or not detected): its own bot.
     for (const g of grants) {
-      bots.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: m.machineId, client: g, state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
+      bots.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: m.machineId, client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
     }
     return { machine: m, bots };
   });
   // Grants of coding agents on a machine not known here: with the personal ones, rather than nowhere.
   for (const g of localGrants.get("") ?? []) {
-    personal.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: "", client: g, state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
+    personal.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: "", client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
   }
   return { personal, machines: out };
 }

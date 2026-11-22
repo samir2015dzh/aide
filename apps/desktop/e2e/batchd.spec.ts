@@ -60,7 +60,7 @@ test("this Mac's connections in one place, and the same rows on Connect Agent; e
   await app.close();
 });
 
-test("Hand Work To lists the detected agents by machine; the map's links read as connected without a hover", async () => {
+test("the roster lists the detected agents by machine; the map's links read as connected without a hover", async () => {
   const { app, page } = await launch();
   const map = page.getByRole("region", { name: "链路" });
   await expect(map.locator(".lm-edge.up").first()).toBeVisible();
@@ -71,10 +71,9 @@ test("Hand Work To lists the detected agents by machine; the map's links read as
   expect(stroke).not.toBe(grey);
   await snap(page, "batchd-map");
 
-  await page.locator(".side-h").getByRole("button", { name: "派活" }).click();
-  const sheet = page.getByRole("dialog", { name: "派活给谁" });
-  await expect(sheet.getByRole("group", { name: "owner-mac" })).toBeVisible();
-  await expect(sheet.getByRole("option").first()).toBeVisible();
+  // Whom to hand work to is the roster (批 G): the detected agents by machine.
+  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: /^owner-mac/ });
+  await expect(here.getByRole("button").first()).toBeVisible();
   await snap(page, "batchd-hand-work");
   await app.close();
 });

@@ -47,3 +47,9 @@
 .bot-bench .ag-page{padding:0}
 .sheet .contact-t .contact-line{color:var(--l3)}
 .bot-bench .ag-conn{margin:0 0 8px;box-shadow:none;border-radius:var(--r-card);background:var(--win2);padding-left:12px}
+.bot-pface{display:inline-flex;align-items:center;justify-content:center;border-radius:28%;color:#fff;flex:none}
+.bot-compose-via{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.bot-note{font-size:12.5px;color:var(--l3);margin:0 0 6px}
+.bot-persona{display:flex;align-items:center;gap:10px;padding:6px 0}
+.bot-persona-t{flex:1;min-width:0;display:flex;flex-direction:column;font-size:13px}
+.bot-persona-t .muted{font-size:12px}

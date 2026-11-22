@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import type { Persona } from "@aide/proto/identity";
 import { useTranslation } from "react-i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import type { Machine } from "@aide/proto/local";
@@ -10,6 +11,7 @@ import { connDot, ConnRowView } from "../Connections";
 import { GrantAvatar, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
 import { GrantDetail } from "../settings/Grants";
+import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
 import { errorText, useNow, useStore } from "../store";
 import "./bots.css";
 
@@ -19,14 +21,43 @@ import "./bots.css";
 // work in the middle, with a box to hand it work, and beside it its workbench — how it is connected, its projects,
 // pause, hiding, its grant and kind — all under it, not in the machine, settings and task drawers.
 
+// The owner's contacts (docs/personas.md), read once for every bot page and the roster, again when one changes.
+let personaCache: Persona[] = [];
+const personaSubs = new Set<() => void>();
+function loadPersonas() {
+  local.listPersonas({}).then((r) => ((personaCache = r.personas), personaSubs.forEach((f) => f())), () => {});
+}
+
+export function usePersonas(): Persona[] {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const f = () => tick((x) => x + 1);
+    personaSubs.add(f);
+    if (personaSubs.size === 1) loadPersonas();
+    window.addEventListener(personasChanged, loadPersonas);
+    return () => (personaSubs.delete(f), window.removeEventListener(personasChanged, loadPersonas));
+  }, []);
+  return personaCache;
+}
+
 export function useRoster(): Roster {
   const st = useStore();
   const now = useNow(30_000);
-  return useMemo(() => roster(st.machines, st.clients, st.sessions, now), [st.machines, st.clients, st.sessions, now]);
+  const personas = usePersonas();
+  return useMemo(() => roster(st.machines, st.clients, st.sessions, now, personas), [st.machines, st.clients, st.sessions, now, personas]);
 }
 
-/** A bot's face: its coding agent's logo, or its grant's picture. */
+function PersonaFace({ p, size }: { p: Persona; size: number }) {
+  return (
+    <span className="av bot-pface" aria-hidden style={{ width: size, height: size, fontSize: Math.round(size * 0.5), background: p.color || personaColors[5] }}>
+      {personaIcons[p.icon] ?? [...p.name][0]?.toUpperCase()}
+    </span>
+  );
+}
+
+/** A bot's face: its contact's avatar when the owner gave it one, its coding agent's logo, or its grant's picture. */
 export function BotFace({ b, size = 28 }: { b: Bot; size?: number }) {
+  if (b.personas[0]) return <PersonaFace p={b.personas[0]} size={size} />;
   if (b.client && (b.kind === "personal" || !b.agent)) return <GrantAvatar c={b.client} size={size >= 40 ? "lg" : size >= 30 ? "md" : "sm"} />;
   return <AgentTile agent={b.agent} size={size} />;
 }
@@ -179,6 +210,7 @@ function LocalBench({ b, m }: { b: Bot; m: Machine }) {
         </div>
         <button className="btn sm" onClick={recheck} disabled={!m.online && !m.local}>{t("bots.recheck")}</button>
       </section>
+      <Identity b={b} m={m} />
       <section>
         <div className="bot-sec-h">{t("bots.manage")}</div>
         <AgentPage m={m} agent={b.agent} bare />
@@ -197,14 +229,22 @@ function Compose({ b, m }: { b: Bot; m: Machine }) {
   const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const proj = projects.find((p) => p.projectId === project) ?? projects[0];
-  const can = b.state.usable !== "no" && !!proj && !!text.trim() && !busy;
+  // With a contact, writing goes on in the session it talks in (or starts one with its presets); "new" starts afresh.
+  const [chosen, setVia] = useState<string>();
+  const via = chosen === "new" || b.personas.some((p) => p.personaId === chosen) ? chosen! : (b.personas[0]?.personaId ?? "new");
+  const persona = b.personas.find((p) => p.personaId === via);
+  const current = persona?.sessionId ? st.sessions.find((s) => s.sessionId === persona.sessionId) : undefined;
+  const can = b.state.usable !== "no" && (!!persona || !!proj) && !!text.trim() && !busy;
   const send = async (e: FormEvent) => {
     e.preventDefault();
     if (!can) return;
     setBusy(true);
     try {
-      const res = await local.startSession({ machineId: m.machineId, session: { idempotencyKey: key, agent: b.agent, projectId: proj!.projectId, prompt: text } });
-      st.show(t("bots.started", { name: b.name, title: displayTitle(res.session!) }));
+      const res = persona
+        ? await local.talkToPersona({ personaId: persona.personaId, text, idempotencyKey: key })
+        : await local.startSession({ machineId: m.machineId, session: { idempotencyKey: key, agent: b.agent, projectId: proj!.projectId, prompt: text } });
+      if (persona) loadPersonas();
+      st.show(t("bots.started", { name: persona?.name ?? b.name, title: displayTitle(res.session!) }));
       setText("");
       setKey(crypto.randomUUID());
     } catch (err) {
@@ -219,14 +259,29 @@ function Compose({ b, m }: { b: Bot; m: Machine }) {
       ) : b.state.usable === "unverified" ? (
         <div className="bot-compose-why quiet">{t("bots.unverified")}</div>
       ) : null}
-      {projects.length === 0 ? (
+      {b.personas.length > 0 && (
+        <div className="bot-compose-via">
+          <select className="field sm" value={via} aria-label={t("bots.via")} onChange={(e) => setVia(e.target.value)}>
+            {b.personas.map((p) => <option key={p.personaId} value={p.personaId}>{t("bots.viaPersona", { name: p.name })}</option>)}
+            <option value="new">{t("bots.viaNew")}</option>
+          </select>
+          {current ? (
+            <button type="button" className="link" onClick={() => st.select(current.sessionId)}>{displayTitle(current)}</button>
+          ) : persona ? (
+            <span className="muted">{t("bots.viaFresh")}</span>
+          ) : null}
+        </div>
+      )}
+      {!persona && projects.length === 0 ? (
         <div className="bot-compose-why quiet">{t("bots.noProject")}</div>
       ) : (
         <>
           <textarea className="field" rows={3} value={text} placeholder={t("bots.placeholder", { name: b.name })} aria-label={t("bots.placeholder", { name: b.name })}
             onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && void send(e)} />
           <div className="bot-compose-bar">
-            {projects.length > 1 ? (
+            {persona ? (
+              <span className="muted">{((x) => (x ? projectTitle(x) : persona.projectId))(st.projects.find((p) => p.machineId === m.machineId && p.projectId === persona.projectId))}</span>
+            ) : projects.length > 1 ? (
               <select className="field sm" value={proj?.projectId ?? ""} aria-label={t("bots.project")} onChange={(e) => setProject(e.target.value)}>
                 {projects.map((p) => <option key={p.projectId} value={p.projectId}>{projectTitle(p)}</option>)}
               </select>
@@ -238,5 +293,36 @@ function Compose({ b, m }: { b: Bot; m: Machine }) {
         </>
       )}
     </form>
+  );
+}
+
+/**
+ * Its names and faces (docs/personas.md, once Hand Work To's contacts): the owner can give this agent a name, an avatar
+ * and presets (project, model, effort, mode), and talk to it as that, in one session that goes on. The first one is
+ * the bot's name and face in the roster.
+ */
+function Identity({ b, m }: { b: Bot; m: Machine }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  return (
+    <section aria-label={t("bots.identity")}>
+      <div className="bot-sec-h">
+        {t("bots.identity")}
+        <button className="link" onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
+          {t("bots.identityAdd")}
+        </button>
+      </div>
+      {b.personas.length === 0 && <p className="bot-note">{t("bots.identityNone")}</p>}
+      {b.personas.map((p) => (
+        <div key={p.personaId} className="bot-persona">
+          <PersonaFace p={p} size={28} />
+          <span className="bot-persona-t">
+            <b>{p.name}</b>
+            <span className="muted">{[p.projectId, p.model, p.effort, p.mode].filter(Boolean).join(" · ")}</span>
+          </span>
+          <button className="link" onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...p } } })}>{t("bots.identityEdit")}</button>
+        </div>
+      ))}
+    </section>
   );
 }

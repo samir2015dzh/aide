@@ -19,8 +19,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,12 +51,8 @@ sealed interface Route {
     /** DSH's own sessions, and one of them. */
     data object DSH : Route
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
-    /** Handing work over (docs/personas.md): pick a contact, then write to it. */
-    data object Contacts : Route
-    data class Contact(val id: String) : Route
+    /** A contact, from its bot's page (docs/personas.md); an empty one adds. */
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
-    /** A task for an agent on a machine, with no contact (工单 #41). */
-    data class Dispatch(val machineId: String, val agent: String) : Route
     /** A bot's own page (工单 #57). */
     data class Bot(val key: String) : Route
 }
@@ -118,27 +112,14 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
             Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
-            Route.Contacts -> ContactsPage(model, open = { stack.add(Route.Contact(it.personaId)) }, dispatch = { stack.add(Route.Dispatch(it.machineId, it.agent)) }, add = { stack.add(Route.EditContact(io.aide.android.api.Persona(icon = "robot", color = io.aide.android.model.personaColors.first()))) }, back = { stack.removeAt(stack.lastIndex) })
-            is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
-            is Route.Dispatch -> DispatchPage(model, top.machineId, top.agent, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
-            // Written to, the real session opens over the contact.
-            is Route.Contact -> ContactPage(model, top.id, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
-            is Route.EditContact -> ContactEditPage(model, top.persona) { kept ->
-                stack.removeAt(stack.lastIndex)
-                // Deleted: its page goes too.
-                if (kept == null && top.persona.personaId.isNotEmpty()) stack.removeAll { it is Route.Contact && it.id == top.persona.personaId }
-                if (kept != null && top.persona.personaId.isEmpty()) stack.add(Route.Contact(kept.personaId))
-            }
+            is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
+            is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }
         }
         return@AnimatedContent
     }
     val needs = world.buckets.needsYou.size
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
-        // Handing work over: a contact first, then what to do.
-        floatingActionButton = {
-            if (tab == Tab.Sessions) ExtendedFloatingActionButton(onClick = { stack.add(Route.Contacts) }, shape = androidx.compose.foundation.shape.CircleShape, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, icon = { Icon(Icons.Filled.Person, null) }, text = { Text(t("Hand Work", "派活")) })
-        },
         bottomBar = {
             // A bar a step off the page with a hairline over it, so the page ends where the bar starts (工单 #54).
             Column {

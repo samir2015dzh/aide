@@ -318,7 +318,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
   };
 
   return (
-    <div className="ag-page" role="region" aria-label={title}>
+    <div className="ag-page" role={bare ? undefined : "region"} aria-label={bare ? undefined : title}>
       {/* bare: on its bot's page (工单 #57), whose head already says who it is and how it stands. */}
       {!bare && <div className="ag-hero">
         <AgentTile agent={agent} size={44} />

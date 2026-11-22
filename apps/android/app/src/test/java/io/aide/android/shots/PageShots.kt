@@ -25,7 +25,6 @@ import io.aide.android.api.SessionStatus
 import io.aide.android.model.AppModel
 import io.aide.android.model.World
 import io.aide.android.ui.AideTheme
-import io.aide.android.ui.ContactsPage
 import io.aide.android.ui.BotsTab
 import io.aide.android.ui.BotPage
 import io.aide.android.api.Client
@@ -94,10 +93,9 @@ class PageShots {
     @Test fun tasks() = model().let { m -> shot("1-tasks") { SessionsTab(m, openDSH = {}) {} } }
     @Test fun needsYou() = model().let { m -> shot("2-needs-you") { NeedsYouTab(m) {} } }
     @Test fun bots() = model().let { m -> shot("3-bots") { BotsTab(m) {} } }
-    @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}) {} } }
-    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse") { BotPage(m, "c:c1", openSession = {}) {} } }
+    @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
+    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} } }
     @Test fun settings() = model().let { m -> shot("4-settings") { SettingsTab(m) } }
-    @Test fun dispatch() = model().let { m -> shot("5-dispatch") { ContactsPage(m, open = {}, dispatch = {}, add = {}, back = {}) } }
 
     companion object {
         private val now: Instant = Instant.now()

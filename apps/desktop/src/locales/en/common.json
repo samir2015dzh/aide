@@ -54,7 +54,6 @@
     "running_other": "{{count}} working",
     "sentByYou": "Sent by You",
     "newSession": "New Task",
-    "contacts": "Hand Work",
     "dsh": "DSH Sessions",
     "searchHint": "Search tasks, machines, agents",
     "machinesOnline": "{{online}}/{{total}} machines online",
@@ -384,6 +383,14 @@
     "started": "Handed to {{name}}: {{title}}",
     "cantSend": "{{word}}: can't hand work now ({{line}})",
     "unverified": "Not confirmed lately — it can be sent, but whether it is there is not checked",
-    "noProject": "No project here for this agent yet: add one under Projects and management."
+    "noProject": "No project here for this agent yet: add one under Projects and management.",
+    "via": "Write as",
+    "viaPersona": "Go on as {{name}}",
+    "viaNew": "A new task",
+    "viaFresh": "its next message starts a task with its presets",
+    "identity": "Names and faces",
+    "identityAdd": "Add",
+    "identityEdit": "Edit",
+    "identityNone": "Give it a name, an avatar and presets (project, model) to talk to it as that, in one session that goes on."
   }
 }
