@@ -235,11 +235,14 @@
       "offline": "Its machine is offline",
       "signedOut": "Not signed in",
       "paused": "Paused",
-      "missing": "Not detected on this machine now"
+      "missing": "Not detected on this machine now",
+      "unknown": "Not confirmed lately",
+      "checking": "Checking"
     },
     "startedAgent": "{{agent}} started “{{title}}”",
     "freshIn": "A new task starts in the project “{{project}}”.",
-    "noProject": "{{agent}} has no project on this machine yet: add one in Settings › Connect Agent."
+    "noProject": "{{agent}} has no project on this machine yet: add one in Settings › Connect Agent.",
+    "unverified": "Not confirmed — it can be sent, but whether it is there is not checked"
   },
   "working": "Working…"
 }

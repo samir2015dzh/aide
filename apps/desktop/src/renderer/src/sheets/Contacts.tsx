@@ -5,7 +5,7 @@ import { AgentTile } from "@aide/ui";
 import type { Persona } from "@aide/proto/identity";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
-import { dispatchTargets, type Target } from "../dispatch";
+import { dispatchTargets, type Target } from "@aide/core";
 import { Icon } from "../icons";
 import { errorText, useStore } from "../store";
 import { ErrorLine, useAction } from "./common";
@@ -128,8 +128,11 @@ export function ContactsSheet() {
                   <b>{x.persona ? x.persona.name : codingAgentTitle(x.agent)}</b>
                   <span className="muted">
                     {x.persona ? `${codingAgentTitle(x.agent)} · ` : ""}
-                    <span className={x.ready ? "ok" : "warn"}>{x.ready ? t("contacts.ready") : why(x)}</span>
+                    {/* Green only when it is ready now; not confirmed, it says so, in a quiet colour (工单 #56). */}
+                    <span className={x.state?.usable === "yes" ? "ok" : x.ready ? "" : "warn"}>{x.state?.usable === "yes" ? t("contacts.ready") : x.ready ? t("contacts.unverified") : why(x)}</span>
                   </span>
+                  {/* What the machine page says of it, in its words. */}
+                  {x.state && <span className="muted contact-line">{x.state.line}</span>}
                 </span>
                 {x.persona ? (
                   <button type="button" className="link" onClick={() => setEditing({ ...x.persona! })}>{t("contacts.edit")}</button>

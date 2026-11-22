@@ -178,7 +178,7 @@
     "unknown": "状态未知",
     "checking": "正在检测…",
     "machineAway": "机器暂时连不上：上次知道的是「{{text}}」（{{when}}）",
-    "stale": "{{when}}之后没有再检测过（当时是「{{text}}」）",
+    "stale": "上次检测是{{when}}，之后没再确认（当时是「{{text}}」）",
     "signedIn": "已登录",
     "signedInVersion": "已登录 · {{version}}",
     "signedOut": "未登录",
@@ -213,12 +213,21 @@
     "loginNoReason": "没有给出原因",
     "loginTimedOut": "上次登录等浏览器等了 10 分钟，已停止。可以再试一次。",
     "loginCancelled": "上次登录已取消。",
-    "dshModels": "模型：{{models}}",
-    "entry": {
-      "ok": "可以用",
-      "partial": "部分可用",
-      "missing": "不可用",
-      "unknown": "状态未知"
-    }
+    "dshModels": "模型：{{models}}"
+  },
+  "roster": {
+    "online": "在线",
+    "onlineLine": "现在连着你的账号",
+    "away": "不在线",
+    "seen": "上次见到：{{when}}",
+    "neverSeen": "还没连上过",
+    "paused": "已暂停",
+    "pausedLine": "已暂停：恢复之前不会有新任务交给它",
+    "waiting": "{{count}} 个等你回答",
+    "running": "{{count}} 个进行中",
+    "last": "最近：{{title}} · {{when}}",
+    "countReady": "可用 {{count}}",
+    "countUnknown": "未知 {{count}}",
+    "countOf": "共 {{count}}"
   }
 }

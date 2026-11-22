@@ -58,7 +58,7 @@ class BatchDTest {
         val off = machineConnections(machine(AgentStatus("codex", available = true, loggedIn = true, checkedAt = checked), online = false), now)
         assertEquals(ConnState.UNKNOWN, off.rows[0].state)
         val old = machineConnections(machine(AgentStatus("codex", available = true, loggedIn = true, checkedAt = "2026-11-22T08:00:00Z")), now)
-        assertTrue(old.rows[0].lacks!!.startsWith("Not checked again since"))
+        assertTrue(old.rows[0].lacks!!.startsWith("Last checked"))
     }
 
     @Test

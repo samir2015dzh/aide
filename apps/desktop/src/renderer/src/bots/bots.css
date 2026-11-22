@@ -1,0 +1,49 @@
+/* The roster and a bot's page (工单 #57): BotArk's hierarchy (BOTARK-REF §4), in Aide's own colours. */
+.side-bots{flex:none;max-height:48%;overflow-y:auto;padding:0 8px 6px;scrollbar-width:thin;border-bottom:.5px solid var(--sep)}
+.side-bots>.side-h{padding:0 2px 0 10px}
+.bot-counts{margin-left:auto;font-size:11.5px;color:var(--l3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-bots .grp-h{position:static;background:transparent;padding:8px 10px 4px}
+.bot-mdot{width:6px;height:6px}
+.bot-row{display:flex;align-items:center;gap:10px;width:100%;padding:6px 9px;border:0;border-radius:var(--r-ctl);background:none;text-align:left;font:inherit;color:inherit}
+.bot-row:hover{background:var(--fill2)}
+.bot-row.sel{background:var(--fill)}
+.bot-face{position:relative;flex:none;display:inline-flex}
+.bot-face>.dotc{position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;box-shadow:0 0 0 2px var(--side-head,var(--win))}
+.bot-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.bot-l1{display:flex;align-items:baseline;gap:6px;min-width:0}
+.bot-l1 b{font-size:13px;font-weight:var(--font-weight-semibold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bot-word{flex:none;font-size:11px;color:var(--l2)}
+.bot-word[data-usable=yes]{color:var(--green)}
+.bot-l2{font-size:11.5px;color:var(--l3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bot-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;background:var(--fill2);font-size:12px;color:var(--l2);white-space:nowrap}
+.bot-pill[data-usable=yes]{color:var(--green)}
+.bot-pill[data-state=missing]{color:var(--orange)}
+
+.bot-page{display:flex;flex-direction:column;height:100%;min-height:0}
+.bot-head{display:flex;align-items:center;gap:14px;padding:18px 24px 14px;border-bottom:.5px solid var(--sep)}
+.bot-head-t{min-width:0;display:flex;flex-direction:column;gap:4px}
+.bot-head-l1{display:flex;align-items:center;gap:10px}
+.bot-head-l1 h1{margin:0;font-size:20px;font-weight:var(--font-weight-semibold)}
+.bot-head-l2{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--l2)}
+.bot-where{display:inline-flex;align-items:center;gap:5px}
+.bot-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 340px}
+.bot-main{display:flex;flex-direction:column;min-height:0;padding:14px 24px 16px}
+.bot-sec-h{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--l2);margin:4px 0 8px}
+.bot-stream{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.bot-empty,.bot-chat-soon{font-size:13px;color:var(--l3);padding:12px 2px}
+.bot-chat-soon{border-top:.5px solid var(--sep);padding-top:14px}
+.bot-work{display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:var(--r-ctl);background:none;text-align:left;font:inherit;color:inherit}
+.bot-work:hover{background:var(--fill2)}
+.bot-work-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.bot-work-t b{font-weight:var(--font-weight-semibold);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bot-work-t span{font-size:12px;color:var(--l2)}
+.bot-work-when{font-size:11.5px;color:var(--l3);flex:none}
+.bot-compose{margin-top:10px;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:var(--r-card);background:var(--win2)}
+.bot-compose textarea{resize:vertical;min-height:58px}
+.bot-compose-bar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bot-compose-why{font-size:12.5px;color:var(--orange)}
+.bot-compose-why.quiet{color:var(--l2)}
+.bot-bench{min-height:0;overflow-y:auto;border-left:.5px solid var(--sep);padding:14px 16px 24px;display:flex;flex-direction:column;gap:18px}
+.bot-bench .ag-page{padding:0}
+.sheet .contact-t .contact-line{color:var(--l3)}
+.bot-bench .ag-conn{margin:0 0 8px;box-shadow:none;border-radius:var(--r-card);background:var(--win2);padding-left:12px}

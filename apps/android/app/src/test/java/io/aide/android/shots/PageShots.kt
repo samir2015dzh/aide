@@ -26,7 +26,9 @@ import io.aide.android.model.AppModel
 import io.aide.android.model.World
 import io.aide.android.ui.AideTheme
 import io.aide.android.ui.ContactsPage
-import io.aide.android.ui.MachinesTab
+import io.aide.android.ui.BotsTab
+import io.aide.android.ui.BotPage
+import io.aide.android.api.Client
 import io.aide.android.ui.NeedsYouTab
 import io.aide.android.ui.SessionsTab
 import io.aide.android.ui.SettingsTab
@@ -91,7 +93,9 @@ class PageShots {
 
     @Test fun tasks() = model().let { m -> shot("1-tasks") { SessionsTab(m, openDSH = {}) {} } }
     @Test fun needsYou() = model().let { m -> shot("2-needs-you") { NeedsYouTab(m) {} } }
-    @Test fun machines() = model().let { m -> shot("3-machines") { MachinesTab(m) } }
+    @Test fun bots() = model().let { m -> shot("3-bots") { BotsTab(m) {} } }
+    @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}) {} } }
+    @Test fun personalBotPage() = model().let { m -> shot("7-bot-muse") { BotPage(m, "c:c1", openSession = {}) {} } }
     @Test fun settings() = model().let { m -> shot("4-settings") { SettingsTab(m) } }
     @Test fun dispatch() = model().let { m -> shot("5-dispatch") { ContactsPage(m, open = {}, dispatch = {}, add = {}, back = {}) } }
 
@@ -130,12 +134,14 @@ class PageShots {
                 s("s5", "m2", "claude", SessionStatus.IDLE, "CI 缓存加速复核", 180),
                 s("s6", "m1", "deepseek", SessionStatus.CRASHED, "Go 内存审计第二步", 300),
                 s("s7", "m2", "codex", SessionStatus.IDLE, "README 链接核对", 1500),
+                s("s8", "m1", "claude", SessionStatus.IDLE, "批 G 名册复核", 20).copy(createdBy = "c1"),
             ).associateBy { it.sessionId }
             return World(
                 status = GetStatusResponse(initialized = true, relayUrl = "https://relay.example", relayConnected = true, version = "0.2.5", account = "owner"),
                 machines = listOf(alex, big),
                 devices = listOf(Device("k1", "我的手机", "android", thisDevice = true), Device("k2", "workstation", "windows", machineId = "m1", machineOnline = true), Device("k3", "laptop", "linux", machineId = "m2", machineOnline = true)),
                 projects = listOf(Project("m1", "aide", name = "Aide"), Project("m2", "aide", name = "Aide")),
+                clients = listOf(Client(clientId = "c1", grantId = "c1", label = "Muse", online = true), Client(clientId = "c2", grantId = "c2", label = "Grok Bot", lastSeen = ago(90))),
                 sessions = sessions,
                 watched = true,
             )

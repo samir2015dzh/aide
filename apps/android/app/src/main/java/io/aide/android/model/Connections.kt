@@ -81,7 +81,7 @@ fun machineConnections(m: Machine, now: Instant): MachineConnections {
             text = t("Unknown", "状态未知"),
             was = r.text,
             lacks = if (!reachable) t("The machine can't be reached now: last known “${r.text}” ($whenText)", "机器暂时连不上：上次知道的是「${r.text}」（$whenText）")
-            else t("Not checked again since $whenText (it said “${r.text}”)", "${whenText}之后没有再检测过（当时是「${r.text}」）"),
+            else t("Last checked $whenText, not confirmed since (it said “${r.text}”)", "上次检测是${whenText}，之后没再确认（当时是「${r.text}」）"),
         )
     }
     val order = listOf(ConnState.MISSING, ConnState.UNKNOWN, ConnState.PARTIAL, ConnState.CHECKING, ConnState.OK)
@@ -230,9 +230,8 @@ fun machineAgents(m: Machine, now: Instant): List<AgentEntry> {
             title = agentTitle(agent),
             state = main.state,
             text = main.text,
-            // Not known only for want of a recent check: said shortly, as the page checks again by itself; its
-            // parts say what it was.
-            lacks = if (unknown && c.reachable) t("Not checked lately: checking again…", "有一阵没检测了：正在重新检测…") else main.lacks,
+            // Not known now: said in the words every page uses (工单 #56), with when it was checked and what it said.
+            lacks = main.lacks,
             checkedAt = main.checkedAt,
             // DSH's models (DeepSeek's), as the desktop says them: never "signed in", which the machine can't know
             // for DSH before a session (ACP reports it as signed in whatever the truth).

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { Trans, useTranslation } from "react-i18next";
 import type { Client, Machine, QueryWorkResponse } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
-import { agoText, codingAgentTitle, createdDate, clientCategory, dateOf, isActive, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
+import { agoText, codingAgentTitle, codingBotState, createdDate, clientCategory, dateOf, isActive, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
 import { AgentLogo, agentName, grantColor, kindNamed, Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { grantFace } from "../components";
@@ -398,11 +398,15 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <span className="lm-t">
                 <b>{n.machine.local ? t("thisMac") : n.machine.machineName}</b>
                 <span className="lm-agents">
-                  {(n.machine.status?.agents ?? []).filter((a) => a.available && !a.hidden).map((a) => (
-                    <span key={a.name} className={a.loggedIn ? "" : "out"} title={a.loggedIn ? codingAgentTitle(a.name) : `${codingAgentTitle(a.name)} · ${t("map.notSignedIn")}`}>
-                      <AgentLogo agent={a.name} size={13} />
-                    </span>
-                  ))}
+                  {/* Greyed by the one state of it (工单 #56), as the roster and Hand Work To say it: not ready now, or not known. */}
+                  {(n.machine.status?.agents ?? []).filter((a) => a.available && !a.hidden).map((a) => {
+                    const b = codingBotState(n.machine, a.name, now);
+                    return (
+                      <span key={a.name} className={b?.usable === "yes" ? "" : "out"} title={b ? `${codingAgentTitle(a.name)} · ${b.word}` : codingAgentTitle(a.name)}>
+                        <AgentLogo agent={a.name} size={13} />
+                      </span>
+                    );
+                  })}
                   {/* Coding agents of this machine with a grant of their own (DSH on …): drawn here, where they run. */}
                   {st.clients.filter((c) => L.homeOf.get(c.clientId) === n.machine.machineId && !c.revoked).map((c) => (
                     <span key={c.clientId} className="lm-home" title={`${agentName(c.label)} · ${t("map.localAgent")}`}>

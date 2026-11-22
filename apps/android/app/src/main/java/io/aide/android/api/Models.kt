@@ -181,6 +181,9 @@ data class Client(
     val revoked: Boolean = false,
     val custodian: String = "",
     val herMachineId: String = "",
+    /** The kind the owner set (工单 #52): "personal", "local", or "" to tell from its name. */
+    val category: String = "",
+    val categoryMachineId: String = "",
 )
 
 @Serializable

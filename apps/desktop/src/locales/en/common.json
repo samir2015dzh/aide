@@ -360,5 +360,30 @@
     "cleared": "Told from its name again",
     "setPersonal": "Set to personal agent",
     "setLocal": "Set to coding agent on a machine"
+  },
+  "bots": {
+    "title": "Bots",
+    "personal": "Personal agents · follow your account",
+    "thisComputer": "{{name}} (this computer)",
+    "noneHere": "No coding agent detected here",
+    "follows": "Follows your account",
+    "work": "Its work",
+    "noWork": "Nothing for {{name}} yet: write a task below.",
+    "noWorkPersonal": "Nothing from {{name}} yet.",
+    "chatSoon": "Talking with {{name}} directly comes with rooms; for now this lists the work it handed out.",
+    "bench": "Workbench",
+    "connection": "Connection",
+    "device": "Machine page",
+    "recheck": "Check again",
+    "manage": "Projects and management",
+    "grant": "Its grant",
+    "placeholder": "A task for {{name}}…",
+    "project": "Project",
+    "send": "Hand Work",
+    "sending": "Sending…",
+    "started": "Handed to {{name}}: {{title}}",
+    "cantSend": "{{word}}: can't hand work now ({{line}})",
+    "unverified": "Not confirmed lately — it can be sent, but whether it is there is not checked",
+    "noProject": "No project here for this agent yet: add one under Projects and management."
   }
 }

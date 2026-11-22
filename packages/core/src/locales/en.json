@@ -187,7 +187,7 @@
     "unknown": "Unknown",
     "checking": "Checking…",
     "machineAway": "The machine can't be reached now: last known “{{text}}” ({{when}})",
-    "stale": "Not checked again since {{when}} (it said “{{text}}”)",
+    "stale": "Last checked {{when}}, not confirmed since (it said “{{text}}”)",
     "signedIn": "Signed in",
     "signedInVersion": "Signed in · {{version}}",
     "signedOut": "Not signed in",
@@ -222,12 +222,21 @@
     "loginNoReason": "no reason given",
     "loginTimedOut": "The last sign-in waited 10 minutes for the browser and was stopped. Try again.",
     "loginCancelled": "The last sign-in was cancelled.",
-    "dshModels": "Models: {{models}}",
-    "entry": {
-      "ok": "Ready",
-      "partial": "Partly ready",
-      "missing": "Not ready",
-      "unknown": "Unknown"
-    }
+    "dshModels": "Models: {{models}}"
+  },
+  "roster": {
+    "online": "Online",
+    "onlineLine": "Connected to your account now",
+    "away": "Not online",
+    "seen": "Last seen {{when}}",
+    "neverSeen": "Not connected yet",
+    "paused": "Paused",
+    "pausedLine": "Paused: no new task starts with it until it resumes",
+    "waiting": "{{count}} waiting for you",
+    "running": "{{count}} running",
+    "last": "Last: {{title}} · {{when}}",
+    "countReady": "{{count}} ready",
+    "countUnknown": "{{count}} unknown",
+    "countOf": "of {{count}}"
   }
 }

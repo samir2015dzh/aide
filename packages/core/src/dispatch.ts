@@ -1,6 +1,7 @@
 import type { Persona } from "@aide/proto/identity";
 import type { Machine } from "@aide/proto/local";
 import type { AgentStatus } from "@aide/proto/machine";
+import { codingBotState, type BotState } from "./roster";
 
 // Handing work out (工单 #41): whom to, listed by themselves. Each machine's
 // coding agents the machine detected are there, grouped by machine, with no
@@ -15,10 +16,12 @@ export type Target = {
   agent: string;
   /** The contact that is this agent's custom face, if any. */
   persona?: Persona;
-  /** Detected, signed in, not paused, its machine online: work can go to it now. */
+  /** Work can be sent to it now: its state is ready, or not confirmed (unknown, checking) while its machine answers. */
   ready: boolean;
-  /** Why not, when it is not: "offline", "signedOut", "paused", "missing". */
-  why?: "offline" | "signedOut" | "paused" | "missing";
+  /** Its one state, as the machine page and the roster say it (工单 #56); unset for a contact whose agent is not there. */
+  state?: BotState;
+  /** Why not, or why it is not confirmed. */
+  why?: BotState["why"];
 };
 
 export type TargetGroup = { machine: Machine; targets: Target[] };
@@ -28,7 +31,7 @@ function detected(a: AgentStatus): boolean {
   return a.available && !a.hidden;
 }
 
-export function dispatchTargets(machines: readonly Machine[], personas: readonly Persona[]): TargetGroup[] {
+export function dispatchTargets(machines: readonly Machine[], personas: readonly Persona[], now: Date = new Date()): TargetGroup[] {
   const groups: TargetGroup[] = [];
   const used = new Set<string>();
   const sorted = [...machines].sort((a, b) => Number(b.local) - Number(a.local) || Number(b.online) - Number(a.online) || a.machineName.localeCompare(b.machineName));
@@ -39,8 +42,11 @@ export function dispatchTargets(machines: readonly Machine[], personas: readonly
       if (!detected(a)) continue;
       const persona = personas.find((p) => p.machineId === m.machineId && p.agent === a.name && !used.has(p.personaId));
       if (persona) used.add(persona.personaId);
-      const why = !reachable ? "offline" : !a.loggedIn ? "signedOut" : a.pause ? "paused" : undefined;
-      targets.push({ key: `${m.machineId}/${a.name}`, machineId: m.machineId, agent: a.name, persona, ready: !why, why });
+      // The one state of it (工单 #56): an unknown one is never passed off as ready, nor refused for want of a check.
+      const state = codingBotState(m, a.name, now);
+      const why = !reachable ? "offline" : state?.why;
+      const ready = reachable && (state ? state.usable !== "no" : a.loggedIn && !a.pause);
+      targets.push({ key: `${m.machineId}/${a.name}`, machineId: m.machineId, agent: a.name, persona, ready, state, why });
     }
     // Contacts of this machine whose agent is not detected now: kept, said as such.
     for (const p of personas) {

@@ -232,11 +232,14 @@
       "offline": "机器离线，暂时派不了",
       "signedOut": "没登录，暂时派不了",
       "paused": "已暂停",
-      "missing": "这台机器上现在没检测到它"
+      "missing": "这台机器上现在没检测到它",
+      "unknown": "有一阵没确认状态",
+      "checking": "正在检测"
     },
     "startedAgent": "{{agent}} 新开了任务「{{title}}」",
     "freshIn": "会在项目「{{project}}」里新开一个任务。",
-    "noProject": "{{agent}} 在这台机器上还没有项目：先在 设置 › 连接 Agent 里添加一个。"
+    "noProject": "{{agent}} 在这台机器上还没有项目：先在 设置 › 连接 Agent 里添加一个。",
+    "unverified": "还没确认状态——能派，但对方在不在没核实"
   },
   "working": "正在处理…"
 }

@@ -139,9 +139,16 @@ fun ContactsPage(model: AppModel, open: (Persona) -> Unit, dispatch: (Target) ->
                                 // One root, the instance by its suffix (BotArk reference §2): "DSH · workstation" while there are several machines.
                                 Text(x.persona?.name ?: (agentTitle(x.agent) + if (io.aide.android.model.manyMachines(world.machines.size)) " · ${g.machine.machineName}" else ""), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    StatusPill(whyText(x.why) ?: t("Ready", "可以派活"), if (x.ready) Tone.Good else Tone.Warn)
+                                    // Green only when it is ready now; not confirmed, it says so in a quiet colour (工单 #56).
+                                    when {
+                                        x.why == null -> StatusPill(t("Ready", "可以派活"), Tone.Good)
+                                        x.ready -> StatusPill(t("Not confirmed", "还没确认状态"), Tone.Quiet)
+                                        else -> StatusPill(whyText(x.why) ?: "", Tone.Warn)
+                                    }
                                     if (x.persona != null) { HSpace(8); Text(agentTitle(x.agent), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                 }
+                                // What the roster and the machine page say of it, in their words.
+                                x.state?.let { Text(if (x.ready && x.why != null) t("It can be sent, but whether it is there is not checked · ${it.line}", "能派，但对方在不在没核实 · ${it.line}") else it.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2) }
                             }
                             if (x.persona != null && x.ready) TextButton(onClick = { dispatch(x) }) { Text(t("New task", "新任务")) }
                             else if (x.ready) Text("›", style = MaterialTheme.typography.titleLarge, color = aide.faint)
@@ -159,6 +166,8 @@ private fun whyText(w: NotReady?): String? = when (w) {
     NotReady.SIGNED_OUT -> t("not signed in", "没登录，暂时派不了")
     NotReady.PAUSED -> t("paused", "已暂停")
     NotReady.MISSING -> t("not detected there now", "这台电脑上现在没检测到它")
+    NotReady.UNKNOWN -> t("Not confirmed", "还没确认状态")
+    NotReady.CHECKING -> t("Checking", "正在检测")
 }
 
 /** Writing a task for an agent on a machine (工单 #41): its project, then the task; the session then opens. */

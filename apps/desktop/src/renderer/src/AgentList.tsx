@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
 import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
-import { agentEntry, codingAgentIds, codingAgentTitle, defaultProjectName, machineConnections, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
+import { agentEntry, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
@@ -113,12 +113,13 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
       </div>
     ) : null;
   };
+  // Its one state in the words every page uses (工单 #56: the roster, Hand Work To, the counts, the map).
   const stateOf = (name: string) => {
-    const e = entry(name);
-    return e ? (
-      <span className="conn-state ag-state" data-state={e.state}>
-        <i className={`dotc ${connDot(e.state)}`} />
-        {e.text}
+    const b = connections ? codingBotState(m, name, new Date(), connections) : undefined;
+    return b ? (
+      <span className="conn-state ag-state" data-state={b.state} title={b.line}>
+        <i className={`dotc ${connDot(b.state)}`} />
+        {b.word}
       </span>
     ) : null;
   };
@@ -283,7 +284,7 @@ const logins: Record<string, { key: TerminalCommand; text: string }> = {
  * sessions run with when the agent starting one names no model, and the
  * projects it may work in.
  */
-export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
+export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: string; bare?: boolean }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
   const a = m.status?.agents.find((x) => x.name === agent);
@@ -295,7 +296,7 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
   const mine = projectsFor(projects, agent);
   // Its state in the same words as its entry on the machine's list (工单 #53): one account, never two.
   const now = useNow(30_000);
-  const e = agentEntry(machineConnections(m, now), agent);
+  const e = codingBotState(m, agent, now);
   // Logging in runs in this Mac's Terminal: another machine's agent is logged in there.
   const login = m.local ? logins[agent] : undefined;
 
@@ -318,7 +319,8 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
 
   return (
     <div className="ag-page" role="region" aria-label={title}>
-      <div className="ag-hero">
+      {/* bare: on its bot's page (工单 #57), whose head already says who it is and how it stands. */}
+      {!bare && <div className="ag-hero">
         <AgentTile agent={agent} size={44} />
         <span className="ag-text">
           <b>{title}</b>
@@ -326,9 +328,9 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
             <span>{m.machineName}</span>
             {a?.version && <span className="mono">{a.version}</span>}
             {a && e ? (
-              <span className="conn-state ag-state" data-state={e.state}>
+              <span className="conn-state ag-state" data-state={e.state} title={e.line}>
                 <i className={`dotc ${connDot(e.state)}`} />
-                {e.text}
+                {e.word}
               </span>
             ) : a && (broken(a) ? <BrokenState a={a} /> : (
               <span className={a.loggedIn ? "ok" : "warn"}>
@@ -338,7 +340,7 @@ export function AgentPage({ m, agent }: { m: Machine; agent: string }) {
             ))}
           </span>
         </span>
-      </div>
+      </div>}
       {a && broken(a) && <p className="ag-why">{whyBroken(a, t)}</p>}
       {a && a.available && !a.loggedIn && (
         <div className="ag-login">

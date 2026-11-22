@@ -80,6 +80,9 @@ export function Rail() {
             </>
           ),
         })}
+        {/* The roster (工单 #57): one click shows every bot, over the rail. */}
+        {owner &&
+          button({ label: t("bots.title"), current: sel.kind === "bot", onClick: () => setSidebar(st, true), children: <Icon name="person" /> })}
         {owner &&
           hasDSH(st) &&
           button({ label: t("sidebar.dsh"), current: sel.kind === "dsh", onClick: () => sel.kind !== "dsh" && st.set({ selection: { kind: "dsh" } }), children: <Icon name="terminal" /> })}

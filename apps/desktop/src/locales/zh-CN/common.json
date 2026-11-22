@@ -348,5 +348,30 @@
     "cleared": "已恢复按名字自动判断",
     "setPersonal": "已改为个人 Agent",
     "setLocal": "已改为本机编码 Agent"
+  },
+  "bots": {
+    "title": "Bot",
+    "personal": "个人 agent · 跟账号走",
+    "thisComputer": "{{name}}（这台电脑）",
+    "noneHere": "这台机器上没有检测到编码 agent",
+    "follows": "跟账号走",
+    "work": "它的任务",
+    "noWork": "{{name}} 还没有任务：在下面写一个派给它。",
+    "noWorkPersonal": "{{name}} 还没有派出过任务。",
+    "chatSoon": "和 {{name}} 直接对话会随协作房间一起上线；这里先列它派出、经手的任务。",
+    "bench": "工作台",
+    "connection": "连接",
+    "device": "机器页",
+    "recheck": "重新检测",
+    "manage": "项目与管理",
+    "grant": "接入凭据",
+    "placeholder": "写给 {{name}} 的任务…",
+    "project": "项目",
+    "send": "派活",
+    "sending": "正在派…",
+    "started": "已派给 {{name}}：{{title}}",
+    "cantSend": "{{word}}：现在派不了（{{line}}）",
+    "unverified": "还没确认状态——能派，但对方在不在没核实",
+    "noProject": "这台机器上还没有给它用的项目：在「项目与管理」里添加一个。"
   }
 }

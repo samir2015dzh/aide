@@ -60,11 +60,12 @@ describe("connections", () => {
     );
     const claude = agentEntry(c, "claude")!;
     expect(claude.rows.map((r) => r.id)).toEqual(["claude-desktop", "claude-cli"]);
-    expect([claude.state, claude.text]).toEqual(["ok", "可以用"]);
+    // Its state is its main row's, the command line Aide runs, on the desktop as on the phone (工单 #56).
+    expect([claude.state, claude.text]).toEqual(["ok", "已登录 · 2.1.330"]);
     const dsh = agentEntry(c, "deepseek")!;
     expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 桥接插件"]);
     expect(dsh.rows[0].note).toBe("模型：DeepSeek V4");
-    expect([dsh.state, dsh.text]).toEqual(["partial", "部分可用"]);
+    expect([dsh.state, dsh.text]).toEqual(["partial", "已检测到 · 1.4.0"]);
     expect(c.rows.some((r) => r.title.includes("DeepSeek"))).toBe(false);
     expect(agentEntry(c, "codex")!.text).toBe("可以用");
     expect(agentEntry(c, "gemini")).toBeUndefined();
@@ -79,7 +80,7 @@ describe("connections", () => {
     expect(off.rows[0].lacks).toContain("上次知道的是「可以用」");
     const old = machineConnections(machine([{ name: "codex", available: true, loggedIn: true, checkedAt: timestampFromDate(new Date("2026-11-22T08:00:00Z")) }]), now);
     expect(old.rows[0].state).toBe("unknown");
-    expect(old.rows[0].lacks).toContain("之后没有再检测过");
+    expect(old.rows[0].lacks).toContain("之后没再确认");
   });
 
   test("hidden and absent agents are left out; one found but signed out is missing", () => {

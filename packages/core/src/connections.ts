@@ -124,15 +124,15 @@ export function machineConnections(m: Machine, now: Date): MachineConnections {
 
 /**
  * One agent's entry on a machine's single list (工单 #53): its rows (Claude: Desktop and the command line; DSH: itself
- * and its bridge plugin; any other: its one row) under one name and one state, the worst of them. A one-row entry says
- * its row's words; a several-row one says the state in a word, the rows saying the rest.
+ * and its bridge plugin; any other: its one row) under one name and one state. The state is its main row's — the
+ * command line for Claude (what Aide runs), DSH itself for DSH (partial while its plugin is not there) — as the phone
+ * has it, so the desktop and the phone never say two things of one agent (工单 #56).
  */
-export function agentEntry(c: MachineConnections, agent: string): { rows: ConnRow[]; state: ConnState; text: string } | undefined {
+export function agentEntry(c: MachineConnections, agent: string): { rows: ConnRow[]; main: ConnRow; state: ConnState; text: string } | undefined {
   const rows = c.rows.filter((r) => r.agent === agent);
   if (!rows.length) return undefined;
-  const state = order.find((s) => rows.some((r) => r.state === s))!;
-  const text = rows.length === 1 || state === "checking" ? rows.find((r) => r.state === state)!.text : t(`conn.entry.${state}`);
-  return { rows, state, text };
+  const main = rows.find((r) => r.id === agent || r.id === `${agent}-cli`) ?? rows[0];
+  return { rows, main, state: main.state, text: main.text };
 }
 
 function claudeRows(a: AgentStatus): ConnRow[] {
