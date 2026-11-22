@@ -77,6 +77,9 @@ const (
 	// ClientControlServiceGetLatestGrantProcedure is the fully-qualified name of the
 	// ClientControlService's GetLatestGrant RPC.
 	ClientControlServiceGetLatestGrantProcedure = "/aide.relay.v1.ClientControlService/GetLatestGrant"
+	// OwnerControlServiceRoomWaitingProcedure is the fully-qualified name of the OwnerControlService's
+	// RoomWaiting RPC.
+	OwnerControlServiceRoomWaitingProcedure = "/aide.relay.v1.OwnerControlService/RoomWaiting"
 	// OwnerControlServiceSignProcedure is the fully-qualified name of the OwnerControlService's Sign
 	// RPC.
 	OwnerControlServiceSignProcedure = "/aide.relay.v1.OwnerControlService/Sign"
@@ -698,6 +701,9 @@ func (UnimplementedClientControlServiceHandler) GetLatestGrant(context.Context, 
 
 // OwnerControlServiceClient is a client for the aide.relay.v1.OwnerControlService service.
 type OwnerControlServiceClient interface {
+	// What waits at the post office for an inbox (a room's host), by the room
+	// it is for (SealedMessage.room, 工单 #74).
+	RoomWaiting(context.Context, *v1.RoomWaitingRequest) (*v1.RoomWaitingResponse, error)
 	// The server signs what a device of the owner asks (docs/accounts.md §3):
 	// a machine cert, a grant, an admin command, a root cert, an erase order.
 	// A device that logged in is the owner, so it needs no other approval.
@@ -785,6 +791,12 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	ownerControlServiceMethods := v1.File_aide_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
 	return &ownerControlServiceClient{
+		roomWaiting: connect.NewClient[v1.RoomWaitingRequest, v1.RoomWaitingResponse](
+			httpClient,
+			baseURL+OwnerControlServiceRoomWaitingProcedure,
+			connect.WithSchema(ownerControlServiceMethods.ByName("RoomWaiting")),
+			connect.WithClientOptions(opts...),
+		),
 		sign: connect.NewClient[v1.SignRequest, v1.SignResponse](
 			httpClient,
 			baseURL+OwnerControlServiceSignProcedure,
@@ -952,6 +964,7 @@ func NewOwnerControlServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // ownerControlServiceClient implements OwnerControlServiceClient.
 type ownerControlServiceClient struct {
+	roomWaiting           *connect.Client[v1.RoomWaitingRequest, v1.RoomWaitingResponse]
 	sign                  *connect.Client[v1.SignRequest, v1.SignResponse]
 	listMachines          *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
 	listClients           *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
@@ -979,6 +992,15 @@ type ownerControlServiceClient struct {
 	savePersona           *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
 	deletePersona         *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
 	bindPersonaSession    *connect.Client[v1.BindPersonaSessionRequest, v1.BindPersonaSessionResponse]
+}
+
+// RoomWaiting calls aide.relay.v1.OwnerControlService.RoomWaiting.
+func (c *ownerControlServiceClient) RoomWaiting(ctx context.Context, req *v1.RoomWaitingRequest) (*v1.RoomWaitingResponse, error) {
+	response, err := c.roomWaiting.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
 }
 
 // Sign calls aide.relay.v1.OwnerControlService.Sign.
@@ -1222,6 +1244,9 @@ func (c *ownerControlServiceClient) BindPersonaSession(ctx context.Context, req 
 
 // OwnerControlServiceHandler is an implementation of the aide.relay.v1.OwnerControlService service.
 type OwnerControlServiceHandler interface {
+	// What waits at the post office for an inbox (a room's host), by the room
+	// it is for (SealedMessage.room, 工单 #74).
+	RoomWaiting(context.Context, *v1.RoomWaitingRequest) (*v1.RoomWaitingResponse, error)
 	// The server signs what a device of the owner asks (docs/accounts.md §3):
 	// a machine cert, a grant, an admin command, a root cert, an erase order.
 	// A device that logged in is the owner, so it needs no other approval.
@@ -1305,6 +1330,12 @@ type OwnerControlServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	ownerControlServiceMethods := v1.File_aide_relay_v1_relay_proto.Services().ByName("OwnerControlService").Methods()
+	ownerControlServiceRoomWaitingHandler := connect.NewUnaryHandlerSimple(
+		OwnerControlServiceRoomWaitingProcedure,
+		svc.RoomWaiting,
+		connect.WithSchema(ownerControlServiceMethods.ByName("RoomWaiting")),
+		connect.WithHandlerOptions(opts...),
+	)
 	ownerControlServiceSignHandler := connect.NewUnaryHandlerSimple(
 		OwnerControlServiceSignProcedure,
 		svc.Sign,
@@ -1469,6 +1500,8 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 	)
 	return "/aide.relay.v1.OwnerControlService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case OwnerControlServiceRoomWaitingProcedure:
+			ownerControlServiceRoomWaitingHandler.ServeHTTP(w, r)
 		case OwnerControlServiceSignProcedure:
 			ownerControlServiceSignHandler.ServeHTTP(w, r)
 		case OwnerControlServiceListMachinesProcedure:
@@ -1531,6 +1564,10 @@ func NewOwnerControlServiceHandler(svc OwnerControlServiceHandler, opts ...conne
 
 // UnimplementedOwnerControlServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedOwnerControlServiceHandler struct{}
+
+func (UnimplementedOwnerControlServiceHandler) RoomWaiting(context.Context, *v1.RoomWaitingRequest) (*v1.RoomWaitingResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.RoomWaiting is not implemented"))
+}
 
 func (UnimplementedOwnerControlServiceHandler) Sign(context.Context, *v1.SignRequest) (*v1.SignResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.relay.v1.OwnerControlService.Sign is not implemented"))

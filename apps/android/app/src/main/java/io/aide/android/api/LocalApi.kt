@@ -143,6 +143,8 @@ class LocalApi(port: Long, token: String) {
     suspend fun updateRoom(machineId: String, patch: RoomPatch): Room = call("UpdateRoom", UpdateRoomRequest(machineId, patch))
     suspend fun stopRoom(machineId: String, roomId: String): Room = call("StopRoom", RoomRef(machineId, roomId))
     suspend fun markRoomSeen(machineId: String, roomId: String): Room = call("MarkRoomSeen", RoomRef(machineId, roomId))
+    /** What waits at the post office for a room's away host, by room (工单 #74): personal agents' replies too. */
+    suspend fun listRoomWaiting(machineId: String): ListRoomWaitingResponse = call("ListRoomWaiting", ListRoomWaitingRequest(machineId))
     suspend fun deleteRoom(machineId: String, roomId: String) {
         call<RoomRef, JsonElement>("DeleteRoom", RoomRef(machineId, roomId))
     }

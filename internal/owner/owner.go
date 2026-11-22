@@ -1850,6 +1850,25 @@ func (o *Owner) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessag
 		func(n *peer.Machine) (*machinev1.RoomMessage, error) { return n.Admin.PostRoomMessage(ctx, r) })
 }
 
+// ListRoomWaiting is what waits at the post office for a machine hosting
+// rooms, by room (工单 #74): every reply sent into its rooms while it is
+// away, a personal agent's too, as their envelopes name the room.
+func (o *Owner) ListRoomWaiting(ctx context.Context, machineID string) (*localv1.ListRoomWaitingResponse, error) {
+	c, _, err := o.control(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.RoomWaiting(ctx, &relayv1.RoomWaitingRequest{Inbox: machineID})
+	if err != nil {
+		return nil, err
+	}
+	out := &localv1.ListRoomWaitingResponse{}
+	for _, r := range res.Rooms {
+		out.Rooms = append(out.Rooms, &localv1.RoomWaiting{RoomId: r.RoomId, Messages: r.Messages, Since: r.Since})
+	}
+	return out, nil
+}
+
 // roomMachines are the owner's machines that answer now, this device's own first, then by name: where rooms are.
 func (o *Owner) roomMachines(ctx context.Context) ([]*localv1.Machine, error) {
 	machines, err := o.machines(ctx)

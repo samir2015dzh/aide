@@ -620,6 +620,10 @@ func (l *localService) MarkRoomSeen(ctx context.Context, req *localv1.RoomRef) (
 	return l.o().MarkRoomSeen(ctx, req)
 }
 
+func (l *localService) ListRoomWaiting(ctx context.Context, req *localv1.ListRoomWaitingRequest) (*localv1.ListRoomWaitingResponse, error) {
+	return l.o().ListRoomWaiting(ctx, req.MachineId)
+}
+
 func (l *localService) DeleteRoom(ctx context.Context, req *localv1.RoomRef) (*machinev1.DeleteRoomResponse, error) {
 	return l.o().DeleteRoom(ctx, req)
 }

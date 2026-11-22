@@ -164,7 +164,15 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
         // The host away (工单 #74): said, with the replies that wait for it; what was read last stays shown.
         val host = world.machines.firstOrNull { it.machineId == machineId }
         val away = failed || (host != null && !host.online && !host.local)
-        val waiting = world.machines.flatMap { it.status?.roomOutbox.orEmpty() }.filter { it.roomId == roomId }.sumOf { it.replies }
+        // What the post office counts for this room (every member's reply, a personal agent's too), else the machines' own count.
+        var post by remember { mutableStateOf(0) }
+        LaunchedEffect(away) {
+            while (away) {
+                post = model.roomWaiting(machineId)[roomId] ?: 0
+                delay(15_000)
+            }
+        }
+        val waiting = maxOf(post, world.machines.flatMap { it.status?.roomOutbox.orEmpty() }.filter { it.roomId == roomId }.sumOf { it.replies })
         if (r == null) {
             Centered {
                 Text(if (failed) t("${host?.machineName ?: "The machine"} keeping this room is offline.", "主持这个房间的 ${host?.machineName ?: "机器"} 不在线。") else t("Reading the room…", "正在读取房间…"))

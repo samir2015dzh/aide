@@ -107,8 +107,10 @@ type Sessions struct {
 	log       *slog.Logger
 	machineID string
 	dataDir   string
-	provider  func(name string) provider.Provider // built in or custom; nil: none by that name
-	info      func(name string) provider.Info
+	// archives: what the agents' own apps said of archiving at the last look (archivesync.go).
+	archives archiveSync
+	provider func(name string) provider.Provider // built in or custom; nil: none by that name
+	info     func(name string) provider.Info
 	// outOfProcesses says why no program can start on this machine now, or "".
 	outOfProcesses func() string
 	limits         Limits

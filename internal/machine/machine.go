@@ -621,6 +621,7 @@ func (n *Machine) Run(ctx context.Context) error {
 	go n.serveDSH(ctx)
 	go n.serveHeld(ctx)
 	go n.roomWatch(ctx)
+	go n.archiveWatch(ctx)
 	n.log.Info("aided machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
 	n.runLink(ctx)
 	n.mu.Lock()

@@ -362,6 +362,9 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /** What waits at the post office for an away host, by room id; empty when it can't be read now. */
+    suspend fun roomWaiting(machineId: String): Map<String, Int> = runCatching { api!!.listRoomWaiting(machineId).rooms.associate { it.roomId to it.messages } }.getOrDefault(emptyMap())
+
     /** The conversation chosen for each bot on this phone (工单 #67 rule 1): a session id, or "new". */
     private val conversations = context.getSharedPreferences("conversations", Context.MODE_PRIVATE)
 

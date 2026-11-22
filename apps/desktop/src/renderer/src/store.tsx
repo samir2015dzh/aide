@@ -35,6 +35,8 @@ export type Selection =
   | { kind: "held" }
   /** The work the owner's agents handed out, as it goes (TasksPage.tsx, work order #27). */
   | { kind: "tasks" }
+  /** Every session, as the sidebar listed them before 工单 #63: a page of its own, its list beside the one open. */
+  | { kind: "sessions" }
   /** A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>"). */
   | { kind: "bot"; key: string }
   /** A room (ROOMS-DESIGN, G2-b): its host and id. */

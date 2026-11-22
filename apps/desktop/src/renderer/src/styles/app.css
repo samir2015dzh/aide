@@ -726,3 +726,9 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .fgroup>.frow.choice:first-child{border-top:0}
 .frow.choice .ft{display:flex;flex-direction:column}
 .picker:focus-visible{outline:none}
+/* 全部任务 (工单 #63): the session list as a column of its own between the sidebar and the session. */
+.mainwrap.listed{grid-template-columns:272px 300px minmax(0,1fr)}
+.mainwrap.listed.railed{grid-template-columns:74px 300px minmax(0,1fr)}
+.mainwrap.listed>.tasks-col{grid-column:2}
+.mainwrap.listed>.content{grid-column:3}
+.tasks-col>.side-h{height:44px}

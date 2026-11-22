@@ -144,6 +144,9 @@ data class MachineStatus(
     val roomOutbox: List<RoomOutbox> = emptyList(),
 )
 
+@Serializable data class RoomWaiting(val roomId: String = "", val messages: Int = 0, val since: String = "")
+@Serializable data class ListRoomWaitingRequest(val machineId: String)
+@Serializable data class ListRoomWaitingResponse(val rooms: List<RoomWaiting> = emptyList())
 @Serializable data class RoomOutbox(val roomId: String = "", val hostMachineId: String = "", val replies: Int = 0, val since: String = "")
 
 @Serializable

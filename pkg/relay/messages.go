@@ -51,6 +51,9 @@ type Message struct {
 	// Sender is who sent it (the caller of Send), "" for one kept from
 	// before senders were: a message id is its sender's.
 	Sender string
+	// Room is the room it is for, as its sender said (SealedMessage.room),
+	// "" for none.
+	Room string
 }
 
 // MessageState is what became of a message: "waiting", "taken", "handled",
@@ -295,11 +298,47 @@ func (m *messageService) Send(ctx context.Context, req *relayv1.SendSealedReques
 		return nil, connect.NewError(connect.CodeResourceExhausted, errInboxFull)
 	}
 	now := time.Now()
-	if err := ms.PutMessage(t.ownerID, Message{ID: sm.MessageId, Inbox: sm.Inbox, Sealed: sm.Sealed, ReceivedAt: now, ExpiresAt: now.Add(MessageRetention), Ring: sm.Ring, Sender: p.subject.ID}); err != nil {
+	room := sm.Room
+	if !roomIDPattern.MatchString(room) {
+		room = "" // only a room's id, nothing else on the envelope
+	}
+	if err := ms.PutMessage(t.ownerID, Message{ID: sm.MessageId, Inbox: sm.Inbox, Sealed: sm.Sealed, ReceivedAt: now, ExpiresAt: now.Add(MessageRetention), Ring: sm.Ring, Sender: p.subject.ID, Room: room}); err != nil {
 		return nil, err
 	}
 	s.nudgeInbox(t, sm.Inbox, sm.Ring)
 	return &relayv1.SendSealedResponse{}, nil
+}
+
+var roomIDPattern = regexp.MustCompile(`^room_[0-9a-z]{1,40}$`)
+
+// RoomWaiting is what waits for an inbox (a room's host), by the room it is
+// for (工单 #74), for the owner's devices.
+func (o *ownerControl) RoomWaiting(ctx context.Context, req *relayv1.RoomWaitingRequest) (*relayv1.RoomWaitingResponse, error) {
+	p := peerFrom(ctx)
+	waiting, err := o.s.messageStore().WaitingMessages(p.t.ownerID, req.Inbox)
+	if err != nil {
+		return nil, err
+	}
+	return roomWaiting(waiting), nil
+}
+
+// roomWaiting counts waiting messages (oldest first) by the room each is for.
+func roomWaiting(waiting []Message) *relayv1.RoomWaitingResponse {
+	by := map[string]*relayv1.RoomWaitingCount{}
+	res := &relayv1.RoomWaitingResponse{}
+	for _, w := range waiting {
+		if w.Room == "" {
+			continue
+		}
+		c := by[w.Room]
+		if c == nil {
+			c = &relayv1.RoomWaitingCount{RoomId: w.Room, Since: timestamppb.New(w.ReceivedAt)}
+			by[w.Room] = c
+			res.Rooms = append(res.Rooms, c)
+		}
+		c.Messages++
+	}
+	return res
 }
 
 var errInboxFull = errors.New("inbox_full: the recipient's inbox is full until it takes its messages")

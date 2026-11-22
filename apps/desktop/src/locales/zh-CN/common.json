@@ -69,7 +69,8 @@
     "devices": "设备",
     "tasks": "任务动态",
     "held": "等你放行的消息",
-    "newSession": "新任务…"
+    "newSession": "新任务…",
+    "sessions": "全部任务"
   },
   "sessionMenu": {
     "open": "打开",

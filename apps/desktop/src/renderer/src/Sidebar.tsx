@@ -127,6 +127,28 @@ export function Sidebar() {
   );
 }
 
+/**
+ * Every session (the page 全部任务, 工单 #63): the list the sidebar had, as it had it — grouped by the view, archived
+ * on request, older ones as the end shows — in a column of its own at the page's left, the session open beside it.
+ */
+export function TaskColumn() {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const now = useNow(30_000);
+  return (
+    <aside className="side tasks-col" aria-label={t("sidebar.sessions")}>
+      <div className="side-h drag">
+        <span>{t("sidebar.sessions")}</span>
+        <button className="tb side-new" title={`${t("sidebar.newSession")} ${keys("CmdOrCtrl+N")}`} aria-label={t("sidebar.newSession")} onClick={() => st.set({ sheet: { kind: "newSession" } })}>
+          <Icon name="plus" />
+        </button>
+        <ListViewMenu />
+      </div>
+      <Sessions now={now} />
+    </aside>
+  );
+}
+
 /** Whether a machine has DeepSeek Harness, whose own sessions the DSH page lists. */
 export function hasDSH(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
   return st.machines.some((m) => m.status?.agents.some((a) => a.name === "deepseek"));
@@ -156,7 +178,7 @@ export function Ring({ label, quiet = false }: { label: string; quiet?: boolean 
  * Every session, as the view lays them out (docs/her-team.md §16): grouped, each group collapsible, older ones
  * loaded as the end comes into view; archived ones on request.
  */
-function Sessions({ now }: { now: Date }) {
+export function Sessions({ now }: { now: Date }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const { sessions, view, archived, machines, clients, lastKnown } = st;
@@ -227,7 +249,7 @@ function Sessions({ now }: { now: Date }) {
   );
 }
 
-type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "overview" | "devices" | "tasks" | "held" | "newSession"; icon: string; shortcut?: string; count?: number } | null;
+type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "overview" | "sessions" | "devices" | "tasks" | "held" | "newSession"; icon: string; shortcut?: string; count?: number } | null;
 
 /**
  * The account menu, from the avatar at the sidebar's foot: it opens upward, as wide as the foot, with what adds
@@ -253,6 +275,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
       ]
     : [
         { id: "overview", icon: "grid", shortcut: keys("CmdOrCtrl+1"), count: marks.waits },
+        { id: "sessions", icon: "checklist" },
         { id: "devices", icon: "devices" },
         { id: "tasks", icon: "persons", count: taskLook },
         ...(held > 0 || st.selection.kind === "held" ? [{ id: "held" as const, icon: "bell", count: held }] : []),
@@ -284,7 +307,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     else if (id === "account") window.aide?.openSettings("account");
     else if (id === "connect") window.aide?.openSettings("connect");
     else if (id === "devices") window.aide?.openSettings("machines");
-    else if (id === "overview" || id === "tasks" || id === "held") st.set({ selection: { kind: id } });
+    else if (id === "overview" || id === "tasks" || id === "held" || id === "sessions") st.set({ selection: { kind: id } });
     else st.set({ sheet: { kind: id } });
   };
   // The keyboard, as in a native menu: arrows move, Esc closes back to the avatar.

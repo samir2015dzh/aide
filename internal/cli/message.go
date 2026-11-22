@@ -1126,6 +1126,9 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 		return err
 	}
 	sm := &relayv1.SealedMessage{Inbox: t.inbox, MessageId: m.MessageId, Sealed: sealed}
+	if strings.HasPrefix(t.session, "room_") {
+		sm.Room = t.session // a reply into a room: counted while its host is away (工单 #74)
+	}
 	if t.woken && !m.Fyi {
 		sm.Ring = &t.session // the post office rings its doorbell
 	}

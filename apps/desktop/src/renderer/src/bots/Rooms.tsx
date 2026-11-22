@@ -36,10 +36,11 @@ export function useRooms(): Room[] {
 }
 
 /**
- * Replies for a room that wait at the post office while its host is away (工单 #74): what the other machines say they
- * sent it and it has not taken yet, and since when.
+ * Replies for a room that wait at the post office while its host is away (工单 #74): what the post office counts for
+ * the room (every member's, a personal agent's too: their envelopes name the room), or, from a relay that does not
+ * count them yet, what the other machines say they sent it; and since when.
  */
-export function waitingReplies(st: Pick<Store, "machines">, roomId: string): { count: number; since?: Date } {
+export function waitingReplies(st: Pick<Store, "machines">, roomId: string, post?: ReadonlyMap<string, { count: number; since?: Date }>): { count: number; since?: Date } {
   let count = 0;
   let since: Date | undefined;
   for (const m of st.machines) {
@@ -50,7 +51,29 @@ export function waitingReplies(st: Pick<Store, "machines">, roomId: string): { c
       if (at && (!since || at < since)) since = at;
     }
   }
-  return { count, since };
+  const p = post?.get(roomId);
+  return p && p.count >= count ? p : { count, since };
+}
+
+/** What waits at the post office for these hosts (while they are away), by room; read again every 15 s. */
+export function usePostWaiting(hosts: string[]): ReadonlyMap<string, { count: number; since?: Date }> {
+  const [by, setBy] = useState<ReadonlyMap<string, { count: number; since?: Date }>>(new Map());
+  const key = [...new Set(hosts)].sort().join(",");
+  useEffect(() => {
+    if (!key) return setBy(new Map());
+    let gone = false;
+    const read = () =>
+      Promise.all(key.split(",").map((machineId) => local.listRoomWaiting({ machineId }).then((r) => r.rooms, () => []))).then((all) => {
+        if (gone) return;
+        const m = new Map<string, { count: number; since?: Date }>();
+        for (const r of all.flat()) m.set(r.roomId, { count: r.messages, since: dateOf(r.since) });
+        setBy(m);
+      });
+    read();
+    const every = setInterval(read, 15_000);
+    return () => ((gone = true), clearInterval(every));
+  }, [key]);
+  return by;
 }
 
 /** A room's state in a line, as the roster and its page say it. */
@@ -77,6 +100,8 @@ export function SidebarRooms() {
   const key = "bots:rooms";
   const open = !st.collapsed.includes(key);
   const sel = st.selection.kind === "room" ? st.selection.roomId : "";
+  const away = rooms.map((r) => r.hostMachineId).filter((id) => st.machines.some((m) => m.machineId === id && !m.online && !m.local));
+  const post = usePostWaiting(away);
   return (
     <div role="group" aria-label={t("rooms.title")}>
       <div className="grp-h-row">
@@ -99,7 +124,7 @@ export function SidebarRooms() {
           </span>
           <span className="bot-t">
             <span className="bot-l1"><b>{r.name}</b></span>
-            <span className="bot-l2">{((w) => (w.count ? t("rooms.waitingShort", { count: w.count }) : roomLine(t, r)))(waitingReplies(st, r.roomId))}</span>
+            <span className="bot-l2">{((w) => (w.count ? t("rooms.waitingShort", { count: w.count }) : roomLine(t, r)))(waitingReplies(st, r.roomId, post))}</span>
           </span>
           {r.unread > 0 && <span className="cnt-w">{r.unread}</span>}
         </button>
@@ -235,7 +260,8 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   }, [roomId]);
   const host = st.machines.find((m) => m.machineId === machineId);
   const away = !!host && !host.online && !host.local;
-  const waiting = waitingReplies(st, roomId);
+  const post = usePostWaiting(away || error ? [machineId] : []);
+  const waiting = waitingReplies(st, roomId, post);
   const awayBanner = (away || (error && waiting.count > 0)) && (
     <div className="room-away" role="status">
       <Icon name="wifi" className="sm" />

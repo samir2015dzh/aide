@@ -71,7 +71,8 @@
     "devices": "Devices",
     "tasks": "Task feed",
     "held": "Held messages",
-    "newSession": "New Task…"
+    "newSession": "New Task…",
+    "sessions": "All Tasks"
   },
   "sessionMenu": {
     "open": "Open",

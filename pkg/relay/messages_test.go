@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -23,6 +24,18 @@ func TestMessageStores(t *testing.T) {
 				if err := ms.PutMessage(owner, Message{ID: id, Inbox: inbox, Sealed: []byte(id), ReceivedAt: at, ExpiresAt: at.Add(MessageRetention)}); err != nil {
 					t.Fatal(err)
 				}
+			}
+			// A room's mail (工单 #74): what waits for a host, counted by the room its envelope names.
+			for i, r := range []string{"room_a", "", "room_b", "room_a"} {
+				id := fmt.Sprintf("msg_r%d", i)
+				if err := ms.PutMessage(owner, Message{ID: id, Inbox: "m_host", Sealed: []byte(id), ReceivedAt: t0.Add(time.Duration(i) * time.Second), ExpiresAt: t0.Add(MessageRetention), Room: r}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			hw, _ := ms.WaitingMessages(owner, "m_host")
+			rw := roomWaiting(hw).Rooms
+			if len(rw) != 2 || rw[0].RoomId != "room_a" || rw[0].Messages != 2 || !rw[0].Since.AsTime().Equal(t0) || rw[1].RoomId != "room_b" || rw[1].Messages != 1 {
+				t.Fatalf("by room: %v", rw)
 			}
 			put("msg_b", "c_1", t0.Add(time.Second))
 			put("msg_a", "c_1", t0)

@@ -368,6 +368,9 @@ message GetLatestGrantResponse {
 }
 
 service OwnerControlService {
+  // What waits at the post office for an inbox (a room's host), by the room
+  // it is for (SealedMessage.room, 工单 #74).
+  rpc RoomWaiting(RoomWaitingRequest) returns (RoomWaitingResponse);
   // The server signs what a device of the owner asks (docs/accounts.md §3):
   // a machine cert, a grant, an admin command, a root cert, an erase order.
   // A device that logged in is the owner, so it needs no other approval.
@@ -756,6 +759,21 @@ service MessageService {
   rpc WakeLink(WakeLinkRequest) returns (WakeLinkResponse);
 }
 
+message RoomWaitingRequest {
+  string inbox = 1;
+}
+
+message RoomWaitingResponse {
+  repeated RoomWaitingCount rooms = 1;
+}
+
+message RoomWaitingCount {
+  string room_id = 1;
+  uint32 messages = 2;
+  // When the oldest of them came in.
+  google.protobuf.Timestamp since = 3;
+}
+
 message WakeLinkRequest {
   string name = 1;
 }
@@ -780,6 +798,11 @@ message SealedMessage {
   // the address has one, to its name ("" for the agent itself). Otherwise
   // absent, and the name stays sealed.
   optional string ring = 5;
+  // The room the message is for, when it goes to a room's host (the
+  // address's session, "room_…"): set by the sender, so the owner's devices
+  // can see what waits at the post office for a host that is away (工单
+  // #74). Only the room's id: its words stay sealed.
+  string room = 6;
 }
 
 message RegisterInboxRequest {
