@@ -13,9 +13,9 @@ import (
 type rosterJSON struct {
 	Endpoints []struct {
 		Address, Name, Kind, Category, Tier, State, Machine, Doing string
-		Mailable, You                                    bool
-		Online                                           *bool
-		AgentPaused                                      bool `json:"agent_paused"`
+		Mailable, You                                              bool
+		Online                                                     *bool
+		AgentPaused                                                bool `json:"agent_paused"`
 	}
 	PausedAgents []struct{ Machine, Agent string } `json:"paused_agents"`
 }
