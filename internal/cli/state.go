@@ -115,7 +115,7 @@ func (a *app) loadKey() error {
 }
 
 var errNotLoggedIn error = &exitError{code: exitDenied, kind: "not_paired", err: errors.New("not logged in yet"),
-	hint: "run `aide auth login <your server> --account <account>`: it logs in with the owner's account and password"}
+	hint: "run `aide auth login`: with the Aide app logged in on this computer there is nothing to type; elsewhere `aide auth login <your server> --account <account>` logs in with the owner's account and password"}
 
 // load reads state and verifies the stored grant against the stored root.
 func (a *app) load() error {

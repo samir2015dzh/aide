@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -108,5 +109,49 @@ func TestCLILogsInThroughTheApp(t *testing.T) {
 	}
 	if strings.Contains(w.owner.output(), testPassword) {
 		t.Fatal("the password is in aided's log")
+	}
+}
+
+// TestCLIInChinese (work order #38): on a Chinese system the CLI's login
+// and auth status read in Chinese end to end; with the language set to
+// English they read as before; -o json is the same either way, field by
+// field.
+func TestCLIInChinese(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	aide := filepath.Join(w.bin, "aide")
+	home := []string{"AIDE_HOME=" + t.TempDir(), "AIDE_APP_SOCKET=" + w.sock}
+	zh := append(append([]string{}, home...), "AIDE_LANG=", "LC_ALL=", "LC_MESSAGES=", "LANG=zh_CN.UTF-8")
+	en := append(append([]string{}, home...), "AIDE_LANG=en")
+
+	r := run(t, zh, time.Minute, aide, "auth", "login")
+	if r.code != 0 || !strings.Contains(r.stdout, "已经由本机 Aide 应用登录到") || !strings.Contains(r.stdout, "无需密码") {
+		t.Fatalf("login in Chinese: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	s := run(t, zh, time.Minute, aide, "auth", "status")
+	for _, want := range []string{"配置目录", "✓ 身份", "客户端", "属主", "✓ 授权", "全部机器、全部项目", "✓ 中继", "✓ 授权同步", "已是最新"} {
+		if !strings.Contains(s.stdout, want) {
+			t.Errorf("auth status lacks %q:\n%s", want, s.stdout)
+		}
+	}
+	for _, english := range []string{"identity", "grant ", "relay ", "up to date", "all machines", "doesn't expire", "config "} {
+		if strings.Contains(s.stdout, english) {
+			t.Errorf("auth status still says %q:\n%s", english, s.stdout)
+		}
+	}
+	if e := run(t, en, time.Minute, aide, "auth", "status"); !strings.Contains(e.stdout, "✓ identity") || !strings.Contains(e.stdout, "up to date") {
+		t.Fatalf("auth status in English:\n%s", e.stdout)
+	}
+	// The JSON is the same document in both, but for the round trip time.
+	ms := regexp.MustCompile(`· \d+ ms`)
+	jz := ms.ReplaceAllString(run(t, zh, time.Minute, aide, "auth", "status", "-o", "json").stdout, "")
+	je := ms.ReplaceAllString(run(t, en, time.Minute, aide, "auth", "status", "-o", "json").stdout, "")
+	if jz != je || !strings.Contains(je, `"check": "identity"`) {
+		t.Fatalf("json differs:\n%s\n%s", jz, je)
+	}
+	if h := run(t, zh, time.Minute, aide, "auth", "--help"); !strings.Contains(h.stdout, "可用命令") || !strings.Contains(h.stdout, "检查本客户端的登录") {
+		t.Fatalf("help in Chinese:\n%s", h.stdout)
 	}
 }

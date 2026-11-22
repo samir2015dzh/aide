@@ -293,7 +293,7 @@ func (a *app) authStatus(ctx context.Context) *authReport {
 	}
 	err := a.load()
 	if errors.Is(err, errNotLoggedIn) {
-		id.set("fail", "not logged in", "run `aide auth login <your server> --account <account>`: it logs in with the owner's account and password", exitDenied)
+		id.set("fail", "not logged in", "run `aide auth login`: with the Aide app logged in on this computer there is nothing to type; elsewhere `aide auth login <your server> --account <account>` logs in with the owner's account and password", exitDenied)
 		skip("not logged in", grant, relay, sync)
 		return r
 	}
