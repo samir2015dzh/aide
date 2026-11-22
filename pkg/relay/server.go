@@ -1225,6 +1225,10 @@ type rateLimiter struct {
 	n      int
 	window time.Duration
 	hits   map[string][]time.Time
+	// swept: when keys with no hit in the window were last let go (work
+	// order #40: login is keyed by the caller's address, on a public
+	// endpoint, and messages by subject, one per MCP connection).
+	swept time.Time
 }
 
 func newRateLimiter(n int, window time.Duration) *rateLimiter {
@@ -1235,6 +1239,14 @@ func (r *rateLimiter) Allow(key string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	now := time.Now()
+	if now.Sub(r.swept) >= r.window {
+		r.swept = now
+		for k, hs := range r.hits {
+			if len(hs) == 0 || now.Sub(hs[len(hs)-1]) >= r.window {
+				delete(r.hits, k)
+			}
+		}
+	}
 	h := r.hits[key][:0]
 	for _, t := range r.hits[key] {
 		if now.Sub(t) < r.window {

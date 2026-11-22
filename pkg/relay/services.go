@@ -112,6 +112,9 @@ func (n *machineControl) WatchUpdates(ctx context.Context, _ *relayv1.WatchUpdat
 	defer func() {
 		s.mu.Lock()
 		delete(t.watchers[p.subject.ID], q)
+		if len(t.watchers[p.subject.ID]) == 0 {
+			delete(t.watchers, p.subject.ID) // not kept per subject for good (work order #40)
+		}
 		s.mu.Unlock()
 	}()
 	if err := stream.Send(&relayv1.MachineUpdate{Update: &relayv1.MachineUpdate_RootChain{RootChain: t.trust.RootChain()}}); err != nil {

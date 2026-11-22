@@ -100,7 +100,9 @@ func main() {
 				mux.HandleFunc("/mcp/", noKey)
 				handler = mux
 			}
-			hs := &http.Server{Handler: handler, ReadHeaderTimeout: 15 * time.Second}
+			// IdleTimeout: a keep-alive connection left idle goes (work order
+			// #40); the connections that stay are hijacked off the server.
+			hs := &http.Server{Handler: handler, ReadHeaderTimeout: 15 * time.Second, IdleTimeout: 2 * time.Minute}
 			go func() {
 				<-ctx.Done()
 				sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

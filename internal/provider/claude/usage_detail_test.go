@@ -18,8 +18,8 @@ func TestUsageReader_DetailSaysWhy(t *testing.T) {
 	access := "sk-ant-oat-DETAIL-0123456789abcdef"
 	cases := []struct {
 		name, body, ctype, unavailable string
-		status                          int
-		want                            []string
+		status                         int
+		want                           []string
 	}{
 		{"anthropic error JSON", `{"type":"error","error":{"type":"authentication_error","message":"OAuth token has expired."}}`,
 			"application/json", "api_error", http.StatusUnauthorized,

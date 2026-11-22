@@ -257,6 +257,7 @@ func Open(cfg Config) (*Machine, error) {
 		memoryLow: resident.MemoryLow}
 	n.sessions.w = newWriter(st, n.log, n.sessions.deliver, n.sessions.changed)
 	n.sessions.mcp = n.mcpServers
+	n.sessions.gone = n.forgetSession
 	n.sessions.requester = func(id string) string { return n.knownClients()[id].Label }
 	if c, ok := cfg.Providers["claude"].(*claude.Provider); ok && c.Log == nil {
 		c.Log = n.log
@@ -699,6 +700,9 @@ func (n *Machine) grantProblemLocked(g *identityv1.Grant) error {
 	return nil
 }
 
+// grantSeenKept is how many grants' versions the cache holds.
+const grantSeenKept = 1024
+
 func (n *Machine) checkGrant(g *identityv1.Grant) error {
 	n.mu.Lock()
 	maxSeen, ok := n.grantSeen[g.GrantId]
@@ -709,6 +713,11 @@ func (n *Machine) checkGrant(g *identityv1.Grant) error {
 			return err
 		}
 		n.mu.Lock()
+		if len(n.grantSeen) >= grantSeenKept {
+			// Only a cache of the store's (SeeGrantVersion): every MCP
+			// connection is a grant, so it is not let grow (work order #40).
+			clear(n.grantSeen)
+		}
 		if cur, ok := n.grantSeen[g.GrantId]; !ok || stored > cur {
 			n.grantSeen[g.GrantId] = stored
 		}

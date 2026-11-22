@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"slices"
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -29,7 +31,15 @@ type changeLog struct {
 	sessions map[string]uint64 // each session's last change (deleted ones too)
 	projects map[string]uint64 // each project's last change (removed ones too)
 	kicks    map[chan struct{}]bool
+	// floor: changes up to it were let go (changeLogKept); a watcher from
+	// before it starts again (work order #40: the log no longer grows with
+	// every session there ever was).
+	floor uint64
 }
+
+// changeLogKept is how many sessions and projects the log keeps the last
+// change of; past it, the older half goes.
+const changeLogKept = 4096
 
 func newChangeLog() *changeLog {
 	c := &changeLog{sessions: map[string]uint64{}, projects: map[string]uint64{}, kicks: map[chan struct{}]bool{}}
@@ -42,12 +52,37 @@ func (c *changeLog) add(m map[string]uint64, id string) {
 	defer c.mu.Unlock()
 	c.n++
 	m[id] = c.n
+	if len(c.sessions)+len(c.projects) > changeLogKept {
+		c.prune()
+	}
 	for k := range c.kicks {
 		select {
 		case k <- struct{}{}:
 		default:
 		}
 	}
+}
+
+// prune lets the older half of the changes go, raising the floor to the
+// newest of them; c.mu must be held.
+func (c *changeLog) prune() {
+	all := make([]uint64, 0, len(c.sessions)+len(c.projects))
+	for _, at := range c.sessions {
+		all = append(all, at)
+	}
+	for _, at := range c.projects {
+		all = append(all, at)
+	}
+	slices.Sort(all)
+	floor := all[len(all)/2]
+	for _, m := range []map[string]uint64{c.sessions, c.projects} {
+		for id, at := range m {
+			if at <= floor {
+				delete(m, id)
+			}
+		}
+	}
+	c.floor = max(c.floor, floor)
 }
 
 func (c *changeLog) session(id string) { c.add(c.sessions, id) }
@@ -66,14 +101,17 @@ func (c *changeLog) resume(token []byte) (uint64, bool) {
 		return 0, false
 	}
 	n := binary.BigEndian.Uint64(token[8:])
-	return n, n <= c.n
+	return n, n >= c.floor && n <= c.n
 }
 
 // since is the sessions and projects changed after change n, and the
 // change it is at now.
-func (c *changeLog) since(n uint64) (sessions, projects []string, now uint64) {
+func (c *changeLog) since(n uint64) (sessions, projects []string, now uint64, behind bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if n < c.floor {
+		return nil, nil, c.n, true // what changed meanwhile may be gone: start again
+	}
 	for id, at := range c.sessions {
 		if at > n {
 			sessions = append(sessions, id)
@@ -84,7 +122,7 @@ func (c *changeLog) since(n uint64) (sessions, projects []string, now uint64) {
 			projects = append(projects, id)
 		}
 	}
-	return sessions, projects, c.n
+	return sessions, projects, c.n, false
 }
 
 // changes is the machine's change log, made on first use.
@@ -183,7 +221,10 @@ func (n *Machine) sendWatch(c *changeLog, at uint64, m *machinev1.WatchResponse,
 // changesSince is what p may see of the sessions and projects changed after
 // change from, and the change it is at.
 func (n *Machine) changesSince(ctx context.Context, p *Principal, view sessionv1.SessionView, from uint64) (*machinev1.WatchResponse, uint64, error) {
-	sessions, projects, now := n.sessions.changes().since(from)
+	sessions, projects, now, behind := n.sessions.changes().since(from)
+	if behind {
+		return nil, 0, connect.NewError(connect.CodeAborted, errors.New("this watch fell behind the change log: watch again"))
+	}
 	m := &machinev1.WatchResponse{}
 	for _, id := range sessions {
 		if s, err := n.sessions.Get(p, id); err == nil {

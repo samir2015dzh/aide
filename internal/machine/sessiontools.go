@@ -73,6 +73,27 @@ func (n *Machine) serveSessionTools(ctx context.Context) {
 	srv.Serve(ln)
 }
 
+// forgetSession drops what the machine keeps per session, once the session
+// is archived or deleted (work order #40): its tools token (unarchived, it
+// gets a new one), the chain it last took and the messages its turn took
+// (a new turn starts afresh), and its managed workspace's requests (read
+// again from its events when asked).
+func (n *Machine) forgetSession(id string) {
+	n.tools.mu.Lock()
+	if tok, ok := n.tools.byID[id]; ok {
+		delete(n.tools.tokens, tok)
+		delete(n.tools.byID, id)
+	}
+	n.tools.mu.Unlock()
+	n.mu.Lock()
+	delete(n.lastChain, id)
+	delete(n.handedTurns, id)
+	n.mu.Unlock()
+	n.wsReqs.mu.Lock()
+	delete(n.wsReqs.sessions, id)
+	n.wsReqs.mu.Unlock()
+}
+
 // mcpServers are the tools a session's coding agent gets.
 func (n *Machine) mcpServers(sessionID string) []provider.MCPServer {
 	n.tools.mu.Lock()

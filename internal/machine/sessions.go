@@ -145,6 +145,10 @@ type Sessions struct {
 	mcp func(sessionID string) []provider.MCPServer
 	// requester is a client's name ("" when unknown); nil in tests.
 	requester func(clientID string) string
+	// gone lets the machine forget what it keeps per session once one is
+	// archived or deleted (work order #40: nothing per session outlives
+	// it); nil in tests.
+	gone func(sessionID string)
 }
 
 // agentPausedUntil: the owner paused the agent here, until a time when it
@@ -1109,6 +1113,9 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 		delete(s.live, id)
 	}
 	s.mu.Unlock()
+	if s.gone != nil {
+		s.gone(id)
+	}
 	if err := s.w.sync(writeOp{}); err != nil {
 		return nil, err
 	}
@@ -1364,6 +1371,9 @@ func (s *Sessions) Delete(ctx context.Context, p *Principal, id string) error {
 		return err
 	}
 	os.RemoveAll(filepath.Dir(s.attachmentsDir(id)))
+	if s.gone != nil {
+		s.gone(id)
+	}
 	s.audit.Log(AuditRecord{Kind: "session.delete", Subject: p.ID(), Session: id, Decision: "allow"})
 	s.changed(id)
 	return nil

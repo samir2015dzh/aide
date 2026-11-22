@@ -265,6 +265,7 @@ func (g *Gateway) loop() {
 			g.ringAgainDue()
 			g.closeIdlePeers(false)
 		case <-sweep.C:
+			g.sweepLimits()
 			if !g.lead() {
 				continue
 			}

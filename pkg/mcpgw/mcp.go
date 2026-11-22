@@ -367,6 +367,31 @@ type window struct {
 
 var limits sync.Map // connection id → *window
 
+// sweepLimits lets go of the rate windows and the registration counts with
+// nothing left in them (work order #40): a connection that ended on another
+// node, or an address that registered once, is not kept for good. This
+// node's own, whoever leads.
+func (g *Gateway) sweepLimits() {
+	now := g.cfg.Now()
+	limits.Range(func(k, v any) bool {
+		w := v.(*window)
+		w.mu.Lock()
+		idle := (len(w.calls) == 0 || now.Sub(w.calls[len(w.calls)-1]) >= time.Minute) && (len(w.start) == 0 || now.Sub(w.start[len(w.start)-1]) >= time.Hour)
+		w.mu.Unlock()
+		if idle {
+			limits.Delete(k)
+		}
+		return true
+	})
+	g.mu.Lock()
+	for ip, ts := range g.dcr {
+		if len(ts) == 0 || now.Sub(ts[len(ts)-1]) >= time.Hour {
+			delete(g.dcr, ip)
+		}
+	}
+	g.mu.Unlock()
+}
+
 func (g *Gateway) limit(id string, start bool) string {
 	if g.cfg.Shared != nil {
 		if why, err := g.sharedLimit(id, start); err == nil {

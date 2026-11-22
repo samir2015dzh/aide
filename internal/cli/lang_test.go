@@ -35,10 +35,10 @@ func TestLanguage(t *testing.T) {
 
 func TestTranslateZH(t *testing.T) {
 	for in, want := range map[string]string{
-		"Logged in to owner as \"client@box\". Run `aide project list` to see where it can work.\n": "已登录到 owner，名字为 \"client@box\"。运行 `aide project list` 查看它可以在哪里工作。\n",
+		"Logged in to owner as \"client@box\". Run `aide project list` to see where it can work.\n":                                                  "已登录到 owner，名字为 \"client@box\"。运行 `aide project list` 查看它可以在哪里工作。\n",
 		"error: which server? give your server's address (relay.example.com) or a connection address (relay.example.com/o_…), or set $AIDE_SERVER\n": "错误：哪台服务器？请给出服务器地址（relay.example.com）或连接地址（relay.example.com/o_…），或设置 $AIDE_SERVER\n",
-		"3 message(s) wait in your inbox: aide message list\n": "收件箱里有 3 条消息等你处理：aide message list\n",
-		"✓ grant       v1 · all machines, all projects · all agents · sees own sessions · doesn't expire\n": "✓ 授权        v1 · 全部机器、全部项目 · 全部 agent · 只看自己的会话 · 不过期\n",
+		"3 message(s) wait in your inbox: aide message list\n":                                                                                       "收件箱里有 3 条消息等你处理：aide message list\n",
+		"✓ grant       v1 · all machines, all projects · all agents · sees own sessions · doesn't expire\n":                                          "✓ 授权        v1 · 全部机器、全部项目 · 全部 agent · 只看自己的会话 · 不过期\n",
 		"something nobody translated\n": "something nobody translated\n",
 	} {
 		if got := translateZH(in); got != want {

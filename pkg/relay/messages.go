@@ -403,6 +403,9 @@ func (m *messageService) Watch(ctx context.Context, _ *relayv1.WatchInboxRequest
 	defer func() {
 		s.mu.Lock()
 		delete(t.inboxWatchers[inbox], ch)
+		if len(t.inboxWatchers[inbox]) == 0 {
+			delete(t.inboxWatchers, inbox) // not kept per inbox for good (work order #40)
+		}
 		s.mu.Unlock()
 	}()
 	for {
