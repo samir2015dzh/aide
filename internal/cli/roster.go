@@ -35,6 +35,11 @@ type endpointJSON struct {
 	// Kind: "cli" or "mcp" (an agent), "aide_session", "dsh_session",
 	// "claude_app_session" (a Claude Code conversation the Claude app runs).
 	Kind string `json:"kind"`
+	// Category: "personal" (an agent of the owner's, following the account)
+	// or "local" (a coding agent on a machine, and every session there; then
+	// Machine names it when known). Personal agents are addressed by their
+	// inbox, a local one by machine and session (工单 #26/#49).
+	Category string `json:"category"`
 	// Tier is when a message reaches it: "push", "turn" or "pull".
 	Tier string `json:"tier"`
 	// Mailable: a message can go to it now (a DSH session only once the
@@ -123,6 +128,14 @@ func sessionNames(list []namedSession) map[string]string {
 	return out
 }
 
+func machineNames(ms []machineRef) []string {
+	out := make([]string, len(ms))
+	for i, m := range ms {
+		out[i] = m.Name
+	}
+	return out
+}
+
 // gatherRoster reads the roster: the contacts (with presence) through ms,
 // the sessions from each machine.
 func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machineRef, ms rosterContacts) (roster, error) {
@@ -154,7 +167,8 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 		if rings(woken[info.Inbox], "") {
 			tier = "push" // its doorbell wakes it
 		}
-		e := endpointJSON{Address: info.Inbox, Name: info.Name, Kind: info.Kind, Tier: tier, Mailable: info.InboxKey != nil, You: info.Inbox == a.g.ClientId}
+		cat, home := agentCategory(info.Name, machineNames(machines))
+		e := endpointJSON{Address: info.Inbox, Name: info.Name, Kind: info.Kind, Category: cat, Machine: home, Tier: tier, Mailable: info.InboxKey != nil, You: info.Inbox == a.g.ClientId}
 		if p := presence[info.Inbox]; p != nil {
 			online := p.Online
 			e.Online, e.LastSeen = &online, tsJSON(p.LastSeen)
@@ -163,7 +177,7 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 		// Its names with a doorbell: endpoints of their own, woken.
 		for _, n := range woken[info.Inbox] {
 			if n != "" {
-				out.Endpoints = append(out.Endpoints, endpointJSON{Address: info.Inbox + "/" + n, Name: info.Name + "/" + n, Kind: info.Kind, Tier: "push", Mailable: e.Mailable, Online: e.Online, LastSeen: e.LastSeen})
+				out.Endpoints = append(out.Endpoints, endpointJSON{Address: info.Inbox + "/" + n, Name: info.Name + "/" + n, Kind: info.Kind, Category: cat, Machine: home, Tier: "push", Mailable: e.Mailable, Online: e.Online, LastSeen: e.LastSeen})
 			}
 		}
 	}
@@ -250,7 +264,7 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 				continue
 			}
 			v := sessionView(s, names[m.ID])
-			out.Endpoints = append(out.Endpoints, endpointJSON{Address: m.ID + "/" + s.SessionId, Name: names[m.ID] + "/" + named[s.SessionId], Kind: "aide_session",
+			out.Endpoints = append(out.Endpoints, endpointJSON{Address: m.ID + "/" + s.SessionId, Name: names[m.ID] + "/" + named[s.SessionId], Kind: "aide_session", Category: categoryLocal,
 				Tier: "push", Mailable: true, Agent: s.Agent, Machine: names[m.ID], MachineID: m.ID, State: v.State, Link: v.Link, StateText: v.StateText,
 				StalledSeconds: v.StalledFor, Doing: oneLine(firstNonEmpty(v.CurrentTool, v.LastMessage, v.Title), 120), StartedAt: v.CreatedAt,
 				LastActivity: firstNonNil(v.LastEventAt, v.UpdatedAt), CreatedBy: s.CreatedBy, AgentPaused: paused[s.Agent]})
@@ -261,7 +275,7 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 			}
 			id := nativeID(m.ID, s.SessionId)
 			takeover := s.Takeover
-			out.Endpoints = append(out.Endpoints, endpointJSON{Address: id, Name: names[m.ID] + "/" + named[id], Kind: "dsh_session", Tier: "push", Mailable: takeover,
+			out.Endpoints = append(out.Endpoints, endpointJSON{Address: id, Name: names[m.ID] + "/" + named[id], Kind: "dsh_session", Category: categoryLocal, Tier: "push", Mailable: takeover,
 				Agent: "deepseek", Machine: names[m.ID], MachineID: m.ID, State: nativeState(s.State), Doing: oneLine(s.Title, 120),
 				StartedAt: tsJSON(s.CreatedAt), LastActivity: tsJSON(s.LastActivityAt), Takeover: &takeover})
 		}
@@ -275,7 +289,7 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 			}
 			id := claudeAppID(m.ID, s.SessionId)
 			addr := firstNonEmpty(s.Address, id)
-			out.Endpoints = append(out.Endpoints, endpointJSON{Address: addr, Name: names[m.ID] + "/" + named[id], Kind: "claude_app_session", Tier: "turn",
+			out.Endpoints = append(out.Endpoints, endpointJSON{Address: addr, Name: names[m.ID] + "/" + named[id], Kind: "claude_app_session", Category: categoryLocal, Tier: "turn",
 				Mailable: s.Address != "", Agent: "claude", Machine: names[m.ID], MachineID: m.ID, State: firstNonEmpty(s.Status, "unknown"),
 				Doing: oneLine(s.Title, 120), StartedAt: tsJSON(s.CreatedAt), LastActivity: tsJSON(s.LastActivityAt)})
 		}
@@ -307,7 +321,8 @@ func (a *app) rosterCmd() *cobra.Command {
 		Short: "Everyone and every session a message can go to: the owner's agents, and the sessions on the machines you reach",
 		Long: `Everyone and every session a message can go to, in one list (docs/agent-messages.md §15):
 
-- the owner's agents (kind cli or mcp): connected now or when last, and when a message reaches them
+- the owner's agents (kind cli or mcp): connected now or when last, and when a message reaches them;
+  category personal (follows the account: Muse, Grok Bot) or local (a coding agent on a machine, named in machine)
   (tier: push, it is woken or takes it at once; turn, in its next turn; pull, when it next checks);
 - the Aide sessions on the machines you reach (kind aide_session): their state as session list gives
   it, and what they are doing, from their own title, tool or last words, never their say;
