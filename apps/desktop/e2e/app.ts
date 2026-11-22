@@ -70,7 +70,7 @@ export async function launch(
  * keeps it from being picked.
  */
 export async function openWork(app: ElectronApplication, page: Page): Promise<void> {
-  await page.locator(".side-nav").waitFor({ timeout: 30_000 });
+  await page.locator("aside.side").waitFor({ timeout: 30_000 });
   await app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById("overview")?.click());
 }
 

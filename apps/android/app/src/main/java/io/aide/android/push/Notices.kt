@@ -24,8 +24,15 @@ data class NoticeTarget(val session: String = "", val room: String = "") {
  * (newer replace older), unless its page is open. The host's line says what happened ("bot 交出了共识结果").
  */
 fun roomNotices(before: List<io.aide.android.api.Room>, now: List<io.aide.android.api.Room>, open: String): List<Notice> =
-    now.filter { r -> r.roomId != open && r.unread > (before.firstOrNull { it.roomId == r.roomId }?.unread ?: 0) }
-        .map { Notice(kind = "room", title = it.name, roomId = it.roomId, roomLine = it.lastLine) }
+    now.filter { it.roomId != open }.mapNotNull { r ->
+        val was = before.firstOrNull { it.roomId == r.roomId }
+        when {
+            // The host told of it anew (工单 #69, #70): a result, the round limit, the owner named, a member quiet; its words.
+            r.notice.isNotEmpty() && io.aide.android.model.instant(r.noticeAt) > io.aide.android.model.instant(was?.noticeAt.orEmpty()) -> Notice(kind = "room", title = r.name, roomId = r.roomId, roomLine = r.notice)
+            r.unread > (was?.unread ?: 0) -> Notice(kind = "room", title = r.name, roomId = r.roomId, roomLine = r.lastLine)
+            else -> null
+        }
+    }
 
 /** A notice as the phone shows it: its words, the thread newer ones replace, what a tap opens. */
 data class Shown(val title: String, val body: String, val thread: String, val target: NoticeTarget, val urgent: Boolean)
@@ -54,6 +61,12 @@ fun show(n: Notice): Shown = when (n.kind) {
             listOf(n.project, agentTitle(n.agent).takeIf { n.agent.isNotEmpty() }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · "),
         ).filter { it.isNotEmpty() }.joinToString("\n"),
         n.sessionId, NoticeTarget(session = n.sessionId), urgent = false,
+    )
+    // Handed out, and nothing from it for two minutes (工单 #70): once a turn.
+    "quiet" -> Shown(
+        t("${agentTitle(n.agent)} has been quiet for two minutes", "${agentTitle(n.agent)} 两分钟没动静"),
+        t("“${n.title}” was handed out two minutes ago and nothing has come from it yet.", "「${n.title}」派出去两分钟了，它还没有任何动静。"),
+        "quiet:${n.sessionId}", NoticeTarget(session = n.sessionId), urgent = false,
     )
     "room" -> Shown(n.title, n.roomLine.ifEmpty { t("Something new in the room", "房间里有新消息") }, "room:${n.roomId}", NoticeTarget(room = n.roomId), urgent = false)
     else -> Shown("Aide", t("Something needs you. Open Aide to see it.", "有事需要你处理，打开 Aide 查看。"), n.kind, NoticeTarget(), urgent = false)

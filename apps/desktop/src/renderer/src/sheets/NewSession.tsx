@@ -1,4 +1,5 @@
 import { ConnectLink } from "../components";
+import { Picker } from "../Picker";
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
 import { useTranslation } from "react-i18next";
@@ -150,11 +151,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
                 <label className="fl" htmlFor="ns-project">{t("newSession.project")}</label>
                 <span className="fv">
                   {projects.length ? (
-                    <select id="ns-project" className="psel" style={{ width: 260 }} value={project} onChange={(e) => setProject(e.target.value)}>
-                      {projects.map((p) => (
-                        <option key={p.projectId} value={p.projectId}>{p.projectId}</option>
-                      ))}
-                    </select>
+                    <Picker className="psel" label={t("newSession.project")} value={project} onChange={setProject} options={projects.map((p) => ({ value: p.projectId, label: p.projectId }))} />
                   ) : (
                     <>
                       {t("newSession.noProjects", { machine: machine!.machineName, agent: title })}
@@ -183,12 +180,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="frow">
                 <label className="fl" htmlFor="ns-model">{t("newSession.model")}</label>
                 <span className="fv">
-                  <select id="ns-model" className="psel" style={{ width: 260 }} value={model} onChange={(e) => setOptions(e.target.value, "", mode)}>
-                    <option value="">{t("newSession.default")}</option>
-                    {a.models.map((x) => (
-                      <option key={x.id} value={x.id}>{x.name || x.id}</option>
-                    ))}
-                  </select>
+                  <Picker className="psel" label={t("newSession.model")} value={model} onChange={(v) => setOptions(v, "", mode)} options={[{ value: "", label: t("newSession.default") }, ...a.models.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
                 </span>
               </div>
             )}
@@ -196,12 +188,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="frow">
                 <label className="fl" htmlFor="ns-effort">{t("newSession.effort")}</label>
                 <span className="fv">
-                  <select id="ns-effort" className="psel" style={{ width: 260 }} value={effort} onChange={(e) => setEffort(e.target.value)}>
-                    <option value="">{t("newSession.default")}</option>
-                    {efforts.map((x) => (
-                      <option key={x} value={x}>{tf(`prepare.efforts.${x}`, { defaultValue: x })}</option>
-                    ))}
-                  </select>
+                  <Picker className="psel" label={t("newSession.effort")} value={effort} onChange={setEffort} options={[{ value: "", label: t("newSession.default") }, ...efforts.map((x) => ({ value: x, label: tf(`prepare.efforts.${x}`, { defaultValue: x }) }))]} />
                 </span>
               </div>
             )}
@@ -209,12 +196,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="frow">
                 <label className="fl" htmlFor="ns-mode">{t("newSession.mode")}</label>
                 <span className="fv">
-                  <select id="ns-mode" className="psel" style={{ width: 260 }} value={mode} onChange={(e) => setMode(e.target.value)}>
-                    <option value="">{t("newSession.default")}</option>
-                    {a.modes.map((x) => (
-                      <option key={x.id} value={x.id}>{x.name || x.id}</option>
-                    ))}
-                  </select>
+                  <Picker className="psel" label={t("newSession.mode")} value={mode} onChange={setMode} options={[{ value: "", label: t("newSession.default") }, ...a.modes.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
                 </span>
               </div>
             )}

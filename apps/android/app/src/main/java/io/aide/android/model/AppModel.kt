@@ -245,8 +245,22 @@ class AppModel(private val context: Context) {
         _opening.value = null
     }
 
+    /**
+     * Where what is said goes (工单 #61, the owner's rule: "a message shows on the screen whose action made it"): the
+     * page open on top has its own place to say it (PageFeedback), registered while it shows; with none, the tabs'.
+     */
+    private val sinks = mutableListOf<(String) -> Unit>()
+
+    fun pushSink(f: (String) -> Unit) {
+        sinks += f
+    }
+
+    fun popSink(f: (String) -> Unit) {
+        sinks.remove(f)
+    }
+
     fun say(text: String) {
-        _messages.tryEmit(text)
+        sinks.lastOrNull()?.invoke(text) ?: _messages.tryEmit(text)
     }
 
     private inline fun <T> report(block: () -> T): T? = try {
@@ -348,6 +362,31 @@ class AppModel(private val context: Context) {
         report { api!!.checkAgents(machineId) }
     }
 
+    /** The conversation chosen for each bot on this phone (工单 #67 rule 1): a session id, or "new". */
+    private val conversations = context.getSharedPreferences("conversations", Context.MODE_PRIVATE)
+
+    fun chosenConversation(botKey: String): String? = conversations.getString(botKey, null)
+
+    fun chooseConversation(botKey: String, v: String) {
+        conversations.edit().putString(botKey, v).apply()
+    }
+
+    /** The direct room with a personal agent; null when it can't be had, why given to failed, for its own page to say (工单 #61). */
+    suspend fun openDirectRoomOr(clientId: String, failed: (String) -> Unit): io.aide.android.api.Room? = try {
+        api!!.openDirectRoom(clientId).room
+    } catch (e: Exception) {
+        failed(humanError(e))
+        null
+    }
+
+    /** Says something in a room; null when it failed, why given to failed (said in the box it was written in, 工单 #61). */
+    suspend fun postRoomMessageOr(room: io.aide.android.api.Room, text: String, key: String, failed: (String) -> Unit, mentions: List<String> = emptyList()): io.aide.android.api.RoomMessage? = try {
+        api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key, mentions)
+    } catch (e: Exception) {
+        failed(humanError(e))
+        null
+    }
+
     /** The direct room with a personal agent (ROOMS-DESIGN, G2-a); null, said, when it can't be had. */
     suspend fun openDirectRoom(clientId: String): io.aide.android.api.Room? = report { api!!.openDirectRoom(clientId).room }
     /** A room's messages, quietly: null when they can't be read now. */
@@ -435,6 +474,50 @@ class AppModel(private val context: Context) {
         s?.sessionId
     }
 
+    /**
+     * A bot's next message (工单 #67): on in its conversation (unarchived first, rule 6), or a new one with the
+     * composer's choices. What became of it is the caller's to say, in its box (工单 #61): a failure comes back as
+     * the error's words, never said elsewhere.
+     */
+    suspend fun converse(machineId: String, agent: String, to: Session?, p: ConvParams, text: String, key: String): Result<Session> = try {
+        val api = api!!
+        val s = if (to != null) {
+            if (to.status == io.aide.android.api.SessionStatus.ARCHIVED) api.archive(to.sessionId, false)
+            api.sendMessage(to.sessionId, text)
+        } else {
+            api.startSession(machineId, p.projectId, agent, text, key, p.model, p.effort, p.mode)
+        }
+        s?.let { replace(it) }
+        if (s == null) Result.failure(ApiError("internal", "")) else Result.success(s)
+    } catch (e: Exception) {
+        Result.failure(Exception(humanError(e)))
+    }
+
+    /** Archives a conversation on its machine, or unarchives it; null when it worked, else why. */
+    suspend fun archive(s: Session, on: Boolean): String? = try {
+        api!!.archive(s.sessionId, on)?.let { replace(it) }
+        null
+    } catch (e: Exception) {
+        humanError(e)
+    }
+
+    /** Deletes a room on its host, and with sessions its members' sessions made for it (工单 #73); null, or why not. */
+    suspend fun deleteRoom(machineId: String, roomId: String, sessions: List<String>): String? = try {
+        api!!.deleteRoom(machineId, roomId)
+        val kept = sessions.filter { id -> runCatching { api!!.deleteSession(id) }.isFailure }
+        if (kept.isEmpty()) null else t("The room is gone; ${kept.size} of its sessions could not be deleted.", "房间已删除；有 ${kept.size} 个成员会话没删掉。")
+    } catch (e: Exception) {
+        humanError(e)
+    }
+
+    /** Keeps a contact; returns it as kept, or null with why given to failed, for its page to say there (工单 #61). */
+    suspend fun savePersonaOr(p: Persona, failed: (String) -> Unit): Persona? = try {
+        api!!.savePersona(p)?.also { loadPersonas() }
+    } catch (e: Exception) {
+        failed(humanError(e))
+        null
+    }
+
     /** Keeps a contact; returns it as kept, or null (said). */
     suspend fun savePersona(p: Persona): Persona? = report { api!!.savePersona(p) }?.also { loadPersonas() }
 
@@ -467,6 +550,8 @@ class AppModel(private val context: Context) {
 fun humanError(e: Exception): String {
     val code = (e as? ApiError)?.code ?: ""
     val msg = (e as? ApiError)?.message ?: e.message ?: e.toString()
+    // What the core gave a reason key for (工单 #60), in the person's words.
+    (e as? ApiError)?.let { a -> reasonText(a.reason, a.args, msg)?.let { return it } }
     return when {
         code == "unimplemented" && msg.startsWith("contacts_unavailable") ->
             t("Contacts need a newer server: your relay doesn't keep them yet. Work can still go to the agents listed here.", "联系人功能待中继升级：你的服务器（中继）还不支持保存联系人。下面列出的 Agent 照样可以直接派活。")
@@ -496,4 +581,45 @@ fun loginError(e: ApiError): String = when (e.code) {
         else -> e.message
     }
     else -> e.message.ifEmpty { e.code }
+}
+
+/**
+ * An error's reason key (工单 #60, internal/reason: localv1.ErrorReason on the error) in the person's language, as the
+ * desktop's common:errors; null for one with no key, or a key this app has no words for (said as the core worded it).
+ */
+fun reasonText(reason: String, args: Map<String, String>, raw: String): String? {
+    val a = { k: String -> args[k].orEmpty() }
+    return when (reason) {
+        "not_execution_machine" -> t("This device cannot be an execution machine.", "这台设备不能作为执行机器。")
+        "not_set_up" -> t("Aide is not set up yet.", "Aide 还没有设置好。")
+        "signed_out" -> t("This account is signed out on this device: sign in again.", "这台设备上的账号已经登出：请重新登录。")
+        "no_relay" -> t("No server (relay) is set up yet.", "还没有配置服务器（中继）。")
+        "relay_unreachable" -> t("Can’t reach the server (relay) ${a("host")}.", "连不上服务器（中继）${a("host")}。")
+        "machine_older" -> t("Aide on that machine is older and doesn’t know this yet: update it there, then try again.", "那台机器上的 Aide 版本较旧，还不认识这个操作：先在那台机器上更新 Aide，再试一次。")
+        "no_host_online" -> t("No machine of yours is online to keep the conversation: start Aide on one.", "没有在线的机器能主持这场对话：先在一台机器上打开 Aide。")
+        "no_room_host_online" -> t("No machine of yours is online to keep the room: start Aide on one.", "没有在线的机器能主持这个房间：先在一台机器上打开 Aide。")
+        "cannot_sign_charter" -> t("This device can’t sign a room’s charter: it is not one of your devices.", "这台设备不能签发房间章程：它不是你的设备。")
+        "her_access_whole" -> t("Her’s access is whole and doesn’t expire: turn Her off to end it.", "Her 的授权是完整且不过期的：要结束它，请关掉 Her。")
+        "name_length" -> t("A name is 1 to 64 bytes.", "名字要在 1 到 64 个字节之间。")
+        "icon_needs_picture" -> t("The “picture” icon needs a picture.", "选了“图片”做图标，需要先选一张图片。")
+        "bad_session_id" -> t("That session id is not right.", "会话编号不对。")
+        "session_no_machine" -> t("No machine keeps this session.", "找不到保存这个会话的机器。")
+        "claude_not_set_up" -> t("Claude Code is not set up on this machine.", "这台机器上还没有设置 Claude Code。")
+        "claude_cli_missing" -> t("Claude Code’s command line is not installed on this machine.", "这台机器上没有安装 Claude Code 命令行。")
+        "machine_paused" -> t("You paused this machine: resume it to hand it work.", "这台机器已被你暂停：恢复后才能派活。")
+        "agent_paused" -> t("You paused ${a("agent")} on this machine: resume it to start new work with it.", "${a("agent")} 在这台机器上已被你暂停：恢复后才能给它派新任务。")
+        "agent_paused_until" -> t("You paused ${a("agent")} on this machine until ${a("until")}.", "${a("agent")} 在这台机器上已被你暂停，到 ${a("until")} 自动恢复。")
+        "agent_unavailable" -> t("${a("agent")} can’t be used on this machine now: $raw", "${a("agent")} 在这台机器上现在用不了：$raw")
+        "project_missing" -> t("There is no project “${a("project")}” on this machine.", "这台机器上没有项目「${a("project")}」。")
+        "project_gone" -> t("The project “${a("project")}” is gone.", "项目「${a("project")}」已经不在了。")
+        "session_archived" -> t("This conversation is archived (read-only): unarchive it to go on.", "这条对话已归档（只读）：先取消归档再续聊。")
+        "turn_in_progress" -> t("It is still busy with the last turn: wait, or interrupt it first.", "它还在忙上一轮：等它做完，或先打断它。")
+        "room_no_grant" -> t("This agent’s grant hasn’t reached the host yet: try again in a moment.", "这个 agent 的授权还没到主持机：等一会儿再试。")
+        "room_needs_name" -> t("A room needs a name.", "房间要有个名字。")
+        "room_members_count" -> t("A room has 1 to ${a("max")} members.", "一个房间要有 1 到 ${a("max")} 个成员。")
+        "room_not_in_charter" -> t("${a("agent")} (project ${a("project")}) is not in this room’s charter.", "${a("agent")}（项目 ${a("project")}）不在这个房间的章程里。")
+        "room_not_found" -> t("The host no longer has this room.", "主持机上找不到这个房间了。")
+        "nothing_to_say" -> t("Nothing written yet.", "还没写内容。")
+        else -> null
+    }
 }

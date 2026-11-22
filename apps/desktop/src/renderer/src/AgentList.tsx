@@ -655,10 +655,13 @@ function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
               onKeyDown={(e) => (e.key === "Enter" ? void rename(naming) : e.key === "Escape" && setNaming(undefined))}
             />
           ) : (
-            <b title={p.name ? p.projectId : undefined}>{projectTitle(p)}</b>
-          )}
-          {naming === undefined && defaultProjectName(p) && (
-            <button className="link sm" onClick={() => setNaming("")}>{t("prepare.defaultName")}</button>
+            <>
+              <b title={p.name ? p.projectId : undefined}>{projectTitle(p)}</b>
+              {/* Renaming is a pencil (工单 #65): what it does is its tip, never a sentence standing in the name's place. */}
+              <button className="tb ag-prj-edit" title={t("prepare.renameTip", { name: projectTitle(p) })} aria-label={t("prepare.renameTip", { name: projectTitle(p) })} onClick={() => setNaming(projectTitle(p))}>
+                <Icon name="edit" />
+              </button>
+            </>
           )}
           <em>{agent ? how : [how, ...p.agents.map(codingAgentTitle)].join(" · ")}</em>
         </span>

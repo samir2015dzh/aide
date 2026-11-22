@@ -60,8 +60,8 @@ sealed interface Route {
     data object NewRoom : Route
 }
 
-/** The roster first (工单 #57): it took the machines' place, the machines now its groups' heads. */
-enum class Tab { Bots, Sessions, NeedsYou, Settings }
+/** The roster first (工单 #57): bots and rooms only; the machines are a tab of their own (工单 #63). */
+enum class Tab { Bots, Sessions, NeedsYou, Devices, Settings }
 
 /** The page shown over the tabs (none: the tabs), and how deep in the stack, so a transition knows forward from back. */
 private data class PageAt(val route: Route?, val depth: Int)
@@ -118,7 +118,8 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
             Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
-            is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
+            is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) },
+                openDevices = { stack.clear(); tab = Tab.Devices })
             is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }
             is Route.Room -> RoomPage(model, top.machineId, top.roomId, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
             Route.NewRoom -> NewRoomPage(model, opened = { r -> stack.removeAt(stack.lastIndex); stack.add(Route.Room(r.hostMachineId, r.roomId)) }, back = { stack.removeAt(stack.lastIndex) })
@@ -139,6 +140,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                 NavigationBarItem(tab == Tab.NeedsYou, { tab = Tab.NeedsYou }, icon = {
                     BadgedBox(badge = { if (needs > 0) Badge(containerColor = Warning, contentColor = androidx.compose.ui.graphics.Color.White) { Text("$needs") } }) { Icon(Icons.Filled.Notifications, null) }
                 }, label = { Text(t("Needs you", "需要你")) })
+                NavigationBarItem(tab == Tab.Devices, { tab = Tab.Devices }, icon = { Icon(androidx.compose.ui.res.painterResource(io.aide.android.R.drawable.ic_devices), null) }, label = { Text(t("Devices", "设备")) })
                 NavigationBarItem(tab == Tab.Settings, { tab = Tab.Settings }, icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(t("Settings", "设置")) })
             }
             }
@@ -150,6 +152,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                     Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
                     Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
                     Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
+                    Tab.Devices -> DevicesTab(model) { stack.add(Route.Session(it)) }
                     Tab.Settings -> SettingsTab(model)
                 }
             }

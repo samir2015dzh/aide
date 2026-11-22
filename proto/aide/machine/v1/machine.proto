@@ -213,6 +213,21 @@ message MachineStatus {
   // devices follow rooms on the Watch they have, asking nothing. Sent to the
   // owner's devices only.
   repeated Room rooms = 17;
+  // What this machine's coding agents said for rooms another machine hosts
+  // that the post office still holds for that host (工单 #74): the host is
+  // offline, so the owner's devices can show they wait to come in. Sent to
+  // the owner's devices only.
+  repeated RoomOutbox room_outbox = 18;
+}
+
+// RoomOutbox is what waits at the post office for a room's host: replies
+// of this machine's coding agents, sent while the host was away.
+message RoomOutbox {
+  string room_id = 1;
+  string host_machine_id = 2;
+  uint32 replies = 3;
+  // When the oldest of them was sent.
+  google.protobuf.Timestamp since = 4;
 }
 
 // ScreenStatus is whether the owner's devices can see and operate this
@@ -1260,6 +1275,12 @@ message Room {
   // take a room's wake.
   aide.identity.v1.Signed charter = 16;
   aide.identity.v1.Signed charter_device_cert = 17;
+  // What the host last told the owner of this room (工单 #69, #70): a
+  // result handed in, the round limit reached, a member naming the owner, a
+  // member woken and quiet for two minutes; and when. The owner's devices
+  // notify with it, once each.
+  string notice = 18;
+  google.protobuf.Timestamp notice_at = 19;
 }
 
 enum RoomMode {
@@ -1308,6 +1329,12 @@ enum RoomDeliveryState {
   ROOM_DELIVERY_STATE_REFUSED = 3;
   // Sending failed for now; the owner can send it again.
   ROOM_DELIVERY_STATE_FAILED = 4;
+  // The member took it from the post office (工单 #71: "it took the
+  // letter"), or its session here has it: not answered yet.
+  ROOM_DELIVERY_STATE_TAKEN = 5;
+  // Not sent yet: the host's limit of bots at work at once is reached
+  // (工单 #70); it is woken as soon as one of them is done.
+  ROOM_DELIVERY_STATE_QUEUED = 6;
 }
 
 message RoomDelivery {
@@ -1318,6 +1345,8 @@ message RoomDelivery {
   // The id of the member's own copy (one message per recipient), which its
   // answer is in reply to.
   string copy_id = 4;
+  // Woken and quiet for two minutes: the owner was told, once (工单 #70).
+  bool reminded = 5;
 }
 
 message RoomMessage {

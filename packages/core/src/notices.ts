@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import type { Machine } from "@aide/proto/local";
+import type { Room } from "@aide/proto/machine";
 import { FailureSchema, SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
@@ -163,3 +164,62 @@ export function filterNotices(items: NoticeItem[], prefs: Partial<NoticePrefs>):
   });
 }
 
+
+// Rooms (工单 #69) and quiet bots (工单 #70).
+
+/** What a room was at the last look: its unread count, and when its host last told of it. */
+export interface RoomSnapshot {
+  unread: number;
+  noticeAt: number;
+}
+
+export function roomSnapshots(rooms: readonly Room[]): Map<string, RoomSnapshot> {
+  return new Map(rooms.map((r) => [r.roomId, { unread: r.unread, noticeAt: Number(r.noticeAt?.seconds ?? 0n) }]));
+}
+
+export interface RoomNotice {
+  roomId: string;
+  hostMachineId: string;
+  title: string;
+  body: string;
+}
+
+/**
+ * A room to tell the owner of (工单 #69): its host told of it anew (a result handed in, the round limit, a member
+ * naming the owner, a member quiet two minutes), or more in it is unread than before. Nothing at the first look
+ * (before undefined), and nothing for the room whose page is open: what is in front is read, not told of.
+ */
+export function roomNotices(before: ReadonlyMap<string, RoomSnapshot> | undefined, rooms: readonly Room[], open: string): RoomNotice[] {
+  if (!before) return [];
+  const out: RoomNotice[] = [];
+  for (const r of rooms) {
+    if (r.roomId === open) continue;
+    const was = before.get(r.roomId) ?? { unread: 0, noticeAt: 0 };
+    const at = Number(r.noticeAt?.seconds ?? 0n);
+    if (at > was.noticeAt && r.notice) out.push({ roomId: r.roomId, hostMachineId: r.hostMachineId, title: r.name, body: r.notice });
+    else if (r.unread > was.unread) out.push({ roomId: r.roomId, hostMachineId: r.hostMachineId, title: r.name, body: r.lastLine || t("notice.roomNew") });
+  }
+  return out;
+}
+
+/** How long a bot handed work may show no sign of life before the owner is told, once (工单 #70). */
+export const QUIET_AFTER_MS = 2 * 60 * 1000;
+
+/**
+ * Sessions whose turn started QUIET_AFTER_MS ago or more with nothing from the agent since (工单 #70): each such turn
+ * once (its key, "<session>@<turn start>", in told), never again once the agent stirred or the turn ended.
+ */
+export function quietSessions(sessions: readonly Session[], now: Date, told: ReadonlySet<string>): { session: Session; key: string }[] {
+  const out: { session: Session; key: string }[] = [];
+  for (const s of sessions) {
+    if (s.status !== SessionStatus.RUNNING && s.status !== SessionStatus.PREPARING && s.status !== SessionStatus.QUEUED) continue;
+    // A turn under way says when it started; one not started yet (queued, preparing) dates from the session.
+    const started = dateOf(s.progress?.turnStartedAt) ?? (s.status === SessionStatus.RUNNING ? undefined : dateOf(s.createdAt));
+    if (!started || now.getTime() - started.getTime() < QUIET_AFTER_MS) continue;
+    const last = dateOf(s.progress?.lastEventAt);
+    if (last && last > started) continue;
+    const key = `${s.sessionId}@${started.getTime()}`;
+    if (!told.has(key)) out.push({ session: s, key });
+  }
+  return out;
+}

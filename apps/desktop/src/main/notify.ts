@@ -1,6 +1,9 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { applyWatch, emptyWorld, filterNotices, noticeDiff, noticeSnapshots, pendingQuestion, questionAcks, withKnownState, type NoticeSnapshot } from "@aide/core";
+import {
+  applyWatch, codingAgentTitle, displayTitle, emptyWorld, filterNotices, noticeDiff, noticeSnapshots, pendingQuestion, questionAcks, quietSessions, roomNotices, roomSnapshots, t as coreT,
+  withKnownState, type NoticeSnapshot, type RoomSnapshot,
+} from "@aide/core";
 import { LocalService, type Client, type GetStatusResponse, type Machine } from "@aide/proto/local";
 import type { Session } from "@aide/proto/session";
 import { app, nativeTheme, Notification, powerMonitor } from "electron";
@@ -140,11 +143,41 @@ function ackQuestions() {
   for (const a of questionAcks(world.sessions, told, ownerPresent())) local.markSessionSeen(a).catch((e) => console.warn("telling of a question:", e));
 }
 
+// Rooms (工单 #69): the owner's machines put the rooms they host in their status; a room its host told of anew, or with
+// more unread, is posted, one notification a room (newer ones replace it), unless its page is in front.
+let roomsSeen: Map<string, RoomSnapshot> | undefined;
+let roomInFront = "";
+
+/** The room whose page the main window shows (the page says so as it opens and closes). */
+export function setRoomOpen(id: string) {
+  roomInFront = id;
+}
+
+function noticeRooms() {
+  const rooms = world.machines.flatMap((m) => m.status?.rooms ?? []);
+  const win = mainWindow();
+  const open = win && !win.isDestroyed() && win.isFocused() ? roomInFront : "";
+  for (const n of roomNotices(roomsSeen, rooms, open)) post(`room-${n.roomId}`, n.title, n.body, `room:${n.hostMachineId}/${n.roomId}`);
+  roomsSeen = roomSnapshots(rooms);
+}
+
+// Work handed out with no sign of life for two minutes (工单 #70): told once a turn.
+const quietTold = new Set<string>();
+function noticeQuiet() {
+  for (const q of quietSessions(world.sessions, new Date(), quietTold)) {
+    quietTold.add(q.key);
+    const agent = codingAgentTitle(q.session.agent);
+    post(`quiet-${q.session.sessionId}`, coreT("notice.quietTitle", { agent }), coreT("notice.quietBody", { title: displayTitle(q.session) }), `open:${q.session.sessionId}`);
+  }
+}
+
 // --- Following aided ---
 
 export function watch() {
   // The owner coming back to this desktop while a question waits: its machine hears of it.
   setInterval(ackQuestions, 10_000).unref();
+  // Quiet is noticed with time passing, nothing changing.
+  setInterval(noticeQuiet, 15_000).unref();
   (async () => {
     for (;;) {
       let w = emptyWorld;
@@ -164,6 +197,7 @@ export function watch() {
           world.machines = w.machines;
           world.sessions = withKnownState(w.sessions, w.machines);
           if (w.sessions !== before.sessions || w.machines !== before.machines) noticeSessions();
+          if (w.machines !== before.machines && !world.status?.machineOnly) noticeRooms();
           if (w !== before) changed();
         }
       } catch (e) {

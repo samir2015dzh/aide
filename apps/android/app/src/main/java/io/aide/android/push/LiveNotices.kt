@@ -43,6 +43,8 @@ class LiveNotices {
     /** Each pending question by its id: when this phone first saw it; and those it told of. */
     private var firstSeen = mapOf<String, Instant>()
     private var rang = setOf<String>()
+    /** The quiet turns told of ("<session>@<turn start>"). */
+    private var quietTold = setOf<String>()
 
     fun look(w: World, now: Instant = Instant.now()): Changes {
         val show = mutableListOf<Notice>()
@@ -67,6 +69,8 @@ class LiveNotices {
             if (before != null && failed(s) && !before.failed) {
                 show += notice(w, s, "failure").copy(failure = s.progress?.lastFailure?.kind.orEmpty(), failureMessage = s.progress?.lastFailure?.message.orEmpty())
             }
+            // Handed out and quiet two minutes since its turn started (工单 #70, as the desktop's quietSessions): once a turn.
+            quietKey(s, now)?.let { k -> if (k !in quietTold) { show += notice(w, s, "quiet"); quietTold = quietTold + k } }
         }
         val nowAsking = w.sessions.values.filter { pendingQuestion(it) != null }.map { it.sessionId }.toSet()
         // A question answered here or elsewhere: its notification goes (a failure since replaced it).
@@ -107,6 +111,21 @@ class LiveNotices {
             }
         }
 
+
+        /** How long work handed out may show no sign of life before the owner is told (工单 #70). */
+        val QUIET_AFTER: Duration = Duration.ofMinutes(2)
+
+        /** A turn started QUIET_AFTER ago or more with nothing from the agent since: its key; else null. */
+        fun quietKey(s: Session, now: Instant): String? {
+            if (s.status !in setOf(SessionStatus.RUNNING, SessionStatus.PREPARING, SessionStatus.QUEUED)) return null
+            // A turn under way says when it started; one not started yet (queued, preparing) dates from the session.
+            val started = instantOrNull(s.progress?.turnStartedAt.orEmpty())
+                ?: (if (s.status == SessionStatus.RUNNING) null else instantOrNull(s.createdAt)) ?: return null
+            if (Duration.between(started, now) < QUIET_AFTER) return null
+            val last = instantOrNull(s.progress?.lastEventAt.orEmpty())
+            if (last != null && last.isAfter(started)) return null
+            return "${s.sessionId}@${started.toEpochMilli()}"
+        }
 
         /** The question a session waits on (as the desktop's pendingQuestion). */
         fun pendingQuestion(s: Session) = if (s.status == SessionStatus.WAITING_INPUT) s.progress?.pendingQuestion else null

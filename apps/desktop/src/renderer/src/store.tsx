@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, Wake } from "@aide/proto/local";
+import { ErrorReasonSchema, type Client, type Device, type GetStatusResponse, type Machine, type Project, type Unreachable, type Wake } from "@aide/proto/local";
 import type { Session } from "@aide/proto/session";
 import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@aide/core";
 import type { Peek } from "./layout";
@@ -64,7 +64,9 @@ export type Sheet =
    */
   | { kind: "confirm"; title: string; message: string; button: string; run: (eraseHer: boolean) => Promise<unknown>; done?: string; herData?: { name: string; offline: boolean } }
   /** Erase Everything (docs/erase-everything.md). */
-  | { kind: "erase" };
+  | { kind: "erase" }
+  /** Deleting a room (工单 #73): its members' sessions listed, what becomes of them chosen. */
+  | { kind: "deleteRoom"; machineId: string; roomId: string; name: string; members: { name: string; sessionId: string }[] };
 
 export type Toast = { text: string; undo?: () => void; id: number };
 
@@ -137,8 +139,19 @@ export function errorText(e: unknown): string {
   // The owner's server has no contacts yet (a relay older than them answers 404): said as such, never raw (工单 #42).
   if (contactsUnavailable(e)) return i18n.t("common:contactsUnavailable");
   if (needsUpdate(e)) return i18n.t("common:needsUpdate.text");
-  if (e instanceof ConnectError) return e.rawMessage;
+  if (e instanceof ConnectError) return reasonText(e) ?? e.rawMessage;
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * An error's reason in the owner's language (工单 #60): aided puts a key on the errors it knows (ErrorReason), each
+ * said here as common:errors.<key> with its args; one this app has no words for is said as aided worded it.
+ */
+export function reasonText(e: ConnectError): string | undefined {
+  const r = e.findDetails(ErrorReasonSchema)[0];
+  if (!r?.reason) return undefined;
+  const key = `common:errors.${r.reason}`;
+  return i18n.exists(key) ? i18n.t(key as never, { ...r.args, raw: e.rawMessage }) : undefined;
 }
 
 /** The error says the owner's server keeps no contacts yet (its relay is older than them). */

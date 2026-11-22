@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Picker } from "./Picker";
 import { useTranslation } from "react-i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentShort, codingAgentTitle, displayTitle, searchSessions, sessionFilter, shortTime, updatedDate, type SessionFilter } from "@aide/core";
@@ -77,12 +78,8 @@ export function SearchPalette({ leaving = false }: { leaving?: boolean }) {
     setIndex(0);
   };
   const picker = (key: "grant" | "agent" | "project" | "machine", label: string, options: [string, string][]) => (
-    <select className={filter[key] ? "on" : ""} aria-label={label} value={filter[key]} onChange={(e) => change({ [key]: e.target.value })}>
-      <option value="">{t("search.all", { label })}</option>
-      {options.map(([v, l]) => (
-        <option key={v} value={v}>{l}</option>
-      ))}
-    </select>
+    <Picker chip size="sm" className={filter[key] ? "set" : ""} label={label} value={filter[key] ?? ""} onChange={(v) => change({ [key]: v })}
+      options={[{ value: "", label: t("search.all", { label }) }, ...options.map(([v, l]) => ({ value: v, label: l }))]} />
   );
   const agents = [...new Set(st.sessions.map((s) => s.agent))].sort();
   const projects = [...new Set(st.projects.map((p) => p.projectId))].sort();

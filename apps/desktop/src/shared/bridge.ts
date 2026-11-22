@@ -17,7 +17,9 @@ export type Command =
   /** DeepSeek Harness's own sessions (the settings window's Connect guide). */
   | "dsh"
   /** The Claude desktop app's Claude Code sessions (an Agent page's link). */
-  | "claude";
+  | "claude"
+  /** A room's page, from its notification (工单 #69): "room:<host machine>/<room>". */
+  | `room:${string}`;
 
 /**
  * What the menu bar panel shows (main/tray.ts): whether this Mac reaches the
@@ -51,6 +53,8 @@ export type Bridge = {
   macos: number;
   /** The settings window, on a tab ("grants"), optionally with an item in it selected ("machines/<machine id>", "grants/<grant id>"). */
   openSettings(tab?: string): void;
+  /** The room whose page the main window shows ("" none): its notifications are not posted while it is in front (工单 #69). */
+  roomOpen(roomId: string): void;
   /** In the settings window: another tab was asked for while it is open ("grants", "machines/<id>"). */
   onSettingsTab(cb: (tab: string) => void): () => void;
   /** Whether this window has the focus: now, and whenever it changes. */

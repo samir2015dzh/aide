@@ -146,7 +146,7 @@ fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Un
     }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Scaffold(topBar = {
+    Scaffold(snackbarHost = { PageFeedback(model) }, topBar = {
         TopAppBar(
             title = { Text(t("DSH sessions", "DSH 会话")) },
             navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
@@ -286,7 +286,7 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
             dismissButton = { TextButton(onClick = { asking = false }) { Text(t("Cancel", "取消")) } },
         )
     }
-    Scaffold(topBar = {
+    Scaffold(snackbarHost = { PageFeedback(model) }, topBar = {
         TopAppBar(
             title = {
                 Column {

@@ -3,7 +3,7 @@ import type { Client, Machine } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { agentName } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
-import { agentEntry, clientCategory, machineConnections, type ConnRow, type ConnState, type MachineConnections } from "./connections";
+import { agentEntry, clientCategory, grantCategory, isAideClient, machineConnections, type ConnRow, type ConnState, type MachineConnections } from "./connections";
 import { t } from "./i18n";
 import { displayTitle, isActive, updatedDate } from "./sessions";
 import { agoText } from "./text";
@@ -107,6 +107,12 @@ export type Bot = {
 export type Roster = {
   personal: Bot[];
   machines: { machine: Machine; bots: Bot[] }[];
+  /**
+   * Connections that are not agents (工单 #64): Aide's own command line logged in on a machine ("client@<machine>"),
+   * or a grant whose kind is neither a personal agent nor a known coding agent. Never a bot: the devices page shows
+   * them as what they are, a client of the account on that machine ("" when its machine is not known).
+   */
+  aside: { client: Client; machineId: string }[];
 };
 
 /** "DSH · work-pc" while there are several machines (BOTARK-REF §2: one root, the instance by its suffix). */
@@ -115,28 +121,44 @@ export function botName(agent: string, machine: Machine, machines: number): stri
 }
 
 /** The coding agent a grant's label names ("DSH on work-pc" → deepseek), to put the grant on that bot. */
-function grantAgent(label: string): string | undefined {
+export function grantAgent(label: string): string | undefined {
   const l = label.toLowerCase();
   if (/\b(dsh|deepseek)\b/.test(l)) return "deepseek";
   if (/\bclaude\b/.test(l)) return "claude";
   if (/\bcodex\b/.test(l)) return "codex";
+  if (/\b(workbuddy|codebuddy)\b/.test(l)) return "codebuddy";
+  if (/\bgemini\b/.test(l)) return "gemini";
+  if (/\bcopilot\b/.test(l)) return "copilot";
+  if (/\bopencode\b/.test(l)) return "opencode";
+  if (/\bqwen\b/.test(l)) return "qwen";
+  if (/\bkimi\b/.test(l)) return "kimi";
   return undefined;
 }
+
 
 /** Every bot: the personal agents, then each machine's coding agents (this computer first, then online, then by name). */
 export function roster(machines: readonly Machine[], clients: readonly Client[], sessions: readonly Session[], now: Date, personas: readonly Persona[] = []): Roster {
   const sorted = [...machines].sort((a, b) => Number(b.local) - Number(a.local) || Number(b.online) - Number(a.online) || a.machineName.localeCompare(b.machineName));
   const personal: Bot[] = [];
+  const aside: Roster["aside"] = [];
   const localGrants = new Map<string, Client[]>();
+  const machineOf = (name?: string) => machines.find((m) => m.machineName === name)?.machineId ?? "";
+  // Who gets on the roster (工单 #64): a personal agent, or a coding agent — one its machine detected (with its grant
+  // on it), or a grant that names a known coding agent, or one the owner filed as a coding agent. Aide's own client and
+  // grants of no known kind are connections, set aside for the devices page; Her's grant is neither (it ends with her).
   for (const c of clients) {
     if (c.revoked || c.herMachineId) continue;
+    if (isAideClient(c)) {
+      aside.push({ client: c, machineId: machineOf(grantCategory(c.label, machines.map((m) => m.machineName)).machine) });
+      continue;
+    }
     const k = clientCategory(c, machines);
     if (k.category === "personal") {
       const mine = sessions.filter((s) => s.createdBy === c.clientId);
       personal.push({ key: `c:${c.clientId}`, kind: "personal", name: agentName(c.label), agent: "", machineId: "", client: c, personas: [], state: personalBotState(c, now), ...doing(mine, now) });
       continue;
     }
-    const id = machines.find((m) => m.machineName === k.machine)?.machineId ?? "";
+    const id = machineOf(k.machine);
     localGrants.set(id, [...(localGrants.get(id) ?? []), c]);
   }
   personal.sort((a, b) => Number(b.client!.online) - Number(a.client!.online) || a.name.localeCompare(b.name));
@@ -152,17 +174,31 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
       const own = personas.filter((p) => p.machineId === m.machineId && p.agent === agent);
       bots.push({ key: `m:${m.machineId}/${agent}`, kind: "local", name: own[0]?.name || botName(agent, m, machines.length), agent, machineId: m.machineId, client, personas: own, state, ...doing(mine, now) });
     }
-    // A coding agent with a grant of its own that its machine does not list (another kind, or not detected): its own bot.
+    // A coding agent with a grant of its own that its machine does not list (another kind, or not detected): its own
+    // bot — when it is a coding agent at all (a known kind, or filed so by the owner); else a connection, set aside.
     for (const g of grants) {
+      if (!admitted(g, machines)) {
+        aside.push({ client: g, machineId: m.machineId });
+        continue;
+      }
       bots.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: m.machineId, client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
     }
     return { machine: m, bots };
   });
   // Grants of coding agents on a machine not known here: with the personal ones, rather than nowhere.
   for (const g of localGrants.get("") ?? []) {
+    if (!admitted(g, machines)) {
+      aside.push({ client: g, machineId: "" });
+      continue;
+    }
     personal.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: "", client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
   }
-  return { personal, machines: out };
+  return { personal, machines: out, aside };
+}
+
+/** A grant filed as a coding agent is one on the roster when it names a known coding agent, or the owner filed it so. */
+function admitted(g: Client, machines: readonly Machine[]): boolean {
+  return !!grantAgent(g.label) || clientCategory(g, machines).set;
 }
 
 function doing(list: readonly Session[], now: Date): { doing: string; running: number; waiting: number } {

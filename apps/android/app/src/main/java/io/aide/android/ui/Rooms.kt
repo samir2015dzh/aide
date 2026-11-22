@@ -27,9 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,8 +85,13 @@ fun roomLine(r: Room): String = when (r.run) {
     else -> r.lastLine.ifEmpty { t("Waiting for you", "等你") }
 }
 
+/** Replies waiting at the post office for a room's away host (工单 #74), from the other machines' status. */
+private fun waitingLine(r: Room, outbox: List<io.aide.android.api.RoomOutbox>): String? = outbox.filter { it.roomId == r.roomId }.sumOf { it.replies }.takeIf { it > 0 }?.let {
+    t("$it replies wait for the host", "$it 条回复等主持机上线")
+}
+
 /** The roster's rooms: a header with a button to make one, a row each. */
-fun LazyListScope.roomItems(rooms: List<Room>, open: (Room) -> Unit, create: () -> Unit) {
+fun LazyListScope.roomItems(rooms: List<Room>, open: (Room) -> Unit, create: () -> Unit, outbox: List<io.aide.android.api.RoomOutbox> = emptyList()) {
     item(key = "rooms-h") {
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { SectionHeader(t("Rooms", "房间"), count = rooms.size.takeIf { it > 0 }) }
@@ -108,7 +111,7 @@ fun LazyListScope.roomItems(rooms: List<Room>, open: (Room) -> Unit, create: () 
                     HSpace(12)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(r.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(roomLine(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(waitingLine(r, outbox) ?: roomLine(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (r.unread > 0) { HSpace(8); CountBadge(r.unread, Tone.Live) }
                     HSpace(4)
@@ -127,10 +130,11 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
     var room by remember { mutableStateOf<Room?>(null) }
     var msgs by remember { mutableStateOf<List<RoomMessage>>(emptyList()) }
     var failed by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     suspend fun read() {
         val r = model.readRoom(machineId, roomId)
-        failed = r == null && room == null
+        failed = r == null
         if (r != null) { room = r.room; msgs = r.messages }
     }
     DisposableEffect(roomId) {
@@ -147,18 +151,28 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
     val last = msgs.lastOrNull()?.messageId
     LaunchedEffect(last) { if (last != null && room?.seenMessageId != last) model.markRoomSeen(machineId, roomId) }
     Scaffold(
+        snackbarHost = { PageFeedback(model) },
         topBar = {
             TopAppBar(
                 title = { Text(room?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
+                actions = { if (room != null) TextButton(onClick = { deleting = true }) { Text(t("Delete", "删除"), color = MaterialTheme.colorScheme.error) } },
             )
         },
     ) { pad ->
         val r = room
+        // The host away (工单 #74): said, with the replies that wait for it; what was read last stays shown.
+        val host = world.machines.firstOrNull { it.machineId == machineId }
+        val away = failed || (host != null && !host.online && !host.local)
+        val waiting = world.machines.flatMap { it.status?.roomOutbox.orEmpty() }.filter { it.roomId == roomId }.sumOf { it.replies }
         if (r == null) {
-            Centered { Text(if (failed) t("The room's machine is not online.", "保存这个房间的机器不在线。") else t("Reading the room…", "正在读取房间…")) }
+            Centered {
+                Text(if (failed) t("${host?.machineName ?: "The machine"} keeping this room is offline.", "主持这个房间的 ${host?.machineName ?: "机器"} 不在线。") else t("Reading the room…", "正在读取房间…"))
+                if (waiting > 0) Text(t("$waiting replies wait at the post office for it to come back.", "有 $waiting 条回复在邮局等它上线后入房。"), color = Warning)
+            }
             return@Scaffold
         }
+        if (deleting) DeleteRoomDialog(model, r, { deleting = false }) { deleting = false; back() }
         val table = r.mode == ROUNDTABLE
         val bots = roster(world.machines, world.clients, world.sessions.values, Instant.now(), emptyList()).all
         fun nameOf(key: String) = r.members.firstOrNull { it.botKey == key }?.name ?: key
@@ -184,16 +198,22 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            FilterChip(!table, { update(RoomPatch(roomId, mode = MANUAL)) }, { Text(t("Manual @", "手动 @")) })
-                            FilterChip(table, { update(RoomPatch(roomId, mode = ROUNDTABLE)) }, { Text(t("Round table", "自主圆桌")) })
+                            ToggleChip(t("Manual @", "手动 @"), !table) { update(RoomPatch(roomId, mode = MANUAL)) }
+                            ToggleChip(t("Round table", "自主圆桌"), table) { update(RoomPatch(roomId, mode = ROUNDTABLE)) }
                             if (table) {
                                 TextButton(enabled = r.maxRounds > 1, onClick = { update(RoomPatch(roomId, maxRounds = r.maxRounds - 1)) }) { Text("−") }
                                 Text(t("up to ${r.maxRounds}", "最多 ${r.maxRounds} 轮"), style = MaterialTheme.typography.bodySmall)
                                 TextButton(enabled = r.maxRounds < 20, onClick = { update(RoomPatch(roomId, maxRounds = r.maxRounds + 1)) }) { Text("+") }
                             }
                         }
-                        Text(t("kept on ${world.machineName(r.hostMachineId)}", "保存在 ${world.machineName(r.hostMachineId)}"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
                     }
+                }
+                if (away) item(key = "away") {
+                    Text(
+                        t("${host?.machineName ?: "The machine"} keeping this room is offline.", "主持这个房间的 ${host?.machineName ?: "机器"} 不在线。") +
+                            if (waiting > 0) t(" $waiting replies wait at the post office to come in once it is back.", " 有 $waiting 条回复在邮局等它上线后入房。") else "",
+                        style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.fillMaxWidth().aideInset().padding(12.dp),
+                    )
                 }
                 item(key = "timeline-h") { SectionHeader(t("Timeline", "时间线")) }
                 if (msgs.isEmpty()) item(key = "none") {
@@ -201,8 +221,11 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                         else t("Say something: the bots you name act.", "说点什么：@ 谁，谁就会动。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(4.dp))
                 }
                 msgs.forEach { m -> item(key = "m-${m.messageId}", contentType = "chat") { RoomMessageView(model, r, m, ::nameOf, openSession) } }
+                if (waiting > 0) item(key = "waiting") {
+                    Text(t("$waiting replies are on their way: they come in as soon as the host is back", "还有 $waiting 条回复在路上：主持机一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                }
             }
-            RoomCompose(model, r) { m -> msgs = msgs.filter { it.messageId != m.messageId } + m; scope.launch { read() } }
+            RoomCompose(model, r, enabled = !away) { m -> msgs = msgs.filter { it.messageId != m.messageId } + m; scope.launch { read() } }
         }
     }
 }
@@ -238,12 +261,7 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, nameOf: (S
             Text(m.text, style = MaterialTheme.typography.bodyMedium, color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
         }
         if (mine) m.deliveries.forEach { d ->
-            val name = nameOf(d.botKey)
-            val (words, bad) = when (d.state) {
-                "ROOM_DELIVERY_STATE_SENT" -> t("Sent: waiting for $name to read it", "已发出：等 $name 取信") to false
-                "ROOM_DELIVERY_STATE_REPLIED" -> t("$name answered", "$name 已回复") to false
-                else -> d.reason to true
-            }
+            val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)
             Text(words, style = MaterialTheme.typography.labelSmall, color = if (bad) Warning else aide.faint)
         }
         if (!mine && m.deliveries.isNotEmpty()) Text(t("handed on to ${m.deliveries.joinToString(", ") { nameOf(it.botKey) }}", "转交给 ${m.deliveries.joinToString("、") { nameOf(it.botKey) }}"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
@@ -259,44 +277,105 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, nameOf: (S
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RoomCompose(model: AppModel, r: Room, posted: (RoomMessage) -> Unit) {
+private fun RoomCompose(model: AppModel, r: Room, enabled: Boolean, posted: (RoomMessage) -> Unit) {
     val scope = rememberCoroutineScope()
     var text by rememberSaveable { mutableStateOf("") }
     var mentions by rememberSaveable { mutableStateOf(listOf<String>()) }
     var key by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
-    var busy by remember { mutableStateOf(false) }
+    var state by remember { mutableStateOf<ComposerState>(ComposerState.Idle) }
     val woken = mentions.ifEmpty { if (r.mode == ROUNDTABLE) r.members.take(1).map { it.botKey } else emptyList() }
     val names = woken.joinToString("、") { k -> r.members.firstOrNull { it.botKey == k }?.name ?: k }
-    Column(Modifier.fillMaxWidth().imePadding()) {
-        HorizontalDivider(thickness = 0.5.dp, color = aide.separator)
-        FlowRow(Modifier.padding(start = 12.dp, end = 8.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            r.members.forEach { m ->
-                val on = m.botKey in mentions
-                FilterChip(on, { mentions = if (on) mentions - m.botKey else mentions + m.botKey }, { Text("@" + m.name) })
+    fun send() {
+        state = ComposerState.Sending
+        scope.launch {
+            model.postRoomMessageOr(r, text.trim(), key, { state = ComposerState.Failed(it) { send() } }, mentions)?.let { m ->
+                posted(m)
+                text = ""
+                mentions = emptyList()
+                key = UUID.randomUUID().toString()
+                state = ComposerState.Idle
             }
         }
-        Text(if (woken.isEmpty()) t("Just saying it: wakes no one", "只是说一句，不叫醒任何人") else t("Wakes: $names", "将叫醒：$names"),
-            style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.padding(horizontal = 16.dp))
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(text, { text = it }, Modifier.weight(1f), placeholder = { Text(t("Say something in the room…", "在房间里说…")) }, maxLines = 6)
-            Spacer(Modifier.width(4.dp))
-            IconButton(enabled = text.isNotBlank() && !busy, onClick = {
-                busy = true
-                scope.launch {
-                    val m = model.postRoomMessage(r, text.trim(), key, mentions)
-                    busy = false
-                    if (m != null) {
-                        posted(m)
-                        text = ""
-                        mentions = emptyList()
-                        key = UUID.randomUUID().toString()
+    }
+    Composer(
+        text, { text = it }, { send() }, t("Say something in the room…", "在房间里说…"), state, enabled = enabled,
+        why = ComposerWhy(if (woken.isEmpty()) t("Just saying it: wakes no one", "只是说一句，不叫醒任何人") else t("Wakes: $names", "将叫醒：$names")),
+        chips = {
+            r.members.forEach { m ->
+                val on = m.botKey in mentions
+                ToggleChip("@" + m.name, on) { mentions = if (on) mentions - m.botKey else mentions + m.botKey }
+            }
+        },
+    )
+}
+
+/**
+ * Deleting a room (工单 #73): what becomes of its members' sessions is said and chosen — the room alone (they stay in
+ * their projects), or with the sessions made for it — and those sessions are listed.
+ */
+@Composable
+private fun DeleteRoomDialog(model: AppModel, r: Room, cancel: () -> Unit, deleted: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val world by model.world.collectAsState()
+    val sessions = r.members.filter { it.sessionId.isNotEmpty() }
+    var withSessions by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { if (!busy) cancel() },
+        title = { Text(t("Delete “${r.name}”?", "删除房间「${r.name}」？")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(t("The room and its timeline go. What becomes of the sessions its members started in it is yours to choose:", "房间和它的时间线会删掉。成员在房间里新建的会话怎么处理，你来选："), style = MaterialTheme.typography.bodySmall)
+                ChoiceRow(t("The room only", "只删房间"), t("${sessions.size} member sessions stay in their projects", "${sessions.size} 个成员会话留在原来的项目里"), !withSessions) { withSessions = false }
+                if (sessions.isNotEmpty()) ChoiceRow(t("The room and its members’ sessions", "连同成员会话一起删"), t("The ${sessions.size} sessions started in this room are deleted too, for good", "本房间里新建的 ${sessions.size} 个成员会话一并删除，不能恢复"), withSessions) { withSessions = true }
+                if (sessions.isNotEmpty()) {
+                    Text(t("Sessions affected (${sessions.size})", "受影响的会话（${sessions.size}）"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    sessions.forEach { m ->
+                        val s = world.sessions[m.sessionId]
+                        Text("${m.name} · ${s?.let { displayTitleOf(it) } ?: t("on another machine", "在另一台机器上")}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-            }) { Icon(Icons.AutoMirrored.Filled.Send, t("Send", "发送")) }
+                error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Warning) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                busy = true
+                scope.launch {
+                    val why = model.deleteRoom(r.hostMachineId, r.roomId, if (withSessions) sessions.map { it.sessionId } else emptyList())
+                    busy = false
+                    if (why == null) deleted() else error = why
+                }
+            }) { Text(if (busy) t("Deleting…", "正在删…") else if (withSessions) t("Delete Room and Sessions", "删除房间和会话") else t("Delete Room", "删除房间"), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = cancel) { Text(t("Cancel", "取消")) } },
+    )
+}
+
+private fun displayTitleOf(s: io.aide.android.api.Session) = io.aide.android.model.displayTitle(s)
+
+/** One choice of several, as Apple's lists draw it: a round check, its words, a line under. */
+@Composable
+fun ChoiceRow(title: String, sub: String, on: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().pressable(onClick).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        RoundCheck(on)
+        HSpace(10)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(sub, style = MaterialTheme.typography.labelSmall, color = aide.faint)
         }
     }
+}
+
+/** A tick, round, as Apple's: never the platform's square checkbox (工单 #68). */
+@Composable
+fun RoundCheck(on: Boolean) {
+    Box(
+        Modifier.size(22.dp).clip(CircleShape).background(if (on) MaterialTheme.colorScheme.primary else aide.fill2),
+        contentAlignment = Alignment.Center,
+    ) { if (on) Text("✓", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium) }
 }
 
 /** Making a room: its name, how it is run, the bots in it (a coding agent with the project it works in). */
@@ -315,6 +394,7 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
     fun projectsOf(b: Bot) = world.projects.filter { it.machineId == b.machineId && (it.agents.isEmpty() || b.agent in it.agents) }
     val ready = name.isNotBlank() && picked.isNotEmpty() && picked.all { (k, p) -> k.startsWith("c:") || p.isNotEmpty() }
     Scaffold(
+        snackbarHost = { PageFeedback(model) },
         topBar = {
             TopAppBar(
                 title = { Text(t("New room", "新建房间")) },
@@ -337,8 +417,8 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
             item(key = "mode") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(!table, { table = false }, { Text(t("Manual @", "手动 @")) })
-                        FilterChip(table, { table = true }, { Text(t("Round table", "自主圆桌")) })
+                        ToggleChip(t("Manual @", "手动 @"), !table) { table = false }
+                        ToggleChip(t("Round table", "自主圆桌"), table) { table = true }
                         if (table) {
                             TextButton(enabled = maxRounds > 1, onClick = { maxRounds-- }) { Text("−") }
                             Text(t("up to $maxRounds", "最多 $maxRounds 轮"), style = MaterialTheme.typography.bodySmall)
@@ -357,7 +437,8 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                     Column {
                         Row(Modifier.fillMaxWidth().pressable { picked = if (on) picked - b.key else picked + (b.key to (if (b.personal) "" else projectsOf(b).firstOrNull()?.projectId.orEmpty())) },
                             verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(on, null)
+                            RoundCheck(on)
+                            HSpace(10)
                             BotFace(b, 28, toneColor(botTone(b)))
                             HSpace(10)
                             Text(b.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
@@ -367,7 +448,7 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                             val ps = projectsOf(b)
                             if (ps.isEmpty()) Text(t("No project for it on that machine", "那台机器上没有给它用的项目"), style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(start = 48.dp))
                             else FlowRow(Modifier.padding(start = 48.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                ps.forEach { p -> FilterChip(picked[b.key] == p.projectId, { picked = picked + (b.key to p.projectId) }, { Text(world.projectTitle(p.machineId, p.projectId)) }) }
+                                ps.forEach { p -> ToggleChip(world.projectTitle(p.machineId, p.projectId), picked[b.key] == p.projectId) { picked = picked + (b.key to p.projectId) } }
                             }
                         }
                     }

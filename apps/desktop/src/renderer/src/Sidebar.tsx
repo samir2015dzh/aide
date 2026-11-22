@@ -90,8 +90,7 @@ export function Sidebar() {
   const st = useStore();
   const { t } = useTranslation("common");
   const now = useNow(30_000);
-  const held = useHeldCount(!!st.status);
-  const taskLook = useTaskLook();
+  const owner = !st.status?.machineOnly;
   return (
     <aside className="side" aria-label={t("sidebar.label")}>
       <div className="side-top drag">
@@ -106,56 +105,22 @@ export function Sidebar() {
           <span className="kbd">{keys("CmdOrCtrl+K")}</span>
         </button>
       </div>
-      {/* The overview, then every session, as the view lays them out. */}
-      <nav className="side-nav">
-        <OverviewItem now={now} />
-        {!st.status?.machineOnly && hasDSH(st) && (
-          <button className={`nav-i ${st.selection.kind === "dsh" ? "sel" : ""}`} onClick={() => st.selection.kind !== "dsh" && st.set({ selection: { kind: "dsh" } })}>
-            <Icon name="terminal" />
-            <span>{t("sidebar.dsh")}</span>
-          </button>
-        )}
-        {!st.status?.machineOnly && hasClaude(st) && (
-          <button className={`nav-i ${st.selection.kind === "claude" ? "sel" : ""}`} onClick={() => st.selection.kind !== "claude" && st.set({ selection: { kind: "claude" } })}>
-            <Icon name="terminal" />
-            <span>{t("sidebar.claude")}</span>
-          </button>
-        )}
-        {/* The work the owner's agents handed out (work order #27), with how many need a look. */}
-        {!st.status?.machineOnly && (
-          <button className={`nav-i ${st.selection.kind === "tasks" ? "sel" : ""}`} onClick={() => st.selection.kind !== "tasks" && st.set({ selection: { kind: "tasks" } })}>
-            <Icon name="persons" />
-            <span>{t("sidebar.tasks")}</span>
-            {taskLook > 0 && <span className="nav-count">{taskLook}</span>}
-          </button>
-        )}
-        {/* Messages held for the owner (docs/agent-messages.md §15.5): there while one waits, or while open. */}
-        {(held > 0 || st.selection.kind === "held") && (
-          <button className={`nav-i ${st.selection.kind === "held" ? "sel" : ""}`} onClick={() => st.selection.kind !== "held" && st.set({ selection: { kind: "held" } })}>
-            <Icon name="bell" />
-            <span>{t("sidebar.held")}</span>
-            {held > 0 && <span className="nav-count">{held}</span>}
-          </button>
-        )}
-        {/* How DSH, Claude Desktop and the others connect: the Connect guide (Settings › Connect). */}
-        {!st.status?.machineOnly && (
-          <button className="nav-i" onClick={() => window.aide?.openSettings("connect")}>
-            <Icon name="link" />
-            <span>{t("sidebar.connect")}</span>
-          </button>
-        )}
-      </nav>
-      {/* The roster (工单 #57): every bot, synced from the account and the machines, first thing under the pages. */}
-      {!st.status?.machineOnly && <SidebarRoster />}
-      <div className="side-h">
-        <span>{t("sidebar.sessions")}</span>
-        {/* New Task (docs/technical-design.md §3.4): the owner starts a coding agent on a machine of theirs. */}
-        <button className="tb side-new" title={`${t("sidebar.newSession")} ${keys("CmdOrCtrl+N")}`} aria-label={t("sidebar.newSession")} onClick={() => st.set({ sheet: { kind: "newSession" } })}>
-          <Icon name="plus" />
-        </button>
-        <ListViewMenu />
-      </div>
-      <Sessions now={now} />
+      {/*
+        The owner's sidebar is bots alone (工单 #63): the roster, then settings and the account at the foot. The
+        overview, the devices, the task feed and the Connect guide are in the account menu there; each bot's sessions
+        are on its own page. A machine only (no roster) keeps its own sessions here.
+      */}
+      {owner ? (
+        <SidebarRoster />
+      ) : (
+        <>
+          <div className="side-h">
+            <span>{t("sidebar.sessions")}</span>
+            <ListViewMenu />
+          </div>
+          <Sessions now={now} />
+        </>
+      )}
       <UpdateReminder />
       <AccountMenu />
     </aside>
@@ -176,24 +141,6 @@ export function hasClaude(st: { machines: { status?: { agents: { name: string }[
 export function overviewMarks(st: Store, now: Date) {
   const team = teamState(st.sessions);
   return { waits: team.waiting.length + expiringClients(st, now).length, running: team.running.length };
-}
-
-/** The overview (⌘1): an orange dot when something needs the owner, a ring while anything runs. */
-function OverviewItem({ now }: { now: Date }) {
-  const st = useStore();
-  const { t } = useTranslation("common");
-  const { waits, running } = overviewMarks(st, now);
-  return (
-    <button className={`nav-i ${st.selection.kind === "overview" ? "sel" : ""}`} onClick={() => st.set({ selection: { kind: "overview" } })}>
-      <Icon name="grid" />
-      <span>{t("sidebar.overview")}</span>
-      <span className="nav-marks">
-        {waits > 0 && <span className="cnt-w" role="img" aria-label={t("sidebar.attention", { count: waits })}>{waits}</span>}
-        {running > 0 && <Ring label={t("sidebar.running", { count: running })} />}
-        {waits === 0 && running === 0 && <span className="kbd">{keys("CmdOrCtrl+1")}</span>}
-      </span>
-    </button>
-  );
 }
 
 /** A small ring that turns: something is at work. */
@@ -280,7 +227,7 @@ function Sessions({ now }: { now: Date }) {
   );
 }
 
-type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect"; icon: string; shortcut?: string } | null;
+type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "overview" | "devices" | "tasks" | "held" | "newSession"; icon: string; shortcut?: string; count?: number } | null;
 
 /**
  * The account menu, from the avatar at the sidebar's foot: it opens upward, as wide as the foot, with what adds
@@ -294,13 +241,23 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const foot = useRef<HTMLButtonElement>(null);
-  // A machine only adds nothing to the owner's (null: a separator).
+  const held = useHeldCount(!!st.status);
+  const taskLook = useTaskLook();
+  const marks = overviewMarks(st, useNow(30_000));
+  // The pages that left the sidebar (工单 #63) are here, beside settings and the account (BotArk: at the foot). A
+  // machine only adds nothing to the owner's (null: a separator).
   const items: AccountItem[] = st.status?.machineOnly
     ? [
         { id: "settings", icon: "gear", shortcut: keys("CmdOrCtrl+,") },
         { id: "account", icon: "user" },
       ]
     : [
+        { id: "overview", icon: "grid", shortcut: keys("CmdOrCtrl+1"), count: marks.waits },
+        { id: "devices", icon: "devices" },
+        { id: "tasks", icon: "persons", count: taskLook },
+        ...(held > 0 || st.selection.kind === "held" ? [{ id: "held" as const, icon: "bell", count: held }] : []),
+        null,
+        { id: "newSession", icon: "plus", shortcut: keys("CmdOrCtrl+N") },
         { id: "newGrant", icon: "key", shortcut: keys("Shift+CmdOrCtrl+N") },
         { id: "addMachine", icon: "laptop" },
         { id: "connect", icon: "link" },
@@ -308,6 +265,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         { id: "settings", icon: "gear", shortcut: keys("CmdOrCtrl+,") },
         { id: "account", icon: "user" },
       ];
+  const due = marks.waits + held;
   useEffect(() => {
     if (!open) return;
     (open === "key" ? menu.current?.querySelector<HTMLElement>("[role=menuitem]") : menu.current)?.focus();
@@ -325,6 +283,8 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     if (id === "settings") window.aide?.openSettings();
     else if (id === "account") window.aide?.openSettings("account");
     else if (id === "connect") window.aide?.openSettings("connect");
+    else if (id === "devices") window.aide?.openSettings("machines");
+    else if (id === "overview" || id === "tasks" || id === "held") st.set({ selection: { kind: id } });
     else st.set({ sheet: { kind: id } });
   };
   // The keyboard, as in a native menu: arrows move, Esc closes back to the avatar.
@@ -351,6 +311,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
               <button key={it.id} className="mi" role="menuitem" tabIndex={-1} onMouseEnter={(e) => e.currentTarget.focus()} onClick={() => choose(it.id)}>
                 <Icon name={it.icon} />
                 <span>{t(`accountMenu.${it.id}`)}</span>
+                {!!it.count && <span className="nav-count">{it.count}</span>}
                 {it.shortcut && <span className="kbd">{it.shortcut}</span>}
               </button>
             ) : (
@@ -363,6 +324,8 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         <span className="av" aria-hidden="true">
           {(window.aide?.userName ?? "H").slice(0, 1).toUpperCase()}
         </span>
+        {/* Something waits for the owner in a page the menu opens: a dot on the avatar. */}
+        {due > 0 && <i className="acct-due" aria-label={t("sidebar.attention", { count: due })} role="img" />}
         {/* The rail has room for the avatar alone; a dot on it when not connected. */}
         {compact ? (!st.status?.relayConnected && <i className="dotc" aria-hidden="true" />) : <>
         <span className="who">

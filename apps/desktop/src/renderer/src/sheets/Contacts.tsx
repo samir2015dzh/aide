@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Picker } from "../Picker";
 import { useTranslation } from "react-i18next";
 import { codingAgentTitle } from "@aide/core";
 import type { Persona } from "@aide/proto/identity";
@@ -121,11 +122,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
             <label className="fl" htmlFor="ct-project">{t("newSession.project")}</label>
             <span className="fv">
               {projects.length ? (
-                <select id="ct-project" className="psel" style={{ width: 260 }} value={project} onChange={(e) => put({ projectId: e.target.value })}>
-                  {projects.map((x) => (
-                    <option key={x.projectId} value={x.projectId}>{x.projectId}</option>
-                  ))}
-                </select>
+                <Picker className="psel" label={t("newSession.project")} value={project} onChange={(v) => put({ projectId: v })} options={projects.map((x) => ({ value: x.projectId, label: x.projectId }))} />
               ) : (
                 t("newSession.noProjects", { machine: machine!.machineName, agent: codingAgentTitle(a.name) })
               )}
@@ -136,12 +133,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
           <div className="frow">
             <label className="fl" htmlFor="ct-model">{t("newSession.model")}</label>
             <span className="fv">
-              <select id="ct-model" className="psel" style={{ width: 260 }} value={d.model} onChange={(e) => put({ model: e.target.value, effort: "" })}>
-                <option value="">{t("newSession.default")}</option>
-                {a.models.map((x) => (
-                  <option key={x.id} value={x.id}>{x.name || x.id}</option>
-                ))}
-              </select>
+              <Picker className="psel" label={t("newSession.model")} value={d.model} onChange={(v) => put({ model: v, effort: "" })} options={[{ value: "", label: t("newSession.default") }, ...a.models.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
             </span>
           </div>
         )}
@@ -149,12 +141,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
           <div className="frow">
             <label className="fl" htmlFor="ct-effort">{t("newSession.effort")}</label>
             <span className="fv">
-              <select id="ct-effort" className="psel" style={{ width: 260 }} value={d.effort} onChange={(e) => put({ effort: e.target.value })}>
-                <option value="">{t("newSession.default")}</option>
-                {efforts.map((x) => (
-                  <option key={x} value={x}>{tf(`prepare.efforts.${x}`, { defaultValue: x })}</option>
-                ))}
-              </select>
+              <Picker className="psel" label={t("newSession.effort")} value={d.effort} onChange={(v) => put({ effort: v })} options={[{ value: "", label: t("newSession.default") }, ...efforts.map((x) => ({ value: x, label: tf(`prepare.efforts.${x}`, { defaultValue: x }) }))]} />
             </span>
           </div>
         )}
@@ -162,12 +149,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
           <div className="frow">
             <label className="fl" htmlFor="ct-mode">{t("newSession.mode")}</label>
             <span className="fv">
-              <select id="ct-mode" className="psel" style={{ width: 260 }} value={d.mode} onChange={(e) => put({ mode: e.target.value })}>
-                <option value="">{t("newSession.default")}</option>
-                {a.modes.map((x) => (
-                  <option key={x.id} value={x.id}>{x.name || x.id}</option>
-                ))}
-              </select>
+              <Picker className="psel" label={t("newSession.mode")} value={d.mode} onChange={(v) => put({ mode: v })} options={[{ value: "", label: t("newSession.default") }, ...a.modes.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
             </span>
           </div>
         )}

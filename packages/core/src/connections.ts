@@ -310,12 +310,29 @@ export function clientCategory(c: Pick<Client, "label" | "category" | "categoryM
   return { ...grantCategory(c.label, machines.map((m) => m.machineName)), set: false };
 }
 
-/** The grants split by kind: personal ones (the account's), and coding agents by the machine id they run on ("" when it is not known). */
-export function grantsByCategory(clients: readonly Client[], machines: readonly Machine[]): { personal: Client[]; local: Map<string, Client[]> } {
+/**
+ * Aide's own client logged in on a machine under the name it makes up ("client@<machine>", internal/cli applogin.go
+ * and login.go): a connection of the account, not an agent (工单 #64), whatever kind it was filed as.
+ */
+export function isAideClient(c: Pick<Client, "label">): boolean {
+  return /^client@/i.test(c.label.trim());
+}
+
+/**
+ * The grants split by kind: personal ones (the account's), and coding agents by the machine id they run on ("" when it
+ * is not known). Aide's own clients are neither (工单 #64): aideClients lists them by machine id, as connections.
+ */
+export function grantsByCategory(clients: readonly Client[], machines: readonly Machine[]): { personal: Client[]; local: Map<string, Client[]>; aideClients: Map<string, Client[]> } {
   const personal: Client[] = [];
   const local = new Map<string, Client[]>();
+  const aideClients = new Map<string, Client[]>();
   for (const c of clients) {
     if (c.revoked) continue;
+    if (isAideClient(c)) {
+      const id = machines.find((m) => m.machineName === grantCategory(c.label, machines.map((x) => x.machineName)).machine)?.machineId ?? "";
+      aideClients.set(id, [...(aideClients.get(id) ?? []), c]);
+      continue;
+    }
     const k = clientCategory(c, machines);
     if (k.category === "personal") {
       personal.push(c);
@@ -324,5 +341,5 @@ export function grantsByCategory(clients: readonly Client[], machines: readonly 
     const id = machines.find((m) => m.machineName === k.machine)?.machineId ?? "";
     local.set(id, [...(local.get(id) ?? []), c]);
   }
-  return { personal, local };
+  return { personal, local, aideClients };
 }

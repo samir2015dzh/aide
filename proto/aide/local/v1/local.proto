@@ -310,6 +310,15 @@ message ProjectRef {
   string project_id = 2;
 }
 
+// ErrorReason is why a call failed as a key (工单 #60), on the error as a
+// detail: its message stays English (logs, older apps), and the apps say
+// the reason in the owner's language from the key and its args.
+message ErrorReason {
+  // "no_host_online", "no_room_host_online", …
+  string reason = 1;
+  map<string, string> args = 2;
+}
+
 message RegisterPushRequest {
   // The APNs device token, hex, or the Mi Push regId; empty stops
   // notifications.

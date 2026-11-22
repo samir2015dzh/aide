@@ -80,8 +80,13 @@ data class Bot(
 
 data class MachineBots(val machine: Machine, val bots: List<Bot>)
 
-data class Roster(val personal: List<Bot>, val machines: List<MachineBots>) {
+/** A connection of the account that is no agent (工单 #64): Aide's own client on a machine ("" when not known). */
+data class AsideClient(val client: Client, val machineId: String)
+
+data class Roster(val personal: List<Bot>, val machines: List<MachineBots>, val aside: List<AsideClient> = emptyList()) {
     val all: List<Bot> get() = personal + machines.flatMap { it.bots }
+    /** The coding agents, every machine's, one list (工单 #63: the roster has no machine heads). */
+    val coding: List<Bot> get() = machines.flatMap { it.bots }
 }
 
 fun botName(agent: String, m: Machine, machines: Int): String = if (manyMachines(machines)) "${agentTitle(agent)} · ${m.machineName}" else agentTitle(agent)
@@ -105,9 +110,21 @@ private fun grantAgent(label: String): String? {
         Regex("\\b(dsh|deepseek)\\b").containsMatchIn(l) -> "deepseek"
         Regex("\\bclaude\\b").containsMatchIn(l) -> "claude"
         Regex("\\bcodex\\b").containsMatchIn(l) -> "codex"
+        Regex("\\b(workbuddy|codebuddy)\\b").containsMatchIn(l) -> "codebuddy"
+        Regex("\\bgemini\\b").containsMatchIn(l) -> "gemini"
+        Regex("\\bcopilot\\b").containsMatchIn(l) -> "copilot"
+        Regex("\\bopencode\\b").containsMatchIn(l) -> "opencode"
+        Regex("\\bqwen\\b").containsMatchIn(l) -> "qwen"
+        Regex("\\bkimi\\b").containsMatchIn(l) -> "kimi"
         else -> null
     }
 }
+
+/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). */
+fun isAideClient(c: Client): Boolean = c.label.trim().startsWith("client@", ignoreCase = true)
+
+/** A grant filed as a coding agent is one on the roster when it names a known coding agent, or the owner filed it so. */
+private fun admitted(c: Client): Boolean = grantAgent(c.label) != null || c.category == "local"
 
 /** A hosted app's own name, without where it signs in ("Claude (claude.ai)" → "Claude"). */
 private fun grantName(label: String): String = Regex("^(.+) \\(([^()\\s]+)\\)$").find(label)?.groupValues?.get(1) ?: label
@@ -115,9 +132,17 @@ private fun grantName(label: String): String = Regex("^(.+) \\(([^()\\s]+)\\)$")
 fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<Session>, now: Instant, personas: List<Persona> = emptyList()): Roster {
     val sorted = machines.sortedWith(compareByDescending<Machine> { it.local }.thenByDescending { it.online }.thenBy { it.machineName })
     val personal = mutableListOf<Bot>()
+    val aside = mutableListOf<AsideClient>()
     val localGrants = mutableMapOf<String, MutableList<Client>>()
+    // Who gets on the roster (工单 #64), as the desktop's: personal agents, and coding agents (detected by their machine,
+    // a grant naming a known one, or filed so by the owner). Aide's own client and grants of no known kind are set aside.
     for (c in clients) {
         if (c.revoked || c.herMachineId.isNotEmpty()) continue
+        if (isAideClient(c)) {
+            val tail = Regex("^[^@\\s]+@(\\S+)$").find(c.label.trim())?.groupValues?.get(1)
+            aside += AsideClient(c, machines.firstOrNull { it.machineName.equals(tail, ignoreCase = true) }?.machineId ?: "")
+            continue
+        }
         val (isPersonal, machine) = clientCategory(c, machines)
         if (isPersonal) {
             personal += bot("c:${c.clientId}", true, grantName(c.label), "", "", c, personalBotState(c, now), sessions.filter { it.createdBy == c.clientId }, now)
@@ -135,11 +160,13 @@ fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<
             val own = personas.filter { it.machineId == m.machineId && it.agent == agent }
             bots += bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own)
         }
-        for (g in grants) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
+        for (g in grants.filter { !admitted(it) }) aside += AsideClient(g, m.machineId)
+        for (g in grants.filter { admitted(it) }) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
         MachineBots(m, bots)
     }
-    for (g in localGrants[""].orEmpty()) personal += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", "", g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
-    return Roster(personal, groups)
+    for (g in localGrants[""].orEmpty().filter { !admitted(it) }) aside += AsideClient(g, "")
+    for (g in localGrants[""].orEmpty().filter { admitted(it) }) personal += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", "", g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
+    return Roster(personal, groups, aside)
 }
 
 private fun bot(key: String, personal: Boolean, name: String, agent: String, machineId: String, client: Client?, state: BotState, list: List<Session>, now: Instant): Bot {

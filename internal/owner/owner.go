@@ -37,6 +37,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/flock"
 	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/internal/peer"
+	"github.com/samir2015dzh/aide/internal/reason"
 	"github.com/samir2015dzh/aide/internal/sessionstate"
 	"github.com/samir2015dzh/aide/pkg/identity"
 	"github.com/samir2015dzh/aide/pkg/transport"
@@ -54,7 +55,7 @@ type Config struct {
 }
 
 // errNoLocalMachine refuses making a device that cannot run agents a machine.
-var errNoLocalMachine = connect.NewError(connect.CodeFailedPrecondition, errors.New("this device cannot be an execution machine"))
+var errNoLocalMachine = reason.New(connect.CodeFailedPrecondition, "not_execution_machine", "this device cannot be an execution machine")
 
 type Owner struct {
 	cfg Config
@@ -337,7 +338,7 @@ func (o *Owner) kickScreens() {
 
 func (o *Owner) requireInit() error {
 	if !o.Initialized() {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("Aide is not set up yet"))
+		return reason.New(connect.CodeFailedPrecondition, "not_set_up", "Aide is not set up yet")
 	}
 	if o.isSignedOut() {
 		return errSignedOut
@@ -345,7 +346,7 @@ func (o *Owner) requireInit() error {
 	return nil
 }
 
-var errSignedOut = connect.NewError(connect.CodeFailedPrecondition, errors.New("this account is signed out on this device; sign in again"))
+var errSignedOut = reason.New(connect.CodeFailedPrecondition, "signed_out", "this account is signed out on this device; sign in again")
 
 func (o *Owner) isSignedOut() bool {
 	o.mu.Lock()
@@ -409,7 +410,7 @@ func (o *Owner) relay(ctx context.Context) (*peer.Client, error) {
 		d := o.dialerLocked()
 		if d == nil {
 			o.mu.Unlock()
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("no relay configured"))
+			return nil, reason.New(connect.CodeFailedPrecondition, "no_relay", "no relay configured")
 		}
 		w := &relayDial{done: make(chan struct{})}
 		o.dialing = w
@@ -740,7 +741,7 @@ func (o *Owner) checkRelay(ctx context.Context, relayURL string) error {
 		err = errors.New(ce.Message()) // "403 Forbidden", from whatever answered instead of the relay
 	}
 	// The apps recognise this form and say it in the person's language.
-	return connect.NewError(connect.CodeUnavailable, fmt.Errorf("relay unreachable (%s): %w", host, err))
+	return reason.New(connect.CodeUnavailable, "relay_unreachable", fmt.Sprintf("relay unreachable (%s): %v", host, err), "host", host)
 }
 
 func (o *Owner) publicClient(relayURL string) relayv1connect.RelayPublicServiceClient {
@@ -1345,7 +1346,7 @@ func olderMachine(err error) error {
 	if connect.CodeOf(err) == connect.CodeInvalidArgument {
 		var ce *connect.Error
 		if errors.As(err, &ce) && ce.Message() == "unknown admin command" {
-			return connect.NewError(connect.CodeUnimplemented, errors.New("Aide on this machine is older and doesn't know this command: update it there, then try again"))
+			return reason.New(connect.CodeUnimplemented, "machine_older", "Aide on this machine is older and doesn't know this command: update it there, then try again")
 		}
 	}
 	return err
@@ -1823,7 +1824,7 @@ func (o *Owner) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomR
 		}
 	}
 	if host == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no machine of yours is online to keep the conversation: start Aide on one"))
+		return nil, reason.New(connect.CodeUnavailable, "no_host_online", "no machine of yours is online to keep the conversation: start Aide on one")
 	}
 	r, err := onDSHMachine(ctx, o, host.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.OpenDirectRoom(req.ClientId) },
 		func(n *peer.Machine) (*machinev1.Room, error) {
@@ -1900,7 +1901,7 @@ func (o *Owner) CreateRoom(ctx context.Context, req *localv1.CreateRoomRequest) 
 		return nil, err
 	}
 	if len(machines) == 0 {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no machine of yours is online to keep the room: start Aide on one"))
+		return nil, reason.New(connect.CodeUnavailable, "no_room_host_online", "no machine of yours is online to keep the room: start Aide on one")
 	}
 	host := machines[0]
 	r := &machinev1.CreateRoomRequest{Name: req.Name, Members: req.Members, Mode: req.Mode, MaxRounds: req.MaxRounds}
@@ -1915,7 +1916,7 @@ func (o *Owner) CreateRoom(ctx context.Context, req *localv1.CreateRoomRequest) 
 		dev, cert := o.device, o.deviceCert
 		o.mu.Unlock()
 		if dev == nil {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this device can't sign a room's charter: it is not one of the owner's devices"))
+			return nil, reason.New(connect.CodeFailedPrecondition, "cannot_sign_charter", "this device can't sign a room's charter: it is not one of the owner's devices")
 		}
 		signed, err := identity.Sign(c, dev)
 		if err != nil {
@@ -2364,7 +2365,7 @@ func (o *Owner) UpdateClient(ctx context.Context, grantID string, spec *localv1.
 	}
 	if cur.HerMachineId != "" {
 		// docs/her-mesh.md §3.2: it has no scope and no expiry to change.
-		return 0, nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("Her's access is whole and doesn't expire: turn Her off to end it"))
+		return 0, nil, reason.New(connect.CodeFailedPrecondition, "her_access_whole", "Her's access is whole and doesn't expire: turn Her off to end it")
 	}
 	return o.publishGrant(ctx, grantFromSpec(cur, spec), cur.Version)
 }
@@ -2376,7 +2377,7 @@ func (o *Owner) UpdateClient(ctx context.Context, grantID string, spec *localv1.
 func (o *Owner) RenameClient(ctx context.Context, grantID, label string, icon *string, img []byte) (uint64, error) {
 	label = strings.Join(strings.FieldsFunc(label, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }), " ")
 	if label == "" || len(label) > 64 {
-		return 0, connect.NewError(connect.CodeInvalidArgument, errors.New("a name is 1 to 64 bytes"))
+		return 0, reason.New(connect.CodeInvalidArgument, "name_length", "a name is 1 to 64 bytes")
 	}
 	if icon != nil {
 		if !grantIcons.MatchString(*icon) {
@@ -2385,7 +2386,7 @@ func (o *Owner) RenameClient(ctx context.Context, grantID, label string, icon *s
 		if *icon != "image" {
 			img = nil
 		} else if len(img) == 0 {
-			return 0, connect.NewError(connect.CodeInvalidArgument, errors.New("the icon \"image\" needs a picture"))
+			return 0, reason.New(connect.CodeInvalidArgument, "icon_needs_picture", "the icon \"image\" needs a picture")
 		} else {
 			var err error
 			if img, err = grantImage(img); err != nil {
@@ -2615,7 +2616,7 @@ func (o *Owner) localSession(sessionID string) *machine.Local {
 // sessionMachine finds the machine that owns a session from its id prefix.
 func (o *Owner) sessionMachine(ctx context.Context, sessionID string) (*peer.Machine, error) {
 	if parts := strings.SplitN(sessionID, "_", 3); len(parts) != 3 || parts[0] != "s" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad session id"))
+		return nil, reason.New(connect.CodeInvalidArgument, "bad_session_id", "bad session id")
 	}
 	machines, err := o.machines(ctx)
 	if err != nil {
@@ -2634,7 +2635,7 @@ func (o *Owner) sessionMachine(ctx context.Context, sessionID string) (*peer.Mac
 			return pn, nil
 		}
 	}
-	return nil, connect.NewError(connect.CodeNotFound, errors.New("no machine owns this session"))
+	return nil, reason.New(connect.CodeNotFound, "session_no_machine", "no machine owns this session")
 }
 
 func (o *Owner) StreamSessionEvents(ctx context.Context, req *localv1.StreamSessionEventsRequest, send func(*sessionv1.SessionEvent) error) error {

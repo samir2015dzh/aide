@@ -94,3 +94,31 @@ describe("the roster (工单 #57)", () => {
     expect(r.machines[0].bots.map((b) => [b.name, b.personas.length])).toEqual([["Reviewer", 1]]);
   });
 });
+
+describe("who gets on the roster (工单 #64)", () => {
+  test("client@<machine> is Aide's own client, not an agent: set aside under its machine, whatever it was filed as", () => {
+    const machines = [
+      machine("m1", "BigAlex", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true }]),
+    ];
+    const clients = [client("c1", "client@BigAlex", { online: true }), client("c2", "client@laptop", { category: "personal" }), client("c3", "Muse")];
+    const r = roster(machines, clients, [], now);
+    expect(allBots(r).map((b) => b.name)).toEqual(["Muse", "Claude Code", "DSH"]);
+    expect(r.aside.map((a) => [a.client.label, a.machineId])).toEqual([["client@BigAlex", "m1"], ["client@laptop", ""]]);
+  });
+
+  test("a grant filed as on a machine that names no coding agent (the old “Her on alexwork” ghost): set aside", () => {
+    const machines = [machine("m1", "alexwork", [{ name: "claude", available: true, loggedIn: true }])];
+    const r = roster(machines, [client("c1", "Her on alexwork"), client("c2", "Something on nowhere")], [], now);
+    expect(r.machines[0].bots.map((b) => b.name)).toEqual(["Claude Code"]);
+    expect(r.aside.map((a) => a.client.label)).toEqual(["Her on alexwork"]);
+    // "Something on nowhere": no machine of that name, a name that is no coding agent → personal (the owner's own say aside).
+    expect(r.personal.map((b) => b.name)).toEqual(["Something on nowhere"]);
+  });
+
+  test("a coding agent's own grant its machine does not list stays a bot; one the owner filed as a coding agent too", () => {
+    const machines = [machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true }])];
+    const r = roster(machines, [client("c1", "Codex on work-pc"), client("c2", "Helper", { category: "local", categoryMachineId: "m1" })], [], now);
+    expect(r.machines[0].bots.map((b) => b.name)).toEqual(["Claude Code", "Codex on work-pc", "Helper"]);
+    expect(r.aside).toEqual([]);
+  });
+});

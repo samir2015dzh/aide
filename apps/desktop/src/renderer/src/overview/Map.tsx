@@ -2,10 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { Trans, useTranslation } from "react-i18next";
 import type { Client, Machine, QueryWorkResponse } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
-import { agoText, codingAgentTitle, codingBotState, createdDate, clientCategory, dateOf, isActive, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
-import { AgentLogo, agentName, grantColor, kindNamed, Mark, type GrantLook } from "@aide/ui";
+import { agoText, codingAgentTitle, codingBotState, createdDate, clientCategory, dateOf, isActive, isAideClient, isFailed, longLived, machineConnections, monthDay, projectTitle, sameDay, todayStats, tokensText, usageYear } from "@aide/core";
+import { AgentLogo, agentName, kindNamed, Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
-import { grantFace } from "../components";
+import { GrantFaceAt } from "../components";
 import { problemShort, problemsOf, severe } from "../health";
 import { Icon } from "../icons";
 import { hostOf } from "../sheets/common";
@@ -75,8 +75,9 @@ function layout(st: Store, live: Session[]) {
     const m = k.category === "local" ? st.machines.find((x) => x.machineName === k.machine) : undefined;
     if (m && !only) homeOf.set(c.clientId, m.machineId);
   }
+  // Aide's own client on a machine (client@…) is no agent (工单 #64): it is not drawn as one.
   const clients = st.clients
-    .filter((c) => !c.revoked && !homeOf.has(c.clientId))
+    .filter((c) => !c.revoked && !homeOf.has(c.clientId) && !isAideClient(c))
     .sort((a, b) => (byGrant.get(b.clientId) ?? 0) - (byGrant.get(a.clientId) ?? 0));
   // A project is shown as machine + coding agent + project (工单 #50): by the name the owner gave it, with the
   // agent it is for when it is for one, and kept beside the other projects of its machine.
@@ -668,14 +669,7 @@ function Tail({ online, running, quiet }: { online: boolean; running: number; qu
 }
 
 function GrantIcon({ c, size = 26 }: { c: GrantLook; size?: number }) {
-  const label = c.label;
-  const face = grantFace(c, size);
-  if (face) return face;
-  return (
-    <span className="av" style={{ width: size, height: size, fontSize: size < 20 ? 8 : undefined, background: grantColor(label) }} aria-hidden="true">
-      {label.slice(0, 1).toUpperCase()}
-    </span>
-  );
+  return <GrantFaceAt c={c} size={size} />;
 }
 
 /** A comet in the colour of who acts (the grant that started the session), when it has one of its own (工单 #47). */

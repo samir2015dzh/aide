@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Picker } from "../Picker";
 import { Icon } from "../icons";
 import { LocalMachineOff } from "./LocalMachineOff";
 import { ToolRow } from "./ToolRow";
@@ -486,29 +487,12 @@ function Composer({
             {t("dsh.takeover")}
           </label>
           {takeover && options && options.models.length > 0 && (
-            <select className="dsh-pick" aria-label={t("dsh.model")} value={model || current} onChange={(e) => ((reqId.current = ""), setModel(e.target.value))}>
-              {!current && <option value="">{t("dsh.asItIs")}</option>}
-              {choices.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            <Picker size="sm" className="dsh-pick" label={t("dsh.model")} value={model || current} onChange={(v) => ((reqId.current = ""), setModel(v))}
+              options={[...(!current ? [{ value: "", label: t("dsh.asItIs") }] : []), ...choices.map((c) => ({ value: c.value, label: c.label }))]} />
           )}
           {takeover && options && options.permissions.length > 0 && (
-            <select
-              className="dsh-pick"
-              aria-label={t("dsh.permission")}
-              value={permission || options.currentPermission}
-              onChange={(e) => ((reqId.current = ""), setPermission(e.target.value))}
-            >
-              {!options.currentPermission && <option value="">{t("dsh.asItIs")}</option>}
-              {options.permissions.map((x) => (
-                <option key={x.id} value={x.id} title={x.description}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
+            <Picker size="sm" className="dsh-pick" label={t("dsh.permission")} value={permission || options.currentPermission} onChange={(v) => ((reqId.current = ""), setPermission(v))}
+              options={[...(!options.currentPermission ? [{ value: "", label: t("dsh.asItIs") }] : []), ...options.permissions.map((x) => ({ value: x.id, label: x.name, sub: x.description }))]} />
           )}
           <span className="dsh-bar-note">
             {switchError || error ? (

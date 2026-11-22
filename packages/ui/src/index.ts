@@ -1,4 +1,4 @@
-export { AgentLogo, AgentTile } from "./agent-logo";
+export { AgentLogo, AgentTile, BotGlyph, agentPicture } from "./agent-logo";
 export { agentLogos } from "./agent-logo-data";
 export { Mark } from "./mark";
 export { codingAgentIds, codingAgentShort, codingAgentTitle } from "./agents";

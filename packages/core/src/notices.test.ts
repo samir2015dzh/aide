@@ -3,7 +3,8 @@ import { MachineSchema } from "@aide/proto/local";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { DiffStatSchema, FailureKind, FailureSchema, SessionSchema, SessionSeenSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { filterNotices, noticeDiff, noticeSnapshot, noticeSnapshots, questionAcks, type NoticeItem } from "./notices";
+import { filterNotices, noticeDiff, noticeSnapshot, noticeSnapshots, questionAcks, quietSessions, roomNotices, roomSnapshots, type NoticeItem } from "./notices";
+import { RoomSchema } from "@aide/proto/machine";
 import { ask, at, progressOf, session } from "./testing";
 
 const grant = () => "Grok Bot";
@@ -117,5 +118,32 @@ describe("questions a desktop told of", () => {
     expect(questionAcks([q], told, true)).toEqual([]);
     // Answered: nothing to tell.
     expect(questionAcks([{ ...q, status: SessionStatus.RUNNING }], told, true)).toEqual([]);
+  });
+});
+
+describe("rooms and quiet bots (工单 #69, #70)", () => {
+  const room = (id: string, over: object = {}) => create(RoomSchema, { roomId: id, name: id, hostMachineId: "m1", ...over } as never);
+  test("a room tells once: its host's word anew, else more unread; not at the first look, not while open", () => {
+    const before = roomSnapshots([room("a", { unread: 1 }), room("b"), room("c")]);
+    const now = [
+      room("a", { unread: 2, lastLine: "Muse：好了" }),
+      room("b", { notice: "Muse 交出了共识结果", noticeAt: { seconds: 100n }, unread: 1 }),
+      room("c", { unread: 3 }),
+    ];
+    expect(roomNotices(before, now, "c").map((n) => [n.roomId, n.body])).toEqual([["a", "Muse：好了"], ["b", "Muse 交出了共识结果"]]);
+    expect(roomNotices(undefined, now, "")).toEqual([]);
+    expect(roomNotices(roomSnapshots(now), now, "")).toEqual([]);
+  });
+
+  test("a turn quiet two minutes since it started: told once; not once the agent stirred", () => {
+    const at = (s: number) => timestampFromDate(new Date(Date.UTC(2026, 10, 22, 10, 0, s)));
+    const now = new Date(Date.UTC(2026, 10, 22, 10, 2, 30));
+    const quiet = create(SessionSchema, { sessionId: "q", status: SessionStatus.RUNNING, progress: { turnStartedAt: at(0) } });
+    const stirred = create(SessionSchema, { sessionId: "s", status: SessionStatus.RUNNING, progress: { turnStartedAt: at(0), lastEventAt: at(20) } });
+    const young = create(SessionSchema, { sessionId: "y", status: SessionStatus.QUEUED, progress: { turnStartedAt: at(100) } });
+    const idle = create(SessionSchema, { sessionId: "i", status: SessionStatus.IDLE, progress: { turnStartedAt: at(0) } });
+    const got = quietSessions([quiet, stirred, young, idle], now, new Set());
+    expect(got.map((x) => x.session.sessionId)).toEqual(["q"]);
+    expect(quietSessions([quiet], now, new Set([got[0].key]))).toEqual([]);
   });
 });

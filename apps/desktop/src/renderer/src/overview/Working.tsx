@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import type { Machine } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { clockText, elapsedSeconds, createdDate, dateOf, displayTitle, failureTitle, isActive, isFailed } from "@aide/core";
-import { grantColor, Mark, type GrantLook } from "@aide/ui";
+import { Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
-import { grantFace, StatusDot } from "../components";
+import { GrantFaceAt, StatusDot } from "../components";
 import { Icon } from "../icons";
 import { grantLabel, machineName } from "../Sidebar";
 import { useNow, useStore, type Store } from "../store";
@@ -136,14 +136,7 @@ function Worked({ s }: { s: Session }) {
 }
 
 function GrantIcon({ c, size }: { c: GrantLook; size: number }) {
-  const label = c.label;
-  const face = grantFace(c, size);
-  if (face) return face;
-  return (
-    <span className="av" style={{ width: size, height: size, fontSize: size * 0.55, background: grantColor(label) }} aria-hidden="true">
-      {label.slice(0, 1).toUpperCase()}
-    </span>
-  );
+  return <GrantFaceAt c={c} size={size} />;
 }
 
 function machineIcon(m: Machine): string {

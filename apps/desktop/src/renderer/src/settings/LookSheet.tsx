@@ -1,20 +1,14 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client } from "@aide/proto/local";
-import { agentName, grantColor, iconApps, type GrantLook } from "@aide/ui";
+import { agentName, iconApps, type GrantLook } from "@aide/ui";
 import { local } from "../api";
-import { grantFace } from "../components";
+import { GrantFaceAt } from "../components";
 import type { Store } from "../store";
 
-/** A grant's picture or logo at any size, else its initial on its colour. */
+/** A grant's picture or logo at any size, else a robot on its colour (工单 #62). */
 function Face({ c, size }: { c: GrantLook; size: number }) {
-  return (
-    grantFace(c, size) ?? (
-      <span className="av" style={{ width: size, height: size, borderRadius: size * 0.28, fontSize: size * 0.45, background: grantColor(c.label) }} aria-hidden="true">
-        {(c.label.trim() || "?").slice(0, 1).toUpperCase()}
-      </span>
-    )
-  );
+  return <GrantFaceAt c={c} size={size} square />;
 }
 
 /**

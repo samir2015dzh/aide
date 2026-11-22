@@ -131,13 +131,17 @@ export function AppMenuButton() {
   );
 }
 
-export function ToastView() {
+/**
+ * What an action says (st.show, st.run's failures). It shows where the action was (工单 #61, the owner's rule): in
+ * the sheet open over the window when there is one, under its buttons (inSheet), else at the window's foot.
+ */
+export function ToastView({ inSheet = false }: { inSheet?: boolean }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const { shown: toast, leaving } = useLeaving(st.toast);
-  if (!toast) return null;
+  if (!toast || (st.sheet !== null) !== inSheet) return null;
   return (
-    <div className={`toast ${leaving ? "leaving" : ""}`} inert={leaving} role="status">
+    <div className={`toast ${inSheet ? "in-sheet" : ""} ${leaving ? "leaving" : ""}`} inert={leaving} role="status">
       <Icon name="check" />
       <span>{toast.text}</span>
       {toast.undo && (

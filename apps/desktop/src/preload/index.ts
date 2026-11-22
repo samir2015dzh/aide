@@ -30,6 +30,7 @@ const bridge: Bridge = {
   language: arg("lang") as Language,
   macos: process.platform === "darwin" ? Number.parseInt(process.getSystemVersion(), 10) : 0,
   openSettings: (tab?: string) => ipcRenderer.send("open-settings", tab),
+  roomOpen: (roomId: string) => ipcRenderer.send("room-open", roomId),
   onSettingsTab: (cb: (tab: string) => void) => listen("settings-tab", cb),
   onWindowFocus: (cb: (focused: boolean) => void) => listen("window-focus", cb),
   showInMain: (filter: { grant: string } | { machine: string } | { session: string } | { dsh: true } | { claude: true }) => ipcRenderer.send("show-in-main", filter),

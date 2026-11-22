@@ -11,11 +11,12 @@ test("writing to a personal agent on its page; its answer comes back into the co
   await roster.getByRole("group", { name: "个人 agent · 跟账号走" }).getByRole("button", { name: /^bot/ }).click();
   const botPage = page.getByRole("region", { name: "bot" });
   const log = botPage.getByRole("log", { name: "对话" });
-  await expect(botPage.getByText(/保存在 /)).toBeVisible({ timeout: 30_000 });
-  await botPage.getByRole("textbox", { name: "写给 bot…" }).fill("今天的 CI 怎么样？");
+  // Where the conversation is kept is no device line on the page (工单 #63).
+  await expect(botPage.getByText(/保存在 /)).toHaveCount(0);
+  await botPage.getByRole("textbox", { name: "给 bot 发消息" }).fill("今天的 CI 怎么样？");
   await botPage.getByRole("button", { name: "发送" }).click();
   await expect(log).toContainText("今天的 CI 怎么样？");
-  await expect(log.getByText("已发出：等 bot 取信")).toBeVisible({ timeout: 30_000 });
+  await expect(log.getByText(/已发出：等 bot 取信|bot 已取信/)).toBeVisible({ timeout: 30_000 });
 
   // The agent reads it in its inbox: the owner's words, and where to answer.
   let letter: { id: string; from: { inbox: string; session: string }; text: string } | undefined;
@@ -45,9 +46,9 @@ test("a round table of a personal agent and a coding agent, handing on to each o
   const sheet = page.getByRole("dialog");
   await sheet.getByRole("textbox", { name: "房间名" }).fill("发版评审");
   await sheet.getByRole("button", { name: "自主圆桌" }).click();
-  await sheet.getByRole("checkbox", { name: "Gemini CLI" }).check();
-  await expect(sheet.getByRole("combobox", { name: "Gemini CLI 的项目" })).toBeVisible();
-  await sheet.getByRole("checkbox", { name: "bot" }).check();
+  await sheet.getByRole("checkbox", { name: "Gemini CLI" }).click();
+  await expect(sheet.getByRole("button", { name: "Gemini CLI 的项目" })).toBeVisible();
+  await sheet.getByRole("checkbox", { name: "bot" }).click();
   await snap(page, "rooms-new");
   await sheet.getByRole("button", { name: "建房间" }).click();
 
@@ -56,9 +57,9 @@ test("a round table of a personal agent and a coding agent, handing on to each o
   await expect(room.getByRole("list", { name: "成员" })).toContainText("bot");
   await expect(rooms.getByRole("button", { name: /发版评审/ })).toBeVisible();
   // Round table, no one named: the first member is woken.
-  await expect(room.getByRole("status")).toHaveText("将叫醒：Gemini CLI");
+  await expect(room.locator(".composer-why")).toHaveText("将叫醒：Gemini CLI");
   await room.getByRole("group", { name: "点名" }).getByRole("button", { name: "@bot" }).click();
-  await expect(room.getByRole("status")).toHaveText("将叫醒：bot");
+  await expect(room.locator(".composer-why")).toHaveText("将叫醒：bot");
   await room.getByRole("group", { name: "点名" }).getByRole("button", { name: "@bot" }).click();
   await room.getByRole("group", { name: "点名" }).getByRole("button", { name: "@Gemini CLI" }).click();
 
