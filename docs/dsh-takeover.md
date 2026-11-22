@@ -30,10 +30,22 @@ next turn (`mode: 'queue'`), as one typed in DSH would be.
   the endpoint and a random token; every request carries the token.
 - **Protocol** (one JSON object per line, version 1): `hello` (version,
   which DSH services the Host has, and `features` beyond the first
-  plugin: `options`, `selections`), `state {sessionId}` (whether the
+  plugin: `options`, `selections`, `from`, `outbox`), `state {sessionId}` (whether the
   session's Agent runs in this Host), `prompt {sessionId, requestId,
   text, model?: {provider, model, effort?}, permission?}`, `options
-  {sessionId}`, `cancel {sessionId}`.
+  {sessionId}`, `cancel {sessionId}`, `outbox {waitMs}`, `outboxDone
+  {id, ok, …}`.
+- **Agents both ways** (plugin 0.3.0, features `from` and `outbox`;
+  docs/agent-messages.md §15.3): `prompt` may carry `from: {address,
+  name}` and `messageId`, which the plugin puts before the text for the
+  session's model; the plugin registers the tool `aide_message_send` in
+  the Host's tool registry (`ctx.get('tools').register`, a
+  `ToolDefinition` written out: JSON Schema parameters and output, so the
+  plugin needs nothing of DSH's at run time), and keeps what sessions send
+  for aided: `outbox {waitMs}` hands them out (once each, waiting up to 25
+  s), `outboxDone {id, ok, messageId?, to?, error?}` answers the tool,
+  which otherwise fails after 30 s ("is Aide running?"). The plugin never
+  sends anything itself: aided decides who a send may go to, and sends it.
 - **Model and permissions** (plugin 0.2.0), as DSH's own pickers and
   Agents Anywhere's bridge set them: `options` lists DSH's models
   (`llm.listProviders`, `listModels`, each model's reasoning efforts from

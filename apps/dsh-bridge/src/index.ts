@@ -8,10 +8,15 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { DshHost, type DshContext } from "./host.ts";
+import { replyTool } from "./outbox.ts";
 import { BridgeServer } from "./server.ts";
 
 export const name = "aide-dsh-bridge";
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
+
+interface Tools {
+  register(definition: unknown): () => void;
+}
 
 interface Context extends DshContext {
   effect(execute: () => () => Promise<void> | void, label?: string): unknown;
@@ -31,8 +36,20 @@ export function apply(ctx: Context) {
   const started = server.start().catch((e: unknown) => {
     console.warn(`[aide-dsh-bridge] not started: ${e instanceof Error ? e.message : String(e)}`);
   });
+  // The tool a taken-over session answers with (aide_message_send), where
+  // this DSH has a tool registry: Aide refuses it for any other session.
+  let unregister: (() => void) | undefined;
+  const tools = ctx.get("tools") as Tools | undefined;
+  if (typeof tools?.register === "function") {
+    try {
+      unregister = tools.register(replyTool(server.outbox));
+    } catch (e) {
+      console.warn(`[aide-dsh-bridge] aide_message_send not registered: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
   ctx.effect(
     () => async () => {
+      unregister?.();
       await started;
       await server.close();
     },

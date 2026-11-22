@@ -130,6 +130,11 @@ func dshSentKey(reqID string) string { return "dsh-sent/" + reqID }
 type dshSent struct {
 	From string `json:"from"`
 	Name string `json:"name"`
+	// A message from the post office: the agent's address (c_…,
+	// c_…/<conversation>) and the message's id, which the session's answer
+	// goes to (dshmail.go).
+	Address   string `json:"address,omitempty"`
+	MessageID string `json:"message_id,omitempty"`
 }
 
 // dshSender names the agent that sent the message under rpcID ("" for the

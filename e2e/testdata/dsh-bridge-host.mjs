@@ -5,8 +5,11 @@
 // session.v4.jsonl), a prompt is also written there as DSH writes a user
 // message, its request id as the source's rpcId, and what a prompt set
 // first (the session's model, its permission preset) is appended to
-// FAKE_DSH_LOG + ".actions", one JSON per line. Ends (disposing the
-// plugin) when stdin closes.
+// FAKE_DSH_LOG + ".actions", one JSON per line. The tools the plugin
+// registers are kept as DSH's registry keeps them; a line {"call": {tool,
+// sessionId, args}} on stdin runs one as that session's model would call it,
+// and prints {"toolResult"} or {"toolError": {code, message}}. Ends
+// (disposing the plugin) when stdin closes.
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const [entry] = process.argv.slice(2);
@@ -33,7 +36,15 @@ const live = new Set(["s_live"]);
 const model = new Map();
 const permission = new Map();
 const agentOf = (id) => ({ id, status: live.has(id) ? "running" : "idle", session: { id }, cancel: (r) => out({ cancel: id, reason: r }) });
+const tools = new Map();
 const services = {
+  tools: {
+    register: (def) => {
+      tools.set(def.name, def);
+      out({ registered: def.name });
+      return () => tools.delete(def.name);
+    },
+  },
   sessionController: {
     prompt: async (req, signal) => {
       if (req.content[0]?.text === "hang") return new Promise(() => {}); // DSH that never takes it
@@ -75,7 +86,27 @@ const services = {
 const disposers = [];
 mod.apply({ get: (name) => services[name], effect: (fn) => disposers.push(fn()) });
 out({ ready: true });
-process.stdin.resume();
+let buf = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  buf += chunk;
+  let nl;
+  while ((nl = buf.indexOf("\n")) >= 0) {
+    const line = buf.slice(0, nl).trim();
+    buf = buf.slice(nl + 1);
+    if (!line) continue;
+    const { call } = JSON.parse(line);
+    const def = call && tools.get(call.tool);
+    if (!def) {
+      out({ toolError: { code: "unknown", message: `no tool ${call?.tool}` } });
+      continue;
+    }
+    def.execute(call.args, { agent: agentOf(call.sessionId), signal: new AbortController().signal }).then(
+      (v) => out({ toolResult: v }),
+      (e) => out({ toolError: { code: e.code ?? "", message: e.message } }),
+    );
+  }
+});
 process.stdin.on("end", async () => {
   for (const d of disposers) await d();
   out({ disposed: true });

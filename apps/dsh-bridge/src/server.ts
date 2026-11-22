@@ -9,21 +9,28 @@
 //
 // Methods: hello; state {sessionId}; prompt {sessionId, requestId, text,
 // model?: {provider, model, effort?}, permission?}; options {sessionId};
-// cancel {sessionId}. hello lists the features beyond the first version
-// ("options", "selections"), so aided knows what an older bridge lacks. A prompt waits at most promptTimeoutMs for DSH to
-// accept it and then fails as "timeout": the caller is never left with a
-// message that silently hangs.
+// cancel {sessionId}; outbox {waitMs}; outboxDone {id, ok, messageId?, to?,
+// error?}. hello lists the features beyond the first version ("options",
+// "selections"; "from": a prompt may name the agent it is from and its
+// message id, which the session's model reads before the text; "outbox":
+// the session's sends through Aide, which aided takes with outbox and
+// answers with outboxDone), so aided knows what an older bridge lacks. A
+// prompt waits at most promptTimeoutMs for DSH to accept it and then fails
+// as "timeout": the caller is never left with a message that silently
+// hangs.
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, chmodSync } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { BridgeError, type Host, type Selections } from "./host.ts";
+import { Outbox } from "./outbox.ts";
 
 export const PROTOCOL = 1;
 const MAX_LINE = 256 * 1024;
 const MAX_TEXT = 100 * 1024;
 const MAX_ID = 200;
+const MAX_OUTBOX_WAIT = 25_000;
 
 export interface Options {
   /** Where bridge.json (and on Unix the socket) go. */
@@ -52,9 +59,12 @@ export class BridgeServer {
   private endpoint = "";
   private readonly sockets = new Set<Socket>();
   private readonly inflight = new Set<AbortController>();
+  /** The sessions' sends through Aide, for aided to take. */
+  readonly outbox: Outbox;
 
-  constructor(host: Host, opts: Options) {
+  constructor(host: Host, opts: Options, outbox = new Outbox()) {
     this.host = host;
+    this.outbox = outbox;
     this.opts = { promptTimeoutMs: 20_000, platform: process.platform, ...opts };
   }
 
@@ -91,6 +101,7 @@ export class BridgeServer {
 
   async close() {
     for (const c of this.inflight) c.abort();
+    this.outbox.close();
     // The rendezvous goes only while it is still this bridge's (a newer one may have started).
     try {
       const r = JSON.parse(readFileSync(this.rendezvousPath, "utf8")) as Partial<Rendezvous>;
@@ -150,7 +161,7 @@ export class BridgeServer {
   private async call(method: string, p: Record<string, unknown>): Promise<unknown> {
     switch (method) {
       case "hello":
-        return { protocol: PROTOCOL, version: this.opts.version, pid: process.pid, services: this.host.services(), features: ["options", "selections"] };
+        return { protocol: PROTOCOL, version: this.opts.version, pid: process.pid, services: this.host.services(), features: ["options", "selections", "from", "outbox"] };
       case "options":
         return await this.host.options(id(p.sessionId, "sessionId"));
       case "state":
@@ -162,12 +173,13 @@ export class BridgeServer {
         if (text.trim() === "") throw new BridgeError("bad-request", "the message is empty");
         if (text.length > MAX_TEXT) throw new BridgeError("bad-request", `the message is ${text.length} characters; at most ${MAX_TEXT}`);
         const selections = selectionsOf(p);
+        const said = fromOf(p);
         const ac = new AbortController();
         this.inflight.add(ac);
         const timer = setTimeout(() => ac.abort(), this.opts.promptTimeoutMs);
         try {
           await Promise.race([
-            this.host.prompt(sessionId, requestId, text, ac.signal, selections),
+            this.host.prompt(sessionId, requestId, said ? said + text : text, ac.signal, selections),
             // A Host that ignores the signal still doesn't hold the caller.
             new Promise<never>((_, reject) => ac.signal.addEventListener("abort", () => reject(new BridgeError("timeout", "DSH did not accept the message in time")))),
           ]);
@@ -179,6 +191,24 @@ export class BridgeServer {
       }
       case "cancel":
         return { cancelled: this.host.cancel(id(p.sessionId, "sessionId")) };
+      case "outbox": {
+        const waitMs = Math.min(Math.max(Number(p.waitMs) || 0, 0), MAX_OUTBOX_WAIT);
+        const ac = new AbortController();
+        this.inflight.add(ac);
+        try {
+          return { sends: await this.outbox.take(waitMs, ac.signal) };
+        } finally {
+          this.inflight.delete(ac);
+        }
+      }
+      case "outboxDone": {
+        const e = p.error as { code?: unknown; message?: unknown } | undefined;
+        const found = this.outbox.done(id(p.id, "id"), p.ok === true, { messageId: typeof p.messageId === "string" ? p.messageId : undefined, to: typeof p.to === "string" ? p.to : undefined }, {
+          code: typeof e?.code === "string" ? e.code : undefined,
+          message: typeof e?.message === "string" ? e.message.slice(0, 2000) : undefined,
+        });
+        return { found };
+      }
       default:
         throw new BridgeError("bad-request", `no method ${method}`);
     }
@@ -199,6 +229,18 @@ function selectionsOf(p: Record<string, unknown>): Selections | undefined {
   }
   if (p.permission !== undefined && p.permission !== null && p.permission !== "") sel.permission = name(p.permission, "permission");
   return sel.model || sel.permission ? sel : undefined;
+}
+
+// fromOf is what the session's model reads before a message from an agent:
+// who wrote it, through Aide, and how to answer; "" for the owner's.
+function fromOf(p: Record<string, unknown>): string {
+  const f = p.from as { address?: unknown; name?: unknown } | undefined;
+  if (f === undefined || f === null) return "";
+  if (typeof f !== "object" || typeof f.address !== "string" || f.address === "" || f.address.length > MAX_ID || /\s/.test(f.address)) throw new BridgeError("bad-request", "bad from");
+  const name = typeof f.name === "string" ? f.name.replace(/\s+/g, " ").trim().slice(0, 100) : "";
+  const mid = p.messageId === undefined ? "" : id(p.messageId, "messageId");
+  const who = name ? `${name} (${f.address})` : f.address;
+  return `[Aide] A message${mid ? ` (${mid})` : ""} from the agent ${who}, through the owner's Aide. To answer, call aide_message_send.\n\n`;
 }
 
 function id(v: unknown, name: string): string {
