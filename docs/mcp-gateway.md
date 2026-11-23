@@ -313,8 +313,11 @@ gateway fetches the document when it first sees the URL and on cache expiry:
    server not set up yet says so.
 7. **Finish on the page**: "Connected", then back to the app.
 8. **Redirect** to `redirect_uri?code=…&state=…&iss=<Issuer>`. The code:
-   256 bits, single use, 5 minutes, bound to the connection, `client_id`,
-   `redirect_uri`, `code_challenge` and `resource`.
+   256 bits, single use, 10 minutes, bound to the connection, `client_id`,
+   `redirect_uri`, `code_challenge` and `resource`. Ten minutes is RFC 6749
+   §4.1.2's upper bound: a headless client's code is pasted back by hand,
+   often from a phone, and that takes minutes (工单 #96). A code used a
+   second time is refused, and the tokens it gave are revoked.
 
 The authorization completes once the person connects with the right
 account and password.
@@ -649,7 +652,7 @@ CLI already warns; the app gains the same for MCP connections).
 | Server compromise | Acts as each approved MCP connection within its Grant, sees those sessions (accepted, disclosed in §4.1); cannot make a connection reach a machine without Touch ID, widen access, touch non-MCP clients or machine administration, or outlive the Grant's expiry. Self-hosting removes the third party. |
 | Stolen access or refresh token (agent product breach, logs) | Opaque, 1-hour access tokens; refresh rotation with reuse detection; revocation in three places; bound to `resource` |
 | Consent phishing (attacker's client, victim approves), including late approval | Client and redirect host shown, verified/unverified, loopback warning; product, host and time of connection in the Touch ID sheet; the custodian sentence |
-| Authorization code interception | PKCE S256 only; single-use 5-minute codes bound to client, redirect URI and resource |
+| Authorization code interception | PKCE S256 only; single-use 10-minute codes bound to client, redirect URI and resource |
 | Mix-up between authorization servers | `iss` in every authorization response |
 | Open redirect | Errors before redirect URI validation never redirect; exact matching |
 | CSRF / clickjacking on consent | Browser-bound authorization id, same-origin POSTs, `frame-ancestors 'none'` |

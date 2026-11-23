@@ -786,28 +786,37 @@ func TestHerClientMetadataDocument(t *testing.T) {
 	}
 }
 
-// A code lasts five minutes (工单 #80: 60 s was too short for an exchange
-// that goes through a proxy): one exchanged just inside them works, one
-// just past them is refused, and either is good once only.
-func TestCodeLastsFiveMinutes(t *testing.T) {
+// A code lasts 10 minutes (工单 #96, was 60 s, then 5 minutes with 工单 #80): a code pasted back by hand after
+// minutes still works, used once; a second use is refused and revokes the tokens it gave; one past 10 minutes is
+// refused.
+func TestCodeLastsTenMinutes(t *testing.T) {
 	f := newFixture(t, nil)
 	redirect := "http://127.0.0.1/callback"
 	client := f.register(redirect)
 	exchange := func(code string) (int, map[string]any) {
 		return f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}})
 	}
+	for _, after := range []time.Duration{3*time.Minute + 30*time.Second, 10*time.Minute - time.Second} {
+		code := f.browser().consentCode(client, redirect)
+		f.clock.add(after)
+		status, v := exchange(code)
+		if status != 200 || v["access_token"] == nil {
+			t.Fatalf("%v after: %d %v", after, status, v)
+		}
+		if st := f.mcpStatus(v["access_token"].(string)); st != http.StatusOK {
+			t.Fatalf("its token, %v after: %d", after, st)
+		}
+		if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
+			t.Fatalf("the same code again: %d %v", status, v)
+		}
+		if st := f.mcpStatus(v["access_token"].(string)); st != http.StatusUnauthorized {
+			t.Fatalf("the token of a code used twice still works: %d", st)
+		}
+	}
 	code := f.browser().consentCode(client, redirect)
-	f.clock.add(5*time.Minute - time.Second)
-	if status, v := exchange(code); status != 200 || v["access_token"] == nil {
-		t.Fatalf("4 min 59 s after: %d %v", status, v)
-	}
+	f.clock.add(10*time.Minute + time.Second)
 	if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
-		t.Fatalf("the same code again: %d %v", status, v)
-	}
-	code = f.browser().consentCode(client, redirect)
-	f.clock.add(5*time.Minute + time.Second)
-	if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
-		t.Fatalf("5 min 1 s after: %d %v", status, v)
+		t.Fatalf("10 min 1 s after: %d %v", status, v)
 	}
 }
 
