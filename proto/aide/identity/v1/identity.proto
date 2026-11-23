@@ -220,6 +220,7 @@ message AdminCommand {
     SetAgentHidden set_agent_hidden = 20;
     SetAgentPaused set_agent_paused = 21;
     SetProjectName set_project_name = 22;
+    SetProjectPermission set_project_permission = 23;
   }
   reserved 12, 17, 18;
   reserved "rename_machine", "set_her_assistant_mode", "set_her_command_connector";
@@ -274,6 +275,17 @@ message SetProjectName {
   string project_id = 1;
   // At most 64 characters; empty: shown by its id again.
   string name = 2;
+}
+
+// SetProjectPermission sets the DSH permission preset (DSH's own: read-only,
+// workspace-write, danger-full-access, ...) a project's DSH sessions start
+// with when none is chosen for the session: the project's standing choice,
+// a setting as a session's preset is. A session started with another preset
+// keeps it; other agents are not affected.
+message SetProjectPermission {
+  string project_id = 1;
+  // One the machine's DSH offers; empty: DSH's own configuration again.
+  string dsh_preset = 2;
 }
 
 // SetWorkspaceRoots sets the folders the machine's owner devices may browse,

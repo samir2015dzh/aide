@@ -30,7 +30,7 @@
     "unknown": "State unknown"
   },
   "phase": {
-    "preparing": "Preparing worktree…",
+    "preparing": "Preparing its copy…",
     "thinking": "Thinking",
     "editing": "Editing {{target}}",
     "running": "Running {{target}}"
@@ -206,7 +206,7 @@
     "cliSignedOut": "Tasks Aide hands out run with the Claude Code command line, which is not signed in: sign it in below (a browser opens on that computer).",
     "appWithoutCLI": "Only the Claude desktop app is here, not the Claude Code command line Aide runs: open Code in the Claude app once and it fetches it.",
     "cliNotFound": "Tasks for Claude run with the Claude Code command line, which is not on this machine.",
-    "bridge": "DSH bridge plugin",
+    "bridge": "Aide plugin for DSH",
     "bridgeState": {
       "unprepared": "Not installed",
       "prepared": "Not installed",
@@ -258,5 +258,14 @@
     "tooBig": "{{kind}} “{{name}}” was not added: a message’s attachments add up to {{max}} at most",
     "imageTooBig": "Over 3.5 MB: it gets the file, not the picture to look at",
     "imageFormat": "In this format it gets the file, not the picture to look at"
+  },
+  "dshPreset": {
+    "read-only": "Read only",
+    "workspace-write": "Changes in the workspace",
+    "danger-full-access": "Full access"
+  },
+  "permission": {
+    "projectDefault": "Project's default: {{preset}}",
+    "above": "Above the DSH permission project “{{project}}” sets (“{{preset}}”): this task runs with “{{mode}}”, as you chose"
   }
 }

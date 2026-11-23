@@ -134,6 +134,10 @@ func (n *Machine) agentDefaults(agent string) provider.Settings {
 	return provider.Settings{Model: d.GetModel(), Effort: d.GetEffort(), Speed: d.GetSpeed(), Mode: d.GetMode()}
 }
 
+// dshAgent is DSH's name among the coding agents: its modes are its
+// permission presets, which a project can set for its DSH sessions.
+const dshAgent = "deepseek"
+
 // checkMode refuses a session mode the agent does not offer here (an ACP
 // agent's, as its last new session here offered them), naming the ones it
 // does.

@@ -134,6 +134,9 @@ const (
 	// LocalServiceRenameProjectProcedure is the fully-qualified name of the LocalService's
 	// RenameProject RPC.
 	LocalServiceRenameProjectProcedure = "/aide.local.v1.LocalService/RenameProject"
+	// LocalServiceSetProjectPermissionProcedure is the fully-qualified name of the LocalService's
+	// SetProjectPermission RPC.
+	LocalServiceSetProjectPermissionProcedure = "/aide.local.v1.LocalService/SetProjectPermission"
 	// LocalServiceListClientsProcedure is the fully-qualified name of the LocalService's ListClients
 	// RPC.
 	LocalServiceListClientsProcedure = "/aide.local.v1.LocalService/ListClients"
@@ -413,6 +416,9 @@ type LocalServiceClient interface {
 	RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error)
 	// Names a project as the owner knows it, in place of its id.
 	RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error)
+	// Sets the DSH permission preset a project's DSH sessions start with
+	// unless one is chosen for the session (SetProjectPermission).
+	SetProjectPermission(context.Context, *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error)
 	// Agents.
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
 	UpdateClient(context.Context, *v1.UpdateClientRequest) (*v1.UpdateClientResponse, error)
@@ -782,6 +788,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceRenameProjectProcedure,
 			connect.WithSchema(localServiceMethods.ByName("RenameProject")),
+			connect.WithClientOptions(opts...),
+		),
+		setProjectPermission: connect.NewClient[v1.SetProjectPermissionRequest, v1.SetProjectPermissionResponse](
+			httpClient,
+			baseURL+LocalServiceSetProjectPermissionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetProjectPermission")),
 			connect.WithClientOptions(opts...),
 		),
 		listClients: connect.NewClient[v1.ListClientsRequest, v1.ListClientsResponse](
@@ -1210,6 +1222,7 @@ type localServiceClient struct {
 	addProject               *connect.Client[v1.AddProjectRequest, v1.AddProjectResponse]
 	removeProject            *connect.Client[v1.RemoveProjectRequest, v1.RemoveProjectResponse]
 	renameProject            *connect.Client[v1.RenameProjectRequest, v1.RenameProjectResponse]
+	setProjectPermission     *connect.Client[v1.SetProjectPermissionRequest, v1.SetProjectPermissionResponse]
 	listClients              *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
 	updateClient             *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
 	renameClient             *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
@@ -1599,6 +1612,15 @@ func (c *localServiceClient) RemoveProject(ctx context.Context, req *v1.RemovePr
 // RenameProject calls aide.local.v1.LocalService.RenameProject.
 func (c *localServiceClient) RenameProject(ctx context.Context, req *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error) {
 	response, err := c.renameProject.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SetProjectPermission calls aide.local.v1.LocalService.SetProjectPermission.
+func (c *localServiceClient) SetProjectPermission(ctx context.Context, req *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error) {
+	response, err := c.setProjectPermission.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -2265,6 +2287,9 @@ type LocalServiceHandler interface {
 	RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error)
 	// Names a project as the owner knows it, in place of its id.
 	RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error)
+	// Sets the DSH permission preset a project's DSH sessions start with
+	// unless one is chosen for the session (SetProjectPermission).
+	SetProjectPermission(context.Context, *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error)
 	// Agents.
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
 	UpdateClient(context.Context, *v1.UpdateClientRequest) (*v1.UpdateClientResponse, error)
@@ -2630,6 +2655,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceRenameProjectProcedure,
 		svc.RenameProject,
 		connect.WithSchema(localServiceMethods.ByName("RenameProject")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetProjectPermissionHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetProjectPermissionProcedure,
+		svc.SetProjectPermission,
+		connect.WithSchema(localServiceMethods.ByName("SetProjectPermission")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListClientsHandler := connect.NewUnaryHandlerSimple(
@@ -3092,6 +3123,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceRemoveProjectHandler.ServeHTTP(w, r)
 		case LocalServiceRenameProjectProcedure:
 			localServiceRenameProjectHandler.ServeHTTP(w, r)
+		case LocalServiceSetProjectPermissionProcedure:
+			localServiceSetProjectPermissionHandler.ServeHTTP(w, r)
 		case LocalServiceListClientsProcedure:
 			localServiceListClientsHandler.ServeHTTP(w, r)
 		case LocalServiceUpdateClientProcedure:
@@ -3375,6 +3408,10 @@ func (UnimplementedLocalServiceHandler) RemoveProject(context.Context, *v1.Remov
 
 func (UnimplementedLocalServiceHandler) RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RenameProject is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetProjectPermission(context.Context, *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetProjectPermission is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error) {

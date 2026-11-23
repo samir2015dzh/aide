@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Picker } from "../Picker";
 import { useTranslation } from "react-i18next";
-import { codingAgentTitle } from "@aide/core";
+import { codingAgentTitle, modeLabel, projectTitle } from "@aide/core";
 import type { Persona } from "@aide/proto/identity";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
@@ -50,15 +50,22 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
   const agents = (machine?.status?.agents ?? []).filter((a) => a.available || a.name === d.agent);
   const a = agents.find((x) => x.name === d.agent) ?? agents[0];
   const projects = projectsFor(st.projects.filter((x) => x.machineId === mid), a?.name ?? "");
-  const project = (projects.find((x) => x.projectId === d.projectId) ?? projects[0])?.projectId ?? "";
+  // A contact being changed keeps its agent and project while its machine does not list them now (工单 #78): what
+  // isn't listed never stops a new name from being saved.
+  const editing = draft.personaId !== "";
+  const agent = a?.name ?? (editing ? d.agent : "");
+  const project = (projects.find((x) => x.projectId === d.projectId) ?? projects[0])?.projectId ?? (editing ? d.projectId : "");
   const efforts = a ? (a.models.find((x) => x.id === (d.model || a.defaults?.model || a.own?.model))?.efforts ?? [...new Set(a.models.flatMap((x) => x.efforts))]) : [];
-  const ready = d.name.trim() !== "" && !!mid && !!a && project !== "";
+  const next: Draft = { ...d, machineId: mid, agent, projectId: project };
+  // Saving is for a change, any one (only its name too); a new contact is one.
+  const changed = !editing || (Object.keys(draft) as (keyof Draft)[]).some((k) => draft[k] !== next[k]);
+  const ready = changed && d.name.trim() !== "" && !!mid && agent !== "" && project !== "";
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!ready || act.busy) return;
     await act.go(async () => {
-      const res = await local.savePersona({ persona: { ...d, machineId: mid, agent: a!.name, projectId: project } });
+      const res = await local.savePersona({ persona: next });
       done(res.persona!.personaId);
     });
   };
@@ -122,7 +129,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
             <label className="fl" htmlFor="ct-project">{t("newSession.project")}</label>
             <span className="fv">
               {projects.length ? (
-                <Picker className="psel" label={t("newSession.project")} value={project} onChange={(v) => put({ projectId: v })} options={projects.map((x) => ({ value: x.projectId, label: x.projectId }))} />
+                <Picker className="psel" label={t("newSession.project")} value={project} onChange={(v) => put({ projectId: v })} options={projects.map((x) => ({ value: x.projectId, label: projectTitle(x) }))} />
               ) : (
                 t("newSession.noProjects", { machine: machine!.machineName, agent: codingAgentTitle(a.name) })
               )}
@@ -149,7 +156,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
           <div className="frow">
             <label className="fl" htmlFor="ct-mode">{t("newSession.mode")}</label>
             <span className="fv">
-              <Picker className="psel" label={t("newSession.mode")} value={d.mode} onChange={(v) => put({ mode: v })} options={[{ value: "", label: t("newSession.default") }, ...a.modes.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
+              <Picker className="psel" label={t("newSession.mode")} value={d.mode} onChange={(v) => put({ mode: v })} options={[{ value: "", label: t("newSession.default") }, ...a.modes.map((x) => ({ value: x.id, label: modeLabel(a.name, x) }))]} />
             </span>
           </div>
         )}

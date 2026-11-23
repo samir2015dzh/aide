@@ -218,6 +218,8 @@ data class Project(
     val agents: List<String> = emptyList(),
     /** What the owner calls it (工单 #50); empty: its id. */
     val name: String = "",
+    /** The DSH permission preset its DSH sessions start with when none is chosen (工单 #89); empty: DSH's own. */
+    val dshPreset: String = "",
 )
 
 /** A project as the owner knows it: the name they gave it, else its id. */

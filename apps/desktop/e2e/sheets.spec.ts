@@ -86,7 +86,7 @@ test("adding a project: a folder on this Mac becomes a project", async () => {
   await expect(sheet.getByRole("button", { name: "选择…" })).toBeVisible(); // this Mac: the folder can be picked
   await sheet.getByLabel("目录").fill(dir); // the native folder dialog can't be driven
   await expect(sheet.getByLabel("项目名")).toHaveValue(folder);
-  await expect(sheet.getByRole("group", { name: "工作方式" }).getByRole("button", { name: "独立 worktree" })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByRole("group", { name: "工作方式" }).getByRole("button", { name: "每个任务一份副本" })).toHaveAttribute("aria-pressed", "true");
   await snap(page, "sheet-add-project");
   await sheet.getByRole("button", { name: "添加" }).click();
   await expect(page.getByRole("status").filter({ hasText: `已添加项目「${folder}」` })).toBeVisible();

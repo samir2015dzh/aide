@@ -52,9 +52,9 @@ describe("connections", () => {
     const row = (bridge: object) => machineConnections(machine([{ name: "deepseek", available: true, dshBridge: { latestVersion: "0.3.1", ...bridge } }]), now).rows[1];
     const notInstalled = { state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED };
     const at = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RUNNING, sessionId: "s1" } });
-    expect([at.state, at.text, at.fix]).toEqual(["checking", "DSH 正在代装…", "installBridge"]);
+    expect([at.state, at.text, at.fix]).toEqual(["checking", "DSH 正在安装…", "installBridge"]);
     const failed = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED, reason: "别的插件的常驻连接器占着 uv.exe" } });
-    expect([failed.state, failed.text, failed.lacks]).toEqual(["partial", "代装没成功", "别的插件的常驻连接器占着 uv.exe"]);
+    expect([failed.state, failed.text, failed.lacks]).toEqual(["partial", "DSH 没装成功", "别的插件的常驻连接器占着 uv.exe"]);
     const restart = row({ ...notInstalled, install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_RESTART } });
     expect([restart.text, restart.fix]).toEqual(["已装好，等 DSH Desktop 重启", "openDSH"]);
     const done = row({ state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.1", install: { state: DSHBridgeInstallState.DSH_BRIDGE_INSTALL_STATE_FAILED } });
@@ -77,7 +77,7 @@ describe("connections", () => {
     // Its state is its main row's, the command line Aide runs, on the desktop as on the phone (工单 #56).
     expect([claude.state, claude.text]).toEqual(["ok", "已登录 · 2.1.330"]);
     const dsh = agentEntry(c, "deepseek")!;
-    expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 桥接插件"]);
+    expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 的 Aide 插件"]);
     expect(dsh.rows[0].note).toBe("模型：DeepSeek V4");
     expect([dsh.state, dsh.text]).toEqual(["partial", "已检测到 · 1.4.0"]);
     expect(c.rows.some((r) => r.title.includes("DeepSeek"))).toBe(false);

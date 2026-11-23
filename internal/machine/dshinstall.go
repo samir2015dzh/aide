@@ -59,7 +59,7 @@ func (n *Machine) InstallDSHBridge(ctx context.Context) (*machinev1.InstallDSHBr
 		return nil, err
 	}
 	sess, err := n.sessions.Start(ctx, owner, &sessionv1.StartSessionRequest{
-		Agent: "deepseek", ProjectId: aideBridgeProject, Title: "代装 DSH 桥接插件 " + p.Version,
+		Agent: "deepseek", ProjectId: aideBridgeProject, Title: "安装 DSH 的 Aide 插件 " + p.Version,
 		Prompt: dshnative.InstallPrompt(home, p.Package, p.Version, aided),
 	})
 	if err != nil {
@@ -115,7 +115,7 @@ func (n *Machine) dshBridgeInstall(home string, running bool) *machinev1.DSHBrid
 			in.State = machinev1.DSHBridgeInstallState_DSH_BRIDGE_INSTALL_STATE_RUNNING
 		} else {
 			in.State = machinev1.DSHBridgeInstallState_DSH_BRIDGE_INSTALL_STATE_FAILED
-			in.Reason = "DSH 的代装任务已经结束，但没有回报结果：打开那个任务看它做到了哪一步。"
+			in.Reason = "DSH 的安装任务已经结束，但没有回报结果：打开那个任务看它做到了哪一步。"
 		}
 	}
 	if rep != nil {

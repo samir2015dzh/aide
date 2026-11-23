@@ -141,7 +141,7 @@ fun SettingsTab(model: AppModel) {
                     }
                     Labeled(t("Server", "服务器"), st.relayUrl)
                     if (st.account.isNotEmpty()) Labeled(t("Account", "账号"), st.account)
-                    Labeled(t("Core version", "核心版本"), st.version)
+                    Labeled(t("Version", "版本"), st.version)
                     KeepaliveSettings(model)
                     Labeled(
                         t("Notifications", "通知"),

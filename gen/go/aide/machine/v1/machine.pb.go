@@ -2901,7 +2901,10 @@ type Project struct {
 	// The coding agents that may work in it; empty: all.
 	Agents []string `protobuf:"bytes,8,rep,name=agents,proto3" json:"agents,omitempty"`
 	// The name the owner gave it (SetProjectName); empty: shown by its id.
-	Name          string `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
+	// The DSH permission preset its DSH sessions start with unless one is
+	// chosen for the session (SetProjectPermission); empty: DSH's own.
+	DshPreset     string `protobuf:"bytes,10,opt,name=dsh_preset,json=dshPreset,proto3" json:"dsh_preset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2995,6 +2998,13 @@ func (x *Project) GetAgents() []string {
 func (x *Project) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *Project) GetDshPreset() string {
+	if x != nil {
+		return x.DshPreset
 	}
 	return ""
 }
@@ -8119,7 +8129,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\tAgentMode\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"\x15\n" +
-	"\x13ListProjectsRequest\"\xac\x02\n" +
+	"\x13ListProjectsRequest\"\xcb\x02\n" +
 	"\aProject\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12(\n" +
@@ -8130,7 +8140,10 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x04base\x18\x06 \x01(\tR\x04base\x12'\n" +
 	"\x0factive_sessions\x18\a \x01(\rR\x0eactiveSessions\x12\x16\n" +
 	"\x06agents\x18\b \x03(\tR\x06agents\x12\x12\n" +
-	"\x04name\x18\t \x01(\tR\x04name\"L\n" +
+	"\x04name\x18\t \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"dsh_preset\x18\n" +
+	" \x01(\tR\tdshPreset\"L\n" +
 	"\x14ListProjectsResponse\x124\n" +
 	"\bprojects\x18\x01 \x03(\v2\x18.aide.machine.v1.ProjectR\bprojects\"j\n" +
 	"\vExecRequest\x12\x18\n" +

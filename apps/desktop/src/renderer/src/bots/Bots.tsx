@@ -7,7 +7,7 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, currentConversation, displayTitle, listTime, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, withContext,
+  allBots, botConversations, changedParams, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
 import { agentLogos, agentPicture, AgentLogo, BotGlyph, grantColor, grantLogo, grantPicture } from "@aide/ui";
@@ -24,8 +24,8 @@ import { Composer, attachmentsOf, useAttachments, type ComposerState } from "./C
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
-// alone — the ones pinned as tiles, then the personal agents (they follow the account), the coding agents (each on its
-// machine, named by it when there are several), and the rooms. No machine, device state or task list is there: a
+// alone — the ones pinned as tiles, then the personal agents, the coding agents (a group per machine, headed by its
+// name, 工单 #75), and the rooms. No machine, device state or task list is there: a
 // machine is said only through its bots' states, and is managed on the devices page (Settings › Machines). A click
 // opens the bot's page: its conversations in the middle with the box to write to it, and its own settings beside.
 
@@ -209,8 +209,7 @@ export function SidebarRoster() {
   const sel = st.selection.kind === "bot" ? st.selection.key : "";
   const open = (b: Bot) => st.set({ selection: { kind: "bot", key: b.key } });
   const pinned = pins.map((k) => all.find((b) => b.key === k)).filter((b): b is Bot => !!b);
-  const coding = r.machines.flatMap((g) => g.bots);
-  const group = (id: string, title: string, bots: Bot[]) => {
+  const group = (id: string, title: string, bots: Bot[], short = false) => {
     const key = `bots:${id}`;
     const shown = !st.collapsed.includes(key);
     if (bots.length === 0) return null;
@@ -231,7 +230,7 @@ export function SidebarRoster() {
             <BotFace b={b} size={28} dot />
             <span className="bot-t">
               <span className="bot-l1">
-                <b>{b.name}</b>
+                <b>{short ? b.shortName : b.name}</b>
                 <span className="bot-word" data-usable={b.state.usable}>{b.state.word}</span>
               </span>
               <span className="bot-l2">{b.doing || b.state.line}</span>
@@ -262,7 +261,8 @@ export function SidebarRoster() {
         </div>
       )}
       {group("personal", t("bots.personal"), r.personal)}
-      {group("coding", t("bots.coding"), coding)}
+      {/* The coding agents by machine (工单 #75): the head is the machine's name, so a row names the agent alone. */}
+      {r.machines.map((g) => group(`m:${g.machine.machineId}`, g.machine.machineName, g.bots, true))}
       <SidebarRooms />
       {all.length === 0 && st.status && (
         <div className="side-empty">
@@ -476,6 +476,8 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const fresh = !current || paramsChanged(current, params);
   const changed = current ? changedParams(current, params) : [];
   const usable = b.state.usable !== "no";
+  // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
+  const permission = modeChoice(b.agent, params.mode, projects.find((p) => p.projectId === params.projectId), a?.modes ?? []);
   const send = async (opts: { withContextOf?: Session } = {}) => {
     const body = text.trim();
     if ((!body && attach.files.length === 0) || state.kind === "sending") return;
@@ -519,14 +521,16 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         ? { text: t(stuck === "projectGone" ? "conv.stuckProject" : "conv.stuckAgent"), tone: "warn" as const }
         : projects.length === 0
           ? { text: t("bots.noProject"), tone: "quiet" as const }
-          : b.state.usable === "unverified"
-            ? { text: t("bots.unverified"), tone: "quiet" as const }
-            : current && fresh
-              ? { text: t("conv.willStartNew", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }), tone: "quiet" as const }
-              : undefined;
+          : permission.above
+            ? { text: permission.above, tone: "warn" as const }
+            : b.state.usable === "unverified"
+              ? { text: t("bots.unverified"), tone: "quiet" as const }
+              : current && fresh
+                ? { text: t("conv.willStartNew", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }), tone: "quiet" as const }
+                : undefined;
   const models: PickerOption<string>[] = [{ value: "", label: t("composer.defaultModel") }, ...(a?.models ?? []).map((x) => ({ value: x.id, label: x.name || x.id }))];
   const efforts = a?.models.find((x) => x.id === params.model)?.efforts ?? [];
-  const modes: PickerOption<string>[] = [{ value: "", label: t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: x.name || x.id }))];
+  const modes: PickerOption<string>[] = [{ value: "", label: permission.defaultLabel ?? t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) }))];
   const chips = (
     <>
       {projects.length > 0 && (
@@ -538,7 +542,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         <Picker chip size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
           options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: e }))]} />
       )}
-      {(a?.modes.length ?? 0) > 0 && <Picker chip size="sm" label={t("composer.param.mode")} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />}
+      {(a?.modes.length ?? 0) > 0 && <Picker chip size="sm" label={t(b.agent === dshAgent ? "composer.permission" : "composer.param.mode")} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />}
     </>
   );
   const row = (s: Session, archived = false) => {

@@ -18,7 +18,7 @@ test("the sidebar is bots alone; pages that left it are in the account menu, dev
   await expect(roster.getByRole("group", { name: /这台电脑|这台 Mac/ })).toHaveCount(0);
   await expect(roster.locator(".bot-counts")).toHaveCount(0);
   // Pinned as a tile at the top (BotArk's sidebar), from its right-click menu.
-  const gemini = roster.getByRole("group", { name: "编码 agent · 跟机器走" }).getByRole("button", { name: /^Gemini CLI/ });
+  const gemini = roster.getByRole("group", { name: "owner-mac" }).getByRole("button", { name: /^Gemini CLI/ });
   await expect(gemini).toBeVisible({ timeout: 30_000 });
   await answerMenu(app, "pin");
   await gemini.click({ button: "right" });
@@ -36,7 +36,7 @@ test("the sidebar is bots alone; pages that left it are in the account menu, dev
 test("a coding agent's conversations: on in the current one, a new one, back to the first (工单 #66, #67)", async () => {
   const { page } = await launch();
   const roster = page.getByRole("region", { name: "Bot" });
-  await roster.getByRole("group", { name: "编码 agent · 跟机器走" }).getByRole("button", { name: /^Gemini CLI/ }).click({ timeout: 30_000 });
+  await roster.getByRole("group", { name: "owner-mac" }).getByRole("button", { name: /^Gemini CLI/ }).click({ timeout: 30_000 });
   const bot = page.getByRole("region", { name: /^Gemini CLI/ });
   const composer = bot.locator("form.composer");
   const box = composer.getByRole("textbox", { name: "给 Gemini CLI 发消息" });

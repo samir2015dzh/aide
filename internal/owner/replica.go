@@ -838,7 +838,7 @@ func goneFrom(held, now map[string]*sessionv1.Session, next *sessionv1.SessionCu
 
 func localProject(machineID string, p *machinev1.Project) *localv1.Project {
 	return &localv1.Project{MachineId: machineID, ProjectId: p.ProjectId, DefaultBaseRef: p.DefaultBaseRef, Workspace: p.Workspace,
-		Description: p.Description, Agents: p.Agents, Path: p.Path, Name: p.Name}
+		Description: p.Description, Agents: p.Agents, Path: p.Path, Name: p.Name, DshPreset: p.DshPreset}
 }
 
 // followSessions follows a machine without MachineService.Watch: its

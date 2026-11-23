@@ -311,7 +311,7 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
         )
         is Item.Workspace -> Column(pad) {
             val r = item.request
-            val by = if (r.from == "agent") t("the agent", "代理") else r.fromName.ifEmpty { r.from }
+            val by = if (r.from == "agent") t("asked by this task’s agent", "由这个任务的 agent 提出") else r.fromName.ifEmpty { r.from }
             Text(
                 t("Workspace request: ", "工作区申请：") + workspaceKind(r.kind) + " " + r.item + " · " + workspaceStatus(r.status) + " · " + by,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary,

@@ -9,7 +9,7 @@
     "settings": "会话设置"
   },
   "chat": {
-    "archived": "已归档：只读，worktree 已释放，改动还在分支上。",
+    "archived": "已归档：只读，副本已释放，改动还在分支上。",
     "unarchive": "取消归档",
     "log": "对话",
     "failed": "出错了",
@@ -32,7 +32,7 @@
     "messageTo": "发给 {{name}} 的消息",
     "messageQueued": "将在下一轮处理",
     "workspaceRequest": "工作区申请：{{kind}} {{item}}",
-    "workspaceByAgent": "代理",
+    "workspaceByAgent": "由这个任务的 agent 提出",
     "workspaceKind": {"tool": "工具", "permission": "权限", "info": "信息", "system_change": "系统变更"},
     "workspaceStatus": {"pending": "待批", "approved": "已批准", "rejected": "已拒绝", "provisioned": "已就位", "confirmed": "已确认"},
     "unread": {

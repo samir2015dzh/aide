@@ -1363,7 +1363,7 @@ func (o *Owner) admin(ctx context.Context, machineID string, build func(*identit
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
 		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused,
-		*identityv1.AdminCommand_SetProjectName:
+		*identityv1.AdminCommand_SetProjectName, *identityv1.AdminCommand_SetProjectPermission:
 		if l := o.local(); l != nil && l.MachineID() == machineID {
 			return l.ApplySettings(ctx, build) // this device's own machine, in process
 		}
@@ -2115,6 +2115,15 @@ func (o *Owner) RenameProject(ctx context.Context, req *localv1.RenameProjectReq
 	return err
 }
 
+// SetProjectPermission sets the DSH permission preset a project's DSH
+// sessions start with (SetProjectPermission).
+func (o *Owner) SetProjectPermission(ctx context.Context, req *localv1.SetProjectPermissionRequest) error {
+	_, err := o.admin(ctx, req.MachineId, func(c *identityv1.AdminCommand) {
+		c.Command = &identityv1.AdminCommand_SetProjectPermission{SetProjectPermission: &identityv1.SetProjectPermission{ProjectId: req.ProjectId, DshPreset: req.DshPreset}}
+	})
+	return err
+}
+
 func (o *Owner) RemoveProject(ctx context.Context, machineID, projectID string) error {
 	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
 		c.Command = &identityv1.AdminCommand_RemoveProject{RemoveProject: &identityv1.RemoveProject{ProjectId: projectID}}
@@ -2202,7 +2211,7 @@ func (o *Owner) ListProjects(ctx context.Context, machineID string) (*localv1.Li
 		defer mu.Unlock()
 		for _, p := range res.Projects {
 			out.Projects = append(out.Projects, &localv1.Project{MachineId: meta.MachineId, ProjectId: p.ProjectId, DefaultBaseRef: p.DefaultBaseRef, Workspace: p.Workspace,
-				Description: p.Description, Agents: p.Agents, Path: p.Path, Name: p.Name})
+				Description: p.Description, Agents: p.Agents, Path: p.Path, Name: p.Name, DshPreset: p.DshPreset})
 		}
 	}
 	bad, err := o.fanOut(ctx, ask, func(l *machine.Local, meta *localv1.Machine) error {

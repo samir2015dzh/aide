@@ -87,7 +87,7 @@ fun roomLine(r: Room): String = when (r.run) {
 
 /** Replies waiting at the post office for a room's away host (工单 #74), from the other machines' status. */
 private fun waitingLine(r: Room, outbox: List<io.aide.android.api.RoomOutbox>): String? = outbox.filter { it.roomId == r.roomId }.sumOf { it.replies }.takeIf { it > 0 }?.let {
-    t("$it replies wait for the host", "$it 条回复等主持机上线")
+    t("$it replies wait for the machine keeping the room", "$it 条回复等负责房间的机器上线")
 }
 
 /** The roster's rooms: a header with a button to make one, a row each. */
@@ -175,7 +175,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
         val waiting = maxOf(post, world.machines.flatMap { it.status?.roomOutbox.orEmpty() }.filter { it.roomId == roomId }.sumOf { it.replies })
         if (r == null) {
             Centered {
-                Text(if (failed) t("${host?.machineName ?: "The machine"} keeping this room is offline.", "主持这个房间的 ${host?.machineName ?: "机器"} 不在线。") else t("Reading the room…", "正在读取房间…"))
+                Text(if (failed) t("${host?.machineName ?: "The machine"} keeping this room is offline.", "负责这个房间的 ${host?.machineName ?: "机器"} 不在线。") else t("Reading the room…", "正在读取房间…"))
                 if (waiting > 0) Text(t("$waiting replies wait at the post office for it to come back.", "有 $waiting 条回复在邮局等它上线后入房。"), color = Warning)
             }
             return@Scaffold
@@ -218,7 +218,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                 }
                 if (away) item(key = "away") {
                     Text(
-                        t("${host?.machineName ?: "The machine"} keeping this room is offline.", "主持这个房间的 ${host?.machineName ?: "机器"} 不在线。") +
+                        t("${host?.machineName ?: "The machine"} keeping this room is offline.", "负责这个房间的 ${host?.machineName ?: "机器"} 不在线。") +
                             if (waiting > 0) t(" $waiting replies wait at the post office to come in once it is back.", " 有 $waiting 条回复在邮局等它上线后入房。") else "",
                         style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.fillMaxWidth().aideInset().padding(12.dp),
                     )
@@ -230,7 +230,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                 }
                 msgs.forEach { m -> item(key = "m-${m.messageId}", contentType = "chat") { RoomMessageView(model, r, m, ::nameOf, openSession) } }
                 if (waiting > 0) item(key = "waiting") {
-                    Text(t("$waiting replies are on their way: they come in as soon as the host is back", "还有 $waiting 条回复在路上：主持机一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                    Text(t("$waiting replies are on their way: they come in as soon as the machine keeping the room is back", "还有 $waiting 条回复在路上：负责房间的机器一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
             }
             RoomCompose(model, r, enabled = !away) { m -> msgs = msgs.filter { it.messageId != m.messageId } + m; scope.launch { read() } }
