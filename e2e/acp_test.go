@@ -2,7 +2,10 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,6 +72,25 @@ func TestACPAgents(t *testing.T) {
 	// Turn 2 continues the same ACP session.
 	if r := cli(time.Minute, "session", "send", s1.SessionID, "--wait", "--message", "history"); r.code != 0 || !strings.Contains(r.stdout, "history: 2 turns") {
 		t.Fatalf("turn 2: %+v", r)
+	}
+
+	// Attachments (工单 #91): a text file, a recording and an image, sent with a prompt, reach the agent byte for
+	// byte: each as a link to the file saved on the machine, which it reads (this Gemini takes no images inline).
+	files := map[string]string{"notes.txt": "the secret is 4217\n", "memo.wav": "RIFF\x24\x00\x00\x00WAVEfmt fake"}
+	args := []string{"--agent", "gemini", "--wait", "--prompt", "files"}
+	for name, data := range files {
+		os.WriteFile(filepath.Join(scripts, name), []byte(data), 0o644)
+		args = append(args, "-f", filepath.Join(scripts, name))
+	}
+	writePNG(t, filepath.Join(scripts, "shot.png"), color.RGBA{0, 0x80, 0, 0xff})
+	shot, _ := os.ReadFile(filepath.Join(scripts, "shot.png"))
+	files["shot.png"] = string(shot)
+	_, r = w.startSession(time.Minute, append(args, "-f", filepath.Join(scripts, "shot.png"))...)
+	for name, data := range files {
+		sum := sha256.Sum256([]byte(data))
+		if !strings.Contains(r.stdout, "link "+name+" ") || !strings.Contains(r.stdout, hex.EncodeToString(sum[:])[:12]) {
+			t.Fatalf("attachment %s did not reach the agent: %+v", name, r)
+		}
 	}
 
 	// Cursor: authenticate + model selection.

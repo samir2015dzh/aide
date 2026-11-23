@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -380,6 +381,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 			LoadSession        bool `json:"loadSession"`
 			PromptCapabilities struct {
 				Image bool `json:"image"`
+				Audio bool `json:"audio"`
 			} `json:"promptCapabilities"`
 			SessionCapabilities struct {
 				Resume json.RawMessage `json:"resume"`
@@ -392,6 +394,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	}
 	json.Unmarshal(res, &init)
 	s.images = init.AgentCapabilities.PromptCapabilities.Image
+	s.audio = init.AgentCapabilities.PromptCapabilities.Audio
 	s.closes = len(init.AgentCapabilities.SessionCapabilities.Close) > 0 && string(init.AgentCapabilities.SessionCapabilities.Close) != "null"
 	if m := authMethod(p.Auth, init.AuthMethods); m != "" {
 		if _, err := s.call(ctx, "authenticate", map[string]any{"methodId": m}); err != nil {
@@ -470,7 +473,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		cfg.addEfforts(offers) // those of the model chosen, too
 	}
 	s.emit(provider.Event{Kind: provider.EventRef, Ref: s.sessionID, Model: cfg.model(), Effort: cfg.effort(), Offers: offers})
-	if err := s.Send(ctx, provider.Input{Text: spec.Prompt, Images: spec.Images}); err != nil {
+	if err := s.Send(ctx, provider.Input{Text: spec.Prompt, Images: spec.Images, Files: spec.Files}); err != nil {
 		return fail(err)
 	}
 	return s, nil
@@ -749,9 +752,10 @@ type session struct {
 	ctx       context.Context
 	sessionID string
 	catalog   func(json.RawMessage, bool)
-	// images: the agent takes image content blocks (promptCapabilities);
-	// closes, session/close (sessionCapabilities.close).
+	// images, audio: the agent takes image or audio content blocks
+	// (promptCapabilities); closes, session/close (sessionCapabilities.close).
 	images    bool
+	audio     bool
 	closes    bool
 	replaying atomic.Bool
 	// closeMu orders emits from Start against the reader closing events.
@@ -1039,16 +1043,58 @@ func (s *session) Send(ctx context.Context, in provider.Input) error {
 	s.msg.Reset()
 	s.last = ""
 	s.mu.Unlock()
-	prompt := []any{map[string]any{"type": "text", "text": in.Text}}
+	return s.request("session/prompt", map[string]any{"sessionId": s.sessionID, "prompt": s.prompt(in)}, s.turnDone)
+}
+
+// maxInlineAudio bounds an audio file sent inline (base64, as an image is).
+const maxInlineAudio = 3584 << 10
+
+// prompt is a message as ACP content blocks: its text, then each attached
+// file. Images go as image blocks and audio as audio blocks to an agent
+// that takes them; every other file goes as a resource_link to the saved
+// file (every ACP agent takes those), which the text lists by path too.
+func (s *session) prompt(in provider.Input) []any {
+	text := in.Text
+	if !s.images && len(in.Images) > 0 {
+		text = strings.ReplaceAll(text, provider.ShownAsImage, "") // it is not shown them
+	}
+	prompt := []any{map[string]any{"type": "text", "text": text}}
+	files := in.Files
 	for _, img := range in.Images {
 		if !s.images {
-			break // the text lists the files by path
+			files = append(files, provider.File{Path: img.Path, Name: filepath.Base(img.Path), MediaType: img.MediaType})
+			continue
 		}
 		if b, err := os.ReadFile(img.Path); err == nil {
 			prompt = append(prompt, map[string]any{"type": "image", "mimeType": img.MediaType, "data": base64.StdEncoding.EncodeToString(b)})
 		}
 	}
-	return s.request("session/prompt", map[string]any{"sessionId": s.sessionID, "prompt": prompt}, s.turnDone)
+	for _, f := range files {
+		if s.audio && strings.HasPrefix(f.MediaType, "audio/") && f.Size <= maxInlineAudio {
+			if b, err := os.ReadFile(f.Path); err == nil {
+				prompt = append(prompt, map[string]any{"type": "audio", "mimeType": f.MediaType, "data": base64.StdEncoding.EncodeToString(b)})
+				continue
+			}
+		}
+		link := map[string]any{"type": "resource_link", "uri": fileURI(f.Path), "name": f.Name}
+		if f.MediaType != "" {
+			link["mimeType"] = f.MediaType
+		}
+		if f.Size > 0 {
+			link["size"] = f.Size
+		}
+		prompt = append(prompt, link)
+	}
+	return prompt
+}
+
+// fileURI is a file:// URI for an absolute path (C:\x is file:///C:/x).
+func fileURI(path string) string {
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p}).String()
 }
 
 // Steer is not part of ACP: a session takes one prompt per turn.

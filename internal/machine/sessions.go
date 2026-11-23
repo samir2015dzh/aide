@@ -1933,7 +1933,7 @@ func (s *Sessions) prepare(l *live) {
 	}
 	l.mu.Lock()
 	env = append(env, brandenv.Prefix+"WORKTREE="+l.row.Worktree)
-	spec := provider.StartSpec{WorkDir: l.row.Worktree, TempDir: tmp, Prompt: prompt.text, Images: prompt.input().Images, ReadDirs: []string{files}, Model: l.row.Model,
+	spec := provider.StartSpec{WorkDir: l.row.Worktree, TempDir: tmp, Prompt: prompt.text, Images: prompt.input().Images, Files: prompt.input().Files, ReadDirs: []string{files}, Model: l.row.Model,
 		ModelScope: l.row.ProjectID + "/" + id,
 		Effort:     l.row.Effort, Speed: l.row.Speed, Mode: l.row.Mode, Title: l.row.Title, Env: env, Gate: gate}
 	if s.mcp != nil {
