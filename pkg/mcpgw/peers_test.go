@@ -116,9 +116,10 @@ func TestConnectionsKeepTheirPeers(t *testing.T) {
 			t.Fatalf("project_list: %+v %v", res, err)
 		}
 	}
+	// Connected for it now: online, and not by its last call alone (工单 #94 keeps it online by that for a while).
 	online := func() bool {
 		entries, _ := r.ClientEntries(ownerID)
-		return len(entries) == 1 && entries[0].Online
+		return len(entries) == 1 && entries[0].Online && !entries[0].Recent
 	}
 	until := func(what string, cond func() bool) {
 		t.Helper()

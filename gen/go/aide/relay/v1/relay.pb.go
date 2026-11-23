@@ -1293,8 +1293,13 @@ type ClientEntry struct {
 	// that device's cert.
 	Card           *v1.Signed `protobuf:"bytes,6,opt,name=card,proto3" json:"card,omitempty"`
 	CardDeviceCert *v1.Signed `protobuf:"bytes,7,opt,name=card_device_cert,json=cardDeviceCert,proto3" json:"card_device_cert,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Online by what it did lately, with no connection now (工单 #94): an
+	// agent whose key a server holds (an MCP connection) counts as online
+	// while its last call is within the relay's activity window; last_seen is
+	// then that call. False while it is connected, and from relays before.
+	Recent        bool `protobuf:"varint,8,opt,name=recent,proto3" json:"recent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ClientEntry) Reset() {
@@ -1374,6 +1379,13 @@ func (x *ClientEntry) GetCardDeviceCert() *v1.Signed {
 		return x.CardDeviceCert
 	}
 	return nil
+}
+
+func (x *ClientEntry) GetRecent() bool {
+	if x != nil {
+		return x.Recent
+	}
+	return false
 }
 
 type GetScreenServersRequest struct {
@@ -5733,7 +5745,10 @@ type Presence struct {
 	Inbox  string `protobuf:"bytes,1,opt,name=inbox,proto3" json:"inbox,omitempty"`
 	Online bool   `protobuf:"varint,2,opt,name=online,proto3" json:"online,omitempty"`
 	// When it was last connected; unset while it is.
-	LastSeen      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	LastSeen *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	// Online by what it did lately (ClientEntry.recent, 工单 #94): last_seen
+	// is when.
+	Recent        bool `protobuf:"varint,4,opt,name=recent,proto3" json:"recent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5787,6 +5802,13 @@ func (x *Presence) GetLastSeen() *timestamppb.Timestamp {
 		return x.LastSeen
 	}
 	return nil
+}
+
+func (x *Presence) GetRecent() bool {
+	if x != nil {
+		return x.Recent
+	}
+	return false
 }
 
 type Woken struct {
@@ -6659,7 +6681,7 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"\x06online\x18\x02 \x01(\bR\x06online\x127\n" +
 	"\tlast_seen\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x18\n" +
-	"\aversion\x18\x06 \x01(\tR\aversionJ\x04\b\x04\x10\x05R\x06status\"\xbb\x02\n" +
+	"\aversion\x18\x06 \x01(\tR\aversionJ\x04\b\x04\x10\x05R\x06status\"\xd3\x02\n" +
 	"\vClientEntry\x12.\n" +
 	"\x05grant\x18\x01 \x01(\v2\x18.aide.identity.v1.SignedR\x05grant\x12\x16\n" +
 	"\x06online\x18\x02 \x01(\bR\x06online\x127\n" +
@@ -6668,7 +6690,8 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"\vmachine_ids\x18\x05 \x03(\tR\n" +
 	"machineIds\x12,\n" +
 	"\x04card\x18\x06 \x01(\v2\x18.aide.identity.v1.SignedR\x04card\x12B\n" +
-	"\x10card_device_cert\x18\a \x01(\v2\x18.aide.identity.v1.SignedR\x0ecardDeviceCert\"\x19\n" +
+	"\x10card_device_cert\x18\a \x01(\v2\x18.aide.identity.v1.SignedR\x0ecardDeviceCert\x12\x16\n" +
+	"\x06recent\x18\b \x01(\bR\x06recent\"\x19\n" +
 	"\x17GetScreenServersRequest\"N\n" +
 	"\x18GetScreenServersResponse\x122\n" +
 	"\aservers\x18\x01 \x03(\v2\x18.aide.relay.v1.IceServerR\aservers\"[\n" +
@@ -6915,11 +6938,12 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"root_chain\x18\x02 \x01(\v2\x1b.aide.identity.v1.RootChainR\trootChain\x12*\n" +
 	"\x05woken\x18\x03 \x03(\v2\x14.aide.relay.v1.WokenR\x05woken\x123\n" +
 	"\bpresence\x18\x04 \x03(\v2\x17.aide.relay.v1.PresenceR\bpresence\x123\n" +
-	"\bboundary\x18\x05 \x01(\v2\x17.aide.relay.v1.BoundaryR\bboundary\"q\n" +
+	"\bboundary\x18\x05 \x01(\v2\x17.aide.relay.v1.BoundaryR\bboundary\"\x89\x01\n" +
 	"\bPresence\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x16\n" +
 	"\x06online\x18\x02 \x01(\bR\x06online\x127\n" +
-	"\tlast_seen\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\"3\n" +
+	"\tlast_seen\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12\x16\n" +
+	"\x06recent\x18\x04 \x01(\bR\x06recent\"3\n" +
 	"\x05Woken\x12\x14\n" +
 	"\x05inbox\x18\x01 \x01(\tR\x05inbox\x12\x14\n" +
 	"\x05names\x18\x02 \x03(\tR\x05names\"K\n" +

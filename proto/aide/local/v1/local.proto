@@ -904,6 +904,9 @@ message Client {
   string category = 15;
   // With "local": the machine it runs on ("" when not said).
   string category_machine_id = 16;
+  // Online by what it did lately, with no connection now
+  // (relay.v1.ClientEntry.recent, 工单 #94): last_seen is when.
+  bool recent = 17;
 }
 
 message ListClientsRequest {}

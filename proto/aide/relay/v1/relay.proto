@@ -230,6 +230,11 @@ message ClientEntry {
   // that device's cert.
   aide.identity.v1.Signed card = 6;
   aide.identity.v1.Signed card_device_cert = 7;
+  // Online by what it did lately, with no connection now (工单 #94): an
+  // agent whose key a server holds (an MCP connection) counts as online
+  // while its last call is within the relay's activity window; last_seen is
+  // then that call. False while it is connected, and from relays before.
+  bool recent = 8;
 }
 
 service MachineControlService {
@@ -835,6 +840,9 @@ message Presence {
   bool online = 2;
   // When it was last connected; unset while it is.
   google.protobuf.Timestamp last_seen = 3;
+  // Online by what it did lately (ClientEntry.recent, 工单 #94): last_seen
+  // is when.
+  bool recent = 4;
 }
 
 message Woken {

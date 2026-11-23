@@ -865,3 +865,22 @@ func TestCallbackIsTheRegisteredRedirect(t *testing.T) {
 		t.Fatalf("Location %q, want %q", loc, want)
 	}
 }
+
+// A connection's calls are what keep it online (工单 #94): the token taken tells the relay at once, which then lists it
+// online by that call, with when, though nothing is connected for it.
+func TestCallsKeepTheConnectionOnline(t *testing.T) {
+	f := newFixture(t, nil)
+	redirect := "http://127.0.0.1/callback"
+	client := f.register(redirect)
+	code := f.browser().consentCode(client, redirect)
+	if st, _ := f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}}); st != http.StatusOK {
+		t.Fatalf("token: %d", st)
+	}
+	entries, err := f.g.cfg.Relay.ClientEntries(f.g.cfg.Relay.SingleOwner())
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("listed: %v %v", entries, err)
+	}
+	if e := entries[0]; !e.Online || !e.Recent || e.LastSeen == nil || time.Since(e.LastSeen.AsTime()) > time.Minute {
+		t.Fatalf("after its call: %v", e)
+	}
+}

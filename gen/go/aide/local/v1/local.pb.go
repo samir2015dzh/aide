@@ -5420,8 +5420,11 @@ type Client struct {
 	Category string `protobuf:"bytes,15,opt,name=category,proto3" json:"category,omitempty"`
 	// With "local": the machine it runs on ("" when not said).
 	CategoryMachineId string `protobuf:"bytes,16,opt,name=category_machine_id,json=categoryMachineId,proto3" json:"category_machine_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Online by what it did lately, with no connection now
+	// (relay.v1.ClientEntry.recent, 工单 #94): last_seen is when.
+	Recent        bool `protobuf:"varint,17,opt,name=recent,proto3" json:"recent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Client) Reset() {
@@ -5564,6 +5567,13 @@ func (x *Client) GetCategoryMachineId() string {
 		return x.CategoryMachineId
 	}
 	return ""
+}
+
+func (x *Client) GetRecent() bool {
+	if x != nil {
+		return x.Recent
+	}
+	return false
 }
 
 type ListClientsRequest struct {
@@ -11453,7 +11463,7 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x1d\n" +
 	"\n" +
 	"dsh_preset\x18\x03 \x01(\tR\tdshPreset\"\x1e\n" +
-	"\x1cSetProjectPermissionResponse\"\xab\x04\n" +
+	"\x1cSetProjectPermissionResponse\"\xc3\x04\n" +
 	"\x06Client\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x19\n" +
 	"\bgrant_id\x18\x02 \x01(\tR\agrantId\x12\x14\n" +
@@ -11472,7 +11482,8 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x05image\x18\r \x01(\fR\x05image\x12$\n" +
 	"\x0eher_machine_id\x18\x0e \x01(\tR\fherMachineId\x12\x1a\n" +
 	"\bcategory\x18\x0f \x01(\tR\bcategory\x12.\n" +
-	"\x13category_machine_id\x18\x10 \x01(\tR\x11categoryMachineId\"\x14\n" +
+	"\x13category_machine_id\x18\x10 \x01(\tR\x11categoryMachineId\x12\x16\n" +
+	"\x06recent\x18\x11 \x01(\bR\x06recent\"\x14\n" +
 	"\x12ListClientsRequest\"F\n" +
 	"\x13ListClientsResponse\x12/\n" +
 	"\aclients\x18\x01 \x03(\v2\x15.aide.local.v1.ClientR\aclients\"^\n" +

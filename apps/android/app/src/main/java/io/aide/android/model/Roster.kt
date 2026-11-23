@@ -49,9 +49,20 @@ fun codingBotState(m: Machine, agent: String, now: Instant, c: MachineConnection
 }
 
 /** A personal agent's state: online now, or when it was last seen (it reports nothing else). */
+/**
+ * An MCP connection is online by its last call (工单 #94, relay.ActiveWindow), as on the desktop (core roster.ts): online
+ * while that was within [JUST_ACTIVE], recently active with when for the rest of the relay's window, then offline.
+ */
+val JUST_ACTIVE: java.time.Duration = java.time.Duration.ofMinutes(2)
+
 fun personalBotState(c: Client, now: Instant): BotState {
-    if (c.online) return BotState(ConnState.OK, t("Online", "在线"), t("Connected to your account now", "现在连着你的账号"), Usable.YES)
     val seen = instantOrNull(c.lastSeen)
+    if (c.online && c.recent && seen != null) {
+        val line = t("Called ${agoText(seen, now)}", "${agoText(seen, now)}调用过")
+        val word = if (java.time.Duration.between(seen, now) < JUST_ACTIVE) t("Online", "在线") else t("Recently active", "最近活跃")
+        return BotState(ConnState.OK, word, line, Usable.YES)
+    }
+    if (c.online) return BotState(ConnState.OK, t("Online", "在线"), t("Connected to your account now", "现在连着你的账号"), Usable.YES)
     return BotState(ConnState.UNKNOWN, t("Not online", "不在线"), seen?.let { t("Last seen ${agoText(it, now)}", "上次见到：${agoText(it, now)}") } ?: t("Not connected yet", "还没连上过"), Usable.UNVERIFIED, NotReady.UNKNOWN)
 }
 

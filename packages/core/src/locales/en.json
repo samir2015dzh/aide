@@ -236,6 +236,8 @@
   "roster": {
     "online": "Online",
     "onlineLine": "Connected to your account now",
+    "activeLine": "Called {{when}}",
+    "recent": "Recently active",
     "away": "Not online",
     "seen": "Last seen {{when}}",
     "neverSeen": "Not connected yet",

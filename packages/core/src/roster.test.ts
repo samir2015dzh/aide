@@ -3,7 +3,7 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { ClientSchema, MachineSchema, type Client, type Machine } from "@aide/proto/local";
 import { SessionSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { allBots, botCounts, botCountsText, codingBotState, roster, whileReconnecting } from "./roster";
+import { allBots, botCounts, botCountsText, codingBotState, personalBotState, roster, whileReconnecting } from "./roster";
 
 const now = new Date("2026-11-22T10:00:00Z");
 const fresh = timestampFromDate(new Date("2026-11-22T09:58:00Z"));
@@ -166,5 +166,19 @@ describe("a detected agent filed as personal (工单 #93)", () => {
     expect(r.personal.map((b) => b.key)).toEqual(["m:m1/claude"]);
     expect(r.personal[0]).toMatchObject({ kind: "local", machineId: "m1", agent: "claude" });
     expect(r.machines[0].bots.map((b) => b.agent)).toEqual(["codex"]);
+  });
+});
+
+describe("an MCP connection is online by its last call (工单 #94)", () => {
+  const now = new Date("2026-11-23T10:00:00Z");
+  const called = (min: number, recent: boolean, online = recent) =>
+    personalBotState(create(ClientSchema, { clientId: "c1", label: "Muse", online, recent, lastSeen: timestampFromDate(new Date(now.getTime() - min * 60_000)) }), now);
+  test("online just after a call, recently active with when for the rest of the window, then offline with when", () => {
+    expect(called(1, true)).toMatchObject({ state: "ok", word: "在线", usable: "yes" });
+    expect(called(5, true)).toMatchObject({ state: "ok", word: "最近活跃", line: "5 分钟前调用过", usable: "yes" });
+    expect(called(15, false)).toMatchObject({ state: "unknown", word: "不在线", line: "上次见到：15 分钟前" });
+  });
+  test("an agent connected now is online as before", () => {
+    expect(personalBotState(create(ClientSchema, { clientId: "c2", label: "DSH on work-pc", online: true }), now)).toMatchObject({ word: "在线", line: "现在连着你的账号" });
   });
 });

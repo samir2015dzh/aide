@@ -190,6 +190,8 @@ data class Client(
     val spec: GrantSpec? = null,
     val expiresAt: String = "",
     val online: Boolean = false,
+    /** Online by its last call, no connection now (an MCP connection, 工单 #94): lastSeen is when. */
+    val recent: Boolean = false,
     val lastSeen: String = "",
     val revoked: Boolean = false,
     val custodian: String = "",

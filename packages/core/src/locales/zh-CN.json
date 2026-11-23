@@ -227,6 +227,8 @@
   "roster": {
     "online": "在线",
     "onlineLine": "现在连着你的账号",
+    "activeLine": "{{when}}调用过",
+    "recent": "最近活跃",
     "away": "不在线",
     "seen": "上次见到：{{when}}",
     "neverSeen": "还没连上过",

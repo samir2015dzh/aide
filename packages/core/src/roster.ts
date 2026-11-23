@@ -68,10 +68,22 @@ function firstWord(text: string): string {
 }
 
 /** A personal agent's state: online now, or when it was last seen (it reports nothing else, AGENT-MESH-DESIGN §6.2). */
+/**
+ * An MCP connection is online by its last call (工单 #94, relay.ActiveWindow): online while that was within
+ * justActiveMs (twice the gateway's one-minute note of a call), recently active, with when, for the rest of the
+ * relay's window, then offline with when it last called. A connected agent is online exactly while connected.
+ */
+export const justActiveMs = 2 * 60_000;
+
 export function personalBotState(c: Client, now: Date): BotState {
-  if (c.online) return { state: "ok", word: t("roster.online"), line: t("roster.onlineLine"), usable: "yes" };
   const s = c.lastSeen?.seconds;
   const seen = s ? new Date(Number(s) * 1000) : undefined;
+  if (c.online && c.recent && seen) {
+    const line = t("roster.activeLine", { when: agoText(seen, now) });
+    if (now.getTime() - seen.getTime() < justActiveMs) return { state: "ok", word: t("roster.online"), line, usable: "yes" };
+    return { state: "ok", word: t("roster.recent"), line, usable: "yes" };
+  }
+  if (c.online) return { state: "ok", word: t("roster.online"), line: t("roster.onlineLine"), usable: "yes" };
   return {
     state: "unknown",
     word: t("roster.away"),

@@ -286,9 +286,12 @@ func (g *Gateway) adopted(id string) func(*identityv1.RootChain, *identityv1.Sig
 	}
 }
 
-// touch records that a connection was used (at most once a minute).
+// touch records that a connection was used (at most once a minute), and
+// tells the relay at once: online for an MCP connection is its last call
+// (工单 #94, relay.ActiveWindow).
 func (g *Gateway) touch(ctx context.Context, c *Connection) {
 	now := g.cfg.Now()
+	g.cfg.Relay.ClientActive(c.OwnerID, c.agentID(), now)
 	if now.Sub(c.LastUsed) < time.Minute {
 		return
 	}
@@ -322,4 +325,30 @@ func (g *Gateway) status(c *Connection) Status {
 		s.Next = "This connection ended (" + c.EndReason + "). Connect the app to Aide again."
 	}
 	return s
+}
+
+// recallActivity tells the relay when each live connection was last used, as
+// kept here: a relay just started knows only what was connected since
+// (工单 #94).
+func (g *Gateway) recallActivity(ctx context.Context) {
+	conns, err := g.db.ListConnections(ctx, ConnectionFilter{States: []string{StateActive}})
+	if err != nil {
+		g.log.Warn("mcp: recalling activity", "err", err)
+		return
+	}
+	for _, c := range conns {
+		if !c.LastUsed.IsZero() {
+			g.cfg.Relay.ClientActive(c.OwnerID, c.agentID(), c.LastUsed)
+		}
+	}
+}
+
+// agentID is the connection's agent as the relay knows it: its grant's
+// client id (c_…), not the app's OAuth client id.
+func (c *Connection) agentID() string {
+	s, g := &identityv1.Signed{}, &identityv1.Grant{}
+	if proto.Unmarshal(c.Grant, s) != nil || identity.Unverified(s, g) != nil {
+		return ""
+	}
+	return g.ClientId
 }
