@@ -46,18 +46,13 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .set-more-wrap>.fgroup{align-self:stretch}
 /* Icons: a grant is an app (rounded square); a machine a grey tile; the owner a round avatar in the brand's colours. */
 .settings .av.md{width:28px;height:28px;font-size:var(--fs-text);border-radius:var(--r-ctl)}
-.settings .dhero .av.xl{border-radius:var(--r-card)}
-.settings .dhero .av.xl.me{border-radius:50%;background:linear-gradient(135deg,var(--aurora-1),var(--aurora-2))}
-.mtile{width:28px;height:28px;border-radius:var(--r-ctl);background:var(--fill2);color:var(--l2);display:flex;align-items:center;justify-content:center;flex:none}
-.mtile.xl{width:52px;height:52px;border-radius:var(--r-card)}
-.mtile.xl .ic{width:26px;height:26px;stroke-width:1.2}
 .settings .sheet .field{height:30px}
 
 /* A machine's problems (health.tsx), at the top of its page. */
 .health-list{display:flex;flex-direction:column;gap:8px}
 .health{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-card)}
 .health.bad{background:var(--red-bg)}.health.bad>.ic{color:var(--red)}
-.health.warn{background:var(--orange-bg)}.health.warn>.ic{color:var(--orange)}
+.health.warn{background:var(--orange-bg)}.health.warn>.ic{color:var(--orange-t)}
 .health>.ic{width:18px;height:18px;margin-top:1px}
 .health b{display:block;font-weight:600;margin-bottom:2px}
 .health p{margin:0;font-size:12px;color:var(--l2);line-height:1.5}
@@ -75,3 +70,8 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .gl-id label{flex:1;font-size:12px;color:var(--l2)}
 .gl-id .field{display:block;width:100%;margin-top:4px}
 .settings .fhead.gl-head{margin:21px 0 4px 2px}
+/* General's first group (工单 #103): the app, its version, and what Check for Updates found. */
+.settings .frow.about .fn{font-size:var(--fs-title3);font-weight:var(--font-weight-semibold)}
+.settings .frow.about .fdesc{font-variant-numeric:tabular-nums}
+.settings .frow.about-said{min-height:36px;font-size:12px;color:var(--l2)}
+.settings .frow.about-said[data-state=error]{color:var(--red-t)}

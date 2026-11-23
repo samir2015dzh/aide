@@ -132,6 +132,16 @@ fun Modifier.dimPress(enabled: Boolean = true, role: Role = Role.Button, onClick
 /** The weight a state is said with: a colour, used for a pill's tint and its words. */
 enum class Tone { Good, Warn, Bad, Live, Quiet }
 
+/** A state's words on its tint: toneColor a step darker in light mode (工单 #101). */
+@Composable
+fun toneText(t: Tone): Color = when (t) {
+    Tone.Good -> aide.greenText
+    Tone.Warn -> aide.orangeText
+    Tone.Bad -> aide.redText
+    Tone.Live -> aide.blueText
+    Tone.Quiet -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
 @Composable
 fun toneColor(t: Tone): Color = when (t) {
     Tone.Good -> Positive
@@ -150,7 +160,7 @@ fun StatusPill(text: String, tone: Tone, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Box(Modifier.size(6.dp).background(c, CircleShape))
-        Text(text, color = c, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text, color = toneText(tone), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -159,7 +169,7 @@ fun StatusPill(text: String, tone: Tone, modifier: Modifier = Modifier) {
 fun CountBadge(n: Int, tone: Tone = Tone.Quiet) {
     val c = toneColor(tone)
     Box(Modifier.clip(CircleShape).background(c.copy(alpha = 0.16f)).padding(horizontal = 7.dp, vertical = 1.dp)) {
-        Text("$n", color = c, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text("$n", color = toneText(tone), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -170,15 +180,6 @@ fun FactChip(text: String) {
         text, Modifier.clip(CircleShape).background(aide.fill2).padding(horizontal = 9.dp, vertical = 3.dp),
         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
     )
-}
-
-/** A machine's mark: its first letter on a quiet tile (an app icon's rounding), as an agent has its face. */
-@Composable
-fun MachineMark(name: String, online: Boolean, size: Int = 40) {
-    Box(Modifier.size(size.dp).clip(RoundedCornerShape((size * 0.225).dp)).background(aide.fill2), contentAlignment = Alignment.Center) {
-        Text(name.take(1).uppercase(), fontWeight = FontWeight.SemiBold, fontSize = (size * 0.42).sp, color = MaterialTheme.colorScheme.onSurface)
-        Box(Modifier.align(Alignment.BottomEnd).padding(2.dp).size(10.dp).background(aide.card, CircleShape).padding(2.dp).background(if (online) Positive else aide.faint, CircleShape))
-    }
 }
 
 /** Whether the list this sits in is being scrolled: what moves by itself stops meanwhile (工单 #55 §4). */

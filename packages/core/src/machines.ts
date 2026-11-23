@@ -1,6 +1,6 @@
 import type { AgentStatus } from "@aide/proto/machine";
 
-const osTitles: Record<string, string> = { darwin: "macOS", macos: "macOS", linux: "Linux", windows: "Windows", ios: "iOS" };
+const osTitles: Record<string, string> = { darwin: "macOS", macos: "macOS", linux: "Linux", windows: "Windows", ios: "iOS", android: "Android" };
 
 /** A machine's "darwin/arm64" as "macOS · arm64"; a trusted device's "macos" as "macOS". */
 export function platformTitle(platform: string): string {
