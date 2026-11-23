@@ -27,10 +27,10 @@ export function sessionCommands(st: Store, s: Session, setText: (v: string) => v
 
 /**
  * The model and effort the session runs with, under its composer on the right (工单 #92): a session keeps them, so
- * they are told, not picked (a new conversation from the bot's page picks them). What the agent does not tell
- * follows its own setting.
+ * they are told. What the agent does not tell follows its own setting. withModel false: its model is picked beside
+ * it (another one starts a new conversation, 工单 #98 补充), only its effort is told.
  */
-export function SessionParams({ s }: { s: Session }) {
+export function SessionParams({ s, withModel = true }: { s: Session; withModel?: boolean }) {
   const { t } = useTranslation(["session", "firstrun"]);
   const st = useStore();
   const models = st.machines.find((m) => m.machineId === s.machineId)?.status?.agents.find((a) => a.name === s.agent)?.models;
@@ -39,7 +39,7 @@ export function SessionParams({ s }: { s: Session }) {
   const effort = s.effort === "" ? "" : t(`firstrun:prepare.efforts.${s.effort}`, { defaultValue: s.effort });
   return (
     <span className="composer-param" title={t("inspector.context")}>
-      {[model, effort].filter(Boolean).join(" · ")}
+      {[withModel ? model : "", effort].filter(Boolean).join(" · ")}
     </span>
   );
 }

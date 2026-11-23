@@ -77,11 +77,14 @@ import io.aide.android.model.buildAnswers
 import io.aide.android.model.choose
 import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
+import io.aide.android.model.ConvParams
+import io.aide.android.model.listedModel
 import io.aide.android.model.lostSpanText
 import io.aide.android.model.modelTitle
 import io.aide.android.model.openedNews
 import io.aide.android.model.sessionsByProject
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * A session's whole conversation, live, with the agent's question to answer and a way to interrupt it; the owner's
@@ -161,7 +164,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                         }
                     }
                     // A session the owner started takes the owner's messages, here, as on the desktop.
-                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s)
+                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s, open)
                 }
             }
         },
@@ -183,15 +186,32 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
 
 /** The box under the owner's own session (工单 #91/#92): words and files at once, the macros after /. */
 @Composable
-private fun SessionComposer(model: AppModel, s: Session) {
+private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     var text by rememberSaveable(s.sessionId) { mutableStateOf("") }
     var state by remember(s.sessionId) { mutableStateOf<ComposerState>(ComposerState.Idle) }
     val attach = rememberAttachments(s.sessionId)
+    // Its model, as the agent's models list it (工单 #98 补充): another one picked here, the next message starts a new
+    // conversation on it (工单 #67 rule 4), said before and after; never locked to the one it began with.
+    val world by model.world.collectAsState()
+    val a = world.machines.firstOrNull { it.machineId == s.machineId }?.status?.agents?.firstOrNull { it.name == s.agent }
+    val runs = listedModel(s.model, a?.models.orEmpty())
+    var chosen by remember(s.sessionId, runs) { mutableStateOf(runs) }
+    var key by remember(s.sessionId) { mutableStateOf(UUID.randomUUID().toString()) }
+    val other = chosen != runs
     fun send() {
         if (state == ComposerState.Sending || (text.isBlank() && attach.files.isEmpty())) return
         state = ComposerState.Sending
         scope.launch {
+            if (other) {
+                model.converse(s.machineId, s.agent, null, ConvParams(s.projectId, chosen), text, key, attach.wire()).fold({ n ->
+                    model.chooseConversation("m:${s.machineId}/${s.agent}", n.sessionId)
+                    text = ""; attach.clear(); key = UUID.randomUUID().toString(); state = ComposerState.Idle
+                    model.say(t("New conversation: you changed the model", "已开新对话：换了模型"))
+                    open(n.sessionId)
+                }, { e -> state = ComposerState.Failed(e.message.orEmpty()) { send() } })
+                return@launch
+            }
             val why = model.sendTo(s, text, attach.wire())
             if (why == null) { text = ""; attach.clear(); state = ComposerState.Idle } else state = ComposerState.Failed(why) { send() }
         }
@@ -206,8 +226,14 @@ private fun SessionComposer(model: AppModel, s: Session) {
             if (isLive(s)) SlashCommand("stop", t("Interrupt this turn", "打断这一轮")) { scope.launch { model.interrupt(s) } } else null,
             SlashCommand("archive", t("Archive this session", "归档这个会话")) { scope.launch { model.archive(s, true)?.let { state = ComposerState.Failed(it) } } },
         ),
-        // What it runs with, told (a session keeps them).
-        chips = { Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        why = if (other) ComposerWhy(t("You changed the model: the next message starts a new conversation", "换了模型：下一条会开新对话")) else null,
+        // Its model, to pick; the rest it runs with, told.
+        chips = {
+            if (a != null && a.models.isNotEmpty()) {
+                ModelChip(s.agent, a, chosen, ranHere = true) { chosen = it }
+                Text(s.effort, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
     )
 }
 

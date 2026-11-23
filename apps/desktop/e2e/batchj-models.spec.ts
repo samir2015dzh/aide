@@ -44,10 +44,23 @@ test("Claude Code: each model in the list is its specific one, the chosen one ru
   await expect(page.getByRole("log", { name: "对话" })).toContainText("running on claude-opus-5-5", { timeout: 30_000 });
   await page.getByRole("button", { name: "会话设置", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "会话设置" }).getByRole("complementary", { name: "上下文" })).toContainText("Opus 5.5 · claude-opus-5-5");
+  await page.keyboard.press("Escape");
+  // In the conversation (工单 #98 补充): another model there starts a new conversation on it, said so.
+  const mbox = page.locator(".mbox");
+  const inChat = mbox.getByRole("button", { name: "模型", exact: true });
+  await expect(inChat).toHaveText("Opus 5.5");
+  await pick(inChat, /^Haiku 5\.5/);
+  await expect(mbox.getByRole("note")).toContainText("换了模型：下一条会开新对话");
+  await mbox.getByRole("textbox", { name: "发给 Claude Code 的消息" }).fill("again");
+  await mbox.getByRole("textbox", { name: "发给 Claude Code 的消息" }).press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "已开新对话：换了模型" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("log", { name: "对话" })).toContainText("running on claude-haiku-5-5", { timeout: 30_000 });
+  await expect(inChat).toHaveText("Haiku 5.5");
+  await snap(page, "batchj-claude-in-chat-ran");
   await app.close();
 });
 
-test("DSH: a model choice as Claude's, its models as DSH names them here; another one starts a new conversation on it", async () => {
+test("DSH: a model choice as Claude's, its models as DSH names them here, each once, a custom provider's too; another one, on the bot's page or in the conversation, starts a new conversation on it", async () => {
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1440, height: 900 });
   const roster = page.getByRole("region", { name: "Bot" });
@@ -65,24 +78,47 @@ test("DSH: a model choice as Claude's, its models as DSH names them here; anothe
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已开新对话", { timeout: 30_000 });
 
-  // Now its own, as DSH named them in that session; the conversation runs its default, read back.
-  await expect(chip).toHaveText("DEEPSEEK/V4-PRO (Models)", { timeout: 30_000 });
-  expect(await modelList(page, chip)).toEqual([
-    "默认 · DEEPSEEK/V4-PRO (Models) deepseek/v4-pro",
-    "DEEPSEEK/V4-PRO (Models) deepseek/v4-pro",
-    "DEEPSEEK/V4-FLASH (Models) deepseek/v4-flash",
+  // Now its own, as DSH named them in that session (工单 #98 补充): each model once — the same one by DSH's API and
+  // account lines is one entry, by its display name, both lines said — and the custom provider's (magpie, in a model
+  // option of its own) listed too. The conversation runs its default, read back.
+  await expect(chip).toHaveText("DeepSeek-V4.1-Flash", { timeout: 30_000 });
+  const listed = await modelList(page, chip);
+  expect(listed).toEqual([
+    "默认 · DeepSeek-V4.1-Flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "DeepSeek-V4.1-Flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "deepseek-v4-pro deepseek/deepseek-v4-pro · DeepSeek",
+    "group/deepseek-v4.1 magpie/group/deepseek-v4.1 · magpie",
   ]);
+  expect(new Set(listed.slice(1)).size).toBe(listed.length - 1);
   await snap(page, "batchj-dsh-models");
-  await page.getByRole("menuitemradio", { name: /^DEEPSEEK\/V4-FLASH/ }).click();
+  await page.getByRole("menuitemradio", { name: /^group\/deepseek-v4\.1/ }).click();
   await expect(bot.getByRole("note")).toContainText("换了模型：下一条会开新对话");
   await box.fill("config");
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已开新对话：换了模型", { timeout: 30_000 });
-  await expect(chip).toHaveText("DEEPSEEK/V4-FLASH (Models)");
+  await expect(chip).toHaveText("group/deepseek-v4.1");
   await snap(page, "batchj-dsh-ran");
   await bot.locator(".conv-head-t").click();
-  await expect(page.getByRole("log", { name: "对话" })).toContainText("config: deepseek/v4-flash", { timeout: 30_000 });
+  const log = page.getByRole("log", { name: "对话" });
+  await expect(log).toContainText("config: magpie/group/deepseek-v4.1", { timeout: 30_000 });
+
+  // In the conversation itself (工单 #98 补充): its model can be changed there too; the next message starts a new
+  // conversation on the one picked, said before and after, which runs it and reads it back.
+  const mbox = page.locator(".mbox");
+  const inChat = mbox.getByRole("button", { name: "模型", exact: true });
+  await expect(inChat).toHaveText("group/deepseek-v4.1");
+  await pick(inChat, /^deepseek-v4-pro/);
+  await expect(mbox.getByRole("note")).toContainText("换了模型：下一条会开新对话");
+  await snap(page, "batchj-dsh-in-chat-switch");
+  const chatBox = mbox.getByRole("textbox", { name: "发给 DSH 的消息" });
+  await chatBox.fill("config");
+  await chatBox.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "已开新对话：换了模型" })).toBeVisible({ timeout: 30_000 });
+  await expect(log).toContainText("config: deepseek/deepseek-v4-pro", { timeout: 30_000 });
+  await expect(inChat).toHaveText("deepseek-v4-pro");
+  await expect(mbox.getByRole("note")).toHaveCount(0);
+  await snap(page, "batchj-dsh-in-chat-ran");
   await page.getByRole("button", { name: "会话设置", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "会话设置" }).getByRole("complementary", { name: "上下文" })).toContainText("DEEPSEEK/V4-FLASH (Models) · deepseek/v4-flash");
+  await expect(page.getByRole("dialog", { name: "会话设置" }).getByRole("complementary", { name: "上下文" })).toContainText("deepseek-v4-pro · deepseek/deepseek-v4-pro · DeepSeek");
   await app.close();
 });

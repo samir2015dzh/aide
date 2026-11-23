@@ -74,9 +74,10 @@ function choiceOf(agent: string, m: AgentModel): ModelChoice {
   if (m.resolved) return { value: m.id, title: modelTitle(m.resolved), detail: m.resolved, unknown: false };
   // Claude Code's aliases (opus, sonnet[1m], …) against its models' IDs (claude-…).
   if (agent === "claude" && !m.id.startsWith("claude-")) return { value: m.id, title: m.name || m.id, detail: "", unknown: true };
+  // DSH's: by its display name, its ID in full and where from (its provider; each line it comes by, 工单 #98 补充).
   const title = m.name || modelTitle(m.id);
-  const detail = idText(m.id);
-  return { value: m.id, title, detail: detail === title ? "" : detail, unknown: false };
+  const id = idText(m.id);
+  return { value: m.id, title, detail: [id === title ? "" : id, m.source].filter(Boolean).join(" · "), unknown: false };
 }
 
 /**

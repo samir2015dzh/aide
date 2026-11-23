@@ -117,9 +117,12 @@ data class ClaudeUsage(val windows: List<UsageWindow> = emptyList(), val fetched
 @Serializable
 data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val resetsAt: String = "")
 
-/** resolved: the specific model an alias id runs on that machine (Claude Code's "opus" → "claude-opus-5-5", 工单 #99). */
+/**
+ * resolved: the specific model an alias id runs on that machine (Claude Code's "opus" → "claude-opus-5-5", 工单 #99);
+ * source: where its agent offers it from (DSH's provider lines, 工单 #98 补充).
+ */
 @Serializable
-data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList(), val resolved: String = "")
+data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList(), val resolved: String = "", val source: String = "")
 
 /** aide.identity.v1.AgentDefaults, as far as the phone reads it. */
 @Serializable

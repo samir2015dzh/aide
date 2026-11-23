@@ -497,6 +497,10 @@ message AgentModel {
   // resolves it on this machine for this account); empty when the id is the
   // model itself, or the agent did not say.
   string resolved = 4;
+  // Where its agent offers it from, when it says (工单 #98 补充: DSH's
+  // provider, e.g. "DeepSeek"; each provider line the same model comes by,
+  // " · " between, as it is listed once).
+  string source = 5;
 }
 
 message AgentMode {

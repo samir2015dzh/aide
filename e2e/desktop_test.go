@@ -137,8 +137,13 @@ func TestDesktop(t *testing.T) {
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_PRESETS=")
 			}
 			if name == "batchj-models" { // Claude Code listing its models, and DSH telling its own in a session (工单 #98, #99)
-				dsh := filepath.Join(t.TempDir(), "dsh") // its own models, not the world's Gemini's
-				os.WriteFile(dsh, []byte("#!/bin/sh\nFAKE_ACP_PRESETS= FAKE_ACP_CONFIG=1 FAKE_ACP_MODELS=deepseek/v4-pro,deepseek/v4-flash exec "+filepath.Join(binaries(t), "fakeacp")+` "$@"`+"\n"), 0o755)
+				// Its own models, not the world's Gemini's: by provider, as DSH offers them (工单 #98 补充), the same
+				// model by its API and its account lines, and a custom provider's in a model option of its own.
+				providers := `[{"id":"llm","groups":[{"name":"DeepSeek","models":[{"value":"deepseek/deepseek-v4-flash","name":"deepseek-v4-flash"},{"value":"deepseek/deepseek-v4-pro","name":"deepseek-v4-pro"}]},` +
+					`{"name":"DeepSeek Account","models":[{"value":"deepseek-account/deepseek-v4-flash","name":"DeepSeek-V4.1-Flash"}]}]},` +
+					`{"id":"custom_llm","groups":[{"name":"magpie","models":[{"value":"magpie/group/deepseek-v4.1","name":"group/deepseek-v4.1"}]}]}]`
+				dsh := filepath.Join(t.TempDir(), "dsh")
+				os.WriteFile(dsh, []byte("#!/bin/sh\nFAKE_ACP_PRESETS= FAKE_ACP_CONFIG=1 FAKE_ACP_PROVIDERS='"+providers+"' exec "+filepath.Join(binaries(t), "fakeacp")+` "$@"`+"\n"), 0o755)
 				more = append(more, "AIDE_CLAUDE_BIN="+modelsClaude(t), "AIDE_DEEPSEEK_BIN="+dsh)
 			}
 			if name == "batche" { // Claude Code here, its command line not signed in; `auth login` signs it in (工单 #51)
