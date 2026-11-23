@@ -1,4 +1,24 @@
 {
+  "0.2.9": {
+    "improvements": [
+      "Desktop and Android now share one Apple-style design language: grouped inset cards, custom-drawn switches and buttons, Apple-style chevrons, aligned page by page on both ends, with no native default controls showing through.",
+      "The composer is rebuilt after Claude's: a rounded input bar with a + button for images, files and audio (Android can also shoot a photo directly), a microphone with real speech-to-text, a / command list, and model, effort and permission controls right below the input.",
+      "The session page sidebar is reorganized: sessions grouped by project with status dots and relative times, a new-session entry at the top, and everything else tucked into a secondary menu.",
+      "Avatars get a full motion engine: working, waiting, done and offline each move differently, with one behavior shared by desktop and Android.",
+      "Personal agents are now judged online by recent activity, with three states (online / active minutes ago / offline); connectors no longer need to hold a connection open just to appear online.",
+      "Project permissions match DSH: View only / Edit in workspace / Full access, selectable per dispatch and settable as a project default.",
+      "Locally detected Claude Code, Codex and WorkBuddy now have their own credential and settings pages, not just DSH."
+    ],
+    "fixes": [
+      "Fixed local agents falsely showing offline: DSH and Claude Code dropping off the desktop app together until a restart is resolved; the link now reconnects on its own and shows Reconnecting meanwhile.",
+      "New projects are named after their folder instead of placeholders like project and project-2; existing placeholder names are corrected automatically, manual renames untouched.",
+      "Plan usage now reads Claude Code's own usage on the machine and refreshes on a timer; when unreadable it shows the last reading with its time instead of an empty panel.",
+      "Roster group titles and project menus speak plainly: wording like In place is now Existing folder, and internal jargon is replaced with everyday words throughout.",
+      "Roster entries can finally be deleted: duplicate and stale entries are removable right in the app; leftover client@machine entries in the CLI roster are cleared, the gateway and the app show the same machine name, and MCP connection names no longer carry the source address.",
+      "Editing a local agent's name no longer enables it as a side effect of saving.",
+      "Sign-in authorization codes now last 10 minutes instead of 60 seconds, so paste-back sign-in flows for remote clients can finish without rushing."
+    ]
+  },
   "0.2.8": {
     "improvements": [
       "The Bots page holds only bots and rooms: the stat cards and machine cards moved to a dedicated Devices page, and the desktop sidebar is roster-only, visible in one screen.",
