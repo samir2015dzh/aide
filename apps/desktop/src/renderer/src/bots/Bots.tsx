@@ -20,7 +20,7 @@ import { Picker, type PickerOption } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
 import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
 import { errorText, useNow, useStore } from "../store";
-import { Composer, type ComposerState } from "./Composer";
+import { Composer, attachmentsOf, useAttachments, type ComposerState } from "./Composer";
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
@@ -436,6 +436,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const [text, setText] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
+  const attach = useAttachments();
   const [showArchived, setShowArchived] = useState(false);
   const stuck = current ? stuckWhy(current, st.projects, m) : undefined;
   const fresh = !current || paramsChanged(current, params);
@@ -443,19 +444,20 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const usable = b.state.usable !== "no";
   const send = async (opts: { withContextOf?: Session } = {}) => {
     const body = text.trim();
-    if (!body || state.kind === "sending") return;
+    if ((!body && attach.files.length === 0) || state.kind === "sending") return;
     setState({ kind: "sending" });
     try {
+      const attachments = await attachmentsOf(attach.files);
       let to: Session | undefined;
       if (current && !fresh && !opts.withContextOf) {
         if (current.status === SessionStatus.ARCHIVED) await local.unarchiveSession({ sessionId: current.sessionId }); // rule 6
-        to = (await local.sendMessage({ sessionId: current.sessionId, text: body })).session;
+        to = (await local.sendMessage({ sessionId: current.sessionId, text: body, attachments })).session;
         setState({ kind: "done", text: t("composer.sentIn", { title: displayTitle(current) }) });
       } else {
         const prompt = opts.withContextOf ? withContext(opts.withContextOf, displayTitle(opts.withContextOf), body) : body;
         const res = await local.startSession({
           machineId: m.machineId,
-          session: { idempotencyKey: key, agent: b.agent, projectId: params.projectId, prompt, model: params.model, effort: params.effort, mode: params.mode },
+          session: { idempotencyKey: key, agent: b.agent, projectId: params.projectId, prompt, model: params.model, effort: params.effort, mode: params.mode, attachments },
         });
         to = res.session;
         if (to) choose(to.sessionId);
@@ -463,6 +465,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         setState({ kind: "done", text: current && changed.length ? t("composer.newBecause", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }) : t("composer.newStarted") });
       }
       setText("");
+      attach.clear();
       setKey(crypto.randomUUID());
     } catch (err) {
       setState({ kind: "error", text: errorText(err), retry: () => void send(opts) });
@@ -571,6 +574,12 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
             : why
         }
         chips={chips}
+        attach={attach}
+        commands={[
+          { id: "plan", name: "plan", label: t("composer.cmd.plan"), run: () => setText("!plan ") },
+          { id: "implement", name: "implement", label: t("composer.cmd.implement"), run: () => setText("!implement ") },
+          ...(current ? [{ id: "new", name: "new", label: t("composer.cmd.new"), run: () => choose("new") }, { id: "open", name: "open", label: t("composer.cmd.open"), run: () => st.select(current.sessionId) }] : []),
+        ]}
         plus={[
           { id: "new", label: t("conv.new"), icon: "plus", run: () => choose("new"), disabled: !current },
           ...(current ? [{ id: "open", label: t("conv.open"), icon: "expand", run: () => st.select(current.sessionId) }] : []),

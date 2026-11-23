@@ -247,5 +247,16 @@
     "countReady": "{{count}} ready",
     "countUnknown": "{{count}} unknown",
     "countOf": "of {{count}}"
+  },
+  "attach": {
+    "kind": {
+      "image": "Image",
+      "audio": "Audio",
+      "file": "File"
+    },
+    "tooMany": "{{kind}} “{{name}}” was not added: a message takes at most {{max}} attachments",
+    "tooBig": "{{kind}} “{{name}}” was not added: a message’s attachments add up to {{max}} at most",
+    "imageTooBig": "Over 3.5 MB: it gets the file, not the picture to look at",
+    "imageFormat": "In this format it gets the file, not the picture to look at"
   }
 }

@@ -550,6 +550,30 @@
       "model": "model",
       "effort": "effort",
       "mode": "mode"
+    },
+    "slashPlaceholder": "Type / for commands",
+    "commands": "Commands",
+    "attached": "Attached",
+    "removeFile": "Remove {{name}}",
+    "attach": {
+      "image": "Image",
+      "file": "File",
+      "audio": "Audio"
+    },
+    "dictate": "Dictate",
+    "dictationMac": "Dictation is on: speak, and the words go here. Press Fn or click Done to stop. If nothing happens, turn on Dictation in System Settings › Keyboard.",
+    "dictationWin": "Press Win + H to dictate with Windows voice typing: the words go here.",
+    "cmd": {
+      "plan": "Plan only: no changes until you say so",
+      "implement": "Implement it, run the tests, and sum up",
+      "newSession": "Start a new session",
+      "interrupt": "Interrupt this turn",
+      "archive": "Archive this session",
+      "unarchive": "Unarchive this session",
+      "copyId": "Copy the session ID",
+      "review": "Review this session",
+      "new": "Start a new conversation",
+      "open": "Open the whole conversation"
     }
   },
   "conv": {

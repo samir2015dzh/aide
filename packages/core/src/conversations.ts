@@ -82,3 +82,23 @@ export function withContext(s: Session, title: string, text: string): string {
   const ended = s.result?.trim() || s.progress?.lastMessageExcerpt?.trim() || "";
   return [`接着之前的对话《${title}》继续。`, ended ? `它当时的结论：\n${ended}` : "", "", text].filter((x, i) => x !== "" || i === 2).join("\n");
 }
+
+/** A project's sessions, as the session page's list shows them (工单 #90). */
+export type ProjectSessions = { projectId: string; sessions: Session[] };
+
+/**
+ * The sessions beside an open one (工单 #90, after DSH's sidebar): the same coding agent's on the same machine, by
+ * project — the project with the latest activity first, each newest first — archived ones left out but the open one.
+ */
+export function sessionsByProject(open: Session, sessions: readonly Session[]): ProjectSessions[] {
+  const by = new Map<string, Session[]>();
+  for (const s of sessions) {
+    if (s.machineId !== open.machineId || s.agent !== open.agent) continue;
+    if (s.status === SessionStatus.ARCHIVED && s.sessionId !== open.sessionId) continue;
+    by.set(s.projectId, [...(by.get(s.projectId) ?? []), s]);
+  }
+  if (!by.has(open.projectId)) by.set(open.projectId, [open]);
+  return [...by]
+    .map(([projectId, list]) => ({ projectId, sessions: list.sort(newest) }))
+    .sort((a, b) => newest(a.sessions[0], b.sessions[0]) || a.projectId.localeCompare(b.projectId));
+}

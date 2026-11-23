@@ -113,33 +113,7 @@
 .conv-group .shut{transform:rotate(-90deg)}
 .conv-group.static{cursor:default}
 
-/* The box to write to a bot (工单 #66, after BotArk's composer): one capsule at the foot, + on the left, a round send
-   button on the right, its chips in it; what became of the message said under it, in it (工单 #61). */
-.composer{margin-top:10px;display:flex;flex-direction:column;gap:6px}
-.composer-why{display:flex;align-items:center;gap:8px;padding:0 14px;font-size:12px;color:var(--orange)}
-.composer-why.quiet{color:var(--l2)}
-.composer-box{display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:22px;background:var(--win);box-shadow:0 0 0 .5px var(--field-bd),0 4px 16px rgba(0,0,0,.06);transition:box-shadow .15s var(--ease-out)}
-.composer-box:focus-within{box-shadow:0 0 0 .5px var(--field-bd),0 0 0 3px var(--accent-bg),0 4px 16px rgba(0,0,0,.06)}
-.composer-box.off{opacity:.6}
-.composer-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 4px 0 40px}
-.composer-line{display:flex;align-items:flex-end;gap:6px}
-.composer-in{flex:1;min-width:0;resize:none;border:0;outline:none;background:transparent;font:inherit;font-size:var(--fs-text-l);line-height:20px;padding:6px 4px;color:var(--l1);max-height:160px}
-.composer-in::placeholder{color:var(--l3)}
-.composer-round{flex:none;width:32px;height:32px;border-radius:50%;border:0;display:inline-flex;align-items:center;justify-content:center;background:var(--fill2);color:var(--l1)}
-.composer-round:hover:not(:disabled){background:var(--fill3)}
-.composer-send{background:var(--accent);color:var(--on-accent)}
-.composer-send:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
-.composer-send:disabled{background:var(--fill2);color:var(--l3)}
-.composer-send .busy>i{border-color:rgba(255,255,255,.35);border-top-color:#fff}
-.composer-plus{position:relative}
-.composer-menu{position:absolute;left:0;bottom:40px}
-.composer-state{min-height:16px;padding:0 14px;font-size:11.5px;color:var(--l3);display:flex;align-items:center;gap:6px}
-.composer-state.error{color:var(--orange)}
-.composer-state.done{color:var(--green)}
-.composer .room-mentions .chip{padding:1px 9px}
-@media (prefers-reduced-motion:reduce){.composer-box{transition:none}}
 
 /* A room whose host is away (工单 #74): said at the top and in the timeline, never silent. */
 .room-away{display:flex;align-items:center;gap:8px;margin:10px 24px 0;padding:8px 12px;border-radius:var(--r-box);background:var(--orange-bg);color:var(--orange);font-size:12.5px}
 .room-rename{width:min(320px,50vw);height:28px;font-size:16px}
-.composer .composer-in,.composer .composer-in:focus,.composer .composer-in:focus-visible{outline:none;box-shadow:none;border:0;background:transparent}

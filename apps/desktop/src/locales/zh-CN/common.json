@@ -530,6 +530,30 @@
       "model": "模型",
       "effort": "推理强度",
       "mode": "模式"
+    },
+    "slashPlaceholder": "输入 / 以使用命令",
+    "commands": "命令",
+    "attached": "已附上",
+    "removeFile": "移除 {{name}}",
+    "attach": {
+      "image": "图片",
+      "file": "文件",
+      "audio": "音频"
+    },
+    "dictate": "语音输入",
+    "dictationMac": "已打开系统听写：说话，文字会写进这里；按 Fn 或点「完成」结束。没反应的话，到「系统设置 › 键盘」里打开「听写」。",
+    "dictationWin": "按 Win + H 用 Windows 语音输入，说的话会写进这里。",
+    "cmd": {
+      "plan": "只做计划：你点头前不改任何东西",
+      "implement": "直接实现，跑测试，最后小结",
+      "newSession": "开一个新会话",
+      "interrupt": "打断这一轮",
+      "archive": "归档这个会话",
+      "unarchive": "取消归档",
+      "copyId": "拷贝会话 ID",
+      "review": "复盘这个会话",
+      "new": "开启新对话",
+      "open": "打开完整对话"
     }
   },
   "conv": {

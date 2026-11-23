@@ -16,7 +16,9 @@ import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
 import { keys } from "../platform";
 import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
 import { WritesTo } from "../MachineTag";
-import { useNow, useStore } from "../store";
+import { Composer, attachmentsOf, useAttachments, type ComposerState } from "../bots/Composer";
+import { errorText, useNow, useStore } from "../store";
+import { SessionParams, sessionCommands } from "./compose";
 import { confirmRollback, interrupt } from "./actions";
 import { Code } from "./Code";
 import { Markdown } from "./Markdown";
@@ -798,9 +800,9 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
   const { t } = useTranslation("session");
   const st = useStore();
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [state, setState] = useState<ComposerState>({ kind: "idle" });
+  const attach = useAttachments();
   const ref = useRef<HTMLDivElement>(null);
-  const area = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -811,44 +813,32 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
       onHeight(0);
     };
   }, [onHeight]);
-  // The text grows with what is written, then scrolls.
-  useLayoutEffect(() => {
-    const el = area.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [text]);
   const agent = codingAgentTitle(s.agent);
-  const ready = text.trim() !== "" && !busy;
   const send = async () => {
-    if (!ready) return;
-    setBusy(true);
-    if (await st.run(() => local.sendMessage({ sessionId: s.sessionId, text }))) setText("");
-    setBusy(false);
-    area.current?.focus();
+    if (state.kind === "sending") return;
+    setState({ kind: "sending" });
+    try {
+      await local.sendMessage({ sessionId: s.sessionId, text, attachments: await attachmentsOf(attach.files) });
+      setText("");
+      attach.clear();
+      setState({ kind: "idle" });
+    } catch (e) {
+      setState({ kind: "error", text: errorText(e), retry: () => void send() });
+    }
   };
   return (
     <div className="mbox" ref={ref}>
       <WritesTo machineId={s.machineId} />
-      <div className="mbox-in">
-        <textarea
-          ref={area}
-          className="mbox-t"
-          rows={1}
-          value={text}
-          placeholder={t("composer.placeholder", { agent })}
-          aria-label={t("composer.label", { agent })}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter" || e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.nativeEvent.isComposing) return;
-            e.preventDefault();
-            void send();
-          }}
-        />
-        <button className="mbox-send" disabled={!ready} onClick={send} title={t("composer.send")} aria-label={t("composer.send")}>
-          <Icon name="arrowUp" />
-        </button>
-      </div>
+      <Composer
+        value={text}
+        onChange={(v) => (setText(v), state.kind === "error" && setState({ kind: "idle" }))}
+        onSend={() => void send()}
+        placeholder={t("composer.label", { agent })}
+        state={state}
+        attach={attach}
+        commands={sessionCommands(st, s, setText)}
+        chips={<SessionParams s={s} />}
+      />
     </div>
   );
 }

@@ -65,6 +65,8 @@ export type Bridge = {
   showUpgrade(): void;
   /** Windows: shows the app menu at x, y (the window's menu bar stays hidden). */
   showAppMenu(x: number, y: number): void;
+  /** macOS: starts the system's dictation in the focused text field (Edit › Start Dictation). */
+  startDictation(): void;
   /** Shows a native menu at the pointer; resolves to the chosen item's id. */
   popupMenu(items: MenuItem[]): Promise<string | null>;
   /** Tells the renderer memory is short (webFrame.clearCache): it drops caches and gives back what its allocators keep (renderer/src/memory.ts). */

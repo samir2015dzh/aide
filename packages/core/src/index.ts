@@ -18,3 +18,4 @@ export * from "./world";
 export * from "./connections";
 export * from "./roster";
 export * from "./conversations";
+export * from "./attachments";
