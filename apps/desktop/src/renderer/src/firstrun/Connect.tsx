@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { agentBotKey } from "../bots/OwnSessions";
 import { ConnectGuide, LinePicker, type Place, type Tab } from "../ConnectGuide";
 import { Assistants, useConnect } from "../connect";
 import { Icon } from "../icons";
@@ -25,7 +26,11 @@ export function Connect() {
   // A task the guide started, or DSH's own sessions: the first run ends there.
   const place: Place = {
     openSession: (id) => (setProgress(null), st.select(id)),
-    openDSH: () => (setProgress(null), st.set({ selection: { kind: "dsh" } })),
+    openDSH: () => {
+      setProgress(null);
+      const key = agentBotKey(st.machines, "deepseek");
+      if (key) st.set({ selection: { kind: "bot", key } });
+    },
   };
   const next = () => setProgress(first ? { step: "first", agent: first } : null);
 

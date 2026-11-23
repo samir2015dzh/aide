@@ -5,8 +5,6 @@ import { parseAppLink } from "@aide/core";
 import { agentName } from "@aide/ui";
 import { local } from "./api";
 import { Overview } from "./Overview";
-import { DSHSessions } from "./dsh/DSHSessions";
-import { ClaudeSessions } from "./claude/ClaudeSessions";
 import { HeldMessages } from "./held/HeldMessages";
 import { TasksPage } from "./TasksPage";
 import { BotPage } from "./bots/Bots";
@@ -103,16 +101,12 @@ export function MainWindow() {
           <div className="ctool drag"><div className="ctitle" /></div>
         ) : session ? (
           <SessionPage s={session} />
-        ) : st.selection.kind === "dsh" && !st.status?.machineOnly ? (
-          <DSHSessions />
-        ) : st.selection.kind === "claude" && !st.status?.machineOnly ? (
-          <ClaudeSessions />
         ) : st.selection.kind === "held" ? (
           <HeldMessages />
         ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
           <TasksPage />
         ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
-          <BotPage key={st.selection.key} botKey={st.selection.key} />
+          <BotPage key={st.selection.key} botKey={st.selection.key} native={st.selection.native} />
         ) : st.selection.kind === "room" && !st.status?.machineOnly ? (
           <RoomPage key={st.selection.roomId} machineId={st.selection.machineId} roomId={st.selection.roomId} />
         ) : (

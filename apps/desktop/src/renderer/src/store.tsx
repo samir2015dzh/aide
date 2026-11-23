@@ -32,10 +32,6 @@ export type Data = {
 export type Selection =
   | { kind: "overview" }
   | { kind: "session"; id: string }
-  /** DeepSeek Harness's own sessions (dsh/DSHSessions.tsx), one of them chosen. */
-  | { kind: "dsh"; machine?: string; id?: string }
-  /** The Claude desktop app's Claude Code sessions (claude/ClaudeSessions.tsx), one of them chosen. */
-  | { kind: "claude"; machine?: string; id?: string }
   /** The messages held for the owner before they reach a session (held/HeldMessages.tsx). */
   | { kind: "held" }
   /** The work the owner's agents handed out, as it goes (TasksPage.tsx, work order #27). */
@@ -43,7 +39,7 @@ export type Selection =
   /** Every session, as the sidebar listed them before 工单 #63: a page of its own, its list beside the one open. */
   | { kind: "sessions" }
   /** A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>"). */
-  | { kind: "bot"; key: string }
+  | { kind: "bot"; key: string; native?: string }
   /** A room (ROOMS-DESIGN, G2-b): its host and id. */
   | { kind: "room"; machineId: string; roomId: string };
 

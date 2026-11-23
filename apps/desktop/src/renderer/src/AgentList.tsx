@@ -379,8 +379,8 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
       </section>
       {a && <PauseSection a={a} m={m} />}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
-      {/* The Claude app's own sessions are read in the main window's Claude page; DSH's (those opened in DSH Desktop) in its DeepSeek page. */}
-      {(agent === "claude" || agent === "deepseek") && (
+      {/* The Claude app's own sessions, and DSH's (those opened in DSH Desktop), are on their bot's page (工单 #76). */}
+      {!bare && (agent === "claude" || agent === "deepseek") && (
         <section className="ag-dsh" aria-label={t(agent === "claude" ? "prepare.claudeSessions" : "prepare.dshSessions")}>
           <div className="ag-group">{t(agent === "claude" ? "prepare.claudeSessions" : "prepare.dshSessions")}</div>
           <div className="fgroup">

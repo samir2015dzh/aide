@@ -578,5 +578,14 @@
   },
   "link": {
     "reconnecting": "The link to Aide on this computer broke: reconnecting…"
+  },
+  "own": {
+    "title": "Its own sessions",
+    "noteDsh": "Opened in DSH itself (or by another tool), not by Aide. Read only until you take one over.",
+    "noteClaude": "Claude Code sessions the Claude desktop app has on this machine, not started by Aide. Read only.",
+    "cant": "Aide can't read the sessions {{app}} has in its own app yet.",
+    "none": "No sessions of {{app}}'s own here.",
+    "back": "Back to the conversations",
+    "gone": "This session isn't there any more."
   }
 }

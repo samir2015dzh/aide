@@ -21,6 +21,7 @@ import { GrantDetail } from "../settings/Grants";
 import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
 import { errorText, useNow, useStore } from "../store";
 import { Composer, type ComposerState } from "./Composer";
+import { OwnSession, OwnSessions } from "./OwnSessions";
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
@@ -246,7 +247,7 @@ export function SidebarRoster() {
 }
 
 /** A bot's own page (工单 #57, #63): who it is and how it stands at the top; its conversations in the middle; its own settings beside. */
-export function BotPage({ botKey }: { botKey: string }) {
+export function BotPage({ botKey, native }: { botKey: string; native?: string }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const r = useRoster();
@@ -279,7 +280,7 @@ export function BotPage({ botKey }: { botKey: string }) {
         </button>
       </header>
       <div className="bot-body">
-        {coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
+        {coding && native ? <OwnSession b={b} m={m!} id={native} /> : coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
         <aside className="bot-bench" aria-label={t("bots.bench")}>
           {coding && <LocalBench b={b} m={m!} />}
           {!coding && <HandedOut b={b} />}
@@ -561,6 +562,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         {showArchived && convs.archived.map((s) => row(s, true))}
         {convs.others.length > 0 && <div className="conv-group static">{t("conv.others")}</div>}
         {convs.others.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+        <OwnSessions b={b} m={m} />
       </div>
       <Composer
         value={text}

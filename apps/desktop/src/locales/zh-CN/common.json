@@ -557,5 +557,14 @@
   },
   "link": {
     "reconnecting": "与这台电脑上 Aide 后台的连接中断，正在重连…"
+  },
+  "own": {
+    "title": "它自己的会话",
+    "noteDsh": "在 DSH 里开的（或经其他工具派的），不是 Aide 开的。默认只读，开启「接管」后可以发消息。",
+    "noteClaude": "Claude 桌面应用在这台机器上的 Claude Code 会话，不是 Aide 开的。只读。",
+    "cant": "Aide 还读不到 {{app}} 在它自己应用里开的会话。",
+    "none": "这里没有 {{app}} 自己的会话。",
+    "back": "返回对话",
+    "gone": "这个会话已经不在了。"
   }
 }

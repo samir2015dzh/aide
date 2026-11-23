@@ -143,3 +143,10 @@
 .room-away{display:flex;align-items:center;gap:8px;margin:10px 24px 0;padding:8px 12px;border-radius:var(--r-box);background:var(--orange-bg);color:var(--orange);font-size:12.5px}
 .room-rename{width:min(320px,50vw);height:28px;font-size:16px}
 .composer .composer-in,.composer .composer-in:focus,.composer .composer-in:focus-visible{outline:none;box-shadow:none;border:0;background:transparent}
+/* A coding agent's own sessions (工单 #76): under its conversations, and one opened in their place. */
+.own-note{margin:2px 10px 6px;font-size:12px;color:var(--l2)}
+.own-note.warn{color:var(--orange)}
+.own .dsh-dot{margin-top:0}
+.own-session{padding-top:8px}
+.own-back{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;font-size:12.5px}
+.own-session .dsh-view{flex:1;min-height:0;padding:var(--sp-3) 0}
