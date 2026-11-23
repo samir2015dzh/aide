@@ -133,6 +133,9 @@ func TestDesktop(t *testing.T) {
 			if name == "batchj-botsettings" { // DSH on this Mac, for its bot page and its settings page (工单 #97)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}
+			if name == "batchj-failures" { // DSH failing its turns, for the words its failures are told in (工单 #105)
+				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
+			}
 			if name == "batchi-projects" { // DeepSeek Harness with its permission presets (工单 #89)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_PRESETS=")
 			}

@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Picker } from "../Picker";
 import { Icon } from "../icons";
 import { ToolRow } from "./ToolRow";
+import { FailLine } from "../session/Chat";
 import { MachineTag, WritesTo } from "../MachineTag";
 import { useTranslation } from "react-i18next";
-import { dateOf, lostLine, transcript } from "@aide/core";
+import { dateOf, failureHeadline, lostLine, transcript } from "@aide/core";
 import { DSHBridgeInstallState, DSHSessionState, type DSHBridge, type DSHBridgeInstall, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
 import type { DSHSessionEntry } from "@aide/proto/local";
 import { EventView, type SessionEvent } from "@aide/proto/session";
@@ -144,10 +145,9 @@ export function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DS
           case "tool":
             return <ToolRow key={String(it.seq)} call={it.call} result={it.result} />;
           case "turnEnd":
+            // 工单 #105: what happened in words, DSH's own message folded under Details.
             return it.end.isError ? (
-              <div key={String(it.seq)} className="dsh-msg end err">
-                {it.end.failure?.message || t("dsh.turnFailed")}
-              </div>
+              <FailLine key={String(it.seq)} id={`dsh:${s.sessionId}:${it.seq}`} title={it.end.failure ? failureHeadline(it.end.failure.kind, "DSH", it.end.failure.provider) : t("dsh.turnFailed")} message={it.end.failure?.message ?? ""} />
             ) : null;
           default:
             return null;

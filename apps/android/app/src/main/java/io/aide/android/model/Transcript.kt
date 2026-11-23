@@ -19,8 +19,9 @@ sealed interface Item {
     data class Message(override val key: String, val from: String, val text: String, val sent: Boolean) : Item
     /** A managed workspace's request after one change: shown only, answered by the coordinator through Aide's messages. */
     data class Workspace(override val key: String, val request: WorkspaceRequest) : Item
-    data class Error(override val key: String, val text: String) : Item
-    data class TurnEnd(override val key: String, val failed: Boolean, val text: String) : Item
+    /** text: the agent's raw message, shown only under Details; kind and provider: what the machine made of it (工单 #105). */
+    data class Error(override val key: String, val text: String, val kind: String = "", val provider: String = "") : Item
+    data class TurnEnd(override val key: String, val failed: Boolean, val text: String, val kind: String = "", val provider: String = "") : Item
     /** The session was rolled back to the end of turn: turns turn+1 to lastTurn, above, were discarded. */
     data class Rollback(override val key: String, val turn: Int, val lastTurn: Int) : Item
 }
@@ -81,10 +82,10 @@ class Transcript {
             e.messageSent != null -> items += Item.Message(key, e.messageSent.toName.ifEmpty { e.messageSent.to }, e.messageSent.text, sent = true)
             e.workspaceRequest != null -> items += Item.Workspace(key, e.workspaceRequest)
             e.rolledBack != null -> items += Item.Rollback(key, e.rolledBack.turn, e.rolledBack.lastTurn)
-            e.error != null -> items += Item.Error(key, e.error.message.ifEmpty { e.error.failure?.message.orEmpty() })
+            e.error != null -> items += Item.Error(key, e.error.message.ifEmpty { e.error.failure?.message.orEmpty() }, e.error.failure?.kind.orEmpty(), e.error.failure?.provider.orEmpty())
             e.turnCompleted != null -> {
                 val f = e.turnCompleted.failure
-                if (e.turnCompleted.isError || f != null) items += Item.TurnEnd(key, true, f?.message?.ifEmpty { null } ?: e.turnCompleted.result)
+                if (e.turnCompleted.isError || f != null) items += Item.TurnEnd(key, true, f?.message?.ifEmpty { null } ?: e.turnCompleted.result, f?.kind.orEmpty(), f?.provider.orEmpty())
             }
         }
     }
