@@ -88,7 +88,7 @@ export function noticeDiff(
         kind: "failed",
         sessionId: s.sessionId,
         title: t("notice.failedTitle", { title: displayTitle(s), failure: failureTitle(f.kind) }),
-        body: t("notice.failedBody", { grant: grant(s), agent: codingAgentTitle(s.agent), project: s.projectId, advice: failureAdvice(f) }).trimEnd(),
+        body: t("notice.failedBody", { grant: grant(s), agent: codingAgentTitle(s.agent), project: s.projectId, advice: failureAdvice(f, codingAgentTitle(s.agent)) }).trimEnd(),
       });
     } else if (
       s.status === SessionStatus.IDLE &&

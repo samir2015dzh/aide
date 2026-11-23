@@ -681,6 +681,7 @@ const adviceResumes = new Set([
   FailureKind.RESUME_REJECTED,
   FailureKind.AGENT_CRASHED,
   FailureKind.STALLED,
+  FailureKind.TIMEOUT,
 ]);
 
 function sameFailure(a: Failure | undefined, b: Failure | undefined): boolean {
@@ -698,10 +699,13 @@ function Failed({ s, failure, grant }: { s: Session; failure: Failure | undefine
   const st = useStore();
   const message = failure?.message ?? s.error;
   const kind = failure?.kind ?? FailureKind.UNSPECIFIED;
-  const advice = failure && !adviceResumes.has(kind) ? failureAdvice(failure) : "";
+  const agent = codingAgentTitle(s.agent);
+  // 工单 #105: only words the owner can act on; what could not be told apart says the original is in Details, never guesses.
+  const unknown = kind === FailureKind.UNKNOWN || kind === FailureKind.UNSPECIFIED || FailureKind[kind] === undefined;
+  const advice = unknown ? (message !== "" ? coreT("advice.details") : "") : failure && !adviceResumes.has(kind) ? failureAdvice(failure, agent) : "";
   return (
     <FailCard
-      headline={failureHeadline(kind, codingAgentTitle(s.agent))}
+      headline={failureHeadline(kind, agent, failure?.provider)}
       hints={[advice, s.createdBy === "owner" ? t("chat.resumeYou") : t("chat.resume", { grant: agentName(grant) })]}
       message={message}
       actions={isArchivable(s) && <button className="link" onClick={() => archive(st, s)}>{t("chat.archive")}</button>}

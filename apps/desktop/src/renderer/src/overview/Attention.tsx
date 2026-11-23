@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client } from "@aide/proto/local";
-import { dateOf, displayTitle, pendingQuestion } from "@aide/core";
+import { dateOf, displayTitle, failureLine, pendingQuestion } from "@aide/core";
 import { i18n } from "../../../shared/i18n";
 import { opensActivityMonitor, problemBody, problemsOf, problemTitle, severe } from "../health";
 import { Icon } from "../icons";
@@ -59,7 +59,7 @@ export function Attention({ now }: { now: Date }) {
           );
         })}
         {team.failed.map((s) => (
-          <Row key={s.sessionId} icon="alert" tint="r" title={displayTitle(s)} detail={`${senderLine(st, s)} · ${s.progress?.lastFailure?.message || i18n.t("common:team.lastTurnFailed")}`}>
+          <Row key={s.sessionId} icon="alert" tint="r" title={displayTitle(s)} detail={`${senderLine(st, s)} · ${failureLine(s) || i18n.t("common:team.lastTurnFailed")}`}>
             <button className="btn" onClick={() => st.select(s.sessionId)}>{t("attention.open")}</button>
           </Row>
         ))}

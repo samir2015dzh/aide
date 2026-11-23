@@ -52,7 +52,8 @@
     "timeout": "Time limit exceeded",
     "startFailed": "Can’t start agent",
     "baseRefUnavailable": "Base ref not found",
-    "other": "Failed"
+    "other": "Failed",
+    "missingCredentials": "No API key"
   },
   "advice": {
     "auth": "Run the matching CLI once on that machine as the same user to sign in.",
@@ -63,7 +64,10 @@
     "limitReached": "Send “continue” to keep going.",
     "resume": "Send another message to resume the task.",
     "startFailed": "Open that machine’s page in Aide Settings to check why it can’t start agents.",
-    "baseRefUnavailable": "Check the base ref name, and that the branch or tag is on the project’s remote (the machine fetches it from there). Then send another message in this task to retry the original request."
+    "baseRefUnavailable": "Check the base ref name, and that the branch or tag is on the project’s remote (the machine fetches it from there). Then send another message in this task to retry the original request.",
+    "missingCredentials": "Add the API key in {{agent}}’s model settings.",
+    "missingCredentials_provider": "Add the {{provider}} API key in {{agent}}’s model settings.",
+    "details": "The original message is in Details."
   },
   "headline": {
     "auth": "{{agent}} isn’t signed in",
@@ -82,7 +86,13 @@
     "timeout": "This turn ran past its time limit",
     "startFailed": "{{agent}} couldn’t start",
     "baseRefUnavailable": "The worktree’s base ref was not found",
-    "other": "{{agent}} ran into an error"
+    "other": "{{agent}} ran into an internal error",
+    "missingCredentials": "{{agent}} has no API key for its model service",
+    "missingCredentials_provider": "{{agent}} has no {{provider}} API key yet",
+    "network_provider": "{{agent}} can’t reach {{provider}}",
+    "rateLimit_provider": "{{agent}} was rate limited by {{provider}}",
+    "quota_provider": "{{agent}} is out of {{provider}} quota",
+    "providerError_provider": "{{agent}}’s {{provider}} service failed"
   },
   "notice": {
     "startedBody": "Started by {{grant}} · {{project}} · {{agent}}",

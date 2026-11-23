@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Session } from "@aide/proto/session";
 import {
-  clockText, codingAgentTitle, createdDate, dateOf, displayTitle, elapsedSeconds, listTime, pendingQuestion, quickChoice, teamState, todayStats, updatedDate,
+  clockText, codingAgentTitle, createdDate, dateOf, displayTitle, elapsedSeconds, failureLine, listTime, pendingQuestion, quickChoice, teamState, todayStats, updatedDate,
   type TeamState,
 } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
@@ -102,7 +102,7 @@ export function NeedsYou({ team, onOpen }: { team: TeamState; onOpen?: () => voi
           <i className="dot-f" aria-hidden="true" />
           <span className="tm-main">
             <b>{displayTitle(s)}</b>
-            <span>{senderLine(st, s)} · {s.progress?.lastFailure?.message || t("team.lastTurnFailed")}</span>
+            <span>{senderLine(st, s)} · {failureLine(s) || t("team.lastTurnFailed")}</span>
           </span>
         </button>
       ))}

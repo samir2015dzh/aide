@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { FailureKind, FailureSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { agoText, clockText, elapsedSeconds, failureAdvice, failureHeadline, listTime, minutesLeft, phaseText, shortTime, tokensText, toolSummary } from "./text";
+import { agoText, clockText, elapsedSeconds, failureAdvice, failureHeadline, failureLine, listTime, minutesLeft, phaseText, shortTime, tokensText, toolSummary } from "./text";
 import { at, now, progressOf, session } from "./testing";
 
 describe("text", () => {
@@ -26,9 +26,26 @@ describe("text", () => {
   test("a failure is told of the coding agent, every kind in its own words", () => {
     expect(failureHeadline(FailureKind.START_FAILED, "Codex")).toBe("Codex 未能启动");
     expect(failureHeadline(FailureKind.AUTH, "Claude Code")).toBe("Claude Code 未登录");
-    expect(failureHeadline(FailureKind.UNSPECIFIED, "Codex")).toBe("Codex 出错了");
+    expect(failureHeadline(FailureKind.UNSPECIFIED, "Codex")).toBe("Codex 出了个内部错误");
     const kinds = Object.values(FailureKind).filter((k): k is FailureKind => typeof k === "number" && k !== FailureKind.UNSPECIFIED && k !== FailureKind.INTERRUPTED && k !== FailureKind.UNKNOWN);
-    expect(kinds.filter((k) => failureHeadline(k, "Codex") === "Codex 出错了")).toEqual([]);
+    expect(kinds.filter((k) => failureHeadline(k, "Codex") === "Codex 出了个内部错误")).toEqual([]);
+  });
+
+  test("a failure names the provider the machine found, and only then (工单 #105)", () => {
+    const noKey = create(FailureSchema, { kind: FailureKind.MISSING_CREDENTIALS, provider: "DeepSeek", message: "llm-deepseek: no API key" });
+    expect(failureHeadline(noKey.kind, "DSH", noKey.provider)).toBe("DSH 还没配 DeepSeek 的密钥");
+    expect(failureAdvice(noKey, "DSH")).toBe("在 DSH 的模型设置里填好 DeepSeek 的密钥。");
+    const unnamed = create(FailureSchema, { kind: FailureKind.MISSING_CREDENTIALS, message: "no API key" });
+    expect(failureHeadline(unnamed.kind, "DSH", unnamed.provider)).toBe("DSH 还没配模型服务的密钥");
+    expect(failureAdvice(unnamed, "DSH")).toBe("在 DSH 的模型设置里填好密钥。");
+    expect(failureHeadline(FailureKind.NETWORK, "DSH", "DeepSeek")).toBe("DSH 连不上 DeepSeek");
+    expect(failureHeadline(FailureKind.RATE_LIMIT, "DSH", "DeepSeek")).toBe("DSH 被 DeepSeek 限流了");
+    expect(failureHeadline(FailureKind.TIMEOUT, "DSH", "DeepSeek")).toBe("本轮执行已超时");
+    expect(failureHeadline(FailureKind.UNKNOWN, "DSH", "")).toBe("DSH 出了个内部错误");
+    const s = session("s", SessionStatus.IDLE);
+    progressOf(s).lastFailure = noKey;
+    expect(failureLine(s)).toBe("Claude Code 还没配 DeepSeek 的密钥");
+    expect(failureLine(session("t", SessionStatus.IDLE))).toBe("");
   });
 
   test("the session list's time is relative today and short after", () => {

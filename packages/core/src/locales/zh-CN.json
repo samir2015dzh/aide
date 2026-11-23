@@ -52,7 +52,8 @@
     "timeout": "超过时长上限",
     "startFailed": "无法启动 agent",
     "baseRefUnavailable": "找不到基准引用",
-    "other": "失败"
+    "other": "失败",
+    "missingCredentials": "未配置密钥"
   },
   "advice": {
     "auth": "请在该机器上以同一系统用户运行一次对应的 CLI 完成登录。",
@@ -63,7 +64,10 @@
     "limitReached": "发送“继续”即可接着执行。",
     "resume": "再次发送消息即可恢复任务。",
     "startFailed": "请在 Aide 设置中打开该机器的详情页，排查无法启动 Agent 的原因。",
-    "baseRefUnavailable": "请确认基准引用名称，以及项目的远端仓库里有这个分支或 tag（机器会从那里拉取），再在这个任务里发一条消息，重试原来的请求。"
+    "baseRefUnavailable": "请确认基准引用名称，以及项目的远端仓库里有这个分支或 tag（机器会从那里拉取），再在这个任务里发一条消息，重试原来的请求。",
+    "missingCredentials": "在 {{agent}} 的模型设置里填好密钥。",
+    "missingCredentials_provider": "在 {{agent}} 的模型设置里填好 {{provider}} 的密钥。",
+    "details": "详情里有原文。"
   },
   "headline": {
     "auth": "{{agent}} 未登录",
@@ -82,7 +86,13 @@
     "timeout": "本轮执行已超时",
     "startFailed": "{{agent}} 未能启动",
     "baseRefUnavailable": "无法创建工作目录：找不到基准引用",
-    "other": "{{agent}} 出错了"
+    "other": "{{agent}} 出了个内部错误",
+    "missingCredentials": "{{agent}} 还没配模型服务的密钥",
+    "missingCredentials_provider": "{{agent}} 还没配 {{provider}} 的密钥",
+    "network_provider": "{{agent}} 连不上 {{provider}}",
+    "rateLimit_provider": "{{agent}} 被 {{provider}} 限流了",
+    "quota_provider": "{{agent}} 在 {{provider}} 的额度已用完",
+    "providerError_provider": "{{agent}} 用的 {{provider}} 服务出错"
   },
   "notice": {
     "startedBody": "{{grant}} 发起 · {{project}} · {{agent}}",
