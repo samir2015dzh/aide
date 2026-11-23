@@ -36,7 +36,6 @@ export function command(c: Command) {
 // Commands run in a terminal, by key: the page never passes command text.
 const terminalCommands: Record<TerminalCommand, string> = {
   codexLogin: "codex login",
-  claudeLogin: "claude",
   antigravityLogin: "aide agent login antigravity",
 };
 

@@ -56,6 +56,7 @@
   },
   "advice": {
     "auth": "请在该机器上以同一系统用户运行一次对应的 CLI 完成登录。",
+    "authClaude": "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会在那台电脑上打开浏览器，在浏览器里登录完再发一条消息即可继续。",
     "quota": "请等待额度恢复后再试，或更换 Agent / 模型。",
     "transient": "暂时性问题，请稍后重新发送消息。",
     "newContext": "再次发送消息将在新上下文中继续，工作区中的代码改动将会保留。",
@@ -185,6 +186,7 @@
     "signedIn": "已登录",
     "signedInVersion": "已登录 · {{version}}",
     "signedOut": "未登录",
+    "unconfirmed": "未确认",
     "notInstalled": "未安装",
     "broken": "运行不了",
     "detected": "已检测到",
@@ -195,6 +197,7 @@
     "desktopSignedOut": "请在 Claude Desktop 里登录：登录后它自己的会话才会出现在 Aide 里。",
     "cliSignedOutDesktopIn": "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。点下面的按钮给它登录（会在那台电脑上打开浏览器）；Claude Desktop 和它的会话不受影响。",
     "cliSignedOut": "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：点下面的按钮给它登录（会在那台电脑上打开浏览器）。",
+    "cliUnconfirmed": "Claude Code 命令行没说清自己登没登录，Aide 不拿 Claude Desktop 的登录代替它：派出的任务能不能跑还没确认。点下面的按钮给它登录（会在那台电脑上打开浏览器），或者重新检测。",
     "appWithoutCLI": "这台机器只有 Claude Desktop，没有 Aide 要用的 Claude Code 命令行：在 Claude Desktop 里打开一次 Code 页，它会自动下载。",
     "cliNotFound": "派给 Claude 的任务要用 Claude Code 命令行跑，这台机器上没有。",
     "bridge": "DSH 的 Aide 插件",

@@ -56,6 +56,7 @@
   },
   "advice": {
     "auth": "Run the matching CLI once on that machine as the same user to sign in.",
+    "authClaude": "Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below opens a browser on that computer; sign in there, then send a message to go on.",
     "quota": "Try again when the quota resets, or switch agents or models.",
     "transient": "Temporary issue. Try sending the message again in a moment.",
     "newContext": "Send another message to continue in a fresh context. Your worktree changes are preserved.",
@@ -194,6 +195,7 @@
     "signedIn": "Signed in",
     "signedInVersion": "Signed in · {{version}}",
     "signedOut": "Not signed in",
+    "unconfirmed": "Unconfirmed",
     "notInstalled": "Not installed",
     "broken": "Can't run",
     "detected": "Detected",
@@ -204,6 +206,7 @@
     "desktopSignedOut": "Sign in in the Claude desktop app: its own sessions show in Aide only then.",
     "cliSignedOutDesktopIn": "Claude Desktop is signed in, but tasks Aide hands out run with the Claude Code command line, which keeps its own sign-in: the app's does not carry over. Sign it in below (a browser opens on that computer); the app and its sessions are not touched.",
     "cliSignedOut": "Tasks Aide hands out run with the Claude Code command line, which is not signed in: sign it in below (a browser opens on that computer).",
+    "cliUnconfirmed": "The Claude Code command line did not say whether it is signed in, and Aide does not take the Claude desktop app's sign-in for it: whether tasks can run with it is not confirmed. Sign it in below (a browser opens on that computer), or check again.",
     "appWithoutCLI": "Only the Claude desktop app is here, not the Claude Code command line Aide runs: open Code in the Claude app once and it fetches it.",
     "cliNotFound": "Tasks for Claude run with the Claude Code command line, which is not on this machine.",
     "bridge": "Aide plugin for DSH",

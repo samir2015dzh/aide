@@ -3,7 +3,7 @@ import type { Client, Machine } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { agentName } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
-import { agentEntry, clientCategory, grantCategory, isAideClient, machineConnections, type ConnRow, type ConnState, type MachineConnections } from "./connections";
+import { agentEntry, clientCategory, grantCategory, isAideClient, machineConnections, type ConnFix, type ConnRow, type ConnState, type MachineConnections } from "./connections";
 import { t } from "./i18n";
 import { displayTitle, isActive, updatedDate } from "./sessions";
 import { agoText } from "./text";
@@ -33,6 +33,8 @@ export type BotState = {
   line: string;
   usable: Usable;
   why?: NotReady;
+  /** What fixes it from Aide, as its main connection row says (Claude Code's sign-in, 工单 #108). */
+  fix?: ConnFix;
 };
 
 /** A coding agent on a machine as one state (工单 #56); undefined: the machine reports no such agent (hidden or absent). */
@@ -40,7 +42,7 @@ export function codingBotState(m: Machine, agent: string, now: Date, c: MachineC
   const e = agentEntry(c, agent);
   if (!e) return undefined;
   const a = m.status?.agents.find((x) => x.name === agent);
-  return stateOf(e.main, c.reachable, !!a?.pause);
+  return { ...stateOf(e.main, c.reachable, !!a?.pause), fix: e.main.fix };
 }
 
 function stateOf(main: ConnRow, reachable: boolean, paused: boolean): BotState {

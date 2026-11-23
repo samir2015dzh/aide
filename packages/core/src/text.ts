@@ -151,11 +151,12 @@ export function failureHeadline(k: FailureKind, agent: string): string {
   return t(`headline.${headlines[k] ?? "other"}`, { agent });
 }
 
-/** What to do about a failure; the daemon's hint when there is no advice of our own. */
-export function failureAdvice(f: Failure): string {
+/** What to do about a failure of agent's; the daemon's hint when there is no advice of our own. */
+export function failureAdvice(f: Failure, agent = ""): string {
   switch (f.kind) {
     case FailureKind.AUTH:
-      return t("advice.auth");
+      // Claude Code is signed in from Aide (工单 #51, #108): the card points there, not to a terminal.
+      return agent === "claude" ? t("advice.authClaude") : t("advice.auth");
     case FailureKind.QUOTA:
       return t("advice.quota");
     case FailureKind.RATE_LIMIT:

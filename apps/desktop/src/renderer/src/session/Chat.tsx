@@ -4,7 +4,7 @@ import type { Client, Machine } from "@aide/proto/local";
 import { Workspace } from "@aide/proto/identity";
 import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
 import {
-  agoText, checkpoints, clockText, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
+  agoText, checkpoints, clockText, codingBotState, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
   turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, type Step,
 } from "@aide/core";
@@ -16,6 +16,7 @@ import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
 import { keys } from "../platform";
 import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
 import { WritesTo } from "../MachineTag";
+import { ClaudeLogin, claudeLoginWaiting } from "../Connections";
 import { Composer, attachmentsOf, useAttachments, type ComposerState } from "../bots/Composer";
 import { errorText, useNow, useStore } from "../store";
 import { SessionParams, sessionCommands } from "./compose";
@@ -698,13 +699,21 @@ function Failed({ s, failure, grant }: { s: Session; failure: Failure | undefine
   const st = useStore();
   const message = failure?.message ?? s.error;
   const kind = failure?.kind ?? FailureKind.UNSPECIFIED;
-  const advice = failure && !adviceResumes.has(kind) ? failureAdvice(failure) : "";
+  const advice = failure && !adviceResumes.has(kind) ? failureAdvice(failure, s.agent) : "";
+  // Not signed in: Claude Code is signed in from here, on its machine, while it still is not (工单 #51, #108).
+  const m = st.machines.find((x) => x.machineId === s.machineId);
+  const login = kind === FailureKind.AUTH && m && codingBotState(m, s.agent, new Date())?.fix === "claudeLogin";
   return (
     <FailCard
       headline={failureHeadline(kind, codingAgentTitle(s.agent))}
       hints={[advice, s.createdBy === "owner" ? t("chat.resumeYou") : t("chat.resume", { grant: agentName(grant) })]}
       message={message}
-      actions={isArchivable(s) && <button className="link" onClick={() => archive(st, s)}>{t("chat.archive")}</button>}
+      actions={
+        <>
+          {login && <ClaudeLogin m={m} waiting={claudeLoginWaiting(m)} />}
+          {isArchivable(s) && <button className="link" onClick={() => archive(st, s)}>{t("chat.archive")}</button>}
+        </>
+      }
     />
   );
 }

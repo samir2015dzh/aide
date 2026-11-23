@@ -5,7 +5,7 @@ import { botLook } from "@aide/core/avatar";
 import type { Machine } from "@aide/proto/local";
 import { AgentPage, PauseSection, projectsFor, usageText } from "../AgentList";
 import { local } from "../api";
-import { connDot } from "../Connections";
+import { ClaudeLogin, claudeLoginWaiting, connDot } from "../Connections";
 import { Icon } from "../icons";
 import { Choices, FluentControls } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
@@ -55,6 +55,11 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
                   </span>
                   <span className="muted">{b.state.line}</span>
                 </div>
+                {coding && b.state.fix === "claudeLogin" && (
+                  <div className="frow">
+                    <ClaudeLogin m={m!} waiting={claudeLoginWaiting(m!)} />
+                  </div>
+                )}
                 {coding && <Usage b={b} m={m!} />}
               </div>
             </section>

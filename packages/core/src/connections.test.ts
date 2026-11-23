@@ -5,6 +5,9 @@ import { AgentLoginState, AgentProblem, DSHBridgeInstallState, DSHBridgeState } 
 import { describe, expect, test } from "vitest";
 import { agentEntry, bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
 import { codingAgentShort, codingAgentTitle } from "./agents";
+import { FailureKind, FailureSchema } from "@aide/proto/session";
+import { codingBotState } from "./roster";
+import { failureAdvice } from "./text";
 
 const now = new Date("2026-11-22T10:00:00Z");
 const checked = timestampFromDate(new Date("2026-11-22T09:58:00Z"));
@@ -153,6 +156,28 @@ describe("signing Claude Code in from Aide (工单 #51)", () => {
     expect(claude({ state: AgentLoginState.FAILED, detail: "the browser was closed" }).lacks).toContain("the browser was closed");
     expect(claude({ state: AgentLoginState.TIMED_OUT }).lacks).toContain("10 分钟");
     expect(claude({ state: AgentLoginState.CANCELLED }).fix).toBe("claudeLogin");
+  });
+});
+
+describe("Claude Code's sign-in is its command line's own (工单 #108)", () => {
+  const state = (a: object) => {
+    const m = machine([{ name: "claude", available: true, version: "2.1.330", desktop: { installed: true, signedIn: true }, ...a }]);
+    const r = machineConnections(m, now).rows.find((x) => x.id === "claude-cli")!;
+    return { r, bot: codingBotState(m, "claude", now)! };
+  };
+  test("signed in, signed out, and unconfirmed are three states; the desktop app signed in stands in for none", () => {
+    expect(state({ loggedIn: true }).r.state).toBe("ok");
+    const out = state({ loggedIn: false });
+    expect([out.r.state, out.r.text, out.r.fix, out.bot.usable, out.bot.fix]).toEqual(["missing", "未登录", "claudeLogin", "no", "claudeLogin"]);
+    const vague = state({ loggedIn: false, loginUnconfirmed: true });
+    expect([vague.r.state, vague.r.text, vague.r.fix]).toEqual(["unknown", "未确认", "claudeLogin"]);
+    expect(vague.r.lacks).toContain("不拿 Claude Desktop 的登录代替它");
+    expect([vague.bot.word, vague.bot.usable, vague.bot.fix]).toEqual(["未确认", "unverified", "claudeLogin"]);
+  });
+  test("a session failed not signed in: the card points to signing it in from Aide, never to a terminal", () => {
+    const f = create(FailureSchema, { kind: FailureKind.AUTH, message: "Not logged in · Please run /login" });
+    expect(failureAdvice(f, "claude")).toContain("点下面的登录按钮会在那台电脑上打开浏览器");
+    expect(failureAdvice(f, "claude")).not.toContain("CLI");
   });
 });
 
