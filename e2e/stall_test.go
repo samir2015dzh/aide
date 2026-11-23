@@ -31,6 +31,8 @@ case "$1" in
 --version) echo "2.1.312 (Claude Code)"; exit 0;;
 auth) echo '{"loggedIn": true}'; exit 0;;
 esac
+# The plan's usage, read in the background (工单 #86): answered at once, as Claude Code's own /usage is.
+[ "$2" = /usage ] && exit 0
 echo "connecting to MCP server slow-mcp" >&2
 /bin/sh -c 'sleep 600; :' ` + marker + ` &
 wait
