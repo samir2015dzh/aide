@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Picker } from "./Picker";
 import { useState } from "react";
 import type { Client, Machine } from "@aide/proto/local";
+import { AgentLoginState } from "@aide/proto/machine";
 import { agentName, AgentLogo } from "@aide/ui";
 import { agoText, clientCategory, dateOf, grantsByCategory, machineConnections, type ConnRow, type ConnState } from "@aide/core";
 import { Install } from "./dsh/DSHSessions";
@@ -179,12 +180,15 @@ function Fix({ r, m, recheck }: { r: ConnRow; m: Machine; recheck: () => void })
   }
 }
 
+/** Claude Code's sign-in from Aide is under way on m: the browser is open there. */
+export const claudeLoginWaiting = (m: Machine) => m.status?.agents.find((a) => a.name === "claude")?.login?.state === AgentLoginState.WAITING;
+
 /**
  * Signing Claude Code's command line in on m (工单 #51, the owner's choice A): Aide starts its own sign-in there, a
  * browser opens on that computer, and the owner signs in in it; Aide never sees the account or the token. The row
  * above says how it goes (waiting, done, failed, cancelled), from the machine's own report.
  */
-function ClaudeLogin({ m, waiting }: { m: Machine; waiting: boolean }) {
+export function ClaudeLogin({ m, waiting }: { m: Machine; waiting: boolean }) {
   const { t } = useTranslation("common");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

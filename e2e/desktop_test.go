@@ -43,7 +43,9 @@ type desktopFixture struct {
 	DSHHome string `json:"dshHome,omitempty"`
 	// The owner's session's log there: what the stand-in DSH Host was asked to set goes beside it (.actions).
 	DSHLog string `json:"dshLog,omitempty"`
-	owner  *ownerMac
+	// The batchj-login spec: the stand-in Claude Code's folder (signInClaude), where the spec signs it out.
+	ClaudeDir string `json:"claudeDir,omitempty"`
+	owner     *ownerMac
 }
 
 // freshOwner is an owner daemon not set up yet: its socket, a relay of its
@@ -162,6 +164,12 @@ esac
 `), 0o755)
 				more = append(more, "AIDE_CLAUDE_BIN="+claude)
 			}
+			var claudeDir string
+			if name == "batchj-login" { // Claude Code's command line keeping its own sign-in, the Claude desktop app signed in beside it (工单 #108)
+				var env []string
+				_, claudeDir, env = signInClaude(t)
+				more = append(more, env...)
+			}
 			var dshHome string
 			if name == "states" { // a short stall limit, so a quiet turn reads stalled within the spec
 				more = append(more, "AIDE_STALL_AFTER=5")
@@ -186,6 +194,7 @@ esac
 			} else {
 				f = desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
 			}
+			f.ClaudeDir = claudeDir
 			if name == "dsh" {
 				log := dshDesktopSession(t, dshHome)
 				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log

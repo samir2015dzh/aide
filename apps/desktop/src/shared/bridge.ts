@@ -40,7 +40,7 @@ export type TrayView = {
 export type TrayAction = "attention" | "running" | "open" | "settings" | "quit" | "install";
 
 /** Fixed commands the page may ask to run in Terminal (by key, never by text). */
-export type TerminalCommand = "codexLogin" | "claudeLogin" | "antigravityLogin";
+export type TerminalCommand = "codexLogin" | "antigravityLogin";
 
 export type Bridge = {
   platform: string;

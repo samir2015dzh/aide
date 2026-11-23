@@ -13,7 +13,7 @@ import {
 import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
-import { connDot } from "../Connections";
+import { ClaudeLogin, claudeLoginWaiting, connDot } from "../Connections";
 import { Face, grantApp, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
 import { modelOptions } from "../modelOptions";
@@ -312,6 +312,8 @@ export function BotPage({ botKey, native, settings = false }: { botKey: string; 
   const pinned = pins.includes(b.key);
   // Not usable for a reason its machine can fix: the way there, with its state (not a setting of its own).
   const fix = coding && b.state.usable === "no" && b.state.why !== "paused";
+  // Claude Code's command line not signed in, or unconfirmed: signed in from here, on its machine (工单 #51, #108).
+  const login = coding && b.state.fix === "claudeLogin";
   return (
     <div className="bot-page" role="region" aria-label={b.name}>
       <header className="bot-head drag">
@@ -323,8 +325,9 @@ export function BotPage({ botKey, native, settings = false }: { botKey: string; 
           </div>
           <div className="bot-head-l2">
             <span>{b.state.line}</span>
-            {fix && <button className="link" onClick={() => window.aide?.openSettings(`machines/${m!.machineId}`)}>{t("bots.fixOnDevices")}</button>}
+            {fix && !login && <button className="link" onClick={() => window.aide?.openSettings(`machines/${m!.machineId}`)}>{t("bots.fixOnDevices")}</button>}
           </div>
+          {login && <ClaudeLogin m={m!} waiting={claudeLoginWaiting(m!)} />}
         </div>
         <button className="btn sm bot-settings" onClick={() => set({ selection: { kind: "bot", key: b.key, pane: "settings" } })}>
           <Icon name="gear" className="sm" />

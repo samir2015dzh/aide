@@ -125,6 +125,10 @@ type Sessions struct {
 	defaults func(agent string) provider.Settings
 	// offered learns what an ACP agent's new session offers; nil in tests.
 	offered func(agent string, o provider.Offers)
+	// signedIn hears what a session showed of its agent's sign-in: false
+	// when it failed not signed in, true when it ran a turn (工单 #108);
+	// nil in tests.
+	signedIn func(agent string, in bool)
 
 	mu         sync.Mutex
 	live       map[string]*live
@@ -2239,6 +2243,7 @@ func (s *Sessions) interruptStart(l *live, f *provider.Failure) {
 	agent := l.row.Agent
 	l.mu.Unlock()
 	countFailure(agent, pf.Kind)
+	s.sawSignIn(agent, pf.Kind)
 	s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_Error{Error: &sessionv1.ErrorEvent{Message: pf.Message, Failure: pf}}})
 	s.setStatus(l, sessionv1.SessionStatus_SESSION_STATUS_CRASHED, pf.Message)
 	s.dispatch()
@@ -2389,6 +2394,7 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 			s.log.Warn("turn failed", "session", id, "turn", turn, "kind", tc.Failure.Kind.String(), "message", tc.Failure.Message)
 		}
 	}
+	s.sawSignIn(l.row.Agent, tc.Failure.GetKind())
 	var commit string
 	var turnStat *sessionv1.DiffStat
 	var err error
@@ -2923,6 +2929,20 @@ func countResume(agent, outcome string) {
 }
 
 // countFailure counts a turn or session failure by agent and kind.
+// sawSignIn tells the machine what a turn that ended (k: its failure, or
+// unspecified when it did not fail) showed of the agent's sign-in.
+func (s *Sessions) sawSignIn(agent string, k sessionv1.FailureKind) {
+	if s.signedIn == nil {
+		return
+	}
+	switch k {
+	case sessionv1.FailureKind_FAILURE_KIND_AUTH:
+		s.signedIn(agent, false)
+	case sessionv1.FailureKind_FAILURE_KIND_UNSPECIFIED:
+		s.signedIn(agent, true)
+	}
+}
+
 func countFailure(agent string, k sessionv1.FailureKind) {
 	kind := strings.ToLower(strings.TrimPrefix(k.String(), "FAILURE_KIND_"))
 	metrics.Default.Counter(`aide_machine_turn_failures_total{agent="` + agent + `",kind="` + kind + `"}`).Inc()

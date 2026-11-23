@@ -844,6 +844,9 @@ func report(name string, i provider.Info) bool {
 	case !i.Available:
 		fmt.Printf("  %-10s not installed: %s\n", name, installPages[name])
 		return false
+	case !i.LoggedIn && i.LoginUnconfirmed:
+		fmt.Printf("  %-10s %s, sign-in not confirmed: it did not say → `aided doctor` checks again\n", name, i.Version)
+		return false
 	case !i.LoggedIn:
 		command := name
 		if name == "antigravity" {

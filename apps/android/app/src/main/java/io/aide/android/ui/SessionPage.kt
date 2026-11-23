@@ -78,6 +78,7 @@ import io.aide.android.model.failureHeadline
 import io.aide.android.model.toldApart
 import io.aide.android.model.buildAnswers
 import io.aide.android.model.choose
+import io.aide.android.model.codingBotState
 import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
 import io.aide.android.model.ConvParams
@@ -87,6 +88,7 @@ import io.aide.android.model.modelTitle
 import io.aide.android.model.openedNews
 import io.aide.android.model.sessionsByProject
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -178,8 +180,24 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
             if (loading && items.isEmpty()) {
                 ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
+                // Its last failure not signed in, while Claude Code still is not: signed in from here (工单 #51, #108).
+                val m = world.machines.firstOrNull { it.machineId == s?.machineId }
+                val signIn = items.lastOrNull { it is Item.Error && it.auth || it is Item.TurnEnd && it.auth }?.key
+                    ?.takeIf { s?.agent == "claude" && m != null && codingBotState(m, "claude", Instant.now())?.login == true }
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty(), names = names, agent = agentTitle(s?.agent.orEmpty())) } }
+                    items(items, key = { it.key }) {
+                        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) {
+                            ItemView(it, starter = s?.createdBy.orEmpty(), names = names, agent = agentTitle(s?.agent.orEmpty()))
+                            if (it.key == signIn && m != null) Column(Modifier.padding(horizontal = 12.dp)) {
+                                Text(
+                                    t("Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below opens a browser on that computer; sign in there, then send a message to go on.",
+                                        "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会在那台电脑上打开浏览器，在浏览器里登录完再发一条消息即可继续。"),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                ClaudeLogin(model, m)
+                            }
+                        }
+                    }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
             }

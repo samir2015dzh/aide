@@ -67,6 +67,8 @@ data class AgentStatus(
     val hidden: Boolean = false,
     val version: String = "",
     val loggedIn: Boolean = false,
+    /** loggedIn is false because the check could not tell (工单 #108): unconfirmed, not signed out. */
+    val loginUnconfirmed: Boolean = false,
     val detail: String = "",
     val checking: Boolean = false,
     /** The models it offers here, to pick a contact's from. */

@@ -549,3 +549,41 @@ func TestWithoutAppAliases(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
+
+// Its sign-in is the command line's own, as `claude auth status` says it
+// (工单 #108): signed in, signed out, or, when it gives no clear answer,
+// unconfirmed. The Claude desktop app signed in here stands in for none.
+func TestLoginStateIsTheCLIs(t *testing.T) {
+	scripted(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	app := filepath.Join(home, "Library", "Application Support", "Claude")
+	os.MkdirAll(app, 0o755)
+	os.WriteFile(filepath.Join(app, "config.json"), []byte(`{"oauth:tokenCacheV2":"opaque","lastKnownAccountUuid":"00000000-0000-4000-8000-000000000000","windowSizeWasSignedIn":true}`), 0o600)
+	bin := filepath.Join(t.TempDir(), "claude")
+	for _, c := range []struct {
+		name, auth           string
+		in, unconfirmed, key bool
+	}{
+		{"signed in", `echo '{"loggedIn":true}'`, true, false, false},
+		{"signed out", `echo '{"loggedIn":false}'`, false, false, false},
+		{"no clear answer", `echo 'unknown command'; exit 1`, false, true, false},
+		{"not JSON", `echo 'Logged in'`, false, true, false},
+		{"API key", `exit 1`, true, false, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if c.key {
+				t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+			}
+			os.WriteFile(bin, []byte("#!/bin/sh\ncase \"$1\" in --version) echo '2.1.330 (Claude Code)';; auth) "+c.auth+";; esac\n"), 0o755)
+			info := (&Provider{Binary: bin}).Discover(context.Background())
+			if !info.Available || !info.DesktopSignedIn {
+				t.Fatalf("got %+v", info)
+			}
+			if info.LoggedIn != c.in || info.LoginUnconfirmed != c.unconfirmed {
+				t.Fatalf("signed in %v, unconfirmed %v; want %v, %v", info.LoggedIn, info.LoginUnconfirmed, c.in, c.unconfirmed)
+			}
+		})
+	}
+}

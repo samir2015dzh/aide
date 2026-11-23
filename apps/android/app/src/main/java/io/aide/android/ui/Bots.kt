@@ -268,7 +268,9 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                                 StatusPill(b.state.word, botTone(b))
                             }
                             Text(b.state.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                            if (b.coding && b.state.usable == Usable.NO && b.state.why != io.aide.android.model.NotReady.PAUSED) {
+                            // Claude Code's command line not signed in, or unconfirmed: signed in from here (工单 #51, #108).
+                            if (b.coding && b.state.login && m != null) ClaudeLogin(model, m)
+                            else if (b.coding && b.state.usable == Usable.NO && b.state.why != io.aide.android.model.NotReady.PAUSED) {
                                 Text(t("Fix it on the Devices tab ›", "去设备页处理 ›"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress(onClick = openDevices).padding(vertical = 2.dp))
                             }
                         }

@@ -13,7 +13,7 @@ import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
 import { autoResumedAt, pauseOf, usageResetAt } from "./agentPause";
 import { local } from "./api";
-import { connDot, ConnRowView } from "./Connections";
+import { ClaudeLogin, claudeLoginWaiting, connDot, ConnRowView } from "./Connections";
 import { Icon } from "./icons";
 import { useNow, useStore } from "./store";
 import "./agentlist.css";
@@ -270,7 +270,6 @@ export function usageText(a: AgentStatus, t: T, now = new Date()): string {
 
 const logins: Record<string, { key: TerminalCommand; text: string }> = {
   codex: { key: "codexLogin", text: "codex login" },
-  claude: { key: "claudeLogin", text: "claude" },
   antigravity: { key: "antigravityLogin", text: "aide agent login antigravity" },
 };
 
@@ -338,7 +337,14 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
         </span>
       </div>}
       {a && broken(a) && <p className="ag-why">{whyBroken(a, t)}</p>}
-      {a && a.available && !a.loggedIn && (
+      {/* Claude Code is signed in from Aide (工单 #51, #108), never sent to a terminal; on its bot's settings, under 连接. */}
+      {a && a.available && !a.loggedIn && agent === "claude" && !bare && (
+        <div className="ag-login">
+          <span>{e?.line}</span>
+          <ClaudeLogin m={m} waiting={claudeLoginWaiting(m)} />
+        </div>
+      )}
+      {a && a.available && !a.loggedIn && agent !== "claude" && (
         <div className="ag-login">
           {ran ? (
             <>
