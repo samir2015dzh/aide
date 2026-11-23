@@ -308,7 +308,7 @@ gateway fetches the document when it first sees the URL and on cache expiry:
    server not set up yet says so.
 7. **Finish on the page**: "Connected", then back to the app.
 8. **Redirect** to `redirect_uri?code=…&state=…&iss=<Issuer>`. The code:
-   256 bits, single use, 60 s, bound to the connection, `client_id`,
+   256 bits, single use, 5 minutes, bound to the connection, `client_id`,
    `redirect_uri`, `code_challenge` and `resource`.
 
 The authorization completes once the person connects with the right
@@ -644,7 +644,7 @@ CLI already warns; the app gains the same for MCP connections).
 | Server compromise | Acts as each approved MCP connection within its Grant, sees those sessions (accepted, disclosed in §4.1); cannot make a connection reach a machine without Touch ID, widen access, touch non-MCP clients or machine administration, or outlive the Grant's expiry. Self-hosting removes the third party. |
 | Stolen access or refresh token (agent product breach, logs) | Opaque, 1-hour access tokens; refresh rotation with reuse detection; revocation in three places; bound to `resource` |
 | Consent phishing (attacker's client, victim approves), including late approval | Client and redirect host shown, verified/unverified, loopback warning; product, host and time of connection in the Touch ID sheet; the custodian sentence |
-| Authorization code interception | PKCE S256 only; single-use 60 s codes bound to client, redirect URI and resource |
+| Authorization code interception | PKCE S256 only; single-use 5-minute codes bound to client, redirect URI and resource |
 | Mix-up between authorization servers | `iss` in every authorization response |
 | Open redirect | Errors before redirect URI validation never redirect; exact matching |
 | CSRF / clickjacking on consent | Browser-bound authorization id, same-origin POSTs, `frame-ancestors 'none'` |
@@ -687,6 +687,33 @@ The key keeps strangers from asking; it doesn't approve anything. With it,
 a connection is bound as on the official service: the limits of §5.7 and
 the per-IP registration limit, waiting connections that can't keep the
 owner's own apps out, and nothing reaching a machine without Touch ID.
+
+**Behind a reverse proxy** (工单 #81). The gateway sends the browser back
+to the app with `302 Location: <redirect_uri>?code=…&iss=…&state=…`, where
+`<redirect_uri>` is exactly what the app asked for (for Claude Code, Codex
+and the like `http://127.0.0.1:<port>/callback`, a port of the moment).
+Nothing of how the request reached it changes that: the issuer is
+`--public-url`, never the request's `Host` or `X-Forwarded-*`
+(`TestCallbackIsTheRegisteredRedirect`). A proxy that rewrites `Location`
+headers can still change it on the way out. Lucky's automatic reverse proxy
+was seen to (2026-11-23, twice): the browser landed on
+`https://<relay domain>/lucky_auto_reverseproxy_<hash>/callback?code=…&state=…`
+instead of the loopback address. The likely reason is that the relay
+behind it listens on 127.0.0.1 too, so a loopback `Location` looks like
+the proxied server's own address. This was not reproduced against Lucky
+itself; the gateway's side is settled by the code and that test.
+
+- On the proxy: don't rewrite `Location` (or rewrite only the relay's own
+  address, never `127.0.0.1`/`localhost` with another port), and prefer a
+  host of its own for the relay (`relay.example` → the relay) over a path
+  prefix, so that nothing needs rewriting. `--public-url` is then that
+  host, and the relay's own redirects (`/oauth/consent?id=…`, all relative
+  to it) need no help.
+- For whoever connects: the code and state are right even when the address
+  was rewritten. Take them from the address the browser landed on (`code`,
+  `state`, `iss`) and don't compare its base with the registered
+  `redirect_uri`; the token request still sends the registered one, which
+  is what the gateway checks.
 
 ## 14. Testing
 

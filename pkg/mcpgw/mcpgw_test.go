@@ -723,3 +723,83 @@ func TestHerClientMetadataDocument(t *testing.T) {
 		t.Fatalf("authorize: %d\n%s", res.StatusCode, page)
 	}
 }
+
+// A code lasts five minutes (工单 #80: 60 s was too short for an exchange
+// that goes through a proxy): one exchanged just inside them works, one
+// just past them is refused, and either is good once only.
+func TestCodeLastsFiveMinutes(t *testing.T) {
+	f := newFixture(t, nil)
+	redirect := "http://127.0.0.1/callback"
+	client := f.register(redirect)
+	exchange := func(code string) (int, map[string]any) {
+		return f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}})
+	}
+	code := f.browser().consentCode(client, redirect)
+	f.clock.add(5*time.Minute - time.Second)
+	if status, v := exchange(code); status != 200 || v["access_token"] == nil {
+		t.Fatalf("4 min 59 s after: %d %v", status, v)
+	}
+	if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
+		t.Fatalf("the same code again: %d %v", status, v)
+	}
+	code = f.browser().consentCode(client, redirect)
+	f.clock.add(5*time.Minute + time.Second)
+	if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
+		t.Fatalf("5 min 1 s after: %d %v", status, v)
+	}
+}
+
+// The browser goes back to the app at exactly the redirect URI it asked
+// for (the loopback port of the moment), with code, state and iss added:
+// nothing of how the request reached the gateway (a reverse proxy's
+// X-Forwarded-* headers, its Host) changes it (工单 #81). A proxy that
+// rewrites it to a path of its own does so after it left the gateway.
+func TestCallbackIsTheRegisteredRedirect(t *testing.T) {
+	f := newFixture(t, nil)
+	client := f.register("http://127.0.0.1/callback")
+	redirect := "http://127.0.0.1:8799/callback"
+	b := f.browser()
+	_, page := b.get(f.authorizeURL(client, redirect, nil))
+	csrf := regexp.MustCompile(`name="csrf" value="([^"]+)"`).FindStringSubmatch(page)
+	id := regexp.MustCompile(`name="id" value="([^"]+)"`).FindStringSubmatch(page)
+	if csrf == nil || id == nil {
+		t.Fatalf("consent page:\n%s", page)
+	}
+	proxied := func(req *http.Request) *http.Response {
+		// As a proxy in front of it sends it: another Host (the browser's
+		// cookies go along by hand, as the jar files them by that host).
+		for _, c := range b.Jar.Cookies(req.URL) {
+			req.AddCookie(c)
+		}
+		req.Host = "relay.example"
+		req.Header.Set("X-Forwarded-Host", "relay.example")
+		req.Header.Set("X-Forwarded-Proto", "https")
+		req.Header.Set("X-Forwarded-Prefix", "/proxy_path")
+		req.Header.Set("X-Forwarded-For", "203.0.113.9")
+		req.Header.Set("Forwarded", "host=relay.example;proto=https")
+		res, err := b.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+	req, _ := http.NewRequest(http.MethodPost, f.srv.URL+"/oauth/consent", strings.NewReader(url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"},
+		"account": {testAccount}, "password": {testPassword}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if res := proxied(req); res.StatusCode != 200 {
+		t.Fatalf("connect: %d", res.StatusCode)
+	}
+	req, _ = http.NewRequest(http.MethodGet, f.srv.URL+"/oauth/consent/continue?id="+url.QueryEscape(id[1]), nil)
+	res := proxied(req)
+	loc := res.Header.Get("Location")
+	u, err := url.Parse(loc)
+	if res.StatusCode != http.StatusFound || err != nil {
+		t.Fatalf("continue: %d %q", res.StatusCode, loc)
+	}
+	code := u.Query().Get("code")
+	want := redirect + "?" + url.Values{"code": {code}, "iss": {f.srv.URL}, "state": {"st"}}.Encode()
+	if code == "" || loc != want {
+		t.Fatalf("Location %q, want %q", loc, want)
+	}
+}

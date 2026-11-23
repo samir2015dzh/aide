@@ -119,7 +119,7 @@ type Shared interface {
 // Limits.
 const (
 	authorizationTTL = 30 * time.Minute
-	codeTTL          = 60 * time.Second
+	codeTTL          = 5 * time.Minute
 	accessTTL        = time.Hour
 	// Tokens unused for this long stop working.
 	refreshIdle        = 30 * 24 * time.Hour
