@@ -39,12 +39,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -249,9 +245,9 @@ fun Composer(
         }
         // The commands what is typed names, over the box.
         if (shown.isNotEmpty()) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(aide.card).border(0.5.dp, aide.cardEdge, RoundedCornerShape(14.dp)).padding(vertical = 4.dp)) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.Xl)).background(aide.menu).border(1.dp, aide.cardEdge, RoundedCornerShape(Radius.Xl))) {
                 shown.forEach { c ->
-                    Row(Modifier.fillMaxWidth().pressable { onChange(""); c.run() }.padding(horizontal = 14.dp, vertical = 9.dp)) {
+                    Row(Modifier.fillMaxWidth().rowPress { onChange(""); c.run() }.padding(horizontal = 16.dp, vertical = 11.dp)) {
                         Text("/" + c.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.widthIn(min = 90.dp))
                         Text(c.label, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
@@ -259,7 +255,7 @@ fun Composer(
             }
         }
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(aide.card).border(0.5.dp, aide.cardEdge, RoundedCornerShape(22.dp)).padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(aide.card).border(1.dp, aide.separator, RoundedCornerShape(20.dp)).padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             mentions?.let {
@@ -283,9 +279,7 @@ fun Composer(
                     var open by remember { mutableStateOf(false) }
                     Box {
                         RoundButton(enabled = enabled, filled = false, onClick = { open = true }) { Icon(Icons.Filled.Add, t("More", "更多"), Modifier.size(20.dp)) }
-                        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                            items.forEach { p -> DropdownMenuItem(text = { Text(p.label) }, enabled = p.enabled, onClick = { open = false; p.run() }) }
-                        }
+                        IosMenu(open, { open = false }, items.map { p -> MenuEntry(p.label, p.enabled) { open = false; p.run() } })
                     }
                 }
                 Box(Modifier.weight(1f))
@@ -297,7 +291,7 @@ fun Composer(
                 }) { Icon(MicIcon, t("Dictate", "语音输入"), Modifier.size(20.dp)) }
                 HSpace(4)
                 RoundButton(enabled = can, filled = true, onClick = onSend) {
-                    if (sending) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
+                    if (sending) ActivityIndicator(size = 18.dp, color = Color.White)
                     else Icon(Icons.Filled.KeyboardArrowUp, t("Send", "发送"), Modifier.size(22.dp))
                 }
             }
@@ -362,7 +356,7 @@ private fun RoundButton(enabled: Boolean, filled: Boolean, onClick: () -> Unit, 
     }
     val fg = if (filled && enabled) MaterialTheme.colorScheme.onPrimary else if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else aide.faint
     Box(
-        Modifier.size(36.dp).clip(CircleShape).background(bg).then(if (enabled) Modifier.pressable(onClick) else Modifier),
+        Modifier.size(34.dp).clip(CircleShape).background(bg).then(if (enabled) Modifier.pressable(onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides fg) { content() }
@@ -378,24 +372,22 @@ fun <T> ChipPicker(label: String, value: T, options: List<Pair<T, String>>, onCh
             Modifier.clip(CircleShape).background(aide.fill2).pressable { open = true }.padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(options.firstOrNull { it.first == value }?.second ?: label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            Icon(Icons.Filled.KeyboardArrowDown, label, Modifier.size(14.dp), tint = aide.faint)
+            Text(options.firstOrNull { it.first == value }?.second ?: label, style = IosType.Footnote, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+            Icon(Icons.Filled.KeyboardArrowDown, label, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            options.forEach { (v, l) -> DropdownMenuItem(text = { Text(if (v == value) "✓  $l" else "    $l") }, onClick = { open = false; onChange(v) }) }
-        }
+        IosMenu(open, { open = false }, options.map { (v, l) -> MenuEntry(l, checked = v == value) { open = false; onChange(v) } })
     }
 }
 
 /** A chip that is on or off (a room's @): a capsule, filled while on. */
 @Composable
 fun ToggleChip(label: String, on: Boolean, onClick: () -> Unit) {
-    // On: filled in the theme's strong colour with a tick, as Material's selected filter chip, so it reads at a glance.
+    // On: the accent's tint with a tick (as iOS's tinted tokens), so it reads at a glance; off, a quiet grey capsule.
     Text(
         if (on) "✓ $label" else label,
-        Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.secondaryContainer else aide.fill2).pressable(onClick).padding(horizontal = 10.dp, vertical = 4.dp),
-        fontSize = 12.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-        color = if (on) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else aide.fill2).pressable(onClick).padding(horizontal = 11.dp, vertical = 5.dp),
+        style = IosType.Footnote, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+        color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -412,5 +404,5 @@ fun PageFeedback(model: AppModel) {
         model.pushSink(sink)
         onDispose { model.popSink(sink) }
     }
-    SnackbarHost(host)
+    IosSnackbarHost(host)
 }

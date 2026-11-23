@@ -16,15 +16,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -136,21 +132,21 @@ fun LazyListScope.ownSessionItems(own: OwnSessions, b: Bot, machineName: String,
                 b.agent == "deepseek" -> t("Opened in DSH itself (or by another tool), not by Aide. Read only until you take one over.", "在 DSH 里开的（或经其他工具派的），不是 Aide 开的。默认只读，开启「接管」后可以发消息。")
                 else -> t("Claude Code sessions the Claude desktop app has on this machine, not started by Aide. Read only.", "Claude 桌面应用在这台机器上的 Claude Code 会话，不是 Aide 开的。只读。")
             }
-            Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp))
-            own.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 4.dp)) }
+            Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
+            own.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
             if (own.lost) Text(
                 if (list.isNotEmpty()) t("$machineName is lost: these are as last read.", "$machineName 失联：下面是最后一次读到的会话。") else t("$machineName doesn’t answer.", "$machineName 没有响应。"),
-                style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(horizontal = 4.dp),
+                style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(horizontal = 16.dp),
             )
             if (own.entries != null && list.isEmpty()) Text(
                 t("No sessions of $app's own here.", "这里没有 $app 自己的会话。") + if (own.readFrom.isNotEmpty()) t(" Read from on $machineName: ${own.readFrom}", " $machineName 上读取的目录：${own.readFrom}") else "",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp),
             )
             val rows = shown + if (own.showArchived) archived else emptyList()
-            rows.forEachIndexed { i, e -> Box(Modifier.groupRow(i, rows.size)) { OwnRow(e) { open(e) } } }
+            if (rows.isNotEmpty()) Column { rows.forEachIndexed { i, e -> Box(Modifier.groupRow(i, rows.size, inset = 38.dp)) { OwnRow(e) { open(e) } } } }
             if (archived.isNotEmpty()) Text(
                 if (own.showArchived) t("Hide archived", "收起已归档") else t("Archived (${archived.size})", "已归档（${archived.size}）"),
-                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.pressable { own.showArchived = !own.showArchived }.padding(vertical = 6.dp, horizontal = 4.dp),
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress { own.showArchived = !own.showArchived }.padding(vertical = 6.dp, horizontal = 16.dp),
             )
         }
     }
@@ -158,7 +154,7 @@ fun LazyListScope.ownSessionItems(own: OwnSessions, b: Bot, machineName: String,
 
 @Composable
 private fun OwnRow(e: OwnEntry, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().pressable(onClick).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().rowPress(onClick).padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         when (e) {
             is OwnEntry.Dsh -> DSHDot(e.entry.session, e.lost)
             is OwnEntry.Claude -> if (e.lost) Box(Modifier.size(10.dp).border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)) else Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.outlineVariant, CircleShape))
@@ -170,8 +166,9 @@ private fun OwnRow(e: OwnEntry, onClick: () -> Unit) {
                 is OwnEntry.Dsh -> listOf(dshEntryStateText(e.entry), relativeTime(e.entry.session.lastActivityAt), folder(e.entry.session.cwd))
                 is OwnEntry.Claude -> listOf(claudeStatusText(e.entry.session), relativeTime(e.entry.session.lastActivityAt), e.entry.session.repo.ifEmpty { folder(e.entry.session.cwd) })
             }.filter { it.isNotEmpty() }.joinToString(" · ")
-            Text(line, style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Chevron()
     }
 }
 
@@ -201,24 +198,21 @@ fun ClaudeSessionPage(model: AppModel, entry: ClaudeSessionEntry, back: () -> Un
     LaunchedEffect(entry) { if (entry.lost) loading = false else read(0) }
     val items = remember(events) { Transcript().also { t -> events.forEach(t::add) }.items() }
     Scaffold(snackbarHost = { PageFeedback(model) }, topBar = {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(listOf(claudeStatusText(s), entry.machineName, s.repo.ifEmpty { folder(s.cwd) }).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
-                }
-            },
-            navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-        )
+        NavBar(back) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(listOf(claudeStatusText(s), entry.machineName, s.repo.ifEmpty { folder(s.cwd) }).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
                 LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     error?.let { item { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error) } }
                     if (more) item {
-                        TextButton(onClick = { scope.launch { read(events.firstOrNull()?.seq ?: 0) } }, modifier = Modifier.padding(horizontal = 4.dp)) { Text(t("Earlier", "更早")) }
+                        PlainButton(onClick = { scope.launch { read(events.firstOrNull()?.seq ?: 0) } }, modifier = Modifier.padding(horizontal = 16.dp)) { Text(t("Earlier", "更早")) }
                     }
                     items(items, key = { it.key }) { ItemView(it, dsh = true) }
                     if (entry.lost) {

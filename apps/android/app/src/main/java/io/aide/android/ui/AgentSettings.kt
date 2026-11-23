@@ -6,13 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,61 +64,65 @@ fun AgentSettings(model: AppModel, b: Bot, m: Machine, edit: (Persona) -> Unit) 
     var pauseOpen by remember { mutableStateOf(false) }
     var hiding by remember { mutableStateOf(false) }
     val kindText = { k: String -> when (k) { "personal" -> t("Personal agent", "个人 Agent"); "local" -> t("Coding agent · ${m.machineName}", "本机编码 Agent · ${m.machineName}"); else -> t("Told from what it is · coding agent", "自动判断 · 本机编码 Agent") } }
-    if (hiding) AlertDialog(
+    if (hiding) IosAlert(
         onDismissRequest = { hiding = false },
-        title = { Text(t("Remove ${b.name} from Aide?", "把 ${b.name} 从 Aide 里移除？")) },
-        text = { Text(t("It leaves Aide's lists; nothing on ${m.machineName} is uninstalled or deleted, and its history stays. A recheck of the machine shows it again.", "它会从 Aide 的列表里拿掉；${m.machineName} 上什么都不会卸载或删除，它的历史也都在。到设备页重新检查这台机器，它就会回来。")) },
-        confirmButton = { TextButton(onClick = { hiding = false; scope.launch { model.setAgentHidden(m.machineId, a.name, true) } }) { Text(t("Remove", "移除"), color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { hiding = false }) { Text(t("Cancel", "取消")) } },
+        title = t("Remove ${b.name} from Aide?", "把 ${b.name} 从 Aide 里移除？"),
+        message = t("It leaves Aide's lists; nothing on ${m.machineName} is uninstalled or deleted, and its history stays. A recheck of the machine shows it again.", "它会从 Aide 的列表里拿掉；${m.machineName} 上什么都不会卸载或删除，它的历史也都在。到设备页重新检查这台机器，它就会回来。"),
+        actions = listOf(
+            AlertAction(t("Cancel", "取消"), AlertRole.Cancel) { hiding = false },
+            AlertAction(t("Remove", "移除"), AlertRole.Destructive) { hiding = false; scope.launch { model.setAgentHidden(m.machineId, a.name, true) } },
+        ),
     )
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         SectionHeader(t("Its settings", "它的设置"))
         Column(Modifier.fillMaxWidth().aideCard()) {
             SettingRow(t("Machine", "机器"), t("${m.machineName} (where it runs)", "${m.machineName}（它在这台上运行）"))
-            HorizontalDivider(Modifier.padding(start = 16.dp), color = aide.separator)
+            Hairline(Modifier.padding(start = 16.dp))
             SettingRow(t("Projects", "项目"), projects.joinToString(t(", ", "、")) { world.projectTitle(it.machineId, it.projectId) }.ifEmpty { t("No project yet", "还没有项目") })
             usageLine(a).takeIf { b.agent == "claude" && it.isNotEmpty() }?.let {
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = aide.separator)
+                Hairline(Modifier.padding(start = 16.dp))
                 SettingRow(t("Plan usage", "套餐用量"), it)
             }
             // Its kind: on its grant's page when it has one of its own.
             if (b.client == null) {
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = aide.separator)
+                Hairline(Modifier.padding(start = 16.dp))
                 Box {
-                    Column(Modifier.fillMaxWidth().pressable { kindOpen = true }.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Column(Modifier.fillMaxWidth().rowPress { kindOpen = true }.padding(horizontal = 16.dp, vertical = 11.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(t("Kind", "类别"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text(kindText(a.category), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(t("Kind", "类别"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            Text(kindText(a.category), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            HSpace(4)
+                            Chevron()
                         }
                         Text(
                             if (a.category == "personal") t("Listed with your personal agents; it still runs on its machine.", "列在你的个人 agent 里；它仍在原来的机器上运行。") else t("A coding agent of its machine: work for it goes to that machine.", "本机编码 Agent 归属它所在的机器，派活要先选那台机器。"),
-                            style = MaterialTheme.typography.labelSmall, color = aide.faint,
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    DropdownMenu(expanded = kindOpen, onDismissRequest = { kindOpen = false }) {
-                        for (k in listOf("", "personal", "local")) DropdownMenuItem(text = { Text(kindText(k)) }, onClick = {
+                    IosMenu(kindOpen, { kindOpen = false }, listOf("", "personal", "local").map { k ->
+                        MenuEntry(kindText(k), checked = k == a.category) {
                             kindOpen = false
                             scope.launch { if (model.setAgentCategory(m.machineId, a.name, k)) model.say(if (k == "") t("Told from what it is again", "已恢复自动判断") else if (k == "personal") t("Now a personal agent", "已改为个人 Agent") else t("Now a coding agent", "已改为本机编码 Agent")) }
-                        })
-                    }
+                        }
+                    })
                 }
             }
         }
         Column(Modifier.fillMaxWidth().padding(top = 8.dp).aideCard()) {
             ActionRow(t("Name and avatar", "名字和头像")) { edit(b.personas.firstOrNull() ?: newPersona(b, m)) }
-            HorizontalDivider(Modifier.padding(start = 16.dp), color = aide.separator)
+            Hairline(Modifier.padding(start = 16.dp))
             if (a.pause != null) {
                 ActionRow(t("Resume", "恢复")) { scope.launch { model.setAgentPaused(m.machineId, a.name, false) } }
             } else Box {
                 ActionRow(t("Pause", "暂停")) { pauseOpen = true }
-                DropdownMenu(expanded = pauseOpen, onDismissRequest = { pauseOpen = false }) {
-                    DropdownMenuItem(text = { Text(t("Pause until I resume it", "暂停，直到我恢复")) }, onClick = { pauseOpen = false; scope.launch { model.setAgentPaused(m.machineId, a.name, true) } })
+                IosMenu(pauseOpen, { pauseOpen = false }, listOfNotNull(
+                    MenuEntry(t("Pause until I resume it", "暂停，直到我恢复")) { pauseOpen = false; scope.launch { model.setAgentPaused(m.machineId, a.name, true) } },
                     usageResetAt(a, Instant.now())?.let { r ->
-                        DropdownMenuItem(text = { Text(t("Pause until usage resets (${whenFormat.format(r)})", "暂停到额度重置（${whenFormat.format(r)}）")) }, onClick = { pauseOpen = false; scope.launch { model.setAgentPaused(m.machineId, a.name, true, r.toString()) } })
-                    }
-                }
+                        MenuEntry(t("Pause until usage resets (${whenFormat.format(r)})", "暂停到额度重置（${whenFormat.format(r)}）")) { pauseOpen = false; scope.launch { model.setAgentPaused(m.machineId, a.name, true, r.toString()) } }
+                    },
+                ))
             }
-            HorizontalDivider(Modifier.padding(start = 16.dp), color = aide.separator)
+            Hairline(Modifier.padding(start = 16.dp))
             // Deleting its entry for good goes here too (工单 #82).
             ActionRow(t("Remove from Aide…", "从 Aide 里移除…"), danger = true) { hiding = true }
         }
@@ -132,14 +131,14 @@ fun AgentSettings(model: AppModel, b: Bot, m: Machine, edit: (Persona) -> Unit) 
 
 @Composable
 private fun SettingRow(k: String, v: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(k, style = MaterialTheme.typography.bodyMedium)
-        Text(v, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(k, style = MaterialTheme.typography.bodyLarge)
+        Text(v, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
 @Composable
 private fun ActionRow(text: String, danger: Boolean = false, onClick: () -> Unit) {
-    Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-        modifier = Modifier.fillMaxWidth().pressable(onClick).padding(horizontal = 16.dp, vertical = 12.dp))
+    Text(text, style = MaterialTheme.typography.bodyLarge, color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        modifier = Modifier.fillMaxWidth().rowPress(onClick).padding(horizontal = 16.dp, vertical = 11.dp))
 }

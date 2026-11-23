@@ -11,11 +11,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,10 +45,12 @@ fun KeepaliveSettings(model: AppModel) {
     val on by model.keepalive.enabled.collectAsState()
     val link by model.link.collectAsState()
     val context = LocalContext.current
-    Labeled(t("Connection", "连接"), linkText(link))
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    // Rows of Settings › This phone's card (its leading padding is the hairlines' inset).
+    InfoRow(t("Connection", "连接"), linkText(link))
+    Hairline()
+    Row(Modifier.fillMaxWidth().padding(end = 16.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(t("Stay connected in the background", "后台保持连接"), style = MaterialTheme.typography.bodyMedium)
+            Text(t("Stay connected in the background", "后台保持连接"), style = MaterialTheme.typography.bodyLarge)
             Text(
                 if (on) {
                     t("Notifies you while Aide is in the background, with a quiet notification that it is connected.", "Aide 在后台时也能通知你，并显示一条安静的「已连接」常驻通知。")
@@ -62,9 +61,13 @@ fun KeepaliveSettings(model: AppModel) {
             )
         }
         Spacer(Modifier.width(12.dp))
-        Switch(checked = on, onCheckedChange = { model.keepalive.enable(it) })
+        IosSwitch(checked = on, onCheckedChange = { model.keepalive.enable(it) })
     }
-    if (on) TextButton(onClick = { openAppSettings(context) }) { Text(t("Battery and autostart settings", "省电策略与自启动设置")) }
+    if (on) {
+        Hairline()
+        Text(t("Battery and autostart settings", "省电策略与自启动设置"), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth().rowPress { openAppSettings(context) }.padding(end = 16.dp, top = 11.dp, bottom = 11.dp))
+    }
 }
 
 /**
@@ -78,41 +81,38 @@ fun BackgroundGuide(model: AppModel) {
     val guided by model.keepalive.guided.collectAsState()
     if (!on || guided) return
     val context = LocalContext.current
-    AlertDialog(
+    IosAlert(
         onDismissRequest = { model.keepalive.guideDone() },
-        title = { Text(t("Get notified in the background", "在后台也收到通知")) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    t(
-                        "Aide keeps its own connection to notify you. So that HyperOS doesn’t end it in the background:",
-                        "Aide 靠自己的连接通知你。为免 HyperOS 在后台把它断掉，建议：",
-                    ),
-                )
-                Text(t("1. Battery saver: No restrictions", "1. 省电策略设为「无限制」"))
-                Text(t("2. Autostart: on", "2. 打开「自启动」"))
-                Text(
-                    t(
-                        "Both are in Settings › Apps › Manage apps › Aide (or long-press the Aide icon › App info).",
-                        "两项都在 设置 › 应用设置 › 应用管理 › Aide（或长按桌面上的 Aide 图标 › 应用信息）。",
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    t(
-                        "Even so, after Aide is swiped away from recent apps, notifications may not arrive.",
-                        "即使这样设置，从最近任务里划掉 Aide 后，通知仍可能收不到。",
-                    ),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
+        title = t("Get notified in the background", "在后台也收到通知"),
+        actions = listOf(
+            AlertAction(t("Skip", "跳过"), AlertRole.Cancel) { model.keepalive.guideDone() },
+            AlertAction(t("Open settings", "去设置"), AlertRole.Preferred) {
                 model.keepalive.guideDone()
                 openAppSettings(context)
-            }) { Text(t("Open settings", "去设置")) }
-        },
-        dismissButton = { TextButton(onClick = { model.keepalive.guideDone() }) { Text(t("Skip", "跳过")) } },
-    )
+            },
+        ),
+    ) {
+        Text(
+            t(
+                "Aide keeps its own connection to notify you. So that HyperOS doesn’t end it in the background:",
+                "Aide 靠自己的连接通知你。为免 HyperOS 在后台把它断掉，建议：",
+            ),
+        )
+        Text(t("1. Battery saver: No restrictions", "1. 省电策略设为「无限制」"))
+        Text(t("2. Autostart: on", "2. 打开「自启动」"))
+        Text(
+            t(
+                "Both are in Settings › Apps › Manage apps › Aide (or long-press the Aide icon › App info).",
+                "两项都在 设置 › 应用设置 › 应用管理 › Aide（或长按桌面上的 Aide 图标 › 应用信息）。",
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text(
+            t(
+                "Even so, after Aide is swiped away from recent apps, notifications may not arrive.",
+                "即使这样设置，从最近任务里划掉 Aide 后，通知仍可能收不到。",
+            ),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
