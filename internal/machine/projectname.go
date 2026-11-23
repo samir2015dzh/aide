@@ -9,14 +9,14 @@ import (
 
 // A project's default name (工单 #88): its folder's. The owner's apps make
 // a project's id of its folder's name in lowercase ASCII (signin.ts
-// projectIdFromFolder), so a folder named in Chinese ("D:\商务") got a
+// projectIdFromFolder), so a folder named in Chinese ("D:\报表") got a
 // placeholder id, "project" or "project-2", which said nothing of the
 // folder. A new project whose id was made so is named by its folder now
 // (one given an id of its own keeps being shown by it), and one still under
 // such a placeholder is named so as the machine opens its store.
 
-// folderOf is a path's last folder, with either separator ("D:\商务" →
-// "商务", "/home/me/app/" → "app"); "" for a drive or the root alone.
+// folderOf is a path's last folder, with either separator ("D:\报表" →
+// "报表", "/home/me/app/" → "app"); "" for a drive or the root alone.
 func folderOf(path string) string {
 	parts := strings.FieldsFunc(path, func(r rune) bool { return r == '/' || r == '\\' })
 	if len(parts) == 0 {

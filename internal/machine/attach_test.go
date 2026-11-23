@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -81,8 +82,14 @@ func TestAttachmentsAreSavedAndShown(t *testing.T) {
 	if _, err := h.s.Send(context.Background(), h.p, id, "files", []*sessionv1.Attachment{{Name: "song.mp3", Data: []byte("ID3fake")}, {Name: "pic.png", Data: pngBytes(t)}}); err != nil {
 		t.Fatal(err)
 	}
+	// Idle may still be the first turn's (a slow runner hasn't started the second yet): its own turn is what counts.
+	for deadline := time.Now().Add(15 * time.Second); h.lastTurn(id).GetTurn() < 2; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("no second turn: %v", h.lastTurn(id))
+		}
+	}
 	h.wait(id, idle)
-	if tc := h.lastTurn(id); tc.Result != "files: song.mp3" {
+	if tc := h.lastTurn(id); tc.Turn != 2 || tc.Result != "files: song.mp3" {
 		t.Fatalf("files the agent got: %v", tc)
 	}
 

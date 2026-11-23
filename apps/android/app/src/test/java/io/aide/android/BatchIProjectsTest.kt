@@ -62,11 +62,11 @@ class BatchIProjectsTest {
         assertTrue(aboveProject("deepseek", "danger-full-access", "read-only"))
         assertFalse(aboveProject("deepseek", "read-only", "workspace-write"))
         assertFalse(aboveProject("claude", "bypassPermissions", "read-only"))
-        val biz = Project("m1", "project-2", name = "商务", dshPreset = "read-only")
+        val biz = Project("m1", "project-2", name = "报表", dshPreset = "read-only")
         val dflt = modeChoice("deepseek", "", biz, modes)
         assertEquals("项目默认：仅可查看", dflt.defaultLabel)
         assertNull(dflt.above)
-        assertEquals("比项目「商务」定的 DSH 权限「仅可查看」高：这次会按你选的「完全权限」来", modeChoice("deepseek", "danger-full-access", biz, modes).above)
+        assertEquals("比项目「报表」定的 DSH 权限「仅可查看」高：这次会按你选的「完全权限」来", modeChoice("deepseek", "danger-full-access", biz, modes).above)
         assertNull(modeChoice("claude", "", biz, modes).defaultLabel)
     }
 }

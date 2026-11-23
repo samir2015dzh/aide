@@ -52,15 +52,15 @@ func TestProjectName(t *testing.T) {
 	if n, _ := named(); n != "" {
 		t.Fatalf("a new project with an id of its own has a name: %q", n)
 	}
-	biz := filepath.Join(t.TempDir(), "商务")
+	biz := filepath.Join(t.TempDir(), "报表")
 	if err := os.Mkdir(biz, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := w.app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: mid, ProjectId: "project-2", Path: biz, Workspace: identityv1.Workspace_WORKSPACE_IN_PLACE}); err != nil {
 		t.Fatal(err)
 	}
-	if n, _ := nameOf("project-2"); n != "商务" {
-		t.Fatalf("a project in 商务: %q", n)
+	if n, _ := nameOf("project-2"); n != "报表" {
+		t.Fatalf("a project in 报表: %q", n)
 	}
 	if _, err := w.app.client.RenameProject(ctx, &localv1.RenameProjectRequest{MachineId: mid, ProjectId: "project", Name: "  支付后端  "}); err != nil {
 		t.Fatal(err)

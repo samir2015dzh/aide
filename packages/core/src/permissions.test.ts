@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { aboveProject, modeChoice, modeLabel, projectPreset } from "./permissions";
 
 const modes = [{ id: "read-only", name: "read-only" }, { id: "workspace-write", name: "Workspace" }, { id: "danger-full-access", name: "" }, { id: "plan", name: "Plan" }];
-const biz = { projectId: "project-2", name: "商务", dshPreset: "read-only" };
+const biz = { projectId: "project-2", name: "报表", dshPreset: "read-only" };
 
 describe("DSH's permission presets (工单 #89)", () => {
   test("named as DSH names them; another agent's modes and DSH's other presets by their own names", () => {
@@ -24,7 +24,7 @@ describe("DSH's permission presets (工单 #89)", () => {
     expect(aboveProject("deepseek", "plan", "read-only")).toBe(true); // can't be told apart: said, never silent
     expect(aboveProject("claude", "bypassPermissions", "read-only")).toBe(false);
     expect(modeChoice("deepseek", "", biz, modes)).toEqual({ defaultLabel: "项目默认：仅可查看", above: undefined });
-    expect(modeChoice("deepseek", "danger-full-access", biz, modes).above).toBe("比项目「商务」定的 DSH 权限「仅可查看」高：这次会按你选的「完全权限」来");
+    expect(modeChoice("deepseek", "danger-full-access", biz, modes).above).toBe("比项目「报表」定的 DSH 权限「仅可查看」高：这次会按你选的「完全权限」来");
     expect(modeChoice("claude", "", biz, modes)).toEqual({ defaultLabel: undefined, above: undefined });
   });
 });
