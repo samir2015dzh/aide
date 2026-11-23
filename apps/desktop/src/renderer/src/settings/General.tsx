@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Picker } from "../Picker";
 import { useTranslation } from "react-i18next";
 import { pickLanguage } from "@aide/core";
+import { Mark } from "@aide/ui";
 import type { Appearance, LoginItem, Preferences } from "../../../shared/bridge";
 import { languages, resolveLanguage, type LanguageChoice } from "../../../shared/i18n";
 import { useUpdate } from "../update";
@@ -10,7 +11,7 @@ import { SRow, Switch } from "./common";
 /** The preferences that are switches. */
 type Flag = { [K in keyof Preferences]: Preferences[K] extends boolean ? K : never }[keyof Preferences];
 
-/** General: the appearance and language, start at login, notifications, the menu bar, updates. */
+/** General: which version this is, the appearance and language, start at login, notifications, the menu bar, updates. */
 export function General() {
   const { t } = useTranslation("settings");
   // Kept by the main process, which acts on them while no window is open.
@@ -29,6 +30,7 @@ export function General() {
 
   return (
     <div className="form">
+      <About />
       <div className="fgroup">
         <SRow title={t("appearance.title")}>
           <div className="seg" role="group" aria-label={t("appearance.title")}>
@@ -126,7 +128,46 @@ function Language({ prefs, setPrefs }: { prefs?: Preferences; setPrefs: (p: Pref
   );
 }
 
-/** Update status lives in its own window; General keeps only the download preference. */
+/**
+ * Which version this is, at the top where it is looked for (工单 #103), and Check for Updates: what the check
+ * finds is said in place (checking, up to date, a newer one, why it failed); a newer one is taken on in the Updates
+ * window, as from the menu.
+ */
+function About() {
+  const { t } = useTranslation("settings");
+  const { t: tu } = useTranslation("updates");
+  const info = useUpdate();
+  const version = info?.version ?? window.aide?.version ?? "";
+  const u = info?.update;
+  const newer = u && "version" in u ? u.version : "";
+  const said =
+    !u || u.state === "idle" ? "" :
+    u.state === "error" ? tu(`error.${u.reason}`) :
+    u.state === "unsupported" ? tu("unsupported") :
+    t(`about.${u.state}`, { version: u.state === "current" ? version : newer });
+  const details = u && ["available", "downloading", "ready", "error"].includes(u.state);
+  const busy = !u || ["unsupported", "checking", "downloading", "ready"].includes(u.state);
+  return (
+    <div className="fgroup" aria-label={t("about.title")} role="group">
+      <div className="frow about">
+        <Mark size={36} />
+        <div className="ft">
+          <div className="fn">Aide</div>
+          <div className="fdesc" data-version={version}>{t("about.version", { version })}</div>
+        </div>
+        <button className="btn" disabled={busy} onClick={() => window.aide?.checkForUpdates()}>{t("about.check")}</button>
+      </div>
+      {said && (
+        <div className="frow about-said" role="status" aria-label={t("about.status")} data-state={u?.state}>
+          <span className="ft">{said}</span>
+          {details && <button className="link" onClick={() => window.aide?.openUpdates()}>{t(u?.state === "error" ? "about.errorDetails" : "about.details")}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The download preference; the update itself is shown in its own window. */
 function Updates() {
   const { t } = useTranslation("settings");
   const info = useUpdate();

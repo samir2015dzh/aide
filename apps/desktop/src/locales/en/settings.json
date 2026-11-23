@@ -65,6 +65,19 @@
     "menuBar_win": "Notification Area",
     "menuBadge": "Show a dot on the icon when something needs you"
   },
+  "about": {
+    "title": "About Aide",
+    "version": "Version {{version}}",
+    "check": "Check for Updates",
+    "status": "Update check result",
+    "checking": "Checking for updates…",
+    "current": "Aide {{version}} is up to date",
+    "available": "Version {{version}} is available",
+    "downloading": "Downloading version {{version}}…",
+    "ready": "Version {{version}} is downloaded: restart to update",
+    "details": "View and Update…",
+    "errorDetails": "Details…"
+  },
   "update": {
     "title": "Updates",
     "autoDownload": "Download updates automatically",

@@ -65,7 +65,10 @@ test("background discovery stays quiet; details, snooze and automatic download s
   const [settings] = await Promise.all([app.waitForEvent("window"), main.evaluate(() => window.aide?.openSettings())]);
   await expect(settings.getByRole("main", { name: "通用" })).toBeVisible();
   await expect(settings.getByRole("status", { name: "更新状态" })).toHaveCount(0);
-  await expect(settings.getByRole("button", { name: /检查更新|下载更新|重新启动以更新/ })).toHaveCount(0);
+  // General says which version this is and what a check found (工单 #103); the update itself is taken on in its window.
+  await expect(settings.getByText("版本 1.0.0", { exact: true })).toBeVisible();
+  await expect(settings.getByRole("status", { name: "检查更新的结果" })).toContainText("有新版本 1.2.0");
+  await expect(settings.getByRole("button", { name: /下载更新|重新启动以更新/ })).toHaveCount(0);
   await settings.getByRole("switch", { name: "自动下载更新" }).click();
   await expect.poll(() => app.evaluate(() => (globalThis as unknown as Hook).installTest.downloads)).toBe(1);
   const progress = await open(app, main);
