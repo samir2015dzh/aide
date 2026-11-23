@@ -421,6 +421,15 @@ class AppModel(private val context: Context) {
         report { api!!.setAgentHidden(machineId, agent, hidden) }
     }
 
+    /**
+     * Deletes a bot from the roster (工单 #82), as the desktop does: a coding agent its machine found is hidden there (the
+     * devices tab shows it again); an agent with a grant of its own has it revoked, and the server forgets it. True once done.
+     */
+    suspend fun removeBot(b: Bot): Boolean = report {
+        if (b.key.startsWith("m:")) api!!.setAgentHidden(b.machineId, b.agent, true) else api!!.revokeClient(b.client!!.grantId)
+        say(if (b.key.startsWith("m:")) t("Removed ${b.name} from the roster", "已把 ${b.name} 移出名册") else t("Deleted ${b.name}", "已删除 ${b.name}"))
+    } != null
+
     /** Pauses a coding agent on a machine, or resumes it; resumeAt (RFC 3339), with paused: when it resumes by itself. */
     suspend fun setAgentPaused(machineId: String, agent: String, paused: Boolean, resumeAt: String? = null) {
         report { api!!.setAgentPaused(machineId, agent, paused, resumeAt) }

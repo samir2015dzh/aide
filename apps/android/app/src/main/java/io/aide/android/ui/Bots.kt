@@ -1,7 +1,9 @@
 package io.aide.android.ui
 
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -101,6 +104,7 @@ fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, 
     LaunchedEffect(Unit) { model.loadPersonas() }
     val r = roster(world.machines, world.clients, world.sessions.values, Instant.now(), personas.orEmpty())
     val list = rememberLazyListState()
+    var removing by remember { mutableStateOf<Bot?>(null) }
     Column(Modifier.fillMaxSize()) {
         PageTitle("Bot")
         SyncLine(model)
@@ -111,27 +115,33 @@ fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, 
                 }
                 // Rooms beside the bots, first (ROOMS-DESIGN §2).
                 if (r.all.isNotEmpty()) roomItems(world.rooms, openRoom, newRoom, world.machines.flatMap { it.status?.roomOutbox.orEmpty() })
-                botGroup("personal", t("Personal agents · follow your account", "个人 agent · 跟账号走"), r.personal, open)
-                botGroup("coding", t("Coding agents · on your machines", "编码 agent · 跟机器走"), r.coding, open)
+                botGroup("personal", t("Personal agents · follow your account", "个人 agent · 跟账号走"), r.personal, open) { removing = it }
+                botGroup("coding", t("Coding agents · on your machines", "编码 agent · 跟机器走"), r.coding, open) { removing = it }
             }
         }
     }
+    removing?.let { b -> RemoveBotDialog(model, b, world.machines.firstOrNull { it.machineId == b.machineId }?.machineName.orEmpty()) { removing = null } }
 }
 
-private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, open: (String) -> Unit) {
+private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, open: (String) -> Unit, remove: (Bot) -> Unit) {
     if (bots.isEmpty()) return
     item(key = "$id-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(title, count = bots.size) } }
     bots.forEachIndexed { i, b ->
         item(key = b.key, contentType = "bot") {
-            Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut)).groupRow(i, bots.size)) { BotRow(b) { open(b.key) } }
+            Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut)).groupRow(i, bots.size)) { BotRow(b, onLongClick = { remove(b) }) { open(b.key) } }
         }
     }
 }
 
-/** A roster row (BOTARK-REF §1): face with its state on the corner, the one name with its state as a pill, one line under it. */
+/**
+ * A roster row (BOTARK-REF §1): face with its state on the corner, the one name with its state as a pill, one line under it.
+ * A long press offers deleting it from the roster (工单 #82).
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BotRow(b: Bot, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().pressable(onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+fun BotRow(b: Bot, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+    val press = if (onLongClick == null) Modifier.pressable(onClick) else Modifier.combinedClickable(onLongClickLabel = t("Delete from the roster", "从名册删除"), onLongClick = onLongClick, onClick = onClick)
+    Row(Modifier.fillMaxWidth().then(press).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         BotAvatar(b, 40, toneColor(botTone(b)))
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -146,6 +156,63 @@ fun BotRow(b: Bot, onClick: () -> Unit) {
         HSpace(4)
         Text("›", style = MaterialTheme.typography.titleLarge, color = aide.faint)
     }
+}
+
+/**
+ * Deleting a bot from the roster (工单 #82), the owner's alone, asked first with what it does, as on the desktop: a coding
+ * agent its machine found is hidden there (its sessions untouched; the devices tab shows it again); an agent with a grant
+ * of its own has it revoked — disconnected first when connected now — and the server forgets it.
+ */
+@Composable
+fun RemoveBotDialog(model: AppModel, b: Bot, machine: String, close: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    val local = b.key.startsWith("m:")
+    val online = b.client?.online == true
+    val name = b.name
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { if (!busy) close() },
+        title = { Text(if (local) t("Remove $name from the roster?", "从名册移除 $name？") else t("Delete $name?", "删除 $name？")) },
+        text = {
+            Text(
+                when {
+                    local -> t(
+                        "$name is a coding agent found on $machine. Removed, it is hidden on that machine and leaves the roster; its sessions and the program itself are untouched. To bring it back: on the Devices tab, under that machine's hidden ones, press Show.",
+                        "$name 是 $machine 上检测到的编码 agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」处点「显示」。",
+                    )
+                    online -> t(
+                        "$name is connected now. Deleting it disconnects it first and revokes its access, then clears what the server keeps of it — its record, its contact card and any message it didn't pick up: it can't connect again unless it is connected anew. The work it handed out stays on your machines, as it is.",
+                        "$name 现在连着。删除会先断开它、吊销它的授权，再清掉服务器上它的登记、通讯录名片和没取走的信：它将无法再连进来，要再用 Aide 得重新接入。它派出过的任务留在各台机器上，照常能看。",
+                    )
+                    else -> t(
+                        "$name isn't connected now. Deleting it revokes its access and clears what the server keeps of it — its record, its contact card and any message it didn't pick up — so it leaves the roster. To use Aide again it has to be connected anew. The work it handed out stays on your machines, as it is.",
+                        "$name 现在没连着。删除会吊销它的授权，并清掉服务器上它的登记、通讯录名片和没取走的信，名册里不再有它。它以后要再用 Aide，得重新接入。它派出过的任务留在各台机器上，照常能看。",
+                    )
+                },
+                style = MaterialTheme.typography.bodySmall,
+            )
+        },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                busy = true
+                scope.launch {
+                    model.removeBot(b)
+                    busy = false
+                    close()
+                }
+            }) {
+                Text(
+                    when {
+                        local -> t("Remove from the roster", "从名册移除")
+                        online -> t("Disconnect and delete", "断开并删除")
+                        else -> t("Delete", "删除")
+                    },
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = close) { Text(t("Cancel", "取消")) } },
+    )
 }
 
 /**

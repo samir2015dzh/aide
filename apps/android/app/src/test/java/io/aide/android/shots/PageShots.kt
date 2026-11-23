@@ -120,6 +120,12 @@ class PageShots {
     @Test fun devices() = model().let { m -> shot("5-devices") { DevicesTab(m) {} } }
     @Test fun room() = model().let { m -> shot("8-room", waitFor = "可以发版") { RoomPage(m, "m1", "room_2", openSession = {}) {} } }
     @Test fun newRoom() = model().let { m -> shot("9-new-room") { NewRoomPage(m, opened = {}) {} } }
+    // 工单 #82: a long press on Muse in the roster, asking before it is deleted.
+    @Test fun removeBot() = model().let { m ->
+        val w = world()
+        val muse = io.aide.android.model.roster(w.machines, w.clients, w.sessions.values, now).all.first { it.key == "c:c1" }
+        shot("10-remove-bot") { BotsTab(m) {}; io.aide.android.ui.RemoveBotDialog(m, muse, "") {} }
+    }
 
     companion object {
         private val now: Instant = Instant.now()

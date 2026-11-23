@@ -160,4 +160,9 @@ class LocalApi(port: Long, token: String) {
     suspend fun setAgentPaused(machineId: String, agent: String, paused: Boolean, resumeAt: String? = null) {
         call<SetAgentPausedRequest, JsonElement>("SetAgentPaused", SetAgentPausedRequest(machineId, agent, paused, resumeAt))
     }
+
+    /** Revokes an agent's grant: it is disconnected, and the server forgets it (工单 #82). The machines hear of it too. */
+    suspend fun revokeClient(grantId: String) {
+        call<RevokeClientRequest, JsonElement>("RevokeClient", RevokeClientRequest(grantId), timeoutSeconds = 60)
+    }
 }
