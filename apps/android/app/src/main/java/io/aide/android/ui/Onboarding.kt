@@ -10,15 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,13 +45,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun Onboarding(model: AppModel, snackbar: SnackbarHostState) {
     val world by model.world.collectAsState()
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { pad ->
+    Scaffold(snackbarHost = { IosSnackbarHost(snackbar) }) { pad ->
         Column(
-            Modifier.fillMaxSize().padding(pad).padding(24.dp).verticalScroll(rememberScrollState()),
+            Modifier.fillMaxSize().padding(pad).padding(horizontal = 20.dp, vertical = 24.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Spacer(Modifier.height(24.dp))
-            Text("Aide", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text("Aide", style = MaterialTheme.typography.displaySmall)
             if (world.status.removed) {
                 Text(t("This phone was signed out by another of your devices. Log in again to use it.", "这台手机已被你的另一台设备登出。重新登录即可继续使用。"), color = MaterialTheme.colorScheme.error)
             }
@@ -85,7 +80,7 @@ private fun Start(model: AppModel) {
     var busy by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val setUp = way == Way.SetUp
-    Text(if (setUp) t("Set up a new server", "设置新的服务器") else t("Log in", "登录"), style = MaterialTheme.typography.titleLarge)
+    Text(if (setUp) t("Set up a new server", "设置新的服务器") else t("Log in", "登录"), style = MaterialTheme.typography.headlineSmall)
     Text(
         if (setUp) {
             t(
@@ -95,23 +90,22 @@ private fun Start(model: AppModel) {
         } else {
             t("Log in with your server, account and password. No other device needs to approve.", "用你的服务器、账号和密码登录，不需要别的设备批准。")
         },
+        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    OutlinedTextField(
+    IosField(
         value = address, onValueChange = { address = it; error = null },
-        label = { Text(t("Server", "服务器")) },
-        placeholder = { Text("aide.example.com") },
-        singleLine = true, modifier = Modifier.fillMaxWidth(),
+        label = t("Server", "服务器"), placeholder = "aide.example.com", modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
     )
     if (setUp) {
-        OutlinedTextField(value = setupCode, onValueChange = { setupCode = it; error = null }, label = { Text(t("Setup code", "设置码")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        IosField(value = setupCode, onValueChange = { setupCode = it; error = null }, label = t("Setup code", "设置码"), modifier = Modifier.fillMaxWidth())
     }
-    OutlinedTextField(
-        value = account, onValueChange = { account = it; error = null }, label = { Text(t("Account", "账号")) }, singleLine = true,
+    IosField(
+        value = account, onValueChange = { account = it; error = null }, label = t("Account", "账号"),
         modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
     )
-    OutlinedTextField(
-        value = password, onValueChange = { password = it; error = null }, label = { Text(t("Password", "密码")) }, singleLine = true,
+    IosField(
+        value = password, onValueChange = { password = it; error = null }, label = t("Password", "密码"),
         modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         supportingText = passwordHint.takeIf { setUp },
@@ -126,10 +120,11 @@ private fun Start(model: AppModel) {
         )
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-    Button(
+    FilledButton(
+        large = true,
         onClick = {
-            val server = serverURL(address) ?: return@Button run { error = t("That isn’t a server address.", "这不是服务器地址。") }
-            if (setUp) newLoginProblem(account, password)?.let { return@Button run { error = it } }
+            val server = serverURL(address) ?: return@FilledButton run { error = t("That isn’t a server address.", "这不是服务器地址。") }
+            if (setUp) newLoginProblem(account, password)?.let { return@FilledButton run { error = it } }
             busy = true
             scope.launch {
                 error = if (setUp) model.setUp(server, setupCode, account, password) else model.logIn(server, account, password)
@@ -140,8 +135,8 @@ private fun Start(model: AppModel) {
         enabled = !busy && address.isNotBlank() && account.isNotBlank() && password.isNotEmpty() && (!setUp || setupCode.isNotBlank()),
         modifier = Modifier.fillMaxWidth(),
     ) { Text(if (setUp) t("Set Up", "设置") else t("Log In", "登录")) }
-    if (busy) CircularProgressIndicator()
-    TextButton(onClick = { way = if (setUp) Way.LogIn else Way.SetUp; error = null }) {
+    if (busy) ActivityIndicator(size = 24.dp)
+    PlainButton(modifier = Modifier.fillMaxWidth(), onClick = { way = if (setUp) Way.LogIn else Way.SetUp; error = null }) {
         Text(if (setUp) t("Log in to a server instead", "改为登录已有的服务器") else t("A new server? Set it up with its setup code…", "新的服务器？用设置码设置新的服务器…"))
     }
 }

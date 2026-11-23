@@ -25,12 +25,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
@@ -112,12 +113,12 @@ fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, 
     val list = rememberLazyListState()
     var removing by remember { mutableStateOf<Bot?>(null) }
     Column(Modifier.fillMaxSize()) {
-        PageTitle("Bot")
+        PageTitle("Bot", collapsed = list.collapsed())
         SyncLine(model)
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp)) {
                 if (r.all.isEmpty() && world.watched) item {
-                    Text(t("No bot yet: connect a coding agent on a computer (Aide › Settings › Connect), or a personal agent to your account.", "还没有 bot：先在电脑上的 Aide 里连接一个编码 agent（设置 › 连接），或把个人 agent 连到你的账号。"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 12.dp))
+                    Text(t("No bot yet: connect a coding agent on a computer (Aide › Settings › Connect), or a personal agent to your account.", "还没有 bot：先在电脑上的 Aide 里连接一个编码 agent（设置 › 连接），或把个人 agent 连到你的账号。"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
                 }
                 // Rooms beside the bots, first (ROOMS-DESIGN §2).
                 if (r.all.isNotEmpty()) roomItems(world.rooms, openRoom, newRoom, world.machines.flatMap { it.status?.roomOutbox.orEmpty() })
@@ -135,7 +136,7 @@ private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, o
     item(key = "$id-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(title, count = bots.size) } }
     bots.forEachIndexed { i, b ->
         item(key = b.key, contentType = "bot") {
-            Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut)).groupRow(i, bots.size)) { BotRow(b, short, onLongClick = { remove(b) }) { open(b.key) } }
+            Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold)).groupRow(i, bots.size, inset = 68.dp)) { BotRow(b, short, onLongClick = { remove(b) }) { open(b.key) } }
         }
     }
 }
@@ -147,21 +148,21 @@ private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, o
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BotRow(b: Bot, short: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
-    val press = if (onLongClick == null) Modifier.pressable(onClick) else Modifier.combinedClickable(onLongClickLabel = t("Delete from the roster", "从名册删除"), onLongClick = onLongClick, onClick = onClick)
-    Row(Modifier.fillMaxWidth().then(press).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    val press = if (onLongClick == null) Modifier.rowPress(onClick) else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Delete from the roster", "从名册删除"), onLongClick = onLongClick, onClick = onClick)
+    Row(Modifier.fillMaxWidth().then(press).padding(start = 16.dp, end = 12.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
         BotAvatar(b, 40, toneColor(botTone(b)))
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (short) b.shortName else b.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(if (short) b.shortName else b.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 HSpace(8)
                 StatusPill(b.state.word, botTone(b))
             }
-            Text(b.doing.ifEmpty { b.state.line }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(b.doing.ifEmpty { b.state.line }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (b.waiting > 0) { HSpace(8); CountBadge(b.waiting, Tone.Warn) }
-        HSpace(4)
-        Text("›", style = MaterialTheme.typography.titleLarge, color = aide.faint)
+        HSpace(6)
+        Chevron()
     }
 }
 
@@ -177,48 +178,43 @@ fun RemoveBotDialog(model: AppModel, b: Bot, machine: String, close: () -> Unit)
     val local = b.key.startsWith("m:")
     val online = b.client?.online == true
     val name = b.name
-    androidx.compose.material3.AlertDialog(
+    val remove = {
+        busy = true
+        scope.launch {
+            model.removeBot(b)
+            busy = false
+            close()
+        }
+        Unit
+    }
+    IosAlert(
         onDismissRequest = { if (!busy) close() },
-        title = { Text(if (local) t("Remove $name from the roster?", "从名册移除 $name？") else t("Delete $name?", "删除 $name？")) },
-        text = {
-            Text(
-                when {
-                    local -> t(
-                        "$name is a coding agent found on $machine. Removed, it is hidden on that machine and leaves the roster; its sessions and the program itself are untouched. To bring it back: on the Devices tab, under that machine's hidden ones, press Show.",
-                        "$name 是 $machine 上检测到的编码 agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」处点「显示」。",
-                    )
-                    online -> t(
-                        "$name is connected now. Deleting it disconnects it first and revokes its access, then clears what the server keeps of it — its record, its contact card and any message it didn't pick up: it can't connect again unless it is connected anew. The work it handed out stays on your machines, as it is.",
-                        "$name 现在连着。删除会先断开它、吊销它的授权，再清掉服务器上它的登记、通讯录名片和没取走的信：它将无法再连进来，要再用 Aide 得重新接入。它派出过的任务留在各台机器上，照常能看。",
-                    )
-                    else -> t(
-                        "$name isn't connected now. Deleting it revokes its access and clears what the server keeps of it — its record, its contact card and any message it didn't pick up — so it leaves the roster. To use Aide again it has to be connected anew. The work it handed out stays on your machines, as it is.",
-                        "$name 现在没连着。删除会吊销它的授权，并清掉服务器上它的登记、通讯录名片和没取走的信，名册里不再有它。它以后要再用 Aide，得重新接入。它派出过的任务留在各台机器上，照常能看。",
-                    )
-                },
-                style = MaterialTheme.typography.bodySmall,
+        title = if (local) t("Remove $name from the roster?", "从名册移除 $name？") else t("Delete $name?", "删除 $name？"),
+        message = when {
+            local -> t(
+                "$name is a coding agent found on $machine. Removed, it is hidden on that machine and leaves the roster; its sessions and the program itself are untouched. To bring it back: on the Devices tab, under that machine's hidden ones, press Show.",
+                "$name 是 $machine 上检测到的编码 agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」处点「显示」。",
+            )
+            online -> t(
+                "$name is connected now. Deleting it disconnects it first and revokes its access, then clears what the server keeps of it — its record, its contact card and any message it didn't pick up: it can't connect again unless it is connected anew. The work it handed out stays on your machines, as it is.",
+                "$name 现在连着。删除会先断开它、吊销它的授权，再清掉服务器上它的登记、通讯录名片和没取走的信：它将无法再连进来，要再用 Aide 得重新接入。它派出过的任务留在各台机器上，照常能看。",
+            )
+            else -> t(
+                "$name isn't connected now. Deleting it revokes its access and clears what the server keeps of it — its record, its contact card and any message it didn't pick up — so it leaves the roster. To use Aide again it has to be connected anew. The work it handed out stays on your machines, as it is.",
+                "$name 现在没连着。删除会吊销它的授权，并清掉服务器上它的登记、通讯录名片和没取走的信，名册里不再有它。它以后要再用 Aide，得重新接入。它派出过的任务留在各台机器上，照常能看。",
             )
         },
-        confirmButton = {
-            TextButton(enabled = !busy, onClick = {
-                busy = true
-                scope.launch {
-                    model.removeBot(b)
-                    busy = false
-                    close()
-                }
-            }) {
-                Text(
-                    when {
-                        local -> t("Remove from the roster", "从名册移除")
-                        online -> t("Disconnect and delete", "断开并删除")
-                        else -> t("Delete", "删除")
-                    },
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        },
-        dismissButton = { TextButton(enabled = !busy, onClick = close) { Text(t("Cancel", "取消")) } },
+        actions = listOf(
+            AlertAction(t("Cancel", "取消"), AlertRole.Cancel, enabled = !busy, onClick = close),
+            AlertAction(
+                when {
+                    local -> t("Remove from the roster", "从名册移除")
+                    online -> t("Disconnect and delete", "断开并删除")
+                    else -> t("Delete", "删除")
+                },
+                AlertRole.Destructive, enabled = !busy, onClick = remove,
+            ),
+        ),
     )
 }
 
@@ -238,12 +234,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
     val m = b?.let { x -> world.machines.firstOrNull { it.machineId == x.machineId } }
     Scaffold(
         snackbarHost = { PageFeedback(model) },
-        topBar = {
-            TopAppBar(
-                title = { Text(b?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-            )
-        },
+        topBar = { NavBar(back) { Text(b?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) } },
     ) { pad ->
         if (b == null) {
             Centered { Text(t("This bot is gone.", "这个 bot 已经不在了。")) }
@@ -262,13 +253,13 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                         HSpace(14)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(b.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                                Text(b.name, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                                 HSpace(8)
                                 StatusPill(b.state.word, botTone(b))
                             }
                             Text(b.state.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                             if (b.coding && b.state.usable == Usable.NO && b.state.why != io.aide.android.model.NotReady.PAUSED) {
-                                Text(t("Fix it on the Devices tab ›", "去设备页处理 ›"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.pressable(openDevices).padding(vertical = 2.dp))
+                                Text(t("Fix it on the Devices tab ›", "去设备页处理 ›"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress(onClick = openDevices).padding(vertical = 2.dp))
                             }
                         }
                     }
@@ -282,7 +273,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                     if (work.isEmpty()) item(key = "work-none") {
                         Text(t("Nothing from ${b.name} yet.", "${b.name} 还没有派出过任务。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
                     }
-                    work.forEachIndexed { i, s -> item(key = "s-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, work.size)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+                    work.forEachIndexed { i, s -> item(key = "s-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, work.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
                 }
                 if (m != null && b.coding) item(key = "settings") { AgentSettings(model, b, m, edit) }
                 if (m != null && b.coding) item(key = "identity") { Identity(b, m, edit) }
@@ -332,19 +323,19 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
                 Column(Modifier.weight(1f)) {
                     Text(if (cur != null) t("Talking in", "正在聊") else if (convs.open.isEmpty()) t("Write the first message to start", "写第一条，就开始和它的对话") else t("The next message starts a new conversation", "下一条会开新对话"),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (cur != null) Text("${displayTitle(cur)} · ${t("started", "开始于")} ${agoText(instant(cur.createdAt), now)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.pressable { openSession(cur.sessionId) })
+                    if (cur != null) Text("${displayTitle(cur)} · ${t("started", "开始于")} ${agoText(instant(cur.createdAt), now)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.dimPress { openSession(cur.sessionId) })
                 }
                 if (cur != null) Row(
-                    Modifier.background(aide.fill2, CircleShape).pressable { c.chosen = "new"; model.chooseConversation(b.key, "new"); c.state = ComposerState.Idle }.padding(horizontal = 10.dp, vertical = 6.dp),
+                    Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)).pressable { c.chosen = "new"; model.chooseConversation(b.key, "new"); c.state = ComposerState.Idle }.padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.Add, null, Modifier.size(16.dp))
+                    Icon(Icons.Filled.Add, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                     HSpace(4)
-                    Text(t("New conversation", "开启新对话"), style = MaterialTheme.typography.labelLarge)
+                    Text(t("New conversation", "开启新对话"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
             }
             SectionHeader(t("Conversations", "对话"), count = convs.open.size)
-            if (convs.open.isEmpty() && convs.archived.isEmpty()) Text(t("Nothing with ${b.name} yet: write below.", "还没和 ${b.name} 聊过：在下面写一条。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(4.dp))
+            if (convs.open.isEmpty() && convs.archived.isEmpty()) Text(t("Nothing with ${b.name} yet: write below.", "还没和 ${b.name} 聊过：在下面写一条。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             val rows = convs.open + if (c.showArchived) convs.archived else emptyList()
             rows.forEachIndexed { i, s ->
                 Box(Modifier.groupRow(i, rows.size)) {
@@ -355,11 +346,11 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             }
             if (convs.archived.isNotEmpty()) Text(
                 if (c.showArchived) t("Hide archived", "收起已归档") else t("Archived (${convs.archived.size})", "已归档（${convs.archived.size}）"),
-                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.pressable { c.showArchived = !c.showArchived }.padding(vertical = 6.dp, horizontal = 4.dp),
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress { c.showArchived = !c.showArchived }.padding(vertical = 6.dp, horizontal = 16.dp),
             )
             if (convs.others.isNotEmpty()) {
                 SectionHeader(t("Handed to it by other agents", "别的 agent 派给它的"), count = convs.others.size)
-                convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size)) { SessionRow(s, world) { openSession(s.sessionId) } } }
+                convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } }
             }
         }
     }
@@ -367,13 +358,13 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
 
 @Composable
 private fun ConversationRow(s: Session, current: Boolean, world: io.aide.android.model.World, onChoose: () -> Unit, onOpen: () -> Unit, onArchive: () -> Unit) {
-    Row(Modifier.fillMaxWidth().background(if (current) aide.fill else Color.Transparent).pressable(onChoose).padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().background(if (current) aide.fill else Color.Transparent).rowPress(onChoose).padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(displayTitle(s), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (current) { HSpace(6); StatusPill(t("Current", "当前"), Tone.Live) }
             }
-            Text("${stateWord(s)} · ${agoText(instant(s.updatedAt), Instant.now())}", style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1)
+            Text("${stateWord(s)} · ${agoText(instant(s.updatedAt), Instant.now())}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
         TextLink(t("Open", "打开"), onOpen)
         TextLink(if (s.status == SessionStatus.ARCHIVED) t("Unarchive", "取消归档") else t("Archive", "归档"), onArchive)
@@ -382,7 +373,7 @@ private fun ConversationRow(s: Session, current: Boolean, world: io.aide.android
 
 @Composable
 private fun TextLink(text: String, onClick: () -> Unit) {
-    Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.pressable(onClick).padding(horizontal = 8.dp, vertical = 6.dp))
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress(onClick = onClick).padding(horizontal = 8.dp, vertical = 8.dp))
 }
 
 private fun stateWord(s: Session): String = when (s.status) {
@@ -489,7 +480,7 @@ private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
         SectionHeader(t("Names and faces", "名字与头像"))
         Column(Modifier.fillMaxWidth().aideCard()) {
             b.personas.forEach { p ->
-                Row(Modifier.fillMaxWidth().pressable { edit(p) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().rowPress { edit(p) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     PersonaAvatar(b, p, 32)
                     HSpace(10)
                     Column(Modifier.weight(1f)) {
@@ -498,9 +489,10 @@ private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
                     }
                     Icon(Icons.Filled.Edit, t("Edit ${p.name}", "修改「${p.name}」"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
+                Hairline(Modifier.padding(start = 58.dp))
             }
             Row(
-                Modifier.fillMaxWidth().pressable { edit(newPersona(b, m)) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.fillMaxWidth().rowPress { edit(newPersona(b, m)) }.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
@@ -545,7 +537,7 @@ fun deliveryWords(state: String, name: String, reason: String, reminded: Boolean
 
 private fun LazyListScope.chatItems(chat: DirectChat, b: Bot) {
     item(key = "chat-h") { SectionHeader(t("Conversation", "对话")) }
-    chat.failed?.let { why -> item(key = "chat-failed") { Text(why, style = MaterialTheme.typography.bodySmall, color = Warning) } }
+    chat.failed?.let { why -> item(key = "chat-failed") { Text(why, style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(horizontal = 16.dp)) } }
     if (chat.failed == null && chat.room != null && chat.messages.isEmpty()) item(key = "chat-none") {
         Text(t("Write to ${b.name}: it answers here.", "给 ${b.name} 写点什么：它的回信会出现在这里。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
     }
@@ -555,8 +547,8 @@ private fun LazyListScope.chatItems(chat: DirectChat, b: Bot) {
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (!mine) Text(m.fromName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-                    .background(if (mine) aide.bubble else aide.inset, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text(m.text, style = MaterialTheme.typography.bodyMedium)
+                    .background(if (mine) aide.bubble else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text(m.text, style = MaterialTheme.typography.bodyLarge)
                 }
                 if (mine) m.deliveries.forEach { d ->
                     val (words, bad) = deliveryWords(d.state, b.name, d.reason, d.reminded)

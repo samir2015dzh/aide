@@ -38,10 +38,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import io.aide.android.model.manyMachines
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -65,6 +63,17 @@ import io.aide.android.model.needsYou
 import io.aide.android.model.quietText
 import io.aide.android.model.stateLine
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.core.VisibilityThreshold
 
 /** Every machine's sessions: those that need you, those at work, the rest. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -81,7 +90,7 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
         val working = all.inProgress.size
-        PageTitle(t("Sessions", "会话"), listOfNotNull(
+        PageTitle(t("Sessions", "会话"), collapsed = list.collapsed(), summary = listOfNotNull(
             all.needsYou.size.takeIf { it > 0 }?.let { t("$it need you", "$it 个等你处理") },
             t("$working at work", "$working 个进行中"),
         ).joinToString(" · "))
@@ -89,7 +98,12 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
         MachineFilter(world, picked) { picked = it }
         // Pulled down: read again now (the Watch keeps the list current otherwise).
         var refreshing by remember { mutableStateOf(false) }
-        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, modifier = Modifier.fillMaxSize()) {
+        // iOS's refresh control: the spinner over the list, its spokes as far as it is pulled.
+        val pull = rememberPullToRefreshState()
+        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, modifier = Modifier.fillMaxSize(), state = pull, indicator = {
+            val shown by remember { derivedStateOf { refreshing || pull.distanceFraction > 0f } }
+            if (shown) ActivityIndicator(Modifier.align(Alignment.TopCenter).graphicsLayer { translationY = pull.distanceFraction.coerceAtMost(1f) * 56.dp.toPx() - 8.dp.toPx(); alpha = if (refreshing) 1f else pull.distanceFraction.coerceAtMost(1f) }, size = 24.dp)
+        }) {
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
             // The overview first (BotArk reference §4): what waits for you, what is at work, what is new.
@@ -109,7 +123,7 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
             }
             if (world.next != null) {
                 item {
-                    TextButton(onClick = { scope.launch { model.loadOlder() } }, modifier = Modifier.padding(8.dp)) { Text(t("Load older sessions", "加载更早的会话")) }
+                    PlainButton(onClick = { scope.launch { model.loadOlder() } }, modifier = Modifier.padding(8.dp)) { Text(t("Load older sessions", "加载更早的会话")) }
                 }
             }
         }
@@ -125,12 +139,12 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
     val sessions = world.buckets.needsYou
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
-        PageTitle(t("Needs you", "需要你"), if (sessions.isEmpty()) null else t("${sessions.size} waiting for an answer", "${sessions.size} 个在等你回答"))
+        PageTitle(t("Needs you", "需要你"), if (sessions.isEmpty()) null else t("${sessions.size} waiting for an answer", "${sessions.size} 个在等你回答"), collapsed = list.collapsed())
         SyncLine(model)
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp)) {
             if (sessions.isEmpty()) {
-                item { Text(t("Nothing waits for you.", "没有等你处理的事。"), Modifier.padding(top = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(t("Nothing waits for you.", "没有等你处理的事。"), Modifier.padding(top = 16.dp, start = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 section(t("Tasks waiting for you", "等你处理的任务"), sessions, world, open, Tone.Warn)
             }
@@ -144,10 +158,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
     if (sessions.isEmpty()) return
     item(key = "h-$title", contentType = "heading") { SectionHeader(title, count = sessions.size, tone = tone) }
     itemsIndexed(sessions, key = { _, s -> s.sessionId }, contentType = { _, _ -> "session" }) { i, s ->
-        // A session moving between groups, or arriving, eases into place rather than jumping (Motion, as the desktop's).
-        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short)).groupRow(i, sessions.size)) {
+        // A session moving between groups, or arriving, springs into place rather than jumping (Motion); scrolling moves nothing.
+        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold), fadeOutSpec = tween(Motion.Short)).groupRow(i, sessions.size, inset = 68.dp)) {
             SessionRow(s, world) { open(s.sessionId) }
-            if (i < sessions.size - 1) HorizontalDivider(Modifier.padding(start = 66.dp), thickness = 0.5.dp, color = aide.separator)
         }
     }
 }
@@ -155,7 +168,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
 @Composable
 fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
     val waits = needsYou(s)
-    Row(Modifier.fillMaxWidth().pressable(onClick).padding(start = 14.dp, end = 14.dp, top = 13.dp, bottom = 13.dp), verticalAlignment = Alignment.Top) {
+    Row(Modifier.fillMaxWidth().rowPress(onClick).padding(start = 16.dp, end = 16.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.Top) {
         // Who works on it, by its face (the same on every screen), its state on the face's corner.
         Box {
             AgentFace(s.agent, 40)
@@ -164,9 +177,9 @@ fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(displayTitle(s), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(displayTitle(s), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 HSpace(8)
-                Text(relativeTime(s.updatedAt), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1)
+                Text(relativeTime(s.updatedAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             Text(
                 "${world.senderName(s)} → ${agentTitle(s.agent)} · ${world.projectTitle(s.machineId, s.projectId)}",
@@ -250,22 +263,44 @@ fun statusText(s: Session): String = when (s.status) {
     else -> ""
 }
 
-/** A page's name, heavy and large, and under it one quiet line of what is on it now (工单 #54). */
+/** Whether a tab's list has scrolled past its large title: the title then collapses into the bar. */
 @Composable
-fun PageTitle(text: String, summary: String? = null) {
-    Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp)) {
-        Text(text, style = MaterialTheme.typography.headlineMedium)
-        summary?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp)) }
+fun LazyListState.collapsed(): Boolean {
+    val past by remember(this) { derivedStateOf { firstVisibleItemIndex > 0 || firstVisibleItemScrollOffset > 24 } }
+    return past
+}
+
+/**
+ * A tab's title as iOS's large title (HIG Navigation bars, "large titles"): Large Title 34 bold over one quiet line of
+ * what is on it now; scrolled, it collapses into a 44 bar with the title centred in Headline and a hairline under it.
+ */
+@Composable
+fun PageTitle(text: String, summary: String? = null, collapsed: Boolean = false) {
+    AnimatedContent(
+        collapsed,
+        transitionSpec = { (fadeIn(tween(Motion.Short)) togetherWith fadeOut(tween(Motion.Short))) using SizeTransform(clip = false) { _, _ -> Motion.snappy() } },
+        label = "title",
+    ) { small ->
+        if (small) Column(Modifier.fillMaxWidth().background(aide.bar)) {
+            Text(text, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp))
+            Hairline()
+        } else Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 6.dp)) {
+            Text(text, style = MaterialTheme.typography.headlineLarge)
+            summary?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
     }
 }
 
-/** A group's heading: a label above its rows, its count beside it in the group's colour, not a title competing with them. */
+/**
+ * An inset group's header (HIG Lists and tables): Footnote in the secondary label colour above the card, its words in
+ * line with the rows' words, its count beside it.
+ */
 @Composable
 fun SectionHeader(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant, count: Int? = null, tone: Tone = Tone.Quiet) {
-    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.3.sp), color = if (count != null && tone != Tone.Quiet) toneColor(tone) else color, fontWeight = FontWeight.Bold)
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = MaterialTheme.typography.bodySmall, color = color)
         count?.let {
-            HSpace(8)
+            HSpace(6)
             CountBadge(it, tone)
         }
     }
@@ -274,8 +309,8 @@ fun SectionHeader(text: String, color: Color = MaterialTheme.colorScheme.onSurfa
 @Composable
 fun Labeled(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(12.dp))
-        Text(value, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End)
     }
 }

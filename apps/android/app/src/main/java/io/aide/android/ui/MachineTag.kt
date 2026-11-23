@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,13 +31,11 @@ import io.aide.android.model.manyMachines
 @Composable
 fun MachineTag(world: World, machineId: String) {
     if (!manyMachines(world.machines.size)) return
-    Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) {
-        Text(
-            world.machineName(machineId), Modifier.padding(horizontal = 8.dp, vertical = 1.dp),
-            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
-    }
+    Text(
+        world.machineName(machineId), Modifier.clip(CircleShape).background(aide.fill2).padding(horizontal = 8.dp, vertical = 1.dp),
+        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /** Where what is written goes, by the way to write it (take over, message), while there are several machines. */
@@ -56,6 +54,15 @@ fun WritesTo(world: World, machineId: String, modifier: Modifier = Modifier) {
 fun MachineFilter(world: World, picked: String?, pick: (String?) -> Unit) {
     if (!manyMachines(world.machines.size)) return
     val counts = world.sessions.values.groupingBy { it.machineId }.eachCount()
+    val machines = world.machines.sortedBy { it.machineName.lowercase() }
+    // A few machines: iOS's segmented control (a scope bar); more than fit, the capsules scroll.
+    if (machines.size <= 3) {
+        Segmented(
+            listOf<Pair<String?, String>>(null to "${t("All", "全部")}  ${world.sessions.size}") + machines.map { m -> m.machineId to "${m.machineName.ifEmpty { m.machineId.take(12) }}  ${counts[m.machineId] ?: 0}" },
+            picked, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        ) { pick(it) }
+        return
+    }
     Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Capsule(t("All", "全部"), world.sessions.size, picked == null) { pick(null) }
         world.machines.sortedBy { it.machineName.lowercase() }.forEach { m ->
@@ -70,7 +77,7 @@ private fun Capsule(label: String, count: Int, picked: Boolean, onClick: () -> U
     Row(
         Modifier.clip(CircleShape).background(if (picked) MaterialTheme.colorScheme.onSurface else aide.card)
             .border(0.5.dp, if (picked) Color.Transparent else aide.cardEdge, CircleShape)
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 7.dp),
+            .dimPress(onClick = onClick).padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1)

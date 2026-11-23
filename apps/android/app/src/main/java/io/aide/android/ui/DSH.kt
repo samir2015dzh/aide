@@ -17,19 +17,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -101,7 +93,7 @@ internal fun DSHDot(s: DSHSession, lost: Boolean) {
         return
     }
     val color = when (s.state) {
-        "DSH_SESSION_STATE_RUNNING" -> Color(0xFF17924F)
+        "DSH_SESSION_STATE_RUNNING" -> Positive
         "DSH_SESSION_STATE_IDLE" -> Warning
         else -> MaterialTheme.colorScheme.outlineVariant
     }
@@ -149,35 +141,32 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
         }
     }
     if (asking) {
-        AlertDialog(
+        IosAlert(
             onDismissRequest = { asking = false },
-            title = { Text(t("Take over this session?", "开启接管？")) },
-            text = {
-                Column {
-                WritesTo(model.world.value, entry.machineId, Modifier.padding(bottom = 8.dp))
+            title = t("Take over this session?", "开启接管？"),
+            actions = listOf(
+                AlertAction(t("Cancel", "取消"), AlertRole.Cancel) { asking = false },
+                AlertAction(t("Take Over", "开启接管"), AlertRole.Preferred) { scope.launch { setOn(true) } },
+            ),
+        ) {
+                WritesTo(model.world.value, entry.machineId)
                 Text(
                     t(
                         "You can send this session messages and stop its turn from Aide; they go to DSH through the Aide plugin in DSH Desktop and show there too.\n\nWhile a turn runs, a message waits for the next turn, as one typed in DSH would.\n\nTurning it off makes it read only again; the session in DSH is unaffected.",
                         "开启后可以从 Aide 给这个会话发消息、打断它；消息经 DSH Desktop 里的 Aide 插件交给 DSH，DSH Desktop 里同步可见。\n\n会话正在运行时，消息会排到这一轮之后，和在 DSH 里输入一样。\n\n关闭接管后回到只读，DSH 里的会话不受影响。",
                     ),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
-                }
-            },
-            confirmButton = { TextButton(onClick = { scope.launch { setOn(true) } }) { Text(t("Take Over", "开启接管")) } },
-            dismissButton = { TextButton(onClick = { asking = false }) { Text(t("Cancel", "取消")) } },
-        )
+        }
     }
     Scaffold(snackbarHost = { PageFeedback(model) }, topBar = {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    MachineTag(model.world.value, entry.machineId)
-                    Text(listOf(dshEntryStateText(entry), entry.machineName).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
-                }
-            },
-            navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-        )
+        NavBar(back) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                MachineTag(model.world.value, entry.machineId)
+                Text(listOf(dshEntryStateText(entry), entry.machineName).joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }, bottomBar = {
         // Always there (the owner's ruling, 2026-11-21): read only until taken over, the switch in it, beside sending.
         // Lost: nothing can be sent to it, nor its switch changed, until its machine is back.
@@ -189,7 +178,7 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
     }) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
                 val list = rememberLazyListState()
                 LaunchedEffect(items.size) {
@@ -201,7 +190,7 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                     error?.let { item { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error) } }
                     if (more) {
                         item {
-                            TextButton(onClick = { scope.launch { read(events.firstOrNull()?.seq ?: 0) } }, modifier = Modifier.padding(horizontal = 4.dp)) {
+                            PlainButton(onClick = { scope.launch { read(events.firstOrNull()?.seq ?: 0) } }, modifier = Modifier.padding(horizontal = 4.dp)) {
                                 Text(t("Earlier", "更早"))
                             }
                         }
@@ -235,30 +224,28 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
     var note by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().background(aide.bar)) {
+        Hairline()
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
         WritesTo(model.world.value, entry.machineId, Modifier.padding(bottom = 4.dp))
         problem?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Warning) }
         error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        OutlinedTextField(
-            value = text, onValueChange = { text = it; reqId = "" }, enabled = takeover && !busy, modifier = Modifier.fillMaxWidth(),
-            label = { Text(t("Message to DSH", "给 DSH 的消息")) },
-            placeholder = {
-                Text(
-                    when {
-                        !takeover -> t("Turn on Take Over to send this session messages", "开启接管后可向此会话发送消息")
-                        running -> t("A turn is running: this waits for the next turn", "会话正在运行：这条消息会排到这一轮之后")
-                        else -> t("Message this session", "给这个会话发消息")
-                    },
-                )
+        IosField(
+            value = text, onValueChange = { text = it; reqId = "" }, enabled = takeover && !busy, modifier = Modifier.fillMaxWidth(), singleLine = false,
+            label = t("Message to DSH", "给 DSH 的消息"),
+            placeholder = when {
+                !takeover -> t("Turn on Take Over to send this session messages", "开启接管后可向此会话发送消息")
+                running -> t("A turn is running: this waits for the next turn", "会话正在运行：这条消息会排到这一轮之后")
+                else -> t("Message this session", "给这个会话发消息")
             },
         )
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // The switch, beside sending: off, the box above can't be written in.
-            Switch(checked = takeover, onCheckedChange = setTakeover)
-            Text(t("Take over", "接管"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            IosSwitch(checked = takeover, onCheckedChange = setTakeover)
+            Text(t("Take over", "接管"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             if (takeover && running) {
-                TextButton(enabled = problem == null, onClick = {
+                PlainButton(enabled = problem == null, onClick = {
                     scope.launch {
                         error = null
                         try {
@@ -271,7 +258,7 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
                     }
                 }) { Text(t("Stop", "打断")) }
             }
-            Button(enabled = takeover && !busy && text.isNotBlank() && problem == null, onClick = {
+            FilledButton(enabled = takeover && !busy && text.isNotBlank() && problem == null, onClick = {
                 if (reqId.isEmpty()) reqId = newDSHRequestId()
                 busy = true
                 error = null
@@ -292,5 +279,6 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
                 }
             }) { Text(if (busy) t("Sending…", "正在发送…") else t("Send", "发送")) }
         }
+    }
     }
 }
