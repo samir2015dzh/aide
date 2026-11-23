@@ -30,7 +30,7 @@ export function Rail() {
   const now = useNow(30_000);
   const [tip, setTip] = useState<Tip>(null);
   const [menu, setMenu] = useState<AgentMenuAt | null>(null);
-  const held = useHeldCount(!!st.status);
+  const held = useHeldCount(!!st.status && !st.reconnecting);
   const r = useRoster();
   const [pins] = usePins();
   const bots = [...allBots(r)].sort((a, b) => Number(pins.includes(b.key)) - Number(pins.includes(a.key)));

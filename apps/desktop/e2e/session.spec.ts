@@ -206,7 +206,7 @@ test("the session's settings are in a menu with what a glance needs; its list is
   const rows = card.getByRole("listitem");
   const heights = await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
   expect(new Set(heights).size).toBe(1);
-  const icons = await rows.evaluateAll((els) => els.map((el) => el.querySelector("svg, img, .av")!.getBoundingClientRect().width));
+  const icons = await rows.evaluateAll((els) => els.map((el) => el.querySelector(".bav-mark, svg, img, .av")!.getBoundingClientRect().width));
   expect(new Set(icons)).toEqual(new Set([16]));
   // Under it, the session's context: the model it runs on, and its reasoning effort, which the agent
   // doesn't tell, so it follows the agent's own. The same width and rows, 8 apart.

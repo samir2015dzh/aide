@@ -26,7 +26,8 @@ export function OpsLog() {
       (e) => setError(errorText(e)),
     );
   }, []);
-  const up = !!st.status;
+  // Up: aided answers and its watch is live, so a link restored (工单 #87) counts as aided back.
+  const up = !!st.status && !st.reconnecting;
   useEffect(() => {
     if (up) load();
   }, [load, up]);

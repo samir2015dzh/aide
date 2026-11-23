@@ -253,7 +253,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const foot = useRef<HTMLButtonElement>(null);
-  const held = useHeldCount(!!st.status);
+  const held = useHeldCount(!!st.status && !st.reconnecting);
   const taskLook = useTaskLook();
   const marks = overviewMarks(st, useNow(30_000));
   // The pages that left the sidebar (工单 #63) are here, beside settings and the account (BotArk: at the foot). A

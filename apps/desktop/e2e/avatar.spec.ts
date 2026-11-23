@@ -17,7 +17,7 @@ async function api<T>(page: Page, method: string, body: object = {}): Promise<T>
 test("the roster's faces are live characters moved by real state; the look picked in the editor is kept and drawn", async () => {
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1440, height: 860 });
-  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: "编码 agent · 跟机器走" });
+  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: "owner-mac", exact: true });
   const row = here.getByRole("button", { name: /^Gemini CLI/ });
   const mark = row.locator(".sand-grok-bot-mark");
   // The engine draws it: an SVG it renders frame by frame, not a picture.

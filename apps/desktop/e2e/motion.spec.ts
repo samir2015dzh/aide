@@ -13,14 +13,15 @@ async function changes(page: Page, ms: number): Promise<string[][]> {
     (ms) =>
       new Promise<string[][]>((res) => {
         const batches: string[][] = [];
-        const mo = new MutationObserver((ms) =>
-          batches.push(
-            ms.map((m) => {
-              const el = m.target instanceof Element ? m.target : m.target.parentElement;
-              return `${el?.classList[0] ?? el?.tagName} ${m.type}`;
-            }),
-          ),
-        );
+        // The bots' faces are live characters (工单 #83): their engine redraws them frame by frame, by design, so
+        // what they change is left out; everything else on the page still changes only its clocks.
+        const mo = new MutationObserver((ms) => {
+          const batch = ms.flatMap((m) => {
+            const el = m.target instanceof Element ? m.target : m.target.parentElement;
+            return el?.closest(".sand-grok-bot-mark") ? [] : [`${el?.classList[0] ?? el?.tagName} ${m.type}`];
+          });
+          if (batch.length) batches.push(batch);
+        });
         mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
         setTimeout(() => (mo.disconnect(), res(batches)), ms);
       }),
