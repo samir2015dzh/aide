@@ -244,7 +244,7 @@ fun Project.title(): String = name.trim().ifEmpty { projectId }
 data class ProjectRef(val machineId: String = "", val projectId: String = "")
 
 @Serializable
-data class Failure(val kind: String = "", val message: String = "", val retryable: Boolean = false, val hint: String = "")
+data class Failure(val kind: String = "", val message: String = "", val retryable: Boolean = false, val hint: String = "", val provider: String = "")
 
 @Serializable
 data class QuestionOption(val label: String = "", val description: String = "")

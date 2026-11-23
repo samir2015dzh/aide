@@ -214,7 +214,7 @@ fun ClaudeSessionPage(model: AppModel, entry: ClaudeSessionEntry, back: () -> Un
                     if (more) item {
                         PlainButton(onClick = { scope.launch { read(events.firstOrNull()?.seq ?: 0) } }, modifier = Modifier.padding(horizontal = 16.dp)) { Text(t("Earlier", "更早")) }
                     }
-                    items(items, key = { it.key }) { ItemView(it, dsh = true) }
+                    items(items, key = { it.key }) { ItemView(it, dsh = true, agent = agentTitle("claude")) }
                     if (entry.lost) {
                         val name = entry.machineName.ifEmpty { entry.machineId }
                         item { Text(t("$name can't be reached: what is shown is as last read. Its conversation can be read once it is back.", "$name 连不上：这里显示的是最后一次读到的样子，内容要等它重新连上才能读。"), Modifier.padding(12.dp)) }

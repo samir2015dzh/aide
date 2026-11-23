@@ -73,6 +73,9 @@ import io.aide.android.model.AppModel
 import io.aide.android.model.Item
 import io.aide.android.model.SessionFeed
 import io.aide.android.model.agentTitle
+import io.aide.android.model.failureAdvice
+import io.aide.android.model.failureHeadline
+import io.aide.android.model.toldApart
 import io.aide.android.model.buildAnswers
 import io.aide.android.model.choose
 import io.aide.android.model.displayTitle
@@ -172,7 +175,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                 ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
+                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty(), agent = agentTitle(s?.agent.orEmpty())) } }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
             }
@@ -272,7 +275,7 @@ private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
  * those sent from Aide are marked so.
  */
 @Composable
-internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
+internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, agent: String = "") {
     val pad = Modifier.padding(horizontal = 12.dp)
     when (item) {
         is Item.User -> Column(pad.fillMaxWidth(), horizontalAlignment = Alignment.End) {
@@ -314,8 +317,8 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
             )
             if (r.note.isNotBlank()) SelectionContainer { Text(r.note, style = MaterialTheme.typography.bodySmall) }
         }
-        is Item.Error -> Text(item.text, pad, color = MaterialTheme.colorScheme.error)
-        is Item.TurnEnd -> Text(t("The turn failed: ", "本轮失败：") + item.text, pad, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        is Item.Error -> FailureView(item.kind, item.provider, item.text, agent)
+        is Item.TurnEnd -> FailureView(item.kind, item.provider, item.text, agent)
         is Item.Rollback -> Text(
             t("Rolled back to turn ${item.turn}: turns ${item.turn + 1} to ${item.lastTurn} above were discarded.", "已回滚到第 ${item.turn} 轮：上面第 ${item.turn + 1}–${item.lastTurn} 轮已丢弃。"),
             pad, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -344,6 +347,41 @@ private fun resolutionText(r: String) = when (r) {
     "QUESTION_RESOLUTION_ANSWERED" -> t("answered", "已回答")
     "QUESTION_RESOLUTION_DECLINED" -> t("declined", "已拒绝")
     else -> r.removePrefix("QUESTION_RESOLUTION_").lowercase()
+}
+
+/**
+ * A failure as the desktop's card tells it (工单 #105): what happened to the agent and what to do, in words; the agent's
+ * raw message only under Details, opened as a group of tool calls opens.
+ */
+@Composable
+private fun FailureView(kind: String, provider: String, raw: String, agent: String) {
+    var open by remember { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (open) 90f else 0f, Motion.snappy(), label = "chevron")
+    val who = agent.ifEmpty { t("The agent", "agent") }
+    Column(Modifier.padding(horizontal = 12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(failureHeadline(kind, who, provider), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        // One not told apart says the original is in Details, so only when there is one.
+        failureAdvice(kind, who, provider).takeIf { it.isNotEmpty() && (toldApart(kind) || raw.isNotBlank()) }?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (raw.isNotBlank()) {
+            Row(Modifier.clip(RoundedCornerShape(Radius.Sm)).clickable { open = !open }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Details", "详情"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.primary)
+            }
+            AnimatedVisibility(
+                open,
+                enter = expandVertically(Motion.spring(IntSize.VisibilityThreshold)) + fadeIn(tween(Motion.Medium)),
+                exit = shrinkVertically(Motion.snappy(IntSize.VisibilityThreshold)) + fadeOut(tween(Motion.Short)),
+            ) {
+                Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
+                    SelectionContainer {
+                        Text(raw, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
