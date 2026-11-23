@@ -22,3 +22,21 @@ func TestCheckName(t *testing.T) {
 		t.Fatalf("by id: %v", err)
 	}
 }
+
+// A machine the relay knows no name for is called so in plain words, with
+// the last four of its id, in the language of what a person reads; never
+// its whole id (工单 #84). There is no name to hold it to either.
+func TestUnnamedMachine(t *testing.T) {
+	t.Setenv("AIDE_LANG", "zh-CN")
+	if got := unnamedMachine("m_zxcz5wdiap4e56ys"); got != "未命名的机器 · 56ys" {
+		t.Fatalf("zh: %q", got)
+	}
+	t.Setenv("AIDE_LANG", "en")
+	if got := unnamedMachine("m_zxcz5wdiap4e56ys"); got != "Unnamed machine · 56ys" {
+		t.Fatalf("en: %q", got)
+	}
+	ref := machineRef{ID: "m_zxcz5wdiap4e56ys", Name: unnamedMachine("m_zxcz5wdiap4e56ys")}
+	if err := checkName(ref, &peer.Machine{MachineID: ref.ID, Name: "far-pc"}); err != nil {
+		t.Fatalf("unnamed: %v", err)
+	}
+}

@@ -422,7 +422,20 @@
     "fixOnDevices": "Fix it on the devices page",
     "identityFirst": "Give it a name and a face",
     "identityAddTip": "A new name and face: set its project and model, and talk to it as that",
-    "identityEditTip": "Edit “{{name}}”"
+    "identityEditTip": "Edit “{{name}}”",
+    "remove": {
+      "menu": "Delete from the roster…",
+      "title": "Delete {{name}}?",
+      "offlineMessage": "{{name}} isn't connected now. Deleting it revokes its access and clears what the server keeps of it — its record, its contact card and any message it didn't pick up — so it leaves the roster. To use Aide again it has to be connected anew. The work it handed out stays on your machines, as it is.",
+      "onlineMessage": "{{name}} is connected now. Deleting it disconnects it first and revokes its access, then clears what the server keeps of it — its record, its contact card and any message it didn't pick up: it can't connect again unless it is connected anew. The work it handed out stays on your machines, as it is.",
+      "button": "Delete",
+      "onlineButton": "Disconnect and delete",
+      "done": "Deleted {{name}}",
+      "localTitle": "Remove {{name}} from the roster?",
+      "localMessage": "{{name}} is a coding agent found on {{machine}}. Removed, it is hidden on that machine and leaves the roster; its sessions and the program itself are untouched. To bring it back: on the devices page, in that machine's “hidden” line, choose Show.",
+      "localButton": "Remove from the roster",
+      "localDone": "Removed {{name}} from the roster"
+    }
   },
   "rooms": {
     "title": "Rooms",

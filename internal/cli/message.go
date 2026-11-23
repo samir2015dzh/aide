@@ -279,7 +279,7 @@ func (a *app) machineName(id string) string {
 			return m.Name
 		}
 	}
-	return id
+	return unnamedMachine(id)
 }
 
 // printMessage shows a message to a model the way every consumer does

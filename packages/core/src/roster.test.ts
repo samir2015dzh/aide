@@ -121,4 +121,11 @@ describe("who gets on the roster (工单 #64)", () => {
     expect(r.machines[0].bots.map((b) => b.name)).toEqual(["Claude Code", "Codex on work-pc", "Helper"]);
     expect(r.aside).toEqual([]);
   });
+
+  test("a coding agent the owner removed from the roster (hidden on its machine, 工单 #82) stays off, its grant with it", () => {
+    const machines = [machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true }, { name: "deepseek", available: true, loggedIn: true, hidden: true }])];
+    const r = roster(machines, [client("c1", "DSH on work-pc")], [], now);
+    expect(allBots(r).map((b) => b.name)).toEqual(["Claude Code"]);
+    expect(r.aside.map((a) => a.client.label)).toEqual(["DSH on work-pc"]);
+  });
 });

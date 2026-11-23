@@ -312,7 +312,8 @@ export function clientCategory(c: Pick<Client, "label" | "category" | "categoryM
 
 /**
  * Aide's own client logged in on a machine under the name it makes up ("client@<machine>", internal/cli applogin.go
- * and login.go): a connection of the account, not an agent (工单 #64), whatever kind it was filed as.
+ * and login.go): a connection of the account, not an agent (工单 #64), whatever kind it was filed as. The CLI's roster
+ * (`aide roster`, and the MCP gateway's) admits by the same rule (Go identity.IsAideClient, internal/cli onRoster; 工单 #79).
  */
 export function isAideClient(c: Pick<Client, "label">): boolean {
   return /^client@/i.test(c.label.trim());

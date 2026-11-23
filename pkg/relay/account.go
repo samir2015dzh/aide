@@ -601,6 +601,54 @@ func (s *Server) IssueGrant(account, password string, clientKey []byte, label, c
 	return sg, t.trust.RootChain(), nil
 }
 
+// RenameGrant names an agent whose key a server holds (IssueGrant) to
+// instead of from: its grant signed again by the server, the label alone
+// changed, as the next version, which machines then hold it to (as the
+// owner's rename, Owner.RenameClient). It returns the new grant, nil when
+// the grant is not named from (the owner renamed it since).
+func (s *Server) RenameGrant(grantID, from, to string) (*identityv1.Signed, error) {
+	owner := s.singleOwner()
+	if owner == "" {
+		return nil, errf(connect.CodeFailedPrecondition, "this server is not set up yet")
+	}
+	t, err := s.tenantFor(owner)
+	if err != nil {
+		return nil, err
+	}
+	key, err := s.sqlite.ServerKey()
+	if err != nil || key == nil {
+		return nil, fmt.Errorf("the server's key: %v", err)
+	}
+	grants, err := s.store.Grants(owner)
+	if err != nil {
+		return nil, err
+	}
+	var cur *identityv1.Grant
+	for _, sg := range grants {
+		g := &identityv1.Grant{}
+		if identity.Unverified(sg, g) == nil && g.GrantId == grantID {
+			cur = g
+		}
+	}
+	if cur == nil || cur.Custodian == "" {
+		return nil, errf(connect.CodeNotFound, "no agent with grant "+grantID+" whose key a server holds")
+	}
+	if cur.ClientLabel != from {
+		return nil, nil
+	}
+	g := proto.Clone(cur).(*identityv1.Grant)
+	g.ClientLabel = to
+	g.Version++
+	sg, err := identity.Sign(g, key)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.store.PutGrant(owner, g, sg); err != nil {
+		return nil, err
+	}
+	return sg, s.applyRevocations(t, &identityv1.RevocationList{OwnerId: owner, MinGrantVersions: map[string]uint64{grantID: g.Version}})
+}
+
 // ---------------------------------------------------------------------------
 // The owner's devices: signing for them, the account, the device list.
 

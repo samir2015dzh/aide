@@ -250,8 +250,20 @@ func (s *Server) loadTenant(ownerID string) (*tenant, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The names its machines last reported, kept (工单 #84): each says its
+	// own again, and its version, once it is back.
+	reported := map[string]*relayv1.ReportStatusRequest{}
+	if ns, ok := s.store.(MachineNameStore); ok {
+		names, err := ns.MachineNames(ownerID)
+		if err != nil {
+			return nil, err
+		}
+		for id, name := range names {
+			reported[id] = &relayv1.ReportStatusRequest{Name: name}
+		}
+	}
 	t = &tenant{ownerID: ownerID, trust: trust, machines: map[string]*peer{}, peers: map[*peer]struct{}{},
-		reported: map[string]*relayv1.ReportStatusRequest{}, lastSeen: map[string]time.Time{},
+		reported: reported, lastSeen: map[string]time.Time{},
 		watchers: map[string]map[*updates]struct{}{}, revocations: rev, ownerWatchers: map[chan struct{}]struct{}{}}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -872,6 +884,9 @@ func (s *Server) applyRevocations(t *tenant, in *identityv1.RevocationList) erro
 		if identity.Unverified(sg, g) == nil && revoked[g.GrantId] {
 			if err := s.store.DeleteGrant(t.ownerID, g.GrantId); err != nil {
 				s.log.Warn("forgetting a revoked grant", "owner", t.ownerID, "grant", g.GrantId, "err", err)
+			}
+			if s.sqlite != nil {
+				s.sqlite.DeleteLogin(g.GrantId) // the record of its login, too (工单 #82)
 			}
 			gone = append(gone, g.ClientId)
 		}

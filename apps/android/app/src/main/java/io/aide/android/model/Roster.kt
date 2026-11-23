@@ -120,7 +120,7 @@ private fun grantAgent(label: String): String? {
     }
 }
 
-/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). */
+/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). The same rule as the CLI's roster (Go identity.IsAideClient, 工单 #79). */
 fun isAideClient(c: Client): Boolean = c.label.trim().startsWith("client@", ignoreCase = true)
 
 /** A grant filed as a coding agent is one on the roster when it names a known coding agent, or the owner filed it so. */
@@ -160,8 +160,11 @@ fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<
             val own = personas.filter { it.machineId == m.machineId && it.agent == agent }
             bots += bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own)
         }
-        for (g in grants.filter { !admitted(it) }) aside += AsideClient(g, m.machineId)
-        for (g in grants.filter { admitted(it) }) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
+        // One the owner took off the roster (hidden on its machine, 工单 #82) stays off with its grant.
+        val hidden = m.status?.agents.orEmpty().filter { it.hidden }.map { it.name }.toSet()
+        val kept = { g: Client -> admitted(g) && grantAgent(g.label) !in hidden }
+        for (g in grants.filter { !kept(it) }) aside += AsideClient(g, m.machineId)
+        for (g in grants.filter(kept)) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
         MachineBots(m, bots)
     }
     for (g in localGrants[""].orEmpty().filter { !admitted(it) }) aside += AsideClient(g, "")

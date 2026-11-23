@@ -176,8 +176,10 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
     }
     // A coding agent with a grant of its own that its machine does not list (another kind, or not detected): its own
     // bot — when it is a coding agent at all (a known kind, or filed so by the owner); else a connection, set aside.
+    // One the owner took off the roster (hidden on its machine, 工单 #82) stays off with its grant.
+    const hidden = new Set(m.status?.agents.filter((a) => a.hidden).map((a) => a.name));
     for (const g of grants) {
-      if (!admitted(g, machines)) {
+      if (!admitted(g, machines) || hidden.has(grantAgent(g.label) ?? "")) {
         aside.push({ client: g, machineId: m.machineId });
         continue;
       }

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/samir2015dzh/aide/internal/legacy"
+	"regexp"
 	"strings"
 	"time"
 
@@ -50,7 +51,7 @@ func (g *Gateway) createConnection(ctx context.Context, a *Authorization, acct A
 		return nil, err
 	}
 	now := g.cfg.Now()
-	name := label(c.Name, a.RedirectURI)
+	name := label(c.Name)
 	signed, chain, err := g.cfg.Relay.IssueGrant(account, password, identity.MarshalPublicKey(key.Public()), name, g.issuer.String())
 	if err != nil {
 		return nil, err
@@ -79,27 +80,65 @@ func (g *Gateway) createConnection(ctx context.Context, a *Authorization, acct A
 	return conn, nil
 }
 
-// label names a connection for the owner: the app and where it returns to,
-// "Claude (claude.ai)", at most 64 bytes (the relay's limit).
-func label(name, redirectURI string) string {
-	host := redirectURI
-	if i := strings.Index(host, "://"); i >= 0 {
-		host = host[i+3:]
+// label names a connection for the owner: the app's name alone, "Claude",
+// at most 64 bytes (the relay's limit). Where it returns to is no part of it
+// (工单 #85): two connections of one app are told apart by their id and
+// when they were made; the consent page and the console say where it
+// returns (ConnectionInfo.ReturnsTo).
+func label(name string) string {
+	if len(name) <= 64 {
+		return name
 	}
-	host, _, _ = strings.Cut(host, "/")
-	if h, _, ok := strings.Cut(host, ":"); ok && !strings.HasPrefix(host, "[") {
-		host = h
+	r := []rune(name)
+	for len(string(r))+len("…") > 64 {
+		r = r[:len(r)-1]
 	}
-	s := name + " (" + host + ")"
-	for len(s) > 64 {
-		r := []rune(name)
-		if len(r) <= 1 {
-			return s[:64]
+	return string(r) + "…"
+}
+
+// hostedLabel is how connections were named before 工单 #85: the app and
+// where it returned to, "Muse (127.0.0.1)", cut with "…" to fit.
+var hostedLabel = regexp.MustCompile(`^(.+) \([^()\s]+\)$`)
+
+// renameHosted names the live connections made before 工单 #85 by their
+// app alone, on their grant too (the server signs it again, as the owner's
+// rename would), so the apps, the roster, the contacts and the machines
+// all say "Muse". A grant the owner renamed since keeps the owner's name.
+func (g *Gateway) renameHosted(ctx context.Context) {
+	conns, err := g.db.ListConnections(ctx, ConnectionFilter{States: []string{StateActive}})
+	if err != nil {
+		g.log.Warn("mcp: renaming connections", "err", err)
+		return
+	}
+	for _, c := range conns {
+		m := hostedLabel.FindStringSubmatch(c.ClientName)
+		if m == nil {
+			continue
 		}
-		name = string(r[:len(r)-1])
-		s = name + "… (" + host + ")"
+		name := m[1]
+		if cl, err := g.db.GetClient(ctx, c.ClientID); err == nil && cl != nil {
+			name = label(cl.Name)
+		}
+		l := g.connLock(c.ID)
+		l.Lock()
+		if cur, err := g.db.GetConnection(ctx, c.ID); err == nil && cur != nil && cur.Live() && cur.ClientName == c.ClientName {
+			signed, err := g.cfg.Relay.RenameGrant(cur.GrantID, cur.ClientName, name)
+			if err == nil && signed != nil {
+				cur.Grant, _ = proto.Marshal(signed)
+			}
+			if err == nil {
+				cur.ClientName = name
+				err = g.db.PutConnection(ctx, cur)
+			}
+			if err != nil {
+				g.log.Warn("mcp: renaming a connection", "connection", c.ID, "err", err)
+			} else {
+				g.log.Info("mcp: connection renamed", "connection", c.ID, "name", name)
+			}
+		}
+		l.Unlock()
+		g.dropPeer(c.ID) // its tunnels hold the old grant
 	}
-	return s
 }
 
 func keyAAD(connectionID string) []byte { return []byte(legacy.MCPKey + connectionID) }

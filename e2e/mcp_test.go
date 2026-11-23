@@ -148,7 +148,7 @@ func TestMCPGateway(t *testing.T) {
 		return err == nil && len(clients.Clients) == 1
 	})
 	mcpClient := clients.Clients[0]
-	if mcpClient.Custodian != base || mcpClient.Spec.TaskVisibility != identityv1.TaskVisibility_TASK_VISIBILITY_ALL {
+	if mcpClient.Custodian != base || mcpClient.Label != "Aide test" || mcpClient.Spec.TaskVisibility != identityv1.TaskVisibility_TASK_VISIBILITY_ALL {
 		t.Fatalf("the MCP client's grant: %+v", mcpClient)
 	}
 	if st := statusOf(t, session); st.State != "active" || st.Next != "" {
@@ -402,7 +402,7 @@ func TestMCPGateway(t *testing.T) {
 			return false
 		}
 		for _, c := range l.Clients {
-			if c.Label == "Second app (127.0.0.1)" && !c.Revoked {
+			if c.Label == "Second app" && !c.Revoked {
 				return false
 			}
 		}

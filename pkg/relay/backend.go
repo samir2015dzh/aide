@@ -55,3 +55,13 @@ type EraseStore interface {
 	// PurgeErases deletes the orders (and their acks) past EraseRetention.
 	PurgeErases(now time.Time) error
 }
+
+// MachineNameStore keeps the name each machine last reported, so that a
+// relay that restarted still lists its machines by name before they are
+// back (工单 #84): the apps, aide and the MCP gateway all take a machine's
+// name from the relay's list. A Backend may implement it (the SQLite store
+// does); otherwise names are known only once each machine reports again.
+type MachineNameStore interface {
+	PutMachineName(ownerID, machineID, name string) error
+	MachineNames(ownerID string) (map[string]string, error)
+}

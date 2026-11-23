@@ -17,8 +17,12 @@ type ConnectionInfo struct {
 	// document lives ("claude.ai"; "" for a registered client).
 	Name       string
 	ClientHost string
-	Verified   bool
-	State      string
+	// ReturnsTo is where the app returns to after connecting, as it
+	// registered it ("127.0.0.1", "claude.ai"): a detail, never its name
+	// (工单 #85).
+	ReturnsTo string
+	Verified  bool
+	State     string
 	// GrantID: the owner's list of agents has it too.
 	GrantID   string
 	CreatedAt time.Time
@@ -40,6 +44,11 @@ func (g *Gateway) Connections(ctx context.Context, accountID string) ([]Connecti
 		info := ConnectionInfo{ID: c.ID, Name: c.ClientName, State: c.State, GrantID: c.GrantID, CreatedAt: c.CreatedAt, LastUsed: c.LastUsed}
 		if cl, err := g.db.GetClient(ctx, c.ClientID); err == nil && cl != nil {
 			info.Name, info.Verified = cl.Name, cl.Verified
+			if len(cl.RedirectURIs) > 0 {
+				if u, err := url.Parse(cl.RedirectURIs[0]); err == nil {
+					info.ReturnsTo = u.Hostname()
+				}
+			}
 			if u, err := url.Parse(cl.ID); err == nil && cl.Source == "cimd" {
 				info.ClientHost = u.Hostname()
 			}

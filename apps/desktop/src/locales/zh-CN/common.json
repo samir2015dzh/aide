@@ -409,7 +409,20 @@
     "fixOnDevices": "去设备页处理",
     "identityFirst": "给它起名字、换头像",
     "identityAddTip": "新建一个名字和头像：设好项目和模型，以这个身份和它聊",
-    "identityEditTip": "修改「{{name}}」"
+    "identityEditTip": "修改「{{name}}」",
+    "remove": {
+      "menu": "从名册删除…",
+      "title": "删除 {{name}}？",
+      "offlineMessage": "{{name}} 现在没连着。删除会吊销它的授权，并清掉服务器上它的登记、通讯录名片和没取走的信，名册里不再有它。它以后要再用 Aide，得重新接入。它派出过的任务留在各台机器上，照常能看。",
+      "onlineMessage": "{{name}} 现在连着。删除会先断开它、吊销它的授权，再清掉服务器上它的登记、通讯录名片和没取走的信：它将无法再连进来，要再用 Aide 得重新接入。它派出过的任务留在各台机器上，照常能看。",
+      "button": "删除",
+      "onlineButton": "断开并删除",
+      "done": "已删除 {{name}}",
+      "localTitle": "从名册移除 {{name}}？",
+      "localMessage": "{{name}} 是 {{machine}} 上检测到的编码 agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」那一行点「显示」。",
+      "localButton": "从名册移除",
+      "localDone": "已把 {{name}} 移出名册"
+    }
   },
   "rooms": {
     "title": "房间",

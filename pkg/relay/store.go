@@ -119,6 +119,8 @@ CREATE TABLE boundary_policy (
 );
 `, `
 ALTER TABLE messages ADD COLUMN room TEXT NOT NULL DEFAULT '';
+`, `
+ALTER TABLE machine_certs ADD COLUMN name TEXT NOT NULL DEFAULT '';
 `}
 
 // Store is the Backend of a self-hosted relay: one owner, SQLite. Beside
@@ -129,9 +131,10 @@ ALTER TABLE messages ADD COLUMN room TEXT NOT NULL DEFAULT '';
 type Store struct{ db *sql.DB }
 
 var (
-	_ Backend      = (*Store)(nil)
-	_ PushStore    = (*Store)(nil)
-	_ MessageStore = (*Store)(nil)
+	_ Backend          = (*Store)(nil)
+	_ PushStore        = (*Store)(nil)
+	_ MessageStore     = (*Store)(nil)
+	_ MachineNameStore = (*Store)(nil)
 )
 
 func OpenStore(path string) (*Store, error) {
@@ -292,6 +295,30 @@ func (s *Store) PutMachineCert(_, machineID string, cert *identityv1.Signed) err
 	_, err := s.db.Exec(`INSERT INTO machine_certs(machine_id,cert,updated_at) VALUES(?,?,?)
 		ON CONFLICT(machine_id) DO UPDATE SET cert=excluded.cert, updated_at=excluded.updated_at`, machineID, b, time.Now().Unix())
 	return err
+}
+
+// PutMachineName keeps the name a machine reported, with its cert (gone
+// with it).
+func (s *Store) PutMachineName(_, machineID, name string) error {
+	_, err := s.db.Exec(`UPDATE machine_certs SET name=? WHERE machine_id=?`, name, machineID)
+	return err
+}
+
+func (s *Store) MachineNames(string) (map[string]string, error) {
+	rows, err := s.db.Query(`SELECT machine_id, name FROM machine_certs WHERE name != ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		out[id] = name
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) DeleteMachineCert(_, machineID string) error {

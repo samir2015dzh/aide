@@ -427,6 +427,10 @@ data class SessionEvent(
 @Serializable data class SetAgentHiddenRequest(val machineId: String, val agent: String, val hidden: Boolean)
 
 @Serializable data class SetAgentPausedRequest(val machineId: String, val agent: String, val paused: Boolean, val resumeAt: String? = null)
+
+/** An agent's grant to revoke (工单 #82: deleting it from the roster). */
+@Serializable data class RevokeClientRequest(val grantId: String)
+
 /** DeepSeek Harness's own sessions on the owner's machines (docs: aide.machine.v1.DSHSession); takeover: the owner took it over in Aide. */
 @Serializable data class DSHSession(
     val sessionId: String = "",
