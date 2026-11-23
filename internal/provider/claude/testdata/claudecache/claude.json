@@ -1,0 +1,18 @@
+{
+  "numStartups": 12,
+  "oauthAccount": {"accountUuid": "00000000-0000-4000-8000-0000000000aa", "organizationUuid": "00000000-0000-4000-8000-0000000000bb"},
+  "projects": {},
+  "cachedExtraUsageDisabledReason": null,
+  "cachedUsageUtilization": {
+    "fetchedAtMs": 1763640000000,
+    "accountUuid": "00000000-0000-4000-8000-0000000000aa",
+    "utilization": {
+      "five_hour": {"utilization": 31.0, "resets_at": "2025-11-20T15:59:59.735515+00:00"},
+      "seven_day": {"utilization": 64.0, "resets_at": "2025-11-26T06:59:59.735549+00:00"},
+      "seven_day_opus": null,
+      "seven_day_oauth_apps": null,
+      "extra_usage": {"is_enabled": false, "monthly_limit": null, "used_credits": null, "utilization": null},
+      "limits": [{"kind": "session", "group": "session", "percent": 31, "resets_at": "2025-11-20T15:59:59.735515+00:00", "severity": "normal", "is_active": true}]
+    }
+  }
+}

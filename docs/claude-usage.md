@@ -8,7 +8,27 @@ token, which the reading needs, never leaves the machine.
 
 ## Where the numbers come from
 
-**First, this machine's own Claude Code (工单 #86).** Where Claude Code is
+Three sources, in order; the first with the plan's windows gives the
+reading (工单 #86, #104). What each source said on the way is kept in the
+reading's `detail` and aided's log (`Claude Code cache: …; claude -p
+/usage: …; usage endpoint: …`), so a machine without a reading says why at
+every source.
+
+**1. What this machine's Claude Code last read (工单 #104).** Claude Code
+keeps the usage endpoint's last answer in its global config,
+`~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`; an older version's
+`~/.claude/.config.json`), under `cachedUsageUtilization`: `fetchedAtMs`
+(when it read it), `accountUuid` (whose) and `utilization` (the endpoint's
+answer as it came, read as below). It is written whenever Claude Code reads
+the plan — its `/usage`, its usage displays — and seen in Claude Code
+2.1.330; it is undocumented, and a version without it leaves the key out.
+aided takes it when it is fresher than a reading of its own would be
+(`usageEvery`, fifteen minutes), with the time Claude Code read it; a cache
+for another account than the one signed in there (`oauthAccount`) is not
+taken. Reading it asks nothing of anyone and needs no token. The reading
+says `source: claude_code_cache`.
+
+**2. This machine's own Claude Code (工单 #86).** Where Claude Code is
 installed and signed in here, aided asks it, without a terminal and keeping
 no session:
 
@@ -23,8 +43,15 @@ structured twin of that text (`usage_report.rate_limits.limits`: `kind`
 no twin is read from its text (`Current session: 20% used`), percentages
 only. The reading says `source: claude_code`.
 
-- Claude Code answering without the plan's rows (not signed in with a plan,
-  or its own reading failing, rate limited, offline): the last reading
+- Only a sign-in that lets Claude Code read the plan gets those rows (a
+  claude.ai plan sign-in whose token carries the profile scope, not billed
+  by usage). Any other — seen on a real machine — gets **only that call's
+  own totals** (`Estimated cost: $0.0000`, `Total duration (API): 0s`,
+  `Usage: 0 input, 0 output, …`). That is no plan reading and is never taken
+  for one (`cli_session_only`): the endpoint below is asked.
+- Claude Code answering a plan's report without its rows (`You are
+  currently using your subscription…` and nothing more: its own reading
+  failing, rate limited, offline; `cli_no_reading`): the last reading
   stays, stale; the endpoint below is **not** asked past it, since it is the
   same endpoint and asking twice only presses its limit.
 - A version that takes `/usage` for something else than its command (it
@@ -32,7 +59,11 @@ only. The reading says `source: claude_code`.
   and that version is not asked again until aided restarts.
 - No signed-in Claude Code here, or the command failing: the endpoint below.
 
-**Otherwise, the fallback:** Anthropic's usage endpoint `GET https://api.anthropic.com/api/oauth/usage`
+aided does not read Claude Desktop's own usage page, nor the app's web
+session it is read with; the endpoint below, asked with the desktop app's
+own token, stands in for it.
+
+**3. The usage endpoint:** Anthropic's usage endpoint `GET https://api.anthropic.com/api/oauth/usage`
 (the same data Claude Code's `/usage` shows; undocumented and liable to
 change) answers with each window's `utilization` (0–100) and `resets_at`,
 called with the account's OAuth access token as a bearer and the
@@ -119,7 +150,9 @@ key; no real token or response sample is needed to build or test this.
 a number: `signed_out` (no signed-in token found), `no_token` (a cache was
 found but could not be read), `api_error` (the endpoint failed),
 `unsupported` (this OS can't open the desktop token cache), `parse_error`
-(the endpoint answered 200 but not with a JSON object).
+(the endpoint answered 200 but not with a JSON object), or `cli_no_reading` (Claude Code's own reading failed; the endpoint
+was not asked past it). The source tried last gives the reason; `detail`
+says what every source said.
 
 `api_error` and `parse_error` never come alone: `detail` carries what lay
 behind them — the HTTP status and a summary of the answer (Anthropic's

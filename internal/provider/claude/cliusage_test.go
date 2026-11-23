@@ -53,8 +53,14 @@ func TestCLIUsage(t *testing.T) {
 		t.Fatalf("text: %+v", u)
 	}
 
-	if u = read(fixtureRun(t, "noplan.jsonl")); u.Unavailable != CLINoReading || len(u.Windows) != 0 {
-		t.Fatalf("no plan: %+v", u)
+	// Only this call's own totals (工单 #104: what a sign-in that does not
+	// read the plan gets, as Claude Code 2.1.330 writes it): no reading.
+	if u = read(fixtureRun(t, "noplan.jsonl")); u.Unavailable != CLISessionOnly || len(u.Windows) != 0 || !strings.Contains(u.Detail, "own totals") {
+		t.Fatalf("session totals only: %+v", u)
+	}
+	// A plan's report whose rows Claude Code could not read.
+	if u = read(fixtureRun(t, "planfailed.jsonl")); u.Unavailable != CLINoReading || len(u.Windows) != 0 {
+		t.Fatalf("plan without rows: %+v", u)
 	}
 	// A model's answer that happens to look like a usage row is not one.
 	if u = read(fixtureRun(t, "prompt.jsonl")); u.Unavailable != CLIUnsupported || len(u.Windows) != 0 {

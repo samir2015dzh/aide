@@ -45,10 +45,11 @@ type agentUsage struct {
 	Stale       bool          `json:"stale,omitempty"`
 	Unavailable string        `json:"unavailable,omitempty"`
 	Renew       string        `json:"renew,omitempty"`
-	// Detail: what lay behind an unavailable or stale reading (HTTP status
-	// and a summary of the answer); never a token.
+	// Detail: what each source said on the way (工单 #104), the endpoint's
+	// part its HTTP status and a summary of the answer; never a token.
 	Detail string `json:"detail,omitempty"`
-	// Source: where the reading came from, "claude_code" or "api" (工单 #86).
+	// Source: where the reading came from, "claude_code_cache",
+	// "claude_code" or "api" (工单 #86, #104).
 	Source string `json:"source,omitempty"`
 }
 
