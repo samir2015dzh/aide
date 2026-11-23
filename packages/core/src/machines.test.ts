@@ -49,6 +49,12 @@ describe("machines", () => {
       { value: '["deepseek","deepseek-v4-pro"]', title: "DeepSeek V4 Pro (DeepSeek)", detail: "deepseek/deepseek-v4-pro", unknown: false },
       { value: "magpie/v4-flash", title: "magpie/v4-flash", detail: "", unknown: false },
     ]);
+    // One model by two lines of its provider is one entry, its lines said; a custom provider's in its own.
+    const lines = [{ id: '["deepseek","deepseek-v4-flash"]', name: "DeepSeek-V4.1-Flash", source: "DeepSeek · DeepSeek Account" }, { id: '["magpie","group/deepseek-v4.1"]', name: "group/deepseek-v4.1", source: "magpie" }].map((m) => create(AgentStatusSchema, { models: [m] }).models[0]);
+    expect(modelChoices("deepseek", lines).map((c) => [c.title, c.detail])).toEqual([
+      ["DeepSeek-V4.1-Flash", "deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account"],
+      ["group/deepseek-v4.1", "magpie/group/deepseek-v4.1 · magpie"],
+    ]);
     expect(defaultModelChoice({ name: "deepseek", models: dsh, own: { $typeName: "aide.identity.v1.AgentDefaults", agent: "", model: '["deepseek","deepseek-v4-pro"]', effort: "", speed: 0, mode: "" } })?.title).toBe("DeepSeek V4 Pro (DeepSeek)");
   });
 

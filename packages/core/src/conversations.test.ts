@@ -43,7 +43,7 @@ describe("a bot's conversations (工单 #67)", () => {
     expect(changedParams(x, { projectId: "web", model: "sonnet", effort: "low", mode: "plan" })).toEqual(["model", "effort", "mode"]);
     // 工单 #99: one that runs the model an alias resolves to here has that alias, the same choice: no new one.
     const ran = s("ran", { model: "claude-opus-5-5" });
-    const models = [{ $typeName: "aide.machine.v1.AgentModel" as const, id: "opus", name: "Opus", efforts: [], resolved: "claude-opus-5-5" }];
+    const models = [{ $typeName: "aide.machine.v1.AgentModel" as const, id: "opus", name: "Opus", efforts: [], resolved: "claude-opus-5-5", source: "" }];
     expect(paramsChanged(ran, { projectId: "web", model: "opus", effort: "", mode: "" }, models)).toBe(false);
     expect(changedParams(ran, { projectId: "web", model: "sonnet", effort: "", mode: "" }, models)).toEqual(["model"]);
   });

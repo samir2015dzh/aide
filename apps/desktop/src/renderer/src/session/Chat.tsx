@@ -6,7 +6,7 @@ import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, ty
 import {
   agoText, checkpoints, clockText, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
-  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, type Step,
+  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, type Step,
 } from "@aide/core";
 import { AgentLogo, Mark, agentName } from "@aide/ui";
 import { local } from "../api";
@@ -17,6 +17,8 @@ import { keys } from "../platform";
 import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
 import { WritesTo } from "../MachineTag";
 import { Composer, attachmentsOf, useAttachments, type ComposerState } from "../bots/Composer";
+import { modelOptions } from "../modelOptions";
+import { Picker } from "../Picker";
 import { errorText, useNow, useStore } from "../store";
 import { SessionParams, sessionCommands } from "./compose";
 import { confirmRollback, interrupt } from "./actions";
@@ -814,11 +816,33 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
     };
   }, [onHeight]);
   const agent = codingAgentTitle(s.agent);
+  // Its model, as the agent's models list it (工单 #98 补充): another one picked here, the next message starts a new
+  // conversation on it (工单 #67 rule 4), said before and after; never locked to the one it began with.
+  const tc = useTranslation("common").t;
+  const a = st.machines.find((m) => m.machineId === s.machineId)?.status?.agents.find((x) => x.name === s.agent);
+  const runs = listedModel(s.model, a?.models ?? []);
+  const [model, setModel] = useState(runs);
+  useEffect(() => setModel(runs), [s.sessionId, runs]);
+  const [key, setKey] = useState(() => crypto.randomUUID());
+  const other = model !== runs;
   const send = async () => {
     if (state.kind === "sending") return;
     setState({ kind: "sending" });
     try {
-      await local.sendMessage({ sessionId: s.sessionId, text, attachments: await attachmentsOf(attach.files) });
+      const attachments = await attachmentsOf(attach.files);
+      if (other) {
+        const to = (await local.startSession({ machineId: s.machineId, session: { idempotencyKey: key, agent: s.agent, projectId: s.projectId, prompt: text, model, attachments } })).session;
+        setKey(crypto.randomUUID());
+        if (to) {
+          try {
+            localStorage.setItem(`bot-conv:m:${s.machineId}/${s.agent}`, to.sessionId); // the bot page goes on in it (Bots.tsx convKey)
+          } catch {
+            // Without storage the bot page goes on in the one last active: this one.
+          }
+          st.show(tc("composer.newBecause", { what: tc("composer.param.model") }));
+          st.select(to.sessionId);
+        }
+      } else await local.sendMessage({ sessionId: s.sessionId, text, attachments });
       setText("");
       attach.clear();
       setState({ kind: "idle" });
@@ -837,7 +861,13 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
         state={state}
         attach={attach}
         commands={sessionCommands(st, s, setText)}
-        chips={<SessionParams s={s} />}
+        why={other ? { text: tc("conv.willStartNew", { what: tc("composer.param.model") }), tone: "quiet" } : undefined}
+        chips={
+          <>
+            {(a?.models.length ?? 0) > 0 && <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />}
+            <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0} />
+          </>
+        }
       />
     </div>
   );
