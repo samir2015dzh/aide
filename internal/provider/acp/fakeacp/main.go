@@ -17,6 +17,10 @@
 //	fail-code <n> <t>   same, with error code n
 //	images              agent message "images: <media types>" (the image
 //	                    blocks of the prompt)
+//	files               agent message "files: <block>; …", each non-text
+//	                    block of the prompt: "image|audio <type> <sha>" or
+//	                    "link <name> <type> <sha>" (of the linked file it
+//	                    read; sha: the first 12 hex digits of its SHA-256)
 //	env <name>          agent message "env: <name>=<value>" (its environment)
 //	Reply …             agent message "ready" (machine.TestAgent's prompt)
 //	cwd                 agent message "cwd: <session cwd> <process folder>"
@@ -44,6 +48,7 @@
 //	                                  modes (session/set_mode)
 //	FAKE_ACP_ALLOW_ALWAYS_ONLY=1      offer only allow_always/reject_once
 //	FAKE_ACP_IMAGES=1                 take image prompt blocks
+//	FAKE_ACP_AUDIO=1                  take audio prompt blocks
 //	FAKE_ACP_CLOSE=1                  take session/close: it ends the turn
 //	                                  in progress (cancelled) and writes
 //	                                  "<session id>" to closed.log in
@@ -66,10 +71,15 @@ package main
 import (
 	"bufio"
 	"cmp"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -264,6 +274,8 @@ func handle(m msg) {
 			Text     string `json:"text"`
 			MimeType string `json:"mimeType"`
 			Data     string `json:"data"`
+			URI      string `json:"uri"`
+			Name     string `json:"name"`
 		} `json:"prompt"`
 	}
 	json.Unmarshal(m.Params, &p)
@@ -291,7 +303,7 @@ func handle(m msg) {
 			sessionCaps["options"] = map[string]any{}
 		}
 		caps["sessionCapabilities"] = sessionCaps
-		caps["promptCapabilities"] = map[string]any{"image": os.Getenv("FAKE_ACP_IMAGES") == "1"}
+		caps["promptCapabilities"] = map[string]any{"image": os.Getenv("FAKE_ACP_IMAGES") == "1", "audio": os.Getenv("FAKE_ACP_AUDIO") == "1"}
 		var auth []any
 		if authID != "" {
 			auth = []any{map[string]any{"id": "other", "name": "Other"}, map[string]any{"id": authID, "name": "Login"}}
@@ -424,13 +436,20 @@ func handle(m msg) {
 		case <-cancelled:
 		default:
 		}
-		var images []string
+		var images, files []string
 		for _, b := range p.Prompt {
 			if b.Type == "image" && b.Data != "" {
 				images = append(images, b.MimeType)
 			}
+			switch b.Type {
+			case "image", "audio":
+				data, _ := base64.StdEncoding.DecodeString(b.Data)
+				files = append(files, b.Type+" "+b.MimeType+" "+shaOf(data))
+			case "resource_link":
+				files = append(files, "link "+b.Name+" "+b.MimeType+" "+linked(b.URI))
+			}
 		}
-		go prompt(m.ID, p.SessionID, p.Prompt[0].Text, images)
+		go prompt(m.ID, p.SessionID, p.Prompt[0].Text, images, files)
 	case "session/close":
 		select {
 		case cancelled <- struct{}{}:
@@ -517,7 +536,30 @@ func configState(res map[string]any) {
 // canElicit: the client takes form elicitations.
 var canElicit bool
 
-func prompt(id json.RawMessage, sid, text string, images []string) {
+// shaOf is the first 12 hex digits of data's SHA-256.
+func shaOf(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+// linked is shaOf the file a file:// URI names, read as an agent would.
+func linked(uri string) string {
+	u, err := url.Parse(uri)
+	if err != nil || u.Scheme != "file" {
+		return "not-a-file"
+	}
+	path := u.Path
+	if runtime.GOOS == "windows" {
+		path = filepath.FromSlash(strings.TrimPrefix(path, "/"))
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "unreadable"
+	}
+	return shaOf(data)
+}
+
+func prompt(id json.RawMessage, sid, text string, images, files []string) {
 	h, err := load(sid)
 	if err != nil {
 		replyErr(id, -32002, "unknown session")
@@ -549,6 +591,8 @@ func prompt(id json.RawMessage, sid, text string, images []string) {
 			}
 		case "images":
 			update(sid, map[string]any{"sessionUpdate": "agent_message_chunk", "content": map[string]any{"type": "text", "text": "images: " + strings.Join(images, ",")}})
+		case "files":
+			update(sid, map[string]any{"sessionUpdate": "agent_message_chunk", "content": map[string]any{"type": "text", "text": "files: " + strings.Join(files, "; ")}})
 		case "ask":
 			title, opts, _ := strings.Cut(arg, "|")
 			if !canElicit {

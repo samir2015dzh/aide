@@ -97,6 +97,10 @@ export function registerIPC() {
     if (!trusted(e) || typeof x !== "number" || typeof y !== "number") return;
     Menu.getApplicationMenu()?.popup({ window: BrowserWindow.fromWebContents(e.sender) ?? undefined, x: Math.round(x), y: Math.round(y) });
   });
+  // The composer's microphone (工单 #92): macOS's own dictation, as Edit › Start Dictation starts it, into the focused field.
+  ipcMain.on("start-dictation", (e) => {
+    if (trusted(e) && process.platform === "darwin") Menu.sendActionToFirstResponder("startDictation:");
+  });
   ipcMain.handle("popup-menu", (e, items: MenuItem[]) => {
     if (!trusted(e) || !Array.isArray(items)) return null;
     return new Promise<string | null>((resolve) => {

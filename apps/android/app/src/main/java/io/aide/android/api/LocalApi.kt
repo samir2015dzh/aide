@@ -113,12 +113,12 @@ class LocalApi(port: Long, token: String) {
         call("TalkToPersona", TalkToPersonaRequest(id, text, key), timeoutSeconds = 60)
 
     /** Starts a task: an agent on a machine, in one of its projects (工单 #41: no contact needed first). */
-    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String, model: String = "", effort: String = "", mode: String = ""): Session? =
-        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt, model, effort, mode)), timeoutSeconds = 60).session
+    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String, model: String = "", effort: String = "", mode: String = "", files: List<AttachmentIn> = emptyList()): Session? =
+        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt, model, effort, mode, files)), timeoutSeconds = 120).session
 
     /** The owner's next message in a conversation (工单 #67 rule 1: it goes on in it). */
-    suspend fun sendMessage(sessionId: String, text: String): Session? =
-        call<SendMessageRequest, SessionResponse>("SendMessage", SendMessageRequest(sessionId, text), timeoutSeconds = 60).session
+    suspend fun sendMessage(sessionId: String, text: String, files: List<AttachmentIn> = emptyList()): Session? =
+        call<SendMessageRequest, SessionResponse>("SendMessage", SendMessageRequest(sessionId, text, files), timeoutSeconds = 120).session
 
     /** Archived on its machine: the one archive Aide and the agent's side share (工单 #67 rule 6). */
     suspend fun archive(sessionId: String, on: Boolean): Session? =

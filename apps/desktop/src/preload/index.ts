@@ -37,6 +37,7 @@ const bridge: Bridge = {
   showUpgrade: () => ipcRenderer.send("show-upgrade"),
   showAppMenu: (x: number, y: number) => ipcRenderer.send("app-menu", x, y),
   popupMenu: (items: MenuItem[]) => ipcRenderer.invoke("popup-menu", items),
+  startDictation: () => ipcRenderer.send("start-dictation"),
   releaseMemory: () => webFrame.clearCache(),
   onCommand: (cb: (c: Command) => void) => listen("command", cb),
   setMenuState: (s: MenuState) => ipcRenderer.send("menu-state", s),

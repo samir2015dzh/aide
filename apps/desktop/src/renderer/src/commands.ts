@@ -16,7 +16,7 @@ export function useCommands() {
   const st = useStore();
   const latest = useRef(st);
   latest.current = st;
-  useEffect(() => window.aide?.onCommand((c) => run(latest.current, c)), []);
+  useEffect(() => window.aide?.onCommand((c) => runCommand(latest.current, c)), []);
 
   const s = selected(st);
   const state: MenuState = {
@@ -46,7 +46,7 @@ function selected(st: Store): Session | undefined {
   return sel.kind === "session" ? st.sessions.find((s) => s.sessionId === sel.id) : undefined;
 }
 
-function run(st: Store, c: Command) {
+export function runCommand(st: Store, c: Command) {
   const s = selected(st);
   // A room's notification (工单 #69): its page.
   if (c.startsWith("room:")) {

@@ -309,7 +309,7 @@ private fun RoomCompose(model: AppModel, r: Room, enabled: Boolean, posted: (Roo
     Composer(
         text, { text = it }, { send() }, t("Say something in the room…", "在房间里说…"), state, enabled = enabled,
         why = ComposerWhy(if (woken.isEmpty()) t("Just saying it: wakes no one", "只是说一句，不叫醒任何人") else t("Wakes: $names", "将叫醒：$names")),
-        chips = {
+        mentions = {
             r.members.forEach { m ->
                 val on = m.botKey in mentions
                 ToggleChip("@" + m.name, on) { mentions = if (on) mentions - m.botKey else mentions + m.botKey }

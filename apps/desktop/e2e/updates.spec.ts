@@ -277,14 +277,14 @@ test("a restart restores the selected session, layout and unfinished answer", as
     await list.getByRole("listitem").filter({ hasText: "选颜色" }).click();
     await instance.page.getByRole("radio", { name: /蓝/ }).click();
     await instance.page.getByRole("textbox", { name: "你的回答" }).fill("Keep this unfinished answer");
-    await instance.page.getByRole("button", { name: "信息面板" }).click();
+    await instance.page.getByRole("button", { name: "会话列表" }).click();
     await instance.app.close();
     // As it was left, not the start page (docs/her-team.md §14.8).
     instance = await launch(undefined, { profile, start: true });
     await expect(instance.page.getByRole("heading", { name: "选颜色" })).toBeVisible();
     await expect(instance.page.getByRole("textbox", { name: "你的回答" })).toHaveValue("Keep this unfinished answer");
     await expect(instance.page.getByRole("radio", { name: /蓝/ })).toHaveAttribute("aria-checked", "true");
-    await expect(instance.page.getByRole("button", { name: "信息面板" })).toHaveAttribute("aria-pressed", "false");
+    await expect(instance.page.getByRole("button", { name: "会话列表" })).toHaveAttribute("aria-pressed", "false");
   } finally {
     await instance.app.close();
     fs.rmSync(profile, { recursive: true, force: true });

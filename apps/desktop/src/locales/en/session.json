@@ -3,9 +3,10 @@
   "thisMac_win": "This PC",
   "waiting": "Waiting for you",
   "page": {
-    "showInfo": "Show info panel {{keys}}",
-    "hideInfo": "Hide info panel {{keys}}",
-    "info": "Info panel"
+    "showInfo": "Show Sessions {{keys}}",
+    "hideInfo": "Hide Sessions {{keys}}",
+    "info": "Sessions",
+    "settings": "Session Settings"
   },
   "chat": {
     "archived": "Archived: read-only. Worktree released, with changes preserved on the branch.",
@@ -144,8 +145,12 @@
     "copyCommand": "Copy Command"
   },
   "composer": {
-    "label": "Message to {{agent}}",
-    "placeholder": "Message {{agent}}… (!plan or !implement first; #s_… brings in an earlier session)",
-    "send": "Send"
+    "label": "Message to {{agent}}"
+  },
+  "list": {
+    "label": "Sessions",
+    "new": "New Session",
+    "folder": "Project folder",
+    "allFolders": "All projects"
   }
 }

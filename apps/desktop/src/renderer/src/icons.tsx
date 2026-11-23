@@ -62,6 +62,10 @@ const paths: Record<string, string> = {
   // A robot's head, with its antenna, ears and eyes: the Her entry.
   her: "<path d=\"M8 2v2.6\"/><rect x=\"2.9\" y=\"4.6\" width=\"10.2\" height=\"8.2\" rx=\"2.3\"/><path d=\"M1.3 7.9v1.7M14.7 7.9v1.7M6.1 7.8v1.7M9.9 7.8v1.7\"/>",
   arrowUp: "<path d=\"M8 13V3M4.2 6.8L8 3l3.8 3.8\"/>",
+  // A microphone (dictation), a picture (an image to attach), a sound wave (audio).
+  mic: "<rect x=\"5.8\" y=\"1.8\" width=\"4.4\" height=\"7.6\" rx=\"2.2\"/><path d=\"M3.4 7.6a4.6 4.6 0 0 0 9.2 0M8 12.2v2\"/>",
+  image: "<rect x=\"2\" y=\"2.8\" width=\"12\" height=\"10.4\" rx=\"2\"/><circle cx=\"5.6\" cy=\"6.2\" r=\"1.1\"/><path d=\"M2.4 11.6l3.4-3.2 2.6 2.4 2-1.8 3.2 2.8\"/>",
+  audio: "<path d=\"M2.5 6.5v3M5 4.5v7M7.5 2.5v11M10 5v6M12.5 6.5v3\"/>",
   chevL: "<path d=\"M9.7 4.5L6.2 8l3.5 3.5\"/>",
   code: "<path d=\"M5.4 4.6L2 8l3.4 3.4M10.6 4.6L14 8l-3.4 3.4\"/>",
   eye: "<path d=\"M1.6 8s2.4-4.4 6.4-4.4S14.4 8 14.4 8 12 12.4 8 12.4 1.6 8 1.6 8z\"/><circle cx=\"8\" cy=\"8\" r=\"1.9\"/>",

@@ -42,7 +42,7 @@ test("a coding agent's conversations: on in the current one, a new one, back to 
   const box = composer.getByRole("textbox", { name: "给 Gemini CLI 发消息" });
   const send = composer.getByRole("button", { name: "发送" });
   const list = bot.getByRole("list", { name: "对话" });
-  // The capsule: + on the left, the project as a chip in it, the send button lit only with something to send.
+  // The box (工单 #92): + at its foot on the left, the project as a chip under it, the send button lit only with something to send.
   await expect(composer.getByRole("button", { name: "更多" })).toBeVisible();
   await expect(composer.getByRole("button", { name: "项目" })).toBeVisible();
   await expect(send).toBeDisabled();

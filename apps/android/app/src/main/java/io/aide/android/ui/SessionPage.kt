@@ -66,7 +66,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.runtime.saveable.rememberSaveable
 import io.aide.android.api.Question
+import io.aide.android.api.title
 import io.aide.android.api.Session
 import io.aide.android.model.AppModel
 import io.aide.android.model.Item
@@ -78,12 +83,17 @@ import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
 import io.aide.android.model.lostSpanText
 import io.aide.android.model.openedNews
+import io.aide.android.model.sessionsByProject
 import kotlinx.coroutines.launch
 
-/** A session's whole conversation, live, with the agent's question to answer and a way to interrupt it. */
+/**
+ * A session's whole conversation, live, with the agent's question to answer and a way to interrupt it; the owner's
+ * own goes on from the box at its foot (工单 #91/#92). One tap away, the sessions to switch to, by project; its
+ * settings in a sheet of their own (工单 #90).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
+fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) -> Unit = {}) {
     val world by model.world.collectAsState()
     val s = world.sessions[id]?.let(world::shown)
     val scope = rememberCoroutineScope()
@@ -95,6 +105,8 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
     val items by feed.items.collectAsState()
     val loading by feed.loading.collectAsState()
     val list = rememberLazyListState()
+    var switching by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(false) }
     // In front of the owner: what is new here is seen, on every device.
     val news = s?.let(::openedNews).orEmpty()
     val front by model.foreground.collectAsState()
@@ -117,10 +129,6 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
                         Text(s?.let(::displayTitle) ?: id.take(12), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (s != null) MachineTag(world, s.machineId)
                         if (s != null) {
-                            Text(
-                                "${world.senderName(s)} → ${agentTitle(s.agent)} · ${s.projectId} · ${world.machineName(s.machineId)}",
-                                style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            )
                             // Both parts of its state, and when its machine was last out of touch (docs/session-states.md).
                             Text(
                                 listOf(statusLine(s, world), lostSpanText(world.machines.firstOrNull { it.machineId == s.machineId }, s)).filter { it.isNotEmpty() }.joinToString(" · "),
@@ -131,23 +139,35 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
                     }
                 },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
+                actions = {
+                    if (s != null) {
+                        IconButton(onClick = { switching = true }) { Icon(Icons.AutoMirrored.Filled.List, t("Sessions", "会话列表")) }
+                        IconButton(onClick = { settings = true }) { Icon(Icons.Filled.Settings, t("Session settings", "会话设置")) }
+                    }
+                },
             )
         },
         bottomBar = {
             if (s != null) {
                 val q = s.progress?.pendingQuestion
-                when {
-                    q != null -> QuestionPanel(model, s, q)
-                    isLive(s) -> Surface(tonalElevation = 3.dp) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(statusLine(s, world), Modifier.weight(1f), color = MaterialTheme.colorScheme.primary)
-                            OutlinedButton(onClick = { scope.launch { model.interrupt(s) } }) { Text(t("Interrupt", "中断")) }
+                Column {
+                    when {
+                        q != null -> QuestionPanel(model, s, q)
+                        isLive(s) -> Surface(tonalElevation = 3.dp) {
+                            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(statusLine(s, world), Modifier.weight(1f), color = MaterialTheme.colorScheme.primary)
+                                OutlinedButton(onClick = { scope.launch { model.interrupt(s) } }) { Text(t("Interrupt", "中断")) }
+                            }
                         }
                     }
+                    // A session the owner started takes the owner's messages, here, as on the desktop.
+                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s)
                 }
             }
         },
     ) { pad ->
+        if (s != null && switching) SwitchSheet(model, s, open) { switching = false }
+        if (s != null && settings) SettingsSheet(model, s) { settings = false }
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading && items.isEmpty()) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -155,6 +175,94 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
+                }
+            }
+        }
+    }
+}
+
+/** The box under the owner's own session (工单 #91/#92): words and files at once, the macros after /. */
+@Composable
+private fun SessionComposer(model: AppModel, s: Session) {
+    val scope = rememberCoroutineScope()
+    var text by rememberSaveable(s.sessionId) { mutableStateOf("") }
+    var state by remember(s.sessionId) { mutableStateOf<ComposerState>(ComposerState.Idle) }
+    val attach = rememberAttachments(s.sessionId)
+    fun send() {
+        if (state == ComposerState.Sending || (text.isBlank() && attach.files.isEmpty())) return
+        state = ComposerState.Sending
+        scope.launch {
+            val why = model.sendTo(s, text, attach.wire())
+            if (why == null) { text = ""; attach.clear(); state = ComposerState.Idle } else state = ComposerState.Failed(why) { send() }
+        }
+    }
+    Composer(
+        text, { text = it; if (state is ComposerState.Failed) state = ComposerState.Idle }, { send() },
+        t("Message to ${agentTitle(s.agent)}", "发给 ${agentTitle(s.agent)} 的消息"), state,
+        attach = attach,
+        commands = listOfNotNull(
+            SlashCommand("plan", t("Plan only: no changes until you say so", "只做计划：你点头前不改任何东西")) { text = "!plan " },
+            SlashCommand("implement", t("Implement it, run the tests, and sum up", "直接实现，跑测试，最后小结")) { text = "!implement " },
+            if (isLive(s)) SlashCommand("stop", t("Interrupt this turn", "打断这一轮")) { scope.launch { model.interrupt(s) } } else null,
+            SlashCommand("archive", t("Archive this session", "归档这个会话")) { scope.launch { model.archive(s, true)?.let { state = ComposerState.Failed(it) } } },
+        ),
+        // What it runs with, told (a session keeps them).
+        chips = { Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+    )
+}
+
+private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
+
+/** The sessions to switch to (工单 #90): this agent's on this machine, by project; a tap opens one. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwitchSheet(model: AppModel, s: Session, open: (String) -> Unit, close: () -> Unit) {
+    val world by model.world.collectAsState()
+    ModalBottomSheet(onDismissRequest = close) {
+        Text(t("Sessions", "会话列表"), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+            sessionsByProject(s, world.sessions.values).forEach { g ->
+                item(key = "p:" + g.projectId) {
+                    Text(world.projects.firstOrNull { it.machineId == s.machineId && it.projectId == g.projectId }?.title() ?: g.projectId,
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp))
+                }
+                items(g.sessions, key = { it.sessionId }) { x ->
+                    val cur = x.sessionId == s.sessionId
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 8.dp).clip(RoundedCornerShape(Radius.Md)).background(if (cur) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { close(); if (!cur) open(x.sessionId) }.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StatusDot(x)
+                        Spacer(Modifier.width(10.dp))
+                        Text(displayTitle(x), Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(relativeTime(x.updatedAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            item { Spacer(Modifier.heightIn(min = 24.dp)) }
+        }
+    }
+}
+
+/** The session's settings (工单 #90): who started it, which agent on which machine, in which project, with what. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
+    val world by model.world.collectAsState()
+    ModalBottomSheet(onDismissRequest = close) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(t("Session settings", "会话设置"), style = MaterialTheme.typography.titleMedium)
+            listOf(
+                t("Started by", "发起") to world.senderName(s),
+                t("Agent", "执行") to agentTitle(s.agent),
+                t("Machine", "机器") to world.machineName(s.machineId),
+                t("Project", "项目") to (world.projects.firstOrNull { it.machineId == s.machineId && it.projectId == s.projectId }?.title() ?: s.projectId),
+                t("Model", "模型") to sessionParams(s),
+            ).forEach { (k, v) ->
+                Row {
+                    Text(k, Modifier.widthIn(min = 72.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(v, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

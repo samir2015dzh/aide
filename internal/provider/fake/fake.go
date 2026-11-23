@@ -30,6 +30,8 @@
 //	                    environment ("" when unset)
 //	images              agent message "images: <file names>" (the images
 //	                    this turn got, comma-separated)
+//	files               agent message "files: <file names>" (the other
+//	                    files this turn got, comma-separated)
 //	ask <h>|<q>|<a,b>   ask question q (header h, options a and b) and wait;
 //	                    then agent message "answer: <value>" or
 //	                    "declined: <message>"
@@ -103,7 +105,7 @@ func (Provider) Start(ctx context.Context, spec provider.StartSpec) (provider.Se
 	}
 	s := &session{spec: spec, ref: ref, events: make(chan provider.Event, 64), done: make(chan struct{}), inbox: make(chan provider.Input, 4), interrupt: make(chan struct{}, 1)}
 	s.events <- provider.Event{Kind: provider.EventRef, Ref: ref}
-	s.inbox <- provider.Input{Text: spec.Prompt, Images: spec.Images}
+	s.inbox <- provider.Input{Text: spec.Prompt, Images: spec.Images, Files: spec.Files}
 	go s.run(ctx)
 	return s, nil
 }
@@ -127,6 +129,7 @@ type session struct {
 	inTurn  bool
 	steered []string
 	images  []provider.Image // this turn's
+	files   []provider.File  // this turn's
 	usage   provider.Usage   // this turn's, from tokens
 	asked   map[string]chan provider.Reply
 }
@@ -165,6 +168,7 @@ func (s *session) Steer(_ context.Context, in provider.Input) error {
 	}
 	s.steered = append(s.steered, in.Text)
 	s.images = append(s.images, in.Images...)
+	s.files = append(s.files, in.Files...)
 	return nil
 }
 
@@ -235,7 +239,7 @@ func (s *session) turn(ctx context.Context, in provider.Input) {
 	s.turns++
 	prompt := in.Text
 	s.mu.Lock()
-	s.inTurn, s.images, s.usage = true, in.Images, provider.Usage{InputTokens: 10, OutputTokens: 5}
+	s.inTurn, s.images, s.files, s.usage = true, in.Images, in.Files, provider.Usage{InputTokens: 10, OutputTokens: 5}
 	s.mu.Unlock()
 	if b, err := os.ReadFile(os.Getenv("AIDE_FAKE_SCRIPTS")); err == nil {
 		var scripts map[string]string
@@ -503,6 +507,15 @@ func (s *session) script(ctx context.Context, prompt string) (last string, ended
 			}
 			s.mu.Unlock()
 			last = "images: " + strings.Join(names, ",")
+			s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: last})
+		case "files":
+			s.mu.Lock()
+			var names []string
+			for _, f := range s.files {
+				names = append(names, f.Name)
+			}
+			s.mu.Unlock()
+			last = "files: " + strings.Join(names, ",")
 			s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: last})
 		case "resumed":
 			last = "resumed: " + s.spec.ResumeRef

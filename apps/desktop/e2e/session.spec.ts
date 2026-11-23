@@ -16,6 +16,13 @@ function titleLine(page: Page, title: string) {
   return page.getByRole("heading", { name: title }).locator("..");
 }
 
+/** The session's settings (工单 #90): a menu from the toolbar's gear, opened if it is not. */
+async function settings(page: Page) {
+  const gear = page.getByRole("button", { name: "会话设置" });
+  if ((await gear.getAttribute("aria-expanded")) !== "true") await gear.click();
+  return page.getByRole("dialog", { name: "会话设置" });
+}
+
 async function status(title: string): Promise<string> {
   return JSON.parse(await cli("session", "get", fixture.sessions[title], "-o", "json")).session.status;
 }
@@ -157,6 +164,7 @@ test("the session's review opens from under its card, as Markdown, with the sugg
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1440, height: 800 });
   await open(page, "写 hello");
+  await settings(page);
   const review = page.getByRole("complementary", { name: "复盘" });
   await review.getByRole("button", { name: "复盘这个任务" }).click();
   // The machine's review of the session's events, as it goes into a delivery record.
@@ -172,15 +180,20 @@ test("the session's review opens from under its card, as Markdown, with the sugg
   await app.close();
 });
 
-test("the session card floats over the conversation with what a glance needs, and the toolbar hides it", async () => {
+test("the session's settings are in a menu with what a glance needs; its list is beside it, and the toolbar hides the list", async () => {
   const { app, page } = await launch();
-  // The card docks only when there is room beside the conversation, regardless of the runner's display size.
+  // The list docks only when there is room beside the conversation, regardless of the runner's display size.
   await page.setViewportSize({ width: 1440, height: 800 });
   await open(page, "写 hello");
   const card = page.getByRole("complementary", { name: "任务信息" });
-  const toggle = page.getByRole("button", { name: "信息面板", exact: true });
-  await expect(card).toBeVisible();
+  const list = page.getByRole("complementary", { name: "会话列表" });
+  const toggle = page.getByRole("button", { name: "会话列表", exact: true });
+  await expect(list).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  // The settings show only when asked for (工单 #90).
+  await expect(card).toHaveCount(0);
+  const menu0 = await settings(page);
+  await expect(card).toBeVisible();
   // Its environment, one row each, under a title: who started it, with what, on which machine, in which project, on which branch
   // (a worktree session's own). No state, turns or changes: the list and the conversation say those.
   await expect(card.getByRole("heading", { name: "环境" })).toBeVisible();
@@ -203,7 +216,7 @@ test("the session card floats over the conversation with what a glance needs, an
   const env = (await card.boundingBox())!;
   const below = (await context.boundingBox())!;
   expect([below.x, below.width]).toEqual([env.x, env.width]);
-  expect(Math.round(below.y - (env.y + env.height))).toBe(8);
+  expect(below.y).toBeGreaterThanOrEqual(env.y + env.height);
   const contextRows = await context.getByRole("listitem").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
   expect(new Set([...heights, ...contextRows]).size).toBe(1);
   // A long value is cut short; hovered, it shows whole (the project: its folder).
@@ -235,15 +248,17 @@ test("the session card floats over the conversation with what a glance needs, an
   await page.getByRole("menuitem", { name: "拷贝分支名称" }).click();
   await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(branch);
   // The machine's settings are a click away, on its own page.
-  const [settings] = await Promise.all([app.waitForEvent("window"), card.getByRole("button", { name: "机器设置" }).click()]);
-  await settings.waitForLoadState();
-  expect(settings.url()).toMatch(/#settings\/machines\/.+/);
-  await settings.close();
-  // It floats over the conversation, which keeps clear of it.
-  const c = (await card.boundingBox())!;
+  const [machineSettings] = await Promise.all([app.waitForEvent("window"), card.getByRole("button", { name: "机器设置" }).click()]);
+  await machineSettings.waitForLoadState();
+  expect(machineSettings.url()).toMatch(/#settings\/machines\/.+/);
+  await machineSettings.close();
+  await snap(page, "session-info");
+  // Esc puts the menu away; the list stays, the conversation keeping clear of it.
+  await page.keyboard.press("Escape");
+  await expect(menu0).toHaveCount(0);
+  const c = (await list.boundingBox())!;
   const log = (await page.getByRole("log", { name: "对话" }).boundingBox())!;
   expect(log.x + log.width).toBeLessThanOrEqual(c.x);
-  await snap(page, "session-info");
 
   // The toggle is a toolbar button the size of the list's view options, highlighted only while the info shows.
   const left = (await page.getByRole("button", { name: "视图选项" }).boundingBox())!;
@@ -252,8 +267,7 @@ test("the session card floats over the conversation with what a glance needs, an
   const fill = () => toggle.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(await fill()).not.toBe("rgba(0, 0, 0, 0)");
   await toggle.click();
-  await expect(card).toHaveCount(0);
-  await expect(context).toHaveCount(0);
+  await expect(list).toHaveCount(0);
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await page.mouse.move(0, 0);
   await expect.poll(fill).toBe("rgba(0, 0, 0, 0)");
@@ -267,7 +281,7 @@ test("the session card floats over the conversation with what a glance needs, an
   await snap(page, "session-chat-dark");
   await page.emulateMedia({ colorScheme: "light" });
   await toggle.click();
-  await expect(card).toBeVisible();
+  await expect(list).toBeVisible();
   await app.close();
 });
 
@@ -275,6 +289,7 @@ test("a session in a GitHub repository says which one and from which branch; its
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1440, height: 800 });
   await open(page, "来自 GitHub");
+  await settings(page);
   const card = page.getByRole("complementary", { name: "任务信息" });
   const branch = `aide/${fixture.sessions["来自 GitHub"]}`;
   await expect(card.getByRole("listitem")).toHaveText([/bot 发起$/, "Gemini CLI 执行", thisComputer, "github.acme.widget", "GitHub 仓库 acme/widget，从 main 开始", branch]);
@@ -368,13 +383,16 @@ test("a session worked on in place shows the branch its folder is on, or that it
   await page.setViewportSize({ width: 1440, height: 800 });
   const card = page.getByRole("complementary", { name: "任务信息" });
   await open(page, "就地");
+  await settings(page);
   await expect(card.getByRole("listitem")).toHaveText([/bot 发起$/, "Gemini CLI 执行", thisComputer, "live", "feature/card"]);
   await open(page, "不在仓库里");
+  await settings(page);
   await expect(card.getByRole("listitem")).toHaveText([/bot 发起$/, "Gemini CLI 执行", thisComputer, "notes", "不是 Git 仓库"]);
   // No branch, nothing to pick.
   await expect(card.getByRole("button", { name: "不是 Git 仓库" })).toHaveCount(0);
   // Another machine's project and branch can be copied, not opened here.
   await open(page, "在另一台 Mac 上");
+  await settings(page);
   await expect(card.getByRole("listitem").nth(2)).toHaveText("work-mac");
   await card.getByRole("button", { name: "billing" }).click();
   await expect(page.getByRole("menu", { name: "项目" }).getByRole("menuitem")).toHaveText(["拷贝项目路径"]);
@@ -389,6 +407,7 @@ test("a running session shows what it does, and 打断 stops the turn", async ()
   const ctl = page.getByRole("region", { name: "这一轮" });
   await expect(ctl).toContainText("Gemini CLI 正在工作");
   // A live one: the card is its environment alone; the bar below says what runs.
+  await settings(page);
   const card = page.getByRole("complementary", { name: "任务信息" });
   await expect(card).toContainText("Gemini CLI");
   await expect(card).not.toContainText("运行中");

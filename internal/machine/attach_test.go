@@ -77,6 +77,15 @@ func TestAttachmentsAreSavedAndShown(t *testing.T) {
 		t.Fatalf("attachments must not be in the worktree diff: %v %q", err, d.GetDiff())
 	}
 
+	// The other files go to the agent too, each by name (an ACP agent gets them as links, 工单 #91).
+	if _, err := h.s.Send(context.Background(), h.p, id, "files", []*sessionv1.Attachment{{Name: "song.mp3", Data: []byte("ID3fake")}, {Name: "pic.png", Data: pngBytes(t)}}); err != nil {
+		t.Fatal(err)
+	}
+	h.wait(id, idle)
+	if tc := h.lastTurn(id); tc.Result != "files: song.mp3" {
+		t.Fatalf("files the agent got: %v", tc)
+	}
+
 	// With a message, steered into a running turn, and with no text.
 	h.send(id, "say one\nsleep 2s\nimages") // time enough for a slow runner to steer the file in
 	h.said(id, "one")
@@ -84,7 +93,7 @@ func TestAttachmentsAreSavedAndShown(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.wait(id, idle)
-	if tc := h.lastTurn(id); tc.Turn != 2 || tc.Result != "images: more.png" {
+	if tc := h.lastTurn(id); tc.Turn != 3 || tc.Result != "images: more.png" {
 		t.Fatalf("turn: %v\n%s", tc, h.dump(id))
 	}
 }

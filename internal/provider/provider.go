@@ -224,11 +224,24 @@ type Image struct {
 	MediaType string
 }
 
-// Input is a user message: its text (which lists attached files by path)
-// and the attached images.
+// File is an attached file the agent is not shown as an image: the text
+// lists it by path; an agent whose protocol links files (ACP) gets it as a
+// link too, or inline when it takes that kind (ACP audio).
+type File struct {
+	Path, Name, MediaType string
+	Size                  int64
+}
+
+// ShownAsImage is how the text listing attached files marks an image the
+// agent is also shown; an agent that turns out to take no images drops it.
+const ShownAsImage = ", shown as an image"
+
+// Input is a user message: its text (which lists attached files by path),
+// the attached images and the other attached files.
 type Input struct {
 	Text   string
 	Images []Image
+	Files  []File
 }
 
 // StartSpec describes one provider process.
@@ -240,6 +253,7 @@ type StartSpec struct {
 	TempDir    string
 	Prompt     string
 	Images     []Image // with the first prompt
+	Files      []File  // with the first prompt
 	// ReadDirs are directories outside WorkDir the agent must be able to
 	// read (the session's attached files).
 	ReadDirs []string

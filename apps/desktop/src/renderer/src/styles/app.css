@@ -402,6 +402,25 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .dwrap.dock .insp{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0;padding:8px 18px 12px}
 .dwrap.dock .insp+.insp{border-top:.5px solid var(--sep)}
 .dwrap.dock .insp-h{font-size:12px;color:var(--l3);font-weight:var(--font-weight-semibold);letter-spacing:.02em}
+/* The session's list (工单 #90, SessionList.tsx), in the right column: a new session and the folder at the top, then
+   each project's sessions — state, title, when it last moved — the open one marked. Floating, it is a card of its own. */
+.sesslist{gap:0;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;background:var(--win);border-radius:16px;box-shadow:0 0 0 .5px var(--sep),0 8px 24px rgba(0,0,0,.08);padding:10px 0}
+.dwrap.dock .sesslist{max-height:none;border-radius:0;box-shadow:none}
+.sesslist-top{display:flex;align-items:center;gap:6px;padding:0 12px 8px}
+.sesslist-new{flex:1;justify-content:center}
+.sesslist-h{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:12px;color:var(--l3);font-weight:var(--font-weight-semibold)}
+.sesslist-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sesslist-row{display:flex;align-items:center;gap:8px;width:calc(100% - 16px);height:30px;margin:0 8px;padding:0 8px;border:0;border-radius:var(--r-ctl);background:none;font:inherit;font-size:var(--fs-text);color:var(--l1);text-align:left}
+.sesslist-row:hover{background:var(--fill2)}
+.sesslist-row.cur{background:var(--accent-bg);color:var(--accent-t)}
+.sesslist-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sesslist-time{flex:none;font-size:11.5px;color:var(--l3)}
+/* The session's settings (工单 #90): a menu from the toolbar's gear, over the conversation's top right. */
+.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:14px;background:var(--win);box-shadow:0 0 0 .5px var(--menu-bd),0 10px 30px rgba(0,0,0,.14)}
+.insp-stack{display:flex;flex-direction:column}
+.insp-pop .insp{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0;padding:10px 16px}
+.insp-pop .insp+.insp{border-top:.5px solid var(--sep)}
+.ic.flip{transform:scaleX(-1)}
 /* The bar at the bottom centres under the conversation too. */
 .dwrap.dock .cbar{left:calc(50% - 135px);max-width:calc(100% - 318px)}
 .dwrap.dock .cbar.q{width:min(620px,calc(100% - 318px))}

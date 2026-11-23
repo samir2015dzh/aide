@@ -16,8 +16,8 @@ import { Insights } from "./Insights";
 type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean };
 
 /**
- * Cards floating over the conversation's top right, shown or hidden with
- * the toolbar's button (⌥⌘0). The session's environment: who started it,
+ * The session's settings, in the menu from the toolbar's gear (工单 #90;
+ * SessionPage's SettingsMenu). The session's environment: who started it,
  * which coding agent runs it, on which machine (its settings a click away),
  * in which project (and the GitHub repository and branch it came from, for
  * a session started in one), on which branch; the project and the branch
@@ -55,7 +55,7 @@ export function Inspector({ s }: { s: Session }) {
           ...(s.repo !== "" ? [{ id: "pr", label: t("inspector.pullRequest"), run: () => push(st, s, true) }] : []),
         ];
   return (
-    <div className="insp-col">
+    <div className="insp-stack">
       <aside className="insp" aria-label={t("inspector.label")}>
         <h3 className="insp-h">{t("inspector.title")}</h3>
         <ul className="insp-facts">
