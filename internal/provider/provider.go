@@ -20,6 +20,9 @@ type Info struct {
 	Binary    string
 	Version   string
 	LoggedIn  bool
+	// LoginUnconfirmed: the check could not tell whether it is signed in
+	// (LoggedIn false): shown as unconfirmed, not as signed out (工单 #108).
+	LoginUnconfirmed bool
 	// Claude only: the Claude desktop app's settings are on the machine,
 	// and it is signed in. Its sign-in is not the command line's
 	// (LoggedIn): the CLI Aide runs keeps its own.

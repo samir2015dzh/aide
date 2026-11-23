@@ -1990,9 +1990,14 @@ type AgentStatus struct {
 	// from what it is (a coding agent of this machine), "local" a coding agent
 	// of this machine, "personal" listed with the personal agents. The owner's
 	// say comes first, whatever the machine finds.
-	Category      string `protobuf:"bytes,24,opt,name=category,proto3" json:"category,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Category string `protobuf:"bytes,24,opt,name=category,proto3" json:"category,omitempty"`
+	// logged_in is unset because the check could not tell (工单 #108: Claude
+	// Code's `claude auth status` gave no clear answer): its sign-in is
+	// unconfirmed, not signed out. Never filled from another sign-in (the
+	// Claude desktop app's is its own, desktop.signed_in).
+	LoginUnconfirmed bool `protobuf:"varint,25,opt,name=login_unconfirmed,json=loginUnconfirmed,proto3" json:"login_unconfirmed,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AgentStatus) Reset() {
@@ -2184,6 +2189,13 @@ func (x *AgentStatus) GetCategory() string {
 		return x.Category
 	}
 	return ""
+}
+
+func (x *AgentStatus) GetLoginUnconfirmed() bool {
+	if x != nil {
+		return x.LoginUnconfirmed
+	}
+	return false
 }
 
 // AgentLogin is a sign-in of a coding agent's command line that Aide
@@ -8089,7 +8101,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x04R\x05limit\x12\x18\n" +
 	"\aculprit\x18\x04 \x01(\tR\aculprit\x12#\n" +
 	"\rculprit_count\x18\x05 \x01(\rR\fculpritCount\x12\x16\n" +
-	"\x06detail\x18\x06 \x01(\tR\x06detail\"\x90\b\n" +
+	"\x06detail\x18\x06 \x01(\tR\x06detail\"\xbd\b\n" +
 	"\vAgentStatus\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tavailable\x18\x02 \x01(\bR\tavailable\x12\x18\n" +
@@ -8116,7 +8128,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"dsh_bridge\x18\x16 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\tdshBridge\x121\n" +
 	"\x05login\x18\x17 \x01(\v2\x1b.aide.machine.v1.AgentLoginR\x05login\x12\x1a\n" +
-	"\bcategory\x18\x18 \x01(\tR\bcategoryJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
+	"\bcategory\x18\x18 \x01(\tR\bcategory\x12+\n" +
+	"\x11login_unconfirmed\x18\x19 \x01(\bR\x10loginUnconfirmedJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
 	"\n" +
 	"AgentLogin\x126\n" +
 	"\x05state\x18\x01 \x01(\x0e2 .aide.machine.v1.AgentLoginStateR\x05state\x12\x16\n" +

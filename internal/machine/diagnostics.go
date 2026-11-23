@@ -65,6 +65,8 @@ func (l *Local) Diagnostics() string {
 			login := "not signed in"
 			if i.LoggedIn {
 				login = "signed in"
+			} else if i.LoginUnconfirmed {
+				login = "sign-in unconfirmed"
 			}
 			w("  %-10s %s · %s · %s", name, i.Version, login, i.Binary)
 		case i.Problem == provider.ProblemNotFound:

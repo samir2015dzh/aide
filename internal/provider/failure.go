@@ -57,7 +57,7 @@ type kindInfo struct {
 }
 
 var kinds = map[sessionv1.FailureKind]kindInfo{
-	sessionv1.FailureKind_FAILURE_KIND_AUTH:                 {false, "the agent is not logged in on this machine; ask the owner to run the agent's CLI once as the same user and log in"},
+	sessionv1.FailureKind_FAILURE_KIND_AUTH:                 {false, "the agent is not logged in on this machine; ask the owner to sign it in: Claude Code from the Aide app (the machine's Claude Code row: Sign in, which opens the browser there), another agent by running its CLI once as the same user"},
 	sessionv1.FailureKind_FAILURE_KIND_QUOTA:                {false, "the agent's usage limit is reached; retry after it resets, or use another agent or model"},
 	sessionv1.FailureKind_FAILURE_KIND_RATE_LIMIT:           {true, "the provider is rate limiting or over capacity; send the message again later"},
 	sessionv1.FailureKind_FAILURE_KIND_PROVIDER_ERROR:       {true, "the provider returned a server error; send the message again later"},

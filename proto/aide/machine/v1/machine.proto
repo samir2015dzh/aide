@@ -353,6 +353,11 @@ message AgentStatus {
   // of this machine, "personal" listed with the personal agents. The owner's
   // say comes first, whatever the machine finds.
   string category = 24;
+  // logged_in is unset because the check could not tell (工单 #108: Claude
+  // Code's `claude auth status` gave no clear answer): its sign-in is
+  // unconfirmed, not signed out. Never filled from another sign-in (the
+  // Claude desktop app's is its own, desktop.signed_in).
+  bool login_unconfirmed = 25;
 }
 
 // AgentLogin is a sign-in of a coding agent's command line that Aide
