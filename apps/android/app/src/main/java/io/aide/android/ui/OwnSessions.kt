@@ -143,7 +143,7 @@ fun LazyListScope.ownSessionItems(own: OwnSessions, b: Bot, machineName: String,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp),
             )
             val rows = shown + if (own.showArchived) archived else emptyList()
-            rows.forEachIndexed { i, e -> Box(Modifier.groupRow(i, rows.size, inset = 38.dp)) { OwnRow(e) { open(e) } } }
+            if (rows.isNotEmpty()) Column { rows.forEachIndexed { i, e -> Box(Modifier.groupRow(i, rows.size, inset = 38.dp)) { OwnRow(e) { open(e) } } } }
             if (archived.isNotEmpty()) Text(
                 if (own.showArchived) t("Hide archived", "收起已归档") else t("Archived (${archived.size})", "已归档（${archived.size}）"),
                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress { own.showArchived = !own.showArchived }.padding(vertical = 6.dp, horizontal = 16.dp),

@@ -337,20 +337,21 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             SectionHeader(t("Conversations", "对话"), count = convs.open.size)
             if (convs.open.isEmpty() && convs.archived.isEmpty()) Text(t("Nothing with ${b.name} yet: write below.", "还没和 ${b.name} 聊过：在下面写一条。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             val rows = convs.open + if (c.showArchived) convs.archived else emptyList()
-            rows.forEachIndexed { i, s ->
+            // One card: its rows touch, a hairline between them (the column around spaces its other parts).
+            if (rows.isNotEmpty()) Column { rows.forEachIndexed { i, s ->
                 Box(Modifier.groupRow(i, rows.size)) {
                     ConversationRow(s, s.sessionId == cur?.sessionId, world, onChoose = { c.chosen = s.sessionId; model.chooseConversation(b.key, s.sessionId) }, onOpen = { openSession(s.sessionId) }, onArchive = {
                         scope.launch { model.archive(s, s.status != SessionStatus.ARCHIVED)?.let { why -> c.state = ComposerState.Failed(why) } }
                     })
                 }
-            }
+            } }
             if (convs.archived.isNotEmpty()) Text(
                 if (c.showArchived) t("Hide archived", "收起已归档") else t("Archived (${convs.archived.size})", "已归档（${convs.archived.size}）"),
                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress { c.showArchived = !c.showArchived }.padding(vertical = 6.dp, horizontal = 16.dp),
             )
             if (convs.others.isNotEmpty()) {
                 SectionHeader(t("Handed to it by other agents", "别的 agent 派给它的"), count = convs.others.size)
-                convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } }
+                Column { convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
             }
         }
     }

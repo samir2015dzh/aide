@@ -80,7 +80,7 @@ internal fun MachineFoot(model: AppModel, m: Machine, empty: Boolean) {
         m.status?.agents?.filter { it.hidden }?.takeIf { it.isNotEmpty() }?.let { hidden ->
             Text(t("${hidden.size} hidden:", "已隐藏 ${hidden.size} 个："), style = MaterialTheme.typography.bodySmall, color = aide.faint)
             hidden.forEach { a ->
-                PlainButton(onClick = { scope.launch { model.setAgentHidden(m.machineId, a.name, false) } }, enabled = m.online) {
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.setAgentHidden(m.machineId, a.name, false) } }, enabled = m.online) {
                     Text(t("Show ${agentTitle(a.name)}", "显示 ${agentTitle(a.name)}"))
                 }
             }
@@ -127,7 +127,7 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
                     if (p.was == null) p.lacks?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = aide.faint) }
                     // The bridge plugin (工单 #59): handed to DSH with one press; its task to open while it works or after.
                     if (p.was == null && (p.install || p.installSession.isNotEmpty())) Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (p.install && m.online && m.unreachable.isEmpty()) PlainButton(onClick = { scope.launch { model.installDSHBridge(m.machineId) } }) {
+                        if (p.install && m.online && m.unreachable.isEmpty()) PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.installDSHBridge(m.machineId) } }) {
                             Text(if (p.installSession.isNotEmpty()) t("Have DSH try again", "再让 DSH 试一次") else t("Have DSH install it", "让 DSH 装好它"))
                         }
                         if (p.installSession.isNotEmpty()) PlainButton(onClick = { openSession(p.installSession) }) { Text(t("Open the install task", "看安装任务")) }
@@ -138,9 +138,9 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
         e.status?.let { a -> PauseLine(a) }
         if (e.login && m.online && m.unreachable.isEmpty()) {
             if (e.state == ConnState.CHECKING) {
-                PlainButton(onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent, cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent, cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
             } else {
-                PlainButton(onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent) } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent) } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
                 Text(t("A browser opens on ${m.machineName}; you sign in there. Aide never handles the account or the token.", "会在 ${m.machineName} 上打开浏览器，你在那里登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
             }
         }
@@ -168,7 +168,7 @@ private fun ManageMenu(model: AppModel, m: Machine, a: AgentStatus) {
     val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf(false) }
     Box {
-        PlainButton(onClick = { asking = true }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) { Text(t("Manage", "管理")) }
+        PlainButton(onClick = { asking = true }, contentPadding = PaddingValues(start = 10.dp, top = 8.dp, bottom = 8.dp)) { Text(t("Manage", "管理")) }
         fun act(block: suspend () -> Unit) {
             asking = false
             scope.launch { block() }

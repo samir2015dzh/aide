@@ -422,7 +422,7 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                 item(key = b.key) {
                     val on = b.key in picked
                     // One card of rows, as every list in the app (工单 #68).
-                    Column(Modifier.groupRow(i, bots.size, inset = 52.dp)) {
+                    Column(Modifier.groupRow(i, bots.size, inset = 86.dp)) {
                         Row(Modifier.fillMaxWidth().rowPress { picked = if (on) picked - b.key else picked + (b.key to (if (b.personal) "" else projectsOf(b).firstOrNull()?.projectId.orEmpty())) }.padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             RoundCheck(on)
@@ -434,8 +434,8 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                         }
                         if (on && !b.personal) {
                             val ps = projectsOf(b)
-                            if (ps.isEmpty()) Text(t("No project for it on that machine", "那台机器上没有给它用的项目"), style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(start = 52.dp, bottom = 10.dp))
-                            else FlowRow(Modifier.padding(start = 52.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (ps.isEmpty()) Text(t("No project for it on that machine", "那台机器上没有给它用的项目"), style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(start = 86.dp, bottom = 10.dp))
+                            else FlowRow(Modifier.padding(start = 86.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 ps.forEach { p -> ToggleChip(world.projectTitle(p.machineId, p.projectId), picked[b.key] == p.projectId) { picked = picked + (b.key to p.projectId) } }
                             }
                         }
