@@ -45,7 +45,7 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
     .poll(async () => (await api<{ sessions?: { agent: string; createdBy: string }[] }>(settings, "ListSessions")).sessions?.some((s) => s.agent === "deepseek" && s.createdBy === "owner"))
     .toBe(true);
   await main.getByRole("button", { name: "打开 DSH 会话" }).click();
-  await expect(page.getByRole("navigation", { name: "DSH 会话" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /^DSH/ }).getByRole("region", { name: "它自己的会话" })).toBeVisible();
 
   await main.getByRole("tab", { name: "Claude Desktop" }).click();
   await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上没有检测到" })).toBeVisible({ timeout: 30_000 });

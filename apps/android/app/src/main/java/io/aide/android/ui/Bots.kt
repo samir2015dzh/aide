@@ -226,7 +226,7 @@ fun RemoveBotDialog(model: AppModel, b: Bot, machine: String, close: () -> Unit)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, openDevices: () -> Unit = {}, back: () -> Unit) {
+fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, openDevices: () -> Unit = {}, openOwn: (OwnEntry) -> Unit = {}, back: () -> Unit) {
     val world by model.world.collectAsState()
     val personas by model.personas.collectAsState()
     LaunchedEffect(Unit) { model.loadPersonas() }
@@ -248,6 +248,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
         }
         val chat = if (!b.coding && b.client != null) rememberDirectChat(model, b.client.clientId) else null
         val conv = if (m != null && b.coding) rememberConversation(model, b, m) else null
+        val own = if (m != null && b.coding) rememberOwnSessions(model, b) else null
         Column(Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
                 item(key = "head") {
@@ -269,6 +270,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                 }
                 if (chat != null) chatItems(chat, b)
                 if (conv != null) conversationItems(model, conv, b, openSession)
+                if (own != null && m != null) ownSessionItems(own, b, m.machineName, openOwn)
                 if (!b.coding) {
                     val work = world.sessions.values.filter { it.status != SessionStatus.ARCHIVED && it.createdBy == b.client?.clientId }.sortedByDescending { instant(it.updatedAt) }
                     item(key = "work-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(t("Work it handed out", "它派出的任务"), count = work.size) } }
@@ -277,6 +279,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                     }
                     work.forEachIndexed { i, s -> item(key = "s-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, work.size)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
                 }
+                if (m != null && b.coding) item(key = "settings") { AgentSettings(model, b, m, edit) }
                 if (m != null && b.coding) item(key = "identity") { Identity(b, m, edit) }
                 b.client?.let { c ->
                     item(key = "grant") {

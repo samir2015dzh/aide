@@ -203,7 +203,25 @@
     "took": "{{seconds}} 秒",
     "unreachable": "未列出：{{machines}} 现在连不上。",
     "refresh": "刷新",
-    "note": "agent 凭「执行命令」（授权页）在你机器上执行过的命令，以及被拒的调用。每台机器保留最近 500 条；命令输出不在任何地方保存。"
+    "note": "agent 凭「执行命令」（授权页）在你机器上执行过的命令，以及被拒的调用。每台机器保留最近 500 条；命令输出不在任何地方保存。",
+    "link": {
+      "head": "这台电脑的连接",
+      "none": "还没有断开记录。",
+      "down": "断开",
+      "back": "已恢复",
+      "byApp": "应用后台发现",
+      "byWindow": "窗口发现",
+      "aidedGone": "这台电脑上的 Aide 后台停了或正在重启，连接断开",
+      "aidedLost": "与这台电脑上 Aide 后台的连接断开",
+      "aidedHung": "这台电脑上的 Aide 后台 45 秒没有回音（连接假死），已断开重连",
+      "aidedBack": "已自动重新连上这台电脑上的 Aide 后台（断开了 {{took}}）",
+      "relayDown": "这台电脑连不上中继（外网断开或中继不可用）",
+      "relayBack": "这台电脑重新连上中继（断开了 {{took}}）",
+      "seconds_one": "{{count}} 秒",
+      "seconds_other": "{{count}} 秒",
+      "minutes_one": "{{count}} 分钟",
+      "minutes_other": "{{count}} 分钟"
+    }
   },
   "machines": {
     "trustedDevice": "你的设备",

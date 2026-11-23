@@ -205,7 +205,25 @@
     "took": "{{seconds}} s",
     "unreachable": "Not listed: {{machines}} can’t be reached now.",
     "refresh": "Refresh",
-    "note": "The commands agents ran on your machines with Run commands (Access), and those refused. Each machine keeps its last 500; their output is kept nowhere."
+    "note": "The commands agents ran on your machines with Run commands (Access), and those refused. Each machine keeps its last 500; their output is kept nowhere.",
+    "link": {
+      "head": "Links of this computer",
+      "none": "No break recorded.",
+      "down": "Broke",
+      "back": "Restored",
+      "byApp": "noticed by the app",
+      "byWindow": "noticed by a window",
+      "aidedGone": "Aide's background service on this computer stopped or was restarting: the app lost it",
+      "aidedLost": "The link to Aide's background service on this computer broke",
+      "aidedHung": "Aide's background service on this computer said nothing for 45 seconds (the link hung): dropped and opened again",
+      "aidedBack": "Linked to Aide's background service again, by itself (down {{took}})",
+      "relayDown": "This computer lost the relay (no internet, or the relay unavailable)",
+      "relayBack": "This computer reached the relay again (down {{took}})",
+      "seconds_one": "{{count}} second",
+      "seconds_other": "{{count}} seconds",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes"
+    }
   },
   "machines": {
     "trustedDevice": "Your device",

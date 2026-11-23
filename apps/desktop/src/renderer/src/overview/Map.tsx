@@ -403,7 +403,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
                   {(n.machine.status?.agents ?? []).filter((a) => a.available && !a.hidden).map((a) => {
                     const b = codingBotState(n.machine, a.name, now);
                     return (
-                      <span key={a.name} className={b?.usable === "yes" ? "" : "out"} title={b ? `${codingAgentTitle(a.name)} · ${b.word}` : codingAgentTitle(a.name)}>
+                      <span key={a.name} className={st.reconnecting || b?.usable === "yes" ? "" : "out"} title={b ? `${codingAgentTitle(a.name)} · ${b.word}` : codingAgentTitle(a.name)}>
                         <AgentLogo agent={a.name} size={13} />
                       </span>
                     );

@@ -7,7 +7,7 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, withContext,
+  allBots, botConversations, changedParams, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
 import { agentLogos, agentPicture, AgentLogo, BotGlyph, grantColor, grantLogo, grantPicture } from "@aide/ui";
@@ -21,6 +21,8 @@ import { GrantDetail } from "../settings/Grants";
 import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
 import { errorText, useNow, useStore, type Sheet } from "../store";
 import { Composer, attachmentsOf, useAttachments, type ComposerState } from "./Composer";
+import { OwnSession, OwnSessions } from "./OwnSessions";
+import { AgentSettings } from "./AgentSettings";
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
@@ -52,7 +54,11 @@ export function useRoster(): Roster {
   const st = useStore();
   const now = useNow(30_000);
   const personas = usePersonas();
-  return useMemo(() => roster(st.machines, st.clients, st.sessions, now, personas), [st.machines, st.clients, st.sessions, now, personas]);
+  // While the link to aided is being restored, every bot says so (工单 #87), not what it was last known as.
+  return useMemo(() => {
+    const r = roster(st.machines, st.clients, st.sessions, now, personas);
+    return st.reconnecting ? whileReconnecting(r) : r;
+  }, [st.machines, st.clients, st.sessions, now, personas, st.reconnecting]);
 }
 
 // Pinned bots (BotArk's tiles at the top of the sidebar): this computer's choice, kept with the window's own.
@@ -276,7 +282,7 @@ export function SidebarRoster() {
 }
 
 /** A bot's own page (工单 #57, #63): who it is and how it stands at the top; its conversations in the middle; its own settings beside. */
-export function BotPage({ botKey }: { botKey: string }) {
+export function BotPage({ botKey, native }: { botKey: string; native?: string }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const r = useRoster();
@@ -309,7 +315,7 @@ export function BotPage({ botKey }: { botKey: string }) {
         </button>
       </header>
       <div className="bot-body">
-        {coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
+        {coding && native ? <OwnSession b={b} m={m!} id={native} /> : coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
         <aside className="bot-bench" aria-label={t("bots.bench")}>
           {coding && <LocalBench b={b} m={m!} />}
           {!coding && <HandedOut b={b} />}
@@ -382,6 +388,10 @@ function LocalBench({ b, m }: { b: Bot; m: Machine }) {
             </button>
           )}
         </div>
+      </section>
+      <section aria-label={t("agentSettings.title")}>
+        <div className="bot-sec-h">{t("agentSettings.title")}</div>
+        <AgentSettings b={b} m={m} />
       </section>
       <Identity b={b} m={m} />
       <section>
@@ -598,6 +608,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         {showArchived && convs.archived.map((s) => row(s, true))}
         {convs.others.length > 0 && <div className="conv-group static">{t("conv.others")}</div>}
         {convs.others.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+        <OwnSessions b={b} m={m} />
       </div>
       <Composer
         value={text}

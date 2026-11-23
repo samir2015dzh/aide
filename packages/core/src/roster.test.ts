@@ -3,7 +3,7 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { ClientSchema, MachineSchema, type Client, type Machine } from "@aide/proto/local";
 import { SessionSchema, SessionStatus } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { allBots, botCounts, botCountsText, codingBotState, roster } from "./roster";
+import { allBots, botCounts, botCountsText, codingBotState, roster, whileReconnecting } from "./roster";
 
 const now = new Date("2026-11-22T10:00:00Z");
 const fresh = timestampFromDate(new Date("2026-11-22T09:58:00Z"));
@@ -142,5 +142,29 @@ describe("who gets on the roster (工单 #64)", () => {
     const r = roster(machines, [client("c1", "DSH on work-pc")], [], now);
     expect(allBots(r).map((b) => b.name)).toEqual(["Claude Code"]);
     expect(r.aside.map((a) => a.client.label)).toEqual(["DSH on work-pc"]);
+  });
+});
+
+describe("this computer's agents: its own word, not the relay's (工单 #87)", () => {
+  test("this computer's machine off the relay: its agents as they are; another machine off the relay: unknown", () => {
+    const here = machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true }], { online: false, local: true });
+    const there = machine("m2", "laptop", [{ name: "claude", available: true, loggedIn: true }], { online: false });
+    expect(codingBotState(here, "claude", now)).toMatchObject({ state: "ok", usable: "yes" });
+    expect(codingBotState(there, "claude", now)).toMatchObject({ state: "unknown", why: "offline" });
+  });
+
+  test("while the link to aided is restored: every bot reconnecting, never offline", () => {
+    const r = whileReconnecting(roster([machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true }], { local: true })], [client("c1", "Muse")], [], now));
+    for (const b of allBots(r)) expect(b.state).toMatchObject({ word: "正在重连", why: "reconnecting" });
+    expect(allBots(r)).toHaveLength(2);
+  });
+});
+
+describe("a detected agent filed as personal (工单 #93)", () => {
+  test("listed with the personal agents, still its machine's", () => {
+    const r = roster([machine("m1", "work-pc", [{ name: "claude", available: true, loggedIn: true, category: "personal" }, { name: "codex", available: true, loggedIn: true }])], [], [], now);
+    expect(r.personal.map((b) => b.key)).toEqual(["m:m1/claude"]);
+    expect(r.personal[0]).toMatchObject({ kind: "local", machineId: "m1", agent: "claude" });
+    expect(r.machines[0].bots.map((b) => b.agent)).toEqual(["codex"]);
   });
 });

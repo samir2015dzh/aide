@@ -69,7 +69,7 @@ import kotlinx.coroutines.launch
 /** Every machine's sessions: those that need you, those at work, the rest. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
+fun SessionsTab(model: AppModel, open: (String) -> Unit) {
     val world by model.world.collectAsState()
     // Several machines: the list of one, or all (the owner's rule, 2026-11-21); the buckets stay as they are.
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
@@ -92,17 +92,6 @@ fun SessionsTab(model: AppModel, openDSH: () -> Unit, open: (String) -> Unit) {
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, modifier = Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
-            // DSH's own sessions, on a machine that has it.
-            if (world.machines.any { m -> m.status?.agents.orEmpty().any { it.name == "deepseek" } }) {
-                item(key = "dsh") {
-                    Row(Modifier.padding(top = 8.dp).fillMaxWidth().aideCard().pressable(openDSH).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AgentFace("deepseek", 28)
-                        HSpace(12)
-                        Text(t("DSH’s own sessions", "DSH 自己的会话"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                        Text("›", style = MaterialTheme.typography.titleLarge, color = aide.faint)
-                    }
-                }
-            }
             // The overview first (BotArk reference §4): what waits for you, what is at work, what is new.
             item(key = "overview") {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

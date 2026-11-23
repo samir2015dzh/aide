@@ -246,7 +246,9 @@
     "last": "Last: {{title}} · {{when}}",
     "countReady": "{{count}} ready",
     "countUnknown": "{{count}} unknown",
-    "countOf": "of {{count}}"
+    "countOf": "of {{count}}",
+    "reconnecting": "Reconnecting",
+    "reconnectingLine": "The link to Aide on this computer broke and is being restored; what it showed before is not known to be current."
   },
   "attach": {
     "kind": {

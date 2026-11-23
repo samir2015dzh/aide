@@ -416,6 +416,10 @@ class AppModel(private val context: Context) {
         coroutineScope { world.value.machines.filter { needsCheck(it, now) }.forEach { m -> launch { runCatching { api.checkAgents(m.machineId) } } } }
     }
 
+    /** Files a coding agent of a machine as a kind (工单 #93): "" told from what it is, "local", "personal". */
+    suspend fun setAgentCategory(machineId: String, agent: String, category: String): Boolean =
+        report { api!!.setAgentCategory(machineId, agent, category) } != null
+
     /** Hides a coding agent a machine lists (one the owner doesn't trust, as on the desktop), or shows it again. */
     suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
         report { api!!.setAgentHidden(machineId, agent, hidden) }

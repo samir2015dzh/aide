@@ -89,6 +89,8 @@ data class AgentStatus(
     val dshBridge: DSHBridge? = null,
     /** Its sign-in started from Aide (工单 #51); null: none. */
     val login: AgentLogin? = null,
+    /** The kind the owner filed it as (SetAgentCategory, 工单 #93): "" told from what it is, "local", "personal". */
+    val category: String = "",
 )
 
 /** aide.machine.v1.AgentLogin; state is an AgentLoginState name. */
@@ -105,8 +107,9 @@ data class ClaudeDesktop(val installed: Boolean = false, val signedIn: Boolean =
 @Serializable
 data class AgentPause(val since: String = "", val resumeAt: String = "")
 
+/** fetchedAt (RFC 3339): when it was read; stale: the last reading, kept after a refresh that failed (工单 #86). */
 @Serializable
-data class ClaudeUsage(val windows: List<UsageWindow> = emptyList())
+data class ClaudeUsage(val windows: List<UsageWindow> = emptyList(), val fetchedAt: String = "", val stale: Boolean = false, val unavailable: String = "")
 
 @Serializable
 data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val resetsAt: String = "")
@@ -427,6 +430,7 @@ data class SessionEvent(
 
 /** resumeAt (RFC 3339), with paused: when it resumes by itself; null: when the owner resumes it. */
 @Serializable data class SetAgentHiddenRequest(val machineId: String, val agent: String, val hidden: Boolean)
+@Serializable data class SetAgentCategoryRequest(val machineId: String, val agent: String, val category: String)
 
 @Serializable data class SetAgentPausedRequest(val machineId: String, val agent: String, val paused: Boolean, val resumeAt: String? = null)
 
@@ -483,6 +487,30 @@ data class SessionEvent(
     @EncodeDefault val view: String = "EVENT_VIEW_FULL",
 )
 @Serializable data class ReadDSHSessionResponse(val session: DSHSession = DSHSession(), val events: List<SessionEvent> = emptyList(), val hasMoreBefore: Boolean = false)
+/** A Claude Code session the Claude desktop app has on a machine, not started by Aide (aide.machine.v1.ClaudeSession). */
+@Serializable data class ClaudeSession(
+    val sessionId: String = "",
+    val title: String = "",
+    val cwd: String = "",
+    val repo: String = "",
+    val createdAt: String = "",
+    val lastActivityAt: String = "",
+    val archived: Boolean = false,
+    val model: String = "",
+    val status: String = "",
+    val error: String = "",
+)
+@Serializable data class ClaudeSessionEntry(val machineId: String = "", val machineName: String = "", val session: ClaudeSession = ClaudeSession(), val lost: Boolean = false, val readAt: String = "")
+@Serializable data class ClaudeIndexEntry(val machineId: String = "", val indexes: List<String> = emptyList())
+@Serializable data class ListClaudeSessionsResponse(val sessions: List<ClaudeSessionEntry> = emptyList(), val unreachable: List<DSHUnreachable> = emptyList(), val indexes: List<ClaudeIndexEntry> = emptyList())
+@Serializable data class ReadClaudeSessionRequest(
+    val machineId: String,
+    val sessionId: String,
+    @Serializable(with = Int64::class) val beforeSeq: Long = 0,
+    @EncodeDefault val limit: Int = 200,
+    @EncodeDefault val view: String = "EVENT_VIEW_FULL",
+)
+@Serializable data class ReadClaudeSessionResponse(val session: ClaudeSession = ClaudeSession(), val events: List<SessionEvent> = emptyList(), val hasMoreBefore: Boolean = false)
 @Serializable data class ListSessionsRequest(@EncodeDefault val limit: Int = 50, val before: SessionCursor? = null, @EncodeDefault val view: String = "SESSION_VIEW_BASIC")
 @Serializable data class ListSessionsResponse(val sessions: List<Session> = emptyList(), val next: SessionCursor? = null)
 

@@ -612,5 +612,35 @@
     "stuckAgent": "This agent is no longer on that machine: it can be read, not continued.",
     "newWithContext": "Start a new one with its context",
     "willStartNew": "You changed the {{what}}: the next message starts a new conversation"
+  },
+  "link": {
+    "reconnecting": "The link to Aide on this computer broke: reconnecting…"
+  },
+  "own": {
+    "title": "Its own sessions",
+    "noteDsh": "Opened in DSH itself (or by another tool), not by Aide. Read only until you take one over.",
+    "noteClaude": "Claude Code sessions the Claude desktop app has on this machine, not started by Aide. Read only.",
+    "cant": "Aide can't read the sessions {{app}} has in its own app yet.",
+    "none": "No sessions of {{app}}'s own here.",
+    "back": "Back to the conversations",
+    "gone": "This session isn't there any more."
+  },
+  "agentSettings": {
+    "title": "Its settings",
+    "hero": "{{app}} found on {{machine}}",
+    "canUse": "What it can use",
+    "machine": "Machine",
+    "machineValue": "{{machine}} (where it runs)",
+    "projects": "Projects",
+    "allProjects": "Every project on its machine",
+    "noProjects": "No project yet",
+    "separator": ", ",
+    "rename": "Name and icon",
+    "changeScope": "Change what it can use",
+    "hide": "Remove from Aide…",
+    "hideTitle": "Remove {{name}} from Aide?",
+    "hideMessage": "It leaves Aide's lists; nothing on {{machine}} is uninstalled or deleted, and its history stays. A rescan of the machine (Devices) shows it again.",
+    "hideButton": "Remove",
+    "personalMeans": "Listed with your personal agents; it still runs on its machine, and work for it goes there."
   }
 }

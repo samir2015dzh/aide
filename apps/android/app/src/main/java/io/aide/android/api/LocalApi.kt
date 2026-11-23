@@ -68,6 +68,12 @@ class LocalApi(port: Long, token: String) {
 
     suspend fun listDSHSessions(): ListDSHSessionsResponse = call("ListDSHSessions", Empty(), timeoutSeconds = 60)
 
+    /** The Claude desktop app's Claude Code sessions on the owner's machines (docs/claude-sessions.md). */
+    suspend fun listClaudeSessions(): ListClaudeSessionsResponse = call("ListClaudeSessions", Empty(), timeoutSeconds = 60)
+
+    suspend fun readClaudeSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadClaudeSessionResponse =
+        call("ReadClaudeSession", ReadClaudeSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
+
     suspend fun readDSHSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadDSHSessionResponse =
         call("ReadDSHSession", ReadDSHSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
 
@@ -152,6 +158,10 @@ class LocalApi(port: Long, token: String) {
     /** Hands installing the DSH bridge plugin to DSH on the machine (工单 #59). */
     suspend fun installDSHBridge(machineId: String): InstallDSHBridgeResponse =
         call("InstallDSHBridge", MachineIdRequest(machineId), timeoutSeconds = 60)
+
+    suspend fun setAgentCategory(machineId: String, agent: String, category: String) {
+        call<SetAgentCategoryRequest, JsonElement>("SetAgentCategory", SetAgentCategoryRequest(machineId, agent, category))
+    }
 
     suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
         call<SetAgentHiddenRequest, JsonElement>("SetAgentHidden", SetAgentHiddenRequest(machineId, agent, hidden))

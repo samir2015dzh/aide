@@ -221,6 +221,7 @@ message AdminCommand {
     SetAgentPaused set_agent_paused = 21;
     SetProjectName set_project_name = 22;
     SetProjectPermission set_project_permission = 23;
+    SetAgentCategory set_agent_category = 24;
   }
   reserved 12, 17, 18;
   reserved "rename_machine", "set_her_assistant_mode", "set_her_command_connector";
@@ -265,6 +266,16 @@ message SetAgentPaused {
   // With paused: when it resumes by itself (a plan's usage reset), else
   // only the owner resumes it. In the future.
   google.protobuf.Timestamp resume_at = 3;
+}
+
+// SetAgentCategory files a coding agent the machine lists as a kind (工单
+// #52, #93): a setting, as hiding one is. The owner's say comes first, the
+// machine keeps it with the agent; it grants and takes away nothing.
+message SetAgentCategory {
+  // "claude" | "codex" | an ACP agent ("copilot", "deepseek", ...)
+  string agent = 1;
+  // "" (told from what it is again), "local" or "personal".
+  string category = 2;
 }
 
 // SetProjectName gives a project the name the owner's screens show it by,

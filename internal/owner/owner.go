@@ -1363,7 +1363,8 @@ func (o *Owner) admin(ctx context.Context, machineID string, build func(*identit
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
 		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused,
-		*identityv1.AdminCommand_SetProjectName, *identityv1.AdminCommand_SetProjectPermission:
+		*identityv1.AdminCommand_SetProjectName, *identityv1.AdminCommand_SetProjectPermission,
+		*identityv1.AdminCommand_SetAgentCategory:
 		if l := o.local(); l != nil && l.MachineID() == machineID {
 			return l.ApplySettings(ctx, build) // this device's own machine, in process
 		}
@@ -2067,6 +2068,15 @@ func (o *Owner) SetAgentHidden(ctx context.Context, machineID, agent string, hid
 func (o *Owner) SetAgentPaused(ctx context.Context, machineID, agent string, paused bool, resumeAt *timestamppb.Timestamp) error {
 	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
 		c.Command = &identityv1.AdminCommand_SetAgentPaused{SetAgentPaused: &identityv1.SetAgentPaused{Agent: agent, Paused: paused, ResumeAt: resumeAt}}
+	})
+	return err
+}
+
+// SetAgentCategory files a coding agent a machine lists as a kind, or back
+// to told from what it is (工单 #52, #93): a setting, as hiding one is.
+func (o *Owner) SetAgentCategory(ctx context.Context, machineID, agent, category string) error {
+	_, err := o.admin(ctx, machineID, func(c *identityv1.AdminCommand) {
+		c.Command = &identityv1.AdminCommand_SetAgentCategory{SetAgentCategory: &identityv1.SetAgentCategory{Agent: agent, Category: category}}
 	})
 	return err
 }
