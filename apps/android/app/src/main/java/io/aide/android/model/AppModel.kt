@@ -482,18 +482,26 @@ class AppModel(private val context: Context) {
      * composer's choices. What became of it is the caller's to say, in its box (工单 #61): a failure comes back as
      * the error's words, never said elsewhere.
      */
-    suspend fun converse(machineId: String, agent: String, to: Session?, p: ConvParams, text: String, key: String): Result<Session> = try {
+    suspend fun converse(machineId: String, agent: String, to: Session?, p: ConvParams, text: String, key: String, files: List<io.aide.android.api.AttachmentIn> = emptyList()): Result<Session> = try {
         val api = api!!
         val s = if (to != null) {
             if (to.status == io.aide.android.api.SessionStatus.ARCHIVED) api.archive(to.sessionId, false)
-            api.sendMessage(to.sessionId, text)
+            api.sendMessage(to.sessionId, text, files)
         } else {
-            api.startSession(machineId, p.projectId, agent, text, key, p.model, p.effort, p.mode)
+            api.startSession(machineId, p.projectId, agent, text, key, p.model, p.effort, p.mode, files)
         }
         s?.let { replace(it) }
         if (s == null) Result.failure(ApiError("internal", "")) else Result.success(s)
     } catch (e: Exception) {
         Result.failure(Exception(humanError(e)))
+    }
+
+    /** The owner's next message in a session, from its page (工单 #91: with its files); null when it went, else why. */
+    suspend fun sendTo(s: Session, text: String, files: List<io.aide.android.api.AttachmentIn>): String? = try {
+        api!!.sendMessage(s.sessionId, text, files)?.let { replace(it) }
+        null
+    } catch (e: Exception) {
+        humanError(e)
     }
 
     /** Archives a conversation on its machine, or unarchives it; null when it worked, else why. */

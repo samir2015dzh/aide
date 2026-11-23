@@ -502,8 +502,10 @@ data class Notice(
     val roomLine: String = "",
 )
 
-@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String, val model: String = "", val effort: String = "", val mode: String = "")
-@Serializable data class SendMessageRequest(val sessionId: String, val text: String)
+/** aide.session.v1.Attachment: a file sent with a message (工单 #91); data is its bytes, base64 as JSON carries bytes. */
+@Serializable data class AttachmentIn(val name: String, val mediaType: String = "", val data: String)
+@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String, val model: String = "", val effort: String = "", val mode: String = "", val attachments: List<AttachmentIn> = emptyList())
+@Serializable data class SendMessageRequest(val sessionId: String, val text: String, val attachments: List<AttachmentIn> = emptyList())
 @Serializable data class StartSessionRequest(val machineId: String, val session: StartSessionBody)
 
 // Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.

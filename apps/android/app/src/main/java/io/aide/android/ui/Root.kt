@@ -115,7 +115,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     val top = at.route
     if (top != null) {
         when (top) {
-            is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
+            is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) }, open = { stack[stack.lastIndex] = Route.Session(it) })
             Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) },

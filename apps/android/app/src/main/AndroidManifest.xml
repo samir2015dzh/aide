@@ -29,6 +29,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- A photo taken for a message (工单 #91): the camera app writes it here, then the composer reads it. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.attach"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/attach_paths" />
+        </provider>
         <!-- Keeps the relay connection in the background, so notices reach the phone
              without a push service (docs/android-app.md §4). No other foreground
              service type fits a connection the app holds to its own server; dataSync

@@ -329,18 +329,19 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
     val a = m.status?.agents?.firstOrNull { it.name == b.agent }
     var text by rememberSaveable(b.key) { mutableStateOf("") }
     var key by rememberSaveable(b.key) { mutableStateOf(UUID.randomUUID().toString()) }
+    val attach = rememberAttachments(b.key)
     val stuck = cur?.let { stuckWhy(it, world.projects, m) }
     val changed = cur?.let { changedParams(it, p) }.orEmpty()
     val fresh = cur == null || changed.isNotEmpty()
     val names = mapOf("project" to t("project", "项目"), "model" to t("model", "模型"), "effort" to t("effort", "推理强度"), "mode" to t("mode", "模式"))
     fun send(contextOf: Session? = null) {
         val body = text.trim()
-        if (body.isEmpty()) return
+        if (body.isEmpty() && attach.files.isEmpty()) return
         c.state = ComposerState.Sending
         scope.launch {
             val to = if (contextOf == null && !fresh) cur else null
             val prompt = contextOf?.let { withContext(it, displayTitle(it), body) } ?: body
-            model.converse(m.machineId, b.agent, to, p, prompt, key).fold({ s ->
+            model.converse(m.machineId, b.agent, to, p, prompt, key, attach.wire()).fold({ s ->
                 if (to == null) { c.chosen = s.sessionId; model.chooseConversation(b.key, s.sessionId) }
                 c.state = ComposerState.Done(
                     when {
@@ -350,6 +351,7 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
                     },
                 )
                 text = ""
+                attach.clear()
                 key = UUID.randomUUID().toString()
             }, { e -> c.state = ComposerState.Failed(e.message.orEmpty()) { send(contextOf) } })
         }
@@ -372,6 +374,12 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
         enabled = b.state.usable != Usable.NO && projects.isNotEmpty() && (stuck == null || stuck == Stuck.ARCHIVED),
         why = why,
         plus = listOf(PlusItem(t("New conversation", "开启新对话"), cur != null) { c.chosen = "new"; model.chooseConversation(b.key, "new") }),
+        attach = attach,
+        // The machine's work-order macros (!plan, !implement), and a new conversation (工单 #92).
+        commands = listOf(
+            SlashCommand("plan", t("Plan only: no changes until you say so", "只做计划：你点头前不改任何东西")) { text = "!plan " },
+            SlashCommand("implement", t("Implement it, run the tests, and sum up", "直接实现，跑测试，最后小结")) { text = "!implement " },
+        ) + (if (cur != null) listOf(SlashCommand("new", t("Start a new conversation", "开启新对话")) { c.chosen = "new"; model.chooseConversation(b.key, "new") }) else emptyList()),
         chips = {
             if (projects.isNotEmpty()) ChipPicker(t("Project", "项目"), p.projectId, projects.map { it.projectId to it.title() }) { c.params = p.copy(projectId = it) }
             if (a != null && a.models.isNotEmpty()) ChipPicker(t("Model", "模型"), p.model, listOf("" to t("Default model", "默认模型")) + a.models.map { it.id to it.name.ifEmpty { it.id } }) { c.params = p.copy(model = it, effort = "") }
