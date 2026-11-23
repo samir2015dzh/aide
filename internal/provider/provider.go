@@ -68,10 +68,12 @@ type ScopedModels interface {
 	ScopedModels() bool
 }
 
-// Model is one model an agent offers.
+// Model is one model an agent offers. Resolved is the specific model an
+// alias ID runs here (Claude Code's, 工单 #99); "" when ID is the model.
 type Model struct {
 	ID, Name string
 	Efforts  []string
+	Resolved string `json:",omitempty"`
 }
 
 // Mode is one session mode an agent offers (an ACP agent's permission or

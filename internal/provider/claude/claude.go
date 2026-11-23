@@ -281,12 +281,16 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	if !info.LoggedIn && !told {
 		info.LoggedIn = info.DesktopSignedIn
 	}
-	info.Models = Models
+	// Its models as it lists them here (工单 #99); one too old to, the
+	// aliases it takes, their specific models unknown.
+	if info.Models, info.Own.Model = listModels(ctx, env, bin); len(info.Models) == 0 {
+		info.Models = Models
+	}
 	return info
 }
 
-// Models are the aliases Claude Code takes for its latest models; it lists
-// none itself.
+// Models are the aliases Claude Code takes for its latest models, for one
+// that does not list its models.
 var Models = []provider.Model{
 	{ID: "fable", Name: "Fable", Efforts: efforts},
 	{ID: "opus", Name: "Opus", Efforts: efforts},

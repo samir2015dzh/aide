@@ -1,5 +1,6 @@
 package io.aide.android.model
 
+import io.aide.android.api.AgentModel
 import io.aide.android.api.Machine
 import io.aide.android.api.Project
 import io.aide.android.api.Session
@@ -41,11 +42,12 @@ fun stuckWhy(s: Session, projects: List<Project>, m: Machine?): Stuck? = when {
     else -> null
 }
 
-fun paramsOf(s: Session) = ConvParams(s.projectId, s.model, s.effort, "")
+/** Its choices; its model the one it runs, as the agent's models list it (an alias that runs it here, 工单 #99). */
+fun paramsOf(s: Session, models: List<AgentModel> = emptyList()) = ConvParams(s.projectId, listedModel(s.model, models), s.effort, "")
 
 /** Which choices differ from the conversation's own (its mode is not kept: any mode chosen is a change). */
-fun changedParams(s: Session, p: ConvParams): List<String> {
-    val o = paramsOf(s)
+fun changedParams(s: Session, p: ConvParams, models: List<AgentModel> = emptyList()): List<String> {
+    val o = paramsOf(s, models)
     return listOfNotNull(
         "project".takeIf { o.projectId != p.projectId },
         "model".takeIf { o.model != p.model },

@@ -73,6 +73,9 @@ data class AgentStatus(
     val models: List<AgentModel> = emptyList(),
     /** Its per-session modes (permission presets) here. */
     val modes: List<AgentMode> = emptyList(),
+    /** What its sessions run with when none is chosen: the machine's defaults for it, else its own (工单 #99). */
+    val defaults: AgentDefaults? = null,
+    val own: AgentDefaults? = null,
     /** The owner paused it here (SetAgentPaused): no new session starts with it until it resumes. */
     val pause: AgentPause? = null,
     /** When it last resumed by itself, once its pause came to its end (RFC 3339). */
@@ -114,8 +117,13 @@ data class ClaudeUsage(val windows: List<UsageWindow> = emptyList(), val fetched
 @Serializable
 data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val resetsAt: String = "")
 
+/** resolved: the specific model an alias id runs on that machine (Claude Code's "opus" → "claude-opus-5-5", 工单 #99). */
 @Serializable
-data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList())
+data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList(), val resolved: String = "")
+
+/** aide.identity.v1.AgentDefaults, as far as the phone reads it. */
+@Serializable
+data class AgentDefaults(val model: String = "", val effort: String = "", val mode: String = "")
 
 @Serializable
 data class AgentMode(val id: String = "", val name: String = "")

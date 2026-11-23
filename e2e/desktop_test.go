@@ -136,6 +136,11 @@ func TestDesktop(t *testing.T) {
 			if name == "batchi-projects" { // DeepSeek Harness with its permission presets (工单 #89)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_PRESETS=")
 			}
+			if name == "batchj-models" { // Claude Code listing its models, and DSH telling its own in a session (工单 #98, #99)
+				dsh := filepath.Join(t.TempDir(), "dsh") // its own models, not the world's Gemini's
+				os.WriteFile(dsh, []byte("#!/bin/sh\nFAKE_ACP_PRESETS= FAKE_ACP_CONFIG=1 FAKE_ACP_MODELS=deepseek/v4-pro,deepseek/v4-flash exec "+filepath.Join(binaries(t), "fakeacp")+` "$@"`+"\n"), 0o755)
+				more = append(more, "AIDE_CLAUDE_BIN="+modelsClaude(t), "AIDE_DEEPSEEK_BIN="+dsh)
+			}
 			if name == "batche" { // Claude Code here, its command line not signed in; `auth login` signs it in (工单 #51)
 				dir := t.TempDir()
 				signed := filepath.Join(dir, "signed-in")
@@ -212,6 +217,30 @@ esac
 			}
 		})
 	}
+}
+
+// modelsClaude is a Claude Code that lists its models as 2.1.330 does,
+// asked as its SDK asks (each alias with the specific model it runs, 工单
+// #99), and runs a session on the one --model names, saying so in its init
+// line and in each answer.
+func modelsClaude(t *testing.T) string {
+	answer, _ := filepath.Abs(filepath.Join("internal", "provider", "claude", "testdata", "claude-2.1.330-initialize.jsonl"))
+	bin := filepath.Join(t.TempDir(), "claude")
+	os.WriteFile(bin, []byte(`#!/bin/sh
+case "$1" in --version) echo "2.1.330 (Claude Code)"; exit;; auth) echo '{"loggedIn":true}'; exit;; esac
+model=sonnet id=
+while [ $# -gt 0 ]; do case "$1" in --model) model=$2;; --session-id|--resume) id=$2;; esac; shift; done
+read first
+case "$first" in *'"aide-models"'*) cat `+answer+`; exit;; esac
+case "$model" in sonnet) m=claude-sonnet-5-5;; opus) m=claude-opus-5-5;; fable) m=claude-fable-5-2;; haiku) m=claude-haiku-5-5;; *) m=$model;; esac
+echo '{"type":"system","subtype":"init","session_id":"'$id'","model":"'$m'"}'
+while read prompt; do
+	echo '{"type":"user","message":{"role":"user","content":"x"},"isReplay":true}'
+	echo '{"type":"assistant","message":{"content":[{"type":"text","text":"running on '$m'"}]}}'
+	echo '{"type":"result","subtype":"success","result":"running on '$m'"}'
+done
+`), 0o755)
+	return bin
 }
 
 // desktopWorld is an owner Mac with a session in every state the app

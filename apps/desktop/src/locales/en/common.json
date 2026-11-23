@@ -609,6 +609,10 @@
     "newStarted": "New conversation started",
     "newBecause": "New conversation: you changed the {{what}}",
     "defaultModel": "Default model",
+    "defaultModelIs": "Default · {{model}}",
+    "modelUnknown": "Specific model unknown: Claude Code on this machine did not say",
+    "modelsAfterFirst": "{{agent}} names its models only in a session: send the first message with the default model, then its models on this machine are listed here",
+    "modelsNone": "{{agent}}'s sessions offer no choice of model: it runs as its own settings say",
     "defaultEffort": "Default effort",
     "defaultMode": "Default mode",
     "param": {

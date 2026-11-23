@@ -1,5 +1,7 @@
 import type { Machine, Project } from "@aide/proto/local";
+import type { AgentStatus } from "@aide/proto/machine";
 import { SessionStatus, type Session } from "@aide/proto/session";
+import { listedModel } from "./machines";
 import type { Bot } from "./roster";
 import { updatedDate } from "./sessions";
 
@@ -57,20 +59,23 @@ export function stuckWhy(s: Session, projects: readonly Project[], m: Machine | 
   return undefined;
 }
 
-/** The composer's choices as a conversation has them: its project, model and effort (its mode is not kept). */
-export function paramsOf(s: Session): ConvParams {
-  return { projectId: s.projectId, model: s.model, effort: s.effort, mode: "" };
+/**
+ * The composer's choices as a conversation has them: its project, model and effort (its mode is not kept). Its model
+ * is the one it runs, as the agent's models list it (models: an alias that runs it here, 工单 #99).
+ */
+export function paramsOf(s: Session, models: AgentStatus["models"] = []): ConvParams {
+  return { projectId: s.projectId, model: listedModel(s.model, models), effort: s.effort, mode: "" };
 }
 
 /** Whether choices differ from the conversation's own (rule 4: the next message starts a new one). */
-export function paramsChanged(s: Session, p: ConvParams): boolean {
-  const o = paramsOf(s);
+export function paramsChanged(s: Session, p: ConvParams, models: AgentStatus["models"] = []): boolean {
+  const o = paramsOf(s, models);
   return o.projectId !== p.projectId || o.model !== p.model || o.effort !== p.effort || p.mode !== "";
 }
 
 /** Which choices differ, to say what changed (rule 4). */
-export function changedParams(s: Session, p: ConvParams): (keyof ConvParams)[] {
-  const o = paramsOf(s);
+export function changedParams(s: Session, p: ConvParams, models: AgentStatus["models"] = []): (keyof ConvParams)[] {
+  const o = paramsOf(s, models);
   return (["projectId", "model", "effort", "mode"] as const).filter((k) => o[k] !== p[k]);
 }
 

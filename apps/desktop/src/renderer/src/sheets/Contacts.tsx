@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { modelOptions } from "../modelOptions";
 import { Picker } from "../Picker";
 import { useTranslation } from "react-i18next";
 import { codingAgentTitle, modeLabel, projectTitle } from "@aide/core";
@@ -37,6 +38,7 @@ export function PersonaSheet({ draft }: { draft: PersonaDraft }) {
 function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => void }) {
   const { t } = useTranslation("sheets");
   const tf = useTranslation("firstrun").t;
+  const tc = useTranslation("common").t;
   const st = useStore();
   const [d, setD] = useState(draft);
   const put = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
@@ -128,7 +130,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
           <div className="frow">
             <label className="fl" htmlFor="ct-model">{t("newSession.model")}</label>
             <span className="fv">
-              <Picker className="psel" label={t("newSession.model")} value={d.model} onChange={(v) => put({ model: v, effort: "" })} options={[{ value: "", label: t("newSession.default") }, ...a.models.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
+              <Picker className="psel" label={t("newSession.model")} value={d.model} onChange={(v) => put({ model: v, effort: "" })} options={modelOptions(tc, a)} />
             </span>
           </div>
         )}

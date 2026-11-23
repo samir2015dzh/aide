@@ -200,7 +200,7 @@ func checkSettings(agent string, i provider.Info, model, effort, runs string) er
 // this machine's defaults and the agent's own configuration. n.mu is held.
 func (n *Machine) agentModels(a *machinev1.AgentStatus, i provider.Info) {
 	for _, m := range i.Models {
-		a.Models = append(a.Models, &machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts})
+		a.Models = append(a.Models, &machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts, Resolved: m.Resolved})
 	}
 	a.Defaults = n.defaults[a.Name]
 	for _, m := range i.Modes {
