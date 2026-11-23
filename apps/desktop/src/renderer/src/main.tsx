@@ -10,6 +10,8 @@ import "./styles.css";
 import "./motion.css";
 
 document.documentElement.dataset.platform = platform;
+// Where the system's scrollbars are not a Mac's overlay ones, the app draws Apple's thin ones (工单 #95, app.css).
+if (window.aide?.platform !== "darwin") document.documentElement.classList.add("own-scrollbars");
 
 // Titles go grey while another window has the focus (the .blurred rules).
 window.aide?.onWindowFocus((focused) => document.documentElement.classList.toggle("blurred", !focused));

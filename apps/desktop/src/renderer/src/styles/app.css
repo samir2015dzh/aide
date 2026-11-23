@@ -43,7 +43,7 @@
   --shadow-pop:0 0 0 .5px var(--menu-bd),0 10px 30px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.08);
   --shadow-sheet:0 0 0 .5px var(--menu-bd),0 22px 70px rgba(0,0,0,.28),0 6px 18px rgba(0,0,0,.10);
   /* The owner's messages: a quiet grey bubble, as Grok's. */
-  --bub:#e9e9eb;--bub-fg:var(--l1);--msg:var(--l1);
+  --bub:#f0f0f1;--bub-fg:var(--l1);--msg:var(--l1);
   --glass:rgba(255,255,255,.72);--glass-sh:0 0 0 .5px rgba(0,0,0,.10),0 2px 8px rgba(0,0,0,.08);
   --shadow-win:0 0 0 .5px rgba(0,0,0,.20),0 24px 70px rgba(10,20,50,.30),0 8px 22px rgba(10,20,50,.14);
   --code:#f6f6f8;--add-bg:rgba(52,199,89,.12);--del-bg:rgba(255,59,48,.09);--add-fg:#248a3d;--del-fg:#d70015;
@@ -71,9 +71,9 @@
   --shadow-pop:0 0 0 .5px var(--menu-bd),0 10px 30px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.25);
   --shadow-sheet:0 0 0 .5px var(--menu-bd),0 22px 70px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.3);
   /* The owner's messages: a grey bubble in the dark too. */
-  --bub:#262628;--bub-fg:var(--l1);
-  /* The agent's words: near white, a step brighter than other text. */
-  --msg:rgba(255,255,255,.95);
+  --bub:#232326;--bub-fg:var(--l1);
+  /* The agent's words: the label colour, as everywhere. */
+  --msg:var(--l1);
   --glass:rgba(30,30,33,.62);--glass-sh:0 0 0 .5px rgba(255,255,255,.10),0 2px 10px rgba(0,0,0,.3);
   --shadow-win:0 0 0 .5px rgba(255,255,255,.14),0 24px 70px rgba(0,0,0,.6),0 8px 22px rgba(0,0,0,.35);
   --code:#111113;--add-bg:rgba(48,209,88,.13);--del-bg:rgba(255,69,58,.13);--add-fg:#30d158;--del-fg:#ff6961;
@@ -602,7 +602,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .frow>.fv.left{justify-content:flex-start;text-align:left}
 .frow .fdesc{font-size:11.5px;color:var(--l2);margin-top:2px}
 /* A group's title over its card, a group's note under it: small, secondary, in line with the rows' text. */
-.fhead{font-size:12px;font-weight:var(--font-weight-semibold);color:var(--l2);margin:0 0 6px 14px}
+.fhead{font-size:12px;font-weight:var(--font-weight-normal);color:var(--l2);margin:0 0 6px 14px}
 /* palette */
 /* Behind a dialog, the window goes dim and soft: 12px of blur costs no frames even under a streaming reply (measured 2026-11-12; 40px begins to show). */
 .scrim{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:var(--scrim-blur);backdrop-filter:var(--scrim-blur);z-index:40;animation:fade .15s}
@@ -668,13 +668,14 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .ob-h{margin:14px 0 4px;font-size:var(--fs-title1);font-weight:var(--font-weight-bold);letter-spacing:-.01em;text-wrap:balance}
 .ob-p{margin:0 0 18px;color:var(--l2);font-size:var(--fs-text);line-height:1.6;max-width:560px}
 .perm{display:flex;flex-direction:column;background:var(--win2);border-radius:var(--r-card)}
-.prow{display:flex;gap:14px;padding:14px 16px;align-items:flex-start;border-top:.5px solid var(--sep)}
-.prow:first-child{border-top:0}
+.prow{position:relative;display:flex;gap:14px;padding:14px 16px;align-items:flex-start}
+.prow+.prow::before{content:"";position:absolute;top:0;right:0;left:62px;height:.5px;background:var(--sep);pointer-events:none}
 .prow .pi{width:32px;height:32px;border-radius:9px;background:var(--accent-bg);color:var(--accent-t);display:flex;align-items:center;justify-content:center;flex:none}
 .prow .pt{flex:1;min-width:0}
 .prow .pt b{display:block;font-weight:600;margin-bottom:2px}
 .prow .pt span{font-size:12px;color:var(--l2);line-height:1.55;display:block}
-.prow .req{font-size:12px;color:var(--l3);margin-top:7px}
+/* "Required", where a switch would be: a secondary word, not the request card (.req) the class also names. */
+.prow .req{font-size:12px;color:var(--l2);margin-top:3px;padding:0;background:none;box-shadow:none;border-radius:0;animation:none;display:block}
 .prow .sw{margin-top:6px}
 .scan{display:flex;align-items:center;gap:10px;color:var(--l2);font-size:12.5px;padding:18px 0}
 .blk-h{display:flex;align-items:center;gap:8px;margin:20px 0 8px;font-weight:600}
@@ -708,8 +709,8 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .waitline b{display:block;font-weight:600}
 .waitline span{font-size:12.5px;color:var(--l2)}
 .scope{background:var(--win2);border-radius:var(--r-card)}
-.srow2{padding:11px 14px;border-top:.5px solid var(--sep)}
-.srow2:first-child{border-top:0}
+.srow2{position:relative;padding:11px 14px}
+.srow2+.srow2::before{content:"";position:absolute;top:0;right:0;left:14px;height:.5px;background:var(--sep);pointer-events:none}
 .srow2 .top{display:flex;align-items:center;gap:12px}
 .srow2 .top .k{width:84px;flex:none}
 .srow2 .top .v{flex:1;color:var(--l2);min-width:0}
@@ -810,3 +811,8 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 :is(.tb,.rb,.cb-b):active:not(:disabled){background:var(--fill3)}
 :is(.frow.go,.frow.act,.frow.choice,.bot-row,.srow,.sesslist-row,.conv-main,.ag-head,.nav-i,.bot-work,.insp-pick,.side-foot,.pr,.grp-h):active:not(:disabled){background:var(--fill3)}
 @media (prefers-reduced-motion:reduce){:is(.btn,.picker,.seg button,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.qopt,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox):active{scale:none}}
+/* Scrollbars, where the system's are not a Mac's overlay ones (Windows, Linux): Apple's thin rounded thumb on no track,
+   no arrows. */
+html.own-scrollbars{scrollbar-color:rgba(0,0,0,.28) transparent}
+@media (prefers-color-scheme:dark){html.own-scrollbars{scrollbar-color:rgba(255,255,255,.28) transparent}}
+:where(html.own-scrollbars *){scrollbar-width:thin}

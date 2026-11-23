@@ -50,6 +50,8 @@
 /* Its settings column is a grouped page (工单 #95): grey, the groups white inset cards. */
 .bot-bench{min-height:0;overflow-y:auto;border-left:.5px solid var(--sep);padding:14px 16px 24px;display:flex;flex-direction:column;gap:18px;background:var(--grouped);--win2:var(--grouped-card)}
 .bot-bench .ag-page{padding:0}
+/* Its groups' titles in line with the rows' text, as .fhead. */
+.bot-bench .bot-sec-h{margin:0 0 6px 14px}
 .sheet .contact-t .contact-line{color:var(--l3)}
 .bot-bench .ag-conn{margin:0 0 8px;box-shadow:none;border-radius:var(--r-card);background:var(--win2);padding-left:12px}
 .bot-pface{display:inline-flex;align-items:center;justify-content:center;border-radius:28%;color:#fff;flex:none}

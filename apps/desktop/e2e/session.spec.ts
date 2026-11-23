@@ -153,7 +153,8 @@ test("the title is 13px semibold (macOS's headline, 工单 #95), bright in front
   await tell("focus");
   await expect.poll(colour).not.toBe(behind);
   const front = await colour();
-  const alpha = (c: string) => Number(c.match(/,\s*([\d.]+)\)$/)?.[1] ?? 1);
+  // Its alpha: a label is solid black or white in front (工单 #95: Apple's label colour), rgb() with no alpha.
+  const alpha = (c: string) => (c.startsWith("rgba(") ? Number(c.match(/,\s*([\d.]+)\)$/)?.[1] ?? 1) : 1);
   expect(alpha(behind)).toBeLessThan(alpha(front));
   await tell("blur");
   await expect.poll(colour).toBe(behind);
@@ -275,9 +276,10 @@ test("the session's settings are in a menu with what a glance needs; its list is
   // The owner's messages are a quiet grey bubble with the page's own words, as Grok's (the owner's ruling, 2026-11-19); a dark grey in the dark.
   const bubble = page.getByRole("log", { name: "对话" }).locator(".um .bub").first();
   const colors = () => bubble.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color]);
-  expect(await colors()).toEqual(["rgb(240, 240, 241)", "rgba(0, 0, 0, 0.9)"]);
+  // Its words in Apple's label colour (工单 #95): black, white in the dark.
+  expect(await colors()).toEqual(["rgb(240, 240, 241)", "rgb(0, 0, 0)"]);
   await page.emulateMedia({ colorScheme: "dark" });
-  await expect.poll(colors).toEqual(["rgb(35, 35, 38)", "rgba(255, 255, 255, 0.92)"]);
+  await expect.poll(colors).toEqual(["rgb(35, 35, 38)", "rgb(255, 255, 255)"]);
   await snap(page, "session-chat-dark");
   await page.emulateMedia({ colorScheme: "light" });
   await toggle.click();
