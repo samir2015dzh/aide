@@ -11,7 +11,10 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Command, Preferences } from "../shared/bridge";
 import { i18n, languages, type Language } from "../shared/i18n";
+import { keepWatching } from "../shared/watchLink";
 import { command } from "./ipc";
+import { linkBack, linkDown } from "./linklog";
+import { platform } from "./platform";
 import { socketPath } from "./paths";
 import { mainWindow } from "./windows";
 
@@ -178,37 +181,52 @@ export function watch() {
   setInterval(ackQuestions, 10_000).unref();
   // Quiet is noticed with time passing, nothing changing.
   setInterval(noticeQuiet, 15_000).unref();
-  (async () => {
-    for (;;) {
-      let w = emptyWorld;
+  let w = emptyWorld;
+  let gone: ReturnType<typeof setTimeout> | undefined;
+  // Kept up, watched again when it fails, ends or hangs (shared/watchLink.ts, 工单 #87); each break kept (main/linklog.ts).
+  void keepWatching({
+    signal: new AbortController().signal,
+    open: (signal) => {
+      w = emptyWorld;
       // Where aided is now: a pipe's name changes each time it starts (Windows).
       const local = createClient(
         LocalService,
         createConnectTransport({ baseUrl: "http://aided", httpVersion: "1.1", useBinaryFormat: true, nodeOptions: { socketPath: socketPath() } }),
       );
-      try {
-        // This process's pid: when aided saves power (no window, nothing running), the app's processes give back
-        // their idle memory with its own (internal/owner AppHeader, docs/resident.md §1.2).
-        for await (const m of local.watch({}, { headers: { "aide-app-pid": String(process.pid) } })) {
-          const before = w;
-          w = applyWatch(w, m);
-          world.status = w.status ?? null;
-          world.clients = w.clients;
-          world.machines = w.machines;
-          world.sessions = withKnownState(w.sessions, w.machines);
-          if (w.sessions !== before.sessions || w.machines !== before.machines) noticeSessions();
-          if (w.machines !== before.machines && !world.status?.machineOnly) noticeRooms();
-          if (w !== before) changed();
-        }
-      } catch (e) {
-        console.warn("aided watch:", e);
+      // This process's pid: when aided saves power (no window, nothing running), the app's processes give back
+      // their idle memory with its own (internal/owner AppHeader, docs/resident.md §1.2).
+      return local.watch({}, { signal, headers: { "aide-app-pid": String(process.pid) } });
+    },
+    message: (m) => {
+      const before = w;
+      w = applyWatch(w, m);
+      world.status = w.status ?? null;
+      world.clients = w.clients;
+      world.machines = w.machines;
+      world.sessions = withKnownState(w.sessions, w.machines);
+      // This computer's machine and the relay, once an owner is set up here.
+      if (world.status?.initialized) {
+        if (world.status.relayConnected) linkBack("relay", "app");
+        else linkDown("relay", "app");
       }
-      // aided restarted, or this watch fell behind: watched again.
+      if (w.sessions !== before.sessions || w.machines !== before.machines) noticeSessions();
+      if (w.machines !== before.machines && !world.status?.machineOnly) noticeRooms();
+      if (w !== before) changed();
+    },
+    down: (why, detail) => {
+      console.warn("aided watch:", why, detail);
+      linkDown("aided", "app", why, detail);
       if (world.status !== null) {
         world.status = null;
         changed();
       }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-  })();
+      // Not back within half a minute: aided is started again, as the app does when it opens (platform.ensureDaemon).
+      clearTimeout(gone);
+      gone = setTimeout(() => platform.ensureDaemon(), 30_000);
+    },
+    up: () => {
+      clearTimeout(gone);
+      linkBack("aided", "app");
+    },
+  });
 }

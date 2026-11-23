@@ -237,6 +237,8 @@
     "last": "最近：{{title}} · {{when}}",
     "countReady": "可用 {{count}}",
     "countUnknown": "未知 {{count}}",
-    "countOf": "共 {{count}}"
+    "countOf": "共 {{count}}",
+    "reconnecting": "正在重连",
+    "reconnectingLine": "与这台电脑上 Aide 后台的连接中断，正在重连；它之前的状态现在未必还对。"
   }
 }

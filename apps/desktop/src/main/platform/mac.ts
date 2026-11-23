@@ -45,6 +45,10 @@ export const mac: Platform = {
     if (installed) app.setLoginItemSettings({ ...agent, openAtLogin: true });
   },
 
+  ensureDaemon() {
+    if (installed) app.setLoginItemSettings({ ...agent, openAtLogin: true });
+  },
+
   /**
    * Restarts the LaunchAgent from the bundle, plist included. launchd keeps a job as it
    * loaded it: a kickstart would run the new binary under the old plist. Booting the job

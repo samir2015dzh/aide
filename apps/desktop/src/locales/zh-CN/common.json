@@ -554,5 +554,8 @@
     "stuckAgent": "这台机器上已经没有这个 agent：只能看、不能续。",
     "newWithContext": "带着它的上下文开新对话",
     "willStartNew": "换了{{what}}：下一条会开新对话"
+  },
+  "link": {
+    "reconnecting": "与这台电脑上 Aide 后台的连接中断，正在重连…"
   }
 }

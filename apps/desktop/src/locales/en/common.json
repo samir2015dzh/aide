@@ -575,5 +575,8 @@
     "stuckAgent": "This agent is no longer on that machine: it can be read, not continued.",
     "newWithContext": "Start a new one with its context",
     "willStartNew": "You changed the {{what}}: the next message starts a new conversation"
+  },
+  "link": {
+    "reconnecting": "The link to Aide on this computer broke: reconnecting…"
   }
 }

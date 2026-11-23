@@ -111,7 +111,9 @@ function checkedDate(a: AgentStatus): Date | undefined {
  * agents are left out, as everywhere.
  */
 export function machineConnections(m: Machine, now: Date): MachineConnections {
-  const reachable = m.online && !m.unreachable;
+  // This computer's own machine is read in process, whatever its link to the relay (工单 #87): its agents' state is
+  // its own, never "away" because the relay is; another machine is known only through the relay.
+  const reachable = (m.online || m.local) && !m.unreachable;
   const rows: ConnRow[] = [];
   for (const a of m.status?.agents ?? []) {
     if (a.hidden) continue;

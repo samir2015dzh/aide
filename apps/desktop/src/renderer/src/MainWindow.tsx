@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useKeepLocalChecked } from "./agents";
 import { parseAppLink } from "@aide/core";
 import { agentName } from "@aide/ui";
 import { local } from "./api";
@@ -24,7 +25,9 @@ import { errorText, useStore } from "./store";
 
 export function MainWindow() {
   const st = useStore();
+  const { t } = useTranslation("common");
   useCommands();
+  useKeepLocalChecked();
   // The window's material shows through the sidebar, macOS's or Windows 11's (the first-run pages stay opaque).
   useEffect(() => {
     if (!window.aide?.material) return;
@@ -95,6 +98,7 @@ export function MainWindow() {
       {sidebar === "over" && <div className="peek-scrim" onClick={() => setSidebar(st, false)} />}
       {listed && <TaskColumn />}
       <section className="content">
+        {st.reconnecting && <div className="link-banner" role="status"><i aria-hidden="true" />{t("link.reconnecting")}</div>}
         {st.selection.kind === "sessions" ? (
           <div className="ctool drag"><div className="ctitle" /></div>
         ) : session ? (

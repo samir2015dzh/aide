@@ -5,6 +5,7 @@ import { i18n } from "../shared/i18n";
 import { preferences, setPreferences, setRoomOpen, world } from "./notify";
 import { platform } from "./platform";
 import { errorMessage, takeLinks } from "./links";
+import { linkBack, linkDown, linkLog } from "./linklog";
 import { catchUp, check, download, install, openUpdates, setAutoDownload, snooze, updateInfo } from "./updater";
 import { mainWindow, ours, setMode, showMain, showSettings, showWhatsNew, sizeUpdates } from "./windows";
 
@@ -136,6 +137,13 @@ export function registerIPC() {
   ipcMain.handle("login-item", (e) => (trusted(e) ? platform.loginItem() : null));
   ipcMain.handle("set-login-item", (e, on: unknown) => (trusted(e) && typeof on === "boolean" ? platform.setLoginItem(on) : null));
   ipcMain.handle("daemon-needs-approval", (e) => trusted(e) && platform.daemonNeedsApproval());
+  // The links' record (工单 #87): read by the settings' records page; a window's own watch breaking and coming back.
+  ipcMain.handle("link-log", (e) => (trusted(e) ? linkLog() : []));
+  ipcMain.on("link-event", (e, kind: unknown, why: unknown, detail: unknown) => {
+    if (!trusted(e)) return;
+    if (kind === "down") linkDown("aided", "window", why === "hung" ? "hung" : "lost", typeof detail === "string" ? detail.slice(0, 300) : undefined);
+    if (kind === "back") linkBack("aided", "window");
+  });
   ipcMain.on("open-login-items", (e) => trusted(e) && platform.openLoginItems());
   ipcMain.on("open-activity-monitor", (e) => trusted(e) && platform.openProcessMonitor());
   // A folder only, opened by the system's file browser or a terminal there: never a file or an app run.

@@ -215,6 +215,10 @@ export const win: Platform = {
     });
   },
 
+  ensureDaemon() {
+    if (installed) void answers().then((ok) => ok || installDaemon());
+  },
+
   restartDaemon(why) {
     if (!installed) return;
     console.warn(`restarting aided: ${why}`);

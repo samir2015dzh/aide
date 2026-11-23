@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyWatch, emptyWorld, mergeSessions, type World } from "@aide/core";
 import { SessionView } from "@aide/proto/session";
+import { keepWatching } from "../../shared/watchLink";
 import { local } from "./api";
 
 // What the window knows of the owner's world, as aided pushes it
@@ -13,7 +14,7 @@ import { local } from "./api";
 export const sessionPage = 50;
 
 export type WorldState = World & {
-  /** aided cannot be reached (the watch failed; it is watched again). */
+  /** aided cannot be reached (the watch failed, ended or hung; it is watched again). */
   down: boolean;
   loadingOlder: boolean;
 };
@@ -25,23 +26,22 @@ export function useWorld(): WorldState & { loadOlder: () => void; refreshStatus:
 
   useEffect(() => {
     const abort = new AbortController();
-    const { signal } = abort;
-    (async () => {
-      while (!signal.aborted) {
-        try {
-          for await (const m of local.watch({}, { signal })) {
-            setState((s) => {
-              const w = applyWatch(s, m);
-              return w === s && !s.down ? s : { ...s, ...w, down: false };
-            });
-          }
-        } catch {
-          // Watched again below: aided restarted, or this watch fell behind.
-          if (!signal.aborted) setState((s) => (s.down ? s : { ...s, down: true }));
-        }
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-    })();
+    // Kept up, watched again when it fails, ends or hangs (shared/watchLink.ts, 工单 #87); each break kept for the
+    // settings' records. Down, what the window knew stays, said to be restoring (store: reconnecting).
+    void keepWatching({
+      signal: abort.signal,
+      open: (signal) => local.watch({}, { signal }),
+      message: (m) =>
+        setState((s) => {
+          const w = applyWatch(s, m);
+          return w === s && !s.down ? s : { ...s, ...w, down: false };
+        }),
+      down: (why, detail) => {
+        setState((s) => (s.down ? s : { ...s, down: true }));
+        window.aide?.linkEvent("down", why, detail);
+      },
+      up: () => window.aide?.linkEvent("back"),
+    });
     return () => abort.abort();
   }, []);
 

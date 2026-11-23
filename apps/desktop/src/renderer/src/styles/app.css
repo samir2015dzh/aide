@@ -732,3 +732,6 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .mainwrap.listed>.tasks-col{grid-column:2}
 .mainwrap.listed>.content{grid-column:3}
 .tasks-col>.side-h{height:44px}
+/* The link to aided being restored (工单 #87): over the page, what it shows kept as last known. */
+.link-banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:12.5px;color:var(--orange);background:var(--orange-bg);box-shadow:0 0 0 .5px color-mix(in srgb,var(--orange) 40%,transparent)}
+.link-banner i{width:7px;height:7px;border-radius:50%;background:var(--orange)}

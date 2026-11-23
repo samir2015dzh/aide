@@ -22,7 +22,7 @@ import { agoText } from "./text";
 export type Usable = "yes" | "unverified" | "no";
 
 /** Why work can't go to it, when it can't, or why it is unverified. */
-export type NotReady = "offline" | "signedOut" | "paused" | "missing" | "unknown" | "checking";
+export type NotReady = "offline" | "signedOut" | "paused" | "missing" | "unknown" | "checking" | "reconnecting";
 
 export type BotState = {
   /** The connection state, as its machine's connections say (personal agents: ok online, unknown otherwise). */
@@ -136,6 +136,16 @@ export function grantAgent(label: string): string | undefined {
 }
 
 
+/**
+ * The roster while the app's link to aided on this computer is being restored (工单 #87): every bot as "reconnecting"
+ * — what was last known of it is not what is, and the app not hearing is not the agent being offline.
+ */
+export function whileReconnecting(r: Roster): Roster {
+  const state: BotState = { state: "checking", word: t("roster.reconnecting"), line: t("roster.reconnectingLine"), usable: "no", why: "reconnecting" };
+  const re = (bots: Bot[]) => bots.map((b) => ({ ...b, state }));
+  return { ...r, personal: re(r.personal), machines: r.machines.map((g) => ({ ...g, bots: re(g.bots) })) };
+}
+
 /** Every bot: the personal agents, then each machine's coding agents (this computer first, then online, then by name). */
 export function roster(machines: readonly Machine[], clients: readonly Client[], sessions: readonly Session[], now: Date, personas: readonly Persona[] = []): Roster {
   const sorted = [...machines].sort((a, b) => Number(b.local) - Number(a.local) || Number(b.online) - Number(a.online) || a.machineName.localeCompare(b.machineName));
@@ -172,7 +182,11 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
       const client = gi >= 0 ? grants.splice(gi, 1)[0] : undefined;
       const mine = sessions.filter((s) => s.machineId === m.machineId && s.agent === agent);
       const own = personas.filter((p) => p.machineId === m.machineId && p.agent === agent);
-      bots.push({ key: `m:${m.machineId}/${agent}`, kind: "local", name: own[0]?.name || botName(agent, m, machines.length), agent, machineId: m.machineId, client, personas: own, state, ...doing(mine, now) });
+      const bot: Bot = { key: `m:${m.machineId}/${agent}`, kind: "local", name: own[0]?.name || botName(agent, m, machines.length), agent, machineId: m.machineId, client, personas: own, state, ...doing(mine, now) };
+      // Filed as a personal agent by the owner (工单 #52, #93: their say first): listed with the personal agents; it
+      // stays this machine's agent, its page the same.
+      if (m.status?.agents.find((x) => x.name === agent)?.category === "personal") personal.push(bot);
+      else bots.push(bot);
     }
     // A coding agent with a grant of its own that its machine does not list (another kind, or not detected): its own
     // bot — when it is a coding agent at all (a known kind, or filed so by the owner); else a connection, set aside.
