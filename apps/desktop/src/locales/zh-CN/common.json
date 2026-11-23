@@ -57,7 +57,8 @@
     "machinesOnline": "机器 {{online}}/{{total}} 在线",
     "connect": "连接 Agent",
     "howToConnect": "怎么连接 DSH、Claude Desktop…",
-    "tasks": "任务动态"
+    "tasks": "任务动态",
+    "nav": "导航"
   },
   "accountMenu": {
     "settings": "设置…",
@@ -65,9 +66,7 @@
     "addMachine": "添加机器…",
     "account": "账号…",
     "connect": "连接 DSH、Claude Desktop…",
-    "overview": "概览",
     "devices": "设备",
-    "tasks": "任务动态",
     "held": "等你放行的消息",
     "newSession": "新任务…",
     "sessions": "全部任务",
@@ -378,17 +377,13 @@
     "title": "Bot",
     "personal": "个人 agent",
     "noWork": "{{name}} 还没有任务：在下面写一个派给它。",
-    "noWorkPersonal": "{{name}} 还没有派出过任务。",
-    "bench": "工作台",
     "connection": "连接",
     "manage": "项目与管理",
     "grant": "接入凭据",
     "cantSend": "{{word}}：现在派不了（{{line}}）",
     "unverified": "还没确认状态——能派，但对方在不在没核实",
-    "noProject": "这台机器上还没有给它用的项目：在「项目与管理」里添加一个。",
-    "identity": "名字与头像",
+    "noProject": "这台机器上还没有给它用的项目：在「设置 › 项目与管理」里添加一个。",
     "identityAdd": "新建",
-    "handedOut": "它派出的任务",
     "chat": "对话",
     "chatEmpty": "给 {{name}} 写点什么：它的回信会出现在这里。",
     "delivery": {
@@ -422,7 +417,18 @@
       "localButton": "从名册移除",
       "localDone": "已把 {{name}} 移出名册"
     },
-    "faceEdit": "换头像"
+    "faceEdit": "换头像",
+    "settings": "设置",
+    "settingsOf": "{{name}} 的设置",
+    "settingsBack": "返回 {{name}}",
+    "board": {
+      "title": "任务看板",
+      "all": "全部任务动态",
+      "waiting": "等待 / 要看一眼",
+      "running": "进行中",
+      "done": "最近完成",
+      "none": "{{name}} 现在没有任务。经 Aide 派给它、或由它派出去的活会出现在这里；已完成的保留一天。"
+    }
   },
   "avatar": {
     "shapes": "形状",
@@ -652,8 +658,6 @@
     "gone": "这个会话已经不在了。"
   },
   "agentSettings": {
-    "title": "它的设置",
-    "hero": "{{machine}} 上找到的 {{app}}",
     "canUse": "能用什么",
     "machine": "机器",
     "machineValue": "{{machine}}（它在这台上运行）",
@@ -667,6 +671,7 @@
     "hideTitle": "把 {{name}} 从 Aide 里移除？",
     "hideMessage": "它会从 Aide 的列表里拿掉；{{machine}} 上什么都不会卸载或删除，它的历史也都在。到设备页重新检查这台机器，它就会回来。",
     "hideButton": "移除",
-    "personalMeans": "列在你的个人 agent 里；它仍在原来的机器上运行，给它的活也交到那台机器。"
+    "personalMeans": "列在你的个人 agent 里；它仍在原来的机器上运行，给它的活也交到那台机器。",
+    "usage": "套餐用量"
   }
 }

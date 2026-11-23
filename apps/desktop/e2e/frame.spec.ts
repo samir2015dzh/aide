@@ -35,8 +35,8 @@ test("the sidebar keeps one rhythm, one heading per group and a quiet foot", asy
   const box = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!;
   const centre = async (l: ReturnType<typeof page.locator>) => ((b) => b.y + b.height / 2)(await box(l));
   const hide = await centre(page.getByRole("button", { name: "收成窄栏" }));
-  // No pages in the sidebar: the bots.
-  await expect(page.locator(".side-nav")).toHaveCount(0);
+  // No pages in the sidebar but the overview and the task feed at its top (工单 #102): the bots.
+  await expect(page.locator(".side-nav").getByRole("button")).toHaveText([/^概览/, /^任务动态/]);
   await expect(page.getByRole("region", { name: "Bot" })).toBeVisible();
   // Search shares the top band with the toggle, at its end.
   const search = page.locator(".side-top").getByRole("button", { name: "搜索" });
@@ -168,9 +168,10 @@ test("the avatar opens the account menu above it, on the menu material, by mouse
   const item = (name: string) => menu.getByRole("menuitem", { name: new RegExp(`^${name}`) });
   await avatar.click();
   await expect(avatar).toHaveAttribute("aria-expanded", "true");
-  // The pages that left the sidebar (工单 #63), then what is set up and the account.
+  // The pages that left the sidebar (工单 #63) — but the overview and the task feed, at its top (工单 #102) — then
+  // what is set up and the account.
   const items = (await menu.getByRole("menuitem").allInnerTexts()).map((x) => x.replace(/\n/g, ""));
-  expect(items.slice(0, 4).map((x) => x.replace(/\d*(⌘\d)?$/, ""))).toEqual(["概览", "全部任务", "设备", "任务动态"]);
+  expect(items.slice(0, 2).map((x) => x.replace(/\d*(⌘\d)?$/, ""))).toEqual(["全部任务", "设备"]);
   expect(items.slice(-5)).toEqual(["连接助手…⇧⌘N", "添加机器…", "连接 DSH、Claude Desktop…", "设置…⌘,", "账号…"]);
   await menu.evaluate((el) => Promise.all(el.getAnimations().map((x) => x.finished))); // it rises into place
   const a = (await avatar.boundingBox())!;
@@ -201,7 +202,7 @@ test("the avatar opens the account menu above it, on the menu material, by mouse
 
   // From the keyboard: the first item is chosen at once, the arrows go round, ↩ picks.
   await page.keyboard.press("Enter");
-  await expect(item("概览")).toBeFocused();
+  await expect(item("全部任务")).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(item("账号")).toBeFocused();
   // Waiting from before the key: the window may open before the menu is checked.
@@ -464,10 +465,9 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   await snap(page, "layout-800-sidebar-over");
   await page.locator(".peek-scrim").click({ position: { x: 700, y: 400 } });
   await expect(main).not.toHaveClass(/\bpeek\b/);
-  // Choosing from it puts it away too: a page (from its account menu), or a session.
+  // Choosing from it puts it away too: a page (from its top, 工单 #102), or a session.
   await showSidebar.click();
-  await sidebar.locator(".side-foot").click();
-  await page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem", { name: /^概览/ }).click();
+  await sidebar.getByRole("navigation", { name: "导航" }).getByRole("button", { name: /^概览/ }).click();
   await expect(main).not.toHaveClass(/\bpeek\b/);
   await expect(page.locator(".peek-scrim")).toHaveCount(0);
   await expect(rail).toBeVisible();
@@ -502,8 +502,7 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   await snap(page, "layout-480");
   // The overview fits it too: nothing wider than the window.
   await showSidebar.click();
-  await sidebar.locator(".side-foot").click();
-  await page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem", { name: /^概览/ }).click();
+  await sidebar.getByRole("navigation", { name: "导航" }).getByRole("button", { name: /^概览/ }).click();
   await expect(main).not.toHaveClass(/\bpeek\b/);
   // The map scales to its measured width in ResizeObserver, after the page mounts.
   await expect.poll(() => page.evaluate(() => [...document.querySelectorAll(".content *")]

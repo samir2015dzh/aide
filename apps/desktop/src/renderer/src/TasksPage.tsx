@@ -7,17 +7,22 @@ import { dispatchers, taskRows, type TaskRow } from "./tasks";
 import "./dsh/dsh.css";
 import "./tasks.css";
 
-/** How many of the work handed out need a look (asks, failed, stalled, lost), for the sidebar. */
-export function useTaskLook(): number {
+/**
+ * The work handed out, as 任务动态 has it: the one reckoning the page, the sidebar's count and each bot's task board
+ * (工单 #97, #102) all read, so they say the same of a task.
+ */
+export function useTaskRows(interval = 5_000): TaskRow[] {
   const st = useStore();
-  const now = useNow(30_000);
+  const now = useNow(interval);
   return useMemo(
-    () =>
-      taskRows(st.sessions, st.clients, (s) => sessionStateOf(st.lastKnown(s.sessionId) ?? s, livenessOf(st.machines.find((m) => m.machineId === s.machineId)), st.stateLimits, now), now).filter(
-        (r) => r.rank === 0,
-      ).length,
+    () => taskRows(st.sessions, st.clients, (s) => sessionStateOf(st.lastKnown(s.sessionId) ?? s, livenessOf(st.machines.find((m) => m.machineId === s.machineId)), st.stateLimits, now), now),
     [st, now],
   );
+}
+
+/** How many of the work handed out need a look (asks, failed, stalled, lost), for the sidebar. */
+export function useTaskLook(): number {
+  return useTaskRows(30_000).filter((r) => r.rank === 0).length;
 }
 
 /**
@@ -29,19 +34,9 @@ export function useTaskLook(): number {
  */
 export function TasksPage() {
   const { t } = useTranslation("common");
-  const st = useStore();
   const now = useNow(5_000);
   const [only, setOnly] = useState("");
-  const rows = useMemo(
-    () =>
-      taskRows(
-        st.sessions,
-        st.clients,
-        (s) => sessionStateOf(st.lastKnown(s.sessionId) ?? s, livenessOf(st.machines.find((m) => m.machineId === s.machineId)), st.stateLimits, now),
-        now,
-      ),
-    [st, now],
-  );
+  const rows = useTaskRows();
   const who = dispatchers(rows);
   const shown = only ? rows.filter((r) => r.dispatcherId === only) : rows;
   const counts = [0, 1, 2, 3].map((k) => shown.filter((r) => r.rank === k).length);
@@ -90,7 +85,7 @@ export function TasksPage() {
   );
 }
 
-function TaskItem({ r, now }: { r: TaskRow; now: Date }) {
+export function TaskItem({ r, now }: { r: TaskRow; now: Date }) {
   const { t } = useTranslation("common");
   const st = useStore();
   const s = r.session;

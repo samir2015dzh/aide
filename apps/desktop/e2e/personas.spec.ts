@@ -20,8 +20,10 @@ test("handing work to a detected agent from its page; a contact made there, writ
   await expect(convs.getByRole("listitem").filter({ hasText: "say 直接派活" })).toBeVisible({ timeout: 30_000 });
   await snap(page, "personas-bot-page");
 
-  // A contact, made on its page (工单 #65: a short button, no sentence in its place): a name, an avatar, its project.
-  await bot.getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "给它起名字、换头像" }).click();
+  // A contact, made on its settings page (工单 #65: a short button, no sentence in its place; #97: a page of their own):
+  // a name, an avatar, its project.
+  await bot.getByRole("button", { name: "设置", exact: true }).click();
+  await page.getByRole("region", { name: "Gemini CLI 的设置" }).getByRole("region", { name: "名字和头像" }).getByRole("button", { name: "给它起名字、换头像" }).click();
   const form = page.getByRole("dialog", { name: "添加联系人" });
   await snap(page, "personas-add-contact");
   await form.getByLabel("名字", { exact: true }).fill("前端助手");
@@ -33,7 +35,8 @@ test("handing work to a detected agent from its page; a contact made there, writ
 
   // The bot is called by it now, in the roster and on its page; writing goes on in its current conversation (工单 #67).
   await expect(here.getByRole("button", { name: /^前端助手/ })).toBeVisible();
-  const named = page.getByRole("region", { name: "前端助手" });
+  await page.getByRole("button", { name: "返回 前端助手" }).click();
+  const named = page.getByRole("region", { name: "前端助手", exact: true });
   const box = named.getByRole("textbox", { name: "给 前端助手 发消息" });
   const rows = named.getByRole("list", { name: "对话" }).getByRole("listitem");
   const count = await rows.count();
@@ -47,7 +50,8 @@ test("handing work to a detected agent from its page; a contact made there, writ
 
   // Its name changed alone (工单 #78): saving waits for a change, and a new name is one.
   await here.getByRole("button", { name: /^前端助手/ }).click();
-  await page.getByRole("region", { name: "前端助手" }).getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "修改「前端助手」" }).click();
+  await page.getByRole("region", { name: "前端助手", exact: true }).getByRole("button", { name: "设置", exact: true }).click();
+  await page.getByRole("region", { name: "前端助手 的设置" }).getByRole("region", { name: "名字和头像" }).getByRole("button", { name: "修改「前端助手」" }).click();
   const edit = page.getByRole("dialog", { name: "编辑联系人" });
   await expect(edit.getByRole("button", { name: "保存" })).toBeDisabled();
   await edit.getByLabel("名字", { exact: true }).fill("前端助手二号");
@@ -57,7 +61,8 @@ test("handing work to a detected agent from its page; a contact made there, writ
 
   // Deleted, from its pencil: the contact goes, the bot has its own name again, its conversation stays.
   await here.getByRole("button", { name: /^前端助手二号/ }).click();
-  await page.getByRole("region", { name: "前端助手二号" }).getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "修改「前端助手二号」" }).click();
+  await page.getByRole("region", { name: "前端助手二号", exact: true }).getByRole("button", { name: "设置", exact: true }).click();
+  await page.getByRole("region", { name: "前端助手二号 的设置" }).getByRole("region", { name: "名字和头像" }).getByRole("button", { name: "修改「前端助手二号」" }).click();
   await page.getByRole("dialog", { name: "编辑联系人" }).getByRole("button", { name: "删除联系人" }).click();
   await expect(here.getByRole("button", { name: /^Gemini CLI/ })).toBeVisible();
   const list = await sessionList(page);

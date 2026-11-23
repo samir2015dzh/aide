@@ -130,6 +130,9 @@ func TestDesktop(t *testing.T) {
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
 			}
+			if name == "batchj-botsettings" { // DSH on this Mac, for its bot page and its settings page (工单 #97)
+				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
+			}
 			if name == "batchi-projects" { // DeepSeek Harness with its permission presets (工单 #89)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_PRESETS=")
 			}
@@ -185,7 +188,7 @@ esac
 			if name == "held" {
 				heldMessage(t, f)
 			}
-			if name == "rosterdelete" { // Muse, a personal agent that logged in once and isn't connected (工单 #82)
+			if name == "rosterdelete" || name == "batchj-botsettings" { // Muse, a personal agent that logged in once and isn't connected (工单 #82, #97)
 				f.owner.loginAgent([]string{"AIDE_HOME=" + t.TempDir(), "AIDE_LINK=off"}, "Muse", nil)
 			}
 			if name == "rollback" { // an in-place session, which has nothing to roll back to

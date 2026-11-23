@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Picker } from "./Picker";
-import { useState } from "react";
+import { Choices, FluentControls, Picker } from "./Picker";
+import { useContext, useState } from "react";
 import type { Client, Machine } from "@aide/proto/local";
 import { agentName, AgentLogo } from "@aide/ui";
 import { agoText, clientCategory, dateOf, grantsByCategory, machineConnections, type ConnRow, type ConnState } from "@aide/core";
@@ -228,17 +228,26 @@ export function CategoryControl({ c }: { c: Client }) {
       (e) => setError(errorText(e)),
     );
   };
+  const options = [
+    { value: "", label: t("category.auto", { kind: k.set ? "" : ` · ${t(k.category === "personal" ? "category.personal" : "category.local")}` }) },
+    { value: "personal", label: t("category.personal") },
+    ...st.machines.map((m) => ({ value: `local:${m.machineId}`, label: t("category.localOn", { machine: m.machineName }) })),
+  ];
+  // On a bot's settings page its choices are laid out at once (工单 #97 补充三).
+  const fluent = useContext(FluentControls);
   return (
     <div className="conn-cat">
-      <label>
-        <span className="muted">{t("category.label")}</span>
-        <Picker size="sm" value={value} label={t("category.label")} onChange={set}
-          options={[
-            { value: "", label: t("category.auto", { kind: k.set ? "" : ` · ${t(k.category === "personal" ? "category.personal" : "category.local")}` }) },
-            { value: "personal", label: t("category.personal") },
-            ...st.machines.map((m) => ({ value: `local:${m.machineId}`, label: t("category.localOn", { machine: m.machineName }) })),
-          ]} />
-      </label>
+      {fluent ? (
+        <>
+          <span className="bset-k">{t("category.label")}</span>
+          <Choices value={value} label={t("category.label")} onChange={set} options={options} />
+        </>
+      ) : (
+        <label>
+          <span className="muted">{t("category.label")}</span>
+          <Picker size="sm" value={value} label={t("category.label")} onChange={set} options={options} />
+        </label>
+      )}
       <span className="muted">{t(k.category === "personal" ? "category.personalMeans" : "category.localMeans")}</span>
       {error && <span className="err" role="alert">{error}</span>}
     </div>

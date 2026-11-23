@@ -188,7 +188,8 @@
     "agentName": "Name",
     "renameButton": "Save",
     "icon": "Avatar",
-    "iconAuto": "Use its default avatar"
+    "iconAuto": "Use its default avatar",
+    "validity": "Valid"
   },
   "ops": {
     "none": "No agent has run a command yet.",

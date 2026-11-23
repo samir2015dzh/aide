@@ -1,0 +1,124 @@
+/*
+ * A bot's settings page (工单 #97): one column of at most 640 px, its controls drawn the Fluent way (FLUENT-REF, 补充三)
+ * — this page alone; the rest of the app keeps its own look (工单 #95). Inputs and buttons 2 px round, cards 8 px with a
+ * 1 px stroke, a 2 px focus ring with an offset on everything that takes focus, menu items 36 px with a 3 px bar.
+ */
+.bset,.picker-menu.fl{
+  --fl-accent:#0078d4;--fl-accent-h:#106ebe;--fl-on-accent:#ffffff;
+  --fl-text:#242424;--fl-muted:#616161;--fl-faint:#bdbdbd;
+  --fl-page:#f5f5f5;--fl-card:#ffffff;--fl-card-stroke:#e0e0e0;
+  --fl-stroke:#d1d1d1;--fl-stroke-h:#c7c7c7;--fl-stroke-access:#616161;
+  --fl-hover:#f5f5f5;--fl-press:#e0e0e0;--fl-disabled:#f0f0f0;--fl-danger:#c50f1f;
+  --fl-menu:rgba(255,255,255,.85);--fl-ring-gap:#ffffff;
+}
+@media (prefers-color-scheme:dark){
+  .bset,.picker-menu.fl{
+    --fl-accent:#479ef5;--fl-accent-h:#62abf5;--fl-on-accent:#000000;
+    --fl-text:#ffffff;--fl-muted:#d6d6d6;--fl-faint:#5c5c5c;
+    --fl-page:#1f1f1f;--fl-card:#292929;--fl-card-stroke:#333333;
+    --fl-stroke:#666666;--fl-stroke-h:#757575;--fl-stroke-access:#adadad;
+    --fl-hover:#3d3d3d;--fl-press:#1f1f1f;--fl-disabled:#141414;--fl-danger:#dc626d;
+    --fl-menu:rgba(41,41,41,.85);--fl-ring-gap:#1f1f1f;
+  }
+}
+
+.bset-head{gap:12px;padding:12px 24px}
+.bset-head .bot-head-l1 h1{font-size:20px;font-weight:600}
+.bset-back{display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 10px 0 6px;border:1px solid var(--sep);border-radius:2px;background:none;color:var(--l1);font:inherit;font-size:13px;max-width:220px}
+.bset-back span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bset-back:hover{background:var(--fill)}
+.bset-back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bset{flex:1;min-height:0;overflow-y:auto;background:var(--fl-page);color:var(--fl-text);padding:24px 24px 48px}
+.bset-col{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+.bset-h{font-size:14px;font-weight:600;line-height:1.4;margin:0 0 8px 2px;color:var(--fl-text)}
+.bset-k{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--fl-text);width:100%}
+.bset .form{gap:16px}
+.bset .fhead,.bset .ag-group{margin:0 0 8px 2px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--fl-muted)}
+.bset .ag-page{padding:0;gap:16px}
+.bset .ag-note,.bset .set-note{margin:6px 2px 0;color:var(--fl-muted)}
+.bset .agent-usage{font-size:12px}
+
+/* Cards: 8 px, a 1 px stroke, a quiet shadow; rows 44 px, the hairline between them the card's stroke. */
+.bset :is(.fgroup,.ag-prjs,.held-list){background:var(--fl-card);border:1px solid var(--fl-card-stroke);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 2px 6px rgba(0,0,0,.04)}
+.bset .frow{min-height:44px;padding:10px 16px;color:var(--fl-text)}
+.bset .frow+.frow::before{left:16px;right:16px;height:1px;background:var(--fl-card-stroke)}
+.bset .frow>.fv{color:var(--fl-muted)}
+.bset .frow .muted,.bset .conn-cat .muted{color:var(--fl-muted)}
+
+/* Action rows: the accent's text, a fill on hover, the ring on focus; the destructive one red. */
+.bset .frow.act{color:var(--fl-accent);border-radius:0}
+.bset .fgroup>.frow.act:first-child{border-radius:7px 7px 0 0}
+.bset .fgroup>.frow.act:last-child{border-radius:0 0 7px 7px}
+.bset .fgroup>.frow.act:only-child{border-radius:7px}
+.bset .frow.act:hover{background:var(--fl-hover)}
+.bset .frow.act:active:not(:disabled){background:var(--fl-press)}
+.bset .frow.act.danger{color:var(--fl-danger)}
+.bset .frow.act:disabled{color:var(--fl-faint)}
+.bset :is(.frow.act,.tb,.ag-add,.btn,.set-more,.link):focus-visible{outline:2px solid var(--fl-accent);outline-offset:2px;box-shadow:none}
+.bset .ag-add{color:var(--fl-accent);margin-left:2px}
+
+/* Buttons: 2 px round, a 1 px stroke; the primary one filled with the accent. */
+.bset .btn{height:32px;padding:0 16px;border-radius:2px;border:1px solid var(--fl-stroke);background:var(--fl-card);box-shadow:none;color:var(--fl-text);font-weight:600;font-size:13px}
+.bset .btn:hover:not(:disabled){background:var(--fl-hover);border-color:var(--fl-stroke-h)}
+.bset .btn:active:not(:disabled){background:var(--fl-press)}
+.bset .btn:disabled{background:var(--fl-disabled);border-color:var(--fl-disabled);color:var(--fl-faint)}
+.bset .btn.primary{background:var(--fl-accent);border-color:var(--fl-accent);color:var(--fl-on-accent)}
+.bset .btn.primary:hover:not(:disabled){background:var(--fl-accent-h);border-color:var(--fl-accent-h)}
+.bset .btn.sm{height:28px;padding:0 12px;font-size:12px}
+
+/* A dropdown: 32 px, 2 px round, a 1 px stroke and a darker line under it; open or focused, that line is the accent. */
+.picker.fl{height:32px;padding:0 8px 0 12px;gap:8px;border:1px solid var(--fl-stroke);border-bottom-color:var(--fl-stroke-access);border-radius:2px;background:var(--fl-card);box-shadow:none;color:var(--fl-text);font-size:13px;min-width:160px}
+.picker.fl.sm{height:28px;font-size:12px;padding:0 6px 0 10px}
+.picker.fl .picker-c{width:16px;height:16px;padding:0;border-radius:0;background:none;color:var(--fl-muted);stroke-width:1.5}
+.picker.fl:hover:not(:disabled){border-color:var(--fl-stroke-h);border-bottom-color:var(--fl-stroke-access)}
+.picker.fl:is(.on,:focus-visible){border-bottom-color:var(--fl-accent);box-shadow:inset 0 -1px 0 var(--fl-accent)}
+.picker.fl:focus-visible{outline:2px solid var(--fl-accent);outline-offset:2px}
+.picker.fl:disabled{background:var(--fl-disabled);border-color:var(--fl-disabled);color:var(--fl-faint)}
+.picker.fl:disabled .picker-c{color:var(--fl-faint)}
+
+/* Its menu: 8 px round, translucent over a blur; items 36 px, 4 px round; hovered or focused, a fill and a 3 px bar of
+   the accent at its left; the chosen one ticked in the accent. */
+.picker-menu.fl{padding:4px;border-radius:8px;background:var(--fl-menu);-webkit-backdrop-filter:blur(30px) saturate(1.4);backdrop-filter:blur(30px) saturate(1.4);border:1px solid var(--fl-card-stroke);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.picker-menu.fl .mi{position:relative;height:36px;min-height:36px;padding:0 12px 0 10px;border-radius:4px;color:var(--fl-text);font-size:13px}
+.picker-menu.fl .mi:is(:focus,:hover){background:var(--fl-hover);color:var(--fl-text)}
+.picker-menu.fl .mi:is(:focus,:hover)::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--fl-accent)}
+.picker-menu.fl .mi:is(:focus,:hover) :is(.ck,small){color:inherit}
+.picker-menu.fl .mi .ck{color:var(--fl-accent)}
+.picker-menu.fl .mi[aria-checked=true]{font-weight:600}
+.picker-menu.fl .mi[aria-checked=true] .ck{color:var(--fl-accent)}
+.picker-menu.fl .mi:disabled{color:var(--fl-faint)}
+.picker-menu.fl .picker-l small{color:var(--fl-muted)}
+
+/* A few choices at once (Choices): radio rows, 36 px, the circle 20 px with a 1 px stroke; chosen, a ring of the accent
+   round a dot of it, and the row's text in semibold. */
+.bset .conn-cat{flex-direction:column;align-items:stretch;gap:8px;font-size:13px;margin:0;width:100%}
+.choices{display:flex;flex-direction:column;gap:2px}
+.choice{display:flex;align-items:center;gap:10px;min-height:36px;padding:6px 10px 6px 8px;border:0;border-radius:4px;background:none;color:var(--fl-text);font:inherit;font-size:13px;text-align:left}
+.choice:hover{background:var(--fl-hover)}
+.choice:active{background:var(--fl-press)}
+.choice:focus-visible{outline:2px solid var(--fl-accent);outline-offset:2px}
+.choice-dot{flex:none;width:20px;height:20px;border-radius:50%;border:1px solid var(--fl-stroke-access);background:var(--fl-card);display:inline-flex;align-items:center;justify-content:center}
+.choice:hover .choice-dot{border-color:var(--fl-text)}
+.choice[aria-checked=true] .choice-dot{border-color:var(--fl-accent)}
+.choice[aria-checked=true] .choice-dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--fl-accent)}
+.choice[aria-checked=true]{font-weight:600}
+.choice:disabled{color:var(--fl-faint)}
+.choice:disabled .choice-dot{border-color:var(--fl-faint)}
+.choice-l{display:flex;flex-direction:column}
+.choice-l small{font-size:12px;font-weight:400;color:var(--fl-muted)}
+
+/* A switch: 40 × 20, a pill; off, a stroke and a dot of the text's colour; on, filled with the accent, the dot white. */
+.bset .sw{width:40px;height:20px;border-radius:999px;border:1px solid var(--fl-stroke-access);background:var(--fl-card);transition:background-color .15s ease-out,border-color .15s ease-out}
+.bset .sw::after{top:3px;left:3px;width:12px;height:12px;background:var(--fl-stroke-access);box-shadow:none;transition:transform .15s ease-out}
+.bset .sw:hover:not(:disabled){border-color:var(--fl-text)}
+.bset .sw:hover:not(:disabled)::after{background:var(--fl-text)}
+.bset .sw.on{background:var(--fl-accent);border-color:var(--fl-accent)}
+.bset .sw.on::after{background:var(--fl-on-accent);transform:translateX(20px)}
+.bset .sw.on:hover:not(:disabled){background:var(--fl-accent-h);border-color:var(--fl-accent-h)}
+.bset .sw.on:hover:not(:disabled)::after{background:var(--fl-on-accent)}
+.bset .sw:active:not(:disabled)::after{width:12px}
+.bset .sw.on:active:not(:disabled)::after{transform:translateX(20px)}
+.bset .sw:focus-visible{outline:2px solid var(--fl-accent);outline-offset:2px}
+.bset .sw:disabled{opacity:1;background:var(--fl-disabled);border-color:var(--fl-faint)}
+.bset .sw:disabled::after{background:var(--fl-faint)}
