@@ -44,10 +44,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun MachineHead(m: Machine, modifier: Modifier) {
+internal fun MachineHead(m: Machine, modifier: Modifier, devices: List<io.aide.android.api.Device> = emptyList()) {
     Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MachineMark(m.machineName, m.online && m.unreachable.isEmpty())
+            // Drawn by the platform it reports, as the devices are (工单 #100).
+            DeviceFace(io.aide.android.model.machineKind(m, devices), 40, online = m.online && m.unreachable.isEmpty())
             HSpace(12)
             Column(Modifier.weight(1f)) {
                 Text(m.machineName, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)

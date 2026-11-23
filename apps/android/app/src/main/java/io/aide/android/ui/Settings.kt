@@ -74,7 +74,8 @@ fun SettingsTab(model: AppModel) {
                 val account = l?.account?.ifEmpty { null } ?: st.account
                 Column(Modifier.fillMaxWidth().aideCard()) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        MachineMark(account.ifEmpty { "?" }, online = true, size = 52)
+                        // The owner, drawn (工单 #100): a person, not the account's first letter.
+                        DeviceFace("person", 52)
                         HSpace(14)
                         Column(Modifier.weight(1f)) {
                             Text(account, style = MaterialTheme.typography.titleLarge, maxLines = 1)
@@ -174,7 +175,8 @@ fun Footnote(text: String) {
 @Composable
 private fun DeviceRow(d: Device, signOut: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        MachineMark(d.label, d.thisDevice || d.machineOnline, 36)
+        // What it is, drawn by what it logged in as (工单 #100).
+        DeviceFace(io.aide.android.model.deviceKind(d.platform), 36, online = d.thisDevice || d.machineOnline)
         HSpace(12)
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

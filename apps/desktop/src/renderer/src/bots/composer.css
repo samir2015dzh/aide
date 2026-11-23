@@ -24,7 +24,7 @@
 .composer-cmds .mi{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left}
 .composer-cmds .mi b{font-weight:600;min-width:84px}
 .composer-cmds .mi span{color:var(--l2)}
-.composer-cmds .mi.on{background:var(--accent);color:var(--on-accent)}
+.composer-cmds .mi.on{background:var(--accent-fill);color:var(--on-accent)}
 .composer-cmds .mi.on span{color:inherit}
 .composer-files{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:2px 4px 6px;list-style:none}
 .composer-file{position:relative;display:flex;align-items:center;gap:8px;height:52px;max-width:240px;padding:0 28px 0 10px;border-radius:12px;background:var(--fill)}

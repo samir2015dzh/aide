@@ -63,7 +63,7 @@ fun DevicesTab(model: AppModel, openSession: (String) -> Unit) {
                 r.machines.forEach { g ->
                     val m = g.machine
                     val clients = r.aside.filter { it.machineId == m.machineId }
-                    item(key = "h-${m.machineId}", contentType = "machine-head") { Box(Modifier.padding(top = 12.dp)) { MachineHead(m, Modifier.groupRow(0, 2)) } }
+                    item(key = "h-${m.machineId}", contentType = "machine-head") { Box(Modifier.padding(top = 12.dp)) { MachineHead(m, Modifier.groupRow(0, 2), world.devices) } }
                     item(key = "a-${m.machineId}", contentType = "machine-agents") {
                         Column(Modifier.groupRow(1, 2).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             g.bots.filter { it.coding }.forEach { b ->

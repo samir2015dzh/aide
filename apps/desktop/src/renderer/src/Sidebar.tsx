@@ -7,7 +7,7 @@ import {
   bucketTitle, clockText, elapsedSeconds, codingAgentShort, codingAgentTitle, createdDate, dateOf, displayTitle, isActive, isArchivable, isFailed, listTime,
   durationText, sessionSections, statusTitle, t as coreT, teamState, updatedDate, type SessionBucket, type SessionSection, type SessionView,
 } from "@aide/core";
-import { AgentLogo } from "@aide/ui";
+import { AgentLogo, DeviceFace } from "@aide/ui";
 import { i18n } from "../../shared/i18n";
 import { UpdateReminder } from "./update";
 import { local } from "./api";
@@ -361,8 +361,9 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         </div>
       )}
       <button className="side-foot" ref={foot} aria-label={t("sidebar.account")} title={compact ? t("sidebar.account") : undefined} aria-haspopup="menu" aria-expanded={!!open} onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}>
+        {/* The owner, drawn (工单 #100): a person, not a letter. */}
         <span className="av" aria-hidden="true">
-          {(window.aide?.userName ?? "H").slice(0, 1).toUpperCase()}
+          <DeviceFace kind="person" size={22} />
         </span>
         {/* Something waits for the owner in a page the menu opens: a dot on the avatar. */}
         {due > 0 && <i className="acct-due" aria-label={t("sidebar.attention", { count: due })} role="img" />}

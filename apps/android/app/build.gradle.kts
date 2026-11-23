@@ -24,6 +24,12 @@ val copyGrokEngine by tasks.registering(Copy::class) {
     from(rootProject.file("../../packages/ui/src/grok")) { include("grokMotionEngine.js", "LICENSE") }
     into(grokAssets.map { it.dir("grok") })
 }
+// The account's and the devices' faces (工单 #100): the paths the desktop draws, kept once in packages/ui.
+val copyFaces by tasks.registering(Copy::class) {
+    description = "Copies the account's and the devices' faces from packages/ui"
+    from(rootProject.file("../../packages/ui/src")) { include("faces.json") }
+    into(grokAssets.map { it.dir("faces") })
+}
 
 android {
     sourceSets.getByName("main").assets.srcDir(grokAssets)
@@ -114,7 +120,7 @@ kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
 
-tasks.named("preBuild") { dependsOn(buildCore, copyGrokEngine) }
+tasks.named("preBuild") { dependsOn(buildCore, copyGrokEngine, copyFaces) }
 
 dependencies {
     implementation(files(coreAar))
