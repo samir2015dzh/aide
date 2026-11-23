@@ -19,7 +19,7 @@ import { Icon } from "../icons";
 import { Picker, type PickerOption } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
 import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
-import { errorText, useNow, useStore } from "../store";
+import { errorText, useNow, useStore, type Sheet } from "../store";
 import { Composer, type ComposerState } from "./Composer";
 import "./bots.css";
 
@@ -150,16 +150,50 @@ export function BotPill({ b }: { b: Bot }) {
   );
 }
 
-/** A bot's right-click menu in the roster: open it, pin it as a tile or take it off. */
-async function botMenu(e: ReactMouseEvent, b: Bot, pinned: boolean, pin: (key: string, on: boolean) => void, open: () => void, t: TFunction<"common">) {
+/** A bot's right-click menu in the roster: open it, pin it as a tile or take it off, delete it from the roster. */
+async function botMenu(e: ReactMouseEvent, b: Bot, pinned: boolean, pin: (key: string, on: boolean) => void, open: () => void, remove: () => void, t: TFunction<"common">) {
   e.preventDefault();
   const id = await window.aide?.popupMenu([
     { id: "open", label: t("bots.open") },
     { separator: true },
     { id: "pin", label: t(pinned ? "bots.unpin" : "bots.pin") },
+    { separator: true },
+    { id: "remove", label: t("bots.remove.menu") },
   ]);
   if (id === "open") open();
   if (id === "pin") pin(b.key, !pinned);
+  if (id === "remove") remove();
+}
+
+/**
+ * Deleting a bot from the roster (工单 #82), the owner's alone, asked first with what it does. A coding agent its
+ * machine found is hidden there: off the roster, its sessions untouched, shown again from the devices page. An agent
+ * with a grant of its own (a personal agent, or a coding agent known by its grant alone) has it revoked: one connected
+ * now is disconnected first; the server then forgets it (its grant, card, inbox), and it can't connect again unless
+ * it is connected anew. The sessions it handed out stay on their machines.
+ */
+function removeSheet(b: Bot, machines: readonly Machine[], t: TFunction<"common">): Sheet {
+  const name = b.name;
+  if (b.key.startsWith("m:")) {
+    const machine = machines.find((m) => m.machineId === b.machineId)?.machineName ?? "";
+    return {
+      kind: "confirm",
+      title: t("bots.remove.localTitle", { name }),
+      message: t("bots.remove.localMessage", { name, machine }),
+      button: t("bots.remove.localButton"),
+      done: t("bots.remove.localDone", { name }),
+      run: () => local.setAgentHidden({ machineId: b.machineId, agent: b.agent, hidden: true }),
+    };
+  }
+  const c = b.client!;
+  return {
+    kind: "confirm",
+    title: t("bots.remove.title", { name }),
+    message: t(c.online ? "bots.remove.onlineMessage" : "bots.remove.offlineMessage", { name }),
+    button: t(c.online ? "bots.remove.onlineButton" : "bots.remove.button"),
+    done: t("bots.remove.done", { name }),
+    run: () => local.revokeClient({ grantId: c.grantId }),
+  };
 }
 
 /**
@@ -192,7 +226,7 @@ export function SidebarRoster() {
             className={`bot-row ${sel === b.key ? "sel" : ""}`}
             aria-current={sel === b.key || undefined}
             onClick={() => open(b)}
-            onContextMenu={(e) => botMenu(e, b, pins.includes(b.key), pin, () => open(b), t)}
+            onContextMenu={(e) => botMenu(e, b, pins.includes(b.key), pin, () => open(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
           >
             <BotFace b={b} size={28} dot />
             <span className="bot-t">
@@ -219,7 +253,7 @@ export function SidebarRoster() {
               className={`bot-tile ${sel === b.key ? "sel" : ""}`}
               title={`${b.name} · ${b.state.word}`}
               onClick={() => open(b)}
-              onContextMenu={(e) => botMenu(e, b, true, pin, () => open(b), t)}
+              onContextMenu={(e) => botMenu(e, b, true, pin, () => open(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
             >
               <BotFace b={b} size={34} dot />
               <span>{b.name}</span>

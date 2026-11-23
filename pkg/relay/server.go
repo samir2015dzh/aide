@@ -885,6 +885,9 @@ func (s *Server) applyRevocations(t *tenant, in *identityv1.RevocationList) erro
 			if err := s.store.DeleteGrant(t.ownerID, g.GrantId); err != nil {
 				s.log.Warn("forgetting a revoked grant", "owner", t.ownerID, "grant", g.GrantId, "err", err)
 			}
+			if s.sqlite != nil {
+				s.sqlite.DeleteLogin(g.GrantId) // the record of its login, too (工单 #82)
+			}
 			gone = append(gone, g.ClientId)
 		}
 	}

@@ -182,6 +182,9 @@ esac
 			if name == "held" {
 				heldMessage(t, f)
 			}
+			if name == "rosterdelete" { // Muse, a personal agent that logged in once and isn't connected (工单 #82)
+				f.owner.loginAgent([]string{"AIDE_HOME=" + t.TempDir(), "AIDE_LINK=off"}, "Muse", nil)
+			}
 			if name == "rollback" { // an in-place session, which has nothing to roll back to
 				inPlaceSessions(t, f)
 			}
