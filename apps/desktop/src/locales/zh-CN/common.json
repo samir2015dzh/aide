@@ -566,5 +566,23 @@
     "none": "这里没有 {{app}} 自己的会话。",
     "back": "返回对话",
     "gone": "这个会话已经不在了。"
+  },
+  "agentSettings": {
+    "title": "它的设置",
+    "hero": "{{machine}} 上找到的 {{app}}",
+    "canUse": "能用什么",
+    "machine": "机器",
+    "machineValue": "{{machine}}（它在这台上运行）",
+    "projects": "项目",
+    "allProjects": "它所在机器上的全部项目",
+    "noProjects": "还没有项目",
+    "separator": "、",
+    "rename": "名字和图标",
+    "changeScope": "修改能用的范围",
+    "hide": "从 Aide 里移除…",
+    "hideTitle": "把 {{name}} 从 Aide 里移除？",
+    "hideMessage": "它会从 Aide 的列表里拿掉；{{machine}} 上什么都不会卸载或删除，它的历史也都在。到设备页重新检查这台机器，它就会回来。",
+    "hideButton": "移除",
+    "personalMeans": "列在你的个人 agent 里；它仍在原来的机器上运行，给它的活也交到那台机器。"
   }
 }

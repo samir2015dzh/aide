@@ -377,7 +377,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
           {busy ? t("prepare.adding") : t("prepare.addProject")}
         </button>
       </section>
-      {a && <PauseSection a={a} m={m} />}
+      {a && !bare && <PauseSection a={a} m={m} />}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
       {/* The Claude app's own sessions, and DSH's (those opened in DSH Desktop), are on their bot's page (工单 #76). */}
       {!bare && (agent === "claude" || agent === "deepseek") && (
@@ -392,7 +392,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
         </section>
       )}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
-      {a && !a.hidden && (
+      {a && !a.hidden && !bare && (
         <section className="ag-hide" aria-label={t("prepare.hide")}>
           <div className="fgroup">
             <button className="frow act danger" onClick={() => void st.run(() => local.setAgentHidden({ machineId: m.machineId, agent, hidden: true }))}>
@@ -419,7 +419,7 @@ function PausedTag({ a }: { a: AgentStatus }) {
  * session starts with it there, those under way run on, and nothing is removed. Where the machine read when its plan's
  * usage resets (Claude Code), it can be paused until then, to resume by itself.
  */
-function PauseSection({ a, m }: { a: AgentStatus; m: Machine }) {
+export function PauseSection({ a, m }: { a: AgentStatus; m: Machine }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
   const now = useNow(60_000);

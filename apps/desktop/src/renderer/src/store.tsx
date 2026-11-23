@@ -56,6 +56,8 @@ export type Sheet =
   | { kind: "newRoom" }
   | { kind: "addDevice" }
   | { kind: "scope"; clientId: string; renew: boolean }
+  /** The projects a coding agent of a machine may work in (工单 #93). */
+  | { kind: "agentScope"; machineId: string; agent: string }
   /**
    * An agent's doorbell (docs/agent-names.md §7): with wake, see and change it;
    * with code, set one up from the agent's wake link (name: the bot it is for).

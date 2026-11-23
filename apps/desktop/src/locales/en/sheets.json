@@ -217,5 +217,12 @@
     "delete": "Delete Contact",
     "save": "Save"
   },
-  "working": "Working…"
+  "working": "Working…",
+  "agentScope": {
+    "title": "What {{name}} can use",
+    "sub": "The projects on {{machine}} {{name}} may work in. A project that is {{name}}'s alone stays: remove it on the agent's page.",
+    "none": "No project on this machine yet.",
+    "save": "Save",
+    "saved": "Saved what {{name}} can use."
+  }
 }

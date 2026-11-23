@@ -150,3 +150,5 @@
 .own-session{padding-top:8px}
 .own-back{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;font-size:12.5px}
 .own-session .dsh-view{flex:1;min-height:0;padding:var(--sp-3) 0}
+/* Its settings (工单 #93), laid out as a grant's page. */
+.agent-settings .agent-usage{display:block;font-size:11.5px}

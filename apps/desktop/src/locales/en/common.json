@@ -587,5 +587,23 @@
     "none": "No sessions of {{app}}'s own here.",
     "back": "Back to the conversations",
     "gone": "This session isn't there any more."
+  },
+  "agentSettings": {
+    "title": "Its settings",
+    "hero": "{{app}} found on {{machine}}",
+    "canUse": "What it can use",
+    "machine": "Machine",
+    "machineValue": "{{machine}} (where it runs)",
+    "projects": "Projects",
+    "allProjects": "Every project on its machine",
+    "noProjects": "No project yet",
+    "separator": ", ",
+    "rename": "Name and icon",
+    "changeScope": "Change what it can use",
+    "hide": "Remove from Aide…",
+    "hideTitle": "Remove {{name}} from Aide?",
+    "hideMessage": "It leaves Aide's lists; nothing on {{machine}} is uninstalled or deleted, and its history stays. A rescan of the machine (Devices) shows it again.",
+    "hideButton": "Remove",
+    "personalMeans": "Listed with your personal agents; it still runs on its machine, and work for it goes there."
   }
 }

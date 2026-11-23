@@ -22,6 +22,7 @@ import { blankPersona, personaColors, personaIcons, personasChanged } from "../s
 import { errorText, useNow, useStore } from "../store";
 import { Composer, type ComposerState } from "./Composer";
 import { OwnSession, OwnSessions } from "./OwnSessions";
+import { AgentSettings } from "./AgentSettings";
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
@@ -353,6 +354,10 @@ function LocalBench({ b, m }: { b: Bot; m: Machine }) {
             </button>
           )}
         </div>
+      </section>
+      <section aria-label={t("agentSettings.title")}>
+        <div className="bot-sec-h">{t("agentSettings.title")}</div>
+        <AgentSettings b={b} m={m} />
       </section>
       <Identity b={b} m={m} />
       <section>
