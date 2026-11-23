@@ -7,7 +7,9 @@
 .link.task-open:active { background: var(--fill3); }
 .task-open .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .task-open .t > span:not(.dsh-msg) { color: var(--l2); font-size: 12px; }
-.task-open .dsh-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-open .dsh-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+/* The hairline between rows starts at the title, past the agent's mark. */
+.held-list > .task-row + .task-row::before { left: 38px; }
 .task-state { flex: none; font-size: 12px; white-space: nowrap; }
 .task-state.warn { color: var(--warn, #c77c00); font-weight: 600; }
 .task-state.busy { color: var(--accent, inherit); }

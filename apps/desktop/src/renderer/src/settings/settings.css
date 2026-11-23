@@ -38,7 +38,7 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .set-note{margin:8px 14px 0;color:var(--l2);font-size:12px}
 .form>.set-note{margin-top:-13px}
 /* A group that follows a note in the same block keeps a group's distance from it. */
-.set-note+div>.fhead:first-child{margin-top:21px}
+.set-note+div>.fhead:first-child,.set-note+.fhead{margin-top:21px}
 .set-more{border:0;background:none;padding:2px 4px;color:var(--l2);font-size:12px;display:inline-flex;align-items:center;gap:3px}
 .set-more .ic{transition:transform .15s}
 .set-more.open .ic{transform:rotate(90deg)}
