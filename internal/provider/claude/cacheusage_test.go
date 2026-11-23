@@ -3,6 +3,7 @@ package claude
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -69,7 +70,9 @@ func TestCacheUsage(t *testing.T) {
 	}
 
 	// A config that can't be read: said so, by the file's name, not its path.
-	if os.Getuid() != 0 {
+	// Not made on Windows, where mode 0 only marks the file read-only (it stays
+	// readable), nor as root, who reads it anyway.
+	if runtime.GOOS != "windows" && os.Getuid() != 0 {
 		locked := t.TempDir()
 		writeCodeConfig(t, filepath.Join(locked, ".claude.json"), string(fixture))
 		os.Chmod(filepath.Join(locked, ".claude.json"), 0)
