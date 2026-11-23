@@ -111,7 +111,9 @@ function checkedDate(a: AgentStatus): Date | undefined {
  * agents are left out, as everywhere.
  */
 export function machineConnections(m: Machine, now: Date): MachineConnections {
-  const reachable = m.online && !m.unreachable;
+  // This computer's own machine is read in process, whatever its link to the relay (工单 #87): its agents' state is
+  // its own, never "away" because the relay is; another machine is known only through the relay.
+  const reachable = (m.online || m.local) && !m.unreachable;
   const rows: ConnRow[] = [];
   for (const a of m.status?.agents ?? []) {
     if (a.hidden) continue;
@@ -312,7 +314,8 @@ export function clientCategory(c: Pick<Client, "label" | "category" | "categoryM
 
 /**
  * Aide's own client logged in on a machine under the name it makes up ("client@<machine>", internal/cli applogin.go
- * and login.go): a connection of the account, not an agent (工单 #64), whatever kind it was filed as.
+ * and login.go): a connection of the account, not an agent (工单 #64), whatever kind it was filed as. The CLI's roster
+ * (`aide roster`, and the MCP gateway's) admits by the same rule (Go identity.IsAideClient, internal/cli onRoster; 工单 #79).
  */
 export function isAideClient(c: Pick<Client, "label">): boolean {
   return /^client@/i.test(c.label.trim());

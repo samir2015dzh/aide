@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
 import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
-import { agentEntry, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
+import { agentEntry, agoText, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, dshAgent, modeLabel, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
@@ -147,11 +147,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
                     <PausedTag a={a} />
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
-                    {a.name === "claude" && usageText(a, t) && (
-                      <span className="mono ag-usage" title={a.usage?.detail || undefined}>
-                        {usageText(a, t)}
-                      </span>
-                    )}
+                    {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
                   </span>
                   {/* Which program was found and answered: what tells an installed agent from one uninstalled elsewhere. */}
                   {a.binary && (
@@ -246,7 +242,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
 type T = TFunction<"firstrun">;
 
 const modelName = (a: AgentStatus, id: string) => a.models.find((x) => x.id === id)?.name || id;
-const modeName = (a: AgentStatus, id: string) => a.modes.find((x) => x.id === id)?.name || id;
+const modeName = (a: AgentStatus, id: string) => modeLabel(a.name, a.modes.find((x) => x.id === id) ?? { id });
 const effortName = (t: T, e: string) => t(`prepare.efforts.${e}`, { defaultValue: e });
 const speedName = (t: T, v: AgentSpeed) => (v === AgentSpeed.FAST ? t("prepare.fast") : t("prepare.standard"));
 
@@ -257,19 +253,19 @@ function defaultsText(a: AgentStatus, t: T): string {
   return [d.model && modelName(a, d.model), d.effort && effortName(t, d.effort), d.speed ? speedName(t, d.speed) : "", d.mode && modeName(a, d.mode)].filter(Boolean).join(" · ");
 }
 
-/** The Claude plan usage for its row: "Plan 5h 20% · Week 59%", a stale
- * marker when kept after a failed refresh, or a short "unavailable" note.
- * "" when there is no reading at all (no token source wired). */
-function usageText(a: AgentStatus, t: T): string {
+/** The Claude plan usage in one line (工单 #86): "Plan 5h 20% · Week 59% · read 3 min ago"; kept after a refresh that
+ * failed, "last reading, 20 min ago" in its place, never blank, never the failure's own words; "not read yet" before
+ * any reading. "" when the machine reads none at all (switched off). */
+export function usageText(a: AgentStatus, t: T, now = new Date()): string {
   const u = a.usage;
   if (!u) return "";
-  if (u.unavailable) return t("prepare.usageUnreadable");
-  if (u.windows.length === 0) return "";
+  if (u.windows.length === 0) return u.unavailable ? t("prepare.usageNone") : "";
   const label = (k: string) => (k === "five_hour" ? t("prepare.usage5h") : k === "seven_day" ? t("prepare.usageWeek") : k.replace("seven_day_", "7d "));
   const parts = u.windows.map((w) => `${label(w.key)} ${Math.round(w.utilization)}%`);
-  let s = `${t("prepare.usageLabel")} ${parts.join(" · ")}`;
-  if (u.stale) s += ` (${t("prepare.usageStale")})`;
-  return s;
+  const at = u.fetchedAt ? new Date(Number(u.fetchedAt.seconds) * 1000) : undefined;
+  const when = at ? agoText(at, now) : "";
+  const read = !when ? "" : u.stale ? t("prepare.usageLastRead", { when }) : t("prepare.usageReadAt", { when });
+  return [`${t("prepare.usageLabel")} ${parts.join(" · ")}`, read].filter(Boolean).join(" · ");
 }
 
 const logins: Record<string, { key: TerminalCommand; text: string }> = {
@@ -309,7 +305,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
     const same = projects.find((x) => x.path === path);
     setBusy(true);
     if (same) {
-      if (same.agents.length > 0 && !same.agents.includes(agent)) await st.run(() => save(same, [...same.agents, agent]), t("prepare.alsoFor", { project: same.projectId, agent: title }));
+      if (same.agents.length > 0 && !same.agents.includes(agent)) await st.run(() => save(same, [...same.agents, agent]), t("prepare.alsoFor", { project: projectTitle(same), agent: title }));
     } else {
       const projectId = projectIdFromFolder(path.split(/[\\/]/).filter(Boolean).pop() ?? "", new Set(projects.map((x) => x.projectId)));
       await st.run(() => local.addProject({ machineId: m.machineId, projectId, path, agents: [agent] }));
@@ -381,10 +377,10 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
           {busy ? t("prepare.adding") : t("prepare.addProject")}
         </button>
       </section>
-      {a && <PauseSection a={a} m={m} />}
+      {a && !bare && <PauseSection a={a} m={m} />}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
-      {/* The Claude app's own sessions are read in the main window's Claude page; DSH's (those opened in DSH Desktop) in its DeepSeek page. */}
-      {(agent === "claude" || agent === "deepseek") && (
+      {/* The Claude app's own sessions, and DSH's (those opened in DSH Desktop), are on their bot's page (工单 #76). */}
+      {!bare && (agent === "claude" || agent === "deepseek") && (
         <section className="ag-dsh" aria-label={t(agent === "claude" ? "prepare.claudeSessions" : "prepare.dshSessions")}>
           <div className="ag-group">{t(agent === "claude" ? "prepare.claudeSessions" : "prepare.dshSessions")}</div>
           <div className="fgroup">
@@ -396,7 +392,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
         </section>
       )}
       {/* The owner's say over a listing they don't trust (SetAgentHidden): hiding only, as nothing here can be edited. */}
-      {a && !a.hidden && (
+      {a && !a.hidden && !bare && (
         <section className="ag-hide" aria-label={t("prepare.hide")}>
           <div className="fgroup">
             <button className="frow act danger" onClick={() => void st.run(() => local.setAgentHidden({ machineId: m.machineId, agent, hidden: true }))}>
@@ -423,7 +419,7 @@ function PausedTag({ a }: { a: AgentStatus }) {
  * session starts with it there, those under way run on, and nothing is removed. Where the machine read when its plan's
  * usage resets (Claude Code), it can be paused until then, to resume by itself.
  */
-function PauseSection({ a, m }: { a: AgentStatus; m: Machine }) {
+export function PauseSection({ a, m }: { a: AgentStatus; m: Machine }) {
   const { t } = useTranslation("firstrun");
   const st = useStore();
   const now = useNow(60_000);
@@ -563,7 +559,7 @@ function Defaults({ a, m }: { a: AgentStatus; m: Machine }) {
             value: d.mode ? modeName(a, d.mode) : same(own?.mode ? modeName(a, own.mode) : ""),
             open: () =>
               pick(
-                [{ id: "", label: same(own?.mode ? modeName(a, own.mode) : ""), checked: !d.mode }, ...a.modes.map((x) => ({ id: x.id, label: x.name || x.id, checked: d.mode === x.id }))],
+                [{ id: "", label: same(own?.mode ? modeName(a, own.mode) : ""), checked: !d.mode }, ...a.modes.map((x) => ({ id: x.id, label: modeLabel(a.name, x), checked: d.mode === x.id }))],
                 (v) => save({ ...d, mode: v }),
               ),
           },
@@ -597,9 +593,10 @@ const save = (p: Project, agents: string[], workspace = p.workspace) =>
   local.addProject({ machineId: p.machineId, projectId: p.projectId, path: p.path, workspace, defaultBaseRef: workspace === Workspace.IN_PLACE ? "" : p.defaultBaseRef, description: p.description, agents });
 
 /**
- * A project of one agent: its name and way of working, its folder, and a
- * ⋯ menu to change the way of working or take it from this agent. Of no
- * installed agent (agent unset): the agents it is for, and removing it.
+ * A project: its name and way of working, its folder, and a ⋯ menu (工单 #77 追加二, in words someone who never used
+ * git reads): the way of working, its DSH permission (工单 #89, when DSH may work in it), which agents may use it —
+ * the same for every agent — and removing it from Aide, its folder untouched. Under an agent (agent set) its row
+ * names no agents; of no installed agent, the agents it is for.
  */
 function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
   const { t } = useTranslation("firstrun");
@@ -613,23 +610,49 @@ function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
   };
   const worktree = p.workspace !== Workspace.IN_PLACE;
   const how = worktree ? t("prepare.worktree") : t("prepare.inPlace");
+  // The agents to say yes or no to: its machine's (those it lists, hidden ones aside), and any it is for already.
+  const m = st.machines.find((x) => x.machineId === p.machineId);
+  const listed = (m?.status?.agents ?? []).filter((a) => !a.hidden && (a.available || p.agents.includes(a.name))).map((a) => a.name);
+  const agents = [...new Set([...listed, ...p.agents])];
+  const allows = (a: string) => p.agents.length === 0 || p.agents.includes(a);
+  const dsh = m?.status?.agents.find((a) => a.name === dshAgent);
+  const presets = dsh && allows(dshAgent) ? dsh.modes : [];
+  const preset = presets.find((x) => x.id === p.dshPreset);
   const more = async () => {
     const id = await window.aide?.popupMenu([
       { id: "rename", label: t("prepare.renameItem") },
       { separator: true },
       { id: "worktree", label: t("prepare.worktreeItem"), checked: worktree },
       { id: "inPlace", label: t("prepare.inPlaceItem"), checked: !worktree },
+      ...(presets.length > 0
+        ? [
+            { separator: true as const },
+            { id: "presetHead", label: t("prepare.permissionHead"), enabled: false },
+            ...presets.map((x) => ({ id: `preset:${x.id}`, label: modeLabel(dshAgent, x), checked: p.dshPreset === x.id })),
+            { id: "preset:", label: t("prepare.permissionOwn"), checked: !p.dshPreset },
+          ]
+        : []),
       { separator: true },
-      { id: "remove", label: agent ? t("prepare.removeItem", { agent: codingAgentTitle(agent) }) : t("machineOnly.removeProject") },
+      { id: "agentsHead", label: t("prepare.agentsHead"), enabled: false },
+      // The last one it is for can't be taken off here: that is removing it, below.
+      ...agents.map((a) => ({ id: `agent:${a}`, label: codingAgentTitle(a), checked: allows(a), enabled: !(allows(a) && agents.filter(allows).length === 1) })),
+      { separator: true },
+      { id: "remove", label: t("prepare.removeProject") },
     ]);
     if (id === "rename") return setNaming(projectTitle(p));
     if (id === "worktree" && !worktree) await st.run(() => save(p, p.agents, Workspace.WORKTREE));
     if (id === "inPlace" && worktree) await st.run(() => save(p, p.agents, Workspace.IN_PLACE));
-    if (id === "remove") {
-      // Taken from the last agent it is for, it goes; one for all stays for the others.
-      const rest = agent ? (p.agents.length > 0 ? p.agents : codingAgentIds).filter((x) => x !== agent) : [];
-      await st.run(() => (rest.length > 0 ? save(p, rest) : local.removeProject({ machineId: p.machineId, projectId: p.projectId })));
+    if (id?.startsWith("preset:") && id.slice(7) !== p.dshPreset) {
+      await st.run(() => local.setProjectPermission({ machineId: p.machineId, projectId: p.projectId, dshPreset: id.slice(7) }));
     }
+    if (id?.startsWith("agent:")) {
+      // For all of them: every one but this, by name.
+      const a = id.slice(6);
+      const now = p.agents.length > 0 ? p.agents : agents;
+      const next = allows(a) ? now.filter((x) => x !== a) : [...now, a];
+      if (next.length > 0) await st.run(() => save(p, next));
+    }
+    if (id === "remove") await st.run(() => local.removeProject({ machineId: p.machineId, projectId: p.projectId }));
   };
   return (
     <div className="ag-prj" role="group" aria-label={projectTitle(p)}>
@@ -656,7 +679,7 @@ function ProjectRow({ p, agent }: { p: Project; agent?: string }) {
               </button>
             </>
           )}
-          <em>{agent ? how : [how, ...p.agents.map(codingAgentTitle)].join(" · ")}</em>
+          <em>{[how, ...(agent ? [] : p.agents.map(codingAgentTitle)), ...(preset ? [t("prepare.permissionTag", { preset: modeLabel(dshAgent, preset) })] : [])].join(" · ")}</em>
         </span>
         <span className="mono" title={p.path}>
           {p.path}

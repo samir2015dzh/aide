@@ -8,7 +8,7 @@ import { cli, launch, snap } from "./app";
 test("writing to a personal agent on its page; its answer comes back into the conversation", async () => {
   const { page } = await launch();
   const roster = page.getByRole("region", { name: "Bot" });
-  await roster.getByRole("group", { name: "个人 agent · 跟账号走" }).getByRole("button", { name: /^bot/ }).click();
+  await roster.getByRole("group", { name: "个人 agent" }).getByRole("button", { name: /^bot/ }).click();
   const botPage = page.getByRole("region", { name: "bot" });
   const log = botPage.getByRole("log", { name: "对话" });
   // Where the conversation is kept is no device line on the page (工单 #63).

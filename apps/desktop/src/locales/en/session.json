@@ -3,12 +3,13 @@
   "thisMac_win": "This PC",
   "waiting": "Waiting for you",
   "page": {
-    "showInfo": "Show info panel {{keys}}",
-    "hideInfo": "Hide info panel {{keys}}",
-    "info": "Info panel"
+    "showInfo": "Show Sessions {{keys}}",
+    "hideInfo": "Hide Sessions {{keys}}",
+    "info": "Sessions",
+    "settings": "Session Settings"
   },
   "chat": {
-    "archived": "Archived: read-only. Worktree released, with changes preserved on the branch.",
+    "archived": "Archived: read-only. Its copy is released; the changes stay on the branch.",
     "unarchive": "Unarchive",
     "log": "Conversation",
     "failed": "Failed",
@@ -31,7 +32,7 @@
     "messageTo": "Message to {{name}}",
     "messageQueued": "queued for next turn",
     "workspaceRequest": "Workspace request: {{kind}} {{item}}",
-    "workspaceByAgent": "the agent",
+    "workspaceByAgent": "asked by this task’s agent",
     "workspaceKind": {"tool": "tool", "permission": "permission", "info": "information", "system_change": "system change"},
     "workspaceStatus": {"pending": "pending", "approved": "approved", "rejected": "rejected", "provisioned": "provisioned", "confirmed": "confirmed"},
     "unread": {
@@ -144,8 +145,12 @@
     "copyCommand": "Copy Command"
   },
   "composer": {
-    "label": "Message to {{agent}}",
-    "placeholder": "Message {{agent}}… (!plan or !implement first; #s_… brings in an earlier session)",
-    "send": "Send"
+    "label": "Message to {{agent}}"
+  },
+  "list": {
+    "label": "Sessions",
+    "new": "New Session",
+    "folder": "Project folder",
+    "allFolders": "All projects"
   }
 }

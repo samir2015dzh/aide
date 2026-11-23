@@ -3,12 +3,13 @@
   "thisMac_win": "这台电脑",
   "waiting": "等你回答",
   "page": {
-    "showInfo": "显示信息面板 {{keys}}",
-    "hideInfo": "隐藏信息面板 {{keys}}",
-    "info": "信息面板"
+    "showInfo": "显示会话列表 {{keys}}",
+    "hideInfo": "隐藏会话列表 {{keys}}",
+    "info": "会话列表",
+    "settings": "会话设置"
   },
   "chat": {
-    "archived": "已归档：只读，worktree 已释放，改动还在分支上。",
+    "archived": "已归档：只读，副本已释放，改动还在分支上。",
     "unarchive": "取消归档",
     "log": "对话",
     "failed": "出错了",
@@ -31,7 +32,7 @@
     "messageTo": "发给 {{name}} 的消息",
     "messageQueued": "将在下一轮处理",
     "workspaceRequest": "工作区申请：{{kind}} {{item}}",
-    "workspaceByAgent": "代理",
+    "workspaceByAgent": "由这个任务的 agent 提出",
     "workspaceKind": {"tool": "工具", "permission": "权限", "info": "信息", "system_change": "系统变更"},
     "workspaceStatus": {"pending": "待批", "approved": "已批准", "rejected": "已拒绝", "provisioned": "已就位", "confirmed": "已确认"},
     "unread": {
@@ -144,8 +145,12 @@
     "copyCommand": "拷贝命令"
   },
   "composer": {
-    "label": "发给 {{agent}} 的消息",
-    "placeholder": "给 {{agent}} 发消息…（开头可写 !plan 或 !implement；#s_… 引入一个历史会话）",
-    "send": "发送"
+    "label": "发给 {{agent}} 的消息"
+  },
+  "list": {
+    "label": "会话列表",
+    "new": "新会话",
+    "folder": "项目文件夹",
+    "allFolders": "全部项目"
   }
 }

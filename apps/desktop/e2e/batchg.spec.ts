@@ -11,10 +11,10 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
   const { page } = await launch();
   const roster = page.getByRole("region", { name: "Bot" });
   await expect(roster).toBeVisible({ timeout: 30_000 });
-  // Personal agents on the account (the world's grant "bot"); coding agents in one group (工单 #63: no machine heads).
-  const personal = roster.getByRole("group", { name: "个人 agent · 跟账号走" });
+  // Personal agents on the account (the world's grant "bot"); coding agents in a group per machine, headed by its name (工单 #75).
+  const personal = roster.getByRole("group", { name: "个人 agent" });
   await expect(personal.getByRole("button", { name: /bot/ })).toBeVisible();
-  const coding = roster.getByRole("group", { name: "编码 agent · 跟机器走" });
+  const coding = roster.getByRole("group", { name: "owner-mac" });
   const claude = coding.getByRole("button", { name: /^Claude Code/ });
   await expect(claude).toContainText("已登录", { timeout: 30_000 });
   await expect(coding.getByRole("button", { name: /^Codex/ })).toContainText("未登录");
@@ -44,7 +44,7 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
 test("a bot's page says of it what the roster says, and why work can't go to it now (工单 #56)", async () => {
   const { page } = await launch();
   const roster = page.getByRole("region", { name: "Bot" });
-  const codex = roster.getByRole("group", { name: "编码 agent · 跟机器走" }).getByRole("button", { name: /^Codex/ });
+  const codex = roster.getByRole("group", { name: "owner-mac" }).getByRole("button", { name: /^Codex/ });
   await expect(codex).toContainText("未登录", { timeout: 30_000 });
   await codex.click();
   const bot = page.getByRole("region", { name: "Codex" });

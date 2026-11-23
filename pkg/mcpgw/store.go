@@ -62,8 +62,8 @@ type Connection struct {
 	AccountHint string
 	OwnerID     string
 	ClientID    string
-	// ClientName is the connection's label: the app and where it returns
-	// to, "Claude (claude.ai)".
+	// ClientName is the connection's label: the app's name, "Claude"
+	// (before 工单 #85 also where it returned to, "Claude (claude.ai)").
 	ClientName string
 	State      string
 	// SealedKey is the client's private key, sealed by the Vault; nil once

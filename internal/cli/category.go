@@ -3,6 +3,8 @@ package cli
 import (
 	"regexp"
 	"strings"
+
+	"github.com/samir2015dzh/aide/pkg/identity"
 )
 
 // The two kinds of agent (所有者 2026-11-22, 工单 #26/#49): a personal agent
@@ -50,4 +52,23 @@ func agentCategory(name string, machines []string) (category, machine string) {
 		return categoryLocal, strings.TrimSpace(tail)
 	}
 	return categoryPersonal, ""
+}
+
+// knownAgent is a coding agent a grant's name tells (@aide/core grantAgent).
+var knownAgent = regexp.MustCompile(`(?i)\b(dsh|deepseek|claude|codex|workbuddy|codebuddy|gemini|copilot|opencode|qwen|kimi)\b`)
+
+// onRoster is who gets on the roster (工单 #64, #79), the apps' rule
+// (@aide/core roster, the Android app's Roster.kt): a personal agent, or a
+// coding agent its name tells or the owner filed as one (set). Aide's own
+// command line on a machine (client@<machine>) and a name of no known kind
+// on a machine are connections, not agents: they take messages (message
+// contacts lists them) but are no one on the roster.
+func onRoster(name, category string, set bool) bool {
+	switch {
+	case identity.IsAideClient(name):
+		return false
+	case category == categoryPersonal:
+		return true
+	}
+	return set || knownAgent.MatchString(name)
 }

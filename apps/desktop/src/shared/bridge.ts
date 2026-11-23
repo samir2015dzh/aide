@@ -1,5 +1,6 @@
 import type { Language, LanguageChoice } from "./i18n";
 import type { UpdateInfo } from "./update";
+import type { LinkDown, LinkEntry } from "./watchLink";
 
 // What the preload script gives the page (window.aide). Everything else
 // the page needs comes from aided through app://aide/api.
@@ -65,6 +66,8 @@ export type Bridge = {
   showUpgrade(): void;
   /** Windows: shows the app menu at x, y (the window's menu bar stays hidden). */
   showAppMenu(x: number, y: number): void;
+  /** macOS: starts the system's dictation in the focused text field (Edit › Start Dictation). */
+  startDictation(): void;
   /** Shows a native menu at the pointer; resolves to the chosen item's id. */
   popupMenu(items: MenuItem[]): Promise<string | null>;
   /** Tells the renderer memory is short (webFrame.clearCache): it drops caches and gives back what its allocators keep (renderer/src/memory.ts). */
@@ -93,6 +96,10 @@ export type Bridge = {
   setLoginItem(on: boolean): Promise<LoginItem>;
   /** aided's background service waits for the person to allow it in System Settings › Login Items. */
   daemonNeedsApproval(): Promise<boolean>;
+  /** The record of the links to aided and the relay breaking and coming back, oldest first (工单 #87, main/linklog.ts). */
+  linkLog(): Promise<LinkEntry[]>;
+  /** This window's watch of aided went down, or came back (kept in that record). */
+  linkEvent(kind: "down" | "back", why?: LinkDown, detail?: string): void;
   /** Opens System Settings › Login Items. */
   openLoginItems(): void;
   /** Opens Activity Monitor (this Mac out of processes: the person finds what holds them). */

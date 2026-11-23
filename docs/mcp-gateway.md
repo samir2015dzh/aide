@@ -183,11 +183,16 @@ message Grant {
   request with `custodian`: "“Claude” connects through aide.io.
   aide.io holds this agent's key and can act as it within this access, and
   sees the sessions it reaches." The app's pairing sheet says the same
-  ("“Claude (claude.ai)” connects through aide.io: …"), and the grant's
+  ("“Claude” connects through aide.io: …"), and the grant's
   page in Settings › Access shows "Connects through aide.io, which holds
   its key". `ListClients` carries the custodian.
-- `label` carries the product name and the redirect host, e.g.
-  `Claude (claude.ai)`, at most 64 bytes.
+- `label` is the product name alone, e.g. `Claude`, at most 64 bytes
+  (工单 #85): where it returns to is a detail (`ConnectionInfo.ReturnsTo`,
+  the consent page), never its name, and two connections of one app are
+  told apart by their id and when they were made. Connections named
+  before, `Claude (claude.ai)`, are renamed when the gateway starts on a
+  self-hosted relay: the server signs their grant again with the name
+  alone (`relay.RenameGrant`), unless the owner renamed it since.
 
 Default spec for an MCP pairing, adjustable in the sheet: machines `*` (so
 machines added later are included), projects `*`, agents `claude, codex`,
@@ -308,8 +313,11 @@ gateway fetches the document when it first sees the URL and on cache expiry:
    server not set up yet says so.
 7. **Finish on the page**: "Connected", then back to the app.
 8. **Redirect** to `redirect_uri?code=…&state=…&iss=<Issuer>`. The code:
-   256 bits, single use, 60 s, bound to the connection, `client_id`,
-   `redirect_uri`, `code_challenge` and `resource`.
+   256 bits, single use, 10 minutes, bound to the connection, `client_id`,
+   `redirect_uri`, `code_challenge` and `resource`. Ten minutes is RFC 6749
+   §4.1.2's upper bound: a headless client's code is pasted back by hand,
+   often from a phone, and that takes minutes (工单 #96). A code used a
+   second time is refused, and the tokens it gave are revoked.
 
 The authorization completes once the person connects with the right
 account and password.
@@ -644,7 +652,7 @@ CLI already warns; the app gains the same for MCP connections).
 | Server compromise | Acts as each approved MCP connection within its Grant, sees those sessions (accepted, disclosed in §4.1); cannot make a connection reach a machine without Touch ID, widen access, touch non-MCP clients or machine administration, or outlive the Grant's expiry. Self-hosting removes the third party. |
 | Stolen access or refresh token (agent product breach, logs) | Opaque, 1-hour access tokens; refresh rotation with reuse detection; revocation in three places; bound to `resource` |
 | Consent phishing (attacker's client, victim approves), including late approval | Client and redirect host shown, verified/unverified, loopback warning; product, host and time of connection in the Touch ID sheet; the custodian sentence |
-| Authorization code interception | PKCE S256 only; single-use 60 s codes bound to client, redirect URI and resource |
+| Authorization code interception | PKCE S256 only; single-use 10-minute codes bound to client, redirect URI and resource |
 | Mix-up between authorization servers | `iss` in every authorization response |
 | Open redirect | Errors before redirect URI validation never redirect; exact matching |
 | CSRF / clickjacking on consent | Browser-bound authorization id, same-origin POSTs, `frame-ancestors 'none'` |
@@ -687,6 +695,33 @@ The key keeps strangers from asking; it doesn't approve anything. With it,
 a connection is bound as on the official service: the limits of §5.7 and
 the per-IP registration limit, waiting connections that can't keep the
 owner's own apps out, and nothing reaching a machine without Touch ID.
+
+**Behind a reverse proxy** (工单 #81). The gateway sends the browser back
+to the app with `302 Location: <redirect_uri>?code=…&iss=…&state=…`, where
+`<redirect_uri>` is exactly what the app asked for (for Claude Code, Codex
+and the like `http://127.0.0.1:<port>/callback`, a port of the moment).
+Nothing of how the request reached it changes that: the issuer is
+`--public-url`, never the request's `Host` or `X-Forwarded-*`
+(`TestCallbackIsTheRegisteredRedirect`). A proxy that rewrites `Location`
+headers can still change it on the way out. Lucky's automatic reverse proxy
+was seen to (2026-11-23, twice): the browser landed on
+`https://<relay domain>/lucky_auto_reverseproxy_<hash>/callback?code=…&state=…`
+instead of the loopback address. The likely reason is that the relay
+behind it listens on 127.0.0.1 too, so a loopback `Location` looks like
+the proxied server's own address. This was not reproduced against Lucky
+itself; the gateway's side is settled by the code and that test.
+
+- On the proxy: don't rewrite `Location` (or rewrite only the relay's own
+  address, never `127.0.0.1`/`localhost` with another port), and prefer a
+  host of its own for the relay (`relay.example` → the relay) over a path
+  prefix, so that nothing needs rewriting. `--public-url` is then that
+  host, and the relay's own redirects (`/oauth/consent?id=…`, all relative
+  to it) need no help.
+- For whoever connects: the code and state are right even when the address
+  was rewritten. Take them from the address the browser landed on (`code`,
+  `state`, `iss`) and don't compare its base with the registered
+  `redirect_uri`; the token request still sends the registered one, which
+  is what the gateway checks.
 
 ## 14. Testing
 

@@ -2,6 +2,8 @@ package acp
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -465,6 +467,48 @@ func TestImagesOnlyWhenTheAgentTakesThem(t *testing.T) {
 			t.Fatalf("%s: %+v", c.env, done)
 		}
 		s.Close()
+	}
+}
+
+// Every other attached file goes as a resource_link to the saved file, which
+// the agent can read; an image does too when the agent takes no images (and
+// the text then does not say it is shown one), audio goes inline to an
+// agent that takes audio (工单 #91).
+func TestFilesGoAsLinks(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, data string) string {
+		p := filepath.Join(dir, name)
+		os.WriteFile(p, []byte(data), 0o600)
+		return p
+	}
+	sum := func(data string) string {
+		b := sha256.Sum256([]byte(data))
+		return hex.EncodeToString(b[:])[:12]
+	}
+	img, notes, voice := write("a.png", "\x89PNG\r\n\x1a\nfake"), write("notes.txt", "the secret is 42\n"), write("voice.wav", "RIFF....WAVEfmt ")
+	for _, c := range []struct {
+		env  string
+		want string
+	}{
+		{"FAKE_ACP_IMAGES=1", "files: image image/png " + sum("\x89PNG\r\n\x1a\nfake") + "; link notes.txt text/plain " + sum("the secret is 42\n") + "; link voice.wav audio/wav " + sum("RIFF....WAVEfmt ")},
+		{"FAKE_ACP_AUDIO=1", "files: link notes.txt text/plain " + sum("the secret is 42\n") + "; audio audio/wav " + sum("RIFF....WAVEfmt ") + "; link a.png image/png " + sum("\x89PNG\r\n\x1a\nfake")},
+	} {
+		f := newFixture(t, c.env)
+		s, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(),
+			Prompt: "files\n- " + img + " (image/png, 12 bytes" + provider.ShownAsImage + ")",
+			Images: []provider.Image{{Path: img, MediaType: "image/png"}},
+			Files:  []provider.File{{Path: notes, Name: "notes.txt", MediaType: "text/plain", Size: 17}, {Path: voice, Name: "voice.wav", MediaType: "audio/wav", Size: 16}},
+			Env:    f.env, Gate: f.gate.gate})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, done := collect(t, s); done.Text != c.want {
+			t.Fatalf("%s:\n got %q\nwant %q", c.env, done.Text, c.want)
+		}
+		s.Close()
+	}
+	if u := fileURI("/tmp/a b/x#1.txt"); u != "file:///tmp/a%20b/x%231.txt" {
+		t.Fatalf("uri: %s", u)
 	}
 }
 

@@ -85,6 +85,9 @@ service LocalService {
   rpc SetAgentHidden(SetAgentHiddenRequest) returns (SetAgentHiddenResponse);
   // Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
   rpc SetAgentPaused(SetAgentPausedRequest) returns (SetAgentPausedResponse);
+  // Files a coding agent a machine lists as a kind, or back to told from
+  // what it is (SetAgentCategory).
+  rpc SetAgentCategory(SetAgentCategoryRequest) returns (SetAgentCategoryResponse);
   // A machine's git repositories under its home folder, for Add a Project.
   rpc ListMachineRepos(ListMachineReposRequest) returns (ListMachineReposResponse);
   // The folders in one of a machine's folders, for Add a Project.
@@ -113,6 +116,9 @@ service LocalService {
   rpc RemoveProject(RemoveProjectRequest) returns (RemoveProjectResponse);
   // Names a project as the owner knows it, in place of its id.
   rpc RenameProject(RenameProjectRequest) returns (RenameProjectResponse);
+  // Sets the DSH permission preset a project's DSH sessions start with
+  // unless one is chosen for the session (SetProjectPermission).
+  rpc SetProjectPermission(SetProjectPermissionRequest) returns (SetProjectPermissionResponse);
 
   // Agents.
   rpc ListClients(ListClientsRequest) returns (ListClientsResponse);
@@ -737,6 +743,15 @@ message SetAgentPausedRequest {
 
 message SetAgentPausedResponse {}
 
+message SetAgentCategoryRequest {
+  string machine_id = 1;
+  string agent = 2;
+  // "" (told from what it is), "local" or "personal".
+  string category = 3;
+}
+
+message SetAgentCategoryResponse {}
+
 message CheckAgentsResponse {}
 
 message ListMachineReposRequest {
@@ -810,6 +825,9 @@ message Project {
   string path = 7;
   // The name the owner gave it (SetProjectName); empty: shown by its id.
   string name = 8;
+  // The DSH permission preset its DSH sessions start with unless one is
+  // chosen for the session (SetProjectPermission); empty: DSH's own.
+  string dsh_preset = 9;
 }
 
 message ListProjectsRequest {
@@ -852,6 +870,15 @@ message RenameProjectRequest {
 
 message RenameProjectResponse {}
 
+message SetProjectPermissionRequest {
+  string machine_id = 1;
+  string project_id = 2;
+  // One of DSH's permission presets there ("read-only", ...); empty: DSH's own.
+  string dsh_preset = 3;
+}
+
+message SetProjectPermissionResponse {}
+
 message Client {
   string client_id = 1;
   string grant_id = 2;
@@ -877,6 +904,9 @@ message Client {
   string category = 15;
   // With "local": the machine it runs on ("" when not said).
   string category_machine_id = 16;
+  // Online by what it did lately, with no connection now
+  // (relay.v1.ClientEntry.recent, 工单 #94): last_seen is when.
+  bool recent = 17;
 }
 
 message ListClientsRequest {}

@@ -56,6 +56,8 @@ func (m message) input() provider.Input {
 	for _, f := range m.files {
 		if f.Image {
 			in.Images = append(in.Images, provider.Image{Path: f.Path, MediaType: f.MediaType})
+		} else {
+			in.Files = append(in.Files, provider.File{Path: f.Path, Name: f.Name, MediaType: f.MediaType, Size: int64(f.Size)})
 		}
 	}
 	return in
@@ -137,7 +139,7 @@ func newMessage(dir, text string, atts []*sessionv1.Attachment) (message, error)
 		m.files = append(m.files, &sessionv1.AttachmentInfo{Name: name, MediaType: mt, Size: uint64(len(a.Data)), Path: path, Sha256: hex.EncodeToString(sum[:]), Image: img})
 		note := ""
 		if img {
-			note = ", shown as an image"
+			note = provider.ShownAsImage
 		}
 		fmt.Fprintf(&b, "- %s (%s, %s%s)\n", path, mt, humanSize(len(a.Data)), note)
 	}

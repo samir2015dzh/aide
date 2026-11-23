@@ -68,6 +68,12 @@ class LocalApi(port: Long, token: String) {
 
     suspend fun listDSHSessions(): ListDSHSessionsResponse = call("ListDSHSessions", Empty(), timeoutSeconds = 60)
 
+    /** The Claude desktop app's Claude Code sessions on the owner's machines (docs/claude-sessions.md). */
+    suspend fun listClaudeSessions(): ListClaudeSessionsResponse = call("ListClaudeSessions", Empty(), timeoutSeconds = 60)
+
+    suspend fun readClaudeSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadClaudeSessionResponse =
+        call("ReadClaudeSession", ReadClaudeSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
+
     suspend fun readDSHSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadDSHSessionResponse =
         call("ReadDSHSession", ReadDSHSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
 
@@ -113,12 +119,12 @@ class LocalApi(port: Long, token: String) {
         call("TalkToPersona", TalkToPersonaRequest(id, text, key), timeoutSeconds = 60)
 
     /** Starts a task: an agent on a machine, in one of its projects (工单 #41: no contact needed first). */
-    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String, model: String = "", effort: String = "", mode: String = ""): Session? =
-        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt, model, effort, mode)), timeoutSeconds = 60).session
+    suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String, model: String = "", effort: String = "", mode: String = "", files: List<AttachmentIn> = emptyList()): Session? =
+        call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt, model, effort, mode, files)), timeoutSeconds = 120).session
 
     /** The owner's next message in a conversation (工单 #67 rule 1: it goes on in it). */
-    suspend fun sendMessage(sessionId: String, text: String): Session? =
-        call<SendMessageRequest, SessionResponse>("SendMessage", SendMessageRequest(sessionId, text), timeoutSeconds = 60).session
+    suspend fun sendMessage(sessionId: String, text: String, files: List<AttachmentIn> = emptyList()): Session? =
+        call<SendMessageRequest, SessionResponse>("SendMessage", SendMessageRequest(sessionId, text, files), timeoutSeconds = 120).session
 
     /** Archived on its machine: the one archive Aide and the agent's side share (工单 #67 rule 6). */
     suspend fun archive(sessionId: String, on: Boolean): Session? =
@@ -153,11 +159,20 @@ class LocalApi(port: Long, token: String) {
     suspend fun installDSHBridge(machineId: String): InstallDSHBridgeResponse =
         call("InstallDSHBridge", MachineIdRequest(machineId), timeoutSeconds = 60)
 
+    suspend fun setAgentCategory(machineId: String, agent: String, category: String) {
+        call<SetAgentCategoryRequest, JsonElement>("SetAgentCategory", SetAgentCategoryRequest(machineId, agent, category))
+    }
+
     suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
         call<SetAgentHiddenRequest, JsonElement>("SetAgentHidden", SetAgentHiddenRequest(machineId, agent, hidden))
     }
 
     suspend fun setAgentPaused(machineId: String, agent: String, paused: Boolean, resumeAt: String? = null) {
         call<SetAgentPausedRequest, JsonElement>("SetAgentPaused", SetAgentPausedRequest(machineId, agent, paused, resumeAt))
+    }
+
+    /** Revokes an agent's grant: it is disconnected, and the server forgets it (工单 #82). The machines hear of it too. */
+    suspend fun revokeClient(grantId: String) {
+        call<RevokeClientRequest, JsonElement>("RevokeClient", RevokeClientRequest(grantId), timeoutSeconds = 60)
     }
 }

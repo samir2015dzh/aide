@@ -32,7 +32,8 @@ export function Wakes({ c }: { c: Client }) {
   // Again whenever a sheet closes (one may have changed them), and whenever
   // aided is back: an app just updated talks to the previous version's,
   // which keeps none, until it restarts it.
-  const up = !!st.status;
+  // Up: aided answers and its watch is live, so a link restored (工单 #87) counts as aided back.
+  const up = !!st.status && !st.reconnecting;
   useEffect(() => {
     if (!st.sheet && up) load();
   }, [st.sheet, load, up]);

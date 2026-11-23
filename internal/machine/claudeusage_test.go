@@ -129,6 +129,89 @@ func TestUsageStaleFallback(t *testing.T) {
 	t.Fatal("stale fallback never applied")
 }
 
+// fakeCLI answers as Claude Code would, counting the calls.
+type fakeCLI struct {
+	mu    sync.Mutex
+	out   claude.Usage
+	calls int
+}
+
+func (f *fakeCLI) Read(context.Context, string) claude.Usage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	return f.out
+}
+
+func (f *fakeCLI) set(u claude.Usage) { f.mu.Lock(); defer f.mu.Unlock(); f.out = u }
+
+func (f *fakeCLI) count() int { f.mu.Lock(); defer f.mu.Unlock(); return f.calls }
+
+// Plan usage first through Claude Code signed in here (工单 #86): its reading
+// is the one shown, the endpoint not asked; Claude Code answering without a
+// reading keeps the last one, stale, and the endpoint is still not asked; a
+// version without /usage outside a terminal falls back to the endpoint, and
+// is not asked again; the last good reading outlives a restart, stale.
+func TestUsageThroughClaudeCode(t *testing.T) {
+	n := openTestMachine(t)
+	n.mu.Lock()
+	n.infos["claude"] = provider.Info{Name: "claude", Available: true, LoggedIn: true, Binary: "/opt/claude", Version: "2.1.300"}
+	n.mu.Unlock()
+	api := &fakeUsage{out: []claude.Usage{{Windows: []claude.Window{{Key: "five_hour", Utilization: 1}}, FetchedAt: time.Now()}}}
+	cli := &fakeCLI{out: claude.Usage{Windows: []claude.Window{{Key: "five_hour", Utilization: 20}, {Key: "seven_day", Utilization: 59}}, FetchedAt: time.Now()}}
+	n.usageSrc, n.usageCLI = api, cli
+	again := func() *machinev1.ClaudeUsage {
+		t.Helper()
+		n.mu.Lock()
+		n.usageFetch = true // no Status meanwhile starts one of its own
+		n.mu.Unlock()
+		n.refreshUsage()
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		return n.usage
+	}
+
+	u := again()
+	if u.Source != "claude_code" || u.Stale || len(u.Windows) != 2 || u.Windows[0].Utilization != 20 {
+		t.Fatalf("through Claude Code: %+v", u)
+	}
+	if api.count() != 0 {
+		t.Fatal("the endpoint was asked though Claude Code answered")
+	}
+
+	cli.set(claude.Usage{Unavailable: claude.CLINoReading, Detail: "claude -p /usage: no plan usage in its answer", FetchedAt: time.Now()})
+	u = again()
+	if !u.Stale || len(u.Windows) != 2 || u.Windows[0].Utilization != 20 || u.FetchedAt == nil {
+		t.Fatalf("no reading: %+v, want the last one, stale, with when it was read", u)
+	}
+	if api.count() != 0 {
+		t.Fatal("the endpoint was asked after Claude Code had no reading")
+	}
+
+	// A restart: the last good reading is there at once, stale.
+	n.mu.Lock()
+	n.usage = nil
+	n.mu.Unlock()
+	n.loadUsage()
+	if u := n.usage; u == nil || !u.Stale || len(u.Windows) != 2 || u.Windows[0].Utilization != 20 {
+		t.Fatalf("after a restart: %+v", u)
+	}
+
+	cli.set(claude.Usage{Unavailable: claude.CLIUnsupported, FetchedAt: time.Now()})
+	u = again()
+	if u.Source != "api" || u.Stale || u.Windows[0].Utilization != 1 {
+		t.Fatalf("fallback: %+v", u)
+	}
+	calls := cli.count()
+	again()
+	if cli.count() != calls {
+		t.Fatal("a Claude Code without /usage outside a terminal was asked again")
+	}
+	if api.count() != 2 {
+		t.Fatalf("endpoint asked %d times, want 2", api.count())
+	}
+}
+
 func TestUsageDisabledByDefault(t *testing.T) {
 	// No usageSrc: status carries no usage and nothing is fetched.
 	n := openTestMachine(t)

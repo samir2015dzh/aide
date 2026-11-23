@@ -146,9 +146,10 @@ message Grant {
   // The server that holds the client key (an MCP connection), "" for a
   // client that holds its own key.
   string custodian = 15;
-  // The icon the owner picked for it: "" draws its app's when its name or
-  // where it signs in says which (the default), "letter" its initial,
-  // "app:<id>" an app's logo, "image" client_image.
+  // The icon the owner picked for it: "" its seed's character (the
+  // default), "bot:<shape>:<colour>" its character in that look (工单 #83);
+  // from before, "letter" its initial, "app:<id>" an app's logo, "image"
+  // client_image (drawn as its seed's character now).
   string client_icon = 16;
   // A square PNG or JPEG of at most 256 px, re-encoded by the owner's
   // device, when client_icon is "image".
@@ -220,6 +221,8 @@ message AdminCommand {
     SetAgentHidden set_agent_hidden = 20;
     SetAgentPaused set_agent_paused = 21;
     SetProjectName set_project_name = 22;
+    SetProjectPermission set_project_permission = 23;
+    SetAgentCategory set_agent_category = 24;
   }
   reserved 12, 17, 18;
   reserved "rename_machine", "set_her_assistant_mode", "set_her_command_connector";
@@ -266,6 +269,16 @@ message SetAgentPaused {
   google.protobuf.Timestamp resume_at = 3;
 }
 
+// SetAgentCategory files a coding agent the machine lists as a kind (工单
+// #52, #93): a setting, as hiding one is. The owner's say comes first, the
+// machine keeps it with the agent; it grants and takes away nothing.
+message SetAgentCategory {
+  // "claude" | "codex" | an ACP agent ("copilot", "deepseek", ...)
+  string agent = 1;
+  // "" (told from what it is again), "local" or "personal".
+  string category = 2;
+}
+
 // SetProjectName gives a project the name the owner's screens show it by,
 // in place of its id (a folder's name such as "project", which the owner
 // did not choose and the id cannot change): a setting, as hiding an agent
@@ -274,6 +287,17 @@ message SetProjectName {
   string project_id = 1;
   // At most 64 characters; empty: shown by its id again.
   string name = 2;
+}
+
+// SetProjectPermission sets the DSH permission preset (DSH's own: read-only,
+// workspace-write, danger-full-access, ...) a project's DSH sessions start
+// with when none is chosen for the session: the project's standing choice,
+// a setting as a session's preset is. A session started with another preset
+// keeps it; other agents are not affected.
+message SetProjectPermission {
+  string project_id = 1;
+  // One the machine's DSH offers; empty: DSH's own configuration again.
+  string dsh_preset = 2;
 }
 
 // SetWorkspaceRoots sets the folders the machine's owner devices may browse,

@@ -5,8 +5,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -19,18 +18,34 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,9 +63,9 @@ import io.aide.android.model.AppModel
 /** A page over the tabs. */
 sealed interface Route {
     data class Session(val id: String) : Route
-    /** DSH's own sessions, and one of them. */
-    data object DSH : Route
+    /** One of a coding agent's own sessions, from its bot's page (工单 #76): DSH's, the Claude desktop app's. */
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
+    data class ClaudeSession(val entry: io.aide.android.api.ClaudeSessionEntry) : Route
     /** A contact, from its bot's page (docs/personas.md); an empty one adds. */
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
     /** A bot's own page (工单 #57). */
@@ -73,11 +88,13 @@ fun Root(model: AppModel) {
     LaunchedEffect(Unit) { model.messages.collect { snackbar.showSnackbar(it) } }
     Box(Modifier.fillMaxSize()) {
         when (phase) {
-            AppModel.Phase.Starting -> Centered { CircularProgressIndicator() }
+            AppModel.Phase.Starting -> Centered { ActivityIndicator(size = 28.dp) }
             AppModel.Phase.Failed -> Centered { Text(t("Aide could not start: ", "Aide 无法启动：") + model.startError) }
             AppModel.Phase.Onboarding -> Onboarding(model, snackbar)
             AppModel.Phase.Ready -> {
-                Home(model, snackbar)
+                // The bots' faces read their states from the sessions (工单 #83).
+                val world by model.world.collectAsState()
+                CompositionLocalProvider(LocalSessions provides world.sessions.values) { Home(model, snackbar) }
                 BackgroundGuide(model)
             }
         }
@@ -100,14 +117,21 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         }
         model.opened()
     }
-    // A page over the tabs slides in a little from the side and fades, back the other way (Motion, as the desktop's).
+    // A page pushed as on iOS (HIG Navigation): it comes in from the right edge over the one under it, which moves a third
+    // to the left and dims; back, the other way. A smooth spring, no overshoot at the screen's edge.
     AnimatedContent(
         targetState = PageAt(stack.lastOrNull(), stack.size),
         transitionSpec = {
             val forward = targetState.depth > initialState.depth
-            val shift = { w: Int -> if (forward) w / 6 else -w / 6 }
-            (slideInHorizontally(tween(Motion.Long, easing = Motion.EaseOut), shift) + fadeIn(tween(Motion.Medium, easing = Motion.EaseOut)))
-                .togetherWith(slideOutHorizontally(tween(Motion.Long, easing = Motion.EaseOut)) { w -> -shift(w) / 2 } + fadeOut(tween(Motion.Short)))
+            val slide = Motion.smooth(IntOffset.VisibilityThreshold)
+            val dim = Motion.smooth<Float>()
+            if (forward) {
+                (slideInHorizontally(slide) { it }).togetherWith(slideOutHorizontally(slide) { -it / 3 } + fadeOut(dim, targetAlpha = 0.6f))
+                    .apply { targetContentZIndex = 1f }
+            } else {
+                (slideInHorizontally(slide) { -it / 3 } + fadeIn(dim, initialAlpha = 0.6f)).togetherWith(slideOutHorizontally(slide) { it })
+                    .apply { targetContentZIndex = -1f }
+            }
         },
         contentKey = { it.depth to it.route },
         label = "page",
@@ -115,11 +139,12 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     val top = at.route
     if (top != null) {
         when (top) {
-            is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
-            Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
+            is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) }, open = { stack[stack.lastIndex] = Route.Session(it) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
+            is Route.ClaudeSession -> ClaudeSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) },
-                openDevices = { stack.clear(); tab = Tab.Devices })
+                openDevices = { stack.clear(); tab = Tab.Devices },
+                openOwn = { e -> stack.add(if (e is OwnEntry.Dsh) Route.DSHSession(e.entry) else Route.ClaudeSession((e as OwnEntry.Claude).entry)) })
             is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }
             is Route.Room -> RoomPage(model, top.machineId, top.roomId, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
             Route.NewRoom -> NewRoomPage(model, opened = { r -> stack.removeAt(stack.lastIndex); stack.add(Route.Room(r.hostMachineId, r.roomId)) }, back = { stack.removeAt(stack.lastIndex) })
@@ -128,36 +153,52 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     }
     val needs = world.buckets.needsYou.size
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { IosSnackbarHost(snackbar) },
         bottomBar = {
-            // A bar a step off the page with a hairline over it, so the page ends where the bar starts (工单 #54).
-            Column {
-            androidx.compose.material3.HorizontalDivider(thickness = 0.5.dp, color = aide.separator)
-            NavigationBar(containerColor = aide.card, tonalElevation = 0.dp) {
-                NavigationBarItem(tab == Tab.Bots, { tab = Tab.Bots }, icon = { Icon(Icons.Filled.Home, null) }, label = { Text("Bot") })
-                NavigationBarItem(tab == Tab.Sessions, { tab = Tab.Sessions }, icon = { Icon(Icons.AutoMirrored.Filled.List, null) }, label = { Text(t("Tasks", "任务")) })
-                // Needs you: the sessions waiting for an answer, in one place.
-                NavigationBarItem(tab == Tab.NeedsYou, { tab = Tab.NeedsYou }, icon = {
-                    BadgedBox(badge = { if (needs > 0) Badge(containerColor = Warning, contentColor = androidx.compose.ui.graphics.Color.White) { Text("$needs") } }) { Icon(Icons.Filled.Notifications, null) }
-                }, label = { Text(t("Needs you", "需要你")) })
-                NavigationBarItem(tab == Tab.Devices, { tab = Tab.Devices }, icon = { Icon(androidx.compose.ui.res.painterResource(io.aide.android.R.drawable.ic_devices), null) }, label = { Text(t("Devices", "设备")) })
-                NavigationBarItem(tab == Tab.Settings, { tab = Tab.Settings }, icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(t("Settings", "设置")) })
-            }
+            // iOS's tab bar (HIG Tab bars): on the bars' material under a hairline, the picked tab in the accent.
+            Column(Modifier.background(aide.bar)) {
+                Hairline()
+                Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).height(50.dp)) {
+                    TabItem("Bot", rememberVectorPainter(Icons.Filled.Home), tab == Tab.Bots) { tab = Tab.Bots }
+                    TabItem(t("Tasks", "任务"), rememberVectorPainter(Icons.AutoMirrored.Filled.List), tab == Tab.Sessions) { tab = Tab.Sessions }
+                    // Needs you: the sessions waiting for an answer, in one place.
+                    TabItem(t("Needs you", "需要你"), rememberVectorPainter(Icons.Filled.Notifications), tab == Tab.NeedsYou, badge = needs) { tab = Tab.NeedsYou }
+                    TabItem(t("Devices", "设备"), androidx.compose.ui.res.painterResource(io.aide.android.R.drawable.ic_devices), tab == Tab.Devices) { tab = Tab.Devices }
+                    TabItem(t("Settings", "设置"), rememberVectorPainter(Icons.Filled.Settings), tab == Tab.Settings) { tab = Tab.Settings }
+                }
             }
         },
     ) { pad ->
+        // A tab changes at once, as iOS's do.
         Box(Modifier.padding(pad)) {
-            Crossfade(tab, animationSpec = tween(Motion.Medium, easing = Motion.EaseOut), label = "tab") { shown ->
-                when (shown) {
-                    Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
-                    Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
-                    Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
-                    Tab.Devices -> DevicesTab(model) { stack.add(Route.Session(it)) }
-                    Tab.Settings -> SettingsTab(model)
-                }
+            when (tab) {
+                Tab.Sessions -> SessionsTab(model) { stack.add(Route.Session(it)) }
+                Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
+                Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
+                Tab.Devices -> DevicesTab(model) { stack.add(Route.Session(it)) }
+                Tab.Settings -> SettingsTab(model)
             }
         }
     }
+    }
+}
+
+/** One tab of the bar: its icon over its name, the accent when picked, grey otherwise; a red count on the icon (iOS's badge). */
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.TabItem(label: String, icon: Painter, picked: Boolean, badge: Int = 0, onClick: () -> Unit) {
+    val tint = if (picked) MaterialTheme.colorScheme.primary else aide.gray
+    Column(
+        Modifier.weight(1f).fillMaxHeight().selectable(picked, remember { MutableInteractionSource() }, null, role = Role.Tab, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+    ) {
+        Box {
+            Icon(icon, null, Modifier.size(25.dp), tint = tint)
+            if (badge > 0) Box(
+                Modifier.align(Alignment.TopEnd).offset(x = 10.dp, y = (-4).dp).heightIn(min = 18.dp).widthIn(min = 18.dp).background(aide.red, CircleShape).padding(horizontal = 5.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("$badge", color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        }
+        Text(label, color = tint, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -180,5 +221,5 @@ fun SyncLine(model: AppModel) {
         world.machines.any { it.syncing } -> t("Updating…", "正在更新…")
         else -> return
     }
-    Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+    Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
 }

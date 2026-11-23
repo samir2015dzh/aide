@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { launch, sessionList } from "./app";
+import { launch, sessionList, snap } from "./app";
 
 // New Task (docs/technical-design.md §3.4): the owner starts a coding
 // agent from the app, in a project or a GitHub repository, then goes on
@@ -28,13 +28,16 @@ test("starting a session in a project, then writing to it under the conversation
   await expect(sheet.getByRole("button", { name: "模型", exact: true })).toHaveText("默认");
   await expect(sheet.getByRole("button", { name: "启动" })).toBeDisabled();
   await sheet.getByLabel("消息", { exact: true }).fill("say 从桌面发起");
+  await snap(page, "newsession-sheet");
   await sheet.getByRole("button", { name: "启动" }).click();
 
   // The session opens, started by you, and runs.
   await expect(sheet).toBeHidden();
   await expect(page.getByRole("heading", { name: "say 从桌面发起" })).toBeVisible();
+  await page.getByRole("button", { name: "会话设置" }).click();
   const card = page.getByRole("complementary", { name: "任务信息" });
   await expect(card.getByRole("listitem").first()).toHaveText(/你 发起$/);
+  await page.keyboard.press("Escape");
   const log = page.getByRole("log", { name: "对话" });
   await expect(log).toContainText("从桌面发起");
   await expect(page.getByText("这一轮已完成。在下面再发一条消息即可在这个任务里继续。")).toBeVisible();
@@ -45,6 +48,7 @@ test("starting a session in a project, then writing to it under the conversation
   await box.press("Enter");
   await expect(log).toContainText("接着做");
   await expect(box).toHaveValue("");
+  await snap(page, "newsession-composer");
   await app.close();
 });
 
@@ -72,6 +76,7 @@ test("starting in a GitHub repository; what the machine refuses stays in the she
   await repo.fill("https://github.com/acme/widget");
   await sheet.getByRole("button", { name: "启动" }).click();
   await expect(sheet).toBeHidden();
+  await page.getByRole("button", { name: "会话设置" }).click();
   const card = page.getByRole("complementary", { name: "任务信息" });
   await expect(card.getByRole("listitem")).toContainText(["GitHub 仓库 acme/widget，从 main 开始"]);
   await expect(page.getByRole("log", { name: "对话" })).toContainText("在仓库里");

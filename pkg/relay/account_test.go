@@ -373,3 +373,52 @@ func TestSetupCodeExpires(t *testing.T) {
 		t.Fatalf("a server set up has a setup code: %q", c)
 	}
 }
+
+// Deleting an agent from the roster (工单 #82) is revoking its grant: the
+// server then forgets everything it kept of it — the grant, its login, its
+// contact card, its inbox and what waited there — so it is on no list, an
+// agent that never connected as much as one that did. Only the revocation
+// itself stays, to refuse it.
+func TestRevokedAgentIsForgotten(t *testing.T) {
+	s, pub := newTestServer(t)
+	ctx := context.Background()
+	code, _ := s.SetupCode()
+	_, dj := joiner(relayv1.JoinKind_JOIN_KIND_DEVICE)
+	if _, err := pub.SetUp(ctx, &relayv1.SetUpRequest{SetupCode: code, Account: "me", Password: "correct horse", Joiner: dj}); err != nil {
+		t.Fatal(err)
+	}
+	owner := s.SingleOwner()
+	_, agent := joiner(relayv1.JoinKind_JOIN_KIND_AGENT)
+	res, err := pub.LogIn(ctx, &relayv1.LogInRequest{Account: "me", Password: "correct horse", Joiner: agent})
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &identityv1.Grant{}
+	identity.Unverified(res.Credential, g)
+	ms := s.messageStore()
+	ms.PutCard(owner, g.ClientId, &identityv1.Signed{Body: []byte("card")}, &identityv1.Signed{Body: []byte("cert")})
+	ms.PutRegistration(owner, g.ClientId, &identityv1.Signed{Body: []byte("reg")})
+	ms.PutMessage(owner, Message{ID: "msg_a", Inbox: g.ClientId, Sealed: []byte("x"), ReceivedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour)})
+
+	if err := s.ApplyRevocations(owner, &identityv1.RevocationList{RevokedGrantIds: []string{g.GrantId}}); err != nil {
+		t.Fatal(err)
+	}
+	if entries, _ := s.ClientEntries(owner); len(entries) != 0 {
+		t.Fatalf("still listed: %v", entries)
+	}
+	if logins, _ := s.sqlite.Logins(); slices.ContainsFunc(logins, func(l Login) bool { return l.KeyID == g.GrantId }) {
+		t.Fatal("its login is kept")
+	}
+	if cards, _ := ms.Cards(owner); cards[g.ClientId].Card != nil {
+		t.Fatal("its card is kept")
+	}
+	if regs, _ := ms.Registrations(owner); regs[g.ClientId] != nil {
+		t.Fatal("its inbox is kept")
+	}
+	if waiting, _ := ms.WaitingMessages(owner, g.ClientId); len(waiting) != 0 {
+		t.Fatalf("messages wait for it: %v", waiting)
+	}
+	if rev, _ := s.store.Revocations(owner); !slices.Contains(rev.GetRevokedGrantIds(), g.GrantId) {
+		t.Fatal("the revocation must stay")
+	}
+}

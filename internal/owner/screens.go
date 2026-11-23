@@ -31,6 +31,12 @@ const (
 	backgroundTick = 5 * time.Second
 )
 
+// watchBeat: after this long with nothing to send, a watch is sent an empty
+// message (工单 #87), so the app can tell a quiet watch from one that hangs:
+// one that hears nothing for a few beats watches again (useWorld, notify.ts).
+// A var for tests.
+var watchBeat = 15 * time.Second
+
 // errNewRound: the profile, or what it is (set up, signed out, a machine
 // only), changed; the screen gets everything again.
 var errNewRound = errors.New("new round")
@@ -133,6 +139,7 @@ func (l *localService) watchRound(ctx context.Context, send func(*localv1.WatchR
 	if err := send(first); err != nil {
 		return err
 	}
+	sent := time.Now()
 	every := backgroundTick
 	if fromWindow(ctx) {
 		every = screenTick
@@ -168,10 +175,11 @@ func (l *localService) watchRound(ctx context.Context, send func(*localv1.WatchR
 			}
 			out = w.diff(ctx, l, o, mode)
 		}
-		if !proto.Equal(out, &localv1.WatchResponse{}) {
+		if !proto.Equal(out, &localv1.WatchResponse{}) || time.Since(sent) >= watchBeat {
 			if err := send(out); err != nil {
 				return err
 			}
+			sent = time.Now()
 		}
 	}
 }

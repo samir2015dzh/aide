@@ -413,6 +413,66 @@ func TestTokensRotateAndReplaysAreRevoked(t *testing.T) {
 // password: a wrong one shows the page again, saying so, and makes no
 // connection; the right one makes it active at once, with a grant the
 // server signed, which tools then use.
+// A connection named before 工单 #85, "Test (127.0.0.1)", is named by its
+// app alone once the gateway starts: in the gateway and on its grant, which
+// the server signs again as the next version (what machines then hold the
+// connection to, and what the owner's apps, the roster and the contacts
+// read). One the owner renamed since keeps the owner's name.
+func TestOldConnectionNamesAreRenamed(t *testing.T) {
+	f := newFixture(t, nil)
+	ctx := context.Background()
+	redirect := "http://127.0.0.1/callback"
+	client := f.register(redirect)
+	f.browser().consentCode(client, redirect)
+	conns, _ := f.g.db.ListConnections(ctx, ConnectionFilter{AccountID: "a1"})
+	if len(conns) != 1 || conns[0].ClientName != "Test" {
+		t.Fatalf("a new connection: %+v", conns)
+	}
+	grantOf := func(c *Connection) *identityv1.Grant {
+		s, g := &identityv1.Signed{}, &identityv1.Grant{}
+		if proto.Unmarshal(c.Grant, s) != nil || identity.Unverified(s, g) != nil {
+			t.Fatal("unreadable grant")
+		}
+		return g
+	}
+	listed := func() *identityv1.Grant {
+		entries, err := f.g.cfg.Relay.ClientEntries(f.g.cfg.Relay.SingleOwner())
+		if err != nil || len(entries) != 1 {
+			t.Fatalf("listed: %v %v", entries, err)
+		}
+		g := &identityv1.Grant{}
+		identity.Unverified(entries[0].Grant, g)
+		return g
+	}
+	// As it was made before.
+	age := func(c *Connection, grantLabel string) {
+		signed, err := f.g.cfg.Relay.RenameGrant(c.GrantID, grantOf(c).ClientLabel, grantLabel)
+		if err != nil || signed == nil {
+			t.Fatalf("rename: %v", err)
+		}
+		c.Grant, _ = proto.Marshal(signed)
+		c.ClientName = "Test (127.0.0.1)"
+		f.g.db.PutConnection(ctx, c)
+	}
+	c := conns[0]
+	age(c, "Test (127.0.0.1)")
+	f.g.renameHosted(ctx)
+	c, _ = f.g.db.GetConnection(ctx, c.ID)
+	if g := grantOf(c); c.ClientName != "Test" || g.ClientLabel != "Test" || g.Version != 3 || !c.Live() {
+		t.Fatalf("renamed: %q, grant %q v%d, %s", c.ClientName, g.ClientLabel, g.Version, c.State)
+	}
+	if g := listed(); g.ClientLabel != "Test" || g.Version != 3 {
+		t.Fatalf("the relay lists %q v%d", g.ClientLabel, g.Version)
+	}
+	// The owner named it since: that name stays.
+	age(c, "My test")
+	f.g.renameHosted(ctx)
+	c, _ = f.g.db.GetConnection(ctx, c.ID)
+	if g := grantOf(c); c.ClientName != "Test" || g.ClientLabel != "My test" || listed().ClientLabel != "My test" {
+		t.Fatalf("renamed by the owner: %q, grant %q", c.ClientName, g.ClientLabel)
+	}
+}
+
 func TestConsentLogsInWithTheAccount(t *testing.T) {
 	f := newFixture(t, nil)
 	redirect := "http://127.0.0.1/callback"
@@ -442,7 +502,7 @@ func TestConsentLogsInWithTheAccount(t *testing.T) {
 		t.Fatalf("token: %v", tok)
 	}
 	conns, _ := f.g.db.ListConnections(context.Background(), ConnectionFilter{AccountID: "a1"})
-	if len(conns) != 1 || conns[0].State != StateActive || conns[0].ClientName != "Test (127.0.0.1)" || conns[0].GrantID == "" {
+	if len(conns) != 1 || conns[0].State != StateActive || conns[0].ClientName != "Test" || conns[0].GrantID == "" {
 		t.Fatalf("connection: %+v", conns)
 	}
 	signed := &identityv1.Signed{}
@@ -580,14 +640,16 @@ func TestRedirectMatching(t *testing.T) {
 	}
 }
 
+// A connection is named by its app alone, never with where it returns to
+// (工单 #85), cut to the relay's 64 bytes.
 func TestLabel(t *testing.T) {
-	if l := label("Claude", "https://claude.ai/api/mcp/auth_callback"); l != "Claude (claude.ai)" {
+	if l := label("Muse"); l != "Muse" {
 		t.Fatal(l)
 	}
-	if l := label("Codex", "http://127.0.0.1:1455/callback"); l != "Codex (127.0.0.1)" {
-		t.Fatal(l)
+	if l := label(strings.Repeat("Long name ", 20)); len(l) > 64 || !strings.HasPrefix(l, "Long name") || !strings.HasSuffix(l, "…") {
+		t.Fatalf("%q (%d)", l, len(l))
 	}
-	if l := label(strings.Repeat("Long name ", 20), "https://app.example/cb"); len(l) > 64 || !strings.HasSuffix(l, "… (app.example)") {
+	if l := label(strings.Repeat("名", 30)); len(l) > 64 || !strings.HasSuffix(l, "名…") {
 		t.Fatalf("%q (%d)", l, len(l))
 	}
 }
@@ -721,5 +783,113 @@ func TestHerClientMetadataDocument(t *testing.T) {
 	res, page := b.get(f.authorizeURL("https://aide.test/oauth/client.json", "http://127.0.0.1:63251/callback", nil))
 	if res.StatusCode != 200 || !strings.Contains(page, "Connect Her to Aide") || !strings.Contains(page, "Verified app") {
 		t.Fatalf("authorize: %d\n%s", res.StatusCode, page)
+	}
+}
+
+// A code lasts 10 minutes (工单 #96, was 60 s, then 5 minutes with 工单 #80): a code pasted back by hand after
+// minutes still works, used once; a second use is refused and revokes the tokens it gave; one past 10 minutes is
+// refused.
+func TestCodeLastsTenMinutes(t *testing.T) {
+	f := newFixture(t, nil)
+	redirect := "http://127.0.0.1/callback"
+	client := f.register(redirect)
+	exchange := func(code string) (int, map[string]any) {
+		return f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}})
+	}
+	for _, after := range []time.Duration{3*time.Minute + 30*time.Second, 10*time.Minute - time.Second} {
+		code := f.browser().consentCode(client, redirect)
+		f.clock.add(after)
+		status, v := exchange(code)
+		if status != 200 || v["access_token"] == nil {
+			t.Fatalf("%v after: %d %v", after, status, v)
+		}
+		if st := f.mcpStatus(v["access_token"].(string)); st != http.StatusOK {
+			t.Fatalf("its token, %v after: %d", after, st)
+		}
+		if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
+			t.Fatalf("the same code again: %d %v", status, v)
+		}
+		if st := f.mcpStatus(v["access_token"].(string)); st != http.StatusUnauthorized {
+			t.Fatalf("the token of a code used twice still works: %d", st)
+		}
+	}
+	code := f.browser().consentCode(client, redirect)
+	f.clock.add(10*time.Minute + time.Second)
+	if status, v := exchange(code); status != 400 || v["error"] != "invalid_grant" {
+		t.Fatalf("10 min 1 s after: %d %v", status, v)
+	}
+}
+
+// The browser goes back to the app at exactly the redirect URI it asked
+// for (the loopback port of the moment), with code, state and iss added:
+// nothing of how the request reached the gateway (a reverse proxy's
+// X-Forwarded-* headers, its Host) changes it (工单 #81). A proxy that
+// rewrites it to a path of its own does so after it left the gateway.
+func TestCallbackIsTheRegisteredRedirect(t *testing.T) {
+	f := newFixture(t, nil)
+	client := f.register("http://127.0.0.1/callback")
+	redirect := "http://127.0.0.1:8799/callback"
+	b := f.browser()
+	_, page := b.get(f.authorizeURL(client, redirect, nil))
+	csrf := regexp.MustCompile(`name="csrf" value="([^"]+)"`).FindStringSubmatch(page)
+	id := regexp.MustCompile(`name="id" value="([^"]+)"`).FindStringSubmatch(page)
+	if csrf == nil || id == nil {
+		t.Fatalf("consent page:\n%s", page)
+	}
+	proxied := func(req *http.Request) *http.Response {
+		// As a proxy in front of it sends it: another Host (the browser's
+		// cookies go along by hand, as the jar files them by that host).
+		for _, c := range b.Jar.Cookies(req.URL) {
+			req.AddCookie(c)
+		}
+		req.Host = "relay.example"
+		req.Header.Set("X-Forwarded-Host", "relay.example")
+		req.Header.Set("X-Forwarded-Proto", "https")
+		req.Header.Set("X-Forwarded-Prefix", "/proxy_path")
+		req.Header.Set("X-Forwarded-For", "203.0.113.9")
+		req.Header.Set("Forwarded", "host=relay.example;proto=https")
+		res, err := b.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+	req, _ := http.NewRequest(http.MethodPost, f.srv.URL+"/oauth/consent", strings.NewReader(url.Values{"id": {id[1]}, "csrf": {csrf[1]}, "action": {"connect"},
+		"account": {testAccount}, "password": {testPassword}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if res := proxied(req); res.StatusCode != 200 {
+		t.Fatalf("connect: %d", res.StatusCode)
+	}
+	req, _ = http.NewRequest(http.MethodGet, f.srv.URL+"/oauth/consent/continue?id="+url.QueryEscape(id[1]), nil)
+	res := proxied(req)
+	loc := res.Header.Get("Location")
+	u, err := url.Parse(loc)
+	if res.StatusCode != http.StatusFound || err != nil {
+		t.Fatalf("continue: %d %q", res.StatusCode, loc)
+	}
+	code := u.Query().Get("code")
+	want := redirect + "?" + url.Values{"code": {code}, "iss": {f.srv.URL}, "state": {"st"}}.Encode()
+	if code == "" || loc != want {
+		t.Fatalf("Location %q, want %q", loc, want)
+	}
+}
+
+// A connection's calls are what keep it online (工单 #94): the token taken tells the relay at once, which then lists it
+// online by that call, with when, though nothing is connected for it.
+func TestCallsKeepTheConnectionOnline(t *testing.T) {
+	f := newFixture(t, nil)
+	redirect := "http://127.0.0.1/callback"
+	client := f.register(redirect)
+	code := f.browser().consentCode(client, redirect)
+	if st, _ := f.token(url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "client_id": {client}, "code_verifier": {verifier}}); st != http.StatusOK {
+		t.Fatalf("token: %d", st)
+	}
+	entries, err := f.g.cfg.Relay.ClientEntries(f.g.cfg.Relay.SingleOwner())
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("listed: %v %v", entries, err)
+	}
+	if e := entries[0]; !e.Online || !e.Recent || e.LastSeen == nil || time.Since(e.LastSeen.AsTime()) > time.Minute {
+		t.Fatalf("after its call: %v", e)
 	}
 }

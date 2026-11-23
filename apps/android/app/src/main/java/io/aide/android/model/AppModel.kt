@@ -416,10 +416,23 @@ class AppModel(private val context: Context) {
         coroutineScope { world.value.machines.filter { needsCheck(it, now) }.forEach { m -> launch { runCatching { api.checkAgents(m.machineId) } } } }
     }
 
+    /** Files a coding agent of a machine as a kind (工单 #93): "" told from what it is, "local", "personal". */
+    suspend fun setAgentCategory(machineId: String, agent: String, category: String): Boolean =
+        report { api!!.setAgentCategory(machineId, agent, category) } != null
+
     /** Hides a coding agent a machine lists (one the owner doesn't trust, as on the desktop), or shows it again. */
     suspend fun setAgentHidden(machineId: String, agent: String, hidden: Boolean) {
         report { api!!.setAgentHidden(machineId, agent, hidden) }
     }
+
+    /**
+     * Deletes a bot from the roster (工单 #82), as the desktop does: a coding agent its machine found is hidden there (the
+     * devices tab shows it again); an agent with a grant of its own has it revoked, and the server forgets it. True once done.
+     */
+    suspend fun removeBot(b: Bot): Boolean = report {
+        if (b.key.startsWith("m:")) api!!.setAgentHidden(b.machineId, b.agent, true) else api!!.revokeClient(b.client!!.grantId)
+        say(if (b.key.startsWith("m:")) t("Removed ${b.name} from the roster", "已把 ${b.name} 移出名册") else t("Deleted ${b.name}", "已删除 ${b.name}"))
+    } != null
 
     /** Pauses a coding agent on a machine, or resumes it; resumeAt (RFC 3339), with paused: when it resumes by itself. */
     suspend fun setAgentPaused(machineId: String, agent: String, paused: Boolean, resumeAt: String? = null) {
@@ -482,18 +495,26 @@ class AppModel(private val context: Context) {
      * composer's choices. What became of it is the caller's to say, in its box (工单 #61): a failure comes back as
      * the error's words, never said elsewhere.
      */
-    suspend fun converse(machineId: String, agent: String, to: Session?, p: ConvParams, text: String, key: String): Result<Session> = try {
+    suspend fun converse(machineId: String, agent: String, to: Session?, p: ConvParams, text: String, key: String, files: List<io.aide.android.api.AttachmentIn> = emptyList()): Result<Session> = try {
         val api = api!!
         val s = if (to != null) {
             if (to.status == io.aide.android.api.SessionStatus.ARCHIVED) api.archive(to.sessionId, false)
-            api.sendMessage(to.sessionId, text)
+            api.sendMessage(to.sessionId, text, files)
         } else {
-            api.startSession(machineId, p.projectId, agent, text, key, p.model, p.effort, p.mode)
+            api.startSession(machineId, p.projectId, agent, text, key, p.model, p.effort, p.mode, files)
         }
         s?.let { replace(it) }
         if (s == null) Result.failure(ApiError("internal", "")) else Result.success(s)
     } catch (e: Exception) {
         Result.failure(Exception(humanError(e)))
+    }
+
+    /** The owner's next message in a session, from its page (工单 #91: with its files); null when it went, else why. */
+    suspend fun sendTo(s: Session, text: String, files: List<io.aide.android.api.AttachmentIn>): String? = try {
+        api!!.sendMessage(s.sessionId, text, files)?.let { replace(it) }
+        null
+    } catch (e: Exception) {
+        humanError(e)
     }
 
     /** Archives a conversation on its machine, or unarchives it; null when it worked, else why. */
@@ -598,9 +619,9 @@ fun reasonText(reason: String, args: Map<String, String>, raw: String): String? 
         "signed_out" -> t("This account is signed out on this device: sign in again.", "这台设备上的账号已经登出：请重新登录。")
         "no_relay" -> t("No server (relay) is set up yet.", "还没有配置服务器（中继）。")
         "machine_older" -> t("Aide on that machine is older and doesn’t know this yet: update it there, then try again.", "那台机器上的 Aide 版本较旧，还不认识这个操作：先在那台机器上更新 Aide，再试一次。")
-        "no_host_online" -> t("No machine of yours is online to keep the conversation: start Aide on one.", "没有在线的机器能主持这场对话：先在一台机器上打开 Aide。")
-        "no_room_host_online" -> t("No machine of yours is online to keep the room: start Aide on one.", "没有在线的机器能主持这个房间：先在一台机器上打开 Aide。")
-        "cannot_sign_charter" -> t("This device can’t sign a room’s charter: it is not one of your devices.", "这台设备不能签发房间章程：它不是你的设备。")
+        "no_host_online" -> t("No machine of yours is online to keep the conversation: start Aide on one.", "没有在线的机器能负责这场对话：先在一台机器上打开 Aide。")
+        "no_room_host_online" -> t("No machine of yours is online to keep the room: start Aide on one.", "没有在线的机器能负责这个房间：先在一台机器上打开 Aide。")
+        "cannot_sign_charter" -> t("This device can’t give this room its permissions: it is not one of your devices.", "这台设备不能给这个房间发许可：它不是你的设备。")
         "her_access_whole" -> t("Her’s access is whole and doesn’t expire: turn Her off to end it.", "Her 的授权是完整且不过期的：要结束它，请关掉 Her。")
         "name_length" -> t("A name is 1 to 64 bytes.", "名字要在 1 到 64 个字节之间。")
         "icon_needs_picture" -> t("The “picture” icon needs a picture.", "选了“图片”做图标，需要先选一张图片。")
@@ -616,11 +637,11 @@ fun reasonText(reason: String, args: Map<String, String>, raw: String): String? 
         "project_gone" -> t("The project “${a("project")}” is gone.", "项目「${a("project")}」已经不在了。")
         "session_archived" -> t("This conversation is archived (read-only): unarchive it to go on.", "这条对话已归档（只读）：先取消归档再续聊。")
         "turn_in_progress" -> t("It is still busy with the last turn: wait, or interrupt it first.", "它还在忙上一轮：等它做完，或先打断它。")
-        "room_no_grant" -> t("This agent’s grant hasn’t reached the host yet: try again in a moment.", "这个 agent 的授权还没到主持机：等一会儿再试。")
+        "room_no_grant" -> t("This agent’s grant hasn’t reached the machine keeping this room yet: try again in a moment.", "这个 agent 的授权还没到负责这个房间的机器：等一会儿再试。")
         "room_needs_name" -> t("A room needs a name.", "房间要有个名字。")
         "room_members_count" -> t("A room has 1 to ${a("max")} members.", "一个房间要有 1 到 ${a("max")} 个成员。")
-        "room_not_in_charter" -> t("${a("agent")} (project ${a("project")}) is not in this room’s charter.", "${a("agent")}（项目 ${a("project")}）不在这个房间的章程里。")
-        "room_not_found" -> t("The host no longer has this room.", "主持机上找不到这个房间了。")
+        "room_not_in_charter" -> t("${a("agent")} (project ${a("project")}) is not on this room’s member list.", "${a("agent")}（项目 ${a("project")}）不在这个房间的成员名单里。")
+        "room_not_found" -> t("The machine keeping this room no longer has it.", "负责这个房间的机器上找不到它了。")
         "nothing_to_say" -> t("Nothing written yet.", "还没写内容。")
         else -> null
     }

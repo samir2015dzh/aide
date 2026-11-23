@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Session } from "@aide/proto/session";
 import { displayTitle, openedNews } from "@aide/core";
@@ -11,11 +11,13 @@ import { useStore } from "./store";
 import { Chat } from "./session/Chat";
 import { useSessionEvents } from "./session/events";
 import { Inspector } from "./session/Inspector";
+import { SessionList } from "./session/SessionList";
 import "./session/markdown/markdown.css";
 import "./session/session.css";
 
 // A session: its conversation, the bottom control area while a turn is
-// live, and the info panel.
+// live, and beside it the sessions to switch to (工单 #90); its settings
+// are a click away, in a menu from the toolbar.
 export function SessionPage({ s }: { s: Session }) {
   const { t } = useTranslation("session");
   const st = useStore();
@@ -23,6 +25,7 @@ export function SessionPage({ s }: { s: Session }) {
   // The card keeps the conversation clear of it when there is room beside it; over the conversation (no room) it leaves it be.
   const { card } = layoutOf(st);
   const info = card !== "hidden";
+  const [settings, setSettings] = useState(false);
   useMarkSeen(s);
   return (
     <>
@@ -34,7 +37,19 @@ export function SessionPage({ s }: { s: Session }) {
           </div>
           <MachineTag machineId={s.machineId} />
         </div>
-        {/* A toolbar button as the sidebar's toggle is, highlighted while the info shows. */}
+        {/* The session's settings, in a menu (工单 #90): open only when asked for. */}
+        <button
+          className={`tb ${settings ? "on" : ""}`}
+          title={t("page.settings")}
+          aria-label={t("page.settings")}
+          aria-haspopup="dialog"
+          aria-expanded={settings}
+          data-settings-toggle
+          onClick={() => setSettings(!settings)}
+        >
+          <Icon name="gear" />
+        </button>
+        {/* A toolbar button as the sidebar's toggle is, highlighted while the list shows. */}
         <button
           className={`tb ${info ? "on" : ""}`}
           title={t(info ? "page.hideInfo" : "page.showInfo", { keys: keys(ownKeys.toggleInspector) })}
@@ -42,16 +57,46 @@ export function SessionPage({ s }: { s: Session }) {
           aria-pressed={info}
           onClick={() => setCard(st, !info)}
         >
-          <Icon name="infoCard" />
+          <Icon name="sidebar" className="flip" />
         </button>
       </div>
       <div className={`dwrap ${card === "docked" ? "dock" : ""}`}>
         <div className="dmain">
           <Chat key={s.sessionId} s={s} events={events} draft={draft} />
         </div>
-        {info && <Inspector s={s} />}
+        {info && <SessionList s={s} />}
+        {settings && <SettingsMenu s={s} onClose={() => setSettings(false)} />}
       </div>
     </>
+  );
+}
+
+/**
+ * The session's settings (工单 #90: every one the info panel had — who started it, which agent runs it, its machine
+ * and that machine's settings, its project and branch with what they offer, the model and effort, its review), over
+ * the conversation's top right until put away: Esc, a click outside, or the toolbar's button again.
+ */
+function SettingsMenu({ s, onClose }: { s: Session; onClose: () => void }) {
+  const { t } = useTranslation("session");
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const outside = (e: MouseEvent) => {
+      const el = e.target as Element;
+      // Its own menus (the project's, the branch's) open over the window, outside it.
+      if (!ref.current?.contains(el) && !el.closest?.("[data-settings-toggle], [role=menu]")) onClose();
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && onClose();
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [onClose]);
+  return (
+    <div className="insp-pop" role="dialog" aria-label={t("page.settings")} ref={ref}>
+      <Inspector s={s} />
+    </div>
   );
 }
 

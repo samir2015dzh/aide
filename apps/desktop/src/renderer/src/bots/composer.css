@@ -1,0 +1,46 @@
+/* The box to write in (工单 #92, after Claude's input box): a rounded box, the line on top, + at its foot on the left,
+   the microphone and send on the right; under it what became of the message (工单 #61) and, on the right, the choices. */
+.composer{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.composer-why{display:flex;align-items:center;gap:8px;padding:0 14px;font-size:12px;color:var(--orange)}
+.composer-why.quiet{color:var(--l2)}
+.composer-box{position:relative;display:flex;flex-direction:column;gap:2px;padding:8px 8px 6px;border-radius:20px;background:var(--win);box-shadow:0 0 0 .5px var(--field-bd),0 4px 16px rgba(0,0,0,.06);transition:box-shadow .15s var(--ease-out)}
+.composer-box:focus-within{box-shadow:0 0 0 .5px var(--field-bd),0 0 0 3px var(--accent-bg),0 4px 16px rgba(0,0,0,.06)}
+.composer-box.off{opacity:.6}
+.composer-box.over{box-shadow:0 0 0 1.5px var(--accent),0 0 0 4px var(--accent-bg)}
+.composer-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 4px 2px}
+.composer-in{resize:none;border:0;outline:none;background:transparent;font:inherit;font-size:var(--fs-text-l);line-height:20px;padding:4px 6px;color:var(--l1);max-height:200px}
+.composer-in::placeholder{color:var(--l3)}
+.composer-bar{display:flex;align-items:center;gap:6px}
+.composer-gap{flex:1}
+.composer-round{flex:none;width:32px;height:32px;border-radius:50%;border:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--l2)}
+.composer-round:hover:not(:disabled){background:var(--fill2);color:var(--l1)}
+.composer-send{background:var(--accent);color:var(--on-accent)}
+.composer-send:hover:not(:disabled){background:var(--accent);color:var(--on-accent);filter:brightness(1.08)}
+.composer-send:disabled{background:var(--fill2);color:var(--l3)}
+.composer-send .busy>i{border-color:rgba(255,255,255,.35);border-top-color:#fff}
+.composer-plus{position:relative}
+.composer-menu{position:absolute;left:0;bottom:40px;z-index:5}
+.composer-cmds{position:absolute;left:8px;right:8px;bottom:calc(100% + 6px);z-index:5;max-height:240px;overflow:auto}
+.composer-cmds .mi{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left}
+.composer-cmds .mi b{font-weight:600;min-width:84px}
+.composer-cmds .mi span{color:var(--l2)}
+.composer-cmds .mi.on{background:var(--accent);color:var(--on-accent)}
+.composer-cmds .mi.on span{color:inherit}
+.composer-files{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:2px 4px 6px;list-style:none}
+.composer-file{position:relative;display:flex;align-items:center;gap:8px;height:52px;max-width:240px;padding:0 28px 0 10px;border-radius:12px;background:var(--fill)}
+.composer-file.img{width:52px;padding:0;overflow:hidden}
+.composer-file img{width:100%;height:100%;object-fit:cover}
+.composer-file-t{display:flex;flex-direction:column;min-width:0;font-size:12px}
+.composer-file-t b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer-file-t span{color:var(--l3)}
+.composer-file-x{position:absolute;top:3px;right:3px;width:18px;height:18px;border:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);color:#fff;padding:0}
+.composer-file-x .ic{width:10px;height:10px}
+.composer-foot{display:flex;align-items:center;gap:8px;min-height:24px}
+.composer-state{flex:1;min-width:0;min-height:16px;padding:0 14px;font-size:11.5px;color:var(--l3);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.composer-state.error{color:var(--orange)}
+.composer-state.done{color:var(--green)}
+.composer-params{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:6px;padding-right:6px}
+.composer-param{font-size:12px;color:var(--l2);padding:2px 8px}
+.composer .room-mentions .chip{padding:1px 9px}
+@media (prefers-reduced-motion:reduce){.composer-box{transition:none}}
+.composer .composer-in,.composer .composer-in:focus,.composer .composer-in:focus-visible{outline:none;box-shadow:none;border:0;background:transparent}

@@ -13,10 +13,7 @@
 @media (prefers-reduced-motion:reduce){.live-logo{animation:none}}
 /* The owner's message box under a session the owner started (Chat.tsx MessageBox); the control area sits above it. */
 .mbox{position:absolute;left:0;right:0;bottom:0;z-index:4;pointer-events:none;padding:16px 16px 16px;background:linear-gradient(to bottom,transparent,var(--win) 16px)}
-.mbox-in{pointer-events:auto;max-width:var(--conversation-width);margin:0 auto;display:flex;align-items:flex-end;gap:4px;background:var(--win);border-radius:22px;box-shadow:0 0 0 .5px var(--menu-bd),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);padding:6px}
-.mbox-t{flex:1;min-width:0;resize:none;border:0;outline:none;background:none;font:inherit;font-size:14px;line-height:20px;color:var(--l1);padding:6px 6px;min-height:32px;max-height:200px;overflow-y:auto}
-.mbox-send{width:32px;height:32px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex:none}
-.mbox-send:disabled{color:var(--l3);background:var(--fill2)}
+.mbox .composer{pointer-events:auto;max-width:var(--conversation-width);margin:0 auto}
 .dwrap.dock .mbox{right:270px}
 /* The session's review (Insights.tsx): its Markdown, then what to copy. */
 .insights{padding:20px 24px}

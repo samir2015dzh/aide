@@ -110,7 +110,9 @@ type Machine struct {
 	usage       *machinev1.ClaudeUsage      // last Claude plan usage reading (claudeusage.go)
 	usageAt     time.Time                   // when a reading was last attempted
 	usageFetch  bool                        // a usage fetch is under way
-	usageSrc    usageSource                 // reads plan usage; nil disables it
+	usageSrc    usageSource                 // reads plan usage from the endpoint; nil with usageCLI nil disables it
+	usageCLI    cliUsageSource              // reads it through Claude Code here (工单 #86)
+	usageNoCLI  map[string]bool             // Claude Code binaries@versions without /usage outside a terminal
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
 	dshBridge   *machinev1.DSHBridge     // the DSH bridge plugin, as the last check of DSH found it
@@ -121,9 +123,10 @@ type Machine struct {
 	pausedAgents map[string]pausedAgent
 	resumed      map[string]time.Time
 	resumeTimers map[string]*time.Timer
-	checked      time.Time       // when the last check of all of them ended
-	checking     chan struct{}   // closed when the check under way ends; nil when none is
-	pending      map[string]bool // the agents the check under way has not finished yet
+	categories   map[string]string // the kind the owner filed each coding agent as (agentcategory.go)
+	checked      time.Time         // when the last check of all of them ended
+	checking     chan struct{}     // closed when the check under way ends; nil when none is
+	pending      map[string]bool   // the agents the check under way has not finished yet
 	defaults     map[string]*identityv1.AgentDefaults
 	tunnels      map[*tunnel]struct{}
 	connected    bool
@@ -248,7 +251,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
+		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
@@ -272,6 +275,8 @@ func Open(cfg Config) (*Machine, error) {
 	}
 	if cfg.ClaudeUsage {
 		n.usageSrc = &claude.UsageReader{AutoRenew: true, HTTP: cfg.HTTPClient, Log: n.log}
+		n.usageCLI = &claude.CLIUsage{}
+		n.loadUsage()
 	}
 	n.sessions.offered = n.offered
 	n.sessions.notice = func(s noticeSession, e *sessionv1.SessionEvent) {
@@ -290,6 +295,7 @@ func (n *Machine) loadState() error {
 	n.loadDefaults()
 	n.loadHiddenAgents() // the machine's own, logged in or not
 	n.loadPausedAgents()
+	n.loadAgentCategories()
 	was, _ := n.st.Get(kHer)
 	n.herData = len(was) > 0 && herHomeExists()
 	n.forgetHer() // whoever the owner is, or none yet
@@ -559,6 +565,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 				LoggedIn: i.LoggedIn, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary,
 				Hidden: n.isHiddenLocked(name)}
 			a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
+			a.Category = n.categories[name]
 			n.agentModels(a, i)
 			if !i.CheckedAt.IsZero() {
 				a.CheckedAt = timestamppb.New(i.CheckedAt)
@@ -586,6 +593,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 			a.CheckedAt = timestamppb.New(i.CheckedAt)
 		}
 		a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
+		a.Category = n.categories[name]
 		n.agentModels(a, i)
 		st.Agents = append(st.Agents, a)
 	}

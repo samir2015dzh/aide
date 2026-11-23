@@ -89,6 +89,8 @@ data class AgentStatus(
     val dshBridge: DSHBridge? = null,
     /** Its sign-in started from Aide (工单 #51); null: none. */
     val login: AgentLogin? = null,
+    /** The kind the owner filed it as (SetAgentCategory, 工单 #93): "" told from what it is, "local", "personal". */
+    val category: String = "",
 )
 
 /** aide.machine.v1.AgentLogin; state is an AgentLoginState name. */
@@ -105,8 +107,9 @@ data class ClaudeDesktop(val installed: Boolean = false, val signedIn: Boolean =
 @Serializable
 data class AgentPause(val since: String = "", val resumeAt: String = "")
 
+/** fetchedAt (RFC 3339): when it was read; stale: the last reading, kept after a refresh that failed (工单 #86). */
 @Serializable
-data class ClaudeUsage(val windows: List<UsageWindow> = emptyList())
+data class ClaudeUsage(val windows: List<UsageWindow> = emptyList(), val fetchedAt: String = "", val stale: Boolean = false, val unavailable: String = "")
 
 @Serializable
 data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val resetsAt: String = "")
@@ -187,6 +190,8 @@ data class Client(
     val spec: GrantSpec? = null,
     val expiresAt: String = "",
     val online: Boolean = false,
+    /** Online by its last call, no connection now (an MCP connection, 工单 #94): lastSeen is when. */
+    val recent: Boolean = false,
     val lastSeen: String = "",
     val revoked: Boolean = false,
     val custodian: String = "",
@@ -194,6 +199,8 @@ data class Client(
     /** The kind the owner set (工单 #52): "personal", "local", or "" to tell from its name. */
     val category: String = "",
     val categoryMachineId: String = "",
+    /** The icon the owner picked: "bot:<shape>:<colour>" its character's look (工单 #83); else its seed's. */
+    val icon: String = "",
 )
 
 @Serializable
@@ -218,6 +225,8 @@ data class Project(
     val agents: List<String> = emptyList(),
     /** What the owner calls it (工单 #50); empty: its id. */
     val name: String = "",
+    /** The DSH permission preset its DSH sessions start with when none is chosen (工单 #89); empty: DSH's own. */
+    val dshPreset: String = "",
 )
 
 /** A project as the owner knows it: the name they gave it, else its id. */
@@ -425,8 +434,13 @@ data class SessionEvent(
 
 /** resumeAt (RFC 3339), with paused: when it resumes by itself; null: when the owner resumes it. */
 @Serializable data class SetAgentHiddenRequest(val machineId: String, val agent: String, val hidden: Boolean)
+@Serializable data class SetAgentCategoryRequest(val machineId: String, val agent: String, val category: String)
 
 @Serializable data class SetAgentPausedRequest(val machineId: String, val agent: String, val paused: Boolean, val resumeAt: String? = null)
+
+/** An agent's grant to revoke (工单 #82: deleting it from the roster). */
+@Serializable data class RevokeClientRequest(val grantId: String)
+
 /** DeepSeek Harness's own sessions on the owner's machines (docs: aide.machine.v1.DSHSession); takeover: the owner took it over in Aide. */
 @Serializable data class DSHSession(
     val sessionId: String = "",
@@ -477,6 +491,30 @@ data class SessionEvent(
     @EncodeDefault val view: String = "EVENT_VIEW_FULL",
 )
 @Serializable data class ReadDSHSessionResponse(val session: DSHSession = DSHSession(), val events: List<SessionEvent> = emptyList(), val hasMoreBefore: Boolean = false)
+/** A Claude Code session the Claude desktop app has on a machine, not started by Aide (aide.machine.v1.ClaudeSession). */
+@Serializable data class ClaudeSession(
+    val sessionId: String = "",
+    val title: String = "",
+    val cwd: String = "",
+    val repo: String = "",
+    val createdAt: String = "",
+    val lastActivityAt: String = "",
+    val archived: Boolean = false,
+    val model: String = "",
+    val status: String = "",
+    val error: String = "",
+)
+@Serializable data class ClaudeSessionEntry(val machineId: String = "", val machineName: String = "", val session: ClaudeSession = ClaudeSession(), val lost: Boolean = false, val readAt: String = "")
+@Serializable data class ClaudeIndexEntry(val machineId: String = "", val indexes: List<String> = emptyList())
+@Serializable data class ListClaudeSessionsResponse(val sessions: List<ClaudeSessionEntry> = emptyList(), val unreachable: List<DSHUnreachable> = emptyList(), val indexes: List<ClaudeIndexEntry> = emptyList())
+@Serializable data class ReadClaudeSessionRequest(
+    val machineId: String,
+    val sessionId: String,
+    @Serializable(with = Int64::class) val beforeSeq: Long = 0,
+    @EncodeDefault val limit: Int = 200,
+    @EncodeDefault val view: String = "EVENT_VIEW_FULL",
+)
+@Serializable data class ReadClaudeSessionResponse(val session: ClaudeSession = ClaudeSession(), val events: List<SessionEvent> = emptyList(), val hasMoreBefore: Boolean = false)
 @Serializable data class ListSessionsRequest(@EncodeDefault val limit: Int = 50, val before: SessionCursor? = null, @EncodeDefault val view: String = "SESSION_VIEW_BASIC")
 @Serializable data class ListSessionsResponse(val sessions: List<Session> = emptyList(), val next: SessionCursor? = null)
 
@@ -502,8 +540,10 @@ data class Notice(
     val roomLine: String = "",
 )
 
-@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String, val model: String = "", val effort: String = "", val mode: String = "")
-@Serializable data class SendMessageRequest(val sessionId: String, val text: String)
+/** aide.session.v1.Attachment: a file sent with a message (工单 #91); data is its bytes, base64 as JSON carries bytes. */
+@Serializable data class AttachmentIn(val name: String, val mediaType: String = "", val data: String)
+@Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String, val model: String = "", val effort: String = "", val mode: String = "", val attachments: List<AttachmentIn> = emptyList())
+@Serializable data class SendMessageRequest(val sessionId: String, val text: String, val attachments: List<AttachmentIn> = emptyList())
 @Serializable data class StartSessionRequest(val machineId: String, val session: StartSessionBody)
 
 // Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.

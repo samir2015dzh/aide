@@ -250,8 +250,20 @@ func (s *Server) loadTenant(ownerID string) (*tenant, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The names its machines last reported, kept (工单 #84): each says its
+	// own again, and its version, once it is back.
+	reported := map[string]*relayv1.ReportStatusRequest{}
+	if ns, ok := s.store.(MachineNameStore); ok {
+		names, err := ns.MachineNames(ownerID)
+		if err != nil {
+			return nil, err
+		}
+		for id, name := range names {
+			reported[id] = &relayv1.ReportStatusRequest{Name: name}
+		}
+	}
 	t = &tenant{ownerID: ownerID, trust: trust, machines: map[string]*peer{}, peers: map[*peer]struct{}{},
-		reported: map[string]*relayv1.ReportStatusRequest{}, lastSeen: map[string]time.Time{},
+		reported: reported, lastSeen: map[string]time.Time{},
 		watchers: map[string]map[*updates]struct{}{}, revocations: rev, ownerWatchers: map[chan struct{}]struct{}{}}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -873,6 +885,9 @@ func (s *Server) applyRevocations(t *tenant, in *identityv1.RevocationList) erro
 			if err := s.store.DeleteGrant(t.ownerID, g.GrantId); err != nil {
 				s.log.Warn("forgetting a revoked grant", "owner", t.ownerID, "grant", g.GrantId, "err", err)
 			}
+			if s.sqlite != nil {
+				s.sqlite.DeleteLogin(g.GrantId) // the record of its login, too (工单 #82)
+			}
 			gone = append(gone, g.ClientId)
 		}
 	}
@@ -1005,10 +1020,25 @@ func (s *Server) clientEntries(t *tenant) ([]*relayv1.ClientEntry, error) {
 		return nil, err
 	}
 	online := map[string]bool{}
+	type seen struct {
+		at     time.Time
+		recent bool
+	}
+	last := map[string]seen{}
+	now := time.Now()
 	s.mu.Lock()
 	for p := range t.peers {
 		if p.role == relayv1.Role_ROLE_CLIENT {
 			online[p.subject.ID] = true
+		}
+	}
+	for _, sg := range grants {
+		g := &identityv1.Grant{}
+		if identity.Unverified(sg, g) != nil {
+			continue
+		}
+		if at, ok := t.lastSeen[g.ClientId]; ok && !online[g.ClientId] {
+			last[g.ClientId] = seen{at, recentlyActive(t, g.ClientId, g.Custodian != "", now)}
 		}
 	}
 	rev := t.revocations
@@ -1025,8 +1055,13 @@ func (s *Server) clientEntries(t *tenant) ([]*relayv1.ClientEntry, error) {
 		if isRevoked(rev, &identity.Subject{Kind: identity.SubjectClient, ID: g.ClientId, Grant: g}) != nil {
 			continue
 		}
-		out = append(out, &relayv1.ClientEntry{Grant: sg, Online: online[g.ClientId], MachineIds: liveMachines(g.MachineIds, removed),
-			Card: cards[g.ClientId].Card, CardDeviceCert: cards[g.ClientId].DeviceCert})
+		e := &relayv1.ClientEntry{Grant: sg, Online: online[g.ClientId], MachineIds: liveMachines(g.MachineIds, removed),
+			Card: cards[g.ClientId].Card, CardDeviceCert: cards[g.ClientId].DeviceCert}
+		// Away: when it was last connected, or last called (an MCP connection, online by that within the window, 工单 #94).
+		if l, ok := last[g.ClientId]; ok {
+			e.LastSeen, e.Online, e.Recent = timestamppb.New(l.at), l.recent, l.recent
+		}
+		out = append(out, e)
 	}
 	return out, nil
 }
@@ -1302,6 +1337,8 @@ func (s *Server) Backend() Backend { return s.store }
 // its agents), and when the others were last: what the relay knows of its
 // own connections since it started, for a roster.
 func (s *Server) presence(t *tenant) []*relayv1.Presence {
+	custodied := s.custodied(t)
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	online := map[string]bool{}
@@ -1316,7 +1353,9 @@ func (s *Server) presence(t *tenant) []*relayv1.Presence {
 	}
 	for id, seen := range t.lastSeen {
 		if !online[id] {
-			out = append(out, &relayv1.Presence{Inbox: id, LastSeen: timestamppb.New(seen)})
+			// An MCP connection is online by its last call (工单 #94), as the owner's list says.
+			recent := recentlyActive(t, id, custodied[id], now)
+			out = append(out, &relayv1.Presence{Inbox: id, Online: recent, Recent: recent, LastSeen: timestamppb.New(seen)})
 		}
 	}
 	return out

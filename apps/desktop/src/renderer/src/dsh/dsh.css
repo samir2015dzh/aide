@@ -54,13 +54,15 @@
    take-over switch, DSH's model and permission, the state of what was sent, and Send. Always there; read only
    until taken over. */
 .dsh-compose{position:sticky;bottom:0;max-width:var(--conversation-width);padding:var(--sp-3) 0 var(--sp-2);margin-top:var(--sp-3);background:linear-gradient(to bottom,transparent,var(--win) 14px)}
-.dsh-box{background:var(--win);border-radius:18px;box-shadow:0 0 0 .5px var(--menu-bd),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);padding:8px 8px 6px 12px;transition:box-shadow .15s var(--ease-out)}
+.dsh-box{background:var(--win);border-radius:20px;box-shadow:0 0 0 .5px var(--menu-bd),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);padding:8px 8px 6px 12px;transition:box-shadow .15s var(--ease-out)}
 .dsh-box:focus-within{box-shadow:0 0 0 1px var(--l4),0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.08)}
 .dsh-box textarea{display:block;width:100%;min-height:44px;max-height:240px;resize:none;border:0;outline:0;background:transparent;color:var(--l1);font:inherit;font-size:var(--chat-size,14px);line-height:1.55;padding:2px 0 6px;box-sizing:border-box}
 .dsh-box textarea::placeholder{color:var(--l3)}
 .dsh-compose.off .dsh-box textarea{cursor:not-allowed}
 .dsh-bar{display:flex;align-items:center;gap:8px;min-width:0}
 .dsh-pick{height:26px;max-width:180px;border:0;border-radius:999px;padding:0 10px;background:var(--fill2);color:var(--l1);font:inherit;font-size:12px}
+.picker.dsh-pick{box-shadow:none}
+.picker.dsh-pick .picker-c{width:12px;height:12px;padding:0;background:none;color:var(--l2)}
 .dsh-bar-note{flex:1;min-width:0;font-size:12px;color:var(--l2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dsh-bar-note .err{color:var(--red)}
 .dsh-send{width:30px;height:30px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent,var(--win));display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s,color .15s}
@@ -80,7 +82,16 @@
 
 
 /* Messages held for the owner (held/HeldMessages.tsx). */
-.held-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+/* An inset grouped list (工单 #95): one card, a hairline between rows from where their text starts. */
+.held-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0;background:var(--win2);border-radius:var(--r-card)}
+.held-list:empty{display:none}
+.held-list>li{position:relative;border-radius:0}
+.held-list>li:first-child{border-radius:var(--r-card) var(--r-card) 0 0}
+.held-list>li:last-child{border-radius:0 0 var(--r-card) var(--r-card)}
+.held-list>li:only-child{border-radius:var(--r-card)}
+.held-list>li+li::before{content:"";position:absolute;top:0;right:0;left:12px;height:.5px;background:var(--sep);pointer-events:none}
+.held-row{padding:10px 12px}
+.held-row .dsh-msg.user{background:var(--win)}
 .held-row{align-items:flex-start}
 .held-row .t{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
 .held-row .dsh-msg{white-space:pre-wrap;overflow-wrap:anywhere;margin:2px 0 0}

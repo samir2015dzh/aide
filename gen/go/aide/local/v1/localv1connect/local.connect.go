@@ -103,6 +103,9 @@ const (
 	// LocalServiceSetAgentPausedProcedure is the fully-qualified name of the LocalService's
 	// SetAgentPaused RPC.
 	LocalServiceSetAgentPausedProcedure = "/aide.local.v1.LocalService/SetAgentPaused"
+	// LocalServiceSetAgentCategoryProcedure is the fully-qualified name of the LocalService's
+	// SetAgentCategory RPC.
+	LocalServiceSetAgentCategoryProcedure = "/aide.local.v1.LocalService/SetAgentCategory"
 	// LocalServiceListMachineReposProcedure is the fully-qualified name of the LocalService's
 	// ListMachineRepos RPC.
 	LocalServiceListMachineReposProcedure = "/aide.local.v1.LocalService/ListMachineRepos"
@@ -134,6 +137,9 @@ const (
 	// LocalServiceRenameProjectProcedure is the fully-qualified name of the LocalService's
 	// RenameProject RPC.
 	LocalServiceRenameProjectProcedure = "/aide.local.v1.LocalService/RenameProject"
+	// LocalServiceSetProjectPermissionProcedure is the fully-qualified name of the LocalService's
+	// SetProjectPermission RPC.
+	LocalServiceSetProjectPermissionProcedure = "/aide.local.v1.LocalService/SetProjectPermission"
 	// LocalServiceListClientsProcedure is the fully-qualified name of the LocalService's ListClients
 	// RPC.
 	LocalServiceListClientsProcedure = "/aide.local.v1.LocalService/ListClients"
@@ -387,6 +393,9 @@ type LocalServiceClient interface {
 	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
 	// Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
 	SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error)
+	// Files a coding agent a machine lists as a kind, or back to told from
+	// what it is (SetAgentCategory).
+	SetAgentCategory(context.Context, *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -413,6 +422,9 @@ type LocalServiceClient interface {
 	RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error)
 	// Names a project as the owner knows it, in place of its id.
 	RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error)
+	// Sets the DSH permission preset a project's DSH sessions start with
+	// unless one is chosen for the session (SetProjectPermission).
+	SetProjectPermission(context.Context, *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error)
 	// Agents.
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
 	UpdateClient(context.Context, *v1.UpdateClientRequest) (*v1.UpdateClientResponse, error)
@@ -718,6 +730,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("SetAgentPaused")),
 			connect.WithClientOptions(opts...),
 		),
+		setAgentCategory: connect.NewClient[v1.SetAgentCategoryRequest, v1.SetAgentCategoryResponse](
+			httpClient,
+			baseURL+LocalServiceSetAgentCategoryProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetAgentCategory")),
+			connect.WithClientOptions(opts...),
+		),
 		listMachineRepos: connect.NewClient[v1.ListMachineReposRequest, v1.ListMachineReposResponse](
 			httpClient,
 			baseURL+LocalServiceListMachineReposProcedure,
@@ -782,6 +800,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceRenameProjectProcedure,
 			connect.WithSchema(localServiceMethods.ByName("RenameProject")),
+			connect.WithClientOptions(opts...),
+		),
+		setProjectPermission: connect.NewClient[v1.SetProjectPermissionRequest, v1.SetProjectPermissionResponse](
+			httpClient,
+			baseURL+LocalServiceSetProjectPermissionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetProjectPermission")),
 			connect.WithClientOptions(opts...),
 		),
 		listClients: connect.NewClient[v1.ListClientsRequest, v1.ListClientsResponse](
@@ -1199,6 +1223,7 @@ type localServiceClient struct {
 	checkAgents              *connect.Client[v1.CheckAgentsRequest, v1.CheckAgentsResponse]
 	setAgentHidden           *connect.Client[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse]
 	setAgentPaused           *connect.Client[v1.SetAgentPausedRequest, v1.SetAgentPausedResponse]
+	setAgentCategory         *connect.Client[v1.SetAgentCategoryRequest, v1.SetAgentCategoryResponse]
 	listMachineRepos         *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
 	listMachineFolders       *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
 	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
@@ -1210,6 +1235,7 @@ type localServiceClient struct {
 	addProject               *connect.Client[v1.AddProjectRequest, v1.AddProjectResponse]
 	removeProject            *connect.Client[v1.RemoveProjectRequest, v1.RemoveProjectResponse]
 	renameProject            *connect.Client[v1.RenameProjectRequest, v1.RenameProjectResponse]
+	setProjectPermission     *connect.Client[v1.SetProjectPermissionRequest, v1.SetProjectPermissionResponse]
 	listClients              *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
 	updateClient             *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
 	renameClient             *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
@@ -1506,6 +1532,15 @@ func (c *localServiceClient) SetAgentPaused(ctx context.Context, req *v1.SetAgen
 	return nil, err
 }
 
+// SetAgentCategory calls aide.local.v1.LocalService.SetAgentCategory.
+func (c *localServiceClient) SetAgentCategory(ctx context.Context, req *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error) {
+	response, err := c.setAgentCategory.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListMachineRepos calls aide.local.v1.LocalService.ListMachineRepos.
 func (c *localServiceClient) ListMachineRepos(ctx context.Context, req *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error) {
 	response, err := c.listMachineRepos.CallUnary(ctx, connect.NewRequest(req))
@@ -1599,6 +1634,15 @@ func (c *localServiceClient) RemoveProject(ctx context.Context, req *v1.RemovePr
 // RenameProject calls aide.local.v1.LocalService.RenameProject.
 func (c *localServiceClient) RenameProject(ctx context.Context, req *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error) {
 	response, err := c.renameProject.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SetProjectPermission calls aide.local.v1.LocalService.SetProjectPermission.
+func (c *localServiceClient) SetProjectPermission(ctx context.Context, req *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error) {
+	response, err := c.setProjectPermission.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -2239,6 +2283,9 @@ type LocalServiceHandler interface {
 	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
 	// Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
 	SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error)
+	// Files a coding agent a machine lists as a kind, or back to told from
+	// what it is (SetAgentCategory).
+	SetAgentCategory(context.Context, *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -2265,6 +2312,9 @@ type LocalServiceHandler interface {
 	RemoveProject(context.Context, *v1.RemoveProjectRequest) (*v1.RemoveProjectResponse, error)
 	// Names a project as the owner knows it, in place of its id.
 	RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error)
+	// Sets the DSH permission preset a project's DSH sessions start with
+	// unless one is chosen for the session (SetProjectPermission).
+	SetProjectPermission(context.Context, *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error)
 	// Agents.
 	ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error)
 	UpdateClient(context.Context, *v1.UpdateClientRequest) (*v1.UpdateClientResponse, error)
@@ -2566,6 +2616,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("SetAgentPaused")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceSetAgentCategoryHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetAgentCategoryProcedure,
+		svc.SetAgentCategory,
+		connect.WithSchema(localServiceMethods.ByName("SetAgentCategory")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListMachineReposHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListMachineReposProcedure,
 		svc.ListMachineRepos,
@@ -2630,6 +2686,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceRenameProjectProcedure,
 		svc.RenameProject,
 		connect.WithSchema(localServiceMethods.ByName("RenameProject")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetProjectPermissionHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetProjectPermissionProcedure,
+		svc.SetProjectPermission,
+		connect.WithSchema(localServiceMethods.ByName("SetProjectPermission")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListClientsHandler := connect.NewUnaryHandlerSimple(
@@ -3070,6 +3132,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceSetAgentHiddenHandler.ServeHTTP(w, r)
 		case LocalServiceSetAgentPausedProcedure:
 			localServiceSetAgentPausedHandler.ServeHTTP(w, r)
+		case LocalServiceSetAgentCategoryProcedure:
+			localServiceSetAgentCategoryHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineReposProcedure:
 			localServiceListMachineReposHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineFoldersProcedure:
@@ -3092,6 +3156,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceRemoveProjectHandler.ServeHTTP(w, r)
 		case LocalServiceRenameProjectProcedure:
 			localServiceRenameProjectHandler.ServeHTTP(w, r)
+		case LocalServiceSetProjectPermissionProcedure:
+			localServiceSetProjectPermissionHandler.ServeHTTP(w, r)
 		case LocalServiceListClientsProcedure:
 			localServiceListClientsHandler.ServeHTTP(w, r)
 		case LocalServiceUpdateClientProcedure:
@@ -3333,6 +3399,10 @@ func (UnimplementedLocalServiceHandler) SetAgentPaused(context.Context, *v1.SetA
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentPaused is not implemented"))
 }
 
+func (UnimplementedLocalServiceHandler) SetAgentCategory(context.Context, *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentCategory is not implemented"))
+}
+
 func (UnimplementedLocalServiceHandler) ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListMachineRepos is not implemented"))
 }
@@ -3375,6 +3445,10 @@ func (UnimplementedLocalServiceHandler) RemoveProject(context.Context, *v1.Remov
 
 func (UnimplementedLocalServiceHandler) RenameProject(context.Context, *v1.RenameProjectRequest) (*v1.RenameProjectResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RenameProject is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetProjectPermission(context.Context, *v1.SetProjectPermissionRequest) (*v1.SetProjectPermissionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetProjectPermission is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListClients(context.Context, *v1.ListClientsRequest) (*v1.ListClientsResponse, error) {

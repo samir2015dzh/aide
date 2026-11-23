@@ -45,8 +45,10 @@ type endpointJSON struct {
 	// Mailable: a message can go to it now (a DSH session only once the
 	// owner took it over).
 	Mailable bool `json:"mailable"`
-	// An agent's: connected to the relay now, or when it last was.
+	// An agent's: connected to the relay now, or when it last was. Recent:
+	// online by its last call (an MCP connection, 工单 #94), last_seen then.
 	Online   *bool   `json:"online,omitempty"`
+	Recent   bool    `json:"recent,omitempty"`
 	LastSeen *string `json:"last_seen,omitempty"`
 	You      bool    `json:"you,omitempty"`
 	// A session's.
@@ -177,16 +179,19 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 				}
 			}
 		}
+		if !onRoster(info.Name, cat, info.Category != "") {
+			continue
+		}
 		e := endpointJSON{Address: info.Inbox, Name: info.Name, Kind: info.Kind, Category: cat, Machine: home, Tier: tier, Mailable: info.InboxKey != nil, You: info.Inbox == a.g.ClientId}
 		if p := presence[info.Inbox]; p != nil {
 			online := p.Online
-			e.Online, e.LastSeen = &online, tsJSON(p.LastSeen)
+			e.Online, e.Recent, e.LastSeen = &online, p.Recent, tsJSON(p.LastSeen)
 		}
 		out.Endpoints = append(out.Endpoints, e)
 		// Its names with a doorbell: endpoints of their own, woken.
 		for _, n := range woken[info.Inbox] {
 			if n != "" {
-				out.Endpoints = append(out.Endpoints, endpointJSON{Address: info.Inbox + "/" + n, Name: info.Name + "/" + n, Kind: info.Kind, Category: cat, Machine: home, Tier: "push", Mailable: e.Mailable, Online: e.Online, LastSeen: e.LastSeen})
+				out.Endpoints = append(out.Endpoints, endpointJSON{Address: info.Inbox + "/" + n, Name: info.Name + "/" + n, Kind: info.Kind, Category: cat, Machine: home, Tier: "push", Mailable: e.Mailable, Online: e.Online, Recent: e.Recent, LastSeen: e.LastSeen})
 			}
 		}
 	}
@@ -370,6 +375,9 @@ the coding agents the owner paused on a machine: they start no new session there
 					state = "offline"
 					if *e.Online {
 						state = "online"
+					}
+					if *e.Online && e.Recent && e.LastSeen != nil {
+						state = "online (last call " + *e.LastSeen + ")"
 					}
 				}
 				if !e.Mailable {

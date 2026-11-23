@@ -3,7 +3,7 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { MachineSchema, ProjectSchema } from "@aide/proto/local";
 import { SessionSchema, SessionStatus, type Session } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { botConversations, changedParams, currentConversation, paramsChanged, stuckWhy, withContext } from "./conversations";
+import { botConversations, changedParams, currentConversation, paramsChanged, sessionsByProject, stuckWhy, withContext } from "./conversations";
 
 const at = (m: number) => timestampFromDate(new Date(Date.UTC(2026, 10, 22, 10, m)));
 const s = (id: string, over: Partial<Session> = {}): Session =>
@@ -55,5 +55,21 @@ describe("a bot's conversations (工单 #67)", () => {
   test("a new conversation with an old one's context: its title, what it came to, then the new words", () => {
     expect(withContext(s("a", { result: "改好了 CI" }), "修 CI", "再加个测试")).toBe("接着之前的对话《修 CI》继续。\n它当时的结论：\n改好了 CI\n\n再加个测试");
     expect(withContext(s("a"), "修 CI", "再加个测试")).toBe("接着之前的对话《修 CI》继续。\n\n再加个测试");
+  });
+});
+
+describe("the session page's list (工单 #90)", () => {
+  test("the same agent's sessions on the same machine, by project, latest activity first; archived ones but the open one left out", () => {
+    const open = s("cur", { projectId: "api", status: SessionStatus.ARCHIVED, updatedAt: at(2) });
+    const groups = sessionsByProject(open, [
+      open,
+      s("w1", { projectId: "web", updatedAt: at(3) }),
+      s("w2", { projectId: "web", updatedAt: at(8), createdBy: "c_muse" }),
+      s("a1", { projectId: "api", updatedAt: at(1) }),
+      s("gone", { projectId: "api", status: SessionStatus.ARCHIVED, updatedAt: at(9) }),
+      s("codex", { agent: "codex", updatedAt: at(9) }),
+      s("there", { machineId: "m2", updatedAt: at(9) }),
+    ]);
+    expect(groups.map((g) => [g.projectId, g.sessions.map((x) => x.sessionId)])).toEqual([["web", ["w2", "w1"]], ["api", ["cur", "a1"]]]);
   });
 });

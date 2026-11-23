@@ -49,9 +49,20 @@ fun codingBotState(m: Machine, agent: String, now: Instant, c: MachineConnection
 }
 
 /** A personal agent's state: online now, or when it was last seen (it reports nothing else). */
+/**
+ * An MCP connection is online by its last call (工单 #94, relay.ActiveWindow), as on the desktop (core roster.ts): online
+ * while that was within [JUST_ACTIVE], recently active with when for the rest of the relay's window, then offline.
+ */
+val JUST_ACTIVE: java.time.Duration = java.time.Duration.ofMinutes(2)
+
 fun personalBotState(c: Client, now: Instant): BotState {
-    if (c.online) return BotState(ConnState.OK, t("Online", "在线"), t("Connected to your account now", "现在连着你的账号"), Usable.YES)
     val seen = instantOrNull(c.lastSeen)
+    if (c.online && c.recent && seen != null) {
+        val line = t("Called ${agoText(seen, now)}", "${agoText(seen, now)}调用过")
+        val word = if (java.time.Duration.between(seen, now) < JUST_ACTIVE) t("Online", "在线") else t("Recently active", "最近活跃")
+        return BotState(ConnState.OK, word, line, Usable.YES)
+    }
+    if (c.online) return BotState(ConnState.OK, t("Online", "在线"), t("Connected to your account now", "现在连着你的账号"), Usable.YES)
     return BotState(ConnState.UNKNOWN, t("Not online", "不在线"), seen?.let { t("Last seen ${agoText(it, now)}", "上次见到：${agoText(it, now)}") } ?: t("Not connected yet", "还没连上过"), Usable.UNVERIFIED, NotReady.UNKNOWN)
 }
 
@@ -73,7 +84,12 @@ data class Bot(
     val waiting: Int,
     /** The owner's contacts for it (docs/personas.md): the first is its name and face; there is no Hand Work To page. */
     val personas: List<Persona> = emptyList(),
+    /** Its name under its machine's head in the roster (工单 #75): "DSH", never "DSH · work-pc"; "" for its one name. */
+    val short: String = "",
 ) {
+    /** Its name in a roster row: under its machine's head, without the machine. */
+    val shortName: String get() = short.ifEmpty { name }
+
     /** A coding agent its machine lists (not only a grant): its connections, its projects, its tasks to hand out. */
     val coding: Boolean get() = !personal && agent.isNotEmpty() && key.startsWith("m:")
 }
@@ -85,7 +101,7 @@ data class AsideClient(val client: Client, val machineId: String)
 
 data class Roster(val personal: List<Bot>, val machines: List<MachineBots>, val aside: List<AsideClient> = emptyList()) {
     val all: List<Bot> get() = personal + machines.flatMap { it.bots }
-    /** The coding agents, every machine's, one list (工单 #63: the roster has no machine heads). */
+    /** The coding agents, every machine's, one list. */
     val coding: List<Bot> get() = machines.flatMap { it.bots }
 }
 
@@ -120,7 +136,7 @@ private fun grantAgent(label: String): String? {
     }
 }
 
-/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). */
+/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). The same rule as the CLI's roster (Go identity.IsAideClient, 工单 #79). */
 fun isAideClient(c: Client): Boolean = c.label.trim().startsWith("client@", ignoreCase = true)
 
 /** A grant filed as a coding agent is one on the roster when it names a known coding agent, or the owner filed it so. */
@@ -158,10 +174,17 @@ fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<
         for (agent in c.rows.map { it.agent }.distinct()) {
             val g = grants.firstOrNull { grantAgent(it.label) == agent }?.also { grants.remove(it) }
             val own = personas.filter { it.machineId == m.machineId && it.agent == agent }
-            bots += bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own)
+            val b = bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own, short = own.firstOrNull()?.name?.ifEmpty { null } ?: agentTitle(agent))
+            // Filed as a personal agent by the owner (工单 #52, #93: their say first): listed with the personal agents, as
+            // on the desktop; still its machine's agent, its page the same.
+            if (m.status?.agents.orEmpty().firstOrNull { it.name == agent }?.category == "personal") personal += b else bots += b
         }
-        for (g in grants.filter { !admitted(it) }) aside += AsideClient(g, m.machineId)
-        for (g in grants.filter { admitted(it) }) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
+        // One the owner took off the roster (hidden on its machine, 工单 #82) stays off with its grant.
+        val hidden = m.status?.agents.orEmpty().filter { it.hidden }.map { it.name }.toSet()
+        val kept = { g: Client -> admitted(g) && grantAgent(g.label) !in hidden }
+        for (g in grants.filter { !kept(it) }) aside += AsideClient(g, m.machineId)
+        for (g in grants.filter(kept)) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)
+            .copy(short = grantName(g.label).removeSuffix(" on ${m.machineName}").ifEmpty { grantName(g.label) })
         MachineBots(m, bots)
     }
     for (g in localGrants[""].orEmpty().filter { !admitted(it) }) aside += AsideClient(g, "")

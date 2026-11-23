@@ -38,8 +38,8 @@
       "overview": "Overview",
       "nextAttention": "Next Task That Needs You",
       "nextActive": "Next Task in Progress",
-      "showInspector": "Show Info Panel",
-      "hideInspector": "Hide Info Panel",
+      "showInspector": "Show Sessions",
+      "hideInspector": "Hide Sessions",
       "showSidebar": "Expand Sidebar",
       "hideSidebar": "Collapse Sidebar",
       "fullScreen": "Enter Full Screen"

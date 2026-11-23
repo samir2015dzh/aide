@@ -34,21 +34,18 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -66,7 +63,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.runtime.saveable.rememberSaveable
 import io.aide.android.api.Question
+import io.aide.android.api.title
 import io.aide.android.api.Session
 import io.aide.android.model.AppModel
 import io.aide.android.model.Item
@@ -78,12 +79,17 @@ import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
 import io.aide.android.model.lostSpanText
 import io.aide.android.model.openedNews
+import io.aide.android.model.sessionsByProject
 import kotlinx.coroutines.launch
 
-/** A session's whole conversation, live, with the agent's question to answer and a way to interrupt it. */
+/**
+ * A session's whole conversation, live, with the agent's question to answer and a way to interrupt it; the owner's
+ * own goes on from the box at its foot (工单 #91/#92). One tap away, the sessions to switch to, by project; its
+ * settings in a sheet of their own (工单 #90).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
+fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) -> Unit = {}) {
     val world by model.world.collectAsState()
     val s = world.sessions[id]?.let(world::shown)
     val scope = rememberCoroutineScope()
@@ -95,6 +101,8 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
     val items by feed.items.collectAsState()
     val loading by feed.loading.collectAsState()
     val list = rememberLazyListState()
+    var switching by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(false) }
     // In front of the owner: what is new here is seen, on every device.
     val news = s?.let(::openedNews).orEmpty()
     val front by model.foreground.collectAsState()
@@ -111,16 +119,19 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
     Scaffold(
         snackbarHost = { PageFeedback(model) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+            NavBar(
+                back,
+                actions = {
+                    if (s != null) {
+                        BarButton(onClick = { switching = true }) { Icon(Icons.AutoMirrored.Filled.List, t("Sessions", "会话列表")) }
+                        BarButton(onClick = { settings = true }) { Icon(Icons.Filled.Settings, t("Session settings", "会话设置")) }
+                    }
+                },
+            ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(s?.let(::displayTitle) ?: id.take(12), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (s != null) MachineTag(world, s.machineId)
                         if (s != null) {
-                            Text(
-                                "${world.senderName(s)} → ${agentTitle(s.agent)} · ${s.projectId} · ${world.machineName(s.machineId)}",
-                                style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            )
                             // Both parts of its state, and when its machine was last out of touch (docs/session-states.md).
                             Text(
                                 listOf(statusLine(s, world), lostSpanText(world.machines.firstOrNull { it.machineId == s.machineId }, s)).filter { it.isNotEmpty() }.joinToString(" · "),
@@ -129,33 +140,124 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit) {
                             )
                         }
                     }
-                },
-                navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-            )
+            }
         },
         bottomBar = {
             if (s != null) {
                 val q = s.progress?.pendingQuestion
-                when {
-                    q != null -> QuestionPanel(model, s, q)
-                    isLive(s) -> Surface(tonalElevation = 3.dp) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(statusLine(s, world), Modifier.weight(1f), color = MaterialTheme.colorScheme.primary)
-                            OutlinedButton(onClick = { scope.launch { model.interrupt(s) } }) { Text(t("Interrupt", "中断")) }
+                Column {
+                    when {
+                        q != null -> QuestionPanel(model, s, q)
+                        isLive(s) -> Column(Modifier.background(aide.bar)) {
+                            Hairline()
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                StatusDot(s)
+                                HSpace(8)
+                                Text(statusLine(s, world), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                TintedButton(onClick = { scope.launch { model.interrupt(s) } }, destructive = true) { Text(t("Interrupt", "中断")) }
+                            }
                         }
                     }
+                    // A session the owner started takes the owner's messages, here, as on the desktop.
+                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s)
                 }
             }
         },
     ) { pad ->
+        if (s != null && switching) SwitchSheet(model, s, open) { switching = false }
+        if (s != null && settings) SettingsSheet(model, s) { settings = false }
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (loading && items.isEmpty()) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
+                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
+            }
+        }
+    }
+}
+
+/** The box under the owner's own session (工单 #91/#92): words and files at once, the macros after /. */
+@Composable
+private fun SessionComposer(model: AppModel, s: Session) {
+    val scope = rememberCoroutineScope()
+    var text by rememberSaveable(s.sessionId) { mutableStateOf("") }
+    var state by remember(s.sessionId) { mutableStateOf<ComposerState>(ComposerState.Idle) }
+    val attach = rememberAttachments(s.sessionId)
+    fun send() {
+        if (state == ComposerState.Sending || (text.isBlank() && attach.files.isEmpty())) return
+        state = ComposerState.Sending
+        scope.launch {
+            val why = model.sendTo(s, text, attach.wire())
+            if (why == null) { text = ""; attach.clear(); state = ComposerState.Idle } else state = ComposerState.Failed(why) { send() }
+        }
+    }
+    Composer(
+        text, { text = it; if (state is ComposerState.Failed) state = ComposerState.Idle }, { send() },
+        t("Message to ${agentTitle(s.agent)}", "发给 ${agentTitle(s.agent)} 的消息"), state,
+        attach = attach,
+        commands = listOfNotNull(
+            SlashCommand("plan", t("Plan only: no changes until you say so", "只做计划：你点头前不改任何东西")) { text = "!plan " },
+            SlashCommand("implement", t("Implement it, run the tests, and sum up", "直接实现，跑测试，最后小结")) { text = "!implement " },
+            if (isLive(s)) SlashCommand("stop", t("Interrupt this turn", "打断这一轮")) { scope.launch { model.interrupt(s) } } else null,
+            SlashCommand("archive", t("Archive this session", "归档这个会话")) { scope.launch { model.archive(s, true)?.let { state = ComposerState.Failed(it) } } },
+        ),
+        // What it runs with, told (a session keeps them).
+        chips = { Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+    )
+}
+
+private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
+
+/** The sessions to switch to (工单 #90): this agent's on this machine, by project; a tap opens one. An iOS sheet of grouped rows. */
+@Composable
+private fun SwitchSheet(model: AppModel, s: Session, open: (String) -> Unit, close: () -> Unit) {
+    val world by model.world.collectAsState()
+    IosSheet(onDismissRequest = close, title = t("Sessions", "会话列表")) {
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
+            sessionsByProject(s, world.sessions.values).forEach { g ->
+                item(key = "p:" + g.projectId) {
+                    SectionHeader(world.projects.firstOrNull { it.machineId == s.machineId && it.projectId == g.projectId }?.title() ?: g.projectId)
+                }
+                itemsIndexed(g.sessions, key = { _, x -> x.sessionId }) { i, x ->
+                    val cur = x.sessionId == s.sessionId
+                    Row(
+                        Modifier.groupRow(i, g.sessions.size, inset = 38.dp).rowPress { close(); if (!cur) open(x.sessionId) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StatusDot(x)
+                        Spacer(Modifier.width(10.dp))
+                        Text(displayTitle(x), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = if (cur) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(relativeTime(x.updatedAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (cur) { HSpace(8); Icon(CheckMark, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary) }
+                    }
+                }
+            }
+            item { Spacer(Modifier.heightIn(min = 24.dp)) }
+        }
+    }
+}
+
+/** The session's settings (工单 #90): who started it, which agent on which machine, in which project, with what — iOS's info rows. */
+@Composable
+private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
+    val world by model.world.collectAsState()
+    IosSheet(onDismissRequest = close, title = t("Session settings", "会话设置")) {
+        GroupRows(
+            listOf(
+                t("Started by", "发起") to world.senderName(s),
+                t("Agent", "执行") to agentTitle(s.agent),
+                t("Machine", "机器") to world.machineName(s.machineId),
+                t("Project", "项目") to (world.projects.firstOrNull { it.machineId == s.machineId && it.projectId == s.projectId }?.title() ?: s.projectId),
+                t("Model", "模型") to sessionParams(s),
+            ),
+            Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 32.dp),
+        ) { (k, v) ->
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 11.dp)) {
+                Text(k, Modifier.widthIn(min = 72.dp), style = MaterialTheme.typography.bodyLarge)
+                Text(v, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -184,8 +286,8 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
             }
             by?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)) }
             // The owner's message, as the desktop's: a step above the page in either mode, never the accent (in dark mode it was white).
-            Surface(color = aide.bubble, contentColor = aide.onBubble, shape = RoundedCornerShape(Radius.Xl), modifier = Modifier.widthIn(max = 320.dp)) {
-                SelectionContainer { Text(item.text, Modifier.padding(horizontal = 15.dp, vertical = 9.dp), style = MaterialTheme.typography.bodyLarge) }
+            Surface(color = aide.bubble, contentColor = aide.onBubble, shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 320.dp)) {
+                SelectionContainer { Text(item.text, Modifier.padding(horizontal = 14.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyLarge) }
             }
         }
         is Item.Agent -> SelectionContainer { Text(item.text, pad, style = MaterialTheme.typography.bodyLarge) }
@@ -203,7 +305,7 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
         )
         is Item.Workspace -> Column(pad) {
             val r = item.request
-            val by = if (r.from == "agent") t("the agent", "代理") else r.fromName.ifEmpty { r.from }
+            val by = if (r.from == "agent") t("asked by this task’s agent", "由这个任务的 agent 提出") else r.fromName.ifEmpty { r.from }
             Text(
                 t("Workspace request: ", "工作区申请：") + workspaceKind(r.kind) + " " + r.item + " · " + workspaceStatus(r.status) + " · " + by,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary,
@@ -245,11 +347,11 @@ private fun resolutionText(r: String) = when (r) {
 @Composable
 private fun ToolsView(item: Item.Tools) {
     var open by remember { mutableStateOf(false) }
-    val turn by animateFloatAsState(if (open) 90f else 0f, tween(Motion.Medium, easing = Motion.EaseOut), label = "chevron")
+    val turn by animateFloatAsState(if (open) 90f else 0f, Motion.snappy(), label = "chevron")
     // One quiet row until opened, as on the desktop: a fill a step above the page, the calls folding out under it.
     Surface(
-        color = aide.fill, shape = RoundedCornerShape(Radius.Md),
-        modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(Radius.Md)).clickable { open = !open },
+        color = aide.fill, shape = RoundedCornerShape(Radius.Lg),
+        modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(Radius.Lg)).clickable { open = !open },
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             val first = item.calls.first()
@@ -263,12 +365,12 @@ private fun ToolsView(item: Item.Tools) {
             }
             AnimatedVisibility(
                 open,
-                enter = expandVertically(tween(Motion.Medium, easing = Motion.EaseOut)) + fadeIn(tween(Motion.Medium)),
-                exit = shrinkVertically(tween(Motion.Short, easing = Motion.EaseOut)) + fadeOut(tween(Motion.Short)),
+                enter = expandVertically(Motion.spring(IntSize.VisibilityThreshold)) + fadeIn(tween(Motion.Medium)),
+                exit = shrinkVertically(Motion.snappy(IntSize.VisibilityThreshold)) + fadeOut(tween(Motion.Short)),
             ) {
                 Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.calls.forEach { c ->
-                        HorizontalDivider(color = aide.separator)
+                        Hairline()
                         Text(listOf(c.name, c.line).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         // The raw arguments, under the line, when the line is not all they say (#37), in the same block as the result.
                         if (c.summary.isNotBlank() && c.summary != c.line) {
@@ -301,37 +403,35 @@ private fun QuestionPanel(model: AppModel, s: Session, q: Question) {
     val typed = remember(q.questionId) { mutableStateMapOf<String, String>() }
     var busy by remember(q.questionId) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Surface(tonalElevation = 3.dp, modifier = Modifier.imePadding()) {
-        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Over the page as a sheet would be (the grouped background, a hairline on top): the question, its options as an
+    // inset group with a tick on the picked, a field for its own answer, the buttons under them.
+    Column(Modifier.imePadding().background(aide.grouped)) {
+        Hairline()
+        Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(t("${agentTitle(s.agent)} asks", "${agentTitle(s.agent)} 在问"), style = MaterialTheme.typography.labelLarge, color = Warning)
             q.items.forEach { item ->
-                if (item.header.isNotEmpty()) Text(item.header, style = MaterialTheme.typography.labelMedium)
-                Text(item.text, fontWeight = FontWeight.Medium)
-                item.options.forEach { o ->
+                if (item.header.isNotEmpty()) Text(item.header, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(item.text, style = MaterialTheme.typography.titleMedium)
+                GroupRows(item.options) { o ->
                     val on = o.label in chosen[item.id].orEmpty()
-                    FilterChip(selected = on, onClick = { chosen[item.id] = choose(item, chosen[item.id].orEmpty(), o.label) }, label = {
-                        Column(Modifier.padding(vertical = 4.dp)) {
-                            Text(o.label)
-                            if (o.description.isNotEmpty()) Text(o.description, style = MaterialTheme.typography.bodySmall)
-                        }
-                    })
+                    CheckRow(o.label, on, sub = o.description) { chosen[item.id] = choose(item, chosen[item.id].orEmpty(), o.label) }
                 }
                 if (item.options.isEmpty() || item.allowOther) {
-                    OutlinedTextField(
+                    IosField(
                         value = typed[item.id].orEmpty(), onValueChange = { typed[item.id] = it },
-                        label = { Text(if (item.options.isEmpty()) t("Answer", "回答") else t("Other", "其他")) },
+                        label = if (item.options.isEmpty()) t("Answer", "回答") else t("Other", "其他"), singleLine = false,
                         visualTransformation = if (item.secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
             val answers = buildAnswers(q.items, chosen, typed)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilledButton(onClick = {
                     busy = true
                     scope.launch { model.answer(s, answers ?: return@launch, decline = false); busy = false }
-                }, enabled = answers != null && !busy, modifier = Modifier.weight(1f)) { Text(t("Answer", "回答")) }
-                TextButton(onClick = {
+                }, enabled = answers != null && !busy, large = true, modifier = Modifier.weight(1f)) { Text(t("Answer", "回答")) }
+                PlainButton(onClick = {
                     busy = true
                     scope.launch { model.answer(s, emptyList(), decline = true); busy = false }
                 }, enabled = !busy) { Text(t("Let it decide", "让它自己决定")) }

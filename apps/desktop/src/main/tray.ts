@@ -177,13 +177,13 @@ function cover(r: number, d: number, scale: number): number {
  * bottom right, with a gap that keeps it apart from the beam beneath.
  * macOS colours a template itself, the dot too; on Windows the mark is
  * white on a dark taskbar and black on a light one, and the dot is the
- * app's "needs you" orange (brand.css --warn, the dark or light one), so it
+ * app's "needs you" orange (Apple's orange, app.css --warn, the dark or light one), so it
  * reads as a state, not as part of the mark.
  */
 function icon(badge: boolean, faded: boolean): NativeImage {
   const dark = !mac && nativeTheme.shouldUseDarkColorsForSystemIntegratedUI;
   const ink = dark ? [255, 255, 255] : [0, 0, 0];
-  const dot = mac ? ink : dark ? [0xff, 0xab, 0x3d] : [0xd0, 0x70, 0x0a];
+  const dot = mac ? ink : dark ? [0xff, 0x9f, 0x0a] : [0xff, 0x95, 0x00];
   const img = nativeImage.createEmpty();
   [glyph1x, glyph2x].forEach((url, i) => {
     const scale = i + 1;

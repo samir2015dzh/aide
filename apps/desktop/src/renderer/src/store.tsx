@@ -15,8 +15,13 @@ import { needsUpdate } from "./skew";
 // view, open sheet, toast).
 
 export type Data = {
-  /** undefined until the first answer; null when aided cannot be reached. */
+  /** undefined until the first answer; null when aided cannot be reached and never answered this window. */
   status: GetStatusResponse | null | undefined;
+  /**
+   * aided answered, then its watch went down (工单 #87): the window keeps what it knew, says the link is being restored,
+   * and calls nobody offline for it until it is back.
+   */
+  reconnecting: boolean;
   clients: Client[];
   machines: Machine[];
   projects: Project[];
@@ -27,10 +32,6 @@ export type Data = {
 export type Selection =
   | { kind: "overview" }
   | { kind: "session"; id: string }
-  /** DeepSeek Harness's own sessions (dsh/DSHSessions.tsx), one of them chosen. */
-  | { kind: "dsh"; machine?: string; id?: string }
-  /** The Claude desktop app's Claude Code sessions (claude/ClaudeSessions.tsx), one of them chosen. */
-  | { kind: "claude"; machine?: string; id?: string }
   /** The messages held for the owner before they reach a session (held/HeldMessages.tsx). */
   | { kind: "held" }
   /** The work the owner's agents handed out, as it goes (TasksPage.tsx, work order #27). */
@@ -38,7 +39,7 @@ export type Selection =
   /** Every session, as the sidebar listed them before 工单 #63: a page of its own, its list beside the one open. */
   | { kind: "sessions" }
   /** A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>"). */
-  | { kind: "bot"; key: string }
+  | { kind: "bot"; key: string; native?: string }
   /** A room (ROOMS-DESIGN, G2-b): its host and id. */
   | { kind: "room"; machineId: string; roomId: string };
 
@@ -55,6 +56,8 @@ export type Sheet =
   | { kind: "newRoom" }
   | { kind: "addDevice" }
   | { kind: "scope"; clientId: string; renew: boolean }
+  /** The projects a coding agent of a machine may work in (工单 #93). */
+  | { kind: "agentScope"; machineId: string; agent: string }
   /**
    * An agent's doorbell (docs/agent-names.md §7): with wake, see and change it;
    * with code, set one up from the agent's wake link (name: the bot it is for).
@@ -196,10 +199,11 @@ export function AideProvider({ children }: { children: ReactNode }) {
   const world = useWorld();
   // Each part changes only when its own list does: a session's change leaves them all.
   const unreachable = useMemo(() => unreachableMachines(world.machines), [world.machines]);
-  const status = world.down ? null : world.loaded ? world.status : undefined;
+  const reconnecting = world.down && world.loaded;
+  const status = world.down && !world.loaded ? null : world.loaded ? world.status : undefined;
   const data = useMemo<Data>(
-    () => ({ status, clients: world.clients, machines: world.machines, projects: world.projects, projectsUnreachable: unreachable, devices: world.devices }),
-    [status, world.clients, world.machines, world.projects, unreachable, world.devices],
+    () => ({ status, reconnecting, clients: world.clients, machines: world.machines, projects: world.projects, projectsUnreachable: unreachable, devices: world.devices }),
+    [status, reconnecting, world.clients, world.machines, world.projects, unreachable, world.devices],
   );
   const stateLimits = useMemo(() => stateLimitsOf(world.status), [world.status]);
   const sessions = useMemo(() => withKnownState(world.sessions, world.machines, stateLimits), [world.sessions, world.machines, stateLimits]);

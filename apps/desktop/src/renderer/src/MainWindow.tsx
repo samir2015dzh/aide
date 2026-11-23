@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useKeepLocalChecked } from "./agents";
 import { parseAppLink } from "@aide/core";
 import { agentName } from "@aide/ui";
 import { local } from "./api";
 import { Overview } from "./Overview";
-import { DSHSessions } from "./dsh/DSHSessions";
-import { ClaudeSessions } from "./claude/ClaudeSessions";
 import { HeldMessages } from "./held/HeldMessages";
 import { TasksPage } from "./TasksPage";
 import { BotPage } from "./bots/Bots";
@@ -24,7 +23,9 @@ import { errorText, useStore } from "./store";
 
 export function MainWindow() {
   const st = useStore();
+  const { t } = useTranslation("common");
   useCommands();
+  useKeepLocalChecked();
   // The window's material shows through the sidebar, macOS's or Windows 11's (the first-run pages stay opaque).
   useEffect(() => {
     if (!window.aide?.material) return;
@@ -95,20 +96,17 @@ export function MainWindow() {
       {sidebar === "over" && <div className="peek-scrim" onClick={() => setSidebar(st, false)} />}
       {listed && <TaskColumn />}
       <section className="content">
+        {st.reconnecting && <div className="link-banner" role="status"><i aria-hidden="true" />{t("link.reconnecting")}</div>}
         {st.selection.kind === "sessions" ? (
           <div className="ctool drag"><div className="ctitle" /></div>
         ) : session ? (
           <SessionPage s={session} />
-        ) : st.selection.kind === "dsh" && !st.status?.machineOnly ? (
-          <DSHSessions />
-        ) : st.selection.kind === "claude" && !st.status?.machineOnly ? (
-          <ClaudeSessions />
         ) : st.selection.kind === "held" ? (
           <HeldMessages />
         ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
           <TasksPage />
         ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
-          <BotPage key={st.selection.key} botKey={st.selection.key} />
+          <BotPage key={st.selection.key} botKey={st.selection.key} native={st.selection.native} />
         ) : st.selection.kind === "room" && !st.status?.machineOnly ? (
           <RoomPage key={st.selection.roomId} machineId={st.selection.machineId} roomId={st.selection.roomId} />
         ) : (

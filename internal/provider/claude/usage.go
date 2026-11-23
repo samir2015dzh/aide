@@ -55,6 +55,9 @@ type Usage struct {
 	// failed renew): the HTTP status and a summary of the answer, or the
 	// transport error with its host. Never a token, header or URL path.
 	Detail string
+	// Source is where a reading came from: "claude_code" (CLIUsage) or
+	// "api" (UsageReader); set by whoever chose between them.
+	Source string
 }
 
 // UsageReader reads plan usage. The zero value works (real endpoints, real

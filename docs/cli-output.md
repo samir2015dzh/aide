@@ -84,7 +84,7 @@ Note the two kinds of failure: `session get` itself succeeds (`ok: true`) but th
 | `session_id` | string | |
 | `title` | string | The session's title: the one given with `session start --title`, or else the first line of the prompt; Markdown marks are removed and it is cut to 40 characters |
 | `project` | string | Address `machine/project` |
-| `machine` | string | Machine name |
+| `machine` | string | Machine name, as the relay lists it (the name the machine last reported, kept across relay restarts). While it knows none: `Unnamed machine · <last four of the id>` (`未命名的机器 · …` on a Chinese system), never the id itself (工单 #84) |
 | `machine_id` | string | |
 | `project_id` | string | |
 | `agent` | string | Coding agent, such as `claude` |

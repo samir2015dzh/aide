@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { SessionStatus, type Session } from "@aide/proto/session";
+import { agentBotKey } from "./bots/OwnSessions";
 import { displayTitle, isActive, isArchivable, isInterruptible, needsAttention, pendingQuestion } from "@aide/core";
 import type { Command, MenuState } from "../../shared/bridge";
 import { i18n } from "../../shared/i18n";
@@ -16,7 +17,7 @@ export function useCommands() {
   const st = useStore();
   const latest = useRef(st);
   latest.current = st;
-  useEffect(() => window.aide?.onCommand((c) => run(latest.current, c)), []);
+  useEffect(() => window.aide?.onCommand((c) => runCommand(latest.current, c)), []);
 
   const s = selected(st);
   const state: MenuState = {
@@ -46,7 +47,7 @@ function selected(st: Store): Session | undefined {
   return sel.kind === "session" ? st.sessions.find((s) => s.sessionId === sel.id) : undefined;
 }
 
-function run(st: Store, c: Command) {
+export function runCommand(st: Store, c: Command) {
   const s = selected(st);
   // A room's notification (工单 #69): its page.
   if (c.startsWith("room:")) {
@@ -89,9 +90,11 @@ function run(st: Store, c: Command) {
     case "upgrade":
       return st.status?.machineOnly && st.set({ upgrading: true });
     case "dsh":
-      return st.set({ selection: { kind: "dsh" } });
-    case "claude":
-      return st.set({ selection: { kind: "claude" } });
+    case "claude": {
+      // Their own sessions are on their bot's page (工单 #76).
+      const key = agentBotKey(st.machines, c === "dsh" ? "deepseek" : "claude");
+      return key && st.set({ selection: { kind: "bot", key } });
+    }
   }
   const [verb, arg] = [c.slice(0, c.indexOf(":")), c.slice(c.indexOf(":") + 1)];
   switch (verb) {

@@ -16,7 +16,17 @@ val buildCore by tasks.registering(Exec::class) {
     onlyIf { !project.hasProperty("skipCore") }
 }
 
+// The bots' faces (工单 #83): the Grok Bot engine ported from BotArk is kept once, in packages/ui/src/grok, and drawn
+// with by the desktop; the app's engine page (assets/grok/host.js) gets the same file, and its license, at build time.
+val grokAssets = layout.buildDirectory.dir("generated/grok-assets")
+val copyGrokEngine by tasks.registering(Copy::class) {
+    description = "Copies the bots' face engine from packages/ui"
+    from(rootProject.file("../../packages/ui/src/grok")) { include("grokMotionEngine.js", "LICENSE") }
+    into(grokAssets.map { it.dir("grok") })
+}
+
 android {
+    sourceSets.getByName("main").assets.srcDir(grokAssets)
     namespace = "io.aide.android"
     compileSdk = 36
 
@@ -104,7 +114,7 @@ kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
 
-tasks.named("preBuild") { dependsOn(buildCore) }
+tasks.named("preBuild") { dependsOn(buildCore, copyGrokEngine) }
 
 dependencies {
     implementation(files(coreAar))

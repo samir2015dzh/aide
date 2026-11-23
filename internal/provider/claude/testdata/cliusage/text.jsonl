@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","cwd":"/tmp","session_id":"00000000-0000-4000-8000-000000000002","tools":[]}
+{"type":"result","subtype":"success","is_error":false,"result":"You are currently using your subscription to power your Claude Code usage\n\nCurrent session: 7% used · resets 4:40am (UTC)\nCurrent week (all models): 41% used · resets Nov 26, 6:59am (UTC)\nCurrent week (Opus): 12% used","local_command":"usage","session_id":"00000000-0000-4000-8000-000000000002"}

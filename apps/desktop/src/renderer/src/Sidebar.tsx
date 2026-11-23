@@ -149,16 +149,6 @@ export function TaskColumn() {
   );
 }
 
-/** Whether a machine has DeepSeek Harness, whose own sessions the DSH page lists. */
-export function hasDSH(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
-  return st.machines.some((m) => m.status?.agents.some((a) => a.name === "deepseek"));
-}
-
-/** Claude Code is on a machine: the Claude desktop app's sessions may be read there. */
-export function hasClaude(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
-  return st.machines.some((m) => m.status?.agents.some((a) => a.name === "claude"));
-}
-
 /** What the overview's marks say: something needs the owner, and how many sessions run. */
 export function overviewMarks(st: Store, now: Date) {
   const team = teamState(st.sessions);
@@ -249,7 +239,7 @@ export function Sessions({ now }: { now: Date }) {
   );
 }
 
-type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "overview" | "sessions" | "devices" | "tasks" | "held" | "newSession" | "dsh" | "claude"; icon: string; shortcut?: string; count?: number } | null;
+type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "overview" | "sessions" | "devices" | "tasks" | "held" | "newSession"; icon: string; shortcut?: string; count?: number } | null;
 
 /**
  * The account menu, from the avatar at the sidebar's foot: it opens upward, as wide as the foot, with what adds
@@ -263,7 +253,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const foot = useRef<HTMLButtonElement>(null);
-  const held = useHeldCount(!!st.status);
+  const held = useHeldCount(!!st.status && !st.reconnecting);
   const taskLook = useTaskLook();
   const marks = overviewMarks(st, useNow(30_000));
   // The pages that left the sidebar (工单 #63) are here, beside settings and the account (BotArk: at the foot). A
@@ -280,9 +270,6 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         { id: "sessions", icon: "checklist" },
         { id: "devices", icon: "devices" },
         { id: "tasks", icon: "persons", count: taskLook },
-        // DSH's and the Claude app's own sessions, while a machine has them (as the sidebar had them).
-        ...(hasDSH(st) ? [{ id: "dsh" as const, icon: "terminal" }] : []),
-        ...(hasClaude(st) ? [{ id: "claude" as const, icon: "terminal" }] : []),
         ...(held > 0 || st.selection.kind === "held" ? [{ id: "held" as const, icon: "bell", count: held }] : []),
         null,
         { id: "newSession", icon: "plus", shortcut: keys("CmdOrCtrl+N") },
@@ -312,7 +299,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     else if (id === "account") window.aide?.openSettings("account");
     else if (id === "connect") window.aide?.openSettings("connect");
     else if (id === "devices") window.aide?.openSettings("machines");
-    else if (id === "overview" || id === "tasks" || id === "held" || id === "sessions" || id === "dsh" || id === "claude") st.set({ selection: { kind: id } });
+    else if (id === "overview" || id === "tasks" || id === "held" || id === "sessions") st.set({ selection: { kind: id } });
     else st.set({ sheet: { kind: id } });
   };
   // The keyboard, as in a native menu: arrows move, Esc closes back to the avatar.

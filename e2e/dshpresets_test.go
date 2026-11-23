@@ -19,7 +19,9 @@ import (
 // presets each run with their own (the read-only one cannot write, the
 // other can); one with none has DSH's own default; a session resumed by a
 // new process (aided restarted) keeps its preset; one DSH does not have
-// is refused before a session starts. The owner's app shows them.
+// is refused before a session starts. The owner's app shows them. A
+// project's preset (工单 #89) is what its DSH sessions start with when none
+// is chosen.
 func TestDSHPermissionPresets(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -72,6 +74,41 @@ func TestDSHPermissionPresets(t *testing.T) {
 	// None chosen: DSH's own default.
 	if s, r := w.startSession(time.Minute, "--agent", "deepseek", "--wait", "--prompt", "config"); r.code != 0 || s.Result != "config: v4-pro  workspace-write" {
 		t.Fatalf("unchosen: %+v", r)
+	}
+
+	// The project's preset (工单 #89): its DSH sessions start with it when none is chosen — the read-only one
+	// cannot write — and one chosen for the session still goes; set back, DSH's own default again.
+	ms, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})
+	if err != nil || len(ms.Machines) == 0 {
+		t.Fatal(ms, err)
+	}
+	setPreset := func(preset string) {
+		t.Helper()
+		if _, err := w.app.client.SetProjectPermission(ctx, &localv1.SetProjectPermissionRequest{MachineId: ms.Machines[0].MachineId, ProjectId: "demo", DshPreset: preset}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := w.app.client.SetProjectPermission(ctx, &localv1.SetProjectPermissionRequest{MachineId: ms.Machines[0].MachineId, ProjectId: "demo", DshPreset: "yolo"}); err == nil {
+		t.Fatal("a preset DSH does not have was set on the project")
+	}
+	setPreset("read-only")
+	eventually(t, 10*time.Second, "the project lists its preset", func() bool {
+		ps, err := w.app.client.ListProjects(ctx, &localv1.ListProjectsRequest{})
+		return err == nil && len(ps.Projects) > 0 && ps.Projects[0].DshPreset == "read-only"
+	})
+	byProject, r := w.startSession(time.Minute, "--agent", "deepseek", "--wait", "--prompt", "write by-project.txt from-project\nconfig")
+	if r.code != 0 || byProject.Result != "config: v4-pro  read-only" {
+		t.Fatalf("the project's preset: %+v", r)
+	}
+	if d := w.cli(30*time.Second, "session", "diff", byProject.SessionID); strings.Contains(d.stdout, "from-project") {
+		t.Fatalf("a session of a read-only project wrote: %+v", d)
+	}
+	if s, r := w.startSession(time.Minute, "--agent", "deepseek", "--mode", "workspace-write", "--wait", "--prompt", "config"); r.code != 0 || s.Result != "config: v4-pro  workspace-write" {
+		t.Fatalf("one chosen for the session: %+v", r)
+	}
+	setPreset("")
+	if s, r := w.startSession(time.Minute, "--agent", "deepseek", "--wait", "--prompt", "config"); r.code != 0 || s.Result != "config: v4-pro  workspace-write" {
+		t.Fatalf("DSH's own again: %+v", r)
 	}
 
 	// Resumed by a new process, the session keeps its preset.

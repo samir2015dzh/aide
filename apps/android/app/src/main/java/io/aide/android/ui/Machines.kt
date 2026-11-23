@@ -9,12 +9,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,13 +80,13 @@ internal fun MachineFoot(model: AppModel, m: Machine, empty: Boolean) {
         m.status?.agents?.filter { it.hidden }?.takeIf { it.isNotEmpty() }?.let { hidden ->
             Text(t("${hidden.size} hidden:", "已隐藏 ${hidden.size} 个："), style = MaterialTheme.typography.bodySmall, color = aide.faint)
             hidden.forEach { a ->
-                TextButton(onClick = { scope.launch { model.setAgentHidden(m.machineId, a.name, false) } }, enabled = m.online) {
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.setAgentHidden(m.machineId, a.name, false) } }, enabled = m.online) {
                     Text(t("Show ${agentTitle(a.name)}", "显示 ${agentTitle(a.name)}"))
                 }
             }
         }
-        if (m.online) OutlinedButton(onClick = { scope.launch { model.recheck(m.machineId) } }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) {
-            Text(t("Check agents again", "重新检查 Agent"), style = MaterialTheme.typography.labelLarge)
+        if (m.online) TintedButton(onClick = { scope.launch { model.recheck(m.machineId) } }, modifier = Modifier.padding(top = 4.dp)) {
+            Text(t("Check agents again", "重新检查 Agent"))
         }
     }
 }
@@ -131,10 +127,10 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
                     if (p.was == null) p.lacks?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = aide.faint) }
                     // The bridge plugin (工单 #59): handed to DSH with one press; its task to open while it works or after.
                     if (p.was == null && (p.install || p.installSession.isNotEmpty())) Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (p.install && m.online && m.unreachable.isEmpty()) TextButton(onClick = { scope.launch { model.installDSHBridge(m.machineId) } }) {
+                        if (p.install && m.online && m.unreachable.isEmpty()) PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.installDSHBridge(m.machineId) } }) {
                             Text(if (p.installSession.isNotEmpty()) t("Have DSH try again", "再让 DSH 试一次") else t("Have DSH install it", "让 DSH 装好它"))
                         }
-                        if (p.installSession.isNotEmpty()) TextButton(onClick = { openSession(p.installSession) }) { Text(t("Open the install task", "看代装任务")) }
+                        if (p.installSession.isNotEmpty()) PlainButton(onClick = { openSession(p.installSession) }) { Text(t("Open the install task", "看安装任务")) }
                     }
                 }
             }
@@ -142,15 +138,15 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
         e.status?.let { a -> PauseLine(a) }
         if (e.login && m.online && m.unreachable.isEmpty()) {
             if (e.state == ConnState.CHECKING) {
-                TextButton(onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent, cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent, cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
             } else {
-                TextButton(onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent) } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent) } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
                 Text(t("A browser opens on ${m.machineName}; you sign in there. Aide never handles the account or the token.", "会在 ${m.machineName} 上打开浏览器，你在那里登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(e.checkedAt?.let { t("Checked ${agoText(it, now)}", "${agoText(it, now)}检测") } ?: "", style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.weight(1f))
-            if (m.online) TextButton(onClick = { scope.launch { model.recheck(m.machineId) } }) { Text(t("Check again", "重新检测")) }
+            if (m.online) PlainButton(onClick = { scope.launch { model.recheck(m.machineId) } }) { Text(t("Check again", "重新检测")) }
             e.status?.let { a -> if (m.online) ManageMenu(model, m, a) }
         }
     }
@@ -172,24 +168,22 @@ private fun ManageMenu(model: AppModel, m: Machine, a: AgentStatus) {
     val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { asking = true }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) { Text(t("Manage", "管理")) }
-        DropdownMenu(expanded = asking, onDismissRequest = { asking = false }) {
-            fun act(block: suspend () -> Unit) {
-                asking = false
-                scope.launch { block() }
-            }
+        PlainButton(onClick = { asking = true }, contentPadding = PaddingValues(start = 10.dp, top = 8.dp, bottom = 8.dp)) { Text(t("Manage", "管理")) }
+        fun act(block: suspend () -> Unit) {
+            asking = false
+            scope.launch { block() }
+        }
+        IosMenu(asking, { asking = false }, buildList {
             if (a.pause != null) {
-                DropdownMenuItem(text = { Text(t("Resume", "恢复")) }, onClick = { act { model.setAgentPaused(m.machineId, a.name, false) } })
+                add(MenuEntry(t("Resume", "恢复")) { act { model.setAgentPaused(m.machineId, a.name, false) } })
             } else {
-                DropdownMenuItem(text = { Text(t("Pause until I resume it", "暂停，直到我恢复")) }, onClick = { act { model.setAgentPaused(m.machineId, a.name, true) } })
+                add(MenuEntry(t("Pause until I resume it", "暂停，直到我恢复")) { act { model.setAgentPaused(m.machineId, a.name, true) } })
                 usageResetAt(a, Instant.now())?.let { r ->
-                    DropdownMenuItem(text = { Text(t("Pause until usage resets (${whenFormat.format(r)})", "暂停到额度重置（${whenFormat.format(r)}）")) }, onClick = {
-                        act { model.setAgentPaused(m.machineId, a.name, true, r.toString()) }
-                    })
+                    add(MenuEntry(t("Pause until usage resets (${whenFormat.format(r)})", "暂停到额度重置（${whenFormat.format(r)}）")) { act { model.setAgentPaused(m.machineId, a.name, true, r.toString()) } })
                 }
             }
             // Hiding is separate from pausing: it only takes the entry out of the list (desktop: Hide from the List).
-            DropdownMenuItem(text = { Text(t("Hide from the list", "从列表中隐藏")) }, onClick = { act { model.setAgentHidden(m.machineId, a.name, true) } })
-        }
+            add(MenuEntry(t("Hide from the list", "从列表中隐藏")) { act { model.setAgentHidden(m.machineId, a.name, true) } })
+        })
     }
 }

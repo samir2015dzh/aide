@@ -158,3 +158,56 @@ export function ScopeSheet({ clientId, renew }: { clientId: string; renew: boole
     </>
   );
 }
+
+/**
+ * A coding agent's scope (工单 #93): the projects of its machine it may work in, one by one; its machine is its own and
+ * not chosen. A project that is this agent's alone stays (taking it from its last agent would remove the project).
+ */
+export function AgentScopeSheet({ machineId, agent }: { machineId: string; agent: string }) {
+  const { t } = useTranslation("sheets");
+  const st = useStore();
+  const projects = st.projects.filter((p) => p.machineId === machineId);
+  const mayUse = (p: Project) => p.agents.length === 0 || p.agents.includes(agent);
+  const [on, setOn] = useState(() => new Set(projects.filter(mayUse).map(key)));
+  const act = useAction();
+  const close = () => st.set({ sheet: null });
+  const name = codingAgentTitle(agent);
+  const only = (p: Project) => p.agents.length === 1 && p.agents[0] === agent;
+  const save = async () => {
+    const changed = projects.filter((p) => on.has(key(p)) !== mayUse(p));
+    const done = await act.go(async () => {
+      for (const p of changed) {
+        const agents = on.has(key(p)) ? [...p.agents, agent] : (p.agents.length > 0 ? p.agents : codingAgentIds).filter((x) => x !== agent);
+        await local.addProject({ machineId, projectId: p.projectId, path: p.path, workspace: p.workspace, defaultBaseRef: p.workspace === Workspace.IN_PLACE ? "" : p.defaultBaseRef, description: p.description, agents });
+      }
+    });
+    if (done) {
+      close();
+      st.show(t("agentScope.saved", { name }));
+    }
+  };
+  return (
+    <>
+      <h3 id="sheet-title">{t("agentScope.title", { name })}</h3>
+      <p className="sub">{t("agentScope.sub", { name, machine: machineName(st, machineId) })}</p>
+      <div className="scope">
+        <div className="srow2" role="group" aria-label={t("scope.projects")}>
+          <div className="opts">
+            {projects.length === 0 && <p className="sheet-note">{t("agentScope.none")}</p>}
+            {projects.map((p) => (
+              <Check key={key(p)} on={on.has(key(p))} disabled={only(p)} onClick={() => setOn((s) => { const n = new Set(s); if (!n.delete(key(p))) n.add(key(p)); return n; })}>
+                {p.name || p.projectId} <span className="faint">{p.workspace === Workspace.IN_PLACE ? t("scope.inPlace") : t("scope.worktree")}</span>
+              </Check>
+            ))}
+          </div>
+        </div>
+      </div>
+      {act.busy && <Working />}
+      <ErrorLine text={act.error} />
+      <div className="sheet-foot">
+        <button className="btn" onClick={close}>{t("cancel")}</button>
+        <button className="btn primary" disabled={act.busy} onClick={save}>{t("agentScope.save")}</button>
+      </div>
+    </>
+  );
+}

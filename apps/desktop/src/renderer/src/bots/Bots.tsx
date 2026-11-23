@@ -7,25 +7,28 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, currentConversation, displayTitle, listTime, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, withContext,
+  allBots, botConversations, changedParams, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
-import { agentLogos, agentPicture, AgentLogo, BotGlyph, grantColor, grantLogo, grantPicture } from "@aide/ui";
+import { botLook, botMood, botSeed, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
 import { AgentPage, projectsFor } from "../AgentList";
 import { local } from "../api";
 import { connDot } from "../Connections";
-import { StateText, StatusDot } from "../components";
+import { Face, grantApp, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
 import { Picker, type PickerOption } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
-import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
-import { errorText, useNow, useStore } from "../store";
-import { Composer, type ComposerState } from "./Composer";
+import { LookSheet } from "../settings/LookSheet";
+import { blankPersona, lookFields, personasChanged } from "../sheets/Contacts";
+import { errorText, useNow, useStore, type Sheet } from "../store";
+import { Composer, attachmentsOf, useAttachments, type ComposerState } from "./Composer";
+import { OwnSession, OwnSessions } from "./OwnSessions";
+import { AgentSettings } from "./AgentSettings";
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
-// alone — the ones pinned as tiles, then the personal agents (they follow the account), the coding agents (each on its
-// machine, named by it when there are several), and the rooms. No machine, device state or task list is there: a
+// alone — the ones pinned as tiles, then the personal agents, the coding agents (a group per machine, headed by its
+// name, 工单 #75), and the rooms. No machine, device state or task list is there: a
 // machine is said only through its bots' states, and is managed on the devices page (Settings › Machines). A click
 // opens the bot's page: its conversations in the middle with the box to write to it, and its own settings beside.
 
@@ -52,7 +55,11 @@ export function useRoster(): Roster {
   const st = useStore();
   const now = useNow(30_000);
   const personas = usePersonas();
-  return useMemo(() => roster(st.machines, st.clients, st.sessions, now, personas), [st.machines, st.clients, st.sessions, now, personas]);
+  // While the link to aided is being restored, every bot says so (工单 #87), not what it was last known as.
+  return useMemo(() => {
+    const r = roster(st.machines, st.clients, st.sessions, now, personas);
+    return st.reconnecting ? whileReconnecting(r) : r;
+  }, [st.machines, st.clients, st.sessions, now, personas, st.reconnecting]);
 }
 
 // Pinned bots (BotArk's tiles at the top of the sidebar): this computer's choice, kept with the window's own.
@@ -88,54 +95,60 @@ export function usePins(): [string[], (key: string, on: boolean) => void] {
 }
 
 /**
- * A bot's face (工单 #62): its app's own icon, round, the same on every page — the owner's own avatar for it when they
- * gave it one, a coding agent's app icon, a personal agent's app (or the picture the owner chose); a small robot on
- * its colour where its app has none, never an initial. Its state moves it, and only its real state: a ring turns
- * round it while it really works (its sessions run), it greys while it is away or its state is unknown, and the dot
- * on its corner (dot) is its state's colour. still: no ring (where many show at once and nothing works for them).
+ * A bot's face (工单 #83): its Grok Bot character (BotArk's GrokBotMark), the same on every page — in the look the owner
+ * gave it (its contact's, else its grant's), else its seed's; its app's logo on its corner where there is room. Only
+ * its real state moves it (botMood: idle, at work by what it does, waiting on the owner, asleep when paused, a moment
+ * of done or failed); away or unknown, it rests, faded. The dot on its corner (dot) is its state's colour. still: it
+ * rests (where many show at once). edit: a click opens what changes its look (its contact, its grant's look, or a new
+ * contact), and it follows the pointer: its own page.
  */
-export function BotFace({ b, size = 28, dot = false, still = false }: { b: Bot; size?: number; dot?: boolean; still?: boolean }) {
-  const off = b.state.why === "offline" || b.state.state === "unknown";
-  const run = !still && b.running > 0;
-  return (
-    <span className="bav" style={{ width: size, height: size }} data-off={off || undefined} data-run={run || undefined} aria-hidden="true">
-      <FaceInside b={b} size={size} />
+export function BotFace({ b, size = 28, dot = false, still = false, edit = false }: { b: Bot; size?: number; dot?: boolean; still?: boolean; edit?: boolean }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const [look, setLook] = useState(false);
+  const mood = useMood(b);
+  const face = (
+    <span className="bav" style={{ width: size, height: size }} aria-hidden="true">
+      <Face seed={botSeed(b)} look={botLook(b)} mood={mood} size={size} app={size >= 34 ? b.agent || (b.client && grantApp(b.client)) : undefined} still={still} follow={edit} />
       {dot && <i className={`dotc ${connDot(b.state.state)}`} />}
     </span>
   );
-}
-
-function FaceInside({ b, size }: { b: Bot; size: number }) {
+  if (!edit) return face;
   const p = b.personas[0];
-  if (p) {
-    const glyph = personaIcons[p.icon];
-    return (
-      <span className="bav-in bav-emoji" style={{ background: p.color || personaColors[5], fontSize: Math.round(size * 0.52) }}>
-        {glyph ?? <BotGlyph size={Math.round(size * 0.7)} />}
-      </span>
-    );
-  }
-  if (b.client && (b.kind === "personal" || !b.agent)) {
-    const pic = grantPicture(b.client);
-    if (pic) return <span className="bav-in"><img src={pic} alt="" /></span>;
-    const logo = grantLogo(b.client);
-    if (logo) return <AppFace app={logo} size={size} />;
-    return (
-      <span className="bav-in" style={{ background: grantColor(b.client.label) }}>
-        <BotGlyph size={Math.round(size * 0.7)} />
-      </span>
-    );
-  }
-  return <AppFace app={b.agent} size={size} />;
+  const open = () => {
+    if (p) st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...p } } });
+    else if (b.key.startsWith("m:")) st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...lookFields(botLook(b)), machineId: b.machineId, agent: b.agent, name: b.name } } });
+    else setLook(true);
+  };
+  return (
+    <>
+      <button className="bav-edit" title={t("bots.faceEdit")} aria-label={t("bots.faceEdit")} onClick={open}>{face}</button>
+      {look && b.client && <LookSheet c={b.client} st={st} close={() => setLook(false)} />}
+    </>
+  );
 }
 
-function AppFace({ app, size }: { app: string; size: number }) {
-  const pic = agentPicture(app);
-  if (pic) return <span className="bav-in"><img src={pic} alt="" /></span>;
-  if (agentLogos[app]) return <span className="bav-in bav-white"><AgentLogo agent={app} size={Math.round(size * 0.62)} /></span>;
+/** A bot's face's state now; a moment of done or failed is read again once it is over. */
+function useMood(b: Bot): BotMood {
+  const st = useStore();
+  const [, tick] = useState(0);
+  const mood = botMood(b, st.sessions, Date.now());
+  const brief = mood.state === "finished" || mood.state === "failed";
+  useEffect(() => {
+    if (!brief) return;
+    const id = setTimeout(() => tick((x) => x + 1), reactMs);
+    return () => clearTimeout(id);
+  }, [brief]);
+  return mood;
+}
+
+/** A contact's face, on its bot's page: its own look, its bot's state. */
+function PersonaFace({ b, p, size }: { b: Bot; p: Persona; size: number }) {
+  const seed = botSeed(b);
+  const mood = useMood(b);
   return (
-    <span className="bav-in" style={{ background: "#8E8E93" }}>
-      <BotGlyph size={Math.round(size * 0.7)} />
+    <span className="bav" style={{ width: size, height: size }} aria-hidden="true">
+      <Face seed={seed} look={personaLook(p, seed)} mood={mood} size={size} />
     </span>
   );
 }
@@ -150,16 +163,50 @@ export function BotPill({ b }: { b: Bot }) {
   );
 }
 
-/** A bot's right-click menu in the roster: open it, pin it as a tile or take it off. */
-async function botMenu(e: ReactMouseEvent, b: Bot, pinned: boolean, pin: (key: string, on: boolean) => void, open: () => void, t: TFunction<"common">) {
+/** A bot's right-click menu in the roster: open it, pin it as a tile or take it off, delete it from the roster. */
+async function botMenu(e: ReactMouseEvent, b: Bot, pinned: boolean, pin: (key: string, on: boolean) => void, open: () => void, remove: () => void, t: TFunction<"common">) {
   e.preventDefault();
   const id = await window.aide?.popupMenu([
     { id: "open", label: t("bots.open") },
     { separator: true },
     { id: "pin", label: t(pinned ? "bots.unpin" : "bots.pin") },
+    { separator: true },
+    { id: "remove", label: t("bots.remove.menu") },
   ]);
   if (id === "open") open();
   if (id === "pin") pin(b.key, !pinned);
+  if (id === "remove") remove();
+}
+
+/**
+ * Deleting a bot from the roster (工单 #82), the owner's alone, asked first with what it does. A coding agent its
+ * machine found is hidden there: off the roster, its sessions untouched, shown again from the devices page. An agent
+ * with a grant of its own (a personal agent, or a coding agent known by its grant alone) has it revoked: one connected
+ * now is disconnected first; the server then forgets it (its grant, card, inbox), and it can't connect again unless
+ * it is connected anew. The sessions it handed out stay on their machines.
+ */
+function removeSheet(b: Bot, machines: readonly Machine[], t: TFunction<"common">): Sheet {
+  const name = b.name;
+  if (b.key.startsWith("m:")) {
+    const machine = machines.find((m) => m.machineId === b.machineId)?.machineName ?? "";
+    return {
+      kind: "confirm",
+      title: t("bots.remove.localTitle", { name }),
+      message: t("bots.remove.localMessage", { name, machine }),
+      button: t("bots.remove.localButton"),
+      done: t("bots.remove.localDone", { name }),
+      run: () => local.setAgentHidden({ machineId: b.machineId, agent: b.agent, hidden: true }),
+    };
+  }
+  const c = b.client!;
+  return {
+    kind: "confirm",
+    title: t("bots.remove.title", { name }),
+    message: t(c.online ? "bots.remove.onlineMessage" : "bots.remove.offlineMessage", { name }),
+    button: t(c.online ? "bots.remove.onlineButton" : "bots.remove.button"),
+    done: t("bots.remove.done", { name }),
+    run: () => local.revokeClient({ grantId: c.grantId }),
+  };
 }
 
 /**
@@ -175,8 +222,7 @@ export function SidebarRoster() {
   const sel = st.selection.kind === "bot" ? st.selection.key : "";
   const open = (b: Bot) => st.set({ selection: { kind: "bot", key: b.key } });
   const pinned = pins.map((k) => all.find((b) => b.key === k)).filter((b): b is Bot => !!b);
-  const coding = r.machines.flatMap((g) => g.bots);
-  const group = (id: string, title: string, bots: Bot[]) => {
+  const group = (id: string, title: string, bots: Bot[], short = false) => {
     const key = `bots:${id}`;
     const shown = !st.collapsed.includes(key);
     if (bots.length === 0) return null;
@@ -192,12 +238,12 @@ export function SidebarRoster() {
             className={`bot-row ${sel === b.key ? "sel" : ""}`}
             aria-current={sel === b.key || undefined}
             onClick={() => open(b)}
-            onContextMenu={(e) => botMenu(e, b, pins.includes(b.key), pin, () => open(b), t)}
+            onContextMenu={(e) => botMenu(e, b, pins.includes(b.key), pin, () => open(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
           >
             <BotFace b={b} size={28} dot />
             <span className="bot-t">
               <span className="bot-l1">
-                <b>{b.name}</b>
+                <b>{short ? b.shortName : b.name}</b>
                 <span className="bot-word" data-usable={b.state.usable}>{b.state.word}</span>
               </span>
               <span className="bot-l2">{b.doing || b.state.line}</span>
@@ -219,7 +265,7 @@ export function SidebarRoster() {
               className={`bot-tile ${sel === b.key ? "sel" : ""}`}
               title={`${b.name} · ${b.state.word}`}
               onClick={() => open(b)}
-              onContextMenu={(e) => botMenu(e, b, true, pin, () => open(b), t)}
+              onContextMenu={(e) => botMenu(e, b, true, pin, () => open(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
             >
               <BotFace b={b} size={34} dot />
               <span>{b.name}</span>
@@ -228,7 +274,8 @@ export function SidebarRoster() {
         </div>
       )}
       {group("personal", t("bots.personal"), r.personal)}
-      {group("coding", t("bots.coding"), coding)}
+      {/* The coding agents by machine (工单 #75): the head is the machine's name, so a row names the agent alone. */}
+      {r.machines.map((g) => group(`m:${g.machine.machineId}`, g.machine.machineName, g.bots, true))}
       <SidebarRooms />
       {all.length === 0 && st.status && (
         <div className="side-empty">
@@ -242,7 +289,7 @@ export function SidebarRoster() {
 }
 
 /** A bot's own page (工单 #57, #63): who it is and how it stands at the top; its conversations in the middle; its own settings beside. */
-export function BotPage({ botKey }: { botKey: string }) {
+export function BotPage({ botKey, native }: { botKey: string; native?: string }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const r = useRoster();
@@ -260,7 +307,7 @@ export function BotPage({ botKey }: { botKey: string }) {
   return (
     <div className="bot-page" role="region" aria-label={b.name}>
       <header className="bot-head drag">
-        <BotFace b={b} size={44} dot />
+        <BotFace b={b} size={44} dot edit />
         <div className="bot-head-t">
           <div className="bot-head-l1">
             <h1>{b.name}</h1>
@@ -275,7 +322,7 @@ export function BotPage({ botKey }: { botKey: string }) {
         </button>
       </header>
       <div className="bot-body">
-        {coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
+        {coding && native ? <OwnSession b={b} m={m!} id={native} /> : coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
         <aside className="bot-bench" aria-label={t("bots.bench")}>
           {coding && <LocalBench b={b} m={m!} />}
           {!coding && <HandedOut b={b} />}
@@ -349,6 +396,10 @@ function LocalBench({ b, m }: { b: Bot; m: Machine }) {
           )}
         </div>
       </section>
+      <section aria-label={t("agentSettings.title")}>
+        <div className="bot-sec-h">{t("agentSettings.title")}</div>
+        <AgentSettings b={b} m={m} />
+      </section>
       <Identity b={b} m={m} />
       <section>
         <div className="bot-sec-h">{t("bots.manage")}</div>
@@ -372,9 +423,7 @@ function Identity({ b, m }: { b: Bot; m: Machine }) {
       <div className="fgroup">
         {b.personas.map((p) => (
           <div key={p.personaId} className="frow bot-persona">
-            <span className="bav" style={{ width: 28, height: 28 }} aria-hidden="true">
-              <span className="bav-in bav-emoji" style={{ background: p.color || personaColors[5], fontSize: 15 }}>{personaIcons[p.icon] ?? <BotGlyph size={20} />}</span>
-            </span>
+            <PersonaFace b={b} p={p} size={28} />
             <span className="bot-persona-t">
               <b>{p.name}</b>
               <span className="muted">{[p.projectId, p.model, p.effort, p.mode].filter(Boolean).join(" · ")}</span>
@@ -384,7 +433,7 @@ function Identity({ b, m }: { b: Bot; m: Machine }) {
             </button>
           </div>
         ))}
-        <button className="frow act" title={t("bots.identityAddTip")} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
+        <button className="frow act" title={t("bots.identityAddTip")} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...(b.personas.length ? {} : lookFields(botLook(b))), machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
           <Icon name="plus" className="sm" />
           {t(b.personas.length ? "bots.identityAdd" : "bots.identityFirst")}
         </button>
@@ -436,26 +485,30 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const [text, setText] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
+  const attach = useAttachments();
   const [showArchived, setShowArchived] = useState(false);
   const stuck = current ? stuckWhy(current, st.projects, m) : undefined;
   const fresh = !current || paramsChanged(current, params);
   const changed = current ? changedParams(current, params) : [];
   const usable = b.state.usable !== "no";
+  // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
+  const permission = modeChoice(b.agent, params.mode, projects.find((p) => p.projectId === params.projectId), a?.modes ?? []);
   const send = async (opts: { withContextOf?: Session } = {}) => {
     const body = text.trim();
-    if (!body || state.kind === "sending") return;
+    if ((!body && attach.files.length === 0) || state.kind === "sending") return;
     setState({ kind: "sending" });
     try {
+      const attachments = await attachmentsOf(attach.files);
       let to: Session | undefined;
       if (current && !fresh && !opts.withContextOf) {
         if (current.status === SessionStatus.ARCHIVED) await local.unarchiveSession({ sessionId: current.sessionId }); // rule 6
-        to = (await local.sendMessage({ sessionId: current.sessionId, text: body })).session;
+        to = (await local.sendMessage({ sessionId: current.sessionId, text: body, attachments })).session;
         setState({ kind: "done", text: t("composer.sentIn", { title: displayTitle(current) }) });
       } else {
         const prompt = opts.withContextOf ? withContext(opts.withContextOf, displayTitle(opts.withContextOf), body) : body;
         const res = await local.startSession({
           machineId: m.machineId,
-          session: { idempotencyKey: key, agent: b.agent, projectId: params.projectId, prompt, model: params.model, effort: params.effort, mode: params.mode },
+          session: { idempotencyKey: key, agent: b.agent, projectId: params.projectId, prompt, model: params.model, effort: params.effort, mode: params.mode, attachments },
         });
         to = res.session;
         if (to) choose(to.sessionId);
@@ -463,6 +516,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         setState({ kind: "done", text: current && changed.length ? t("composer.newBecause", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }) : t("composer.newStarted") });
       }
       setText("");
+      attach.clear();
       setKey(crypto.randomUUID());
     } catch (err) {
       setState({ kind: "error", text: errorText(err), retry: () => void send(opts) });
@@ -482,14 +536,16 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         ? { text: t(stuck === "projectGone" ? "conv.stuckProject" : "conv.stuckAgent"), tone: "warn" as const }
         : projects.length === 0
           ? { text: t("bots.noProject"), tone: "quiet" as const }
-          : b.state.usable === "unverified"
-            ? { text: t("bots.unverified"), tone: "quiet" as const }
-            : current && fresh
-              ? { text: t("conv.willStartNew", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }), tone: "quiet" as const }
-              : undefined;
+          : permission.above
+            ? { text: permission.above, tone: "warn" as const }
+            : b.state.usable === "unverified"
+              ? { text: t("bots.unverified"), tone: "quiet" as const }
+              : current && fresh
+                ? { text: t("conv.willStartNew", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }), tone: "quiet" as const }
+                : undefined;
   const models: PickerOption<string>[] = [{ value: "", label: t("composer.defaultModel") }, ...(a?.models ?? []).map((x) => ({ value: x.id, label: x.name || x.id }))];
   const efforts = a?.models.find((x) => x.id === params.model)?.efforts ?? [];
-  const modes: PickerOption<string>[] = [{ value: "", label: t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: x.name || x.id }))];
+  const modes: PickerOption<string>[] = [{ value: "", label: permission.defaultLabel ?? t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) }))];
   const chips = (
     <>
       {projects.length > 0 && (
@@ -501,7 +557,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         <Picker chip size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
           options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: e }))]} />
       )}
-      {(a?.modes.length ?? 0) > 0 && <Picker chip size="sm" label={t("composer.param.mode")} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />}
+      {(a?.modes.length ?? 0) > 0 && <Picker chip size="sm" label={t(b.agent === dshAgent ? "composer.permission" : "composer.param.mode")} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />}
     </>
   );
   const row = (s: Session, archived = false) => {
@@ -557,6 +613,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         {showArchived && convs.archived.map((s) => row(s, true))}
         {convs.others.length > 0 && <div className="conv-group static">{t("conv.others")}</div>}
         {convs.others.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+        <OwnSessions b={b} m={m} />
       </div>
       <Composer
         value={text}
@@ -571,6 +628,12 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
             : why
         }
         chips={chips}
+        attach={attach}
+        commands={[
+          { id: "plan", name: "plan", label: t("composer.cmd.plan"), run: () => setText("!plan ") },
+          { id: "implement", name: "implement", label: t("composer.cmd.implement"), run: () => setText("!implement ") },
+          ...(current ? [{ id: "new", name: "new", label: t("composer.cmd.new"), run: () => choose("new") }, { id: "open", name: "open", label: t("composer.cmd.open"), run: () => st.select(current.sessionId) }] : []),
+        ]}
         plus={[
           { id: "new", label: t("conv.new"), icon: "plus", run: () => choose("new"), disabled: !current },
           ...(current ? [{ id: "open", label: t("conv.open"), icon: "expand", run: () => st.select(current.sessionId) }] : []),

@@ -42,11 +42,11 @@
     "choose": "选择…",
     "name": "项目名",
     "workspace": "工作方式",
-    "worktree": "独立 worktree",
-    "inPlace": "原地",
+    "worktree": "每个任务一份副本",
+    "inPlace": "直接在这个文件夹里",
     "baseRef": "默认基线",
     "baseRefPlaceholder": "main（可选）",
-    "worktreeHint": "git 仓库：每个任务在自己的分支和 worktree 里，不碰你正在改的文件。",
+    "worktreeHint": "git 仓库：每个任务在自己的一份副本（它的分支和 git worktree）里干活，不碰你正在改的文件，干完再合回来。",
     "inPlaceHint": "agent 直接在这个目录里改动，就像你自己在这里运行 Claude Code；没有单独的分支和改动记录。",
     "adding": "正在添加…",
     "add": "添加"
@@ -69,8 +69,8 @@
     "ttlLongLived": "长期有效，随时可以断开",
     "needProject": "至少选一个项目，或选“所有项目”。",
     "needAgent": "至少选一个编码 agent，或选“所有编码 agent”。",
-    "worktree": "独立 worktree",
-    "inPlace": "原地"
+    "worktree": "每个任务一份副本",
+    "inPlace": "现有文件夹"
   },
   "scopeSheet": {
     "goneTitle": "这个授权已经不在了",
@@ -214,5 +214,12 @@
     "delete": "删除联系人",
     "save": "保存"
   },
-  "working": "正在处理…"
+  "working": "正在处理…",
+  "agentScope": {
+    "title": "{{name}} 能用什么",
+    "sub": "{{name}} 可以在 {{machine}} 的哪些项目里干活。只给 {{name}} 用的项目在这里去不掉：要删在它的项目列表里删。",
+    "none": "这台机器上还没有项目。",
+    "save": "保存",
+    "saved": "已保存 {{name}} 能用的范围。"
+  }
 }

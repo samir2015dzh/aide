@@ -3,7 +3,7 @@ import { Check } from "./Picker";
 import { useTranslation } from "react-i18next";
 import type { CustomAgent } from "@aide/proto/machine";
 import type { Machine } from "@aide/proto/local";
-import { codingAgentIds, codingAgentTitle, projectIdFromFolder } from "@aide/core";
+import { codingAgentIds, codingAgentTitle, projectIdFromFolder, projectTitle } from "@aide/core";
 import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
 import { ConnectionsCard } from "./Connections";
@@ -249,7 +249,7 @@ function Verify({ m, agent, line, ready, place }: { m: Machine; agent: string; l
     await st.run(() => local.addProject({ machineId: m.machineId, projectId, path, agents: [agent] }));
     setAdding(false);
   };
-  const names = projects.map((p) => p.projectId).join(", ");
+  const names = projects.map(projectTitle).join(", ");
   return (
     <section className="cg-sec" aria-label={t("verify")}>
       <div className="fhead">{t("verify")}</div>

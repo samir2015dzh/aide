@@ -1,11 +1,5 @@
 package io.aide.android.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,44 +8,36 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.aide.android.R
-import io.aide.android.api.Client
 import io.aide.android.model.Bot
-import io.aide.android.model.ConnState
-import io.aide.android.model.NotReady
-import io.aide.android.model.personaColor
-import io.aide.android.model.personaIcons
+import io.aide.android.model.REACT_MS
+import io.aide.android.model.botLook
+import io.aide.android.model.botMood
+import io.aide.android.model.botSeed
+import kotlinx.coroutines.delay
+import java.time.Instant
 
-// A bot's face (工单 #62), the same on every screen as on the desktop: its app's own icon, round — a coding agent's app
-// (Claude, Codex, DSH, WorkBuddy…), a personal agent's (Muse, Grok Bot…), or the avatar the owner gave it; a small
-// robot on its colour where its app has none, never initials. Its real state moves it: a ring turns round it while its
-// sessions really run (and stands still while a list scrolls, 工单 #55), it greys while it is away or unknown, and the
-// dot on its corner is its state's colour.
+// A bot's face (工单 #83), the same on every screen as on the desktop: its Grok Bot character (GrokFace.kt), with its
+// app's own icon (Claude, Codex, DSH, WorkBuddy…, Muse, Grok Bot…) small on its corner where there is room. A session's
+// row, where no bot is at hand, still shows its coding agent's app icon (AgentFace).
 
 /** The app icons (res/drawable-nodpi, from packages/ui agent-logo-images.ts) and drawn logos (res/drawable). */
 private val pictures = mapOf(
@@ -74,13 +60,6 @@ fun personalApp(label: String): String? = when (Regex("^(.+) \\(([^()\\s]+)\\)$"
     else -> null
 }
 
-/** The colour a face without an app is drawn on, from its name. */
-fun nameColor(name: String): Color {
-    var h = 0
-    for (c in name) h = (h * 31 + c.code) and 0xffff
-    return Color.hsl((h % 360).toFloat(), 0.55f, 0.5f)
-}
-
 /** The robot drawn where an app has no icon (the desktop's BotGlyph). */
 private val robot: ImageVector by lazy {
     ImageVector.Builder("robot", 24.dp, 24.dp, 24f, 24f)
@@ -92,28 +71,26 @@ private val robot: ImageVector by lazy {
         .build()
 }
 
-private val grey = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
-
 /** An app's face in a circle: its icon edge to edge, a drawn logo on white, or the robot on grey for an app without one. */
 @Composable
-fun AppFace(app: String, size: Int, off: Boolean = false) {
-    val filter = if (off) grey else null
+fun AppFace(app: String, size: Int) {
     val m = Modifier.size(size.dp).clip(CircleShape)
     pictures[app]?.let {
-        Image(painterResource(it), null, m, contentScale = ContentScale.Crop, colorFilter = filter)
+        Image(painterResource(it), null, m, contentScale = ContentScale.Crop)
         return
     }
     logos[app]?.let {
         Box(m.background(Color.White).border(0.5.dp, Color(0x1F000000), CircleShape), contentAlignment = Alignment.Center) {
-            Image(painterResource(it), null, Modifier.size((size * 0.62).dp), colorFilter = filter)
+            Image(painterResource(it), null, Modifier.size((size * 0.62).dp))
         }
         return
     }
-    RobotFace(Color(0xFF8E8E93), size)
+    RobotFace(size)
 }
 
 @Composable
-private fun RobotFace(color: Color, size: Int) {
+private fun RobotFace(size: Int) {
+    val color = Color(0xFF8E8E93)
     Box(Modifier.size(size.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
         Image(rememberVectorPainter(robot), null, Modifier.size((size * 0.7).dp))
     }
@@ -123,64 +100,33 @@ private fun RobotFace(color: Color, size: Int) {
 @Composable
 fun AgentFace(agent: String, size: Int = 32) = AppFace(agent, size)
 
-/** A grant's face: the app it is (its name says), else the robot on its colour. */
-@Composable
-fun GrantFace(c: Client, size: Int, off: Boolean = false) {
-    personalApp(c.label)?.let { AppFace(it, size, off); return }
-    RobotFace(nameColor(c.label), size)
-}
-
 /**
- * A bot's face with what its real state says (工单 #62): dot, its state's colour on the corner; running, a ring turning
- * round it while its sessions run, stopped while a list scrolls; away or unknown, grey.
+ * A bot's face (工单 #83): its Grok Bot character (GrokMark), in the look the owner gave it (its contact's, else its
+ * grant's), else its seed's, moved only by its real state (botMood, the desktop's table); away or unknown it rests,
+ * faded. Its app's logo on its corner where there is room; dot, its state's colour on the other. still: it rests
+ * (where many show at once). poke: a count, each new one spins and bounces it.
  */
 @Composable
-fun BotAvatar(b: Bot, size: Int, dot: Color? = null, still: Boolean = false) {
-    val off = b.state.why == NotReady.OFFLINE || b.state.state == ConnState.UNKNOWN
-    val running = !still && b.running > 0
-    val scrolling = LocalScrolling.current
+fun BotAvatar(b: Bot, size: Int, dot: Color? = null, still: Boolean = false, poke: Int = 0) {
+    // A moment of done or failed is read again once it is over.
+    var tick by remember { mutableIntStateOf(0) }
+    val mood = botMood(b, LocalSessions.current, Instant.now()).also { tick }
+    LaunchedEffect(mood.state) {
+        if (mood.state == "finished" || mood.state == "failed") {
+            delay(REACT_MS)
+            tick++
+        }
+    }
+    val app = b.agent.ifEmpty { b.client?.let { personalApp(it.label) }.orEmpty() }
     Box(Modifier.size(size.dp)) {
-        if (running) RunningRing(size, moving = !scrolling)
-        Box(Modifier.graphicsLayer { alpha = if (off) 0.55f else 1f }) {
-            val p = b.personas.firstOrNull()
-            when {
-                p != null -> Box(Modifier.size(size.dp).background(Color(personaColor(p)), CircleShape), contentAlignment = Alignment.Center) {
-                    val glyph = personaIcons[p.icon]
-                    if (glyph != null) Text(glyph, fontSize = (size * 0.48).sp) else Image(rememberVectorPainter(robot), null, Modifier.size((size * 0.7).dp))
-                }
-                b.agent.isNotEmpty() -> AppFace(b.agent, size, off)
-                b.client != null -> GrantFace(b.client, size, off)
-                else -> RobotFace(nameColor(b.name), size)
-            }
+        GrokMark(botSeed(b), botLook(b), mood, size, still = still, poke = poke)
+        if (size >= 34 && (pictures[app] ?: logos[app]) != null) {
+            val s = (size * 0.3).toInt()
+            Box(Modifier.align(Alignment.BottomStart).offset(x = (-2).dp, y = 2.dp).background(Color.White, CircleShape).padding(2.dp)) { AppFace(app, s) }
         }
         if (dot != null) {
             val d = (size / 4).coerceIn(9, 13)
             Box(Modifier.align(Alignment.BottomEnd).offset(x = 1.dp, y = 1.dp).size(d.dp).background(aide.card, CircleShape).padding(2.dp).background(dot, CircleShape))
         }
     }
-}
-
-/** The ring round a face at work: an arc that turns, held still (and drawn whole) while moving is off. */
-@Composable
-private fun RunningRing(size: Int, moving: Boolean) {
-    val accent = BrandCyan
-    val angle = if (moving) {
-        val t = rememberInfiniteTransition(label = "ring")
-        t.animateFloat(0f, 360f, infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart), label = "turn").value
-    } else {
-        0f
-    }
-    val brush = remember(accent) { Brush.sweepGradient(listOf(Color.Transparent, accent.copy(alpha = 0.15f), accent)) }
-    Box(
-        Modifier.size(size.dp).drawBehind {
-            val w = 2.dp.toPx()
-            val inset = -3.dp.toPx() + w / 2
-            rotate(angle) {
-                drawArc(
-                    brush, 0f, 360f, false, topLeft = Offset(inset, inset), size = Size(this.size.width - 2 * inset, this.size.height - 2 * inset),
-                    style = Stroke(w),
-                )
-            }
-        },
-    )
 }

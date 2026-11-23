@@ -119,7 +119,7 @@ func (a *app) linkDial(ctx context.Context, machineID string) (net.Conn, string,
 	req := linkRequest{Version: machine.Version, Machine: machineID}
 	a.mu.Lock()
 	for _, m := range a.st.Machines {
-		if m.ID == machineID {
+		if m.ID == machineID && m.Name != unnamedMachine(m.ID) {
 			req.Listed = m.Name
 		}
 	}

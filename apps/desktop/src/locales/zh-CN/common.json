@@ -26,7 +26,7 @@
     "passwordArg": "密码"
   },
   "sidebar": {
-    "held": "待放行",
+    "held": "等你放行的消息",
     "claude": "Claude 会话",
     "label": "边栏",
     "search": "搜索",
@@ -158,7 +158,7 @@
     "processesBodyNear": "进程数快到上限了（{{used}} / {{limit}}）。到上限后，Aide 就启动不了编码 agent。",
     "processesBodyNearCulprit": "进程数快到上限了（{{used}} / {{limit}}），其中 {{count}} 个是 {{culprit}} 结束后没回收的。趁 Aide 还能启动编码 agent，先退出 {{culprit}}。",
     "diskTitle": "{{name}} 的磁盘快满了",
-    "diskBody": "只剩 {{free}}。磁盘满了以后，新的任务建不了 worktree，任务记录也存不下。",
+    "diskBody": "只剩 {{free}}。磁盘满了以后，新的任务建不了副本，任务记录也存不下。",
     "filesTitle": "{{name}} 上的 Aide 快打不开新文件了",
     "filesBody": "打开的文件数 {{used}} / {{limit}}。重新启动 Aide 可以缓解；如果反复出现，请复制诊断信息发给我们。",
     "shellPathTitle": "读不到 {{name}} 终端里的 PATH",
@@ -212,16 +212,16 @@
     "text": "那台电脑上的 Aide 版本较旧，还没有这项功能。在那台电脑上更新 Aide 后再试。"
   },
   "held": {
-    "title": "待放行",
-    "note": "其他 agent 写给会话、按你的规则先拦下的消息：新上册不满 7 天的 agent、链上第 3 跳及以后，或命中你的信息边界。放行后照常送进会话；丢弃后发信方会收到说明。一天内不处理即过期。",
-    "none": "没有待放行的消息。",
+    "title": "等你放行的消息",
+    "note": "其他 agent 写给会话、按你的规则先拦下来等你确认的消息：刚接入不满 7 天的 agent 发来的、经过 3 个及以上 agent 转手的，或碰到你定的信息边界的。放行后照常送进会话；丢弃后发信方会收到说明。一天内不处理即过期。",
+    "none": "没有等你放行的消息。",
     "release": "放行",
     "discard": "丢弃",
     "expires": "{{time}} 过期",
     "to": "写给 {{session}}",
-    "reason_new_agent": "新上册的 agent",
-    "reason_long_chain": "长链消息",
-    "reason_boundary": "命中信息边界"
+    "reason_new_agent": "刚接入不久的 agent，先经你确认",
+    "reason_long_chain": "经过太多 agent 转手",
+    "reason_boundary": "碰到你定的信息边界"
   },
   "claude": {
     "title": "Claude 会话",
@@ -231,7 +231,7 @@
     "completed": "已完成",
     "blocked": "等你处理",
     "address": "可寄信：{{address}}",
-    "noAddress": "不可寄信（这台机器的 aide hooks 还没报到过这个对话）"
+    "noAddress": "不可寄信（这台机器上的 Aide 还没接上这个对话）"
   },
   "dsh": {
     "title": "DSH 会话",
@@ -300,11 +300,11 @@
       "again": "再让 DSH 试一次",
       "handing": "正在交给 DSH…",
       "handOverNote": "DSH 会在那台电脑上自己装、自己重启 DSH Desktop，装完告诉 Aide；你不用去插件页。",
-      "openTask": "看代装任务",
+      "openTask": "看安装任务",
       "manual": "DSH 装不了时：手动安装",
       "state": {
-        "DSH_BRIDGE_INSTALL_STATE_RUNNING": "DSH 正在代装，装完会告诉 Aide。",
-        "DSH_BRIDGE_INSTALL_STATE_FAILED": "代装没成功：",
+        "DSH_BRIDGE_INSTALL_STATE_RUNNING": "DSH 正在安装，装完会告诉 Aide。",
+        "DSH_BRIDGE_INSTALL_STATE_FAILED": "DSH 没装成功：",
         "DSH_BRIDGE_INSTALL_STATE_RESTART": "已装好，重启 DSH Desktop 后生效。"
       }
     },
@@ -338,17 +338,17 @@
   "contactsUnavailable": "联系人功能待中继升级：你的服务器（中继）还不支持保存联系人。下面列出的 Agent 照样可以直接派活。",
   "conn": {
     "title": "本机连接状态",
-    "followsMachine": "编码 Agent 跟着它所在的机器走",
+    "followsMachine": "这台机器上的编码 Agent",
     "noneYet": "正在检测装了什么…",
     "offline": "机器离线：它上次报告的状态现在无法确认。",
     "partCli": "命令行",
-    "partBridge": "桥接插件",
+    "partBridge": "Aide 插件",
     "checkedAt": "{{when}}检测",
     "neverChecked": "尚未检测",
     "grantOnline": "正连着",
     "grantIdle": "已连接（空闲）",
     "localGrant": "这台机器上自己连到 Aide 的编码 Agent（有它自己的授权）。",
-    "personalNote": "个人 Agent（Muse、Grok Bot 等）跟着账号走、不属于哪台机器：在 设置 › 访问 里。",
+    "personalNote": "个人 Agent（Muse、Grok Bot 等）连在你的账号上，不属于哪台机器：在 设置 › 访问 里。",
     "recheck": "重新检测",
     "fixClaudeCLI": "先在 Claude Desktop 里打开一次 Code 页，让它下载命令行；装好后这里会出现「登录」按钮。",
     "thisComputer": "这台电脑",
@@ -368,7 +368,7 @@
     "personal": "个人 Agent",
     "local": "本机编码 Agent",
     "localOn": "本机编码 Agent · {{machine}}",
-    "personalMeans": "个人 Agent 跟着账号走，在哪台设备上都显示。",
+    "personalMeans": "个人 Agent 连在你的账号上，在哪台设备上都显示。",
     "localMeans": "本机编码 Agent 归属它所在的机器，派活要先选那台机器。",
     "cleared": "已恢复按名字自动判断",
     "setPersonal": "已改为个人 Agent",
@@ -376,7 +376,7 @@
   },
   "bots": {
     "title": "Bot",
-    "personal": "个人 agent · 跟账号走",
+    "personal": "个人 agent",
     "noWork": "{{name}} 还没有任务：在下面写一个派给它。",
     "noWorkPersonal": "{{name}} 还没有派出过任务。",
     "bench": "工作台",
@@ -402,14 +402,73 @@
     "pin": "置顶",
     "unpin": "取消置顶",
     "open": "打开",
-    "coding": "编码 agent · 跟机器走",
     "noneTitle": "还没有 bot",
     "noneBody": "在电脑上连接一个编码 agent，或把个人 agent 连到你的账号。",
     "noneConnect": "怎么连接",
     "fixOnDevices": "去设备页处理",
     "identityFirst": "给它起名字、换头像",
     "identityAddTip": "新建一个名字和头像：设好项目和模型，以这个身份和它聊",
-    "identityEditTip": "修改「{{name}}」"
+    "identityEditTip": "修改「{{name}}」",
+    "remove": {
+      "menu": "从名册删除…",
+      "title": "删除 {{name}}？",
+      "offlineMessage": "{{name}} 现在没连着。删除会吊销它的授权，并清掉服务器上它的登记、通讯录名片和没取走的信，名册里不再有它。它以后要再用 Aide，得重新接入。它派出过的任务留在各台机器上，照常能看。",
+      "onlineMessage": "{{name}} 现在连着。删除会先断开它、吊销它的授权，再清掉服务器上它的登记、通讯录名片和没取走的信：它将无法再连进来，要再用 Aide 得重新接入。它派出过的任务留在各台机器上，照常能看。",
+      "button": "删除",
+      "onlineButton": "断开并删除",
+      "done": "已删除 {{name}}",
+      "localTitle": "从名册移除 {{name}}？",
+      "localMessage": "{{name}} 是 {{machine}} 上检测到的编码 agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」那一行点「显示」。",
+      "localButton": "从名册移除",
+      "localDone": "已把 {{name}} 移出名册"
+    },
+    "faceEdit": "换头像"
+  },
+  "avatar": {
+    "shapes": "形状",
+    "colors": "颜色",
+    "poke": "戳它一下",
+    "shape": {
+      "blob": "圆团",
+      "pebble": "卵石",
+      "bean": "豆子",
+      "egg": "蛋",
+      "squircle": "圆角方",
+      "tablet": "药片",
+      "capsule": "胶囊",
+      "cylinder": "圆柱",
+      "hex": "六边形",
+      "gem": "宝石",
+      "crystal": "水晶",
+      "wedge": "楔形",
+      "shield": "盾牌",
+      "dome": "圆顶",
+      "arch": "拱门",
+      "cloud": "云朵",
+      "teardrop": "水滴",
+      "leaf": "叶子",
+      "square": "方块",
+      "sparkle": "星芒",
+      "clover": "四叶草",
+      "flower": "花朵",
+      "heart": "爱心",
+      "house": "小房子",
+      "star": "星星",
+      "pumpkin": "南瓜"
+    },
+    "color": {
+      "black": "黑",
+      "brown": "棕",
+      "red": "红",
+      "orange": "橙",
+      "yellow": "黄",
+      "green": "绿",
+      "cyan": "青",
+      "blue": "蓝",
+      "violet": "紫",
+      "magenta": "品红",
+      "gray": "灰"
+    }
   },
   "rooms": {
     "title": "房间",
@@ -462,10 +521,10 @@
     },
     "itsSession": "它的会话：",
     "delete": "删除房间…",
-    "waitingShort_other": "{{count}} 条回复等主持机上线",
-    "hostAway": "主持这个房间的 {{machine}} 不在线。",
+    "waitingShort_other": "{{count}} 条回复等负责房间的机器上线",
+    "hostAway": "负责这个房间的 {{machine}} 不在线。",
     "waitingReplies_other": "有 {{count}} 条回复在邮局等它上线后入房（最早一条 {{since}}）。",
-    "waitingInline_other": "还有 {{count}} 条回复在路上：主持机一上线就进房间",
+    "waitingInline_other": "还有 {{count}} 条回复在路上：负责房间的机器一上线就进房间",
     "deleteTitle": "删除房间「{{name}}」？",
     "deleteSub": "房间和它的时间线会删掉。成员在房间里新建的会话怎么处理，你来选：",
     "deleteChoice": "成员会话",
@@ -488,9 +547,9 @@
     "signed_out": "这台设备上的账号已经登出：请重新登录。",
     "no_relay": "还没有配置服务器（中继）。",
     "machine_older": "那台机器上的 Aide 版本较旧，还不认识这个操作：先在那台机器上更新 Aide，再试一次。",
-    "no_host_online": "没有在线的机器能主持这场对话：先在一台机器上打开 Aide。",
-    "no_room_host_online": "没有在线的机器能主持这个房间：先在一台机器上打开 Aide。",
-    "cannot_sign_charter": "这台设备不能签发房间章程：它不是你的设备。",
+    "no_host_online": "没有在线的机器能负责这场对话：先在一台机器上打开 Aide。",
+    "no_room_host_online": "没有在线的机器能负责这个房间：先在一台机器上打开 Aide。",
+    "cannot_sign_charter": "这台设备不能给这个房间发许可：它不是你的设备。",
     "her_access_whole": "Her 的授权是完整且不过期的：要结束它，请关掉 Her。",
     "name_length": "名字要在 1 到 64 个字节之间。",
     "icon_needs_picture": "选了“图片”做图标，需要先选一张图片。",
@@ -506,14 +565,15 @@
     "project_gone": "项目「{{project}}」已经不在了。",
     "session_archived": "这条对话已归档（只读）：先取消归档再续聊。",
     "turn_in_progress": "它还在忙上一轮：等它做完，或先打断它。",
-    "room_no_grant": "这个 agent 的授权还没到主持机：等一会儿再试。",
+    "room_no_grant": "这个 agent 的授权还没到负责这个房间的机器：等一会儿再试。",
     "room_needs_name": "房间要有个名字。",
     "room_members_count": "一个房间要有 1 到 {{max}} 个成员。",
-    "room_not_in_charter": "{{agent}}（项目 {{project}}）不在这个房间的章程里。",
-    "room_not_found": "主持机上找不到这个房间了。",
+    "room_not_in_charter": "{{agent}}（项目 {{project}}）不在这个房间的成员名单里。",
+    "room_not_found": "负责这个房间的机器上找不到它了。",
     "nothing_to_say": "还没写内容。"
   },
   "composer": {
+    "permission": "权限",
     "more": "更多",
     "send": "发送",
     "sending": "正在发送…",
@@ -530,6 +590,30 @@
       "model": "模型",
       "effort": "推理强度",
       "mode": "模式"
+    },
+    "slashPlaceholder": "输入 / 以使用命令",
+    "commands": "命令",
+    "attached": "已附上",
+    "removeFile": "移除 {{name}}",
+    "attach": {
+      "image": "图片",
+      "file": "文件",
+      "audio": "音频"
+    },
+    "dictate": "语音输入",
+    "dictationMac": "已打开系统听写：说话，文字会写进这里；按 Fn 或点「完成」结束。没反应的话，到「系统设置 › 键盘」里打开「听写」。",
+    "dictationWin": "按 Win + H 用 Windows 语音输入，说的话会写进这里。",
+    "cmd": {
+      "plan": "只做计划：你点头前不改任何东西",
+      "implement": "直接实现，跑测试，最后小结",
+      "newSession": "开一个新会话",
+      "interrupt": "打断这一轮",
+      "archive": "归档这个会话",
+      "unarchive": "取消归档",
+      "copyId": "拷贝会话 ID",
+      "review": "复盘这个会话",
+      "new": "开启新对话",
+      "open": "打开完整对话"
     }
   },
   "conv": {
@@ -554,5 +638,35 @@
     "stuckAgent": "这台机器上已经没有这个 agent：只能看、不能续。",
     "newWithContext": "带着它的上下文开新对话",
     "willStartNew": "换了{{what}}：下一条会开新对话"
+  },
+  "link": {
+    "reconnecting": "与这台电脑上 Aide 后台的连接中断，正在重连…"
+  },
+  "own": {
+    "title": "它自己的会话",
+    "noteDsh": "在 DSH 里开的（或经其他工具派的），不是 Aide 开的。默认只读，开启「接管」后可以发消息。",
+    "noteClaude": "Claude 桌面应用在这台机器上的 Claude Code 会话，不是 Aide 开的。只读。",
+    "cant": "Aide 还读不到 {{app}} 在它自己应用里开的会话。",
+    "none": "这里没有 {{app}} 自己的会话。",
+    "back": "返回对话",
+    "gone": "这个会话已经不在了。"
+  },
+  "agentSettings": {
+    "title": "它的设置",
+    "hero": "{{machine}} 上找到的 {{app}}",
+    "canUse": "能用什么",
+    "machine": "机器",
+    "machineValue": "{{machine}}（它在这台上运行）",
+    "projects": "项目",
+    "allProjects": "它所在机器上的全部项目",
+    "noProjects": "还没有项目",
+    "separator": "、",
+    "rename": "名字和头像",
+    "changeScope": "修改能用的范围",
+    "hide": "从 Aide 里移除…",
+    "hideTitle": "把 {{name}} 从 Aide 里移除？",
+    "hideMessage": "它会从 Aide 的列表里拿掉；{{machine}} 上什么都不会卸载或删除，它的历史也都在。到设备页重新检查这台机器，它就会回来。",
+    "hideButton": "移除",
+    "personalMeans": "列在你的个人 agent 里；它仍在原来的机器上运行，给它的活也交到那台机器。"
   }
 }

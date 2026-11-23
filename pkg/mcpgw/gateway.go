@@ -119,8 +119,12 @@ type Shared interface {
 // Limits.
 const (
 	authorizationTTL = 30 * time.Minute
-	codeTTL          = 60 * time.Second
-	accessTTL        = time.Hour
+	// A code lives 10 minutes (工单 #96), RFC 6749 §4.1.2's upper bound: a
+	// headless client's code is pasted back by hand, from a phone, and that
+	// takes minutes. Single use, PKCE-bound and bound to client, redirect URI
+	// and resource; a second use revokes what it gave.
+	codeTTL   = 10 * time.Minute
+	accessTTL = time.Hour
 	// Tokens unused for this long stop working.
 	refreshIdle        = 30 * 24 * time.Hour
 	refreshRetryWindow = 60 * time.Second
@@ -253,6 +257,10 @@ func (g *Gateway) Mount(mux *http.ServeMux) {
 // sweeps what has expired.
 func (g *Gateway) loop() {
 	defer close(g.done)
+	g.recallActivity(context.Background())
+	if g.cfg.Relay.SingleOwner() != "" && g.lead() {
+		g.renameHosted(context.Background()) // once, on a self-hosted relay: its server signs the grants
+	}
 	t := time.NewTicker(loopEvery)
 	defer t.Stop()
 	sweep := time.NewTicker(10 * time.Minute)

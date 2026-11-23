@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -172,7 +173,7 @@ func (s *machineService) projects(ctx context.Context, p *Principal, base bool) 
 			continue
 		}
 		mp := &machinev1.Project{ProjectId: pr.ID, DefaultBaseRef: pr.DefaultBaseRef, Workspace: pr.Workspace,
-			Path: pr.Path, Description: pr.Description, ActiveSessions: active[pr.ID], Agents: pr.Agents, Name: pr.Name}
+			Path: pr.Path, Description: pr.Description, ActiveSessions: active[pr.ID], Agents: pr.Agents, Name: pr.Name, DshPreset: pr.DSHPreset}
 		if base {
 			mp.Base = projectBase(ctx, pr)
 		}
@@ -340,7 +341,8 @@ func (n *Machine) ApplySettings(ctx context.Context, cmd *identityv1.AdminComman
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
 		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused,
-		*identityv1.AdminCommand_SetProjectName:
+		*identityv1.AdminCommand_SetProjectName, *identityv1.AdminCommand_SetProjectPermission,
+		*identityv1.AdminCommand_SetAgentCategory:
 	default:
 		n.audit.Log(AuditRecord{Kind: "admin", Decision: "deny", Reason: "unsigned command that is not a setting"})
 		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only settings (projects and their names, pausing, the name, agent defaults, hiding or pausing an agent) may be sent without a signature"))
@@ -406,8 +408,17 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		} else if base == "" {
 			base = "HEAD"
 		}
+		// A new one is named by its folder (工单 #88); one added again keeps its name.
+		projects, err := n.st.Projects()
+		if err != nil {
+			return "", err
+		}
+		name := ""
+		if !slices.ContainsFunc(projects, func(x Project) bool { return x.ID == p.ProjectId }) {
+			name = folderName(p.ProjectId, path, projects)
+		}
 		defer n.sessions.changes().project(p.ProjectId)
-		if err := n.st.PutProject(Project{ID: p.ProjectId, Path: path, DefaultBaseRef: base, Workspace: mode, Description: strings.TrimSpace(p.Description), Agents: agents}); err != nil {
+		if err := n.st.PutProject(Project{ID: p.ProjectId, Path: path, DefaultBaseRef: base, Workspace: mode, Description: strings.TrimSpace(p.Description), Agents: agents, Name: name}); err != nil {
 			return "", err
 		}
 		if mode == identityv1.Workspace_WORKSPACE_IN_PLACE {
@@ -455,6 +466,29 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 			return "project " + c.SetProjectName.ProjectId + " shown by its id", nil
 		}
 		return "project " + c.SetProjectName.ProjectId + " named " + name, nil
+	case *identityv1.AdminCommand_SetProjectPermission:
+		c2 := c.SetProjectPermission
+		if err := checkMode(dshAgent, n.sessions.info(dshAgent), c2.DshPreset); err != nil {
+			return "", err
+		}
+		ok, err := n.st.SetProjectDSHPreset(c2.ProjectId, c2.DshPreset)
+		if err != nil {
+			return "", err
+		}
+		if !ok {
+			return "", connect.NewError(connect.CodeNotFound, fmt.Errorf("no project %q here", c2.ProjectId))
+		}
+		n.sessions.changes().project(c2.ProjectId)
+		if c2.DshPreset == "" {
+			return "project " + c2.ProjectId + ": DSH sessions start with DSH's own permission preset", nil
+		}
+		return "project " + c2.ProjectId + ": DSH sessions start with " + c2.DshPreset, nil
+	case *identityv1.AdminCommand_SetAgentCategory:
+		if err := n.setAgentCategory(c.SetAgentCategory); err != nil {
+			return "", connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		n.kickStatus()
+		return c.SetAgentCategory.Agent + " filed as " + cmp.Or(c.SetAgentCategory.Category, "told from what it is"), nil
 	case *identityv1.AdminCommand_SetAgentPaused:
 		if err := n.setAgentPaused(c.SetAgentPaused); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)

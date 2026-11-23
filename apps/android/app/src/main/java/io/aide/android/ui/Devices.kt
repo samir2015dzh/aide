@@ -45,7 +45,7 @@ fun DevicesTab(model: AppModel, openSession: (String) -> Unit) {
     val counts = botCounts(r.all)
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
-        PageTitle(t("Devices", "设备"), if (r.all.isEmpty()) null else counts.text)
+        PageTitle(t("Devices", "设备"), if (r.all.isEmpty()) null else counts.text, collapsed = list.collapsed())
         SyncLine(model)
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp)) {
