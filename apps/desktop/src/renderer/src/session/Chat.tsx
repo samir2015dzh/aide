@@ -436,13 +436,14 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
       return <TimeLine at={it.at} previous={previous} />;
     case "user": {
       // The one who started the session speaks on the right with no name (the card says who); anyone else
-      // who wrote into it (you, in a session one of your agents started; another agent) is named.
+      // who wrote into it (you, in a session one of your agents started; another agent) is named: by the name its
+      // connection has now, not the one kept with the message (工单 #101: "Muse (<its address>)" from before #85).
       const by =
         it.from === "" || it.from === starter
           ? undefined
           : it.from === "owner"
             ? t("chat.fromYou")
-            : agentName(it.fromName || clients.find((c) => c.clientId === it.from)?.label || it.from);
+            : agentName(clients.find((c) => c.clientId === it.from)?.label || it.fromName || it.from);
       return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} />;
     }
     case "agent":

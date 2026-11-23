@@ -44,12 +44,12 @@ class LocalApi(port: Long, token: String) {
     // Argon2id, which takes a moment: these wait longer than the rest.
 
     /** Sets a new server up with the setup code it printed, and logs this phone in to it. */
-    suspend fun setup(relayUrl: String, setupCode: String, account: String, password: String, label: String): SetupResponse =
-        call("Setup", SetupRequest(relayUrl, setupCode, account, password, label), timeoutSeconds = 60)
+    suspend fun setup(relayUrl: String, setupCode: String, account: String, password: String, label: String, platform: String = "android"): SetupResponse =
+        call("Setup", SetupRequest(relayUrl, setupCode, account, password, label, platform), timeoutSeconds = 60)
 
     /** Logs this phone in to the owner's server: it is signed in at once. */
-    suspend fun logIn(relayUrl: String, account: String, password: String, label: String): LogInResponse =
-        call("LogIn", LogInRequest(relayUrl, account, password, label), timeoutSeconds = 60)
+    suspend fun logIn(relayUrl: String, account: String, password: String, label: String, platform: String = "android"): LogInResponse =
+        call("LogIn", LogInRequest(relayUrl, account, password, label, platform), timeoutSeconds = 60)
 
     suspend fun getLogin(): GetLoginResponse = call("GetLogin", Empty())
 

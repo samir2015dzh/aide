@@ -75,3 +75,8 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .gl-id label{flex:1;font-size:12px;color:var(--l2)}
 .gl-id .field{display:block;width:100%;margin-top:4px}
 .settings .fhead.gl-head{margin:21px 0 4px 2px}
+/* General's first group (工单 #103): the app, its version, and what Check for Updates found. */
+.settings .frow.about .fn{font-size:var(--fs-title3);font-weight:var(--font-weight-semibold)}
+.settings .frow.about .fdesc{font-variant-numeric:tabular-nums}
+.settings .frow.about-said{min-height:36px;font-size:12px;color:var(--l2)}
+.settings .frow.about-said[data-state=error]{color:var(--red)}

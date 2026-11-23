@@ -210,11 +210,13 @@ func roomView(st *roomState) *machinev1.Room {
 
 // ListRooms is every room this machine hosts.
 func (n *Machine) ListRooms() *machinev1.ListRoomsResponse {
+	names := n.grantNames()
 	b := n.roomBook()
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	res := &machinev1.ListRoomsResponse{}
 	for _, st := range b.rooms {
+		b.freshNames(st, names)
 		res.Rooms = append(res.Rooms, roomView(st))
 	}
 	return res
@@ -246,10 +248,49 @@ func (n *Machine) grantName(clientID string) string {
 	return ""
 }
 
+// grantNames is each personal agent's name here, by client id, as its grant
+// says now.
+func (n *Machine) grantNames() map[string]string {
+	out := map[string]string{}
+	for _, g := range n.Local().Grants() {
+		out[g.ClientId] = g.ClientLabel
+	}
+	return out
+}
+
+// freshNames gives a room's personal agents the names their grants have now,
+// and what they said before too (b.mu held): a room keeps the name its agent
+// had when the room was made, as an MCP connection's "Muse (<its address>)" from
+// before 工单 #85 dropped the address, or before the owner renamed it (工单
+// #101). A direct room named after its agent follows. Saved when changed.
+func (b *roomBook) freshNames(st *roomState, names map[string]string) {
+	changed := false
+	for _, m := range st.room.Members {
+		id, personal := strings.CutPrefix(m.BotKey, "c:")
+		now := names[id]
+		if !personal || now == "" || now == m.Name {
+			continue
+		}
+		if st.room.Direct && st.room.Name == m.Name {
+			st.room.Name = now
+		}
+		for _, x := range st.msgs {
+			if x.From == m.BotKey && x.FromName == m.Name {
+				x.FromName = now
+			}
+		}
+		m.Name, changed = now, true
+	}
+	if changed {
+		_ = b.save(st)
+	}
+}
+
 // OpenDirectRoom is the direct room with a personal agent, made the first
 // time: its client has to have a grant here (an agent the owner approved).
 func (n *Machine) OpenDirectRoom(clientID string) (*machinev1.Room, error) {
-	name := n.grantName(clientID)
+	names := n.grantNames()
+	name := names[clientID]
 	if name == "" {
 		return nil, reason.New(connect.CodeNotFound, "room_no_grant", fmt.Sprintf("no agent %s here: its grant has not reached this machine", clientID))
 	}
@@ -258,6 +299,7 @@ func (n *Machine) OpenDirectRoom(clientID string) (*machinev1.Room, error) {
 	defer b.mu.Unlock()
 	for _, st := range b.rooms {
 		if st.room.Direct && len(st.room.Members) == 1 && st.room.Members[0].Address == clientID {
+			b.freshNames(st, names)
 			return roomView(st), nil
 		}
 	}
@@ -416,6 +458,7 @@ func (n *Machine) DeleteRoom(id string) error {
 
 // ListRoomMessages is a room and its newest messages, oldest first.
 func (n *Machine) ListRoomMessages(req *machinev1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	names := n.grantNames()
 	b := n.roomBook()
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -423,6 +466,7 @@ func (n *Machine) ListRoomMessages(req *machinev1.ListRoomMessagesRequest) (*mac
 	if err != nil {
 		return nil, err
 	}
+	b.freshNames(st, names)
 	msgs := st.msgs
 	if req.Limit > 0 && len(msgs) > int(req.Limit) {
 		msgs = msgs[len(msgs)-int(req.Limit):]
