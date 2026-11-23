@@ -3,6 +3,8 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +61,23 @@ func TestRoster(t *testing.T) {
 		}
 		return me && sess
 	})
+
+	// Aide's own command line on a machine (client@<machine>, its name when
+	// given none) and a name of no known kind on a machine are connections,
+	// not agents (工单 #64, #79): message contacts has them, the roster not,
+	// as the apps' roster.
+	for i, name := range []string{"client@owner-mac", "Notes on owner-mac"} {
+		w.loginAgent([]string{"AIDE_HOME=" + filepath.Join(w.tmp, fmt.Sprint("conn", i))}, name, nil)
+	}
+	eventually(t, 30*time.Second, "both among the contacts", func() bool {
+		r := w.cli(30*time.Second, "message", "contacts", "-o", "json")
+		return strings.Contains(r.stdout, `"client@owner-mac"`) && strings.Contains(r.stdout, `"Notes on owner-mac"`)
+	})
+	for _, e := range read().Endpoints {
+		if strings.HasPrefix(e.Name, "client@") || strings.HasPrefix(e.Name, "Notes on") {
+			t.Fatalf("a connection on the roster: %+v", e)
+		}
+	}
 
 	// The owner pauses Claude Code there: the roster says so.
 	if _, err := w.app.client.SetAgentPaused(ctx, &localv1.SetAgentPausedRequest{MachineId: w.machineID(), Agent: "claude", Paused: true}); err != nil {

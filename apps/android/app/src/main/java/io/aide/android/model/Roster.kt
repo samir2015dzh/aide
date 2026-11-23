@@ -120,7 +120,7 @@ private fun grantAgent(label: String): String? {
     }
 }
 
-/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). */
+/** Aide's own client logged in on a machine under the name it makes up ("client@<machine>"): no agent (工单 #64). The same rule as the CLI's roster (Go identity.IsAideClient, 工单 #79). */
 fun isAideClient(c: Client): Boolean = c.label.trim().startsWith("client@", ignoreCase = true)
 
 /** A grant filed as a coding agent is one on the roster when it names a known coding agent, or the owner filed it so. */

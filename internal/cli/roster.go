@@ -177,6 +177,9 @@ func (a *app) gatherRoster(ctx context.Context, c *peer.Client, machines []machi
 				}
 			}
 		}
+		if !onRoster(info.Name, cat, info.Category != "") {
+			continue
+		}
 		e := endpointJSON{Address: info.Inbox, Name: info.Name, Kind: info.Kind, Category: cat, Machine: home, Tier: tier, Mailable: info.InboxKey != nil, You: info.Inbox == a.g.ClientId}
 		if p := presence[info.Inbox]; p != nil {
 			online := p.Online
