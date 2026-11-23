@@ -158,7 +158,10 @@ fun roster(machines: List<Machine>, clients: List<Client>, sessions: Collection<
         for (agent in c.rows.map { it.agent }.distinct()) {
             val g = grants.firstOrNull { grantAgent(it.label) == agent }?.also { grants.remove(it) }
             val own = personas.filter { it.machineId == m.machineId && it.agent == agent }
-            bots += bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own)
+            val b = bot("m:${m.machineId}/$agent", false, own.firstOrNull()?.name?.ifEmpty { null } ?: botName(agent, m, machines.size), agent, m.machineId, g, codingBotState(m, agent, now, c)!!, sessions.filter { it.machineId == m.machineId && it.agent == agent }, now).copy(personas = own)
+            // Filed as a personal agent by the owner (工单 #52, #93: their say first): listed with the personal agents, as
+            // on the desktop; still its machine's agent, its page the same.
+            if (m.status?.agents.orEmpty().firstOrNull { it.name == agent }?.category == "personal") personal += b else bots += b
         }
         for (g in grants.filter { !admitted(it) }) aside += AsideClient(g, m.machineId)
         for (g in grants.filter { admitted(it) }) bots += bot("c:${g.clientId}", false, grantName(g.label), grantAgent(g.label) ?: "", m.machineId, g, personalBotState(g, now), sessions.filter { it.createdBy == g.clientId }, now)

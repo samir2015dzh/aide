@@ -2,20 +2,16 @@ package io.aide.android.ui
 
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -27,7 +23,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,24 +44,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.ApiError
 import io.aide.android.api.DSHBridge
-import io.aide.android.api.DSHBridgeEntry
 import io.aide.android.api.DSHSession
 import io.aide.android.api.DSHSessionEntry
-import io.aide.android.api.DSHUnreachable
 import io.aide.android.api.SessionEvent
 import io.aide.android.model.AppModel
 import io.aide.android.model.Transcript
 import io.aide.android.model.durationText
-import io.aide.android.model.groupByMachine
 import io.aide.android.model.instantOrNull
-import io.aide.android.model.manyMachines
 import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // DeepSeek Harness's own sessions on the owner's machines: those opened in DSH, or by another tool, which
-// Aide did not start: the list by last activity, and what DSH wrote of each. Read only until the owner
+// Aide did not start, listed on DSH's bot page (工单 #76, OwnSessions.kt), and here what DSH wrote of each. Read only until the owner
 // takes one over (docs/dsh-takeover.md): then their messages go to it through the Aide plugin in DSH
 // Desktop, queued after a turn that runs, as DSH queues its own. A machine that can't be reached keeps
 // its sessions here as last read, lost: their state last known, never shown as now (docs/session-states.md).
@@ -104,7 +95,7 @@ fun dshEntryStateText(e: DSHSessionEntry, now: Instant = Instant.now()): String 
 }
 
 @Composable
-private fun DSHDot(s: DSHSession, lost: Boolean) {
+internal fun DSHDot(s: DSHSession, lost: Boolean) {
     if (lost) {
         Box(Modifier.size(10.dp).border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape))
         return
@@ -115,116 +106,6 @@ private fun DSHDot(s: DSHSession, lost: Boolean) {
         else -> MaterialTheme.colorScheme.outlineVariant
     }
     Box(Modifier.size(10.dp).background(color, CircleShape))
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DSHListPage(model: AppModel, open: (DSHSessionEntry) -> Unit, back: () -> Unit) {
-    var entries by remember { mutableStateOf<List<DSHSessionEntry>?>(null) }
-    var unreachable by remember { mutableStateOf<List<DSHUnreachable>>(emptyList()) }
-    var homes by remember { mutableStateOf<List<DSHBridgeEntry>>(emptyList()) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var archived by remember { mutableStateOf(false) }
-    suspend fun load() {
-        try {
-            val r = model.api?.listDSHSessions()
-            if (r != null) {
-                entries = r.sessions
-                unreachable = r.unreachable
-                homes = r.bridges.filter { it.dshHome.isNotEmpty() }
-                error = null
-            }
-        } catch (e: ApiError) {
-            error = e.message.ifEmpty { e.code }
-        }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            load()
-            delay(15_000)
-        }
-    }
-    var refreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    Scaffold(snackbarHost = { PageFeedback(model) }, topBar = {
-        TopAppBar(
-            title = { Text(t("DSH sessions", "DSH 会话")) },
-            navigationIcon = { IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Back", "返回")) } },
-        )
-    }) { pad ->
-        val all = entries
-        if (all == null) {
-            Box(Modifier.fillMaxSize().padding(pad)) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
-            return@Scaffold
-        }
-        val shown = all.filter { archived || !it.session.archived }
-        val hidden = all.size - shown.size
-        PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } }, modifier = Modifier.fillMaxSize().padding(pad)) {
-        LazyColumn(Modifier.fillMaxSize()) {
-            item {
-                Text(
-                    t("Sessions DSH has of its own. Read only, until you turn on Take Over for one.", "DSH 自己的会话（在 DSH 里开的，或经其他工具派的）。默认只读；开启「接管」后可以给它发消息。"),
-                    Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            error?.let { item { Text(it, Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error) } }
-            items(unreachable) { u ->
-                val name = u.machineName.ifEmpty { u.machineId }
-                Text(
-                    if (all.any { it.lost && it.machineId == u.machineId }) t("$name is lost: its sessions below are as last read.", "$name 失联：下面是最后一次读到的会话。")
-                    else t("$name doesn’t answer.", "$name 没有响应。"),
-                    Modifier.padding(horizontal = 16.dp), color = Warning,
-                )
-            }
-            if (shown.isEmpty()) {
-                item { Text(t("No DSH sessions of its own.", "没有 DSH 自己的会话。"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                // Which DSH home each machine read: where to look when DSH Desktop has sessions this lacks.
-                items(homes) { h ->
-                    val name = model.world.value.machineName(h.machineId)
-                    Text(t("Read from on $name: ${h.dshHome}", "$name 上读取的目录：${h.dshHome}"), Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (homes.isNotEmpty()) item {
-                    Text(
-                        t("If DSH Desktop has sessions that are not here, it keeps them in another folder: set the user environment variable DSH_HOME to that folder, and Aide reads there.",
-                            "如果 DSH Desktop 里有会话却不在这里，说明它的数据在别的目录：把用户环境变量 DSH_HOME 设成那个目录，Aide 就会改读那里。"),
-                        Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            // Several machines: the list by machine, each group its header (the owner's rule, 2026-11-21).
-            val many = manyMachines(model.world.value.machines.size)
-            for (g in groupByMachine(shown, { it.machineId }, { id -> shown.firstOrNull { it.machineId == id }?.machineName.orEmpty().ifEmpty { model.world.value.machineName(id) } })) {
-            if (many) item(key = "g-" + g.machineId) { MachineGroupHeader(g.name, g.items.size) }
-            items(g.items, key = { it.machineId + "/" + it.session.sessionId }) { e ->
-                val s = e.session
-                Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut), fadeOutSpec = tween(Motion.Short))) {
-                Row(Modifier.fillMaxWidth().pressable { open(e) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    DSHDot(s, e.lost)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(s.title.ifEmpty { s.sessionId }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            listOf(dshEntryStateText(e), relativeTime(s.lastActivityAt), if (many) "" else e.machineName, s.cwd.split('/', '\\').lastOrNull { it.isNotEmpty() }.orEmpty(),
-                                if (s.archived) t("archived", "已归档") else "").filter { it.isNotEmpty() }.joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                HorizontalDivider(Modifier.padding(start = 16.dp))
-                }
-            }
-            }
-            if (hidden > 0 || archived) {
-                item {
-                    TextButton(onClick = { archived = !archived }, modifier = Modifier.padding(8.dp)) {
-                        Text(if (archived) t("Hide archived", "隐藏已归档") else t("Show $hidden archived", "显示 $hidden 个已归档"))
-                    }
-                }
-            }
-        }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

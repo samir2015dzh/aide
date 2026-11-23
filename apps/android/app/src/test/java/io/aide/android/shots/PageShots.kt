@@ -111,7 +111,7 @@ class PageShots {
         rule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
     }
 
-    @Test fun tasks() = model().let { m -> shot("1-tasks") { SessionsTab(m, openDSH = {}) {} } }
+    @Test fun tasks() = model().let { m -> shot("1-tasks") { SessionsTab(m) {} } }
     @Test fun needsYou() = model().let { m -> shot("2-needs-you") { NeedsYouTab(m) {} } }
     @Test fun bots() = model().let { m -> shot("3-bots", waitFor = "发版评审") { BotsTab(m) {} } }
     @Test fun botPage() = model().let { m -> shot("6-bot-dsh") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }

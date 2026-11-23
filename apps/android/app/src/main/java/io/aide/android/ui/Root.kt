@@ -48,9 +48,9 @@ import io.aide.android.model.AppModel
 /** A page over the tabs. */
 sealed interface Route {
     data class Session(val id: String) : Route
-    /** DSH's own sessions, and one of them. */
-    data object DSH : Route
+    /** One of a coding agent's own sessions, from its bot's page (工单 #76): DSH's, the Claude desktop app's. */
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
+    data class ClaudeSession(val entry: io.aide.android.api.ClaudeSessionEntry) : Route
     /** A contact, from its bot's page (docs/personas.md); an empty one adds. */
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
     /** A bot's own page (工单 #57). */
@@ -116,10 +116,11 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     if (top != null) {
         when (top) {
             is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
-            Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
+            is Route.ClaudeSession -> ClaudeSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) },
-                openDevices = { stack.clear(); tab = Tab.Devices })
+                openDevices = { stack.clear(); tab = Tab.Devices },
+                openOwn = { e -> stack.add(if (e is OwnEntry.Dsh) Route.DSHSession(e.entry) else Route.ClaudeSession((e as OwnEntry.Claude).entry)) })
             is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }
             is Route.Room -> RoomPage(model, top.machineId, top.roomId, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
             Route.NewRoom -> NewRoomPage(model, opened = { r -> stack.removeAt(stack.lastIndex); stack.add(Route.Room(r.hostMachineId, r.roomId)) }, back = { stack.removeAt(stack.lastIndex) })
@@ -149,7 +150,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         Box(Modifier.padding(pad)) {
             Crossfade(tab, animationSpec = tween(Motion.Medium, easing = Motion.EaseOut), label = "tab") { shown ->
                 when (shown) {
-                    Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
+                    Tab.Sessions -> SessionsTab(model) { stack.add(Route.Session(it)) }
                     Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
                     Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
                     Tab.Devices -> DevicesTab(model) { stack.add(Route.Session(it)) }
