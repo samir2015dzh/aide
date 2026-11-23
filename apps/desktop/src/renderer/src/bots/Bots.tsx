@@ -7,7 +7,7 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
+  allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
 import { botLook, botMood, botSeed, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
@@ -16,6 +16,7 @@ import { local } from "../api";
 import { connDot } from "../Connections";
 import { Face, grantApp, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
+import { modelOptions } from "../modelOptions";
 import { Picker, type PickerOption } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
 import { LookSheet } from "../settings/LookSheet";
@@ -478,18 +479,19 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const a = m.status?.agents.find((x) => x.name === b.agent);
   // The composer's choices: the current conversation's own, else the contact's presets, else the first project.
   const base = (): ConvParams =>
-    current ? paramsOf(current) : { projectId: persona?.projectId || projects[0]?.projectId || "", model: persona?.model ?? "", effort: persona?.effort ?? "", mode: persona?.mode ?? "" };
+    current ? paramsOf(current, a?.models) : { projectId: persona?.projectId || projects[0]?.projectId || "", model: persona?.model ?? "", effort: persona?.effort ?? "", mode: persona?.mode ?? "" };
   const [params, setParams] = useState<ConvParams>(base);
   const curId = current?.sessionId ?? cur ?? "";
-  useEffect(() => setParams(base()), [curId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Again once it says the model it runs (工单 #99: read back as it starts), so that is no change.
+  useEffect(() => setParams(base()), [curId, current?.model]); // eslint-disable-line react-hooks/exhaustive-deps
   const [text, setText] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
   const attach = useAttachments();
   const [showArchived, setShowArchived] = useState(false);
   const stuck = current ? stuckWhy(current, st.projects, m) : undefined;
-  const fresh = !current || paramsChanged(current, params);
-  const changed = current ? changedParams(current, params) : [];
+  const fresh = !current || paramsChanged(current, params, a?.models);
+  const changed = current ? changedParams(current, params, a?.models) : [];
   const usable = b.state.usable !== "no";
   // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
   const permission = modeChoice(b.agent, params.mode, projects.find((p) => p.projectId === params.projectId), a?.modes ?? []);
@@ -543,7 +545,11 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
               : current && fresh
                 ? { text: t("conv.willStartNew", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }), tone: "quiet" as const }
                 : undefined;
-  const models: PickerOption<string>[] = [{ value: "", label: t("composer.defaultModel") }, ...(a?.models ?? []).map((x) => ({ value: x.id, label: x.name || x.id }))];
+  // 工单 #98: an ACP agent (DSH) says its models only in a session: before its first here, the list says so.
+  const modelsLater = a && a.models.length === 0 && b.agent !== "claude" && b.agent !== "codex"
+    ? t(st.sessions.some((s) => s.machineId === m.machineId && s.agent === b.agent) ? "composer.modelsNone" : "composer.modelsAfterFirst", { agent: codingAgentTitle(b.agent) })
+    : undefined;
+  const models: PickerOption<string>[] = [...modelOptions(t, a, params.model), ...(modelsLater ? [{ value: "\0later", label: modelsLater, disabled: true }] : [])];
   const efforts = a?.models.find((x) => x.id === params.model)?.efforts ?? [];
   const modes: PickerOption<string>[] = [{ value: "", label: permission.defaultLabel ?? t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) }))];
   const chips = (
@@ -552,7 +558,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         <Picker chip size="sm" label={t("composer.param.projectId")} value={params.projectId} onChange={(v) => setParams({ ...params, projectId: v })}
           options={projects.map((p) => ({ value: p.projectId, label: projectTitle(p), icon: <Icon name="folder" className="sm" /> }))} />
       )}
-      {(a?.models.length ?? 0) > 0 && <Picker chip size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />}
+      {((a?.models.length ?? 0) > 0 || modelsLater) && <Picker chip size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />}
       {efforts.length > 0 && (
         <Picker chip size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
           options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: e }))]} />

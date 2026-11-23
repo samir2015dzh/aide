@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
 import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
-import { agentEntry, agoText, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, dshAgent, modeLabel, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
+import { agentEntry, agoText, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, dshAgent, modeLabel, modelChoices, modelTitle, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
@@ -241,7 +241,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
 
 type T = TFunction<"firstrun">;
 
-const modelName = (a: AgentStatus, id: string) => a.models.find((x) => x.id === id)?.name || id;
+const modelName = (a: AgentStatus, id: string) => modelTitle(id, a.models);
 const modeName = (a: AgentStatus, id: string) => modeLabel(a.name, a.modes.find((x) => x.id === id) ?? { id });
 const effortName = (t: T, e: string) => t(`prepare.efforts.${e}`, { defaultValue: e });
 const speedName = (t: T, v: AgentSpeed) => (v === AgentSpeed.FAST ? t("prepare.fast") : t("prepare.standard"));
@@ -512,7 +512,7 @@ function Defaults({ a, m }: { a: AgentStatus; m: Machine }) {
       value: d.model ? modelName(a, d.model) : same(own?.model ? modelName(a, own.model) : ""),
       open: () =>
         pick(
-          [{ id: "", label: same(own?.model ? modelName(a, own.model) : ""), checked: !d.model }, ...a.models.map((x) => ({ id: x.id, label: x.name || x.id, checked: d.model === x.id }))],
+          [{ id: "", label: same(own?.model ? modelName(a, own.model) : ""), checked: !d.model }, ...modelChoices(a.name, a.models).map((x) => ({ id: x.value, label: x.detail ? `${x.title} · ${x.detail}` : x.title, checked: d.model === x.value }))],
           (v) => {
             // An effort the newly picked model lacks goes back to the agent's own.
             const ok = effortsOf(v || own?.model || "");

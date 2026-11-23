@@ -583,6 +583,10 @@
     "newStarted": "已开新对话",
     "newBecause": "已开新对话：换了{{what}}",
     "defaultModel": "默认模型",
+    "defaultModelIs": "默认 · {{model}}",
+    "modelUnknown": "具体型号未知：这台机器上的 Claude Code 没有报告",
+    "modelsAfterFirst": "{{agent}} 只在会话里告诉可用的模型：先用默认模型发出第一条，之后这里列出它在这台机器上的实际模型",
+    "modelsNone": "{{agent}} 的会话没有提供模型选项：按它自己的设置运行",
     "defaultEffort": "默认强度",
     "defaultMode": "默认模式",
     "param": {
