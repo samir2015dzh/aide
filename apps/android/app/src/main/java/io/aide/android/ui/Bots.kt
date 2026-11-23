@@ -394,15 +394,16 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
     val cur = currentConversation(convs, c.chosen)
     val projects = world.projects.filter { it.machineId == m.machineId && (it.agents.isEmpty() || b.agent in it.agents) }
     val persona = b.personas.firstOrNull()
-    val base = cur?.let { paramsOf(it) } ?: ConvParams(persona?.projectId?.ifEmpty { null } ?: projects.firstOrNull()?.projectId.orEmpty(), persona?.model.orEmpty(), persona?.effort.orEmpty(), persona?.mode.orEmpty())
-    LaunchedEffect(cur?.sessionId, c.chosen) { c.params = base }
-    val p = c.params ?: base
     val a = m.status?.agents?.firstOrNull { it.name == b.agent }
+    val base = cur?.let { paramsOf(it, a?.models.orEmpty()) } ?: ConvParams(persona?.projectId?.ifEmpty { null } ?: projects.firstOrNull()?.projectId.orEmpty(), persona?.model.orEmpty(), persona?.effort.orEmpty(), persona?.mode.orEmpty())
+    // Again once it says the model it runs (工单 #99: read back as it starts), so that is no change.
+    LaunchedEffect(cur?.sessionId, c.chosen, cur?.model) { c.params = base }
+    val p = c.params ?: base
     var text by rememberSaveable(b.key) { mutableStateOf("") }
     var key by rememberSaveable(b.key) { mutableStateOf(UUID.randomUUID().toString()) }
     val attach = rememberAttachments(b.key)
     val stuck = cur?.let { stuckWhy(it, world.projects, m) }
-    val changed = cur?.let { changedParams(it, p) }.orEmpty()
+    val changed = cur?.let { changedParams(it, p, a?.models.orEmpty()) }.orEmpty()
     val fresh = cur == null || changed.isNotEmpty()
     val names = mapOf("project" to t("project", "项目"), "model" to t("model", "模型"), "effort" to t("effort", "推理强度"), "mode" to t("mode", "模式"))
     // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
@@ -456,7 +457,7 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
         ) + (if (cur != null) listOf(SlashCommand("new", t("Start a new conversation", "开启新对话")) { c.chosen = "new"; model.chooseConversation(b.key, "new") }) else emptyList()),
         chips = {
             if (projects.isNotEmpty()) ChipPicker(t("Project", "项目"), p.projectId, projects.map { it.projectId to it.title() }) { c.params = p.copy(projectId = it) }
-            if (a != null && a.models.isNotEmpty()) ChipPicker(t("Model", "模型"), p.model, listOf("" to t("Default model", "默认模型")) + a.models.map { it.id to it.name.ifEmpty { it.id } }) { c.params = p.copy(model = it, effort = "") }
+            ModelChip(b.agent, a, p.model, world.sessions.values.any { it.machineId == m.machineId && it.agent == b.agent }) { c.params = p.copy(model = it, effort = "") }
             a?.models?.firstOrNull { it.id == p.model }?.efforts?.takeIf { it.isNotEmpty() }?.let { ef ->
                 ChipPicker(t("Effort", "推理强度"), p.effort, listOf("" to t("Default effort", "默认强度")) + ef.map { it to it }) { c.params = p.copy(effort = it) }
             }

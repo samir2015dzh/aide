@@ -78,6 +78,7 @@ import io.aide.android.model.choose
 import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
 import io.aide.android.model.lostSpanText
+import io.aide.android.model.modelTitle
 import io.aide.android.model.openedNews
 import io.aide.android.model.sessionsByProject
 import kotlinx.coroutines.launch
@@ -209,7 +210,8 @@ private fun SessionComposer(model: AppModel, s: Session) {
     )
 }
 
-private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
+// The model it runs, as the agent reported it: its specific one, as people call it and in full (工单 #99).
+private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }.let { id -> modelTitle(id).let { if (it == id) id else "$it · $id" } }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
 
 /** The sessions to switch to (工单 #90): this agent's on this machine, by project; a tap opens one. An iOS sheet of grouped rows. */
 @Composable

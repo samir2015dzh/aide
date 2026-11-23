@@ -363,19 +363,22 @@ private fun RoundButton(enabled: Boolean, filled: Boolean, onClick: () -> Unit, 
     }
 }
 
-/** A choice in the composer as a quiet chip that opens its options (an app's own control, not a form's, 工单 #68). */
+/**
+ * A choice in the composer as a quiet chip that opens its options (an app's own control, not a form's, 工单 #68).
+ * chip: what the chip says of a choice, when shorter than its option; notes: lines under the options, not to pick.
+ */
 @Composable
-fun <T> ChipPicker(label: String, value: T, options: List<Pair<T, String>>, onChange: (T) -> Unit) {
+fun <T> ChipPicker(label: String, value: T, options: List<Pair<T, String>>, notes: List<String> = emptyList(), chip: ((T) -> String?)? = null, onChange: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
             Modifier.clip(CircleShape).background(aide.fill2).pressable { open = true }.padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(options.firstOrNull { it.first == value }?.second ?: label, style = IosType.Footnote, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+            Text(chip?.invoke(value) ?: options.firstOrNull { it.first == value }?.second ?: label, style = IosType.Footnote, color = MaterialTheme.colorScheme.primary, maxLines = 1)
             Icon(Icons.Filled.KeyboardArrowDown, label, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
         }
-        IosMenu(open, { open = false }, options.map { (v, l) -> MenuEntry(l, checked = v == value) { open = false; onChange(v) } })
+        IosMenu(open, { open = false }, options.map { (v, l) -> MenuEntry(l, checked = v == value) { open = false; onChange(v) } } + notes.map { MenuEntry(it, enabled = false) {} })
     }
 }
 

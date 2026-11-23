@@ -53,6 +53,8 @@ import io.aide.android.model.botMood
 import io.aide.android.model.botSeed
 import io.aide.android.model.botShapes
 import io.aide.android.model.colorName
+import io.aide.android.model.defaultModelChoice
+import io.aide.android.model.modelChoices
 import io.aide.android.model.personaChoices
 import io.aide.android.model.personaLook
 import io.aide.android.model.personaReady
@@ -163,7 +165,7 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
             val a = c.agent
             if (a != null && a.models.isNotEmpty()) {
                 SectionHeader(t("Model", "模型"))
-                GroupRows(listOf("" to t("Default", "默认")) + a.models.map { m -> m.id to m.name.ifEmpty { m.id } }) { (id, name) -> CheckRow(name, p.model == id) { p = p.copy(model = id, effort = "") } }
+                GroupRows(listOf("" to (defaultModelChoice(a)?.let { t("Default · ${it.label()}", "默认 · ${it.label()}") } ?: t("Default", "默认"))) + modelChoices(a.name, a.models).map { m -> m.value to m.label() }) { (id, name) -> CheckRow(name, p.model == id) { p = p.copy(model = id, effort = "") } }
             }
             if (c.efforts.isNotEmpty()) {
                 SectionHeader(t("Reasoning effort", "推理强度"))
