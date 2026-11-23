@@ -7,20 +7,20 @@ import { AgentPage, PauseSection, projectsFor, usageText } from "../AgentList";
 import { local } from "../api";
 import { connDot } from "../Connections";
 import { Icon } from "../icons";
-import { Picker } from "../Picker";
+import { Choices, FluentControls } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
 import { Row } from "../settings/common";
 import { blankPersona, lookFields } from "../sheets/Contacts";
 import { errorText, useNow, useStore } from "../store";
 import { BotFace, BotPill, PersonaFace } from "./Bots";
+import "./botsettings.css";
 
 /**
  * A bot's settings, a page of their own (工单 #97): its page keeps its state, its conversations and what it is working
  * on; every setting it has is here, each once, with the way back to its page. A coding agent's: how it stands (its
  * plan's usage with it), what it may use, its kind, its name and face, its projects and how it runs, pausing it, its
  * grant when it has one, and taking it off Aide. A personal agent's: how it stands and its grant (what it may use, its
- * kind, running commands, its name and face, disconnecting it). Drawn as its page's column was (a grouped page); its
- * look waits on the Fluent design (工单 #107).
+ * kind, running commands, its name and face, disconnecting it). Its controls are drawn the Fluent way, here alone.
  */
 export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
   const st = useStore();
@@ -28,13 +28,13 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
   const coding = !!m && !!b.agent && !b.key.startsWith("c:");
   const back = () => st.set({ selection: { kind: "bot", key: b.key } });
   return (
-    <div className="bot-page" role="region" aria-label={t("bots.settingsOf", { name: b.name })}>
-      <header className="bot-head drag">
-        <button className="link own-back" onClick={back} aria-label={t("bots.settingsBack", { name: b.name })} title={t("bots.settingsBack", { name: b.name })}>
-          <Icon name="chevL" className="sm" />
-          {b.name}
+    <div className="bot-page bset-page" role="region" aria-label={t("bots.settingsOf", { name: b.name })}>
+      <header className="bot-head bset-head drag">
+        <button className="bset-back" onClick={back} aria-label={t("bots.settingsBack", { name: b.name })} title={t("bots.settingsBack", { name: b.name })}>
+          <Icon name="chevL" />
+          <span>{b.name}</span>
         </button>
-        <BotFace b={b} size={44} dot still />
+        <BotFace b={b} size={32} dot still />
         <div className="bot-head-t">
           <div className="bot-head-l1">
             <h1>{t("bots.settings")}</h1>
@@ -42,31 +42,33 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
           </div>
         </div>
       </header>
-      <div className="bot-bench bset">
-        <div className="bset-col">
-          <section aria-label={t("bots.connection")}>
-            <div className="bot-sec-h">{t("bots.connection")}</div>
-            <div className="fgroup">
-              <div className="frow bot-state-row">
-                <span className="conn-state" data-state={b.state.state}>
-                  <i className={`dotc ${connDot(b.state.state)}`} />
-                  {b.state.word}
-                </span>
-                <span className="muted">{b.state.line}</span>
+      <div className="bset">
+        <FluentControls.Provider value>
+          <div className="bset-col">
+            <section aria-label={t("bots.connection")}>
+              <div className="bset-h">{t("bots.connection")}</div>
+              <div className="fgroup">
+                <div className="frow bot-state-row">
+                  <span className="conn-state" data-state={b.state.state}>
+                    <i className={`dotc ${connDot(b.state.state)}`} />
+                    {b.state.word}
+                  </span>
+                  <span className="muted">{b.state.line}</span>
+                </div>
+                {coding && <Usage b={b} m={m!} />}
               </div>
-              {coding && <Usage b={b} m={m!} />}
-            </div>
-          </section>
-          {coding && <AgentSettings b={b} m={m!} />}
-          {b.client && (
-            <section aria-label={t("bots.grant")}>
-              <div className="bot-sec-h">{t("bots.grant")}</div>
-              {/* A coding agent's name and face are its contact's (above), so its grant's look isn't offered again here. */}
-              <GrantDetail c={b.client} bare look={!coding} />
             </section>
-          )}
-          {coding && <Hide b={b} m={m!} />}
-        </div>
+            {coding && <AgentSettings b={b} m={m!} />}
+            {b.client && (
+              <section aria-label={t("bots.grant")}>
+                <div className="bset-h">{t("bots.grant")}</div>
+                {/* A coding agent's name and face are its contact's (above), so its grant's look isn't offered again here. */}
+                <GrantDetail c={b.client} bare look={!coding} />
+              </section>
+            )}
+            {coding && <Hide b={b} m={m!} />}
+          </div>
+        </FluentControls.Provider>
       </div>
     </div>
   );
@@ -99,7 +101,7 @@ function AgentSettings({ b, m }: { b: Bot; m: Machine }) {
   return (
     <>
       <section aria-label={t("agentSettings.canUse")}>
-        <div className="bot-sec-h">{t("agentSettings.canUse")}</div>
+        <div className="bset-h">{t("agentSettings.canUse")}</div>
         <div className="fgroup">
           <Row k={t("agentSettings.machine")}>{t("agentSettings.machineValue", { machine: m.machineName })}</Row>
           <Row k={t("agentSettings.projects")}>{all ? t("agentSettings.allProjects") : mine.length ? mine.map(projectTitle).join(t("agentSettings.separator")) : t("agentSettings.noProjects")}</Row>
@@ -117,7 +119,7 @@ function AgentSettings({ b, m }: { b: Bot; m: Machine }) {
       )}
       <Identity b={b} m={m} />
       <section aria-label={t("bots.manage")}>
-        <div className="bot-sec-h">{t("bots.manage")}</div>
+        <div className="bset-h">{t("bots.manage")}</div>
         <AgentPage m={m} agent={b.agent} bare />
       </section>
       {/* Stopping it (until resumed, or until its usage resets). */}
@@ -136,7 +138,7 @@ function Identity({ b, m }: { b: Bot; m: Machine }) {
   const { t } = useTranslation("common");
   return (
     <section aria-label={t("agentSettings.rename")}>
-      <div className="bot-sec-h">{t("agentSettings.rename")}</div>
+      <div className="bset-h">{t("agentSettings.rename")}</div>
       <div className="fgroup">
         {b.personas.map((p) => (
           <div key={p.personaId} className="frow bot-persona">
@@ -202,15 +204,13 @@ function AgentCategoryControl({ m, agent, category }: { m: Machine; agent: strin
   const personal = category === "personal";
   return (
     <div className="conn-cat">
-      <label>
-        <span className="muted">{t("category.label")}</span>
-        <Picker size="sm" value={category} label={t("category.label")} onChange={set}
-          options={[
-            { value: "", label: t("category.auto", { kind: category ? "" : ` · ${t("category.local")}` }) },
-            { value: "personal", label: t("category.personal") },
-            { value: "local", label: t("category.localOn", { machine: m.machineName }) },
-          ]} />
-      </label>
+      <span className="bset-k">{t("category.label")}</span>
+      <Choices value={category} label={t("category.label")} onChange={set}
+        options={[
+          { value: "", label: t("category.auto", { kind: category ? "" : ` · ${t("category.local")}` }) },
+          { value: "personal", label: t("category.personal") },
+          { value: "local", label: t("category.localOn", { machine: m.machineName }) },
+        ]} />
       <span className="muted">{t(personal ? "agentSettings.personalMeans" : "category.localMeans")}</span>
       {error && <span className="err" role="alert">{error}</span>}
     </div>

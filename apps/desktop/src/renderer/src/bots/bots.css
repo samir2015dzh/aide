@@ -48,9 +48,8 @@
 .bot-work-t b{font-weight:var(--font-weight-semibold);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bot-work-t span{font-size:12px;color:var(--l2)}
 .bot-work-when{font-size:11.5px;color:var(--l3);flex:none}
-/* Its task board column (工单 #97 补充二), and its settings page, are grouped pages (工单 #95): grey, the groups white inset cards. */
+/* Its task board column (工单 #97 补充二) is a grouped page (工单 #95): grey, the groups white inset cards. */
 .bot-bench{min-height:0;overflow-y:auto;border-left:.5px solid var(--sep);padding:14px 16px 24px;display:flex;flex-direction:column;gap:18px;background:var(--grouped);--win2:var(--grouped-card)}
-.bot-bench .ag-page{padding:0}
 /* Its groups' titles in line with the rows' text, as .fhead. */
 .bot-bench .bot-sec-h{margin:0 0 6px 14px}
 .sheet .contact-t .contact-line{color:var(--l3)}
@@ -101,10 +100,8 @@
 /* A bot's state, its one line, on its page (工单 #63: what its machine reports in full is on the devices page). */
 .bot-state-row{gap:10px}
 .bot-state-row .muted{flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
-/* Its settings page (工单 #97): the column of its groups, in the window's middle. */
-.bset{flex:1;border-left:0}
-.bot-head .own-back{align-self:center}
-.bset-col{width:100%;max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.bot-board .bot-sec-h .link{font-size:12px}
+.bot-board-none{margin:0 14px;font-size:12.5px;color:var(--l2)}
 
 /* A coding agent's conversations (工单 #67). */
 .conv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 10px;font-size:12.5px;color:var(--l2)}

@@ -368,7 +368,7 @@ function TaskBoard({ b }: { b: Bot }) {
         {t("bots.board.title")}
         <button className="link" onClick={() => st.set({ selection: { kind: "tasks" } })}>{t("bots.board.all")}</button>
       </div>
-      {groups.length === 0 && <div className="bot-empty">{t("bots.board.none", { name: b.name })}</div>}
+      {groups.length === 0 && <p className="bot-board-none">{t("bots.board.none", { name: b.name })}</p>}
       {groups.map((g) => (
         <section key={g.id} aria-label={t(`bots.board.${g.id}`)}>
           <div className="bot-sec-h">{t(`bots.board.${g.id}`)} · {g.rows.length}</div>
