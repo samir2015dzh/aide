@@ -70,10 +70,13 @@ type ScopedModels interface {
 
 // Model is one model an agent offers. Resolved is the specific model an
 // alias ID runs here (Claude Code's, 工单 #99); "" when ID is the model.
+// Source is where the agent offers it from (DSH: its provider, or each
+// provider line it comes by, " · " between; 工单 #98 补充).
 type Model struct {
 	ID, Name string
 	Efforts  []string
 	Resolved string `json:",omitempty"`
+	Source   string `json:",omitempty"`
 }
 
 // Mode is one session mode an agent offers (an ACP agent's permission or

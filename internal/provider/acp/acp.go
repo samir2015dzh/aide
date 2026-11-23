@@ -519,6 +519,7 @@ type choice struct {
 	Value   string   `json:"value"`
 	Name    string   `json:"name"`
 	Options []choice `json:"options"` // a group of choices; Name is the group's
+	Group   string   `json:"-"`       // the group it is in (choices)
 }
 
 // option is the session's config option of a category ("model",
@@ -532,7 +533,20 @@ func (c *sessionConfig) option(category string) *configOption {
 	return nil
 }
 
-// choices are the option's values, those of a group named "name (group)".
+// modelOptions are the session's config options of the model category: an
+// agent may offer its models in more than one (工单 #98 补充: all of them
+// are its models, not only the first's).
+func (c *sessionConfig) modelOptions() []*configOption {
+	var out []*configOption
+	for i, o := range c.ConfigOptions {
+		if o.Category == "model" || o.ID == "model" {
+			out = append(out, &c.ConfigOptions[i])
+		}
+	}
+	return out
+}
+
+// choices are the option's values, each with the group it is in.
 func (o *configOption) choices() []choice {
 	var out []choice
 	var walk func(cs []choice, group string)
@@ -542,15 +556,19 @@ func (o *configOption) choices() []choice {
 				walk(c.Options, c.Name)
 				continue
 			}
-			name := firstNonEmpty(c.Name, c.Value)
-			if group != "" {
-				name += " (" + group + ")"
-			}
-			out = append(out, choice{Value: c.Value, Name: name})
+			out = append(out, choice{Value: c.Value, Name: firstNonEmpty(c.Name, c.Value), Group: group})
 		}
 	}
 	walk(o.Options, "")
 	return out
+}
+
+// label is a choice as a list names it: "name (group)".
+func (x choice) label() string {
+	if x.Group == "" {
+		return x.Name
+	}
+	return x.Name + " (" + x.Group + ")"
 }
 
 func (o *configOption) current() string {
@@ -561,8 +579,13 @@ func (o *configOption) current() string {
 
 // model is the model the session runs ("" when it does not say).
 func (c *sessionConfig) model() string {
-	if o := c.option("model"); o != nil {
-		return o.current()
+	if ms := c.modelOptions(); len(ms) > 0 {
+		for _, o := range ms {
+			if v := o.current(); v != "" {
+				return v
+			}
+		}
+		return ""
 	}
 	if c.Models != nil {
 		return c.Models.CurrentModelID
@@ -582,10 +605,12 @@ func (c *sessionConfig) effort() string {
 // unless told.
 func (c *sessionConfig) offers() *provider.Offers {
 	o := &provider.Offers{Own: provider.Settings{Model: c.model(), Effort: c.effort()}}
-	if m := c.option("model"); m != nil {
-		for _, x := range m.choices() {
-			o.Models = append(o.Models, provider.Model{ID: x.Value, Name: x.Name})
+	if ms := c.modelOptions(); len(ms) > 0 {
+		var all []choice
+		for _, m := range ms {
+			all = append(all, m.choices()...)
 		}
+		o.Models = sameModelsOnce(all, o.Own.Model)
 	} else if c.Models != nil {
 		for _, x := range c.Models.AvailableModels {
 			o.Models = append(o.Models, provider.Model{ID: x.ModelID, Name: x.Name})
@@ -594,7 +619,7 @@ func (c *sessionConfig) offers() *provider.Offers {
 	if m := c.option("mode"); m != nil {
 		o.Own.Mode = m.current()
 		for _, x := range m.choices() {
-			o.Modes = append(o.Modes, provider.Mode{ID: x.Value, Name: x.Name})
+			o.Modes = append(o.Modes, provider.Mode{ID: x.Value, Name: x.label()})
 		}
 	} else if c.Modes != nil {
 		o.Own.Mode = c.Modes.CurrentModeID
@@ -653,6 +678,16 @@ func (s *session) configure(ctx context.Context, c *sessionConfig, spec provider
 // set sets one of the session's settings; c then says what it runs with.
 func (s *session) set(ctx context.Context, c *sessionConfig, category, value, method, param string) error {
 	o := c.option(category)
+	var values []string
+	if category == "model" { // the option that offers it, of all its model options
+		for _, m := range c.modelOptions() {
+			for _, x := range m.choices() {
+				if x.Value == value {
+					o = m
+				}
+			}
+		}
+	}
 	if o == nil {
 		if method == "" {
 			return errors.New("the agent offers no choice of it")
@@ -667,10 +702,15 @@ func (s *session) set(ctx context.Context, c *sessionConfig, category, value, me
 		}
 		return nil
 	}
-	var values []string
-	for _, x := range o.choices() {
-		if x.Value != "" { // the agent's own default
-			values = append(values, x.Value)
+	options := []*configOption{o}
+	if category == "model" {
+		options = c.modelOptions()
+	}
+	for _, m := range options {
+		for _, x := range m.choices() {
+			if x.Value != "" { // the agent's own default
+				values = append(values, x.Value)
+			}
 		}
 	}
 	if !contains(values, value) {

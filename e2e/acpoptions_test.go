@@ -83,7 +83,7 @@ func TestACPSessionOptions(t *testing.T) {
 		t.Fatalf("unchosen: %q", result(id))
 	}
 	l := list().Agents[0]
-	if len(l.Models) != 2 || l.Models[0].ID != "magpie/v4-pro" || l.Models[0].Name != "MAGPIE/V4-PRO (Models)" || strings.Join(l.Models[0].Efforts, ",") != "low,high" ||
+	if len(l.Models) != 2 || l.Models[0].ID != "magpie/v4-pro" || l.Models[0].Name != "MAGPIE/V4-PRO" || strings.Join(l.Models[0].Efforts, ",") != "low,high" ||
 		len(l.Modes) != 2 || l.Modes[1].ID != "code" || l.DefaultModel != "magpie/v4-pro" || l.DefaultMode != "ask" {
 		t.Fatalf("listed after a session: %+v", l)
 	}

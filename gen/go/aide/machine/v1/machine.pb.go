@@ -2764,7 +2764,11 @@ type AgentModel struct {
 	// Claude Code's "opus" → "claude-opus-5-5", as Claude Code itself
 	// resolves it on this machine for this account); empty when the id is the
 	// model itself, or the agent did not say.
-	Resolved      string `protobuf:"bytes,4,opt,name=resolved,proto3" json:"resolved,omitempty"`
+	Resolved string `protobuf:"bytes,4,opt,name=resolved,proto3" json:"resolved,omitempty"`
+	// Where its agent offers it from, when it says (工单 #98 补充: DSH's
+	// provider, e.g. "DeepSeek"; each provider line the same model comes by,
+	// " · " between, as it is listed once).
+	Source        string `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2823,6 +2827,13 @@ func (x *AgentModel) GetEfforts() []string {
 func (x *AgentModel) GetResolved() string {
 	if x != nil {
 		return x.Resolved
+	}
+	return ""
+}
+
+func (x *AgentModel) GetSource() string {
+	if x != nil {
+		return x.Source
 	}
 	return ""
 }
@@ -8157,13 +8168,14 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\rdefault_model\x18\x05 \x01(\tR\fdefaultModel\x12#\n" +
 	"\rcurrent_model\x18\x06 \x01(\tR\fcurrentModel\x12-\n" +
 	"\x13observed_at_unix_ms\x18\a \x01(\x03R\x10observedAtUnixMs\x12+\n" +
-	"\x12expires_at_unix_ms\x18\b \x01(\x03R\x0fexpiresAtUnixMs\"f\n" +
+	"\x12expires_at_unix_ms\x18\b \x01(\x03R\x0fexpiresAtUnixMs\"~\n" +
 	"\n" +
 	"AgentModel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\aefforts\x18\x03 \x03(\tR\aefforts\x12\x1a\n" +
-	"\bresolved\x18\x04 \x01(\tR\bresolved\"/\n" +
+	"\bresolved\x18\x04 \x01(\tR\bresolved\x12\x16\n" +
+	"\x06source\x18\x05 \x01(\tR\x06source\"/\n" +
 	"\tAgentMode\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"\x15\n" +
