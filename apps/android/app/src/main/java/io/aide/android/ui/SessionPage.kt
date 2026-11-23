@@ -92,6 +92,7 @@ import kotlinx.coroutines.launch
 fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) -> Unit = {}) {
     val world by model.world.collectAsState()
     val s = world.sessions[id]?.let(world::shown)
+    val names = remember(world.clients) { world.clients.associate { it.clientId to it.label } }
     val scope = rememberCoroutineScope()
     val feed = remember(id) { SessionFeed(model, id) }
     DisposableEffect(feed) {
@@ -171,7 +172,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                 ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
+                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty(), names = names) } }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
             }
@@ -270,7 +271,7 @@ private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
  * those sent from Aide are marked so.
  */
 @Composable
-internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
+internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, names: Map<String, String> = emptyMap()) {
     val pad = Modifier.padding(horizontal = 12.dp)
     when (item) {
         is Item.User -> Column(pad.fillMaxWidth(), horizontalAlignment = Alignment.End) {
@@ -282,7 +283,8 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
                 }
                 item.from.isEmpty() || item.from == starter -> null
                 item.from == "owner" -> t("You", "你")
-                else -> item.fromName.ifEmpty { item.from }
+                // By the name its connection has now, not the one kept with the message (工单 #101: "Muse (<its address>)" from before #85).
+                else -> names[item.from]?.ifEmpty { null } ?: item.fromName.ifEmpty { item.from }
             }
             by?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)) }
             // The owner's message, as the desktop's: a step above the page in either mode, never the accent (in dark mode it was white).

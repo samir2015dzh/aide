@@ -14,7 +14,7 @@
 .bot-tile>span:last-child{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--l2)}
 .acct-due{position:absolute;left:30px;top:9px;width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--side)}
 .side-foot{position:relative}
-.acct-menu .nav-count{margin-left:auto;font-size:11.5px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--orange-bg);color:var(--orange);text-align:center}
+.acct-menu .nav-count{margin-left:auto;font-size:11.5px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--orange-bg);color:var(--orange-t);text-align:center}
 .acct-menu .nav-count + .kbd{margin-left:8px}
 .bot-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .bot-l1{display:flex;align-items:baseline;gap:6px;min-width:0}
@@ -24,8 +24,8 @@
 .bot-l2{font-size:11.5px;color:var(--l3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bot-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;background:var(--fill);font-size:12px;color:var(--l2);white-space:nowrap}
 .bot-pill[data-usable=yes]{background:var(--green-bg)}
-.bot-pill[data-usable=yes]{color:var(--green)}
-.bot-pill[data-state=missing]{color:var(--orange)}
+.bot-pill[data-usable=yes]{color:var(--green-t)}
+.bot-pill[data-state=missing]{color:var(--orange-t)}
 
 .bot-page{display:flex;flex-direction:column;height:100%;min-height:0}
 .bot-head{display:flex;align-items:center;gap:14px;padding:18px 24px 14px;border-bottom:.5px solid var(--sep);--bav-ring:var(--win)}
@@ -62,9 +62,17 @@
 .chat-msg{display:flex;flex-direction:column;align-items:flex-start;max-width:78%;gap:3px}
 .chat-msg.mine{align-self:flex-end;align-items:flex-end}
 .chat-who{font-size:12px;color:var(--l2)}
-/* Bubbles as Messages draws them: grey for the others, the accent with white text for the owner's. */
+/* Bubbles as Messages draws them: grey for the others, the accent with white text for the owner's. The Markdown in
+   it takes white too (工单 #101: its own colour had kept the words black): links underlined, code and quotes in white's
+   steps; a code block, a table or a diagram is a card of the page's own colours inside it. */
 .chat-bubble{padding:7px 12px;border-radius:18px;background:var(--bub);font-size:13.5px;line-height:1.5;overflow-wrap:anywhere}
-.chat-msg.mine .chat-bubble{background:var(--accent);color:var(--on-accent)}
+.chat-msg.mine .chat-bubble{background:var(--accent-fill);color:var(--on-accent);--md-fg:var(--on-accent);--md-muted:var(--on-accent);--md-link:var(--on-accent)}
+.chat-msg.mine .chat-bubble .md a{color:inherit;text-decoration:underline}
+.chat-msg.mine .chat-bubble .md :not(pre)>code{background:rgba(0,0,0,.18)}
+.chat-msg.mine .chat-bubble .md blockquote{border-inline-start-color:rgba(255,255,255,.6);color:var(--md-muted)}
+.chat-msg.mine .chat-bubble .md hr{border-top-color:rgba(255,255,255,.5)}
+.chat-msg.mine .chat-bubble :is(.cblock,.md-table-scroll,.md-diagram,.md-details,.md-callout){--md-fg:var(--l1);--md-muted:var(--l2);--md-link:var(--accent-t);color:var(--l1);background:var(--win)}
+.chat-msg.mine .chat-bubble .md>pre{color:var(--l1)}
 .chat-bubble p{margin:0}
 .chat-state{font-size:11.5px;color:var(--l3)}
 .chat-state.warn{color:var(--orange)}
@@ -123,7 +131,7 @@
 
 
 /* A room whose host is away (工单 #74): said at the top and in the timeline, never silent. */
-.room-away{display:flex;align-items:center;gap:8px;margin:10px 24px 0;padding:8px 12px;border-radius:var(--r-box);background:var(--orange-bg);color:var(--orange);font-size:12.5px}
+.room-away{display:flex;align-items:center;gap:8px;margin:10px 24px 0;padding:8px 12px;border-radius:var(--r-box);background:var(--orange-bg);color:var(--orange-t);font-size:12.5px}
 .room-rename{width:min(320px,50vw);height:28px;font-size:16px}
 .composer .composer-in,.composer .composer-in:focus,.composer .composer-in:focus-visible{outline:none;box-shadow:none;border:0;background:transparent}
 /* A coding agent's own sessions (工单 #76): under its conversations, and one opened in their place. */

@@ -47,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -259,8 +260,9 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, nameOf: (S
         if (!mine) Text(m.fromName + if (m.late) t(" · came after stop", " · 停止后到达") else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (mine && m.mentions.isNotEmpty()) Text(m.mentions.joinToString(" ") { "@" + nameOf(it) }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-            .background(if (mine) aide.bubble else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-            Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
+            .background(if (mine) AccentFill else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
+            // The owner's own, as the desktop's (工单 #101): the accent's fill with white words, as Messages draws them.
+            Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) Color.White else if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
         }
         if (mine) m.deliveries.forEach { d ->
             val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)

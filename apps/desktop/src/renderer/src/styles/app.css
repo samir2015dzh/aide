@@ -30,7 +30,10 @@
   /* The separator (a hairline) and the four fills. */
   --sep:rgba(60,60,67,.29);--fill:rgba(116,116,128,.08);--fill2:rgba(118,118,128,.12);--fill3:rgba(120,120,128,.2);
   --sel:rgba(118,118,128,.12);--sel-fg:#000000;--side-sel:rgba(120,120,128,.16);
-  --accent-t:var(--accent-fg);--accent-bg:rgba(0,122,255,.12);--focus-ring:rgba(0,122,255,.4);
+  /* On a coloured surface (工单 #101): a fill that carries words or a sign takes white at 4.5:1 (the accent's,
+     green's and red's fills, deeper than the system colours); words on a tint take the colour a step darker. */
+  --accent-fill:#0071e3;--green-fill:#248a3d;--red-fill:#d70015;--orange-t:#a85200;--green-t:#1f7a35;--red-t:#d70015;
+  --accent-t:#005ec4;--accent-bg:rgba(0,122,255,.12);--focus-ring:rgba(0,122,255,.4);
   --green:var(--ok);--green-bg:rgba(52,199,89,.14);--orange:var(--warn);--orange-bg:rgba(255,149,0,.14);--red:var(--danger);--red-bg:rgba(255,59,48,.11);
   /* Controls: a push button, the segmented control's track and its selected segment, a text field, a switch. */
   --btn:#ffffff;--btn-sh:0 0 0 .5px rgba(0,0,0,.12),0 .5px 1.5px rgba(0,0,0,.14);
@@ -61,6 +64,7 @@
   --l1:#ffffff;--l2:rgba(235,235,245,.6);--l3:rgba(235,235,245,.3);--l4:rgba(235,235,245,.16);
   --sep:rgba(84,84,88,.65);--fill:rgba(118,118,128,.18);--fill2:rgba(118,118,128,.24);--fill3:rgba(120,120,128,.36);
   --sel:rgba(118,118,128,.24);--sel-fg:#ffffff;--side-sel:rgba(118,118,128,.28);
+  --accent-t:var(--accent-fg);--orange-t:var(--orange);--green-t:var(--green);--red-t:var(--red);
   --accent-bg:rgba(10,132,255,.2);--focus-ring:rgba(10,132,255,.5);
   --green-bg:rgba(48,209,88,.16);--orange-bg:rgba(255,159,10,.16);--red-bg:rgba(255,69,58,.16);
   --btn:rgba(118,118,128,.3);--btn-sh:0 0 0 .5px rgba(255,255,255,.06),0 .5px 1px rgba(0,0,0,.4);
@@ -121,7 +125,7 @@ button{font:inherit;color:inherit}
 .btn{height:26px;padding:0 13px;border-radius:var(--r-ctl);border:0;background:var(--btn);box-shadow:var(--btn-sh);font-size:var(--fs-text);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;color:var(--l1);flex:none}
 .btn:hover{filter:brightness(.98)}
 .btn:active{filter:brightness(.92)}
-.btn.primary{background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 .5px 1.5px rgba(0,0,0,.22),inset 0 .5px 0 rgba(255,255,255,.2)}
+.btn.primary{background:var(--accent-fill);color:var(--on-accent);box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 .5px 1.5px rgba(0,0,0,.22),inset 0 .5px 0 rgba(255,255,255,.2)}
 .btn.danger{color:var(--red)}
 .btn.lg{height:34px;padding:0 20px;font-size:14px;border-radius:999px}
 .btn.sm{height:22px;padding:0 10px;font-size:12px;border-radius:5px}
@@ -169,7 +173,6 @@ button{font:inherit;color:inherit}
 .tnum{font-variant-numeric:tabular-nums}
 .av{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex:none}
 .av.lg{width:40px;height:40px;font-size:17px}
-.av.xl{width:52px;height:52px;font-size:22px}
 .agc{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .agm{width:15px;height:15px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex:none}
 .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:var(--r-ctl);background:var(--fill);font-size:12px;white-space:nowrap}
@@ -255,7 +258,7 @@ html.vibrant .rail{background:var(--side-tint)}
 .nav-marks{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex:none}
 .dot-w{width:7px;height:7px;border-radius:50%;background:var(--orange);flex:none;display:inline-block}
 /* What needs the owner, counted: the overview's mark. */
-.cnt-w{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--orange);color:#fff;font-size:11px;font-weight:var(--font-weight-bold);display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.cnt-w{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--orange);color:#1d1d1f;font-size:11px;font-weight:var(--font-weight-bold);display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .dot-r{width:7px;height:7px;border-radius:50%;background:var(--red);flex:none;display:inline-block}
 .dot-u{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none;display:inline-block}
 .busy{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--l2);font-variant-numeric:tabular-nums}
@@ -336,14 +339,14 @@ html.vibrant .rail{background:var(--side-tint)}
 .acct-menu .mi{display:flex;align-items:center;gap:9px;width:100%;height:28px;padding:0 9px;border:0;border-radius:5px;background:none;text-align:left;outline:none}
 .acct-menu .mi .ic{color:var(--l2)}
 .acct-menu{outline:none}
-.acct-menu .mi:focus{background:var(--accent);color:var(--on-accent)}
+.acct-menu .mi:focus{background:var(--accent-fill);color:var(--on-accent)}
 .acct-menu .mi:focus :is(.ic,.kbd,.nav-count){color:inherit}
 .acct-menu .mi .kbd{margin-left:auto}
 .acct-menu .msep{height:.5px;background:var(--sep);margin:5px 9px}
 /* The session list's view menu and its submenus: the account menu's look, opaque, as it sits over the list. */
 .vmenu{position:fixed;z-index:30;min-width:176px;background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);border-radius:var(--r-card);box-shadow:var(--shadow-pop);padding:5px;outline:none;animation:fadein var(--snappy-dur) var(--snappy)}
 .vmenu .mi{display:flex;align-items:center;gap:8px;width:100%;height:26px;padding:0 8px 0 9px;border:0;border-radius:5px;background:none;text-align:left;outline:none;white-space:nowrap}
-.vmenu .mi:focus,.vmenu .mi.open{background:var(--accent);color:var(--on-accent)}
+.vmenu .mi:focus,.vmenu .mi.open{background:var(--accent-fill);color:var(--on-accent)}
 .vmenu .mi:is(:focus,.open) :is(.val,.ic,.ck,small,.kbd),.vmenu .mi:is(:focus,.open)>.ic{color:inherit}
 .vmenu .mi .val{margin-left:auto;padding-left:14px;color:var(--l2);font-size:12px}
 .vmenu .mi>.ic{color:var(--l2)}
@@ -374,7 +377,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .arow{position:relative;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3)}
 .arow+.arow::before{content:"";position:absolute;top:0;right:0;left:calc(var(--sp-3) + 28px + var(--sp-2));height:.5px;background:var(--sep);pointer-events:none}
 .arow .ai{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
-.arow .ai.a{background:var(--accent-bg);color:var(--accent-t)}.arow .ai.y{background:var(--orange-bg);color:var(--orange)}
+.arow .ai.a{background:var(--accent-bg);color:var(--accent-t)}.arow .ai.y{background:var(--orange-bg);color:var(--orange-t)}
 .arow .at{flex:1;min-width:0}
 .arow .at b{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arow .at span{font-size:12px;color:var(--l2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -408,7 +411,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .qopt:hover{background:var(--fill2)}
 .qopt.on{background:var(--accent-bg);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .qn{width:20px;height:20px;border-radius:6px;background:var(--win);box-shadow:0 0 0 .5px var(--sep),0 1px 1px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--l2);flex:none;font-variant-numeric:tabular-nums}
-.qopt.on .qn{background:var(--accent);color:var(--on-accent);box-shadow:none}
+.qopt.on .qn{background:var(--accent-fill);color:var(--on-accent);box-shadow:none}
 .qb{flex:1;min-width:0}
 .qb b{display:block;font-weight:500;font-size:var(--fs-text)}
 .qb span{font-size:12px;color:var(--l2)}
@@ -617,8 +620,8 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .pal-r{max-height:420px;overflow-y:auto;padding:6px}
 .pal-h{font-size:11.5px;font-weight:600;color:var(--l2);padding:8px 10px 4px}
 .pr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-ctl);border:0;background:none;width:100%;text-align:left}
-.pr.on{background:var(--accent);color:var(--on-accent)}
-.pr.on .muted,.pr.on .kbd{color:rgba(255,255,255,.8)}
+.pr.on{background:var(--accent-fill);color:var(--on-accent)}
+.pr.on .muted,.pr.on .kbd{color:var(--on-accent)}
 .pr .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr .muted{font-size:12px;flex:none}
 .pal-foot{display:flex;gap:14px;padding:8px 16px;border-top:.5px solid var(--sep);font-size:11.5px;color:var(--l3)}
@@ -716,7 +719,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .srow2 .top .v{flex:1;color:var(--l2);min-width:0}
 .srow2 .opts{display:flex;flex-direction:column;gap:7px;padding:10px 0 2px 96px}
 .big-ok{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:10px 0 4px}
-.big-ok .okc{width:44px;height:44px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;animation:popin var(--spring-dur) var(--spring)}
+.big-ok .okc{width:44px;height:44px;border-radius:50%;background:var(--green-fill);color:#fff;display:flex;align-items:center;justify-content:center;animation:popin var(--spring-dur) var(--spring)}
 .big-ok .okc .ic{width:24px;height:24px;stroke-width:2.4}
 @keyframes popin{from{transform:scale(.6);opacity:0}}
 /* settings window (settings.css has the rest) */
@@ -801,7 +804,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .mainwrap.listed>.content{grid-column:3}
 .tasks-col>.side-h{height:44px}
 /* The link to aided being restored (工单 #87): over the page, what it shows kept as last known. */
-.link-banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:12.5px;color:var(--orange);background:var(--orange-bg);box-shadow:0 0 0 .5px color-mix(in srgb,var(--orange) 40%,transparent)}
+.link-banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:12.5px;color:var(--orange-t);background:var(--orange-bg);box-shadow:0 0 0 .5px color-mix(in srgb,var(--orange) 40%,transparent)}
 .link-banner i{width:7px;height:7px;border-radius:50%;background:var(--orange)}
 
 /* Press (工单 #95): a control held gives a little — 0.97 — and springs back when let go; a list row lights up grey

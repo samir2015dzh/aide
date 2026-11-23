@@ -32,6 +32,13 @@ val Warning: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.curre
 val BrandCyan: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.current.blue
 
 /**
+ * Fills that carry words or a sign (工单 #101), the desktop's --accent-fill and --red-fill: deeper than the system
+ * colours so white on them reads at 4.5:1, in either mode (the owner's bubble, a filled button).
+ */
+val AccentFill = Color(0xFF0071E3)
+val DangerFill = Color(0xFFD70015)
+
+/**
  * The surfaces, lines and fills of an iOS grouped screen (HIG Color, "Background colors", "Fill colors"): the grouped
  * background behind, the inset card a step above it, a third step inside a card; the label steps; the hairline
  * between rows; and what a pressed row, a bar or a menu is drawn with.
@@ -72,6 +79,11 @@ data class AideTokens(
     val orange: Color,
     /** An unpicked tab's grey (systemGray). */
     val gray: Color,
+    /** Words in a state's colour on its tint (a pill, a tinted button; 工单 #101): a step darker in light mode, for 4.5:1. */
+    val blueText: Color = blue,
+    val greenText: Color = green,
+    val orangeText: Color = orange,
+    val redText: Color = red,
 )
 
 private val DarkTokens = AideTokens(
@@ -81,6 +93,7 @@ private val DarkTokens = AideTokens(
     grouped = Color(0xFF000000), pressed = Color(0x24FFFFFF), bar = Color(0xF0161618), menu = Color(0xFF2A2A2C),
     switchOff = Color(0xFF39393D), segment = Color(0xFF636366),
     blue = Color(0xFF0A84FF), green = Color(0xFF30D158), red = Color(0xFFFF453A), orange = Color(0xFFFF9F0A), gray = Color(0xFF8E8E93),
+    blueText = Color(0xFF409CFF), redText = Color(0xFFFF6961),
 )
 private val LightTokens = AideTokens(
     bubble = Color(0xFFE9E9EB), onBubble = Color.Black,
@@ -89,6 +102,7 @@ private val LightTokens = AideTokens(
     grouped = Color(0xFFF2F2F7), pressed = Color(0x2E000000), bar = Color(0xF0F9F9F9), menu = Color(0xFFF9F9F9),
     switchOff = Color(0xFFE9E9EA), segment = Color.White,
     blue = Color(0xFF007AFF), green = Color(0xFF34C759), red = Color(0xFFFF3B30), orange = Color(0xFFFF9500), gray = Color(0xFF8E8E93),
+    blueText = Color(0xFF005EC4), greenText = Color(0xFF1F7A35), orangeText = Color(0xFFA85200), redText = Color(0xFFC4000F),
 )
 
 /** What a sheet or an alert is drawn on: iOS's elevated steps in dark mode (the card a step lighter), as they float. */

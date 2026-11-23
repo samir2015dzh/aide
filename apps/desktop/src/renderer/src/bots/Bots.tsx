@@ -670,6 +670,8 @@ function DirectChat({ b }: { b: Bot }) {
   const { t } = useTranslation("common");
   const [room, setRoom] = useState<Room>();
   const [msgs, setMsgs] = useState<RoomMessage[]>([]);
+  // The room as last read with its messages: its member's name as its connection's now (工单 #101).
+  const [fresh, setFresh] = useState<Room>();
   const [error, setError] = useState("");
   const [text, setText] = useState("");
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
@@ -684,7 +686,7 @@ function DirectChat({ b }: { b: Bot }) {
   useEffect(() => {
     if (!room) return;
     let gone = false;
-    const read = () => local.listRoomMessages({ machineId: room.hostMachineId, roomId: room.roomId, limit: 200 }).then((r) => !gone && setMsgs(r.messages), () => {});
+    const read = () => local.listRoomMessages({ machineId: room.hostMachineId, roomId: room.roomId, limit: 200 }).then((r) => !gone && (setMsgs(r.messages), setFresh(r.room)), () => {});
     read();
     const every = setInterval(read, 3000);
     return () => ((gone = true), clearInterval(every));
@@ -707,7 +709,7 @@ function DirectChat({ b }: { b: Bot }) {
       <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
         {error && <div className="bot-empty warn" role="alert">{error}</div>}
         {!error && room && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
-        {room && <RoomTimeline room={room} msgs={msgs} />}
+        {room && <RoomTimeline room={fresh ?? room} msgs={msgs} />}
       </div>
       <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room} />
     </main>
