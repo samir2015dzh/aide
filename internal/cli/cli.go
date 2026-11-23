@@ -263,7 +263,7 @@ func (a *app) machineRefs(entries []*relayv1.MachineEntry) []machineRef {
 		}
 		name := e.Name
 		if name == "" {
-			name = nc.MachineId
+			name = unnamedMachine(nc.MachineId)
 		}
 		out = append(out, machineRef{ID: nc.MachineId, Name: name, Online: e.Online, Entry: e})
 	}
@@ -271,11 +271,27 @@ func (a *app) machineRefs(entries []*relayv1.MachineEntry) []machineRef {
 	return out
 }
 
+// unnamedMachine is what a machine is called while the relay knows no name
+// for it (it has not reported one since the relay keeps them): plain words
+// and the last four of its id to tell two apart, never the whole id, which
+// is no name for a person (工单 #84). In the language of the words a person
+// reads (lang.go), Chinese on a Chinese system.
+func unnamedMachine(id string) string {
+	tail := strings.TrimPrefix(id, "m_")
+	if len(tail) > 4 {
+		tail = tail[len(tail)-4:]
+	}
+	if language("") == "zh-CN" {
+		return "未命名的机器 · " + tail
+	}
+	return "Unnamed machine · " + tail
+}
+
 // checkName refuses a machine that calls itself something else, over the
 // end-to-end connection, than the name the relay listed it under: a relay
 // relabelling the owner's machines would send work to the wrong one.
 func checkName(ref machineRef, n *peer.Machine) error {
-	if ref.Name == ref.ID || n.Name == ref.Name {
+	if ref.Name == ref.ID || ref.Name == unnamedMachine(ref.ID) || n.Name == ref.Name {
 		return nil
 	}
 	return &exitError{code: exitUnavailable, kind: "mismatch", retryable: true,

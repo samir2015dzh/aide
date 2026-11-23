@@ -85,9 +85,15 @@ type machineControl struct{ s *Server }
 func (n *machineControl) ReportStatus(ctx context.Context, req *relayv1.ReportStatusRequest) (*relayv1.ReportStatusResponse, error) {
 	p := peerFrom(ctx)
 	n.s.mu.Lock()
+	renamed := p.t.reported[p.subject.ID].GetName() != req.Name
 	p.t.reported[p.subject.ID] = &relayv1.ReportStatusRequest{Name: req.Name, Version: req.Version}
 	n.s.wakeOwnerLocked(p.t)
 	n.s.mu.Unlock()
+	if ns, ok := n.s.store.(MachineNameStore); ok && renamed {
+		if err := ns.PutMachineName(p.t.ownerID, p.subject.ID, req.Name); err != nil {
+			n.s.log.Warn("keeping a machine's name", "owner", p.t.ownerID, "machine", p.subject.ID, "err", err)
+		}
+	}
 	return &relayv1.ReportStatusResponse{}, nil
 }
 

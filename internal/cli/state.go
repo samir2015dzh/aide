@@ -339,7 +339,9 @@ func (a *app) settle(ctx context.Context, c *peer.Client, warm func([]machineRef
 		// machine presents then, as for a command that connects by itself.
 		names := map[string]string{}
 		for _, m := range machines {
-			names[m.ID] = m.Name
+			if m.Name != unnamedMachine(m.ID) {
+				names[m.ID] = m.Name
+			}
 		}
 		c.ForgetRenamed(names)
 	}
