@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/samir2015dzh/aide/internal/provider"
 )
@@ -36,11 +37,24 @@ func listModels(ctx context.Context, env []string, bin string) (models []provide
 		return nil, ""
 	}
 	defer os.RemoveAll(dir)
+	// It answers within a second or so; one that does not (stuck starting,
+	// or not Claude Code) is stopped with all it started, so the check goes
+	// on without its models and nothing is left running.
+	ctx, cancel := context.WithTimeout(ctx, modelsWait)
+	defer cancel()
+	var out bytes.Buffer
 	cmd := provider.Command(ctx, bin, modelsArgs...)
-	cmd.Env, cmd.Dir, cmd.Stdin = env, dir, bytes.NewReader([]byte(modelsRequest))
-	out, _ := cmd.Output() // it exits once stdin ends; what it answered counts
-	return parseModels(out)
+	cmd.Env, cmd.Dir, cmd.Stdin, cmd.Stdout = env, dir, bytes.NewReader([]byte(modelsRequest)), &out
+	wait, err := provider.StartInGroup(cmd)
+	if err != nil {
+		return nil, ""
+	}
+	wait() // it exits once stdin ends; what it answered counts
+	return parseModels(out.Bytes())
 }
+
+// modelsWait bounds asking Claude Code for its models.
+var modelsWait = 8 * time.Second
 
 // parseModels reads the answer to the initialize request out of Claude
 // Code's stream-json lines.

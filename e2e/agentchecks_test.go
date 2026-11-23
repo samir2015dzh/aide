@@ -10,6 +10,8 @@ import (
 	"time"
 
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/shellenv"
 )
 
 // TestAgentsCheckedOnDemand: this Mac's coding agents are checked (each CLI
@@ -82,10 +84,10 @@ func TestClaudeFromDesktopApp(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
 	}
-	for _, p := range []string{"/opt/homebrew/bin/claude", "/usr/local/bin/claude"} {
-		if _, err := os.Stat(p); err == nil {
-			t.Skipf("%s is installed, and is found first", p)
-		}
+	// A Claude Code the machine finds first (on the login shell's PATH, as
+	// aided looks, or where Homebrew puts it) is the one it shows.
+	if p := provider.LookPath("claude", shellenv.Path(), "/opt/homebrew/bin/claude", "/usr/local/bin/claude"); p != "" {
+		t.Skipf("%s is installed, and is found first", p)
 	}
 	home := t.TempDir()
 	for _, v := range []string{"2.1.99", "2.1.299"} {
