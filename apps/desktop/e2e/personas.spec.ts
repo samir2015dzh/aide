@@ -23,7 +23,7 @@ test("handing work to a detected agent from its page; a contact made there, writ
   await bot.getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "给它起名字、换头像" }).click();
   const form = page.getByRole("dialog", { name: "添加联系人" });
   await form.getByLabel("名字", { exact: true }).fill("前端助手");
-  await form.getByRole("group", { name: "头像" }).getByRole("button", { name: "fox" }).click();
+  await form.getByRole("group", { name: "形状" }).getByRole("button", { name: "爱心" }).click();
   await expect(form.getByRole("group", { name: "机器" }).getByRole("button", { name: "owner-mac" })).toHaveAttribute("aria-pressed", "true");
   await expect(form.getByRole("group", { name: "Agent" }).getByRole("button", { name: "Gemini CLI" })).toHaveAttribute("aria-pressed", "true");
   await expect(form.getByRole("button", { name: "项目", exact: true })).toHaveText("demo");

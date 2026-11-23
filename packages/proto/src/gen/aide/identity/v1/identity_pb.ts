@@ -386,9 +386,10 @@ export type Grant = Message<"aide.identity.v1.Grant"> & {
   custodian: string;
 
   /**
-   * The icon the owner picked for it: "" draws its app's when its name or
-   * where it signs in says which (the default), "letter" its initial,
-   * "app:<id>" an app's logo, "image" client_image.
+   * The icon the owner picked for it: "" its seed's character (the
+   * default), "bot:<shape>:<colour>" its character in that look (工单 #83);
+   * from before, "letter" its initial, "app:<id>" an app's logo, "image"
+   * client_image (drawn as its seed's character now).
    *
    * @generated from field: string client_icon = 16;
    */

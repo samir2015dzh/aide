@@ -10,15 +10,16 @@ import {
   allBots, botConversations, changedParams, currentConversation, displayTitle, listTime, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
-import { agentLogos, agentPicture, AgentLogo, BotGlyph, grantColor, grantLogo, grantPicture } from "@aide/ui";
+import { botLook, botMood, botSeed, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
 import { AgentPage, projectsFor } from "../AgentList";
 import { local } from "../api";
 import { connDot } from "../Connections";
-import { StateText, StatusDot } from "../components";
+import { Face, grantApp, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
 import { Picker, type PickerOption } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
-import { blankPersona, personaColors, personaIcons, personasChanged } from "../sheets/Contacts";
+import { LookSheet } from "../settings/LookSheet";
+import { blankPersona, lookFields, personasChanged } from "../sheets/Contacts";
 import { errorText, useNow, useStore } from "../store";
 import { Composer, type ComposerState } from "./Composer";
 import "./bots.css";
@@ -88,54 +89,60 @@ export function usePins(): [string[], (key: string, on: boolean) => void] {
 }
 
 /**
- * A bot's face (工单 #62): its app's own icon, round, the same on every page — the owner's own avatar for it when they
- * gave it one, a coding agent's app icon, a personal agent's app (or the picture the owner chose); a small robot on
- * its colour where its app has none, never an initial. Its state moves it, and only its real state: a ring turns
- * round it while it really works (its sessions run), it greys while it is away or its state is unknown, and the dot
- * on its corner (dot) is its state's colour. still: no ring (where many show at once and nothing works for them).
+ * A bot's face (工单 #83): its Grok Bot character (BotArk's GrokBotMark), the same on every page — in the look the owner
+ * gave it (its contact's, else its grant's), else its seed's; its app's logo on its corner where there is room. Only
+ * its real state moves it (botMood: idle, at work by what it does, waiting on the owner, asleep when paused, a moment
+ * of done or failed); away or unknown, it rests, faded. The dot on its corner (dot) is its state's colour. still: it
+ * rests (where many show at once). edit: a click opens what changes its look (its contact, its grant's look, or a new
+ * contact), and it follows the pointer: its own page.
  */
-export function BotFace({ b, size = 28, dot = false, still = false }: { b: Bot; size?: number; dot?: boolean; still?: boolean }) {
-  const off = b.state.why === "offline" || b.state.state === "unknown";
-  const run = !still && b.running > 0;
-  return (
-    <span className="bav" style={{ width: size, height: size }} data-off={off || undefined} data-run={run || undefined} aria-hidden="true">
-      <FaceInside b={b} size={size} />
+export function BotFace({ b, size = 28, dot = false, still = false, edit = false }: { b: Bot; size?: number; dot?: boolean; still?: boolean; edit?: boolean }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const [look, setLook] = useState(false);
+  const mood = useMood(b);
+  const face = (
+    <span className="bav" style={{ width: size, height: size }} aria-hidden="true">
+      <Face seed={botSeed(b)} look={botLook(b)} mood={mood} size={size} app={size >= 34 ? b.agent || (b.client && grantApp(b.client)) : undefined} still={still} follow={edit} />
       {dot && <i className={`dotc ${connDot(b.state.state)}`} />}
     </span>
   );
-}
-
-function FaceInside({ b, size }: { b: Bot; size: number }) {
+  if (!edit) return face;
   const p = b.personas[0];
-  if (p) {
-    const glyph = personaIcons[p.icon];
-    return (
-      <span className="bav-in bav-emoji" style={{ background: p.color || personaColors[5], fontSize: Math.round(size * 0.52) }}>
-        {glyph ?? <BotGlyph size={Math.round(size * 0.7)} />}
-      </span>
-    );
-  }
-  if (b.client && (b.kind === "personal" || !b.agent)) {
-    const pic = grantPicture(b.client);
-    if (pic) return <span className="bav-in"><img src={pic} alt="" /></span>;
-    const logo = grantLogo(b.client);
-    if (logo) return <AppFace app={logo} size={size} />;
-    return (
-      <span className="bav-in" style={{ background: grantColor(b.client.label) }}>
-        <BotGlyph size={Math.round(size * 0.7)} />
-      </span>
-    );
-  }
-  return <AppFace app={b.agent} size={size} />;
+  const open = () => {
+    if (p) st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...p } } });
+    else if (b.key.startsWith("m:")) st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...lookFields(botLook(b)), machineId: b.machineId, agent: b.agent, name: b.name } } });
+    else setLook(true);
+  };
+  return (
+    <>
+      <button className="bav-edit" title={t("bots.faceEdit")} aria-label={t("bots.faceEdit")} onClick={open}>{face}</button>
+      {look && b.client && <LookSheet c={b.client} st={st} close={() => setLook(false)} />}
+    </>
+  );
 }
 
-function AppFace({ app, size }: { app: string; size: number }) {
-  const pic = agentPicture(app);
-  if (pic) return <span className="bav-in"><img src={pic} alt="" /></span>;
-  if (agentLogos[app]) return <span className="bav-in bav-white"><AgentLogo agent={app} size={Math.round(size * 0.62)} /></span>;
+/** A bot's face's state now; a moment of done or failed is read again once it is over. */
+function useMood(b: Bot): BotMood {
+  const st = useStore();
+  const [, tick] = useState(0);
+  const mood = botMood(b, st.sessions, Date.now());
+  const brief = mood.state === "finished" || mood.state === "failed";
+  useEffect(() => {
+    if (!brief) return;
+    const id = setTimeout(() => tick((x) => x + 1), reactMs);
+    return () => clearTimeout(id);
+  }, [brief]);
+  return mood;
+}
+
+/** A contact's face, on its bot's page: its own look, its bot's state. */
+function PersonaFace({ b, p, size }: { b: Bot; p: Persona; size: number }) {
+  const seed = botSeed(b);
+  const mood = useMood(b);
   return (
-    <span className="bav-in" style={{ background: "#8E8E93" }}>
-      <BotGlyph size={Math.round(size * 0.7)} />
+    <span className="bav" style={{ width: size, height: size }} aria-hidden="true">
+      <Face seed={seed} look={personaLook(p, seed)} mood={mood} size={size} />
     </span>
   );
 }
@@ -260,7 +267,7 @@ export function BotPage({ botKey }: { botKey: string }) {
   return (
     <div className="bot-page" role="region" aria-label={b.name}>
       <header className="bot-head drag">
-        <BotFace b={b} size={44} dot />
+        <BotFace b={b} size={44} dot edit />
         <div className="bot-head-t">
           <div className="bot-head-l1">
             <h1>{b.name}</h1>
@@ -372,9 +379,7 @@ function Identity({ b, m }: { b: Bot; m: Machine }) {
       <div className="fgroup">
         {b.personas.map((p) => (
           <div key={p.personaId} className="frow bot-persona">
-            <span className="bav" style={{ width: 28, height: 28 }} aria-hidden="true">
-              <span className="bav-in bav-emoji" style={{ background: p.color || personaColors[5], fontSize: 15 }}>{personaIcons[p.icon] ?? <BotGlyph size={20} />}</span>
-            </span>
+            <PersonaFace b={b} p={p} size={28} />
             <span className="bot-persona-t">
               <b>{p.name}</b>
               <span className="muted">{[p.projectId, p.model, p.effort, p.mode].filter(Boolean).join(" · ")}</span>
@@ -384,7 +389,7 @@ function Identity({ b, m }: { b: Bot; m: Machine }) {
             </button>
           </div>
         ))}
-        <button className="frow act" title={t("bots.identityAddTip")} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
+        <button className="frow act" title={t("bots.identityAddTip")} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...(b.personas.length ? {} : lookFields(botLook(b))), machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
           <Icon name="plus" className="sm" />
           {t(b.personas.length ? "bots.identityAdd" : "bots.identityFirst")}
         </button>

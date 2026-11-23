@@ -54,7 +54,7 @@ export function grantColor(label: string): string {
 }
 
 /** What a grant is drawn with: its name, and the icon its owner picked (Grant client_icon, client_image). */
-export type GrantLook = { label: string; icon?: string; image?: Uint8Array };
+export type GrantLook = { label: string; icon?: string; image?: Uint8Array; clientId?: string };
 
 /** The logos the owner can pick for a grant, the personal agents' first. */
 export const iconApps: { logo: string; name: string }[] = [

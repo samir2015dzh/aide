@@ -1,6 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
-import type { ConnectionStatus } from '@adapters/types'
-import { cn } from '@/lib/cn'
+import { useEffect, useId, useMemo, useRef, useSyncExternalStore, type CSSProperties } from 'react'
 import {
   computeCanvasScale,
   createAppearance,
@@ -11,6 +9,10 @@ import {
   mapShapeToBody,
   type GrokMotionHandle
 } from './grokMotionEngine'
+
+// Ported from BotArk (MIT, see ./LICENSE): src/renderer/src/components/ui/GrokBotMark.tsx. Aide's changes: its own
+// status type in place of BotArk's adapters' ConnectionStatus, plain class names in place of Tailwind, the system's
+// light/dark in place of a data-theme attribute, and maxFrameRate (lower while the page scrolls) for lists (工单 #83).
 
 /**
  * Official Grok Bot ("Sand") animated 3D character mark (`GrokBotMark`).
@@ -93,27 +95,55 @@ const DEFAULT_APPEARANCE = createAppearance('var(--grok-bot-ink)')
 const DEFAULT_FILL = 0.92
 const CANVAS_PCT = `${computeCanvasScale(DEFAULT_FILL) * 100}%`
 
+const darkQuery = '(prefers-color-scheme: dark)'
+
 function subscribeTheme(onStoreChange: () => void): () => void {
-  if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') {
-    return () => undefined
-  }
-  const observer = new MutationObserver(onStoreChange)
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme']
-  })
-  return () => observer.disconnect()
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => undefined
+  const media = window.matchMedia(darkQuery)
+  media.addEventListener('change', onStoreChange)
+  return () => media.removeEventListener('change', onStoreChange)
 }
 
 function getIsDarkSnapshot(): boolean {
-  return typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark'
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(darkQuery).matches
 }
+
+/** Whether the page is scrolling now (any scroller), and for a moment after: lists draw fewer frames meanwhile. */
+let scrolling = false
+let scrollTimer: ReturnType<typeof setTimeout> | undefined
+const scrollSubs = new Set<() => void>()
+function onScroll() {
+  if (!scrolling) {
+    scrolling = true
+    scrollSubs.forEach((f) => f())
+  }
+  clearTimeout(scrollTimer)
+  scrollTimer = setTimeout(() => {
+    scrolling = false
+    scrollSubs.forEach((f) => f())
+  }, 160)
+}
+
+function subscribeScroll(onStoreChange: () => void): () => void {
+  if (scrollSubs.size === 0 && typeof window !== 'undefined') window.addEventListener('scroll', onScroll, { capture: true, passive: true })
+  scrollSubs.add(onStoreChange)
+  return () => {
+    scrollSubs.delete(onStoreChange)
+    if (scrollSubs.size === 0 && typeof window !== 'undefined') window.removeEventListener('scroll', onScroll, { capture: true })
+  }
+}
+
+/** The connection a bot is drawn for (BotArk's ConnectionStatus). */
+export type GrokStatus = 'online' | 'busy' | 'attention' | 'error' | 'offline'
+
+/** The frame rate a mark drops to while the page scrolls, when it was given a lower one than 60 (a list's). */
+const SCROLL_FRAME_RATE = 8
 
 export interface GrokBotMarkProps {
   seed: string
   shape?: string | null
   color?: string | null
-  status?: ConnectionStatus
+  status?: GrokStatus
   /** True when the bot is actively streaming / working. */
   isWorking?: boolean
   /** Explicit Grok state override (`idle`, `working`, `streaming`, `thinking`, `happy`, `blocked`, `sleeping`, …). */
@@ -129,6 +159,8 @@ export interface GrokBotMarkProps {
   /** Trigger a spin/bounce animation when bumped. */
   pokeSignal?: number
   sizePx?: number
+  /** At most this many frames a second (60); a list's marks, below 60, draw fewer still while the page scrolls. */
+  maxFrameRate?: number
   className?: string
 }
 
@@ -145,6 +177,7 @@ export function GrokBotMark({
   followPointer = false,
   pokeSignal = 0,
   sizePx = 36,
+  maxFrameRate: baseFrameRate = 60,
   className
 }: GrokBotMarkProps) {
   const uid = `motion-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
@@ -170,6 +203,8 @@ export function GrokBotMark({
   }, [grokState, isWorking, status])
 
   const playing = !isPaused && status !== 'offline'
+  const isScrolling = useSyncExternalStore(subscribeScroll, () => scrolling, () => false)
+  const maxFrameRate = baseFrameRate < 60 && isScrolling ? SCROLL_FRAME_RATE : baseFrameRate
 
   // Instantiate the official Grok Bot Motion Engine once per component instance
   if (!engineRef.current) {
@@ -181,7 +216,7 @@ export function GrokBotMark({
       state,
       size: sizePx,
       fill: DEFAULT_FILL,
-      maxFrameRate: 60,
+      maxFrameRate,
       isPlaying: playing,
       isEmphasized,
       isFollowingPointer: followPointer,
@@ -207,12 +242,12 @@ export function GrokBotMark({
       state,
       size: sizePx,
       fill: DEFAULT_FILL,
-      maxFrameRate: 60,
+      maxFrameRate,
       isPlaying: playing,
       isEmphasized,
       isFollowingPointer: followPointer
     })
-  }, [uid, body, state, sizePx, playing, isEmphasized, followPointer])
+  }, [uid, body, state, sizePx, maxFrameRate, playing, isEmphasized, followPointer])
 
   // Forward row-hover gaze vector to the 3D rig
   useEffect(() => {
@@ -240,19 +275,23 @@ export function GrokBotMark({
         engineRef.current?.poke('bounce')
       }}
       data-grok-state={state}
+      data-grok-shape={shape}
+      data-grok-color={colorId}
       data-paused={!playing || undefined}
       style={
         {
+          position: 'relative',
+          display: 'inline-block',
+          flexShrink: 0,
+          userSelect: 'none',
+          lineHeight: 0,
           width: sizePx,
           height: sizePx,
+          opacity: status === 'offline' ? 0.4 : undefined,
           '--grok-bot-ink': inkHex
-        } as React.CSSProperties
+        } as CSSProperties
       }
-      className={cn(
-        'sand-grok-bot-mark relative inline-block shrink-0 select-none leading-none',
-        status === 'offline' && 'opacity-40',
-        className
-      )}
+      className={['sand-grok-bot-mark', className].filter(Boolean).join(' ')}
     >
       <span
         ref={canvasRef}

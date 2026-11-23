@@ -35,5 +35,7 @@ export {
   Yg as renderFrameToSvgString,
   Xg as renderFrameToTree,
   eo as createRig,
-  no as computeCanvasScale
+  no as computeCanvasScale,
+  // Aide (工单 #83): the state machine createMotionEngine drives, for a page without a DOM to draw in (Android's).
+  go as createStateController
 };

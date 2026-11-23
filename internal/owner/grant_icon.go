@@ -12,8 +12,9 @@ import (
 )
 
 // grantIcons are the values a grant's client_icon takes: "" its app's (the
-// default), "letter", "image", or "app:<logo id>".
-var grantIcons = regexp.MustCompile(`^(|letter|image|app:[a-z0-9-]{1,32})$`)
+// default), "letter", "image", "app:<logo id>", or "bot:<shape>:<colour>",
+// the animated character's look (工单 #83, packages/core avatar.ts).
+var grantIcons = regexp.MustCompile(`^(|letter|image|app:[a-z0-9-]{1,32}|bot:[a-z]{1,16}:[a-z]{1,16})$`)
 
 // grantImage checks an icon picture and re-encodes it, so only its pixels
 // go into the grant (no metadata, no trailing bytes): a square PNG or JPEG

@@ -182,18 +182,13 @@
     "usedBy": "{{names}} · used {{ago}}",
     "usedAgo": "Used {{ago}}",
     "notUsed": "Not used yet",
-    "rename": "Name and Icon…",
-    "renameTitle": "Name and Icon",
+    "rename": "Name and Avatar…",
+    "renameTitle": "Name and Avatar",
     "renameMessage": "Shown here and on your other devices. Other agents only see the name.",
     "agentName": "Name",
     "renameButton": "Save",
-    "icon": "Icon",
-    "iconAuto": "Automatic",
-    "iconLetter": "Initial",
-    "iconMine": "Your Picture",
-    "iconUpload": "Upload…",
-    "iconAutoHint": "Matches its name or where it signs in (for example, a connection from cursor.com appears as Cursor).",
-    "iconBad": "Couldn’t read that image. Try a PNG or JPEG."
+    "icon": "Avatar",
+    "iconAuto": "Use its default avatar"
   },
   "ops": {
     "none": "No agent has run a command yet.",

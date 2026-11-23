@@ -3,26 +3,22 @@ import { Picker } from "../Picker";
 import { useTranslation } from "react-i18next";
 import { codingAgentTitle } from "@aide/core";
 import type { Persona } from "@aide/proto/identity";
+import { colorHex, personaLook, type BotLook } from "@aide/core/avatar";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
+import { LookEditor } from "../components";
 import { useStore } from "../store";
 import { ErrorLine, useAction } from "./common";
 
-/** The built-in avatars a contact can have (docs/personas.md §2), the same on the phone. */
-export const personaIcons: Record<string, string> = { robot: "🤖", owl: "🦉", fox: "🦊", cat: "🐱", rocket: "🚀", wrench: "🔧", book: "📚", bug: "🐞" };
-export const personaColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"];
-
-export function PersonaAvatar({ p }: { p: Pick<Persona, "icon" | "color" | "name"> }) {
-  return (
-    <span className="av lg" aria-hidden style={{ background: p.color || personaColors[5] }}>
-      {personaIcons[p.icon] ?? [...p.name][0]?.toUpperCase()}
-    </span>
-  );
-}
-
 export type PersonaDraft = Pick<Persona, "personaId" | "name" | "icon" | "color" | "machineId" | "projectId" | "agent" | "model" | "effort" | "mode">;
 type Draft = PersonaDraft;
-export const blankPersona: PersonaDraft = { personaId: "", name: "", icon: "robot", color: personaColors[0], machineId: "", projectId: "", agent: "", model: "", effort: "", mode: "" };
+/** A new contact: its look the seed's until one is picked (工单 #83). */
+export const blankPersona: PersonaDraft = { personaId: "", name: "", icon: "", color: "", machineId: "", projectId: "", agent: "", model: "", effort: "", mode: "" };
+
+/** A look as a contact keeps it (docs/personas.md §2): its shape as its icon, its colour's swatch as its colour. */
+export function lookFields(l: BotLook): Pick<Persona, "icon" | "color"> {
+  return { icon: l.shape, color: colorHex(l.color) };
+}
 
 /**
  * A contact (docs/personas.md), opened from its bot's page (工单 #57): a name, an avatar and presets for one coding
@@ -53,12 +49,15 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
   const project = (projects.find((x) => x.projectId === d.projectId) ?? projects[0])?.projectId ?? "";
   const efforts = a ? (a.models.find((x) => x.id === (d.model || a.defaults?.model || a.own?.model))?.efforts ?? [...new Set(a.models.flatMap((x) => x.efforts))]) : [];
   const ready = d.name.trim() !== "" && !!mid && !!a && project !== "";
+  // Its look (工单 #83): the seed is its bot's, the look kept is the one shown (the seed's until another is picked).
+  const seed = `m:${mid}/${a?.name ?? d.agent}`;
+  const look = personaLook(d, seed);
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!ready || act.busy) return;
     await act.go(async () => {
-      const res = await local.savePersona({ persona: { ...d, machineId: mid, agent: a!.name, projectId: project } });
+      const res = await local.savePersona({ persona: { ...d, ...lookFields(look), machineId: mid, agent: a!.name, projectId: project } });
       done(res.persona!.personaId);
     });
   };
@@ -77,18 +76,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
         <div className="frow">
           <span className="fl">{t("contacts.avatar")}</span>
           <span className="fv">
-            <div className="seg" role="group" aria-label={t("contacts.avatar")}>
-              {Object.entries(personaIcons).map(([id, glyph]) => (
-                <button type="button" key={id} aria-label={id} className={d.icon === id ? "on" : ""} aria-pressed={d.icon === id} onClick={() => put({ icon: id })}>{glyph}</button>
-              ))}
-            </div>
-            <div className="seg" role="group" aria-label={t("contacts.color")}>
-              {personaColors.map((c) => (
-                <button type="button" key={c} aria-label={c} className={d.color === c ? "on" : ""} aria-pressed={d.color === c} onClick={() => put({ color: c })}>
-                  <span className="av" style={{ background: c, width: 12, height: 12 }} />
-                </button>
-              ))}
-            </div>
+            <LookEditor seed={seed} look={look} onChange={(l) => put(lookFields(l))} />
           </span>
         </div>
         <div className="frow">
