@@ -428,7 +428,7 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
 
   // Back to Codex's own, one by one: the list says nothing more.
   await codex.getByRole("button", { name: /^Codex/ }).click();
-  expect(await pick("模型", "")).toContain("✓ GPT-Fake-Small");
+  expect(await pick("模型", "")).toContain("✓ GPT-Fake-Small · gpt-fake-small");
   await pick("推理强度", "");
   await pick("速度", "0");
   await expect(row("模型")).toContainText("跟随 Codex（GPT-Fake-Big）");

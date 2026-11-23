@@ -66,7 +66,7 @@ test("signed out while the app is signed in: said so, signed in from its page, a
   const set = page.getByRole("region", { name: /的设置$/ });
   await expect(set.getByRole("region", { name: "连接", exact: true }).getByRole("button", { name: "在这台电脑上登录" })).toBeVisible();
   await snap(page, "batchj-login-3-settings");
-  await set.locator(".bset-back").click();
+  await set.locator(".own-back").click();
 
   // Signed in from here: waiting for the browser, then signed in, by the machine's own check.
   await bot.locator(".bot-head").getByRole("button", { name: "在这台电脑上登录" }).click();
