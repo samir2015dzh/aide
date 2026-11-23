@@ -41,7 +41,7 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
   await personal.getByRole("button", { name: /bot/ }).click();
   const p = page.getByRole("region", { name: "bot", exact: true });
   await p.getByRole("button", { name: "设置", exact: true }).click();
-  await expect(page.getByRole("region", { name: "bot 的设置" }).getByRole("radiogroup", { name: "类别" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "bot 的设置" }).getByRole("button", { name: "类别" })).toBeVisible();
   await snap(page, "batchg-personal-page");
 });
 

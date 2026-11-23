@@ -1,16 +1,10 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons";
 
 // The app's own pop-up button (工单 #68): the label of what is chosen with ⌃⌄ beside it, and on a click a menu of the
 // choices, the chosen one ticked, as macOS draws one — never the browser's own <select>. The keyboard works as in a
 // native menu: arrows move, Return or Space picks, Esc closes back to the button.
-
-/**
- * Inside a bot's settings page (工单 #97 补充三): its controls are drawn the Fluent way (FLUENT-REF), there alone — a
- * pop-up button as a dropdown with its menu's items 36 px high, a short list of choices laid out as radio rows.
- */
-export const FluentControls = createContext(false);
 
 export type PickerOption<T extends string | number> = { value: T; label: string; sub?: string; icon?: ReactNode; disabled?: boolean } | null;
 
@@ -31,7 +25,6 @@ export function Picker<T extends string | number>({
   placeholder?: string;
 }) {
   const [open, setOpen] = useState<false | "mouse" | "key">(false);
-  const fluent = useContext(FluentControls);
   const btn = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState({ left: -9999, top: 0, minWidth: 0 });
@@ -81,7 +74,7 @@ export function Picker<T extends string | number>({
       <button
         type="button"
         ref={btn}
-        className={`picker ${chip ? "chip" : ""} ${size} ${open ? "on" : ""} ${fluent ? "fl" : ""} ${className}`}
+        className={`picker ${chip ? "chip" : ""} ${size} ${open ? "on" : ""} ${className}`}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={!!open}
@@ -96,7 +89,7 @@ export function Picker<T extends string | number>({
       </button>
       {open &&
         createPortal(
-          <div className={`vmenu picker-menu ${fluent ? "fl" : ""}`} role="menu" aria-label={label} tabIndex={-1} ref={menu} style={at} onKeyDown={onKeyDown}>
+          <div className="vmenu picker-menu" role="menu" aria-label={label} tabIndex={-1} ref={menu} style={at} onKeyDown={onKeyDown}>
             {options.map((o, i) =>
               o ? (
                 <button
@@ -125,26 +118,6 @@ export function Picker<T extends string | number>({
           document.body,
         )}
     </>
-  );
-}
-
-/**
- * A few choices laid out at once, each a radio row, the chosen one marked (工单 #97 补充三: a bot's settings page draws
- * its kind this way, not as a pop-up button).
- */
-export function Choices<T extends string | number>({ value, options, onChange, label }: { value: T; options: { value: T; label: string; sub?: string }[]; onChange: (v: T) => void; label: string }) {
-  return (
-    <div className="choices" role="radiogroup" aria-label={label}>
-      {options.map((o) => (
-        <button key={String(o.value)} type="button" className="choice" role="radio" aria-checked={o.value === value} onClick={() => o.value !== value && onChange(o.value)}>
-          <span className="choice-dot" aria-hidden="true" />
-          <span className="choice-l">
-            {o.label}
-            {o.sub && <small>{o.sub}</small>}
-          </span>
-        </button>
-      ))}
-    </div>
   );
 }
 

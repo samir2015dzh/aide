@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launch, snap } from "./app";
+import { launch, pick, snap } from "./app";
 
 // A coding agent its machine found has a settings page like a connected agent's grant page (工单 #93): what it can use
 // (its machine, its projects), its kind told from what it is until the owner files it otherwise (#52: the owner's say
@@ -22,13 +22,13 @@ test("Claude Code's settings: what it can use, its kind changed and back, rename
   await snap(page, "agentsettings-claude");
 
   // Its kind: filed personal, it moves to the personal agents; back to told from what it is, it returns.
-  const kind = settings.getByRole("radiogroup", { name: "类别" });
-  await expect(kind.getByRole("radio", { checked: true })).toHaveText(/自动判断 · 本机编码 Agent/);
-  await kind.getByRole("radio", { name: "个人 Agent" }).click();
+  const kind = settings.getByRole("button", { name: "类别" });
+  await expect(kind).toHaveText(/自动判断 · 本机编码 Agent/);
+  await pick(kind, "个人 Agent");
   const personal = roster.getByRole("group", { name: /^个人/ });
   await expect(personal.getByRole("button", { name: /^Claude Code/ })).toBeVisible({ timeout: 30_000 });
-  await expect(kind.getByRole("radio", { checked: true })).toHaveText("个人 Agent");
-  await kind.getByRole("radio", { name: /^自动判断/ }).click();
+  await expect(kind).toHaveText("个人 Agent");
+  await pick(kind, /^自动判断/);
   await expect(personal.getByRole("button", { name: /^Claude Code/ })).toHaveCount(0, { timeout: 30_000 });
 
   // Stopped, it takes no work; used again, it does.

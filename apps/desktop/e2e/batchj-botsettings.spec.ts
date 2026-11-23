@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { launch, snap } from "./app";
+import { launch, pick, snap } from "./app";
 
 // 批 J, a bot's page and its settings (工单 #97) and the sidebar's first pages (工单 #102), as the owner meets them. A
 // bot's page keeps its state, its conversations and, beside them, its task board; a 设置 button in its head opens its
@@ -21,8 +21,7 @@ async function height(name: string, scroller: Locator) {
 /** What a bot's page must not have any more: no setting of any kind (工单 #97). */
 async function noSettings(bot: Locator) {
   for (const name of ["名字和头像", "类别", "暂停", "接入凭据", "能用什么", "项目与管理"]) await expect(bot.getByRole("region", { name, exact: true })).toHaveCount(0);
-  for (const name of ["名字和头像", "名字和头像…", "从 Aide 里移除…", "断开…", "修改能用的范围", "添加项目…", "暂停", "给它起名字、换头像"]) await expect(bot.getByRole("button", { name, exact: true })).toHaveCount(0);
-  await expect(bot.getByRole("radiogroup")).toHaveCount(0);
+  for (const name of ["名字和头像", "名字和头像…", "类别", "从 Aide 里移除…", "断开…", "修改能用的范围", "添加项目…", "暂停", "给它起名字、换头像"]) await expect(bot.getByRole("button", { name, exact: true })).toHaveCount(0);
   await expect(bot.getByRole("switch")).toHaveCount(0);
 }
 
@@ -52,7 +51,7 @@ test("a coding agent's page has no settings; its settings page has each once, an
   await height("dsh-page board", board);
   await snap(page, "after-dsh-page");
 
-  // Its settings: each there once, in one column no wider than 640 px.
+  // Its settings: each there once.
   const settings = await openSettings(page, bot, "DSH");
   for (const name of ["连接", "能用什么", "类别", "名字和头像", "项目与管理", "暂停", "从 Aide 里移除…"]) await expect(settings.getByRole("region", { name, exact: true })).toHaveCount(1);
   await expect(settings.getByText("名字和头像", { exact: true })).toHaveCount(1);
@@ -60,21 +59,8 @@ test("a coding agent's page has no settings; its settings page has each once, an
   await expect(settings.getByRole("region", { name: "能用什么" })).toContainText("owner-mac（它在这台上运行）");
   await expect(settings.getByRole("button", { name: "修改能用的范围" })).toBeVisible();
   await expect(settings.getByRole("button", { name: "添加项目…" })).toBeVisible();
-  expect(await settings.locator(".bset-col").evaluate((e) => e.getBoundingClientRect().width)).toBeLessThanOrEqual(640);
-  // Its kind as radio rows, the current one marked — not a pop-up button (补充三).
-  const kind = settings.getByRole("radiogroup", { name: "类别" });
-  await expect(kind.getByRole("radio")).toHaveCount(3);
-  await expect(kind.getByRole("radio", { checked: true })).toHaveText(/自动判断 · 本机编码 Agent/);
-  await expect(settings.getByRole("button", { name: "类别" })).toHaveCount(0);
-  // The Fluent look, on this page alone: 8 px cards with a 1 px stroke; 36 px choices; a 2 px ring with an offset.
-  const card = settings.locator(".fgroup").first();
-  expect(await card.evaluate((e) => [getComputedStyle(e).borderRadius, getComputedStyle(e).borderTopWidth])).toEqual(["8px", "1px"]);
-  const first = kind.getByRole("radio").first();
-  expect((await first.boundingBox())!.height).toBeGreaterThanOrEqual(36);
-  await first.focus();
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Tab");
-  expect(await first.evaluate((e) => [getComputedStyle(e).outlineWidth, getComputedStyle(e).outlineOffset])).toEqual(["2px", "2px"]);
+  // Its kind, the app's own picker (its look waits on the Fluent design, 工单 #107).
+  await expect(settings.getByRole("button", { name: "类别" })).toHaveText(/自动判断 · 本机编码 Agent/);
   await height("dsh-settings", settings.locator(".bset"));
   await snap(page, "after-dsh-settings");
   await settings.locator(".bset").evaluate((e) => (e.scrollTop = e.scrollHeight));
@@ -83,8 +69,6 @@ test("a coding agent's page has no settings; its settings page has each once, an
   await settings.locator(".bset").evaluate((e) => (e.scrollTop = 0));
   await snap(page, "after-dsh-settings-dark");
   await page.emulateMedia({ colorScheme: "light" });
-  // The rest of the app keeps its own controls: the composer's pop-up buttons aren't Fluent's.
-  await expect(page.locator(".picker.fl")).toHaveCount(await settings.locator(".picker.fl").count());
 
   // Renamed there: called so on its settings, its page and in the roster.
   await settings.getByRole("button", { name: "给它起名字、换头像" }).click();
@@ -98,11 +82,12 @@ test("a coding agent's page has no settings; its settings page has each once, an
 
   // Its kind: filed personal there, it is listed with the personal agents; back to told from what it is, it returns.
   const personal = roster.getByRole("group", { name: "个人 agent", exact: true });
-  await renamed.getByRole("radiogroup", { name: "类别" }).getByRole("radio", { name: "个人 Agent" }).click();
+  const kind = renamed.getByRole("button", { name: "类别" });
+  await pick(kind, "个人 Agent");
   await expect(personal.getByRole("button", { name: /^深思/ })).toBeVisible({ timeout: 30_000 });
-  await expect(renamed.getByRole("radio", { checked: true })).toHaveText("个人 Agent");
+  await expect(kind).toHaveText("个人 Agent");
   await snap(page, "after-dsh-settings-kind");
-  await renamed.getByRole("radio", { name: /^自动判断/ }).click();
+  await pick(kind, /^自动判断/);
   await expect(personal.getByRole("button", { name: /^深思/ })).toHaveCount(0, { timeout: 30_000 });
 
   // Paused there: said in its head there, and on its page once back.
@@ -141,7 +126,7 @@ test("a personal agent's page has no grant card; its settings have its grant, it
   const grant = settings.getByRole("region", { name: "接入凭据" });
   await expect(grant).toContainText("能用什么");
   await expect(grant).toContainText("有效期");
-  await expect(grant.getByRole("radiogroup", { name: "类别" })).toBeVisible();
+  await expect(grant.getByRole("button", { name: "类别" })).toBeVisible();
   await expect(grant.getByRole("switch", { name: "执行命令" })).toBeVisible();
   await expect(settings.getByRole("button", { name: /名字和头像/ })).toHaveCount(1);
   await expect(grant.getByRole("button", { name: "断开…" })).toBeVisible();
@@ -151,7 +136,7 @@ test("a personal agent's page has no grant card; its settings have its grant, it
   await snap(page, "after-muse-settings-dark");
   await page.emulateMedia({ colorScheme: "light" });
 
-  // Its exec switch, the Fluent way: on, then off again.
+  // Its exec switch: on, then off again.
   const exec = grant.getByRole("switch", { name: "执行命令" });
   await exec.click();
   await expect(exec).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
