@@ -183,11 +183,16 @@ message Grant {
   request with `custodian`: "“Claude” connects through aide.io.
   aide.io holds this agent's key and can act as it within this access, and
   sees the sessions it reaches." The app's pairing sheet says the same
-  ("“Claude (claude.ai)” connects through aide.io: …"), and the grant's
+  ("“Claude” connects through aide.io: …"), and the grant's
   page in Settings › Access shows "Connects through aide.io, which holds
   its key". `ListClients` carries the custodian.
-- `label` carries the product name and the redirect host, e.g.
-  `Claude (claude.ai)`, at most 64 bytes.
+- `label` is the product name alone, e.g. `Claude`, at most 64 bytes
+  (工单 #85): where it returns to is a detail (`ConnectionInfo.ReturnsTo`,
+  the consent page), never its name, and two connections of one app are
+  told apart by their id and when they were made. Connections named
+  before, `Claude (claude.ai)`, are renamed when the gateway starts on a
+  self-hosted relay: the server signs their grant again with the name
+  alone (`relay.RenameGrant`), unless the owner renamed it since.
 
 Default spec for an MCP pairing, adjustable in the sheet: machines `*` (so
 machines added later are included), projects `*`, agents `claude, codex`,

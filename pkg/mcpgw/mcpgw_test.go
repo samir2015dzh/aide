@@ -413,6 +413,66 @@ func TestTokensRotateAndReplaysAreRevoked(t *testing.T) {
 // password: a wrong one shows the page again, saying so, and makes no
 // connection; the right one makes it active at once, with a grant the
 // server signed, which tools then use.
+// A connection named before 工单 #85, "Test (127.0.0.1)", is named by its
+// app alone once the gateway starts: in the gateway and on its grant, which
+// the server signs again as the next version (what machines then hold the
+// connection to, and what the owner's apps, the roster and the contacts
+// read). One the owner renamed since keeps the owner's name.
+func TestOldConnectionNamesAreRenamed(t *testing.T) {
+	f := newFixture(t, nil)
+	ctx := context.Background()
+	redirect := "http://127.0.0.1/callback"
+	client := f.register(redirect)
+	f.browser().consentCode(client, redirect)
+	conns, _ := f.g.db.ListConnections(ctx, ConnectionFilter{AccountID: "a1"})
+	if len(conns) != 1 || conns[0].ClientName != "Test" {
+		t.Fatalf("a new connection: %+v", conns)
+	}
+	grantOf := func(c *Connection) *identityv1.Grant {
+		s, g := &identityv1.Signed{}, &identityv1.Grant{}
+		if proto.Unmarshal(c.Grant, s) != nil || identity.Unverified(s, g) != nil {
+			t.Fatal("unreadable grant")
+		}
+		return g
+	}
+	listed := func() *identityv1.Grant {
+		entries, err := f.g.cfg.Relay.ClientEntries(f.g.cfg.Relay.SingleOwner())
+		if err != nil || len(entries) != 1 {
+			t.Fatalf("listed: %v %v", entries, err)
+		}
+		g := &identityv1.Grant{}
+		identity.Unverified(entries[0].Grant, g)
+		return g
+	}
+	// As it was made before.
+	age := func(c *Connection, grantLabel string) {
+		signed, err := f.g.cfg.Relay.RenameGrant(c.GrantID, grantOf(c).ClientLabel, grantLabel)
+		if err != nil || signed == nil {
+			t.Fatalf("rename: %v", err)
+		}
+		c.Grant, _ = proto.Marshal(signed)
+		c.ClientName = "Test (127.0.0.1)"
+		f.g.db.PutConnection(ctx, c)
+	}
+	c := conns[0]
+	age(c, "Test (127.0.0.1)")
+	f.g.renameHosted(ctx)
+	c, _ = f.g.db.GetConnection(ctx, c.ID)
+	if g := grantOf(c); c.ClientName != "Test" || g.ClientLabel != "Test" || g.Version != 3 || !c.Live() {
+		t.Fatalf("renamed: %q, grant %q v%d, %s", c.ClientName, g.ClientLabel, g.Version, c.State)
+	}
+	if g := listed(); g.ClientLabel != "Test" || g.Version != 3 {
+		t.Fatalf("the relay lists %q v%d", g.ClientLabel, g.Version)
+	}
+	// The owner named it since: that name stays.
+	age(c, "My test")
+	f.g.renameHosted(ctx)
+	c, _ = f.g.db.GetConnection(ctx, c.ID)
+	if g := grantOf(c); c.ClientName != "Test" || g.ClientLabel != "My test" || listed().ClientLabel != "My test" {
+		t.Fatalf("renamed by the owner: %q, grant %q", c.ClientName, g.ClientLabel)
+	}
+}
+
 func TestConsentLogsInWithTheAccount(t *testing.T) {
 	f := newFixture(t, nil)
 	redirect := "http://127.0.0.1/callback"
@@ -442,7 +502,7 @@ func TestConsentLogsInWithTheAccount(t *testing.T) {
 		t.Fatalf("token: %v", tok)
 	}
 	conns, _ := f.g.db.ListConnections(context.Background(), ConnectionFilter{AccountID: "a1"})
-	if len(conns) != 1 || conns[0].State != StateActive || conns[0].ClientName != "Test (127.0.0.1)" || conns[0].GrantID == "" {
+	if len(conns) != 1 || conns[0].State != StateActive || conns[0].ClientName != "Test" || conns[0].GrantID == "" {
 		t.Fatalf("connection: %+v", conns)
 	}
 	signed := &identityv1.Signed{}
@@ -580,14 +640,16 @@ func TestRedirectMatching(t *testing.T) {
 	}
 }
 
+// A connection is named by its app alone, never with where it returns to
+// (工单 #85), cut to the relay's 64 bytes.
 func TestLabel(t *testing.T) {
-	if l := label("Claude", "https://claude.ai/api/mcp/auth_callback"); l != "Claude (claude.ai)" {
+	if l := label("Muse"); l != "Muse" {
 		t.Fatal(l)
 	}
-	if l := label("Codex", "http://127.0.0.1:1455/callback"); l != "Codex (127.0.0.1)" {
-		t.Fatal(l)
+	if l := label(strings.Repeat("Long name ", 20)); len(l) > 64 || !strings.HasPrefix(l, "Long name") || !strings.HasSuffix(l, "…") {
+		t.Fatalf("%q (%d)", l, len(l))
 	}
-	if l := label(strings.Repeat("Long name ", 20), "https://app.example/cb"); len(l) > 64 || !strings.HasSuffix(l, "… (app.example)") {
+	if l := label(strings.Repeat("名", 30)); len(l) > 64 || !strings.HasSuffix(l, "名…") {
 		t.Fatalf("%q (%d)", l, len(l))
 	}
 }

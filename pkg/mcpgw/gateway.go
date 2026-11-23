@@ -253,6 +253,9 @@ func (g *Gateway) Mount(mux *http.ServeMux) {
 // sweeps what has expired.
 func (g *Gateway) loop() {
 	defer close(g.done)
+	if g.cfg.Relay.SingleOwner() != "" && g.lead() {
+		g.renameHosted(context.Background()) // once, on a self-hosted relay: its server signs the grants
+	}
 	t := time.NewTicker(loopEvery)
 	defer t.Stop()
 	sweep := time.NewTicker(10 * time.Minute)
