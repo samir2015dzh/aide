@@ -136,19 +136,30 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
             }
         }
         e.status?.let { a -> PauseLine(a) }
-        if (e.login && m.online && m.unreachable.isEmpty()) {
-            if (e.state == ConnState.CHECKING) {
-                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent, cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
-            } else {
-                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, e.agent) } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
-                Text(t("A browser opens on ${m.machineName}; you sign in there. Aide never handles the account or the token.", "会在 ${m.machineName} 上打开浏览器，你在那里登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
-            }
-        }
+        if (e.login) ClaudeLogin(model, m)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(e.checkedAt?.let { t("Checked ${agoText(it, now)}", "${agoText(it, now)}检测") } ?: "", style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.weight(1f))
             if (m.online) PlainButton(onClick = { scope.launch { model.recheck(m.machineId) } }) { Text(t("Check again", "重新检测")) }
             e.status?.let { a -> if (m.online) ManageMenu(model, m, a) }
         }
+    }
+}
+
+/**
+ * Signing Claude Code's command line in on m from Aide (工单 #51, the owner's choice A): its own sign-in starts there and
+ * a browser opens on that computer; while it waits, stopping it. The same entry on its machine's list, its bot's page and
+ * a session that failed not signed in (工单 #108).
+ */
+@Composable
+internal fun ClaudeLogin(model: AppModel, m: Machine) {
+    if (!m.online || m.unreachable.isNotEmpty()) return
+    val scope = rememberCoroutineScope()
+    val waiting = m.status?.agents?.firstOrNull { it.name == "claude" }?.login?.state == "AGENT_LOGIN_STATE_WAITING"
+    if (waiting) {
+        PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, "claude", cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
+    } else Column {
+        PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, "claude") } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
+        Text(t("A browser opens on ${m.machineName}; you sign in there. Aide never handles the account or the token.", "会在 ${m.machineName} 上打开浏览器，你在那里登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
     }
 }
 

@@ -122,6 +122,15 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
             t("A browser opened on that computer: finish signing in there. This line updates by itself.", "那台电脑上已打开浏览器：请在那里完成登录。这一行会自己更新。"),
             at, login = true,
         )
+        // Its own `auth status` said nothing clear (工单 #108): unconfirmed, never the desktop app's sign-in in its place.
+        a.available && a.loginUnconfirmed -> ConnRow(
+            "claude-cli", "claude", cliTitle, ConnState.UNKNOWN, t("Unconfirmed", "未确认"),
+            t(
+                "The Claude Code command line did not say whether it is signed in, and Aide does not take the Claude desktop app's sign-in for it: whether tasks can run with it is not confirmed. Sign it in below (a browser opens on that computer), or check again.",
+                "Claude Code 命令行没说清自己登没登录，Aide 不拿 Claude Desktop 的登录代替它：派出的任务能不能跑还没确认。点下面的按钮给它登录（会在那台电脑上打开浏览器），或者重新检测。",
+            ),
+            at, login = true,
+        )
         a.available && a.login?.state in setOf("AGENT_LOGIN_STATE_FAILED", "AGENT_LOGIN_STATE_TIMED_OUT", "AGENT_LOGIN_STATE_CANCELLED") -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not signed in", "未登录"),
             when (a.login?.state) {

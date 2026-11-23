@@ -27,6 +27,8 @@ data class BotState(
     val line: String,
     val usable: Usable,
     val why: NotReady? = null,
+    /** Its main row offers signing it in from Aide (Claude Code, 工单 #51, #108). */
+    val login: Boolean = false,
 )
 
 /** A coding agent on a machine as one state (工单 #56); null: the machine reports no such agent (hidden or absent). */
@@ -36,13 +38,17 @@ fun codingBotState(m: Machine, agent: String, now: Instant, c: MachineConnection
     val main = rows.firstOrNull { it.id == agent || it.id == "$agent-cli" } ?: rows.first()
     val paused = m.status?.agents?.firstOrNull { it.name == agent }?.pause != null
     val word = main.text.substringBefore(" · ")
+    return codingState(main, c.reachable, paused, word).copy(login = main.login)
+}
+
+private fun codingState(main: ConnRow, reachable: Boolean, paused: Boolean, word: String): BotState {
     // Paused is the owner's own say, known whatever the machine last reported: it comes first.
     if (paused && main.state != ConnState.MISSING) return BotState(main.state, t("Paused", "已暂停"), t("Paused: no new task starts with it until it resumes", "已暂停：恢复之前不会有新任务交给它"), Usable.NO, NotReady.PAUSED)
     return when (main.state) {
         ConnState.OK, ConnState.PARTIAL -> BotState(main.state, word, main.text, Usable.YES)
         ConnState.CHECKING -> BotState(ConnState.CHECKING, word, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.CHECKING)
         ConnState.UNKNOWN ->
-            if (c.reachable) BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.UNKNOWN)
+            if (reachable) BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.UNKNOWN)
             else BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.NO, NotReady.OFFLINE)
         ConnState.MISSING -> BotState(ConnState.MISSING, word, main.lacks ?: main.text, Usable.NO, if (main.text == t("Not signed in", "未登录")) NotReady.SIGNED_OUT else NotReady.MISSING)
     }
