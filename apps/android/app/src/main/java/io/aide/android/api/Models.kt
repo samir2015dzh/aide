@@ -194,6 +194,8 @@ data class Client(
     /** The kind the owner set (工单 #52): "personal", "local", or "" to tell from its name. */
     val category: String = "",
     val categoryMachineId: String = "",
+    /** The icon the owner picked: "bot:<shape>:<colour>" its character's look (工单 #83); else its seed's. */
+    val icon: String = "",
 )
 
 @Serializable

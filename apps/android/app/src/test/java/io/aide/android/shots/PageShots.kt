@@ -4,10 +4,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
+import io.aide.android.api.Persona
+import io.aide.android.model.BotLook
+import io.aide.android.model.withLook
+import io.aide.android.ui.ContactEditPage
+import io.aide.android.ui.GrokEngine
+import io.aide.android.ui.LocalSessions
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.aide.android.api.AgentStatus
@@ -103,8 +113,14 @@ class PageShots {
     }
 
     private fun shot(name: String, waitFor: String? = null, content: @Composable () -> Unit) {
+        // The faces' frames, drawn ahead by the same engine (工单 #83), and the sessions their states come from, as Root has them.
+        GrokEngine.source = GrokFixture
         // A Surface, as the app's Scaffold: the page's colour and the text colour on it.
-        rule.setContent { AideTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() } } }
+        rule.setContent {
+            CompositionLocalProvider(LocalSessions provides world().sessions.values) {
+                AideTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { content() } }
+            }
+        }
         rule.waitForIdle()
         // What a page reads from the machine after it opens (the conversation): there before the picture.
         waitFor?.let { text -> rule.waitUntil(10_000) { rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() } }
@@ -120,6 +136,13 @@ class PageShots {
     @Test fun devices() = model().let { m -> shot("5-devices") { DevicesTab(m) {} } }
     @Test fun room() = model().let { m -> shot("8-room", waitFor = "可以发版") { RoomPage(m, "m1", "room_2", openSession = {}) {} } }
     @Test fun newRoom() = model().let { m -> shot("9-new-room") { NewRoomPage(m, opened = {}) {} } }
+    // The one avatar editor (工单 #83): DSH's new contact, a heart in magenta picked; no emoji left.
+    @Test fun contactAvatar(): Unit = model().let { m ->
+        shot("10-contact-avatar") { ContactEditPage(m, Persona(machineId = "m1", agent = "deepseek", name = "前端助手").withLook(BotLook("heart", "magenta"))) {} }
+        rule.onNodeWithContentDescription("爱心").assertIsSelected()
+        rule.onNodeWithContentDescription("品红").assertIsSelected()
+        rule.onAllNodesWithText("🦊").assertCountEquals(0)
+    }
 
     companion object {
         private val now: Instant = Instant.now()

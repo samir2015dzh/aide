@@ -12,8 +12,6 @@ import io.aide.android.api.Session
 import io.aide.android.api.TalkToPersonaResponse
 import io.aide.android.model.World
 import io.aide.android.model.personaChoices
-import io.aide.android.model.personaColor
-import io.aide.android.model.personaGlyph
 import io.aide.android.model.personaReady
 import io.aide.android.model.talkedText
 import io.aide.android.api.ConnectClient
@@ -50,11 +48,7 @@ class PersonasTest {
         assertNull(personaChoices(world, Persona(machineId = "m_9", agent = "deepseek")).agent)
     }
 
-    @Test fun avatarsAndReadiness() {
-        assertEquals("🦊", personaGlyph(Persona(name = "x", icon = "fox")))
-        assertEquals("审", personaGlyph(Persona(name = " 审阅员")))
-        assertEquals(0xFF3B82F6, personaColor(Persona(color = "#3b82f6")))
-        assertEquals(0xFF64748B, personaColor(Persona()))
+    @Test fun readiness() {
         assertFalse(personaReady(Persona(name = " ", machineId = "m_1", agent = "a", projectId = "p")))
         assertTrue(personaReady(Persona(name = "A", machineId = "m_1", agent = "a", projectId = "p")))
     }
