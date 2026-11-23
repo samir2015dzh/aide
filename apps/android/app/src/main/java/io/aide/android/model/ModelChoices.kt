@@ -43,9 +43,10 @@ private fun idText(id: String): String {
 private fun choiceOf(agent: String, m: AgentModel): ModelChoice {
     if (m.resolved.isNotEmpty()) return ModelChoice(m.id, modelTitle(m.resolved), m.resolved)
     if (agent == "claude" && !m.id.startsWith("claude-")) return ModelChoice(m.id, m.name.ifEmpty { m.id }, "", unknown = true)
+    // DSH's: its display name, its ID in full and where from (its provider; each line it comes by, 工单 #98 补充).
     val title = m.name.ifEmpty { modelTitle(m.id) }
-    val detail = idText(m.id)
-    return ModelChoice(m.id, title, if (detail == title) "" else detail)
+    val id = idText(m.id)
+    return ModelChoice(m.id, title, listOf(if (id == title) "" else id, m.source).filter { it.isNotEmpty() }.joinToString(" · "))
 }
 
 /** An agent's models as its lists show them; current, a model a conversation runs that is not among them, first. */

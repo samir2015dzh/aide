@@ -66,6 +66,19 @@ class BatchJModelsTest {
         assertEquals("DeepSeek V4 Pro (DeepSeek)", defaultModelChoice(dsh)?.title)
     }
 
+    // 工单 #98 补充: one model by two lines of its provider is one entry, its lines said; a custom provider's in its own.
+    @Test
+    fun dshModelsByProviderOnceEach() {
+        val models = listOf(
+            AgentModel("[\"deepseek\",\"deepseek-v4-flash\"]", "DeepSeek-V4.1-Flash", source = "DeepSeek · DeepSeek Account"),
+            AgentModel("[\"magpie\",\"group/deepseek-v4.1\"]", "group/deepseek-v4.1", source = "magpie"),
+        )
+        assertEquals(
+            listOf("DeepSeek-V4.1-Flash · deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account", "group/deepseek-v4.1 · magpie/group/deepseek-v4.1 · magpie"),
+            modelChoices("deepseek", models).map { it.label() },
+        )
+    }
+
     // 工单 #67 rule 4 with #99: one that runs the model an alias resolves to has that alias: no new conversation.
     @Test
     fun theModelItRunsIsTheAliasThatRunsIt() {
