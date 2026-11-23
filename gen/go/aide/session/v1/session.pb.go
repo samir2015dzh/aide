@@ -275,7 +275,8 @@ const (
 	FailureKind_FAILURE_KIND_AGENT_CRASHED FailureKind = 12
 	// The agent made no progress for too long.
 	FailureKind_FAILURE_KIND_STALLED FailureKind = 13
-	// The turn exceeded the machine's turn time limit.
+	// The turn exceeded the machine's turn time limit, or a request in it
+	// timed out.
 	FailureKind_FAILURE_KIND_TIMEOUT FailureKind = 14
 	// The agent could not be started.
 	FailureKind_FAILURE_KIND_START_FAILED FailureKind = 15
@@ -284,6 +285,9 @@ const (
 	FailureKind_FAILURE_KIND_INTERRUPTED FailureKind = 17
 	// The worktree's base ref does not resolve to a local commit.
 	FailureKind_FAILURE_KIND_BASE_REF_UNAVAILABLE FailureKind = 18
+	// No API key or credentials are configured for the model provider (工单
+	// #105); the owner sets one up in the agent's model settings.
+	FailureKind_FAILURE_KIND_MISSING_CREDENTIALS FailureKind = 19
 )
 
 // Enum value maps for FailureKind.
@@ -308,6 +312,7 @@ var (
 		16: "FAILURE_KIND_UNKNOWN",
 		17: "FAILURE_KIND_INTERRUPTED",
 		18: "FAILURE_KIND_BASE_REF_UNAVAILABLE",
+		19: "FAILURE_KIND_MISSING_CREDENTIALS",
 	}
 	FailureKind_value = map[string]int32{
 		"FAILURE_KIND_UNSPECIFIED":          0,
@@ -329,6 +334,7 @@ var (
 		"FAILURE_KIND_UNKNOWN":              16,
 		"FAILURE_KIND_INTERRUPTED":          17,
 		"FAILURE_KIND_BASE_REF_UNAVAILABLE": 18,
+		"FAILURE_KIND_MISSING_CREDENTIALS":  19,
 	}
 )
 
@@ -534,8 +540,11 @@ type Failure struct {
 	Retryable         bool   `protobuf:"varint,3,opt,name=retryable,proto3" json:"retryable,omitempty"`
 	RetryAfterSeconds uint32 `protobuf:"varint,4,opt,name=retry_after_seconds,json=retryAfterSeconds,proto3" json:"retry_after_seconds,omitempty"`
 	// One-line advice for the caller.
-	Hint          string `protobuf:"bytes,5,opt,name=hint,proto3" json:"hint,omitempty"`
-	HttpStatus    uint32 `protobuf:"varint,6,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	Hint       string `protobuf:"bytes,5,opt,name=hint,proto3" json:"hint,omitempty"`
+	HttpStatus uint32 `protobuf:"varint,6,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	// The model provider the message names ("DeepSeek"), when it names a
+	// known one; empty otherwise, never guessed (工单 #105).
+	Provider      string `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -610,6 +619,13 @@ func (x *Failure) GetHttpStatus() uint32 {
 		return x.HttpStatus
 	}
 	return 0
+}
+
+func (x *Failure) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
 }
 
 type StartSessionRequest struct {
@@ -5725,7 +5741,7 @@ var File_aide_session_v1_session_proto protoreflect.FileDescriptor
 
 const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\n" +
-	"\x1daide/session/v1/session.proto\x12\x0faide.session.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1faide/identity/v1/identity.proto\x1a\x1daide/options/v1/options.proto\"\xd8\x01\n" +
+	"\x1daide/session/v1/session.proto\x12\x0faide.session.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1faide/identity/v1/identity.proto\x1a\x1daide/options/v1/options.proto\"\xf4\x01\n" +
 	"\aFailure\x120\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1c.aide.session.v1.FailureKindR\x04kind\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
@@ -5733,7 +5749,8 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x13retry_after_seconds\x18\x04 \x01(\rR\x11retryAfterSeconds\x12\x12\n" +
 	"\x04hint\x18\x05 \x01(\tR\x04hint\x12\x1f\n" +
 	"\vhttp_status\x18\x06 \x01(\rR\n" +
-	"httpStatus\"\xdf\x03\n" +
+	"httpStatus\x12\x1a\n" +
+	"\bprovider\x18\a \x01(\tR\bprovider\"\xdf\x03\n" +
 	"\x13StartSessionRequest\x12'\n" +
 	"\x0fidempotency_key\x18\x01 \x01(\tR\x0eidempotencyKey\x12\x1d\n" +
 	"\n" +
@@ -6207,7 +6224,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x14SESSION_LINK_STALLED\x10\x02\x12\x19\n" +
 	"\x15SESSION_LINK_CHECKING\x10\x03\x12\x15\n" +
 	"\x11SESSION_LINK_LOST\x10\x04\x12\x18\n" +
-	"\x14SESSION_LINK_SYNCING\x10\x05*\xc9\x04\n" +
+	"\x14SESSION_LINK_SYNCING\x10\x05*\xef\x04\n" +
 	"\vFailureKind\x12\x1c\n" +
 	"\x18FAILURE_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11FAILURE_KIND_AUTH\x10\x01\x12\x16\n" +
@@ -6228,7 +6245,8 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x19FAILURE_KIND_START_FAILED\x10\x0f\x12\x18\n" +
 	"\x14FAILURE_KIND_UNKNOWN\x10\x10\x12\x1c\n" +
 	"\x18FAILURE_KIND_INTERRUPTED\x10\x11\x12%\n" +
-	"!FAILURE_KIND_BASE_REF_UNAVAILABLE\x10\x12*\xc3\x01\n" +
+	"!FAILURE_KIND_BASE_REF_UNAVAILABLE\x10\x12\x12$\n" +
+	" FAILURE_KIND_MISSING_CREDENTIALS\x10\x13*\xc3\x01\n" +
 	"\x12QuestionResolution\x12#\n" +
 	"\x1fQUESTION_RESOLUTION_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cQUESTION_RESOLUTION_ANSWERED\x10\x01\x12 \n" +

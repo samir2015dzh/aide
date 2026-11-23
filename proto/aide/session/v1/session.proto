@@ -210,7 +210,8 @@ enum FailureKind {
   FAILURE_KIND_AGENT_CRASHED = 12;
   // The agent made no progress for too long.
   FAILURE_KIND_STALLED = 13;
-  // The turn exceeded the machine's turn time limit.
+  // The turn exceeded the machine's turn time limit, or a request in it
+  // timed out.
   FAILURE_KIND_TIMEOUT = 14;
   // The agent could not be started.
   FAILURE_KIND_START_FAILED = 15;
@@ -219,6 +220,9 @@ enum FailureKind {
   FAILURE_KIND_INTERRUPTED = 17;
   // The worktree's base ref does not resolve to a local commit.
   FAILURE_KIND_BASE_REF_UNAVAILABLE = 18;
+  // No API key or credentials are configured for the model provider (工单
+  // #105); the owner sets one up in the agent's model settings.
+  FAILURE_KIND_MISSING_CREDENTIALS = 19;
 }
 
 message Failure {
@@ -231,6 +235,9 @@ message Failure {
   // One-line advice for the caller.
   string hint = 5;
   uint32 http_status = 6;
+  // The model provider the message names ("DeepSeek"), when it names a
+  // known one; empty otherwise, never guessed (工单 #105).
+  string provider = 7;
 }
 
 message StartSessionRequest {
