@@ -90,7 +90,8 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
         val working = all.inProgress.size
-        PageTitle(t("Sessions", "会话"), collapsed = list.collapsed(), summary = listOfNotNull(
+        // The tab is the tasks (工单 #102): its overview and the task feed, one level from the tab bar, named as on the desktop.
+        PageTitle(t("Tasks", "任务动态"), collapsed = list.collapsed(), summary = listOfNotNull(
             all.needsYou.size.takeIf { it > 0 }?.let { t("$it need you", "$it 个等你处理") },
             t("$working at work", "$working 个进行中"),
         ).joinToString(" · "))
@@ -107,13 +108,14 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
             // The overview first (BotArk reference §4): what waits for you, what is at work, what is new.
-            item(key = "overview") {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "overview") { Column {
+                SectionHeader(t("Overview", "概览"))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatTile(t("Need you", "等你处理"), "${b.needsYou.size}", Modifier.weight(1f), tone = if (b.needsYou.isEmpty()) Tone.Quiet else Tone.Warn)
                     StatTile(t("At work", "进行中"), "${b.inProgress.size}", Modifier.weight(1f), tone = if (b.inProgress.isEmpty()) Tone.Quiet else Tone.Live)
                     StatTile(t("New results", "新结果"), "${b.unseen.size}", Modifier.weight(1f))
                 }
-            }
+            } }
             section(t("Needs You", "需要你处理"), b.needsYou, world, open, Tone.Warn)
             section(t("New Results", "有新结果未看"), b.unseen, world, open, Tone.Live)
             section(t("In Progress", "进行中"), b.inProgress, world, open, Tone.Live)

@@ -70,6 +70,8 @@ sealed interface Route {
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
     /** A bot's own page (工单 #57). */
     data class Bot(val key: String) : Route
+    /** A bot's settings, a page of their own from its page (工单 #97). */
+    data class BotSettings(val key: String) : Route
     /** A room of several bots (G2-b/c), and making one. */
     data class Room(val machineId: String, val roomId: String) : Route
     data object NewRoom : Route
@@ -143,8 +145,9 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.ClaudeSession -> ClaudeSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) },
-                openDevices = { stack.clear(); tab = Tab.Devices },
+                openDevices = { stack.clear(); tab = Tab.Devices }, openSettings = { stack.add(Route.BotSettings(top.key)) },
                 openOwn = { e -> stack.add(if (e is OwnEntry.Dsh) Route.DSHSession(e.entry) else Route.ClaudeSession((e as OwnEntry.Claude).entry)) })
+            is Route.BotSettings -> BotSettingsPage(model, top.key, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }
             is Route.Room -> RoomPage(model, top.machineId, top.roomId, openSession = { stack.add(Route.Session(it)) }, back = { stack.removeAt(stack.lastIndex) })
             Route.NewRoom -> NewRoomPage(model, opened = { r -> stack.removeAt(stack.lastIndex); stack.add(Route.Room(r.hostMachineId, r.roomId)) }, back = { stack.removeAt(stack.lastIndex) })

@@ -55,6 +55,7 @@ import io.aide.android.model.World
 import io.aide.android.ui.AideTheme
 import io.aide.android.ui.BotsTab
 import io.aide.android.ui.BotPage
+import io.aide.android.ui.BotSettingsPage
 import io.aide.android.ui.DevicesTab
 import io.aide.android.api.Client
 import io.aide.android.ui.NeedsYouTab
@@ -201,9 +202,11 @@ class PageShots {
         (AppModel::class.java.getDeclaredField("_phase").apply { isAccessible = true }.get(m) as MutableStateFlow<AppModel.Phase>).value = AppModel.Phase.Ready
         shot("18-home-tabs", waitFor = "发版评审") { Root(m) }
     }
-    @Test fun botSettings() = model().let { m -> shot("19-bot-dsh-settings", act = { scrollTo("从 Aide 里移除…") }) { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
-    @Test fun botRemove() = model().let { m -> shot("20-bot-dsh-remove", act = { scrollTo("从 Aide 里移除…"); rule.onNodeWithText("从 Aide 里移除…").performClick() }) { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
-    @Test fun botPause() = model().let { m -> shot("21-bot-dsh-pause-menu", act = { scrollTo("从 Aide 里移除…"); rule.onNodeWithText("暂停").performClick() }) { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} } }
+    // A bot's settings, a page of their own (工单 #97): DSH's, its removal asked, in light mode; Muse's (its grant).
+    @Test fun botSettings() = model().let { m -> shot("19-bot-dsh-settings") { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
+    @Test fun botRemove() = model().let { m -> shot("20-bot-dsh-remove", act = { scrollTo("从 Aide 里移除…"); rule.onNodeWithText("从 Aide 里移除…").performClick() }) { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun botSettingsLight() = model().let { m -> shot("21-bot-dsh-settings-light") { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
+    @Test fun personalBotSettings() = model().let { m -> shot("33-bot-muse-settings") { BotSettingsPage(m, "c:c1", edit = {}) {} } }
     @Test fun accountDialog() = model().let { m -> shot("22-settings-password", waitFor = "修改密码…", act = { rule.onNodeWithText("修改密码…").performClick() }) { SettingsTab(m) } }
     @Test fun signOutDialog() = model().let { m -> shot("23-settings-sign-out", act = { rule.onAllNodesWithText("登出…").onFirst().performClick() }) { SettingsTab(m) } }
     @Test fun deleteRoom() = model().let { m -> shot("24-room-delete", waitFor = "可以发版", act = { rule.onNodeWithText("删除").performClick() }) { RoomPage(m, "m1", "room_2", openSession = {}) {} } }
@@ -216,6 +219,25 @@ class PageShots {
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun botsLight() = model().let { m -> shot("28-bots-light", waitFor = "发版评审") { BotsTab(m) {} } }
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun settingsLight() = model().let { m -> shot("29-settings-light") { SettingsTab(m) } }
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun sessionLight() = model().let { m -> shot("30-session-light", waitFor = "重组") { SessionPage(m, "s2", back = {}) } }
+
+    // The bot pages at full length (工单 #97): a screen tall enough for the whole list, the list's height written down.
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h2600dp-port-night-xxhdpi") fun botPageFull() = model().let { m ->
+        shot("31-bot-dsh-full") { BotPage(m, "m:m1/deepseek", openSession = {}, edit = {}) {} }
+        length("31-bot-dsh-full")
+    }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h2600dp-port-night-xxhdpi") fun personalBotPageFull() = model().let { m ->
+        shot("32-bot-muse-full", waitFor = "评审过了") { BotPage(m, "c:c1", openSession = {}, edit = {}) {} }
+        length("32-bot-muse-full")
+    }
+
+    /** How tall the page's list is, in dp, from its first row's top to its last row's bottom: appended to lengths.txt. */
+    private fun length(name: String) {
+        val list = rule.onAllNodes(hasScrollAction()).onFirst().fetchSemanticsNode()
+        fun bottom(n: androidx.compose.ui.semantics.SemanticsNode): Float = (n.children.map { bottom(it) } + n.boundsInRoot.bottom).max()
+        val px = list.children.maxOf { bottom(it) } - list.boundsInRoot.top
+        val dp = px / androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().resources.displayMetrics.density
+        java.io.File("build/outputs/roborazzi").apply { mkdirs() }.resolve("lengths.txt").appendText("$name ${dp.toInt()}dp\n")
+    }
 
     // The one avatar editor (工单 #83): DSH's new contact, a heart in magenta picked; no emoji left.
     @Test fun contactAvatar(): Unit = model().let { m ->

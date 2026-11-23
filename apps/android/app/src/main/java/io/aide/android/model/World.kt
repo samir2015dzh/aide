@@ -89,6 +89,9 @@ data class World(
         sessionStateOf(sessions[s.sessionId] ?: s, Liveness.of(machines.firstOrNull { it.machineId == s.machineId }), stateLimits, now)
 
     val buckets: Buckets get() = Buckets.of(sessions.values.map { shown(it) })
+
+    /** One bot's tasks (工单 #97, #102): the buckets every task is put in, of its sessions alone (botSessions, as its face reads them), so both say a task the same. */
+    fun bucketsOf(b: Bot): Buckets = Buckets.of(botSessions(b, sessions.values).map { shown(it) })
 }
 
 fun <T> upsert(list: List<T>, changed: List<T>, removed: List<String>, key: (T) -> String): List<T> {
