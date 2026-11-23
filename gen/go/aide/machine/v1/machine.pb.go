@@ -1985,7 +1985,12 @@ type AgentStatus struct {
 	DshBridge *DSHBridge `protobuf:"bytes,22,opt,name=dsh_bridge,json=dshBridge,proto3" json:"dsh_bridge,omitempty"`
 	// Its sign-in started from Aide (StartAgentLogin), the last one or the
 	// one under way; unset: none since aided started.
-	Login         *AgentLogin `protobuf:"bytes,23,opt,name=login,proto3" json:"login,omitempty"`
+	Login *AgentLogin `protobuf:"bytes,23,opt,name=login,proto3" json:"login,omitempty"`
+	// The kind the owner filed it as (SetAgentCategory, 工单 #52/#93): "" told
+	// from what it is (a coding agent of this machine), "local" a coding agent
+	// of this machine, "personal" listed with the personal agents. The owner's
+	// say comes first, whatever the machine finds.
+	Category      string `protobuf:"bytes,24,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2172,6 +2177,13 @@ func (x *AgentStatus) GetLogin() *AgentLogin {
 		return x.Login
 	}
 	return nil
+}
+
+func (x *AgentStatus) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
 }
 
 // AgentLogin is a sign-in of a coding agent's command line that Aide
@@ -2485,7 +2497,11 @@ type ClaudeUsage struct {
 	// that failed while a stale reading is kept: one line for the diagnosis,
 	// e.g. "HTTP 401: authentication_error: OAuth token has expired" or the
 	// transport error with its host. Never a token, a header or a URL path.
-	Detail        string `protobuf:"bytes,6,opt,name=detail,proto3" json:"detail,omitempty"`
+	Detail string `protobuf:"bytes,6,opt,name=detail,proto3" json:"detail,omitempty"`
+	// Where the reading came from (工单 #86): "claude_code" (this machine's
+	// Claude Code answered /usage itself), "api" (the usage endpoint asked
+	// with the token found here, the fallback). Empty with no reading.
+	Source        string `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2558,6 +2574,13 @@ func (x *ClaudeUsage) GetRenew() string {
 func (x *ClaudeUsage) GetDetail() string {
 	if x != nil {
 		return x.Detail
+	}
+	return ""
+}
+
+func (x *ClaudeUsage) GetSource() string {
+	if x != nil {
+		return x.Source
 	}
 	return ""
 }
@@ -8044,7 +8067,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x04R\x05limit\x12\x18\n" +
 	"\aculprit\x18\x04 \x01(\tR\aculprit\x12#\n" +
 	"\rculprit_count\x18\x05 \x01(\rR\fculpritCount\x12\x16\n" +
-	"\x06detail\x18\x06 \x01(\tR\x06detail\"\xf4\a\n" +
+	"\x06detail\x18\x06 \x01(\tR\x06detail\"\x90\b\n" +
 	"\vAgentStatus\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tavailable\x18\x02 \x01(\bR\tavailable\x12\x18\n" +
@@ -8070,7 +8093,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\adesktop\x18\x15 \x01(\v2\x1e.aide.machine.v1.ClaudeDesktopR\adesktop\x129\n" +
 	"\n" +
 	"dsh_bridge\x18\x16 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\tdshBridge\x121\n" +
-	"\x05login\x18\x17 \x01(\v2\x1b.aide.machine.v1.AgentLoginR\x05loginJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
+	"\x05login\x18\x17 \x01(\v2\x1b.aide.machine.v1.AgentLoginR\x05login\x12\x1a\n" +
+	"\bcategory\x18\x18 \x01(\tR\bcategoryJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
 	"\n" +
 	"AgentLogin\x126\n" +
 	"\x05state\x18\x01 \x01(\x0e2 .aide.machine.v1.AgentLoginStateR\x05state\x12\x16\n" +
@@ -8089,7 +8113,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"AgentPause\x120\n" +
 	"\x05since\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x127\n" +
-	"\tresume_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\xe6\x01\n" +
+	"\tresume_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\xfe\x01\n" +
 	"\vClaudeUsage\x126\n" +
 	"\awindows\x18\x01 \x03(\v2\x1c.aide.machine.v1.UsageWindowR\awindows\x129\n" +
 	"\n" +
@@ -8097,7 +8121,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05stale\x18\x03 \x01(\bR\x05stale\x12 \n" +
 	"\vunavailable\x18\x04 \x01(\tR\vunavailable\x12\x14\n" +
 	"\x05renew\x18\x05 \x01(\tR\x05renew\x12\x16\n" +
-	"\x06detail\x18\x06 \x01(\tR\x06detail\"z\n" +
+	"\x06detail\x18\x06 \x01(\tR\x06detail\x12\x16\n" +
+	"\x06source\x18\a \x01(\tR\x06source\"z\n" +
 	"\vUsageWindow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12 \n" +
 	"\vutilization\x18\x02 \x01(\x01R\vutilization\x127\n" +

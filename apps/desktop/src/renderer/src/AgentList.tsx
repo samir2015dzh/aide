@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
 import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
-import { agentEntry, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
+import { agentEntry, agoText, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
@@ -147,11 +147,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
                     <PausedTag a={a} />
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
-                    {a.name === "claude" && usageText(a, t) && (
-                      <span className="mono ag-usage" title={a.usage?.detail || undefined}>
-                        {usageText(a, t)}
-                      </span>
-                    )}
+                    {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
                   </span>
                   {/* Which program was found and answered: what tells an installed agent from one uninstalled elsewhere. */}
                   {a.binary && (
@@ -257,19 +253,19 @@ function defaultsText(a: AgentStatus, t: T): string {
   return [d.model && modelName(a, d.model), d.effort && effortName(t, d.effort), d.speed ? speedName(t, d.speed) : "", d.mode && modeName(a, d.mode)].filter(Boolean).join(" · ");
 }
 
-/** The Claude plan usage for its row: "Plan 5h 20% · Week 59%", a stale
- * marker when kept after a failed refresh, or a short "unavailable" note.
- * "" when there is no reading at all (no token source wired). */
-function usageText(a: AgentStatus, t: T): string {
+/** The Claude plan usage in one line (工单 #86): "Plan 5h 20% · Week 59% · read 3 min ago"; kept after a refresh that
+ * failed, "last reading, 20 min ago" in its place, never blank, never the failure's own words; "not read yet" before
+ * any reading. "" when the machine reads none at all (switched off). */
+export function usageText(a: AgentStatus, t: T, now = new Date()): string {
   const u = a.usage;
   if (!u) return "";
-  if (u.unavailable) return t("prepare.usageUnreadable");
-  if (u.windows.length === 0) return "";
+  if (u.windows.length === 0) return u.unavailable ? t("prepare.usageNone") : "";
   const label = (k: string) => (k === "five_hour" ? t("prepare.usage5h") : k === "seven_day" ? t("prepare.usageWeek") : k.replace("seven_day_", "7d "));
   const parts = u.windows.map((w) => `${label(w.key)} ${Math.round(w.utilization)}%`);
-  let s = `${t("prepare.usageLabel")} ${parts.join(" · ")}`;
-  if (u.stale) s += ` (${t("prepare.usageStale")})`;
-  return s;
+  const at = u.fetchedAt ? new Date(Number(u.fetchedAt.seconds) * 1000) : undefined;
+  const when = at ? agoText(at, now) : "";
+  const read = !when ? "" : u.stale ? t("prepare.usageLastRead", { when }) : t("prepare.usageReadAt", { when });
+  return [`${t("prepare.usageLabel")} ${parts.join(" · ")}`, read].filter(Boolean).join(" · ");
 }
 
 const logins: Record<string, { key: TerminalCommand; text: string }> = {

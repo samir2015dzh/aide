@@ -348,6 +348,11 @@ message AgentStatus {
   // Its sign-in started from Aide (StartAgentLogin), the last one or the
   // one under way; unset: none since aided started.
   AgentLogin login = 23;
+  // The kind the owner filed it as (SetAgentCategory, 工单 #52/#93): "" told
+  // from what it is (a coding agent of this machine), "local" a coding agent
+  // of this machine, "personal" listed with the personal agents. The owner's
+  // say comes first, whatever the machine finds.
+  string category = 24;
 }
 
 // AgentLogin is a sign-in of a coding agent's command line that Aide
@@ -434,6 +439,10 @@ message ClaudeUsage {
   // e.g. "HTTP 401: authentication_error: OAuth token has expired" or the
   // transport error with its host. Never a token, a header or a URL path.
   string detail = 6;
+  // Where the reading came from (工单 #86): "claude_code" (this machine's
+  // Claude Code answered /usage itself), "api" (the usage endpoint asked
+  // with the token found here, the fallback). Empty with no reading.
+  string source = 7;
 }
 
 // UsageWindow is one rate-limit window's reading: how full it is (0-100)

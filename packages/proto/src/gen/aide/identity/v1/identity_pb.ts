@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file aide/identity/v1/identity.proto.
  */
 export const file_aide_identity_v1_identity: GenFile = /*@__PURE__*/
-  fileDesc("Ch9haWRlL2lkZW50aXR5L3YxL2lkZW50aXR5LnByb3RvEhBhaWRlLmlkZW50aXR5LnYxIoEBCgZTaWduZWQSDAoEdHlwZRgBIAEoCRIMCgRib2R5GAIgASgMEhUKDXNpZ25lcl9rZXlfaWQYAyABKAkSMQoDYWxnGAQgASgOMiQuYWlkZS5pZGVudGl0eS52MS5TaWduYXR1cmVBbGdvcml0aG0SEQoJc2lnbmF0dXJlGAUgASgMIj4KB1Jvb3RLZXkSEgoKcHVibGljX2tleRgBIAEoDBINCgVsYWJlbBgCIAEoCRIQCghwbGF0Zm9ybRgDIAEoCSKlAQoIUm9vdENlcnQSEAoIb3duZXJfaWQYASABKAkSLAoJcm9vdF9rZXlzGAMgAygLMhkuYWlkZS5pZGVudGl0eS52MS5Sb290S2V5Eg8KB3ZlcnNpb24YBCABKAQSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAIQA1ITcmVjb3ZlcnlfcHVibGljX2tleSI0CglSb290Q2hhaW4SJwoFY2VydHMYASADKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZCJ8Cg9Pd25lckRldmljZUNlcnQSEAoIb3duZXJfaWQYASABKAkSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSDQoFbGFiZWwYAyABKAkSLQoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLNAQoQUHVzaFJlZ2lzdHJhdGlvbhIQCghvd25lcl9pZBgBIAEoCRIZChFkZXZpY2VfcHVibGljX2tleRgCIAEoDBINCgV0b2tlbhgDIAEoCRITCgtlbnZpcm9ubWVudBgEIAEoCRIZChFub3RpY2VfcHVibGljX2tleRgFIAEoDBINCgVraW5kcxgGIAMoCRItCglpc3N1ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3NlcnZpY2UYCCABKAkiqQEKC01hY2hpbmVDZXJ0EhAKCG93bmVyX2lkGAEgASgJEhIKCm1hY2hpbmVfaWQYAiABKAkSGgoSbWFjaGluZV9wdWJsaWNfa2V5GAMgASgMEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZGV2aWNlX2tleV9pZBgGIAEoCUoECAQQBVIMbWFjaGluZV9uYW1lIuIECgVHcmFudBIQCghvd25lcl9pZBgBIAEoCRIQCghncmFudF9pZBgCIAEoCRIPCgd2ZXJzaW9uGAMgASgEEhEKCWNsaWVudF9pZBgEIAEoCRIZChFjbGllbnRfcHVibGljX2tleRgFIAEoDBIUCgxjbGllbnRfbGFiZWwYBiABKAkSEwoLbWFjaGluZV9pZHMYByADKAkSEwoLcHJvamVjdF9pZHMYCCADKAkSDgoGYWdlbnRzGAkgAygJEjkKD3Rhc2tfdmlzaWJpbGl0eRgLIAEoDjIgLmFpZGUuaWRlbnRpdHkudjEuVGFza1Zpc2liaWxpdHkSHwoXbWF4X2NvbmN1cnJlbnRfc2Vzc2lvbnMYDCABKA0SLgoKbm90X2JlZm9yZRgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJY3VzdG9kaWFuGA8gASgJEhMKC2NsaWVudF9pY29uGBAgASgJEhQKDGNsaWVudF9pbWFnZRgRIAEoDBIWCg5oZXJfbWFjaGluZV9pZBgSIAEoCRIUCgxtYWNoaW5lX2V4ZWMYEyABKAgSMwoPZmlyc3RfaXNzdWVkX2F0GBQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCg9jbGllbnRfY2F0ZWdvcnkYFSABKAkSIgoaY2xpZW50X2NhdGVnb3J5X21hY2hpbmVfaWQYFiABKAlKBAgKEAtSBnByZXNldCJrCgpFcmFzZU9yZGVyEhAKCG93bmVyX2lkGAEgASgJEhAKCGVyYXNlX2lkGAIgASgJEi0KCWlzc3VlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASCgoCYnkYBCABKAkicAoIRXJhc2VBY2sSEAoIZXJhc2VfaWQYASABKAkSEgoKcHVibGljX2tleRgCIAEoDBIPCgdzdWJqZWN0GAMgASgJEi0KC2RldmljZV9jZXJ0GAQgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWQimwYKDEFkbWluQ29tbWFuZBIQCghvd25lcl9pZBgBIAEoCRISCgpjb21tYW5kX2lkGAIgASgJEhkKEXRhcmdldF9tYWNoaW5lX2lkGAMgASgJEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKC2FkZF9wcm9qZWN0GAogASgLMhwuYWlkZS5pZGVudGl0eS52MS5BZGRQcm9qZWN0SAASOQoOcmVtb3ZlX3Byb2plY3QYCyABKAsyHy5haWRlLmlkZW50aXR5LnYxLlJlbW92ZVByb2plY3RIABIxCgpzZXRfcGF1c2VkGA0gASgLMhsuYWlkZS5pZGVudGl0eS52MS5TZXRQYXVzZWRIABItCghzZXRfbmFtZRgOIAEoCzIZLmFpZGUuaWRlbnRpdHkudjEuU2V0TmFtZUgAEj0KEnNldF9hZ2VudF9kZWZhdWx0cxgPIAEoCzIfLmFpZGUuaWRlbnRpdHkudjEuQWdlbnREZWZhdWx0c0gAEisKB3NldF9oZXIYECABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNldEhlckgAEkIKE3NldF93b3Jrc3BhY2Vfcm9vdHMYEyABKAsyIy5haWRlLmlkZW50aXR5LnYxLlNldFdvcmtzcGFjZVJvb3RzSAASPAoQc2V0X2FnZW50X2hpZGRlbhgUIAEoCzIgLmFpZGUuaWRlbnRpdHkudjEuU2V0QWdlbnRIaWRkZW5IABI8ChBzZXRfYWdlbnRfcGF1c2VkGBUgASgLMiAuYWlkZS5pZGVudGl0eS52MS5TZXRBZ2VudFBhdXNlZEgAEjwKEHNldF9wcm9qZWN0X25hbWUYFiABKAsyIC5haWRlLmlkZW50aXR5LnYxLlNldFByb2plY3ROYW1lSABCCQoHY29tbWFuZEoECAwQDUoECBEQEkoECBIQE1IOcmVuYW1lX21hY2hpbmVSFnNldF9oZXJfYXNzaXN0YW50X21vZGVSGXNldF9oZXJfY29tbWFuZF9jb25uZWN0b3IinQEKCkFkZFByb2plY3QSEgoKcHJvamVjdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJEhgKEGRlZmF1bHRfYmFzZV9yZWYYAyABKAkSLgoJd29ya3NwYWNlGAQgASgOMhsuYWlkZS5pZGVudGl0eS52MS5Xb3Jrc3BhY2USEwoLZGVzY3JpcHRpb24YBSABKAkSDgoGYWdlbnRzGAYgAygJIiMKDVJlbW92ZVByb2plY3QSEgoKcHJvamVjdF9pZBgBIAEoCSIvCg5TZXRBZ2VudEhpZGRlbhINCgVhZ2VudBgBIAEoCRIOCgZoaWRkZW4YAiABKAgiXgoOU2V0QWdlbnRQYXVzZWQSDQoFYWdlbnQYASABKAkSDgoGcGF1c2VkGAIgASgIEi0KCXJlc3VtZV9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiMgoOU2V0UHJvamVjdE5hbWUSEgoKcHJvamVjdF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJIiIKEVNldFdvcmtzcGFjZVJvb3RzEg0KBXJvb3RzGAEgAygJIhcKB1NldE5hbWUSDAoEbmFtZRgBIAEoCSIbCglTZXRQYXVzZWQSDgoGcGF1c2VkGAEgASgIIigKBlNldEhlchIPCgdlbmFibGVkGAEgASgIEg0KBWVyYXNlGAIgASgIIngKDUFnZW50RGVmYXVsdHMSDQoFYWdlbnQYASABKAkSDQoFbW9kZWwYAiABKAkSDgoGZWZmb3J0GAMgASgJEisKBXNwZWVkGAQgASgOMhwuYWlkZS5pZGVudGl0eS52MS5BZ2VudFNwZWVkEgwKBG1vZGUYBSABKAki8AEKB1BlcnNvbmESEgoKcGVyc29uYV9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBGljb24YAyABKAkSDQoFY29sb3IYBCABKAkSEgoKbWFjaGluZV9pZBgFIAEoCRISCgpwcm9qZWN0X2lkGAYgASgJEg0KBWFnZW50GAcgASgJEg0KBW1vZGVsGAggASgJEg4KBmVmZm9ydBgJIAEoCRIMCgRtb2RlGAogASgJEhIKCnNlc3Npb25faWQYCyABKAkSLgoKdXBkYXRlZF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAihAIKDlJldm9jYXRpb25MaXN0EhAKCG93bmVyX2lkGAEgASgJEhkKEXJldm9rZWRfZ3JhbnRfaWRzGAIgAygJEhsKE3Jldm9rZWRfbWFjaGluZV9pZHMYAyADKAkSUgoSbWluX2dyYW50X3ZlcnNpb25zGAQgAygLMjYuYWlkZS5pZGVudGl0eS52MS5SZXZvY2F0aW9uTGlzdC5NaW5HcmFudFZlcnNpb25zRW50cnkSGwoTcmV2b2tlZF9kZXZpY2Vfa2V5cxgFIAMoCRo3ChVNaW5HcmFudFZlcnNpb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgEOgI4ASL+AQoLQ3JlZGVudGlhbHMSLwoKcm9vdF9jaGFpbhgFIAEoCzIbLmFpZGUuaWRlbnRpdHkudjEuUm9vdENoYWluEhQKDG1hY2hpbmVfbmFtZRgGIAEoCRIwCgxtYWNoaW5lX2NlcnQYAiABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZEgAEikKBWdyYW50GAMgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWRIABIvCgtkZXZpY2VfY2VydBgEIAEoCzIYLmFpZGUuaWRlbnRpdHkudjEuU2lnbmVkSABCCQoHc3ViamVjdEoECAEQAlIJcm9vdF9jZXJ0IscBCgtDb250YWN0Q2FyZBIQCghvd25lcl9pZBgBIAEoCRIRCgljbGllbnRfaWQYAiABKAkSGQoRY2xpZW50X3B1YmxpY19rZXkYAyABKAwSDAoEbmFtZRgEIAEoCRIMCgRraW5kGAUgASgJEi0KCWlzc3VlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIY2F0ZWdvcnkYByABKAkSGwoTY2F0ZWdvcnlfbWFjaGluZV9pZBgIIAEoCSKjAQoRSW5ib3hSZWdpc3RyYXRpb24SEAoIb3duZXJfaWQYASABKAkSDQoFaW5ib3gYAiABKAkSGAoQaW5ib3hfcHVibGljX2tleRgDIAEoDBIWCg50YWtlc19tZXNzYWdlcxgEIAEoCRItCglpc3N1ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHRpZXIYBiABKAkiwAEKB0NvbnRhY3QSJgoEY2FyZBgBIAEoCzIYLmFpZGUuaWRlbnRpdHkudjEuU2lnbmVkEi0KC2RldmljZV9jZXJ0GAIgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWQSLgoMbWFjaGluZV9jZXJ0GAMgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWQSLgoMcmVnaXN0cmF0aW9uGAQgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWQigAEKDkJvdW5kYXJ5UG9saWN5EhAKCG93bmVyX2lkGAEgASgJEi0KBXJ1bGVzGAIgAygLMh4uYWlkZS5pZGVudGl0eS52MS5Cb3VuZGFyeVJ1bGUSLQoJaXNzdWVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJLCgxCb3VuZGFyeVJ1bGUSEAoIY2F0ZWdvcnkYASABKAkSEAoIcGF0dGVybnMYAiADKAkSFwoPcmVjaXBpZW50X2tpbmRzGAMgAygJIq4BCgtSb29tQ2hhcnRlchIQCghvd25lcl9pZBgBIAEoCRIPCgdyb29tX2lkGAIgASgJEhcKD2hvc3RfbWFjaGluZV9pZBgDIAEoCRI0CgdtZW1iZXJzGAQgAygLMiMuYWlkZS5pZGVudGl0eS52MS5Sb29tQ2hhcnRlck1lbWJlchItCglpc3N1ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKEVJvb21DaGFydGVyTWVtYmVyEhIKCm1hY2hpbmVfaWQYASABKAkSDQoFYWdlbnQYAiABKAkSEgoKcHJvamVjdF9pZBgDIAEoCSpkChJTaWduYXR1cmVBbGdvcml0aG0SIwofU0lHTkFUVVJFX0FMR09SSVRITV9VTlNQRUNJRklFRBAAEikKJVNJR05BVFVSRV9BTEdPUklUSE1fRUNEU0FfUDI1Nl9TSEEyNTYQASpWCglXb3Jrc3BhY2USGQoVV09SS1NQQUNFX1VOU1BFQ0lGSUVEEAASFgoSV09SS1NQQUNFX1dPUktUUkVFEAESFgoSV09SS1NQQUNFX0lOX1BMQUNFEAIqYwoOVGFza1Zpc2liaWxpdHkSHwobVEFTS19WSVNJQklMSVRZX1VOU1BFQ0lGSUVEEAASFwoTVEFTS19WSVNJQklMSVRZX09XThABEhcKE1RBU0tfVklTSUJJTElUWV9BTEwQAipZCgpBZ2VudFNwZWVkEhsKF0FHRU5UX1NQRUVEX1VOU1BFQ0lGSUVEEAASGAoUQUdFTlRfU1BFRURfU1RBTkRBUkQQARIUChBBR0VOVF9TUEVFRF9GQVNUEAJiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("Ch9haWRlL2lkZW50aXR5L3YxL2lkZW50aXR5LnByb3RvEhBhaWRlLmlkZW50aXR5LnYxIoEBCgZTaWduZWQSDAoEdHlwZRgBIAEoCRIMCgRib2R5GAIgASgMEhUKDXNpZ25lcl9rZXlfaWQYAyABKAkSMQoDYWxnGAQgASgOMiQuYWlkZS5pZGVudGl0eS52MS5TaWduYXR1cmVBbGdvcml0aG0SEQoJc2lnbmF0dXJlGAUgASgMIj4KB1Jvb3RLZXkSEgoKcHVibGljX2tleRgBIAEoDBINCgVsYWJlbBgCIAEoCRIQCghwbGF0Zm9ybRgDIAEoCSKlAQoIUm9vdENlcnQSEAoIb3duZXJfaWQYASABKAkSLAoJcm9vdF9rZXlzGAMgAygLMhkuYWlkZS5pZGVudGl0eS52MS5Sb290S2V5Eg8KB3ZlcnNpb24YBCABKAQSLQoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAIQA1ITcmVjb3ZlcnlfcHVibGljX2tleSI0CglSb290Q2hhaW4SJwoFY2VydHMYASADKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZCJ8Cg9Pd25lckRldmljZUNlcnQSEAoIb3duZXJfaWQYASABKAkSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSDQoFbGFiZWwYAyABKAkSLQoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLNAQoQUHVzaFJlZ2lzdHJhdGlvbhIQCghvd25lcl9pZBgBIAEoCRIZChFkZXZpY2VfcHVibGljX2tleRgCIAEoDBINCgV0b2tlbhgDIAEoCRITCgtlbnZpcm9ubWVudBgEIAEoCRIZChFub3RpY2VfcHVibGljX2tleRgFIAEoDBINCgVraW5kcxgGIAMoCRItCglpc3N1ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3NlcnZpY2UYCCABKAkiqQEKC01hY2hpbmVDZXJ0EhAKCG93bmVyX2lkGAEgASgJEhIKCm1hY2hpbmVfaWQYAiABKAkSGgoSbWFjaGluZV9wdWJsaWNfa2V5GAMgASgMEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZGV2aWNlX2tleV9pZBgGIAEoCUoECAQQBVIMbWFjaGluZV9uYW1lIuIECgVHcmFudBIQCghvd25lcl9pZBgBIAEoCRIQCghncmFudF9pZBgCIAEoCRIPCgd2ZXJzaW9uGAMgASgEEhEKCWNsaWVudF9pZBgEIAEoCRIZChFjbGllbnRfcHVibGljX2tleRgFIAEoDBIUCgxjbGllbnRfbGFiZWwYBiABKAkSEwoLbWFjaGluZV9pZHMYByADKAkSEwoLcHJvamVjdF9pZHMYCCADKAkSDgoGYWdlbnRzGAkgAygJEjkKD3Rhc2tfdmlzaWJpbGl0eRgLIAEoDjIgLmFpZGUuaWRlbnRpdHkudjEuVGFza1Zpc2liaWxpdHkSHwoXbWF4X2NvbmN1cnJlbnRfc2Vzc2lvbnMYDCABKA0SLgoKbm90X2JlZm9yZRgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJY3VzdG9kaWFuGA8gASgJEhMKC2NsaWVudF9pY29uGBAgASgJEhQKDGNsaWVudF9pbWFnZRgRIAEoDBIWCg5oZXJfbWFjaGluZV9pZBgSIAEoCRIUCgxtYWNoaW5lX2V4ZWMYEyABKAgSMwoPZmlyc3RfaXNzdWVkX2F0GBQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCg9jbGllbnRfY2F0ZWdvcnkYFSABKAkSIgoaY2xpZW50X2NhdGVnb3J5X21hY2hpbmVfaWQYFiABKAlKBAgKEAtSBnByZXNldCJrCgpFcmFzZU9yZGVyEhAKCG93bmVyX2lkGAEgASgJEhAKCGVyYXNlX2lkGAIgASgJEi0KCWlzc3VlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASCgoCYnkYBCABKAkicAoIRXJhc2VBY2sSEAoIZXJhc2VfaWQYASABKAkSEgoKcHVibGljX2tleRgCIAEoDBIPCgdzdWJqZWN0GAMgASgJEi0KC2RldmljZV9jZXJ0GAQgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWQi3QYKDEFkbWluQ29tbWFuZBIQCghvd25lcl9pZBgBIAEoCRISCgpjb21tYW5kX2lkGAIgASgJEhkKEXRhcmdldF9tYWNoaW5lX2lkGAMgASgJEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKC2FkZF9wcm9qZWN0GAogASgLMhwuYWlkZS5pZGVudGl0eS52MS5BZGRQcm9qZWN0SAASOQoOcmVtb3ZlX3Byb2plY3QYCyABKAsyHy5haWRlLmlkZW50aXR5LnYxLlJlbW92ZVByb2plY3RIABIxCgpzZXRfcGF1c2VkGA0gASgLMhsuYWlkZS5pZGVudGl0eS52MS5TZXRQYXVzZWRIABItCghzZXRfbmFtZRgOIAEoCzIZLmFpZGUuaWRlbnRpdHkudjEuU2V0TmFtZUgAEj0KEnNldF9hZ2VudF9kZWZhdWx0cxgPIAEoCzIfLmFpZGUuaWRlbnRpdHkudjEuQWdlbnREZWZhdWx0c0gAEisKB3NldF9oZXIYECABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNldEhlckgAEkIKE3NldF93b3Jrc3BhY2Vfcm9vdHMYEyABKAsyIy5haWRlLmlkZW50aXR5LnYxLlNldFdvcmtzcGFjZVJvb3RzSAASPAoQc2V0X2FnZW50X2hpZGRlbhgUIAEoCzIgLmFpZGUuaWRlbnRpdHkudjEuU2V0QWdlbnRIaWRkZW5IABI8ChBzZXRfYWdlbnRfcGF1c2VkGBUgASgLMiAuYWlkZS5pZGVudGl0eS52MS5TZXRBZ2VudFBhdXNlZEgAEjwKEHNldF9wcm9qZWN0X25hbWUYFiABKAsyIC5haWRlLmlkZW50aXR5LnYxLlNldFByb2plY3ROYW1lSAASQAoSc2V0X2FnZW50X2NhdGVnb3J5GBcgASgLMiIuYWlkZS5pZGVudGl0eS52MS5TZXRBZ2VudENhdGVnb3J5SABCCQoHY29tbWFuZEoECAwQDUoECBEQEkoECBIQE1IOcmVuYW1lX21hY2hpbmVSFnNldF9oZXJfYXNzaXN0YW50X21vZGVSGXNldF9oZXJfY29tbWFuZF9jb25uZWN0b3IinQEKCkFkZFByb2plY3QSEgoKcHJvamVjdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJEhgKEGRlZmF1bHRfYmFzZV9yZWYYAyABKAkSLgoJd29ya3NwYWNlGAQgASgOMhsuYWlkZS5pZGVudGl0eS52MS5Xb3Jrc3BhY2USEwoLZGVzY3JpcHRpb24YBSABKAkSDgoGYWdlbnRzGAYgAygJIiMKDVJlbW92ZVByb2plY3QSEgoKcHJvamVjdF9pZBgBIAEoCSIvCg5TZXRBZ2VudEhpZGRlbhINCgVhZ2VudBgBIAEoCRIOCgZoaWRkZW4YAiABKAgiXgoOU2V0QWdlbnRQYXVzZWQSDQoFYWdlbnQYASABKAkSDgoGcGF1c2VkGAIgASgIEi0KCXJlc3VtZV9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiMwoQU2V0QWdlbnRDYXRlZ29yeRINCgVhZ2VudBgBIAEoCRIQCghjYXRlZ29yeRgCIAEoCSIyCg5TZXRQcm9qZWN0TmFtZRISCgpwcm9qZWN0X2lkGAEgASgJEgwKBG5hbWUYAiABKAkiIgoRU2V0V29ya3NwYWNlUm9vdHMSDQoFcm9vdHMYASADKAkiFwoHU2V0TmFtZRIMCgRuYW1lGAEgASgJIhsKCVNldFBhdXNlZBIOCgZwYXVzZWQYASABKAgiKAoGU2V0SGVyEg8KB2VuYWJsZWQYASABKAgSDQoFZXJhc2UYAiABKAgieAoNQWdlbnREZWZhdWx0cxINCgVhZ2VudBgBIAEoCRINCgVtb2RlbBgCIAEoCRIOCgZlZmZvcnQYAyABKAkSKwoFc3BlZWQYBCABKA4yHC5haWRlLmlkZW50aXR5LnYxLkFnZW50U3BlZWQSDAoEbW9kZRgFIAEoCSLwAQoHUGVyc29uYRISCgpwZXJzb25hX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEaWNvbhgDIAEoCRINCgVjb2xvchgEIAEoCRISCgptYWNoaW5lX2lkGAUgASgJEhIKCnByb2plY3RfaWQYBiABKAkSDQoFYWdlbnQYByABKAkSDQoFbW9kZWwYCCABKAkSDgoGZWZmb3J0GAkgASgJEgwKBG1vZGUYCiABKAkSEgoKc2Vzc2lvbl9pZBgLIAEoCRIuCgp1cGRhdGVkX2F0GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKEAgoOUmV2b2NhdGlvbkxpc3QSEAoIb3duZXJfaWQYASABKAkSGQoRcmV2b2tlZF9ncmFudF9pZHMYAiADKAkSGwoTcmV2b2tlZF9tYWNoaW5lX2lkcxgDIAMoCRJSChJtaW5fZ3JhbnRfdmVyc2lvbnMYBCADKAsyNi5haWRlLmlkZW50aXR5LnYxLlJldm9jYXRpb25MaXN0Lk1pbkdyYW50VmVyc2lvbnNFbnRyeRIbChNyZXZva2VkX2RldmljZV9rZXlzGAUgAygJGjcKFU1pbkdyYW50VmVyc2lvbnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAQ6AjgBIv4BCgtDcmVkZW50aWFscxIvCgpyb290X2NoYWluGAUgASgLMhsuYWlkZS5pZGVudGl0eS52MS5Sb290Q2hhaW4SFAoMbWFjaGluZV9uYW1lGAYgASgJEjAKDG1hY2hpbmVfY2VydBgCIAEoCzIYLmFpZGUuaWRlbnRpdHkudjEuU2lnbmVkSAASKQoFZ3JhbnQYAyABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZEgAEi8KC2RldmljZV9jZXJ0GAQgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWRIAEIJCgdzdWJqZWN0SgQIARACUglyb290X2NlcnQixwEKC0NvbnRhY3RDYXJkEhAKCG93bmVyX2lkGAEgASgJEhEKCWNsaWVudF9pZBgCIAEoCRIZChFjbGllbnRfcHVibGljX2tleRgDIAEoDBIMCgRuYW1lGAQgASgJEgwKBGtpbmQYBSABKAkSLQoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghjYXRlZ29yeRgHIAEoCRIbChNjYXRlZ29yeV9tYWNoaW5lX2lkGAggASgJIqMBChFJbmJveFJlZ2lzdHJhdGlvbhIQCghvd25lcl9pZBgBIAEoCRINCgVpbmJveBgCIAEoCRIYChBpbmJveF9wdWJsaWNfa2V5GAMgASgMEhYKDnRha2VzX21lc3NhZ2VzGAQgASgJEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEdGllchgGIAEoCSLAAQoHQ29udGFjdBImCgRjYXJkGAEgASgLMhguYWlkZS5pZGVudGl0eS52MS5TaWduZWQSLQoLZGV2aWNlX2NlcnQYAiABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZBIuCgxtYWNoaW5lX2NlcnQYAyABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZBIuCgxyZWdpc3RyYXRpb24YBCABKAsyGC5haWRlLmlkZW50aXR5LnYxLlNpZ25lZCKAAQoOQm91bmRhcnlQb2xpY3kSEAoIb3duZXJfaWQYASABKAkSLQoFcnVsZXMYAiADKAsyHi5haWRlLmlkZW50aXR5LnYxLkJvdW5kYXJ5UnVsZRItCglpc3N1ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIksKDEJvdW5kYXJ5UnVsZRIQCghjYXRlZ29yeRgBIAEoCRIQCghwYXR0ZXJucxgCIAMoCRIXCg9yZWNpcGllbnRfa2luZHMYAyADKAkirgEKC1Jvb21DaGFydGVyEhAKCG93bmVyX2lkGAEgASgJEg8KB3Jvb21faWQYAiABKAkSFwoPaG9zdF9tYWNoaW5lX2lkGAMgASgJEjQKB21lbWJlcnMYBCADKAsyIy5haWRlLmlkZW50aXR5LnYxLlJvb21DaGFydGVyTWVtYmVyEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiSgoRUm9vbUNoYXJ0ZXJNZW1iZXISEgoKbWFjaGluZV9pZBgBIAEoCRINCgVhZ2VudBgCIAEoCRISCgpwcm9qZWN0X2lkGAMgASgJKmQKElNpZ25hdHVyZUFsZ29yaXRobRIjCh9TSUdOQVRVUkVfQUxHT1JJVEhNX1VOU1BFQ0lGSUVEEAASKQolU0lHTkFUVVJFX0FMR09SSVRITV9FQ0RTQV9QMjU2X1NIQTI1NhABKlYKCVdvcmtzcGFjZRIZChVXT1JLU1BBQ0VfVU5TUEVDSUZJRUQQABIWChJXT1JLU1BBQ0VfV09SS1RSRUUQARIWChJXT1JLU1BBQ0VfSU5fUExBQ0UQAipjCg5UYXNrVmlzaWJpbGl0eRIfChtUQVNLX1ZJU0lCSUxJVFlfVU5TUEVDSUZJRUQQABIXChNUQVNLX1ZJU0lCSUxJVFlfT1dOEAESFwoTVEFTS19WSVNJQklMSVRZX0FMTBACKlkKCkFnZW50U3BlZWQSGwoXQUdFTlRfU1BFRURfVU5TUEVDSUZJRUQQABIYChRBR0VOVF9TUEVFRF9TVEFOREFSRBABEhQKEEFHRU5UX1NQRUVEX0ZBU1QQAmIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * Signed wraps a serialized message together with a signature over
@@ -629,6 +629,12 @@ export type AdminCommand = Message<"aide.identity.v1.AdminCommand"> & {
      */
     value: SetProjectName;
     case: "setProjectName";
+  } | {
+    /**
+     * @generated from field: aide.identity.v1.SetAgentCategory set_agent_category = 23;
+     */
+    value: SetAgentCategory;
+    case: "setAgentCategory";
   } | { case: undefined; value?: undefined };
 };
 
@@ -772,6 +778,36 @@ export const SetAgentPausedSchema: GenMessage<SetAgentPaused> = /*@__PURE__*/
   messageDesc(file_aide_identity_v1_identity, 14);
 
 /**
+ * SetAgentCategory files a coding agent the machine lists as a kind (工单
+ * #52, #93): a setting, as hiding one is. The owner's say comes first, the
+ * machine keeps it with the agent; it grants and takes away nothing.
+ *
+ * @generated from message aide.identity.v1.SetAgentCategory
+ */
+export type SetAgentCategory = Message<"aide.identity.v1.SetAgentCategory"> & {
+  /**
+   * "claude" | "codex" | an ACP agent ("copilot", "deepseek", ...)
+   *
+   * @generated from field: string agent = 1;
+   */
+  agent: string;
+
+  /**
+   * "" (told from what it is again), "local" or "personal".
+   *
+   * @generated from field: string category = 2;
+   */
+  category: string;
+};
+
+/**
+ * Describes the message aide.identity.v1.SetAgentCategory.
+ * Use `create(SetAgentCategorySchema)` to create a new message.
+ */
+export const SetAgentCategorySchema: GenMessage<SetAgentCategory> = /*@__PURE__*/
+  messageDesc(file_aide_identity_v1_identity, 15);
+
+/**
  * SetProjectName gives a project the name the owner's screens show it by,
  * in place of its id (a folder's name such as "project", which the owner
  * did not choose and the id cannot change): a setting, as hiding an agent
@@ -798,7 +834,7 @@ export type SetProjectName = Message<"aide.identity.v1.SetProjectName"> & {
  * Use `create(SetProjectNameSchema)` to create a new message.
  */
 export const SetProjectNameSchema: GenMessage<SetProjectName> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 15);
+  messageDesc(file_aide_identity_v1_identity, 16);
 
 /**
  * SetWorkspaceRoots sets the folders the machine's owner devices may browse,
@@ -822,7 +858,7 @@ export type SetWorkspaceRoots = Message<"aide.identity.v1.SetWorkspaceRoots"> & 
  * Use `create(SetWorkspaceRootsSchema)` to create a new message.
  */
 export const SetWorkspaceRootsSchema: GenMessage<SetWorkspaceRoots> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 16);
+  messageDesc(file_aide_identity_v1_identity, 17);
 
 /**
  * The machine's name, as people and agents call it (agents address
@@ -842,7 +878,7 @@ export type SetName = Message<"aide.identity.v1.SetName"> & {
  * Use `create(SetNameSchema)` to create a new message.
  */
 export const SetNameSchema: GenMessage<SetName> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 17);
+  messageDesc(file_aide_identity_v1_identity, 18);
 
 /**
  * @generated from message aide.identity.v1.SetPaused
@@ -859,7 +895,7 @@ export type SetPaused = Message<"aide.identity.v1.SetPaused"> & {
  * Use `create(SetPausedSchema)` to create a new message.
  */
 export const SetPausedSchema: GenMessage<SetPaused> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 18);
+  messageDesc(file_aide_identity_v1_identity, 19);
 
 /**
  * SetHer turns Her on or off for the machine: on, its
@@ -888,7 +924,7 @@ export type SetHer = Message<"aide.identity.v1.SetHer"> & {
  * Use `create(SetHerSchema)` to create a new message.
  */
 export const SetHerSchema: GenMessage<SetHer> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 19);
+  messageDesc(file_aide_identity_v1_identity, 20);
 
 /**
  * AgentDefaults is what a coding agent's sessions on the machine run with
@@ -938,7 +974,7 @@ export type AgentDefaults = Message<"aide.identity.v1.AgentDefaults"> & {
  * Use `create(AgentDefaultsSchema)` to create a new message.
  */
 export const AgentDefaultsSchema: GenMessage<AgentDefaults> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 20);
+  messageDesc(file_aide_identity_v1_identity, 21);
 
 /**
  * Persona is a contact (docs/personas.md): a name the owner hands work to,
@@ -1026,7 +1062,7 @@ export type Persona = Message<"aide.identity.v1.Persona"> & {
  * Use `create(PersonaSchema)` to create a new message.
  */
 export const PersonaSchema: GenMessage<Persona> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 21);
+  messageDesc(file_aide_identity_v1_identity, 22);
 
 /**
  * RevocationList only ever reduces permissions, so machines accept it from the
@@ -1070,7 +1106,7 @@ export type RevocationList = Message<"aide.identity.v1.RevocationList"> & {
  * Use `create(RevocationListSchema)` to create a new message.
  */
 export const RevocationListSchema: GenMessage<RevocationList> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 22);
+  messageDesc(file_aide_identity_v1_identity, 23);
 
 /**
  * Credentials are embedded in the E2E TLS certificate extension and in the
@@ -1122,7 +1158,7 @@ export type Credentials = Message<"aide.identity.v1.Credentials"> & {
  * Use `create(CredentialsSchema)` to create a new message.
  */
 export const CredentialsSchema: GenMessage<Credentials> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 23);
+  messageDesc(file_aide_identity_v1_identity, 24);
 
 /**
  * ContactCard names one of the owner's agents, for the others to write to
@@ -1185,7 +1221,7 @@ export type ContactCard = Message<"aide.identity.v1.ContactCard"> & {
  * Use `create(ContactCardSchema)` to create a new message.
  */
 export const ContactCardSchema: GenMessage<ContactCard> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 24);
+  messageDesc(file_aide_identity_v1_identity, 25);
 
 /**
  * InboxRegistration is an inbox's key, signed by the inbox's identity key
@@ -1245,7 +1281,7 @@ export type InboxRegistration = Message<"aide.identity.v1.InboxRegistration"> & 
  * Use `create(InboxRegistrationSchema)` to create a new message.
  */
 export const InboxRegistrationSchema: GenMessage<InboxRegistration> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 25);
+  messageDesc(file_aide_identity_v1_identity, 26);
 
 /**
  * Contact is one of the owner's inboxes as a sender checks it: an agent's
@@ -1281,7 +1317,7 @@ export type Contact = Message<"aide.identity.v1.Contact"> & {
  * Use `create(ContactSchema)` to create a new message.
  */
 export const ContactSchema: GenMessage<Contact> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 26);
+  messageDesc(file_aide_identity_v1_identity, 27);
 
 /**
  * BoundaryPolicy is the owner's information boundary for messages between
@@ -1316,7 +1352,7 @@ export type BoundaryPolicy = Message<"aide.identity.v1.BoundaryPolicy"> & {
  * Use `create(BoundaryPolicySchema)` to create a new message.
  */
 export const BoundaryPolicySchema: GenMessage<BoundaryPolicy> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 27);
+  messageDesc(file_aide_identity_v1_identity, 28);
 
 /**
  * @generated from message aide.identity.v1.BoundaryRule
@@ -1352,7 +1388,7 @@ export type BoundaryRule = Message<"aide.identity.v1.BoundaryRule"> & {
  * Use `create(BoundaryRuleSchema)` to create a new message.
  */
 export const BoundaryRuleSchema: GenMessage<BoundaryRule> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 28);
+  messageDesc(file_aide_identity_v1_identity, 29);
 
 /**
  * RoomCharter is what the owner allows a room (ROOMS-DESIGN-2026-11-22):
@@ -1395,7 +1431,7 @@ export type RoomCharter = Message<"aide.identity.v1.RoomCharter"> & {
  * Use `create(RoomCharterSchema)` to create a new message.
  */
 export const RoomCharterSchema: GenMessage<RoomCharter> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 29);
+  messageDesc(file_aide_identity_v1_identity, 30);
 
 /**
  * @generated from message aide.identity.v1.RoomCharterMember
@@ -1422,7 +1458,7 @@ export type RoomCharterMember = Message<"aide.identity.v1.RoomCharterMember"> & 
  * Use `create(RoomCharterMemberSchema)` to create a new message.
  */
 export const RoomCharterMemberSchema: GenMessage<RoomCharterMember> = /*@__PURE__*/
-  messageDesc(file_aide_identity_v1_identity, 30);
+  messageDesc(file_aide_identity_v1_identity, 31);
 
 /**
  * @generated from enum aide.identity.v1.SignatureAlgorithm

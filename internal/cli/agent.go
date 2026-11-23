@@ -48,6 +48,8 @@ type agentUsage struct {
 	// Detail: what lay behind an unavailable or stale reading (HTTP status
 	// and a summary of the answer); never a token.
 	Detail string `json:"detail,omitempty"`
+	// Source: where the reading came from, "claude_code" or "api" (工单 #86).
+	Source string `json:"source,omitempty"`
 }
 
 type usageWindow struct {
@@ -62,7 +64,7 @@ func usageFrom(u *machinev1.ClaudeUsage) *agentUsage {
 	if u == nil {
 		return nil
 	}
-	out := &agentUsage{Stale: u.Stale, Unavailable: u.Unavailable, Renew: u.Renew, Detail: u.Detail, Windows: []usageWindow{}}
+	out := &agentUsage{Stale: u.Stale, Unavailable: u.Unavailable, Renew: u.Renew, Detail: u.Detail, Source: u.Source, Windows: []usageWindow{}}
 	if u.FetchedAt != nil {
 		out.FetchedAt = u.FetchedAt.AsTime().UnixMilli()
 	}

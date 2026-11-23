@@ -353,6 +353,24 @@ func (l *localService) CheckAgents(ctx context.Context, req *localv1.CheckAgents
 	return &localv1.CheckAgentsResponse{}, nil
 }
 
+// SetAgentCategory files a coding agent on a machine as a kind (工单 #93).
+func (l *localService) SetAgentCategory(ctx context.Context, req *localv1.SetAgentCategoryRequest) (*localv1.SetAgentCategoryResponse, error) {
+	if req.Agent == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("which coding agent?"))
+	}
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err == nil {
+			err = onlyMachineSettings(ctx, m, req.MachineId, func(c *identityv1.AdminCommand) {
+				c.Command = &identityv1.AdminCommand_SetAgentCategory{SetAgentCategory: &identityv1.SetAgentCategory{Agent: req.Agent, Category: req.Category}}
+			})
+		}
+		return &localv1.SetAgentCategoryResponse{}, err
+	}
+	err := l.o().SetAgentCategory(ctx, req.MachineId, req.Agent, req.Category)
+	l.o().wrote(ctx, err, false, req.MachineId)
+	return &localv1.SetAgentCategoryResponse{}, err
+}
+
 // SetAgentPaused pauses a coding agent on a machine, or resumes it.
 func (l *localService) SetAgentPaused(ctx context.Context, req *localv1.SetAgentPausedRequest) (*localv1.SetAgentPausedResponse, error) {
 	if req.Agent == "" {

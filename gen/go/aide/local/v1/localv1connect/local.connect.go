@@ -103,6 +103,9 @@ const (
 	// LocalServiceSetAgentPausedProcedure is the fully-qualified name of the LocalService's
 	// SetAgentPaused RPC.
 	LocalServiceSetAgentPausedProcedure = "/aide.local.v1.LocalService/SetAgentPaused"
+	// LocalServiceSetAgentCategoryProcedure is the fully-qualified name of the LocalService's
+	// SetAgentCategory RPC.
+	LocalServiceSetAgentCategoryProcedure = "/aide.local.v1.LocalService/SetAgentCategory"
 	// LocalServiceListMachineReposProcedure is the fully-qualified name of the LocalService's
 	// ListMachineRepos RPC.
 	LocalServiceListMachineReposProcedure = "/aide.local.v1.LocalService/ListMachineRepos"
@@ -387,6 +390,9 @@ type LocalServiceClient interface {
 	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
 	// Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
 	SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error)
+	// Files a coding agent a machine lists as a kind, or back to told from
+	// what it is (SetAgentCategory).
+	SetAgentCategory(context.Context, *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -716,6 +722,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceSetAgentPausedProcedure,
 			connect.WithSchema(localServiceMethods.ByName("SetAgentPaused")),
+			connect.WithClientOptions(opts...),
+		),
+		setAgentCategory: connect.NewClient[v1.SetAgentCategoryRequest, v1.SetAgentCategoryResponse](
+			httpClient,
+			baseURL+LocalServiceSetAgentCategoryProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetAgentCategory")),
 			connect.WithClientOptions(opts...),
 		),
 		listMachineRepos: connect.NewClient[v1.ListMachineReposRequest, v1.ListMachineReposResponse](
@@ -1199,6 +1211,7 @@ type localServiceClient struct {
 	checkAgents              *connect.Client[v1.CheckAgentsRequest, v1.CheckAgentsResponse]
 	setAgentHidden           *connect.Client[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse]
 	setAgentPaused           *connect.Client[v1.SetAgentPausedRequest, v1.SetAgentPausedResponse]
+	setAgentCategory         *connect.Client[v1.SetAgentCategoryRequest, v1.SetAgentCategoryResponse]
 	listMachineRepos         *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
 	listMachineFolders       *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
 	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
@@ -1500,6 +1513,15 @@ func (c *localServiceClient) SetAgentHidden(ctx context.Context, req *v1.SetAgen
 // SetAgentPaused calls aide.local.v1.LocalService.SetAgentPaused.
 func (c *localServiceClient) SetAgentPaused(ctx context.Context, req *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error) {
 	response, err := c.setAgentPaused.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SetAgentCategory calls aide.local.v1.LocalService.SetAgentCategory.
+func (c *localServiceClient) SetAgentCategory(ctx context.Context, req *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error) {
+	response, err := c.setAgentCategory.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -2239,6 +2261,9 @@ type LocalServiceHandler interface {
 	SetAgentHidden(context.Context, *v1.SetAgentHiddenRequest) (*v1.SetAgentHiddenResponse, error)
 	// Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
 	SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error)
+	// Files a coding agent a machine lists as a kind, or back to told from
+	// what it is (SetAgentCategory).
+	SetAgentCategory(context.Context, *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error)
 	// A machine's git repositories under its home folder, for Add a Project.
 	ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error)
 	// The folders in one of a machine's folders, for Add a Project.
@@ -2564,6 +2589,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceSetAgentPausedProcedure,
 		svc.SetAgentPaused,
 		connect.WithSchema(localServiceMethods.ByName("SetAgentPaused")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetAgentCategoryHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetAgentCategoryProcedure,
+		svc.SetAgentCategory,
+		connect.WithSchema(localServiceMethods.ByName("SetAgentCategory")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListMachineReposHandler := connect.NewUnaryHandlerSimple(
@@ -3070,6 +3101,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceSetAgentHiddenHandler.ServeHTTP(w, r)
 		case LocalServiceSetAgentPausedProcedure:
 			localServiceSetAgentPausedHandler.ServeHTTP(w, r)
+		case LocalServiceSetAgentCategoryProcedure:
+			localServiceSetAgentCategoryHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineReposProcedure:
 			localServiceListMachineReposHandler.ServeHTTP(w, r)
 		case LocalServiceListMachineFoldersProcedure:
@@ -3331,6 +3364,10 @@ func (UnimplementedLocalServiceHandler) SetAgentHidden(context.Context, *v1.SetA
 
 func (UnimplementedLocalServiceHandler) SetAgentPaused(context.Context, *v1.SetAgentPausedRequest) (*v1.SetAgentPausedResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentPaused is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetAgentCategory(context.Context, *v1.SetAgentCategoryRequest) (*v1.SetAgentCategoryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetAgentCategory is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListMachineRepos(context.Context, *v1.ListMachineReposRequest) (*v1.ListMachineReposResponse, error) {

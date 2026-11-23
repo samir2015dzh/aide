@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -340,7 +341,7 @@ func (n *Machine) ApplySettings(ctx context.Context, cmd *identityv1.AdminComman
 	switch cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject, *identityv1.AdminCommand_RemoveProject, *identityv1.AdminCommand_SetPaused, *identityv1.AdminCommand_SetName,
 		*identityv1.AdminCommand_SetAgentDefaults, *identityv1.AdminCommand_SetAgentHidden, *identityv1.AdminCommand_SetAgentPaused,
-		*identityv1.AdminCommand_SetProjectName:
+		*identityv1.AdminCommand_SetProjectName, *identityv1.AdminCommand_SetAgentCategory:
 	default:
 		n.audit.Log(AuditRecord{Kind: "admin", Decision: "deny", Reason: "unsigned command that is not a setting"})
 		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only settings (projects and their names, pausing, the name, agent defaults, hiding or pausing an agent) may be sent without a signature"))
@@ -455,6 +456,12 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 			return "project " + c.SetProjectName.ProjectId + " shown by its id", nil
 		}
 		return "project " + c.SetProjectName.ProjectId + " named " + name, nil
+	case *identityv1.AdminCommand_SetAgentCategory:
+		if err := n.setAgentCategory(c.SetAgentCategory); err != nil {
+			return "", connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		n.kickStatus()
+		return c.SetAgentCategory.Agent + " filed as " + cmp.Or(c.SetAgentCategory.Category, "told from what it is"), nil
 	case *identityv1.AdminCommand_SetAgentPaused:
 		if err := n.setAgentPaused(c.SetAgentPaused); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)

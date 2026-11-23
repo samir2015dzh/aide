@@ -85,6 +85,9 @@ service LocalService {
   rpc SetAgentHidden(SetAgentHiddenRequest) returns (SetAgentHiddenResponse);
   // Pauses a coding agent on a machine, or resumes it (SetAgentPaused).
   rpc SetAgentPaused(SetAgentPausedRequest) returns (SetAgentPausedResponse);
+  // Files a coding agent a machine lists as a kind, or back to told from
+  // what it is (SetAgentCategory).
+  rpc SetAgentCategory(SetAgentCategoryRequest) returns (SetAgentCategoryResponse);
   // A machine's git repositories under its home folder, for Add a Project.
   rpc ListMachineRepos(ListMachineReposRequest) returns (ListMachineReposResponse);
   // The folders in one of a machine's folders, for Add a Project.
@@ -736,6 +739,15 @@ message SetAgentPausedRequest {
 }
 
 message SetAgentPausedResponse {}
+
+message SetAgentCategoryRequest {
+  string machine_id = 1;
+  string agent = 2;
+  // "" (told from what it is), "local" or "personal".
+  string category = 3;
+}
+
+message SetAgentCategoryResponse {}
 
 message CheckAgentsResponse {}
 

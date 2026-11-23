@@ -8,7 +8,31 @@ token, which the reading needs, never leaves the machine.
 
 ## Where the numbers come from
 
-Anthropic's usage endpoint `GET https://api.anthropic.com/api/oauth/usage`
+**First, this machine's own Claude Code (工单 #86).** Where Claude Code is
+installed and signed in here, aided asks it, without a terminal and keeping
+no session:
+
+    claude -p /usage --output-format stream-json --verbose --no-session-persistence
+
+`/usage` is Claude Code's own command, not a prompt: it asks Anthropic with
+Claude Code's own sign-in (which Claude Code renews itself) and writes the
+same report its `/usage` shows. Its answer carries the plan's usage rows as a
+structured twin of that text (`usage_report.rate_limits.limits`: `kind`
+`session` → `five_hour`, `weekly_all` → `seven_day`, `weekly_scoped` →
+`seven_day_<model>`, each `percent` and `resets_at`); a version that writes
+no twin is read from its text (`Current session: 20% used`), percentages
+only. The reading says `source: claude_code`.
+
+- Claude Code answering without the plan's rows (not signed in with a plan,
+  or its own reading failing, rate limited, offline): the last reading
+  stays, stale; the endpoint below is **not** asked past it, since it is the
+  same endpoint and asking twice only presses its limit.
+- A version that takes `/usage` for something else than its command (it
+  does not answer as `local_command: usage`): the endpoint below instead,
+  and that version is not asked again until aided restarts.
+- No signed-in Claude Code here, or the command failing: the endpoint below.
+
+**Otherwise, the fallback:** Anthropic's usage endpoint `GET https://api.anthropic.com/api/oauth/usage`
 (the same data Claude Code's `/usage` shows; undocumented and liable to
 change) answers with each window's `utilization` (0–100) and `resets_at`,
 called with the account's OAuth access token as a bearer and the
@@ -77,11 +101,13 @@ key; no real token or response sample is needed to build or test this.
 - **Status / desktop** — the Claude Code agent row carries a `ClaudeUsage`
   (`proto/aide/machine/v1`): `windows` (`UsageWindow`: `key`,
   `utilization`, `resets_at`), `fetched_at`, `stale`, `unavailable`,
-  `renew`. aided refreshes it in the background at most every five minutes
-  and keeps the last good reading; a status is never held up on the fetch.
-  The desktop Agent list shows one small line on the Claude row (e.g.
-  `Plan 5h 20% · Week 59%`), or `plan usage unavailable` when there is no
-  reading.
+  `renew`, `source`. aided refreshes it in the background every fifteen
+  minutes (`usageEvery`) and keeps the last good reading — on disk too, so a
+  restart does not blank it; any failed refresh keeps it, marked stale, with
+  when it was read. A status is never held up on the fetch. The desktop
+  shows one small line on the Claude row and on Claude Code's bot page (e.g.
+  `Plan 5h 20% · Week 59% · read 3 min ago`; `last reading … ago` when
+  stale), or `plan usage not read yet` when there has never been a reading.
 - **CLI** — `aide usage` prints the windows per machine (and `-o json` the
   machine-readable fields); the same `usage` is on `aide agent list -o json`
   for Claude Code. Fields are in [cli-output.md](cli-output.md) under
