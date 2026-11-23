@@ -12,8 +12,8 @@ test("the sidebar is bots alone; pages that left it are in the account menu, dev
   const side = page.getByRole("complementary", { name: /边栏|Sidebar/ }).first();
   const roster = page.getByRole("region", { name: "Bot" });
   await expect(roster).toBeVisible({ timeout: 30_000 });
-  // No navigation group, no machine group, no task list.
-  await expect(page.locator(".side-nav")).toHaveCount(0);
+  // No machine group, no task list; the one navigation is the overview and the task feed at the top (工单 #102).
+  await expect(page.locator(".side-nav").getByRole("button")).toHaveText([/^概览/, /^任务动态/]);
   await expect(page.locator(".side-sessions")).toHaveCount(0);
   await expect(roster.getByRole("group", { name: /这台电脑|这台 Mac/ })).toHaveCount(0);
   await expect(roster.locator(".bot-counts")).toHaveCount(0);
@@ -24,13 +24,13 @@ test("the sidebar is bots alone; pages that left it are in the account menu, dev
   await gemini.click({ button: "right" });
   await expect(roster.getByRole("list", { name: "置顶" }).getByRole("listitem", { name: /Gemini CLI/ })).toBeVisible();
   await snap(page, "batchh-sidebar");
-  // The account menu at the foot: the overview, devices, task feed, and the rest.
+  // The account menu at the foot: every session, devices, and the rest; the overview and task feed are at the top (工单 #102).
   await side.locator(".side-foot").click();
   const menu = page.getByRole("menu", { name: "账号与设置" });
-  for (const item of ["概览", "设备", "任务动态", "设置…"]) await expect(menu.getByRole("menuitem", { name: new RegExp(item) })).toBeVisible();
+  for (const item of ["全部任务", "设备", "设置…"]) await expect(menu.getByRole("menuitem", { name: new RegExp(item) })).toBeVisible();
   await snap(page, "batchh-account-menu");
-  await menu.getByRole("menuitem", { name: /概览/ }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await menu.getByRole("menuitem", { name: /全部任务/ }).click();
+  await expect(page.getByRole("list", { name: "任务" })).toBeVisible();
 });
 
 test("a coding agent's conversations: on in the current one, a new one, back to the first (工单 #66, #67)", async () => {

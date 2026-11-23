@@ -13,10 +13,12 @@ import { useNow, useStore } from "./store";
 import { allBots } from "@aide/core";
 import { BotFace, usePins, useRoster } from "./bots/Bots";
 import { useRooms } from "./bots/Rooms";
+import { useTaskLook } from "./TasksPage";
 
-// The sidebar's rail (docs/her-team.md §16), 74 px wide: as the sidebar, bots alone (工单 #63) — each bot's face,
-// the pinned first, with its state on it, then the rooms. A machine only (no roster) has the overview and one logo
-// for each coding agent with sessions at hand. Each button says on hover (or focus) what it is and how it stands.
+// The sidebar's rail (docs/her-team.md §16), 74 px wide: as the sidebar, the overview and the task feed first (工单
+// #102), then bots alone (工单 #63) — each bot's face, the pinned first, with its state on it, then the rooms. A machine
+// only (no roster) has the overview and one logo for each coding agent with sessions at hand. Each button says on hover
+// (or focus) what it is and how it stands.
 
 /** What a rail button says beside it while the pointer or the focus is on it. */
 type Tip = { text: string; top: number } | null;
@@ -31,6 +33,7 @@ export function Rail() {
   const [tip, setTip] = useState<Tip>(null);
   const [menu, setMenu] = useState<AgentMenuAt | null>(null);
   const held = useHeldCount(!!st.status && !st.reconnecting);
+  const taskLook = useTaskLook();
   const r = useRoster();
   const [pins] = usePins();
   const bots = [...allBots(r)].sort((a, b) => Number(pins.includes(b.key)) - Number(pins.includes(a.key)));
@@ -75,6 +78,28 @@ export function Rail() {
         <AppMenuButton />
       </div>
       <nav className="rail-nav" onScroll={() => (setTip(null), setMenu(null))}>
+        {/* The overview and the task feed first, as in the sidebar (工单 #102). */}
+        {button({
+          label: overviewLabel,
+          current: sel.kind === "overview",
+          onClick: () => st.set({ selection: { kind: "overview" } }),
+          children: <Icon name="grid" />,
+          marks: (
+            <>
+              {marks.waits > 0 && <i className="rb-dot" aria-hidden="true" />}
+              {marks.running > 0 && <span className="rb-busy" aria-hidden="true"><i /></span>}
+            </>
+          ),
+        })}
+        {owner &&
+          button({
+            label: [t("sidebar.tasks"), taskLook ? t("sidebar.attention", { count: taskLook }) : ""].filter(Boolean).join(" · "),
+            current: sel.kind === "tasks",
+            onClick: () => st.set({ selection: { kind: "tasks" } }),
+            children: <Icon name="persons" />,
+            marks: taskLook > 0 ? <i className="rb-dot" aria-hidden="true" /> : null,
+          })}
+        {owner && <div className="rail-sep" role="separator" />}
         {/* The owner's: bots, then rooms (工单 #63). */}
         {owner && bots.map((b) => (
           <div key={b.key}>
@@ -101,19 +126,6 @@ export function Rail() {
             })}
           </div>
         ))}
-        {!owner &&
-          button({
-            label: overviewLabel,
-            current: sel.kind === "overview",
-            onClick: () => st.set({ selection: { kind: "overview" } }),
-            children: <Icon name="grid" />,
-            marks: (
-              <>
-                {marks.waits > 0 && <i className="rb-dot" aria-hidden="true" />}
-                {marks.running > 0 && <span className="rb-busy" aria-hidden="true"><i /></span>}
-              </>
-            ),
-          })}
         {(held > 0 || sel.kind === "held") &&
           button({ label: t("sidebar.held"), current: sel.kind === "held", onClick: () => sel.kind !== "held" && st.set({ selection: { kind: "held" } }), children: <Icon name="bell" /> })}
         {!owner && groups.length > 0 && <div className="rail-sep" role="separator" />}

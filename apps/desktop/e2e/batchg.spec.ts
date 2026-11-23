@@ -3,9 +3,9 @@ import { launch, snap } from "./app";
 
 // 批 G on the desktop, as the owner reads it (工单 #56/#57): the app opens on the roster in the sidebar — the personal
 // agents on the account, this computer's coding agents under it, a row each with one name and one state; a click
-// opens the bot's own page, its work in the middle with a box to hand it work, its workbench beside it (its
-// connection, its projects, pause and hiding, its names and faces); and a bot's page says of it what the roster says,
-// in the same words — there is no Hand Work To page beside the roster. With AIDE_SCREENS the pictures go to the delivery record.
+// opens the bot's own page, its work in the middle with a box to hand it work, its task board beside it, its settings
+// (its connection, its projects, pause and hiding, its names and faces) a page of their own (工单 #97); and a bot's
+// page says of it what the roster says, in the same words — there is no Hand Work To page beside the roster. With AIDE_SCREENS the pictures go to the delivery record.
 
 test("the roster is the first thing in the sidebar, and a bot opens its own page", async () => {
   const { page } = await launch();
@@ -27,17 +27,21 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
   // Its conversations in the middle, with the box to write to it.
   await expect(bot.getByRole("list", { name: "对话" })).toBeVisible();
   await expect(bot.getByRole("textbox", { name: "给 Claude Code 发消息" })).toBeVisible();
-  // Beside: its state in one line, its names and faces, its projects and how it runs; no device page link (工单 #63).
-  const bench = bot.getByRole("complementary", { name: "工作台" });
-  await expect(bench.getByRole("button", { name: "添加项目…" })).toBeVisible();
-  await expect(bench.getByRole("button", { name: "暂停" })).toBeVisible();
-  await expect(bench.getByRole("button", { name: "机器页" })).toHaveCount(0);
+  // Beside: its task board; its settings — its projects and how it runs, pausing it — a page of their own behind the
+  // button in its head (工单 #97); no device page link (工单 #63).
+  await expect(bot.getByRole("complementary", { name: "任务看板" })).toBeVisible();
   await snap(page, "batchg-bot-page");
+  await bot.getByRole("button", { name: "设置", exact: true }).click();
+  const settings = page.getByRole("region", { name: /^Claude Code.* 的设置$/ });
+  await expect(settings.getByRole("button", { name: "添加项目…" })).toBeVisible();
+  await expect(settings.getByRole("button", { name: "暂停" })).toBeVisible();
+  await expect(settings.getByRole("button", { name: "机器页" })).toHaveCount(0);
 
-  // A personal agent's page: its grant and kind in its workbench (the app's own picker, 工单 #68).
+  // A personal agent's page: its grant and kind on its settings page (工单 #97).
   await personal.getByRole("button", { name: /bot/ }).click();
-  const p = page.getByRole("region", { name: "bot" });
-  await expect(p.getByRole("complementary", { name: "工作台" }).getByRole("button", { name: "类别" })).toBeVisible();
+  const p = page.getByRole("region", { name: "bot", exact: true });
+  await p.getByRole("button", { name: "设置", exact: true }).click();
+  await expect(page.getByRole("region", { name: "bot 的设置" }).getByRole("radiogroup", { name: "类别" })).toBeVisible();
   await snap(page, "batchg-personal-page");
 });
 

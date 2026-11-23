@@ -186,7 +186,8 @@
     "agentName": "名字",
     "renameButton": "存储",
     "icon": "头像",
-    "iconAuto": "恢复默认头像"
+    "iconAuto": "恢复默认头像",
+    "validity": "有效期"
   },
   "ops": {
     "none": "还没有 agent 执行过命令。",

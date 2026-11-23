@@ -86,7 +86,11 @@ export function Grants({ open, select }: { open: string; select: (id: string) =>
   );
 }
 
-export function GrantDetail({ c }: { c: Client }) {
+/**
+ * bare: on its bot's settings page (工单 #97), whose head already says who it is: its expiry as a row of its own.
+ * look: its name and face are offered here (a coding agent's are its contact's, on that page, so not again).
+ */
+export function GrantDetail({ c, bare = false, look = true }: { c: Client; bare?: boolean; look?: boolean }) {
   const { t } = useTranslation("settings");
   const st = useStore();
   const now = useNow(30_000);
@@ -123,7 +127,7 @@ export function GrantDetail({ c }: { c: Client }) {
     });
   return (
     <div className="form">
-      <div className="dhero">
+      {!bare && <div className="dhero">
         <button className="dhero-av" aria-label={t("grants.renameTitle")} onClick={rename}>
           <GrantAvatar c={c} size="xl" />
         </button>
@@ -134,10 +138,16 @@ export function GrantDetail({ c }: { c: Client }) {
             <Left c={c} now={now} />
           </span>
         </div>
-      </div>
+      </div>}
       <div>
         <div className="fhead">{t("grants.canUse")}</div>
         <div className="fgroup">
+          {bare && (
+            <Row k={t("grants.validity")}>
+              {!c.herMachineId && !long && <>{t("grants.validUntil", { date: expires ? monthDay(expires) : "—" })} · </>}
+              <Left c={c} now={now} />
+            </Row>
+          )}
           <Row k={t("grants.projects")}>{projects.length ? list(projects) : t("grants.allProjectsLater")}</Row>
           <Row k={t("grants.machines")}>{machines.length ? list(machines.map((id) => machineName(st, id))) : t("grants.allMachinesLater")}</Row>
           <Row k={t("grants.codingAgents")}>{agents.length ? agents.map((a) => <AgentName key={a} agent={a} full />) : t("grants.allCodingAgents")}</Row>
@@ -162,7 +172,7 @@ export function GrantDetail({ c }: { c: Client }) {
       )}
       {/* What can be done to it, as rows of one group, the destructive one apart (工单 #68: Apple's settings, no loose buttons). */}
       <div className="fgroup">
-        <button className="frow act" onClick={rename}>{t("grants.rename")}<Icon name="chevR" className="sm chev" /></button>
+        {look && <button className="frow act" onClick={rename}>{t("grants.rename")}<Icon name="chevR" className="sm chev" /></button>}
         {/* Her's grant has no scope or expiry to change (UpdateClient refuses it). */}
         {!c.herMachineId && <button className="frow act" onClick={() => scope(false)}>{t("grants.changeScope")}<Icon name="chevR" className="sm chev" /></button>}
         {!c.herMachineId && !long && <button className="frow act" onClick={() => scope(true)}>{t("grants.renew")}<Icon name="chevR" className="sm chev" /></button>}

@@ -17,8 +17,10 @@ test("the roster by machine; a project's menu in plain words; DSH's permission s
   await mac.getByRole("button", { name: /^DSH/ }).click({ timeout: 30_000 });
   await snap(page, "batchi-roster");
 
-  const bot = page.getByRole("region", { name: /^DSH/ });
-  const project = bot.getByRole("group", { name: "demo" });
+  const bot = page.getByRole("region", { name: "DSH", exact: true });
+  // A project's menu is on its settings page (工单 #97).
+  await bot.getByRole("button", { name: "设置", exact: true }).click();
+  const project = page.getByRole("region", { name: "DSH 的设置" }).getByRole("group", { name: "demo" });
   await expect(project).toBeVisible({ timeout: 30_000 });
   await app.evaluate(({ ipcMain }) => {
     ipcMain.removeHandler("popup-menu");
@@ -45,6 +47,7 @@ test("the roster by machine; a project's menu in plain words; DSH's permission s
   ]));
   expect(shown.filter((l) => /worktree|原地|不再给/.test(l))).toEqual([]);
   await expect(project).toContainText("DSH：仅可查看");
+  await page.getByRole("button", { name: "返回 DSH" }).click();
 
   // The box: DSH's permission chip has the project's as its default, and the task runs with it.
   const chip = bot.getByRole("button", { name: "权限", exact: true });
