@@ -2759,7 +2759,12 @@ type AgentModel struct {
 	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The reasoning efforts it supports.
-	Efforts       []string `protobuf:"bytes,3,rep,name=efforts,proto3" json:"efforts,omitempty"`
+	Efforts []string `protobuf:"bytes,3,rep,name=efforts,proto3" json:"efforts,omitempty"`
+	// The specific model the id runs here when the id is an alias (工单 #99:
+	// Claude Code's "opus" → "claude-opus-5-5", as Claude Code itself
+	// resolves it on this machine for this account); empty when the id is the
+	// model itself, or the agent did not say.
+	Resolved      string `protobuf:"bytes,4,opt,name=resolved,proto3" json:"resolved,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2813,6 +2818,13 @@ func (x *AgentModel) GetEfforts() []string {
 		return x.Efforts
 	}
 	return nil
+}
+
+func (x *AgentModel) GetResolved() string {
+	if x != nil {
+		return x.Resolved
+	}
+	return ""
 }
 
 type AgentMode struct {
@@ -8145,12 +8157,13 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\rdefault_model\x18\x05 \x01(\tR\fdefaultModel\x12#\n" +
 	"\rcurrent_model\x18\x06 \x01(\tR\fcurrentModel\x12-\n" +
 	"\x13observed_at_unix_ms\x18\a \x01(\x03R\x10observedAtUnixMs\x12+\n" +
-	"\x12expires_at_unix_ms\x18\b \x01(\x03R\x0fexpiresAtUnixMs\"J\n" +
+	"\x12expires_at_unix_ms\x18\b \x01(\x03R\x0fexpiresAtUnixMs\"f\n" +
 	"\n" +
 	"AgentModel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
-	"\aefforts\x18\x03 \x03(\tR\aefforts\"/\n" +
+	"\aefforts\x18\x03 \x03(\tR\aefforts\x12\x1a\n" +
+	"\bresolved\x18\x04 \x01(\tR\bresolved\"/\n" +
 	"\tAgentMode\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"\x15\n" +

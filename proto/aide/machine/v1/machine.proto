@@ -492,6 +492,11 @@ message AgentModel {
   string name = 2;
   // The reasoning efforts it supports.
   repeated string efforts = 3;
+  // The specific model the id runs here when the id is an alias (工单 #99:
+  // Claude Code's "opus" → "claude-opus-5-5", as Claude Code itself
+  // resolves it on this machine for this account); empty when the id is the
+  // model itself, or the agent did not say.
+  string resolved = 4;
 }
 
 message AgentMode {

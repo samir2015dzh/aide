@@ -185,3 +185,36 @@ func mustMarshal(t *testing.T, v any) []byte {
 func indent(s, by string) string {
 	return by + strings.ReplaceAll(strings.TrimRight(s, "\n"), "\n", "\n"+by) + "\n"
 }
+
+// TestDSHModelChoice (工单 #98): DSH tells its models only in a session.
+// A new one names those its configuration has (here two, in a provider's
+// group) and the one it runs; one started with a model chosen of them runs
+// that one, beside a permission preset, and says so (the model a session
+// runs, which the app reads back); one DSH does not offer fails the start.
+func TestDSHModelChoice(t *testing.T) {
+	f := newFixture(t, "FAKE_ACP_PRESETS=", "FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=deepseek/v4-pro,deepseek/v4-flash", "FAKE_ACP_EFFORTS=deepseek/v4-flash=high|max")
+	f.p = &Provider{Agent: Agent{Name: "deepseek", Command: "dsh", Args: []string{"--profile", "acp"}, DSHPresets: true}, Binary: fakeBin}
+	run := func(model, mode string) (provider.Event, string) {
+		t.Helper()
+		s, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(), Model: model, Mode: mode, Env: f.env, Gate: f.gate.gate, Prompt: "config"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		events, done := collect(t, s)
+		return of(events, provider.EventRef)[0], done.Text
+	}
+	ref, ran := run("", "")
+	if ref.Offers == nil || len(ref.Offers.Models) != 2 || ref.Offers.Models[1].ID != "deepseek/v4-flash" || ref.Offers.Own.Model != "deepseek/v4-pro" ||
+		ref.Model != "deepseek/v4-pro" || ran != "config: deepseek/v4-pro  workspace-write" {
+		t.Fatalf("unchosen: %+v %+v, ran %q", ref, ref.Offers, ran)
+	}
+	ref, ran = run("deepseek/v4-flash", "read-only")
+	if ref.Model != "deepseek/v4-flash" || ran != "config: deepseek/v4-flash  read-only" || !reflect.DeepEqual(ref.Offers.Models[1].Efforts, []string{"high", "max"}) {
+		t.Fatalf("chosen: %+v %+v, ran %q", ref, ref.Offers, ran)
+	}
+	if _, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(), Model: "deepseek/v3", Env: f.env, Prompt: "config"}); err == nil ||
+		!strings.Contains(err.Error(), `model "deepseek/v3": not offered by the agent (available: deepseek/v4-pro, deepseek/v4-flash)`) {
+		t.Fatalf("not offered: %v", err)
+	}
+}

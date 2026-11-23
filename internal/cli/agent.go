@@ -94,6 +94,8 @@ type agentModel struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name,omitempty"`
 	Efforts []string `json:"efforts"`
+	// The specific model an alias ID runs on that machine (工单 #99).
+	Resolved string `json:"resolved,omitempty"`
 }
 
 type agentMode struct {
@@ -238,7 +240,7 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 				DefaultModel: cmp.Or(ag.Defaults.GetModel(), ag.Own.GetModel()), DefaultEffort: cmp.Or(ag.Defaults.GetEffort(), ag.Own.GetEffort()),
 				DefaultMode: cmp.Or(ag.Defaults.GetMode(), ag.Own.GetMode()), Usage: usageFrom(ag.GetUsage())}
 			for _, x := range ag.Models {
-				e.Models = append(e.Models, agentModel{ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...)})
+				e.Models = append(e.Models, agentModel{ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...), Resolved: x.Resolved})
 			}
 			for _, x := range ag.Modes {
 				e.Modes = append(e.Modes, agentMode{ID: x.Id, Name: x.Name})
