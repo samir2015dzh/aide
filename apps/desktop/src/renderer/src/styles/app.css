@@ -816,3 +816,8 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 html.own-scrollbars{scrollbar-color:rgba(0,0,0,.28) transparent}
 @media (prefers-color-scheme:dark){html.own-scrollbars{scrollbar-color:rgba(255,255,255,.28) transparent}}
 :where(html.own-scrollbars *){scrollbar-width:thin}
+/* A disclosure (details / summary): Apple's chevron that turns down when open, never the browser's triangle. */
+:where(summary:not(.dsh-msg.tool summary)){list-style:none}
+:where(summary:not(.dsh-msg.tool summary))::-webkit-details-marker{display:none}
+:where(summary:not(.dsh-msg.tool summary))::before{content:"";display:inline-block;width:5px;height:5px;margin:0 8px 2px 1px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform var(--snappy-dur) var(--snappy);opacity:.7}
+:where(details[open]>summary:not(.dsh-msg.tool summary))::before{transform:rotate(45deg)}
