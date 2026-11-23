@@ -1,11 +1,10 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { deviceKind, machineKind, rootPlatform } from "@aide/core";
 import fs from "node:fs";
 import path from "node:path";
 import { background, cli, fixture, launch, snap } from "./app";
 
-// 批 J · D: the account and the devices drawn (工单 #100), the owner's bubble blue with white words and a sender by
-// its connection's name now (#101), the version and Check for Updates in Settings (#103).
+// 批 J · D: a sender by its connection's name now (工单 #101), the version and Check for Updates in Settings (#103).
+// The account's and the devices' faces (#100) and the bubble's colours (#101) wait for the design drafts (#106/#107).
 
 async function openSettings(app: ElectronApplication, page: Page, tab?: string): Promise<Page> {
   const [win] = await Promise.all([app.waitForEvent("window"), page.evaluate((t) => window.aide?.openSettings(t), tab)]);
@@ -19,64 +18,6 @@ async function api<T>(page: Page, method: string, body: object = {}): Promise<T>
     [method, body] as const,
   );
 }
-
-type Device = { keyId: string; label: string; platform?: string };
-type Machine = { machineId: string; machineName: string; local?: boolean; deviceKeyId?: string; status?: { platform: string } };
-
-test("工单 #100: the account is a drawn person, every device and machine the face of what it reports, no letter left", async () => {
-  const { app, page } = await launch();
-  // The sidebar's account: a person.
-  await expect(page.locator(".side-foot [data-face=person]")).toBeVisible();
-  await expect(page.locator(".side-foot .av")).toHaveText("");
-
-  const settings = await openSettings(app, page, "account");
-  const panel = settings.getByRole("main", { name: "账号与设备" });
-  await expect(panel.locator(".dhero [data-face=person]")).toBeVisible();
-  const list = panel.getByRole("list", { name: "你的设备" });
-  const { devices } = await api<{ devices: Device[] }>(settings, "ListDevices");
-  await expect(list.getByRole("listitem")).toHaveCount(devices.length);
-  for (const d of devices) {
-    const row = list.getByRole("listitem").filter({ hasText: d.label });
-    await expect(row.locator("[data-face]")).toHaveAttribute("data-face", deviceKind(d.platform ?? ""));
-  }
-  // Whatever the platform, a drawing: no block with a first letter anywhere on the page.
-  await expect(panel.locator(".av")).toHaveCount(0);
-  await snap(settings, "batchj-d-account");
-
-  await settings.getByRole("navigation", { name: "设置" }).getByRole("button", { name: /^机器/ }).click();
-  const machines = settings.getByRole("list", { name: "机器" });
-  const { machines: ms } = await api<{ machines: Machine[] }>(settings, "ListMachines");
-  for (const m of ms) {
-    const want = machineKind({ status: m.status, deviceKeyId: m.deviceKeyId ?? "", local: !!m.local }, devices.map((d) => ({ keyId: d.keyId, platform: d.platform ?? "" })), rootPlatform(process.platform));
-    await expect(machines.getByRole("button", { name: new RegExp(m.machineName) }).locator("[data-face]")).toHaveAttribute("data-face", want);
-  }
-  await snap(settings, "batchj-d-machines");
-  await app.close();
-});
-
-test("工单 #101: the owner's bubble is the accent with white words, links and code, light and dark", async () => {
-  const { page } = await launch();
-  const roster = page.getByRole("region", { name: "Bot" });
-  await roster.getByRole("group", { name: "个人 agent" }).getByRole("button", { name: /^bot/ }).click();
-  const botPage = page.getByRole("region", { name: "bot" });
-  const log = botPage.getByRole("log", { name: "对话" });
-  await botPage.getByRole("textbox", { name: "给 bot 发消息" }).fill("**发版**前看一下 [检查单](https://example.com/list) 和 `make check`\n\n> 引用一句");
-  await botPage.getByRole("button", { name: "发送" }).click();
-  const bubble = log.locator(".chat-msg.mine .chat-bubble").last();
-  await expect(bubble).toContainText("make check");
-  const colors = () => bubble.evaluate((el) => {
-    const c = (sel: string) => getComputedStyle(el.querySelector(sel)!).color;
-    return { fill: getComputedStyle(el).backgroundColor, text: c("p"), strong: c("strong"), link: c("a"), code: c("code"), quote: c("blockquote") };
-  });
-  const white = "rgb(255, 255, 255)";
-  const quote = white;
-  await expect.poll(colors).toEqual({ fill: "rgb(0, 113, 227)", text: white, strong: white, link: white, code: white, quote });
-  await snap(page, "batchj-d-bubble");
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect.poll(colors).toEqual({ fill: "rgb(0, 113, 227)", text: white, strong: white, link: white, code: white, quote });
-  await snap(page, "batchj-d-bubble-dark");
-  await page.emulateMedia({ colorScheme: "light" });
-});
 
 // A conversation begun while the agent's connection was named "bot (127.0.0.1)", as MCP connections were before
 // 工单 #85: once the name is "bot" again, the conversation says "bot", its earlier answer too (the room on the machine

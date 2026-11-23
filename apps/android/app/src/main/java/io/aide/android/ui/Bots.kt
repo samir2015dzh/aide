@@ -548,9 +548,8 @@ private fun LazyListScope.chatItems(chat: DirectChat, b: Bot) {
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (!mine) Text(m.fromName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-                    .background(if (mine) AccentFill else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    // The owner's own: the accent's fill with white words, as in a room and on the desktop (工单 #101).
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) Color.White else MaterialTheme.colorScheme.onSurface)
+                    .background(if (mine) aide.bubble else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text(m.text, style = MaterialTheme.typography.bodyLarge)
                 }
                 if (mine) m.deliveries.forEach { d ->
                     val (words, bad) = deliveryWords(d.state, b.name, d.reason, d.reminded)

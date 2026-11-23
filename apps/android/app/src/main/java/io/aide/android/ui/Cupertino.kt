@@ -155,7 +155,7 @@ fun FilledButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false, large: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 7.dp), content: @Composable RowScope.() -> Unit,
 ) = IosButton(
-    onClick, modifier, enabled, if (!enabled) aide.fill2 else if (destructive) DangerFill else AccentFill,
+    onClick, modifier, enabled, if (!enabled) aide.fill2 else if (destructive) aide.red else MaterialTheme.colorScheme.primary,
     if (enabled) Color.White else aide.faint, RoundedCornerShape(if (large) 12.dp else Radius.Md), if (large) 50.dp else 34.dp, contentPadding,
     (if (large) IosType.Headline else IosType.Subheadline).copy(fontWeight = FontWeight.SemiBold), content,
 )
@@ -167,7 +167,7 @@ fun TintedButton(
     contentPadding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 7.dp), content: @Composable RowScope.() -> Unit,
 ) {
     val c = if (destructive) aide.red else MaterialTheme.colorScheme.primary
-    IosButton(onClick, modifier, enabled, if (enabled) c.copy(alpha = 0.15f) else aide.fill2, if (enabled) (if (destructive) aide.redText else aide.blueText) else aide.faint, RoundedCornerShape(Radius.Md), 34.dp, contentPadding, IosType.Subheadline.copy(fontWeight = FontWeight.Medium), content)
+    IosButton(onClick, modifier, enabled, if (enabled) c.copy(alpha = 0.15f) else aide.fill2, if (enabled) c else aide.faint, RoundedCornerShape(Radius.Md), 34.dp, contentPadding, IosType.Subheadline.copy(fontWeight = FontWeight.Medium), content)
 }
 
 /** The plain button (.borderless): the accent's words, dimmed while pressed. */

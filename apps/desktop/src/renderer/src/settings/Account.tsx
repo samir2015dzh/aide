@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Device, LocalCLI } from "@aide/proto/local";
-import { deviceKind, platformTitle } from "@aide/core";
-import { DeviceFace } from "@aide/ui";
+import { platformTitle } from "@aide/core";
 import { local } from "../api";
 import { herDataLeft } from "../herLegacy";
 import { Icon } from "../icons";
@@ -60,7 +59,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
   return (
     <div className="form">
       <div className="dhero">
-        <DeviceFace kind="person" size={52} />
+        <span className="av xl me" aria-hidden="true">{user.slice(0, 1).toUpperCase()}</span>
         <div>
           <b>{user}</b>
           <span>
@@ -74,8 +73,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
         <div className="fgroup" role="list" aria-label={t("account.devices")}>
           {st.devices.map((d) => (
             <div className="frow" role="listitem" key={d.keyId}>
-              {/* What it is, drawn by what it logged in as (工单 #100). */}
-              <DeviceFace kind={deviceKind(d.platform)} size={28} />
+              <Icon name="laptop" />
               <div className="ft">
                 <div className="fn">
                   {d.label}
@@ -152,7 +150,7 @@ function MachineAccount() {
   return (
     <div className="form">
       <div className="dhero">
-        <DeviceFace kind="person" size={52} />
+        <span className="av xl me" aria-hidden="true">{user.slice(0, 1).toUpperCase()}</span>
         <div>
           <b>{user}</b>
           <span>

@@ -38,13 +38,6 @@ class BatchJDTest {
         assertEquals("device", machineKind(Machine(machineId = "m"), devices))
     }
 
-    // Every kind has its drawing in the one file both apps draw from (the app's assets get it at build time).
-    @Test
-    fun everyKindIsDrawnInTheSharedFile() {
-        val faces = ConnectClient.json.parseToJsonElement(File("../../../packages/ui/src/faces.json").readText()).jsonObject["faces"]!!.jsonObject
-        assertEquals(setOf("person", "android", "iphone", "tablet", "windows", "mac", "linux", "device"), faces.keys)
-    }
-
     @Test
     fun aTabletSaysSo() = runBlocking {
         assertEquals("android", devicePlatform(392))
