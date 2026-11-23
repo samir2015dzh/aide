@@ -1,4 +1,18 @@
 {
+  "0.2.10": {
+    "improvements": [
+      "Bot home pages no longer spread settings out flat: settings move into their own page, with a single entry point left on the home page. On desktop, the home page's right rail is now a task board — what this bot is doing, waiting on, and just finished, all in one column.",
+      "DSH sessions can pick a model now: before you start, and mid-conversation too. Switching models starts a new conversation as the rules require, and says so on the spot. Model lists name the exact model instead of just the family, each model appears only once, and custom providers you added in Aide or DSH are listed as well.",
+      "Overview and the activity feed are promoted to the top level of the home page — there when you open the app, no more digging through a secondary menu. The feed and each bot's task board draw on the same data.",
+      "Settings now shows the current version number, with a Check for Updates button that tells you on the spot whether you are current or a new version is available."
+    ],
+    "fixes": [
+      "Claude Code's sign-in state is now judged by the credentials its sessions actually use, no longer borrowed from Claude Desktop — no more showing \"signed in\" and then failing with \"not logged in\" the moment you send a message. When it cannot be determined it honestly shows \"Unconfirmed\", and you can start sign-in from inside Aide.",
+      "When an agent errors, the raw internal error text is no longer pasted across the card: you get a plain-language summary (which agent, what kind of problem, what to do next), with the original text tucked under Details for when you need it.",
+      "Plan usage has a new data source: it prefers the local Claude Code cache and the official usage view instead of mistaking a single call's statistics for your plan allowance. When nothing can be read, it shows the last reading and its time instead of an empty panel.",
+      "Sender names in existing conversations now follow the current authorized names, instead of keeping stale names with source addresses attached."
+    ]
+  },
   "0.2.9": {
     "improvements": [
       "Desktop and Android now share one Apple-style design language: grouped inset cards, custom-drawn switches and buttons, Apple-style chevrons, aligned page by page on both ends, with no native default controls showing through.",
