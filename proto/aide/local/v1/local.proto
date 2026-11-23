@@ -113,6 +113,9 @@ service LocalService {
   rpc RemoveProject(RemoveProjectRequest) returns (RemoveProjectResponse);
   // Names a project as the owner knows it, in place of its id.
   rpc RenameProject(RenameProjectRequest) returns (RenameProjectResponse);
+  // Sets the DSH permission preset a project's DSH sessions start with
+  // unless one is chosen for the session (SetProjectPermission).
+  rpc SetProjectPermission(SetProjectPermissionRequest) returns (SetProjectPermissionResponse);
 
   // Agents.
   rpc ListClients(ListClientsRequest) returns (ListClientsResponse);
@@ -810,6 +813,9 @@ message Project {
   string path = 7;
   // The name the owner gave it (SetProjectName); empty: shown by its id.
   string name = 8;
+  // The DSH permission preset its DSH sessions start with unless one is
+  // chosen for the session (SetProjectPermission); empty: DSH's own.
+  string dsh_preset = 9;
 }
 
 message ListProjectsRequest {
@@ -851,6 +857,15 @@ message RenameProjectRequest {
 }
 
 message RenameProjectResponse {}
+
+message SetProjectPermissionRequest {
+  string machine_id = 1;
+  string project_id = 2;
+  // One of DSH's permission presets there ("read-only", ...); empty: DSH's own.
+  string dsh_preset = 3;
+}
+
+message SetProjectPermissionResponse {}
 
 message Client {
   string client_id = 1;

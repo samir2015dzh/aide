@@ -1154,6 +1154,7 @@ type AdminCommand struct {
 	//	*AdminCommand_SetAgentHidden
 	//	*AdminCommand_SetAgentPaused
 	//	*AdminCommand_SetProjectName
+	//	*AdminCommand_SetProjectPermission
 	Command       isAdminCommand_Command `protobuf_oneof:"command"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1314,6 +1315,15 @@ func (x *AdminCommand) GetSetProjectName() *SetProjectName {
 	return nil
 }
 
+func (x *AdminCommand) GetSetProjectPermission() *SetProjectPermission {
+	if x != nil {
+		if x, ok := x.Command.(*AdminCommand_SetProjectPermission); ok {
+			return x.SetProjectPermission
+		}
+	}
+	return nil
+}
+
 type isAdminCommand_Command interface {
 	isAdminCommand_Command()
 }
@@ -1358,6 +1368,10 @@ type AdminCommand_SetProjectName struct {
 	SetProjectName *SetProjectName `protobuf:"bytes,22,opt,name=set_project_name,json=setProjectName,proto3,oneof"`
 }
 
+type AdminCommand_SetProjectPermission struct {
+	SetProjectPermission *SetProjectPermission `protobuf:"bytes,23,opt,name=set_project_permission,json=setProjectPermission,proto3,oneof"`
+}
+
 func (*AdminCommand_AddProject) isAdminCommand_Command() {}
 
 func (*AdminCommand_RemoveProject) isAdminCommand_Command() {}
@@ -1377,6 +1391,8 @@ func (*AdminCommand_SetAgentHidden) isAdminCommand_Command() {}
 func (*AdminCommand_SetAgentPaused) isAdminCommand_Command() {}
 
 func (*AdminCommand_SetProjectName) isAdminCommand_Command() {}
+
+func (*AdminCommand_SetProjectPermission) isAdminCommand_Command() {}
 
 type AddProject struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -1692,6 +1708,64 @@ func (x *SetProjectName) GetName() string {
 	return ""
 }
 
+// SetProjectPermission sets the DSH permission preset (DSH's own: read-only,
+// workspace-write, danger-full-access, ...) a project's DSH sessions start
+// with when none is chosen for the session: the project's standing choice,
+// a setting as a session's preset is. A session started with another preset
+// keeps it; other agents are not affected.
+type SetProjectPermission struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// One the machine's DSH offers; empty: DSH's own configuration again.
+	DshPreset     string `protobuf:"bytes,2,opt,name=dsh_preset,json=dshPreset,proto3" json:"dsh_preset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetProjectPermission) Reset() {
+	*x = SetProjectPermission{}
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetProjectPermission) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetProjectPermission) ProtoMessage() {}
+
+func (x *SetProjectPermission) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetProjectPermission.ProtoReflect.Descriptor instead.
+func (*SetProjectPermission) Descriptor() ([]byte, []int) {
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SetProjectPermission) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *SetProjectPermission) GetDshPreset() string {
+	if x != nil {
+		return x.DshPreset
+	}
+	return ""
+}
+
 // SetWorkspaceRoots sets the folders the machine's owner devices may browse,
 // make projects of and run commands in (docs/machine-ops.md §5); empty:
 // anywhere, as before there were roots. Root-signed, or from the machine's
@@ -1706,7 +1780,7 @@ type SetWorkspaceRoots struct {
 
 func (x *SetWorkspaceRoots) Reset() {
 	*x = SetWorkspaceRoots{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[16]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1718,7 +1792,7 @@ func (x *SetWorkspaceRoots) String() string {
 func (*SetWorkspaceRoots) ProtoMessage() {}
 
 func (x *SetWorkspaceRoots) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[16]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1731,7 +1805,7 @@ func (x *SetWorkspaceRoots) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWorkspaceRoots.ProtoReflect.Descriptor instead.
 func (*SetWorkspaceRoots) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{16}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SetWorkspaceRoots) GetRoots() []string {
@@ -1752,7 +1826,7 @@ type SetName struct {
 
 func (x *SetName) Reset() {
 	*x = SetName{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[17]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1764,7 +1838,7 @@ func (x *SetName) String() string {
 func (*SetName) ProtoMessage() {}
 
 func (x *SetName) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[17]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1777,7 +1851,7 @@ func (x *SetName) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetName.ProtoReflect.Descriptor instead.
 func (*SetName) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{17}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SetName) GetName() string {
@@ -1796,7 +1870,7 @@ type SetPaused struct {
 
 func (x *SetPaused) Reset() {
 	*x = SetPaused{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1808,7 +1882,7 @@ func (x *SetPaused) String() string {
 func (*SetPaused) ProtoMessage() {}
 
 func (x *SetPaused) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[18]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1821,7 +1895,7 @@ func (x *SetPaused) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPaused.ProtoReflect.Descriptor instead.
 func (*SetPaused) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{18}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SetPaused) GetPaused() bool {
@@ -1846,7 +1920,7 @@ type SetHer struct {
 
 func (x *SetHer) Reset() {
 	*x = SetHer{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1858,7 +1932,7 @@ func (x *SetHer) String() string {
 func (*SetHer) ProtoMessage() {}
 
 func (x *SetHer) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[19]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1871,7 +1945,7 @@ func (x *SetHer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHer.ProtoReflect.Descriptor instead.
 func (*SetHer) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{19}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SetHer) GetEnabled() bool {
@@ -1909,7 +1983,7 @@ type AgentDefaults struct {
 
 func (x *AgentDefaults) Reset() {
 	*x = AgentDefaults{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1921,7 +1995,7 @@ func (x *AgentDefaults) String() string {
 func (*AgentDefaults) ProtoMessage() {}
 
 func (x *AgentDefaults) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[20]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1934,7 +2008,7 @@ func (x *AgentDefaults) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentDefaults.ProtoReflect.Descriptor instead.
 func (*AgentDefaults) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{20}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AgentDefaults) GetAgent() string {
@@ -2003,7 +2077,7 @@ type Persona struct {
 
 func (x *Persona) Reset() {
 	*x = Persona{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2015,7 +2089,7 @@ func (x *Persona) String() string {
 func (*Persona) ProtoMessage() {}
 
 func (x *Persona) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[21]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2028,7 +2102,7 @@ func (x *Persona) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Persona.ProtoReflect.Descriptor instead.
 func (*Persona) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{21}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Persona) GetPersonaId() string {
@@ -2133,7 +2207,7 @@ type RevocationList struct {
 
 func (x *RevocationList) Reset() {
 	*x = RevocationList{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2145,7 +2219,7 @@ func (x *RevocationList) String() string {
 func (*RevocationList) ProtoMessage() {}
 
 func (x *RevocationList) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[22]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2158,7 +2232,7 @@ func (x *RevocationList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevocationList.ProtoReflect.Descriptor instead.
 func (*RevocationList) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{22}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *RevocationList) GetOwnerId() string {
@@ -2217,7 +2291,7 @@ type Credentials struct {
 
 func (x *Credentials) Reset() {
 	*x = Credentials{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2229,7 +2303,7 @@ func (x *Credentials) String() string {
 func (*Credentials) ProtoMessage() {}
 
 func (x *Credentials) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[23]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2242,7 +2316,7 @@ func (x *Credentials) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Credentials.ProtoReflect.Descriptor instead.
 func (*Credentials) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{23}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Credentials) GetRootChain() *RootChain {
@@ -2339,7 +2413,7 @@ type ContactCard struct {
 
 func (x *ContactCard) Reset() {
 	*x = ContactCard{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2351,7 +2425,7 @@ func (x *ContactCard) String() string {
 func (*ContactCard) ProtoMessage() {}
 
 func (x *ContactCard) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[24]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2364,7 +2438,7 @@ func (x *ContactCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactCard.ProtoReflect.Descriptor instead.
 func (*ContactCard) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{24}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ContactCard) GetOwnerId() string {
@@ -2450,7 +2524,7 @@ type InboxRegistration struct {
 
 func (x *InboxRegistration) Reset() {
 	*x = InboxRegistration{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[25]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2462,7 +2536,7 @@ func (x *InboxRegistration) String() string {
 func (*InboxRegistration) ProtoMessage() {}
 
 func (x *InboxRegistration) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[25]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2475,7 +2549,7 @@ func (x *InboxRegistration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InboxRegistration.ProtoReflect.Descriptor instead.
 func (*InboxRegistration) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{25}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *InboxRegistration) GetOwnerId() string {
@@ -2535,7 +2609,7 @@ type Contact struct {
 
 func (x *Contact) Reset() {
 	*x = Contact{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[26]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2547,7 +2621,7 @@ func (x *Contact) String() string {
 func (*Contact) ProtoMessage() {}
 
 func (x *Contact) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[26]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2560,7 +2634,7 @@ func (x *Contact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Contact.ProtoReflect.Descriptor instead.
 func (*Contact) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{26}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Contact) GetCard() *Signed {
@@ -2609,7 +2683,7 @@ type BoundaryPolicy struct {
 
 func (x *BoundaryPolicy) Reset() {
 	*x = BoundaryPolicy{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[27]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2621,7 +2695,7 @@ func (x *BoundaryPolicy) String() string {
 func (*BoundaryPolicy) ProtoMessage() {}
 
 func (x *BoundaryPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[27]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2634,7 +2708,7 @@ func (x *BoundaryPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BoundaryPolicy.ProtoReflect.Descriptor instead.
 func (*BoundaryPolicy) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{27}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *BoundaryPolicy) GetOwnerId() string {
@@ -2675,7 +2749,7 @@ type BoundaryRule struct {
 
 func (x *BoundaryRule) Reset() {
 	*x = BoundaryRule{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[28]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2687,7 +2761,7 @@ func (x *BoundaryRule) String() string {
 func (*BoundaryRule) ProtoMessage() {}
 
 func (x *BoundaryRule) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[28]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2700,7 +2774,7 @@ func (x *BoundaryRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BoundaryRule.ProtoReflect.Descriptor instead.
 func (*BoundaryRule) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{28}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *BoundaryRule) GetCategory() string {
@@ -2742,7 +2816,7 @@ type RoomCharter struct {
 
 func (x *RoomCharter) Reset() {
 	*x = RoomCharter{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[29]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2754,7 +2828,7 @@ func (x *RoomCharter) String() string {
 func (*RoomCharter) ProtoMessage() {}
 
 func (x *RoomCharter) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[29]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2767,7 +2841,7 @@ func (x *RoomCharter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomCharter.ProtoReflect.Descriptor instead.
 func (*RoomCharter) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{29}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *RoomCharter) GetOwnerId() string {
@@ -2816,7 +2890,7 @@ type RoomCharterMember struct {
 
 func (x *RoomCharterMember) Reset() {
 	*x = RoomCharterMember{}
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[30]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2828,7 +2902,7 @@ func (x *RoomCharterMember) String() string {
 func (*RoomCharterMember) ProtoMessage() {}
 
 func (x *RoomCharterMember) ProtoReflect() protoreflect.Message {
-	mi := &file_aide_identity_v1_identity_proto_msgTypes[30]
+	mi := &file_aide_identity_v1_identity_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2841,7 +2915,7 @@ func (x *RoomCharterMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomCharterMember.ProtoReflect.Descriptor instead.
 func (*RoomCharterMember) Descriptor() ([]byte, []int) {
-	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{30}
+	return file_aide_identity_v1_identity_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *RoomCharterMember) GetMachineId() string {
@@ -2949,7 +3023,7 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"public_key\x18\x02 \x01(\fR\tpublicKey\x12\x18\n" +
 	"\asubject\x18\x03 \x01(\tR\asubject\x129\n" +
 	"\vdevice_cert\x18\x04 \x01(\v2\x18.aide.identity.v1.SignedR\n" +
-	"deviceCert\"\xd7\a\n" +
+	"deviceCert\"\xb7\b\n" +
 	"\fAdminCommand\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1d\n" +
 	"\n" +
@@ -2969,7 +3043,8 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\x13set_workspace_roots\x18\x13 \x01(\v2#.aide.identity.v1.SetWorkspaceRootsH\x00R\x11setWorkspaceRoots\x12L\n" +
 	"\x10set_agent_hidden\x18\x14 \x01(\v2 .aide.identity.v1.SetAgentHiddenH\x00R\x0esetAgentHidden\x12L\n" +
 	"\x10set_agent_paused\x18\x15 \x01(\v2 .aide.identity.v1.SetAgentPausedH\x00R\x0esetAgentPaused\x12L\n" +
-	"\x10set_project_name\x18\x16 \x01(\v2 .aide.identity.v1.SetProjectNameH\x00R\x0esetProjectNameB\t\n" +
+	"\x10set_project_name\x18\x16 \x01(\v2 .aide.identity.v1.SetProjectNameH\x00R\x0esetProjectName\x12^\n" +
+	"\x16set_project_permission\x18\x17 \x01(\v2&.aide.identity.v1.SetProjectPermissionH\x00R\x14setProjectPermissionB\t\n" +
 	"\acommandJ\x04\b\f\x10\rJ\x04\b\x11\x10\x12J\x04\b\x12\x10\x13R\x0erename_machineR\x16set_her_assistant_modeR\x19set_her_command_connector\"\xde\x01\n" +
 	"\n" +
 	"AddProject\x12\x1d\n" +
@@ -2993,7 +3068,12 @@ const file_aide_identity_v1_identity_proto_rawDesc = "" +
 	"\x0eSetProjectName\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\")\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"T\n" +
+	"\x14SetProjectPermission\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1d\n" +
+	"\n" +
+	"dsh_preset\x18\x02 \x01(\tR\tdshPreset\")\n" +
 	"\x11SetWorkspaceRoots\x12\x14\n" +
 	"\x05roots\x18\x01 \x03(\tR\x05roots\"\x1d\n" +
 	"\aSetName\x12\x12\n" +
@@ -3119,7 +3199,7 @@ func file_aide_identity_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_identity_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_aide_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_aide_identity_v1_identity_proto_goTypes = []any{
 	(SignatureAlgorithm)(0),       // 0: aide.identity.v1.SignatureAlgorithm
 	(Workspace)(0),                // 1: aide.identity.v1.Workspace
@@ -3141,73 +3221,75 @@ var file_aide_identity_v1_identity_proto_goTypes = []any{
 	(*SetAgentHidden)(nil),        // 17: aide.identity.v1.SetAgentHidden
 	(*SetAgentPaused)(nil),        // 18: aide.identity.v1.SetAgentPaused
 	(*SetProjectName)(nil),        // 19: aide.identity.v1.SetProjectName
-	(*SetWorkspaceRoots)(nil),     // 20: aide.identity.v1.SetWorkspaceRoots
-	(*SetName)(nil),               // 21: aide.identity.v1.SetName
-	(*SetPaused)(nil),             // 22: aide.identity.v1.SetPaused
-	(*SetHer)(nil),                // 23: aide.identity.v1.SetHer
-	(*AgentDefaults)(nil),         // 24: aide.identity.v1.AgentDefaults
-	(*Persona)(nil),               // 25: aide.identity.v1.Persona
-	(*RevocationList)(nil),        // 26: aide.identity.v1.RevocationList
-	(*Credentials)(nil),           // 27: aide.identity.v1.Credentials
-	(*ContactCard)(nil),           // 28: aide.identity.v1.ContactCard
-	(*InboxRegistration)(nil),     // 29: aide.identity.v1.InboxRegistration
-	(*Contact)(nil),               // 30: aide.identity.v1.Contact
-	(*BoundaryPolicy)(nil),        // 31: aide.identity.v1.BoundaryPolicy
-	(*BoundaryRule)(nil),          // 32: aide.identity.v1.BoundaryRule
-	(*RoomCharter)(nil),           // 33: aide.identity.v1.RoomCharter
-	(*RoomCharterMember)(nil),     // 34: aide.identity.v1.RoomCharterMember
-	nil,                           // 35: aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	(*timestamppb.Timestamp)(nil), // 36: google.protobuf.Timestamp
+	(*SetProjectPermission)(nil),  // 20: aide.identity.v1.SetProjectPermission
+	(*SetWorkspaceRoots)(nil),     // 21: aide.identity.v1.SetWorkspaceRoots
+	(*SetName)(nil),               // 22: aide.identity.v1.SetName
+	(*SetPaused)(nil),             // 23: aide.identity.v1.SetPaused
+	(*SetHer)(nil),                // 24: aide.identity.v1.SetHer
+	(*AgentDefaults)(nil),         // 25: aide.identity.v1.AgentDefaults
+	(*Persona)(nil),               // 26: aide.identity.v1.Persona
+	(*RevocationList)(nil),        // 27: aide.identity.v1.RevocationList
+	(*Credentials)(nil),           // 28: aide.identity.v1.Credentials
+	(*ContactCard)(nil),           // 29: aide.identity.v1.ContactCard
+	(*InboxRegistration)(nil),     // 30: aide.identity.v1.InboxRegistration
+	(*Contact)(nil),               // 31: aide.identity.v1.Contact
+	(*BoundaryPolicy)(nil),        // 32: aide.identity.v1.BoundaryPolicy
+	(*BoundaryRule)(nil),          // 33: aide.identity.v1.BoundaryRule
+	(*RoomCharter)(nil),           // 34: aide.identity.v1.RoomCharter
+	(*RoomCharterMember)(nil),     // 35: aide.identity.v1.RoomCharterMember
+	nil,                           // 36: aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	(*timestamppb.Timestamp)(nil), // 37: google.protobuf.Timestamp
 }
 var file_aide_identity_v1_identity_proto_depIdxs = []int32{
 	0,  // 0: aide.identity.v1.Signed.alg:type_name -> aide.identity.v1.SignatureAlgorithm
 	5,  // 1: aide.identity.v1.RootCert.root_keys:type_name -> aide.identity.v1.RootKey
-	36, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
+	37, // 2: aide.identity.v1.RootCert.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 3: aide.identity.v1.RootChain.certs:type_name -> aide.identity.v1.Signed
-	36, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
-	36, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	36, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
+	37, // 4: aide.identity.v1.OwnerDeviceCert.issued_at:type_name -> google.protobuf.Timestamp
+	37, // 5: aide.identity.v1.PushRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	37, // 6: aide.identity.v1.MachineCert.issued_at:type_name -> google.protobuf.Timestamp
 	2,  // 7: aide.identity.v1.Grant.task_visibility:type_name -> aide.identity.v1.TaskVisibility
-	36, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
-	36, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
-	36, // 10: aide.identity.v1.Grant.first_issued_at:type_name -> google.protobuf.Timestamp
-	36, // 11: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
+	37, // 8: aide.identity.v1.Grant.not_before:type_name -> google.protobuf.Timestamp
+	37, // 9: aide.identity.v1.Grant.expires_at:type_name -> google.protobuf.Timestamp
+	37, // 10: aide.identity.v1.Grant.first_issued_at:type_name -> google.protobuf.Timestamp
+	37, // 11: aide.identity.v1.EraseOrder.issued_at:type_name -> google.protobuf.Timestamp
 	4,  // 12: aide.identity.v1.EraseAck.device_cert:type_name -> aide.identity.v1.Signed
-	36, // 13: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
+	37, // 13: aide.identity.v1.AdminCommand.expires_at:type_name -> google.protobuf.Timestamp
 	15, // 14: aide.identity.v1.AdminCommand.add_project:type_name -> aide.identity.v1.AddProject
 	16, // 15: aide.identity.v1.AdminCommand.remove_project:type_name -> aide.identity.v1.RemoveProject
-	22, // 16: aide.identity.v1.AdminCommand.set_paused:type_name -> aide.identity.v1.SetPaused
-	21, // 17: aide.identity.v1.AdminCommand.set_name:type_name -> aide.identity.v1.SetName
-	24, // 18: aide.identity.v1.AdminCommand.set_agent_defaults:type_name -> aide.identity.v1.AgentDefaults
-	23, // 19: aide.identity.v1.AdminCommand.set_her:type_name -> aide.identity.v1.SetHer
-	20, // 20: aide.identity.v1.AdminCommand.set_workspace_roots:type_name -> aide.identity.v1.SetWorkspaceRoots
+	23, // 16: aide.identity.v1.AdminCommand.set_paused:type_name -> aide.identity.v1.SetPaused
+	22, // 17: aide.identity.v1.AdminCommand.set_name:type_name -> aide.identity.v1.SetName
+	25, // 18: aide.identity.v1.AdminCommand.set_agent_defaults:type_name -> aide.identity.v1.AgentDefaults
+	24, // 19: aide.identity.v1.AdminCommand.set_her:type_name -> aide.identity.v1.SetHer
+	21, // 20: aide.identity.v1.AdminCommand.set_workspace_roots:type_name -> aide.identity.v1.SetWorkspaceRoots
 	17, // 21: aide.identity.v1.AdminCommand.set_agent_hidden:type_name -> aide.identity.v1.SetAgentHidden
 	18, // 22: aide.identity.v1.AdminCommand.set_agent_paused:type_name -> aide.identity.v1.SetAgentPaused
 	19, // 23: aide.identity.v1.AdminCommand.set_project_name:type_name -> aide.identity.v1.SetProjectName
-	1,  // 24: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
-	36, // 25: aide.identity.v1.SetAgentPaused.resume_at:type_name -> google.protobuf.Timestamp
-	3,  // 26: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
-	36, // 27: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
-	35, // 28: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
-	7,  // 29: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
-	4,  // 30: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
-	4,  // 31: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
-	4,  // 32: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
-	36, // 33: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
-	36, // 34: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
-	4,  // 35: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
-	4,  // 36: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
-	4,  // 37: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
-	4,  // 38: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
-	32, // 39: aide.identity.v1.BoundaryPolicy.rules:type_name -> aide.identity.v1.BoundaryRule
-	36, // 40: aide.identity.v1.BoundaryPolicy.issued_at:type_name -> google.protobuf.Timestamp
-	34, // 41: aide.identity.v1.RoomCharter.members:type_name -> aide.identity.v1.RoomCharterMember
-	36, // 42: aide.identity.v1.RoomCharter.issued_at:type_name -> google.protobuf.Timestamp
-	43, // [43:43] is the sub-list for method output_type
-	43, // [43:43] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	20, // 24: aide.identity.v1.AdminCommand.set_project_permission:type_name -> aide.identity.v1.SetProjectPermission
+	1,  // 25: aide.identity.v1.AddProject.workspace:type_name -> aide.identity.v1.Workspace
+	37, // 26: aide.identity.v1.SetAgentPaused.resume_at:type_name -> google.protobuf.Timestamp
+	3,  // 27: aide.identity.v1.AgentDefaults.speed:type_name -> aide.identity.v1.AgentSpeed
+	37, // 28: aide.identity.v1.Persona.updated_at:type_name -> google.protobuf.Timestamp
+	36, // 29: aide.identity.v1.RevocationList.min_grant_versions:type_name -> aide.identity.v1.RevocationList.MinGrantVersionsEntry
+	7,  // 30: aide.identity.v1.Credentials.root_chain:type_name -> aide.identity.v1.RootChain
+	4,  // 31: aide.identity.v1.Credentials.machine_cert:type_name -> aide.identity.v1.Signed
+	4,  // 32: aide.identity.v1.Credentials.grant:type_name -> aide.identity.v1.Signed
+	4,  // 33: aide.identity.v1.Credentials.device_cert:type_name -> aide.identity.v1.Signed
+	37, // 34: aide.identity.v1.ContactCard.issued_at:type_name -> google.protobuf.Timestamp
+	37, // 35: aide.identity.v1.InboxRegistration.issued_at:type_name -> google.protobuf.Timestamp
+	4,  // 36: aide.identity.v1.Contact.card:type_name -> aide.identity.v1.Signed
+	4,  // 37: aide.identity.v1.Contact.device_cert:type_name -> aide.identity.v1.Signed
+	4,  // 38: aide.identity.v1.Contact.machine_cert:type_name -> aide.identity.v1.Signed
+	4,  // 39: aide.identity.v1.Contact.registration:type_name -> aide.identity.v1.Signed
+	33, // 40: aide.identity.v1.BoundaryPolicy.rules:type_name -> aide.identity.v1.BoundaryRule
+	37, // 41: aide.identity.v1.BoundaryPolicy.issued_at:type_name -> google.protobuf.Timestamp
+	35, // 42: aide.identity.v1.RoomCharter.members:type_name -> aide.identity.v1.RoomCharterMember
+	37, // 43: aide.identity.v1.RoomCharter.issued_at:type_name -> google.protobuf.Timestamp
+	44, // [44:44] is the sub-list for method output_type
+	44, // [44:44] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_aide_identity_v1_identity_proto_init() }
@@ -3226,8 +3308,9 @@ func file_aide_identity_v1_identity_proto_init() {
 		(*AdminCommand_SetAgentHidden)(nil),
 		(*AdminCommand_SetAgentPaused)(nil),
 		(*AdminCommand_SetProjectName)(nil),
+		(*AdminCommand_SetProjectPermission)(nil),
 	}
-	file_aide_identity_v1_identity_proto_msgTypes[23].OneofWrappers = []any{
+	file_aide_identity_v1_identity_proto_msgTypes[24].OneofWrappers = []any{
 		(*Credentials_MachineCert)(nil),
 		(*Credentials_Grant)(nil),
 		(*Credentials_DeviceCert)(nil),
@@ -3238,7 +3321,7 @@ func file_aide_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_identity_v1_identity_proto_rawDesc), len(file_aide_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   32,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

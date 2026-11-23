@@ -185,6 +185,8 @@ ALTER TABLE sessions ADD COLUMN seen_question TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN seen_present INTEGER NOT NULL DEFAULT 0;
 `, `
 ALTER TABLE projects ADD COLUMN name TEXT NOT NULL DEFAULT '';
+`, `
+ALTER TABLE projects ADD COLUMN dsh_preset TEXT NOT NULL DEFAULT '';
 `}
 
 // Store uses one writer connection (db) and a pool of readers (rdb), so
@@ -228,6 +230,10 @@ func OpenStore(path string) (*Store, error) {
 	})
 	st := &Store{db: db, rdb: rdb, ckpt: ckpt}
 	if err := st.openWork(); err != nil {
+		st.Close()
+		return nil, err
+	}
+	if err := st.nameByFolder(); err != nil {
 		st.Close()
 		return nil, err
 	}
@@ -284,6 +290,10 @@ type Project struct {
 	Agents []string
 	// Name is what the owner calls it (SetProjectName); empty: its ID.
 	Name string
+	// DSHPreset is the DSH permission preset its DSH sessions start with
+	// when none is chosen for the session (SetProjectPermission); empty:
+	// DSH's own configuration.
+	DSHPreset string
 }
 
 // InPlace: sessions work directly in the project directory.
@@ -305,7 +315,7 @@ func splitAgents(s string) []string {
 }
 
 func (s *Store) Projects() ([]Project, error) {
-	rows, err := s.rdb.Query(`SELECT project_id, path, default_base_ref, workspace, description, agents, name FROM projects ORDER BY project_id`)
+	rows, err := s.rdb.Query(`SELECT project_id, path, default_base_ref, workspace, description, agents, name, dsh_preset FROM projects ORDER BY project_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +324,7 @@ func (s *Store) Projects() ([]Project, error) {
 	for rows.Next() {
 		var p Project
 		var agents string
-		if err := rows.Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents, &p.Name); err != nil {
+		if err := rows.Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents, &p.Name, &p.DSHPreset); err != nil {
 			return nil, err
 		}
 		p.Agents = splitAgents(agents)
@@ -326,7 +336,7 @@ func (s *Store) Projects() ([]Project, error) {
 func (s *Store) Project(id string) (*Project, error) {
 	p := &Project{}
 	var agents string
-	err := s.rdb.QueryRow(`SELECT project_id, path, default_base_ref, workspace, description, agents, name FROM projects WHERE project_id=?`, id).Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents, &p.Name)
+	err := s.rdb.QueryRow(`SELECT project_id, path, default_base_ref, workspace, description, agents, name, dsh_preset FROM projects WHERE project_id=?`, id).Scan(&p.ID, &p.Path, &p.DefaultBaseRef, &p.Workspace, &p.Description, &agents, &p.Name, &p.DSHPreset)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -335,15 +345,27 @@ func (s *Store) Project(id string) (*Project, error) {
 }
 
 func (s *Store) PutProject(p Project) error {
-	_, err := s.db.Exec(`INSERT INTO projects(project_id,path,default_base_ref,workspace,description,agents,created_at) VALUES(?,?,?,?,?,?,?)
+	// Its name is set when it is added; adding it again keeps the name it has.
+	_, err := s.db.Exec(`INSERT INTO projects(project_id,path,default_base_ref,workspace,description,agents,name,created_at) VALUES(?,?,?,?,?,?,?,?)
 		ON CONFLICT(project_id) DO UPDATE SET path=excluded.path, default_base_ref=excluded.default_base_ref, workspace=excluded.workspace, description=excluded.description, agents=excluded.agents`,
-		p.ID, p.Path, p.DefaultBaseRef, int(p.Workspace), p.Description, joinAgents(p.Agents), time.Now().Unix())
+		p.ID, p.Path, p.DefaultBaseRef, int(p.Workspace), p.Description, joinAgents(p.Agents), p.Name, time.Now().Unix())
 	return err
 }
 
 // SetProjectName names a project as the owner knows it; false: no such project.
 func (s *Store) SetProjectName(id, name string) (bool, error) {
 	r, err := s.db.Exec(`UPDATE projects SET name=? WHERE project_id=?`, name, id)
+	if err != nil {
+		return false, err
+	}
+	n, err := r.RowsAffected()
+	return n > 0, err
+}
+
+// SetProjectDSHPreset sets the DSH permission preset a project's DSH
+// sessions start with; false: no such project.
+func (s *Store) SetProjectDSHPreset(id, preset string) (bool, error) {
+	r, err := s.db.Exec(`UPDATE projects SET dsh_preset=? WHERE project_id=?`, preset, id)
 	if err != nil {
 		return false, err
 	}

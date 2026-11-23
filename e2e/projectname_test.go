@@ -2,10 +2,13 @@ package e2e
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 )
 
@@ -13,6 +16,9 @@ import (
 // folder name ("project") a name of their own, from the app; every device
 // lists it by that name at once, its id, folder and sessions as they were;
 // a name too long is refused, and an empty one shows it by its id again.
+// A new project is named by its folder (工单 #88): one in a folder named in
+// Chinese, under the placeholder id the app makes of it, is listed by the
+// folder's name; one whose id was chosen is shown by its id.
 // The coding agents a machine reports say when each was checked (工单 #49).
 func TestProjectName(t *testing.T) {
 	if testing.Short() {
@@ -29,20 +35,32 @@ func TestProjectName(t *testing.T) {
 	if _, err := w.app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: mid, ProjectId: "project", Path: repo}); err != nil {
 		t.Fatal(err)
 	}
-	named := func() (name, path string) {
+	nameOf := func(id string) (name, path string) {
 		ps, err := w.app.client.ListProjects(ctx, &localv1.ListProjectsRequest{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, p := range ps.Projects {
-			if p.ProjectId == "project" {
+			if p.ProjectId == id {
 				return p.Name, p.Path
 			}
 		}
 		return "?", ""
 	}
+	named := func() (name, path string) { return nameOf("project") }
+	// Its id was not made of its folder: the owner chose it, and it is shown by it.
 	if n, _ := named(); n != "" {
-		t.Fatalf("a new project already has a name: %q", n)
+		t.Fatalf("a new project with an id of its own has a name: %q", n)
+	}
+	biz := filepath.Join(t.TempDir(), "商务")
+	if err := os.Mkdir(biz, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.app.client.AddProject(ctx, &localv1.AddProjectRequest{MachineId: mid, ProjectId: "project-2", Path: biz, Workspace: identityv1.Workspace_WORKSPACE_IN_PLACE}); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := nameOf("project-2"); n != "商务" {
+		t.Fatalf("a project in 商务: %q", n)
 	}
 	if _, err := w.app.client.RenameProject(ctx, &localv1.RenameProjectRequest{MachineId: mid, ProjectId: "project", Name: "  支付后端  "}); err != nil {
 		t.Fatal(err)

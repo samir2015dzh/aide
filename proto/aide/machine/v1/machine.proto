@@ -513,6 +513,9 @@ message Project {
   repeated string agents = 8;
   // The name the owner gave it (SetProjectName); empty: shown by its id.
   string name = 9;
+  // The DSH permission preset its DSH sessions start with unless one is
+  // chosen for the session (SetProjectPermission); empty: DSH's own.
+  string dsh_preset = 10;
 }
 
 message ListProjectsResponse {

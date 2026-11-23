@@ -490,13 +490,19 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 		return nil, reason.New(connect.CodeFailedPrecondition, "agent_unavailable", unavailable(req.Agent, info), "agent", req.Agent)
 	}
 	// The client's model, effort and mode, else the machine's defaults;
-	// what neither sets follows the agent's own configuration.
+	// what neither sets follows the agent's own configuration. A DSH
+	// session's permission preset not chosen for it is its project's, when
+	// the project has one (SetProjectPermission), before the machine's.
 	set := s.defaults(req.Agent)
-	set.Model, set.Effort, set.Mode = cmp.Or(req.Model, set.Model), cmp.Or(req.Effort, set.Effort), cmp.Or(req.Mode, set.Mode)
+	projectMode := ""
+	if req.Agent == dshAgent {
+		projectMode = proj.DSHPreset
+	}
+	set.Model, set.Effort, set.Mode = cmp.Or(req.Model, set.Model), cmp.Or(req.Effort, set.Effort), cmp.Or(req.Mode, projectMode, set.Mode)
 	if err := checkSettings(req.Agent, info, req.Model, req.Effort, cmp.Or(set.Model, info.Own.Model)); err != nil {
 		return nil, err
 	}
-	if err := checkMode(req.Agent, info, req.Mode); err != nil {
+	if err := checkMode(req.Agent, info, cmp.Or(req.Mode, projectMode)); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(req.Prompt) == "" && len(req.Attachments) == 0 {
