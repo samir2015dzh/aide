@@ -18,6 +18,8 @@ const paths: Record<string, string> = {
   check: "<path d=\"M3.4 8.4l3 3 6.2-6.8\"/>",
   caret: "<path d=\"M4.8 6.4h6.4L8 10z\" fill=\"currentColor\" stroke=\"none\"/>",
   chevD: "<path d=\"M4.5 6.3L8 9.8l3.5-3.5\"/>",
+  // A pop-up button's ⌃⌄ (Picker.tsx), as macOS draws it.
+  chevUD: "<path d=\"M5.3 6.4L8 3.7l2.7 2.7M5.3 9.6L8 12.3l2.7-2.7\"/>",
   chevR: "<path d=\"M6.3 4.5L9.8 8l-3.5 3.5\"/>",
   stop: "<rect x=\"4.3\" y=\"4.3\" width=\"7.4\" height=\"7.4\" rx=\"1.6\"/>",
   archive: "<rect x=\"2\" y=\"2.8\" width=\"12\" height=\"3.4\" rx=\"1\"/><path d=\"M3.2 6.2v6c0 .7.5 1.2 1.2 1.2h7.2c.7 0 1.2-.5 1.2-1.2v-6M6.4 9h3.2\"/>",

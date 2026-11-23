@@ -2,7 +2,7 @@
 
 /* The four numbers at the top: what needs the owner in its colour, the others quiet. */
 .ov-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.ov-tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;background:var(--win);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(20,26,45,.05)}
+.ov-tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:var(--r-panel);background:var(--win);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(20,26,45,.05)}
 .ov-tile b{font-size:26px;line-height:1.15;font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums;color:var(--l1)}
 .ov-tile b small{font-size:16px;color:var(--l3);font-weight:var(--font-weight-medium)}
 .ov-tile span{font-size:12.5px;font-weight:var(--font-weight-semibold);color:var(--l2)}
@@ -21,7 +21,7 @@
 /* Connections: one muted ink for what runs, soft amber and brick for what waits or failed. */
 :root{--live:#5f6b85;--live-wait:#b88a4a;--live-fail:#bf5b55;--lm-node:#ffffff;--lm-node-bd:rgba(0,0,0,.09);--lm-line:rgba(0,0,0,.12);--lm-up:color-mix(in srgb,var(--green) 55%,transparent);--lm-hover:rgba(0,0,0,.28)}
 @media (prefers-color-scheme:dark){:root{--live:#a7b1c7;--live-wait:#d2aa70;--live-fail:#d98680;--lm-node:#1c1c1f;--lm-node-bd:rgba(255,255,255,.08);--lm-line:rgba(255,255,255,.13);--lm-up:color-mix(in srgb,var(--green) 60%,transparent);--lm-hover:rgba(255,255,255,.3)}}
-.lmap{background:var(--win2);border-radius:14px;overflow:hidden}
+.lmap{background:var(--win2);border-radius:var(--r-panel);overflow:hidden}
 .lmap-top{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 0;flex-wrap:wrap}
 .lmap-top b{font-size:14px;font-weight:600}
 .lmap-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 9px;border-radius:999px;background:var(--lm-node);box-shadow:inset 0 0 0 .5px var(--lm-node-bd);color:var(--l2);font-size:12px}
@@ -111,11 +111,11 @@
 .lmap-hub span.bad,.lm-meta.bad{color:var(--red)}
 .lmap-hub span.warn,.lm-meta.warn{color:var(--orange)}
 .dotc.bad{background:var(--red)}
-.lm-card{position:absolute;width:300px;padding:13px 16px 12px;border-radius:14px;background:var(--menu-solid);box-shadow:0 0 0 .5px var(--sep),0 12px 40px rgba(0,0,0,.18);font-size:12.5px;z-index:3}
+.lm-card{position:absolute;width:300px;padding:13px 16px 12px;border-radius:var(--r-panel);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop);font-size:12.5px;z-index:3}
 .lm-card-h{display:flex;align-items:center;gap:10px}
 .lm-card-h b{font-size:14px;font-weight:600}
 .lm-card-sub{margin:2px 0 10px 36px;color:var(--l2);font-size:11.5px}
-.lm-card-full{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:9px;background:var(--fill);color:var(--l2);font-size:11.5px;line-height:1.5}
+.lm-card-full{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:var(--r-box);background:var(--fill);color:var(--l2);font-size:11.5px;line-height:1.5}
 .lm-card-full .ic{margin-top:1px}
 .lm-card-kv{display:grid;grid-template-columns:78px minmax(0,1fr);gap:6px 10px;margin:10px 0 0;padding-top:10px;border-top:.5px solid var(--sep)}
 .lm-card-kv dt{color:var(--l2)}
@@ -127,7 +127,7 @@
 
 /* Working Now: a card per live session. */
 .wcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:var(--sp-2)}
-.wcard{position:relative;display:flex;flex-direction:column;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3) var(--sp-2) 16px;border:0;border-radius:14px;background:var(--win2);text-align:left;overflow:hidden;transition:box-shadow .15s}
+.wcard{position:relative;display:flex;flex-direction:column;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3) var(--sp-2) 16px;border:0;border-radius:var(--r-panel);background:var(--win2);text-align:left;overflow:hidden;transition:box-shadow .15s}
 .wcard:hover{box-shadow:inset 0 0 0 .8px var(--lm-hover)}
 .wcard.w{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--live-wait) 45%,transparent)}
 .wcard.run::before{content:"";position:absolute;left:0;top:0;width:50%;height:2px;background:linear-gradient(90deg,transparent,var(--live),transparent);animation:wc-sweep 2.4s linear infinite}

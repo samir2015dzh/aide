@@ -3,10 +3,11 @@
 .settings{display:grid;grid-template-columns:200px minmax(0,1fr);height:100%;position:relative}
 .set-side-top{height:44px;flex:none}
 .set-soon{margin-left:auto;font-size:11px;color:var(--orange)}
-.set-main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--win)}
+/* The page is grouped (工单 #95): grey, its groups white inset cards (the dark: black, cards #1c1c1e). */
+.set-main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--grouped);--win2:var(--grouped-card)}
 .set-top{height:44px;flex:none;display:flex;align-items:center;gap:4px;padding:0 21px;border-bottom:.5px solid var(--sep)}
 html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
-.set-top h1{margin:0;font-size:14px;font-weight:500}
+.set-top h1{margin:0;font-size:var(--fs-headline);font-weight:var(--font-weight-semibold)}
 .set-back{width:26px;height:26px;margin-left:-6px;border:0;border-radius:var(--r-ctl);background:none;display:flex;align-items:center;justify-content:center;color:var(--l2);padding:0}
 .set-back:hover{background:var(--fill2)}
 .set-back .ic{transform:rotate(180deg)}
@@ -23,9 +24,9 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .settings .frow>.psel{width:auto}
 .settings .mono.cut{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
 /* A row that opens an item: the whole row is the button. */
-.frow.go{width:100%;border:0;border-top:.5px solid var(--sep);background:none;text-align:left;font:inherit;color:inherit}
-.frow.go:first-child{border-top:0;border-radius:12px 12px 0 0}
-.frow.go:last-child{border-radius:0 0 12px 12px}
+.frow.go{width:100%;border:0;background:none;text-align:left;font:inherit;color:inherit}
+.frow.go:first-child{border-radius:var(--r-card) var(--r-card) 0 0}
+.frow.go:last-child{border-radius:0 0 var(--r-card) var(--r-card)}
 .frow.go:only-child{border-radius:var(--r-card)}
 .frow.go:hover{background:var(--fill)}
 .frow.go .chev{color:var(--l3)}
@@ -34,7 +35,7 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .frow.hov:hover>.btn,.frow.hov>.btn:focus-visible{opacity:1}
 .set-acts{display:flex;gap:8px;align-items:center;margin-top:-8px}
 .set-acts .push{margin-left:auto}
-.set-note{margin:8px 4px 0;color:var(--l2);font-size:12px}
+.set-note{margin:8px 14px 0;color:var(--l2);font-size:12px}
 .form>.set-note{margin-top:-13px}
 .set-more{border:0;background:none;padding:2px 4px;color:var(--l2);font-size:12px;display:inline-flex;align-items:center;gap:3px}
 .set-more .ic{transition:transform .15s}
