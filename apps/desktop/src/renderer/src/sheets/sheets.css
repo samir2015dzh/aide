@@ -21,7 +21,7 @@
 .sheet .wk-spin{width:44px;height:44px;border-radius:50%;border:3px solid var(--fill2);border-top-color:var(--accent);animation:wk-spin .8s linear infinite}
 @keyframes wk-spin{to{transform:rotate(360deg)}}
 .sheet .big-ok .okc.bad{background:var(--red);font-weight:700;font-size:20px}
-.sheet .wk-kv{border-radius:12px;background:var(--win2);padding:2px 14px;margin:10px 0 4px}
+.sheet .wk-kv{border-radius:var(--r-card);background:var(--win2);padding:2px 14px;margin:10px 0 4px}
 .sheet .wk-kv>div{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:.5px solid var(--sep);font-size:12.5px;color:var(--l2)}
 .sheet .wk-kv>div:first-child{border-top:0}
 .sheet .wk-kv b{font-weight:400;color:var(--l1);text-align:right;min-width:0;overflow-wrap:anywhere}
@@ -32,7 +32,7 @@
 .sheet .erase-names{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:5px;font-size:12px}
 .sheet .erase-name{display:inline-flex;align-items:center;gap:5px}
 .sheet .erase-stays{margin-top:14px}
-.sheet .erase-stay{margin:0;padding:8px 14px 8px 30px;background:var(--win2);border-radius:12px;font-size:12px;color:var(--l2);line-height:1.7}
+.sheet .erase-stay{margin:0;padding:8px 14px 8px 30px;background:var(--win2);border-radius:var(--r-card);font-size:12px;color:var(--l2);line-height:1.7}
 .sheet .erase-lab{display:block;font-size:12px;color:var(--l2);margin:14px 4px 5px}
 .sheet .erase-lab b{color:var(--l1);font-weight:500}
 .sheet .erase-st{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--l2);white-space:nowrap}

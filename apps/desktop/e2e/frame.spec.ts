@@ -161,7 +161,7 @@ test("the sidebar shows the window's material; the toggle sits after the traffic
 // The avatar at the sidebar's foot opens the account menu upward, as wide as
 // the foot and opaque over the list; it is used with the mouse and with the
 // keyboard, as a native menu.
-test("the avatar opens the account menu above it, opaque, by mouse and keyboard", async () => {
+test("the avatar opens the account menu above it, on the menu material, by mouse and keyboard", async () => {
   const { app, page } = await launch();
   const avatar = page.getByRole("button", { name: "账号与设置" });
   const menu = page.getByRole("menu", { name: "账号与设置" });
@@ -178,8 +178,8 @@ test("the avatar opens the account menu above it, opaque, by mouse and keyboard"
   expect(m.y + m.height).toBeLessThanOrEqual(a.y);
   expect(Math.abs(m.x - a.x)).toBeLessThan(1);
   expect(Math.abs(m.width - a.width)).toBeLessThan(1);
-  const background = await menu.evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(background).toMatch(/^rgb\(/); // no alpha: the list doesn't show through
+  // The menu material (工单 #95): translucent, what is under it blurred past reading, as macOS's menus.
+  expect(await menu.evaluate((el) => getComputedStyle(el).backdropFilter)).toMatch(/blur\((2\d|[3-9]\d)px\)/);
   await snap(page, "account-menu");
 
   // 连接助手… opens its sheet, and the menu closes.
@@ -226,7 +226,7 @@ const openFromSearch = async (page: Page, title: string) => {
 /** The titles of the list's groups, top to bottom. */
 const groups = async (page: Page) => (await sessionList(page)).locator(".grp-h").allInnerTexts();
 
-test("the view menu groups, sorts and shows the list from submenus, opaque over it, and is kept for next time", async () => {
+test("the view menu groups, sorts and shows the list from submenus, on the menu material over it, and is kept for next time", async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   let { app, page } = await launch(fixture.socket, { profile });
   const list = (await sessionList(page));
@@ -240,8 +240,8 @@ test("the view menu groups, sorts and shows the list from submenus, opaque over 
   const [m, b, side] = await Promise.all([menu.boundingBox(), button.boundingBox(), page.locator(".tasks-col").boundingBox()]);
   expect(Math.abs(m!.x + m!.width - (b!.x + b!.width))).toBeLessThanOrEqual(1);
   expect(m!.x).toBeGreaterThanOrEqual(side!.x);
-  const background = await menu.evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(background).toMatch(/^rgb\(/); // no alpha: the list doesn't show through
+  // The menu material (工单 #95): translucent, what is under it blurred past reading, as macOS's menus.
+  expect(await menu.evaluate((el) => getComputedStyle(el).backdropFilter)).toMatch(/blur\((2\d|[3-9]\d)px\)/);
   await menu.getByRole("menuitem", { name: /分组/ }).hover();
   const group = page.getByRole("menu", { name: "分组" });
   await expect(group.getByRole("menuitemradio")).toHaveText(["按派活的人", "按状态", "按日期", "按项目", "按 Agent", "按机器"]);

@@ -26,11 +26,13 @@
   --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
   /* Aide's UI takes after Grok's (design/aide in the handover): black and
      white. --accent fills buttons and --on-accent writes on it; --accent-fg
-     is it as text. Then the colours of states, used sparingly, and one
+     is it as text; --ink is the mark's one colour (the desktop app's accent
+     is Apple's blue since 工单 #95; the mark stays ink). Then the colours of states, used sparingly, and one
      spacing scale in golden-ratio steps. */
   --accent: #111113;
   --accent-fg: #111113;
   --on-accent: #ffffff;
+  --ink: #111113;
   --ok: #17924f;
   --warn: #d0700a;
   --danger: #d7333f;
@@ -45,6 +47,7 @@
     --accent: #f2f2f3;
     --accent-fg: #f2f2f3;
     --on-accent: #0b0b0d;
+    --ink: #f2f2f3;
     --ok: #3fcf86;
     --warn: #ffab3d;
     --danger: #ff6670;
@@ -84,6 +87,7 @@
   --accent: #f2f2f3;
   --accent-fg: #f2f2f3;
   --on-accent: #0b0b0d;
+  --ink: #f2f2f3;
   --ok: #3fcf86;
   --warn: #ffab3d;
   --danger: #ff6670;
@@ -92,7 +96,7 @@
 /* The mark (mark.tsx): one colour, the page's ink. At rest it is the icon's
    shape; every motion settles back on it. */
 .hm-mark {
-  color: var(--accent-fg, currentColor);
+  color: var(--ink, var(--accent-fg, currentColor));
   /* Turning, the aide passes outside the ink's box: let it, rather than
      shrink the mark at rest. */
   overflow: visible;

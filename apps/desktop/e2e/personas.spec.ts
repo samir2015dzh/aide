@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launch, sessionList } from "./app";
+import { launch, sessionList, snap } from "./app";
 
 // Handing work out (工单 #41, docs/personas.md, as 批 G has it): there is no Hand Work To page beside the roster — a
 // bot is picked in the roster and written to on its own page, with no contact made first. A contact is the bot's own
@@ -18,10 +18,12 @@ test("handing work to a detected agent from its page; a contact made there, writ
   await bot.getByRole("textbox", { name: "给 Gemini CLI 发消息" }).fill("say 直接派活");
   await bot.getByRole("textbox", { name: "给 Gemini CLI 发消息" }).press("Enter");
   await expect(convs.getByRole("listitem").filter({ hasText: "say 直接派活" })).toBeVisible({ timeout: 30_000 });
+  await snap(page, "personas-bot-page");
 
   // A contact, made on its page (工单 #65: a short button, no sentence in its place): a name, an avatar, its project.
   await bot.getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "给它起名字、换头像" }).click();
   const form = page.getByRole("dialog", { name: "添加联系人" });
+  await snap(page, "personas-add-contact");
   await form.getByLabel("名字", { exact: true }).fill("前端助手");
   await form.getByRole("group", { name: "形状" }).getByRole("button", { name: "爱心" }).click();
   await expect(form.getByRole("group", { name: "机器" }).getByRole("button", { name: "owner-mac" })).toHaveAttribute("aria-pressed", "true");

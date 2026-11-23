@@ -85,7 +85,7 @@ export function Picker<T extends string | number>({
       >
         {chosen?.icon}
         <span className="picker-v">{chosen?.label ?? placeholder}</span>
-        <Icon name="chevD" className="sm picker-c" />
+        <Icon name={chip ? "chevD" : "chevUD"} className="sm picker-c" />
       </button>
       {open &&
         createPortal(

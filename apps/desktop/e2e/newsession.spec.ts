@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { launch, sessionList } from "./app";
+import { launch, sessionList, snap } from "./app";
 
 // New Task (docs/technical-design.md §3.4): the owner starts a coding
 // agent from the app, in a project or a GitHub repository, then goes on
@@ -28,6 +28,7 @@ test("starting a session in a project, then writing to it under the conversation
   await expect(sheet.getByRole("button", { name: "模型", exact: true })).toHaveText("默认");
   await expect(sheet.getByRole("button", { name: "启动" })).toBeDisabled();
   await sheet.getByLabel("消息", { exact: true }).fill("say 从桌面发起");
+  await snap(page, "newsession-sheet");
   await sheet.getByRole("button", { name: "启动" }).click();
 
   // The session opens, started by you, and runs.
@@ -47,6 +48,7 @@ test("starting a session in a project, then writing to it under the conversation
   await box.press("Enter");
   await expect(log).toContainText("接着做");
   await expect(box).toHaveValue("");
+  await snap(page, "newsession-composer");
   await app.close();
 });
 
