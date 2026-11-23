@@ -202,11 +202,10 @@ class PageShots {
         (AppModel::class.java.getDeclaredField("_phase").apply { isAccessible = true }.get(m) as MutableStateFlow<AppModel.Phase>).value = AppModel.Phase.Ready
         shot("18-home-tabs", waitFor = "发版评审") { Root(m) }
     }
-    // A bot's settings, a page of their own (工单 #97): DSH's, its removal asked, its pause menu, in light mode; Muse's (its grant).
+    // A bot's settings, a page of their own (工单 #97): DSH's, its removal asked, in light mode; Muse's (its grant).
     @Test fun botSettings() = model().let { m -> shot("19-bot-dsh-settings") { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
     @Test fun botRemove() = model().let { m -> shot("20-bot-dsh-remove", act = { scrollTo("从 Aide 里移除…"); rule.onNodeWithText("从 Aide 里移除…").performClick() }) { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
-    @Test fun botPause() = model().let { m -> shot("21-bot-dsh-pause-menu", act = { rule.onNodeWithText("暂停").performClick() }) { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
-    @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun botSettingsLight() = model().let { m -> shot("34-bot-dsh-settings-light") { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun botSettingsLight() = model().let { m -> shot("21-bot-dsh-settings-light") { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
     @Test fun personalBotSettings() = model().let { m -> shot("33-bot-muse-settings") { BotSettingsPage(m, "c:c1", edit = {}) {} } }
     @Test fun accountDialog() = model().let { m -> shot("22-settings-password", waitFor = "修改密码…", act = { rule.onNodeWithText("修改密码…").performClick() }) { SettingsTab(m) } }
     @Test fun signOutDialog() = model().let { m -> shot("23-settings-sign-out", act = { rule.onAllNodesWithText("登出…").onFirst().performClick() }) { SettingsTab(m) } }

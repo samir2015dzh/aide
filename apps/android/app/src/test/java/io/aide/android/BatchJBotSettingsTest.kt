@@ -10,9 +10,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -149,18 +155,18 @@ class BatchJBotSettingsTest {
 
     @Test fun theSettingsPageHasEveryItemOnce() {
         show { BotSettingsPage(model, "m:m1/deepseek", edit = {}) {} }
-        for (once in listOf("名字和头像", "给它起名字、换头像", "它的设置", "机器", "项目", "类别", "自动判断 · 本机编码 Agent", "暂停")) {
+        for (once in listOf("名字和头像", "给它起名字、换头像", "机器", "项目", "类别", "自动判断", "个人 Agent", "本机编码 Agent · workstation", "暂停")) {
             scrollTo(once)
             assertEquals("「$once」once", 1, count(once))
         }
         scrollTo("从 Aide 里移除…")
         assertEquals(1, count("从 Aide 里移除…"))
         assertEquals("the two of before are one", 0, count("名字与头像"))
-        // Its kind as it is in force (#93): one row, its menu offering the three.
-        rule.onNodeWithText("自动判断 · 本机编码 Agent").performClick()
-        rule.waitForIdle()
-        assertEquals(1, count("个人 Agent"))
-        assertEquals(1, count("本机编码 Agent · workstation"))
+        // The kind laid out flat (工单 #97 补充三): three radio rows, the one in force picked; no pill with an arrow.
+        assertEquals(3, rule.onAllNodes(isSelectable()).fetchSemanticsNodes().size)
+        rule.onNode(isSelectable() and hasText("自动判断")).assertIsSelected()
+        assertEquals(0, count("自动判断 · 本机编码 Agent"))
+        rule.onNode(isToggleable()).assertIsOff()
     }
 
     @Test fun aGrantsSettingsHaveItsCardOnce() {
@@ -181,23 +187,19 @@ class BatchJBotSettingsTest {
         rule.waitForIdle()
 
         // Its kind: personal, asked of its machine; once the machine says so, picked here and filed so in the roster.
-        rule.onNodeWithText("自动判断 · 本机编码 Agent").performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("个人 Agent").performClick()
+        rule.onNode(isSelectable() and hasText("个人 Agent")).performClick()
         rule.waitUntil(5_000) { asked["SetAgentCategory"].orEmpty().isNotEmpty() }
         assertTrue(asked["SetAgentCategory"]!!.single().contains("\"category\":\"personal\""))
         deepseek { it.copy(category = "personal") }
-        rule.onNodeWithText("个人 Agent").assertIsDisplayed()
-        assertEquals(0, count("自动判断 · 本机编码 Agent"))
+        rule.onNode(isSelectable() and hasText("个人 Agent")).assertIsSelected()
+        rule.onNode(isSelectable() and hasText("自动判断")).assertIsNotSelected()
 
-        // Paused: its menu, until resumed; then the row offers resuming.
-        rule.onNodeWithText("暂停").performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("暂停，直到我恢复").performClick()
+        // Paused: the switch; on its page, its state says so.
+        rule.onNode(isToggleable()).performClick()
         rule.waitUntil(5_000) { asked["SetAgentPaused"].orEmpty().isNotEmpty() }
         assertTrue(asked["SetAgentPaused"]!!.single().contains("\"paused\":true"))
         deepseek { it.copy(pause = AgentPause(since = Instant.now().toString())) }
-        rule.onNodeWithText("恢复").assertIsDisplayed()
+        rule.onNode(isToggleable()).assertIsOn()
 
         // Its name: the one names-and-faces section, its contact page, saved; back here and on its page, the new name.
         rule.onNodeWithText("给它起名字、换头像").performClick()
