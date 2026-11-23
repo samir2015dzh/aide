@@ -112,6 +112,7 @@ type Machine struct {
 	usageFetch  bool                        // a usage fetch is under way
 	usageSrc    usageSource                 // reads plan usage from the endpoint; nil with usageCLI nil disables it
 	usageCLI    cliUsageSource              // reads it through Claude Code here (工单 #86)
+	usageCache  cacheUsageSource            // reads what Claude Code here cached of it (工单 #104)
 	usageNoCLI  map[string]bool             // Claude Code binaries@versions without /usage outside a terminal
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
@@ -276,6 +277,7 @@ func Open(cfg Config) (*Machine, error) {
 	if cfg.ClaudeUsage {
 		n.usageSrc = &claude.UsageReader{AutoRenew: true, HTTP: cfg.HTTPClient, Log: n.log}
 		n.usageCLI = &claude.CLIUsage{}
+		n.usageCache = &claude.CacheUsage{}
 		n.loadUsage()
 	}
 	n.sessions.offered = n.offered

@@ -55,8 +55,9 @@ type Usage struct {
 	// failed renew): the HTTP status and a summary of the answer, or the
 	// transport error with its host. Never a token, header or URL path.
 	Detail string
-	// Source is where a reading came from: "claude_code" (CLIUsage) or
-	// "api" (UsageReader); set by whoever chose between them.
+	// Source is where a reading came from: "claude_code_cache" (CacheUsage,
+	// 工单 #104), "claude_code" (CLIUsage) or "api" (UsageReader); set by
+	// whoever chose between them.
 	Source string
 }
 

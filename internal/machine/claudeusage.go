@@ -2,6 +2,7 @@ package machine
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -16,15 +17,27 @@ import (
 // status is served, because it reaches the network and the token store; a
 // status only carries the last reading. aided turns it on (Config.ClaudeUsage).
 //
-// Where it is read (工单 #86): first from this machine's own Claude Code,
-// signed in here, as its /usage tells it (claude.CLIUsage); only where that
-// can't be asked (no signed-in Claude Code here, a version without /usage
-// outside a terminal, the command failing) from the usage endpoint with the
-// token found here (claude.UsageReader, as before). Claude Code answering
-// without a reading (its own reading failing, rate limited) is not asked
-// past: the endpoint would be asked twice. Whatever fails, the last reading
-// stays, marked stale, with when it was read — kept on disk, so a restart
-// does not blank it either.
+// Where it is read (工单 #86, #104), the first source with the plan's
+// windows giving the reading:
+//
+//  1. what this machine's Claude Code last read of it and keeps in its
+//     config (claude.CacheUsage), when that is fresher than a reading of
+//     our own would be (usageEvery); asks nothing of anyone;
+//  2. this machine's own Claude Code, signed in here, as its /usage tells
+//     it (claude.CLIUsage). Where its sign-in does not read the plan it
+//     writes only that call's own totals (claude.CLISessionOnly): no
+//     reading, the next source is asked. A version without /usage outside
+//     a terminal is not asked again. Claude Code answering a plan's report
+//     without its rows (its own reading failing, rate limited) is not asked
+//     past: the endpoint would be asked twice;
+//  3. the usage endpoint with the token found here (claude.UsageReader):
+//     Claude Code's credentials, else the signed-in Claude desktop app's.
+//
+// What each source said on the way rides along in the reading's detail and
+// aided's log, so a machine without a reading says why at every source.
+// Whatever fails, the last reading stays, marked stale, with when it was
+// read — kept on disk, so a restart does not blank it either; a cache older
+// than that reading, but newer, takes its place.
 
 // usageEvery is how often a fresh reading is fetched: a quarter of an hour,
 // well inside the 5-hour window it reports, and far enough apart that the
@@ -40,6 +53,12 @@ type usageSource interface {
 	Read(context.Context) claude.Usage
 }
 
+// cacheUsageSource reads what Claude Code here cached of it.
+// *claude.CacheUsage is the real one; tests inject a fake.
+type cacheUsageSource interface {
+	Read() claude.Usage
+}
+
 // cliUsageSource reads it through Claude Code at bin. *claude.CLIUsage is
 // the real one; tests inject a fake.
 type cliUsageSource interface {
@@ -49,7 +68,7 @@ type cliUsageSource interface {
 // usageDue reports whether a fresh usage reading is owed and claims the
 // fetch so only one runs at a time. The caller must hold n.mu.
 func (n *Machine) usageDue() bool {
-	if (n.usageSrc == nil && n.usageCLI == nil) || n.usageFetch {
+	if (n.usageSrc == nil && n.usageCLI == nil && n.usageCache == nil) || n.usageFetch {
 		return false
 	}
 	if !n.usageAt.IsZero() && time.Since(n.usageAt) < usageEvery {
@@ -65,11 +84,15 @@ func (n *Machine) usageDue() bool {
 func (n *Machine) refreshUsage() {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	u := n.readUsage(ctx)
+	u, older := n.readUsage(ctx)
 
 	n.mu.Lock()
 	prev := n.usage
-	pb := usageToProto(u, prev)
+	kept := prev
+	if older != nil && (kept == nil || len(kept.Windows) == 0 || kept.FetchedAt.AsTime().Before(older.FetchedAt)) {
+		kept = usageToProto(*older, nil)
+	}
+	pb := usageToProto(u, kept)
 	n.usage = pb
 	n.usageAt = time.Now()
 	n.usageFetch = false
@@ -84,39 +107,71 @@ func (n *Machine) refreshUsage() {
 	n.kickStatus()
 }
 
-// readUsage reads the usage once: through Claude Code where it can be, else
-// from the usage endpoint.
-func (n *Machine) readUsage(ctx context.Context) claude.Usage {
+// readUsage reads the usage once, from the first source that has it. When
+// none has, older is Claude Code's cache when it had windows too old to be
+// the reading.
+func (n *Machine) readUsage(ctx context.Context) (u claude.Usage, older *claude.Usage) {
+	var tried []string
+	// 1. Claude Code's cache.
+	if n.usageCache != nil {
+		c := n.usageCache.Read()
+		c.Source = "claude_code_cache"
+		switch {
+		case c.Unavailable != "":
+			tried = append(tried, c.Detail)
+		case time.Since(c.FetchedAt) < usageEvery:
+			return c, nil
+		default:
+			older = &c
+			tried = append(tried, "Claude Code cache: read "+time.Since(c.FetchedAt).Round(time.Minute).String()+" ago, too old to be the reading")
+		}
+	}
+	// 2. Claude Code's /usage.
 	if n.usageCLI != nil {
 		n.mu.Lock()
 		i := n.infos["claude"]
 		key := i.Binary + "@" + i.Version
-		tried := n.usageNoCLI[key]
+		noCLI := n.usageNoCLI[key]
 		n.mu.Unlock()
-		if i.Available && i.LoggedIn && i.Binary != "" && !tried {
+		switch {
+		case !i.Available || !i.LoggedIn || i.Binary == "":
+			tried = append(tried, "claude -p /usage: not asked (no signed-in Claude Code found here)")
+		case noCLI:
+			tried = append(tried, "claude -p /usage: not asked (this version has no /usage outside a terminal)")
+		default:
 			u := n.usageCLI.Read(ctx, i.Binary)
 			switch u.Unavailable {
 			case "":
 				u.Source = "claude_code"
-				return u
+				u.Detail = strings.Join(tried, "; ")
+				return u, older
 			case claude.CLINoReading:
-				return u
+				u.Detail = strings.Join(append(tried, u.Detail), "; ")
+				return u, older
 			case claude.CLIUnsupported:
 				n.mu.Lock()
 				n.usageNoCLI[key] = true
 				n.mu.Unlock()
 				n.log.Info("Claude Code here has no /usage outside a terminal; plan usage from the usage endpoint", "version", i.Version)
 			}
+			tried = append(tried, u.Detail)
 		}
 	}
+	// 3. The usage endpoint.
 	if n.usageSrc == nil {
-		return claude.Usage{Unavailable: "signed_out", FetchedAt: time.Now()}
+		return claude.Usage{Unavailable: "signed_out", FetchedAt: time.Now(), Detail: strings.Join(tried, "; ")}, older
 	}
-	u := n.usageSrc.Read(ctx)
+	u = n.usageSrc.Read(ctx)
 	if u.Unavailable == "" {
 		u.Source = "api"
+	} else if !strings.HasPrefix(u.Detail, "usage endpoint") {
+		u.Detail = strings.TrimSuffix("usage endpoint: "+u.Unavailable+"; "+u.Detail, "; ")
 	}
-	return u
+	if u.Detail != "" {
+		tried = append(tried, u.Detail)
+	}
+	u.Detail = strings.Join(tried, "; ")
+	return u, older
 }
 
 // loadUsage reads the last good reading kept, as stale until a fresh one.
@@ -175,7 +230,7 @@ func (n *Machine) logUsage(now, prev *machinev1.ClaudeUsage) {
 	}
 	if now.Unavailable != prevUnavail || (now.Unavailable != "" && now.Detail != prevDetail) {
 		if now.Unavailable == "" {
-			n.log.Info("Claude plan usage readable again", "source", now.Source)
+			n.log.Info("Claude plan usage readable again", "source", now.Source, "detail", now.Detail)
 		} else {
 			n.log.Info("Claude plan usage not readable", "why", now.Unavailable, "detail", now.Detail)
 		}

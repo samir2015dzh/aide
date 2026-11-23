@@ -2,9 +2,12 @@ package machine
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
@@ -219,5 +222,103 @@ func TestUsageDisabledByDefault(t *testing.T) {
 		if u := claudeAgent(n.Status()).GetUsage(); u != nil {
 			t.Fatalf("usage attached with no source: %+v", u)
 		}
+	}
+}
+
+// fakeCache answers as Claude Code's cache would, counting the calls.
+type fakeCache struct {
+	mu    sync.Mutex
+	out   claude.Usage
+	calls int
+}
+
+func (f *fakeCache) Read() claude.Usage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	return f.out
+}
+
+func (f *fakeCache) set(u claude.Usage) { f.mu.Lock(); defer f.mu.Unlock(); f.out = u }
+
+// Plan usage from the first source that has the plan's windows (工单 #104):
+// Claude Code's /usage writing only that call's own totals is no reading,
+// and the endpoint is asked; Claude Code's cache, when fresh, is the
+// reading, nothing else asked; every source failing keeps the last reading
+// with when it was read, and says why at each source; a cache too old to be
+// the reading still stands in for an older last reading.
+func TestUsageSourcesInOrder(t *testing.T) {
+	n := openTestMachine(t)
+	n.mu.Lock()
+	n.infos["claude"] = provider.Info{Name: "claude", Available: true, LoggedIn: true, Binary: "/opt/claude", Version: "2.1.330"}
+	n.mu.Unlock()
+	cache := &fakeCache{out: claude.Usage{Unavailable: claude.CacheNone, Detail: "Claude Code cache: .claude.json keeps no plan usage (Claude Code here has not read it)"}}
+	cli := &fakeCLI{out: claude.Usage{Unavailable: claude.CLISessionOnly, Detail: "claude -p /usage: only this call's own totals, no plan windows (its sign-in here does not read the plan)", FetchedAt: time.Now()}}
+	api := &fakeUsage{out: []claude.Usage{
+		{Windows: []claude.Window{{Key: "five_hour", Utilization: 33}, {Key: "seven_day", Utilization: 61}}, FetchedAt: time.Now()},
+		{Unavailable: "api_error", Detail: "usage endpoint: HTTP 429: rate_limit_error: Rate limited.", FetchedAt: time.Now()},
+	}}
+	n.usageCache, n.usageCLI, n.usageSrc = cache, cli, api
+	again := func() *machinev1.ClaudeUsage {
+		t.Helper()
+		n.mu.Lock()
+		n.usageFetch = true
+		n.mu.Unlock()
+		n.refreshUsage()
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		return n.usage
+	}
+
+	// /usage gives only the call's own totals: not taken, the endpoint asked.
+	u := again()
+	if u.Source != "api" || u.Stale || len(u.Windows) != 2 || u.Windows[0].Utilization != 33 {
+		t.Fatalf("past the call's own totals: %+v", u)
+	}
+	if cli.count() != 1 || api.count() != 1 {
+		t.Fatalf("asked Claude Code %d, the endpoint %d times; want 1, 1", cli.count(), api.count())
+	}
+	if !strings.Contains(u.Detail, "keeps no plan usage") || !strings.Contains(u.Detail, "own totals") {
+		t.Fatalf("detail does not say why the earlier sources gave nothing: %q", u.Detail)
+	}
+
+	// A fresh cache is the reading, with when Claude Code read it.
+	cachedAt := time.Now().Add(-2 * time.Minute).Truncate(time.Millisecond)
+	cache.set(claude.Usage{Windows: []claude.Window{{Key: "five_hour", Utilization: 40}, {Key: "seven_day", Utilization: 62}}, FetchedAt: cachedAt})
+	u = again()
+	if u.Source != "claude_code_cache" || u.Stale || u.Windows[0].Utilization != 40 || !u.FetchedAt.AsTime().Equal(cachedAt) {
+		t.Fatalf("fresh cache: %+v", u)
+	}
+	if cli.count() != 1 || api.count() != 1 {
+		t.Fatal("Claude Code or the endpoint was asked though the cache was fresh")
+	}
+
+	// Every source failing: the last reading, stale, with when it was read,
+	// and why at each source.
+	cache.set(claude.Usage{Unavailable: claude.CacheNone, Detail: "Claude Code cache: no config file of Claude Code's here"})
+	u = again()
+	if !u.Stale || u.Windows[0].Utilization != 40 || !u.FetchedAt.AsTime().Equal(cachedAt) {
+		t.Fatalf("all failing: %+v, want the last reading, stale, with when it was read", u)
+	}
+	for _, want := range []string{"no config file", "own totals", "HTTP 429"} {
+		if !strings.Contains(u.Detail, want) {
+			t.Fatalf("detail %q lacks %q", u.Detail, want)
+		}
+	}
+
+	// A cache too old to be the reading, but newer than the last reading,
+	// stands in for it, stale; older than the last reading, it does not.
+	n.mu.Lock()
+	n.usage.FetchedAt = timestamppb.New(time.Now().Add(-3 * time.Hour))
+	n.mu.Unlock()
+	oldAt := time.Now().Add(-40 * time.Minute).Truncate(time.Millisecond)
+	cache.set(claude.Usage{Windows: []claude.Window{{Key: "five_hour", Utilization: 55}}, FetchedAt: oldAt})
+	u = again()
+	if !u.Stale || u.Windows[0].Utilization != 55 || !u.FetchedAt.AsTime().Equal(oldAt) || u.Source != "claude_code_cache" || !strings.Contains(u.Detail, "too old") {
+		t.Fatalf("older cache: %+v", u)
+	}
+	cache.set(claude.Usage{Windows: []claude.Window{{Key: "five_hour", Utilization: 70}}, FetchedAt: oldAt.Add(-time.Hour)})
+	if u = again(); !u.Stale || u.Windows[0].Utilization != 55 {
+		t.Fatalf("a cache older than the last reading: %+v", u)
 	}
 }
