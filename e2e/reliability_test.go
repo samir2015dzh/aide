@@ -31,7 +31,7 @@ func TestReliability(t *testing.T) {
 		t.Fatalf("rate limit: %+v", r)
 	}
 	text := w.cli(time.Minute, "session", "send", id, "--wait", "--message", "fail API Error: 401 Invalid authentication credentials")
-	if text.code != 5 || !strings.Contains(text.stderr, "auth: API Error: 401") || !strings.Contains(text.stderr, "log in") {
+	if text.code != 5 || !strings.Contains(text.stderr, "auth: API Error: 401") || !strings.Contains(text.stderr, "sign it in") {
 		t.Fatalf("auth failure, text output: %+v", text)
 	}
 	if g := w.cli(30*time.Second, "session", "get", id); !strings.Contains(g.stdout, "failure: auth:") {

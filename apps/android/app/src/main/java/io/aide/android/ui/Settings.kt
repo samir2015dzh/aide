@@ -133,7 +133,9 @@ fun SettingsTab(model: AppModel) {
                     }
                     InfoRow(t("Server", "服务器"), st.relayUrl)
                     if (st.account.isNotEmpty()) InfoRow(t("Account", "账号"), st.account)
-                    InfoRow(t("Version", "版本"), st.version)
+                    // The app's own version, as installed (工单 #103; the same VERSION stamps its core). Android
+                    // updates come from the release's .apk: no check for updates here.
+                    InfoRow(t("Version", "版本"), io.aide.android.BuildConfig.VERSION_NAME)
                     KeepaliveSettings(model)
                     InfoRow(
                         t("Notifications", "通知"),

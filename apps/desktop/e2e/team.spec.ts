@@ -27,10 +27,11 @@ test("the sidebar is bots alone; every session is a page of its own, its list be
   await page.setViewportSize({ width: 1240, height: 800 });
   const sidebar = page.getByRole("complementary", { name: "边栏" });
   await expect(sidebar.getByRole("region", { name: "Bot" })).toBeVisible({ timeout: 30_000 });
-  // No pages, no session list in the sidebar; something waits on the owner: a dot on the account's avatar.
-  await expect(sidebar.locator(".side-nav")).toHaveCount(0);
+  // No session list in the sidebar, no pages but the overview and the task feed at its top (工单 #102); something
+  // waits on the owner: counted on the overview there.
+  await expect(sidebar.locator(".side-nav").getByRole("button")).toHaveText([/^概览/, /^任务动态/]);
   await expect(sidebar.getByRole("list", { name: "任务" })).toHaveCount(0);
-  await expect(sidebar.locator(".acct-due")).toBeVisible();
+  await expect(sidebar.locator(".side-nav .nav-i").first().locator(".nav-count")).toBeVisible();
 
   // Every session: 全部任务, from the account menu; one chosen shows beside the list, marked in it.
   const list = await sessionList(page);

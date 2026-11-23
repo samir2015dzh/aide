@@ -499,10 +499,11 @@ test("a work Mac logs in as a machine only (你的设备 off): its own projects 
   await expect(map.getByRole("button", { name: "+ 连接更多" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "需要你处理" })).toHaveCount(0);
 
-  // Its settings, from the account menu, are this Mac's: its coding agents,
-  // their models and projects, and its account; no access to grant, no other machine.
+  // Its overview is first in the sidebar (工单 #102); its settings, from the account menu, are this Mac's: its coding
+  // agents, their models and projects, and its account; no access to grant, no other machine.
+  await expect(page.getByRole("navigation", { name: "导航" }).getByRole("button")).toHaveText([/^概览/]);
   await page.getByRole("button", { name: "账号与设置" }).click();
-  await expect(page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem")).toHaveText([/^概览/, /^设置…/, "账号…"]);
+  await expect(page.getByRole("menu", { name: "账号与设置" }).getByRole("menuitem")).toHaveText([/^设置…/, "账号…"]);
   const [settings] = await Promise.all([app.waitForEvent("window"), page.getByRole("menuitem", { name: /^设置/ }).click()]);
   await settings.waitForLoadState();
   const nav = settings.getByRole("navigation", { name: "设置" });

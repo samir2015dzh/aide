@@ -59,7 +59,8 @@
     "machinesOnline": "{{online}}/{{total}} machines online",
     "connect": "Connect Agents",
     "howToConnect": "How to Connect DSH, Claude Desktop…",
-    "tasks": "Tasks"
+    "tasks": "Tasks",
+    "nav": "Navigation"
   },
   "accountMenu": {
     "settings": "Settings…",
@@ -67,9 +68,7 @@
     "addMachine": "Add Machine…",
     "account": "Account…",
     "connect": "Connect DSH, Claude Desktop…",
-    "overview": "Overview",
     "devices": "Devices",
-    "tasks": "Task feed",
     "held": "Held messages",
     "newSession": "New Task…",
     "sessions": "All Tasks",
@@ -391,17 +390,13 @@
     "title": "Bots",
     "personal": "Personal agents",
     "noWork": "Nothing for {{name}} yet: write a task below.",
-    "noWorkPersonal": "Nothing from {{name}} yet.",
-    "bench": "Workbench",
     "connection": "Connection",
     "manage": "Projects and management",
     "grant": "Its grant",
     "cantSend": "{{word}}: can't hand work now ({{line}})",
     "unverified": "Not confirmed lately — it can be sent, but whether it is there is not checked",
-    "noProject": "No project here for this agent yet: add one under Projects and management.",
-    "identity": "Names and faces",
+    "noProject": "No project here for this agent yet: add one in Settings › Projects and management.",
     "identityAdd": "Add",
-    "handedOut": "Work it handed out",
     "chat": "Conversation",
     "chatEmpty": "Write to {{name}}: it answers here.",
     "delivery": {
@@ -435,7 +430,18 @@
       "localButton": "Remove from the roster",
       "localDone": "Removed {{name}} from the roster"
     },
-    "faceEdit": "Change its avatar"
+    "faceEdit": "Change its avatar",
+    "settings": "Settings",
+    "settingsOf": "{{name}}'s settings",
+    "settingsBack": "Back to {{name}}",
+    "board": {
+      "title": "Task board",
+      "all": "All tasks",
+      "waiting": "Waiting / needs a look",
+      "running": "In progress",
+      "done": "Done lately",
+      "none": "Nothing for {{name}} now. Work handed to it through Aide, or that it handed out, shows here; finished work stays a day."
+    }
   },
   "avatar": {
     "shapes": "Shape",
@@ -603,6 +609,10 @@
     "newStarted": "New conversation started",
     "newBecause": "New conversation: you changed the {{what}}",
     "defaultModel": "Default model",
+    "defaultModelIs": "Default · {{model}}",
+    "modelUnknown": "Specific model unknown: Claude Code on this machine did not say",
+    "modelsAfterFirst": "{{agent}} names its models only in a session: send the first message with the default model, then its models on this machine are listed here",
+    "modelsNone": "{{agent}}'s sessions offer no choice of model: it runs as its own settings say",
     "defaultEffort": "Default effort",
     "defaultMode": "Default mode",
     "param": {
@@ -673,8 +683,6 @@
     "gone": "This session isn't there any more."
   },
   "agentSettings": {
-    "title": "Its settings",
-    "hero": "{{app}} found on {{machine}}",
     "canUse": "What it can use",
     "machine": "Machine",
     "machineValue": "{{machine}} (where it runs)",
@@ -688,6 +696,7 @@
     "hideTitle": "Remove {{name}} from Aide?",
     "hideMessage": "It leaves Aide's lists; nothing on {{machine}} is uninstalled or deleted, and its history stays. A rescan of the machine (Devices) shows it again.",
     "hideButton": "Remove",
-    "personalMeans": "Listed with your personal agents; it still runs on its machine, and work for it goes there."
+    "personalMeans": "Listed with your personal agents; it still runs on its machine, and work for it goes there.",
+    "usage": "Plan usage"
   }
 }

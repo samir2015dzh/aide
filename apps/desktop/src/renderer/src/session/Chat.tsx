@@ -4,9 +4,9 @@ import type { Client, Machine } from "@aide/proto/local";
 import { Workspace } from "@aide/proto/identity";
 import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
 import {
-  agoText, checkpoints, clockText, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
+  agoText, checkpoints, clockText, codingBotState, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
-  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, type Step,
+  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, type Step,
 } from "@aide/core";
 import { AgentLogo, Mark, agentName } from "@aide/ui";
 import { local } from "../api";
@@ -16,7 +16,10 @@ import { HEAVY_ROWS, releaseAfterLeaving } from "../memory";
 import { keys } from "../platform";
 import { archive, grantLabel, machineName, unarchive } from "../Sidebar";
 import { WritesTo } from "../MachineTag";
+import { ClaudeLogin, claudeLoginWaiting } from "../Connections";
 import { Composer, attachmentsOf, useAttachments, type ComposerState } from "../bots/Composer";
+import { modelOptions } from "../modelOptions";
+import { Picker } from "../Picker";
 import { errorText, useNow, useStore } from "../store";
 import { SessionParams, sessionCommands } from "./compose";
 import { confirmRollback, interrupt } from "./actions";
@@ -436,13 +439,14 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
       return <TimeLine at={it.at} previous={previous} />;
     case "user": {
       // The one who started the session speaks on the right with no name (the card says who); anyone else
-      // who wrote into it (you, in a session one of your agents started; another agent) is named.
+      // who wrote into it (you, in a session one of your agents started; another agent) is named: by the name its
+      // connection has now, not the one kept with the message (工单 #101: "Muse (<its address>)" from before #85).
       const by =
         it.from === "" || it.from === starter
           ? undefined
           : it.from === "owner"
             ? t("chat.fromYou")
-            : agentName(it.fromName || clients.find((c) => c.clientId === it.from)?.label || it.from);
+            : agentName(clients.find((c) => c.clientId === it.from)?.label || it.fromName || it.from);
       return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} />;
     }
     case "agent":
@@ -681,6 +685,7 @@ const adviceResumes = new Set([
   FailureKind.RESUME_REJECTED,
   FailureKind.AGENT_CRASHED,
   FailureKind.STALLED,
+  FailureKind.TIMEOUT,
 ]);
 
 function sameFailure(a: Failure | undefined, b: Failure | undefined): boolean {
@@ -698,13 +703,24 @@ function Failed({ s, failure, grant }: { s: Session; failure: Failure | undefine
   const st = useStore();
   const message = failure?.message ?? s.error;
   const kind = failure?.kind ?? FailureKind.UNSPECIFIED;
-  const advice = failure && !adviceResumes.has(kind) ? failureAdvice(failure) : "";
+  const agent = codingAgentTitle(s.agent);
+  // 工单 #105: only words the owner can act on; what could not be told apart says the original is in Details, never guesses.
+  const unknown = kind === FailureKind.UNKNOWN || kind === FailureKind.UNSPECIFIED || FailureKind[kind] === undefined;
+  const advice = unknown ? (message !== "" ? coreT("advice.details") : "") : failure && !adviceResumes.has(kind) ? failureAdvice(failure, agent, s.agent) : "";
+  // Not signed in: Claude Code is signed in from here, on its machine, while it still is not (工单 #51, #108).
+  const m = st.machines.find((x) => x.machineId === s.machineId);
+  const login = kind === FailureKind.AUTH && m && codingBotState(m, s.agent, new Date())?.fix === "claudeLogin";
   return (
     <FailCard
-      headline={failureHeadline(kind, codingAgentTitle(s.agent))}
+      headline={failureHeadline(kind, agent, failure?.provider)}
       hints={[advice, s.createdBy === "owner" ? t("chat.resumeYou") : t("chat.resume", { grant: agentName(grant) })]}
       message={message}
-      actions={isArchivable(s) && <button className="link" onClick={() => archive(st, s)}>{t("chat.archive")}</button>}
+      actions={
+        <>
+          {login && <ClaudeLogin m={m} waiting={claudeLoginWaiting(m)} />}
+          {isArchivable(s) && <button className="link" onClick={() => archive(st, s)}>{t("chat.archive")}</button>}
+        </>
+      }
     />
   );
 }
@@ -814,11 +830,33 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
     };
   }, [onHeight]);
   const agent = codingAgentTitle(s.agent);
+  // Its model, as the agent's models list it (工单 #98 补充): another one picked here, the next message starts a new
+  // conversation on it (工单 #67 rule 4), said before and after; never locked to the one it began with.
+  const tc = useTranslation("common").t;
+  const a = st.machines.find((m) => m.machineId === s.machineId)?.status?.agents.find((x) => x.name === s.agent);
+  const runs = listedModel(s.model, a?.models ?? []);
+  const [model, setModel] = useState(runs);
+  useEffect(() => setModel(runs), [s.sessionId, runs]);
+  const [key, setKey] = useState(() => crypto.randomUUID());
+  const other = model !== runs;
   const send = async () => {
     if (state.kind === "sending") return;
     setState({ kind: "sending" });
     try {
-      await local.sendMessage({ sessionId: s.sessionId, text, attachments: await attachmentsOf(attach.files) });
+      const attachments = await attachmentsOf(attach.files);
+      if (other) {
+        const to = (await local.startSession({ machineId: s.machineId, session: { idempotencyKey: key, agent: s.agent, projectId: s.projectId, prompt: text, model, attachments } })).session;
+        setKey(crypto.randomUUID());
+        if (to) {
+          try {
+            localStorage.setItem(`bot-conv:m:${s.machineId}/${s.agent}`, to.sessionId); // the bot page goes on in it (Bots.tsx convKey)
+          } catch {
+            // Without storage the bot page goes on in the one last active: this one.
+          }
+          st.show(tc("composer.newBecause", { what: tc("composer.param.model") }));
+          st.select(to.sessionId);
+        }
+      } else await local.sendMessage({ sessionId: s.sessionId, text, attachments });
       setText("");
       attach.clear();
       setState({ kind: "idle" });
@@ -837,7 +875,13 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
         state={state}
         attach={attach}
         commands={sessionCommands(st, s, setText)}
-        chips={<SessionParams s={s} />}
+        why={other ? { text: tc("conv.willStartNew", { what: tc("composer.param.model") }), tone: "quiet" } : undefined}
+        chips={
+          <>
+            {(a?.models.length ?? 0) > 0 && <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />}
+            <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0} />
+          </>
+        }
       />
     </div>
   );

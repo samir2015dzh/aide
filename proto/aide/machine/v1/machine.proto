@@ -353,6 +353,11 @@ message AgentStatus {
   // of this machine, "personal" listed with the personal agents. The owner's
   // say comes first, whatever the machine finds.
   string category = 24;
+  // logged_in is unset because the check could not tell (工单 #108: Claude
+  // Code's `claude auth status` gave no clear answer): its sign-in is
+  // unconfirmed, not signed out. Never filled from another sign-in (the
+  // Claude desktop app's is its own, desktop.signed_in).
+  bool login_unconfirmed = 25;
 }
 
 // AgentLogin is a sign-in of a coding agent's command line that Aide
@@ -492,6 +497,15 @@ message AgentModel {
   string name = 2;
   // The reasoning efforts it supports.
   repeated string efforts = 3;
+  // The specific model the id runs here when the id is an alias (工单 #99:
+  // Claude Code's "opus" → "claude-opus-5-5", as Claude Code itself
+  // resolves it on this machine for this account); empty when the id is the
+  // model itself, or the agent did not say.
+  string resolved = 4;
+  // Where its agent offers it from, when it says (工单 #98 补充: DSH's
+  // provider, e.g. "DeepSeek"; each provider line the same model comes by,
+  // " · " between, as it is listed once).
+  string source = 5;
 }
 
 message AgentMode {

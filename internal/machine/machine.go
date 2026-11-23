@@ -112,6 +112,7 @@ type Machine struct {
 	usageFetch  bool                        // a usage fetch is under way
 	usageSrc    usageSource                 // reads plan usage from the endpoint; nil with usageCLI nil disables it
 	usageCLI    cliUsageSource              // reads it through Claude Code here (工单 #86)
+	usageCache  cacheUsageSource            // reads what Claude Code here cached of it (工单 #104)
 	usageNoCLI  map[string]bool             // Claude Code binaries@versions without /usage outside a terminal
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
@@ -276,9 +277,11 @@ func Open(cfg Config) (*Machine, error) {
 	if cfg.ClaudeUsage {
 		n.usageSrc = &claude.UsageReader{AutoRenew: true, HTTP: cfg.HTTPClient, Log: n.log}
 		n.usageCLI = &claude.CLIUsage{}
+		n.usageCache = &claude.CacheUsage{}
 		n.loadUsage()
 	}
 	n.sessions.offered = n.offered
+	n.sessions.signedIn = n.agentSignedIn
 	n.sessions.notice = func(s noticeSession, e *sessionv1.SessionEvent) {
 		n.sessionNotice(s, e)
 		n.sessionNews(s, e)
@@ -448,6 +451,23 @@ func (n *Machine) providerInfo(name string) provider.Info {
 	return i
 }
 
+// agentSignedIn is what a session of the agent just showed of its sign-in
+// (工单 #108): one that failed "Not logged in" is signed out now, one that
+// ran a turn is signed in; its status says so at once, not at its next check.
+func (n *Machine) agentSignedIn(name string, in bool) {
+	n.mu.Lock()
+	i, ok := n.infos[name]
+	changed := ok && i.Available && (i.LoggedIn != in || i.LoginUnconfirmed)
+	if changed {
+		i.LoggedIn, i.LoginUnconfirmed = in, false
+		n.infos[name] = i
+	}
+	n.mu.Unlock()
+	if changed {
+		n.kickStatus()
+	}
+}
+
 func (n *Machine) kickStatus() {
 	select {
 	case n.statusKick <- struct{}{}:
@@ -562,7 +582,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		i, ok := n.infos[name]
 		if (ok && (i.Available || i.Problem != provider.ProblemNotFound || name == "claude" || name == "codex")) || (!ok && n.pending[name]) {
 			a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version,
-				LoggedIn: i.LoggedIn, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary,
+				LoggedIn: i.LoggedIn, LoginUnconfirmed: i.LoginUnconfirmed, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary,
 				Hidden: n.isHiddenLocked(name)}
 			a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 			a.Category = n.categories[name]

@@ -26,6 +26,13 @@ import (
 // 2.1 and later); a version without them still writes the text, whose
 // percentages are read then ("Current session: 20% used"). Nothing of the
 // sign-in passes through Aide.
+//
+// Only a sign-in that lets Claude Code read the plan gets the plan's rows
+// (a claude.ai plan sign-in, a token with the profile scope, not billed by
+// usage); any other writes this call's own totals instead ("Estimated
+// cost: $0.0000 … Usage: 0 input, 0 output …", 工单 #104, seen on a real
+// machine). That report is told apart (CLISessionOnly) and never taken for
+// a reading.
 
 // CLIUsageArgs are the arguments the reading is asked with.
 var CLIUsageArgs = []string{"-p", "/usage", "--output-format", "stream-json", "--verbose", "--no-session-persistence"}
@@ -37,9 +44,16 @@ const (
 	// It ran, but took /usage for something else than its usage command:
 	// a version that does not know it. Asking again is no use.
 	CLIUnsupported = "cli_unsupported"
-	// It answered /usage without the plan's rows: not signed in with a
-	// plan, or its own reading failing (rate limited, offline).
+	// It answered /usage as a plan's (it says the subscription powers its
+	// usage) but without the plan's rows: its own reading failing (rate
+	// limited, offline). The usage endpoint is not asked past it.
 	CLINoReading = "cli_no_reading"
+	// It answered /usage with only this call's own totals (cost, duration,
+	// tokens) and no plan rows (工单 #104): what Claude Code writes when its
+	// sign-in here does not let it read the plan (not a claude.ai plan
+	// sign-in, or a token without the profile scope). That is no reading;
+	// the next source is asked.
+	CLISessionOnly = "cli_session_only"
 )
 
 // CLIUsage reads the plan usage through Claude Code.
@@ -107,6 +121,15 @@ type cliLimit struct {
 	} `json:"scope"`
 }
 
+// planHeader is the line /usage starts a plan's report with ("You are
+// currently using your subscription to power your Claude Code usage").
+var planHeader = regexp.MustCompile(`power your Claude Code usage`)
+
+// sessionTotals is a row of the report of this call's own totals, which
+// /usage writes in place of the plan's when it can't read the plan
+// ("Estimated cost:  $0.0000", "Total duration (API):  0s").
+var sessionTotals = regexp.MustCompile(`(?m)^\s*(Estimated cost|Total cost|Total duration \(API\)):`)
+
 // textRow is a row of /usage's text: "Current week (all models): 59% used · resets …".
 var textRow = regexp.MustCompile(`(?m)^\s*Current (session|week \(([^)]*)\)):\s*([\d.]+)% used`)
 
@@ -168,7 +191,13 @@ func usageFromCLI(out []byte) Usage {
 		}
 	}
 	if len(windows) == 0 {
-		return Usage{Unavailable: CLINoReading, Detail: "claude -p /usage: no plan usage in its answer"}
+		switch {
+		case planHeader.MatchString(text.String()):
+			return Usage{Unavailable: CLINoReading, Detail: "claude -p /usage: a plan's report without its rows (its own reading failed)"}
+		case sessionTotals.MatchString(text.String()):
+			return Usage{Unavailable: CLISessionOnly, Detail: "claude -p /usage: only this call's own totals, no plan windows (its sign-in here does not read the plan)"}
+		}
+		return Usage{Unavailable: CLISessionOnly, Detail: "claude -p /usage: no plan windows in its answer"}
 	}
 	byKey := map[string]*windowJSON{}
 	for _, w := range windows {

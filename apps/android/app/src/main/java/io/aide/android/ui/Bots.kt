@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -22,7 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,7 +68,6 @@ import io.aide.android.model.DSH_AGENT
 import io.aide.android.model.currentConversation
 import io.aide.android.model.displayTitle
 import io.aide.android.model.instant
-import io.aide.android.model.instantOrNull
 import io.aide.android.model.modeChoice
 import io.aide.android.model.modeLabel
 import io.aide.android.model.paramsOf
@@ -219,13 +219,14 @@ fun RemoveBotDialog(model: AppModel, b: Bot, machine: String, close: () -> Unit)
 }
 
 /**
- * A bot's own page (工单 #57, #63): who it is and how it stands at the top; its conversations (a coding agent, 工单 #67)
- * or its chat (a personal agent) in the middle, with the box to write to it at the foot (工单 #66); its names and faces
- * and its grant under them. What its machine reports in full (versions, checks, sign-in, the bridge) is on the devices tab.
+ * A bot's own page (工单 #57, #63): who it is and how it stands at the top, then what it is doing (its tasks, 工单 #97);
+ * its conversations (a coding agent, 工单 #67) or its chat (a personal agent), with the box to write to it at the foot
+ * (工单 #66). Nothing about it is set here: its settings are a page of their own, from Settings in the bar (工单 #97).
+ * What its machine reports in full (versions, checks, sign-in, the bridge) is on the devices tab.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, openDevices: () -> Unit = {}, openOwn: (OwnEntry) -> Unit = {}, back: () -> Unit) {
+fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, openDevices: () -> Unit = {}, openOwn: (OwnEntry) -> Unit = {}, openSettings: () -> Unit = {}, back: () -> Unit) {
     val world by model.world.collectAsState()
     val personas by model.personas.collectAsState()
     LaunchedEffect(Unit) { model.loadPersonas() }
@@ -234,7 +235,16 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
     val m = b?.let { x -> world.machines.firstOrNull { it.machineId == x.machineId } }
     Scaffold(
         snackbarHost = { PageFeedback(model) },
-        topBar = { NavBar(back) { Text(b?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) } },
+        topBar = {
+            NavBar(back, actions = {
+                // Its settings, one tap away and seen at once (工单 #97): the same place on every bot's page.
+                if (b != null) Row(Modifier.heightIn(min = 44.dp).dimPress(onClick = openSettings).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Settings, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                    HSpace(4)
+                    Text(t("Settings", "设置"), style = IosType.Body, color = MaterialTheme.colorScheme.primary)
+                }
+            }) { Text(b?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
     ) { pad ->
         if (b == null) {
             Centered { Text(t("This bot is gone.", "这个 bot 已经不在了。")) }
@@ -258,41 +268,43 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                                 StatusPill(b.state.word, botTone(b))
                             }
                             Text(b.state.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                            if (b.coding && b.state.usable == Usable.NO && b.state.why != io.aide.android.model.NotReady.PAUSED) {
+                            // Claude Code's command line not signed in, or unconfirmed: signed in from here (工单 #51, #108).
+                            if (b.coding && b.state.login && m != null) ClaudeLogin(model, m)
+                            else if (b.coding && b.state.usable == Usable.NO && b.state.why != io.aide.android.model.NotReady.PAUSED) {
                                 Text(t("Fix it on the Devices tab ›", "去设备页处理 ›"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.dimPress(onClick = openDevices).padding(vertical = 2.dp))
                             }
                         }
                     }
                 }
+                taskItems(b, world, openSession)
                 if (chat != null) chatItems(chat, b)
                 if (conv != null) conversationItems(model, conv, b, openSession)
                 if (own != null && m != null) ownSessionItems(own, b, m.machineName, openOwn)
-                if (!b.coding) {
-                    val work = world.sessions.values.filter { it.status != SessionStatus.ARCHIVED && it.createdBy == b.client?.clientId }.sortedByDescending { instant(it.updatedAt) }
-                    item(key = "work-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(t("Work it handed out", "它派出的任务"), count = work.size) } }
-                    if (work.isEmpty()) item(key = "work-none") {
-                        Text(t("Nothing from ${b.name} yet.", "${b.name} 还没有派出过任务。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
-                    }
-                    work.forEachIndexed { i, s -> item(key = "s-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, work.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
-                }
-                if (m != null && b.coding) item(key = "settings") { AgentSettings(model, b, m, edit) }
-                if (m != null && b.coding) item(key = "identity") { Identity(b, m, edit) }
-                b.client?.let { c ->
-                    item(key = "grant") {
-                        Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                            SectionHeader(t("Its grant", "接入凭据"))
-                            Column(Modifier.fillMaxWidth().aideCard().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(c.label, style = MaterialTheme.typography.bodyMedium)
-                                instantOrNull(c.expiresAt)?.takeIf { c.herMachineId.isEmpty() }?.let { Text(t("Valid until ${it.toString().take(10)}", "有效期至 ${it.toString().take(10)}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                Text(t("Its kind, projects and expiry are set in Aide on a computer: Settings › Access.", "它的类别、可用项目和有效期在电脑上的 Aide 里设置：设置 › 授权。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
-                            }
-                        }
-                    }
-                }
             }
             if (conv != null && m != null) ConversationComposer(model, conv, b, m)
             if (chat != null) ChatCompose(model, chat, b)
         }
+    }
+}
+
+/** How many tasks done lately its page shows (the tasks tab has them all). */
+private const val RECENT_TASKS = 3
+
+/**
+ * What it is doing (工单 #97 补充二): its tasks waiting for you, at work, with a result not opened, and the last few done,
+ * each with its state — the same buckets and rows as the tasks tab (World.bucketsOf), so a task reads the same on both.
+ */
+private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, openSession: (String) -> Unit) {
+    val k = world.bucketsOf(b)
+    val rows = k.needsYou + k.inProgress + k.unseen + k.recent.take(RECENT_TASKS)
+    val earlier = k.recent.size - RECENT_TASKS
+    item(key = "tasks-h") { Box(Modifier.padding(top = 4.dp)) { SectionHeader(t("Tasks", "任务动态"), count = rows.size + earlier.coerceAtLeast(0), tone = if (k.needsYou.isEmpty()) Tone.Quiet else Tone.Warn) } }
+    if (rows.isEmpty()) item(key = "tasks-none") {
+        Text(t("No task for ${b.name} yet.", "${b.name} 还没有任务。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
+    }
+    rows.forEachIndexed { i, s -> item(key = "t-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, rows.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+    if (earlier > 0) item(key = "tasks-more") {
+        Text(t("$earlier earlier: on the Tasks tab", "还有 $earlier 个更早的：在「任务」页"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp, horizontal = 16.dp))
     }
 }
 
@@ -394,15 +406,16 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
     val cur = currentConversation(convs, c.chosen)
     val projects = world.projects.filter { it.machineId == m.machineId && (it.agents.isEmpty() || b.agent in it.agents) }
     val persona = b.personas.firstOrNull()
-    val base = cur?.let { paramsOf(it) } ?: ConvParams(persona?.projectId?.ifEmpty { null } ?: projects.firstOrNull()?.projectId.orEmpty(), persona?.model.orEmpty(), persona?.effort.orEmpty(), persona?.mode.orEmpty())
-    LaunchedEffect(cur?.sessionId, c.chosen) { c.params = base }
-    val p = c.params ?: base
     val a = m.status?.agents?.firstOrNull { it.name == b.agent }
+    val base = cur?.let { paramsOf(it, a?.models.orEmpty()) } ?: ConvParams(persona?.projectId?.ifEmpty { null } ?: projects.firstOrNull()?.projectId.orEmpty(), persona?.model.orEmpty(), persona?.effort.orEmpty(), persona?.mode.orEmpty())
+    // Again once it says the model it runs (工单 #99: read back as it starts), so that is no change.
+    LaunchedEffect(cur?.sessionId, c.chosen, cur?.model) { c.params = base }
+    val p = c.params ?: base
     var text by rememberSaveable(b.key) { mutableStateOf("") }
     var key by rememberSaveable(b.key) { mutableStateOf(UUID.randomUUID().toString()) }
     val attach = rememberAttachments(b.key)
     val stuck = cur?.let { stuckWhy(it, world.projects, m) }
-    val changed = cur?.let { changedParams(it, p) }.orEmpty()
+    val changed = cur?.let { changedParams(it, p, a?.models.orEmpty()) }.orEmpty()
     val fresh = cur == null || changed.isNotEmpty()
     val names = mapOf("project" to t("project", "项目"), "model" to t("model", "模型"), "effort" to t("effort", "推理强度"), "mode" to t("mode", "模式"))
     // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
@@ -456,7 +469,7 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
         ) + (if (cur != null) listOf(SlashCommand("new", t("Start a new conversation", "开启新对话")) { c.chosen = "new"; model.chooseConversation(b.key, "new") }) else emptyList()),
         chips = {
             if (projects.isNotEmpty()) ChipPicker(t("Project", "项目"), p.projectId, projects.map { it.projectId to it.title() }) { c.params = p.copy(projectId = it) }
-            if (a != null && a.models.isNotEmpty()) ChipPicker(t("Model", "模型"), p.model, listOf("" to t("Default model", "默认模型")) + a.models.map { it.id to it.name.ifEmpty { it.id } }) { c.params = p.copy(model = it, effort = "") }
+            ModelChip(b.agent, a, p.model, world.sessions.values.any { it.machineId == m.machineId && it.agent == b.agent }) { c.params = p.copy(model = it, effort = "") }
             a?.models?.firstOrNull { it.id == p.model }?.efforts?.takeIf { it.isNotEmpty() }?.let { ef ->
                 ChipPicker(t("Effort", "推理强度"), p.effort, listOf("" to t("Default effort", "默认强度")) + ef.map { it to it }) { c.params = p.copy(effort = it) }
             }
@@ -469,39 +482,6 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
 internal fun newPersona(b: Bot, m: Machine): Persona {
     val p = Persona(machineId = m.machineId, agent = b.agent, name = if (b.personas.isEmpty()) b.name else "")
     return if (b.personas.isEmpty()) p.withLook(botLook(b)) else p
-}
-
-/**
- * Its names and faces (docs/personas.md): each is its name with a pencil to change it (工单 #65); none yet is one
- * short button, never a sentence standing in for a name.
- */
-@Composable
-private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        SectionHeader(t("Names and faces", "名字与头像"))
-        Column(Modifier.fillMaxWidth().aideCard()) {
-            b.personas.forEach { p ->
-                Row(Modifier.fillMaxWidth().rowPress { edit(p) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    PersonaAvatar(b, p, 32)
-                    HSpace(10)
-                    Column(Modifier.weight(1f)) {
-                        Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                        Text(listOf(p.projectId, p.model, p.effort, p.mode).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = aide.faint)
-                    }
-                    Icon(Icons.Filled.Edit, t("Edit ${p.name}", "修改「${p.name}」"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                }
-                Hairline(Modifier.padding(start = 58.dp))
-            }
-            Row(
-                Modifier.fillMaxWidth().rowPress { edit(newPersona(b, m)) }.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                HSpace(8)
-                Text(if (b.personas.isEmpty()) t("Give it a name and a face", "给它起名字、换头像") else t("Another name and face", "再加一个名字和头像"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-    }
 }
 
 /** The owner's conversation with a personal agent: its direct room on its host, read again every few seconds. */

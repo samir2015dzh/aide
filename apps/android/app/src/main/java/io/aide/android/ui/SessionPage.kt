@@ -73,14 +73,23 @@ import io.aide.android.model.AppModel
 import io.aide.android.model.Item
 import io.aide.android.model.SessionFeed
 import io.aide.android.model.agentTitle
+import io.aide.android.model.failureAdvice
+import io.aide.android.model.failureHeadline
+import io.aide.android.model.toldApart
 import io.aide.android.model.buildAnswers
 import io.aide.android.model.choose
+import io.aide.android.model.codingBotState
 import io.aide.android.model.displayTitle
 import io.aide.android.model.isLive
+import io.aide.android.model.ConvParams
+import io.aide.android.model.listedModel
 import io.aide.android.model.lostSpanText
+import io.aide.android.model.modelTitle
 import io.aide.android.model.openedNews
 import io.aide.android.model.sessionsByProject
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.util.UUID
 
 /**
  * A session's whole conversation, live, with the agent's question to answer and a way to interrupt it; the owner's
@@ -92,6 +101,7 @@ import kotlinx.coroutines.launch
 fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) -> Unit = {}) {
     val world by model.world.collectAsState()
     val s = world.sessions[id]?.let(world::shown)
+    val names = remember(world.clients) { world.clients.associate { it.clientId to it.label } }
     val scope = rememberCoroutineScope()
     val feed = remember(id) { SessionFeed(model, id) }
     DisposableEffect(feed) {
@@ -159,7 +169,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                         }
                     }
                     // A session the owner started takes the owner's messages, here, as on the desktop.
-                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s)
+                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s, open)
                 }
             }
         },
@@ -170,8 +180,24 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
             if (loading && items.isEmpty()) {
                 ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
+                // Its last failure not signed in, while Claude Code still is not: signed in from here (工单 #51, #108).
+                val m = world.machines.firstOrNull { it.machineId == s?.machineId }
+                val signIn = items.lastOrNull { it is Item.Error && it.auth || it is Item.TurnEnd && it.auth }?.key
+                    ?.takeIf { s?.agent == "claude" && m != null && codingBotState(m, "claude", Instant.now())?.login == true }
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) { Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) { ItemView(it, starter = s?.createdBy.orEmpty()) } }
+                    items(items, key = { it.key }) {
+                        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) {
+                            ItemView(it, starter = s?.createdBy.orEmpty(), names = names, agent = agentTitle(s?.agent.orEmpty()))
+                            if (it.key == signIn && m != null) Column(Modifier.padding(horizontal = 12.dp)) {
+                                Text(
+                                    t("Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below opens a browser on that computer; sign in there, then send a message to go on.",
+                                        "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会在那台电脑上打开浏览器，在浏览器里登录完再发一条消息即可继续。"),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                ClaudeLogin(model, m)
+                            }
+                        }
+                    }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
             }
@@ -181,15 +207,32 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
 
 /** The box under the owner's own session (工单 #91/#92): words and files at once, the macros after /. */
 @Composable
-private fun SessionComposer(model: AppModel, s: Session) {
+private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     var text by rememberSaveable(s.sessionId) { mutableStateOf("") }
     var state by remember(s.sessionId) { mutableStateOf<ComposerState>(ComposerState.Idle) }
     val attach = rememberAttachments(s.sessionId)
+    // Its model, as the agent's models list it (工单 #98 补充): another one picked here, the next message starts a new
+    // conversation on it (工单 #67 rule 4), said before and after; never locked to the one it began with.
+    val world by model.world.collectAsState()
+    val a = world.machines.firstOrNull { it.machineId == s.machineId }?.status?.agents?.firstOrNull { it.name == s.agent }
+    val runs = listedModel(s.model, a?.models.orEmpty())
+    var chosen by remember(s.sessionId, runs) { mutableStateOf(runs) }
+    var key by remember(s.sessionId) { mutableStateOf(UUID.randomUUID().toString()) }
+    val other = chosen != runs
     fun send() {
         if (state == ComposerState.Sending || (text.isBlank() && attach.files.isEmpty())) return
         state = ComposerState.Sending
         scope.launch {
+            if (other) {
+                model.converse(s.machineId, s.agent, null, ConvParams(s.projectId, chosen), text, key, attach.wire()).fold({ n ->
+                    model.chooseConversation("m:${s.machineId}/${s.agent}", n.sessionId)
+                    text = ""; attach.clear(); key = UUID.randomUUID().toString(); state = ComposerState.Idle
+                    model.say(t("New conversation: you changed the model", "已开新对话：换了模型"))
+                    open(n.sessionId)
+                }, { e -> state = ComposerState.Failed(e.message.orEmpty()) { send() } })
+                return@launch
+            }
             val why = model.sendTo(s, text, attach.wire())
             if (why == null) { text = ""; attach.clear(); state = ComposerState.Idle } else state = ComposerState.Failed(why) { send() }
         }
@@ -204,12 +247,19 @@ private fun SessionComposer(model: AppModel, s: Session) {
             if (isLive(s)) SlashCommand("stop", t("Interrupt this turn", "打断这一轮")) { scope.launch { model.interrupt(s) } } else null,
             SlashCommand("archive", t("Archive this session", "归档这个会话")) { scope.launch { model.archive(s, true)?.let { state = ComposerState.Failed(it) } } },
         ),
-        // What it runs with, told (a session keeps them).
-        chips = { Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        why = if (other) ComposerWhy(t("You changed the model: the next message starts a new conversation", "换了模型：下一条会开新对话")) else null,
+        // Its model, to pick; the rest it runs with, told.
+        chips = {
+            if (a != null && a.models.isNotEmpty()) {
+                ModelChip(s.agent, a, chosen, ranHere = true) { chosen = it }
+                Text(s.effort, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
     )
 }
 
-private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
+// The model it runs, as the agent reported it: its specific one, as people call it and in full (工单 #99).
+private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }.let { id -> modelTitle(id).let { if (it == id) id else "$it · $id" } }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
 
 /** The sessions to switch to (工单 #90): this agent's on this machine, by project; a tap opens one. An iOS sheet of grouped rows. */
 @Composable
@@ -270,7 +320,7 @@ private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
  * those sent from Aide are marked so.
  */
 @Composable
-internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
+internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, names: Map<String, String> = emptyMap(), agent: String = "") {
     val pad = Modifier.padding(horizontal = 12.dp)
     when (item) {
         is Item.User -> Column(pad.fillMaxWidth(), horizontalAlignment = Alignment.End) {
@@ -282,7 +332,8 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
                 }
                 item.from.isEmpty() || item.from == starter -> null
                 item.from == "owner" -> t("You", "你")
-                else -> item.fromName.ifEmpty { item.from }
+                // By the name its connection has now, not the one kept with the message (工单 #101: "Muse (<its address>)" from before #85).
+                else -> names[item.from]?.ifEmpty { null } ?: item.fromName.ifEmpty { item.from }
             }
             by?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)) }
             // The owner's message, as the desktop's: a step above the page in either mode, never the accent (in dark mode it was white).
@@ -312,8 +363,8 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false) {
             )
             if (r.note.isNotBlank()) SelectionContainer { Text(r.note, style = MaterialTheme.typography.bodySmall) }
         }
-        is Item.Error -> Text(item.text, pad, color = MaterialTheme.colorScheme.error)
-        is Item.TurnEnd -> Text(t("The turn failed: ", "本轮失败：") + item.text, pad, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        is Item.Error -> FailureView(item.kind, item.provider, item.text, agent)
+        is Item.TurnEnd -> FailureView(item.kind, item.provider, item.text, agent)
         is Item.Rollback -> Text(
             t("Rolled back to turn ${item.turn}: turns ${item.turn + 1} to ${item.lastTurn} above were discarded.", "已回滚到第 ${item.turn} 轮：上面第 ${item.turn + 1}–${item.lastTurn} 轮已丢弃。"),
             pad, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -342,6 +393,41 @@ private fun resolutionText(r: String) = when (r) {
     "QUESTION_RESOLUTION_ANSWERED" -> t("answered", "已回答")
     "QUESTION_RESOLUTION_DECLINED" -> t("declined", "已拒绝")
     else -> r.removePrefix("QUESTION_RESOLUTION_").lowercase()
+}
+
+/**
+ * A failure as the desktop's card tells it (工单 #105): what happened to the agent and what to do, in words; the agent's
+ * raw message only under Details, opened as a group of tool calls opens.
+ */
+@Composable
+private fun FailureView(kind: String, provider: String, raw: String, agent: String) {
+    var open by remember { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (open) 90f else 0f, Motion.snappy(), label = "chevron")
+    val who = agent.ifEmpty { t("The agent", "agent") }
+    Column(Modifier.padding(horizontal = 12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(failureHeadline(kind, who, provider), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        // One not told apart says the original is in Details, so only when there is one.
+        failureAdvice(kind, who, provider).takeIf { it.isNotEmpty() && (toldApart(kind) || raw.isNotBlank()) }?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (raw.isNotBlank()) {
+            Row(Modifier.clip(RoundedCornerShape(Radius.Sm)).clickable { open = !open }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Details", "详情"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.primary)
+            }
+            AnimatedVisibility(
+                open,
+                enter = expandVertically(Motion.spring(IntSize.VisibilityThreshold)) + fadeIn(tween(Motion.Medium)),
+                exit = shrinkVertically(Motion.snappy(IntSize.VisibilityThreshold)) + fadeOut(tween(Motion.Short)),
+            ) {
+                Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
+                    SelectionContainer {
+                        Text(raw, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

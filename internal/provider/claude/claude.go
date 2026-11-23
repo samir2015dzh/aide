@@ -272,21 +272,25 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 			info.LoggedIn, told = *st.LoggedIn, true
 		}
 	}
+	// An API key in its environment is what its sessions run with (they
+	// inherit aided's environment), whatever its own sign-in.
 	if !info.LoggedIn && os.Getenv("ANTHROPIC_API_KEY") != "" {
-		info.LoggedIn = true
+		info.LoggedIn, told = true, true
 	}
-	// A CLI too old to say: the desktop app's sign-in is the best guess
-	// left. One that says it is signed out is (the app's sign-in does not
-	// reach it: its sessions would fail "Not logged in").
-	if !info.LoggedIn && !told {
-		info.LoggedIn = info.DesktopSignedIn
+	// It did not say: unconfirmed (工单 #108). Never the desktop app's
+	// sign-in, which does not reach it: its sessions would fail "Not
+	// logged in" while Aide said it was signed in.
+	info.LoginUnconfirmed = !told
+	// Its models as it lists them here (工单 #99); one too old to, the
+	// aliases it takes, their specific models unknown.
+	if info.Models, info.Own.Model = listModels(ctx, env, bin); len(info.Models) == 0 {
+		info.Models = Models
 	}
-	info.Models = Models
 	return info
 }
 
-// Models are the aliases Claude Code takes for its latest models; it lists
-// none itself.
+// Models are the aliases Claude Code takes for its latest models, for one
+// that does not list its models.
 var Models = []provider.Model{
 	{ID: "fable", Name: "Fable", Efforts: efforts},
 	{ID: "opus", Name: "Opus", Efforts: efforts},

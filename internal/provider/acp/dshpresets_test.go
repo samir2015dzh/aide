@@ -185,3 +185,101 @@ func mustMarshal(t *testing.T, v any) []byte {
 func indent(s, by string) string {
 	return by + strings.ReplaceAll(strings.TrimRight(s, "\n"), "\n", "\n"+by) + "\n"
 }
+
+// TestDSHModelChoice (工单 #98): DSH tells its models only in a session.
+// A new one names those its configuration has (here two, in a provider's
+// group) and the one it runs; one started with a model chosen of them runs
+// that one, beside a permission preset, and says so (the model a session
+// runs, which the app reads back); one DSH does not offer fails the start.
+func TestDSHModelChoice(t *testing.T) {
+	f := newFixture(t, "FAKE_ACP_PRESETS=", "FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=deepseek/v4-pro,deepseek/v4-flash", "FAKE_ACP_EFFORTS=deepseek/v4-flash=high|max")
+	f.p = &Provider{Agent: Agent{Name: "deepseek", Command: "dsh", Args: []string{"--profile", "acp"}, DSHPresets: true}, Binary: fakeBin}
+	run := func(model, mode string) (provider.Event, string) {
+		t.Helper()
+		s, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(), Model: model, Mode: mode, Env: f.env, Gate: f.gate.gate, Prompt: "config"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		events, done := collect(t, s)
+		return of(events, provider.EventRef)[0], done.Text
+	}
+	ref, ran := run("", "")
+	if ref.Offers == nil || len(ref.Offers.Models) != 2 || ref.Offers.Models[1].ID != "deepseek/v4-flash" || ref.Offers.Own.Model != "deepseek/v4-pro" ||
+		ref.Model != "deepseek/v4-pro" || ran != "config: deepseek/v4-pro  workspace-write" {
+		t.Fatalf("unchosen: %+v %+v, ran %q", ref, ref.Offers, ran)
+	}
+	ref, ran = run("deepseek/v4-flash", "read-only")
+	if ref.Model != "deepseek/v4-flash" || ran != "config: deepseek/v4-flash  read-only" || !reflect.DeepEqual(ref.Offers.Models[1].Efforts, []string{"high", "max"}) {
+		t.Fatalf("chosen: %+v %+v, ran %q", ref, ref.Offers, ran)
+	}
+	if _, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(), Model: "deepseek/v3", Env: f.env, Prompt: "config"}); err == nil ||
+		!strings.Contains(err.Error(), `model "deepseek/v3": not offered by the agent (available: deepseek/v4-pro, deepseek/v4-flash)`) {
+		t.Fatalf("not offered: %v", err)
+	}
+}
+
+// dshProviders is how DSH offers its models (工单 #98 补充): by provider,
+// its API and its account lines naming the same model differently, and a
+// custom provider (magpie's group route) in a model option of its own.
+const dshProviders = `[{"id":"llm","groups":[
+ {"name":"DeepSeek","models":[{"value":"[\"deepseek\",\"deepseek-v4-flash\"]","name":"deepseek-v4-flash"},{"value":"[\"deepseek\",\"deepseek-v4-pro\"]","name":"deepseek-v4-pro"}]},
+ {"name":"DeepSeek Account","models":[{"value":"[\"deepseek-account\",\"deepseek-v4-flash\"]","name":"DeepSeek-V4.1-Flash"}]}]},
+ {"id":"custom_llm","groups":[{"name":"magpie","models":[{"value":"[\"magpie\",\"group/deepseek-v4.1\"]","name":"group/deepseek-v4.1"}]}]}]`
+
+// TestDSHModelsByProvider (工单 #98 补充): each model DSH offers is listed
+// once — the same model by its API and its account lines is one, named by
+// its display name, both lines said — and every provider's, a custom one in
+// a model option of its own too, is listed and runs when chosen; the line
+// not listed can still be named.
+func TestDSHModelsByProvider(t *testing.T) {
+	f := newFixture(t, "FAKE_ACP_PRESETS=", "FAKE_ACP_CONFIG=1", "FAKE_ACP_PROVIDERS="+dshProviders)
+	f.p = &Provider{Agent: Agent{Name: "deepseek", Command: "dsh", Args: []string{"--profile", "acp"}, DSHPresets: true}, Binary: fakeBin}
+	run := func(model string) (provider.Event, string) {
+		t.Helper()
+		s, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(), Model: model, Env: f.env, Gate: f.gate.gate, Prompt: "config"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		events, done := collect(t, s)
+		return of(events, provider.EventRef)[0], done.Text
+	}
+	ref, _ := run("")
+	want := []provider.Model{
+		{ID: `["deepseek","deepseek-v4-flash"]`, Name: "DeepSeek-V4.1-Flash", Source: "DeepSeek · DeepSeek Account"},
+		{ID: `["deepseek","deepseek-v4-pro"]`, Name: "deepseek-v4-pro", Source: "DeepSeek"},
+		{ID: `["magpie","group/deepseek-v4.1"]`, Name: "group/deepseek-v4.1", Source: "magpie"},
+	}
+	if !reflect.DeepEqual(ref.Offers.Models, want) || ref.Offers.Own.Model != `["deepseek","deepseek-v4-flash"]` {
+		t.Fatalf("offered: %+v", ref.Offers)
+	}
+	for _, m := range []string{`["magpie","group/deepseek-v4.1"]`, `["deepseek-account","deepseek-v4-flash"]`} {
+		if ref, ran := run(m); ref.Model != m || ran != "config: "+m+"  workspace-write" {
+			t.Fatalf("%s: ran %q, reported %q", m, ran, ref.Model)
+		}
+	}
+	if _, err := f.p.Start(context.Background(), provider.StartSpec{WorkDir: f.dir, TempDir: t.TempDir(), Model: "magpie/none", Env: f.env, Prompt: "config"}); err == nil ||
+		!strings.Contains(err.Error(), `["magpie","group/deepseek-v4.1"]`) {
+		t.Fatalf("not offered: %v", err)
+	}
+}
+
+// TestSameModelsOnce: one provider's lines, "account" aside, by its ID or its
+// group; never by display name; other providers apart.
+func TestSameModelsOnce(t *testing.T) {
+	got := sameModelsOnce([]choice{
+		{Value: "deepseek/deepseek-v4-flash", Name: "deepseek-v4-flash", Group: "DeepSeek"},
+		{Value: "acct/DeepSeek_V4_Flash", Name: "DeepSeek-V4.1-Flash", Group: "DeepSeek Account"}, // same by its group
+		{Value: "deepseek-account/deepseek-v4.1-flash", Name: "DeepSeek-V4.1-Flash"},              // another version
+		{Value: "magpie/deepseek-v4-flash", Name: "deepseek-v4-flash", Group: "magpie"},           // another provider
+	}, "acct/DeepSeek_V4_Flash")
+	want := []provider.Model{
+		{ID: "acct/DeepSeek_V4_Flash", Name: "DeepSeek-V4.1-Flash", Source: "DeepSeek · DeepSeek Account"},
+		{ID: "deepseek-account/deepseek-v4.1-flash", Name: "DeepSeek-V4.1-Flash"},
+		{ID: "magpie/deepseek-v4-flash", Name: "deepseek-v4-flash", Source: "magpie"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v", got)
+	}
+}

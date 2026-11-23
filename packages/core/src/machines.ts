@@ -1,6 +1,6 @@
 import type { AgentStatus } from "@aide/proto/machine";
 
-const osTitles: Record<string, string> = { darwin: "macOS", macos: "macOS", linux: "Linux", windows: "Windows", ios: "iOS" };
+const osTitles: Record<string, string> = { darwin: "macOS", macos: "macOS", linux: "Linux", windows: "Windows", ios: "iOS", android: "Android" };
 
 /** A machine's "darwin/arm64" as "macOS · arm64"; a trusted device's "macos" as "macOS". */
 export function platformTitle(platform: string): string {
@@ -42,11 +42,69 @@ export function agentTiles(agents: AgentStatus[]): AgentStatus[] {
  * ("claude-opus-5-5" → "Opus 5.5"), else the ID itself.
  */
 export function modelTitle(id: string, models: AgentStatus["models"] = []): string {
-  const named = models.find((m) => m.id === id)?.name;
-  if (named) return named;
+  const m = models.find((x) => x.id === id);
+  if (m?.resolved) return modelTitle(m.resolved); // an alias: the model it runs here (工单 #99)
+  if (m?.name) return m.name;
   const c = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?(\[1m\])?$/.exec(id);
   if (!c) return id;
   return `${c[1][0].toUpperCase()}${c[1].slice(1)} ${c[2]}${c[3] ? `.${c[3]}` : ""}${c[4] ? " (1M)" : ""}`;
+}
+
+type AgentModel = AgentStatus["models"][number];
+
+/**
+ * A model in a model list (工单 #99): what to pick (value), the specific model as people call it (title, "Opus 5.5")
+ * and in full (detail, "claude-opus-5-5"). unknown: an alias whose specific model its agent did not say here
+ * (a Claude Code too old to list them), so all there is to show is its family.
+ */
+export type ModelChoice = { value: string; title: string; detail: string; unknown: boolean };
+
+/** A model ID in full as it reads: DSH's ["provider","model"] as provider/model, any other as it is. */
+function idText(id: string): string {
+  if (!id.startsWith("[")) return id;
+  try {
+    const v: unknown = JSON.parse(id);
+    return Array.isArray(v) && v.every((x) => typeof x === "string") ? v.join("/") : id;
+  } catch {
+    return id;
+  }
+}
+
+function choiceOf(agent: string, m: AgentModel): ModelChoice {
+  if (m.resolved) return { value: m.id, title: modelTitle(m.resolved), detail: m.resolved, unknown: false };
+  // Claude Code's aliases (opus, sonnet[1m], …) against its models' IDs (claude-…).
+  if (agent === "claude" && !m.id.startsWith("claude-")) return { value: m.id, title: m.name || m.id, detail: "", unknown: true };
+  // DSH's: by its display name, its ID in full and where from (its provider; each line it comes by, 工单 #98 补充).
+  const title = m.name || modelTitle(m.id);
+  const id = idText(m.id);
+  return { value: m.id, title, detail: [id === title ? "" : id, m.source].filter(Boolean).join(" · "), unknown: false };
+}
+
+/**
+ * An agent's models as its model lists show them (工单 #99): each its specific model, as the machine found it. current,
+ * a model a conversation runs that is not among them (an alias it ran as, resolved; one listed no more), comes first.
+ */
+export function modelChoices(agent: string, models: AgentModel[], current = ""): ModelChoice[] {
+  const out = models.map((m) => choiceOf(agent, m));
+  if (current && !out.some((c) => c.value === current)) out.unshift({ value: current, title: modelTitle(current), detail: idText(current) === modelTitle(current) ? "" : idText(current), unknown: false });
+  return out;
+}
+
+/**
+ * The model an agent's sessions run when none is chosen (工单 #99: the default names its specific model): the
+ * machine's default for it, else the agent's own; undefined when neither is known.
+ */
+export function defaultModelChoice(a: Pick<AgentStatus, "name" | "models" | "defaults" | "own"> | undefined): ModelChoice | undefined {
+  const id = a?.defaults?.model || a?.own?.model;
+  if (!a || !id) return undefined;
+  const m = a.models.find((x) => x.id === id || x.resolved === id);
+  return m ? choiceOf(a.name, m) : modelChoices(a.name, [], id)[0];
+}
+
+/** A model a conversation runs, as its model list has it: the alias that resolves to it here, else itself. */
+export function listedModel(id: string, models: AgentModel[]): string {
+  if (!id || models.some((m) => m.id === id)) return id;
+  return models.find((m) => m.resolved === id)?.id ?? id;
 }
 
 /** A project as the owner knows it: the name they gave it (工单 #50), else its id. */

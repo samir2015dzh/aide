@@ -45,10 +45,11 @@ type agentUsage struct {
 	Stale       bool          `json:"stale,omitempty"`
 	Unavailable string        `json:"unavailable,omitempty"`
 	Renew       string        `json:"renew,omitempty"`
-	// Detail: what lay behind an unavailable or stale reading (HTTP status
-	// and a summary of the answer); never a token.
+	// Detail: what each source said on the way (工单 #104), the endpoint's
+	// part its HTTP status and a summary of the answer; never a token.
 	Detail string `json:"detail,omitempty"`
-	// Source: where the reading came from, "claude_code" or "api" (工单 #86).
+	// Source: where the reading came from, "claude_code_cache",
+	// "claude_code" or "api" (工单 #86, #104).
 	Source string `json:"source,omitempty"`
 }
 
@@ -94,6 +95,10 @@ type agentModel struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name,omitempty"`
 	Efforts []string `json:"efforts"`
+	// The specific model an alias ID runs on that machine (工单 #99).
+	Resolved string `json:"resolved,omitempty"`
+	// Where its agent offers it from (DSH's provider lines, 工单 #98 补充).
+	Source string `json:"source,omitempty"`
 }
 
 type agentMode struct {
@@ -238,7 +243,7 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 				DefaultModel: cmp.Or(ag.Defaults.GetModel(), ag.Own.GetModel()), DefaultEffort: cmp.Or(ag.Defaults.GetEffort(), ag.Own.GetEffort()),
 				DefaultMode: cmp.Or(ag.Defaults.GetMode(), ag.Own.GetMode()), Usage: usageFrom(ag.GetUsage())}
 			for _, x := range ag.Models {
-				e.Models = append(e.Models, agentModel{ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...)})
+				e.Models = append(e.Models, agentModel{ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...), Resolved: x.Resolved, Source: x.Source})
 			}
 			for _, x := range ag.Modes {
 				e.Modes = append(e.Modes, agentMode{ID: x.Id, Name: x.Name})

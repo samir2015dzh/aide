@@ -174,7 +174,8 @@ func turnEnd(turn uint32, reason, message string) *sessionv1.TurnCompleted {
 	case "blocked":
 		fail(sessionv1.FailureKind_FAILURE_KIND_REFUSED, "blocked")
 	case "error":
-		fail(sessionv1.FailureKind_FAILURE_KIND_UNKNOWN, message)
+		// Classified as Aide's own sessions' failures, so the apps say what it was (工单 #105).
+		t.IsError, t.Failure = true, (&provider.Failure{Kind: provider.Classify(message), Message: message}).Proto()
 	default:
 		fail(sessionv1.FailureKind_FAILURE_KIND_UNKNOWN, reason)
 	}

@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { AgentModel } from "@aide/proto/machine";
 import type { Session } from "@aide/proto/session";
-import { codingAgentTitle, modelTitle } from "@aide/core";
+import { codingAgentTitle, listedModel, modelChoices, modelTitle } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
 import { local } from "../api";
 import { GrantAvatar, PopMenu, type MenuEntry } from "../components";
@@ -129,6 +129,8 @@ function Context({ s, models }: { s: Session; models?: AgentModel[] }) {
   const { t } = useTranslation(["session", "firstrun"]);
   const same = t("inspector.sameAs", { agent: codingAgentTitle(s.agent) });
   const effort = s.effort === "" ? same : t(`firstrun:prepare.efforts.${s.effort}`, { defaultValue: s.effort });
+  // The model it runs, as the agent reported it: its specific one in full too (工单 #99).
+  const ran = modelChoices(s.agent, models ?? [], s.model).find((x) => x.value === listedModel(s.model, models ?? []));
   return (
     <aside className="insp" aria-label={t("inspector.context")}>
       <h3 className="insp-h">{t("inspector.context")}</h3>
@@ -138,7 +140,10 @@ function Context({ s, models }: { s: Session; models?: AgentModel[] }) {
           {s.model === "" ? (
             <span className="dim"><Trans t={t} i18nKey="inspector.model" values={{ model: same }} components={{ b: <b /> }} /></span>
           ) : (
-            <span title={s.model}>{modelTitle(s.model, models)}</span>
+            <span title={s.model}>
+              {ran?.title ?? modelTitle(s.model, models)}
+              {ran?.detail && <span className="dim"> · {ran.detail}</span>}
+            </span>
           )}
         </li>
         <li>

@@ -343,3 +343,17 @@ func TestZstdFrames(t *testing.T) {
 		t.Fatal("not zstd")
 	}
 }
+
+// A turn DSH ended on an error carries what kind it was and the provider
+// it names, as Aide's own sessions' failures do (工单 #105).
+func TestTurnErrorClassified(t *testing.T) {
+	for msg, want := range map[string]string{
+		"llm-deepseek: no API key for provider route \"deepseek-official\"": "FAILURE_KIND_MISSING_CREDENTIALS DeepSeek",
+		"tool registry corrupted": "FAILURE_KIND_UNKNOWN ",
+	} {
+		f := turnEnd(1, "error", msg).Failure
+		if got := f.Kind.String() + " " + f.Provider; got != want || f.Message != msg {
+			t.Errorf("%q: %s (%q), want %s", msg, got, f.Message, want)
+		}
+	}
+}

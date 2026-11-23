@@ -20,6 +20,9 @@ type Info struct {
 	Binary    string
 	Version   string
 	LoggedIn  bool
+	// LoginUnconfirmed: the check could not tell whether it is signed in
+	// (LoggedIn false): shown as unconfirmed, not as signed out (工单 #108).
+	LoginUnconfirmed bool
 	// Claude only: the Claude desktop app's settings are on the machine,
 	// and it is signed in. Its sign-in is not the command line's
 	// (LoggedIn): the CLI Aide runs keeps its own.
@@ -68,10 +71,15 @@ type ScopedModels interface {
 	ScopedModels() bool
 }
 
-// Model is one model an agent offers.
+// Model is one model an agent offers. Resolved is the specific model an
+// alias ID runs here (Claude Code's, 工单 #99); "" when ID is the model.
+// Source is where the agent offers it from (DSH: its provider, or each
+// provider line it comes by, " · " between; 工单 #98 补充).
 type Model struct {
 	ID, Name string
 	Efforts  []string
+	Resolved string `json:",omitempty"`
+	Source   string `json:",omitempty"`
 }
 
 // Mode is one session mode an agent offers (an ACP agent's permission or

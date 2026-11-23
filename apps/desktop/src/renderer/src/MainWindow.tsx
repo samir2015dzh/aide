@@ -106,7 +106,7 @@ export function MainWindow() {
         ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
           <TasksPage />
         ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
-          <BotPage key={st.selection.key} botKey={st.selection.key} native={st.selection.native} />
+          <BotPage key={st.selection.key} botKey={st.selection.key} native={st.selection.native} settings={st.selection.pane === "settings"} />
         ) : st.selection.kind === "room" && !st.status?.machineOnly ? (
           <RoomPage key={st.selection.roomId} machineId={st.selection.machineId} roomId={st.selection.roomId} />
         ) : (

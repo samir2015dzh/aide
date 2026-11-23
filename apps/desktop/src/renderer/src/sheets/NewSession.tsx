@@ -1,4 +1,5 @@
 import { ConnectLink } from "../components";
+import { modelOptions } from "../modelOptions";
 import { Picker } from "../Picker";
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
@@ -19,6 +20,7 @@ import { ErrorLine, useAction } from "./common";
 export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: string; agent?: string }) {
   const { t } = useTranslation("sheets");
   const tf = useTranslation("firstrun").t;
+  const tc = useTranslation("common").t;
   const st = useStore();
   const online = st.machines.filter((m) => m.online || m.local);
   const [chosen, setMid] = useState(machineId);
@@ -182,7 +184,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="frow">
                 <label className="fl" htmlFor="ns-model">{t("newSession.model")}</label>
                 <span className="fv">
-                  <Picker className="psel" label={t("newSession.model")} value={model} onChange={(v) => setOptions(v, "", mode)} options={[{ value: "", label: t("newSession.default") }, ...a.models.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
+                  <Picker className="psel" label={t("newSession.model")} value={model} onChange={(v) => setOptions(v, "", mode)} options={modelOptions(tc, a)} />
                 </span>
               </div>
             )}

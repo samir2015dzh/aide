@@ -18,6 +18,16 @@ val buildCore by tasks.registering(Exec::class) {
 
 // The bots' faces (工单 #83): the Grok Bot engine ported from BotArk is kept once, in packages/ui/src/grok, and drawn
 // with by the desktop; the app's engine page (assets/grok/host.js) gets the same file, and its license, at build time.
+// Robolectric's Android image for the unit tests that render the app's pages (批 J): fetched by Gradle like any other
+// dependency (cached, retried), and Robolectric reads it from there offline instead of downloading it itself mid-test,
+// which fails on CI. The image goes with the Robolectric version below (4.15.1, SDK 35).
+val robolectricImage: Configuration by configurations.creating { isTransitive = false }
+val robolectricImageDir = layout.buildDirectory.dir("robolectric-image")
+val syncRobolectricImage by tasks.registering(Sync::class) {
+    from(robolectricImage)
+    into(robolectricImageDir)
+}
+
 val grokAssets = layout.buildDirectory.dir("generated/grok-assets")
 val copyGrokEngine by tasks.registering(Copy::class) {
     description = "Copies the bots' face engine from packages/ui"
@@ -105,6 +115,9 @@ android {
                 it.filter.includeTestsMatching("io.aide.android.shots.*")
             } else {
                 it.exclude("**/shots/**")
+                it.dependsOn(syncRobolectricImage)
+                it.systemProperty("robolectric.offline", "true")
+                it.systemProperty("robolectric.dependency.dir", robolectricImageDir.get().asFile.absolutePath)
             }
         }
     }
@@ -143,6 +156,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     // The page pictures (-Pshots).
     testImplementation("org.robolectric:robolectric:4.15.1")
+    robolectricImage("org.robolectric:android-all-instrumented:15-robolectric-12650502-i7")
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.46.1")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.46.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")

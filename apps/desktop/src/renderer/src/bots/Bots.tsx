@@ -7,30 +7,32 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
+  allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
-import { botLook, botMood, botSeed, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
-import { AgentPage, projectsFor } from "../AgentList";
+import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
+import { projectsFor } from "../AgentList";
 import { local } from "../api";
-import { connDot } from "../Connections";
+import { ClaudeLogin, claudeLoginWaiting, connDot } from "../Connections";
 import { Face, grantApp, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
+import { modelOptions } from "../modelOptions";
 import { Picker, type PickerOption } from "../Picker";
-import { GrantDetail } from "../settings/Grants";
 import { LookSheet } from "../settings/LookSheet";
 import { blankPersona, lookFields, personasChanged } from "../sheets/Contacts";
 import { errorText, useNow, useStore, type Sheet } from "../store";
 import { Composer, attachmentsOf, useAttachments, type ComposerState } from "./Composer";
 import { OwnSession, OwnSessions } from "./OwnSessions";
-import { AgentSettings } from "./AgentSettings";
+import { BotSettings } from "./AgentSettings";
+import { TaskItem, useTaskRows } from "../TasksPage";
 import "./bots.css";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
 // alone — the ones pinned as tiles, then the personal agents, the coding agents (a group per machine, headed by its
 // name, 工单 #75), and the rooms. No machine, device state or task list is there: a
 // machine is said only through its bots' states, and is managed on the devices page (Settings › Machines). A click
-// opens the bot's page: its conversations in the middle with the box to write to it, and its own settings beside.
+// opens the bot's page: its conversations in the middle with the box to write to it, its task board beside, and a
+// button to its settings, a page of their own (工单 #97).
 
 // The owner's contacts (docs/personas.md), read once for every bot page and the roster, again when one changes.
 let personaCache: Persona[] = [];
@@ -142,8 +144,8 @@ function useMood(b: Bot): BotMood {
   return mood;
 }
 
-/** A contact's face, on its bot's page: its own look, its bot's state. */
-function PersonaFace({ b, p, size }: { b: Bot; p: Persona; size: number }) {
+/** A contact's face, on its bot's settings: its own look, its bot's state. */
+export function PersonaFace({ b, p, size }: { b: Bot; p: Persona; size: number }) {
   const seed = botSeed(b);
   const mood = useMood(b);
   return (
@@ -288,8 +290,11 @@ export function SidebarRoster() {
   );
 }
 
-/** A bot's own page (工单 #57, #63): who it is and how it stands at the top; its conversations in the middle; its own settings beside. */
-export function BotPage({ botKey, native }: { botKey: string; native?: string }) {
+/**
+ * A bot's own page (工单 #57, #63, #97): who it is and how it stands at the top, with the way to its settings; its
+ * conversations in the middle; beside them its task board. settings: its settings page instead (AgentSettings.tsx).
+ */
+export function BotPage({ botKey, native, settings = false }: { botKey: string; native?: string; settings?: boolean }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const r = useRoster();
@@ -303,7 +308,12 @@ export function BotPage({ botKey, native }: { botKey: string; native?: string })
   if (!b) return null;
   const m = st.machines.find((x) => x.machineId === b.machineId);
   const coding = !!m && !!b.agent && !b.key.startsWith("c:");
+  if (settings) return <BotSettings b={b} m={m} />;
   const pinned = pins.includes(b.key);
+  // Not usable for a reason its machine can fix: the way there, with its state (not a setting of its own).
+  const fix = coding && b.state.usable === "no" && b.state.why !== "paused";
+  // Claude Code's command line not signed in, or unconfirmed: signed in from here, on its machine (工单 #51, #108).
+  const login = coding && b.state.fix === "claudeLogin";
   return (
     <div className="bot-page" role="region" aria-label={b.name}>
       <header className="bot-head drag">
@@ -315,42 +325,62 @@ export function BotPage({ botKey, native }: { botKey: string; native?: string })
           </div>
           <div className="bot-head-l2">
             <span>{b.state.line}</span>
+            {fix && !login && <button className="link" onClick={() => window.aide?.openSettings(`machines/${m!.machineId}`)}>{t("bots.fixOnDevices")}</button>}
           </div>
+          {login && <ClaudeLogin m={m!} waiting={claudeLoginWaiting(m!)} />}
         </div>
+        <button className="btn sm bot-settings" onClick={() => set({ selection: { kind: "bot", key: b.key, pane: "settings" } })}>
+          <Icon name="gear" className="sm" />
+          {t("bots.settings")}
+        </button>
         <button className={`tb bot-pin ${pinned ? "on" : ""}`} aria-pressed={pinned} title={t(pinned ? "bots.unpin" : "bots.pin")} aria-label={t(pinned ? "bots.unpin" : "bots.pin")} onClick={() => pin(b.key, !pinned)}>
           <Icon name="pin" />
         </button>
       </header>
       <div className="bot-body">
         {coding && native ? <OwnSession b={b} m={m!} id={native} /> : coding ? <Conversations b={b} m={m!} /> : <DirectChat b={b} />}
-        <aside className="bot-bench" aria-label={t("bots.bench")}>
-          {coding && <LocalBench b={b} m={m!} />}
-          {!coding && <HandedOut b={b} />}
-          {b.client && (
-            <section>
-              <div className="bot-sec-h">{t("bots.grant")}</div>
-              <GrantDetail c={b.client} />
-            </section>
-          )}
-        </aside>
+        <TaskBoard b={b} />
       </div>
     </div>
   );
 }
 
-/** A personal agent's work it handed out (its sessions on the owner's machines). */
-function HandedOut({ b }: { b: Bot }) {
+/**
+ * Its task board (工单 #97 补充二): what it is working on — the work handed to it, or that it handed out (a personal
+ * agent's) — waiting on the owner or needing a look first, then in progress, then done lately, each with its state.
+ * The rows are 任务动态's own (useTaskRows) narrowed to this bot's sessions as the roster counts them, so the two say
+ * the same of a task (工单 #102).
+ */
+function TaskBoard({ b }: { b: Bot }) {
   const st = useStore();
   const { t } = useTranslation("common");
-  const work = st.sessions.filter((s) => s.status !== SessionStatus.ARCHIVED && s.createdBy === b.client?.clientId).sort((x, y) => updatedDate(y).getTime() - updatedDate(x).getTime());
+  const now = useNow(5_000);
+  const all = useTaskRows();
+  const rows = useMemo(() => {
+    const mine = new Set(botSessions(b, st.sessions).map((s) => s.sessionId));
+    return all.filter((r) => mine.has(r.session.sessionId));
+  }, [all, b, st.sessions]);
+  const groups = [
+    { id: "waiting" as const, rows: rows.filter((r) => r.rank === 0) },
+    { id: "running" as const, rows: rows.filter((r) => r.rank === 1) },
+    { id: "done" as const, rows: rows.filter((r) => r.rank >= 2) },
+  ].filter((g) => g.rows.length > 0);
   return (
-    <section>
-      <div className="bot-sec-h">{t("bots.handedOut")}</div>
-      <div className="fgroup bot-list" role="list" aria-label={t("bots.handedOut")}>
-        {work.length === 0 && <div className="frow muted">{t("bots.noWorkPersonal", { name: b.name })}</div>}
-        {work.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+    <aside className="bot-bench bot-board" aria-label={t("bots.board.title")}>
+      <div className="bot-sec-h">
+        {t("bots.board.title")}
+        <button className="link" onClick={() => st.set({ selection: { kind: "tasks" } })}>{t("bots.board.all")}</button>
       </div>
-    </section>
+      {groups.length === 0 && <div className="bot-empty">{t("bots.board.none", { name: b.name })}</div>}
+      {groups.map((g) => (
+        <section key={g.id} aria-label={t(`bots.board.${g.id}`)}>
+          <div className="bot-sec-h">{t(`bots.board.${g.id}`)} · {g.rows.length}</div>
+          <ul className="held-list">
+            {g.rows.map((r) => <TaskItem key={r.session.sessionId} r={r} now={now} />)}
+          </ul>
+        </section>
+      ))}
+    </aside>
   );
 }
 
@@ -366,79 +396,6 @@ function WorkRow({ s }: { s: Session }) {
       </span>
       <span className="bot-work-when">{listTime(updatedDate(s), now)}</span>
     </button>
-  );
-}
-
-/**
- * A coding agent's own settings on its page (工单 #63): how it stands in one line (what its machine reports in full,
- * versions, checks and fixes, is on the devices page), its names and faces, its projects and how it runs.
- */
-function LocalBench({ b, m }: { b: Bot; m: Machine }) {
-  const { t } = useTranslation("common");
-  const fix = b.state.usable === "no" && b.state.why !== "paused";
-  return (
-    <>
-      <section>
-        <div className="bot-sec-h">{t("bots.connection")}</div>
-        <div className="fgroup">
-          <div className="frow bot-state-row">
-            <span className="conn-state" data-state={b.state.state}>
-              <i className={`dotc ${connDot(b.state.state)}`} />
-              {b.state.word}
-            </span>
-            <span className="muted">{b.state.line}</span>
-          </div>
-          {fix && (
-            <button className="frow act" onClick={() => window.aide?.openSettings(`machines/${m.machineId}`)}>
-              {t("bots.fixOnDevices")}
-              <Icon name="chevR" className="sm chev" />
-            </button>
-          )}
-        </div>
-      </section>
-      <section aria-label={t("agentSettings.title")}>
-        <div className="bot-sec-h">{t("agentSettings.title")}</div>
-        <AgentSettings b={b} m={m} />
-      </section>
-      <Identity b={b} m={m} />
-      <section>
-        <div className="bot-sec-h">{t("bots.manage")}</div>
-        <AgentPage m={m} agent={b.agent} bare />
-      </section>
-    </>
-  );
-}
-
-/**
- * Its names and faces (docs/personas.md): the owner can give this agent a name, an avatar and presets, the first one
- * its name and face in the roster. Each is its name, with a pencil to change it (工单 #65); none yet is a short line
- * and a button, no sentence standing in for a name.
- */
-function Identity({ b, m }: { b: Bot; m: Machine }) {
-  const st = useStore();
-  const { t } = useTranslation("common");
-  return (
-    <section aria-label={t("bots.identity")}>
-      <div className="bot-sec-h">{t("bots.identity")}</div>
-      <div className="fgroup">
-        {b.personas.map((p) => (
-          <div key={p.personaId} className="frow bot-persona">
-            <PersonaFace b={b} p={p} size={28} />
-            <span className="bot-persona-t">
-              <b>{p.name}</b>
-              <span className="muted">{[p.projectId, p.model, p.effort, p.mode].filter(Boolean).join(" · ")}</span>
-            </span>
-            <button className="tb" title={t("bots.identityEditTip", { name: p.name })} aria-label={t("bots.identityEditTip", { name: p.name })} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...p } } })}>
-              <Icon name="edit" />
-            </button>
-          </div>
-        ))}
-        <button className="frow act" title={t("bots.identityAddTip")} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...(b.personas.length ? {} : lookFields(botLook(b))), machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
-          <Icon name="plus" className="sm" />
-          {t(b.personas.length ? "bots.identityAdd" : "bots.identityFirst")}
-        </button>
-      </div>
-    </section>
   );
 }
 
@@ -478,18 +435,19 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const a = m.status?.agents.find((x) => x.name === b.agent);
   // The composer's choices: the current conversation's own, else the contact's presets, else the first project.
   const base = (): ConvParams =>
-    current ? paramsOf(current) : { projectId: persona?.projectId || projects[0]?.projectId || "", model: persona?.model ?? "", effort: persona?.effort ?? "", mode: persona?.mode ?? "" };
+    current ? paramsOf(current, a?.models) : { projectId: persona?.projectId || projects[0]?.projectId || "", model: persona?.model ?? "", effort: persona?.effort ?? "", mode: persona?.mode ?? "" };
   const [params, setParams] = useState<ConvParams>(base);
   const curId = current?.sessionId ?? cur ?? "";
-  useEffect(() => setParams(base()), [curId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Again once it says the model it runs (工单 #99: read back as it starts), so that is no change.
+  useEffect(() => setParams(base()), [curId, current?.model]); // eslint-disable-line react-hooks/exhaustive-deps
   const [text, setText] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
   const attach = useAttachments();
   const [showArchived, setShowArchived] = useState(false);
   const stuck = current ? stuckWhy(current, st.projects, m) : undefined;
-  const fresh = !current || paramsChanged(current, params);
-  const changed = current ? changedParams(current, params) : [];
+  const fresh = !current || paramsChanged(current, params, a?.models);
+  const changed = current ? changedParams(current, params, a?.models) : [];
   const usable = b.state.usable !== "no";
   // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
   const permission = modeChoice(b.agent, params.mode, projects.find((p) => p.projectId === params.projectId), a?.modes ?? []);
@@ -543,7 +501,11 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
               : current && fresh
                 ? { text: t("conv.willStartNew", { what: changed.map((k) => t(`composer.param.${k}`)).join("、") }), tone: "quiet" as const }
                 : undefined;
-  const models: PickerOption<string>[] = [{ value: "", label: t("composer.defaultModel") }, ...(a?.models ?? []).map((x) => ({ value: x.id, label: x.name || x.id }))];
+  // 工单 #98: an ACP agent (DSH) says its models only in a session: before its first here, the list says so.
+  const modelsLater = a && a.models.length === 0 && b.agent !== "claude" && b.agent !== "codex"
+    ? t(st.sessions.some((s) => s.machineId === m.machineId && s.agent === b.agent) ? "composer.modelsNone" : "composer.modelsAfterFirst", { agent: codingAgentTitle(b.agent) })
+    : undefined;
+  const models: PickerOption<string>[] = [...modelOptions(t, a, params.model), ...(modelsLater ? [{ value: "\0later", label: modelsLater, disabled: true }] : [])];
   const efforts = a?.models.find((x) => x.id === params.model)?.efforts ?? [];
   const modes: PickerOption<string>[] = [{ value: "", label: permission.defaultLabel ?? t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) }))];
   const chips = (
@@ -552,7 +514,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         <Picker chip size="sm" label={t("composer.param.projectId")} value={params.projectId} onChange={(v) => setParams({ ...params, projectId: v })}
           options={projects.map((p) => ({ value: p.projectId, label: projectTitle(p), icon: <Icon name="folder" className="sm" /> }))} />
       )}
-      {(a?.models.length ?? 0) > 0 && <Picker chip size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />}
+      {((a?.models.length ?? 0) > 0 || modelsLater) && <Picker chip size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />}
       {efforts.length > 0 && (
         <Picker chip size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
           options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: e }))]} />
@@ -670,6 +632,8 @@ function DirectChat({ b }: { b: Bot }) {
   const { t } = useTranslation("common");
   const [room, setRoom] = useState<Room>();
   const [msgs, setMsgs] = useState<RoomMessage[]>([]);
+  // The room as last read with its messages: its member's name as its connection's now (工单 #101).
+  const [fresh, setFresh] = useState<Room>();
   const [error, setError] = useState("");
   const [text, setText] = useState("");
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
@@ -684,7 +648,7 @@ function DirectChat({ b }: { b: Bot }) {
   useEffect(() => {
     if (!room) return;
     let gone = false;
-    const read = () => local.listRoomMessages({ machineId: room.hostMachineId, roomId: room.roomId, limit: 200 }).then((r) => !gone && setMsgs(r.messages), () => {});
+    const read = () => local.listRoomMessages({ machineId: room.hostMachineId, roomId: room.roomId, limit: 200 }).then((r) => !gone && (setMsgs(r.messages), setFresh(r.room)), () => {});
     read();
     const every = setInterval(read, 3000);
     return () => ((gone = true), clearInterval(every));
@@ -707,7 +671,7 @@ function DirectChat({ b }: { b: Bot }) {
       <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
         {error && <div className="bot-empty warn" role="alert">{error}</div>}
         {!error && room && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
-        {room && <RoomTimeline room={room} msgs={msgs} />}
+        {room && <RoomTimeline room={fresh ?? room} msgs={msgs} />}
       </div>
       <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room} />
     </main>

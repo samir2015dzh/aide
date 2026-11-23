@@ -105,10 +105,11 @@ export function Sidebar() {
           <span className="kbd">{keys("CmdOrCtrl+K")}</span>
         </button>
       </div>
+      <SideNav />
       {/*
-        The owner's sidebar is bots alone (工单 #63): the roster, then settings and the account at the foot. The
-        overview, the devices, the task feed and the Connect guide are in the account menu there; each bot's sessions
-        are on its own page. A machine only (no roster) keeps its own sessions here.
+        The owner's sidebar is the overview and the task feed at its top (工单 #102), then bots alone (工单 #63): the
+        roster, then settings and the account at the foot. Every session, the devices and the Connect guide are in the
+        account menu there; each bot's sessions are on its own page. A machine only (no roster) keeps its own sessions here.
       */}
       {owner ? (
         <SidebarRoster />
@@ -239,7 +240,37 @@ export function Sessions({ now }: { now: Date }) {
   );
 }
 
-type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "overview" | "sessions" | "devices" | "tasks" | "held" | "newSession"; icon: string; shortcut?: string; count?: number } | null;
+/**
+ * The pages opened every day, first in the sidebar (工单 #102): the overview (⌘1, said on hover) and the task feed, each
+ * one click from opening the app, never in a menu; what needs the owner counted beside each. A machine only has its
+ * overview alone.
+ */
+function SideNav() {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const taskLook = useTaskLook();
+  const marks = overviewMarks(st, useNow(30_000));
+  const items = [
+    { id: "overview" as const, icon: "grid", shortcut: keys("CmdOrCtrl+1"), count: marks.waits },
+    ...(st.status?.machineOnly ? [] : [{ id: "tasks" as const, icon: "persons", shortcut: "", count: taskLook }]),
+  ];
+  return (
+    <nav className="side-nav" aria-label={t("sidebar.nav")}>
+      {items.map((it) => {
+        const sel = st.selection.kind === it.id;
+        return (
+          <button key={it.id} className={`nav-i ${sel ? "sel" : ""}`} aria-current={sel || undefined} title={[t(`sidebar.${it.id}`), it.shortcut].filter(Boolean).join(" ")} onClick={() => st.set({ selection: { kind: it.id } })}>
+            <Icon name={it.icon} />
+            <span>{t(`sidebar.${it.id}`)}</span>
+            {it.count > 0 && <span className="nav-count">{it.count}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "connect" | "sessions" | "devices" | "held" | "newSession"; icon: string; shortcut?: string; count?: number } | null;
 
 /**
  * The account menu, from the avatar at the sidebar's foot: it opens upward, as wide as the foot, with what adds
@@ -254,22 +285,16 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   const menu = useRef<HTMLDivElement>(null);
   const foot = useRef<HTMLButtonElement>(null);
   const held = useHeldCount(!!st.status && !st.reconnecting);
-  const taskLook = useTaskLook();
-  const marks = overviewMarks(st, useNow(30_000));
-  // The pages that left the sidebar (工单 #63) are here, beside settings and the account (BotArk: at the foot). A
-  // machine only has its overview (its own sessions stay in the sidebar), then settings and the account (null: a separator).
+  // The pages that left the sidebar (工单 #63) are here, beside settings and the account (BotArk: at the foot) — but the
+  // overview and the task feed, at the sidebar's top (工单 #102). A machine only has settings and the account (null: a separator).
   const items: AccountItem[] = st.status?.machineOnly
     ? [
-        { id: "overview", icon: "grid", shortcut: keys("CmdOrCtrl+1"), count: marks.waits },
-        null,
         { id: "settings", icon: "gear", shortcut: keys("CmdOrCtrl+,") },
         { id: "account", icon: "user" },
       ]
     : [
-        { id: "overview", icon: "grid", shortcut: keys("CmdOrCtrl+1"), count: marks.waits },
         { id: "sessions", icon: "checklist" },
         { id: "devices", icon: "devices" },
-        { id: "tasks", icon: "persons", count: taskLook },
         ...(held > 0 || st.selection.kind === "held" ? [{ id: "held" as const, icon: "bell", count: held }] : []),
         null,
         { id: "newSession", icon: "plus", shortcut: keys("CmdOrCtrl+N") },
@@ -280,7 +305,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         { id: "settings", icon: "gear", shortcut: keys("CmdOrCtrl+,") },
         { id: "account", icon: "user" },
       ];
-  const due = marks.waits + held;
+  const due = held;
   useEffect(() => {
     if (!open) return;
     (open === "key" ? menu.current?.querySelector<HTMLElement>("[role=menuitem]") : menu.current)?.focus();
@@ -299,7 +324,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     else if (id === "account") window.aide?.openSettings("account");
     else if (id === "connect") window.aide?.openSettings("connect");
     else if (id === "devices") window.aide?.openSettings("machines");
-    else if (id === "overview" || id === "tasks" || id === "held" || id === "sessions") st.set({ selection: { kind: id } });
+    else if (id === "held" || id === "sessions") st.set({ selection: { kind: id } });
     else st.set({ sheet: { kind: id } });
   };
   // The keyboard, as in a native menu: arrows move, Esc closes back to the avatar.

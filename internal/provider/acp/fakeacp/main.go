@@ -56,6 +56,11 @@
 //	FAKE_ACP_OPTIONS=1                advertise session/options (never creates a session)
 //	FAKE_ACP_OPTIONS_ERROR=<code>     fail session/options; "wait" waits for cancellation
 //	FAKE_ACP_CONFIG_FILE=<path>       configOptions JSON used by new/options
+//	FAKE_ACP_PROVIDERS=<json>         with FAKE_ACP_CONFIG, models as DSH
+//	                                  offers them by provider: a list of
+//	                                  model options, each {"id", "groups":
+//	                                  [{"name", "models": [{"value",
+//	                                  "name"}]}]}; the first model current
 //	FAKE_ACP_LOG=<path>               append method names only, for no-prompt assertions
 //	FAKE_ACP_PRESETS=<default>        DSH's permission presets (read-only,
 //	                                  workspace-write, danger-full-access;
@@ -358,6 +363,9 @@ func handle(m msg) {
 		sid := fmt.Sprintf("fake-%d-%d", os.Getpid(), time.Now().UnixNano())
 		res := map[string]any{"sessionId": sid}
 		curModel, effort = strings.Split(os.Getenv("FAKE_ACP_MODELS"), ",")[0], ""
+		if ps := providers(); len(ps) > 0 {
+			curModel = ps[0].Groups[0].Models[0].Value
+		}
 		mode = strings.Split(os.Getenv("FAKE_ACP_MODES"), ",")[0]
 		if presets {
 			mode = cmp.Or(preset, "workspace-write")
@@ -389,12 +397,17 @@ func handle(m msg) {
 		res := map[string]any{}
 		if curModel == "" && os.Getenv("FAKE_ACP_CONFIG") == "1" { // a new process: its first model, as a new session
 			curModel = strings.Split(os.Getenv("FAKE_ACP_MODELS"), ",")[0]
+			if ps := providers(); len(ps) > 0 {
+				curModel = ps[0].Groups[0].Models[0].Value
+			}
 		}
 		configState(res)
 		reply(m.ID, res)
 	case "session/set_config_option":
 		if os.Getenv("FAKE_ACP_CONFIG") == "1" {
 			switch {
+			case providerOffers(p.ConfigID, p.Value):
+				curModel, effort = p.Value, ""
 			case p.ConfigID == "llm" && slices.Contains(strings.Split(os.Getenv("FAKE_ACP_MODELS"), ","), p.Value):
 				curModel, effort = p.Value, "" // the model's efforts differ
 			case p.ConfigID == "reasoning_effort" && slices.Contains(efforts(), p.Value):
@@ -505,6 +518,25 @@ func configState(res map[string]any) {
 	}
 	if os.Getenv("FAKE_ACP_CONFIG_FILE") != "" {
 		res["configOptions"] = modelConfig("")
+		return
+	}
+	if ps := providers(); len(ps) > 0 { // DSH's: no modes over ACP
+		var opts []any
+		for _, o := range ps {
+			current, groups := "", []any{}
+			for _, g := range o.Groups {
+				var models []any
+				for _, m := range g.Models {
+					models = append(models, map[string]any{"value": m.Value, "name": m.Name})
+					if m.Value == curModel {
+						current = curModel
+					}
+				}
+				groups = append(groups, map[string]any{"group": strings.ToLower(g.Name), "name": g.Name, "options": models})
+			}
+			opts = append(opts, map[string]any{"id": o.ID, "category": "model", "type": "select", "currentValue": current, "options": groups})
+		}
+		res["configOptions"] = opts
 		return
 	}
 	var models, modeOpts []any
@@ -682,6 +714,38 @@ func prompt(id json.RawMessage, sid, text string, images, files []string) {
 		}
 	}
 	reply(id, map[string]any{"stopReason": "end_turn", "usage": map[string]any{"inputTokens": 100, "outputTokens": 20, "cachedReadTokens": 5}})
+}
+
+// fakeProvider is a model option of FAKE_ACP_PROVIDERS.
+type fakeProvider struct {
+	ID     string `json:"id"`
+	Groups []struct {
+		Name   string `json:"name"`
+		Models []struct {
+			Value string `json:"value"`
+			Name  string `json:"name"`
+		} `json:"models"`
+	} `json:"groups"`
+}
+
+func providers() []fakeProvider {
+	var ps []fakeProvider
+	json.Unmarshal([]byte(os.Getenv("FAKE_ACP_PROVIDERS")), &ps)
+	return ps
+}
+
+// providerOffers: model option id of FAKE_ACP_PROVIDERS has value.
+func providerOffers(id, value string) bool {
+	for _, o := range providers() {
+		for _, g := range o.Groups {
+			for _, m := range g.Models {
+				if o.ID == id && m.Value == value {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func modelConfig(current string) any {

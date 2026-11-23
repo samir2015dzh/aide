@@ -52,10 +52,12 @@
     "timeout": "超过时长上限",
     "startFailed": "无法启动 agent",
     "baseRefUnavailable": "找不到基准引用",
-    "other": "失败"
+    "other": "失败",
+    "missingCredentials": "未配置密钥"
   },
   "advice": {
     "auth": "请在该机器上以同一系统用户运行一次对应的 CLI 完成登录。",
+    "authClaude": "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会在那台电脑上打开浏览器，在浏览器里登录完再发一条消息即可继续。",
     "quota": "请等待额度恢复后再试，或更换 Agent / 模型。",
     "transient": "暂时性问题，请稍后重新发送消息。",
     "newContext": "再次发送消息将在新上下文中继续，工作区中的代码改动将会保留。",
@@ -63,7 +65,10 @@
     "limitReached": "发送“继续”即可接着执行。",
     "resume": "再次发送消息即可恢复任务。",
     "startFailed": "请在 Aide 设置中打开该机器的详情页，排查无法启动 Agent 的原因。",
-    "baseRefUnavailable": "请确认基准引用名称，以及项目的远端仓库里有这个分支或 tag（机器会从那里拉取），再在这个任务里发一条消息，重试原来的请求。"
+    "baseRefUnavailable": "请确认基准引用名称，以及项目的远端仓库里有这个分支或 tag（机器会从那里拉取），再在这个任务里发一条消息，重试原来的请求。",
+    "missingCredentials": "在 {{agent}} 的模型设置里填好密钥。",
+    "missingCredentials_provider": "在 {{agent}} 的模型设置里填好 {{provider}} 的密钥。",
+    "details": "详情里有原文。"
   },
   "headline": {
     "auth": "{{agent}} 未登录",
@@ -82,7 +87,13 @@
     "timeout": "本轮执行已超时",
     "startFailed": "{{agent}} 未能启动",
     "baseRefUnavailable": "无法创建工作目录：找不到基准引用",
-    "other": "{{agent}} 出错了"
+    "other": "{{agent}} 出了个内部错误",
+    "missingCredentials": "{{agent}} 还没配模型服务的密钥",
+    "missingCredentials_provider": "{{agent}} 还没配 {{provider}} 的密钥",
+    "network_provider": "{{agent}} 连不上 {{provider}}",
+    "rateLimit_provider": "{{agent}} 被 {{provider}} 限流了",
+    "quota_provider": "{{agent}} 在 {{provider}} 的额度已用完",
+    "providerError_provider": "{{agent}} 用的 {{provider}} 服务出错"
   },
   "notice": {
     "startedBody": "{{grant}} 发起 · {{project}} · {{agent}}",
@@ -185,6 +196,7 @@
     "signedIn": "已登录",
     "signedInVersion": "已登录 · {{version}}",
     "signedOut": "未登录",
+    "unconfirmed": "未确认",
     "notInstalled": "未安装",
     "broken": "运行不了",
     "detected": "已检测到",
@@ -195,6 +207,7 @@
     "desktopSignedOut": "请在 Claude Desktop 里登录：登录后它自己的会话才会出现在 Aide 里。",
     "cliSignedOutDesktopIn": "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。点下面的按钮给它登录（会在那台电脑上打开浏览器）；Claude Desktop 和它的会话不受影响。",
     "cliSignedOut": "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：点下面的按钮给它登录（会在那台电脑上打开浏览器）。",
+    "cliUnconfirmed": "Claude Code 命令行没说清自己登没登录，Aide 不拿 Claude Desktop 的登录代替它：派出的任务能不能跑还没确认。点下面的按钮给它登录（会在那台电脑上打开浏览器），或者重新检测。",
     "appWithoutCLI": "这台机器只有 Claude Desktop，没有 Aide 要用的 Claude Code 命令行：在 Claude Desktop 里打开一次 Code 页，它会自动下载。",
     "cliNotFound": "派给 Claude 的任务要用 Claude Code 命令行跑，这台机器上没有。",
     "bridge": "DSH 的 Aide 插件",

@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.AgentStatus
 import io.aide.android.api.Machine
-import io.aide.android.api.Persona
 import io.aide.android.model.AppModel
 import io.aide.android.model.Bot
 import io.aide.android.model.agoText
@@ -32,9 +31,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
 
-// A coding agent's own settings on its page (工单 #93), as the desktop's and as a connected agent's grant page is laid out:
-// what it can use (its machine, its projects), its kind (told from what it is until the owner says otherwise, #52, kept on
-// its machine), its name and icon, stopping it and taking it off Aide's lists. What only a grant has (expiry, the exec
+// A coding agent's own settings (工单 #93), on its bot's settings page (工单 #97, BotSettings.kt), as the desktop's and as a
+// connected agent's grant page is laid out: what it can use (its machine, its projects), its kind (told from what it is
+// until the owner says otherwise, #52, kept on its machine), stopping it and taking it off Aide's lists; its names and
+// faces are the page's own section. What only a grant has (expiry, the exec
 // channel) is not shown; an agent with a grant of its own (DSH) keeps its kind on that grant.
 
 private val whenFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
@@ -55,7 +55,7 @@ fun usageLine(a: AgentStatus, now: Instant = Instant.now()): String {
 }
 
 @Composable
-fun AgentSettings(model: AppModel, b: Bot, m: Machine, edit: (Persona) -> Unit) {
+fun AgentSettings(model: AppModel, b: Bot, m: Machine) {
     val world = model.world.value
     val a = m.status?.agents.orEmpty().firstOrNull { it.name == b.agent } ?: return
     val scope = rememberCoroutineScope()
@@ -73,7 +73,7 @@ fun AgentSettings(model: AppModel, b: Bot, m: Machine, edit: (Persona) -> Unit) 
             AlertAction(t("Remove", "移除"), AlertRole.Destructive) { hiding = false; scope.launch { model.setAgentHidden(m.machineId, a.name, true) } },
         ),
     )
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         SectionHeader(t("Its settings", "它的设置"))
         Column(Modifier.fillMaxWidth().aideCard()) {
             SettingRow(t("Machine", "机器"), t("${m.machineName} (where it runs)", "${m.machineName}（它在这台上运行）"))
@@ -109,8 +109,6 @@ fun AgentSettings(model: AppModel, b: Bot, m: Machine, edit: (Persona) -> Unit) 
             }
         }
         Column(Modifier.fillMaxWidth().padding(top = 8.dp).aideCard()) {
-            ActionRow(t("Name and avatar", "名字和头像")) { edit(b.personas.firstOrNull() ?: newPersona(b, m)) }
-            Hairline(Modifier.padding(start = 16.dp))
             if (a.pause != null) {
                 ActionRow(t("Resume", "恢复")) { scope.launch { model.setAgentPaused(m.machineId, a.name, false) } }
             } else Box {

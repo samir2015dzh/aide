@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -57,6 +58,16 @@ func (n *Machine) offered(agent string, o provider.Offers) {
 	if p, ok := n.provider(agent).(provider.ScopedModels); ok && p.ScopedModels() {
 		return // its sessions' choices stay theirs (its model catalogs)
 	}
+	// What it offered, by where from (no IDs, no secrets): which providers an
+	// agent's sessions offer models of shows in the machine's log (工单 #98
+	// 补充: one missing is the agent's, not Aide's).
+	sources := map[string]int{}
+	for _, m := range o.Models {
+		for _, s := range strings.Split(cmp.Or(m.Source, "-"), " · ") {
+			sources[s]++
+		}
+	}
+	n.log.Info("agent offers models", "agent", agent, "models", len(o.Models), "by_source", sources)
 	n.mu.Lock()
 	for i, m := range o.Models {
 		if k := slices.IndexFunc(n.offers[agent].Models, func(x provider.Model) bool { return x.ID == m.ID }); m.Efforts == nil && k >= 0 {
@@ -200,7 +211,7 @@ func checkSettings(agent string, i provider.Info, model, effort, runs string) er
 // this machine's defaults and the agent's own configuration. n.mu is held.
 func (n *Machine) agentModels(a *machinev1.AgentStatus, i provider.Info) {
 	for _, m := range i.Models {
-		a.Models = append(a.Models, &machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts})
+		a.Models = append(a.Models, &machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts, Resolved: m.Resolved, Source: m.Source})
 	}
 	a.Defaults = n.defaults[a.Name]
 	for _, m := range i.Modes {

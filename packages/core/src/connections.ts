@@ -177,6 +177,12 @@ function claudeRows(a: AgentStatus): ConnRow[] {
     cli.text = t("conn.loginWaiting");
     cli.lacks = t("conn.loginWaitingHint");
     cli.fix = "claudeLogin";
+  } else if (a.available && a.loginUnconfirmed) {
+    // Its own `auth status` said nothing clear (工单 #108): unconfirmed, never the desktop app's sign-in in its place.
+    cli.state = "unknown";
+    cli.text = t("conn.unconfirmed");
+    cli.lacks = t("conn.cliUnconfirmed");
+    cli.fix = "claudeLogin";
   } else if (a.available) {
     cli.state = "missing";
     cli.text = t("conn.signedOut");

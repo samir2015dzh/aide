@@ -1,34 +1,175 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { codingAgentTitle, projectTitle, type Bot } from "@aide/core";
+import { projectTitle, type Bot } from "@aide/core";
+import { botLook } from "@aide/core/avatar";
 import type { Machine } from "@aide/proto/local";
-import { PauseSection, projectsFor, usageText } from "../AgentList";
+import { AgentPage, PauseSection, projectsFor, usageText } from "../AgentList";
 import { local } from "../api";
+import { ClaudeLogin, claudeLoginWaiting, connDot } from "../Connections";
 import { Icon } from "../icons";
 import { Picker } from "../Picker";
+import { GrantDetail } from "../settings/Grants";
 import { Row } from "../settings/common";
-import { blankPersona } from "../sheets/Contacts";
+import { blankPersona, lookFields } from "../sheets/Contacts";
 import { errorText, useNow, useStore } from "../store";
-import { BotFace } from "./Bots";
+import { BotFace, BotPill, PersonaFace } from "./Bots";
 
 /**
- * A coding agent's own settings on its page (工单 #93), laid out as a connected agent's grant page is (GrantDetail):
- * who it is, what it may use (its machine, its projects), its kind (told from what it is until the owner says otherwise,
- * #52), its name and face, its scope, and stopping or removing it. An agent its machine found has no grant: what a
- * grant has and it hasn't (expiry, the exec channel, a fingerprint) is not shown. One with a grant of its own (DSH) has
- * its kind on that grant's page, so not here.
+ * A bot's settings, a page of their own (工单 #97): its page keeps its state, its conversations and what it is working
+ * on; every setting it has is here, each once, with the way back to its page. A coding agent's: how it stands (its
+ * plan's usage with it), what it may use, its kind, its name and face, its projects and how it runs, pausing it, its
+ * grant when it has one, and taking it off Aide. A personal agent's: how it stands and its grant (what it may use, its
+ * kind, running commands, its name and face, disconnecting it). Drawn as its page's column was (a grouped page); its
+ * look waits on the Fluent design (工单 #107).
  */
-export function AgentSettings({ b, m }: { b: Bot; m: Machine }) {
+export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
   const st = useStore();
+  const { t } = useTranslation("common");
+  const coding = !!m && !!b.agent && !b.key.startsWith("c:");
+  const back = () => st.set({ selection: { kind: "bot", key: b.key } });
+  return (
+    <div className="bot-page" role="region" aria-label={t("bots.settingsOf", { name: b.name })}>
+      <header className="bot-head drag">
+        <button className="link own-back" onClick={back} aria-label={t("bots.settingsBack", { name: b.name })} title={t("bots.settingsBack", { name: b.name })}>
+          <Icon name="chevL" className="sm" />
+          {b.name}
+        </button>
+        <BotFace b={b} size={44} dot still />
+        <div className="bot-head-t">
+          <div className="bot-head-l1">
+            <h1>{t("bots.settings")}</h1>
+            <BotPill b={b} />
+          </div>
+        </div>
+      </header>
+      <div className="bot-bench bset">
+        <div className="bset-col">
+          <section aria-label={t("bots.connection")}>
+            <div className="bot-sec-h">{t("bots.connection")}</div>
+            <div className="fgroup">
+              <div className="frow bot-state-row">
+                <span className="conn-state" data-state={b.state.state}>
+                  <i className={`dotc ${connDot(b.state.state)}`} />
+                  {b.state.word}
+                </span>
+                <span className="muted">{b.state.line}</span>
+              </div>
+              {coding && b.state.fix === "claudeLogin" && (
+                <div className="frow">
+                  <ClaudeLogin m={m!} waiting={claudeLoginWaiting(m!)} />
+                </div>
+              )}
+              {coding && <Usage b={b} m={m!} />}
+            </div>
+          </section>
+          {coding && <AgentSettings b={b} m={m!} />}
+          {b.client && (
+            <section aria-label={t("bots.grant")}>
+              <div className="bot-sec-h">{t("bots.grant")}</div>
+              {/* A coding agent's name and face are its contact's (above), so its grant's look isn't offered again here. */}
+              <GrantDetail c={b.client} bare look={!coding} />
+            </section>
+          )}
+          {coding && <Hide b={b} m={m!} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Its plan's usage (Claude Code's, #86), with how it stands. */
+function Usage({ b, m }: { b: Bot; m: Machine }) {
   const { t } = useTranslation("common");
   const tf = useTranslation("firstrun").t;
   const now = useNow(30_000);
   const a = m.status?.agents.find((x) => x.name === b.agent);
+  const usage = a && b.agent === "claude" ? usageText(a, tf, now) : "";
+  return usage ? <Row k={t("agentSettings.usage")}><span className="mono agent-usage">{usage}</span></Row> : null;
+}
+
+/**
+ * A coding agent's own settings (工单 #93), laid out as a connected agent's grant page is (GrantDetail): what it may
+ * use (its machine, its projects), its kind (told from what it is until the owner says otherwise, #52), its name and
+ * face, its projects and how it runs, and pausing it. An agent its machine found has no grant: what a grant has and it
+ * hasn't (expiry, the exec channel, a fingerprint) is not shown. One with a grant of its own (DSH) has its kind on that
+ * grant's part, so not here.
+ */
+function AgentSettings({ b, m }: { b: Bot; m: Machine }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const a = m.status?.agents.find((x) => x.name === b.agent);
   const mine = projectsFor(st.projects.filter((p) => p.machineId === m.machineId), b.agent);
   const all = mine.length > 0 && mine.every((p) => p.agents.length === 0) && st.projects.filter((p) => p.machineId === m.machineId).length === mine.length;
-  const persona = b.personas[0];
-  const rename = () => st.set({ sheet: { kind: "persona", draft: persona ? { ...blankPersona, ...persona } : { ...blankPersona, machineId: m.machineId, agent: b.agent, name: b.name } } });
   const scope = () => st.set({ sheet: { kind: "agentScope", machineId: m.machineId, agent: b.agent } });
+  return (
+    <>
+      <section aria-label={t("agentSettings.canUse")}>
+        <div className="bot-sec-h">{t("agentSettings.canUse")}</div>
+        <div className="fgroup">
+          <Row k={t("agentSettings.machine")}>{t("agentSettings.machineValue", { machine: m.machineName })}</Row>
+          <Row k={t("agentSettings.projects")}>{all ? t("agentSettings.allProjects") : mine.length ? mine.map(projectTitle).join(t("agentSettings.separator")) : t("agentSettings.noProjects")}</Row>
+          <button className="frow act" onClick={scope}>{t("agentSettings.changeScope")}<Icon name="chevR" className="sm chev" /></button>
+        </div>
+      </section>
+      {!b.client && a && (
+        <section aria-label={t("category.label")}>
+          <div className="fgroup">
+            <div className="frow">
+              <AgentCategoryControl m={m} agent={b.agent} category={a.category} />
+            </div>
+          </div>
+        </section>
+      )}
+      <Identity b={b} m={m} />
+      <section aria-label={t("bots.manage")}>
+        <div className="bot-sec-h">{t("bots.manage")}</div>
+        <AgentPage m={m} agent={b.agent} bare />
+      </section>
+      {/* Stopping it (until resumed, or until its usage resets). */}
+      {a && <PauseSection a={a} m={m} />}
+    </>
+  );
+}
+
+/**
+ * Its name and face, once (工单 #97: the settings' row and the names-and-faces block were the same thing twice): the
+ * owner's contacts for it (docs/personas.md), the first its name and face in the roster, each with a pencil (工单 #65);
+ * none yet is a short button, no sentence standing in for a name.
+ */
+function Identity({ b, m }: { b: Bot; m: Machine }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  return (
+    <section aria-label={t("agentSettings.rename")}>
+      <div className="bot-sec-h">{t("agentSettings.rename")}</div>
+      <div className="fgroup">
+        {b.personas.map((p) => (
+          <div key={p.personaId} className="frow bot-persona">
+            <PersonaFace b={b} p={p} size={28} />
+            <span className="bot-persona-t">
+              <b>{p.name}</b>
+              <span className="muted">{[p.projectId, p.model, p.effort, p.mode].filter(Boolean).join(" · ")}</span>
+            </span>
+            <button className="tb" title={t("bots.identityEditTip", { name: p.name })} aria-label={t("bots.identityEditTip", { name: p.name })} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...p } } })}>
+              <Icon name="edit" />
+            </button>
+          </div>
+        ))}
+        <button className="frow act" title={t("bots.identityAddTip")} onClick={() => st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...(b.personas.length ? {} : lookFields(botLook(b))), machineId: m.machineId, agent: b.agent, name: b.personas.length ? "" : b.name } } })}>
+          <Icon name="plus" className="sm" />
+          {t(b.personas.length ? "bots.identityAdd" : "bots.identityFirst")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Taking it off Aide's lists (SetAgentHidden); deleting its entry for good goes with this too (工单 #82). */
+function Hide({ b, m }: { b: Bot; m: Machine }) {
+  const st = useStore();
+  const { t } = useTranslation("common");
+  const a = m.status?.agents.find((x) => x.name === b.agent);
+  if (!a || a.hidden) return null;
   const hide = () =>
     st.set({
       sheet: {
@@ -39,46 +180,12 @@ export function AgentSettings({ b, m }: { b: Bot; m: Machine }) {
         run: () => local.setAgentHidden({ machineId: m.machineId, agent: b.agent, hidden: true }),
       },
     });
-  const usage = a && b.agent === "claude" ? usageText(a, tf, now) : "";
   return (
-    <div className="form agent-settings">
-      <div className="dhero">
-        <button className="dhero-av" aria-label={t("agentSettings.rename")} onClick={rename}>
-          <BotFace b={b} size={52} still />
-        </button>
-        <div>
-          <b>{b.name}</b>
-          <span>{t("agentSettings.hero", { app: codingAgentTitle(b.agent), machine: m.machineName })}</span>
-          {usage && <span className="mono agent-usage">{usage}</span>}
-        </div>
-      </div>
-      <div>
-        <div className="fhead">{t("agentSettings.canUse")}</div>
-        <div className="fgroup">
-          <Row k={t("agentSettings.machine")}>{t("agentSettings.machineValue", { machine: m.machineName })}</Row>
-          <Row k={t("agentSettings.projects")}>{all ? t("agentSettings.allProjects") : mine.length ? mine.map(projectTitle).join(t("agentSettings.separator")) : t("agentSettings.noProjects")}</Row>
-        </div>
-      </div>
-      {!b.client && a && (
-        <div className="fgroup">
-          <div className="frow">
-            <AgentCategoryControl m={m} agent={b.agent} category={a.category} />
-          </div>
-        </div>
-      )}
+    <section aria-label={t("agentSettings.hide")}>
       <div className="fgroup">
-        <button className="frow act" onClick={rename}>{t("agentSettings.rename")}<Icon name="chevR" className="sm chev" /></button>
-        <button className="frow act" onClick={scope}>{t("agentSettings.changeScope")}<Icon name="chevR" className="sm chev" /></button>
+        <button className="frow act danger" onClick={hide}>{t("agentSettings.hide")}</button>
       </div>
-      {/* Stopping it (until resumed, or until its usage resets), and taking it off Aide's lists; deleting its entry for
-          good goes with these too (工单 #82). */}
-      {a && <PauseSection a={a} m={m} />}
-      {a && !a.hidden && (
-        <div className="fgroup">
-          <button className="frow act danger" onClick={hide}>{t("agentSettings.hide")}</button>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 

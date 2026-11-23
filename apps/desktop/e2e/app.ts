@@ -24,6 +24,8 @@ export type Fixture = {
   /** Its DSH home. */
   dshHome?: string;
   dshLog?: string;
+  /** The batchj-login spec: the stand-in Claude Code's folder; its sign-in is the file signed-in there. */
+  claudeDir?: string;
 };
 
 /** Loaded first in every launch: the app's windows open without taking focus. */

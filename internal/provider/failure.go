@@ -57,7 +57,7 @@ type kindInfo struct {
 }
 
 var kinds = map[sessionv1.FailureKind]kindInfo{
-	sessionv1.FailureKind_FAILURE_KIND_AUTH:                 {false, "the agent is not logged in on this machine; ask the owner to run the agent's CLI once as the same user and log in"},
+	sessionv1.FailureKind_FAILURE_KIND_AUTH:                 {false, "the agent is not logged in on this machine; ask the owner to sign it in: Claude Code from the Aide app (the machine's Claude Code row: Sign in, which opens the browser there), another agent by running its CLI once as the same user"},
 	sessionv1.FailureKind_FAILURE_KIND_QUOTA:                {false, "the agent's usage limit is reached; retry after it resets, or use another agent or model"},
 	sessionv1.FailureKind_FAILURE_KIND_RATE_LIMIT:           {true, "the provider is rate limiting or over capacity; send the message again later"},
 	sessionv1.FailureKind_FAILURE_KIND_PROVIDER_ERROR:       {true, "the provider returned a server error; send the message again later"},
@@ -70,10 +70,11 @@ var kinds = map[sessionv1.FailureKind]kindInfo{
 	sessionv1.FailureKind_FAILURE_KIND_RESUME_REJECTED:      {false, "the provider session could not be resumed; the next message continues in a fresh context (work in the worktree is kept)"},
 	sessionv1.FailureKind_FAILURE_KIND_AGENT_CRASHED:        {true, "the agent process exited unexpectedly; send the message again to resume the session"},
 	sessionv1.FailureKind_FAILURE_KIND_STALLED:              {true, "the agent made no progress for too long and was stopped; send the message again to resume the session"},
-	sessionv1.FailureKind_FAILURE_KIND_TIMEOUT:              {false, "the turn exceeded the machine's time limit; send the message again to continue"},
+	sessionv1.FailureKind_FAILURE_KIND_TIMEOUT:              {false, "the turn or a request in it took too long and was stopped; send the message again to continue"},
 	sessionv1.FailureKind_FAILURE_KIND_START_FAILED:         {false, "the agent could not be started; run `aided doctor` on the machine"},
 	sessionv1.FailureKind_FAILURE_KIND_INTERRUPTED:          {false, "the turn was stopped on purpose; send a message to go on in this session"},
 	sessionv1.FailureKind_FAILURE_KIND_BASE_REF_UNAVAILABLE: {false, "check the base ref name, and that the branch or tag is on the project's remote (the machine fetches it from there), then send another message in the same session to retry the original task"},
+	sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS:  {false, "no API key is configured for the model provider; set one in the agent's model settings, then send the message again"},
 	sessionv1.FailureKind_FAILURE_KIND_UNKNOWN:              {false, ""},
 }
 
@@ -91,8 +92,40 @@ func (f *Failure) Proto() *sessionv1.Failure {
 	}
 	msg, _ := Truncate(Redact(strings.TrimSpace(f.Message)), 2<<10)
 	return &sessionv1.Failure{Kind: k, Message: msg, Retryable: kinds[k].retryable, Hint: kinds[k].hint,
-		RetryAfterSeconds: uint32(f.RetryAfter / time.Second), HttpStatus: uint32(f.HTTPStatus)}
+		RetryAfterSeconds: uint32(f.RetryAfter / time.Second), HttpStatus: uint32(f.HTTPStatus), Provider: ProviderOf(f.Message)}
 }
+
+// providerWords are model providers by the word a message names them with
+// ("llm-deepseek", "DEEPSEEK_API_KEY"), each with how the apps say it.
+var providerWords = map[string]string{
+	"deepseek": "DeepSeek", "openai": "OpenAI", "anthropic": "Anthropic", "openrouter": "OpenRouter", "gemini": "Gemini",
+	"moonshot": "Moonshot", "kimi": "Kimi", "dashscope": "DashScope", "qwen": "Qwen", "zhipu": "Zhipu", "bigmodel": "Zhipu",
+	"minimax": "MiniMax", "mistral": "Mistral", "groq": "Groq", "xai": "xAI", "siliconflow": "SiliconFlow", "volcengine": "Volcengine",
+}
+
+var providerWord = func() *regexp.Regexp {
+	words := make([]string, 0, len(providerWords))
+	for w := range providerWords {
+		words = append(words, w)
+	}
+	return regexp.MustCompile(`(?i)(?:^|[^a-z])(` + strings.Join(words, "|") + `)(?:[^a-z]|$)`)
+}()
+
+// ProviderOf is the model provider text names first, "" when it names
+// none this build knows (工单 #105: an unknown word is not taken for one).
+func ProviderOf(text string) string {
+	if m := providerWord.FindStringSubmatch(text); m != nil {
+		return providerWords[strings.ToLower(m[1])]
+	}
+	return ""
+}
+
+// noCredentials says no API key or credentials are set up at all, as
+// opposed to ones the provider rejected (auth).
+var noCredentials = regexp.MustCompile(`\b(?:no|missing|without an?)\s+(?:[a-z]+\s+)?(?:api[ _-]?key|credentials?)\b` +
+	`|\bapi[ _-]?key\s+(?:is\s+)?(?:not\s+(?:set|configured|found|provided)|missing|required|empty)\b` +
+	`|_api_key\s+(?:is\s+)?(?:not\s+set|unset|missing|required|empty)\b` +
+	`|\bcredentials?\s+(?:(?:are|is|were|was)\s+)?(?:not\s+(?:found|configured|set)|missing)\b`)
 
 // FromHTTPStatus classifies a provider HTTP status; text refines the
 // ambiguous ones (403 can be a usage limit, 400 a context overflow).
@@ -184,6 +217,8 @@ func Classify(text string) sessionv1.FailureKind {
 		return sessionv1.FailureKind_FAILURE_KIND_RESUME_REJECTED
 	case isContextOverflow(lower):
 		return sessionv1.FailureKind_FAILURE_KIND_CONTEXT_OVERFLOW
+	case noCredentials.MatchString(lower):
+		return sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS
 	case codeAuth.MatchString(lower) || containsAny(lower, "unauthorized", "authentication required", "authentication_error",
 		"login required", "not logged in", "please log in", "please login", "please run /login", "invalid api key", "invalid x-api-key",
 		"invalid_api_key", "api key not valid", "refresh token", "token expired", "access token", "auth_required", "does not have access"):
@@ -208,6 +243,8 @@ func Classify(text string) sessionv1.FailureKind {
 		return sessionv1.FailureKind_FAILURE_KIND_INVALID_REQUEST
 	case containsAny(lower, "executable file not found", "exec format error"):
 		return sessionv1.FailureKind_FAILURE_KIND_START_FAILED
+	case containsAny(lower, "timed out", "timeout", "deadline exceeded"):
+		return sessionv1.FailureKind_FAILURE_KIND_TIMEOUT
 	}
 	return sessionv1.FailureKind_FAILURE_KIND_UNKNOWN
 }

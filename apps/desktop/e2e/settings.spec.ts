@@ -410,7 +410,7 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
     await row(name).getByRole("button").click();
     return app.evaluate(() => (globalThis as unknown as { shown: unknown }).shown);
   };
-  expect(await pick("模型", "gpt-fake-small")).toEqual(["✓ 跟随 Codex（GPT-Fake-Big）", "GPT-Fake-Big", "GPT-Fake-Small"]);
+  expect(await pick("模型", "gpt-fake-small")).toEqual(["✓ 跟随 Codex（GPT-Fake-Big）", "GPT-Fake-Big · gpt-fake-big", "GPT-Fake-Small · gpt-fake-small"]);
   await expect(row("模型")).toHaveText("模型GPT-Fake-Small");
   expect(await pick("推理强度", "low")).toEqual(["✓ 跟随 Codex（高）", "低", "高"]);
   expect(await pick("速度", "2")).toEqual(["✓ 跟随 Codex（标准）", "标准", "快速"]);
@@ -428,7 +428,7 @@ test("settings 机器: Codex's page sets the model, effort and speed its session
 
   // Back to Codex's own, one by one: the list says nothing more.
   await codex.getByRole("button", { name: /^Codex/ }).click();
-  expect(await pick("模型", "")).toContain("✓ GPT-Fake-Small");
+  expect(await pick("模型", "")).toContain("✓ GPT-Fake-Small · gpt-fake-small");
   await pick("推理强度", "");
   await pick("速度", "0");
   await expect(row("模型")).toContainText("跟随 Codex（GPT-Fake-Big）");

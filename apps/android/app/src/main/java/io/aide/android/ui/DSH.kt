@@ -196,7 +196,7 @@ fun DSHSessionPage(model: AppModel, entry: DSHSessionEntry, back: () -> Unit) {
                         }
                     }
                     items(items, key = { it.key }) {
-                        Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, dsh = true) }
+                        Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut))) { ItemView(it, dsh = true, agent = "DSH") }
                     }
                     if (entry.lost) {
                         val name = entry.machineName.ifEmpty { entry.machineId }

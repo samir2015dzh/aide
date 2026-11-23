@@ -12,6 +12,7 @@ import (
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	"github.com/samir2015dzh/aide/internal/boundary"
 	"github.com/samir2015dzh/aide/pkg/identity"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -108,6 +109,64 @@ func TestDirectRoom(t *testing.T) {
 	b.load(n)
 	if st := b.rooms[r.RoomId]; st == nil || len(st.msgs) != 4 || st.keys["k1"] != m1.MessageId {
 		t.Fatalf("not kept: %v", st)
+	}
+}
+
+// TestRoomNamesFollowGrants (工单 #101, after #85): a room made while Muse's
+// connection was named "Muse (127.0.0.1)" keeps that name in its member, its
+// title and what Muse said; once the grant says "Muse" (the relay's migration,
+// or the owner renaming it), the room says "Muse" everywhere, kept on disk too.
+// A coding agent's name, the owner's own, is left alone.
+func TestRoomNamesFollowGrants(t *testing.T) {
+	h := newHarness(t, Limits{})
+	n := h.n
+	n.mu.Lock()
+	n.grants = append(n.grants, &identityv1.Grant{GrantId: "g_muse", ClientId: "c_muse", ClientLabel: "Muse (127.0.0.1)", Version: 1, MachineIds: []string{"*"}})
+	n.mu.Unlock()
+	var sent []*inboxv1.Message
+	n.roomBook().send = func(m *inboxv1.Message) error { sent = append(sent, m); return nil }
+	r, err := n.OpenDirectRoom("c_muse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m1, _ := n.PostRoomMessage(context.Background(), &machinev1.PostRoomMessageRequest{RoomId: r.RoomId, Text: "合了告诉我"})
+	answer := &inboxv1.Message{MessageId: "msg_01answer", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: n.machineID, Session: r.RoomId}, InReplyTo: sent[0].MessageId, Text: "合好了"}
+	if got := n.takeRoomLetter(answer, &identity.ContactInfo{Inbox: "c_muse", Name: "Muse (127.0.0.1)"}); got != "handled" {
+		t.Fatalf("answer: %s", got)
+	}
+	if l := roomMsgs(t, n, r.RoomId); l[1].FromName != "Muse (127.0.0.1)" || m1 == nil {
+		t.Fatalf("before: %v", l)
+	}
+
+	// The relay renames the connection: the grant's next version says "Muse".
+	n.mu.Lock()
+	n.grants = append(n.grants, &identityv1.Grant{GrantId: "g_muse", ClientId: "c_muse", ClientLabel: "Muse", Version: 2, MachineIds: []string{"*"}})
+	n.mu.Unlock()
+	l, err := n.ListRoomMessages(&machinev1.ListRoomMessagesRequest{RoomId: r.RoomId})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Room.Name != "Muse" || l.Room.Members[0].Name != "Muse" || l.Messages[1].FromName != "Muse" || l.Room.LastLine != "Muse：合好了" {
+		t.Fatalf("after the rename: %v %v", l.Room, l.Messages)
+	}
+	for _, x := range n.ListRooms().Rooms {
+		if x.RoomId == r.RoomId && (x.Name != "Muse" || x.LastLine != "Muse：合好了") {
+			t.Fatalf("listed: %v", x)
+		}
+	}
+	b := &roomBook{dir: n.roomBook().dir, rooms: map[string]*roomState{}, links: map[string]*roomLink{}}
+	b.load(n)
+	if st := b.rooms[r.RoomId]; st == nil || st.room.Name != "Muse" || st.room.Members[0].Name != "Muse" || st.msgs[1].FromName != "Muse" {
+		t.Fatalf("not kept: %v", st)
+	}
+
+	// The owner names the direct room: it keeps that name when the agent is renamed again.
+	n.UpdateRoom(&machinev1.UpdateRoomRequest{RoomId: r.RoomId, Name: proto.String("和 Muse 的对话")})
+	n.mu.Lock()
+	n.grants = append(n.grants, &identityv1.Grant{GrantId: "g_muse", ClientId: "c_muse", ClientLabel: "Muse 2", Version: 3, MachineIds: []string{"*"}})
+	n.mu.Unlock()
+	if l, _ := n.ListRoomMessages(&machinev1.ListRoomMessagesRequest{RoomId: r.RoomId}); l.Room.Name != "和 Muse 的对话" || l.Messages[1].FromName != "Muse 2" {
+		t.Fatalf("the owner's room name: %v %v", l.Room, l.Messages)
 	}
 }
 

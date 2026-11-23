@@ -275,14 +275,17 @@ class AppModel(private val context: Context) {
 
     val deviceLabel: String get() = listOf(Build.MANUFACTURER.replaceFirstChar { it.uppercase() }, Build.MODEL).distinct().joinToString(" ")
 
+    /** What this device logs in as, for its face on the owner's devices (工单 #100): a tablet says so. */
+    val devicePlatform: String get() = devicePlatform(context.resources.configuration.smallestScreenWidthDp)
+
     /** Logs in to the owner's server with the account and password. Returns what went wrong, or null. */
     suspend fun logIn(server: String, account: String, password: String): String? = onboard {
-        it.logIn(server, account.trim(), password, deviceLabel)
+        it.logIn(server, account.trim(), password, deviceLabel, devicePlatform)
     }
 
     /** Sets a new server up with the setup code it printed, keeping this account and password, and logs in to it. */
     suspend fun setUp(server: String, setupCode: String, account: String, password: String): String? = onboard {
-        it.setup(server, setupCode.trim(), account.trim(), password, deviceLabel)
+        it.setup(server, setupCode.trim(), account.trim(), password, deviceLabel, devicePlatform)
     }
 
     private suspend fun onboard(call: suspend (LocalApi) -> Unit): String? {

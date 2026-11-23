@@ -1,6 +1,7 @@
 import { FailureKind, SessionStatus, type Failure, type Session } from "@aide/proto/session";
 import { hourMinute, isYesterday, monthDay, pad2, sameDay, weekday, withinWeek } from "./calendar";
 import { t } from "./i18n";
+import { codingAgentTitle } from "./agents";
 
 /** s without the spaces and tabs at its ends (line breaks stay). */
 export function trimWhitespace(s: string): string {
@@ -119,13 +120,15 @@ export function failureTitle(k: FailureKind): string {
       return t("failure.startFailed");
     case FailureKind.BASE_REF_UNAVAILABLE:
       return t("failure.baseRefUnavailable");
+    case FailureKind.MISSING_CREDENTIALS:
+      return t("failure.missingCredentials");
     default:
       return t("failure.other");
   }
 }
 
 type Headline = "auth" | "quota" | "rateLimit" | "providerError" | "network" | "contextOverflow" | "modelUnavailable" | "invalidRequest" | "refused" |
-  "limitReached" | "resumeRejected" | "agentCrashed" | "stalled" | "timeout" | "startFailed" | "baseRefUnavailable" | "other";
+  "limitReached" | "resumeRejected" | "agentCrashed" | "stalled" | "timeout" | "startFailed" | "baseRefUnavailable" | "missingCredentials" | "other";
 
 const headlines: Partial<Record<FailureKind, Headline>> = {
   [FailureKind.AUTH]: "auth",
@@ -144,18 +147,36 @@ const headlines: Partial<Record<FailureKind, Headline>> = {
   [FailureKind.TIMEOUT]: "timeout",
   [FailureKind.START_FAILED]: "startFailed",
   [FailureKind.BASE_REF_UNAVAILABLE]: "baseRefUnavailable",
+  [FailureKind.MISSING_CREDENTIALS]: "missingCredentials",
 };
 
-/** A failure told of the coding agent, in a sentence ("Codex couldn’t start"): the title of the card a failed session ends with. */
-export function failureHeadline(k: FailureKind, agent: string): string {
-  return t(`headline.${headlines[k] ?? "other"}`, { agent });
+/**
+ * A failure told of the coding agent, in a sentence ("Codex couldn’t start"): the title of the card a failed session ends with.
+ * The model provider the machine found in its message, when it found one, is named (工单 #105: "DSH has no DeepSeek API key").
+ */
+export function failureHeadline(k: FailureKind, agent: string, provider = ""): string {
+  return t(`headline.${headlines[k] ?? "other"}`, { agent, provider, context: provider ? "provider" : undefined });
 }
 
-/** What to do about a failure; the daemon's hint when there is no advice of our own. */
-export function failureAdvice(f: Failure): string {
+/** A session's last failure in one line for a list (工单 #105: what happened, never its raw message); "" with none. */
+export function failureLine(s: Session): string {
+  const f = s.progress?.lastFailure;
+  return f ? failureHeadline(f.kind, codingAgentTitle(s.agent), f.provider) : "";
+}
+
+/**
+ * What to do about a failure (`agent`: who it happened to, by its title; `id`: the coding agent, e.g. "claude"); the
+ * daemon's hint when there is no advice of our own.
+ */
+export function failureAdvice(f: Failure, agent = "", id = ""): string {
   switch (f.kind) {
+    case FailureKind.MISSING_CREDENTIALS:
+      return t("advice.missingCredentials", { agent, provider: f.provider, context: f.provider ? "provider" : undefined });
+    case FailureKind.TIMEOUT:
+      return t("advice.resume");
     case FailureKind.AUTH:
-      return t("advice.auth");
+      // Claude Code is signed in from Aide (工单 #51, #108): the card points there, not to a terminal.
+      return id === "claude" ? t("advice.authClaude") : t("advice.auth");
     case FailureKind.QUOTA:
       return t("advice.quota");
     case FailureKind.RATE_LIMIT:

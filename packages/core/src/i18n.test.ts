@@ -19,7 +19,10 @@ describe("English", () => {
     expect(failureTitle(FailureKind.CONTEXT_OVERFLOW)).toBe("Context full");
     expect(failureTitle(FailureKind.UNSPECIFIED)).toBe("Failed");
     expect(failureHeadline(FailureKind.START_FAILED, "Codex")).toBe("Codex couldn’t start");
-    expect(failureHeadline(FailureKind.UNSPECIFIED, "Codex")).toBe("Codex ran into an error");
+    expect(failureHeadline(FailureKind.UNSPECIFIED, "Codex")).toBe("Codex ran into an internal error");
+    const noKey = create(FailureSchema, { kind: FailureKind.MISSING_CREDENTIALS, provider: "DeepSeek" });
+    expect(failureHeadline(noKey.kind, "DSH", noKey.provider)).toBe("DSH has no DeepSeek API key yet");
+    expect(failureAdvice(noKey, "DSH")).toBe("Add the DeepSeek API key in DSH’s model settings.");
     const failure = create(FailureSchema, { kind: FailureKind.BASE_REF_UNAVAILABLE, message: 'Project "movieclaw": base ref "ios-v0.12.2" unavailable.' });
     expect(failureHeadline(failure.kind, "Codex")).toBe("The worktree’s base ref was not found");
     expect(failureAdvice(failure)).toBe(`${failure.message} Check the base ref name, and that the branch or tag is on the project’s remote (the machine fetches it from there). Then send another message in this task to retry the original request.`);

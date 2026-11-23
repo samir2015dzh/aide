@@ -65,6 +65,19 @@
     "menuBar_win": "通知区域",
     "menuBadge": "有事需要处理时，图标上显示圆点"
   },
+  "about": {
+    "title": "关于 Aide",
+    "version": "版本 {{version}}",
+    "check": "检查更新",
+    "status": "检查更新的结果",
+    "checking": "正在检查更新…",
+    "current": "已是最新版本 {{version}}",
+    "available": "有新版本 {{version}}",
+    "downloading": "正在下载新版本 {{version}}…",
+    "ready": "新版本 {{version}} 已下载，重新启动即可更新",
+    "details": "查看并更新…",
+    "errorDetails": "查看详情…"
+  },
   "update": {
     "title": "更新",
     "autoDownload": "自动下载更新",
@@ -186,7 +199,8 @@
     "agentName": "名字",
     "renameButton": "存储",
     "icon": "头像",
-    "iconAuto": "恢复默认头像"
+    "iconAuto": "恢复默认头像",
+    "validity": "有效期"
   },
   "ops": {
     "none": "还没有 agent 执行过命令。",

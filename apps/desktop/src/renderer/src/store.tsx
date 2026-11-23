@@ -38,8 +38,11 @@ export type Selection =
   | { kind: "tasks" }
   /** Every session, as the sidebar listed them before 工单 #63: a page of its own, its list beside the one open. */
   | { kind: "sessions" }
-  /** A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>"). */
-  | { kind: "bot"; key: string; native?: string }
+  /**
+   * A bot's own page (工单 #57): a coding agent on a machine ("m:<machine>/<agent>") or a personal agent ("c:<client>");
+   * pane "settings": its settings, a page of their own (工单 #97).
+   */
+  | { kind: "bot"; key: string; native?: string; pane?: "settings" }
   /** A room (ROOMS-DESIGN, G2-b): its host and id. */
   | { kind: "room"; machineId: string; roomId: string };
 

@@ -40,16 +40,53 @@ func TestClassify(t *testing.T) {
 		{"Request timed out.", sessionv1.FailureKind_FAILURE_KIND_NETWORK},
 		{"API Error: 400 invalid_request_error: messages.3: empty content", sessionv1.FailureKind_FAILURE_KIND_INVALID_REQUEST},
 		{`exec: "claude": executable file not found in $PATH`, sessionv1.FailureKind_FAILURE_KIND_START_FAILED},
+		// 工单 #105: no key set up at all is not a rejected one (auth).
+		{dshNoKey, sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS},
+		{"OPENAI_API_KEY is not set", sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS},
+		{"Missing API key: set ANTHROPIC_API_KEY", sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS},
+		{"api key is required for this provider", sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS},
+		{"Could not load credentials: credentials not found", sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS},
+		{"API Error: 429 Too Many Requests", sessionv1.FailureKind_FAILURE_KIND_RATE_LIMIT},
+		{"connect ECONNREFUSED 127.0.0.1:443", sessionv1.FailureKind_FAILURE_KIND_NETWORK},
+		{"the model call timed out after 120s", sessionv1.FailureKind_FAILURE_KIND_TIMEOUT},
+		{"context deadline exceeded", sessionv1.FailureKind_FAILURE_KIND_TIMEOUT},
 		// Numbers that merely contain a status code must not match.
 		{"processed 402913 tokens in 15290ms", sessionv1.FailureKind_FAILURE_KIND_UNKNOWN},
 		{"exit status 4030", sessionv1.FailureKind_FAILURE_KIND_UNKNOWN},
 		{"rate of 4291 lines", sessionv1.FailureKind_FAILURE_KIND_UNKNOWN},
 		{"", sessionv1.FailureKind_FAILURE_KIND_UNKNOWN},
 		{"something odd happened", sessionv1.FailureKind_FAILURE_KIND_UNKNOWN},
+		{"Internal error: turn failed: tool registry corrupted (code -32603)", sessionv1.FailureKind_FAILURE_KIND_UNKNOWN},
 	} {
 		if got := Classify(c.text); got != c.want {
 			t.Errorf("Classify(%q) = %v, want %v", c.text, got, c.want)
 		}
+	}
+}
+
+// dshNoKey is what DSH said, through ACP, of a model with no key (工单 #105).
+const dshNoKey = `Internal error: turn failed: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY ` +
+	`through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment (code -32603)`
+
+// TestFailureProvider: the provider a failure names goes with it, only a
+// known one, never guessed (工单 #105).
+func TestFailureProvider(t *testing.T) {
+	for text, want := range map[string]string{
+		dshNoKey:                    "DeepSeek",
+		"OPENAI_API_KEY is not set": "OpenAI",
+		"dial tcp: lookup api.anthropic.com: no such host": "Anthropic",
+		"429 from openrouter":                              "OpenRouter",
+		"no API key for provider route \"acme-llm\"":       "",
+		"something odd happened":                           "",
+		"deepseeker went away":                             "",
+	} {
+		if got := ProviderOf(text); got != want {
+			t.Errorf("ProviderOf(%q) = %q, want %q", text, got, want)
+		}
+	}
+	f := (&Failure{Kind: Classify(dshNoKey), Message: dshNoKey}).Proto()
+	if f.Kind != sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS || f.Provider != "DeepSeek" || f.Hint == "" || f.Message != dshNoKey {
+		t.Fatalf("proto: %+v", f)
 	}
 }
 

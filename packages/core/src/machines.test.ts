@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { AgentStatusSchema } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
-import { agentTiles, folderName, isAbsolutePath, modelTitle, platformTitle } from "./machines";
+import { agentTiles, defaultModelChoice, folderName, isAbsolutePath, listedModel, modelChoices, modelTitle, platformTitle } from "./machines";
 
 describe("machines", () => {
   test("models read as their agent names them, Claude's IDs as people call them", () => {
@@ -14,6 +14,48 @@ describe("machines", () => {
     expect(modelTitle("claude-sonnet-4-20250514")).toBe("Sonnet 4");
     expect(modelTitle("claude-3-5-sonnet-20241022")).toBe("claude-3-5-sonnet-20241022");
     expect(modelTitle("gemini-3-pro")).toBe("gemini-3-pro");
+  });
+
+  // 工单 #99: every model in a list is its specific model, as the machine found it; a family name alone never is one.
+  test("model lists name each one's specific model", () => {
+    const claude = create(AgentStatusSchema, {
+      name: "claude",
+      models: [
+        { id: "opus", name: "Opus", resolved: "claude-opus-5-5" },
+        { id: "fable", name: "Fable", resolved: "claude-fable-5-2" },
+        { id: "sonnet[1m]", name: "Sonnet (1M context)", resolved: "claude-sonnet-5-5[1m]" },
+        { id: "haiku", name: "Haiku" },
+      ],
+      own: { model: "claude-sonnet-5-5" },
+    });
+    expect(modelChoices("claude", claude.models)).toEqual([
+      { value: "opus", title: "Opus 5.5", detail: "claude-opus-5-5", unknown: false },
+      { value: "fable", title: "Fable 5.2", detail: "claude-fable-5-2", unknown: false },
+      { value: "sonnet[1m]", title: "Sonnet 5.5 (1M)", detail: "claude-sonnet-5-5[1m]", unknown: false },
+      { value: "haiku", title: "Haiku", detail: "", unknown: true }, // a Claude Code too old to say
+    ]);
+    expect(modelTitle("opus", claude.models)).toBe("Opus 5.5");
+    // The default: the agent's own, named; the machine's default for it first.
+    expect(defaultModelChoice(claude)).toEqual({ value: "claude-sonnet-5-5", title: "Sonnet 5.5", detail: "claude-sonnet-5-5", unknown: false });
+    expect(defaultModelChoice({ ...claude, defaults: { $typeName: "aide.identity.v1.AgentDefaults", agent: "claude", model: "opus", effort: "", speed: 0, mode: "" } })?.title).toBe("Opus 5.5");
+    expect(defaultModelChoice(create(AgentStatusSchema, { name: "claude" }))).toBeUndefined();
+    // What a conversation runs, as the list has it; one not there is shown too, first.
+    expect(listedModel("claude-opus-5-5", claude.models)).toBe("opus");
+    expect(listedModel("claude-opus-4-1", claude.models)).toBe("claude-opus-4-1");
+    expect(modelChoices("claude", claude.models, "claude-opus-4-1")[0]).toEqual({ value: "claude-opus-4-1", title: "Opus 4.1", detail: "claude-opus-4-1", unknown: false });
+    // DSH's (an ACP agent's): its own names, its IDs read out.
+    const dsh = [{ id: '["deepseek","deepseek-v4-pro"]', name: "DeepSeek V4 Pro (DeepSeek)" }, { id: "magpie/v4-flash", name: "" }].map((m) => create(AgentStatusSchema, { models: [m] }).models[0]);
+    expect(modelChoices("deepseek", dsh)).toEqual([
+      { value: '["deepseek","deepseek-v4-pro"]', title: "DeepSeek V4 Pro (DeepSeek)", detail: "deepseek/deepseek-v4-pro", unknown: false },
+      { value: "magpie/v4-flash", title: "magpie/v4-flash", detail: "", unknown: false },
+    ]);
+    // One model by two lines of its provider is one entry, its lines said; a custom provider's in its own.
+    const lines = [{ id: '["deepseek","deepseek-v4-flash"]', name: "DeepSeek-V4.1-Flash", source: "DeepSeek · DeepSeek Account" }, { id: '["magpie","group/deepseek-v4.1"]', name: "group/deepseek-v4.1", source: "magpie" }].map((m) => create(AgentStatusSchema, { models: [m] }).models[0]);
+    expect(modelChoices("deepseek", lines).map((c) => [c.title, c.detail])).toEqual([
+      ["DeepSeek-V4.1-Flash", "deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account"],
+      ["group/deepseek-v4.1", "magpie/group/deepseek-v4.1 · magpie"],
+    ]);
+    expect(defaultModelChoice({ name: "deepseek", models: dsh, own: { $typeName: "aide.identity.v1.AgentDefaults", agent: "", model: '["deepseek","deepseek-v4-pro"]', effort: "", speed: 0, mode: "" } })?.title).toBe("DeepSeek V4 Pro (DeepSeek)");
   });
 
   test("platforms read as OS and architecture", () => {

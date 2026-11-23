@@ -2,6 +2,7 @@ export * from "./agents";
 export { monthDay, sameDay } from "./calendar";
 export * from "./diff";
 export * from "./machines";
+export * from "./devices";
 export * from "./notices";
 export * from "./ops";
 export * from "./scope";
