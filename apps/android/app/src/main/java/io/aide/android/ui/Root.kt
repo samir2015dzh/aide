@@ -31,6 +31,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,7 +78,9 @@ fun Root(model: AppModel) {
             AppModel.Phase.Failed -> Centered { Text(t("Aide could not start: ", "Aide 无法启动：") + model.startError) }
             AppModel.Phase.Onboarding -> Onboarding(model, snackbar)
             AppModel.Phase.Ready -> {
-                Home(model, snackbar)
+                // The bots' faces read their states from the sessions (工单 #83).
+                val world by model.world.collectAsState()
+                CompositionLocalProvider(LocalSessions provides world.sessions.values) { Home(model, snackbar) }
                 BackgroundGuide(model)
             }
         }

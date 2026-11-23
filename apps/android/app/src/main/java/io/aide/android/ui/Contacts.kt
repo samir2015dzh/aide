@@ -1,6 +1,8 @@
 package io.aide.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,35 +34,93 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.Persona
 import io.aide.android.model.AppModel
+import io.aide.android.model.Bot
+import io.aide.android.model.BotLook
+import io.aide.android.model.BotMood
 import io.aide.android.model.agentTitle
+import io.aide.android.model.botColors
+import io.aide.android.model.botMood
+import io.aide.android.model.botSeed
+import io.aide.android.model.botShapes
+import io.aide.android.model.colorName
 import io.aide.android.model.personaChoices
-import io.aide.android.model.personaColor
-import io.aide.android.model.personaColors
-import io.aide.android.model.personaGlyph
-import io.aide.android.model.personaIcons
+import io.aide.android.model.personaLook
+import io.aide.android.model.personaReady
+import io.aide.android.model.shapeName
+import io.aide.android.model.withLook
 import io.aide.android.model.modeLabel
 import io.aide.android.model.personaSavable
 import io.aide.android.api.title
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 // Contacts (docs/personas.md): a name, an avatar and presets for one coding agent on one machine, and the session they
 // talk in. Made and changed from the bot's page (工单 #57): there is no Hand Work To page beside the roster.
 
+/** A contact's face on its bot's page: its own look, its bot's state (工单 #83). */
 @Composable
-fun PersonaAvatar(p: Persona, size: Int = 40) {
-    Box(Modifier.size(size.dp).background(Color(personaColor(p)), CircleShape), contentAlignment = Alignment.Center) {
-        Text(personaGlyph(p), color = Color.White, fontWeight = FontWeight.SemiBold)
+fun PersonaAvatar(b: Bot, p: Persona, size: Int = 40) {
+    GrokMark(botSeed(b), personaLook(p, botSeed(b)), botMood(b, LocalSessions.current, Instant.now()), size)
+}
+
+/**
+ * The one avatar editor (工单 #83), as the desktop's (BotArk's BotAvatarEditorDialog, its Bot tab): the character
+ * large and live on its stage (it looks where a finger goes, a tap or a pick pokes it), the 26 shapes five a row,
+ * resting, and the 11 colours.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun AvatarEditor(seed: String, look: BotLook, onChange: (BotLook) -> Unit) {
+    var poke by remember { mutableIntStateOf(0) }
+    val dark = isSystemInDarkTheme()
+    val line = MaterialTheme.colorScheme.onSurface
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(
+            Modifier.size(96.dp).clip(RoundedCornerShape(16.dp)).background(aide.fill2).semantics { contentDescription = t("Poke it", "戳它一下") }.pressable { poke++ },
+            contentAlignment = Alignment.Center,
+        ) { GrokMark(seed, look, BotMood("idle"), 72, follow = true, poke = poke) }
+        Column(Modifier.clip(RoundedCornerShape(12.dp)).background(aide.fill2).padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            botShapes.chunked(5).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { s ->
+                        val on = s == look.shape
+                        Box(
+                            Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(if (on) aide.card else Color.Transparent)
+                                .then(if (on) Modifier.border(2.dp, line, RoundedCornerShape(12.dp)) else Modifier)
+                                .semantics { contentDescription = shapeName(s); selected = on }
+                                .pressable { onChange(look.copy(shape = s)); poke++ },
+                            contentAlignment = Alignment.Center,
+                        ) { GrokMark(seed, look.copy(shape = s), BotMood("idle"), 36, still = true) }
+                    }
+                }
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+            botColors.forEach { c ->
+                val on = c.id == look.color
+                Box(
+                    Modifier.size(26.dp).then(if (on) Modifier.border(2.dp, line, CircleShape) else Modifier).padding(4.dp)
+                        .background(Color(if (dark) c.dark else c.light), CircleShape)
+                        .semantics { contentDescription = colorName(c.id); selected = on }
+                        .pressable { onChange(look.copy(color = c.id)); poke++ },
+                )
+            }
+        }
     }
 }
 
@@ -70,6 +131,9 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
     val world by model.world.collectAsState()
     var p by remember { mutableStateOf(start.copy(machineId = start.machineId.ifEmpty { world.machines.firstOrNull { it.local }?.machineId ?: world.machines.firstOrNull()?.machineId.orEmpty() })) }
     val c = personaChoices(world, p)
+    // Its look (工单 #83): the seed is its bot's; the look kept is the one shown (the seed's until another is picked).
+    val seed = "m:${p.machineId}/${p.agent}"
+    val look = personaLook(p, seed)
     // What can't be picked any more falls back to the first that can.
     if (c.agent == null && c.agents.isNotEmpty()) p = p.copy(agent = c.agents.first().name, model = "", effort = "", mode = "")
     if (c.projects.none { it.projectId == p.projectId } && c.projects.isNotEmpty()) p = p.copy(projectId = c.projects.first().projectId)
@@ -94,14 +158,7 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
             }
             OutlinedTextField(p.name, { p = p.copy(name = it.take(64)) }, Modifier.fillMaxWidth(), label = { Text(t("Name", "名字")) }, singleLine = true)
             SectionHeader(t("Avatar", "头像"))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                personaIcons.forEach { (id, glyph) -> FilterChip(p.icon == id, { p = p.copy(icon = id) }, label = { Text(glyph) }) }
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                personaColors.forEach { col ->
-                    FilterChip(p.color == col, { p = p.copy(color = col) }, label = { PersonaAvatar(Persona(name = " ", color = col), 16) })
-                }
-            }
+            AvatarEditor(seed, look) { p = p.withLook(it) }
             SectionHeader(t("Machine", "机器"))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 world.machines.forEach { m ->
@@ -150,7 +207,7 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
                 Button(enabled = personaSavable(start, p) && !busy, onClick = {
                     busy = true
                     error = null
-                    scope.launch { model.savePersonaOr(p) { error = it }.also { busy = false }?.let { done(it) } }
+                    scope.launch { model.savePersonaOr(p.withLook(look)) { error = it }.also { busy = false }?.let { done(it) } }
                 }) { Text(if (busy) t("Saving…", "正在保存…") else t("Save", "保存")) }
                 if (start.personaId.isNotEmpty()) {
                     OutlinedButton(enabled = !busy, onClick = { scope.launch { if (model.deletePersona(p)) done(null) } }) { Text(t("Delete Contact", "删除联系人")) }

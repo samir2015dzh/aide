@@ -43,6 +43,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,7 +70,8 @@ import io.aide.android.model.instantOrNull
 import io.aide.android.model.modeChoice
 import io.aide.android.model.modeLabel
 import io.aide.android.model.paramsOf
-import io.aide.android.model.personaColors
+import io.aide.android.model.botLook
+import io.aide.android.model.withLook
 import io.aide.android.model.roster
 import io.aide.android.model.stuckWhy
 import io.aide.android.model.withContext
@@ -253,7 +256,9 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
                 item(key = "head") {
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        BotAvatar(b, 56, toneColor(botTone(b)))
+                        // A tap on its face changes its look (工单 #83): its contact, or a new one with its name and face.
+                        val face = if (b.coding && m != null) Modifier.semantics { contentDescription = t("Change its avatar", "换头像") }.pressable { edit(b.personas.firstOrNull() ?: newPersona(b, m)) } else Modifier
+                        Box(face) { BotAvatar(b, 56, toneColor(botTone(b))) }
                         HSpace(14)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -468,6 +473,12 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
     )
 }
 
+/** A new contact for a coding agent: its first takes the bot's name and its face as it is now (工单 #83). */
+internal fun newPersona(b: Bot, m: Machine): Persona {
+    val p = Persona(machineId = m.machineId, agent = b.agent, name = if (b.personas.isEmpty()) b.name else "")
+    return if (b.personas.isEmpty()) p.withLook(botLook(b)) else p
+}
+
 /**
  * Its names and faces (docs/personas.md): each is its name with a pencil to change it (工单 #65); none yet is one
  * short button, never a sentence standing in for a name.
@@ -479,7 +490,7 @@ private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
         Column(Modifier.fillMaxWidth().aideCard()) {
             b.personas.forEach { p ->
                 Row(Modifier.fillMaxWidth().pressable { edit(p) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    PersonaAvatar(p, 32)
+                    PersonaAvatar(b, p, 32)
                     HSpace(10)
                     Column(Modifier.weight(1f)) {
                         Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -489,7 +500,7 @@ private fun Identity(b: Bot, m: Machine, edit: (Persona) -> Unit) {
                 }
             }
             Row(
-                Modifier.fillMaxWidth().pressable { edit(Persona(icon = "robot", color = personaColors.first(), machineId = m.machineId, agent = b.agent, name = if (b.personas.isEmpty()) b.name else "")) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.fillMaxWidth().pressable { edit(newPersona(b, m)) }.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))

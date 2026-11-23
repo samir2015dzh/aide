@@ -777,9 +777,10 @@ type Grant struct {
 	// The server that holds the client key (an MCP connection), "" for a
 	// client that holds its own key.
 	Custodian string `protobuf:"bytes,15,opt,name=custodian,proto3" json:"custodian,omitempty"`
-	// The icon the owner picked for it: "" draws its app's when its name or
-	// where it signs in says which (the default), "letter" its initial,
-	// "app:<id>" an app's logo, "image" client_image.
+	// The icon the owner picked for it: "" its seed's character (the
+	// default), "bot:<shape>:<colour>" its character in that look (工单 #83);
+	// from before, "letter" its initial, "app:<id>" an app's logo, "image"
+	// client_image (drawn as its seed's character now).
 	ClientIcon string `protobuf:"bytes,16,opt,name=client_icon,json=clientIcon,proto3" json:"client_icon,omitempty"`
 	// A square PNG or JPEG of at most 256 px, re-encoded by the owner's
 	// device, when client_icon is "image".

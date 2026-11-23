@@ -244,10 +244,11 @@ test("a hosted agent shows its app's icon only when it logs in from the app's ow
   const [settings] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("grants"))]);
   await settings.waitForLoadState();
   const grants = settings.getByRole("list", { name: "授权" }).getByRole("button");
-  // The app by its own name, with its icon; the impostor keeps where it logged in, and no app's icon: a robot (工单 #62).
-  await expect(grants.filter({ has: settings.locator(".fn", { hasText: /^Muse$/ }) }).first().locator("img")).toBeVisible();
-  await expect(grants.filter({ hasText: impostor }).locator(".av svg")).toBeVisible();
-  await expect(grants.filter({ hasText: impostor }).locator(".av img")).toHaveCount(0);
+  // The app by its own name, with its logo on its face; the impostor keeps where it logged in, and no app's logo: its
+  // character alone (工单 #83).
+  await expect(grants.filter({ has: settings.locator(".fn", { hasText: /^Muse$/ }) }).first().locator(".bav-app img")).toBeVisible();
+  await expect(grants.filter({ hasText: impostor }).locator(".sand-grok-bot-mark svg")).toBeVisible();
+  await expect(grants.filter({ hasText: impostor }).locator(".bav-app")).toHaveCount(0);
   await app.close();
 });
 
@@ -262,20 +263,20 @@ test("renaming an agent from settings keeps what it may use and until when; a kn
   await settings.waitForLoadState();
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: new RegExp(name) }).click();
   const panel = settings.getByRole("main", { name: "授权" });
-  const sheet = settings.getByRole("dialog", { name: "名字和图标" });
+  const sheet = settings.getByRole("dialog", { name: "名字和头像" });
   // Kept as it is: nothing to sign.
-  await panel.getByRole("button", { name: "名字和图标…" }).click();
+  await panel.getByRole("button", { name: "名字和头像…" }).click();
   await sheet.getByRole("button", { name: "存储" }).click();
   await expect(sheet).toBeHidden();
   expect((await clients()).find((c) => c.grantId === before.grantId)!.grantVersion).toBe(before.grantVersion);
 
-  await panel.getByRole("button", { name: "名字和图标…" }).click();
+  await panel.getByRole("button", { name: "名字和头像…" }).click();
   await expect(sheet.getByRole("textbox", { name: "名字" })).toHaveValue(name);
   await sheet.getByRole("textbox", { name: "名字" }).fill("Grok Bot");
   await sheet.getByRole("button", { name: "存储" }).click(); // the server signs it for this device
   await expect(sheet).toBeHidden();
   await expect(panel.locator(".dhero b")).toHaveText("Grok Bot");
-  await expect(panel.locator(".dhero img")).toBeVisible(); // Grok Bot's icon
+  await expect(panel.locator(".dhero .bav-app img")).toBeVisible(); // Grok Bot's logo on its face
   const after = (await clients()).find((c) => c.grantId === before.grantId)!;
   expect(after.label).toBe("Grok Bot");
   expect(after.expiresAt).toEqual(before.expiresAt);

@@ -36,7 +36,7 @@ test("Claude Code's settings: what it can use, its kind changed and back, rename
   await expect(bot.locator(".bot-pill")).not.toHaveText("已暂停", { timeout: 30_000 });
 
   // Renamed from its settings: called by the name in the roster and on its page.
-  await settings.getByRole("button", { name: "名字和图标" }).first().click();
+  await settings.getByRole("button", { name: "名字和头像" }).first().click();
   const form = page.getByRole("dialog", { name: "添加联系人" });
   await form.getByLabel("名字", { exact: true }).fill("写代码的");
   await form.getByRole("button", { name: "保存" }).click();

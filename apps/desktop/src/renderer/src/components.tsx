@@ -1,7 +1,9 @@
 import { SessionLink, SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentShort, codingAgentTitle, isActive, isFailed, livenessOf, sessionStateOf, stateLine, statusTitle, type StateView } from "@aide/core";
 import { useNow, useStore } from "./store";
-import { AgentLogo, AgentTile, BotGlyph, grantColor, grantLogo, grantPicture, type GrantLook, type PersonalAgentKind } from "@aide/ui";
+import { AgentLogo, AgentTile, kindNamed, type GrantLook, type PersonalAgentKind } from "@aide/ui";
+import { botLook, grantLook, type BotLook, type BotMood } from "@aide/core/avatar";
+import { BotAvatarEditor, GrokBotMark } from "@aide/ui/grok";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -60,36 +62,98 @@ export function StatusDot({ s }: { s: Session }) {
   return <span className={`sdot ${c}`} role="img" aria-label={isFailed(s) && s.status !== SessionStatus.CRASHED ? t("status.failed") : statusTitle(s.status)} />;
 }
 
-/** A grant's picture or app logo, when it has one (null: draw its initial). */
-export function grantFace(c: GrantLook, size: number): ReactNode {
-  const pic = grantPicture(c);
-  if (pic) return <img className="gpic" src={pic} alt="" style={{ width: size, height: size, borderRadius: size * 0.28 }} />;
-  const logo = grantLogo(c);
-  return logo ? <AgentTile agent={logo} size={size} /> : null;
-}
-
-export function GrantAvatar({ c, size = "" }: { c: GrantLook; size?: "" | "md" | "lg" | "xl" | "sm" }) {
-  const style = size === "sm" ? { width: 16, height: 16, fontSize: 9 } : undefined;
-  const face = grantFace(c, { sm: 16, md: 28, lg: 40, xl: 52, "": 22 }[size]);
-  if (face) return face;
-  // No picture and no app (工单 #62): a robot on its colour, never its initial.
-  const px = { sm: 16, md: 28, lg: 40, xl: 52, "": 22 }[size];
+/**
+ * A face (工单 #83): the Grok Bot character ported from BotArk (@aide/ui/grok) in its look, in the state given, and its
+ * app's logo on its corner when given (the character is the face; the logo says which app it is).
+ * It looks where the pointer goes over the row it is in, and a click there pokes it; follow: it follows the pointer
+ * anywhere (a bot's own page). Small ones (a list's) draw fewer frames, fewer still while the page scrolls; still
+ * rests it (where many show and nothing works for them).
+ */
+export function Face({ seed, look, mood, size, app, still = false, follow = false }: { seed: string; look: BotLook; mood?: BotMood; size: number; app?: string; still?: boolean; follow?: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [gaze, setGaze] = useState<[number, number] | null>(null);
+  const [poke, setPoke] = useState(0);
+  useEffect(() => {
+    const mark = ref.current;
+    const row = mark?.closest<HTMLElement>("button, a, [role=listitem]");
+    if (!mark || !row) return;
+    // Grok Bot's attachMarkHoverGaze, as BotArk's BotListItem: the pointer's way from the mark, up positive.
+    const move = (e: PointerEvent) => {
+      const r = mark.getBoundingClientRect();
+      const span = Math.max(r.width, 1) * 0.5;
+      const k = (v: number) => Math.max(-1, Math.min(1, v / span));
+      setGaze([k(e.clientX - (r.left + r.width / 2)), k(-(e.clientY - (r.top + r.height / 2)))]);
+    };
+    const leave = () => setGaze(null);
+    const click = () => setPoke((n) => n + 1);
+    if (!follow) row.addEventListener("pointermove", move);
+    if (!follow) row.addEventListener("pointerleave", leave);
+    row.addEventListener("click", click);
+    return () => (row.removeEventListener("pointermove", move), row.removeEventListener("pointerleave", leave), row.removeEventListener("click", click));
+  }, [follow]);
   return (
-    <span className={`av ${size === "sm" ? "" : size}`} style={{ background: grantColor(c.label), ...style }} aria-hidden="true">
-      <BotGlyph size={Math.round(px * 0.7)} />
+    <span ref={ref} className="bav-mark" style={{ width: size, height: size }}>
+      <GrokBotMark
+        seed={seed}
+        shape={look.shape}
+        color={look.color}
+        grokState={mood?.state}
+        status={mood?.status}
+        isPaused={still}
+        gaze={gaze}
+        followPointer={follow}
+        pokeSignal={poke}
+        sizePx={size}
+        maxFrameRate={size < 40 ? 30 : 60}
+      />
+      {app && (
+        <span className="bav-app" aria-hidden="true">
+          <AgentLogo agent={app} size={Math.max(8, Math.round(size * 0.26))} />
+        </span>
+      )}
     </span>
   );
 }
 
-/** A grant's face at any size (工单 #62): its picture or app logo, else a robot on its colour — never its initial. */
-export function GrantFaceAt({ c, size, square = false }: { c: GrantLook; size: number; square?: boolean }) {
+/** A grant's app, for the logo on its face: the one its owner picked before (an "app:" icon), else its name's. */
+export function grantApp(c: GrantLook): string | undefined {
+  return c.icon?.startsWith("app:") ? c.icon.slice(4) : kindNamed(c.label)?.logo;
+}
+
+/** A grant's seed and look: its icon's, else its seed's (its client id; a grant known only by name, its name). */
+export function grantFace(c: GrantLook): { seed: string; look: BotLook } {
+  const seed = c.clientId ? `c:${c.clientId}` : c.label;
+  return { seed, look: grantLook(c.icon, seed) ?? botLook({ key: seed, personas: [] }) };
+}
+
+/**
+ * The one avatar editor (工单 #83: making a contact, changing a bot's look, adding a contact): BotArk's, ported — the
+ * character live and large (it follows the pointer, a pick pokes it), the 26 shapes resting, the 11 colours.
+ */
+export function LookEditor({ seed, look, onChange }: { seed: string; look: BotLook; onChange: (l: BotLook) => void }) {
+  const { t } = useTranslation("common");
   return (
-    grantFace(c, size) ?? (
-      <span className="av" style={{ width: size, height: size, borderRadius: square ? size * 0.28 : undefined, background: grantColor(c.label) }} aria-hidden="true">
-        <BotGlyph size={Math.round(size * 0.7)} />
-      </span>
-    )
+    <BotAvatarEditor
+      seed={seed}
+      shape={look.shape}
+      color={look.color}
+      onChange={onChange}
+      words={{ shapes: t("avatar.shapes"), colors: t("avatar.colors"), poke: t("avatar.poke"), shape: (s) => t(`avatar.shape.${s}`), color: (c) => t(`avatar.color.${c}`) }}
+    />
   );
+}
+
+export function GrantAvatar({ c, size = "" }: { c: GrantLook; size?: "" | "md" | "lg" | "xl" | "sm" }) {
+  return <GrantFaceAt c={c} size={{ sm: 16, md: 28, lg: 40, xl: 52, "": 22 }[size]} />;
+}
+
+/**
+ * A grant's face at any size (工单 #83): its character, the same as its bot's on the roster, and its app's logo where
+ * it can be read (a grant is a connection: which app it is matters there).
+ */
+export function GrantFaceAt({ c, size }: { c: GrantLook; size: number }) {
+  const f = grantFace(c);
+  return <Face seed={f.seed} look={f.look} size={size} app={size >= 22 ? grantApp(c) : undefined} />;
 }
 
 /** A personal agent kind's icon: its app's, or for Other Agent a plain tile. */

@@ -20,7 +20,7 @@ and `ContactCard` already name the agents' inboxes
 | Field | |
 |---|---|
 | `name` | 1 to 64 characters |
-| `icon`, `color` | its avatar: one of the built-in icons (§2) and a colour `#rrggbb`; no uploads |
+| `icon`, `color` | its avatar (§2): the character's shape, and its colour's swatch `#rrggbb`; no uploads |
 | `machine_id`, `project_id`, `agent` | where its sessions run, and which coding agent |
 | `model`, `effort`, `mode` | what they run with, as `StartSessionRequest` takes them; empty follows the machine's defaults for the agent |
 | `session_id` | the session it talks in now (the relay's, never the client's) |
@@ -32,9 +32,17 @@ machine checks the model, effort and mode as it does there.
 
 ## 2. Avatars
 
-Built in, the same on every screen: `robot` 🤖, `owl` 🦉, `fox` 🦊, `cat` 🐱,
-`rocket` 🚀, `wrench` 🔧, `book` 📚, `bug` 🐞, on one of six colours. An
-unknown or empty icon shows the name's first letter.
+A contact's avatar is its bot's animated character (工单 #83): the Grok Bot
+engine ported from BotArk (`packages/ui/src/grok`, MIT), drawn the same on
+the desktop and the phone, moved by the bot's real state. `icon` is one of
+its 26 shapes (`blob` … `pumpkin`), `color` the swatch of one of its 11
+colours (`#1084FE` blue …): the relay keeps colours as `#rrggbb`. Both are
+picked in the one avatar editor and saved as shown; until then they are
+the bot's seed's (the engine's `defaultShapeForSeed` and
+`defaultColorForSeed` of `m:<machine>/<agent>`). A contact from before
+(an emoji's name, one of six colours) keeps the nearest colour and takes
+the seed's shape. A grant keeps its character's look in `client_icon` as
+`bot:<shape>:<colour id>`.
 
 ## 3. Talking to a contact (`LocalService.TalkToPersona`)
 

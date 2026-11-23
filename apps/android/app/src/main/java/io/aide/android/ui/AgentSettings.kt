@@ -30,7 +30,6 @@ import io.aide.android.model.AppModel
 import io.aide.android.model.Bot
 import io.aide.android.model.agoText
 import io.aide.android.model.instantOrNull
-import io.aide.android.model.personaColors
 import io.aide.android.model.usageResetAt
 import java.time.Instant
 import java.time.ZoneId
@@ -111,7 +110,7 @@ fun AgentSettings(model: AppModel, b: Bot, m: Machine, edit: (Persona) -> Unit) 
             }
         }
         Column(Modifier.fillMaxWidth().padding(top = 8.dp).aideCard()) {
-            ActionRow(t("Name and icon", "名字和图标")) { edit(b.personas.firstOrNull() ?: Persona(icon = "robot", color = personaColors.first(), machineId = m.machineId, agent = b.agent, name = b.name)) }
+            ActionRow(t("Name and avatar", "名字和头像")) { edit(b.personas.firstOrNull() ?: newPersona(b, m)) }
             HorizontalDivider(Modifier.padding(start = 16.dp), color = aide.separator)
             if (a.pause != null) {
                 ActionRow(t("Resume", "恢复")) { scope.launch { model.setAgentPaused(m.machineId, a.name, false) } }

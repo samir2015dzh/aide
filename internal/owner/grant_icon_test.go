@@ -48,7 +48,7 @@ func TestGrantImage(t *testing.T) {
 			t.Errorf("%s: accepted", name)
 		}
 	}
-	for icon, ok := range map[string]bool{"": true, "letter": true, "image": true, "app:grokbot": true, "app:": false, "app:Grok Bot": false, "grokbot": false} {
+	for icon, ok := range map[string]bool{"": true, "letter": true, "image": true, "app:grokbot": true, "app:": false, "app:Grok Bot": false, "grokbot": false, "bot:star:cyan": true, "bot:star": false, "bot:Star:cyan": false} {
 		if grantIcons.MatchString(icon) != ok {
 			t.Errorf("icon %q: want ok=%v", icon, ok)
 		}

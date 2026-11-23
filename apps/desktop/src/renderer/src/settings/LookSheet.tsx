@@ -1,103 +1,39 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client } from "@aide/proto/local";
-import { agentName, iconApps, type GrantLook } from "@aide/ui";
+import { agentName } from "@aide/ui";
+import { grantIcon } from "@aide/core/avatar";
 import { local } from "../api";
-import { GrantFaceAt } from "../components";
+import { GrantFaceAt, grantFace, LookEditor } from "../components";
 import type { Store } from "../store";
 
-/** A grant's picture or logo at any size, else a robot on its colour (工单 #62). */
-function Face({ c, size }: { c: GrantLook; size: number }) {
-  return <GrantFaceAt c={c} size={size} square />;
-}
-
 /**
- * A picture as a grant keeps it: its middle square at 128 px, as a PNG, or
- * as a JPEG on white when the PNG would be large (a photo). undefined when
- * it can't be read.
- */
-async function shrink(f: File): Promise<Uint8Array | undefined> {
-  try {
-    const bmp = await createImageBitmap(f);
-    const s = Math.min(bmp.width, bmp.height);
-    const cv = document.createElement("canvas");
-    cv.width = cv.height = 128;
-    const g = cv.getContext("2d")!;
-    g.imageSmoothingQuality = "high";
-    const draw = () => g.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, 128, 128);
-    const blob = (type: string, q?: number) => new Promise<Blob | null>((r) => cv.toBlob(r, type, q));
-    draw();
-    let b = await blob("image/png");
-    if (b && b.size > 40_000) {
-      g.fillStyle = "#fff";
-      g.fillRect(0, 0, 128, 128);
-      draw();
-      b = await blob("image/jpeg", 0.88);
-    }
-    return b ? new Uint8Array(await b.arrayBuffer()) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Name and icon, changed together and signed once: the name the owner knows
- * an agent by, and what it is drawn with — its app's (自动), its initial, an
- * app's logo, or a picture of the owner's.
+ * Name and look, changed together and signed once: the name the owner knows an agent by, and its character (工单 #83)
+ * — its seed's (自动), or the shape and colour picked in the one avatar editor.
  */
 export function LookSheet({ c, st, close }: { c: Client; st: Store; close: () => void }) {
   const { t } = useTranslation("settings");
   const shown = agentName(c.label);
   const [name, setName] = useState(shown);
-  const [typed, setTyped] = useState(false);
   const [icon, setIcon] = useState(c.icon);
-  const [image, setImage] = useState(c.icon === "image" ? c.image : undefined);
-  const [bad, setBad] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [over, setOver] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
   // An unchanged name keeps its label whole: "Cursor (cursor.com)" stays vouched for by its domain.
   const label = name.trim() === shown ? c.label : name.trim();
-  const look = (i: string): GrantLook => ({ label, icon: i, image });
-  const take = async (f?: File) => {
-    if (!f) return;
-    const b = await shrink(f);
-    setBad(!b);
-    if (b) {
-      setImage(b);
-      setIcon("image");
-    }
-  };
+  const face = grantFace({ ...c, icon });
   const save = async () => {
     if (!name.trim() || busy) return;
-    if (label === c.label && icon === c.icon && (icon !== "image" || image === c.image)) return close();
+    if (label === c.label && icon === c.icon) return close();
     setBusy(true);
-    await st.run(() => local.renameClient({ grantId: c.grantId, label, icon, image: icon === "image" ? image : undefined })); // failures show as a toast
+    await st.run(() => local.renameClient({ grantId: c.grantId, label, icon, image: icon === "image" ? c.image : undefined })); // failures show as a toast
     close();
   };
-  const tile = (key: string, title: string, face: GrantLook, onPick: () => void) => (
-    <button key={key} className={`gl-tile ${icon === key ? "on" : ""}`} aria-pressed={icon === key} title={title} onClick={onPick}>
-      <span>
-        <Face c={face} size={36} />
-      </span>
-      {title}
-    </button>
-  );
   return (
     <>
       <div className="sheet-scrim" />
-      <div
-        className={`sheet ${over ? "gl-over" : ""}`}
-        role="dialog"
-        aria-label={t("grants.renameTitle")}
-        style={{ width: 460 }}
-        onDragOver={(e) => (e.preventDefault(), setOver(true))}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => (e.preventDefault(), setOver(false), take(e.dataTransfer.files[0]))}
-      >
+      <div className="sheet" role="dialog" aria-label={t("grants.renameTitle")} style={{ width: 460 }}>
         <h3>{t("grants.renameTitle")}</h3>
         <div className="gl-id">
-          <Face c={look(icon)} size={52} />
+          <GrantFaceAt c={{ ...c, icon }} size={52} />
           <label>
             {t("grants.agentName")}
             <input
@@ -106,31 +42,22 @@ export function LookSheet({ c, st, close }: { c: Client; st: Store; close: () =>
               maxLength={64}
               autoFocus
               spellCheck={false}
-              onChange={(e) => (setName(e.target.value), setTyped(true))}
+              onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => (e.key === "Enter" ? save() : e.key === "Escape" && close())}
             />
           </label>
         </div>
         <div className="fhead gl-head">{t("grants.icon")}</div>
-        <div className="gl-grid" role="group" aria-label={t("grants.icon")}>
-          {tile("", t("grants.iconAuto"), look(""), () => setIcon(""))}
-          {tile("letter", t("grants.iconLetter"), look("letter"), () => setIcon("letter"))}
-          {iconApps.map((a) =>
-            tile(`app:${a.logo}`, a.name, look(`app:${a.logo}`), () => {
-              setIcon(`app:${a.logo}`);
-              if (!typed) setName(a.name);
-            }),
+        <LookEditor seed={face.seed} look={face.look} onChange={(l) => setIcon(grantIcon(l))} />
+        <p className="sheet-note muted">
+          {t("grants.renameMessage")}
+          {icon.startsWith("bot:") && (
+            <>
+              {" "}
+              <button className="link" onClick={() => setIcon("")}>{t("grants.iconAuto")}</button>
+            </>
           )}
-          {image && tile("image", t("grants.iconMine"), look("image"), () => setIcon("image"))}
-          <button className="gl-tile" onClick={() => file.current?.click()}>
-            <span>
-              <i className="gl-plus">+</i>
-            </span>
-            {t("grants.iconUpload")}
-          </button>
-          <input ref={file} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(e) => (take(e.target.files?.[0]), (e.target.value = ""))} />
-        </div>
-        <p className={`sheet-note ${bad ? "sheet-err" : "muted"}`}>{bad ? t("grants.iconBad") : icon === "" ? t("grants.iconAutoHint") : t("grants.renameMessage")}</p>
+        </p>
         <div className="sheet-foot">
           <button className="btn" onClick={close}>{t("cancel")}</button>
           <button className="btn primary" disabled={busy || !name.trim()} onClick={save}>{t("grants.renameButton")}</button>
