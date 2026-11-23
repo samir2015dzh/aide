@@ -14,7 +14,7 @@ test("Antigravity shows scoped model observations, unknown defaults and expiry",
     await panel.getByRole("list", { name: "机器" }).getByRole("button", { name: /^owner-mac/ }).click();
     const agents = panel.getByRole("list", { name: "编码 Agent" });
     await agents.getByRole("listitem", { name: "Antigravity" }).getByRole("button", { name: /^Antigravity/ }).click();
-    const observations = panel.getByRole("region", { name: "已观察到的模型" });
+    const observations = panel.getByRole("region", { name: "已找到的模型" });
     await expect(observations).toContainText("未知，等待一次正常任务返回模型选项");
     await expect(observations).toContainText("来源：acp_initialize");
     await expect(observations).toContainText("来源：acp_update");

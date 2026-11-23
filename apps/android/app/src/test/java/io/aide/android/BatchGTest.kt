@@ -93,9 +93,9 @@ class BatchGTest {
         fun row(b: io.aide.android.api.DSHBridge) = io.aide.android.model.machineConnections(machine("m1", "work-pc", dsh().copy(dshBridge = b)), now).rows.single { it.id == "deepseek-bridge" }
         val notInstalled = "DSH_BRIDGE_STATE_NOT_INSTALLED"
         val at = row(io.aide.android.api.DSHBridge(notInstalled, install = io.aide.android.api.DSHBridgeInstall("DSH_BRIDGE_INSTALL_STATE_RUNNING", sessionId = "s1")))
-        assertEquals(Triple(ConnState.CHECKING, "DSH 正在代装…", "s1"), Triple(at.state, at.text, at.installSession))
+        assertEquals(Triple(ConnState.CHECKING, "DSH 正在安装…", "s1"), Triple(at.state, at.text, at.installSession))
         val failed = row(io.aide.android.api.DSHBridge(notInstalled, install = io.aide.android.api.DSHBridgeInstall("DSH_BRIDGE_INSTALL_STATE_FAILED", sessionId = "s1", reason = "别的插件的常驻连接器占着 uv.exe")))
-        assertEquals(Triple("代装没成功", "别的插件的常驻连接器占着 uv.exe", true), Triple(failed.text, failed.lacks, failed.install))
+        assertEquals(Triple("DSH 没装成功", "别的插件的常驻连接器占着 uv.exe", true), Triple(failed.text, failed.lacks, failed.install))
         val done = row(io.aide.android.api.DSHBridge("DSH_BRIDGE_STATE_RUNNING", version = "0.3.1", latestVersion = "0.3.1", install = io.aide.android.api.DSHBridgeInstall("DSH_BRIDGE_INSTALL_STATE_FAILED")))
         assertEquals(ConnState.OK, done.state)
     }

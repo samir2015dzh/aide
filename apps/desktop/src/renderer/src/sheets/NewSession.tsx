@@ -3,7 +3,7 @@ import { Picker } from "../Picker";
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
 import { useTranslation } from "react-i18next";
-import { codingAgentTitle, displayTitle } from "@aide/core";
+import { codingAgentTitle, displayTitle, modeChoice, modeLabel, projectTitle } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
@@ -65,6 +65,8 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
   }, [started, has, set]);
 
   const ready = !!mid && !!agent && prompt.trim() !== "" && (fromRepo ? repo.trim() !== "" : project !== "");
+  // DSH's permission next to the project's (工单 #89): its default named, a choice above it said.
+  const permission = modeChoice(agent, mode, fromRepo ? undefined : projects.find((p) => p.projectId === project), a?.modes ?? []);
   const start = async (e: FormEvent) => {
     e.preventDefault();
     if (!ready || act.busy) return;
@@ -151,7 +153,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
                 <label className="fl" htmlFor="ns-project">{t("newSession.project")}</label>
                 <span className="fv">
                   {projects.length ? (
-                    <Picker className="psel" label={t("newSession.project")} value={project} onChange={setProject} options={projects.map((p) => ({ value: p.projectId, label: p.projectId }))} />
+                    <Picker className="psel" label={t("newSession.project")} value={project} onChange={setProject} options={projects.map((p) => ({ value: p.projectId, label: projectTitle(p) }))} />
                   ) : (
                     <>
                       {t("newSession.noProjects", { machine: machine!.machineName, agent: title })}
@@ -196,10 +198,11 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="frow">
                 <label className="fl" htmlFor="ns-mode">{t("newSession.mode")}</label>
                 <span className="fv">
-                  <Picker className="psel" label={t("newSession.mode")} value={mode} onChange={setMode} options={[{ value: "", label: t("newSession.default") }, ...a.modes.map((x) => ({ value: x.id, label: x.name || x.id }))]} />
+                  <Picker className="psel" label={t("newSession.mode")} value={mode} onChange={setMode} options={[{ value: "", label: permission.defaultLabel ?? t("newSession.default") }, ...a.modes.map((x) => ({ value: x.id, label: modeLabel(a.name, x) }))]} />
                 </span>
               </div>
             )}
+            {permission.above && <div className="frow sheet-err" role="note">{permission.above}</div>}
           </>
         )}
       </div>

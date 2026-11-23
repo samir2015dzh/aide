@@ -324,7 +324,7 @@ test("failed sessions tell what went wrong and what to do; an archived one says 
 
   await page.getByRole("button", { name: "显示已归档" }).click();
   await open(page, "归档的");
-  await expect(page.getByText("已归档：只读，worktree 已释放，改动还在分支上。")).toBeVisible();
+  await expect(page.getByText("已归档：只读，副本已释放，改动还在分支上。")).toBeVisible();
   await expect(page.getByRole("button", { name: "取消归档" }).last()).toBeVisible();
   await snap(page, "session-archived");
   await app.close();

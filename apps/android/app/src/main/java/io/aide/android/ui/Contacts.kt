@@ -48,7 +48,8 @@ import io.aide.android.model.personaColor
 import io.aide.android.model.personaColors
 import io.aide.android.model.personaGlyph
 import io.aide.android.model.personaIcons
-import io.aide.android.model.personaReady
+import io.aide.android.model.modeLabel
+import io.aide.android.model.personaSavable
 import io.aide.android.api.title
 import kotlinx.coroutines.launch
 
@@ -137,7 +138,7 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
                 SectionHeader(t("Mode", "模式"))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(p.mode.isEmpty(), { p = p.copy(mode = "") }, label = { Text(t("Default", "默认")) })
-                    a.modes.forEach { m -> FilterChip(p.mode == m.id, { p = p.copy(mode = m.id) }, label = { Text(m.name.ifEmpty { m.id }) }) }
+                    a.modes.forEach { m -> FilterChip(p.mode == m.id, { p = p.copy(mode = m.id) }, label = { Text(modeLabel(a.name, m)) }) }
                 }
             }
             Text(
@@ -146,7 +147,7 @@ fun ContactEditPage(model: AppModel, start: Persona, done: (Persona?) -> Unit) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = personaReady(p) && !busy, onClick = {
+                Button(enabled = personaSavable(start, p) && !busy, onClick = {
                     busy = true
                     error = null
                     scope.launch { model.savePersonaOr(p) { error = it }.also { busy = false }?.let { done(it) } }

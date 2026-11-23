@@ -42,8 +42,8 @@
     "choose": "Choose…",
     "name": "Project name",
     "workspace": "Works in",
-    "worktree": "Separate worktree",
-    "inPlace": "In place",
+    "worktree": "A copy per task",
+    "inPlace": "Right in this folder",
     "baseRef": "Default base",
     "baseRefPlaceholder": "main (optional)",
     "worktreeHint": "Git repository: each task works on its own branch and worktree, leaving the files you’re editing alone.",
@@ -72,8 +72,8 @@
     "ttlLongLived": "Until you disconnect it",
     "needProject": "Choose at least one project, or “All projects”.",
     "needAgent": "Choose at least one coding agent, or “All coding agents”.",
-    "worktree": "Separate worktree",
-    "inPlace": "In place"
+    "worktree": "A copy per task",
+    "inPlace": "Existing folder"
   },
   "scopeSheet": {
     "goneTitle": "This Access Is No Longer Here",

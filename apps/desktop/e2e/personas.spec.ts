@@ -11,7 +11,7 @@ test("handing work to a detected agent from its page; a contact made there, writ
   await page.setViewportSize({ width: 1440, height: 800 });
   const roster = page.getByRole("region", { name: "Bot" });
   await expect(roster.getByRole("button", { name: /派活/ })).toHaveCount(0);
-  const here = roster.getByRole("group", { name: "编码 agent · 跟机器走" });
+  const here = roster.getByRole("group", { name: "owner-mac" });
   await here.getByRole("button", { name: /^Gemini CLI/ }).click({ timeout: 30_000 });
   const bot = page.getByRole("region", { name: /^Gemini CLI/ });
   const convs = bot.getByRole("list", { name: "对话" });
@@ -43,9 +43,19 @@ test("handing work to a detected agent from its page; a contact made there, writ
   await named.locator(".conv-head-t").click();
   await expect(page.getByRole("log", { name: "对话" })).toContainText("联系人第一句", { timeout: 30_000 });
 
-  // Deleted, from its pencil: the contact goes, the bot has its own name again, its conversation stays.
+  // Its name changed alone (工单 #78): saving waits for a change, and a new name is one.
   await here.getByRole("button", { name: /^前端助手/ }).click();
   await page.getByRole("region", { name: "前端助手" }).getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "修改「前端助手」" }).click();
+  const edit = page.getByRole("dialog", { name: "编辑联系人" });
+  await expect(edit.getByRole("button", { name: "保存" })).toBeDisabled();
+  await edit.getByLabel("名字", { exact: true }).fill("前端助手二号");
+  await expect(edit.getByRole("button", { name: "保存" })).toBeEnabled();
+  await edit.getByRole("button", { name: "保存" }).click();
+  await expect(here.getByRole("button", { name: /^前端助手二号/ })).toBeVisible();
+
+  // Deleted, from its pencil: the contact goes, the bot has its own name again, its conversation stays.
+  await here.getByRole("button", { name: /^前端助手二号/ }).click();
+  await page.getByRole("region", { name: "前端助手二号" }).getByRole("region", { name: "名字与头像" }).getByRole("button", { name: "修改「前端助手二号」" }).click();
   await page.getByRole("dialog", { name: "编辑联系人" }).getByRole("button", { name: "删除联系人" }).click();
   await expect(here.getByRole("button", { name: /^Gemini CLI/ })).toBeVisible();
   const list = await sessionList(page);

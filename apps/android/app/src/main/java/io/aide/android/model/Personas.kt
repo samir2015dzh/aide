@@ -41,6 +41,9 @@ fun personaChoices(world: World, p: Persona): PersonaChoices {
 /** Whether it can be kept: a name, and where its sessions run. */
 fun personaReady(p: Persona): Boolean = p.name.isNotBlank() && p.machineId.isNotEmpty() && p.agent.isNotEmpty() && p.projectId.isNotEmpty()
 
+/** Whether saving is for something (工单 #78): a new contact, or any change to one — only its name too. */
+fun personaSavable(start: Persona, p: Persona): Boolean = personaReady(p) && (start.personaId.isEmpty() || p != start)
+
 /** What the app says once a message went to a contact. */
 fun talkedText(name: String, r: TalkToPersonaResponse): String {
     val title = r.session?.let(::displayTitle).orEmpty()

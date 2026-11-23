@@ -247,10 +247,10 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   await agentPage("Claude Code").getByRole("button", { name: "添加项目…" }).click();
   const project = agentPage("Claude Code").getByRole("group", { name: "my-app" });
   await expect(project).toContainText(repo);
-  await expect(project).toContainText("独立 worktree");
+  await expect(project).toContainText("每个任务一份副本");
   await answerMenu(app, "inPlace");
   await project.getByRole("button", { name: "更多" }).click();
-  await expect(project).toContainText("原地");
+  await expect(project).toContainText("现有文件夹");
   await back();
   await expect(claude).toContainText("1 个项目");
   // It is Claude Code's only; the same folder added to Gemini CLI is the same project, for both.
@@ -259,10 +259,10 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   await agentPage("Gemini CLI").getByRole("button", { name: "添加项目…" }).click();
   await expect(agentPage("Gemini CLI").getByRole("group", { name: "my-app" })).toBeVisible();
   await snap(page, "first-05-project");
-  // Taken from Claude Code, it stays Gemini CLI's; the machine knows.
+  // Claude Code unticked in its menu's 给哪些 agent 用 (工单 #77): it stays Gemini CLI's; the machine knows.
   await back();
   await claude.getByRole("button", { name: /^Claude Code/ }).click();
-  await answerMenu(app, "remove");
+  await answerMenu(app, "agent:claude");
   await project.getByRole("button", { name: "更多" }).click();
   await expect(project).toHaveCount(0);
   await back();

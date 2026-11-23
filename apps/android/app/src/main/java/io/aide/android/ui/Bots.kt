@@ -57,10 +57,13 @@ import io.aide.android.model.Usable
 import io.aide.android.model.agoText
 import io.aide.android.model.botConversations
 import io.aide.android.model.changedParams
+import io.aide.android.model.DSH_AGENT
 import io.aide.android.model.currentConversation
 import io.aide.android.model.displayTitle
 import io.aide.android.model.instant
 import io.aide.android.model.instantOrNull
+import io.aide.android.model.modeChoice
+import io.aide.android.model.modeLabel
 import io.aide.android.model.paramsOf
 import io.aide.android.model.personaColors
 import io.aide.android.model.roster
@@ -72,7 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要), the app's first tab: bots and rooms, nothing else — the rooms,
-// the personal agents (they follow the account), the coding agents (each named by its machine when there are several).
+// the personal agents, the coding agents (a group per machine, headed by its name, 工单 #75).
 // A row is its face with its state on the corner, its one name, its state as a pill, one line of what it does lately.
 // No machine card or count is here: a machine shows only through its bots' states; the devices tab has the machines.
 
@@ -111,32 +114,33 @@ fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, 
                 }
                 // Rooms beside the bots, first (ROOMS-DESIGN §2).
                 if (r.all.isNotEmpty()) roomItems(world.rooms, openRoom, newRoom, world.machines.flatMap { it.status?.roomOutbox.orEmpty() })
-                botGroup("personal", t("Personal agents · follow your account", "个人 agent · 跟账号走"), r.personal, open)
-                botGroup("coding", t("Coding agents · on your machines", "编码 agent · 跟机器走"), r.coding, open)
+                botGroup("personal", t("Personal agents", "个人 agent"), r.personal, open)
+                // The coding agents by machine (工单 #75): the head is the machine's name, so a row names the agent alone.
+                r.machines.forEach { g -> botGroup("m-${g.machine.machineId}", g.machine.machineName, g.bots, open, short = true) }
             }
         }
     }
 }
 
-private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, open: (String) -> Unit) {
+private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, open: (String) -> Unit, short: Boolean = false) {
     if (bots.isEmpty()) return
     item(key = "$id-h") { Box(Modifier.padding(top = 12.dp)) { SectionHeader(title, count = bots.size) } }
     bots.forEachIndexed { i, b ->
         item(key = b.key, contentType = "bot") {
-            Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut)).groupRow(i, bots.size)) { BotRow(b) { open(b.key) } }
+            Box(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = tween(Motion.Medium, easing = Motion.EaseOut)).groupRow(i, bots.size)) { BotRow(b, short) { open(b.key) } }
         }
     }
 }
 
 /** A roster row (BOTARK-REF §1): face with its state on the corner, the one name with its state as a pill, one line under it. */
 @Composable
-fun BotRow(b: Bot, onClick: () -> Unit) {
+fun BotRow(b: Bot, short: Boolean = false, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().pressable(onClick).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         BotAvatar(b, 40, toneColor(botTone(b)))
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(b.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(if (short) b.shortName else b.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 HSpace(8)
                 StatusPill(b.state.word, botTone(b))
             }
@@ -333,6 +337,8 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
     val changed = cur?.let { changedParams(it, p) }.orEmpty()
     val fresh = cur == null || changed.isNotEmpty()
     val names = mapOf("project" to t("project", "项目"), "model" to t("model", "模型"), "effort" to t("effort", "推理强度"), "mode" to t("mode", "模式"))
+    // DSH's permission next to the project's (工单 #89): its default named, a choice above it said before sending.
+    val permission = modeChoice(b.agent, p.mode, projects.firstOrNull { it.projectId == p.projectId }, a?.modes.orEmpty())
     fun send(contextOf: Session? = null) {
         val body = text.trim()
         if (body.isEmpty()) return
@@ -362,6 +368,7 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
             warn = true, action = t("New one with its context", "带着它的上下文开新对话") to { send(cur) },
         )
         projects.isEmpty() -> ComposerWhy(t("No project here for this agent yet: add one in Aide on the computer.", "这台电脑上还没有给它用的项目：在电脑上的 Aide 里添加一个。"))
+        permission.above != null -> ComposerWhy(permission.above, warn = true)
         b.state.usable == Usable.UNVERIFIED -> ComposerWhy(t("Not confirmed lately — it can be sent, but whether it is there is not checked", "还没确认状态——能派，但对方在不在没核实"))
         cur != null && changed.isNotEmpty() -> ComposerWhy(t("You changed the ${changed.joinToString(", ") { names[it]!! }}: the next message starts a new conversation", "换了${changed.joinToString("、") { names[it]!! }}：下一条会开新对话"))
         else -> null
@@ -378,7 +385,7 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
             a?.models?.firstOrNull { it.id == p.model }?.efforts?.takeIf { it.isNotEmpty() }?.let { ef ->
                 ChipPicker(t("Effort", "推理强度"), p.effort, listOf("" to t("Default effort", "默认强度")) + ef.map { it to it }) { c.params = p.copy(effort = it) }
             }
-            if (a != null && a.modes.isNotEmpty()) ChipPicker(t("Mode", "模式"), p.mode, listOf("" to t("Default mode", "默认模式")) + a.modes.map { it.id to it.name.ifEmpty { it.id } }) { c.params = p.copy(mode = it) }
+            if (a != null && a.modes.isNotEmpty()) ChipPicker(if (b.agent == DSH_AGENT) t("Permission", "权限") else t("Mode", "模式"), p.mode, listOf("" to (permission.defaultLabel ?: t("Default mode", "默认模式"))) + a.modes.map { it.id to modeLabel(b.agent, it) }) { c.params = p.copy(mode = it) }
         },
     )
 }

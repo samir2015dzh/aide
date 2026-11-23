@@ -40,7 +40,7 @@ test("this Mac's connections in one place, and the same rows on Connect Agent; e
   await expect(card.getByRole("listitem", { name: "Claude Code" }).getByRole("group", { name: "Claude Code 命令行" })).toContainText("已登录", { timeout: 30_000 });
   await expect(card.getByRole("listitem", { name: "Codex" })).toContainText("未登录");
   await expect(card.getByText(/检测$/).first()).toBeVisible({ timeout: 30_000 });
-  await expect(settings.getByText(/个人 Agent（Muse、Grok Bot 等）跟着账号走/)).toBeVisible();
+  await expect(settings.getByText(/个人 Agent（Muse、Grok Bot 等）连在你的账号上/)).toBeVisible();
   await snap(settings, "batchd-machine-connections");
 
   await settings.close();
@@ -72,7 +72,7 @@ test("the roster lists the detected agents by machine; the map's links read as c
   await snap(page, "batchd-map");
 
   // Whom to hand work to is the roster (批 G): the detected agents by machine.
-  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: "编码 agent · 跟机器走" });
+  const here = page.getByRole("region", { name: "Bot" }).getByRole("group", { name: "owner-mac" });
   await expect(here.getByRole("button").first()).toBeVisible();
   await snap(page, "batchd-hand-work");
   await app.close();

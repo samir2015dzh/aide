@@ -134,7 +134,7 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
                         if (p.install && m.online && m.unreachable.isEmpty()) TextButton(onClick = { scope.launch { model.installDSHBridge(m.machineId) } }) {
                             Text(if (p.installSession.isNotEmpty()) t("Have DSH try again", "再让 DSH 试一次") else t("Have DSH install it", "让 DSH 装好它"))
                         }
-                        if (p.installSession.isNotEmpty()) TextButton(onClick = { openSession(p.installSession) }) { Text(t("Open the install task", "看代装任务")) }
+                        if (p.installSession.isNotEmpty()) TextButton(onClick = { openSession(p.installSession) }) { Text(t("Open the install task", "看安装任务")) }
                     }
                 }
             }

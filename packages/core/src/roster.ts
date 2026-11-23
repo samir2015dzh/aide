@@ -87,6 +87,8 @@ export type Bot = {
   kind: "local" | "personal";
   /** Its one name: "DSH", "DSH · work-pc" while there are several machines, a personal agent's own name. */
   name: string;
+  /** Its name under its machine's head in the roster (工单 #75): the machine is the head, so "DSH", never "DSH · work-pc". */
+  shortName: string;
   /** The coding agent whose logo it is drawn with ("" for a personal agent, drawn with its grant). */
   agent: string;
   machineId: string;
@@ -155,7 +157,7 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
     const k = clientCategory(c, machines);
     if (k.category === "personal") {
       const mine = sessions.filter((s) => s.createdBy === c.clientId);
-      personal.push({ key: `c:${c.clientId}`, kind: "personal", name: agentName(c.label), agent: "", machineId: "", client: c, personas: [], state: personalBotState(c, now), ...doing(mine, now) });
+      personal.push({ key: `c:${c.clientId}`, kind: "personal", name: agentName(c.label), shortName: agentName(c.label), agent: "", machineId: "", client: c, personas: [], state: personalBotState(c, now), ...doing(mine, now) });
       continue;
     }
     const id = machineOf(k.machine);
@@ -172,7 +174,7 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
       const client = gi >= 0 ? grants.splice(gi, 1)[0] : undefined;
       const mine = sessions.filter((s) => s.machineId === m.machineId && s.agent === agent);
       const own = personas.filter((p) => p.machineId === m.machineId && p.agent === agent);
-      bots.push({ key: `m:${m.machineId}/${agent}`, kind: "local", name: own[0]?.name || botName(agent, m, machines.length), agent, machineId: m.machineId, client, personas: own, state, ...doing(mine, now) });
+      bots.push({ key: `m:${m.machineId}/${agent}`, kind: "local", name: own[0]?.name || botName(agent, m, machines.length), shortName: own[0]?.name || codingAgentTitle(agent), agent, machineId: m.machineId, client, personas: own, state, ...doing(mine, now) });
     }
     // A coding agent with a grant of its own that its machine does not list (another kind, or not detected): its own
     // bot — when it is a coding agent at all (a known kind, or filed so by the owner); else a connection, set aside.
@@ -181,7 +183,7 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
         aside.push({ client: g, machineId: m.machineId });
         continue;
       }
-      bots.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: m.machineId, client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
+      bots.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), shortName: withoutMachine(agentName(g.label), m.machineName), agent: grantAgent(g.label) ?? "", machineId: m.machineId, client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
     }
     return { machine: m, bots };
   });
@@ -191,9 +193,15 @@ export function roster(machines: readonly Machine[], clients: readonly Client[],
       aside.push({ client: g, machineId: "" });
       continue;
     }
-    personal.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: "", client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
+    personal.push({ key: `c:${g.clientId}`, kind: "local", name: agentName(g.label), shortName: agentName(g.label), agent: grantAgent(g.label) ?? "", machineId: "", client: g, personas: [], state: personalBotState(g, now), ...doing(sessions.filter((s) => s.createdBy === g.clientId), now) });
   }
   return { personal, machines: out, aside };
+}
+
+/** "DSH on work-pc" under work-pc's head: "DSH". */
+function withoutMachine(name: string, machine: string): string {
+  const tail = ` on ${machine}`;
+  return name.toLowerCase().endsWith(tail.toLowerCase()) && name.length > tail.length ? name.slice(0, -tail.length) : name;
 }
 
 /** A grant filed as a coding agent is one on the roster when it names a known coding agent, or the owner filed it so. */

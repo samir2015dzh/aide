@@ -129,7 +129,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await expect(page.getByRole("status").filter({ hasText: "DSH Desktop 里还没有 Aide 插件，发不了消息。" })).toBeVisible({ timeout: 30_000 });
   const install = page.getByRole("region", { name: "安装 Aide 插件" });
   await install.getByRole("button", { name: "让 DSH 装好它" }).click();
-  await expect(install.getByRole("button", { name: "看代装任务" })).toBeVisible({ timeout: 30_000 });
+  await expect(install.getByRole("button", { name: "看安装任务" })).toBeVisible({ timeout: 30_000 });
   const record = JSON.parse(fs.readFileSync(path.join(fixture.dshHome!, "aide-bridge", "install.json"), "utf8"));
   expect(record.package.endsWith(".tgz")).toBe(true);
   expect(fs.statSync(record.package).size).toBeGreaterThan(0);
@@ -138,7 +138,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
     path.join(fixture.dshHome!, "aide-bridge", "install-report.json"),
     JSON.stringify({ ok: false, reason: "另一个插件的常驻连接器正在运行 profile 里的程序，替换不了它的目录", at: new Date().toISOString() }),
   );
-  await expect(install.getByRole("status")).toContainText("代装没成功：另一个插件的常驻连接器正在运行 profile 里的程序", { timeout: 30_000 });
+  await expect(install.getByRole("status")).toContainText("DSH 没装成功：另一个插件的常驻连接器正在运行 profile 里的程序", { timeout: 30_000 });
   await expect(install.getByRole("button", { name: "再让 DSH 试一次" })).toBeVisible();
   // The way by hand stays, folded: preparing backs up DSH's configuration and shows the package.
   await install.getByText("DSH 装不了时：手动安装").click();

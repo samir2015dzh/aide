@@ -95,6 +95,21 @@ describe("the roster (工单 #57)", () => {
   });
 });
 
+describe("grouped by machine (工单 #75)", () => {
+  test("each machine is its own group, headed by its name: its rows name the agent alone; one away keeps its group", () => {
+    const machines = [
+      machine("m1", "work-pc", [{ name: "deepseek", available: true, loggedIn: true }]),
+      machine("m2", "laptop", [{ name: "claude", available: true, loggedIn: true }], { online: false }),
+    ];
+    const r = roster(machines, [client("c2", "Codex on work-pc")], [], now);
+    expect(r.machines.map((g) => [g.machine.machineName, g.bots.map((b) => [b.shortName, b.name])])).toEqual([
+      ["work-pc", [["DSH", "DSH · work-pc"], ["Codex", "Codex on work-pc"]]],
+      ["laptop", [["Claude Code", "Claude Code · laptop"]]],
+    ]);
+    expect(r.machines[1].bots[0].state.why).toBe("offline");
+  });
+});
+
 describe("who gets on the roster (工单 #64)", () => {
   test("client@<machine> is Aide's own client, not an agent: set aside under its machine, whatever it was filed as", () => {
     const machines = [

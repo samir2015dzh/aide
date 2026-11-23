@@ -343,7 +343,7 @@ test("settings 机器 opens this Mac: its sharing, its agents each opening a pag
   await page2.getByRole("button", { name: "添加项目…" }).click();
   const project = page2.getByRole("group", { name: `app-${process.pid}` });
   await expect(project).toContainText(repo);
-  await expect(project).toContainText("独立 worktree");
+  await expect(project).toContainText("每个任务一份副本");
   expect((await projects(settings)).find((p) => p.path === repo)?.agents).toEqual(["gemini"]);
   await answerMenu(app, "remove");
   await project.getByRole("button", { name: "更多" }).click();

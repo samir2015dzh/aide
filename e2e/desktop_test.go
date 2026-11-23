@@ -130,6 +130,9 @@ func TestDesktop(t *testing.T) {
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
 			}
+			if name == "batchi" { // DeepSeek Harness with its permission presets (工单 #89)
+				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "FAKE_ACP_PRESETS=")
+			}
 			if name == "batche" { // Claude Code here, its command line not signed in; `auth login` signs it in (工单 #51)
 				dir := t.TempDir()
 				signed := filepath.Join(dir, "signed-in")
