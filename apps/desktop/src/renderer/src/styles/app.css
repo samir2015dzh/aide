@@ -241,7 +241,9 @@ html.vibrant .rail{background:var(--side-tint)}
 .tb:hover{background:var(--fill2);color:var(--l1)}
 .tb.on{background:var(--fill2);color:var(--l1)}
 /* Her and the overview, rows 32 high, 34 apart; a hairline under them, then the sessions. */
-.side-nav{padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;flex:none;border-bottom:.5px solid var(--sep)}
+/* The main sidebar's 概览 / 任务动态 and the bots below are set apart by space, not a line (所有者 2026-11-24 裁定，改 #107 稿); Settings keeps its line. */
+.side-nav{padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;flex:none}
+.set-side .side-nav{border-bottom:.5px solid var(--sep)}
 .nav-i{display:flex;align-items:center;gap:9px;height:32px;padding:0 9px;border-radius:8px;font-size:14px;border:0;background:none;width:100%;text-align:left}
 .nav-i .nav-count{margin-left:auto;font-size:12px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--fill);text-align:center}
 .nav-i .ic{width:18px;height:18px;color:var(--l1)}
