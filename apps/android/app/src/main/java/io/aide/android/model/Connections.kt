@@ -119,15 +119,20 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
         a.available && a.loggedIn -> ConnRow("claude-cli", "claude", cliTitle, ConnState.OK, if (a.version.isNotEmpty()) t("Signed in · ${a.version}", "已登录 · ${a.version}") else t("Signed in", "已登录"), null, at)
         a.available && a.login?.state == "AGENT_LOGIN_STATE_WAITING" -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.CHECKING, t("Signing in…", "正在登录…"),
-            t("A browser opened on that computer: finish signing in there. This line updates by itself.", "那台电脑上已打开浏览器：请在那里完成登录。这一行会自己更新。"),
+            // 工单 #118: no browser is claimed; its address, once printed, is opened on any device.
+            when {
+                a.login.codeSent -> t("The code went to Claude Code; checking it…", "授权码已交给 Claude Code，正在核对…")
+                a.login.url.isNotEmpty() -> t("Open the sign-in address below on any device, sign in, then enter the code the page shows. Good for 15 minutes.", "在任意设备上打开下面的登录地址，登录后把页面给出的授权码填回这里。15 分钟内有效。")
+                else -> t("Starting Claude Code's sign-in, waiting for its sign-in address…", "正在启动 Claude Code 的登录，等它给出登录地址…")
+            },
             at, login = true,
         )
         // Its own `auth status` said nothing clear (工单 #108): unconfirmed, never the desktop app's sign-in in its place.
         a.available && a.loginUnconfirmed -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.UNKNOWN, t("Unconfirmed", "未确认"),
             t(
-                "The Claude Code command line did not say whether it is signed in, and Aide does not take the Claude desktop app's sign-in for it: whether tasks can run with it is not confirmed. Sign it in below (a browser opens on that computer), or check again.",
-                "Claude Code 命令行没说清自己登没登录，Aide 不拿 Claude Desktop 的登录代替它：派出的任务能不能跑还没确认。点下面的按钮给它登录（会在那台电脑上打开浏览器），或者重新检测。",
+                "The Claude Code command line did not say whether it is signed in, and Aide does not take the Claude desktop app's sign-in for it: whether tasks can run with it is not confirmed. Sign it in below (it gives a sign-in address to open on any device), or check again.",
+                "Claude Code 命令行没说清自己登没登录，Aide 不拿 Claude Desktop 的登录代替它：派出的任务能不能跑还没确认。点下面的按钮给它登录（会给出登录地址，在任意设备上打开），或者重新检测。",
             ),
             at, login = true,
         )
@@ -135,7 +140,7 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
             "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not signed in", "未登录"),
             when (a.login?.state) {
                 "AGENT_LOGIN_STATE_FAILED" -> t("The last sign-in didn't finish: ${a.login.detail.ifEmpty { "no reason given" }}. Try again.", "上次登录没完成：${a.login.detail.ifEmpty { "没有给出原因" }}。可以再试一次。")
-                "AGENT_LOGIN_STATE_TIMED_OUT" -> t("The last sign-in waited 10 minutes for the browser and was stopped. Try again.", "上次登录等浏览器等了 10 分钟，已停止。可以再试一次。")
+                "AGENT_LOGIN_STATE_TIMED_OUT" -> t("The last sign-in was not finished within 15 minutes and was stopped. Try again.", "上次登录 15 分钟内没有完成，已停止。可以再试一次。")
                 else -> t("The last sign-in was cancelled.", "上次登录已取消。")
             },
             at, login = true,
@@ -143,9 +148,9 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
         a.available -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not signed in", "未登录"),
             if (d?.signedIn == true) t(
-                "Claude Desktop is signed in, but tasks Aide hands out run with the Claude Code command line, which keeps its own sign-in: the app's does not carry over. Sign it in below (a browser opens on that computer); the app and its sessions are not touched.",
-                "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。点下面的按钮给它登录（会在那台电脑上打开浏览器）；Claude Desktop 和它的会话不受影响。",
-            ) else t("Tasks Aide hands out run with the Claude Code command line, which is not signed in: sign it in below (a browser opens on that computer).", "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：点下面的按钮给它登录（会在那台电脑上打开浏览器）。"),
+                "Claude Desktop is signed in, but tasks Aide hands out run with the Claude Code command line, which keeps its own sign-in: the app's does not carry over. Sign it in below (it gives a sign-in address to open on any device); the app and its sessions are not touched.",
+                "Claude Desktop 已登录，但 Aide 派出的任务是用 Claude Code 命令行跑的，它有自己的登录，Desktop 的登录不会续给它。点下面的按钮给它登录（会给出登录地址，在任意设备上打开）；Claude Desktop 和它的会话不受影响。",
+            ) else t("Tasks Aide hands out run with the Claude Code command line, which is not signed in: sign it in below (it gives a sign-in address to open on any device).", "Aide 派出的任务用 Claude Code 命令行跑，它还没登录：点下面的按钮给它登录（会给出登录地址，在任意设备上打开）。"),
             at, login = true,
         )
         a.problem == APP_WITHOUT_CLI -> ConnRow(

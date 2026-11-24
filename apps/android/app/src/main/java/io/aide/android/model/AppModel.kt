@@ -356,9 +356,12 @@ class AppModel(private val context: Context) {
         report { api!!.interrupt(s.sessionId)?.let { replace(it) } }
     }
 
-    /** Signs Claude Code in on that machine: its browser opens there, the phone only shows how it goes (工单 #51). */
-    suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean = false) {
-        report { api!!.startAgentLogin(machineId, agent, cancel) }
+    /**
+     * Signs Claude Code in on that machine (工单 #51); with code, gives the sign-in under way the code its address's page
+     * showed (工单 #118: the address is opened on any device, this phone too).
+     */
+    suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean = false, code: String = "") {
+        report { api!!.startAgentLogin(machineId, agent, cancel, code) }
     }
 
     suspend fun recheck(machineId: String) {

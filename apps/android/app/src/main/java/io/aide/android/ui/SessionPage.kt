@@ -190,8 +190,8 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                             ItemView(it, starter = s?.createdBy.orEmpty(), names = names, agent = agentTitle(s?.agent.orEmpty()))
                             if (it.key == signIn && m != null) Column(Modifier.padding(horizontal = 12.dp)) {
                                 Text(
-                                    t("Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below opens a browser on that computer; sign in there, then send a message to go on.",
-                                        "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会在那台电脑上打开浏览器，在浏览器里登录完再发一条消息即可继续。"),
+                                    t("Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below gives a sign-in address to open on any device; sign in, enter the code back, then send a message to go on.",
+                                        "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会给出登录地址，在任意设备上打开、登录并填回授权码，再发一条消息即可继续。"),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 ClaudeLogin(model, m)

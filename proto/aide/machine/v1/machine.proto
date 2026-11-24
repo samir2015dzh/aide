@@ -368,12 +368,19 @@ message AgentLogin {
   string detail = 2;
   google.protobuf.Timestamp started_at = 3;
   google.protobuf.Timestamp ended_at = 4;
+  // The address its sign-in prints for the owner to open (工单 #118): on any
+  // device, not only that machine, where no browser may open. Empty until
+  // it printed one. Sent to the owner's own devices only, never kept.
+  string url = 5;
+  // The code the owner pasted from the page that address leads to has been
+  // given to the sign-in; it is checking it.
+  bool code_sent = 6;
 }
 
 enum AgentLoginState {
   AGENT_LOGIN_STATE_UNSPECIFIED = 0;
-  // Started: the browser is opening, or open, on the machine; waiting for
-  // the owner to finish there.
+  // Under way: starting, then (url) waiting for the owner to open its
+  // address and give back the code it shows (工单 #118).
   AGENT_LOGIN_STATE_WAITING = 1;
   // Done, and the agent checked again says it is signed in.
   AGENT_LOGIN_STATE_SUCCEEDED = 2;
@@ -390,6 +397,8 @@ message StartAgentLoginRequest {
   string agent = 1;
   // Stop the one under way.
   bool cancel = 2;
+  // The code the page at its url showed, for the one under way (工单 #118).
+  string code = 3;
 }
 
 message StartAgentLoginResponse {

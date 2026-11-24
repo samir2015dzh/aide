@@ -170,6 +170,11 @@ esac
 				_, claudeDir, env = signInClaude(t)
 				more = append(more, env...)
 			}
+			if name == "batchk" { // Claude Code whose sign-in prints its address and takes the code back (工单 #118)
+				var env []string
+				env, claudeDir = addressLoginClaude(t)
+				more = append(more, env...)
+			}
 			var dshHome string
 			if name == "states" { // a short stall limit, so a quiet turn reads stalled within the spec
 				more = append(more, "AIDE_STALL_AFTER=5")

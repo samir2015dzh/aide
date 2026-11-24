@@ -98,11 +98,14 @@ data class AgentStatus(
     val category: String = "",
 )
 
-/** aide.machine.v1.AgentLogin; state is an AgentLoginState name. */
+/**
+ * aide.machine.v1.AgentLogin; state is an AgentLoginState name. url: the address its sign-in printed, to open on any
+ * device; codeSent: the code the page showed went to it (工单 #118).
+ */
 @Serializable
-data class AgentLogin(val state: String = "", val detail: String = "", val startedAt: String = "", val endedAt: String = "")
+data class AgentLogin(val state: String = "", val detail: String = "", val startedAt: String = "", val endedAt: String = "", val url: String = "", val codeSent: Boolean = false)
 
-@Serializable data class StartAgentLoginRequest(val machineId: String, val agent: String, val cancel: Boolean = false)
+@Serializable data class StartAgentLoginRequest(val machineId: String, val agent: String, val cancel: Boolean = false, val code: String = "")
 @Serializable data class StartAgentLoginResponse(val login: AgentLogin? = null)
 
 @Serializable

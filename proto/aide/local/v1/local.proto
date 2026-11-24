@@ -772,6 +772,8 @@ message StartMachineAgentLoginRequest {
   string machine_id = 1;
   string agent = 2;
   bool cancel = 3;
+  // The code for the sign-in under way (StartAgentLoginRequest.code).
+  string code = 4;
 }
 
 message TestMachineAgentRequest {

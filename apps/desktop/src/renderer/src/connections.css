@@ -27,3 +27,8 @@
 .ag-conn .frow.conn-row{padding-left:0;padding-right:12px}
 .conn-part{gap:14px;font-size:12.5px}
 .conn-part-name{color:var(--l3,var(--l2));min-width:7em}
+/* Claude Code's sign-in address and the code it gives back (工单 #118): the address whole, selectable, wrapping anywhere. */
+.conn-login{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}
+.conn-login-url{flex:1 1 100%;min-width:0;overflow-wrap:anywhere;word-break:break-all;white-space:normal}
+.conn-login-code{display:flex;gap:8px;align-items:center;flex:1 1 260px}
+.conn-login-code .field{flex:1;min-width:0}

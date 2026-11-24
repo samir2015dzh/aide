@@ -4291,10 +4291,12 @@ func (x *ListMachineFoldersRequest) GetHidden() bool {
 }
 
 type StartMachineAgentLoginRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	Agent         string                 `protobuf:"bytes,2,opt,name=agent,proto3" json:"agent,omitempty"`
-	Cancel        bool                   `protobuf:"varint,3,opt,name=cancel,proto3" json:"cancel,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Agent     string                 `protobuf:"bytes,2,opt,name=agent,proto3" json:"agent,omitempty"`
+	Cancel    bool                   `protobuf:"varint,3,opt,name=cancel,proto3" json:"cancel,omitempty"`
+	// The code for the sign-in under way (StartAgentLoginRequest.code).
+	Code          string `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4348,6 +4350,13 @@ func (x *StartMachineAgentLoginRequest) GetCancel() bool {
 		return x.Cancel
 	}
 	return false
+}
+
+func (x *StartMachineAgentLoginRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
 }
 
 type TestMachineAgentRequest struct {
@@ -11380,12 +11389,13 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
-	"\x06hidden\x18\x03 \x01(\bR\x06hidden\"l\n" +
+	"\x06hidden\x18\x03 \x01(\bR\x06hidden\"\x80\x01\n" +
 	"\x1dStartMachineAgentLoginRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +
 	"\x05agent\x18\x02 \x01(\tR\x05agent\x12\x16\n" +
-	"\x06cancel\x18\x03 \x01(\bR\x06cancel\"N\n" +
+	"\x06cancel\x18\x03 \x01(\bR\x06cancel\x12\x12\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\"N\n" +
 	"\x17TestMachineAgentRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +

@@ -91,8 +91,8 @@ type AgentLoginState int32
 
 const (
 	AgentLoginState_AGENT_LOGIN_STATE_UNSPECIFIED AgentLoginState = 0
-	// Started: the browser is opening, or open, on the machine; waiting for
-	// the owner to finish there.
+	// Under way: starting, then (url) waiting for the owner to open its
+	// address and give back the code it shows (工单 #118).
 	AgentLoginState_AGENT_LOGIN_STATE_WAITING AgentLoginState = 1
 	// Done, and the agent checked again says it is signed in.
 	AgentLoginState_AGENT_LOGIN_STATE_SUCCEEDED AgentLoginState = 2
@@ -2204,9 +2204,16 @@ type AgentLogin struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	State AgentLoginState        `protobuf:"varint,1,opt,name=state,proto3,enum=aide.machine.v1.AgentLoginState" json:"state,omitempty"`
 	// Why it failed, in the words of what failed (no token, no URL path).
-	Detail        string                 `protobuf:"bytes,2,opt,name=detail,proto3" json:"detail,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	EndedAt       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	Detail    string                 `protobuf:"bytes,2,opt,name=detail,proto3" json:"detail,omitempty"`
+	StartedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndedAt   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	// The address its sign-in prints for the owner to open (工单 #118): on any
+	// device, not only that machine, where no browser may open. Empty until
+	// it printed one. Sent to the owner's own devices only, never kept.
+	Url string `protobuf:"bytes,5,opt,name=url,proto3" json:"url,omitempty"`
+	// The code the owner pasted from the page that address leads to has been
+	// given to the sign-in; it is checking it.
+	CodeSent      bool `protobuf:"varint,6,opt,name=code_sent,json=codeSent,proto3" json:"code_sent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2269,12 +2276,28 @@ func (x *AgentLogin) GetEndedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *AgentLogin) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *AgentLogin) GetCodeSent() bool {
+	if x != nil {
+		return x.CodeSent
+	}
+	return false
+}
+
 type StartAgentLoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "claude" (the only one so far).
 	Agent string `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
 	// Stop the one under way.
-	Cancel        bool `protobuf:"varint,2,opt,name=cancel,proto3" json:"cancel,omitempty"`
+	Cancel bool `protobuf:"varint,2,opt,name=cancel,proto3" json:"cancel,omitempty"`
+	// The code the page at its url showed, for the one under way (工单 #118).
+	Code          string `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2321,6 +2344,13 @@ func (x *StartAgentLoginRequest) GetCancel() bool {
 		return x.Cancel
 	}
 	return false
+}
+
+func (x *StartAgentLoginRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
 }
 
 type StartAgentLoginResponse struct {
@@ -8140,17 +8170,20 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"dsh_bridge\x18\x16 \x01(\v2\x1a.aide.machine.v1.DSHBridgeR\tdshBridge\x121\n" +
 	"\x05login\x18\x17 \x01(\v2\x1b.aide.machine.v1.AgentLoginR\x05login\x12\x1a\n" +
 	"\bcategory\x18\x18 \x01(\tR\bcategory\x12+\n" +
-	"\x11login_unconfirmed\x18\x19 \x01(\bR\x10loginUnconfirmedJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xce\x01\n" +
+	"\x11login_unconfirmed\x18\x19 \x01(\bR\x10loginUnconfirmedJ\x04\b\x05\x10\x06R\x11sandbox_available\"\xfd\x01\n" +
 	"\n" +
 	"AgentLogin\x126\n" +
 	"\x05state\x18\x01 \x01(\x0e2 .aide.machine.v1.AgentLoginStateR\x05state\x12\x16\n" +
 	"\x06detail\x18\x02 \x01(\tR\x06detail\x129\n" +
 	"\n" +
 	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
-	"\bended_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\"F\n" +
+	"\bended_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12\x10\n" +
+	"\x03url\x18\x05 \x01(\tR\x03url\x12\x1b\n" +
+	"\tcode_sent\x18\x06 \x01(\bR\bcodeSent\"Z\n" +
 	"\x16StartAgentLoginRequest\x12\x14\n" +
 	"\x05agent\x18\x01 \x01(\tR\x05agent\x12\x16\n" +
-	"\x06cancel\x18\x02 \x01(\bR\x06cancel\"L\n" +
+	"\x06cancel\x18\x02 \x01(\bR\x06cancel\x12\x12\n" +
+	"\x04code\x18\x03 \x01(\tR\x04code\"L\n" +
 	"\x17StartAgentLoginResponse\x121\n" +
 	"\x05login\x18\x01 \x01(\v2\x1b.aide.machine.v1.AgentLoginR\x05login\"J\n" +
 	"\rClaudeDesktop\x12\x1c\n" +

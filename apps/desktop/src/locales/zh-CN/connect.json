@@ -90,7 +90,7 @@
     "fixInstall": "从 claude.ai/download 装好 Claude Desktop 并登录（或者单独装 Claude Code）。",
     "fixWhere": "已经装了 Claude Desktop？打开它的 Code 标签页，开一个简短的会话：应用只有这时才会下载 Claude Code。",
     "fixCodeTab": "Claude Desktop 还没有下载 Claude Code。打开 Claude Desktop 并登录，进入 Code 标签页，在那里开一个简短的会话。",
-    "fixSignIn": "Aide 派活用的是 Claude Code 命令行，它要用自己的账号登录一次；Claude Desktop 已登录也不算。点下面「连接细项」里的「在…上登录」：会在那台电脑上打开浏览器，你在浏览器里登录即可，不用开终端。",
+    "fixSignIn": "Aide 派活用的是 Claude Code 命令行，它要用自己的账号登录一次；Claude Desktop 已登录也不算。点下面「连接细项」里的「在…上登录」：会给出登录地址，你在任意设备上打开登录、把授权码填回 Aide 即可，不用开终端。",
     "testFailedHint": "如果原因是「Not logged in」，那是 Claude Code 命令行没登录（与 Claude Desktop 是否登录无关），见上面「状态」里的说明。",
     "where1": "你在 Aide 里用 Claude 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。",
     "where2": "Claude Desktop 重启后，它的 Code 标签页里也会列出这些任务，前提是你自己在那里开过会话。微软应用商店版的 Claude Desktop 不会列出。",

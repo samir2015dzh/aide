@@ -91,7 +91,7 @@
     "fixInstall": "Install Claude Desktop from claude.ai/download and sign in (or install Claude Code on its own).",
     "fixWhere": "Have Claude Desktop already? Open its Code tab once and start a short session: the app downloads Claude Code only then.",
     "fixCodeTab": "Claude Desktop hasn’t downloaded Claude Code yet. Open Claude Desktop, sign in, open its Code tab and start a short session there.",
-    "fixSignIn": "Tasks Aide hands out run with the Claude Code command line, which needs its own sign-in once; the Claude desktop app being signed in doesn't count. Use “Sign in on …” under Connection details below: a browser opens on that computer and you sign in there, no terminal needed.",
+    "fixSignIn": "Tasks Aide hands out run with the Claude Code command line, which needs its own sign-in once; the Claude desktop app being signed in doesn't count. Use “Sign in on …” under Connection details below: it gives a sign-in address you open on any device; sign in and enter the code back in Aide, no terminal needed.",
     "testFailedHint": "If it says “Not logged in”, Claude Code's command line is not signed in (whether the desktop app is doesn't matter): see Status above.",
     "where1": "Tasks you start in Aide with Claude are in Aide’s task list, on every device of yours.",
     "where2": "Claude Desktop lists them too, on its Code tab, after it restarts, once you have opened a session there yourself. The Microsoft Store version of Claude Desktop doesn’t.",

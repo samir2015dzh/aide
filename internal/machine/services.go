@@ -281,7 +281,7 @@ func (s *adminService) StartAgentLogin(ctx context.Context, req *machinev1.Start
 	if principalFrom(ctx).Kind != PrincipalOwner {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
 	}
-	l, err := s.n.StartAgentLogin(req.Agent, req.Cancel)
+	l, err := s.n.StartAgentLogin(req.Agent, req.Cancel, req.Code)
 	if err != nil {
 		return nil, err
 	}
@@ -534,6 +534,7 @@ func (n *Machine) statusFor(p *Principal) *machinev1.MachineStatus {
 	if p == nil || p.Kind != PrincipalOwner {
 		st.Her, st.Screen, st.DirectAddrs, st.Rooms = nil, nil, nil, nil
 		for _, a := range st.Agents {
+			a.Login = nil // its address to open is the owner's alone (工单 #118)
 			a.ModelCatalogs = slices.DeleteFunc(a.ModelCatalogs, func(c *machinev1.AgentModelCatalog) bool {
 				if p == nil || p.Grant == nil || !identity.Allows(p.Grant.Agents, a.Name) {
 					return true

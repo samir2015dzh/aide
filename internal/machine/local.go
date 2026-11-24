@@ -51,8 +51,8 @@ func (l *Local) CheckAgents() { l.n.CheckAgents(true, 0) }
 
 // TestAgent runs Test on this device's own machine.
 // StartAgentLogin signs a coding agent in here (Machine.StartAgentLogin).
-func (l *Local) StartAgentLogin(agent string, cancel bool) (*machinev1.AgentLogin, error) {
-	return l.n.StartAgentLogin(agent, cancel)
+func (l *Local) StartAgentLogin(agent string, cancel bool, code ...string) (*machinev1.AgentLogin, error) {
+	return l.n.StartAgentLogin(agent, cancel, code...)
 }
 
 func (l *Local) TestAgent(ctx context.Context, agent string) (*machinev1.TestAgentResponse, error) {
