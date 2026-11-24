@@ -47,6 +47,10 @@ type Info struct {
 	// ACP agent tells those of a session's model only); a model without
 	// any may yet take some.
 	SomeEfforts bool
+	// ModelsSkipped: this check did not start the agent to ask for its
+	// models (not asked on purpose, 工单 #112); what an earlier check that
+	// did found stands for it.
+	ModelsSkipped bool
 }
 
 // ModelCatalog is an observation, not a machine-wide entitlement guarantee.

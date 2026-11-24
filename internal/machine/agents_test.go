@@ -84,7 +84,7 @@ func TestAgentsCheckedOnlyWhenAsked(t *testing.T) {
 	}
 
 	// Asked again (the app showing its agents), it checks again.
-	n.Local().CheckAgents()
+	n.Local().CheckAgents(false)
 	<-n.CheckAgents(false, AgentsOnce)
 	if got := claude.runs.Load(); got != 2 {
 		t.Fatalf("checked %d times after asking again, want 2", got)

@@ -99,7 +99,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
   // connections' (stale or out of reach: unknown), and its connection rows (Claude Desktop and the command line, DSH's
   // bridge plugin) are details under it, not a second list.
   const entry = (name: string) => (connections ? agentEntry(connections, name) : undefined);
-  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId }).catch(() => {});
+  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId, onPurpose: true }).catch(() => {});
   const details = (name: string, why = false) => {
     const e = entry(name);
     // An agent that can't run says why in its own words above (whyBroken): its one row doesn't say it again. Claude's

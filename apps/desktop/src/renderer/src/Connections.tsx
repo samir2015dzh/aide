@@ -30,7 +30,7 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
   // Coding agents connected to Aide from this machine with a grant of their own (DSH on …): they follow the machine, not the account.
   const grants = only ? [] : (grantsByCategory(st.clients, st.machines).local.get(m.machineId) ?? []);
   if (only && rows.length === 0) return null;
-  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId }).catch(() => {});
+  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId, onPurpose: true }).catch(() => {});
   return (
     <div className="conn" role="region" aria-label={t("conn.title")}>
       {!only && (

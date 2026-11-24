@@ -165,8 +165,9 @@ func (n *Machine) StartAgentLogin(name string, cancel bool, code ...string) (*ma
 		cancelled := !none && errors.Is(ctx.Err(), context.Canceled)
 		timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 		stop()
-		// What the agent says now decides, not how the command ended.
-		<-n.CheckAgents(true, 0)
+		// What the agent says now decides, not how the command ended; its
+		// models are the account's, asked again on the owner's sign-in (工单 #112).
+		<-n.CheckAgentsOnPurpose()
 		n.mu.Lock()
 		in := n.infos[name].LoggedIn
 		st := &machinev1.AgentLogin{StartedAt: l.st.StartedAt, EndedAt: timestamppb.Now()}

@@ -55,7 +55,14 @@ case "$req" in *'"subtype":"initialize"'*) cat ` + answer + `;; esac
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	info := (&Provider{Binary: bin}).Discover(context.Background())
+	// Passive (工单 #112): Claude Code is not started for its models, and says so.
+	if info := (&Provider{Binary: bin}).Discover(context.Background()); !info.ModelsSkipped || !reflect.DeepEqual(info.Models, Models) {
+		t.Fatalf("passive: %+v", info)
+	}
+	if _, err := os.Stat(args); err == nil {
+		t.Fatal("passive check started Claude Code for its models")
+	}
+	info := (&Provider{Binary: bin}).Discover(provider.OnPurpose(context.Background()))
 	if len(info.Models) != 4 || info.Models[2].ID != "opus" || info.Models[2].Resolved != "claude-opus-5-5" || info.Own.Model != "claude-sonnet-5-5" {
 		t.Fatalf("got %+v own %+v", info.Models, info.Own)
 	}
@@ -67,7 +74,7 @@ case "$req" in *'"subtype":"initialize"'*) cat ` + answer + `;; esac
 	}
 
 	os.WriteFile(bin, []byte("#!/bin/sh\necho '2.1.4 (Claude Code)'\n"), 0o755)
-	info = (&Provider{Binary: bin}).Discover(context.Background())
+	info = (&Provider{Binary: bin}).Discover(provider.OnPurpose(context.Background()))
 	if !reflect.DeepEqual(info.Models, Models) || info.Own.Model != "" || info.Models[0].Resolved != "" {
 		t.Fatalf("an older one: %+v %+v", info.Models, info.Own)
 	}

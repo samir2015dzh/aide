@@ -348,7 +348,7 @@ func (l *localService) CheckAgents(ctx context.Context, req *localv1.CheckAgents
 	if req.RescanHidden {
 		m.RescanAgents()
 	} else {
-		m.CheckAgents()
+		m.CheckAgents(req.OnPurpose)
 	}
 	return &localv1.CheckAgentsResponse{}, nil
 }

@@ -46,8 +46,15 @@ func (l *Local) Info() *machinev1.GetInfoResponse {
 	return &machinev1.GetInfoResponse{MachineId: l.n.machineID, MachineName: l.n.Name(), Status: l.n.Status()}
 }
 
-// CheckAgents checks the coding agents again, in the background.
-func (l *Local) CheckAgents() { l.n.CheckAgents(true, 0) }
+// CheckAgents checks the coding agents again, in the background: passively,
+// or (onPurpose, the owner's Check Again, 工单 #112) asking them too.
+func (l *Local) CheckAgents(onPurpose bool) {
+	if onPurpose {
+		l.n.CheckAgentsOnPurpose()
+		return
+	}
+	l.n.CheckAgents(true, 0)
+}
 
 // TestAgent runs Test on this device's own machine.
 // StartAgentLogin signs a coding agent in here (Machine.StartAgentLogin).

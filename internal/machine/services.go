@@ -130,7 +130,7 @@ func (s *machineService) GetInfo(ctx context.Context, req *machinev1.GetInfoRequ
 	switch {
 	case req.Recheck && principalFrom(ctx).Kind == PrincipalOwner:
 		select {
-		case <-s.n.CheckAgents(true, 0):
+		case <-s.n.CheckAgentsOnPurpose(): // the owner's Check Again (工单 #112)
 			if req.RescanHidden { // the owner rescans on purpose
 				s.n.rescanHidden()
 			}

@@ -73,7 +73,13 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	if out, err := login.CombinedOutput(); err == nil && strings.Contains(string(out), "Logged in") {
 		info.LoggedIn = true
 	}
-	info.Models, info.Own, _ = catalog(ctx, env, bin)
+	// Its models come from a `codex app-server` it starts: only on purpose
+	// (工单 #112), else an earlier list stands.
+	if provider.IsOnPurpose(ctx) {
+		info.Models, info.Own, _ = catalog(ctx, env, bin)
+	} else {
+		info.ModelsSkipped = true
+	}
 	info.AllModels = len(info.Models) > 0
 	return info
 }

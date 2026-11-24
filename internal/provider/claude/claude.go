@@ -282,8 +282,14 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	// logged in" while Aide said it was signed in.
 	info.LoginUnconfirmed = !told
 	// Its models as it lists them here (工单 #99); one too old to, the
-	// aliases it takes, their specific models unknown.
-	if info.Models, info.Own.Model = listModels(ctx, env, bin); len(info.Models) == 0 {
+	// aliases it takes, their specific models unknown. Listing them starts
+	// Claude Code: only on purpose (工单 #112), else an earlier list stands.
+	if provider.IsOnPurpose(ctx) {
+		info.Models, info.Own.Model = listModels(ctx, env, bin)
+	} else {
+		info.ModelsSkipped = true
+	}
+	if len(info.Models) == 0 {
 		info.Models = Models
 	}
 	return info
