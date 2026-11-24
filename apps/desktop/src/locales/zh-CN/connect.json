@@ -22,6 +22,7 @@
     "ready": "已在 {{machine}} 上检测到",
     "readyVersion": "已在 {{machine}} 上检测到 · 版本 {{version}}",
     "signIn": "在 {{machine}} 上找到了，但还没登录",
+    "unconfirmed": "已在 {{machine}} 上检测到，登录状态跑一轮任务才知道",
     "appOnly": "{{machine}} 上只有 {{app}} 应用，还没有 Aide 要运行的那部分",
     "broken": "在 {{machine}} 上找到了，但运行不了",
     "missing": "在 {{machine}} 上没有检测到",

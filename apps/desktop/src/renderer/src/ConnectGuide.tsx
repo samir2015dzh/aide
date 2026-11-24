@@ -160,7 +160,8 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
           <ConnectionsCard m={m} only={(r) => r.agent === agent} />
         </section>
       )}
-      <Verify m={m} agent={agent} line={line} ready={d === "ready"} place={place} />
+      {/* A trial run is what confirms an ACP agent's sign-in (工单 #112): offered while it is unconfirmed too. */}
+      <Verify m={m} agent={agent} line={line} ready={d === "ready" || d === "unconfirmed"} place={place} />
       <Steps
         title={t("where")}
         items={[

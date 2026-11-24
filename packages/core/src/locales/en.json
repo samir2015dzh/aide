@@ -235,6 +235,7 @@
     "bridgeNotRunning": "Open DSH Desktop (with the plugin turned on) to see and take over its own sessions.",
     "bridgeOutdated": "The old one can't take over sessions: press “Have DSH install it” and DSH puts in the new one.",
     "agentSignedOut": "{{agent}} is installed but not signed in: no task can go to it here.",
+    "agentUnconfirmed": "Whether {{agent}} is signed in shows only when it runs a task: not confirmed yet. Tasks can go to it; once one runs, this says signed in, and if it is not signed in the task says so.",
     "loginWaiting": "Signing in…",
     "loginWaitingHint": "Starting Claude Code's sign-in, waiting for its sign-in address…",
     "loginUrlHint": "Open the sign-in address below on any device, sign in, then enter the code the page shows here. Good for 15 minutes.",

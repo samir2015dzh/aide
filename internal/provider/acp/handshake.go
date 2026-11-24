@@ -127,8 +127,9 @@ func (p *Provider) discoverByHandshake(ctx context.Context, info provider.Info) 
 	case err != nil:
 		info.Problem, info.Detail = provider.ProblemFailed, err.Error()
 	default:
-		// As for every ACP agent, a missing sign-in shows only in a session.
-		info.Available, info.LoggedIn, info.Version = true, true, g.Version
+		// As for every ACP agent, its sign-in shows only in a session: not
+		// confirmed until one does (工单 #112).
+		info.Available, info.LoginUnconfirmed, info.Version = true, true, g.Version
 	}
 	return info
 }

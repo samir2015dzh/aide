@@ -341,7 +341,7 @@ func (n *Machine) recheck(name string, p provider.Provider) {
 	n.mu.Unlock()
 	n.kickStatus()
 	go func() {
-		info := p.Discover(context.Background())
+		info := n.discover(name, p, false)
 		n.mu.Lock()
 		if n.provider(name) == p {
 			n.infos[name] = n.withOffers(name, info)

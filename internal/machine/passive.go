@@ -12,8 +12,13 @@ import (
 // the owner asks for on purpose does that, or one for an agent never asked
 // before, or for a version of it never asked; what it found is kept
 // (agent_models/), and every other check shows that, starting nothing.
-
-const kAgentModels = "agent_models/"
+const (
+	kAgentModels = "agent_models/"
+	// kAgentSignIn is what a session of an agent last showed of its sign-in
+	// ("in" or "out"): an agent whose check cannot tell (an ACP agent's, 工单
+	// #112) shows that rather than a guess.
+	kAgentSignIn = "agent_signin/"
+)
 
 // keptModels is what the last check that asked an agent for its models
 // found, for the version it then was.
@@ -44,6 +49,11 @@ func (n *Machine) discover(name string, p provider.Provider, onPurpose bool) pro
 	default:
 		n.keep(name, keptModels{Version: info.Version, Models: info.Models, Own: info.Own, AllModels: info.AllModels})
 	}
+	if info.Available && info.LoginUnconfirmed {
+		if b, _ := n.st.Get(kAgentSignIn + name); b != nil {
+			info.LoggedIn, info.LoginUnconfirmed = string(b) == "in", false
+		}
+	}
 	return info
 }
 
@@ -72,5 +82,19 @@ func (n *Machine) keep(name string, k keptModels) {
 		if err := n.st.Set(kAgentModels+name, b); err != nil {
 			n.log.Warn("keeping an agent's models", "agent", name, "err", err)
 		}
+	}
+}
+
+// sawSignIn keeps what a session of the agent showed of its sign-in.
+func (n *Machine) sawSignIn(name string, in bool) {
+	v := "out"
+	if in {
+		v = "in"
+	}
+	if b, _ := n.st.Get(kAgentSignIn + name); string(b) == v {
+		return
+	}
+	if err := n.st.Set(kAgentSignIn+name, []byte(v)); err != nil {
+		n.log.Warn("keeping what a session showed of an agent's sign-in", "agent", name, "err", err)
 	}
 }

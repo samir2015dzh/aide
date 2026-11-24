@@ -205,6 +205,15 @@ private fun agentRow(a: AgentStatus): ConnRow {
     return when {
         a.checking && at == null -> ConnRow(a.name, a.name, title, ConnState.CHECKING, t("Checking…", "正在检测…"))
         !a.available -> ConnRow(a.name, a.name, title, ConnState.MISSING, if (a.problem == NOT_FOUND) t("Not installed", "未安装") else t("Can't run", "运行不了"), a.detail.ifEmpty { null }, at)
+        // Its check cannot tell (工单 #112: an ACP agent's sign-in shows only in a session): unconfirmed, never a guess.
+        !a.loggedIn && a.loginUnconfirmed -> ConnRow(
+            a.name, a.name, title, ConnState.UNKNOWN, t("Unconfirmed", "未确认"),
+            t(
+                "Whether $title is signed in shows only when it runs a task: not confirmed yet. Tasks can go to it; once one runs, this says signed in, and if it is not signed in the task says so.",
+                "$title 的登录状态只有跑任务时才知道：还没确认。可以照常派活，跑通一轮后这里会显示已登录；如果它没登录，任务会如实报出来。",
+            ),
+            at,
+        )
         !a.loggedIn -> ConnRow(a.name, a.name, title, ConnState.MISSING, t("Not signed in", "未登录"), t("$title is installed but not signed in: no task can go to it here.", "$title 装了但没登录：这台机器上暂时不能把任务派给它。"), at)
         else -> ConnRow(a.name, a.name, title, ConnState.OK, if (a.version.isNotEmpty()) t("Ready · ${a.version}", "可以用 · ${a.version}") else t("Ready", "可以用"), null, at)
     }

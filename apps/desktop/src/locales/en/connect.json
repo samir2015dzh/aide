@@ -22,6 +22,7 @@
     "ready": "Detected on {{machine}}",
     "readyVersion": "Detected on {{machine}} · version {{version}}",
     "signIn": "Found on {{machine}}, but not signed in",
+    "unconfirmed": "Found on {{machine}}; whether it is signed in shows when it runs a task",
     "appOnly": "Only the {{app}} app is on {{machine}}, not the part Aide runs",
     "broken": "Found on {{machine}}, but it can’t run",
     "missing": "Not detected on {{machine}}",

@@ -28,7 +28,8 @@ import "./agentlist.css";
 /** The projects agent may work in. */
 export const projectsFor = (projects: Project[], agent: string) => projects.filter((p) => p.agents.length === 0 || p.agents.includes(agent));
 
-export const ready = (a: AgentStatus) => a.available && a.loggedIn;
+/** Tasks can go to it: signed in, or its sign-in not confirmed (工单 #112: an ACP agent's shows only in a session). */
+export const ready = (a: AgentStatus) => a.available && (a.loggedIn || a.loginUnconfirmed);
 
 /** Found (or its app is), but it can't run: it says why rather than counting as not installed. */
 export const broken = (a: AgentStatus) => !a.available && !a.checking && a.problem !== AgentProblem.UNSPECIFIED && a.problem !== AgentProblem.NOT_FOUND;
@@ -285,7 +286,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
   const a = m.status?.agents.find((x) => x.name === agent);
   const [busy, setBusy] = useState(false);
   const [ran, setRan] = useState(false);
-  useRecheckAgents(ran && !a?.loggedIn);
+  useRecheckAgents(ran && !a?.loggedIn && !a?.loginUnconfirmed);
   const title = codingAgentTitle(agent);
   const projects = st.projects.filter((p) => p.machineId === m.machineId);
   const mine = projectsFor(projects, agent);
@@ -344,7 +345,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
           <ClaudeLogin m={m} waiting={claudeLoginWaiting(m)} />
         </div>
       )}
-      {a && a.available && !a.loggedIn && agent !== "claude" && (
+      {a && a.available && !a.loggedIn && !a.loginUnconfirmed && agent !== "claude" && (
         <div className="ag-login">
           {ran ? (
             <>

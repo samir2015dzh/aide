@@ -112,6 +112,14 @@ describe("connections", () => {
     expect(c.rows.map((r) => [r.id, r.state])).toEqual([["codex", "missing"]]);
   });
 
+  test("an agent whose sign-in its check cannot tell is unconfirmed, tasks may go to it (工单 #112)", () => {
+    const m = machine([{ name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true, version: "0.9.0" }]);
+    const r = machineConnections(m, now).rows[0];
+    expect([r.state, r.text, r.fix]).toEqual(["unknown", "未确认", undefined]);
+    expect(r.lacks).toContain("跑通一轮后这里会显示已登录");
+    expect(codingBotState(m, "gemini", now)!.usable).toBe("unverified");
+  });
+
   test("bridge view with nothing known", () => {
     expect(bridgeView(undefined)).toBe("unknown");
   });

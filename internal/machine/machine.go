@@ -456,7 +456,10 @@ func (n *Machine) providerInfo(name string) provider.Info {
 // agentSignedIn is what a session of the agent just showed of its sign-in
 // (工单 #108): one that failed "Not logged in" is signed out now, one that
 // ran a turn is signed in; its status says so at once, not at its next check.
+// What it showed is kept (passive.go) for an agent whose check cannot tell
+// (工单 #112: an ACP agent's).
 func (n *Machine) agentSignedIn(name string, in bool) {
+	n.sawSignIn(name, in)
 	n.mu.Lock()
 	i, ok := n.infos[name]
 	changed := ok && i.Available && (i.LoggedIn != in || i.LoginUnconfirmed)

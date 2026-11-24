@@ -279,6 +279,8 @@ function agentRow(a: AgentStatus): ConnRow {
   if (!a.available) {
     return { ...r, state: "missing", text: a.problem === AgentProblem.NOT_FOUND ? t("conn.notInstalled") : t("conn.broken"), lacks: a.detail || undefined, fix: "install" };
   }
+  // Its check cannot tell (工单 #112: an ACP agent's sign-in shows only in a session): unconfirmed, never signed in on a guess.
+  if (!a.loggedIn && a.loginUnconfirmed) return { ...r, state: "unknown", text: t("conn.unconfirmed"), lacks: t("conn.agentUnconfirmed", { agent: r.title }) };
   if (!a.loggedIn) return { ...r, state: "missing", text: t("conn.signedOut"), lacks: t("conn.agentSignedOut", { agent: r.title }), fix: "signIn" };
   return { ...r, text: a.version ? t("conn.readyVersion", { version: a.version }) : t("conn.ready") };
 }

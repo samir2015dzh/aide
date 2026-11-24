@@ -94,3 +94,55 @@ func TestPassiveChecks(t *testing.T) {
 		t.Fatalf("a new version: asked %d, models %q", l.asked.Load(), models(n))
 	}
 }
+
+// acpLike is an agent whose check cannot tell whether it is signed in, as
+// an ACP agent's cannot.
+type acpLike struct{}
+
+func (acpLike) Name() string { return "acplike" }
+func (acpLike) Discover(context.Context) provider.Info {
+	return provider.Info{Name: "acplike", Available: true, Version: "1.0.0", LoginUnconfirmed: true}
+}
+func (acpLike) Start(context.Context, provider.StartSpec) (provider.Session, error) {
+	panic("not started in these tests")
+}
+
+// TestSignInShownBySessions (工单 #112): an agent whose check cannot tell is
+// unconfirmed, never signed in on a guess; a session that ran a turn makes
+// it signed in, one that failed "not logged in" signed out, and that stands
+// through later checks and a restart of aided.
+func TestSignInShownBySessions(t *testing.T) {
+	dir := t.TempDir()
+	open := func() *Machine {
+		n, err := Open(Config{DataDir: dir, Providers: map[string]provider.Provider{"acplike": acpLike{}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	state := func(n *Machine) (bool, bool) {
+		<-n.CheckAgents(true, 0)
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		i := n.infos["acplike"]
+		return i.LoggedIn, i.LoginUnconfirmed
+	}
+	n := open()
+	if in, unconfirmed := state(n); in || !unconfirmed {
+		t.Fatalf("before any session: in %v, unconfirmed %v", in, unconfirmed)
+	}
+	n.agentSignedIn("acplike", true)
+	if in, unconfirmed := state(n); !in || unconfirmed {
+		t.Fatalf("after a turn ran: in %v, unconfirmed %v", in, unconfirmed)
+	}
+	n.Close()
+	n = open()
+	defer n.Close()
+	if in, unconfirmed := state(n); !in || unconfirmed {
+		t.Fatalf("after a restart: in %v, unconfirmed %v", in, unconfirmed)
+	}
+	n.agentSignedIn("acplike", false)
+	if in, unconfirmed := state(n); in || unconfirmed {
+		t.Fatalf("after a turn failed not logged in: in %v, unconfirmed %v", in, unconfirmed)
+	}
+}
