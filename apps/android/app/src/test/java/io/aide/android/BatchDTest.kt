@@ -75,7 +75,11 @@ class BatchDTest {
         fun row(login: AgentLogin?) = machineConnections(machine(AgentStatus("claude", available = true, loggedIn = false, checkedAt = checked, login = login)), now).rows.single { it.id == "claude-cli" }
         assertTrue(row(null).login)
         assertEquals(ConnState.CHECKING to "Signing in…", row(AgentLogin("AGENT_LOGIN_STATE_WAITING")).let { it.state to it.text })
+        // 工单 #118: no browser is claimed; the address, then the code.
+        assertFalse(row(AgentLogin("AGENT_LOGIN_STATE_WAITING")).lacks!!.contains("browser"))
+        assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_WAITING", url = "https://sign-in.example/x")).lacks!!.contains("Open the sign-in address"))
+        assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_WAITING", url = "https://sign-in.example/x", codeSent = true)).lacks!!.contains("checking it"))
         assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_FAILED", "the browser was closed")).lacks!!.contains("the browser was closed"))
-        assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_TIMED_OUT")).lacks!!.contains("10 minutes"))
+        assertTrue(row(AgentLogin("AGENT_LOGIN_STATE_TIMED_OUT")).lacks!!.contains("15 minutes"))
     }
 }

@@ -1,5 +1,8 @@
 package io.aide.android.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +22,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.AgentStatus
@@ -163,14 +165,14 @@ internal fun ClaudeLogin(model: AppModel, m: Machine) {
     val login = m.status?.agents?.firstOrNull { it.name == "claude" }?.login
     val waiting = login?.state == "AGENT_LOGIN_STATE_WAITING"
     val uri = LocalUriHandler.current
-    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     var code by remember { mutableStateOf("") }
     if (waiting) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (login.url.isNotEmpty()) {
             Text(login.url, style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.semantics { contentDescription = t("Sign-in address", "登录地址") })
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { uri.openUri(login.url) }) { Text(t("Open the sign-in address", "打开登录地址")) }
-                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { clipboard.setText(AnnotatedString(login.url)) }) { Text(t("Copy address", "复制地址")) }
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("sign-in", login.url)) }) { Text(t("Copy address", "复制地址")) }
             }
             if (!login.codeSent) {
                 IosField(code, { code = it }, Modifier.fillMaxWidth(), label = t("Code", "授权码"), placeholder = t("Paste the code the page shows", "粘贴页面给出的授权码"))
