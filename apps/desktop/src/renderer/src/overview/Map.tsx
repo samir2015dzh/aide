@@ -24,9 +24,11 @@ const W = 820;
 const GAP = 64;
 const TOP = 13;
 const MAX = 6;
-const COL = { g: 24, m: 448, p: 670 };
-const WIDTH = { g: 164, m: 168, p: 134 };
-const HEIGHT = { g: 42, m: 46, p: 34 };
+// The projects' column is wide enough for "DSH · work-pc" on one line beside its state (工单 #119), and as tall as
+// the grants' on the left: the machines' column sits a little to the left to make the room.
+const COL = { g: 24, m: 432, p: 636 };
+const WIDTH = { g: 164, m: 168, p: 168 };
+const HEIGHT = { g: 42, m: 46, p: 42 };
 const HUB = { x: 318, s: 36 };
 // A machine only's map: grants, this Mac (the hub), projects.
 const ONE = { g: { x: 24, w: 196 }, p: { x: 640, w: 150 }, hub: 410 };
@@ -432,7 +434,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <span className="lm-ic">{n.agent ? <AgentLogo agent={n.agent} size={14} /> : <Icon name="folder" />}</span>
               <span className="lm-t">
                 <b>{n.name}</b>
-                {L.machines.length > 1 && <small>{n.agent ? `${codingAgentTitle(n.agent)} · ` : ""}{n.machineName}</small>}
+                {L.machines.length > 1 && <small title={`${n.agent ? `${codingAgentTitle(n.agent)} · ` : ""}${n.machineName}`}>{n.agent ? `${codingAgentTitle(n.agent)} · ` : ""}{n.machineName}</small>}
               </span>
               <Tail online={n.online} running={runningCount(L.paths, n.key)} />
             </Node>

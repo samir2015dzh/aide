@@ -64,7 +64,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true, "tasks": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true, "tasks": true, "batchk": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -199,7 +199,7 @@ esac
 				log := dshDesktopSession(t, dshHome)
 				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log
 			}
-			if name == "states" { // work-mac, for the spec to start a turn on and freeze
+			if name == "states" || name == "batchk" { // work-mac: for states, a turn to start and freeze; for batchk, a second machine's project on the map (工单 #119)
 				f.OtherMac = otherMacSession(t, f)
 			}
 			if name == "session" {

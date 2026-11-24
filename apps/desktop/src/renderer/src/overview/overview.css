@@ -24,7 +24,7 @@
 .lmap{background:var(--win2);border-radius:var(--r-panel);overflow:hidden}
 .lmap-top{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 0;flex-wrap:wrap}
 .lmap-top b{font-size:14px;font-weight:600}
-.lmap-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 9px;border-radius:999px;background:var(--lm-node);box-shadow:inset 0 0 0 .5px var(--lm-node-bd);color:var(--l2);font-size:12px}
+.lmap-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 9px;border-radius:999px;background:var(--lm-node);box-shadow:inset 0 0 0 .5px var(--lm-node-bd);color:var(--l2);font-size:12px;white-space:nowrap}
 .lmap-pill i{position:relative;width:7px;height:7px;border-radius:50%;background:var(--live)}
 /* The beat: a disc of the dot's colour growing out of it as it fades (transform and opacity, so the compositor draws it). */
 .lmap-pill i::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--live);animation:lm-beat 1.8s ease-out infinite}
@@ -73,7 +73,8 @@
 .lm-node.off:hover{opacity:.7}
 .lm-node .lm-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .lm-node .lm-t b{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lm-node .lm-t small{font-size:10.5px;color:var(--l2)}
+/* One line, a node's height whatever its text (工单 #119): "DSH · work-pc" never breaks at the dot; too long, it ends in an ellipsis. */
+.lm-node .lm-t small{font-size:10.5px;color:var(--l2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lm-node .lm-t small.soon{color:var(--orange)}
 .lm-node .lm-ic{color:var(--l2);display:flex;flex:none;padding:0 2px}
 .lm-node.p{gap:7px}
@@ -90,13 +91,13 @@
 .lm-home{display:inline-flex;border-radius:4px;box-shadow:0 0 0 1px var(--lm-node-bd)}
 .lm-badge{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:9px;background:var(--fill2);color:var(--l2);font-size:10.5px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
 .lm-badge i{width:5px;height:5px;border-radius:50%;background:var(--live)}
-.lm-node.ghost{justify-content:center;background:none;box-shadow:none;outline:1px dashed var(--l3);outline-offset:-1px;color:var(--accent-t);font-size:12px}
-.lm-node.more{justify-content:center;background:none;box-shadow:none;color:var(--l2);font-size:12px}
+.lm-node.ghost{justify-content:center;background:none;box-shadow:none;outline:1px dashed var(--l3);outline-offset:-1px;color:var(--accent-t);font-size:12px;white-space:nowrap}
+.lm-node.more{justify-content:center;background:none;box-shadow:none;color:var(--l2);font-size:12px;white-space:nowrap}
 /* Hovering only adds: the rest stays readable, just quieter. */
 .lmap.focus .lm-edge:not(.on),.lmap.focus .lm-flow:not(.on),.lmap.focus .lm-node:not(.on),.lmap.focus .lm-mark:not(.on){opacity:.4}
 .lmap.focus .lm-edge.on{stroke-width:1.8}
 .lmap-foot{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;padding:0 var(--sp-3) var(--sp-3);font-size:11.5px;color:var(--l2);min-height:16px}
-.lmap-foot span{display:inline-flex;align-items:center;gap:6px}
+.lmap-foot span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .lmap-foot i{width:14px;height:2px;border-radius:2px;display:inline-block}
 .lmap-foot i.run{background:var(--live)}
 .lmap-foot i.wait{background:var(--live-wait)}
