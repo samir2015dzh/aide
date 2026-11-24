@@ -13,6 +13,7 @@ import (
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
+	"github.com/samir2015dzh/aide/internal/provider/acp"
 )
 
 // A coding agent's defaults on this machine are what its sessions run with
@@ -27,7 +28,17 @@ import (
 const (
 	kAgentDefaults = "agent_defaults/"
 	kAgentOffers   = "agent_offers/"
+	// offersFormat is how what an agent offered is kept: 2 since its models
+	// are listed each once, by where from (工单 #98 补充, #117).
+	offersFormat = 2
 )
+
+// keptOffers is what an agent offered as kept (agent_offers/): Format 0 is
+// an earlier Aide's.
+type keptOffers struct {
+	provider.Offers
+	Format int `json:",omitempty"`
+}
 
 var (
 	// ACP agents' model ids can be JSON (DSH's ["provider","model"]).
@@ -43,9 +54,13 @@ func (n *Machine) loadDefaults() {
 			n.defaults[a] = d
 		}
 		if b, _ := n.st.Get(kAgentOffers + a); b != nil {
-			var o provider.Offers
+			var o keptOffers
 			if json.Unmarshal(b, &o) == nil {
-				n.offers[a] = o
+				// Kept by an earlier Aide (its models by line, "name (group)"): listed as now, not as then (工单 #117).
+				if o.Format < offersFormat {
+					o.Models = acp.NormalizeModels(o.Models, o.Own.Model)
+				}
+				n.offers[a] = o.Offers
 			}
 		}
 	}
@@ -80,7 +95,7 @@ func (n *Machine) offered(agent string, o provider.Offers) {
 		n.infos[agent] = n.withOffers(agent, i)
 	}
 	n.mu.Unlock()
-	if b, err := json.Marshal(o); err == nil {
+	if b, err := json.Marshal(keptOffers{Offers: o, Format: offersFormat}); err == nil {
 		if err := n.st.Set(kAgentOffers+agent, b); err != nil {
 			n.log.Warn("storing what an agent offers", "agent", agent, "err", err)
 		}

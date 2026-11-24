@@ -79,13 +79,13 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   await expect(bot.locator(".composer-state")).toContainText("已开新对话", { timeout: 30_000 });
 
   // Now its own, as DSH named them in that session (工单 #98 补充): each model once — the same one by DSH's API and
-  // account lines is one entry, by its display name, both lines said — and the custom provider's (magpie, in a model
+  // account lines is one entry, the list named one way (工单 #117: by specific model ID, as one of them has no display name), both lines said — and the custom provider's (magpie, in a model
   // option of its own) listed too. The conversation runs its default, read back.
-  await expect(chip).toHaveText("DeepSeek-V4.1-Flash", { timeout: 30_000 });
+  await expect(chip).toHaveText("deepseek-v4-flash", { timeout: 30_000 });
   const listed = await modelList(page, chip);
   expect(listed).toEqual([
-    "默认 · DeepSeek-V4.1-Flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
-    "DeepSeek-V4.1-Flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "默认 · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
     "deepseek-v4-pro deepseek/deepseek-v4-pro · DeepSeek",
     "group/deepseek-v4.1 magpie/group/deepseek-v4.1 · magpie",
   ]);

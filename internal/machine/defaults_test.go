@@ -329,3 +329,43 @@ func TestModesBeforeASession(t *testing.T) {
 		t.Fatalf("status after a session: %v", a)
 	}
 }
+
+// TestKeptOffersFromBefore (工单 #117): what DSH offered as an earlier Aide
+// kept it (the owner's list: one entry per line, "name (group)", the same
+// model by DSH's API and its account twice) is listed as now once aided
+// starts again — each model once, named one way (here both by display name), both lines said — without
+// waiting for a new session; kept again, it is kept in the new format.
+func TestKeptOffersFromBefore(t *testing.T) {
+	dsh := &presets{}
+	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"deepseek": dsh})
+	before := `{"Models":[` +
+		`{"ID":"[\"deepseek\",\"deepseek-v4-flash\"]","Name":"deepseek-v4-flash (DeepSeek)","Efforts":["high"]},` +
+		`{"ID":"[\"deepseek-account\",\"deepseek-v4-flash\"]","Name":"DeepSeek-V4.1-Flash (DeepSeek Account)","Efforts":null},` +
+		`{"ID":"[\"deepseek-account\",\"deepseek-v4-pro\"]","Name":"DeepSeek-V4-Pro (DeepSeek Account)","Efforts":null}],` +
+		`"Modes":null,"Own":{"Model":"[\"deepseek\",\"deepseek-v4-flash\"]"}}`
+	if err := h.n.st.Set(kAgentOffers+"deepseek", []byte(before)); err != nil {
+		t.Fatal(err)
+	}
+	h.n.mu.Lock()
+	h.n.offers = map[string]provider.Offers{}
+	h.n.mu.Unlock()
+	h.n.loadDefaults() // as when aided starts again
+	want := []provider.Model{
+		{ID: `["deepseek","deepseek-v4-flash"]`, Name: "DeepSeek-V4.1-Flash", Source: "DeepSeek · DeepSeek Account", Efforts: []string{"high"}},
+		{ID: `["deepseek-account","deepseek-v4-pro"]`, Name: "DeepSeek-V4-Pro", Source: "DeepSeek Account"},
+	}
+	if got := h.n.offers["deepseek"].Models; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("listed: %+v", got)
+	}
+	h.n.mu.Lock()
+	i := h.n.withOffers("deepseek", dsh.Discover(context.Background())) // what its status lists
+	h.n.mu.Unlock()
+	if len(i.Models) != 2 || i.Models[0].Name != "DeepSeek-V4.1-Flash" || i.Models[0].Source != "DeepSeek · DeepSeek Account" {
+		t.Fatalf("status: %+v", i.Models)
+	}
+	h.n.offered("deepseek", h.n.offers["deepseek"])
+	b, _ := h.n.st.Get(kAgentOffers + "deepseek")
+	if !strings.Contains(string(b), `"Format":2`) {
+		t.Fatalf("kept: %s", b)
+	}
+}

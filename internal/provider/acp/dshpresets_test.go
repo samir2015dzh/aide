@@ -246,8 +246,9 @@ func TestDSHModelsByProvider(t *testing.T) {
 		return of(events, provider.EventRef)[0], done.Text
 	}
 	ref, _ := run("")
+	// Named one way (工单 #117): deepseek-v4-pro has no display name, so each by its specific model ID.
 	want := []provider.Model{
-		{ID: `["deepseek","deepseek-v4-flash"]`, Name: "DeepSeek-V4.1-Flash", Source: "DeepSeek · DeepSeek Account"},
+		{ID: `["deepseek","deepseek-v4-flash"]`, Name: "deepseek-v4-flash", Source: "DeepSeek · DeepSeek Account"},
 		{ID: `["deepseek","deepseek-v4-pro"]`, Name: "deepseek-v4-pro", Source: "DeepSeek"},
 		{ID: `["magpie","group/deepseek-v4.1"]`, Name: "group/deepseek-v4.1", Source: "magpie"},
 	}
@@ -266,7 +267,7 @@ func TestDSHModelsByProvider(t *testing.T) {
 }
 
 // TestSameModelsOnce: one provider's lines, "account" aside, by its ID or its
-// group; never by display name; other providers apart.
+// group; never by display name; other providers apart; one way of naming.
 func TestSameModelsOnce(t *testing.T) {
 	got := sameModelsOnce([]choice{
 		{Value: "deepseek/deepseek-v4-flash", Name: "deepseek-v4-flash", Group: "DeepSeek"},
@@ -275,11 +276,43 @@ func TestSameModelsOnce(t *testing.T) {
 		{Value: "magpie/deepseek-v4-flash", Name: "deepseek-v4-flash", Group: "magpie"},           // another provider
 	}, "acct/DeepSeek_V4_Flash")
 	want := []provider.Model{
-		{ID: "acct/DeepSeek_V4_Flash", Name: "DeepSeek-V4.1-Flash", Source: "DeepSeek · DeepSeek Account"},
-		{ID: "deepseek-account/deepseek-v4.1-flash", Name: "DeepSeek-V4.1-Flash"},
+		{ID: "acct/DeepSeek_V4_Flash", Name: "deepseek-v4-flash", Source: "DeepSeek · DeepSeek Account"},
+		{ID: "deepseek-account/deepseek-v4.1-flash", Name: "deepseek-v4.1-flash"},
 		{ID: "magpie/deepseek-v4-flash", Name: "deepseek-v4-flash", Source: "magpie"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v", got)
+	}
+	// Every one with a display name: named by them.
+	got = sameModelsOnce([]choice{
+		{Value: "g/gemini-3-pro", Name: "Gemini 3 Pro", Group: "Google"},
+		{Value: "g/gemini-3-flash", Name: "Gemini 3 Flash", Group: "Google"},
+	}, "")
+	if got[0].Name != "Gemini 3 Pro" || got[1].Name != "Gemini 3 Flash" {
+		t.Fatalf("display names: %+v", got)
+	}
+}
+
+// TestNormalizeModels (工单 #117): models kept by an earlier Aide, one per
+// line and named "name (group)" (what the owner's list showed), are listed
+// as a session's are now: the same model by DSH's API and account lines
+// once, named one way, both lines said; reasoning efforts kept; and again,
+// it changes nothing.
+func TestNormalizeModels(t *testing.T) {
+	kept := []provider.Model{
+		{ID: `["deepseek","deepseek-v4-flash"]`, Name: "deepseek-v4-flash (DeepSeek)", Efforts: []string{"high", "max"}},
+		{ID: `["deepseek","deepseek-v4-pro"]`, Name: "deepseek-v4-pro (DeepSeek)"},
+		{ID: `["deepseek-account","deepseek-v4-flash"]`, Name: "DeepSeek-V4.1-Flash (DeepSeek Account)"},
+	}
+	want := []provider.Model{
+		{ID: `["deepseek","deepseek-v4-flash"]`, Name: "deepseek-v4-flash", Source: "DeepSeek · DeepSeek Account", Efforts: []string{"high", "max"}},
+		{ID: `["deepseek","deepseek-v4-pro"]`, Name: "deepseek-v4-pro", Source: "DeepSeek"},
+	}
+	got := NormalizeModels(kept, `["deepseek","deepseek-v4-flash"]`)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v", got)
+	}
+	if again := NormalizeModels(got, `["deepseek","deepseek-v4-flash"]`); !reflect.DeepEqual(again, want) {
+		t.Fatalf("again %+v", again)
 	}
 }
