@@ -420,7 +420,8 @@ func desktopSessions(t *testing.T, w *ownerMac) map[string]string {
 	start("限流", "fail rate limited", true)
 	start("崩溃", "say 开始\ncrash", true)
 	start("选颜色", "ask 选哪个颜色|红,蓝", true)
-	running := start("跑很久", "shell sleep 1800", false)
+	// A long command, the fake agent's own (REQ-20261124-01: no system sleep on any OS), shown as a running tool call.
+	running := start("跑很久", "tool-sleep 1800s", false)
 	archived := start("归档的", "say hi", true)
 	if r := w.cli(30*time.Second, "session", "archive", archived); r.code != 0 {
 		t.Fatalf("archive: %+v", r)
