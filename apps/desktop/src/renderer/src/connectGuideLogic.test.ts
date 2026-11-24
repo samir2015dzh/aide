@@ -11,6 +11,7 @@ test("the status says what the machine's check found", () => {
   assert.equal(detect(undefined, true, true), "missing");
   assert.equal(detect(status({ available: true, loggedIn: true }), true, true), "ready");
   assert.equal(detect(status({ available: true }), true, true), "signIn");
+  assert.equal(detect(status({ available: true, loginUnconfirmed: true }), true, true), "unconfirmed"); // 工单 #112
   assert.equal(detect(status({ checking: true }), true, true), "checking");
   // Being checked again, it stays what it was found to be.
   assert.equal(detect(status({ available: true, loggedIn: true, checking: true }), true, true), "ready");

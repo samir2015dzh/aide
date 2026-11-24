@@ -30,7 +30,7 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
   // Coding agents connected to Aide from this machine with a grant of their own (DSH on …): they follow the machine, not the account.
   const grants = only ? [] : (grantsByCategory(st.clients, st.machines).local.get(m.machineId) ?? []);
   if (only && rows.length === 0) return null;
-  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId }).catch(() => {});
+  const recheck = () => void local.checkAgents({ machineId: m.local ? "" : m.machineId, onPurpose: true }).catch(() => {});
   return (
     <div className="conn" role="region" aria-label={t("conn.title")}>
       {!only && (
@@ -175,34 +175,60 @@ function Fix({ r, m, recheck }: { r: ConnRow; m: Machine; recheck: () => void })
       return <p className="conn-fix">{t("conn.fixClaudeCLI")}</p>;
     case "claudeLogin":
       return <ClaudeLogin m={m} waiting={r.state === "checking"} />;
+    case "signIn":
+      // Claude Desktop signs in only in its own window (工单 #118): on this computer Aide can open it, no more.
+      return r.id === "claude-desktop" && m.local ? (
+        <div className="conn-fix conn-acts">
+          <button className="btn sm" onClick={() => window.aide?.openExternal("claude://")}>{t("conn.desktopOpen")}</button>
+        </div>
+      ) : null;
     default:
       return null;
   }
 }
 
-/** Claude Code's sign-in from Aide is under way on m: the browser is open there. */
+/** Claude Code's sign-in from Aide is under way on m. */
 export const claudeLoginWaiting = (m: Machine) => m.status?.agents.find((a) => a.name === "claude")?.login?.state === AgentLoginState.WAITING;
 
 /**
- * Signing Claude Code's command line in on m (工单 #51, the owner's choice A): Aide starts its own sign-in there, a
- * browser opens on that computer, and the owner signs in in it; Aide never sees the account or the token. The row
- * above says how it goes (waiting, done, failed, cancelled), from the machine's own report.
+ * Signing Claude Code's command line in on m (工单 #51, the owner's choice A; 工单 #118): Aide starts its own sign-in
+ * there, which gives an address; no browser on that computer is counted on. The owner opens the address on any device,
+ * signs in, and enters the code the page shows here, which goes to the sign-in. Aide never sees the account or the
+ * token. The row above says how it goes (starting, the address, checking the code, done, failed, cancelled), from the
+ * machine's own report.
  */
 export function ClaudeLogin({ m, waiting }: { m: Machine; waiting: boolean }) {
   const { t } = useTranslation("common");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const go = (cancel: boolean) => {
+  const [code, setCode] = useState("");
+  const [copied, setCopied] = useState(false);
+  const login = m.status?.agents.find((a) => a.name === "claude")?.login;
+  const url = waiting ? login?.url ?? "" : "";
+  const go = (cancel: boolean, given = "") => {
     setBusy(true);
     setError("");
-    local.startMachineAgentLogin({ machineId: m.machineId, agent: "claude", cancel }).then(
-      () => setBusy(false),
+    local.startMachineAgentLogin({ machineId: m.machineId, agent: "claude", cancel, code: given }).then(
+      () => (setBusy(false), given && setCode("")),
       (e) => (setError(errorText(e)), setBusy(false)),
     );
   };
   const where = m.local ? t("conn.thisComputer") : m.machineName;
   return (
     <div className="conn-fix conn-acts">
+      {url && (
+        <div className="conn-login" role="group" aria-label={t("conn.loginOpen")}>
+          <code className="am-chip sel-text conn-login-url">{url}</code>
+          <button className="btn sm primary" onClick={() => window.aide?.openExternal(url)}>{t("conn.loginOpen")}</button>
+          <button className="btn sm" onClick={() => navigator.clipboard.writeText(url).then(() => setCopied(true))}>{copied ? t("conn.loginCopied") : t("conn.loginCopy")}</button>
+          {!login?.codeSent && (
+            <form className="conn-login-code" onSubmit={(e) => (e.preventDefault(), code.trim() && go(false, code.trim()))}>
+              <input className="field" aria-label={t("conn.loginCode")} placeholder={t("conn.loginCodePlaceholder")} value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" spellCheck={false} />
+              <button className="btn sm primary" type="submit" disabled={busy || !code.trim()}>{t("conn.loginSend")}</button>
+            </form>
+          )}
+        </div>
+      )}
       {waiting ? (
         <button className="btn sm" disabled={busy} onClick={() => go(true)}>{t("conn.loginCancel")}</button>
       ) : (

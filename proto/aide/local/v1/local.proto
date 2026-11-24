@@ -723,6 +723,11 @@ message CheckAgentsRequest {
   // poll): a hidden agent that now runs where it did not, or is found
   // elsewhere, shows again.
   bool rescan_hidden = 2;
+  // The owner's Check Again, not a page opening or a poll (工单 #112): the
+  // agents are asked too what only a running one tells (their models).
+  // Otherwise the check is passive. Another machine's check is always the
+  // owner's own.
+  bool on_purpose = 3;
 }
 
 message SetAgentHiddenRequest {
@@ -772,6 +777,8 @@ message StartMachineAgentLoginRequest {
   string machine_id = 1;
   string agent = 2;
   bool cancel = 3;
+  // The code for the sign-in under way (StartAgentLoginRequest.code).
+  string code = 4;
 }
 
 message TestMachineAgentRequest {

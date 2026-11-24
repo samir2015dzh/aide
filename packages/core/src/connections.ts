@@ -172,10 +172,11 @@ function claudeRows(a: AgentStatus): ConnRow[] {
   if (a.available && a.loggedIn) {
     cli.text = a.version ? t("conn.signedInVersion", { version: a.version }) : t("conn.signedIn");
   } else if (a.available && a.login?.state === AgentLoginState.WAITING) {
-    // Signing in from Aide (工单 #51): the browser is open on that machine.
+    // Signing in from Aide (工单 #51, #118): no browser is claimed; its address, once printed, is opened on any
+    // device, and the code the page shows comes back here.
     cli.state = "checking";
     cli.text = t("conn.loginWaiting");
-    cli.lacks = t("conn.loginWaitingHint");
+    cli.lacks = t(a.login.codeSent ? "conn.loginCodeHint" : a.login.url ? "conn.loginUrlHint" : "conn.loginWaitingHint");
     cli.fix = "claudeLogin";
   } else if (a.available && a.loginUnconfirmed) {
     // Its own `auth status` said nothing clear (工单 #108): unconfirmed, never the desktop app's sign-in in its place.
@@ -278,6 +279,8 @@ function agentRow(a: AgentStatus): ConnRow {
   if (!a.available) {
     return { ...r, state: "missing", text: a.problem === AgentProblem.NOT_FOUND ? t("conn.notInstalled") : t("conn.broken"), lacks: a.detail || undefined, fix: "install" };
   }
+  // Its check cannot tell (工单 #112: an ACP agent's sign-in shows only in a session): unconfirmed, never signed in on a guess.
+  if (!a.loggedIn && a.loginUnconfirmed) return { ...r, state: "unknown", text: t("conn.unconfirmed"), lacks: t("conn.agentUnconfirmed", { agent: r.title }) };
   if (!a.loggedIn) return { ...r, state: "missing", text: t("conn.signedOut"), lacks: t("conn.agentSignedOut", { agent: r.title }), fix: "signIn" };
   return { ...r, text: a.version ? t("conn.readyVersion", { version: a.version }) : t("conn.ready") };
 }

@@ -81,7 +81,7 @@ export function FirstTask({ agent }: { agent: string }) {
  */
 function helloPrompt(st: ReturnType<typeof useStore>, granted: string[], grantedProjects: string[]): string {
   const local = st.machines.find((m) => m.local);
-  const ready = (local?.status?.agents ?? []).filter((a) => a.available && a.loggedIn).map((a) => a.name);
+  const ready = (local?.status?.agents ?? []).filter((a) => a.available && (a.loggedIn || a.loginUnconfirmed)).map((a) => a.name);
   const agents = granted.filter((a) => a !== "*");
   const allowed = grantedProjects.filter((p) => p !== "*");
   // One with a project here it may use first: an assistant logged in may use every coding agent and project.

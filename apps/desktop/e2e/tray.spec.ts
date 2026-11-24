@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import { promisify } from "node:util";
-import { launch } from "./app";
+import type { Menu } from "electron";
+import { launch, snap } from "./app";
 
 // The app in the notification area only, its window closed (docs/resident.md
 // §5): what its processes hold then is the tray state of the resident
@@ -74,5 +75,26 @@ test("in the notification area only, the app's processes stay within the tray bu
   console.log(`tray state, the app's processes, mean of ${samples} samples:\n${table.join("\n")}`);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Tray state (desktop app)\n\n${table.join("\n")}\n`);
   expect(total, "the app's processes in the tray state, MB").toBeLessThanOrEqual(budget);
+  await app.close();
+});
+
+// 工单 #116: the icon's right-click menu offers Check for Updates… between Settings… and the separator, and it
+// takes the main menu's path: the update window opens with what a check found (here a development build's
+// answer), in place, not silently.
+test("the icon's right-click menu checks for updates in place", async () => {
+  const { app } = await launch();
+  type MenuHook = { aideTest: { tray(): { menu(): Menu } } };
+  const items = await app.evaluate(() =>
+    (globalThis as unknown as MenuHook).aideTest.tray().menu().items.map((i) => ({ id: i.id, label: i.label, type: i.type })),
+  );
+  expect(items.map((i) => i.id || i.type)).toEqual(["open", "settings", "checkForUpdates", "separator", "quit"]);
+  expect(items.find((i) => i.id === "checkForUpdates")?.label).toBe("检查更新…");
+  const [updates] = await Promise.all([
+    app.waitForEvent("window"),
+    app.evaluate(() => (globalThis as unknown as MenuHook).aideTest.tray().menu().getMenuItemById("checkForUpdates")?.click()),
+  ]);
+  await expect.poll(() => updates.url()).toMatch(/#updates$/);
+  await expect(updates.getByRole("status", { name: "更新状态" })).toContainText("开发版本不检查更新");
+  await snap(updates, "tray-check-updates");
   await app.close();
 });

@@ -64,7 +64,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true, "tasks": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true, "tasks": true, "batchk": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -170,6 +170,11 @@ esac
 				_, claudeDir, env = signInClaude(t)
 				more = append(more, env...)
 			}
+			if name == "batchk" { // Claude Code whose sign-in prints its address and takes the code back (工单 #118)
+				var env []string
+				env, claudeDir = addressLoginClaude(t)
+				more = append(more, env...)
+			}
 			var dshHome string
 			if name == "states" { // a short stall limit, so a quiet turn reads stalled within the spec
 				more = append(more, "AIDE_STALL_AFTER=5")
@@ -199,7 +204,7 @@ esac
 				log := dshDesktopSession(t, dshHome)
 				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log
 			}
-			if name == "states" { // work-mac, for the spec to start a turn on and freeze
+			if name == "states" || name == "batchk" { // work-mac: for states, a turn to start and freeze; for batchk, a second machine's project on the map (工单 #119)
 				f.OtherMac = otherMacSession(t, f)
 			}
 			if name == "session" {
@@ -415,7 +420,8 @@ func desktopSessions(t *testing.T, w *ownerMac) map[string]string {
 	start("限流", "fail rate limited", true)
 	start("崩溃", "say 开始\ncrash", true)
 	start("选颜色", "ask 选哪个颜色|红,蓝", true)
-	running := start("跑很久", "shell sleep 1800", false)
+	// A long command, the fake agent's own (REQ-20261124-01: no system sleep on any OS), shown as a running tool call.
+	running := start("跑很久", "tool-sleep 1800s", false)
 	archived := start("归档的", "say hi", true)
 	if r := w.cli(30*time.Second, "session", "archive", archived); r.code != 0 {
 		t.Fatalf("archive: %+v", r)

@@ -68,7 +68,8 @@ export function registerIPC() {
   });
   ipcMain.on("window-mode", (e, m) => trusted(e) && (m === "onboarding" || m === "main") && setMode(m));
   ipcMain.on("open-external", (e, url: string) => {
-    if (trusted(e) && typeof url === "string" && url.startsWith("https://")) shell.openExternal(url);
+    // A web page, or the Claude desktop app itself (claude://, 工单 #118: it signs in only in its own window).
+    if (trusted(e) && typeof url === "string" && (url.startsWith("https://") || url === "claude://")) shell.openExternal(url);
   });
   ipcMain.on("menu-state", (e, s: MenuState) => {
     if (!trusted(e) || BrowserWindow.fromWebContents(e.sender) !== mainWindow()) return;

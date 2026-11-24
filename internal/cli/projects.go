@@ -195,7 +195,8 @@ func (a *app) usableAgents(st *machinev1.MachineStatus, p *machinev1.Project) []
 // mayRun: the agent is installed and logged in on its machine, and in the
 // grant.
 func (a *app) mayRun(ag *machinev1.AgentStatus) bool {
-	return ag.Available && ag.LoggedIn && identity.Allows(a.g.Agents, ag.Name)
+	// Not confirmed is not signed out (工单 #108, #112): its sign-in shows in a session.
+	return ag.Available && (ag.LoggedIn || ag.LoginUnconfirmed) && identity.Allows(a.g.Agents, ag.Name)
 }
 
 // warmProject warms the machine an address names, or every machine when

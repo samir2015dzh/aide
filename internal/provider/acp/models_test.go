@@ -152,7 +152,13 @@ func TestAntigravityCatalogExpiryAndIsolation(t *testing.T) {
 	p.catalogs[key+":isolated"] = v
 	p.modelsMu.Unlock()
 	t.Setenv("FAKE_ACP_OPTIONS_ERROR", "-32603")
+	// Past its TTL a passive check still starts nothing (工单 #112); only one on purpose asks again.
+	before, _ := json.Marshal(p.ModelCatalogs())
 	p.Discover(context.Background())
+	if after, _ := json.Marshal(p.ModelCatalogs()); string(after) != string(before) {
+		t.Fatalf("a passive check re-probed: %s", after)
+	}
+	p.Discover(provider.OnPurpose(context.Background()))
 	for range 2 { // Repeated failures must not erase the last observation.
 		p.saveCatalog(key, provider.ModelCatalog{Scope: "isolated", State: "error"})
 	}

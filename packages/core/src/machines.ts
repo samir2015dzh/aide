@@ -32,7 +32,7 @@ const suggestedAgents = ["claude", "codex"];
  * not logged in, then the suggested ones that are missing; by name within each.
  */
 export function agentTiles(agents: AgentStatus[]): AgentStatus[] {
-  const rank = (a: AgentStatus) => (a.available && a.loggedIn ? 0 : a.available ? 1 : 2);
+  const rank = (a: AgentStatus) => (a.available && (a.loggedIn || a.loginUnconfirmed) ? 0 : a.available ? 1 : 2);
   return agents.filter((a) => a.available || suggestedAgents.includes(a.name)).sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
 

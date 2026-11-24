@@ -9,6 +9,9 @@
 //	shell <command>     execute tool call, asks permission, then runs it
 //	read <path>         read tool call without a permission request
 //	sleep <duration>    pause (session/cancel ends the turn as cancelled)
+//	tool-sleep <dur>    execute tool call "sleep <dur>" that pauses in this
+//	                    process, no program run (a long command on any OS);
+//	                    session/cancel ends it and the turn as cancelled
 //	history             agent message "history: <n> turns"
 //	config              agent message "config: <model> <effort> <mode>"
 //	                    (what the session runs with)
@@ -698,6 +701,22 @@ func prompt(id json.RawMessage, sid, text string, images, files []string) {
 			select {
 			case <-time.After(d):
 			case <-cancelled:
+				reply(id, map[string]any{"stopReason": "cancelled"})
+				return
+			}
+		case "tool-sleep":
+			stopped := false
+			tool(sid, "execute", "sleep "+arg, map[string]any{"command": "sleep " + arg}, "", func() (string, error) {
+				d, _ := time.ParseDuration(arg)
+				select {
+				case <-time.After(d):
+					return "", nil
+				case <-cancelled:
+					stopped = true
+					return "", fmt.Errorf("cancelled")
+				}
+			})
+			if stopped {
 				reply(id, map[string]any{"stopReason": "cancelled"})
 				return
 			}

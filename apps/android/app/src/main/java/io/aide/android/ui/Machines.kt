@@ -1,5 +1,8 @@
 package io.aide.android.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +22,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.AgentStatus
@@ -146,20 +153,39 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
 }
 
 /**
- * Signing Claude Code's command line in on m from Aide (工单 #51, the owner's choice A): its own sign-in starts there and
- * a browser opens on that computer; while it waits, stopping it. The same entry on its machine's list, its bot's page and
- * a session that failed not signed in (工单 #108).
+ * Signing Claude Code's command line in on m from Aide (工单 #51, the owner's choice A; 工单 #118): its own sign-in starts
+ * there and gives an address, no browser on that computer counted on. The address opens on this phone (or is copied to
+ * any device); the code the page shows goes back from here. While it waits, stopping it. The same entry on its machine's
+ * list, its bot's page and a session that failed not signed in (工单 #108).
  */
 @Composable
 internal fun ClaudeLogin(model: AppModel, m: Machine) {
     if (!m.online || m.unreachable.isNotEmpty()) return
     val scope = rememberCoroutineScope()
-    val waiting = m.status?.agents?.firstOrNull { it.name == "claude" }?.login?.state == "AGENT_LOGIN_STATE_WAITING"
-    if (waiting) {
+    val login = m.status?.agents?.firstOrNull { it.name == "claude" }?.login
+    val waiting = login?.state == "AGENT_LOGIN_STATE_WAITING"
+    val uri = LocalUriHandler.current
+    val context = LocalContext.current
+    var code by remember { mutableStateOf("") }
+    if (waiting) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (login.url.isNotEmpty()) {
+            Text(login.url, style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.semantics { contentDescription = t("Sign-in address", "登录地址") })
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { uri.openUri(login.url) }) { Text(t("Open the sign-in address", "打开登录地址")) }
+                PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("sign-in", login.url)) }) { Text(t("Copy address", "复制地址")) }
+            }
+            if (!login.codeSent) {
+                IosField(code, { code = it }, Modifier.fillMaxWidth(), label = t("Code", "授权码"), placeholder = t("Paste the code the page shows", "粘贴页面给出的授权码"))
+                PlainButton(
+                    contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp),
+                    onClick = { val c = code.trim(); if (c.isNotEmpty()) scope.launch { model.startAgentLogin(m.machineId, "claude", code = c); code = "" } },
+                ) { Text(t("Submit code", "提交授权码")) }
+            }
+        }
         PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, "claude", cancel = true) } }) { Text(t("Cancel sign-in", "取消登录")) }
     } else Column {
         PlainButton(contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp), onClick = { scope.launch { model.startAgentLogin(m.machineId, "claude") } }) { Text(t("Sign in on ${m.machineName}", "在 ${m.machineName} 上登录")) }
-        Text(t("A browser opens on ${m.machineName}; you sign in there. Aide never handles the account or the token.", "会在 ${m.machineName} 上打开浏览器，你在那里登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
+        Text(t("Claude Code's sign-in on ${m.machineName} gives an address you open on any device; Aide never handles the account or the token.", "在 ${m.machineName} 上启动 Claude Code 的登录，给出登录地址，你在任意设备上打开它登录；Aide 不经手账号和令牌。"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
     }
 }
 

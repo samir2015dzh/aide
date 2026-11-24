@@ -21,8 +21,10 @@ export type Detected =
   | "offline"
   /** Not known yet: the machine is checking, or has not said. */
   | "checking"
-  /** Found and signed in (an ACP agent's sign-in shows only in a session). */
+  /** Found and signed in. */
   | "ready"
+  /** Found; whether it is signed in shows only in a session (an ACP agent's, 工单 #112). */
+  | "unconfirmed"
   /** Found, not signed in. */
   | "signIn"
   /** Its desktop app is there, not the command Aide runs. */
@@ -39,7 +41,7 @@ export type Detected =
 export function detect(a: AgentStatus | undefined, online: boolean, known: boolean): Detected {
   if (!online) return "offline";
   if (!a) return known ? "missing" : "checking";
-  if (a.available) return a.loggedIn ? "ready" : "signIn";
+  if (a.available) return a.loggedIn ? "ready" : a.loginUnconfirmed ? "unconfirmed" : "signIn";
   if (a.checking) return "checking";
   if (a.problem === appWithoutCli) return "appOnly";
   if (a.problem === notFound || a.problem === (0 as AgentProblem)) return "missing";

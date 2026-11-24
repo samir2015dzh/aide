@@ -8,7 +8,7 @@ import { i18n } from "../shared/i18n";
 import { command } from "./ipc";
 import { preferences, world, worldListeners } from "./notify";
 import { platform } from "./platform";
-import { install, updateInfo, updateListeners } from "./updater";
+import { install, openUpdates, updateInfo, updateListeners } from "./updater";
 import { ours, showMain, showSettings, trayPanel } from "./windows";
 
 // The menu bar extra: a panel under the icon with how many sessions need the
@@ -59,7 +59,7 @@ export function showTray() {
 
 /** For tests: what the panel shows, whether it is open, and whether the icon shows its dot. */
 export function trayState() {
-  return { view: view(), open: panel?.isVisible() ?? false, badge: shownIcon.startsWith("dot"), panel: () => panel, toggle };
+  return { view: view(), open: panel?.isVisible() ?? false, badge: shownIcon.startsWith("dot"), panel: () => panel, toggle, menu: contextMenu };
 }
 
 function update() {
@@ -137,13 +137,16 @@ function place(p: BrowserWindow) {
   p.setPosition(x, Math.round(below ? b.y + b.height + 5 : Math.min(b.y, area.y + area.height) - height - 8));
 }
 
-/** Windows: the icon's right click. */
+/** Windows: the icon's right click. Check for Updates… takes the main menu's path (工单 #116). */
 function contextMenu(): Menu {
+  const ready = updateInfo().update.state === "ready";
   return Menu.buildFromTemplate([
-    { label: i18n.t("main:tray.open"), click: () => showMain() },
-    { label: i18n.t("main:menu.settings"), click: () => showSettings() },
+    { id: "open", label: i18n.t("main:tray.open"), click: () => showMain() },
+    { id: "settings", label: i18n.t("main:menu.settings"), click: () => showSettings() },
+    { id: "checkForUpdates", label: i18n.t("main:menu.update.check"), click: () => openUpdates(true) },
+    ...(ready ? [{ id: "installUpdate", label: i18n.t("main:menu.update.install"), click: install }] : []),
     { type: "separator" },
-    { label: i18n.t("main:menu.app.quit"), click: () => app.quit() },
+    { id: "quit", label: i18n.t("main:menu.app.quit"), click: () => app.quit() },
   ]);
 }
 

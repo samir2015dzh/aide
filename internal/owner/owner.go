@@ -1446,11 +1446,12 @@ func (o *Owner) MachineFolders(ctx context.Context, machineID, path string, hidd
 	return n.Admin.ListFolders(ctx, &machinev1.ListFoldersRequest{Path: path, Hidden: hidden})
 }
 
-// StartMachineAgentLogin signs a coding agent in on a machine, in a browser
-// that opens there (工单 #51); this device's own machine in process.
-func (o *Owner) StartMachineAgentLogin(ctx context.Context, machineID, agent string, cancel bool) (*machinev1.StartAgentLoginResponse, error) {
+// StartMachineAgentLogin signs a coding agent in on a machine (工单 #51), or
+// gives the sign-in under way there the code its address's page showed (工单
+// #118); this device's own machine in process.
+func (o *Owner) StartMachineAgentLogin(ctx context.Context, machineID, agent string, cancel bool, code string) (*machinev1.StartAgentLoginResponse, error) {
 	if l := o.local(); l != nil && l.MachineID() == machineID {
-		st, err := l.StartAgentLogin(agent, cancel)
+		st, err := l.StartAgentLogin(agent, cancel, code)
 		if err != nil {
 			return nil, err
 		}
@@ -1460,7 +1461,7 @@ func (o *Owner) StartMachineAgentLogin(ctx context.Context, machineID, agent str
 	if err != nil {
 		return nil, err
 	}
-	return n.Admin.StartAgentLogin(ctx, &machinev1.StartAgentLoginRequest{Agent: agent, Cancel: cancel})
+	return n.Admin.StartAgentLogin(ctx, &machinev1.StartAgentLoginRequest{Agent: agent, Cancel: cancel, Code: code})
 }
 
 // TestMachineAgent runs Test with a coding agent on a machine.

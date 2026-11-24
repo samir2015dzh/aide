@@ -112,6 +112,14 @@ describe("connections", () => {
     expect(c.rows.map((r) => [r.id, r.state])).toEqual([["codex", "missing"]]);
   });
 
+  test("an agent whose sign-in its check cannot tell is unconfirmed, tasks may go to it (工单 #112)", () => {
+    const m = machine([{ name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true, version: "0.9.0" }]);
+    const r = machineConnections(m, now).rows[0];
+    expect([r.state, r.text, r.fix]).toEqual(["unknown", "未确认", undefined]);
+    expect(r.lacks).toContain("跑通一轮后这里会显示已登录");
+    expect(codingBotState(m, "gemini", now)!.usable).toBe("unverified");
+  });
+
   test("bridge view with nothing known", () => {
     expect(bridgeView(undefined)).toBe("unknown");
   });
@@ -148,13 +156,17 @@ describe("agent categories", () => {
 
 describe("signing Claude Code in from Aide (工单 #51)", () => {
   const claude = (login: object) => machineConnections(machine([{ name: "claude", available: true, loggedIn: false, login }]), now).rows.find((r) => r.id === "claude-cli")!;
-  test("while the browser is open there, it says so and offers to stop", () => {
+  test("while it waits it offers to stop; it claims no browser, it tells the address and then the code (工单 #118)", () => {
     const r = claude({ state: AgentLoginState.WAITING });
     expect([r.state, r.text, r.fix]).toEqual(["checking", "正在登录…", "claudeLogin"]);
+    expect(r.lacks).toContain("等它给出登录地址");
+    expect(r.lacks).not.toContain("浏览器");
+    expect(claude({ state: AgentLoginState.WAITING, url: "https://sign-in.example/oauth/authorize?x" }).lacks).toContain("在任意设备上打开下面的登录地址");
+    expect(claude({ state: AgentLoginState.WAITING, url: "https://sign-in.example/oauth/authorize?x", codeSent: true }).lacks).toContain("正在核对");
   });
   test("one that failed, timed out or was cancelled says so, and can be tried again", () => {
     expect(claude({ state: AgentLoginState.FAILED, detail: "the browser was closed" }).lacks).toContain("the browser was closed");
-    expect(claude({ state: AgentLoginState.TIMED_OUT }).lacks).toContain("10 分钟");
+    expect(claude({ state: AgentLoginState.TIMED_OUT }).lacks).toContain("15 分钟");
     expect(claude({ state: AgentLoginState.CANCELLED }).fix).toBe("claudeLogin");
   });
 });
@@ -176,7 +188,7 @@ describe("Claude Code's sign-in is its command line's own (工单 #108)", () => 
   });
   test("a session failed not signed in: the card points to signing it in from Aide, never to a terminal", () => {
     const f = create(FailureSchema, { kind: FailureKind.AUTH, message: "Not logged in · Please run /login" });
-    expect(failureAdvice(f, "Claude Code", "claude")).toContain("点下面的登录按钮会在那台电脑上打开浏览器");
+    expect(failureAdvice(f, "Claude Code", "claude")).toContain("点下面的登录按钮会给出登录地址");
     expect(failureAdvice(f, "Claude Code", "claude")).not.toContain("CLI");
   });
 });

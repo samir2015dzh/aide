@@ -135,8 +135,8 @@ class LocalApi(port: Long, token: String) {
     }
 
     /** Signs a coding agent in on a machine, in a browser that opens there (工单 #51), or stops it. */
-    suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean): AgentLogin? =
-        call<StartAgentLoginRequest, StartAgentLoginResponse>("StartMachineAgentLogin", StartAgentLoginRequest(machineId, agent, cancel), timeoutSeconds = 60).login
+    suspend fun startAgentLogin(machineId: String, agent: String, cancel: Boolean, code: String = ""): AgentLogin? =
+        call<StartAgentLoginRequest, StartAgentLoginResponse>("StartMachineAgentLogin", StartAgentLoginRequest(machineId, agent, cancel, code), timeoutSeconds = 60).login
 
     suspend fun checkAgents(machineId: String) {
         call<MachineIdRequest, JsonElement>("CheckAgents", MachineIdRequest(machineId), timeoutSeconds = 60)

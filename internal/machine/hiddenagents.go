@@ -98,7 +98,7 @@ func (n *Machine) rescanHidden() {
 // listed once more; in the background.
 func (l *Local) RescanAgents() {
 	go func() {
-		<-l.n.CheckAgents(true, 0)
+		<-l.n.CheckAgentsOnPurpose()
 		l.n.rescanHidden()
 	}()
 }

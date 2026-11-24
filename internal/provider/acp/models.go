@@ -182,12 +182,14 @@ func paramsForOptions(options json.RawMessage) json.RawMessage {
 
 // discoverModels only uses the public initialize and (advertised, currently
 // unstable) session/options methods. NEVER fall back to session/new or prompt.
+// It starts the agent: on purpose (工单 #112) past its catalog's TTL, else
+// only when there is no catalog yet; what it found stands meanwhile.
 func (p *Provider) discoverModels(ctx context.Context, bin string, pre, env []string) {
 	key := modelContext(bin, env)
 	p.modelsMu.Lock()
 	old, ok := p.catalogs[key+":isolated"]
 	p.modelsMu.Unlock()
-	if ok && time.Since(old.checked) < modelCatalogTTL {
+	if ok && (!provider.IsOnPurpose(ctx) || time.Since(old.checked) < modelCatalogTTL) {
 		return
 	}
 	state := "error"

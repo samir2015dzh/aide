@@ -105,7 +105,7 @@ function Steps({ title, items, ordered }: { title: string; items: ReactNode[]; o
 }
 
 /** Checks the machine's agents again: this computer's in the background, another's end to end. */
-const recheck = (m: Machine) => local.checkAgents(m.local ? {} : { machineId: m.machineId });
+const recheck = (m: Machine) => local.checkAgents(m.local ? { onPurpose: true } : { machineId: m.machineId });
 
 /** An agent's status, what to try, the test, and where its tasks show. */
 function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Line; place: Place }) {
@@ -160,7 +160,8 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
           <ConnectionsCard m={m} only={(r) => r.agent === agent} />
         </section>
       )}
-      <Verify m={m} agent={agent} line={line} ready={d === "ready"} place={place} />
+      {/* A trial run is what confirms an ACP agent's sign-in (工单 #112): offered while it is unconfirmed too. */}
+      <Verify m={m} agent={agent} line={line} ready={d === "ready" || d === "unconfirmed"} place={place} />
       <Steps
         title={t("where")}
         items={[

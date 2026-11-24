@@ -45,7 +45,7 @@ func binaries(t *testing.T) string {
 		if buildErr != nil {
 			return
 		}
-		for _, pkg := range []string{"./cmd/aide-relay", "./cmd/aided", "./cmd/aide", "./internal/provider/acp/fakeacp", "./bench/fakecodex"} {
+		for _, pkg := range []string{"./cmd/aide-relay", "./cmd/aided", "./cmd/aide", "./internal/provider/acp/fakeacp", "./internal/provider/claude/fakeclaude", "./bench/fakecodex"} {
 			cmd := filepath.Base(pkg)
 			args := []string{"build", "-o", filepath.Join(binDir, cmd+exe)}
 			if os.Getenv("AIDE_E2E_RACE") != "" {

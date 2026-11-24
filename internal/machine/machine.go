@@ -124,10 +124,12 @@ type Machine struct {
 	pausedAgents map[string]pausedAgent
 	resumed      map[string]time.Time
 	resumeTimers map[string]*time.Timer
-	categories   map[string]string // the kind the owner filed each coding agent as (agentcategory.go)
-	checked      time.Time         // when the last check of all of them ended
-	checking     chan struct{}     // closed when the check under way ends; nil when none is
-	pending      map[string]bool   // the agents the check under way has not finished yet
+	categories   map[string]string     // the kind the owner filed each coding agent as (agentcategory.go)
+	checked      time.Time             // when the last check of all of them ended
+	checking     chan struct{}         // closed when the check under way ends; nil when none is
+	checkingOn   bool                  // the check under way was asked for on purpose (工单 #112)
+	pending      map[string]bool       // the agents the check under way has not finished yet
+	kept         map[string]keptModels // what a check on purpose found of each agent's models (passive.go)
 	defaults     map[string]*identityv1.AgentDefaults
 	tunnels      map[*tunnel]struct{}
 	connected    bool
@@ -252,7 +254,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
+		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
@@ -442,7 +444,7 @@ func (n *Machine) providerInfo(name string) provider.Info {
 	if (ok && i.Available) || p == nil {
 		return i
 	}
-	i = p.Discover(context.Background())
+	i = n.discover(name, p, false)
 	i.CheckedAt = time.Now()
 	n.mu.Lock()
 	i = n.withOffers(name, i)
@@ -454,7 +456,10 @@ func (n *Machine) providerInfo(name string) provider.Info {
 // agentSignedIn is what a session of the agent just showed of its sign-in
 // (工单 #108): one that failed "Not logged in" is signed out now, one that
 // ran a turn is signed in; its status says so at once, not at its next check.
+// What it showed is kept (passive.go) for an agent whose check cannot tell
+// (工单 #112: an ACP agent's).
 func (n *Machine) agentSignedIn(name string, in bool) {
+	n.sawSignIn(name, in)
 	n.mu.Lock()
 	i, ok := n.infos[name]
 	changed := ok && i.Available && (i.LoggedIn != in || i.LoginUnconfirmed)
@@ -484,7 +489,8 @@ func (n *Machine) credentials() *identityv1.Credentials {
 // The coding agents are checked (installed, version, logged in: each CLI is
 // run) only when something needs to know: the app showing them, an agent
 // asking where it can work, a session about to start. Nothing checks them
-// in the background.
+// in the background. A check is passive (工单 #112, provider/passive.go)
+// unless the owner asks for it on purpose.
 
 // AgentsFresh is how long a check stands for agents asking where they can
 // work; past it, they wait for a new one.
@@ -493,15 +499,35 @@ const AgentsFresh = 5 * time.Minute
 // AgentsOnce, as CheckAgents' maxAge: check only if no check has run yet.
 const AgentsOnce = time.Duration(math.MaxInt64)
 
-// CheckAgents starts a check of every coding agent unless one is under way,
-// or (!force) the last one ended within maxAge; the channel closes when the
-// coding agents are checked. Each agent shows in Status as soon as its own
-// check ends.
+// CheckAgents starts a passive check of every coding agent unless one is
+// under way, or (!force) the last one ended within maxAge; the channel
+// closes when the coding agents are checked. Each agent shows in Status as
+// soon as its own check ends.
 func (n *Machine) CheckAgents(force bool, maxAge time.Duration) <-chan struct{} {
+	return n.checkAgents(force, false, maxAge)
+}
+
+// CheckAgentsOnPurpose is the owner's Check Again (工单 #112): every coding
+// agent checked now, and asked what only a running one tells (its models).
+func (n *Machine) CheckAgentsOnPurpose() <-chan struct{} {
+	return n.checkAgents(true, true, 0)
+}
+
+func (n *Machine) checkAgents(force, onPurpose bool, maxAge time.Duration) <-chan struct{} {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.checking != nil {
-		return n.checking
+		if !onPurpose || n.checkingOn {
+			return n.checking
+		}
+		// A passive check under way does not ask what the owner asked for: one on purpose follows it.
+		under, done := n.checking, make(chan struct{})
+		go func() {
+			<-under
+			<-n.checkAgents(true, true, 0)
+			close(done)
+		}()
+		return done
 	}
 	if !force && !n.checked.IsZero() && time.Since(n.checked) < maxAge {
 		done := make(chan struct{})
@@ -509,7 +535,7 @@ func (n *Machine) CheckAgents(force bool, maxAge time.Duration) <-chan struct{} 
 		return done
 	}
 	done := make(chan struct{})
-	n.checking = done
+	n.checking, n.checkingOn = done, onPurpose
 	n.pending = map[string]bool{}
 	ps := n.providers()
 	for name := range ps {
@@ -521,7 +547,7 @@ func (n *Machine) CheckAgents(force bool, maxAge time.Duration) <-chan struct{} 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				info := p.Discover(context.Background())
+				info := n.discover(name, p, onPurpose)
 				info.CheckedAt = time.Now()
 				var bridge *machinev1.DSHBridge
 				if name == "deepseek" && info.Available {
@@ -549,7 +575,7 @@ func (n *Machine) CheckAgents(force bool, maxAge time.Duration) <-chan struct{} 
 			short = short || i.Problem == provider.ProblemNoProcesses
 		}
 		n.checked = time.Now()
-		n.checking = nil
+		n.checking, n.checkingOn = nil, false
 		n.mu.Unlock()
 		close(done)
 		if short {

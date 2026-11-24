@@ -292,11 +292,16 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	}
 	info.Available = true
 	info.Version = versionRE.FindString(string(out))
-	// ACP has no way to ask for the login state before a session; a
-	// missing login fails the session with the agent's own message.
-	info.LoggedIn = true
+	// ACP has no way to ask for the login state before a session: not
+	// confirmed (工单 #112, #108's rule for every agent), never a guess. A
+	// session that runs a turn says it is signed in, one that fails "not
+	// logged in" that it is not (the machine keeps what they showed).
+	info.LoginUnconfirmed = true
 	if p.Name() == "antigravity" {
-		info.LoggedIn = antigravityConfigured(env)
+		// Its settings name how it signs in: that, read, confirms it.
+		if antigravityConfigured(env) {
+			info.LoggedIn, info.LoginUnconfirmed = true, false
+		}
 		p.discoverModels(ctx, bin, pre, env)
 	}
 	if p.DSHPresets { // known before any session

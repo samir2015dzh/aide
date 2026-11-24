@@ -348,7 +348,7 @@ func (l *localService) CheckAgents(ctx context.Context, req *localv1.CheckAgents
 	if req.RescanHidden {
 		m.RescanAgents()
 	} else {
-		m.CheckAgents()
+		m.CheckAgents(req.OnPurpose)
 	}
 	return &localv1.CheckAgentsResponse{}, nil
 }
@@ -421,7 +421,7 @@ func (l *localService) ListMachineFolders(ctx context.Context, req *localv1.List
 }
 
 func (l *localService) StartMachineAgentLogin(ctx context.Context, req *localv1.StartMachineAgentLoginRequest) (*machinev1.StartAgentLoginResponse, error) {
-	return l.o().StartMachineAgentLogin(ctx, req.MachineId, req.Agent, req.Cancel)
+	return l.o().StartMachineAgentLogin(ctx, req.MachineId, req.Agent, req.Cancel, req.Code)
 }
 
 func (l *localService) TestMachineAgent(ctx context.Context, req *localv1.TestMachineAgentRequest) (*machinev1.TestAgentResponse, error) {

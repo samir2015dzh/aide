@@ -22,6 +22,7 @@
 .cg-status>span{flex:1;min-width:0}
 .cg-status>i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--l3)}
 .cg-status.ready>i{background:var(--green)}
+.cg-status.unconfirmed>i{background:var(--l3)}
 .cg-status.signIn>i,.cg-status.appOnly>i{background:var(--orange)}
 .cg-status.broken>i,.cg-status.missing>i{background:var(--red)}
 .cg-box{display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--win2);border-radius:var(--r-card)}
