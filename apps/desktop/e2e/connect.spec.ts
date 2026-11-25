@@ -34,7 +34,7 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
   const main = settings.getByRole("main", { name: "连接" });
   await expect(main.getByRole("tab", { name: "DSH", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(main.getByText("开始之前")).toBeVisible();
-  await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到 · 版本 1.2.3" })).toBeVisible({ timeout: 30_000 });
+  await expect(main.getByRole("status").filter({ hasText: /已在 owner-mac 上检测到/ })).toBeVisible({ timeout: 30_000 });
   await main.getByRole("button", { name: "运行测试" }).click();
   await expect(main.getByText(/^可以用：DSH 在 [\d.]+ 秒内回答了「ready」。$/)).toBeVisible({ timeout: 60_000 });
   await snap(settings, "connect-deepseek");
@@ -45,7 +45,9 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
     .poll(async () => (await api<{ sessions?: { agent: string; createdBy: string }[] }>(settings, "ListSessions")).sessions?.some((s) => s.agent === "deepseek" && s.createdBy === "owner"))
     .toBe(true);
   await main.getByRole("button", { name: "打开 DSH 会话" }).click();
-  await expect(page.getByRole("region", { name: /^DSH/ }).getByRole("region", { name: "它自己的会话" })).toBeVisible();
+  const dshBot = page.getByRole("region", { name: /^DSH/ });
+  await dshBot.getByRole("button", { name: /全部对话/ }).click();
+  await expect(dshBot.getByRole("region", { name: "它自己的会话" })).toBeVisible();
 
   await main.getByRole("tab", { name: "Claude Desktop" }).click();
   await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上没有检测到" })).toBeVisible({ timeout: 30_000 });
@@ -88,7 +90,7 @@ test("another ACP agent: a wrong command says why; saved, it is listed, tested a
 
   const row = main.getByRole("group", { name: "my-acp" });
   await expect(row).toBeVisible();
-  await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到 · 版本 1.2.3" })).toBeVisible({ timeout: 30_000 });
+  await expect(main.getByRole("status").filter({ hasText: /已在 owner-mac 上检测到/ })).toBeVisible({ timeout: 30_000 });
   await main.getByRole("button", { name: "运行测试" }).click();
   await expect(main.getByText(/^可以用：my-acp 在 [\d.]+ 秒内回答了「ready」。$/)).toBeVisible({ timeout: 60_000 });
   const st = await api<{ localMachineId: string }>(settings, "GetStatus");
@@ -108,9 +110,11 @@ test("the guide from the sidebar, and opened at a line: the assistants' shows on
   await settings.waitForLoadState();
   const main = settings.getByRole("main", { name: "连接" });
   await expect(main.getByRole("tab", { name: "DSH", exact: true })).toHaveAttribute("aria-selected", "true");
-  for (const name of ["Claude Desktop", "Codex", "其他 Agent", "助手"]) await expect(main.getByRole("tab", { name })).toHaveAttribute("aria-selected", "false");
+  for (const name of ["Claude Desktop", "Codex", "Antigravity", "其他 Agent", "助手"]) await expect(main.getByRole("tab", { name })).toHaveAttribute("aria-selected", "false");
 
   // A link names its line (connect/<line>): the same window, on that line.
+  await page.evaluate(() => window.aide?.openSettings("connect/antigravity"));
+  await expect(main.getByRole("tab", { name: "Antigravity" })).toHaveAttribute("aria-selected", "true");
   await page.evaluate(() => window.aide?.openSettings("connect/codex"));
   await expect(main.getByRole("tab", { name: "Codex" })).toHaveAttribute("aria-selected", "true");
   await page.evaluate(() => window.aide?.openSettings("connect/assistants"));

@@ -294,7 +294,7 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 				e.Models = append(e.Models, agentModel{
 					ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...), Resolved: x.Resolved, Source: x.Source,
 					ContextWindow: x.ContextWindow, MaxOutputTokens: x.MaxOutputTokens,
-					Capabilities: append([]string{}, x.Capabilities...),
+					Capabilities:        append([]string{}, x.Capabilities...),
 					InputCostPerMillion: x.InputCostPerMillion, OutputCostPerMillion: x.OutputCostPerMillion,
 				})
 			}
@@ -310,7 +310,7 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 					v.Models = append(v.Models, agentModel{
 						ID: m.Id, Name: m.Name, Efforts: append([]string{}, m.Efforts...), Resolved: m.Resolved, Source: m.Source,
 						ContextWindow: m.ContextWindow, MaxOutputTokens: m.MaxOutputTokens,
-						Capabilities: append([]string{}, m.Capabilities...),
+						Capabilities:        append([]string{}, m.Capabilities...),
 						InputCostPerMillion: m.InputCostPerMillion, OutputCostPerMillion: m.OutputCostPerMillion,
 					})
 				}

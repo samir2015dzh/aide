@@ -5,6 +5,7 @@
     "deepseek": "DSH",
     "claude": "Claude Desktop",
     "codex": "Codex",
+    "antigravity": "Antigravity",
     "custom": "Other Agent",
     "assistants": "Assistants"
   },
@@ -114,6 +115,21 @@
     "testFailedHint": "If the reason says it isn’t logged in, sign Codex in (see Status above) and run the test again.",
     "where1": "Tasks you start in Aide with Codex are in Aide’s task list, on every device of yours."
   },
+  "antigravity": {
+    "intro": "Antigravity is Google’s first-class coding agent, running on your computer via its official ACP server with three-tier permission presets (Read only / Workspace write / Full access) and live session model discovery.",
+    "need1": "Google Antigravity’s official ACP server installed on the computer that runs it (agy_acp_server, e.g. under ~/.local/share/antigravity-acp/).",
+    "need2": "Antigravity signed in: run aide agent login antigravity once in a terminal.",
+    "step1": "Choose the computer that has Antigravity above (this one is chosen for you).",
+    "step2": "Look at Status: it should say “Detected”. If it doesn’t, follow the list under it, then click Check Again.",
+    "step3": "If Antigravity has no project yet, click Add Project… and choose a folder it may work in.",
+    "step4": "Click Run Test. Antigravity answers one short question.",
+    "step5": "Click Start Test Task. A real task starts and opens in Aide.",
+    "fixInstall": "Install Google Antigravity’s official ACP server (agy_acp_server) on {{machine}}. The desktop app alone isn’t enough.",
+    "fixWhere": "Installed already? Check that agy_acp_server is on a new terminal’s PATH, or placed in ~/.local/share/antigravity-acp/ (or %LOCALAPPDATA%\\antigravity-acp\\ on Windows).",
+    "fixSignIn": "Sign Antigravity in once: open a terminal (PowerShell on Windows), paste the command below and follow the sign-in link.",
+    "testFailedHint": "If the reason says it isn’t logged in, run aide agent login antigravity (see Status above) and run the test again.",
+    "where1": "Tasks you start in Aide with Antigravity are in Aide’s task list on every device, with machine/project selection, three-tier permission presets, and full conversation continuation."
+  },
   "custom": {
     "intro": "Connect any coding agent Aide doesn’t list, if it speaks the Agent Client Protocol (ACP). Tell Aide how to start it; Aide keeps it on that computer and lists it with the others. An agent without ACP that can run commands in a terminal (WorkBuddy, for one) connects under Assistants below, as Other Agent.",
     "need1": "The agent installed on the computer that runs it, and its own sign-in or key ready.",
@@ -199,10 +215,10 @@
       "chatgpt": "In ChatGPT, open Settings › Connectors, turn on developer mode under Advanced, then click Create and put the address below in MCP server URL."
     },
     "mcp2": "{{app}} opens your Aide server’s login page: enter your Aide account and password, and click Connect.",
-    "mcp3": "Once connected, it shows here, and in Settings › Access.",
+    "mcp3": "Once connected, it shows here and in Settings › Access. Confirm both pieces are wired — an open MCP session with periodic ping (keepalive) plus platform-appropriate inbox watching (daemon cron, message_wake webhook, or external poll hook) — then verify with a real message from the Aide app.",
     "cli1": "Copy the message below, replace {{password}} in it with your Aide password, and send it to {{name}}.",
-    "cli2": "{{name}} installs the Aide command line as the message says and logs in: nothing for you to approve, no code to compare.",
-    "cli3": "Once logged in, it shows here, and in Settings › Access.",
+    "cli2": "{{name}} installs the Aide command line as the message says, logs in, and declares its inbox-watching mechanism: nothing for you to approve, no code to compare.",
+    "cli3": "Once logged in, it shows here and in Settings › Access. Finish by sending a real message from the Aide app and verifying it picks up and replies without reminders elsewhere.",
     "mcpOlder": "Aide on your server is older and doesn’t give an MCP address yet, so there’s no address to paste here. Update the server first: the address then shows here by itself. Or connect this assistant with the command line instead (choose Other Agent).",
     "mcpOff": "Your server gives no MCP address, so there’s no address to paste here: MCP is off on the server (start it with AIDE_RELAY_MCP=1). If the server is an older version, update it first too. Once that’s done, the address shows here by itself. Or connect this assistant with the command line instead (choose Other Agent).",
     "mcpOffline": "Not connected to your server yet: the address to paste shows here once it is.",
@@ -211,7 +227,7 @@
     "password": "Anyone with your password can log in to your account and run tasks on your computers. Send it only to assistants you trust; to stop one, sign it out in Settings › Access, or change the password (which signs out every assistant).",
     "waiting": "Waiting for {{name}} to log in…",
     "connected": "{{name}} Is Connected",
-    "connectedBody": "It can now start tasks in the projects on all your machines and sees only its own tasks, until you sign it out.",
+    "connectedBody": "It is authorized for your projects. Showing online alone is not done: verify both keepalive and inbox watching (daemon cron, message_wake webhook, or external poll hook), and confirm it picks up and replies to a real message from the Aide app.",
     "scope": "Change What It Can Use…"
   },
   "details": "Connection details"

@@ -135,9 +135,9 @@ type Sessions struct {
 
 	// checkpoints controls per-turn hidden git ref retention (工单 #113).
 	checkpoints CheckpointRetention
-	mu         sync.Mutex
-	live       map[string]*live
-	dispatchMu sync.Mutex
+	mu          sync.Mutex
+	live        map[string]*live
+	dispatchMu  sync.Mutex
 	// memoryLow says whether the system is short of memory (resident.MemoryLow;
 	// tests replace it): queued sessions wait while it is, and memRetry (held
 	// with dispatchMu) looks again.
@@ -504,7 +504,7 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	// the project has one (SetProjectPermission), before the machine's.
 	set := s.defaults(req.Agent)
 	projectMode := ""
-	if req.Agent == dshAgent {
+	if req.Agent == dshAgent || req.Agent == "antigravity" {
 		projectMode = proj.DSHPreset
 	}
 	set.Model, set.Effort, set.Mode = cmp.Or(req.Model, set.Model), cmp.Or(req.Effort, set.Effort), cmp.Or(req.Mode, projectMode, set.Mode)

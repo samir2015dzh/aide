@@ -148,16 +148,24 @@ func modelOptions(data json.RawMessage) ([]provider.Model, string, string) {
 			return nil, "", "error"
 		}
 		models := []provider.Model{}
-		var walk func([]modelChoice)
-		walk = func(choices []modelChoice) {
+		var walk func([]modelChoice, string)
+		walk = func(choices []modelChoice, group string) {
 			for _, c := range choices {
 				if c.Value != "" && !slices.ContainsFunc(models, func(m provider.Model) bool { return m.ID == c.Value }) {
-					models = append(models, provider.Model{ID: c.Value, Name: c.Name})
+					models = append(models, provider.Model{
+						ID:     c.Value,
+						Name:   antigravityModelLabel(c.Value, group, c.Name),
+						Source: group,
+					})
 				}
-				walk(c.Options)
+				nextGroup := group
+				if c.Value == "" && c.Name != "" {
+					nextGroup = c.Name
+				}
+				walk(c.Options, nextGroup)
 			}
 		}
-		walk(choices)
+		walk(choices, "")
 		return models, current, "known"
 	}
 	return nil, "", "unknown"
