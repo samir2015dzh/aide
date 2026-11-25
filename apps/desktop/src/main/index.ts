@@ -8,6 +8,7 @@ import { chooseLanguage } from "./language";
 import { setAppMenu } from "./menu";
 import { applyAppearance, posted, watch, world } from "./notify";
 import { dataDir, socketPath } from "./paths";
+import { setDaemonRestarterForTest } from "./daemonRestart";
 import { platform } from "./platform";
 import { receiveLink } from "./links";
 import { showTray, trayState } from "./tray";
@@ -102,4 +103,4 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {});
 
 // For end-to-end tests (evaluated in the main process by Playwright).
-Object.assign(globalThis, { aideTest: { openUpstream, forwardedCalls, mainWindow, notifications: () => posted, tray: trayState, world: () => world } });
+Object.assign(globalThis, { aideTest: { openUpstream, forwardedCalls, mainWindow, notifications: () => posted, tray: trayState, world: () => world, setDaemonRestarter: setDaemonRestarterForTest } });

@@ -27,6 +27,8 @@ export interface Platform {
   ensureDaemon(): void;
   /** Restarts aided (after an update brought another version). */
   restartDaemon(why: string): void;
+  /** Restarts aided on demand (工单 #120) and rejects with the real reason if starting/restarting it fails. */
+  restartDaemonNow(why: string): Promise<void>;
   /** The owner turned aided's start off in the system's settings. */
   daemonNeedsApproval(): boolean;
   /** Opening the app at login. */

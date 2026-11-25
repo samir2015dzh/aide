@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import { promisify } from "node:util";
 import type { Menu } from "electron";
-import { launch, snap } from "./app";
+import { fixture, launch, snap } from "./app";
 
 // The app in the notification area only, its window closed (docs/resident.md
 // §5): what its processes hold then is the tray state of the resident
@@ -97,4 +97,57 @@ test("the icon's right-click menu checks for updates in place", async () => {
   await expect(updates.getByRole("status", { name: "更新状态" })).toContainText("开发版本不检查更新");
   await snap(updates, "tray-check-updates");
   await app.close();
+});
+
+// 工单 #120: when the background service is unreachable, the tray panel offers an in-place
+// "重启后台服务" button, reports failure reasons + "查看日志" on failure, and only returns to
+// running after a real post-restart probe succeeds; when healthy, the button is hidden.
+test("tray panel restarts unreachable daemon in place, surfaces failures, and probes recovery", async () => {
+  const deadSocket = process.platform === "win32" ? "\\\\.\\pipe\\aide-e2e-dead-120" : "/tmp/aide-e2e-dead-120.sock";
+  const { app } = await launch(deadSocket);
+  try {
+    type TrayHook = {
+      aideTest: {
+        tray(): { view: { state: string }; toggle(): void; panel(): unknown };
+        setDaemonRestarter(fn: (() => Promise<void>) | null): void;
+      };
+    };
+    await expect.poll(() => app.evaluate(() => (globalThis as unknown as TrayHook).aideTest.tray().view.state)).toBe("daemon");
+
+    const [panel] = await Promise.all([
+      app.waitForEvent("window"),
+      app.evaluate(() => (globalThis as unknown as TrayHook).aideTest.tray().toggle()),
+    ]);
+    await expect.poll(() => panel.url()).toMatch(/#tray$/);
+    await expect(panel.getByText("后台服务没有响应")).toBeVisible();
+    const restartBtn = panel.getByRole("button", { name: "重启后台服务" });
+    await expect(restartBtn).toBeVisible();
+    await snap(panel, "tray-daemon-down");
+
+    // 1. Failing restart shows real reason + View Logs in place and stays in daemon state.
+    await app.evaluate(() => {
+      (globalThis as unknown as TrayHook).aideTest.setDaemonRestarter(async () => {
+        throw new Error("服务重启权限被拒绝");
+      });
+    });
+    await restartBtn.click();
+    await expect(panel.getByRole("alert")).toContainText("服务重启权限被拒绝");
+    await expect(panel.getByRole("button", { name: "查看日志" })).toBeVisible();
+    await expect(panel.getByText("未运行")).toBeVisible();
+    await snap(panel, "tray-daemon-restart-failed");
+
+    // 2. Restart pointing at a live aided probes GetStatus and updates in place to healthy.
+    await app.evaluate((_electron, liveSock) => {
+      (globalThis as unknown as TrayHook).aideTest.setDaemonRestarter(async () => {
+        process.env.AIDE_SOCKET = liveSock;
+      });
+    }, fixture.socket);
+    await restartBtn.click();
+    await expect(panel.getByText("后台服务已恢复运行")).toBeVisible({ timeout: 15_000 });
+    await expect(panel.getByRole("button", { name: "重启后台服务" })).toHaveCount(0);
+    await expect.poll(() => app.evaluate(() => (globalThis as unknown as TrayHook).aideTest.tray().view.state)).not.toBe("daemon");
+    await snap(panel, "tray-daemon-recovered");
+  } finally {
+    await app.close();
+  }
 });

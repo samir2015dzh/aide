@@ -71,6 +71,31 @@ export const mac: Platform = {
     });
   },
 
+  async restartDaemonNow(why) {
+    if (!installed) throw new Error("Development mode daemon is managed externally");
+    if (mac.daemonNeedsApproval()) throw new Error("Background service requires approval in System Settings › Login Items");
+    console.warn(`restarting aided (on demand): ${why}`);
+    const run = promisify(execFile);
+    const job = `gui/${process.getuid?.()}/com.aide.app.daemon`;
+    try {
+      await run("launchctl", ["bootout", job], { timeout: 10_000 });
+    } catch (e) {
+      // Not loaded yet is normal when the service is already stopped.
+      console.warn("bootout aided:", e);
+    }
+    const deadline = Date.now() + 8_000;
+    while (Date.now() < deadline) {
+      try {
+        await run("launchctl", ["print", job], { timeout: 2_000 });
+        await new Promise((r) => setTimeout(r, 200));
+      } catch {
+        app.setLoginItemSettings({ ...agent, openAtLogin: true });
+        return;
+      }
+    }
+    await run("launchctl", ["kickstart", "-k", job], { timeout: 10_000 });
+  },
+
   /** The owner turned aided off in System Settings › Login Items (or never allowed it): it does not run until they do. */
   daemonNeedsApproval() {
     return installed && app.getLoginItemSettings(agent).status === "requires-approval";

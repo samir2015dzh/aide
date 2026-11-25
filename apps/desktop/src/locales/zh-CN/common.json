@@ -3,7 +3,14 @@
     "connecting": "正在连接后台服务…",
     "needsApproval": "Aide 的后台服务需要你在“系统设置 › 登录项”里允许后才能运行。",
     "openLoginItems": "打开登录项设置",
-    "noResponse": "Aide 的后台服务没有响应。它通常会自动启动；如果一直这样，请重新打开 Aide。"
+    "noResponse": "Aide 的后台服务没有响应，可以立即原地重启。",
+    "restart": "重启后台服务",
+    "restarting": "正在重启后台服务…",
+    "restarted": "后台服务已恢复运行",
+    "restartFailed": "重启后台服务失败",
+    "restartTimedOut": "已尝试重启，但后台服务仍无响应",
+    "restartDev": "当前为开发或外部托管模式，请在启动终端重启后台服务",
+    "openLogs": "查看日志"
   },
   "window": {
     "showSidebar": "展开边栏",

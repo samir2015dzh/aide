@@ -3,7 +3,14 @@
     "connecting": "Connecting to the background service…",
     "needsApproval": "Allow Aide’s background service in System Settings › Login Items so it can run.",
     "openLoginItems": "Open Login Items Settings",
-    "noResponse": "Aide’s background service isn’t responding. It usually starts automatically; if this continues, reopen Aide."
+    "noResponse": "Aide’s background service isn’t responding. You can restart it right here.",
+    "restart": "Restart Background Service",
+    "restarting": "Restarting background service…",
+    "restarted": "Background service is running again",
+    "restartFailed": "Couldn’t restart the background service",
+    "restartTimedOut": "Restart was requested, but the background service still isn’t responding",
+    "restartDev": "The background service is managed externally in development mode; restart it from its terminal",
+    "openLogs": "View Logs"
   },
   "window": {
     "showSidebar": "Expand Sidebar",

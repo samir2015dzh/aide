@@ -34,6 +34,13 @@ export const world: World = { status: null, sessions: [], clients: [], machines:
 export const worldListeners = new Set<() => void>();
 const changed = () => worldListeners.forEach((f) => f());
 
+/** Updates cached status immediately when an on-demand restart probe confirms aided is back (工单 #120). */
+export function noteDaemonRecovered(status: GetStatusResponse) {
+  world.status = status;
+  linkBack("aided", "app");
+  changed();
+}
+
 // --- Preferences (the settings window sets them) ---
 
 const defaults: Preferences = { appearance: "system", notifyStarted: true, notifyQuestion: true, notifyFailed: true, notifyTurnDone: false, menuBadge: true, language: "system" };

@@ -17,12 +17,38 @@ import "./tray.css";
 export function TrayPanel() {
   const { t } = useTranslation("common");
   const [v, setV] = useState<TrayView | null>(null);
+  const [restarting, setRestarting] = useState(false);
+  const [restartErr, setRestartErr] = useState<{ reason: string; needsApproval?: boolean; canOpenLogs: boolean } | null>(null);
+  const [recovered, setRecovered] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (platform === "mac") document.documentElement.classList.add("vibrant");
     window.aide?.trayView().then(setV);
-    return window.aide?.onTrayView(setV);
+    return window.aide?.onTrayView((next) => {
+      setV(next);
+      if (next.state !== "daemon") setRestartErr(null);
+    });
   }, []);
+  const restartDaemon = async () => {
+    if (restarting) return;
+    setRestarting(true);
+    setRestartErr(null);
+    setRecovered(false);
+    try {
+      const res = await window.aide?.restartDaemon();
+      if (res?.ok) {
+        setRecovered(true);
+        const latest = await window.aide?.trayView();
+        if (latest) setV(latest);
+      } else if (res) {
+        setRestartErr({ reason: res.reason, needsApproval: res.needsApproval, canOpenLogs: res.canOpenLogs });
+      }
+    } catch (e) {
+      setRestartErr({ reason: e instanceof Error ? e.message : String(e), canOpenLogs: true });
+    } finally {
+      setRestarting(false);
+    }
+  };
   // The window takes the panel's height.
   useLayoutEffect(() => {
     const el = box.current;
@@ -47,6 +73,29 @@ export function TrayPanel() {
         )}
       </div>
       <div className="tp-line">{v ? line(v) : ""}</div>
+      {v?.state === "daemon" && (
+        <div className="tp-daemon">
+          <button className="tp-restart" disabled={restarting} onClick={() => void restartDaemon()}>
+            {restarting ? t("daemon.restarting") : t("daemon.restart")}
+          </button>
+          {restartErr && (
+            <div className="tp-err" role="alert">
+              <span>{restartErr.reason}</span>
+              <div className="tp-err-actions">
+                {restartErr.needsApproval && (
+                  <button className="tp-link" onClick={() => window.aide?.openLoginItems()}>{t("daemon.openLoginItems")}</button>
+                )}
+                {restartErr.canOpenLogs && (
+                  <button className="tp-link" onClick={() => window.aide?.openDaemonLogs()}>{t("daemon.openLogs")}</button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {recovered && v && v.state !== "daemon" && (
+        <div className="tp-recovered" role="status">{t("daemon.restarted")}</div>
+      )}
       {ready && v && (
         <div className="tp-tiles">
           <Tile n={v.attention} label={t("tray.attention")} hot onClick={() => go("attention")} />

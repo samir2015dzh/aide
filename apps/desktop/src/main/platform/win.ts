@@ -231,6 +231,45 @@ export const win: Platform = {
     });
   },
 
+  async restartDaemonNow(why) {
+    if (!installed) throw new Error(i18n.t("common:daemon.restartDev"));
+    console.warn(`restarting aided (on demand): ${why}`);
+    const run = promisify(execFile);
+    const errDetail = (e: unknown) => {
+      const o = e as { stderr?: unknown; stdout?: unknown; message?: unknown };
+      const s = typeof o?.stderr === "string" && o.stderr.trim() ? o.stderr.trim() : typeof o?.stdout === "string" && o.stdout.trim() ? o.stdout.trim() : "";
+      return s || (e instanceof Error ? e.message : String(e));
+    };
+    try {
+      if (!fs.existsSync(aided)) placePrograms();
+    } catch (e) {
+      console.warn("placing aided:", e);
+    }
+    try {
+      await run(aided, ["service", "restart"], { windowsHide: true, timeout: 15_000 });
+      return;
+    } catch (restartErr) {
+      const detail = errDetail(restartErr);
+      if (/access is denied|拒绝访问|requires elevation|EACCES|0x80070005/i.test(detail)) {
+        // Standard Windows UAC prompt when the task/service requires elevation.
+        const quoted = aided.replaceAll("'", "''");
+        const { stdout } = await powershell(
+          `$p = Start-Process -FilePath '${quoted}' -ArgumentList @('service','restart') -Verb RunAs -Wait -PassThru; Write-Output $p.ExitCode`,
+          30_000,
+        );
+        const code = Number(stdout.trim());
+        if (code === 0) return;
+        throw new Error(detail);
+      }
+      try {
+        await run(aided, ["service", "install", "--owner"], { windowsHide: true, timeout: 15_000 });
+        return;
+      } catch (installErr) {
+        throw new Error(errDetail(installErr) || detail);
+      }
+    }
+  },
+
   daemonNeedsApproval() {
     return false; // the logon task has no switch in Settings
   },

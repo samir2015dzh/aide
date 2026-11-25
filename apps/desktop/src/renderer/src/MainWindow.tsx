@@ -96,7 +96,7 @@ export function MainWindow() {
       {sidebar === "over" && <div className="peek-scrim" onClick={() => setSidebar(st, false)} />}
       {listed && <TaskColumn />}
       <section className="content">
-        {st.reconnecting && <div className="link-banner" role="status"><i aria-hidden="true" />{t("link.reconnecting")}</div>}
+        {st.reconnecting && <ReconnectingBanner />}
         {st.selection.kind === "sessions" ? (
           <div className="ctool drag"><div className="ctitle" /></div>
         ) : session ? (
@@ -154,6 +154,46 @@ export function ToastView({ inSheet = false }: { inSheet?: boolean }) {
       <span>{toast.text}</span>
       {toast.undo && (
         <button className="btn sm" onClick={() => (st.set({ toast: null }), toast.undo?.())}>{t("window.undo")}</button>
+      )}
+    </div>
+  );
+}
+
+/** In-place background service restart control inside the reconnecting banner (工单 #120). */
+function ReconnectingBanner() {
+  const { t } = useTranslation("common");
+  const [restarting, setRestarting] = useState(false);
+  const [err, setErr] = useState<{ reason: string; needsApproval?: boolean; canOpenLogs: boolean } | null>(null);
+  const restart = async () => {
+    if (restarting) return;
+    setRestarting(true);
+    setErr(null);
+    try {
+      const res = await window.aide?.restartDaemon();
+      if (res && !res.ok) setErr({ reason: res.reason, needsApproval: res.needsApproval, canOpenLogs: res.canOpenLogs });
+    } catch (e) {
+      setErr({ reason: e instanceof Error ? e.message : String(e), canOpenLogs: true });
+    } finally {
+      setRestarting(false);
+    }
+  };
+  return (
+    <div className="link-banner" role="status">
+      <i aria-hidden="true" />
+      <span>{t("link.reconnecting")}</span>
+      <button className="link-banner-btn" disabled={restarting} onClick={() => void restart()}>
+        {restarting ? t("daemon.restarting") : t("daemon.restart")}
+      </button>
+      {err && (
+        <>
+          <span className="link-banner-err" role="alert" title={err.reason}>{err.reason}</span>
+          {err.needsApproval && (
+            <button className="link-banner-link" onClick={() => window.aide?.openLoginItems()}>{t("daemon.openLoginItems")}</button>
+          )}
+          {err.canOpenLogs && (
+            <button className="link-banner-link" onClick={() => window.aide?.openDaemonLogs()}>{t("daemon.openLogs")}</button>
+          )}
+        </>
       )}
     </div>
   );
