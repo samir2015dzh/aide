@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -149,45 +150,56 @@ private fun IosButton(
     ) { CompositionLocalProvider(LocalContentColor provides fg, LocalTextStyle provides style) { content() } }
 }
 
-/** The prominent button (.borderedProminent): white words on the accent (or red); large, the screen's one action. */
+/** The prominent Fluent button: white words on #0078d4 accent (or #e81123 danger), 10dp rounded. */
 @Composable
 fun FilledButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false, large: Boolean = false,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 7.dp), content: @Composable RowScope.() -> Unit,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp), content: @Composable RowScope.() -> Unit,
 ) = IosButton(
-    onClick, modifier, enabled, if (!enabled) aide.fill2 else if (destructive) aide.red else MaterialTheme.colorScheme.primary,
-    if (enabled) Color.White else aide.faint, RoundedCornerShape(if (large) 12.dp else Radius.Md), if (large) 50.dp else 34.dp, contentPadding,
+    onClick, modifier, enabled, if (!enabled) aide.fill else if (destructive) aide.red else aide.accent,
+    if (enabled) Color.White else aide.disabled, RoundedCornerShape(Radius.Md), if (large) 48.dp else 36.dp, contentPadding,
     (if (large) IosType.Headline else IosType.Subheadline).copy(fontWeight = FontWeight.SemiBold), content,
 )
 
-/** The tinted button (.bordered): the accent's words on the accent's tint. */
+/** Standard Fluent secondary button (or red-text subtle button when destructive, e.g. 中断 per #106). */
 @Composable
 fun TintedButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, destructive: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 7.dp), content: @Composable RowScope.() -> Unit,
 ) {
-    val c = if (destructive) aide.red else MaterialTheme.colorScheme.primary
-    IosButton(onClick, modifier, enabled, if (enabled) c.copy(alpha = 0.15f) else aide.fill2, if (enabled) c else aide.faint, RoundedCornerShape(Radius.Md), 34.dp, contentPadding, IosType.Subheadline.copy(fontWeight = FontWeight.Medium), content)
+    val bg = when {
+        !enabled -> aide.fill
+        destructive -> aide.redSubtle
+        else -> aide.card
+    }
+    val fg = when {
+        !enabled -> aide.disabled
+        destructive -> aide.redText
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val shape = RoundedCornerShape(Radius.Md)
+    val mod = if (enabled && !destructive) modifier.border(1.dp, aide.controlBorder, shape) else modifier
+    IosButton(onClick, mod, enabled, bg, fg, shape, 36.dp, contentPadding, IosType.Subheadline.copy(fontWeight = FontWeight.SemiBold), content)
 }
 
-/** The plain button (.borderless): the accent's words, dimmed while pressed. */
+/** The subtle Fluent button: blue text (#005a9e light / #2899f5 dark), dimmed while pressed. */
 @Composable
 fun PlainButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp), content: @Composable RowScope.() -> Unit,
-) = IosButton(onClick, modifier, enabled, Color.Transparent, if (enabled) MaterialTheme.colorScheme.primary else aide.faint, RoundedCornerShape(Radius.Md), 36.dp, contentPadding, IosType.Subheadline, content)
+) = IosButton(onClick, modifier, enabled, Color.Transparent, if (enabled) MaterialTheme.colorScheme.primary else aide.disabled, RoundedCornerShape(Radius.Md), 36.dp, contentPadding, IosType.Subheadline.copy(fontWeight = FontWeight.SemiBold), content)
 
-/** A bar's icon button: the accent, 44 square, dimmed while pressed. */
+/** A bar's icon button: 48dp touch target, dimmed while pressed. */
 @Composable
 fun BarButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable () -> Unit) {
-    Box(modifier.size(44.dp).dimPress(enabled, onClick = onClick), contentAlignment = Alignment.Center) {
-        CompositionLocalProvider(LocalContentColor provides if (enabled) MaterialTheme.colorScheme.primary else aide.faint) { content() }
+    Box(modifier.size(48.dp).dimPress(enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        CompositionLocalProvider(LocalContentColor provides if (enabled) MaterialTheme.colorScheme.primary else aide.disabled) { content() }
     }
 }
 
 /**
- * iOS's navigation bar (HIG Navigation bars): the back chevron with "Back" on the left, the page's title centred in
- * Headline, its buttons on the right, a hairline under it, on the bars' material.
+ * Fluent navigation bar (工单 #106): 56dp height, acrylic surface over 1px divider,
+ * back chevron on the left, title in 16sp SemiBold, actions on the right.
  */
 @Composable
 fun NavBar(back: (() -> Unit)?, actions: @Composable RowScope.() -> Unit = {}, title: @Composable () -> Unit) {
@@ -196,11 +208,11 @@ fun NavBar(back: (() -> Unit)?, actions: @Composable RowScope.() -> Unit = {}, t
             content = {
                 Box {
                     if (back != null) Row(
-                        Modifier.heightIn(min = 44.dp).semantics(mergeDescendants = true) { contentDescription = t("Back", "返回") }.dimPress(onClick = back).padding(end = 8.dp),
+                        Modifier.heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = t("Back", "返回") }.dimPress(onClick = back).padding(end = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(BackChevron, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(t("Back", "返回"), style = IosType.Body, color = MaterialTheme.colorScheme.primary)
+                        Icon(BackChevron, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text(t("Back", "返回"), style = IosType.Subheadline.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, content = actions)
@@ -208,14 +220,14 @@ fun NavBar(back: (() -> Unit)?, actions: @Composable RowScope.() -> Unit = {}, t
                     CompositionLocalProvider(LocalTextStyle provides IosType.Headline.copy(textAlign = TextAlign.Center), LocalContentColor provides MaterialTheme.colorScheme.onSurface) { title() }
                 }
             },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 4.dp),
         ) { ms, c ->
             val free = c.copy(minWidth = 0, minHeight = 0)
             val lead = ms[0].measure(free)
             val trail = ms[1].measure(free)
             val side = maxOf(lead.width, trail.width) + 4.dp.roundToPx()
             val title = ms[2].measure(Constraints(maxWidth = (c.maxWidth - 2 * side).coerceAtLeast(0)))
-            val h = maxOf(44.dp.roundToPx(), lead.height, trail.height, title.height + 6.dp.roundToPx())
+            val h = maxOf(52.dp.roundToPx(), lead.height, trail.height, title.height + 8.dp.roundToPx())
             layout(c.maxWidth, h) {
                 lead.place(0, (h - lead.height) / 2)
                 trail.place(c.maxWidth - trail.width, (h - trail.height) / 2)
@@ -226,40 +238,44 @@ fun NavBar(back: (() -> Unit)?, actions: @Composable RowScope.() -> Unit = {}, t
     }
 }
 
-/** iOS's switch (HIG Toggles): 51×31, green while on, a white knob with a shadow that stretches under the finger. */
+/** Fluent toggle switch (工单 #106): 40×20dp pill track, 12dp circle thumb, outlined off / #0078d4 filled on. */
 @Composable
 fun IosSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val pos by animateFloatAsState(if (checked) 1f else 0f, Motion.snappy(), label = "switch")
-    val stretch by animateDpAsState(if (pressed && enabled) 7.dp else 0.dp, Motion.snappy(), label = "knob")
-    val track = lerp(aide.switchOff, aide.green, pos)
+    val pos by animateFloatAsState(if (checked) 1f else 0f, tween(Motion.Short, easing = Motion.EaseOut), label = "switch")
+    val stretch by animateDpAsState(if (pressed && enabled) 4.dp else 0.dp, tween(Motion.Short, easing = Motion.EaseOut), label = "knob")
+    val trackBg = lerp(Color.Transparent, aide.accent, pos)
+    val trackBorder = lerp(aide.controlStrong, aide.accent, pos)
+    val knobColor = lerp(aide.controlStrong, Color.White, pos)
     Box(
-        modifier.size(51.dp, 31.dp).graphicsLayer { alpha = if (enabled) 1f else 0.5f }.clip(CircleShape).background(track)
+        modifier.size(40.dp, 20.dp).graphicsLayer { alpha = if (enabled) 1f else 0.45f }.clip(CircleShape)
+            .background(trackBg).border(1.dp, trackBorder, CircleShape)
             .then(if (onCheckedChange != null) Modifier.toggleable(value = checked, interactionSource = interaction, indication = null, enabled = enabled, role = Role.Switch, onValueChange = { onCheckedChange(it) }) else Modifier),
     ) {
-        val knob = 27.dp + stretch
+        val knob = 12.dp + stretch
         Box(
-            Modifier.offset { IntOffset(((2.dp + (51.dp - 4.dp - knob) * pos).toPx()).toInt(), 2.dp.roundToPx()) }
-                .size(knob, 27.dp).shadow(3.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.25f)).background(Color.White, CircleShape),
+            Modifier.offset { IntOffset(((4.dp + (40.dp - 8.dp - knob) * pos).toPx()).toInt(), 4.dp.roundToPx()) }
+                .size(knob, 12.dp).background(knobColor, CircleShape),
         )
     }
 }
 
-/** A round tick (as iOS's selection circles): an empty ring, or the accent filled with a white tick. */
+/** A Fluent checkbox/radio tick: 20dp rounded square or circle, #0078d4 filled with white tick when checked. */
 @Composable
 fun RoundCheck(on: Boolean) {
     Box(
-        Modifier.size(22.dp).clip(CircleShape).then(if (on) Modifier.background(MaterialTheme.colorScheme.primary) else Modifier.border(1.5.dp, aide.faint, CircleShape)),
+        Modifier.size(20.dp).clip(CircleShape).then(if (on) Modifier.background(aide.accent) else Modifier.border(1.5.dp, aide.controlStrong, CircleShape)),
         contentAlignment = Alignment.Center,
-    ) { if (on) Icon(CheckMark, null, Modifier.size(14.dp), tint = Color.White) }
+    ) { if (on) Icon(CheckMark, null, Modifier.size(13.dp), tint = Color.White) }
 }
 
-/** One choice of a list (an inline picker, as iOS's): the words, a tick on the right while picked; a row of an inset card. */
+/** One choice of a list: 48dp touch row, 3dp blue left indicator when picked, checkmark on the right. */
 @Composable
 fun CheckRow(text: String, checked: Boolean, sub: String? = null, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp)
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .then(if (checked) Modifier.background(aide.accentSubtle) else Modifier)
             .selectable(checked, remember { MutableInteractionSource() }, Highlight(aide.pressed), role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -272,7 +288,7 @@ fun CheckRow(text: String, checked: Boolean, sub: String? = null, onClick: () ->
     }
 }
 
-/** Rows as one inset grouped card, a hairline between each two from [inset]. */
+/** Rows as one Fluent grouped card, a hairline between each two from [inset]. */
 @Composable
 fun <T> GroupRows(items: List<T>, modifier: Modifier = Modifier, inset: Dp = 16.dp, row: @Composable (T) -> Unit) {
     if (items.isEmpty()) return
@@ -284,17 +300,17 @@ fun <T> GroupRows(items: List<T>, modifier: Modifier = Modifier, inset: Dp = 16.
     }
 }
 
-/** iOS's segmented control (HIG Segmented controls): a grey track 32 high, the picked segment a raised capsule sliding to it. */
+/** Fluent pill segmented control (工单 #106: pill outer track & inner selected pill). */
 @Composable
 fun <T> Segmented(options: List<Pair<T, String>>, selected: T, modifier: Modifier = Modifier, onSelect: (T) -> Unit) {
     val i = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-    val at by animateFloatAsState(i.toFloat(), Motion.snappy(), label = "segment")
-    BoxWithConstraints(modifier.height(32.dp).clip(RoundedCornerShape(9.dp)).background(aide.fill2).padding(2.dp)) {
+    val at by animateFloatAsState(i.toFloat(), tween(Motion.Short, easing = Motion.EaseOut), label = "segment")
+    BoxWithConstraints(modifier.height(36.dp).clip(CircleShape).background(aide.fill).padding(3.dp)) {
         val w = maxWidth / options.size
         Box(
             Modifier.offset { IntOffset((w * at).roundToPx(), 0) }.width(w).fillMaxHeight()
-                .shadow(2.dp, RoundedCornerShape(7.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-                .background(aide.segment, RoundedCornerShape(7.dp)),
+                .shadow(2.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+                .background(aide.segment, CircleShape),
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {
             options.forEach { (v, label) ->
@@ -302,52 +318,61 @@ fun <T> Segmented(options: List<Pair<T, String>>, selected: T, modifier: Modifie
                 Box(
                     Modifier.weight(1f).fillMaxHeight().selectable(on, remember { MutableInteractionSource() }, null, role = Role.Tab) { onSelect(v) },
                     contentAlignment = Alignment.Center,
-                ) { Text(label, style = IosType.Footnote, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                ) { Text(label, style = IosType.Subheadline, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
     }
 }
 
-/** iOS's stepper (HIG Steppers): − and + on one grey capsule-rounded track, a hairline between. */
+/** Fluent stepper: − and + on a 10dp rounded bordered track, a divider between. */
 @Composable
 fun IosStepper(minusEnabled: Boolean, plusEnabled: Boolean, onMinus: () -> Unit, onPlus: () -> Unit) {
-    Row(Modifier.height(32.dp).clip(RoundedCornerShape(Radius.Md)).background(aide.fill2), verticalAlignment = Alignment.CenterVertically) {
+    val shape = RoundedCornerShape(Radius.Md)
+    Row(Modifier.height(34.dp).clip(shape).background(aide.card).border(1.dp, aide.controlBorder, shape), verticalAlignment = Alignment.CenterVertically) {
         @Composable fun Half(text: String, enabled: Boolean, onClick: () -> Unit) = Box(
-            Modifier.width(47.dp).fillMaxHeight().clickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), enabled = enabled, role = Role.Button, onClick = onClick),
+            Modifier.width(44.dp).fillMaxHeight().clickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), enabled = enabled, role = Role.Button, onClick = onClick),
             contentAlignment = Alignment.Center,
-        ) { Text(text, fontSize = 20.sp, color = if (enabled) MaterialTheme.colorScheme.onSurface else aide.faint) }
+        ) { Text(text, fontSize = 18.sp, color = if (enabled) MaterialTheme.colorScheme.onSurface else aide.disabled) }
         Half("−", minusEnabled, onMinus)
         Box(Modifier.width(1.dp).height(18.dp).background(aide.separator))
         Half("+", plusEnabled, onPlus)
     }
 }
 
-/** A text field as iOS draws one: a rounded grey well 44 high, its label (if any) small above it, a note under it. */
+/** Fluent text field (工单 #106): 10dp rounded, 1dp control border + stronger bottom accent line, 44dp min height. */
 @Composable
 fun IosField(
     value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, label: String? = null, placeholder: String? = null,
     enabled: Boolean = true, singleLine: Boolean = true, password: Boolean = false, visualTransformation: VisualTransformation? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default, supportingText: (@Composable () -> Unit)? = null,
 ) {
+    val fieldShape = RoundedCornerShape(Radius.Md)
+    val dark = isSystemInDarkTheme()
+    val fieldBg = if (!enabled) aide.fill else if (dark) Color(0x0AFFFFFF) else Color.White
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        label?.let { Text(it, style = IosType.Footnote, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp)) }
+        label?.let { Text(it, style = IosType.Subheadline.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 2.dp)) }
         BasicTextField(
             value, onValueChange, Modifier.fillMaxWidth().semantics { label?.let { contentDescription = it } }, enabled = enabled, singleLine = singleLine,
-            textStyle = IosType.Body.copy(color = if (enabled) MaterialTheme.colorScheme.onSurface else aide.faint),
+            textStyle = IosType.Subheadline.copy(color = if (enabled) MaterialTheme.colorScheme.onSurface else aide.disabled),
             visualTransformation = visualTransformation ?: if (password) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = keyboardOptions, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = keyboardOptions, cursorBrush = SolidColor(aide.accent),
             decorationBox = { inner ->
-                Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(Radius.Lg)).background(aide.fill2).padding(horizontal = 12.dp, vertical = 11.dp), contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty() && placeholder != null) Text(placeholder, style = IosType.Body, color = aide.faint, maxLines = if (singleLine) 1 else 3, overflow = TextOverflow.Ellipsis)
+                Box(
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(fieldShape).background(fieldBg)
+                        .border(1.dp, if (enabled) aide.controlBorder else Color.Transparent, fieldShape)
+                        .padding(horizontal = 12.dp, vertical = 11.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (value.isEmpty() && placeholder != null) Text(placeholder, style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (singleLine) 1 else 3, overflow = TextOverflow.Ellipsis)
                     inner()
                 }
             },
         )
-        supportingText?.let { CompositionLocalProvider(LocalTextStyle provides IosType.Footnote, LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { Box(Modifier.padding(start = 4.dp)) { it() } } }
+        supportingText?.let { CompositionLocalProvider(LocalTextStyle provides IosType.Caption, LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { Box(Modifier.padding(start = 2.dp)) { it() } } }
     }
 }
 
-/** iOS's activity indicator (HIG Progress indicators): eight spokes, the bright one going round. Drawn, not recomposed. */
+/** Activity spinner: eight spokes, drawn on Canvas without recomposing. */
 @Composable
 fun ActivityIndicator(modifier: Modifier = Modifier, size: Dp = 20.dp, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     val step by rememberInfiniteTransition(label = "spin").animateFloat(0f, 8f, infiniteRepeatable(tween(800, easing = LinearEasing)), label = "step")
@@ -363,30 +388,31 @@ fun ActivityIndicator(modifier: Modifier = Modifier, size: Dp = 20.dp, color: Co
     }
 }
 
-/** What an action says, as a floating rounded banner on the menus' material (iOS has no snackbar). */
+/** Floating Fluent snackbar banner (16dp radius). */
 @Composable
 fun IosSnackbarHost(state: SnackbarHostState, modifier: Modifier = Modifier) {
     SnackbarHost(state, modifier) { d ->
+        val shape = RoundedCornerShape(Radius.Lg)
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
             Text(
                 d.visuals.message,
-                Modifier.shadow(16.dp, RoundedCornerShape(Radius.Xl), ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
-                    .clip(RoundedCornerShape(Radius.Xl)).background(aide.menu).border(1.dp, aide.cardEdge, RoundedCornerShape(Radius.Xl)).padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.shadow(16.dp, shape, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f))
+                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape).padding(horizontal = 16.dp, vertical = 12.dp),
                 style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
 }
 
-/** An iOS sheet (HIG Sheets): risen from the bottom on the grouped background, its top rounded 14, a grabber, the page dimmed. */
+/** Fluent bottom sheet (工单 #106): 24dp top corners, 32×4dp pill grabber, elevated Fluent surface. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IosSheet(onDismissRequest: () -> Unit, title: String? = null, content: @Composable ColumnScope.() -> Unit) {
     val k = aide.elevated(isSystemInDarkTheme())
     ModalBottomSheet(
         onDismissRequest = onDismissRequest, containerColor = k.grouped, contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(topStart = Radius.Xl, topEnd = Radius.Xl), tonalElevation = 0.dp, scrimColor = Color.Black.copy(alpha = 0.4f),
-        dragHandle = { Box(Modifier.padding(top = 6.dp, bottom = 6.dp).size(36.dp, 5.dp).clip(CircleShape).background(k.faint)) },
+        shape = RoundedCornerShape(topStart = Radius.Xl, topEnd = Radius.Xl), tonalElevation = 0.dp, scrimColor = Color.Black.copy(alpha = 0.45f),
+        dragHandle = { Box(Modifier.padding(top = 8.dp, bottom = 6.dp).size(32.dp, 4.dp).clip(CircleShape).background(k.controlAccentLine)) },
     ) {
         CompositionLocalProvider(LocalAideTokens provides k) {
             title?.let { Text(it, style = IosType.Headline, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) }
@@ -400,13 +426,13 @@ enum class AlertRole { Default, Preferred, Cancel, Destructive }
 /** One button of an alert. */
 data class AlertAction(val text: String, val role: AlertRole = AlertRole.Default, val enabled: Boolean = true, val onClick: () -> Unit)
 
-/** Behind a dialog's window: the page blurred where the phone can (Android 12+ with cross-window blur on), and dimmed. */
+/** Behind a dialog's window: dimmed (and blurred on Android 12+). */
 @Composable
 private fun BlurBehind() {
     val view = LocalView.current
     DisposableEffect(view) {
         (view.parent as? DialogWindowProvider)?.window?.let { w ->
-            w.setDimAmount(0.4f)
+            w.setDimAmount(0.45f)
             if (Build.VERSION.SDK_INT >= 31) {
                 w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                 w.attributes = w.attributes.apply { blurBehindRadius = 40 }
@@ -417,52 +443,43 @@ private fun BlurBehind() {
 }
 
 /**
- * iOS's alert (HIG Alerts): centred, 270 wide, rounded 14, on the material; the title in Headline and the message in
- * Footnote, centred; the buttons under a hairline, two side by side, more stacked; the preferred one bold, a destructive
- * one red. Fields or choices an alert needs go between the message and the buttons.
+ * Fluent dialog (工单 #106): 24dp rounded surface, 24dp padding, clear heading & body,
+ * Fluent filled/destructive/secondary action buttons.
  */
 @Composable
 fun IosAlert(onDismissRequest: () -> Unit, title: String, actions: List<AlertAction>, message: String? = null, content: (@Composable ColumnScope.() -> Unit)? = null) {
     Dialog(onDismissRequest, DialogProperties(usePlatformDefaultWidth = false)) {
         BlurBehind()
         val k = aide.elevated(isSystemInDarkTheme())
+        val shape = RoundedCornerShape(Radius.Xl)
         CompositionLocalProvider(LocalAideTokens provides k) {
-            Column(Modifier.width(270.dp).clip(RoundedCornerShape(Radius.Xl)).background(k.menu)) {
+            Column(Modifier.widthIn(min = 296.dp, max = 340.dp).clip(shape).background(k.menu).border(1.dp, k.cardEdge, shape).padding(20.dp)) {
                 Column(
-                    Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 19.dp, bottom = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
+                    Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()).padding(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(title, style = IosType.Headline, textAlign = TextAlign.Center)
-                    message?.let { Text(it, style = IosType.Footnote, textAlign = TextAlign.Center) }
+                    Text(title, style = IosType.Title3)
+                    message?.let { Text(it, style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     content?.let { c ->
-                        Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CompositionLocalProvider(LocalTextStyle provides IosType.Footnote.copy(textAlign = TextAlign.Center)) { c() }
+                        Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CompositionLocalProvider(LocalTextStyle provides IosType.Subheadline) { c() }
                         }
                     }
                 }
-                Hairline()
-                @Composable fun Button(a: AlertAction, m: Modifier) = Box(
-                    m.heightIn(min = 44.dp).clickable(remember { MutableInteractionSource() }, Highlight(k.pressed), enabled = a.enabled, role = Role.Button, onClick = a.onClick).padding(horizontal = 8.dp, vertical = 11.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        a.text, style = IosType.Body, textAlign = TextAlign.Center, fontWeight = if (a.role == AlertRole.Preferred) FontWeight.SemiBold else FontWeight.Normal,
-                        color = when {
-                            !a.enabled -> k.faint
-                            a.role == AlertRole.Destructive -> k.red
-                            else -> MaterialTheme.colorScheme.primary
-                        },
-                    )
+                @Composable fun Btn(a: AlertAction, m: Modifier) {
+                    when (a.role) {
+                        AlertRole.Preferred -> FilledButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
+                        AlertRole.Destructive -> FilledButton(a.onClick, m, enabled = a.enabled, destructive = true) { Text(a.text) }
+                        AlertRole.Cancel, AlertRole.Default -> TintedButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
+                    }
                 }
                 if (actions.size == 2) {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-                        Button(actions[0], Modifier.weight(1f))
-                        Box(Modifier.width(with(LocalDensity.current) { 1f.toDp() }).heightIn(min = 44.dp).background(k.separator))
-                        Button(actions[1], Modifier.weight(1f))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Btn(actions[0], Modifier.weight(1f))
+                        Btn(actions[1], Modifier.weight(1f))
                     }
-                } else actions.forEachIndexed { i, a ->
-                    if (i > 0) Hairline()
-                    Button(a, Modifier.fillMaxWidth())
+                } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    actions.forEach { a -> Btn(a, Modifier.fillMaxWidth()) }
                 }
             }
         }
@@ -483,8 +500,8 @@ private class UnderAnchor(private val gap: Int, private val margin: Int) : Popup
 }
 
 /**
- * iOS's menu (HIG Menus): a rounded 14 panel on the menus' material with a soft wide shadow, its items 44 high in Body
- * with hairlines between, a tick before the picked one, a destructive one red; it springs open from its button.
+ * Fluent Flyout menu (工单 #106): 16dp rounded panel, 8dp inner padding, 48dp touch rows,
+ * 10dp rounded item highlight with 3dp #0078d4 left indicator on active/checked item.
  */
 @Composable
 fun IosMenu(expanded: Boolean, onDismissRequest: () -> Unit, entries: List<MenuEntry>) {
@@ -496,28 +513,32 @@ fun IosMenu(expanded: Boolean, onDismissRequest: () -> Unit, entries: List<MenuE
     Popup(popupPositionProvider = position, onDismissRequest = onDismissRequest, properties = PopupProperties(focusable = true)) {
         AnimatedVisibility(
             state,
-            enter = scaleIn(Motion.snappy(), initialScale = 0.85f, transformOrigin = TransformOrigin(0.15f, 0f)) + fadeIn(tween(Motion.Short)),
-            exit = scaleOut(tween(Motion.Short), targetScale = 0.9f, transformOrigin = TransformOrigin(0.15f, 0f)) + fadeOut(tween(Motion.Short)),
+            enter = scaleIn(tween(Motion.Medium, easing = Motion.EaseOut), initialScale = 0.94f, transformOrigin = TransformOrigin(0.15f, 0f)) + fadeIn(tween(Motion.Short)),
+            exit = scaleOut(tween(Motion.Short), targetScale = 0.96f, transformOrigin = TransformOrigin(0.15f, 0f)) + fadeOut(tween(Motion.Short)),
         ) {
-            val shape = RoundedCornerShape(Radius.Xl)
+            val shape = RoundedCornerShape(Radius.Lg)
+            val rowShape = RoundedCornerShape(Radius.Md)
             val ticks = entries.any { it.checked }
             Column(
-                Modifier.padding(16.dp).widthIn(min = 200.dp, max = 290.dp)
-                    .shadow(24.dp, shape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
-                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape),
+                Modifier.padding(12.dp).widthIn(min = 200.dp, max = 290.dp)
+                    .shadow(20.dp, shape, ambientColor = Color.Black.copy(alpha = 0.24f), spotColor = Color.Black.copy(alpha = 0.24f))
+                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape).padding(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                entries.forEachIndexed { i, e ->
-                    if (i > 0) Hairline()
+                entries.forEach { e ->
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(rowShape)
+                            .then(if (e.checked) Modifier.background(aide.accentSubtle) else Modifier)
                             .clickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), enabled = e.enabled, role = Role.Button) { e.onClick() }
-                            .padding(start = if (ticks) 10.dp else 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                            .padding(start = 6.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (ticks) Box(Modifier.width(26.dp)) { if (e.checked) Icon(CheckMark, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface) }
-                        Text(e.text, style = IosType.Body, color = when {
-                            !e.enabled -> aide.faint
-                            e.destructive -> aide.red
+                        Box(Modifier.width(3.dp).height(18.dp).clip(CircleShape).background(if (e.checked) aide.accent else Color.Transparent))
+                        Spacer(Modifier.width(9.dp))
+                        if (ticks) Box(Modifier.width(22.dp)) { if (e.checked) Icon(CheckMark, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary) }
+                        Text(e.text, style = IosType.Subheadline, color = when {
+                            !e.enabled -> aide.disabled
+                            e.destructive -> aide.redText
                             else -> MaterialTheme.colorScheme.onSurface
                         })
                     }

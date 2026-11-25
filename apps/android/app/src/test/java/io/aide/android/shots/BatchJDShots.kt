@@ -127,19 +127,28 @@ class BatchJDShots {
 
     private fun snap(name: String) = rule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
 
-    // 工单 #103: the app's version, as installed, in Settings.
-    @Test fun version() = model().let { m ->
+    // 工单 #100 / #103 / #106: Fluent DeviceFace for account & devices + app version in Settings.
+    @Test fun versionAndFaces() = model().let { m ->
         show(waitFor = "我的手机") { SettingsTab(m) }
+        assertTrue(rule.onAllNodesWithContentDescription("face:person").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithContentDescription("face:android").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithContentDescription("face:tablet").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithContentDescription("face:windows").fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(BuildConfig.VERSION_NAME, substring = true))
         assertTrue(rule.onAllNodesWithText(BuildConfig.VERSION_NAME, substring = true).fetchSemanticsNodes().isNotEmpty())
         snap("batchj-d-settings-version")
     }
 
-    // 工单 #101 (after #85): a message kept as "Muse (127.0.0.1)" is shown by the connection's name now.
+    // 工单 #101 / #106 (after #85): Fluent blue bubble with white text + sender named by connection's name now.
     @Test fun senderByItsNameNow() = model().let { m ->
         show(waitFor = "顺便看看头像解码") { SessionPage(m, "s2", back = {}) }
         assertTrue(rule.onAllNodesWithText("Muse").fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodesWithText("127.0.0.1", substring = true).assertCountEquals(0)
         snap("batchj-d-session-sender")
+    }
+
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun senderLight() = model().let { m ->
+        show(waitFor = "顺便看看头像解码") { SessionPage(m, "s2", back = {}) }
+        snap("batchj-d-session-sender-light")
     }
 }

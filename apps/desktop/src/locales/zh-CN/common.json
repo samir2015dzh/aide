@@ -433,6 +433,11 @@
     },
     "faceEdit": "换头像",
     "settings": "设置",
+    "settingsMenu": "设置…",
+    "renameAndFace": "改名和换头像…",
+    "allConvs": "全部对话",
+    "allConvsCount": "全部对话 · {{count}}",
+    "closeList": "关闭对话列表",
     "settingsOf": "{{name}} 的设置",
     "settingsBack": "返回 {{name}}",
     "board": {

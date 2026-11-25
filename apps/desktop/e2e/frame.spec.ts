@@ -440,7 +440,7 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   await expect(card).toHaveCount(0);
   await expect(info).toHaveAttribute("aria-pressed", "false");
   expect(await docked()).toEqual({ sidebar: true, card: false });
-  await expect.poll(async () => Math.round((await conversation.boundingBox())!.width)).toBe(1000 - 272);
+  await expect.poll(async () => Math.round((await conversation.boundingBox())!.width)).toBe(1000 - 280);
   await snap(page, "layout-1000");
   // Asked for, the card shows over the conversation, which keeps its width; Esc puts it away.
   await info.click();
@@ -455,13 +455,13 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   await resize(800);
   await expect(rail).toBeVisible();
   expect(await docked()).toEqual({ sidebar: false, card: false });
-  await expect.poll(async () => Math.round((await conversation.boundingBox())!.width)).toBe(800 - 74);
+  await expect.poll(async () => Math.round((await conversation.boundingBox())!.width)).toBe(800 - 72);
   await snap(page, "layout-800");
   // Asked for, the sidebar shows over the session, which stays where it is; a click beside it puts it away.
   await showSidebar.click();
   await expect(main).toHaveClass(/\bpeek\b/);
-  await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(272);
-  expect(Math.round((await conversation.boundingBox())!.width)).toBe(800 - 74);
+  await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(280);
+  expect(Math.round((await conversation.boundingBox())!.width)).toBe(800 - 72);
   await snap(page, "layout-800-sidebar-over");
   await page.locator(".peek-scrim").click({ position: { x: 700, y: 400 } });
   await expect(main).not.toHaveClass(/\bpeek\b/);
@@ -486,7 +486,7 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   expect(await docked()).toEqual({ sidebar: true, card: true });
 
   // Shrunk to its rail by the owner, it stays a rail from page to page; the card keeps its place.
-  await sidebar.getByRole("button", { name: "收成窄栏" }).click();
+  await page.getByRole("button", { name: "收成窄栏" }).click();
   await resize(1240);
   await expect(card).toBeVisible();
   expect(await docked()).toEqual({ sidebar: false, card: true });

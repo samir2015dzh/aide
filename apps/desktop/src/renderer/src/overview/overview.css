@@ -1,27 +1,28 @@
 /* The overview's additions to the prototype's styles (styles/app.css). */
 
-/* The four numbers at the top: what needs the owner in its colour, the others quiet. */
+/* 概览一览卡（DESIGN-107 §2）：中性亚克力卡 + 状态色数字/标志，去掉整张橙底 */
 .ov-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.ov-tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:var(--r-panel);background:var(--win);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(20,26,45,.05)}
-.ov-tile b{font-size:26px;line-height:1.15;font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums;color:var(--l1)}
-.ov-tile b small{font-size:16px;color:var(--l3);font-weight:var(--font-weight-medium)}
-.ov-tile span{font-size:12.5px;font-weight:var(--font-weight-semibold);color:var(--l2)}
-.ov-tile em{font-style:normal;font-size:11.5px;color:var(--l3)}
-.ov-tile.need.on{background:var(--orange-bg);box-shadow:0 0 0 .5px color-mix(in srgb,var(--orange) 40%,transparent)}
-.ov-tile.need.on b,.ov-tile.need.on span{color:var(--orange)}
+.ov-tile{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:var(--radius-card);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);transition:background-color var(--duration-normal) var(--ease-fluent),transform var(--duration-normal) var(--ease-fluent),box-shadow var(--duration-normal) var(--ease-fluent)}
+.ov-tile:hover{background:var(--surface-card-hover);transform:translateY(-2px);box-shadow:inset 0 0 0 1px var(--border-acrylic-hover),0 0 0 1px var(--sep),var(--shadow-card-hover)}
+.ov-tile b{font-size:28px;line-height:1.15;font-weight:600;font-variant-numeric:tabular-nums;color:var(--l1)}
+.ov-tile b small{font-size:16px;color:var(--l2);font-weight:400}
+.ov-tile span{font-size:13px;font-weight:600;color:var(--l2)}
+.ov-tile em{font-style:normal;font-size:12px;color:var(--l2)}
+.ov-tile.need.on{border-left:3px solid var(--color-caution)}
+.ov-tile.need.on b{color:var(--orange-t)}
 .ov-tile.done b{color:var(--green)}
 .ov-tile.run b{color:var(--accent-t)}
-@media (prefers-color-scheme:dark){.ov-tile{background:var(--win2);box-shadow:0 0 0 .5px var(--sep)}}
 
-.ov-warn{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--orange)}
+.ov-warn{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--orange-t)}
 .arow .at code{font-size:12px}
-.arow .ai.r{background:var(--red-bg);color:var(--red)}
+.arow .ai.r{background:var(--red-bg);color:var(--red-t)}
 .arow .at span.wrap{white-space:normal;line-height:1.5}
 
-/* Connections: one muted ink for what runs, soft amber and brick for what waits or failed. */
-:root{--live:#5f6b85;--live-wait:#b88a4a;--live-fail:#bf5b55;--lm-node:#ffffff;--lm-node-bd:rgba(0,0,0,.09);--lm-line:rgba(0,0,0,.12);--lm-up:color-mix(in srgb,var(--green) 55%,transparent);--lm-hover:rgba(0,0,0,.28)}
-@media (prefers-color-scheme:dark){:root{--live:#a7b1c7;--live-wait:#d2aa70;--live-fail:#d98680;--lm-node:#1c1c1f;--lm-node-bd:rgba(255,255,255,.08);--lm-line:rgba(255,255,255,.13);--lm-up:color-mix(in srgb,var(--green) 60%,transparent);--lm-hover:rgba(255,255,255,.3)}}
-.lmap{background:var(--win2);border-radius:var(--r-panel);overflow:hidden}
+/* 链路拓扑（DESIGN-107 §2）：运行中主蓝 #0078d4、等你回答黄、出错红、空闲灰 */
+:root{--live:#0078d4;--live-wait:#ffb900;--live-fail:#e81123;--lm-node:#ffffff;--lm-node-bd:rgba(0,0,0,.09);--lm-line:#d1d1d1;--lm-up:color-mix(in srgb,var(--green-fill) 65%,transparent);--lm-hover:rgba(0,0,0,.28)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--live:#479ef5;--live-wait:#ffb900;--live-fail:#ff6b75;--lm-node:#2d2c2b;--lm-node-bd:rgba(255,255,255,.10);--lm-line:#3b3a39;--lm-up:color-mix(in srgb,var(--green-fill) 65%,transparent);--lm-hover:rgba(255,255,255,.3)}}
+:root[data-theme="dark"]{--live:#479ef5;--live-wait:#ffb900;--live-fail:#ff6b75;--lm-node:#2d2c2b;--lm-node-bd:rgba(255,255,255,.10);--lm-line:#3b3a39;--lm-up:color-mix(in srgb,var(--green-fill) 65%,transparent);--lm-hover:rgba(255,255,255,.3)}
+.lmap{background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);border-radius:var(--radius-card);overflow:hidden}
 .lmap-top{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 0;flex-wrap:wrap}
 .lmap-top b{font-size:14px;font-weight:600}
 .lmap-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 9px;border-radius:999px;background:var(--lm-node);box-shadow:inset 0 0 0 .5px var(--lm-node-bd);color:var(--l2);font-size:12px;white-space:nowrap}

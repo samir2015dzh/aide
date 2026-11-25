@@ -41,18 +41,25 @@ test("a coding agent's conversations: on in the current one, a new one, back to 
   const composer = bot.locator("form.composer");
   const box = composer.getByRole("textbox", { name: "给 Gemini CLI 发消息" });
   const send = composer.getByRole("button", { name: "发送" });
-  const list = bot.getByRole("list", { name: "对话" });
+  const stream = bot.locator(".bot-stream");
+  const current = stream.locator(".conv-row.cur");
+  const allBtn = bot.locator(".conv-all-btn");
+  const flyout = bot.locator(".conv-flyout");
   // The box (工单 #92): + at its foot on the left, the project as a chip under it, the send button lit only with something to send.
   await expect(composer.getByRole("button", { name: "更多" })).toBeVisible();
   await expect(composer.getByRole("button", { name: "项目" })).toBeVisible();
   await expect(send).toBeDisabled();
 
+  // Conversations are folded into the Fluent "全部对话" flyout (#107 §0.5c #4A); open it to count existing rows.
+  await allBtn.click();
+  await expect(flyout).toBeVisible();
+  const flyRows = flyout.getByRole("listitem");
+  await expect(flyRows.first()).toBeVisible({ timeout: 30_000 });
+  const n = await flyRows.count();
+  await flyout.getByRole("button", { name: "关闭对话列表" }).click();
+  await expect(flyout).toHaveCount(0);
+
   // A new conversation first (rule 2): the next message starts one, said at the top.
-  const rows = list.getByRole("listitem");
-  const current = list.locator(".conv-row.cur");
-  await expect(rows.first()).toBeVisible({ timeout: 30_000 });
-  const n = await rows.count();
-  // With a conversation of the owner's already, "开启新对话"; with none (the world's are other agents' work), the first message starts one.
   if (await bot.locator(".conv-new").isEnabled()) {
     await bot.locator(".conv-new").click();
     await expect(bot.locator(".conv-head")).toContainText("下一条会开新对话");
@@ -61,41 +68,47 @@ test("a coding agent's conversations: on in the current one, a new one, back to 
   await expect(send).toBeEnabled();
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toHaveText("已开新对话", { timeout: 30_000 });
-  await expect(rows).toHaveCount(n + 1, { timeout: 30_000 });
   // It is the current one, by its title and when it started (rule 3).
-  await expect(current).toHaveCount(1);
+  await expect(current).toHaveCount(1, { timeout: 30_000 });
   await expect(bot.locator(".conv-head")).toContainText("正在聊：");
-  const firstTitle = (await current.locator(".conv-t b").textContent())!;
+  const firstTitle = (await current.locator(".conv-current-top b").textContent())!;
   // The next message goes on in it (rule 1): no new conversation.
   await expect(current).not.toContainText("进行中", { timeout: 60_000 });
   await box.fill("say 第二条");
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已发到", { timeout: 30_000 });
-  await expect(rows).toHaveCount(n + 1);
+  await allBtn.click();
+  await expect(flyRows).toHaveCount(n + 1, { timeout: 30_000 });
+  await flyout.getByRole("button", { name: "关闭对话列表" }).click();
   await snap(page, "batchh-conversation");
 
-  // Another new one: the first stays listed.
+  // Another new one: the first stays listed in the "全部对话" flyout.
   await bot.locator(".conv-new").click();
   await box.fill("say 另起一条");
   await box.press("Enter");
-  await expect(rows).toHaveCount(n + 2, { timeout: 30_000 });
-  await expect(current).not.toContainText(firstTitle);
+  await expect(current).not.toContainText(firstTitle, { timeout: 30_000 });
 
-  // Back to the first (rule 5): chosen, it is current again, and the next message goes on in it.
+  // Back to the first (rule 5): chosen from "全部对话" flyout, it is current again, and the next message goes on in it.
   await expect(current).not.toContainText("进行中", { timeout: 60_000 });
-  await rows.filter({ hasText: firstTitle }).locator(".conv-main").click();
+  await allBtn.click();
+  await expect(flyRows).toHaveCount(n + 2, { timeout: 30_000 });
+  await flyRows.filter({ hasText: firstTitle }).locator(".conv-main").click();
+  await expect(flyout).toHaveCount(0);
   await expect(current).toContainText(firstTitle);
   await box.fill("say 回到第一条");
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText(`已发到「${firstTitle}」`, { timeout: 30_000 });
-  await expect(rows).toHaveCount(n + 2);
+  await allBtn.click();
+  await expect(flyRows).toHaveCount(n + 2);
+  await flyout.getByRole("button", { name: "关闭对话列表" }).click();
 
   // Archived (rule 6): the machine's own archive, apart in its group; going on in it unarchives it first.
   await expect(current).not.toContainText("进行中", { timeout: 60_000 });
   await current.getByRole("button", { name: "归档" }).click();
   await expect(bot.locator(".composer-state")).toContainText("已归档", { timeout: 30_000 });
-  await expect(rows).toHaveCount(n + 1, { timeout: 30_000 });
-  await expect(list.getByRole("button", { name: /^已归档（\d+）/ })).toBeVisible();
+  await allBtn.click();
+  await expect(flyRows).toHaveCount(n + 1, { timeout: 30_000 });
+  await expect(flyout.getByRole("button", { name: /^已归档（\d+）/ })).toBeVisible();
   await snap(page, "batchh-archived");
 });
 

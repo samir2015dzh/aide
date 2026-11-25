@@ -77,8 +77,8 @@ sealed interface Route {
     data object NewRoom : Route
 }
 
-/** The roster first (工单 #57): bots and rooms only; the machines are a tab of their own (工单 #63). */
-enum class Tab { Bots, Sessions, NeedsYou, Devices, Settings }
+/** 4 Fluent tabs (工单 #106): Home (overview + needs you + tasks) opens by default, then Bot, Machines, Settings. */
+enum class Tab { Home, Bots, Devices, Settings }
 
 /** The page shown over the tabs (none: the tabs), and how deep in the stack, so a transition knows forward from back. */
 private data class PageAt(val route: Route?, val depth: Int)
@@ -106,7 +106,8 @@ fun Root(model: AppModel) {
 @Composable
 private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     val world by model.world.collectAsState()
-    var tab by rememberSaveable { mutableStateOf(Tab.Bots) }
+    // Opens on Home (首页) by default per owner's #106 decision (overrides #57).
+    var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     val stack = remember { mutableStateListOf<Route>() }
     BackHandler(enabled = stack.isNotEmpty()) { stack.removeAt(stack.lastIndex) }
     // A notification tapped: what it is about.
@@ -119,8 +120,6 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
         }
         model.opened()
     }
-    // A page pushed as on iOS (HIG Navigation): it comes in from the right edge over the one under it, which moves a third
-    // to the left and dims; back, the other way. A smooth spring, no overshoot at the screen's edge.
     AnimatedContent(
         targetState = PageAt(stack.lastOrNull(), stack.size),
         transitionSpec = {
@@ -158,25 +157,21 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     Scaffold(
         snackbarHost = { IosSnackbarHost(snackbar) },
         bottomBar = {
-            // iOS's tab bar (HIG Tab bars): on the bars' material under a hairline, the picked tab in the accent.
+            // Fluent bottom navigation bar (工单 #106): 4 tabs (首页 / Bot / 机器 / 设置), acrylic fill, Win11 indicator bar.
             Column(Modifier.background(aide.bar)) {
                 Hairline()
-                Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).height(50.dp)) {
-                    TabItem("Bot", rememberVectorPainter(Icons.Filled.Home), tab == Tab.Bots) { tab = Tab.Bots }
-                    TabItem(t("Tasks", "任务"), rememberVectorPainter(Icons.AutoMirrored.Filled.List), tab == Tab.Sessions) { tab = Tab.Sessions }
-                    // Needs you: the sessions waiting for an answer, in one place.
-                    TabItem(t("Needs you", "需要你"), rememberVectorPainter(Icons.Filled.Notifications), tab == Tab.NeedsYou, badge = needs) { tab = Tab.NeedsYou }
-                    TabItem(t("Devices", "设备"), androidx.compose.ui.res.painterResource(io.aide.android.R.drawable.ic_devices), tab == Tab.Devices) { tab = Tab.Devices }
+                Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).height(64.dp)) {
+                    TabItem(t("Home", "首页"), rememberVectorPainter(Icons.Filled.Home), tab == Tab.Home, badge = needs) { tab = Tab.Home }
+                    TabItem("Bot", rememberVectorPainter(Icons.AutoMirrored.Filled.List), tab == Tab.Bots) { tab = Tab.Bots }
+                    TabItem(t("Machines", "机器"), androidx.compose.ui.res.painterResource(io.aide.android.R.drawable.ic_devices), tab == Tab.Devices) { tab = Tab.Devices }
                     TabItem(t("Settings", "设置"), rememberVectorPainter(Icons.Filled.Settings), tab == Tab.Settings) { tab = Tab.Settings }
                 }
             }
         },
     ) { pad ->
-        // A tab changes at once, as iOS's do.
         Box(Modifier.padding(pad)) {
             when (tab) {
-                Tab.Sessions -> SessionsTab(model) { stack.add(Route.Session(it)) }
-                Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
+                Tab.Home -> SessionsTab(model) { stack.add(Route.Session(it)) }
                 Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
                 Tab.Devices -> DevicesTab(model) { stack.add(Route.Session(it)) }
                 Tab.Settings -> SettingsTab(model)
@@ -186,22 +181,23 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     }
 }
 
-/** One tab of the bar: its icon over its name, the accent when picked, grey otherwise; a red count on the icon (iOS's badge). */
+/** One Fluent tab: 24dp icon, 12sp label, yellow #ffb900 attention badge with #201f1e text, 16×3dp blue bottom indicator. */
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.TabItem(label: String, icon: Painter, picked: Boolean, badge: Int = 0, onClick: () -> Unit) {
     val tint = if (picked) MaterialTheme.colorScheme.primary else aide.gray
     Column(
-        Modifier.weight(1f).fillMaxHeight().selectable(picked, remember { MutableInteractionSource() }, null, role = Role.Tab, onClick = onClick),
+        Modifier.weight(1f).fillMaxHeight().selectable(picked, remember { MutableInteractionSource() }, Highlight(aide.pressed), role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
         Box {
-            Icon(icon, null, Modifier.size(25.dp), tint = tint)
+            Icon(icon, null, Modifier.size(24.dp), tint = tint)
             if (badge > 0) Box(
-                Modifier.align(Alignment.TopEnd).offset(x = 10.dp, y = (-4).dp).heightIn(min = 18.dp).widthIn(min = 18.dp).background(aide.red, CircleShape).padding(horizontal = 5.dp),
+                Modifier.align(Alignment.TopEnd).offset(x = 10.dp, y = (-5).dp).heightIn(min = 16.dp).widthIn(min = 16.dp).background(aide.orange, CircleShape).padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
-            ) { Text("$badge", color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+            ) { Text("$badge", color = aide.onCaution, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.SemiBold) }
         }
-        Text(label, color = tint, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp))
+        Text(label, color = tint, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = if (picked) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 3.dp))
+        Box(Modifier.padding(top = 3.dp).size(16.dp, 3.dp).background(if (picked) aide.accent else androidx.compose.ui.graphics.Color.Transparent, CircleShape))
     }
 }
 

@@ -194,7 +194,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                             r.members.forEach { m ->
                                 val b = bots.firstOrNull { it.key == m.botKey }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (b != null) BotFace(b, 22, toneColor(botTone(b))) else Box(Modifier.size(22.dp).clip(CircleShape).background(aide.inset))
+                                    if (b != null) BotFace(b, 22, toneDotColor(botTone(b))) else Box(Modifier.size(22.dp).clip(CircleShape).background(aide.inset))
                                     HSpace(5)
                                     Text(m.name, style = MaterialTheme.typography.bodySmall)
                                     if (b != null) { HSpace(4); Text(b.state.word, style = MaterialTheme.typography.labelSmall, color = aide.faint) }
@@ -255,12 +255,23 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, nameOf: (S
     }
     val mine = m.from == "owner"
     val member = r.members.firstOrNull { it.botKey == m.from }
+    val bubbleShape = RoundedCornerShape(
+        topStart = Radius.Bubble, topEnd = Radius.Bubble,
+        bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
+        bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
+    )
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (!mine) Text(m.fromName + if (m.late) t(" · came after stop", " · 停止后到达") else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (mine && m.mentions.isNotEmpty()) Text(m.mentions.joinToString(" ") { "@" + nameOf(it) }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-            .background(if (mine) aide.bubble else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-            Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
+            .background(if (mine) aide.bubble else aide.card, bubbleShape)
+            .then(if (mine) Modifier else Modifier.border(1.dp, aide.cardEdge, bubbleShape))
+            .padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(m.text, style = MaterialTheme.typography.bodyLarge, color = when {
+                mine -> aide.onBubble
+                m.late -> aide.faint
+                else -> MaterialTheme.colorScheme.onSurface
+            })
         }
         if (mine) m.deliveries.forEach { d ->
             val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)

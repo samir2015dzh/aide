@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.AgentStatus
+import io.aide.android.api.Device
 import io.aide.android.api.Machine
 import io.aide.android.model.AgentEntry
 import io.aide.android.model.AppModel
@@ -36,6 +37,7 @@ import io.aide.android.model.ConnState
 import io.aide.android.model.agentTitle
 import io.aide.android.model.agoText
 import io.aide.android.model.instantOrNull
+import io.aide.android.model.machineKind
 import io.aide.android.model.partTitle
 import io.aide.android.model.pausedUntil
 import io.aide.android.model.usageResetAt
@@ -45,16 +47,15 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
 
-// A machine as a device (工单 #57: the roster's machine group heads and foot): online, version, what runs, checking
-// its agents again and showing hidden ones. Its agents are bots, listed and opened in the roster (Bots.kt); what the
-// machine page managed of an agent is its bot's workbench (AgentWorkbench), not a second list here.
+// A machine as a device (工单 #57, #100, #106): online, version, what runs, checking
+// its agents again and showing hidden ones.
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun MachineHead(m: Machine, modifier: Modifier) {
+internal fun MachineHead(m: Machine, devices: List<Device>, modifier: Modifier) {
     Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MachineMark(m.machineName, m.online && m.unreachable.isEmpty())
+            DeviceFace(machineKind(m, devices), 40, m.online && m.unreachable.isEmpty())
             HSpace(12)
             Column(Modifier.weight(1f)) {
                 Text(m.machineName, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)

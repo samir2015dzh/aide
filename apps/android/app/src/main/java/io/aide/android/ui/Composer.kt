@@ -350,13 +350,13 @@ private fun StateLine(text: String, color: Color) {
 @Composable
 private fun RoundButton(enabled: Boolean, filled: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
     val bg = when {
-        filled && enabled -> MaterialTheme.colorScheme.primary
-        filled -> aide.fill2
+        filled && enabled -> aide.accent
+        filled -> aide.fill
         else -> Color.Transparent
     }
-    val fg = if (filled && enabled) MaterialTheme.colorScheme.onPrimary else if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else aide.faint
+    val fg = if (filled && enabled) Color.White else if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else aide.disabled
     Box(
-        Modifier.size(34.dp).clip(CircleShape).background(bg).then(if (enabled) Modifier.pressable(onClick) else Modifier),
+        Modifier.size(34.dp).clip(RoundedCornerShape(Radius.Inner)).background(bg).then(if (enabled) Modifier.pressable(onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides fg) { content() }
@@ -364,33 +364,32 @@ private fun RoundButton(enabled: Boolean, filled: Boolean, onClick: () -> Unit, 
 }
 
 /**
- * A choice in the composer as a quiet chip that opens its options (an app's own control, not a form's, 工单 #68).
- * chip: what the chip says of a choice, when shorter than its option; notes: lines under the options, not to pick.
+ * Fluent dropdown selector chip in the composer (工单 #106: 10dp rounded bordered dropdown button).
  */
 @Composable
 fun <T> ChipPicker(label: String, value: T, options: List<Pair<T, String>>, notes: List<String> = emptyList(), chip: ((T) -> String?)? = null, onChange: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(Radius.Md)
     Box {
         Row(
-            Modifier.clip(CircleShape).background(aide.fill2).pressable { open = true }.padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            Modifier.heightIn(min = 32.dp).clip(shape).background(aide.card).border(1.dp, aide.controlBorder, shape).pressable { open = true }.padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(chip?.invoke(value) ?: options.firstOrNull { it.first == value }?.second ?: label, style = IosType.Footnote, color = MaterialTheme.colorScheme.primary, maxLines = 1)
-            Icon(Icons.Filled.KeyboardArrowDown, label, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(chip?.invoke(value) ?: options.firstOrNull { it.first == value }?.second ?: label, style = IosType.Footnote, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Icon(Icons.Filled.KeyboardArrowDown, label, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IosMenu(open, { open = false }, options.map { (v, l) -> MenuEntry(l, checked = v == value) { open = false; onChange(v) } } + notes.map { MenuEntry(it, enabled = false) {} })
     }
 }
 
-/** A chip that is on or off (a room's @): a capsule, filled while on. */
+/** A chip that is on or off (a room's @): Fluent subtle accent fill when on. */
 @Composable
 fun ToggleChip(label: String, on: Boolean, onClick: () -> Unit) {
-    // On: the accent's tint with a tick (as iOS's tinted tokens), so it reads at a glance; off, a quiet grey capsule.
     Text(
         if (on) "✓ $label" else label,
-        Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else aide.fill2).pressable(onClick).padding(horizontal = 11.dp, vertical = 5.dp),
+        Modifier.clip(CircleShape).background(if (on) aide.accentSubtle else aide.fill).pressable(onClick).padding(horizontal = 11.dp, vertical = 5.dp),
         style = IosType.Footnote, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-        color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (on) aide.blueOnSubtle else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 

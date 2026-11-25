@@ -5,7 +5,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { answerMenu, cli, fixture, gitRepo, launch, onWindows, pickAnswers, snap, thisComputer } from "./app";
+import { answerMenu, cli, fixture, gitRepo, launch, onWindows, pick, pickAnswers, snap, thisComputer } from "./app";
 
 // The settings window: a window of its own (⌘,), laid out as System
 // Settings, for what is set up once and changed rarely.
@@ -498,17 +498,16 @@ test("通用's 外观 follows the system, or keeps every window light or dark, a
   const dark = (p: Page) => p.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
   const source = () => app.evaluate(({ nativeTheme }) => nativeTheme.themeSource);
   let settings = await openSettings(app, page, "general");
-  const appearance = () => page_(settings, "通用").getByRole("group", { name: "外观" });
-  await expect(appearance().getByRole("button")).toHaveText(["跟随系统", "浅色", "深色"]);
-  await expect(appearance().getByRole("button", { name: "跟随系统" })).toHaveAttribute("aria-pressed", "true");
+  const appearance = () => page_(settings, "通用").getByRole("button", { name: "外观" });
+  await expect(appearance()).toHaveText("跟随系统");
   expect(await source()).toBe("system");
 
-  await appearance().getByRole("button", { name: "深色" }).click();
-  await expect(appearance().getByRole("button", { name: "深色" })).toHaveAttribute("aria-pressed", "true");
+  await pick(appearance(), "深色");
+  await expect(appearance()).toHaveText("深色");
   await expect.poll(() => dark(page)).toBe(true);
   await expect.poll(() => dark(settings)).toBe(true);
   await snap(settings, "settings-appearance-dark");
-  await appearance().getByRole("button", { name: "浅色" }).click();
+  await pick(appearance(), "浅色");
   await expect.poll(() => dark(page)).toBe(false);
   await expect.poll(() => dark(settings)).toBe(false);
 
@@ -518,8 +517,8 @@ test("通用's 外观 follows the system, or keeps every window light or dark, a
   expect(await source()).toBe("light");
   expect(await dark(page)).toBe(false);
   settings = await openSettings(app, page, "general");
-  await expect(appearance().getByRole("button", { name: "浅色" })).toHaveAttribute("aria-pressed", "true");
-  await appearance().getByRole("button", { name: "跟随系统" }).click();
+  await expect(appearance()).toHaveText("浅色");
+  await pick(appearance(), "跟随系统");
   await expect.poll(source).toBe("system");
   await app.close();
 });

@@ -90,8 +90,8 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
         val working = all.inProgress.size
-        // The tab is the tasks (工单 #102): its overview and the task feed, one level from the tab bar, named as on the desktop.
-        PageTitle(t("Tasks", "任务动态"), collapsed = list.collapsed(), summary = listOfNotNull(
+        // Fluent Home tab (工单 #106): overview, needs you, and live task feed on the default opening screen.
+        PageTitle(t("Home", "首页"), collapsed = list.collapsed(), summary = listOfNotNull(
             all.needsYou.size.takeIf { it > 0 }?.let { t("$it need you", "$it 个等你处理") },
             t("$working at work", "$working 个进行中"),
         ).joinToString(" · "))
@@ -99,7 +99,6 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
         MachineFilter(world, picked) { picked = it }
         // Pulled down: read again now (the Watch keeps the list current otherwise).
         var refreshing by remember { mutableStateOf(false) }
-        // iOS's refresh control: the spinner over the list, its spokes as far as it is pulled.
         val pull = rememberPullToRefreshState()
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, modifier = Modifier.fillMaxSize(), state = pull, indicator = {
             val shown by remember { derivedStateOf { refreshing || pull.distanceFraction > 0f } }
@@ -107,7 +106,6 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
         }) {
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
-            // The overview first (BotArk reference §4): what waits for you, what is at work, what is new.
             item(key = "overview") { Column {
                 SectionHeader(t("Overview", "概览"))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -160,7 +158,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
     if (sessions.isEmpty()) return
     item(key = "h-$title", contentType = "heading") { SectionHeader(title, count = sessions.size, tone = tone) }
     itemsIndexed(sessions, key = { _, s -> s.sessionId }, contentType = { _, _ -> "session" }) { i, s ->
-        // A session moving between groups, or arriving, springs into place rather than jumping (Motion); scrolling moves nothing.
         Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold), fadeOutSpec = tween(Motion.Short)).groupRow(i, sessions.size, inset = 68.dp)) {
             SessionRow(s, world) { open(s.sessionId) }
         }
@@ -171,7 +168,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
 fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
     val waits = needsYou(s)
     Row(Modifier.fillMaxWidth().rowPress(onClick).padding(start = 16.dp, end = 16.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.Top) {
-        // Who works on it, by its face (the same on every screen), its state on the face's corner.
         Box {
             AgentFace(s.agent, 40)
             Box(Modifier.align(Alignment.BottomEnd).offset(x = 3.dp, y = 3.dp)) { StatusDot(s) }
@@ -197,7 +193,7 @@ fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
         }
         if (waits) {
             HSpace(8)
-            Box(Modifier.padding(top = 4.dp).width(3.dp).height(32.dp).background(Warning, RoundedCornerShape(2.dp)))
+            Box(Modifier.padding(top = 4.dp).width(3.dp).height(32.dp).background(aide.orange, CircleShape))
         }
     }
 }
@@ -218,10 +214,10 @@ fun sessionTone(s: Session): Tone = when {
 @Composable
 fun StatusDot(s: Session) {
     val color = when {
-        needsYou(s) -> Warning
-        isLive(s) -> BrandCyan
-        s.status == SessionStatus.CRASHED || s.progress?.lastFailure != null -> MaterialTheme.colorScheme.error
-        else -> Color.Gray.copy(alpha = 0.5f)
+        needsYou(s) -> aide.orange
+        isLive(s) -> aide.accent
+        s.status == SessionStatus.CRASHED || s.progress?.lastFailure != null -> aide.red
+        else -> aide.disabled
     }
     val ctx = androidx.compose.ui.platform.LocalContext.current
     // Read once, not on every composition (a call into the system's settings, 工单 #55).

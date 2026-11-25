@@ -18,7 +18,7 @@ import { useCommands } from "./commands";
 import { useLeaving } from "./components";
 import { Icon } from "./icons";
 import { layoutOf, setSidebar, usePeekEnd } from "./layout";
-import { platform } from "./platform";
+import { keys, ownKeys, platform } from "./platform";
 import { errorText, useStore } from "./store";
 
 export function MainWindow() {
@@ -89,6 +89,25 @@ export function MainWindow() {
   const search = useLeaving(st.searching ? JSON.stringify(st.searchFor) : null);
   return (
     <div className={`mainwrap ${sidebar === "docked" ? "" : "railed"} ${sidebar === "over" ? "peek" : ""} ${listed ? "listed" : ""}`}>
+      {/* Fluent 40px 窗口标题栏（DESIGN-107 §0.2 / §0.5c #5A）：左侧菜单与侧栏切换，居中搜索框，右侧留窗口按钮区 */}
+      <header className="win-titlebar side-top drag">
+        <div className="win-titlebar-l">
+          <div className="tl-room" aria-hidden="true" />
+          <AppMenuButton />
+          {sidebar === "docked" && (
+            <button className="tb" onClick={() => setSidebar(st, false)} title={`${t("window.hideSidebar")} ${keys(ownKeys.toggleSidebar)}`} aria-label={t("window.hideSidebar")}>
+              <Icon name="sidebar" />
+            </button>
+          )}
+          <span className="win-titlebar-brand">Aide</span>
+        </div>
+        <button className="side-searchbox" onClick={() => st.set({ searching: true })} title={`${t("sidebar.search")} ${keys("CmdOrCtrl+K")}`} aria-label={t("sidebar.search")}>
+          <Icon name="search" className="sm" />
+          <span className="ph">{t("sidebar.searchHint")}</span>
+          <span className="kbd">{keys("CmdOrCtrl+K")}</span>
+        </button>
+        <div className="win-titlebar-r" aria-hidden="true" />
+      </header>
       {/* The sidebar, or its rail (docs/her-team.md §14.9): asked for while there is no room, it shows over the rail. */}
       {sidebar === "docked" ? <Sidebar /> : <Rail />}
       {sidebar === "over" && <Sidebar />}

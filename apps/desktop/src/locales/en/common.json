@@ -446,6 +446,11 @@
     },
     "faceEdit": "Change its avatar",
     "settings": "Settings",
+    "settingsMenu": "Settings…",
+    "renameAndFace": "Rename and change avatar…",
+    "allConvs": "All conversations",
+    "allConvsCount": "All conversations · {{count}}",
+    "closeList": "Close conversation list",
     "settingsOf": "{{name}}'s settings",
     "settingsBack": "Back to {{name}}",
     "board": {

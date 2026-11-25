@@ -22,77 +22,127 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// The app's look is Apple's (工单 #68, #95): iOS's system colours, grouped backgrounds, label steps, hairlines and type
-// ramp, drawn here with Compose (no SwiftUI, nothing translated). The desktop app takes the same values at macOS density
-// (apps/desktop/src/renderer/src/styles/app.css), so the two read as one app.
+// Fluent design tokens for Android (工单 #106 / #109), matching Desktop (#107):
+// Accent fill #0078d4 (white text 4.53:1 in both light and dark), contrast-safe darkened text shades
+// (#005a9e light / #2899f5 dark; #0e700e green text, #8a5100 caution text, #c50f1f error text),
+// rounded Fluent geometry (control 10dp, card/flyout 16dp, bubble 18dp + 6dp tail, sheet/dialog 24dp),
+// and Fluent decelerate motion (150 / 200 / 250ms, cubic-bezier(0.1, 0.9, 0.2, 1)).
 
-/** The states' colours: iOS's system green, orange and blue, light or dark as the theme is (工单 #95). */
-val Positive: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.current.green
-val Warning: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.current.orange
+/** Status text colours with >= 4.5:1 contrast on page and card surfaces (工单 #106). */
+val Positive: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.current.greenText
+val Warning: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.current.orangeText
 val BrandCyan: Color @Composable @ReadOnlyComposable get() = LocalAideTokens.current.blue
 
 /**
- * The surfaces, lines and fills of an iOS grouped screen (HIG Color, "Background colors", "Fill colors"): the grouped
- * background behind, the inset card a step above it, a third step inside a card; the label steps; the hairline
- * between rows; and what a pressed row, a bar or a menu is drawn with.
+ * Fluent Design surface, border, fill and semantic tokens for Android (工单 #106).
+ * Vivid status fills (green / orange / red / accent) are paired with contrast-checked text tokens
+ * (greenText / orangeText / redText / blue / blueOnSubtle) so every piece of readable text meets >= 4.5:1.
  */
 @Immutable
 data class AideTokens(
-    /** The owner's message: a grey bubble a step above the page, never the accent (in dark mode it was white). */
+    /** Primary Fluent accent fill (#0078d4): filled buttons, active indicators, sent bubbles. */
+    val accent: Color,
+    /** Pressed Fluent accent fill (#106ebe). */
+    val accentPressed: Color,
+    /** Sent message bubble fill (#0078d4) and white text (4.53:1 in light and dark). */
     val bubble: Color,
     val onBubble: Color,
-    /** A hairline between rows (separator). */
+    /** Row divider (#edebe9 light / #3b3a39 dark). */
     val separator: Color,
-    /** Fills under a control: quaternary (a quiet row) and tertiary (a chip, a segmented control's track, a field). */
+    /** Control border (#d1d1d1 light / #484644 dark), input bottom accent line, and toggle/check outline. */
+    val controlBorder: Color,
+    val controlAccentLine: Color,
+    val controlStrong: Color,
+    /** Neutral subtle fills for quiet pills, secondary chips, and disabled buttons. */
     val fill: Color,
     val fill2: Color,
-    /** An inset grouped card (secondarySystemGroupedBackground). */
+    /** Card surface (70% acrylic composited on page: #fbfafa light / #282726 dark). */
     val card: Color,
-    /** The edge of something floating (a menu, a toast): a hairline where its shadow is. */
+    /** Card & floating panel hairline stroke. */
     val cardEdge: Color,
-    /** A block inside a card, the third step (tertiarySystemGroupedBackground). */
+    /** Sunken block inside a card (code blocks, tool details, nested workbenches). */
     val inset: Color,
-    /** The third label step (tertiaryLabel): times, counts, chevrons. */
+    /** Secondary metadata text colour (#605e5c light / #c8c6c4 dark, >= 5.77:1). */
     val faint: Color,
-    /** The page behind the cards (systemGroupedBackground). */
+    /** Disabled text & offline/idle dots (#a19f9d light / #797775 dark). */
+    val disabled: Color,
+    /** Page background (#f3f2f1 light / #1b1a19 dark). */
     val grouped: Color,
-    /** A row under the finger, laid over it (the cell's highlight). */
+    /** Pressed row/control overlay. */
     val pressed: Color,
-    /** A bar's material (tab bar, navigation bar): the page shows faintly through. */
+    /** Acrylic bar surface (app bar, bottom navigation bar). */
     val bar: Color,
-    /** A menu's, an alert's and a toast's material. */
+    /** Dialog / flyout surface (#ffffff light / #2d2c2b dark). */
     val menu: Color,
-    /** A switch's track while off. */
+    /** Switch off track fill (transparent outlined in Fluent). */
     val switchOff: Color,
-    /** A segmented control's picked segment. */
+    /** Segmented control active pill. */
     val segment: Color,
+    /** Link / interactive blue text (#005a9e light 6.35:1 / #2899f5 dark 5.76:1). */
     val blue: Color,
+    /** Blue text on blue subtle pill (#005a9e light / #6cb8f6 dark 5.63:1). */
+    val blueOnSubtle: Color,
+    val accentSubtle: Color,
+    /** Vivid status fills (dots, filled danger/caution badges). */
     val green: Color,
     val red: Color,
     val orange: Color,
-    /** An unpicked tab's grey (systemGray). */
+    /** Contrast-checked status text colours (>= 4.5:1 on page, card, and subtle pill). */
+    val greenText: Color,
+    val redText: Color,
+    val orangeText: Color,
+    /** Subtle pill backgrounds. */
+    val greenSubtle: Color,
+    val orangeSubtle: Color,
+    val redSubtle: Color,
+    /** Text on #ffb900 caution badge (#201f1e, 9.55:1). */
+    val onCaution: Color,
+    /** Unselected tab icon & label colour (#605e5c light / #c8c6c4 dark). */
     val gray: Color,
 )
 
 private val DarkTokens = AideTokens(
-    bubble = Color(0xFF2C2C2E), onBubble = Color.White,
-    separator = Color(0xA6545458), fill = Color(0x2E767680), fill2 = Color(0x3D767680),
-    card = Color(0xFF1C1C1E), cardEdge = Color(0x1FFFFFFF), inset = Color(0xFF2C2C2E), faint = Color(0x4DEBEBF5),
-    grouped = Color(0xFF000000), pressed = Color(0x24FFFFFF), bar = Color(0xF0161618), menu = Color(0xFF2A2A2C),
-    switchOff = Color(0xFF39393D), segment = Color(0xFF636366),
-    blue = Color(0xFF0A84FF), green = Color(0xFF30D158), red = Color(0xFFFF453A), orange = Color(0xFFFF9F0A), gray = Color(0xFF8E8E93),
-)
-private val LightTokens = AideTokens(
-    bubble = Color(0xFFE9E9EB), onBubble = Color.Black,
-    separator = Color(0x4A3C3C43), fill = Color(0x14747480), fill2 = Color(0x1F767680),
-    card = Color.White, cardEdge = Color(0x14000000), inset = Color(0xFFF2F2F7), faint = Color(0x4D3C3C43),
-    grouped = Color(0xFFF2F2F7), pressed = Color(0x2E000000), bar = Color(0xF0F9F9F9), menu = Color(0xFFF9F9F9),
-    switchOff = Color(0xFFE9E9EA), segment = Color.White,
-    blue = Color(0xFF007AFF), green = Color(0xFF34C759), red = Color(0xFFFF3B30), orange = Color(0xFFFF9500), gray = Color(0xFF8E8E93),
+    accent = Color(0xFF0078D4), accentPressed = Color(0xFF106EBE),
+    bubble = Color(0xFF0078D4), onBubble = Color.White,
+    separator = Color(0xFF3B3A39),
+    controlBorder = Color(0xFF484644), controlAccentLine = Color(0xFFA19F9D), controlStrong = Color(0xFFC8C6C4),
+    fill = Color(0x14FFFFFF), fill2 = Color(0x1AFFFFFF),
+    card = Color(0xFF282726), cardEdge = Color(0x14FFFFFF), inset = Color(0xFF201F1E),
+    faint = Color(0xFFC8C6C4), disabled = Color(0xFF797775),
+    grouped = Color(0xFF1B1A19), pressed = Color(0x0FFFFFFF),
+    bar = Color(0xE0323130), menu = Color(0xFF2D2C2B),
+    switchOff = Color.Transparent, segment = Color(0xFF3B3A39),
+    blue = Color(0xFF2899F5), blueOnSubtle = Color(0xFF6CB8F6), accentSubtle = Color(0x380078D4),
+    green = Color(0xFF00CC6A), red = Color(0xFFE81123), orange = Color(0xFFFFB900),
+    greenText = Color(0xFF00CC6A), redText = Color(0xFFF1707B), orangeText = Color(0xFFFFB900),
+    greenSubtle = Color(0x2900CC6A), orangeSubtle = Color(0x29FFB900), redSubtle = Color(0x2EE81123),
+    onCaution = Color(0xFF201F1E), gray = Color(0xFFC8C6C4),
 )
 
-/** What a sheet or an alert is drawn on: iOS's elevated steps in dark mode (the card a step lighter), as they float. */
-fun AideTokens.elevated(dark: Boolean): AideTokens = if (!dark) this else copy(grouped = Color(0xFF1C1C1E), card = Color(0xFF2C2C2E), inset = Color(0xFF3A3A3C))
+private val LightTokens = AideTokens(
+    accent = Color(0xFF0078D4), accentPressed = Color(0xFF106EBE),
+    bubble = Color(0xFF0078D4), onBubble = Color.White,
+    separator = Color(0xFFEDEBE9),
+    controlBorder = Color(0xFFD1D1D1), controlAccentLine = Color(0xFF8A8886), controlStrong = Color(0xFF605E5C),
+    fill = Color(0x0F201F1E), fill2 = Color(0x14201F1E),
+    card = Color(0xFFFBFAFA), cardEdge = Color(0x10000000), inset = Color(0xFFFAF9F8),
+    faint = Color(0xFF605E5C), disabled = Color(0xFFA19F9D),
+    grouped = Color(0xFFF3F2F1), pressed = Color(0x0D000000),
+    bar = Color(0xD9FFFFFF), menu = Color.White,
+    switchOff = Color.Transparent, segment = Color.White,
+    blue = Color(0xFF005A9E), blueOnSubtle = Color(0xFF005A9E), accentSubtle = Color(0x1A0078D4),
+    green = Color(0xFF00CC6A), red = Color(0xFFE81123), orange = Color(0xFFFFB900),
+    greenText = Color(0xFF0E700E), redText = Color(0xFFC50F1F), orangeText = Color(0xFF8A5100),
+    greenSubtle = Color(0x2400CC6A), orangeSubtle = Color(0x33FFB900), redSubtle = Color(0x1AE81123),
+    onCaution = Color(0xFF201F1E), gray = Color(0xFF605E5C),
+)
+
+/** Elevated surface tokens for sheets and dialogs (Fluent surface level 2). */
+fun AideTokens.elevated(dark: Boolean): AideTokens = if (!dark) {
+    copy(grouped = Color(0xFFF3F2F1), card = Color.White, inset = Color(0xFFFAF9F8))
+} else {
+    copy(grouped = Color(0xFF282726), card = Color(0xFF2D2C2B), inset = Color(0xFF201F1E))
+}
 
 val LocalAideTokens = staticCompositionLocalOf { LightTokens }
 
@@ -101,92 +151,97 @@ val aide: AideTokens
     @Composable @ReadOnlyComposable get() = LocalAideTokens.current
 
 /**
- * Motion (工单 #95), as SwiftUI's: the default spring (.spring(response: 0.55, dampingFraction: 0.825)) for what moves
- * into place, the snappy one for what answers a finger, and a smooth one (no overshoot) for a page pushed across. Tweens
- * keep the desktop's curve (cubic-bezier(0.32, 0.72, 0, 1)) for fades. A list scrolling moves nothing by itself (工单 #55).
+ * Fluent motion tokens (工单 #106): decelerate curve cubic-bezier(0.1, 0.9, 0.2, 1),
+ * durations 150ms (fast) / 200ms (mid) / 250ms (slow, cap).
  */
 object Motion {
-    val EaseOut = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+    val EaseOut = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1f)
     const val Short = 150
-    const val Medium = 250
-    const val Long = 350
-    const val Damping = 0.825f
-    const val Stiffness = 380f
+    const val Medium = 200
+    const val Long = 250
+    const val Damping = 0.95f
+    const val Stiffness = 460f
     fun <T> spring(visibilityThreshold: T? = null): SpringSpec<T> = spring(Damping, Stiffness, visibilityThreshold)
-    fun <T> snappy(visibilityThreshold: T? = null): SpringSpec<T> = spring(0.85f, 700f, visibilityThreshold)
+    fun <T> snappy(visibilityThreshold: T? = null): SpringSpec<T> = spring(1f, 700f, visibilityThreshold)
     fun <T> smooth(visibilityThreshold: T? = null): SpringSpec<T> = spring(1f, Stiffness, visibilityThreshold)
 }
 
-/** Rounding (工单 #95, iOS density): controls 8, inset grouped cards 10, alerts, menus and a sheet's top 14. */
+/**
+ * Rounded Fluent radii (工单 #106, 2026-11-23 owner decision):
+ * Sm 6dp (checkbox/inline code), Inner 8dp (nested send button), Md 10dp (controls),
+ * Lg 16dp (cards/flyouts), Bubble 18dp (tail 6dp), Xl 24dp (sheets/dialogs).
+ */
 object Radius {
     val Sm = 6.dp
-    val Md = 8.dp
-    val Lg = 10.dp
-    val Xl = 14.dp
+    val Inner = 8.dp
+    val Md = 10.dp
+    val Lg = 16.dp
+    val Bubble = 18.dp
+    val BubbleTail = 6.dp
+    val Xl = 24.dp
 }
 
 private fun scheme(dark: Boolean, k: AideTokens) = if (dark) {
     darkColorScheme(
         primary = k.blue, onPrimary = Color.White,
-        primaryContainer = k.blue.copy(alpha = 0.18f), onPrimaryContainer = k.blue,
-        secondary = Color(0x99EBEBF5), onSecondary = Color.Black,
-        secondaryContainer = Color(0xFF2C2C2E), onSecondaryContainer = Color.White,
-        tertiary = k.orange, onTertiary = Color.Black,
-        tertiaryContainer = Color(0xFF2C2C2E), onTertiaryContainer = k.orange,
-        background = k.grouped, onBackground = Color.White,
-        surface = k.grouped, onSurface = Color.White,
-        surfaceVariant = k.card, onSurfaceVariant = Color(0x99EBEBF5),
-        surfaceDim = k.grouped, surfaceBright = Color(0xFF3A3A3C),
+        primaryContainer = k.accentSubtle, onPrimaryContainer = k.blueOnSubtle,
+        secondary = Color(0xFFC8C6C4), onSecondary = Color(0xFF1B1A19),
+        secondaryContainer = Color(0xFF2D2C2B), onSecondaryContainer = Color(0xFFF3F2F1),
+        tertiary = k.orangeText, onTertiary = k.onCaution,
+        tertiaryContainer = k.orangeSubtle, onTertiaryContainer = k.orangeText,
+        background = k.grouped, onBackground = Color(0xFFF3F2F1),
+        surface = k.grouped, onSurface = Color(0xFFF3F2F1),
+        surfaceVariant = k.card, onSurfaceVariant = Color(0xFFC8C6C4),
+        surfaceDim = k.grouped, surfaceBright = Color(0xFF323130),
         surfaceContainerLowest = k.grouped, surfaceContainerLow = k.card,
-        surfaceContainer = k.card, surfaceContainerHigh = Color(0xFF2C2C2E), surfaceContainerHighest = Color(0xFF3A3A3C),
+        surfaceContainer = k.card, surfaceContainerHigh = k.menu, surfaceContainerHighest = Color(0xFF3B3A39),
         surfaceTint = Color.Transparent,
-        inverseSurface = Color.White, inverseOnSurface = Color.Black, inversePrimary = Color(0xFF007AFF),
-        outline = k.separator, outlineVariant = Color(0xFF3A3A3C),
-        error = k.red, onError = Color.White,
-        errorContainer = k.red.copy(alpha = 0.18f), onErrorContainer = k.red,
+        inverseSurface = Color(0xFFF3F2F1), inverseOnSurface = Color(0xFF201F1E), inversePrimary = Color(0xFF005A9E),
+        outline = k.controlBorder, outlineVariant = k.separator,
+        error = k.redText, onError = Color.White,
+        errorContainer = k.redSubtle, onErrorContainer = k.redText,
         scrim = Color.Black,
     )
 } else {
     lightColorScheme(
         primary = k.blue, onPrimary = Color.White,
-        primaryContainer = k.blue.copy(alpha = 0.12f), onPrimaryContainer = k.blue,
-        secondary = Color(0x993C3C43), onSecondary = Color.White,
-        secondaryContainer = Color(0xFFE5E5EA), onSecondaryContainer = Color.Black,
-        tertiary = k.orange, onTertiary = Color.White,
-        tertiaryContainer = Color(0xFFE5E5EA), onTertiaryContainer = k.orange,
-        background = k.grouped, onBackground = Color.Black,
-        surface = k.grouped, onSurface = Color.Black,
-        surfaceVariant = k.card, onSurfaceVariant = Color(0x993C3C43),
+        primaryContainer = k.accentSubtle, onPrimaryContainer = k.blueOnSubtle,
+        secondary = Color(0xFF605E5C), onSecondary = Color.White,
+        secondaryContainer = Color(0xFFEDEBE9), onSecondaryContainer = Color(0xFF201F1E),
+        tertiary = k.orangeText, onTertiary = Color.White,
+        tertiaryContainer = k.orangeSubtle, onTertiaryContainer = k.orangeText,
+        background = k.grouped, onBackground = Color(0xFF201F1E),
+        surface = k.grouped, onSurface = Color(0xFF201F1E),
+        surfaceVariant = k.card, onSurfaceVariant = Color(0xFF605E5C),
         surfaceDim = k.grouped, surfaceBright = Color.White,
-        surfaceContainerLowest = Color.White, surfaceContainerLow = Color.White,
-        surfaceContainer = Color.White, surfaceContainerHigh = Color(0xFFF2F2F7), surfaceContainerHighest = Color(0xFFE5E5EA),
+        surfaceContainerLowest = Color.White, surfaceContainerLow = k.card,
+        surfaceContainer = k.card, surfaceContainerHigh = k.inset, surfaceContainerHighest = Color(0xFFEDEBE9),
         surfaceTint = Color.Transparent,
-        inverseSurface = Color(0xFF1C1C1E), inverseOnSurface = Color.White, inversePrimary = Color(0xFF0A84FF),
-        outline = k.separator, outlineVariant = Color(0xFFC6C6C8),
-        error = k.red, onError = Color.White,
-        errorContainer = k.red.copy(alpha = 0.12f), onErrorContainer = k.red,
+        inverseSurface = Color(0xFF201F1E), inverseOnSurface = Color(0xFFF3F2F1), inversePrimary = Color(0xFF2899F5),
+        outline = k.controlBorder, outlineVariant = k.separator,
+        error = k.redText, onError = Color.White,
+        errorContainer = k.redSubtle, onErrorContainer = k.redText,
         scrim = Color.Black,
     )
 }
 
 /**
- * iOS's type ramp (HIG Typography, "Specifications", large/default size), on the system font (Roboto and the system's
- * Chinese face; SF Pro is licensed for Apple's platforms only):
- * Large Title 34/41 bold, Title1 28/34, Title2 22/28, Title3 20/25, Headline 17/22 semibold, Body 17/22, Callout 16/21,
- * Subheadline 15/20, Footnote 13/18, Caption 12/16. Material's slots take the steps nearest their use.
+ * Fluent type ramp on Android (工单 #106, system Roboto + Noto Sans CJK):
+ * Heading 28/36 SemiBold, Subheading 20/28 SemiBold, Body Large (and report reading) 16/24,
+ * Body 14/20, Label/Caption 12/16.
  */
 object IosType {
-    val LargeTitle = TextStyle(fontSize = 34.sp, lineHeight = 41.sp, fontWeight = FontWeight.Bold)
-    val Title1 = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
-    val Title2 = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold)
-    val Title3 = TextStyle(fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
-    val Headline = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)
-    val Body = TextStyle(fontSize = 17.sp, lineHeight = 22.sp)
-    val Callout = TextStyle(fontSize = 16.sp, lineHeight = 21.sp)
-    val Subheadline = TextStyle(fontSize = 15.sp, lineHeight = 20.sp)
+    val LargeTitle = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold)
+    val Title1 = TextStyle(fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold)
+    val Title2 = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold)
+    val Title3 = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold)
+    val Headline = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
+    val Body = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
+    val Callout = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
+    val Subheadline = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
     val Footnote = TextStyle(fontSize = 13.sp, lineHeight = 18.sp)
     val Caption = TextStyle(fontSize = 12.sp, lineHeight = 16.sp)
-    val Caption2 = TextStyle(fontSize = 11.sp, lineHeight = 13.sp)
+    val Caption2 = TextStyle(fontSize = 12.sp, lineHeight = 16.sp)
 }
 
 private val AideType = Typography().let { d ->
@@ -202,8 +257,8 @@ private val AideType = Typography().let { d ->
         bodyLarge = IosType.Body.on(d.bodyLarge),
         bodyMedium = IosType.Subheadline.on(d.bodyMedium),
         bodySmall = IosType.Footnote.on(d.bodySmall),
-        labelLarge = IosType.Subheadline.copy(fontWeight = FontWeight.Medium).on(d.labelLarge),
-        labelMedium = IosType.Footnote.on(d.labelMedium),
+        labelLarge = IosType.Subheadline.copy(fontWeight = FontWeight.SemiBold).on(d.labelLarge),
+        labelMedium = IosType.Caption.copy(fontWeight = FontWeight.SemiBold).on(d.labelMedium),
         labelSmall = IosType.Caption.on(d.labelSmall),
     )
 }
@@ -215,7 +270,6 @@ fun AideTheme(content: @Composable () -> Unit) {
     val k = if (dark) DarkTokens else LightTokens
     CompositionLocalProvider(LocalAideTokens provides k) {
         MaterialTheme(colorScheme = scheme(dark, k), typography = AideType) {
-            // No ripple anywhere: what is pressed is highlighted as on iOS (Highlight), Material's ripple never shows.
             CompositionLocalProvider(LocalIndication provides Highlight(k.pressed), LocalRippleConfiguration provides null, content = content)
         }
     }

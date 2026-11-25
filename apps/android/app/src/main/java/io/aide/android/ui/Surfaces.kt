@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,10 +15,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -45,23 +48,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-// The surfaces the pages are built of, as iOS's inset grouped lists (工单 #95, HIG Lists and tables): cards a step above
-// the grouped background, rounded 10, no edge and no shadow; rows in one card, a hairline between them indented to where
-// the row's words start; states as tinted pills. Nothing here draws a shadow or a blur, and nothing is a `composed`
-// modifier: a list scrolling draws many of these each frame (工单 #55).
+// Fluent Design surfaces for Android (工单 #106 / #109): 16dp rounded cards with subtle hairline edge,
+// 10dp sunken inner blocks, contrast-checked status pills (vivid dot + darkened text on subtle tint),
+// and zero-recomposition press highlights for smooth scrolling (工单 #55).
 
-/** An inset grouped card: a step above the page in either mode, rounded 10, no edge (iOS draws none). */
+/** A Fluent card: 16dp rounded, card surface fill with 1dp hairline edge. */
 @Composable
-fun Modifier.aideCard(shape: Shape = RoundedCornerShape(Radius.Lg)): Modifier = this.clip(shape).background(aide.card)
+fun Modifier.aideCard(shape: Shape = RoundedCornerShape(Radius.Lg)): Modifier =
+    this.clip(shape).background(aide.card).border(1.dp, aide.cardEdge, shape)
 
-/** A block inside a card (an agent under its machine): the third step, rounded 8. */
+/** A sunken block inside a card (an agent workbench, code block, call detail): 10dp rounded. */
 @Composable
-fun Modifier.aideInset(): Modifier = this.clip(RoundedCornerShape(Radius.Md)).background(aide.inset)
+fun Modifier.aideInset(): Modifier =
+    this.clip(RoundedCornerShape(Radius.Md)).background(aide.inset)
 
 /**
- * One row of an inset grouped card (a list's section), each row its own list item: the first has the top corners, the
- * last the bottom ones; every row after the first has the hairline over it, from [inset] (where its words start) to the
- * card's edge, so a long list composes row by row rather than a card at once.
+ * One row of a grouped Fluent card, each row its own LazyColumn item: 16dp outer corners,
+ * hairline divider indented from [inset] between rows.
  */
 @Composable
 fun Modifier.groupRow(index: Int, count: Int, inset: Dp = 16.dp): Modifier {
@@ -75,10 +78,7 @@ fun Modifier.groupRow(index: Int, count: Int, inset: Dp = 16.dp): Modifier {
     return if (index == 0) base else base.drawBehind { drawLine(line, Offset(inset.toPx(), 0f), Offset(size.width, 0f), 1f) }
 }
 
-/**
- * The highlight of what is pressed, as iOS's (the cell's selected background): laid under the content at once on the
- * press, fading as the finger lifts. Drawn by a node, not recomposed: a list's rows each have one (工单 #55).
- */
+/** Press highlight drawn by a Modifier.Node without recomposing list rows (工单 #55). */
 data class Highlight(val color: Color) : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode = HighlightNode(interactionSource, color)
 }
@@ -101,10 +101,7 @@ private class HighlightNode(private val source: InteractionSource, private val c
     }
 }
 
-/**
- * A card, tile or chip that opens something (工单 #95): under the finger it gives a little (scale 0.97, the snappy spring)
- * and is highlighted, then springs back.
- */
+/** A pressable card, tile, or chip: subtle 0.97 scale and Fluent press overlay. */
 @Composable
 fun Modifier.pressable(onClick: () -> Unit): Modifier {
     val interaction = remember { MutableInteractionSource() }
@@ -115,70 +112,87 @@ fun Modifier.pressable(onClick: () -> Unit): Modifier {
         .clickable(interactionSource = interaction, indication = Highlight(aide.pressed), role = Role.Button, onClick = onClick)
 }
 
-/** A list row that opens something: highlighted while pressed, as an iOS cell; a row does not shrink. */
+/** A list row that opens something: highlighted while pressed; does not shrink. */
 @Composable
 fun Modifier.rowPress(onClick: () -> Unit): Modifier =
     this.clickable(interactionSource = remember { MutableInteractionSource() }, indication = Highlight(aide.pressed), role = Role.Button, onClick = onClick)
 
-/** Words or an icon that act (a plain button): dimmed while pressed, as iOS's plain buttons, no shape around them. */
+/** Plain text/icon button press feedback: dimmed while pressed. */
 @Composable
 fun Modifier.dimPress(enabled: Boolean = true, role: Role = Role.Button, onClick: () -> Unit): Modifier {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val alpha by animateFloatAsState(if (pressed) 0.3f else 1f, if (pressed) tween(0) else tween(Motion.Medium), label = "dim")
+    val alpha by animateFloatAsState(if (pressed) 0.35f else 1f, if (pressed) tween(0) else tween(Motion.Short, easing = Motion.EaseOut), label = "dim")
     return this.graphicsLayer { this.alpha = alpha }.clickable(interactionSource = interaction, indication = null, enabled = enabled, role = role, onClick = onClick)
 }
 
-/** The weight a state is said with: a colour, used for a pill's tint and its words. */
+/** The semantic weight a state is said with. */
 enum class Tone { Good, Warn, Bad, Live, Quiet }
 
+/** Contrast-checked text colour for [Tone] (>= 4.5:1 on page and card). */
 @Composable
 fun toneColor(t: Tone): Color = when (t) {
-    Tone.Good -> Positive
-    Tone.Warn -> Warning
-    Tone.Bad -> MaterialTheme.colorScheme.error
-    Tone.Live -> BrandCyan
+    Tone.Good -> aide.greenText
+    Tone.Warn -> aide.orangeText
+    Tone.Bad -> aide.redText
+    Tone.Live -> aide.blueOnSubtle
     Tone.Quiet -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
-/** A state as a pill: a capsule tinted in its system colour with a dot, the one place a row says its state. */
+/** Vivid status dot colour for [Tone] (工单 #106: raw status hue on the 6dp/8dp dot, darkened hue on text). */
+@Composable
+fun toneDotColor(t: Tone): Color = when (t) {
+    Tone.Good -> aide.green
+    Tone.Warn -> aide.orange
+    Tone.Bad -> aide.red
+    Tone.Live -> aide.accent
+    Tone.Quiet -> aide.disabled
+}
+
+/** Subtle pill fill for [Tone]. */
+@Composable
+fun toneSubtleFill(t: Tone): Color = when (t) {
+    Tone.Good -> aide.greenSubtle
+    Tone.Warn -> aide.orangeSubtle
+    Tone.Bad -> aide.redSubtle
+    Tone.Live -> aide.accentSubtle
+    Tone.Quiet -> aide.fill
+}
+
+/** A Fluent state pill: subtle tinted capsule, 6dp vivid status dot, contrast-safe SemiBold label. */
 @Composable
 fun StatusPill(text: String, tone: Tone, modifier: Modifier = Modifier) {
-    val c = toneColor(tone)
     Row(
-        modifier.clip(CircleShape).background(c.copy(alpha = if (tone == Tone.Quiet) 0.14f else 0.16f)).padding(start = 7.dp, end = 9.dp, top = 2.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier.heightIn(min = 24.dp).clip(CircleShape).background(toneSubtleFill(tone)).padding(start = 8.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.size(6.dp).background(c, CircleShape))
-        Text(text, color = c, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Box(Modifier.size(6.dp).background(toneDotColor(tone), CircleShape))
+        Text(text, color = toneColor(tone), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
-/** A small count beside a heading or a row (as iOS's badges): a capsule. */
+/** A Fluent count badge: yellow #ffb900 with dark #201f1e text for attention, #0078d4 with white for live, neutral subtle otherwise. */
 @Composable
 fun CountBadge(n: Int, tone: Tone = Tone.Quiet) {
-    val c = toneColor(tone)
-    Box(Modifier.clip(CircleShape).background(c.copy(alpha = 0.16f)).padding(horizontal = 7.dp, vertical = 1.dp)) {
-        Text("$n", color = c, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+    val (bg, fg) = when (tone) {
+        Tone.Warn -> aide.orange to aide.onCaution
+        Tone.Live -> aide.accent to Color.White
+        Tone.Bad -> aide.red to Color.White
+        Tone.Good -> aide.greenSubtle to aide.greenText
+        Tone.Quiet -> aide.fill to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(Modifier.heightIn(min = 20.dp).widthIn(min = 20.dp).clip(CircleShape).background(bg).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+        Text("$n", color = fg, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
-/** A quiet fact in a row of them (a version, a count): a small grey capsule. */
+/** A quiet fact in a row of them (a version, a count): a neutral subtle pill. */
 @Composable
 fun FactChip(text: String) {
     Text(
-        text, Modifier.clip(CircleShape).background(aide.fill2).padding(horizontal = 9.dp, vertical = 3.dp),
+        text, Modifier.clip(CircleShape).background(aide.fill).padding(horizontal = 9.dp, vertical = 3.dp),
         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
     )
-}
-
-/** A machine's mark: its first letter on a quiet tile (an app icon's rounding), as an agent has its face. */
-@Composable
-fun MachineMark(name: String, online: Boolean, size: Int = 40) {
-    Box(Modifier.size(size.dp).clip(RoundedCornerShape((size * 0.225).dp)).background(aide.fill2), contentAlignment = Alignment.Center) {
-        Text(name.take(1).uppercase(), fontWeight = FontWeight.SemiBold, fontSize = (size * 0.42).sp, color = MaterialTheme.colorScheme.onSurface)
-        Box(Modifier.align(Alignment.BottomEnd).padding(2.dp).size(10.dp).background(aide.card, CircleShape).padding(2.dp).background(if (online) Positive else aide.faint, CircleShape))
-    }
 }
 
 /** Whether the list this sits in is being scrolled: what moves by itself stops meanwhile (工单 #55 §4). */
@@ -187,14 +201,14 @@ val LocalScrolling = compositionLocalOf { false }
 @Composable
 fun HSpace(w: Int) = Spacer(Modifier.width(w.dp))
 
-/** One number of a page's overview: what it counts small above, the count large, on an inset card. */
+/** One number of a page's overview: what it counts small above, the count large, on a Fluent card. */
 @Composable
 fun StatTile(label: String, value: String, modifier: Modifier = Modifier, of: String? = null, tone: Tone = Tone.Quiet) {
-    androidx.compose.foundation.layout.Column(modifier.aideCard().padding(horizontal = 14.dp, vertical = 11.dp)) {
+    androidx.compose.foundation.layout.Column(modifier.aideCard().padding(horizontal = 14.dp, vertical = 12.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(value, style = IosType.Title1, color = if (tone == Tone.Quiet) MaterialTheme.colorScheme.onSurface else toneColor(tone))
-            of?.let { Text(" / $it", style = MaterialTheme.typography.bodyMedium, color = aide.faint, modifier = Modifier.padding(bottom = 4.dp)) }
+            of?.let { Text(" / $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp)) }
         }
     }
 }

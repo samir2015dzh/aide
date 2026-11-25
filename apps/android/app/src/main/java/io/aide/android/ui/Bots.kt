@@ -150,7 +150,7 @@ private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, o
 fun BotRow(b: Bot, short: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val press = if (onLongClick == null) Modifier.rowPress(onClick) else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Delete from the roster", "从名册删除"), onLongClick = onLongClick, onClick = onClick)
     Row(Modifier.fillMaxWidth().then(press).padding(start = 16.dp, end = 12.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        BotAvatar(b, 40, toneColor(botTone(b)))
+        BotAvatar(b, 40, toneDotColor(botTone(b)))
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -525,11 +525,16 @@ private fun LazyListScope.chatItems(chat: DirectChat, b: Bot) {
     chat.messages.forEach { m ->
         item(key = "m-${m.messageId}", contentType = "chat") {
             val mine = m.from == "owner"
+            val bubbleShape = RoundedCornerShape(
+                topStart = Radius.Bubble, topEnd = Radius.Bubble,
+                bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
+                bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
+            )
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (!mine) Text(m.fromName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-                    .background(if (mine) aide.bubble else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge)
+                    .background(if (mine) aide.bubble else aide.card, bubbleShape).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
                 }
                 if (mine) m.deliveries.forEach { d ->
                     val (words, bad) = deliveryWords(d.state, b.name, d.reason, d.reminded)

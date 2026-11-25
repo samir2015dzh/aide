@@ -87,12 +87,12 @@ test("pointers are macOS's: the hand on text links only, the arrow on the map's 
   await page.emulateMedia({ colorScheme: "light" });
   const light = await look();
   expect(light).toContain("rgb(255, 255, 255)");
-  expect(light).toContain("rgb(17, 17, 19)");
+  expect(light).toContain("rgb(32, 31, 30)");
   await snap(page, "overview-hub-light");
   await page.emulateMedia({ colorScheme: "dark" });
   const dark = await look();
   expect(dark).toContain("rgb(38, 40, 51)");
-  expect(dark).toContain("rgb(242, 242, 243)");
+  expect(dark).toContain("rgb(243, 242, 241)");
   await snap(page, "overview-hub-dark");
   await app.close();
 });

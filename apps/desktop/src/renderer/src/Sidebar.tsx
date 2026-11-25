@@ -7,15 +7,13 @@ import {
   bucketTitle, clockText, elapsedSeconds, codingAgentShort, codingAgentTitle, createdDate, dateOf, displayTitle, isActive, isArchivable, isFailed, listTime,
   durationText, sessionSections, statusTitle, t as coreT, teamState, updatedDate, type SessionBucket, type SessionSection, type SessionView,
 } from "@aide/core";
-import { AgentLogo } from "@aide/ui";
+import { AgentLogo, DeviceFace } from "@aide/ui";
 import { i18n } from "../../shared/i18n";
 import { UpdateReminder } from "./update";
 import { local } from "./api";
-import { AppMenuButton } from "./MainWindow";
 import { Icon } from "./icons";
-import { setSidebar } from "./layout";
 import { expiringClients } from "./overview/Attention";
-import { keys, ownKeys } from "./platform";
+import { keys } from "./platform";
 import { useNow, useStore, type Store } from "./store";
 import { ConnectLink, StateText, useStateView } from "./components";
 import { SidebarRoster } from "./bots/Bots";
@@ -93,18 +91,6 @@ export function Sidebar() {
   const owner = !st.status?.machineOnly;
   return (
     <aside className="side" aria-label={t("sidebar.label")}>
-      <div className="side-top drag">
-        <AppMenuButton />
-        <button className="tb" onClick={() => setSidebar(st, false)} title={`${t("window.hideSidebar")} ${keys(ownKeys.toggleSidebar)}`} aria-label={t("window.hideSidebar")}>
-          <Icon name="sidebar" />
-        </button>
-        {/* Search, always in view in the top band: what it finds, and its key. */}
-        <button className="side-searchbox" onClick={() => st.set({ searching: true })} title={`${t("sidebar.search")} ${keys("CmdOrCtrl+K")}`} aria-label={t("sidebar.search")}>
-          <Icon name="search" className="sm" />
-          <span className="ph">{t("sidebar.searchHint")}</span>
-          <span className="kbd">{keys("CmdOrCtrl+K")}</span>
-        </button>
-      </div>
       <SideNav />
       {/*
         The owner's sidebar is the overview and the task feed at its top (工单 #102), then bots alone (工单 #63): the
@@ -361,9 +347,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         </div>
       )}
       <button className="side-foot" ref={foot} aria-label={t("sidebar.account")} title={compact ? t("sidebar.account") : undefined} aria-haspopup="menu" aria-expanded={!!open} onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}>
-        <span className="av" aria-hidden="true">
-          {(window.aide?.userName ?? "H").slice(0, 1).toUpperCase()}
-        </span>
+        <DeviceFace kind="person" size={compact ? 28 : 32} />
         {/* Something waits for the owner in a page the menu opens: a dot on the avatar. */}
         {due > 0 && <i className="acct-due" aria-label={t("sidebar.attention", { count: due })} role="img" />}
         {/* The rail has room for the avatar alone; a dot on it when not connected. */}
