@@ -467,6 +467,9 @@ const (
 	RoomMode_ROOM_MODE_MANUAL RoomMode = 1
 	// Bots hand on to each other by naming one (@), up to the round limit.
 	RoomMode_ROOM_MODE_ROUNDTABLE RoomMode = 2
+	// Lightweight casual chat: tiny bounded context and direct replies without
+	// heavy task scaffolding (工单 #123).
+	RoomMode_ROOM_MODE_LIGHT RoomMode = 3
 )
 
 // Enum value maps for RoomMode.
@@ -475,11 +478,13 @@ var (
 		0: "ROOM_MODE_UNSPECIFIED",
 		1: "ROOM_MODE_MANUAL",
 		2: "ROOM_MODE_ROUNDTABLE",
+		3: "ROOM_MODE_LIGHT",
 	}
 	RoomMode_value = map[string]int32{
 		"ROOM_MODE_UNSPECIFIED": 0,
 		"ROOM_MODE_MANUAL":      1,
 		"ROOM_MODE_ROUNDTABLE":  2,
+		"ROOM_MODE_LIGHT":       3,
 	}
 )
 
@@ -7592,8 +7597,11 @@ type Room struct {
 	// result handed in, the round limit reached, a member naming the owner, a
 	// member woken and quiet for two minutes; and when. The owner's devices
 	// notify with it, once each.
-	Notice        string                 `protobuf:"bytes,18,opt,name=notice,proto3" json:"notice,omitempty"`
-	NoticeAt      *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=notice_at,json=noticeAt,proto3" json:"notice_at,omitempty"`
+	Notice   string                 `protobuf:"bytes,18,opt,name=notice,proto3" json:"notice,omitempty"`
+	NoticeAt *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=notice_at,json=noticeAt,proto3" json:"notice_at,omitempty"`
+	// Read-only shadow conversation aggregating 1:1 mailbox exchanges between
+	// two personal agents (工单 #124).
+	Shadow        bool `protobuf:"varint,20,opt,name=shadow,proto3" json:"shadow,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7759,6 +7767,13 @@ func (x *Room) GetNoticeAt() *timestamppb.Timestamp {
 		return x.NoticeAt
 	}
 	return nil
+}
+
+func (x *Room) GetShadow() bool {
+	if x != nil {
+		return x.Shadow
+	}
+	return false
 }
 
 type RoomMember struct {
@@ -7965,7 +7980,13 @@ type RoomMessage struct {
 	// In manual mode, the bots a member named (@): the owner may hand it on.
 	Asks []string `protobuf:"bytes,14,rep,name=asks,proto3" json:"asks,omitempty"`
 	// From the host itself ("from" is "system"): the round limit reached…
-	System        bool `protobuf:"varint,15,opt,name=system,proto3" json:"system,omitempty"`
+	System bool `protobuf:"varint,15,opt,name=system,proto3" json:"system,omitempty"`
+	// Recipient name in a read-only shadow conversation (from_name -> to_name, 工单 #124).
+	ToName string `protobuf:"bytes,16,opt,name=to_name,json=toName,proto3" json:"to_name,omitempty"`
+	// Optional subject of an agent-to-agent mailbox message (工单 #124).
+	Subject string `protobuf:"bytes,17,opt,name=subject,proto3" json:"subject,omitempty"`
+	// Sent via lightweight chat mode (工单 #123).
+	LightChat     bool `protobuf:"varint,18,opt,name=light_chat,json=lightChat,proto3" json:"light_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8101,6 +8122,27 @@ func (x *RoomMessage) GetAsks() []string {
 func (x *RoomMessage) GetSystem() bool {
 	if x != nil {
 		return x.System
+	}
+	return false
+}
+
+func (x *RoomMessage) GetToName() string {
+	if x != nil {
+		return x.ToName
+	}
+	return ""
+}
+
+func (x *RoomMessage) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *RoomMessage) GetLightChat() bool {
+	if x != nil {
+		return x.LightChat
 	}
 	return false
 }
@@ -8341,7 +8383,9 @@ type PostRoomMessageRequest struct {
 	Text           string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	// The bots named (@), by bot key.
-	Mentions      []string `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	Mentions []string `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	// Lightweight chat path: minimal bounded context, fast direct reply (工单 #123).
+	LightChat     bool `protobuf:"varint,5,opt,name=light_chat,json=lightChat,proto3" json:"light_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8402,6 +8446,13 @@ func (x *PostRoomMessageRequest) GetMentions() []string {
 		return x.Mentions
 	}
 	return nil
+}
+
+func (x *PostRoomMessageRequest) GetLightChat() bool {
+	if x != nil {
+		return x.LightChat
+	}
+	return false
 }
 
 type CreateRoomMember struct {
@@ -9350,7 +9401,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x18\n" +
 	"\arelease\x18\x02 \x01(\bR\arelease\"\x1c\n" +
-	"\x1aReleaseHeldMessageResponse\"\xf7\x05\n" +
+	"\x1aReleaseHeldMessageResponse\"\x8f\x06\n" +
 	"\x04Room\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12&\n" +
@@ -9374,7 +9425,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\acharter\x18\x10 \x01(\v2\x18.aide.identity.v1.SignedR\acharter\x12H\n" +
 	"\x13charter_device_cert\x18\x11 \x01(\v2\x18.aide.identity.v1.SignedR\x11charterDeviceCert\x12\x16\n" +
 	"\x06notice\x18\x12 \x01(\tR\x06notice\x127\n" +
-	"\tnotice_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\bnoticeAt\"\xc6\x01\n" +
+	"\tnotice_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\bnoticeAt\x12\x16\n" +
+	"\x06shadow\x18\x14 \x01(\bR\x06shadow\"\xc6\x01\n" +
 	"\n" +
 	"RoomMember\x12\x17\n" +
 	"\abot_key\x18\x01 \x01(\tR\x06botKey\x12\x18\n" +
@@ -9392,7 +9444,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05state\x18\x02 \x01(\x0e2\".aide.machine.v1.RoomDeliveryStateR\x05state\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x17\n" +
 	"\acopy_id\x18\x04 \x01(\tR\x06copyId\x12\x1a\n" +
-	"\breminded\x18\x05 \x01(\bR\breminded\"\xc0\x03\n" +
+	"\breminded\x18\x05 \x01(\bR\breminded\"\x92\x04\n" +
 	"\vRoomMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x17\n" +
@@ -9412,7 +9464,11 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\ffinal_sha256\x18\f \x01(\tR\vfinalSha256\x12\x12\n" +
 	"\x04late\x18\r \x01(\bR\x04late\x12\x12\n" +
 	"\x04asks\x18\x0e \x03(\tR\x04asks\x12\x16\n" +
-	"\x06system\x18\x0f \x01(\bR\x06system\"\x12\n" +
+	"\x06system\x18\x0f \x01(\bR\x06system\x12\x17\n" +
+	"\ato_name\x18\x10 \x01(\tR\x06toName\x12\x18\n" +
+	"\asubject\x18\x11 \x01(\tR\asubject\x12\x1d\n" +
+	"\n" +
+	"light_chat\x18\x12 \x01(\bR\tlightChat\"\x12\n" +
 	"\x10ListRoomsRequest\"@\n" +
 	"\x11ListRoomsResponse\x12+\n" +
 	"\x05rooms\x18\x01 \x03(\v2\x15.aide.machine.v1.RoomR\x05rooms\"4\n" +
@@ -9423,12 +9479,14 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\rR\x05limit\"\x7f\n" +
 	"\x18ListRoomMessagesResponse\x12)\n" +
 	"\x04room\x18\x01 \x01(\v2\x15.aide.machine.v1.RoomR\x04room\x128\n" +
-	"\bmessages\x18\x02 \x03(\v2\x1c.aide.machine.v1.RoomMessageR\bmessages\"\x8a\x01\n" +
+	"\bmessages\x18\x02 \x03(\v2\x1c.aide.machine.v1.RoomMessageR\bmessages\"\xa9\x01\n" +
 	"\x16PostRoomMessageRequest\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
-	"\bmentions\x18\x04 \x03(\tR\bmentions\"^\n" +
+	"\bmentions\x18\x04 \x03(\tR\bmentions\x12\x1d\n" +
+	"\n" +
+	"light_chat\x18\x05 \x01(\bR\tlightChat\"^\n" +
 	"\x10CreateRoomMember\x12\x17\n" +
 	"\abot_key\x18\x01 \x01(\tR\x06botKey\x12\x1d\n" +
 	"\n" +
@@ -9501,11 +9559,12 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\x1dDSH_SESSION_STATE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19DSH_SESSION_STATE_RUNNING\x10\x01\x12\x1a\n" +
 	"\x16DSH_SESSION_STATE_IDLE\x10\x02\x12\x1b\n" +
-	"\x17DSH_SESSION_STATE_ENDED\x10\x03*U\n" +
+	"\x17DSH_SESSION_STATE_ENDED\x10\x03*j\n" +
 	"\bRoomMode\x12\x19\n" +
 	"\x15ROOM_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROOM_MODE_MANUAL\x10\x01\x12\x18\n" +
-	"\x14ROOM_MODE_ROUNDTABLE\x10\x02*q\n" +
+	"\x14ROOM_MODE_ROUNDTABLE\x10\x02\x12\x13\n" +
+	"\x0fROOM_MODE_LIGHT\x10\x03*q\n" +
 	"\aRoomRun\x12\x18\n" +
 	"\x14ROOM_RUN_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROOM_RUN_RUNNING\x10\x01\x12\x1a\n" +

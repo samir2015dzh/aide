@@ -10919,6 +10919,7 @@ type PostRoomMessageRequest struct {
 	Text           string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	Mentions       []string               `protobuf:"bytes,5,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	LightChat      bool                   `protobuf:"varint,6,opt,name=light_chat,json=lightChat,proto3" json:"light_chat,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -10986,6 +10987,13 @@ func (x *PostRoomMessageRequest) GetMentions() []string {
 		return x.Mentions
 	}
 	return nil
+}
+
+func (x *PostRoomMessageRequest) GetLightChat() bool {
+	if x != nil {
+		return x.LightChat
+	}
+	return false
 }
 
 type ListRoomsRequest struct {
@@ -12029,14 +12037,16 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\rR\x05limit\"\xa9\x01\n" +
+	"\x05limit\x18\x03 \x01(\rR\x05limit\"\xc8\x01\n" +
 	"\x16PostRoomMessageRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
-	"\bmentions\x18\x05 \x03(\tR\bmentions\"\x12\n" +
+	"\bmentions\x18\x05 \x03(\tR\bmentions\x12\x1d\n" +
+	"\n" +
+	"light_chat\x18\x06 \x01(\bR\tlightChat\"\x12\n" +
 	"\x10ListRoomsRequest\"@\n" +
 	"\x11ListRoomsResponse\x12+\n" +
 	"\x05rooms\x18\x01 \x03(\v2\x15.aide.machine.v1.RoomR\x05rooms\"\xb2\x01\n" +

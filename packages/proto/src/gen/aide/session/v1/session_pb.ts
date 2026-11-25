@@ -956,7 +956,7 @@ export type ListSessionsRequest = Message<"aide.session.v1.ListSessionsRequest">
    * Paging: at most limit sessions, newest first by (updated_at,
    * session_id), from the newest or from just past the session `before`
    * names. 0: every session, unpaged and in no set order.
-   * 
+   *
    * The first page (limit without before) also carries every unsettled
    * session however old, so lists can show those in full: queued,
    * preparing, running, waiting for an answer or crashed, or whose last

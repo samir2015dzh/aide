@@ -70,16 +70,19 @@ import kotlinx.coroutines.launch
 
 const val MANUAL = "ROOM_MODE_MANUAL"
 const val ROUNDTABLE = "ROOM_MODE_ROUNDTABLE"
+const val LIGHT = "ROOM_MODE_LIGHT"
 
 /** A room's state in a line, in the desktop's words. A round is a hand-on from bot to bot. */
-fun roomLine(r: Room): String = when (r.run) {
-    "ROOM_RUN_RUNNING" -> when {
+fun roomLine(r: Room): String = when {
+    r.shadow -> r.lastLine.ifEmpty { t("Agent conversation · read-only", "Agent 间对话 · 只读") }
+    r.run == "ROOM_RUN_RUNNING" -> when {
+        r.mode == LIGHT -> t("Light chat · waiting for reply", "轻聊中 · 等回复")
         r.mode != ROUNDTABLE -> t("Waiting for a bot", "等 bot 回话")
         r.round == 0 -> t("Round table started · up to ${r.maxRounds} hand-ons", "圆桌开始 · 最多接力 ${r.maxRounds} 轮")
         else -> t("Round table · hand-on ${r.round}/${r.maxRounds}", "圆桌接力中 · 第 ${r.round}/${r.maxRounds} 轮")
     }
-    "ROOM_RUN_STOPPED_LIMIT" -> t("Stopped at the round limit", "到达轮次上限，已停")
-    "ROOM_RUN_STOPPED_OWNER" -> t("You stopped it", "你停下了")
+    r.run == "ROOM_RUN_STOPPED_LIMIT" -> t("Stopped at the round limit", "到达轮次上限，已停")
+    r.run == "ROOM_RUN_STOPPED_OWNER" -> t("You stopped it", "你停下了")
     else -> r.lastLine.ifEmpty { t("Waiting for you", "等你") }
 }
 
@@ -108,7 +111,13 @@ fun LazyListScope.roomItems(rooms: List<Room>, open: (Room) -> Unit, create: () 
                     }
                     HSpace(12)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(r.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(r.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                            if (r.shadow) {
+                                HSpace(6)
+                                StatusPill(t("Read-only", "只读"), Tone.Quiet)
+                            }
+                        }
                         Text(waitingLine(r, outbox) ?: roomLine(r), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (r.unread > 0) { HSpace(8); CountBadge(r.unread, Tone.Live) }
@@ -151,7 +160,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
     Scaffold(
         snackbarHost = { PageFeedback(model) },
         topBar = {
-            NavBar(back, actions = { if (room != null) PlainButton(onClick = { deleting = true }) { Text(t("Delete", "删除"), style = IosType.Body, color = MaterialTheme.colorScheme.error) } }) {
+            NavBar(back, actions = { if (room != null && !room!!.shadow) PlainButton(onClick = { deleting = true }) { Text(t("Delete", "删除"), style = IosType.Body, color = MaterialTheme.colorScheme.error) } }) {
                 Text(room?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
@@ -177,7 +186,8 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
             return@Scaffold
         }
         if (deleting) DeleteRoomDialog(model, r, { deleting = false }) { deleting = false; back() }
-        val table = r.mode == ROUNDTABLE
+        val mode = r.mode.ifEmpty { MANUAL }
+        val table = mode == ROUNDTABLE
         val bots = roster(world.machines, world.clients, world.sessions.values, Instant.now(), emptyList()).all
         fun nameOf(key: String) = r.members.firstOrNull { it.botKey == key }?.name ?: key
         fun update(p: RoomPatch) = scope.launch { model.updateRoom(machineId, p)?.let { room = it } }
@@ -186,9 +196,9 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                 item(key = "head") {
                     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            StatusPill(roomLine(r), if (r.run == "ROOM_RUN_RUNNING") Tone.Live else Tone.Quiet)
+                            StatusPill(if (r.shadow) t("Read-only · Agent conversation", "只读 · Agent 间对话") else roomLine(r), if (!r.shadow && r.run == "ROOM_RUN_RUNNING") Tone.Live else Tone.Quiet)
                             Spacer(Modifier.weight(1f))
-                            if (r.run == "ROOM_RUN_RUNNING") TintedButton(onClick = { scope.launch { model.stopRoom(machineId, roomId)?.let { room = it }; read() } }, destructive = true) { Text(t("Stop", "停止")) }
+                            if (!r.shadow && r.run == "ROOM_RUN_RUNNING") TintedButton(onClick = { scope.launch { model.stopRoom(machineId, roomId)?.let { room = it }; read() } }, destructive = true) { Text(t("Stop", "停止")) }
                         }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             r.members.forEach { m ->
@@ -201,11 +211,13 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                                 }
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Segmented(listOf(false to t("Manual @", "手动 @"), true to t("Round table", "自主圆桌")), table, Modifier.weight(1f)) { update(RoomPatch(roomId, mode = if (it) ROUNDTABLE else MANUAL)) }
-                            if (table) {
-                                Text(t("up to ${r.maxRounds}", "最多 ${r.maxRounds} 轮"), style = MaterialTheme.typography.bodySmall)
-                                IosStepper(r.maxRounds > 1, r.maxRounds < 20, { update(RoomPatch(roomId, maxRounds = r.maxRounds - 1)) }, { update(RoomPatch(roomId, maxRounds = r.maxRounds + 1)) })
+                        if (!r.shadow) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Segmented(listOf(MANUAL to t("Manual @", "手动 @"), ROUNDTABLE to t("Round table", "自主圆桌"), LIGHT to t("Light chat", "轻聊")), mode, Modifier.weight(1f)) { update(RoomPatch(roomId, mode = it)) }
+                                if (table) {
+                                    Text(t("up to ${r.maxRounds}", "最多 ${r.maxRounds} 轮"), style = MaterialTheme.typography.bodySmall)
+                                    IosStepper(r.maxRounds > 1, r.maxRounds < 20, { update(RoomPatch(roomId, maxRounds = r.maxRounds - 1)) }, { update(RoomPatch(roomId, maxRounds = r.maxRounds + 1)) })
+                                }
                             }
                         }
                     }
@@ -219,21 +231,35 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                 }
                 item(key = "timeline-h") { SectionHeader(t("Timeline", "时间线")) }
                 if (msgs.isEmpty()) item(key = "none") {
-                    Text(if (table) t("Say something: the ones you name (else the first member) act, and the bots hand on.", "说点什么：被 @ 的（没 @ 时第一个成员）先动，bot 之间会接力。")
-                        else t("Say something: the bots you name act.", "说点什么：@ 谁，谁就会动。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    Text(when {
+                        r.shadow -> t("No agent messages recorded yet.", "暂时还没有记录到 agent 之间的消息。")
+                        mode == LIGHT -> t("Light chat: quick back-and-forth without heavy task context.", "轻聊模式：快速交流，不拖带长上下文。")
+                        table -> t("Say something: the ones you name (else the first member) act, and the bots hand on.", "说点什么：被 @ 的（没 @ 时第一个成员）先动，bot 之间会接力。")
+                        else -> t("Say something: the bots you name act.", "说点什么：@ 谁，谁就会动。")
+                    }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
-                msgs.forEach { m -> item(key = "m-${m.messageId}", contentType = "chat") { RoomMessageView(model, r, m, ::nameOf, openSession) } }
+                val byId = msgs.associateBy { it.messageId }
+                msgs.forEach { m -> item(key = "m-${m.messageId}", contentType = "chat") { RoomMessageView(model, r, m, byId[m.inReplyTo], ::nameOf, openSession) } }
                 if (waiting > 0) item(key = "waiting") {
                     Text(t("$waiting replies are on their way: they come in as soon as the machine keeping the room is back", "还有 $waiting 条回复在路上：负责房间的机器一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
             }
-            RoomCompose(model, r, enabled = !away) { m -> msgs = msgs.filter { it.messageId != m.messageId } + m; scope.launch { read() } }
+            if (r.shadow) {
+                Text(
+                    t("Read-only shadow conversation · View messages between your agents here", "只读影子对话 · 仅用于查看 agent 之间的往来消息，不能在此发言"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().background(aide.inset).padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            } else {
+                RoomCompose(model, r, enabled = !away) { m -> msgs = msgs.filter { it.messageId != m.messageId } + m; scope.launch { read() } }
+            }
         }
     }
 }
 
 @Composable
-private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, nameOf: (String) -> String, openSession: (String) -> Unit) {
+private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo: RoomMessage?, nameOf: (String) -> String, openSession: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     if (m.system) {
@@ -261,25 +287,55 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, nameOf: (S
         bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
     )
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        if (!mine) Text(m.fromName + if (m.late) t(" · came after stop", " · 停止后到达") else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (mine && m.mentions.isNotEmpty()) Text(m.mentions.joinToString(" ") { "@" + nameOf(it) }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (!mine) {
+            val head = buildString {
+                append(m.fromName)
+                if (r.shadow && m.toName.isNotEmpty()) append(" → ${m.toName}")
+                if (r.shadow && m.at.isNotEmpty()) append(" · ${io.aide.android.model.agoText(io.aide.android.model.instant(m.at), Instant.now())}")
+                if (m.lightChat) append(t(" · Light", " · 轻聊"))
+                if (m.late) append(t(" · came after stop", " · 停止后到达"))
+            }
+            Text(head, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (mine && (m.mentions.isNotEmpty() || m.lightChat)) {
+            val meta = listOfNotNull(
+                if (m.lightChat) t("Light chat", "轻聊") else null,
+                m.mentions.takeIf { it.isNotEmpty() }?.joinToString(" ") { "@" + nameOf(it) },
+            ).joinToString(" · ")
+            Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
             .background(if (mine) aide.bubble else aide.card, bubbleShape)
             .then(if (mine) Modifier else Modifier.border(1.dp, aide.cardEdge, bubbleShape))
             .padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Text(m.text, style = MaterialTheme.typography.bodyLarge, color = when {
-                mine -> aide.onBubble
-                m.late -> aide.faint
-                else -> MaterialTheme.colorScheme.onSurface
-            })
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (m.subject.isNotEmpty()) {
+                    Text(m.subject, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
+                }
+                if (m.inReplyTo.isNotEmpty()) {
+                    val snippet = repliedTo?.let { "${it.fromName}: ${it.text.replace('\n', ' ').take(48)}" } ?: m.inReplyTo.take(12)
+                    Text(
+                        t("Reply to $snippet", "回复 $snippet"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (mine) aide.onBubble.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(m.text, style = MaterialTheme.typography.bodyLarge, color = when {
+                    mine -> aide.onBubble
+                    m.late -> aide.faint
+                    else -> MaterialTheme.colorScheme.onSurface
+                })
+            }
         }
         if (mine) m.deliveries.forEach { d ->
             val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)
             Text(words, style = MaterialTheme.typography.labelSmall, color = if (bad) Warning else aide.faint)
         }
-        if (!mine && m.deliveries.isNotEmpty()) Text(t("handed on to ${m.deliveries.joinToString(", ") { nameOf(it.botKey) }}", "转交给 ${m.deliveries.joinToString("、") { nameOf(it.botKey) }}"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
-        if (!mine && member?.sessionId?.isNotEmpty() == true) PlainButton(onClick = { openSession(member.sessionId) }) { Text(t("Open its session", "打开它的会话")) }
-        m.asks.forEach { k ->
+        if (!mine && !r.shadow && m.deliveries.isNotEmpty()) Text(t("handed on to ${m.deliveries.joinToString(", ") { nameOf(it.botKey) }}", "转交给 ${m.deliveries.joinToString("、") { nameOf(it.botKey) }}"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
+        if (!mine && !r.shadow && member?.sessionId?.isNotEmpty() == true) PlainButton(onClick = { openSession(member.sessionId) }) { Text(t("Open its session", "打开它的会话")) }
+        if (!r.shadow) m.asks.forEach { k ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(t("${m.fromName} asks ${nameOf(k)}", "${m.fromName} 想请 ${nameOf(k)}"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 PlainButton(onClick = {
@@ -297,12 +353,13 @@ private fun RoomCompose(model: AppModel, r: Room, enabled: Boolean, posted: (Roo
     var mentions by rememberSaveable { mutableStateOf(listOf<String>()) }
     var key by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     var state by remember { mutableStateOf<ComposerState>(ComposerState.Idle) }
+    val light = r.mode == LIGHT
     val woken = mentions.ifEmpty { if (r.mode == ROUNDTABLE) r.members.take(1).map { it.botKey } else emptyList() }
     val names = woken.joinToString("、") { k -> r.members.firstOrNull { it.botKey == k }?.name ?: k }
     fun send() {
         state = ComposerState.Sending
         scope.launch {
-            model.postRoomMessageOr(r, text.trim(), key, { state = ComposerState.Failed(it) { send() } }, mentions)?.let { m ->
+            model.postRoomMessageOr(r, text.trim(), key, { state = ComposerState.Failed(it) { send() } }, mentions, lightChat = light)?.let { m ->
                 posted(m)
                 text = ""
                 mentions = emptyList()
@@ -312,8 +369,12 @@ private fun RoomCompose(model: AppModel, r: Room, enabled: Boolean, posted: (Roo
         }
     }
     Composer(
-        text, { text = it }, { send() }, t("Say something in the room…", "在房间里说…"), state, enabled = enabled,
-        why = ComposerWhy(if (woken.isEmpty()) t("Just saying it: wakes no one", "只是说一句，不叫醒任何人") else t("Wakes: $names", "将叫醒：$names")),
+        text, { text = it }, { send() }, if (light) t("Quick message in light chat…", "轻聊一句…") else t("Say something in the room…", "在房间里说…"), state, enabled = enabled,
+        why = ComposerWhy(when {
+            light && woken.isNotEmpty() -> t("Light chat · wakes: $names", "轻聊模式 · 将叫醒：$names")
+            woken.isEmpty() -> t("Just saying it: wakes no one", "只是说一句，不叫醒任何人")
+            else -> t("Wakes: $names", "将叫醒：$names")
+        }),
         mentions = {
             r.members.forEach { m ->
                 val on = m.botKey in mentions

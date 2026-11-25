@@ -1873,7 +1873,7 @@ func (o *Owner) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessa
 }
 
 func (o *Owner) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
-	r := &machinev1.PostRoomMessageRequest{RoomId: req.RoomId, Text: req.Text, IdempotencyKey: req.IdempotencyKey, Mentions: req.Mentions}
+	r := &machinev1.PostRoomMessageRequest{RoomId: req.RoomId, Text: req.Text, IdempotencyKey: req.IdempotencyKey, Mentions: req.Mentions, LightChat: req.LightChat}
 	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.RoomMessage, error) { return l.PostRoomMessage(ctx, r) },
 		func(n *peer.Machine) (*machinev1.RoomMessage, error) { return n.Admin.PostRoomMessage(ctx, r) })
 }

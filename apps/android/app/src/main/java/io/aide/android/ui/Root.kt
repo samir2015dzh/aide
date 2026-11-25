@@ -145,6 +145,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             is Route.ClaudeSession -> ClaudeSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             is Route.Bot -> BotPage(model, top.key, openSession = { stack.add(Route.Session(it)) }, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) },
                 openDevices = { stack.clear(); tab = Tab.Devices }, openSettings = { stack.add(Route.BotSettings(top.key)) },
+                openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) },
                 openOwn = { e -> stack.add(if (e is OwnEntry.Dsh) Route.DSHSession(e.entry) else Route.ClaudeSession((e as OwnEntry.Claude).entry)) })
             is Route.BotSettings -> BotSettingsPage(model, top.key, edit = { stack.add(Route.EditContact(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.EditContact -> ContactEditPage(model, top.persona) { stack.removeAt(stack.lastIndex) }

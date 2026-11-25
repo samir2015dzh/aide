@@ -153,7 +153,7 @@ class LocalApi(port: Long, token: String) {
 
     suspend fun openDirectRoom(clientId: String): OpenDirectRoomResponse = call("OpenDirectRoom", OpenDirectRoomRequest(clientId))
     suspend fun listRoomMessages(machineId: String, roomId: String): ListRoomMessagesResponse = call("ListRoomMessages", ListRoomMessagesRequest(machineId, roomId))
-    suspend fun postRoomMessage(machineId: String, roomId: String, text: String, key: String, mentions: List<String> = emptyList()): RoomMessage = call("PostRoomMessage", PostRoomMessageRequest(machineId, roomId, text, key, mentions))
+    suspend fun postRoomMessage(machineId: String, roomId: String, text: String, key: String, mentions: List<String> = emptyList(), lightChat: Boolean = false): RoomMessage = call("PostRoomMessage", PostRoomMessageRequest(machineId, roomId, text, key, mentions, lightChat))
     suspend fun createRoom(req: CreateRoomRequest): Room = call("CreateRoom", req)
     suspend fun updateRoom(machineId: String, patch: RoomPatch): Room = call("UpdateRoom", UpdateRoomRequest(machineId, patch))
     suspend fun stopRoom(machineId: String, roomId: String): Room = call("StopRoom", RoomRef(machineId, roomId))

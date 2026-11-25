@@ -1443,6 +1443,9 @@ message Room {
   // notify with it, once each.
   string notice = 18;
   google.protobuf.Timestamp notice_at = 19;
+  // Read-only shadow conversation aggregating 1:1 mailbox exchanges between
+  // two personal agents (工单 #124).
+  bool shadow = 20;
 }
 
 enum RoomMode {
@@ -1452,6 +1455,9 @@ enum RoomMode {
   ROOM_MODE_MANUAL = 1;
   // Bots hand on to each other by naming one (@), up to the round limit.
   ROOM_MODE_ROUNDTABLE = 2;
+  // Lightweight casual chat: tiny bounded context and direct replies without
+  // heavy task scaffolding (工单 #123).
+  ROOM_MODE_LIGHT = 3;
 }
 
 enum RoomRun {
@@ -1538,6 +1544,12 @@ message RoomMessage {
   repeated string asks = 14;
   // From the host itself ("from" is "system"): the round limit reached…
   bool system = 15;
+  // Recipient name in a read-only shadow conversation (from_name -> to_name, 工单 #124).
+  string to_name = 16;
+  // Optional subject of an agent-to-agent mailbox message (工单 #124).
+  string subject = 17;
+  // Sent via lightweight chat mode (工单 #123).
+  bool light_chat = 18;
 }
 
 message ListRoomsRequest {}
@@ -1568,6 +1580,8 @@ message PostRoomMessageRequest {
   string idempotency_key = 3;
   // The bots named (@), by bot key.
   repeated string mentions = 4;
+  // Lightweight chat path: minimal bounded context, fast direct reply (工单 #123).
+  bool light_chat = 5;
 }
 
 message CreateRoomMember {

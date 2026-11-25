@@ -1121,7 +1121,8 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 		return &exitError{code: exitUnavailable, kind: "unreachable", retryable: true, err: errors.New("the owner's Mac hasn't given this agent its card yet"),
 			hint: "it does once it is online with Aide open: try again in a minute"}
 	}
-	sealed, err := identity.SealMessage(t.contact.info.InboxKey, t.inbox, m.MessageId, &inboxv1.SignedMessage{Message: signed, Sender: me})
+	envelope := &inboxv1.SignedMessage{Message: signed, Sender: me}
+	sealed, err := identity.SealMessage(t.contact.info.InboxKey, t.inbox, m.MessageId, envelope)
 	if err != nil {
 		return err
 	}
@@ -1132,8 +1133,30 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 	if t.woken && !m.Fyi {
 		sm.Ring = &t.session // the post office rings its doorbell
 	}
-	_, err = ms.Send(ctx, &relayv1.SendSealedRequest{Message: sm})
-	return err
+	if _, err = ms.Send(ctx, &relayv1.SendSealedRequest{Message: sm}); err != nil {
+		return err
+	}
+	// 工单 #124: multi-recipient sealed shadow copy for 1:1 personal-agent
+	// mailbox messages. Sealed directly to each owner machine's X25519 inbox
+	// key (zero plaintext in relay DB; survives recipient message_ack).
+	if strings.HasPrefix(a.g.ClientId, "c_") && strings.HasPrefix(t.inbox, "c_") && !strings.HasPrefix(t.session, "room_") && m.SessionNews == nil && m.WorkspaceRequest == nil {
+		for _, c := range contacts {
+			if !strings.HasPrefix(c.info.Inbox, "m_") || len(c.info.InboxKey) == 0 {
+				continue
+			}
+			shadowID := messageIDFor(a.g.ClientId+"/"+c.info.Inbox, m.MessageId)
+			shadowSealed, serr := identity.SealMessage(c.info.InboxKey, c.info.Inbox, shadowID, envelope)
+			if serr != nil {
+				continue
+			}
+			_, _ = ms.Send(ctx, &relayv1.SendSealedRequest{Message: &relayv1.SealedMessage{
+				Inbox:     c.info.Inbox,
+				MessageId: shadowID,
+				Sealed:    shadowSealed,
+			}})
+		}
+	}
+	return nil
 }
 
 // loadBoundary reads the owner's information boundary from the post office.
@@ -1407,7 +1430,14 @@ func (a *app) messageWakeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "wake",
 		Short: "Ask your owner to have Aide wake you (a webhook that starts you, such as a Grok Bot routine's) when messages arrive for you (--as: for that name); prints a one-time link for your owner",
-		Args:  cobra.NoArgs,
+		Long: `Set up inbox waking so messages from Aide become turns for this agent.
+Having only tools or keepalive (showing online) is incomplete — wire the mechanism for your platform and declare it to your owner:
+  - Always-on daemon/gateway (built-in cron): schedule periodic ` + "`aide message list`" + ` polling, or register a doorbell webhook here.
+  - Webhook-woken platform (e.g. Grok Bot routine): register the routine's webhook via this command.
+  - Session-based platform (woken externally): attach an external short-interval poll hook calling ` + "`aide message list`" + ` and waking on unseen message ids.
+Acknowledge each handled message with ` + "`aide message ack <id>`" + ` (` + "`--held`" + ` for messages kept for the owner).
+Done = the owner sends a real message from the Aide app and you pick it up and reply without reminders over another channel.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			c, _, err := a.connect(ctx, nil)
