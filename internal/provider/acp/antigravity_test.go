@@ -29,22 +29,31 @@ func TestAntigravityDiscovery(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("GEMINI_HOME", dir)
 	p := &Provider{Agent: antigravityAgent("darwin"), Binary: fakeBin}
-	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn {
-		t.Fatalf("installed without authentication: %+v", i)
+	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || i.LoginUnconfirmed {
+		t.Fatalf("installed without settings.json must be confirmed signed out: %+v", i)
 	}
 	os.Mkdir(filepath.Join(dir, "antigravity-acp"), 0o700)
 	file := filepath.Join(dir, "antigravity-acp", "settings.json")
 	for _, c := range []struct {
-		config string
-		ready  bool
+		config      string
+		ready       bool
+		unconfirmed bool
 	}{
-		{`{}`, false}, {`invalid`, false}, {`{"auth":{"type":""}}`, false},
-		{`{"auth":{"type":"oauth-personal"}}`, true}, {`{"auth":{"type":"oauth-business"}}`, true},
+		{`{}`, false, false},
+		{`invalid`, false, true},
+		{`{"auth":{"type":""}}`, false, false},
+		{`{"auth":{"type":"oauth-personal"}}`, true, false},
+		{`{"auth":{"type":"oauth-business"}}`, true, false},
 	} {
 		os.WriteFile(file, []byte(c.config), 0o600)
-		if i := p.Discover(context.Background()); !i.Available || i.LoggedIn != c.ready {
+		if i := p.Discover(context.Background()); !i.Available || i.LoggedIn != c.ready || i.LoginUnconfirmed != c.unconfirmed {
 			t.Fatalf("%s: %+v", c.config, i)
 		}
+	}
+	// Removing settings.json after login falls back to signed out (not unconfirmed).
+	os.Remove(file)
+	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || i.LoginUnconfirmed {
+		t.Fatalf("after logout (settings removed): %+v", i)
 	}
 }
 

@@ -298,9 +298,16 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	// logged in" that it is not (the machine keeps what they showed).
 	info.LoginUnconfirmed = true
 	if p.Name() == "antigravity" {
-		// Its settings name how it signs in: that, read, confirms it.
-		if antigravityConfigured(env) {
+		// Its settings name how it signs in: configured -> signed in, absent or
+		// empty -> signed out (never resurrected by stale agent_signin cache),
+		// unreadable/corrupt -> unconfirmed (工单 #111 / #108).
+		switch antigravityAuthState(env) {
+		case antigravityAuthConfigured:
 			info.LoggedIn, info.LoginUnconfirmed = true, false
+		case antigravityAuthUnconfigured:
+			info.LoggedIn, info.LoginUnconfirmed = false, false
+		case antigravityAuthUnconfirmed:
+			info.LoggedIn, info.LoginUnconfirmed = false, true
 		}
 		p.discoverModels(ctx, bin, pre, env)
 	}
