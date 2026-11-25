@@ -236,7 +236,7 @@ jobs:
       - name: end-to-end (scripted agents)
         shell: bash
         run: |
-          go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
+          go test ./e2e/ -list '^Test' | tr -d '\r' | grep '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
           run=$(python3 scripts/e2e_shards.py run-pattern --exclude TestDesktop --of ${{ strategy.job-total }} --shard ${{ matrix.shard }} "$RUNNER_TEMP/e2e-tests.txt")
           echo "this windows shard: $run"
           go test ./e2e/ -count=1 -timeout 20m -v -run "$run" 2>&1 | tee "$RUNNER_TEMP/windows-e2e.log"
@@ -264,7 +264,7 @@ jobs:
         shell: bash
         run: |
           list="$RUNNER_TEMP/win-shards/windows-e2e-shard-1/e2e-tests.txt"
-          for i in 2 3 4; do cmp -s "$list" "$RUNNER_TEMP/win-shards/windows-e2e-shard-$i/e2e-tests.txt"; done
+          for i in 2 3 4; do diff -u "$list" "$RUNNER_TEMP/win-shards/windows-e2e-shard-$i/e2e-tests.txt"; done
           logs=()
           for i in 1 2 3 4; do logs+=("$RUNNER_TEMP/win-shards/windows-e2e-shard-$i/windows-e2e.log"); done
           python3 scripts/e2e_shards.py ledger --exclude TestDesktop --of 4 "$list" "${logs[@]}" | tee "$RUNNER_TEMP/win-ledger.txt"
