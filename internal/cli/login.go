@@ -85,6 +85,10 @@ func (a *app) accountLogin(cmd *cobra.Command, arg, account, name string, fromSt
 		c.Close()
 	}
 	fmt.Fprintf(progress, "Logged in to %s as %q. Run `aide project list` to see where it can work.\n", res.Account, name)
+	fmt.Fprintln(progress, "Onboarding checklist (setup is NOT complete until both are wired and verified):")
+	fmt.Fprintln(progress, "  1. Keepalive: keep an MCP session open with periodic ping (or periodic CLI activity) so you show as online.")
+	fmt.Fprintln(progress, "  2. Inbox watching (declare which matches your platform): daemon/gateway -> internal cron calling `aide message list` or doorbell via `aide message wake`; webhook-woken -> `aide message wake`; session-based -> external poll hook calling `aide message list` and waking on unseen ids. Acknowledge handled items with `aide message ack` (--held for owner-held items).")
+	fmt.Fprintln(progress, "  3. Acceptance: done only when the owner sends a real message from the Aide app and you pick it up and reply without reminders elsewhere (showing online alone is incomplete).")
 	return a.loggedIn(cmd)
 }
 

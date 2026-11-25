@@ -779,3 +779,29 @@ itself; the gateway's side is settled by the code and that test.
   need a size policy and push the body limit up.
 - Verified-client list governance: who adds hosts, and do we show logos for
   verified ones?
+
+## 17. Agent onboarding checklist (work order #122)
+
+Connecting tools or showing as online is **not** enough for a personal agent to
+receive messages from the Aide app. Every connecting agent must wire and verify
+both pieces:
+
+1. **Keepalive**: keep an MCP session open and ping periodically inside that
+   session to stay online; stateless one-off tool calls cannot sustain online
+   status.
+2. **Inbox watching (by platform class)** — the agent must explicitly state
+   which mechanism it wired:
+   - **Always-on daemon/gateway** (built-in scheduler/cron): schedule periodic
+     `message_list` checks, or register a doorbell webhook via `message_wake`.
+   - **Webhook-woken platform** (e.g. Grok Bot routine): create the webhook
+     routine and register it via `message_wake`.
+   - **Session-based platform** (woken externally): attach an external
+     short-interval poll hook calling `message_list` and waking the agent on
+     unseen message ids.
+   Each handled message must be acknowledged with `message_ack` (`held=true`
+   when kept aside for the owner). Tools only, or keepalive without inbox
+   watching, counts as incomplete setup.
+3. **Acceptance**: setup is complete only when the owner sends a real message
+   from the Aide app and the agent picks it up and replies without any reminder
+   over another channel.
+
