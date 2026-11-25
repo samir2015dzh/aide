@@ -37,25 +37,32 @@ func repoRoot() string {
 	return filepath.Dir(wd)
 }
 
-// binaries builds aide-relay, aided and aide once per test run.
+// binaries builds aide-relay, aided and aide once per test run, or reuses
+// prebuilt binaries from AIDE_E2E_BIN_DIR when CI compiles them once upfront (#127).
 func binaries(t *testing.T) string {
 	t.Helper()
 	buildOnce.Do(func() {
+		if pre := os.Getenv("AIDE_E2E_BIN_DIR"); pre != "" {
+			if _, err := os.Stat(filepath.Join(pre, "aide"+exe)); err != nil {
+				buildErr = fmt.Errorf("AIDE_E2E_BIN_DIR=%q: %w", pre, err)
+				return
+			}
+			binDir = pre
+			return
+		}
 		binDir, buildErr = os.MkdirTemp("", "aide-e2e-bin")
 		if buildErr != nil {
 			return
 		}
-		for _, pkg := range []string{"./cmd/aide-relay", "./cmd/aided", "./cmd/aide", "./internal/provider/acp/fakeacp", "./internal/provider/claude/fakeclaude", "./bench/fakecodex"} {
-			cmd := filepath.Base(pkg)
-			args := []string{"build", "-o", filepath.Join(binDir, cmd+exe)}
-			if os.Getenv("AIDE_E2E_RACE") != "" {
-				args = append(args, "-race") // the binaries exit 66 on a data race
-			}
-			out, err := exec.Command("go", append(args, pkg)...).CombinedOutput()
-			if err != nil {
-				buildErr = fmt.Errorf("build %s: %v\n%s", cmd, err, out)
-				return
-			}
+		pkgs := []string{"./cmd/aide-relay", "./cmd/aided", "./cmd/aide", "./internal/provider/acp/fakeacp", "./internal/provider/claude/fakeclaude", "./bench/fakecodex"}
+		args := []string{"build", "-o", binDir + string(os.PathSeparator)}
+		if os.Getenv("AIDE_E2E_RACE") != "" {
+			args = append(args, "-race") // the binaries exit 66 on a data race
+		}
+		out, err := exec.Command("go", append(args, pkgs...)...).CombinedOutput()
+		if err != nil {
+			buildErr = fmt.Errorf("build e2e binaries: %v\n%s", err, out)
+			return
 		}
 	})
 	if buildErr != nil {

@@ -60,6 +60,33 @@ class E2EShardsTest(unittest.TestCase):
             bad = self._run("ledger", "--exclude", "TestDesktop", "--of", "4", str(tf), *logs)
             self.assertNotEqual(bad.returncode, 0)
 
+    def test_windows_desktop_sharding_and_ledger(self):
+        with tempfile.TemporaryDirectory() as td:
+            seen = []
+            logs = []
+            for s in (1, 2):
+                r = self._run("desktop-run-pattern", "--of", "2", "--shard", str(s))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                pat = r.stdout.strip()
+                self.assertTrue(pat.startswith("^TestDesktop$/^(") and pat.endswith(")$"), pat)
+                specs = pat[len("^TestDesktop$/^("):-2].split("|")
+                self.assertGreater(len(specs), 0)
+                seen.extend(specs)
+                lf = Path(td) / f"desk-{s}.log"
+                lf.write_text("\n".join(f"    --- PASS: TestDesktop/{sp} (12.34s)" for sp in specs) + "\n")
+                logs.append(str(lf))
+            self.assertEqual(len(seen), len(set(seen)))
+            self.assertGreaterEqual(len(seen), 16)
+
+            lr = self._run("desktop-ledger", "--of", "2", *logs)
+            self.assertEqual(lr.returncode, 0, lr.stdout + lr.stderr)
+            self.assertIn(f"listed {len(seen)}, ran once each: {len(seen)}", lr.stdout)
+
+            # Missing spec must fail ledger
+            Path(logs[1]).write_text("")
+            bad = self._run("desktop-ledger", "--of", "2", *logs)
+            self.assertNotEqual(bad.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,21 @@
+{
+ "measured": "ci.yml run 45667369169 (windows-latest, windows-app TestDesktop), 2026-11-25 UTC: per-spec durations for 2-shard desktop e2e balancing (#127)",
+ "seconds": {
+  "attention": 39.66,
+  "batchk": 34.4,
+  "dsh": 53.28,
+  "motion": 52.3,
+  "overview": 37.17,
+  "rollback": 21.66,
+  "search": 29.44,
+  "session": 85.6,
+  "sessionlist": 46.88,
+  "settings": 38.57,
+  "sheets": 34.25,
+  "shell": 42.51,
+  "tasks": 19.23,
+  "tray": 107.19,
+  "windows": 35.35,
+  "workspace": 36.45
+ }
+}
