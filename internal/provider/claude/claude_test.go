@@ -587,3 +587,62 @@ func TestLoginStateIsTheCLIs(t *testing.T) {
 		})
 	}
 }
+
+// TestStartEarlyExitPreservesAuthFailure (工单 #126): when a Claude Code
+// process rejects startup (e.g. "Not logged in") and exits before aided writes
+// the second stdin line (or even the first), Start must not discard the
+// stdout reader and fail with a raw EPIPE / broken pipe; it must still surface
+// the structured FAILURE_KIND_AUTH event (or real stderr/exit error when
+// stdout had no structured result).
+func TestStartEarlyExitPreservesAuthFailure(t *testing.T) {
+	scripted(t)
+	runCase := func(t *testing.T, script string, loops int, wantAuth bool) {
+		t.Helper()
+		bin := filepath.Join(t.TempDir(), "claude")
+		if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		p := &Provider{Binary: bin}
+		for i := 0; i < loops; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			sess, err := p.Start(ctx, provider.StartSpec{
+				WorkDir: t.TempDir(),
+				Prompt:  "fix the header",
+			})
+			if err != nil {
+				cancel()
+				t.Fatalf("iter %d: Start failed with %v (swallowed early exit output)", i, err)
+			}
+			var gotAuth bool
+			for ev := range sess.Events() {
+				if ev.Kind == provider.EventTurnCompleted && ev.Failure != nil && ev.Failure.Kind == sessionv1.FailureKind_FAILURE_KIND_AUTH {
+					gotAuth = true
+				}
+			}
+			<-sess.Done()
+			procErr := sess.Err()
+			cancel()
+			if wantAuth && !gotAuth {
+				t.Fatalf("iter %d: expected FAILURE_KIND_AUTH event, got none (proc err=%v)", i, procErr)
+			}
+			if !wantAuth {
+				if gotAuth {
+					t.Fatalf("iter %d: unexpected auth failure", i)
+				}
+				if procErr == nil || !strings.Contains(procErr.Error(), "fatal: missing config") {
+					t.Fatalf("iter %d: expected stderr detail in proc err, got %v", i, procErr)
+				}
+			}
+		}
+	}
+
+	t.Run("exit_before_reading_stdin", func(t *testing.T) {
+		runCase(t, "#!/bin/sh\necho '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"Not logged in · Please run /login\"}'\nexit 1\n", 20, true)
+	})
+	t.Run("exit_after_init_line", func(t *testing.T) {
+		runCase(t, "#!/bin/sh\nread first\necho '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"Not logged in · Please run /login\"}'\nexit 1\n", 30, true)
+	})
+	t.Run("stderr_only_early_exit", func(t *testing.T) {
+		runCase(t, "#!/bin/sh\necho 'fatal: missing config' >&2\nexit 1\n", 10, false)
+	})
+}
