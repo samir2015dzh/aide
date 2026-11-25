@@ -28,9 +28,9 @@ import (
 const (
 	kAgentDefaults = "agent_defaults/"
 	kAgentOffers   = "agent_offers/"
-	// offersFormat is how what an agent offered is kept: 2 since its models
-	// are listed each once, by where from (工单 #98 补充, #117).
-	offersFormat = 2
+	// offersFormat is how what an agent offered is kept: 3 since models are
+	// listed once each with provider-first naming ("<provider> · <id>", 工单 #117).
+	offersFormat = 3
 )
 
 // keptOffers is what an agent offered as kept (agent_offers/): Format 0 is

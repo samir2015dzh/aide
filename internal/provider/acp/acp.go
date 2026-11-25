@@ -523,7 +523,8 @@ type configOption struct {
 type choice struct {
 	Value   string   `json:"value"`
 	Name    string   `json:"name"`
-	Options []choice `json:"options"` // a group of choices; Name is the group's
+	GroupID string   `json:"group"`
+	Options []choice `json:"options"` // a group of choices; Name (or GroupID) is the group's
 	Group   string   `json:"-"`       // the group it is in (choices)
 }
 
@@ -544,7 +545,7 @@ func (c *sessionConfig) option(category string) *configOption {
 func (c *sessionConfig) modelOptions() []*configOption {
 	var out []*configOption
 	for i, o := range c.ConfigOptions {
-		if o.Category == "model" || o.ID == "model" {
+		if o.Category == "model" || o.ID == "model" || o.ID == "llm" || o.ID == "custom_llm" {
 			out = append(out, &c.ConfigOptions[i])
 		}
 	}
@@ -558,7 +559,7 @@ func (o *configOption) choices() []choice {
 	walk = func(cs []choice, group string) {
 		for _, c := range cs {
 			if len(c.Options) > 0 {
-				walk(c.Options, c.Name)
+				walk(c.Options, firstNonEmpty(c.Name, c.GroupID))
 				continue
 			}
 			out = append(out, choice{Value: c.Value, Name: firstNonEmpty(c.Name, c.Value), Group: group})

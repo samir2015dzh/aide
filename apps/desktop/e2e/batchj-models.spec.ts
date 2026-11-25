@@ -78,25 +78,25 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已开新对话", { timeout: 30_000 });
 
-  // Now its own, as DSH named them in that session (工单 #98 补充): each model once — the same one by DSH's API and
-  // account lines is one entry, the list named one way (工单 #117: by specific model ID, as one of them has no display name), both lines said — and the custom provider's (magpie, in a model
-  // option of its own) listed too. The conversation runs its default, read back.
-  await expect(chip).toHaveText("deepseek-v4-flash", { timeout: 30_000 });
+  // Now its own, as DSH named them in that session (工单 #98 补充, #117): each model once — the same one by DSH's API and
+  // account lines is one entry, named uniformly provider-first ("<provider> · <id>"), both lines said — and the custom
+  // provider's (magpie, in a model option of its own) listed too. The conversation runs its default, read back.
+  await expect(chip).toHaveText("DeepSeek · deepseek-v4-flash", { timeout: 30_000 });
   const listed = await modelList(page, chip);
   expect(listed).toEqual([
-    "默认 · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
-    "deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
-    "deepseek-v4-pro deepseek/deepseek-v4-pro · DeepSeek",
-    "group/deepseek-v4.1 magpie/group/deepseek-v4.1 · magpie",
+    "默认 · DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "DeepSeek · deepseek-v4-pro deepseek/deepseek-v4-pro · DeepSeek",
+    "magpie · group/deepseek-v4.1 magpie/group/deepseek-v4.1 · magpie",
   ]);
   expect(new Set(listed.slice(1)).size).toBe(listed.length - 1);
   await snap(page, "batchj-dsh-models");
-  await page.getByRole("menuitemradio", { name: /^group\/deepseek-v4\.1/ }).click();
+  await page.getByRole("menuitemradio", { name: /^magpie · group\/deepseek-v4\.1/ }).click();
   await expect(bot.getByRole("note")).toContainText("换了模型：下一条会开新对话");
   await box.fill("config");
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已开新对话：换了模型", { timeout: 30_000 });
-  await expect(chip).toHaveText("group/deepseek-v4.1");
+  await expect(chip).toHaveText("magpie · group/deepseek-v4.1");
   await snap(page, "batchj-dsh-ran");
   await bot.locator(".conv-head-t").click();
   const log = page.getByRole("log", { name: "对话" });
@@ -106,8 +106,8 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   // conversation on the one picked, said before and after, which runs it and reads it back.
   const mbox = page.locator(".mbox");
   const inChat = mbox.getByRole("button", { name: "模型", exact: true });
-  await expect(inChat).toHaveText("group/deepseek-v4.1");
-  await pick(inChat, /^deepseek-v4-pro/);
+  await expect(inChat).toHaveText("magpie · group/deepseek-v4.1");
+  await pick(inChat, /^DeepSeek · deepseek-v4-pro/);
   await expect(mbox.getByRole("note")).toContainText("换了模型：下一条会开新对话");
   await snap(page, "batchj-dsh-in-chat-switch");
   const chatBox = mbox.getByRole("textbox", { name: "发给 DSH 的消息" });
@@ -115,10 +115,10 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   await chatBox.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "已开新对话：换了模型" })).toBeVisible({ timeout: 30_000 });
   await expect(log).toContainText("config: deepseek/deepseek-v4-pro", { timeout: 30_000 });
-  await expect(inChat).toHaveText("deepseek-v4-pro");
+  await expect(inChat).toHaveText("DeepSeek · deepseek-v4-pro");
   await expect(mbox.getByRole("note")).toHaveCount(0);
   await snap(page, "batchj-dsh-in-chat-ran");
   await page.getByRole("button", { name: "会话设置", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "会话设置" }).getByRole("complementary", { name: "上下文" })).toContainText("deepseek-v4-pro · deepseek/deepseek-v4-pro · DeepSeek");
+  await expect(page.getByRole("dialog", { name: "会话设置" }).getByRole("complementary", { name: "上下文" })).toContainText("DeepSeek · deepseek-v4-pro · deepseek/deepseek-v4-pro · DeepSeek");
   await app.close();
 });
