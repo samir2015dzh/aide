@@ -196,6 +196,8 @@ esac
 			var f desktopFixture
 			if name == "workspace" { // a managed workspace's session, on the scripted fake agent (workspaceWorld)
 				f = workspaceWorld(t)
+			} else if name == "rollback" { // rollback-capable scripted fake provider (#113 refuses ACP rollback)
+				f = rollbackWorld(t)
 			} else {
 				f = desktopWorld(t, name == "onboarding", name == "health", name == "settings", more...)
 			}
@@ -217,9 +219,6 @@ esac
 			}
 			if name == "rosterdelete" || name == "batchj-botsettings" { // Muse, a personal agent that logged in once and isn't connected (工单 #82, #97)
 				f.owner.loginAgent([]string{"AIDE_HOME=" + t.TempDir(), "AIDE_LINK=off"}, "Muse", nil)
-			}
-			if name == "rollback" { // an in-place session, which has nothing to roll back to
-				inPlaceSessions(t, f)
 			}
 			if name == "newsession" { // acme/widget on its GitHub, and an agent's session there
 				repoSession(t, f)
@@ -303,6 +302,37 @@ func desktopWorld(t *testing.T, fresh, limited, wake bool, more ...string) deskt
 		f.Fresh = append(f.Fresh, newFreshOwner(t, w, fmt.Sprintf("fresh-%d", i), i == 0, i == 8))
 	}
 	return f
+}
+
+// rollbackWorld is an owner Mac running the scripted fake provider (which
+// supports conversation + workspace rollback, unlike ACP per 工单 #113), with
+// an in-place project and session ("就地") for rollback.spec.ts.
+func rollbackWorld(t *testing.T) desktopFixture {
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{}, "--retry-delay", "0")
+	ctx := context.Background()
+	st, err := w.app.client.GetStatus(ctx, &localv1.GetStatusRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.app.client.AddProject(ctx, &localv1.AddProjectRequest{
+		MachineId: st.LocalMachineId, ProjectId: "live",
+		Path:      gitRepo(t, map[string]string{"app.txt": "live\n"}),
+		Workspace: identityv1.Workspace_WORKSPACE_IN_PLACE,
+	}); err != nil {
+		t.Fatalf("add in-place project: %v", err)
+	}
+	s := firstSession(w.cli(2*time.Minute, "session", "start", "--project", "live", "-o", "json", "--agent", "claude", "--title", "就地", "--prompt", "say 好", "--wait").stdout)
+	if s.SessionID == "" {
+		t.Fatal("就地: no session")
+	}
+	ownerOpened(t, w, s.SessionID)
+	return desktopFixture{
+		Socket:   w.sock,
+		Sessions: map[string]string{"就地": s.SessionID},
+		CLI:      filepath.Join(w.bin, "aide"),
+		CLIEnv:   w.cliEnv,
+		owner:    w,
+	}
 }
 
 // otherMacSession joins a second Mac, work-mac, as a machine only, runs two

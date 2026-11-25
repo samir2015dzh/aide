@@ -62,7 +62,7 @@ func (s *sessionService) StreamEvents(ctx context.Context, req *sessionv1.Stream
 }
 
 func (s *sessionService) SendMessage(ctx context.Context, req *sessionv1.SendMessageRequest) (*sessionv1.SendMessageResponse, error) {
-	sess, err := s.n.sessions.Send(ctx, principalFrom(ctx), req.SessionId, req.Text, req.Attachments)
+	sess, err := s.n.sessions.SendWithID(ctx, principalFrom(ctx), req.SessionId, req.Text, req.Attachments, req.ClientMessageId, req.ClientSeq)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +118,14 @@ func (s *sessionService) PushSession(ctx context.Context, req *sessionv1.PushSes
 
 func (s *sessionService) RollbackSession(ctx context.Context, req *sessionv1.RollbackSessionRequest) (*sessionv1.Session, error) {
 	return s.n.sessions.Rollback(ctx, principalFrom(ctx), req.SessionId, req.Turn)
+}
+
+func (s *sessionService) ListCheckpoints(ctx context.Context, req *sessionv1.ListCheckpointsRequest) (*sessionv1.ListCheckpointsResponse, error) {
+	return s.n.sessions.ListCheckpoints(ctx, principalFrom(ctx), req.SessionId)
+}
+
+func (s *sessionService) ClearCheckpoints(ctx context.Context, req *sessionv1.ClearCheckpointsRequest) (*sessionv1.ClearCheckpointsResponse, error) {
+	return s.n.sessions.ClearCheckpoints(ctx, principalFrom(ctx), req.SessionId, req.KeepLatest)
 }
 
 type machineService struct{ n *Machine }
@@ -321,6 +329,20 @@ func (s *adminService) TestCustomAgent(ctx context.Context, req *machinev1.TestC
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
 	}
 	return s.n.TestCustomAgent(ctx, req.Agent)
+}
+
+func (s *adminService) ListACPRegistry(ctx context.Context, req *machinev1.ListACPRegistryRequest) (*machinev1.ListACPRegistryResponse, error) {
+	if principalFrom(ctx).Kind != PrincipalOwner {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
+	}
+	return s.n.ListACPRegistry(ctx, req.GetRefresh()), nil
+}
+
+func (s *adminService) InstallACPRegistryAgent(ctx context.Context, req *machinev1.InstallACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	if principalFrom(ctx).Kind != PrincipalOwner {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
+	}
+	return s.n.InstallACPRegistryAgent(ctx, req)
 }
 
 // ApplyAdminCommand verifies a root-signed command and executes it.

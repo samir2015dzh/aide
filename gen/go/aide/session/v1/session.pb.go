@@ -1215,10 +1215,13 @@ func (x *DiffStat) GetDeletions() uint32 {
 }
 
 type Usage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	InputTokens   uint64                 `protobuf:"varint,1,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
-	OutputTokens  uint64                 `protobuf:"varint,2,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
-	CostUsd       float64                `protobuf:"fixed64,3,opt,name=cost_usd,json=costUsd,proto3" json:"cost_usd,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	InputTokens  uint64                 `protobuf:"varint,1,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
+	OutputTokens uint64                 `protobuf:"varint,2,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
+	CostUsd      float64                `protobuf:"fixed64,3,opt,name=cost_usd,json=costUsd,proto3" json:"cost_usd,omitempty"`
+	// True when cost_usd was estimated from open model pricing data (工单 #114)
+	// rather than reported by the agent; UI must label it as an estimate.
+	CostEstimated bool `protobuf:"varint,4,opt,name=cost_estimated,json=costEstimated,proto3" json:"cost_estimated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1272,6 +1275,13 @@ func (x *Usage) GetCostUsd() float64 {
 		return x.CostUsd
 	}
 	return 0
+}
+
+func (x *Usage) GetCostEstimated() bool {
+	if x != nil {
+		return x.CostEstimated
+	}
+	return false
 }
 
 type SessionProgress struct {
@@ -4151,10 +4161,14 @@ func (x *ErrorEvent) GetFailure() *Failure {
 // between (ACP agents). A turn that fails drops the messages that waited
 // for it.
 type SendMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Attachments   []*Attachment          `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SessionId   string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Text        string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Attachments []*Attachment          `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// Optional client-generated idempotency key for weak-network resend deduplication (工单 #115).
+	ClientMessageId string `protobuf:"bytes,4,opt,name=client_message_id,json=clientMessageId,proto3" json:"client_message_id,omitempty"`
+	// Optional client-local monotonic outbox sequence number (工单 #115).
+	ClientSeq     uint64 `protobuf:"varint,5,opt,name=client_seq,json=clientSeq,proto3" json:"client_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4208,6 +4222,20 @@ func (x *SendMessageRequest) GetAttachments() []*Attachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *SendMessageRequest) GetClientMessageId() string {
+	if x != nil {
+		return x.ClientMessageId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetClientSeq() uint64 {
+	if x != nil {
+		return x.ClientSeq
+	}
+	return 0
 }
 
 type SendMessageResponse struct {
@@ -5737,6 +5765,408 @@ func (x *InsightFinding) GetText() string {
 	return ""
 }
 
+type ListCheckpointsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCheckpointsRequest) Reset() {
+	*x = ListCheckpointsRequest{}
+	mi := &file_aide_session_v1_session_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCheckpointsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCheckpointsRequest) ProtoMessage() {}
+
+func (x *ListCheckpointsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_session_v1_session_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCheckpointsRequest.ProtoReflect.Descriptor instead.
+func (*ListCheckpointsRequest) Descriptor() ([]byte, []int) {
+	return file_aide_session_v1_session_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *ListCheckpointsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type Checkpoint struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Turn  uint32                 `protobuf:"varint,1,opt,name=turn,proto3" json:"turn,omitempty"`
+	// Hidden git ref (refs/aide/checkpoints/<session_id>/turn-<turn>).
+	Ref       string                 `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`
+	Commit    string                 `protobuf:"bytes,3,opt,name=commit,proto3" json:"commit,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	DiffStat  *DiffStat              `protobuf:"bytes,5,opt,name=diff_stat,json=diffStat,proto3" json:"diff_stat,omitempty"`
+	// True when this turn modified files relative to the previous checkpoint.
+	Changed       bool   `protobuf:"varint,6,opt,name=changed,proto3" json:"changed,omitempty"`
+	PromptExcerpt string `protobuf:"bytes,7,opt,name=prompt_excerpt,json=promptExcerpt,proto3" json:"prompt_excerpt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Checkpoint) Reset() {
+	*x = Checkpoint{}
+	mi := &file_aide_session_v1_session_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Checkpoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Checkpoint) ProtoMessage() {}
+
+func (x *Checkpoint) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_session_v1_session_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Checkpoint.ProtoReflect.Descriptor instead.
+func (*Checkpoint) Descriptor() ([]byte, []int) {
+	return file_aide_session_v1_session_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *Checkpoint) GetTurn() uint32 {
+	if x != nil {
+		return x.Turn
+	}
+	return 0
+}
+
+func (x *Checkpoint) GetRef() string {
+	if x != nil {
+		return x.Ref
+	}
+	return ""
+}
+
+func (x *Checkpoint) GetCommit() string {
+	if x != nil {
+		return x.Commit
+	}
+	return ""
+}
+
+func (x *Checkpoint) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Checkpoint) GetDiffStat() *DiffStat {
+	if x != nil {
+		return x.DiffStat
+	}
+	return nil
+}
+
+func (x *Checkpoint) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+func (x *Checkpoint) GetPromptExcerpt() string {
+	if x != nil {
+		return x.PromptExcerpt
+	}
+	return ""
+}
+
+type CheckpointPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Maximum number of turn checkpoints retained per session (0 = unlimited).
+	MaxCount uint32 `protobuf:"varint,1,opt,name=max_count,json=maxCount,proto3" json:"max_count,omitempty"`
+	// Maximum age in days before old checkpoints are pruned (0 = unlimited).
+	MaxAgeDays uint32 `protobuf:"varint,2,opt,name=max_age_days,json=maxAgeDays,proto3" json:"max_age_days,omitempty"`
+	// Untracked file policy: "included_non_ignored".
+	UntrackedPolicy string `protobuf:"bytes,3,opt,name=untracked_policy,json=untrackedPolicy,proto3" json:"untracked_policy,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CheckpointPolicy) Reset() {
+	*x = CheckpointPolicy{}
+	mi := &file_aide_session_v1_session_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckpointPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckpointPolicy) ProtoMessage() {}
+
+func (x *CheckpointPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_session_v1_session_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckpointPolicy.ProtoReflect.Descriptor instead.
+func (*CheckpointPolicy) Descriptor() ([]byte, []int) {
+	return file_aide_session_v1_session_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *CheckpointPolicy) GetMaxCount() uint32 {
+	if x != nil {
+		return x.MaxCount
+	}
+	return 0
+}
+
+func (x *CheckpointPolicy) GetMaxAgeDays() uint32 {
+	if x != nil {
+		return x.MaxAgeDays
+	}
+	return 0
+}
+
+func (x *CheckpointPolicy) GetUntrackedPolicy() string {
+	if x != nil {
+		return x.UntrackedPolicy
+	}
+	return ""
+}
+
+type ListCheckpointsResponse struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// False for non-git projects or explicit in-place workspaces.
+	Enabled bool `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Explicit reason when enabled is false (never silently omitted).
+	DisabledReason string `protobuf:"bytes,3,opt,name=disabled_reason,json=disabledReason,proto3" json:"disabled_reason,omitempty"`
+	// False when the session's provider cannot roll back conversation state.
+	CanRollback bool `protobuf:"varint,4,opt,name=can_rollback,json=canRollback,proto3" json:"can_rollback,omitempty"`
+	// Explicit reason when can_rollback is false.
+	RollbackRefusedReason string            `protobuf:"bytes,5,opt,name=rollback_refused_reason,json=rollbackRefusedReason,proto3" json:"rollback_refused_reason,omitempty"`
+	Policy                *CheckpointPolicy `protobuf:"bytes,6,opt,name=policy,proto3" json:"policy,omitempty"`
+	Checkpoints           []*Checkpoint     `protobuf:"bytes,7,rep,name=checkpoints,proto3" json:"checkpoints,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *ListCheckpointsResponse) Reset() {
+	*x = ListCheckpointsResponse{}
+	mi := &file_aide_session_v1_session_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCheckpointsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCheckpointsResponse) ProtoMessage() {}
+
+func (x *ListCheckpointsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_session_v1_session_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCheckpointsResponse.ProtoReflect.Descriptor instead.
+func (*ListCheckpointsResponse) Descriptor() ([]byte, []int) {
+	return file_aide_session_v1_session_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *ListCheckpointsResponse) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ListCheckpointsResponse) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *ListCheckpointsResponse) GetDisabledReason() string {
+	if x != nil {
+		return x.DisabledReason
+	}
+	return ""
+}
+
+func (x *ListCheckpointsResponse) GetCanRollback() bool {
+	if x != nil {
+		return x.CanRollback
+	}
+	return false
+}
+
+func (x *ListCheckpointsResponse) GetRollbackRefusedReason() string {
+	if x != nil {
+		return x.RollbackRefusedReason
+	}
+	return ""
+}
+
+func (x *ListCheckpointsResponse) GetPolicy() *CheckpointPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return nil
+}
+
+func (x *ListCheckpointsResponse) GetCheckpoints() []*Checkpoint {
+	if x != nil {
+		return x.Checkpoints
+	}
+	return nil
+}
+
+type ClearCheckpointsRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// Number of most recent checkpoints to retain; 0 clears all checkpoint refs.
+	KeepLatest    uint32 `protobuf:"varint,2,opt,name=keep_latest,json=keepLatest,proto3" json:"keep_latest,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearCheckpointsRequest) Reset() {
+	*x = ClearCheckpointsRequest{}
+	mi := &file_aide_session_v1_session_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearCheckpointsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearCheckpointsRequest) ProtoMessage() {}
+
+func (x *ClearCheckpointsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_session_v1_session_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearCheckpointsRequest.ProtoReflect.Descriptor instead.
+func (*ClearCheckpointsRequest) Descriptor() ([]byte, []int) {
+	return file_aide_session_v1_session_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *ClearCheckpointsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ClearCheckpointsRequest) GetKeepLatest() uint32 {
+	if x != nil {
+		return x.KeepLatest
+	}
+	return 0
+}
+
+type ClearCheckpointsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Removed       uint32                 `protobuf:"varint,1,opt,name=removed,proto3" json:"removed,omitempty"`
+	Remaining     uint32                 `protobuf:"varint,2,opt,name=remaining,proto3" json:"remaining,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearCheckpointsResponse) Reset() {
+	*x = ClearCheckpointsResponse{}
+	mi := &file_aide_session_v1_session_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearCheckpointsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearCheckpointsResponse) ProtoMessage() {}
+
+func (x *ClearCheckpointsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_aide_session_v1_session_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearCheckpointsResponse.ProtoReflect.Descriptor instead.
+func (*ClearCheckpointsResponse) Descriptor() ([]byte, []int) {
+	return file_aide_session_v1_session_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *ClearCheckpointsResponse) GetRemoved() uint32 {
+	if x != nil {
+		return x.Removed
+	}
+	return 0
+}
+
+func (x *ClearCheckpointsResponse) GetRemaining() uint32 {
+	if x != nil {
+		return x.Remaining
+	}
+	return 0
+}
+
 var File_aide_session_v1_session_proto protoreflect.FileDescriptor
 
 const file_aide_session_v1_session_proto_rawDesc = "" +
@@ -5808,11 +6238,12 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\n" +
 	"insertions\x18\x02 \x01(\rR\n" +
 	"insertions\x12\x1c\n" +
-	"\tdeletions\x18\x03 \x01(\rR\tdeletions\"j\n" +
+	"\tdeletions\x18\x03 \x01(\rR\tdeletions\"\x91\x01\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x04R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x04R\foutputTokens\x12\x19\n" +
-	"\bcost_usd\x18\x03 \x01(\x01R\acostUsd\"\xae\x04\n" +
+	"\bcost_usd\x18\x03 \x01(\x01R\acostUsd\x12%\n" +
+	"\x0ecost_estimated\x18\x04 \x01(\bR\rcostEstimated\"\xae\x04\n" +
 	"\x0fSessionProgress\x12\x1d\n" +
 	"\n" +
 	"turn_count\x18\x01 \x01(\rR\tturnCount\x12\x14\n" +
@@ -6057,12 +6488,15 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\n" +
 	"ErrorEvent\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x122\n" +
-	"\afailure\x18\x02 \x01(\v2\x18.aide.session.v1.FailureR\afailure\"\x86\x01\n" +
+	"\afailure\x18\x02 \x01(\v2\x18.aide.session.v1.FailureR\afailure\"\xd1\x01\n" +
 	"\x12SendMessageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12=\n" +
-	"\vattachments\x18\x03 \x03(\v2\x1b.aide.session.v1.AttachmentR\vattachments\"I\n" +
+	"\vattachments\x18\x03 \x03(\v2\x1b.aide.session.v1.AttachmentR\vattachments\x12*\n" +
+	"\x11client_message_id\x18\x04 \x01(\tR\x0fclientMessageId\x12\x1d\n" +
+	"\n" +
+	"client_seq\x18\x05 \x01(\x04R\tclientSeq\"I\n" +
 	"\x13SendMessageResponse\x122\n" +
 	"\asession\x18\x01 \x01(\v2\x18.aide.session.v1.SessionR\asession\"\xa9\x01\n" +
 	"\x15DeliverMessageRequest\x12\x1d\n" +
@@ -6197,7 +6631,42 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x06errors\x18\x03 \x01(\rR\x06errors\"8\n" +
 	"\x0eInsightFinding\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text*\x84\x02\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"7\n" +
+	"\x16ListCheckpointsRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xfe\x01\n" +
+	"\n" +
+	"Checkpoint\x12\x12\n" +
+	"\x04turn\x18\x01 \x01(\rR\x04turn\x12\x10\n" +
+	"\x03ref\x18\x02 \x01(\tR\x03ref\x12\x16\n" +
+	"\x06commit\x18\x03 \x01(\tR\x06commit\x129\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x126\n" +
+	"\tdiff_stat\x18\x05 \x01(\v2\x19.aide.session.v1.DiffStatR\bdiffStat\x12\x18\n" +
+	"\achanged\x18\x06 \x01(\bR\achanged\x12%\n" +
+	"\x0eprompt_excerpt\x18\a \x01(\tR\rpromptExcerpt\"|\n" +
+	"\x10CheckpointPolicy\x12\x1b\n" +
+	"\tmax_count\x18\x01 \x01(\rR\bmaxCount\x12 \n" +
+	"\fmax_age_days\x18\x02 \x01(\rR\n" +
+	"maxAgeDays\x12)\n" +
+	"\x10untracked_policy\x18\x03 \x01(\tR\x0funtrackedPolicy\"\xd0\x02\n" +
+	"\x17ListCheckpointsResponse\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x12'\n" +
+	"\x0fdisabled_reason\x18\x03 \x01(\tR\x0edisabledReason\x12!\n" +
+	"\fcan_rollback\x18\x04 \x01(\bR\vcanRollback\x126\n" +
+	"\x17rollback_refused_reason\x18\x05 \x01(\tR\x15rollbackRefusedReason\x129\n" +
+	"\x06policy\x18\x06 \x01(\v2!.aide.session.v1.CheckpointPolicyR\x06policy\x12=\n" +
+	"\vcheckpoints\x18\a \x03(\v2\x1b.aide.session.v1.CheckpointR\vcheckpoints\"Y\n" +
+	"\x17ClearCheckpointsRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
+	"\vkeep_latest\x18\x02 \x01(\rR\n" +
+	"keepLatest\"R\n" +
+	"\x18ClearCheckpointsResponse\x12\x18\n" +
+	"\aremoved\x18\x01 \x01(\rR\aremoved\x12\x1c\n" +
+	"\tremaining\x18\x02 \x01(\rR\tremaining*\x84\x02\n" +
 	"\rSessionStatus\x12\x1e\n" +
 	"\x1aSESSION_STATUS_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15SESSION_STATUS_QUEUED\x10\x01\x12\x1c\n" +
@@ -6260,7 +6729,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\tEventView\x12\x1a\n" +
 	"\x16EVENT_VIEW_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10EVENT_VIEW_BASIC\x10\x01\x12\x13\n" +
-	"\x0fEVENT_VIEW_FULL\x10\x022\xfb\x0e\n" +
+	"\x0fEVENT_VIEW_FULL\x10\x022\xd6\x10\n" +
 	"\x0eSessionService\x12a\n" +
 	"\fStartSession\x12$.aide.session.v1.StartSessionRequest\x1a%.aide.session.v1.StartSessionResponse\"\x04\x88\xb5\x18\x02\x12P\n" +
 	"\n" +
@@ -6281,7 +6750,9 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x0eAnswerQuestion\x12&.aide.session.v1.AnswerQuestionRequest\x1a\x18.aide.session.v1.Session\"\x04\x88\xb5\x18\x02\x12b\n" +
 	"\x0eReadToolOutput\x12&.aide.session.v1.ReadToolOutputRequest\x1a .aide.session.v1.ToolOutputChunk\"\x04\x88\xb5\x18\x010\x01\x12^\n" +
 	"\vPushSession\x12#.aide.session.v1.PushSessionRequest\x1a$.aide.session.v1.PushSessionResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\x0fRollbackSession\x12'.aide.session.v1.RollbackSessionRequest\x1a\x18.aide.session.v1.Session\"\x04\x88\xb5\x18\x02\x12Z\n" +
+	"\x0fRollbackSession\x12'.aide.session.v1.RollbackSessionRequest\x1a\x18.aide.session.v1.Session\"\x04\x88\xb5\x18\x02\x12j\n" +
+	"\x0fListCheckpoints\x12'.aide.session.v1.ListCheckpointsRequest\x1a(.aide.session.v1.ListCheckpointsResponse\"\x04\x88\xb5\x18\x01\x12m\n" +
+	"\x10ClearCheckpoints\x12(.aide.session.v1.ClearCheckpointsRequest\x1a).aide.session.v1.ClearCheckpointsResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
 	"\x0fMarkSessionSeen\x12'.aide.session.v1.MarkSessionSeenRequest\x1a\x18.aide.session.v1.Session\"\x04\x88\xb5\x18\x02\x12h\n" +
 	"\x12GetSessionInsights\x12*.aide.session.v1.GetSessionInsightsRequest\x1a .aide.session.v1.SessionInsights\"\x04\x88\xb5\x18\x01B\xc0\x01\n" +
 	"\x13com.aide.session.v1B\fSessionProtoP\x01Z=github.com/samir2015dzh/aide/gen/go/aide/session/v1;sessionv1\xa2\x02\x03ASX\xaa\x02\x0fAide.Session.V1\xca\x02\x0fAide\\Session\\V1\xe2\x02\x1bAide\\Session\\V1\\GPBMetadata\xea\x02\x11Aide::Session::V1b\x06proto3"
@@ -6299,7 +6770,7 @@ func file_aide_session_v1_session_proto_rawDescGZIP() []byte {
 }
 
 var file_aide_session_v1_session_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_aide_session_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
+var file_aide_session_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 72)
 var file_aide_session_v1_session_proto_goTypes = []any{
 	(SessionStatus)(0),                // 0: aide.session.v1.SessionStatus
 	(SessionState)(0),                 // 1: aide.session.v1.SessionState
@@ -6374,15 +6845,21 @@ var file_aide_session_v1_session_proto_goTypes = []any{
 	(*QuestionInsight)(nil),           // 70: aide.session.v1.QuestionInsight
 	(*ToolCount)(nil),                 // 71: aide.session.v1.ToolCount
 	(*InsightFinding)(nil),            // 72: aide.session.v1.InsightFinding
-	(*timestamppb.Timestamp)(nil),     // 73: google.protobuf.Timestamp
-	(v1.Workspace)(0),                 // 74: aide.identity.v1.Workspace
-	(*v1.Signed)(nil),                 // 75: aide.identity.v1.Signed
+	(*ListCheckpointsRequest)(nil),    // 73: aide.session.v1.ListCheckpointsRequest
+	(*Checkpoint)(nil),                // 74: aide.session.v1.Checkpoint
+	(*CheckpointPolicy)(nil),          // 75: aide.session.v1.CheckpointPolicy
+	(*ListCheckpointsResponse)(nil),   // 76: aide.session.v1.ListCheckpointsResponse
+	(*ClearCheckpointsRequest)(nil),   // 77: aide.session.v1.ClearCheckpointsRequest
+	(*ClearCheckpointsResponse)(nil),  // 78: aide.session.v1.ClearCheckpointsResponse
+	(*timestamppb.Timestamp)(nil),     // 79: google.protobuf.Timestamp
+	(v1.Workspace)(0),                 // 80: aide.identity.v1.Workspace
+	(*v1.Signed)(nil),                 // 81: aide.identity.v1.Signed
 }
 var file_aide_session_v1_session_proto_depIdxs = []int32{
 	3,   // 0: aide.session.v1.Failure.kind:type_name -> aide.session.v1.FailureKind
 	9,   // 1: aide.session.v1.StartSessionRequest.attachments:type_name -> aide.session.v1.Attachment
 	22,  // 2: aide.session.v1.StartSessionResponse.session:type_name -> aide.session.v1.Session
-	73,  // 3: aide.session.v1.Notice.at:type_name -> google.protobuf.Timestamp
+	79,  // 3: aide.session.v1.Notice.at:type_name -> google.protobuf.Timestamp
 	16,  // 4: aide.session.v1.Notice.question:type_name -> aide.session.v1.Question
 	3,   // 5: aide.session.v1.Notice.failure:type_name -> aide.session.v1.FailureKind
 	13,  // 6: aide.session.v1.Notice.diff_stat:type_name -> aide.session.v1.DiffStat
@@ -6390,26 +6867,26 @@ var file_aide_session_v1_session_proto_depIdxs = []int32{
 	14,  // 8: aide.session.v1.SessionProgress.usage:type_name -> aide.session.v1.Usage
 	7,   // 9: aide.session.v1.SessionProgress.last_failure:type_name -> aide.session.v1.Failure
 	16,  // 10: aide.session.v1.SessionProgress.pending_question:type_name -> aide.session.v1.Question
-	73,  // 11: aide.session.v1.SessionProgress.turn_started_at:type_name -> google.protobuf.Timestamp
-	73,  // 12: aide.session.v1.SessionProgress.last_event_at:type_name -> google.protobuf.Timestamp
+	79,  // 11: aide.session.v1.SessionProgress.turn_started_at:type_name -> google.protobuf.Timestamp
+	79,  // 12: aide.session.v1.SessionProgress.last_event_at:type_name -> google.protobuf.Timestamp
 	17,  // 13: aide.session.v1.Question.items:type_name -> aide.session.v1.QuestionItem
-	73,  // 14: aide.session.v1.Question.asked_at:type_name -> google.protobuf.Timestamp
-	73,  // 15: aide.session.v1.Question.expires_at:type_name -> google.protobuf.Timestamp
+	79,  // 14: aide.session.v1.Question.asked_at:type_name -> google.protobuf.Timestamp
+	79,  // 15: aide.session.v1.Question.expires_at:type_name -> google.protobuf.Timestamp
 	18,  // 16: aide.session.v1.QuestionItem.options:type_name -> aide.session.v1.QuestionOption
 	16,  // 17: aide.session.v1.QuestionAsked.question:type_name -> aide.session.v1.Question
 	4,   // 18: aide.session.v1.QuestionResolved.resolution:type_name -> aide.session.v1.QuestionResolution
 	19,  // 19: aide.session.v1.QuestionResolved.answers:type_name -> aide.session.v1.Answer
 	0,   // 20: aide.session.v1.Session.status:type_name -> aide.session.v1.SessionStatus
 	15,  // 21: aide.session.v1.Session.progress:type_name -> aide.session.v1.SessionProgress
-	73,  // 22: aide.session.v1.Session.created_at:type_name -> google.protobuf.Timestamp
-	73,  // 23: aide.session.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
-	74,  // 24: aide.session.v1.Session.workspace:type_name -> aide.identity.v1.Workspace
+	79,  // 22: aide.session.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	79,  // 23: aide.session.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 24: aide.session.v1.Session.workspace:type_name -> aide.identity.v1.Workspace
 	23,  // 25: aide.session.v1.Session.seen:type_name -> aide.session.v1.SessionSeen
 	0,   // 26: aide.session.v1.ListSessionsRequest.status:type_name -> aide.session.v1.SessionStatus
-	73,  // 27: aide.session.v1.ListSessionsRequest.since:type_name -> google.protobuf.Timestamp
+	79,  // 27: aide.session.v1.ListSessionsRequest.since:type_name -> google.protobuf.Timestamp
 	26,  // 28: aide.session.v1.ListSessionsRequest.before:type_name -> aide.session.v1.SessionCursor
 	5,   // 29: aide.session.v1.ListSessionsRequest.view:type_name -> aide.session.v1.SessionView
-	73,  // 30: aide.session.v1.SessionCursor.updated_at:type_name -> google.protobuf.Timestamp
+	79,  // 30: aide.session.v1.SessionCursor.updated_at:type_name -> google.protobuf.Timestamp
 	22,  // 31: aide.session.v1.ListSessionsResponse.sessions:type_name -> aide.session.v1.Session
 	26,  // 32: aide.session.v1.ListSessionsResponse.next:type_name -> aide.session.v1.SessionCursor
 	5,   // 33: aide.session.v1.WatchSessionsRequest.view:type_name -> aide.session.v1.SessionView
@@ -6417,7 +6894,7 @@ var file_aide_session_v1_session_proto_depIdxs = []int32{
 	6,   // 35: aide.session.v1.StreamEventsRequest.view:type_name -> aide.session.v1.EventView
 	6,   // 36: aide.session.v1.ListEventsRequest.view:type_name -> aide.session.v1.EventView
 	33,  // 37: aide.session.v1.ListEventsResponse.events:type_name -> aide.session.v1.SessionEvent
-	73,  // 38: aide.session.v1.SessionEvent.ts:type_name -> google.protobuf.Timestamp
+	79,  // 38: aide.session.v1.SessionEvent.ts:type_name -> google.protobuf.Timestamp
 	35,  // 39: aide.session.v1.SessionEvent.status:type_name -> aide.session.v1.StatusChanged
 	36,  // 40: aide.session.v1.SessionEvent.turn_started:type_name -> aide.session.v1.TurnStarted
 	40,  // 41: aide.session.v1.SessionEvent.user_message:type_name -> aide.session.v1.UserMessage
@@ -6442,12 +6919,12 @@ var file_aide_session_v1_session_proto_depIdxs = []int32{
 	7,   // 60: aide.session.v1.ErrorEvent.failure:type_name -> aide.session.v1.Failure
 	9,   // 61: aide.session.v1.SendMessageRequest.attachments:type_name -> aide.session.v1.Attachment
 	22,  // 62: aide.session.v1.SendMessageResponse.session:type_name -> aide.session.v1.Session
-	75,  // 63: aide.session.v1.DeliverMessageRequest.message:type_name -> aide.identity.v1.Signed
+	81,  // 63: aide.session.v1.DeliverMessageRequest.message:type_name -> aide.identity.v1.Signed
 	9,   // 64: aide.session.v1.DeliverMessageRequest.attachments:type_name -> aide.session.v1.Attachment
 	22,  // 65: aide.session.v1.DeliverMessageResponse.session:type_name -> aide.session.v1.Session
 	19,  // 66: aide.session.v1.AnswerQuestionRequest.answers:type_name -> aide.session.v1.Answer
 	13,  // 67: aide.session.v1.GetDiffResponse.stat:type_name -> aide.session.v1.DiffStat
-	73,  // 68: aide.session.v1.SessionInsights.generated_at:type_name -> google.protobuf.Timestamp
+	79,  // 68: aide.session.v1.SessionInsights.generated_at:type_name -> google.protobuf.Timestamp
 	68,  // 69: aide.session.v1.SessionInsights.turns:type_name -> aide.session.v1.TurnInsight
 	69,  // 70: aide.session.v1.SessionInsights.failures:type_name -> aide.session.v1.FailureCount
 	70,  // 71: aide.session.v1.SessionInsights.questions:type_name -> aide.session.v1.QuestionInsight
@@ -6455,59 +6932,67 @@ var file_aide_session_v1_session_proto_depIdxs = []int32{
 	13,  // 73: aide.session.v1.SessionInsights.diff_stat:type_name -> aide.session.v1.DiffStat
 	14,  // 74: aide.session.v1.SessionInsights.usage:type_name -> aide.session.v1.Usage
 	72,  // 75: aide.session.v1.SessionInsights.findings:type_name -> aide.session.v1.InsightFinding
-	73,  // 76: aide.session.v1.TurnInsight.started_at:type_name -> google.protobuf.Timestamp
-	73,  // 77: aide.session.v1.TurnInsight.ended_at:type_name -> google.protobuf.Timestamp
+	79,  // 76: aide.session.v1.TurnInsight.started_at:type_name -> google.protobuf.Timestamp
+	79,  // 77: aide.session.v1.TurnInsight.ended_at:type_name -> google.protobuf.Timestamp
 	3,   // 78: aide.session.v1.TurnInsight.failure:type_name -> aide.session.v1.FailureKind
 	13,  // 79: aide.session.v1.TurnInsight.diff_stat:type_name -> aide.session.v1.DiffStat
 	14,  // 80: aide.session.v1.TurnInsight.usage:type_name -> aide.session.v1.Usage
 	3,   // 81: aide.session.v1.FailureCount.kind:type_name -> aide.session.v1.FailureKind
-	73,  // 82: aide.session.v1.QuestionInsight.asked_at:type_name -> google.protobuf.Timestamp
+	79,  // 82: aide.session.v1.QuestionInsight.asked_at:type_name -> google.protobuf.Timestamp
 	4,   // 83: aide.session.v1.QuestionInsight.resolution:type_name -> aide.session.v1.QuestionResolution
-	8,   // 84: aide.session.v1.SessionService.StartSession:input_type -> aide.session.v1.StartSessionRequest
-	24,  // 85: aide.session.v1.SessionService.GetSession:input_type -> aide.session.v1.GetSessionRequest
-	25,  // 86: aide.session.v1.SessionService.ListSessions:input_type -> aide.session.v1.ListSessionsRequest
-	28,  // 87: aide.session.v1.SessionService.WatchSessions:input_type -> aide.session.v1.WatchSessionsRequest
-	30,  // 88: aide.session.v1.SessionService.StreamEvents:input_type -> aide.session.v1.StreamEventsRequest
-	31,  // 89: aide.session.v1.SessionService.ListEvents:input_type -> aide.session.v1.ListEventsRequest
-	49,  // 90: aide.session.v1.SessionService.SendMessage:input_type -> aide.session.v1.SendMessageRequest
-	51,  // 91: aide.session.v1.SessionService.DeliverMessage:input_type -> aide.session.v1.DeliverMessageRequest
-	53,  // 92: aide.session.v1.SessionService.InterruptSession:input_type -> aide.session.v1.InterruptSessionRequest
-	54,  // 93: aide.session.v1.SessionService.ArchiveSession:input_type -> aide.session.v1.ArchiveSessionRequest
-	55,  // 94: aide.session.v1.SessionService.UnarchiveSession:input_type -> aide.session.v1.UnarchiveSessionRequest
-	56,  // 95: aide.session.v1.SessionService.DeleteSession:input_type -> aide.session.v1.DeleteSessionRequest
-	58,  // 96: aide.session.v1.SessionService.RenameSession:input_type -> aide.session.v1.RenameSessionRequest
-	60,  // 97: aide.session.v1.SessionService.GetDiff:input_type -> aide.session.v1.GetDiffRequest
-	59,  // 98: aide.session.v1.SessionService.AnswerQuestion:input_type -> aide.session.v1.AnswerQuestionRequest
-	45,  // 99: aide.session.v1.SessionService.ReadToolOutput:input_type -> aide.session.v1.ReadToolOutputRequest
-	62,  // 100: aide.session.v1.SessionService.PushSession:input_type -> aide.session.v1.PushSessionRequest
-	63,  // 101: aide.session.v1.SessionService.RollbackSession:input_type -> aide.session.v1.RollbackSessionRequest
-	64,  // 102: aide.session.v1.SessionService.MarkSessionSeen:input_type -> aide.session.v1.MarkSessionSeenRequest
-	66,  // 103: aide.session.v1.SessionService.GetSessionInsights:input_type -> aide.session.v1.GetSessionInsightsRequest
-	11,  // 104: aide.session.v1.SessionService.StartSession:output_type -> aide.session.v1.StartSessionResponse
-	22,  // 105: aide.session.v1.SessionService.GetSession:output_type -> aide.session.v1.Session
-	27,  // 106: aide.session.v1.SessionService.ListSessions:output_type -> aide.session.v1.ListSessionsResponse
-	29,  // 107: aide.session.v1.SessionService.WatchSessions:output_type -> aide.session.v1.WatchSessionsResponse
-	33,  // 108: aide.session.v1.SessionService.StreamEvents:output_type -> aide.session.v1.SessionEvent
-	32,  // 109: aide.session.v1.SessionService.ListEvents:output_type -> aide.session.v1.ListEventsResponse
-	50,  // 110: aide.session.v1.SessionService.SendMessage:output_type -> aide.session.v1.SendMessageResponse
-	52,  // 111: aide.session.v1.SessionService.DeliverMessage:output_type -> aide.session.v1.DeliverMessageResponse
-	22,  // 112: aide.session.v1.SessionService.InterruptSession:output_type -> aide.session.v1.Session
-	22,  // 113: aide.session.v1.SessionService.ArchiveSession:output_type -> aide.session.v1.Session
-	22,  // 114: aide.session.v1.SessionService.UnarchiveSession:output_type -> aide.session.v1.Session
-	57,  // 115: aide.session.v1.SessionService.DeleteSession:output_type -> aide.session.v1.DeleteSessionResponse
-	22,  // 116: aide.session.v1.SessionService.RenameSession:output_type -> aide.session.v1.Session
-	61,  // 117: aide.session.v1.SessionService.GetDiff:output_type -> aide.session.v1.GetDiffResponse
-	22,  // 118: aide.session.v1.SessionService.AnswerQuestion:output_type -> aide.session.v1.Session
-	46,  // 119: aide.session.v1.SessionService.ReadToolOutput:output_type -> aide.session.v1.ToolOutputChunk
-	65,  // 120: aide.session.v1.SessionService.PushSession:output_type -> aide.session.v1.PushSessionResponse
-	22,  // 121: aide.session.v1.SessionService.RollbackSession:output_type -> aide.session.v1.Session
-	22,  // 122: aide.session.v1.SessionService.MarkSessionSeen:output_type -> aide.session.v1.Session
-	67,  // 123: aide.session.v1.SessionService.GetSessionInsights:output_type -> aide.session.v1.SessionInsights
-	104, // [104:124] is the sub-list for method output_type
-	84,  // [84:104] is the sub-list for method input_type
-	84,  // [84:84] is the sub-list for extension type_name
-	84,  // [84:84] is the sub-list for extension extendee
-	0,   // [0:84] is the sub-list for field type_name
+	79,  // 84: aide.session.v1.Checkpoint.created_at:type_name -> google.protobuf.Timestamp
+	13,  // 85: aide.session.v1.Checkpoint.diff_stat:type_name -> aide.session.v1.DiffStat
+	75,  // 86: aide.session.v1.ListCheckpointsResponse.policy:type_name -> aide.session.v1.CheckpointPolicy
+	74,  // 87: aide.session.v1.ListCheckpointsResponse.checkpoints:type_name -> aide.session.v1.Checkpoint
+	8,   // 88: aide.session.v1.SessionService.StartSession:input_type -> aide.session.v1.StartSessionRequest
+	24,  // 89: aide.session.v1.SessionService.GetSession:input_type -> aide.session.v1.GetSessionRequest
+	25,  // 90: aide.session.v1.SessionService.ListSessions:input_type -> aide.session.v1.ListSessionsRequest
+	28,  // 91: aide.session.v1.SessionService.WatchSessions:input_type -> aide.session.v1.WatchSessionsRequest
+	30,  // 92: aide.session.v1.SessionService.StreamEvents:input_type -> aide.session.v1.StreamEventsRequest
+	31,  // 93: aide.session.v1.SessionService.ListEvents:input_type -> aide.session.v1.ListEventsRequest
+	49,  // 94: aide.session.v1.SessionService.SendMessage:input_type -> aide.session.v1.SendMessageRequest
+	51,  // 95: aide.session.v1.SessionService.DeliverMessage:input_type -> aide.session.v1.DeliverMessageRequest
+	53,  // 96: aide.session.v1.SessionService.InterruptSession:input_type -> aide.session.v1.InterruptSessionRequest
+	54,  // 97: aide.session.v1.SessionService.ArchiveSession:input_type -> aide.session.v1.ArchiveSessionRequest
+	55,  // 98: aide.session.v1.SessionService.UnarchiveSession:input_type -> aide.session.v1.UnarchiveSessionRequest
+	56,  // 99: aide.session.v1.SessionService.DeleteSession:input_type -> aide.session.v1.DeleteSessionRequest
+	58,  // 100: aide.session.v1.SessionService.RenameSession:input_type -> aide.session.v1.RenameSessionRequest
+	60,  // 101: aide.session.v1.SessionService.GetDiff:input_type -> aide.session.v1.GetDiffRequest
+	59,  // 102: aide.session.v1.SessionService.AnswerQuestion:input_type -> aide.session.v1.AnswerQuestionRequest
+	45,  // 103: aide.session.v1.SessionService.ReadToolOutput:input_type -> aide.session.v1.ReadToolOutputRequest
+	62,  // 104: aide.session.v1.SessionService.PushSession:input_type -> aide.session.v1.PushSessionRequest
+	63,  // 105: aide.session.v1.SessionService.RollbackSession:input_type -> aide.session.v1.RollbackSessionRequest
+	73,  // 106: aide.session.v1.SessionService.ListCheckpoints:input_type -> aide.session.v1.ListCheckpointsRequest
+	77,  // 107: aide.session.v1.SessionService.ClearCheckpoints:input_type -> aide.session.v1.ClearCheckpointsRequest
+	64,  // 108: aide.session.v1.SessionService.MarkSessionSeen:input_type -> aide.session.v1.MarkSessionSeenRequest
+	66,  // 109: aide.session.v1.SessionService.GetSessionInsights:input_type -> aide.session.v1.GetSessionInsightsRequest
+	11,  // 110: aide.session.v1.SessionService.StartSession:output_type -> aide.session.v1.StartSessionResponse
+	22,  // 111: aide.session.v1.SessionService.GetSession:output_type -> aide.session.v1.Session
+	27,  // 112: aide.session.v1.SessionService.ListSessions:output_type -> aide.session.v1.ListSessionsResponse
+	29,  // 113: aide.session.v1.SessionService.WatchSessions:output_type -> aide.session.v1.WatchSessionsResponse
+	33,  // 114: aide.session.v1.SessionService.StreamEvents:output_type -> aide.session.v1.SessionEvent
+	32,  // 115: aide.session.v1.SessionService.ListEvents:output_type -> aide.session.v1.ListEventsResponse
+	50,  // 116: aide.session.v1.SessionService.SendMessage:output_type -> aide.session.v1.SendMessageResponse
+	52,  // 117: aide.session.v1.SessionService.DeliverMessage:output_type -> aide.session.v1.DeliverMessageResponse
+	22,  // 118: aide.session.v1.SessionService.InterruptSession:output_type -> aide.session.v1.Session
+	22,  // 119: aide.session.v1.SessionService.ArchiveSession:output_type -> aide.session.v1.Session
+	22,  // 120: aide.session.v1.SessionService.UnarchiveSession:output_type -> aide.session.v1.Session
+	57,  // 121: aide.session.v1.SessionService.DeleteSession:output_type -> aide.session.v1.DeleteSessionResponse
+	22,  // 122: aide.session.v1.SessionService.RenameSession:output_type -> aide.session.v1.Session
+	61,  // 123: aide.session.v1.SessionService.GetDiff:output_type -> aide.session.v1.GetDiffResponse
+	22,  // 124: aide.session.v1.SessionService.AnswerQuestion:output_type -> aide.session.v1.Session
+	46,  // 125: aide.session.v1.SessionService.ReadToolOutput:output_type -> aide.session.v1.ToolOutputChunk
+	65,  // 126: aide.session.v1.SessionService.PushSession:output_type -> aide.session.v1.PushSessionResponse
+	22,  // 127: aide.session.v1.SessionService.RollbackSession:output_type -> aide.session.v1.Session
+	76,  // 128: aide.session.v1.SessionService.ListCheckpoints:output_type -> aide.session.v1.ListCheckpointsResponse
+	78,  // 129: aide.session.v1.SessionService.ClearCheckpoints:output_type -> aide.session.v1.ClearCheckpointsResponse
+	22,  // 130: aide.session.v1.SessionService.MarkSessionSeen:output_type -> aide.session.v1.Session
+	67,  // 131: aide.session.v1.SessionService.GetSessionInsights:output_type -> aide.session.v1.SessionInsights
+	110, // [110:132] is the sub-list for method output_type
+	88,  // [88:110] is the sub-list for method input_type
+	88,  // [88:88] is the sub-list for extension type_name
+	88,  // [88:88] is the sub-list for extension extendee
+	0,   // [0:88] is the sub-list for field type_name
 }
 
 func init() { file_aide_session_v1_session_proto_init() }
@@ -6539,7 +7024,7 @@ func file_aide_session_v1_session_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_aide_session_v1_session_proto_rawDesc), len(file_aide_session_v1_session_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   66,
+			NumMessages:   72,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

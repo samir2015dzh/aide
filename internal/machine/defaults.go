@@ -28,9 +28,9 @@ import (
 const (
 	kAgentDefaults = "agent_defaults/"
 	kAgentOffers   = "agent_offers/"
-	// offersFormat is how what an agent offered is kept: 2 since its models
-	// are listed each once, by where from (工单 #98 补充, #117).
-	offersFormat = 2
+	// offersFormat is how what an agent offered is kept: 3 since models are
+	// listed once each with provider-first naming ("<provider> · <id>", 工单 #117).
+	offersFormat = 3
 )
 
 // keptOffers is what an agent offered as kept (agent_offers/): Format 0 is
@@ -226,7 +226,7 @@ func checkSettings(agent string, i provider.Info, model, effort, runs string) er
 // this machine's defaults and the agent's own configuration. n.mu is held.
 func (n *Machine) agentModels(a *machinev1.AgentStatus, i provider.Info) {
 	for _, m := range i.Models {
-		a.Models = append(a.Models, &machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts, Resolved: m.Resolved, Source: m.Source})
+		a.Models = append(a.Models, n.enrichAgentModel(&machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts, Resolved: m.Resolved, Source: m.Source}))
 	}
 	a.Defaults = n.defaults[a.Name]
 	for _, m := range i.Modes {
@@ -243,9 +243,28 @@ func (n *Machine) agentModels(a *machinev1.AgentStatus, i provider.Info) {
 				v.ObservedAtUnixMs, v.ExpiresAtUnixMs = c.ObservedAt.UnixMilli(), c.ExpiresAt.UnixMilli()
 			}
 			for _, m := range c.Models {
-				v.Models = append(v.Models, &machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts})
+				v.Models = append(v.Models, n.enrichAgentModel(&machinev1.AgentModel{Id: m.ID, Name: m.Name, Efforts: m.Efforts, Resolved: m.Resolved, Source: m.Source}))
 			}
 			a.ModelCatalogs = append(a.ModelCatalogs, v)
 		}
 	}
+}
+
+// enrichAgentModel fills open model metadata (context window, output limit,
+// capabilities, reference USD pricing) on strict exact match only (工单 #114).
+// Unknown or custom models are left untouched with zero/empty metadata.
+func (n *Machine) enrichAgentModel(m *machinev1.AgentModel) *machinev1.AgentModel {
+	if m == nil || n.catalog == nil {
+		return m
+	}
+	e, ok := n.catalog.Lookup(m.Id, m.Resolved)
+	if !ok {
+		return m
+	}
+	m.ContextWindow = e.ContextWindow
+	m.MaxOutputTokens = e.MaxOutputTokens
+	m.Capabilities = e.Capabilities
+	m.InputCostPerMillion = e.InputCostPerMillion
+	m.OutputCostPerMillion = e.OutputCostPerMillion
+	return m
 }

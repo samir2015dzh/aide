@@ -206,10 +206,13 @@ func reviewSession(id, title string, diff *sessionv1.DiffStat, evs []*sessionv1.
 			}
 			cur.EndedAt = e.Ts
 			cur.DiffStat = &sessionv1.DiffStat{FilesChanged: tc.DiffStat.GetFilesChanged(), Insertions: tc.DiffStat.GetInsertions(), Deletions: tc.DiffStat.GetDeletions()}
-			cur.Usage = &sessionv1.Usage{InputTokens: tc.Usage.GetInputTokens(), OutputTokens: tc.Usage.GetOutputTokens(), CostUsd: tc.Usage.GetCostUsd()}
+			cur.Usage = &sessionv1.Usage{InputTokens: tc.Usage.GetInputTokens(), OutputTokens: tc.Usage.GetOutputTokens(), CostUsd: tc.Usage.GetCostUsd(), CostEstimated: tc.Usage.GetCostEstimated()}
 			in.Usage.InputTokens += cur.Usage.InputTokens
 			in.Usage.OutputTokens += cur.Usage.OutputTokens
 			in.Usage.CostUsd += cur.Usage.CostUsd
+			if cur.Usage.CostEstimated {
+				in.Usage.CostEstimated = true
+			}
 			prevFail = false
 			if tc.IsError {
 				kind := cmp.Or(tc.Failure.GetKind(), sessionv1.FailureKind_FAILURE_KIND_UNKNOWN)
@@ -459,6 +462,9 @@ func diffText(d *sessionv1.DiffStat) string {
 func cost(u *sessionv1.Usage) string {
 	if u.GetCostUsd() == 0 {
 		return ""
+	}
+	if u.GetCostEstimated() {
+		return fmt.Sprintf(" (~$%.2f est.)", u.GetCostUsd())
 	}
 	return fmt.Sprintf(" ($%.2f)", u.GetCostUsd())
 }

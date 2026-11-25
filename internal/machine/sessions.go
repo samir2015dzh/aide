@@ -129,10 +129,15 @@ type Sessions struct {
 	// when it failed not signed in, true when it ran a turn (工单 #108);
 	// nil in tests.
 	signedIn func(agent string, in bool)
+	// estimateCost estimates USD cost from open reference pricing when a turn
+	// reports tokens without a provider-reported cost (工单 #114); nil in tests.
+	estimateCost func(agent, model string, inputTokens, outputTokens uint64) (float64, bool)
 
-	mu         sync.Mutex
-	live       map[string]*live
-	dispatchMu sync.Mutex
+	// checkpoints controls per-turn hidden git ref retention (工单 #113).
+	checkpoints CheckpointRetention
+	mu          sync.Mutex
+	live        map[string]*live
+	dispatchMu  sync.Mutex
 	// memoryLow says whether the system is short of memory (resident.MemoryLow;
 	// tests replace it): queued sessions wait while it is, and memRetry (held
 	// with dispatchMu) looks again.
@@ -707,6 +712,12 @@ func (s *Sessions) ActiveByProject() map[string]uint32 {
 }
 
 func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts []*sessionv1.Attachment) (*sessionv1.Session, error) {
+	return s.SendWithID(ctx, p, id, text, atts, "", 0)
+}
+
+// SendWithID delivers a message to a session, deduplicating weak-network
+// resends that carry the same non-empty clientMsgID (工单 #115).
+func (s *Sessions) SendWithID(ctx context.Context, p *Principal, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
 	l, _, err := s.find(p, id, true)
 	if err != nil {
 		return nil, err
@@ -729,7 +740,21 @@ func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts
 		return nil, fmt.Errorf("saving attachments: %w", err)
 	}
 	m.by, m.byName = p.ID(), p.Name()
+	if clientMsgID != "" {
+		dup, err := s.st.ReserveSentMessage(p.ID(), id, clientMsgID, clientSeq)
+		if err != nil {
+			return nil, err
+		}
+		if dup {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			return s.toProto(l.row), nil
+		}
+	}
 	if _, err := s.take(ctx, l, m); err != nil {
+		if clientMsgID != "" {
+			s.st.ForgetSentMessage(p.ID(), id, clientMsgID)
+		}
 		return nil, err
 	}
 	s.audit.Log(AuditRecord{Kind: "session.send", Subject: p.ID(), Session: id, Decision: "allow", Detail: "message_sha=" + sha(text) + filesDetail(m.files)})
@@ -1205,6 +1230,9 @@ func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn u
 	if r.Workspace == identityv1.Workspace_WORKSPACE_IN_PLACE || s.ws.none {
 		return nil, cerr(connect.CodeFailedPrecondition, "session %s works in place, in the project's own directory: Aide takes no per-turn snapshots there (the directory and its git are the owner's), so it cannot be rolled back", id)
 	}
+	if ok, refused := s.canRollbackConversation(r); !ok {
+		return nil, reason.New(connect.CodeFailedPrecondition, "conversation_rollback_unsupported", refused)
+	}
 	proj, err := s.st.Project(r.ProjectID)
 	if err != nil || proj == nil {
 		return nil, reason.New(connect.CodeFailedPrecondition, "project_gone", fmt.Sprintf("project %q no longer exists", r.ProjectID), "project", r.ProjectID)
@@ -1254,6 +1282,9 @@ func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn u
 	if err != nil {
 		l.mu.Unlock()
 		return nil, fmt.Errorf("roll back the worktree: %w", err)
+	}
+	if err := s.ws.DropCheckpointsAfter(ctx, proj.Path, id, turn); err != nil {
+		s.log.Warn("drop checkpoints after rollback failed", "session", id, "turn", turn, "err", err)
 	}
 	if st, err := diffStat(ctx, proj.Path, l.row.BaseCommit, commit); err == nil {
 		l.row.Progress.DiffStat = st
@@ -1379,6 +1410,11 @@ func (s *Sessions) Delete(ctx context.Context, p *Principal, id string) error {
 	r, err := s.st.Session(id)
 	if err != nil || r == nil {
 		return err
+	}
+	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && !s.ws.none {
+		if proj, _ := s.st.Project(r.ProjectID); proj != nil {
+			_, _, _ = s.ws.ClearCheckpoints(ctx, proj.Path, id, 0)
+		}
 	}
 	if err := s.st.DeleteSession(r); err != nil {
 		return err
@@ -2381,8 +2417,16 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 	l.tools = map[string]string{}
 	mTurn.Since(l.turnStarted)
 	l.mu.Unlock()
+	costUSD := e.Usage.CostUSD
+	costEstimated := false
+	if costUSD == 0 && s.estimateCost != nil && (e.Usage.InputTokens > 0 || e.Usage.OutputTokens > 0) {
+		if est, ok := s.estimateCost(l.row.Agent, l.row.Model, e.Usage.InputTokens, e.Usage.OutputTokens); ok {
+			costUSD = est
+			costEstimated = true
+		}
+	}
 	tc := &sessionv1.TurnCompleted{Turn: turn, Result: e.Text, IsError: e.IsError,
-		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: e.Usage.CostUSD}}
+		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: costUSD, CostEstimated: costEstimated}}
 	if e.IsError {
 		f := e.Failure
 		if f == nil {
@@ -2432,6 +2476,11 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 		tc.Commit, tc.DiffStat = commit, turnStat
 		// Committed with (or before) the TurnCompleted event that follows.
 		s.w.put(writeOp{turn: &turnRec{id, turn, commit}})
+		if err := s.ws.WriteCheckpoint(ctx, repo, id, turn, commit); err != nil {
+			s.log.Warn("checkpoint ref write failed", "session", id, "turn", turn, "err", err)
+		} else if _, err := s.ws.PruneCheckpoints(ctx, repo, id, s.checkpointRetention(), time.Now()); err != nil {
+			s.log.Warn("checkpoint ref prune failed", "session", id, "turn", turn, "err", err)
+		}
 	}
 	l.mu.Lock()
 	p := l.row.Progress
@@ -2446,6 +2495,9 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 	p.Usage.InputTokens += tc.Usage.InputTokens
 	p.Usage.OutputTokens += tc.Usage.OutputTokens
 	p.Usage.CostUsd += tc.Usage.CostUsd
+	if tc.Usage.CostEstimated {
+		p.Usage.CostEstimated = true
+	}
 	p.LastFailure = tc.Failure
 	l.row.Result = e.Text
 	if e.Text != "" {

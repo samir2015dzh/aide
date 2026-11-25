@@ -1528,6 +1528,32 @@ func (o *Owner) TestMachineCustomAgent(ctx context.Context, machineID string, a 
 	return n.Admin.TestCustomAgent(ctx, &machinev1.TestCustomAgentRequest{Agent: a})
 }
 
+// MachineACPRegistry lists official ACP Registry agents for machineID (工单 #110).
+func (o *Owner) MachineACPRegistry(ctx context.Context, machineID string, refresh bool) (*machinev1.ListACPRegistryResponse, error) {
+	if l := o.local(); l != nil && l.MachineID() == machineID {
+		return l.ListACPRegistry(ctx, refresh), nil
+	}
+	n, err := o.machineClient(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.ListACPRegistry(ctx, &machinev1.ListACPRegistryRequest{Refresh: refresh})
+}
+
+// InstallMachineACPRegistryAgent downloads, verifies, and registers an official
+// ACP Registry agent on machineID (工单 #110).
+func (o *Owner) InstallMachineACPRegistryAgent(ctx context.Context, machineID, registryID, name string) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	req := &machinev1.InstallACPRegistryAgentRequest{RegistryId: registryID, Name: name}
+	if l := o.local(); l != nil && l.MachineID() == machineID {
+		return l.InstallACPRegistryAgent(ctx, req)
+	}
+	n, err := o.machineClient(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.InstallACPRegistryAgent(ctx, req)
+}
+
 // ListExecLog gathers the machines' ops logs (docs/machine-ops.md): the
 // commands agents ran, or were refused, on each, newest first.
 func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.ListExecLogResponse, error) {
@@ -2777,14 +2803,25 @@ func (o *Owner) StartSession(ctx context.Context, machineID string, req *session
 
 // SendMessage sends a message to a session the owner started.
 func (o *Owner) SendMessage(ctx context.Context, id, text string, atts []*sessionv1.Attachment) (*sessionv1.Session, error) {
+	return o.SendMessageWithID(ctx, id, text, atts, "", 0)
+}
+
+// SendMessageWithID sends a message with an optional weak-network deduplication id and sequence (工单 #115).
+func (o *Owner) SendMessageWithID(ctx context.Context, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
 	if l := o.localSession(id); l != nil {
-		return l.Send(ctx, id, text, atts)
+		return l.SendWithID(ctx, id, text, atts, clientMsgID, clientSeq)
 	}
 	n, err := o.sessionMachine(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	res, err := n.Session.SendMessage(ctx, &sessionv1.SendMessageRequest{SessionId: id, Text: text, Attachments: atts})
+	res, err := n.Session.SendMessage(ctx, &sessionv1.SendMessageRequest{
+		SessionId:       id,
+		Text:            text,
+		Attachments:     atts,
+		ClientMessageId: clientMsgID,
+		ClientSeq:       clientSeq,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -2872,6 +2909,30 @@ func (o *Owner) RollbackSession(ctx context.Context, id string, turn uint32) (*s
 		return nil, err
 	}
 	return o.written(id)(n.Session.RollbackSession(ctx, &sessionv1.RollbackSessionRequest{SessionId: id, Turn: turn}))
+}
+
+// ListSessionCheckpoints returns a session's hidden git ref checkpoints.
+func (o *Owner) ListSessionCheckpoints(ctx context.Context, id string) (*sessionv1.ListCheckpointsResponse, error) {
+	if l := o.localSession(id); l != nil {
+		return l.ListCheckpoints(ctx, id)
+	}
+	n, err := o.sessionMachine(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.ListCheckpoints(ctx, &sessionv1.ListCheckpointsRequest{SessionId: id})
+}
+
+// ClearSessionCheckpoints removes hidden git ref checkpoints for a session.
+func (o *Owner) ClearSessionCheckpoints(ctx context.Context, id string, keepLatest uint32) (*sessionv1.ClearCheckpointsResponse, error) {
+	if l := o.localSession(id); l != nil {
+		return l.ClearCheckpoints(ctx, id, keepLatest)
+	}
+	n, err := o.sessionMachine(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.ClearCheckpoints(ctx, &sessionv1.ClearCheckpointsRequest{SessionId: id, KeepLatest: keepLatest})
 }
 
 // MarkSessionSeen records on a session's machine what the owner has seen of it.

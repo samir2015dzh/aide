@@ -78,6 +78,16 @@ func (l *Local) TestCustomAgent(ctx context.Context, a *machinev1.CustomAgent) (
 	return l.n.TestCustomAgent(ctx, a)
 }
 
+// ListACPRegistry and InstallACPRegistryAgent expose official ACP Registry
+// discovery and machine-isolated installation on this device (工单 #110).
+func (l *Local) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.ListACPRegistryResponse {
+	return l.n.ListACPRegistry(ctx, refresh)
+}
+
+func (l *Local) InstallACPRegistryAgent(ctx context.Context, req *machinev1.InstallACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	return l.n.InstallACPRegistryAgent(ctx, req)
+}
+
 // FindRepos lists the repositories for Add a Project, within the workspace roots.
 func (l *Local) FindRepos(ctx context.Context) []*machinev1.Repo {
 	return FindRepos(ctx, l.n.WorkspaceRoots())
@@ -211,7 +221,12 @@ func (l *Local) Start(ctx context.Context, req *sessionv1.StartSessionRequest) (
 
 // Send sends a message to a session the owner started.
 func (l *Local) Send(ctx context.Context, id, text string, atts []*sessionv1.Attachment) (*sessionv1.Session, error) {
-	return l.n.sessions.Send(ctx, l.p, id, text, atts)
+	return l.SendWithID(ctx, id, text, atts, "", 0)
+}
+
+// SendWithID sends a message with an optional client deduplication id and local sequence (工单 #115).
+func (l *Local) SendWithID(ctx context.Context, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
+	return l.n.sessions.SendWithID(ctx, l.p, id, text, atts, clientMsgID, clientSeq)
 }
 
 func (l *Local) Interrupt(ctx context.Context, id string) (*sessionv1.Session, error) {
@@ -256,6 +271,14 @@ func (l *Local) Push(ctx context.Context, id string) (*sessionv1.PushSessionResp
 
 func (l *Local) Rollback(ctx context.Context, id string, turn uint32) (*sessionv1.Session, error) {
 	return l.n.sessions.Rollback(ctx, l.p, id, turn)
+}
+
+func (l *Local) ListCheckpoints(ctx context.Context, id string) (*sessionv1.ListCheckpointsResponse, error) {
+	return l.n.sessions.ListCheckpoints(ctx, l.p, id)
+}
+
+func (l *Local) ClearCheckpoints(ctx context.Context, id string, keepLatest uint32) (*sessionv1.ClearCheckpointsResponse, error) {
+	return l.n.sessions.ClearCheckpoints(ctx, l.p, id, keepLatest)
 }
 
 // WorkSeq is where this machine's work counts are (work.go).

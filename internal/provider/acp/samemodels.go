@@ -19,23 +19,24 @@ import (
 // runs when it is that one, else the first; its lines said in Source. Models
 // of different providers (a custom one too) stay apart.
 //
-// Named one way in a list (工单 #117): as they are, when none is named by
-// its ID as written or all are; a list mixing names ("DeepSeek-V4.1-Flash",
-// "Gemini 3 Pro") with IDs as written ("deepseek-v4-pro"), each by its
-// specific model ID as compared ("deepseek-v4-flash").
+// Naming (工单 #117, owner ruling 2026-11-24): uniform across the list,
+// provider first — "<provider> · <specific model ID>" (e.g.
+// "DeepSeek · deepseek-v4-flash"), never leading with a marketing display
+// name; when no provider is known, the specific model ID alone.
 func sameModelsOnce(xs []choice, current string) []provider.Model {
 	var out []provider.Model
-	var named []bool   // its name is a display name, not its ID again
 	var canon []string // its model ID as compared
-	var raw []string   // its model ID as written
 	keys := map[string]int{}
 	for _, x := range xs {
 		vendor, model := modelParts(x.Value)
 		var ks []string // by the provider its ID names, and by its group's
 		for _, v := range []string{vendor, x.Group} {
-			if v != "" {
+			if v != "" && !isGenericGroup(v) {
 				ks = append(ks, norm(v, true)+"\x00"+norm(model, false))
 			}
+		}
+		if len(ks) == 0 {
+			ks = append(ks, "\x00"+norm(model, false))
 		}
 		i, ok := -1, false
 		for _, k := range ks {
@@ -43,13 +44,10 @@ func sameModelsOnce(xs []choice, current string) []provider.Model {
 				break
 			}
 		}
-		display := norm(x.Name, false) != norm(model, false) && x.Name != x.Value
 		if !ok {
 			i = len(out)
-			out = append(out, provider.Model{ID: x.Value, Name: x.Name, Source: x.Group})
-			named = append(named, display)
+			out = append(out, provider.Model{ID: x.Value, Source: x.Group})
 			canon = append(canon, norm(model, false))
-			raw = append(raw, model)
 		}
 		for _, k := range ks {
 			keys[k] = i
@@ -61,26 +59,70 @@ func sameModelsOnce(xs []choice, current string) []provider.Model {
 		if x.Value == current {
 			m.ID = x.Value
 		}
-		if display && !named[i] {
-			m.Name, named[i] = x.Name, true
-		}
 		if x.Group != "" && !slices.Contains(strings.Split(m.Source, " · "), x.Group) {
 			m.Source = strings.TrimPrefix(m.Source+" · "+x.Group, " · ")
 		}
 	}
-	// Named by its ID as written: some, not all, is a list in two ways.
-	asID := 0
-	for i, m := range out {
-		if m.Name == m.ID || m.Name == raw[i] || m.Name == canon[i] {
-			asID++
-		}
-	}
-	if asID > 0 && asID < len(out) {
-		for i := range out {
+	for i := range out {
+		if p := providerPrefix(out[i].Source, out[i].ID); p != "" {
+			out[i].Name = p + " · " + canon[i]
+		} else {
 			out[i].Name = canon[i]
 		}
 	}
 	return out
+}
+
+// providerPrefix is the provider label placed ahead of the specific model ID
+// ("DeepSeek" for "DeepSeek · DeepSeek Account" or "DeepSeek Account", else
+// the vendor prefix of the ID). Trailing "account" qualifiers are stripped so
+// API and account lines of the same provider share one prefix.
+func providerPrefix(source, id string) string {
+	var first string
+	if source != "" {
+		for _, g := range strings.Split(source, " · ") {
+			g = strings.TrimSpace(g)
+			if g == "" || isGenericGroup(g) {
+				continue
+			}
+			clean := stripAccountSuffix(g)
+			if first == "" {
+				first = clean
+			}
+			if clean == g {
+				return clean
+			}
+		}
+		if first != "" {
+			return first
+		}
+	}
+	if vendor, _ := modelParts(id); vendor != "" {
+		return stripAccountSuffix(vendor)
+	}
+	return ""
+}
+
+// isGenericGroup reports container labels that are not a provider name
+// (e.g. a single "Models" group in ACP config options).
+func isGenericGroup(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "models", "model", "default", "all":
+		return true
+	default:
+		return false
+	}
+}
+func stripAccountSuffix(s string) string {
+	low := strings.ToLower(strings.TrimSpace(s))
+	for _, suf := range []string{" account", "-account", "_account"} {
+		if strings.HasSuffix(low, suf) {
+			if trimmed := strings.TrimSpace(s[:len(s)-len(suf)]); trimmed != "" {
+				return trimmed
+			}
+		}
+	}
+	return strings.TrimSpace(s)
 }
 
 // NormalizeModels is models an agent's session offered, kept from an

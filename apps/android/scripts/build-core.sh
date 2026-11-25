@@ -30,9 +30,20 @@ if [[ ! -d "$ANDROID_NDK_HOME" ]]; then
 fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+EXE=""
+case "$(uname -s 2>/dev/null || true)" in
+  MINGW*|MSYS*|CYGWIN*)
+    EXE=".exe"
+    ;;
+esac
+mkdir -p "$TMP/bin"
+BIN_OUT="$TMP/bin"
+if [[ -n "$EXE" ]] && command -v cygpath >/dev/null 2>&1; then
+  BIN_OUT="$(cygpath -m "$TMP/bin")"
+fi
 # gomobile runs gobind from PATH: the version go.mod names.
-go build -o "$TMP/bin/gobind" golang.org/x/mobile/cmd/gobind
-go build -o "$TMP/bin/gomobile" golang.org/x/mobile/cmd/gomobile
+go build -o "$BIN_OUT/gobind$EXE" golang.org/x/mobile/cmd/gobind
+go build -o "$BIN_OUT/gomobile$EXE" golang.org/x/mobile/cmd/gomobile
 export PATH="$TMP/bin:$PATH"
 mkdir -p "$(dirname "$OUT")"
 echo "› building the core for android/arm64 and android/amd64"

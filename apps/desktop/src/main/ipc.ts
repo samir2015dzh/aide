@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Command, MenuItem, MenuState, Preferences, TerminalCommand } from "../shared/bridge";
 import { i18n } from "../shared/i18n";
 import { preferences, setPreferences, setRoomOpen, world } from "./notify";
+import { openDaemonLogs, restartDaemonWithProbe } from "./daemonRestart";
 import { platform } from "./platform";
 import { errorMessage, takeLinks } from "./links";
 import { linkBack, linkDown, linkLog } from "./linklog";
@@ -141,6 +142,8 @@ export function registerIPC() {
   ipcMain.handle("login-item", (e) => (trusted(e) ? platform.loginItem() : null));
   ipcMain.handle("set-login-item", (e, on: unknown) => (trusted(e) && typeof on === "boolean" ? platform.setLoginItem(on) : null));
   ipcMain.handle("daemon-needs-approval", (e) => trusted(e) && platform.daemonNeedsApproval());
+  ipcMain.handle("restart-daemon", (e) => (trusted(e) ? restartDaemonWithProbe() : { ok: false, reason: "not allowed", canOpenLogs: false }));
+  ipcMain.on("open-daemon-logs", (e) => trusted(e) && openDaemonLogs());
   // The links' record (工单 #87): read by the settings' records page; a window's own watch breaking and coming back.
   ipcMain.handle("link-log", (e) => (trusted(e) ? linkLog() : []));
   ipcMain.on("link-event", (e, kind: unknown, why: unknown, detail: unknown) => {

@@ -44,11 +44,29 @@ function DaemonUnavailable() {
   const [approval, setApproval] = useState(false);
   // It usually answers within moments of starting; the explanation only if it doesn't.
   const [late, setLate] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [restartErr, setRestartErr] = useState<{ reason: string; needsApproval?: boolean; canOpenLogs: boolean } | null>(null);
   useEffect(() => {
     window.aide?.daemonNeedsApproval().then(setApproval);
-    const t = setTimeout(() => setLate(true), 8000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setLate(true), 2500);
+    return () => clearTimeout(timer);
   }, []);
+  const restart = async () => {
+    if (restarting) return;
+    setRestarting(true);
+    setRestartErr(null);
+    try {
+      const res = await window.aide?.restartDaemon();
+      if (res && !res.ok) {
+        if (res.needsApproval) setApproval(true);
+        setRestartErr({ reason: res.reason, needsApproval: res.needsApproval, canOpenLogs: res.canOpenLogs });
+      }
+    } catch (e) {
+      setRestartErr({ reason: e instanceof Error ? e.message : String(e), canOpenLogs: true });
+    } finally {
+      setRestarting(false);
+    }
+  };
   return (
     <div className="empty drag" style={{ height: "100%" }}>
       <Mark size={40} variant="wait" />
@@ -59,7 +77,22 @@ function DaemonUnavailable() {
           <button className="btn" onClick={() => window.aide?.openLoginItems()}>{t("daemon.openLoginItems")}</button>
         </>
       ) : (
-        late && <span>{t("daemon.noResponse")}</span>
+        late && (
+          <>
+            <span>{t("daemon.noResponse")}</span>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button className="btn primary" disabled={restarting} onClick={() => void restart()}>
+                {restarting ? t("daemon.restarting") : t("daemon.restart")}
+              </button>
+              {restartErr?.canOpenLogs && (
+                <button className="btn" onClick={() => window.aide?.openDaemonLogs()}>{t("daemon.openLogs")}</button>
+              )}
+            </div>
+            {restartErr && (
+              <span role="alert" style={{ color: "var(--red)", maxWidth: 380, textAlign: "center" }}>{restartErr.reason}</span>
+            )}
+          </>
+        )
       )}
     </div>
   );

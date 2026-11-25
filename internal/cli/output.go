@@ -218,13 +218,14 @@ func diffStatView(d *sessionv1.DiffStat) diffStatJSON {
 }
 
 type usageJSON struct {
-	InputTokens  uint64  `json:"input_tokens"`
-	OutputTokens uint64  `json:"output_tokens"`
-	CostUSD      float64 `json:"cost_usd"`
+	InputTokens   uint64  `json:"input_tokens"`
+	OutputTokens  uint64  `json:"output_tokens"`
+	CostUSD       float64 `json:"cost_usd"`
+	CostEstimated bool    `json:"cost_estimated,omitempty"`
 }
 
 func usageView(u *sessionv1.Usage) usageJSON {
-	return usageJSON{u.GetInputTokens(), u.GetOutputTokens(), u.GetCostUsd()}
+	return usageJSON{u.GetInputTokens(), u.GetOutputTokens(), u.GetCostUsd(), u.GetCostEstimated()}
 }
 
 type failureJSON struct {

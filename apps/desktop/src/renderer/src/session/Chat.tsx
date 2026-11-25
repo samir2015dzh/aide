@@ -6,7 +6,7 @@ import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, ty
 import {
   agoText, checkpoints, clockText, codingBotState, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
-  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, type Step,
+  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, type OutboxMessage, type Step,
 } from "@aide/core";
 import { AgentLogo, Mark, agentName } from "@aide/ui";
 import { local } from "../api";
@@ -28,9 +28,9 @@ import { Markdown } from "./Markdown";
 import { partialOutput, useToolOutput } from "./output";
 import { QuestionPanel } from "./Question";
 import { ContentScope } from "./scope";
+import { desktopOutbox, useSessionOutbox } from "./outbox";
 import { useRowState } from "./useRowState";
 import { useVirtualRows, type VirtualRow } from "./useVirtualRows";
-
 /**
  * The conversation, newest at the bottom, ending with the reply the agent is
  * still writing (draft); while a turn is live, the control area sits over
@@ -49,11 +49,13 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const items = useMemo(() => groupSteps(transcript(events, running)), [events, running]);
   const ends = useMemo(() => replyEnds(items, running), [items, running]);
   const live = isInterruptible(s);
-  // Each turn's prompt can roll the session back to before it, while no turn runs (not in place: no snapshots there).
+  // Each turn's prompt can roll the session back to before it, while no turn runs (not in place: no snapshots there),
+  // and only when the provider truthfully declares rollback capability (工单 #110 / #112 / #113).
   const points = useMemo(() => checkpoints(items), [items]);
   const lastTurn = s.progress?.turnCount ?? 0;
-  const rollable = s.workspace !== Workspace.IN_PLACE && (s.status === SessionStatus.IDLE || s.status === SessionStatus.CRASHED);
-
+  const agentCaps = st.machines.find((m) => m.machineId === s.machineId)?.status?.agents.find((x) => x.name === s.agent)?.capabilities;
+  const canRollback = agentCaps ? agentCaps.rollback : true;
+  const rollable = canRollback && s.workspace !== Workspace.IN_PLACE && (s.status === SessionStatus.IDLE || s.status === SessionStatus.CRASHED);
   // The session's current failure is told once, at the end; the rows leave it out.
   const failure = s.progress?.lastFailure;
   const current = isFailed(s) ? failure : undefined;
@@ -63,9 +65,16 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const settled = useMemo(() => rowsOf(items, ends, current), [items, ends, current?.kind, current?.message]);
   const next = (events.at(-1)?.seq ?? 0n) + 1n;
   const rows = useMemo(() => (draft === "" ? settled : [...settled, draftRow(next, draft)]), [settled, draft, next]);
+  const outbox = useSessionOutbox(s.sessionId);
+  const machineConnected = Boolean(st.machines.find((m) => m.machineId === s.machineId)?.online);
+  useEffect(() => {
+    desktopOutbox.reconcile(s.sessionId, events);
+  }, [s.sessionId, events]);
+  useEffect(() => {
+    if (machineConnected) void desktopOutbox.flushSession(s.sessionId);
+  }, [s.sessionId, machineConnected]);
   // Nothing of a conversation that has events yet: they are still on their way, or can't come.
-  const unread = items.length === 0 && draft === "" && (s.progress?.lastEventSeq ?? 0n) > 0n;
-
+  const unread = items.length === 0 && draft === "" && outbox.length === 0 && (s.progress?.lastEventSeq ?? 0n) > 0n;
   return (
     <ContentScope value={s.sessionId}>
       <ChatFrame
@@ -90,6 +99,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
         }}
         foot={
           <>
+            {outbox.length > 0 && <OutboxRows items={outbox} />}
             <Stale s={s} behind={(events.at(-1)?.seq ?? 0n) < (s.progress?.lastEventSeq ?? 0n)} />
             {isFailed(s) && (failure || s.error !== "") && <Failed s={s} failure={failure} grant={who} />}
             {s.status === SessionStatus.IDLE && !isFailed(s) && !isInterruption(failure) && items.length > 0 && <DoneLine text={mine ? t("chat.turnDoneYou") : t("chat.turnDone", { grant })} />}
@@ -856,7 +866,9 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
           st.show(tc("composer.newBecause", { what: tc("composer.param.model") }));
           st.select(to.sessionId);
         }
-      } else await local.sendMessage({ sessionId: s.sessionId, text, attachments });
+      } else {
+        desktopOutbox.enqueue(s.sessionId, text, attachments);
+      }
       setText("");
       attach.clear();
       setState({ kind: "idle" });
@@ -878,8 +890,10 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
         why={other ? { text: tc("conv.willStartNew", { what: tc("composer.param.model") }), tone: "quiet" } : undefined}
         chips={
           <>
-            {(a?.models.length ?? 0) > 0 && <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />}
-            <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0} />
+            {(a?.models.length ?? 0) > 0 && (!a?.capabilities || a.capabilities.selectModel || a.capabilities.switchModelInSession) && (
+              <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />
+            )}
+            <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0 || Boolean(a?.capabilities && !a.capabilities.selectModel && !a.capabilities.switchModelInSession)} />
           </>
         }
       />
@@ -946,3 +960,53 @@ export function turnStart(s: Session, events: SessionEvent[]): Date {
   return turnStartedAt(events) ?? createdDate(s);
 }
 
+
+/** Local outbound queue items shown inline with truthful delivery state (工单 #115). */
+function OutboxRows({ items }: { items: OutboxMessage[] }) {
+  const { t } = useTranslation("session");
+  return (
+    <div className="outbox-list" data-testid="outbox-list" aria-live="polite">
+      {items.map((item) => {
+        const statusLabel =
+          item.status === "sending"
+            ? t("chat.outbox.sending")
+            : item.status === "sent"
+              ? t("chat.outbox.sent")
+              : item.status === "failed"
+                ? t("chat.outbox.failed")
+                : item.error
+                  ? t("chat.outbox.waitingReconnect")
+                  : t("chat.outbox.pending");
+        return (
+          <div
+            key={item.id}
+            className={`row u outbox-item outbox-${item.status}`}
+            data-outbox-seq={item.clientSeq}
+            data-outbox-status={item.status}
+          >
+            <div className="ubub">
+              <div className="umsg">{item.text}</div>
+              {item.attachments.length > 0 && (
+                <div className="outbox-meta">{t("chat.outbox.attachments", { count: item.attachments.length })}</div>
+              )}
+              <div className="outbox-meta" style={{ fontSize: "12px", opacity: 0.85, marginTop: "4px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                <span>#{item.clientSeq} · {statusLabel}</span>
+                {item.error && item.status !== "sent" && <span title={item.error}>({item.error})</span>}
+                {(item.status === "failed" || item.status === "pending") && (
+                  <>
+                    <button type="button" className="link" onClick={() => desktopOutbox.retry(item.id)}>
+                      {t("chat.outbox.retry")}
+                    </button>
+                    <button type="button" className="link" onClick={() => desktopOutbox.remove(item.id)}>
+                      {t("chat.outbox.cancel")}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

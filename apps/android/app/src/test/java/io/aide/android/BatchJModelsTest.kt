@@ -66,15 +66,15 @@ class BatchJModelsTest {
         assertEquals("DeepSeek V4 Pro (DeepSeek)", defaultModelChoice(dsh)?.title)
     }
 
-    // 工单 #98 补充: one model by two lines of its provider is one entry, its lines said; a custom provider's in its own.
+    // 工单 #98 补充, #117: one model by two lines of its provider is one entry, provider-first naming; a custom provider's in its own.
     @Test
     fun dshModelsByProviderOnceEach() {
         val models = listOf(
-            AgentModel("[\"deepseek\",\"deepseek-v4-flash\"]", "DeepSeek-V4.1-Flash", source = "DeepSeek · DeepSeek Account"),
-            AgentModel("[\"magpie\",\"group/deepseek-v4.1\"]", "group/deepseek-v4.1", source = "magpie"),
+            AgentModel("[\"deepseek\",\"deepseek-v4-flash\"]", "DeepSeek · deepseek-v4-flash", source = "DeepSeek · DeepSeek Account"),
+            AgentModel("[\"magpie\",\"group/deepseek-v4.1\"]", "magpie · group/deepseek-v4.1", source = "magpie"),
         )
         assertEquals(
-            listOf("DeepSeek-V4.1-Flash · deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account", "group/deepseek-v4.1 · magpie/group/deepseek-v4.1 · magpie"),
+            listOf("DeepSeek · deepseek-v4-flash · deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account", "magpie · group/deepseek-v4.1 · magpie/group/deepseek-v4.1 · magpie"),
             modelChoices("deepseek", models).map { it.label() },
         )
     }

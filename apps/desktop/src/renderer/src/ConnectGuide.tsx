@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Check } from "./Picker";
 import { useTranslation } from "react-i18next";
-import type { CustomAgent } from "@aide/proto/machine";
+import type { ACPRegistryEntry, CustomAgent, ListACPRegistryResponse } from "@aide/proto/machine";
 import type { Machine } from "@aide/proto/local";
 import { codingAgentIds, codingAgentTitle, projectIdFromFolder, projectTitle } from "@aide/core";
 import { AgentTile, Mark } from "@aide/ui";
@@ -327,7 +327,14 @@ function Customs({ m, place }: { m: Machine; place: Place }) {
                 <button className="cg-pick" onClick={() => setPicked(a.name)}>
                   <AgentTile agent={a.name} size={24} />
                   <span className="ft">
-                    <b>{a.name}</b>
+                    <b>
+                      {a.name}
+                      <span className="cg-badge">
+                        {a.source === "registry"
+                          ? t("custom.sourceRegistry", { version: a.registryVersion ? `v${a.registryVersion}` : "" }).trim()
+                          : t("custom.sourceLocal")}
+                      </span>
+                    </b>
                     <span className="fdesc mono">{[a.command, ...a.args].join(" ")}</span>
                   </span>
                 </button>
@@ -371,8 +378,127 @@ function Customs({ m, place }: { m: Machine; place: Place }) {
           }}
         />
       )}
+      {!editing && <ACPRegistrySection m={m} onInstalled={(name) => { setPicked(name); load(); }} />}
       {!editing && shown && <Agent key={shown.name} m={m} agent={shown.name} line="custom" place={place} />}
     </>
+  );
+}
+
+/** Official ACP Registry browser + one-click verified install (工单 #110). */
+function ACPRegistrySection({ m, onInstalled }: { m: Machine; onInstalled: (name: string) => void }) {
+  const { t } = useTranslation("connect");
+  const st = useStore();
+  const [data, setData] = useState<ListACPRegistryResponse>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [installing, setInstalling] = useState<string>();
+
+  const fetchList = useCallback(
+    (refresh: boolean) => {
+      setLoading(true);
+      local
+        .listMachineACPRegistry({ machineId: m.machineId, refresh })
+        .then(
+          (res) => {
+            setData(res);
+            setError("");
+          },
+          (e) => setError(needsUpdate(e) ? t("custom.update", { machine: m.machineName }) : errorText(e)),
+        )
+        .finally(() => setLoading(false));
+    },
+    [m.machineId, m.machineName, t],
+  );
+
+  useEffect(() => {
+    fetchList(false);
+  }, [fetchList]);
+
+  const install = async (entry: ACPRegistryEntry) => {
+    setInstalling(entry.id);
+    setError("");
+    try {
+      const res = await local.installMachineACPRegistryAgent({ machineId: m.machineId, registryId: entry.id });
+      const name = res.agent?.name || entry.id;
+      st.show(t("custom.registryInstalledToast", { name, machine: m.machineName }));
+      onInstalled(name);
+      fetchList(false);
+    } catch (e) {
+      setError(needsUpdate(e) ? t("custom.update", { machine: m.machineName }) : errorText(e));
+    } finally {
+      setInstalling(undefined);
+    }
+  };
+
+  const q = query.trim().toLowerCase();
+  const entries = (data?.entries ?? []).filter(
+    (e) => !q || e.id.toLowerCase().includes(q) || e.name.toLowerCase().includes(q) || e.description.toLowerCase().includes(q),
+  );
+
+  return (
+    <section className="cg-sec" aria-label={t("custom.registryTitle")}>
+      <div className="fhead">{t("custom.registryTitle")}</div>
+      <div className="cg-box">
+        <p className="cg-note">{t("custom.registryNote")}</p>
+        <div className="cg-reg-bar">
+          <input
+            className="field"
+            type="search"
+            value={query}
+            placeholder={t("custom.registrySearch")}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button className="btn sm" disabled={loading} onClick={() => fetchList(true)}>
+            {loading ? t("custom.registryRefreshing") : t("custom.registryRefresh")}
+          </button>
+        </div>
+        {error && (
+          <p className="sheet-err" role="alert">
+            {error}
+          </p>
+        )}
+        {data?.lastError && (
+          <p className="cg-note warn">
+            {t("custom.registryFallback", { source: data.source || "embedded", reason: data.lastError })}
+          </p>
+        )}
+        {entries.length > 0 && (
+          <div className="fgroup cg-reg-list">
+            {entries.map((e) => (
+              <div key={e.id} className="frow cg-reg-row">
+                <div className="ft">
+                  <b>
+                    {e.name}
+                    {e.version && <span className="cg-badge">v{e.version}</span>}
+                    {e.distribution && (
+                      <span className="cg-badge">
+                        {e.distribution}
+                        {e.sha256Verified ? " · SHA-256" : ""}
+                      </span>
+                    )}
+                  </b>
+                  <span className="fdesc">{e.description || e.id}</span>
+                  {!e.supported && e.unsupportedReason && <span className="cg-note warn">{e.unsupportedReason}</span>}
+                </div>
+                {e.installed ? (
+                  <span className="cg-badge ok">{t("custom.registryInstalled", { name: e.installedAs || e.id })}</span>
+                ) : (
+                  <button
+                    className="btn sm"
+                    disabled={!e.supported || installing !== undefined}
+                    onClick={() => void install(e)}
+                  >
+                    {installing === e.id ? t("custom.registryInstalling") : t("custom.registryInstall")}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {!loading && data && entries.length === 0 && <p className="cg-note">{t("custom.registryEmpty")}</p>}
+      </div>
+    </section>
   );
 }
 
@@ -411,12 +537,14 @@ function CustomFormView({ m, agent, close }: { m: Machine; agent?: CustomAgent; 
     setTest({ busy: true });
     try {
       const r = await local.testMachineCustomAgent({ machineId: m.machineId, agent: def });
+      const protoSuffix = r.protocolVersion ? ` · ACP v${r.protocolVersion}` : "";
+      const baseOk = r.agentTitle
+        ? t("custom.testOkAs", { title: r.agentTitle, version: r.agentVersion })
+        : t("custom.testOk", { agent: def.name });
       setTest({
         ok: r.ok,
         text: r.ok
-          ? r.agentTitle
-            ? t("custom.testOkAs", { title: r.agentTitle, version: r.agentVersion })
-            : t("custom.testOk", { agent: def.name })
+          ? `${baseOk}${protoSuffix}`
           : [t("custom.testFailed", { reason: r.reason }), r.authMethods.length ? t("custom.testAuth", { methods: r.authMethods.join(", ") }) : ""].filter(Boolean).join(" "),
       });
     } catch (e) {

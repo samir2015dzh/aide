@@ -309,6 +309,7 @@ export interface TodayStats {
   deletions: number;
   tokens: bigint;
   cost: number;
+  costEstimated: boolean;
   /** Sessions started in each of the last hours, oldest first. */
   hours: { hour: number; count: number }[];
   byAgent: { agent: string; count: number }[];
@@ -327,6 +328,7 @@ export function todayStats(all: Session[], now: Date, hours = 9): TodayStats {
     deletions: 0,
     tokens: 0n,
     cost: 0,
+    costEstimated: false,
     hours: [],
     byAgent: [],
   };
@@ -338,6 +340,7 @@ export function todayStats(all: Session[], now: Date, hours = 9): TodayStats {
     t.deletions += d?.deletions ?? 0;
     t.tokens += (u?.inputTokens ?? 0n) + (u?.outputTokens ?? 0n);
     t.cost += u?.costUsd ?? 0;
+    if (u?.costEstimated) t.costEstimated = true;
   }
   const hour = now.getHours();
   for (let i = 0; i < hours; i++) {

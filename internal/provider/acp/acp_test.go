@@ -307,7 +307,7 @@ func TestSessionConfigOptions(t *testing.T) {
 	}
 	ref, ran := run(provider.StartSpec{})
 	want := &provider.Offers{
-		Models: []provider.Model{{ID: "small", Name: "SMALL", Source: "Models", Efforts: []string{"low"}}, {ID: "large", Name: "LARGE", Source: "Models"}},
+		Models: []provider.Model{{ID: "small", Name: "small", Source: "Models", Efforts: []string{"low"}}, {ID: "large", Name: "large", Source: "Models"}},
 		Modes:  []provider.Mode{{ID: "ask", Name: "Mode ask"}, {ID: "code", Name: "Mode code"}},
 		Own:    provider.Settings{Model: "small", Mode: "ask"}}
 	if !reflect.DeepEqual(ref.Offers, want) || ref.Model != "small" || ref.Effort != "" || ran != "config: small  ask" {

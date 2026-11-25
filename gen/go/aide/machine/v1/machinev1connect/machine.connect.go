@@ -159,6 +159,12 @@ const (
 	// MachineAdminServiceTestCustomAgentProcedure is the fully-qualified name of the
 	// MachineAdminService's TestCustomAgent RPC.
 	MachineAdminServiceTestCustomAgentProcedure = "/aide.machine.v1.MachineAdminService/TestCustomAgent"
+	// MachineAdminServiceListACPRegistryProcedure is the fully-qualified name of the
+	// MachineAdminService's ListACPRegistry RPC.
+	MachineAdminServiceListACPRegistryProcedure = "/aide.machine.v1.MachineAdminService/ListACPRegistry"
+	// MachineAdminServiceInstallACPRegistryAgentProcedure is the fully-qualified name of the
+	// MachineAdminService's InstallACPRegistryAgent RPC.
+	MachineAdminServiceInstallACPRegistryAgentProcedure = "/aide.machine.v1.MachineAdminService/InstallACPRegistryAgent"
 )
 
 // MachineServiceClient is a client for the aide.machine.v1.MachineService service.
@@ -710,6 +716,14 @@ type MachineAdminServiceClient interface {
 	// Starts an agent as given (saved or not) once, in a scratch folder, and
 	// does the ACP handshake: initialize, then a new session; then stops it.
 	TestCustomAgent(context.Context, *v1.TestCustomAgentRequest) (*v1.TestCustomAgentResponse, error)
+	// Lists installable agents from the official ACP Registry (with local cache
+	// and bundled snapshot fallback), annotated for this machine's OS/arch and
+	// current installation status (工单 #110).
+	ListACPRegistry(context.Context, *v1.ListACPRegistryRequest) (*v1.ListACPRegistryResponse, error)
+	// Downloads (with SHA-256 verification for binary archives), installs in a
+	// machine-isolated directory, and registers an official ACP Registry agent
+	// as a custom ACP agent on this machine (工单 #110).
+	InstallACPRegistryAgent(context.Context, *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error)
 }
 
 // NewMachineAdminServiceClient constructs a client for the aide.machine.v1.MachineAdminService
@@ -916,43 +930,57 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("TestCustomAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		listACPRegistry: connect.NewClient[v1.ListACPRegistryRequest, v1.ListACPRegistryResponse](
+			httpClient,
+			baseURL+MachineAdminServiceListACPRegistryProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ListACPRegistry")),
+			connect.WithClientOptions(opts...),
+		),
+		installACPRegistryAgent: connect.NewClient[v1.InstallACPRegistryAgentRequest, v1.InstallACPRegistryAgentResponse](
+			httpClient,
+			baseURL+MachineAdminServiceInstallACPRegistryAgentProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("InstallACPRegistryAgent")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // machineAdminServiceClient implements MachineAdminServiceClient.
 type machineAdminServiceClient struct {
-	listRooms           *connect.Client[v1.ListRoomsRequest, v1.ListRoomsResponse]
-	openDirectRoom      *connect.Client[v1.OpenDirectRoomRequest, v1.Room]
-	listRoomMessages    *connect.Client[v1.ListRoomMessagesRequest, v1.ListRoomMessagesResponse]
-	postRoomMessage     *connect.Client[v1.PostRoomMessageRequest, v1.RoomMessage]
-	createRoom          *connect.Client[v1.CreateRoomRequest, v1.Room]
-	updateRoom          *connect.Client[v1.UpdateRoomRequest, v1.Room]
-	stopRoom            *connect.Client[v1.StopRoomRequest, v1.Room]
-	markRoomSeen        *connect.Client[v1.MarkRoomSeenRequest, v1.Room]
-	deleteRoom          *connect.Client[v1.DeleteRoomRequest, v1.DeleteRoomResponse]
-	applyAdminCommand   *connect.Client[v1.ApplyAdminCommandRequest, v1.ApplyAdminCommandResponse]
-	pushRevocations     *connect.Client[v1.PushRevocationsRequest, v1.PushRevocationsResponse]
-	listRepos           *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
-	listFolders         *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
-	startAgentLogin     *connect.Client[v1.StartAgentLoginRequest, v1.StartAgentLoginResponse]
-	testAgent           *connect.Client[v1.TestAgentRequest, v1.TestAgentResponse]
-	listExecLog         *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
-	listDSHSessions     *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
-	readDSHSession      *connect.Client[v1.ReadDSHSessionRequest, v1.ReadDSHSessionResponse]
-	dSHSessionOptions   *connect.Client[v1.DSHSessionOptionsRequest, v1.DSHSessionOptionsResponse]
-	listClaudeSessions  *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
-	readClaudeSession   *connect.Client[v1.ReadClaudeSessionRequest, v1.ReadClaudeSessionResponse]
-	listHeldMessages    *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
-	releaseHeldMessage  *connect.Client[v1.ReleaseHeldMessageRequest, v1.ReleaseHeldMessageResponse]
-	setDSHTakeover      *connect.Client[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse]
-	sendDSHMessage      *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
-	interruptDSHSession *connect.Client[v1.InterruptDSHSessionRequest, v1.InterruptDSHSessionResponse]
-	prepareDSHBridge    *connect.Client[v1.PrepareDSHBridgeRequest, v1.PrepareDSHBridgeResponse]
-	installDSHBridge    *connect.Client[v1.InstallDSHBridgeRequest, v1.InstallDSHBridgeResponse]
-	listCustomAgents    *connect.Client[v1.ListCustomAgentsRequest, v1.ListCustomAgentsResponse]
-	saveCustomAgent     *connect.Client[v1.SaveCustomAgentRequest, v1.SaveCustomAgentResponse]
-	removeCustomAgent   *connect.Client[v1.RemoveCustomAgentRequest, v1.RemoveCustomAgentResponse]
-	testCustomAgent     *connect.Client[v1.TestCustomAgentRequest, v1.TestCustomAgentResponse]
+	listRooms               *connect.Client[v1.ListRoomsRequest, v1.ListRoomsResponse]
+	openDirectRoom          *connect.Client[v1.OpenDirectRoomRequest, v1.Room]
+	listRoomMessages        *connect.Client[v1.ListRoomMessagesRequest, v1.ListRoomMessagesResponse]
+	postRoomMessage         *connect.Client[v1.PostRoomMessageRequest, v1.RoomMessage]
+	createRoom              *connect.Client[v1.CreateRoomRequest, v1.Room]
+	updateRoom              *connect.Client[v1.UpdateRoomRequest, v1.Room]
+	stopRoom                *connect.Client[v1.StopRoomRequest, v1.Room]
+	markRoomSeen            *connect.Client[v1.MarkRoomSeenRequest, v1.Room]
+	deleteRoom              *connect.Client[v1.DeleteRoomRequest, v1.DeleteRoomResponse]
+	applyAdminCommand       *connect.Client[v1.ApplyAdminCommandRequest, v1.ApplyAdminCommandResponse]
+	pushRevocations         *connect.Client[v1.PushRevocationsRequest, v1.PushRevocationsResponse]
+	listRepos               *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
+	listFolders             *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	startAgentLogin         *connect.Client[v1.StartAgentLoginRequest, v1.StartAgentLoginResponse]
+	testAgent               *connect.Client[v1.TestAgentRequest, v1.TestAgentResponse]
+	listExecLog             *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
+	listDSHSessions         *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
+	readDSHSession          *connect.Client[v1.ReadDSHSessionRequest, v1.ReadDSHSessionResponse]
+	dSHSessionOptions       *connect.Client[v1.DSHSessionOptionsRequest, v1.DSHSessionOptionsResponse]
+	listClaudeSessions      *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
+	readClaudeSession       *connect.Client[v1.ReadClaudeSessionRequest, v1.ReadClaudeSessionResponse]
+	listHeldMessages        *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
+	releaseHeldMessage      *connect.Client[v1.ReleaseHeldMessageRequest, v1.ReleaseHeldMessageResponse]
+	setDSHTakeover          *connect.Client[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse]
+	sendDSHMessage          *connect.Client[v1.SendDSHMessageRequest, v1.SendDSHMessageResponse]
+	interruptDSHSession     *connect.Client[v1.InterruptDSHSessionRequest, v1.InterruptDSHSessionResponse]
+	prepareDSHBridge        *connect.Client[v1.PrepareDSHBridgeRequest, v1.PrepareDSHBridgeResponse]
+	installDSHBridge        *connect.Client[v1.InstallDSHBridgeRequest, v1.InstallDSHBridgeResponse]
+	listCustomAgents        *connect.Client[v1.ListCustomAgentsRequest, v1.ListCustomAgentsResponse]
+	saveCustomAgent         *connect.Client[v1.SaveCustomAgentRequest, v1.SaveCustomAgentResponse]
+	removeCustomAgent       *connect.Client[v1.RemoveCustomAgentRequest, v1.RemoveCustomAgentResponse]
+	testCustomAgent         *connect.Client[v1.TestCustomAgentRequest, v1.TestCustomAgentResponse]
+	listACPRegistry         *connect.Client[v1.ListACPRegistryRequest, v1.ListACPRegistryResponse]
+	installACPRegistryAgent *connect.Client[v1.InstallACPRegistryAgentRequest, v1.InstallACPRegistryAgentResponse]
 }
 
 // ListRooms calls aide.machine.v1.MachineAdminService.ListRooms.
@@ -1243,6 +1271,24 @@ func (c *machineAdminServiceClient) TestCustomAgent(ctx context.Context, req *v1
 	return nil, err
 }
 
+// ListACPRegistry calls aide.machine.v1.MachineAdminService.ListACPRegistry.
+func (c *machineAdminServiceClient) ListACPRegistry(ctx context.Context, req *v1.ListACPRegistryRequest) (*v1.ListACPRegistryResponse, error) {
+	response, err := c.listACPRegistry.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// InstallACPRegistryAgent calls aide.machine.v1.MachineAdminService.InstallACPRegistryAgent.
+func (c *machineAdminServiceClient) InstallACPRegistryAgent(ctx context.Context, req *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error) {
+	response, err := c.installACPRegistryAgent.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // MachineAdminServiceHandler is an implementation of the aide.machine.v1.MachineAdminService
 // service.
 type MachineAdminServiceHandler interface {
@@ -1357,6 +1403,14 @@ type MachineAdminServiceHandler interface {
 	// Starts an agent as given (saved or not) once, in a scratch folder, and
 	// does the ACP handshake: initialize, then a new session; then stops it.
 	TestCustomAgent(context.Context, *v1.TestCustomAgentRequest) (*v1.TestCustomAgentResponse, error)
+	// Lists installable agents from the official ACP Registry (with local cache
+	// and bundled snapshot fallback), annotated for this machine's OS/arch and
+	// current installation status (工单 #110).
+	ListACPRegistry(context.Context, *v1.ListACPRegistryRequest) (*v1.ListACPRegistryResponse, error)
+	// Downloads (with SHA-256 verification for binary archives), installs in a
+	// machine-isolated directory, and registers an official ACP Registry agent
+	// as a custom ACP agent on this machine (工单 #110).
+	InstallACPRegistryAgent(context.Context, *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error)
 }
 
 // NewMachineAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1559,6 +1613,18 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		connect.WithSchema(machineAdminServiceMethods.ByName("TestCustomAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineAdminServiceListACPRegistryHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceListACPRegistryProcedure,
+		svc.ListACPRegistry,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ListACPRegistry")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceInstallACPRegistryAgentHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceInstallACPRegistryAgentProcedure,
+		svc.InstallACPRegistryAgent,
+		connect.WithSchema(machineAdminServiceMethods.ByName("InstallACPRegistryAgent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.machine.v1.MachineAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MachineAdminServiceListRoomsProcedure:
@@ -1625,6 +1691,10 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceRemoveCustomAgentHandler.ServeHTTP(w, r)
 		case MachineAdminServiceTestCustomAgentProcedure:
 			machineAdminServiceTestCustomAgentHandler.ServeHTTP(w, r)
+		case MachineAdminServiceListACPRegistryProcedure:
+			machineAdminServiceListACPRegistryHandler.ServeHTTP(w, r)
+		case MachineAdminServiceInstallACPRegistryAgentProcedure:
+			machineAdminServiceInstallACPRegistryAgentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1760,4 +1830,12 @@ func (UnimplementedMachineAdminServiceHandler) RemoveCustomAgent(context.Context
 
 func (UnimplementedMachineAdminServiceHandler) TestCustomAgent(context.Context, *v1.TestCustomAgentRequest) (*v1.TestCustomAgentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.TestCustomAgent is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ListACPRegistry(context.Context, *v1.ListACPRegistryRequest) (*v1.ListACPRegistryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ListACPRegistry is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) InstallACPRegistryAgent(context.Context, *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.InstallACPRegistryAgent is not implemented"))
 }

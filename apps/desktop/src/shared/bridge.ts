@@ -39,6 +39,11 @@ export type TrayView = {
 /** The panel's buttons: the first session that needs the owner, the first that runs, the main window, settings, quit, check for updates and restart to update. */
 export type TrayAction = "attention" | "running" | "open" | "settings" | "quit" | "install";
 
+/** Result of an in-place background service restart with post-restart probe (工单 #120). */
+export type DaemonRestartResult =
+  | { ok: true }
+  | { ok: false; reason: string; needsApproval?: boolean; canOpenLogs: boolean };
+
 /** Fixed commands the page may ask to run in Terminal (by key, never by text). */
 export type TerminalCommand = "codexLogin" | "antigravityLogin";
 
@@ -96,6 +101,10 @@ export type Bridge = {
   setLoginItem(on: boolean): Promise<LoginItem>;
   /** aided's background service waits for the person to allow it in System Settings › Login Items. */
   daemonNeedsApproval(): Promise<boolean>;
+  /** Restarts aided in place and probes until it answers again, or returns why it could not (工单 #120). */
+  restartDaemon(): Promise<DaemonRestartResult>;
+  /** Opens aided's logs folder in the system file browser (next step when a restart fails). */
+  openDaemonLogs(): void;
   /** The record of the links to aided and the relay breaking and coming back, oldest first (工单 #87, main/linklog.ts). */
   linkLog(): Promise<LinkEntry[]>;
   /** This window's watch of aided went down, or came back (kept in that record). */

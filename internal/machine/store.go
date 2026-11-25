@@ -187,6 +187,15 @@ ALTER TABLE sessions ADD COLUMN seen_present INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE projects ADD COLUMN name TEXT NOT NULL DEFAULT '';
 `, `
 ALTER TABLE projects ADD COLUMN dsh_preset TEXT NOT NULL DEFAULT '';
+`, `
+CREATE TABLE sent_messages (
+  client_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  client_message_id TEXT NOT NULL,
+  client_seq INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (client_id, session_id, client_message_id)
+);
 `}
 
 // Store uses one writer connection (db) and a pool of readers (rdb), so
@@ -532,7 +541,7 @@ func (s *Store) DeleteSession(r *sessionRow) error {
 		r.ID, r.ProjectID, r.Agent, r.CreatedBy, r.GrantID, time.Now().Unix()); err != nil {
 		return err
 	}
-	for _, table := range []string{"sessions", "session_events", "turns", "idempotency", "tool_outputs"} {
+	for _, table := range []string{"sessions", "session_events", "turns", "idempotency", "tool_outputs", "sent_messages"} {
 		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE session_id=?`, r.ID); err != nil {
 			return err
 		}
@@ -847,6 +856,39 @@ func (s *Store) Idempotent(clientID, key string) (string, error) {
 		return "", nil
 	}
 	return id, err
+}
+
+// ReserveSentMessage atomically records a client_message_id for weak-network
+// resend deduplication (工单 #115). It returns duplicate=true if the same
+// client already delivered this message to the session.
+func (s *Store) ReserveSentMessage(clientID, sessionID, clientMsgID string, clientSeq uint64) (bool, error) {
+	if clientMsgID == "" {
+		return false, nil
+	}
+	res, err := s.db.Exec(
+		`INSERT OR IGNORE INTO sent_messages(client_id, session_id, client_message_id, client_seq, created_at) VALUES(?,?,?,?,?)`,
+		clientID, sessionID, clientMsgID, int64(clientSeq), time.Now().UTC().Unix(),
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n == 0, nil
+}
+
+// ForgetSentMessage removes a reserved client_message_id if delivery failed
+// before the session accepted the message, so a later retry can succeed.
+func (s *Store) ForgetSentMessage(clientID, sessionID, clientMsgID string) {
+	if clientMsgID == "" {
+		return
+	}
+	_, _ = s.db.Exec(
+		`DELETE FROM sent_messages WHERE client_id=? AND session_id=? AND client_message_id=?`,
+		clientID, sessionID, clientMsgID,
+	)
 }
 
 // SeeGrantVersion records v and returns the highest version seen.

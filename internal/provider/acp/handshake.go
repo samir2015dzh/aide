@@ -21,6 +21,12 @@ type Greeting struct {
 	Auth []string
 	// Session: it opened a new session.
 	Session bool
+	// ProtocolVersion negotiated during initialize (2 preferred, 1 fallback).
+	ProtocolVersion uint32
+	// Capabilities truthfully derived from initialize's agentCapabilities.
+	Capabilities provider.Capabilities
+	// Models announced by session/new during the handshake, when dir != "".
+	Models []provider.Model
 }
 
 // Handshake starts the agent once in env and does the ACP handshake:
@@ -73,24 +79,13 @@ func (p *Provider) Handshake(ctx context.Context, env []string, dir string) (Gre
 		return fmt.Errorf("%s: %w", step, err)
 	}
 	var g Greeting
-	res, err := s.call(ctx, "initialize", initializeParams)
+	init, err := p.initializeSession(ctx, s)
 	if err != nil {
 		return g, why("initialize", err)
 	}
-	var init struct {
-		AgentInfo struct {
-			Name    string `json:"name"`
-			Title   string `json:"title"`
-			Version string `json:"version"`
-		} `json:"agentInfo"`
-		AuthMethods []struct {
-			ID string `json:"id"`
-		} `json:"authMethods"`
-	}
-	if json.Unmarshal(res, &init) != nil {
-		return g, why("initialize", errors.New("its answer is not an ACP initialize result"))
-	}
 	g.Title, g.Version = cmp.Or(init.AgentInfo.Title, init.AgentInfo.Name), init.AgentInfo.Version
+	g.ProtocolVersion = init.ProtocolVersion
+	g.Capabilities = init.toCapabilities()
 	for _, m := range init.AuthMethods {
 		g.Auth = append(g.Auth, m.ID)
 	}
@@ -102,7 +97,7 @@ func (p *Provider) Handshake(ctx context.Context, env []string, dir string) (Gre
 			return g, why("authenticate", err)
 		}
 	}
-	res, err = s.call(ctx, "session/new", map[string]any{"cwd": dir, "mcpServers": []any{}})
+	res, err := s.call(ctx, "session/new", map[string]any{"cwd": dir, "mcpServers": []any{}})
 	if err != nil {
 		return g, why("session/new", err)
 	}
@@ -112,6 +107,11 @@ func (p *Provider) Handshake(ctx context.Context, env []string, dir string) (Gre
 	json.Unmarshal(res, &r)
 	if r.SessionID == "" {
 		return g, errors.New("session/new: it returned no session id")
+	}
+	var cfg sessionConfig
+	_ = json.Unmarshal(res, &cfg)
+	if offers := cfg.offers(); offers != nil {
+		g.Models = offers.Models
 	}
 	g.Session = true
 	return g, nil
@@ -129,7 +129,10 @@ func (p *Provider) discoverByHandshake(ctx context.Context, info provider.Info) 
 	default:
 		// As for every ACP agent, its sign-in shows only in a session: not
 		// confirmed until one does (工单 #112).
+		caps := g.Capabilities
 		info.Available, info.LoginUnconfirmed, info.Version = true, true, g.Version
+		info.Capabilities = &caps
+		info.ProtocolVersion = g.ProtocolVersion
 	}
 	return info
 }

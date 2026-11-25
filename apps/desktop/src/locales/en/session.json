@@ -54,7 +54,17 @@
     "you": "you",
     "turnDoneYou": "This turn is complete. Send another message below to continue in this task.",
     "resumeYou": "When you send another message, it will resume from here with all earlier changes preserved.",
-    "rolledBackNote": "Rolled back to turn {{turn}}: turns {{from}} to {{to}} above were discarded."
+    "rolledBackNote": "Rolled back to turn {{turn}}: turns {{from}} to {{to}} above were discarded.",
+    "outbox": {
+      "pending": "Queued",
+      "waitingReconnect": "Queued · waiting to reconnect",
+      "sending": "Sending…",
+      "sent": "Delivered",
+      "failed": "Failed to send",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "attachments": "{{count}} attachment(s)"
+    }
   },
   "control": {
     "label": "This turn",
@@ -117,6 +127,20 @@
     "copy": "Copy Review",
     "copyPrompt": "Copy Suggested Prompt",
     "close": "Close"
+  },
+  "checkpoints": {
+    "title": "Checkpoints",
+    "loading": "Loading checkpoints…",
+    "disabled": "Checkpoints are disabled for this project",
+    "empty": "No checkpoints yet; saved automatically after each turn",
+    "turn": "Turn {{turn}}",
+    "changed": "changed",
+    "unchanged": "no file edits",
+    "restore": "Restore here",
+    "waitIdle": "Wait for or interrupt the current turn first",
+    "policy": "Retains up to {{count}} turns / {{days}} days (includes non-ignored untracked files)",
+    "clear": "Clear checkpoints",
+    "cleared": "Cleared {{count}} checkpoints"
   },
   "markdown": {
     "table": "Data table",

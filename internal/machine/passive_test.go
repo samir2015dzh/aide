@@ -146,3 +146,37 @@ func TestSignInShownBySessions(t *testing.T) {
 		t.Fatalf("after a turn failed not logged in: in %v, unconfirmed %v", in, unconfirmed)
 	}
 }
+
+// TestConfirmedSignOutNotResurrectedByCache (工单 #111): when a provider's own
+// check confirms the user signed out (LoggedIn=false, LoginUnconfirmed=false),
+// stale agent_signin/ cache from an earlier session must not resurrect it.
+func TestConfirmedSignOutNotResurrectedByCache(t *testing.T) {
+	var signedIn atomic.Bool
+	signedIn.Store(true)
+	p := &toggleProvider{signedIn: &signedIn}
+	n, err := Open(Config{DataDir: t.TempDir(), Providers: map[string]provider.Provider{"antigravity": p}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer n.Close()
+	<-n.CheckAgents(true, 0)
+	n.agentSignedIn("antigravity", true)
+	signedIn.Store(false)
+	<-n.CheckAgents(true, 0)
+	n.mu.Lock()
+	i := n.infos["antigravity"]
+	n.mu.Unlock()
+	if i.LoggedIn || i.LoginUnconfirmed {
+		t.Fatalf("confirmed sign-out resurrected by cache: %+v", i)
+	}
+}
+
+type toggleProvider struct{ signedIn *atomic.Bool }
+
+func (toggleProvider) Name() string { return "antigravity" }
+func (p *toggleProvider) Discover(context.Context) provider.Info {
+	return provider.Info{Name: "antigravity", Available: true, Version: "1.0.0", LoggedIn: p.signedIn.Load()}
+}
+func (toggleProvider) Start(context.Context, provider.StartSpec) (provider.Session, error) {
+	panic("not started in these tests")
+}

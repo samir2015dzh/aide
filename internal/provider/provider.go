@@ -51,6 +51,34 @@ type Info struct {
 	// models (not asked on purpose, 工单 #112); what an earlier check that
 	// did found stands for it.
 	ModelsSkipped bool
+	// Capabilities declares what this provider truly supports on this machine
+	// (工单 #110 / #112). When nil, machine fills truthful provider defaults.
+	Capabilities *Capabilities
+	// ProtocolVersion is the negotiated ACP protocol version (e.g. 2 or 1), 0 for non-ACP.
+	ProtocolVersion uint32
+}
+
+// Capabilities declares what a provider truly supports so Aide hides or disables
+// unsupported entries instead of failing only after the owner clicks (工单 #110 / #112).
+type Capabilities struct {
+	SelectModel          bool `json:"select_model,omitempty"`
+	SwitchModelInSession bool `json:"switch_model_in_session,omitempty"`
+	SelectEffort         bool `json:"select_effort,omitempty"`
+	SelectMode           bool `json:"select_mode,omitempty"`
+	LoginInAide          bool `json:"login_in_aide,omitempty"`
+	Usage                bool `json:"usage,omitempty"`
+	Fork                 bool `json:"fork,omitempty"`
+	Rollback             bool `json:"rollback,omitempty"`
+	Steer                bool `json:"steer,omitempty"`
+	Resume               bool `json:"resume,omitempty"`
+	Images               bool `json:"images,omitempty"`
+	Audio                bool `json:"audio,omitempty"`
+}
+
+// CapabilitiesProvider optionally exposes live negotiated capabilities discovered
+// from the provider (for example, from an ACP initialize handshake).
+type CapabilitiesProvider interface {
+	ObservedCapabilities() (*Capabilities, uint32)
 }
 
 // ModelCatalog is an observation, not a machine-wide entitlement guarantee.
@@ -361,6 +389,14 @@ type Archiver interface {
 // not there.
 type ArchiveReader interface {
 	Archived(refs []string) map[string]bool
+}
+
+// ConversationRollbacker declares whether a provider can roll back (or
+// cleanly reset and re-anchor) its conversation state together with a
+// workspace checkpoint rollback (工单 #113). Providers returning false cause
+// Aide to refuse workspace file rollback so files and conversation never diverge.
+type ConversationRollbacker interface {
+	CanRollbackConversation() (bool, string)
 }
 
 // Markdown that CleanTitle drops from a title: a line that is only a code

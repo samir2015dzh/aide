@@ -6,7 +6,7 @@ import { cli, fixture, launch, sessionList } from "./app";
 
 test("a turn's prompt rolls the session back to before it, once the warning is confirmed", async () => {
   const title = "回滚三轮";
-  const started = JSON.parse(await cli("session", "start", "--project", "demo", "--agent", "gemini", "--title", title, "--prompt", "write a.txt one\nsay 第一轮", "--wait", "-o", "json"));
+  const started = JSON.parse(await cli("session", "start", "--project", "demo", "--agent", "claude", "--title", title, "--prompt", "write a.txt one\nsay 第一轮", "--wait", "-o", "json"));
   const id = started.session.session_id;
   await cli("session", "send", id, "--wait", "--message", "write b.txt two\nsay 第二轮");
   await cli("session", "send", id, "--wait", "--message", "write c.txt three\nsay 第三轮");

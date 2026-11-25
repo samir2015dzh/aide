@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { AgentModel } from "@aide/proto/machine";
 import type { Session } from "@aide/proto/session";
-import { codingAgentTitle, listedModel, modelChoices, modelTitle } from "@aide/core";
+import { codingAgentTitle, listedModel, modelChoices, modelMetadataSummary, modelTitle } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
 import { local } from "../api";
 import { GrantAvatar, PopMenu, type MenuEntry } from "../components";
@@ -12,6 +12,7 @@ import { grantLabel, machineName } from "../Sidebar";
 import { useStore } from "../store";
 import { push } from "./actions";
 import { Insights } from "./Insights";
+import { Checkpoints } from "./Checkpoints";
 
 type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean };
 
@@ -117,6 +118,7 @@ export function Inspector({ s }: { s: Session }) {
       </aside>
       {(s.model !== "" || s.effort !== "") && <Context s={s} models={m?.status?.agents.find((a) => a.name === s.agent)?.models} />}
       <Insights s={s} />
+      <Checkpoints s={s} />
     </div>
   );
 }
@@ -130,7 +132,10 @@ function Context({ s, models }: { s: Session; models?: AgentModel[] }) {
   const same = t("inspector.sameAs", { agent: codingAgentTitle(s.agent) });
   const effort = s.effort === "" ? same : t(`firstrun:prepare.efforts.${s.effort}`, { defaultValue: s.effort });
   // The model it runs, as the agent reported it: its specific one in full too (工单 #99).
-  const ran = modelChoices(s.agent, models ?? [], s.model).find((x) => x.value === listedModel(s.model, models ?? []));
+  const listed = listedModel(s.model, models ?? []);
+  const ran = modelChoices(s.agent, models ?? [], s.model).find((x) => x.value === listed);
+  const matchedModel = (models ?? []).find((m) => m.id === listed || (s.model !== "" && (m.id === s.model || m.resolved === s.model)));
+  const meta = modelMetadataSummary(matchedModel, t("inspector.costEstimate", { defaultValue: "est." }));
   return (
     <aside className="insp" aria-label={t("inspector.context")}>
       <h3 className="insp-h">{t("inspector.context")}</h3>
@@ -143,6 +148,7 @@ function Context({ s, models }: { s: Session; models?: AgentModel[] }) {
             <span title={s.model}>
               {ran?.title ?? modelTitle(s.model, models)}
               {ran?.detail && <span className="dim"> · {ran.detail}</span>}
+              {meta && <span className="dim"> · {meta}</span>}
             </span>
           )}
         </li>

@@ -12,7 +12,12 @@ plugins {
 val coreAar = rootProject.file("build/core/aidecore.aar")
 val buildCore by tasks.registering(Exec::class) {
     description = "Builds the shared Go core with gomobile"
-    commandLine(rootProject.file("scripts/build-core.sh").absolutePath)
+    val script = rootProject.file("scripts/build-core.sh").absolutePath
+    if (System.getProperty("os.name").lowercase().contains("win")) {
+        commandLine("bash", script)
+    } else {
+        commandLine(script)
+    }
     onlyIf { !project.hasProperty("skipCore") }
 }
 

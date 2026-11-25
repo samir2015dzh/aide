@@ -96,8 +96,30 @@ data class AgentStatus(
     val login: AgentLogin? = null,
     /** The kind the owner filed it as (SetAgentCategory, 工单 #93): "" told from what it is, "local", "personal". */
     val category: String = "",
+    /** Truthful capability declaration for this provider on this machine (工单 #110 / #112). */
+    val capabilities: AgentCapabilities? = null,
+    /** Origin of this agent: "builtin", "registry", or "local" (工单 #110). */
+    val source: String = "",
+    val registryId: String = "",
+    val registryVersion: String = "",
+    val protocolVersion: Int = 0,
 )
 
+@Serializable
+data class AgentCapabilities(
+    val selectModel: Boolean = false,
+    val switchModelInSession: Boolean = false,
+    val selectEffort: Boolean = false,
+    val selectMode: Boolean = false,
+    val loginInAide: Boolean = false,
+    val usage: Boolean = false,
+    val fork: Boolean = false,
+    val rollback: Boolean = false,
+    val steer: Boolean = false,
+    val resume: Boolean = false,
+    val images: Boolean = false,
+    val audio: Boolean = false,
+)
 /**
  * aide.machine.v1.AgentLogin; state is an AgentLoginState name. url: the address its sign-in printed, to open on any
  * device; codeSent: the code the page showed went to it (工单 #118).
@@ -127,7 +149,27 @@ data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val 
  * source: where its agent offers it from (DSH's provider lines, 工单 #98 补充).
  */
 @Serializable
-data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList(), val resolved: String = "", val source: String = "")
+data class AgentModel(
+    val id: String = "",
+    val name: String = "",
+    val efforts: List<String> = emptyList(),
+    val resolved: String = "",
+    val source: String = "",
+    val contextWindow: Int = 0,
+    val maxOutputTokens: Int = 0,
+    val capabilities: List<String> = emptyList(),
+    val inputCostPerMillion: Double = 0.0,
+    val outputCostPerMillion: Double = 0.0,
+)
+
+@Serializable
+data class ModelCatalogSync(
+    val source: String = "",
+    val modelCount: Int = 0,
+    val syncedAt: String = "",
+    val lastAttemptAt: String = "",
+    val lastError: String = "",
+)
 
 /** aide.identity.v1.AgentDefaults, as far as the phone reads it. */
 @Serializable
@@ -161,6 +203,8 @@ data class MachineStatus(
     val rooms: List<Room> = emptyList(),
     /** What its coding agents said for rooms an away host keeps, waiting at the post office (工单 #74). */
     val roomOutbox: List<RoomOutbox> = emptyList(),
+    /** Open model catalog sync status (工单 #114). */
+    val modelCatalog: ModelCatalogSync? = null,
 )
 
 @Serializable data class RoomWaiting(val roomId: String = "", val messages: Int = 0, val since: String = "")
@@ -559,7 +603,13 @@ data class Notice(
 /** aide.session.v1.Attachment: a file sent with a message (工单 #91); data is its bytes, base64 as JSON carries bytes. */
 @Serializable data class AttachmentIn(val name: String, val mediaType: String = "", val data: String)
 @Serializable data class StartSessionBody(val idempotencyKey: String, val projectId: String, val agent: String, val prompt: String, val model: String = "", val effort: String = "", val mode: String = "", val attachments: List<AttachmentIn> = emptyList())
-@Serializable data class SendMessageRequest(val sessionId: String, val text: String, val attachments: List<AttachmentIn> = emptyList())
+@Serializable data class SendMessageRequest(
+    val sessionId: String,
+    val text: String,
+    val attachments: List<AttachmentIn> = emptyList(),
+    val clientMessageId: String = "",
+    @Serializable(with = Int64::class) val clientSeq: Long = 0,
+)
 @Serializable data class StartSessionRequest(val machineId: String, val session: StartSessionBody)
 
 // Contacts (docs/personas.md): aide.identity.v1.Persona and LocalService's calls for them.

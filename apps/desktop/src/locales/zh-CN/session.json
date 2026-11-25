@@ -54,7 +54,17 @@
     "you": "你",
     "turnDoneYou": "这一轮已完成。在下面再发一条消息即可在这个任务里继续。",
     "resumeYou": "你再发一条消息时，会从这里接着做，之前的改动都保留。",
-    "rolledBackNote": "已回滚到第 {{turn}} 轮：上面第 {{from}}–{{to}} 轮已丢弃。"
+    "rolledBackNote": "已回滚到第 {{turn}} 轮：上面第 {{from}}–{{to}} 轮已丢弃。",
+    "outbox": {
+      "pending": "待发",
+      "waitingReconnect": "待发 · 等待重连",
+      "sending": "发送中…",
+      "sent": "已送达",
+      "failed": "发送失败",
+      "retry": "重试",
+      "cancel": "取消",
+      "attachments": "{{count}} 个附件"
+    }
   },
   "control": {
     "label": "这一轮",
@@ -117,6 +127,20 @@
     "copy": "拷贝复盘",
     "copyPrompt": "拷贝改进版派单提示",
     "close": "关闭"
+  },
+  "checkpoints": {
+    "title": "检查点",
+    "loading": "正在读取检查点…",
+    "disabled": "当前项目未启用检查点",
+    "empty": "尚无检查点，每轮结束后自动保存",
+    "turn": "第 {{turn}} 轮",
+    "changed": "有变更",
+    "unchanged": "无文件改动",
+    "restore": "回到这个点",
+    "waitIdle": "请先等待或中断当前轮次",
+    "policy": "保留最近 {{count}} 轮 / {{days}} 天（含未跟踪非忽略文件）",
+    "clear": "清理检查点",
+    "cleared": "已清理 {{count}} 个检查点"
   },
   "markdown": {
     "table": "数据表格",

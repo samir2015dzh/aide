@@ -86,6 +86,12 @@ const (
 	// SessionServiceRollbackSessionProcedure is the fully-qualified name of the SessionService's
 	// RollbackSession RPC.
 	SessionServiceRollbackSessionProcedure = "/aide.session.v1.SessionService/RollbackSession"
+	// SessionServiceListCheckpointsProcedure is the fully-qualified name of the SessionService's
+	// ListCheckpoints RPC.
+	SessionServiceListCheckpointsProcedure = "/aide.session.v1.SessionService/ListCheckpoints"
+	// SessionServiceClearCheckpointsProcedure is the fully-qualified name of the SessionService's
+	// ClearCheckpoints RPC.
+	SessionServiceClearCheckpointsProcedure = "/aide.session.v1.SessionService/ClearCheckpoints"
 	// SessionServiceMarkSessionSeenProcedure is the fully-qualified name of the SessionService's
 	// MarkSessionSeen RPC.
 	SessionServiceMarkSessionSeenProcedure = "/aide.session.v1.SessionService/MarkSessionSeen"
@@ -151,6 +157,14 @@ type SessionServiceClient interface {
 	// a RolledBack event. In-place sessions have no snapshots and are
 	// refused (FAILED_PRECONDITION), as is a session with a turn running.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error)
+	// ListCheckpoints returns the per-turn workspace checkpoints stored under
+	// hidden git refs (refs/aide/checkpoints/<session_id>/turn-<N>), along with
+	// non-git/in-place status, conversation rollback capability, and retention
+	// policy (工单 #113).
+	ListCheckpoints(context.Context, *v1.ListCheckpointsRequest) (*v1.ListCheckpointsResponse, error)
+	// ClearCheckpoints manually removes hidden git ref checkpoints for a session
+	// (optionally keeping keep_latest most recent entries; 0 removes all).
+	ClearCheckpoints(context.Context, *v1.ClearCheckpointsRequest) (*v1.ClearCheckpointsResponse, error)
 	// MarkSessionSeen records what the owner has seen of the session
 	// (Session.seen), on its machine, so every device of the owner agrees.
 	// Only the owner's devices may mark. It is not activity: updated_at
@@ -286,6 +300,18 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("RollbackSession")),
 			connect.WithClientOptions(opts...),
 		),
+		listCheckpoints: connect.NewClient[v1.ListCheckpointsRequest, v1.ListCheckpointsResponse](
+			httpClient,
+			baseURL+SessionServiceListCheckpointsProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("ListCheckpoints")),
+			connect.WithClientOptions(opts...),
+		),
+		clearCheckpoints: connect.NewClient[v1.ClearCheckpointsRequest, v1.ClearCheckpointsResponse](
+			httpClient,
+			baseURL+SessionServiceClearCheckpointsProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("ClearCheckpoints")),
+			connect.WithClientOptions(opts...),
+		),
 		markSessionSeen: connect.NewClient[v1.MarkSessionSeenRequest, v1.Session](
 			httpClient,
 			baseURL+SessionServiceMarkSessionSeenProcedure,
@@ -321,6 +347,8 @@ type sessionServiceClient struct {
 	readToolOutput     *connect.Client[v1.ReadToolOutputRequest, v1.ToolOutputChunk]
 	pushSession        *connect.Client[v1.PushSessionRequest, v1.PushSessionResponse]
 	rollbackSession    *connect.Client[v1.RollbackSessionRequest, v1.Session]
+	listCheckpoints    *connect.Client[v1.ListCheckpointsRequest, v1.ListCheckpointsResponse]
+	clearCheckpoints   *connect.Client[v1.ClearCheckpointsRequest, v1.ClearCheckpointsResponse]
 	markSessionSeen    *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
 	getSessionInsights *connect.Client[v1.GetSessionInsightsRequest, v1.SessionInsights]
 }
@@ -475,6 +503,24 @@ func (c *sessionServiceClient) RollbackSession(ctx context.Context, req *v1.Roll
 	return nil, err
 }
 
+// ListCheckpoints calls aide.session.v1.SessionService.ListCheckpoints.
+func (c *sessionServiceClient) ListCheckpoints(ctx context.Context, req *v1.ListCheckpointsRequest) (*v1.ListCheckpointsResponse, error) {
+	response, err := c.listCheckpoints.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ClearCheckpoints calls aide.session.v1.SessionService.ClearCheckpoints.
+func (c *sessionServiceClient) ClearCheckpoints(ctx context.Context, req *v1.ClearCheckpointsRequest) (*v1.ClearCheckpointsResponse, error) {
+	response, err := c.clearCheckpoints.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // MarkSessionSeen calls aide.session.v1.SessionService.MarkSessionSeen.
 func (c *sessionServiceClient) MarkSessionSeen(ctx context.Context, req *v1.MarkSessionSeenRequest) (*v1.Session, error) {
 	response, err := c.markSessionSeen.CallUnary(ctx, connect.NewRequest(req))
@@ -550,6 +596,14 @@ type SessionServiceHandler interface {
 	// a RolledBack event. In-place sessions have no snapshots and are
 	// refused (FAILED_PRECONDITION), as is a session with a turn running.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error)
+	// ListCheckpoints returns the per-turn workspace checkpoints stored under
+	// hidden git refs (refs/aide/checkpoints/<session_id>/turn-<N>), along with
+	// non-git/in-place status, conversation rollback capability, and retention
+	// policy (工单 #113).
+	ListCheckpoints(context.Context, *v1.ListCheckpointsRequest) (*v1.ListCheckpointsResponse, error)
+	// ClearCheckpoints manually removes hidden git ref checkpoints for a session
+	// (optionally keeping keep_latest most recent entries; 0 removes all).
+	ClearCheckpoints(context.Context, *v1.ClearCheckpointsRequest) (*v1.ClearCheckpointsResponse, error)
 	// MarkSessionSeen records what the owner has seen of the session
 	// (Session.seen), on its machine, so every device of the owner agrees.
 	// Only the owner's devices may mark. It is not activity: updated_at
@@ -681,6 +735,18 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("RollbackSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceListCheckpointsHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceListCheckpointsProcedure,
+		svc.ListCheckpoints,
+		connect.WithSchema(sessionServiceMethods.ByName("ListCheckpoints")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sessionServiceClearCheckpointsHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceClearCheckpointsProcedure,
+		svc.ClearCheckpoints,
+		connect.WithSchema(sessionServiceMethods.ByName("ClearCheckpoints")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sessionServiceMarkSessionSeenHandler := connect.NewUnaryHandlerSimple(
 		SessionServiceMarkSessionSeenProcedure,
 		svc.MarkSessionSeen,
@@ -731,6 +797,10 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServicePushSessionHandler.ServeHTTP(w, r)
 		case SessionServiceRollbackSessionProcedure:
 			sessionServiceRollbackSessionHandler.ServeHTTP(w, r)
+		case SessionServiceListCheckpointsProcedure:
+			sessionServiceListCheckpointsHandler.ServeHTTP(w, r)
+		case SessionServiceClearCheckpointsProcedure:
+			sessionServiceClearCheckpointsHandler.ServeHTTP(w, r)
 		case SessionServiceMarkSessionSeenProcedure:
 			sessionServiceMarkSessionSeenHandler.ServeHTTP(w, r)
 		case SessionServiceGetSessionInsightsProcedure:
@@ -814,6 +884,14 @@ func (UnimplementedSessionServiceHandler) PushSession(context.Context, *v1.PushS
 
 func (UnimplementedSessionServiceHandler) RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.Session, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.RollbackSession is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) ListCheckpoints(context.Context, *v1.ListCheckpointsRequest) (*v1.ListCheckpointsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.ListCheckpoints is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) ClearCheckpoints(context.Context, *v1.ClearCheckpointsRequest) (*v1.ClearCheckpointsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.ClearCheckpoints is not implemented"))
 }
 
 func (UnimplementedSessionServiceHandler) MarkSessionSeen(context.Context, *v1.MarkSessionSeenRequest) (*v1.Session, error) {

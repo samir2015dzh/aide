@@ -197,6 +197,10 @@ service LocalService {
   rpc PushSession(PushSessionRequest) returns (aide.session.v1.PushSessionResponse);
   // aide.session.v1.SessionService.RollbackSession, as the owner.
   rpc RollbackSession(RollbackSessionRequest) returns (SessionResponse);
+  // aide.session.v1.SessionService.ListCheckpoints, as the owner (工单 #113).
+  rpc ListSessionCheckpoints(aide.session.v1.ListCheckpointsRequest) returns (aide.session.v1.ListCheckpointsResponse);
+  // aide.session.v1.SessionService.ClearCheckpoints, as the owner (工单 #113).
+  rpc ClearSessionCheckpoints(aide.session.v1.ClearCheckpointsRequest) returns (aide.session.v1.ClearCheckpointsResponse);
   // The DeepSeek Harness sessions Aide did not start, on the machines
   // (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
   // activity first. Read only.
@@ -250,6 +254,8 @@ service LocalService {
   rpc SaveMachineCustomAgent(SaveMachineCustomAgentRequest) returns (aide.machine.v1.SaveCustomAgentResponse);
   rpc RemoveMachineCustomAgent(RemoveMachineCustomAgentRequest) returns (aide.machine.v1.RemoveCustomAgentResponse);
   rpc TestMachineCustomAgent(TestMachineCustomAgentRequest) returns (aide.machine.v1.TestCustomAgentResponse);
+  rpc ListMachineACPRegistry(ListMachineACPRegistryRequest) returns (aide.machine.v1.ListACPRegistryResponse);
+  rpc InstallMachineACPRegistryAgent(InstallMachineACPRegistryAgentRequest) returns (aide.machine.v1.InstallACPRegistryAgentResponse);
   // QueryWork counts the work done over a range, by hour or day, from what
   // this device holds of every machine's counts: no machine is asked
   // (docs/work-stats.md §7).
@@ -805,6 +811,17 @@ message TestMachineCustomAgentRequest {
   aide.machine.v1.CustomAgent agent = 2;
 }
 
+message ListMachineACPRegistryRequest {
+  string machine_id = 1;
+  bool refresh = 2;
+}
+
+message InstallMachineACPRegistryAgentRequest {
+  string machine_id = 1;
+  string registry_id = 2;
+  string name = 3;
+}
+
 message GetDiagnosticsRequest {}
 
 message GetDiagnosticsResponse {
@@ -1190,6 +1207,10 @@ message SendMessageRequest {
   string session_id = 1;
   string text = 2;
   repeated aide.session.v1.Attachment attachments = 3;
+  // Optional client-generated idempotency key for weak-network resend deduplication (工单 #115).
+  string client_message_id = 4;
+  // Optional client-local monotonic outbox sequence number (工单 #115).
+  uint64 client_seq = 5;
 }
 
 message InterruptSessionRequest {

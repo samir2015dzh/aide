@@ -444,6 +444,14 @@ func (l *localService) TestMachineCustomAgent(ctx context.Context, req *localv1.
 	return l.o().TestMachineCustomAgent(ctx, req.MachineId, req.Agent)
 }
 
+func (l *localService) ListMachineACPRegistry(ctx context.Context, req *localv1.ListMachineACPRegistryRequest) (*machinev1.ListACPRegistryResponse, error) {
+	return l.o().MachineACPRegistry(ctx, req.MachineId, req.Refresh)
+}
+
+func (l *localService) InstallMachineACPRegistryAgent(ctx context.Context, req *localv1.InstallMachineACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	return l.o().InstallMachineACPRegistryAgent(ctx, req.MachineId, req.RegistryId, req.Name)
+}
+
 func (l *localService) ListExecLog(ctx context.Context, req *localv1.ListExecLogRequest) (*localv1.ListExecLogResponse, error) {
 	return l.o().ListExecLog(ctx, req.MachineId)
 }
@@ -931,9 +939,9 @@ func (l *localService) SendMessage(ctx context.Context, req *localv1.SendMessage
 		if err != nil {
 			return nil, err
 		}
-		return sessionResponse(m.Send(ctx, req.SessionId, req.Text, req.Attachments))
+		return sessionResponse(m.SendWithID(ctx, req.SessionId, req.Text, req.Attachments, req.ClientMessageId, req.ClientSeq))
 	}
-	return sessionResponse(l.o().SendMessage(ctx, req.SessionId, req.Text, req.Attachments))
+	return sessionResponse(l.o().SendMessageWithID(ctx, req.SessionId, req.Text, req.Attachments, req.ClientMessageId, req.ClientSeq))
 }
 
 func (l *localService) InterruptSession(ctx context.Context, req *localv1.InterruptSessionRequest) (*localv1.SessionResponse, error) {
@@ -1010,6 +1018,26 @@ func (l *localService) RollbackSession(ctx context.Context, req *localv1.Rollbac
 		return sessionResponse(m.Rollback(ctx, req.SessionId, req.Turn))
 	}
 	return sessionResponse(l.o().RollbackSession(ctx, req.SessionId, req.Turn))
+}
+
+func (l *localService) ListSessionCheckpoints(ctx context.Context, req *sessionv1.ListCheckpointsRequest) (*sessionv1.ListCheckpointsResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.ListCheckpoints(ctx, req.SessionId)
+	}
+	return l.o().ListSessionCheckpoints(ctx, req.SessionId)
+}
+
+func (l *localService) ClearSessionCheckpoints(ctx context.Context, req *sessionv1.ClearCheckpointsRequest) (*sessionv1.ClearCheckpointsResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.ClearCheckpoints(ctx, req.SessionId, req.KeepLatest)
+	}
+	return l.o().ClearSessionCheckpoints(ctx, req.SessionId, req.KeepLatest)
 }
 
 func sessionResponse(s *sessionv1.Session, err error) (*localv1.SessionResponse, error) {
