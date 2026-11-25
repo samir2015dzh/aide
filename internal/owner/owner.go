@@ -1528,6 +1528,32 @@ func (o *Owner) TestMachineCustomAgent(ctx context.Context, machineID string, a 
 	return n.Admin.TestCustomAgent(ctx, &machinev1.TestCustomAgentRequest{Agent: a})
 }
 
+// MachineACPRegistry lists official ACP Registry agents for machineID (工单 #110).
+func (o *Owner) MachineACPRegistry(ctx context.Context, machineID string, refresh bool) (*machinev1.ListACPRegistryResponse, error) {
+	if l := o.local(); l != nil && l.MachineID() == machineID {
+		return l.ListACPRegistry(ctx, refresh), nil
+	}
+	n, err := o.machineClient(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.ListACPRegistry(ctx, &machinev1.ListACPRegistryRequest{Refresh: refresh})
+}
+
+// InstallMachineACPRegistryAgent downloads, verifies, and registers an official
+// ACP Registry agent on machineID (工单 #110).
+func (o *Owner) InstallMachineACPRegistryAgent(ctx context.Context, machineID, registryID, name string) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	req := &machinev1.InstallACPRegistryAgentRequest{RegistryId: registryID, Name: name}
+	if l := o.local(); l != nil && l.MachineID() == machineID {
+		return l.InstallACPRegistryAgent(ctx, req)
+	}
+	n, err := o.machineClient(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.InstallACPRegistryAgent(ctx, req)
+}
+
 // ListExecLog gathers the machines' ops logs (docs/machine-ops.md): the
 // commands agents ran, or were refused, on each, newest first.
 func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.ListExecLogResponse, error) {

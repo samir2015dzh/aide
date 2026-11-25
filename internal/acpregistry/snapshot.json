@@ -1,0 +1,153 @@
+{
+  "version": "1.0.0",
+  "agents": [
+    {
+      "id": "claude-agent-acp",
+      "name": "Claude Agent (ACP)",
+      "version": "0.17.1",
+      "description": "Official ACP adapter for Claude Agent SDK (agentclientprotocol/claude-agent-acp).",
+      "repository": "https://github.com/agentclientprotocol/claude-agent-acp",
+      "license": "Apache-2.0",
+      "authors": ["Agent Client Protocol"],
+      "distribution": {
+        "npx": {
+          "package": "@agentclientprotocol/claude-agent-acp@0.17.1"
+        }
+      }
+    },
+    {
+      "id": "codex-acp",
+      "name": "Codex (ACP)",
+      "version": "0.9.5",
+      "description": "ACP adapter process for OpenAI Codex CLI.",
+      "repository": "https://github.com/zed-industries/codex-acp",
+      "license": "External",
+      "authors": ["Zed Industries"],
+      "distribution": {
+        "npx": {
+          "package": "@zed-industries/codex-acp@0.9.5"
+        }
+      }
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "version": "1.2.0",
+      "description": "Open source AI coding agent with native ACP stdio mode.",
+      "repository": "https://github.com/anomalyco/opencode",
+      "license": "MIT",
+      "authors": ["Anomaly"],
+      "distribution": {
+        "npx": {
+          "package": "opencode-ai@latest",
+          "args": ["acp"]
+        }
+      }
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini CLI",
+      "version": "0.31.0",
+      "description": "Google Gemini command-line coding agent with native --acp mode.",
+      "repository": "https://github.com/google-gemini/gemini-cli",
+      "license": "Apache-2.0",
+      "authors": ["Google"],
+      "distribution": {
+        "npx": {
+          "package": "@google/gemini-cli@latest",
+          "args": ["--acp"]
+        }
+      }
+    },
+    {
+      "id": "qwen-code",
+      "name": "Qwen Code",
+      "version": "0.11.0",
+      "description": "Alibaba Qwen Code CLI with native ACP mode.",
+      "repository": "https://github.com/QwenLM/qwen-code",
+      "license": "Apache-2.0",
+      "authors": ["QwenLM"],
+      "distribution": {
+        "npx": {
+          "package": "@qwen-code/qwen-code@latest",
+          "args": ["--acp"]
+        }
+      }
+    },
+    {
+      "id": "auggie",
+      "name": "Auggie CLI",
+      "version": "0.15.0",
+      "description": "Augment Code CLI with native ACP stdio server.",
+      "repository": "https://github.com/augmentcode/auggie",
+      "license": "Proprietary",
+      "authors": ["Augment Code"],
+      "distribution": {
+        "npx": {
+          "package": "@augmentcode/auggie@latest",
+          "args": ["--acp"]
+        }
+      }
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "version": "1.0.0",
+      "description": "Autonomous coding agent CLI speaking ACP.",
+      "repository": "https://github.com/cline/cline",
+      "license": "Apache-2.0",
+      "authors": ["Cline Bot Inc."],
+      "distribution": {
+        "npx": {
+          "package": "cline@latest",
+          "args": ["--acp"]
+        }
+      }
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "version": "1.21.0",
+      "description": "Open source extensible AI developer agent with native ACP support.",
+      "repository": "https://github.com/block/goose",
+      "license": "Apache-2.0",
+      "authors": ["Block"],
+      "distribution": {
+        "uvx": {
+          "package": "goose-ai",
+          "args": ["acp"]
+        }
+      }
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi CLI",
+      "version": "0.7.0",
+      "description": "Moonshot AI Kimi coding agent CLI with native ACP mode.",
+      "repository": "https://github.com/MoonshotAI/kimi-cli",
+      "license": "Apache-2.0",
+      "authors": ["Moonshot AI"],
+      "distribution": {
+        "uvx": {
+          "package": "kimi-cli",
+          "args": ["acp"]
+        }
+      }
+    },
+    {
+      "id": "amp",
+      "name": "Amp",
+      "version": "0.5.0",
+      "description": "Sourcegraph Amp coding agent speaking ACP.",
+      "repository": "https://ampcode.com",
+      "license": "Proprietary",
+      "authors": ["Sourcegraph"],
+      "distribution": {
+        "npx": {
+          "package": "@sourcegraph/amp@latest",
+          "args": ["--acp"]
+        }
+      }
+    }
+  ]
+}

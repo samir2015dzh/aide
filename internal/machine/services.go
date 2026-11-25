@@ -331,6 +331,20 @@ func (s *adminService) TestCustomAgent(ctx context.Context, req *machinev1.TestC
 	return s.n.TestCustomAgent(ctx, req.Agent)
 }
 
+func (s *adminService) ListACPRegistry(ctx context.Context, req *machinev1.ListACPRegistryRequest) (*machinev1.ListACPRegistryResponse, error) {
+	if principalFrom(ctx).Kind != PrincipalOwner {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
+	}
+	return s.n.ListACPRegistry(ctx, req.GetRefresh()), nil
+}
+
+func (s *adminService) InstallACPRegistryAgent(ctx context.Context, req *machinev1.InstallACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	if principalFrom(ctx).Kind != PrincipalOwner {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
+	}
+	return s.n.InstallACPRegistryAgent(ctx, req)
+}
+
 // ApplyAdminCommand verifies a root-signed command and executes it.
 func (n *Machine) ApplyAdminCommand(ctx context.Context, signed *identityv1.Signed) (string, error) {
 	cmd, err := n.trust.VerifyAdminCommand(signed, n.machineID, time.Now())

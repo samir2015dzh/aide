@@ -96,8 +96,30 @@ data class AgentStatus(
     val login: AgentLogin? = null,
     /** The kind the owner filed it as (SetAgentCategory, 工单 #93): "" told from what it is, "local", "personal". */
     val category: String = "",
+    /** Truthful capability declaration for this provider on this machine (工单 #110 / #112). */
+    val capabilities: AgentCapabilities? = null,
+    /** Origin of this agent: "builtin", "registry", or "local" (工单 #110). */
+    val source: String = "",
+    val registryId: String = "",
+    val registryVersion: String = "",
+    val protocolVersion: Int = 0,
 )
 
+@Serializable
+data class AgentCapabilities(
+    val selectModel: Boolean = false,
+    val switchModelInSession: Boolean = false,
+    val selectEffort: Boolean = false,
+    val selectMode: Boolean = false,
+    val loginInAide: Boolean = false,
+    val usage: Boolean = false,
+    val fork: Boolean = false,
+    val rollback: Boolean = false,
+    val steer: Boolean = false,
+    val resume: Boolean = false,
+    val images: Boolean = false,
+    val audio: Boolean = false,
+)
 /**
  * aide.machine.v1.AgentLogin; state is an AgentLoginState name. url: the address its sign-in printed, to open on any
  * device; codeSent: the code the page showed went to it (工单 #118).

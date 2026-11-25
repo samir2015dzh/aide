@@ -49,11 +49,13 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const items = useMemo(() => groupSteps(transcript(events, running)), [events, running]);
   const ends = useMemo(() => replyEnds(items, running), [items, running]);
   const live = isInterruptible(s);
-  // Each turn's prompt can roll the session back to before it, while no turn runs (not in place: no snapshots there).
+  // Each turn's prompt can roll the session back to before it, while no turn runs (not in place: no snapshots there),
+  // and only when the provider truthfully declares rollback capability (工单 #110 / #112 / #113).
   const points = useMemo(() => checkpoints(items), [items]);
   const lastTurn = s.progress?.turnCount ?? 0;
-  const rollable = s.workspace !== Workspace.IN_PLACE && (s.status === SessionStatus.IDLE || s.status === SessionStatus.CRASHED);
-
+  const agentCaps = st.machines.find((m) => m.machineId === s.machineId)?.status?.agents.find((x) => x.name === s.agent)?.capabilities;
+  const canRollback = agentCaps ? agentCaps.rollback : true;
+  const rollable = canRollback && s.workspace !== Workspace.IN_PLACE && (s.status === SessionStatus.IDLE || s.status === SessionStatus.CRASHED);
   // The session's current failure is told once, at the end; the rows leave it out.
   const failure = s.progress?.lastFailure;
   const current = isFailed(s) ? failure : undefined;
@@ -887,8 +889,10 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
         why={other ? { text: tc("conv.willStartNew", { what: tc("composer.param.model") }), tone: "quiet" } : undefined}
         chips={
           <>
-            {(a?.models.length ?? 0) > 0 && <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />}
-            <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0} />
+            {(a?.models.length ?? 0) > 0 && (!a?.capabilities || a.capabilities.selectModel || a.capabilities.switchModelInSession) && (
+              <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />
+            )}
+            <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0 || Boolean(a?.capabilities && !a.capabilities.selectModel && !a.capabilities.switchModelInSession)} />
           </>
         }
       />

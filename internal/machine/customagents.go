@@ -50,13 +50,16 @@ var (
 // customAgent is an agent as agents.json keeps it; a secret variable has
 // no value there.
 type customAgent struct {
-	Name    string      `json:"name"`
-	Command string      `json:"command"`
-	Args    []string    `json:"args,omitempty"`
-	Env     []customEnv `json:"env,omitempty"`
-	Dir     string      `json:"dir,omitempty"`
+	Name            string      `json:"name"`
+	Command         string      `json:"command"`
+	Args            []string    `json:"args,omitempty"`
+	Env             []customEnv `json:"env,omitempty"`
+	Dir             string      `json:"dir,omitempty"`
+	Source          string      `json:"source,omitempty"`
+	RegistryID      string      `json:"registry_id,omitempty"`
+	RegistryVersion string      `json:"registry_version,omitempty"`
+	Distribution    string      `json:"distribution,omitempty"`
 }
-
 type customEnv struct {
 	Name   string `json:"name"`
 	Value  string `json:"value,omitempty"`
@@ -220,6 +223,22 @@ func (n *Machine) customNames() []string {
 	return names
 }
 
+// customMeta returns the saved origin metadata for a custom agent (defaults to "local").
+func (n *Machine) customMeta(name string) (source, registryID, registryVersion string) {
+	n.customMu.RLock()
+	defer n.customMu.RUnlock()
+	for _, a := range n.customs.list {
+		if a.Name == name {
+			src := a.Source
+			if src == "" {
+				src = "local"
+			}
+			return src, a.RegistryID, a.RegistryVersion
+		}
+	}
+	return "local", "", ""
+}
+
 // knownAgent: a coding agent of this machine has that name.
 func (n *Machine) knownAgent(name string) bool {
 	return slices.Contains(AgentNames(), name) || n.provider(name) != nil
@@ -234,7 +253,24 @@ func (n *Machine) checkCustomAgent(def *machinev1.CustomAgent, saved map[string]
 	if def == nil {
 		return bad("no agent given")
 	}
-	a := customAgent{Name: def.Name, Command: strings.TrimSpace(def.Command), Args: def.Args, Dir: strings.TrimSpace(def.Dir)}
+	src := strings.TrimSpace(def.Source)
+	if src == "" {
+		src = "local"
+	}
+	dist := strings.TrimSpace(def.Distribution)
+	if dist == "" {
+		dist = src
+	}
+	a := customAgent{
+		Name:            def.Name,
+		Command:         strings.TrimSpace(def.Command),
+		Args:            def.Args,
+		Dir:             strings.TrimSpace(def.Dir),
+		Source:          src,
+		RegistryID:      strings.TrimSpace(def.RegistryId),
+		RegistryVersion: strings.TrimSpace(def.RegistryVersion),
+		Distribution:    dist,
+	}
 	switch {
 	case !customNameRE.MatchString(a.Name):
 		return bad("the name %q is not one Aide can use: lower case letters, digits and -, starting with a letter, at most 32", a.Name)
@@ -361,6 +397,7 @@ func (n *Machine) RemoveCustomAgent(name string) error {
 		n.customMu.Unlock()
 		return connect.NewError(connect.CodeNotFound, fmt.Errorf("no custom agent %q on this machine", name))
 	}
+	removed := n.customs.list[i]
 	c := customAgents{list: slices.Delete(slices.Clone(n.customs.list), i, i+1), secrets: map[string]map[string]string{}}
 	for k, v := range n.customs.secrets {
 		if k != name {
@@ -374,6 +411,11 @@ func (n *Machine) RemoveCustomAgent(name string) error {
 	n.customs = c
 	delete(n.custom, name)
 	n.customMu.Unlock()
+	if removed.Source == "registry" && removed.Distribution == "binary" {
+		if err := n.acpRegistry().Uninstall(name); err != nil {
+			n.log.Warn("cleaning up removed registry agent files", "agent", name, "err", err)
+		}
+	}
 	n.mu.Lock()
 	delete(n.infos, name)
 	delete(n.pending, name)
@@ -390,7 +432,20 @@ func (n *Machine) CustomAgents() *machinev1.ListCustomAgentsResponse {
 	defer n.customMu.RUnlock()
 	res := &machinev1.ListCustomAgentsResponse{}
 	for _, a := range n.customs.list {
-		d := &machinev1.CustomAgent{Name: a.Name, Command: a.Command, Args: a.Args, Dir: a.Dir}
+		src := a.Source
+		if src == "" {
+			src = "local"
+		}
+		d := &machinev1.CustomAgent{
+			Name:            a.Name,
+			Command:         a.Command,
+			Args:            a.Args,
+			Dir:             a.Dir,
+			Source:          src,
+			RegistryId:      a.RegistryID,
+			RegistryVersion: a.RegistryVersion,
+			Distribution:    a.Distribution,
+		}
 		for _, e := range a.Env {
 			d.Env = append(d.Env, &machinev1.AgentEnv{Name: e.Name, Value: e.Value, Secret: e.Secret})
 		}
@@ -427,8 +482,24 @@ func (n *Machine) TestCustomAgent(ctx context.Context, def *machinev1.CustomAgen
 	start := time.Now()
 	n.audit.Log(AuditRecord{Kind: "test", Subject: a.Name, Detail: a.Command})
 	g, err := customProvider(a, secrets).Handshake(ctx, shellenv.Env(tmp), work)
-	res := &machinev1.TestCustomAgentResponse{Ok: err == nil && g.Session, AgentTitle: g.Title, AgentVersion: g.Version,
-		AuthMethods: g.Auth, Millis: uint32(time.Since(start).Milliseconds())}
+	res := &machinev1.TestCustomAgentResponse{
+		Ok:              err == nil && g.Session,
+		AgentTitle:      g.Title,
+		AgentVersion:    g.Version,
+		AuthMethods:     g.Auth,
+		Millis:          uint32(time.Since(start).Milliseconds()),
+		ProtocolVersion: g.ProtocolVersion,
+		Capabilities:    capabilitiesProto(g.Capabilities),
+	}
+	for _, m := range g.Models {
+		res.Models = append(res.Models, n.enrichAgentModel(&machinev1.AgentModel{
+			Id:       m.ID,
+			Name:     m.Name,
+			Efforts:  m.Efforts,
+			Resolved: m.Resolved,
+			Source:   m.Source,
+		}))
+	}
 	if err != nil {
 		res.Reason = err.Error()
 	}

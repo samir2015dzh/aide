@@ -28,6 +28,7 @@ import (
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
+	"github.com/samir2015dzh/aide/internal/acpregistry"
 	"github.com/samir2015dzh/aide/internal/flock"
 	"github.com/samir2015dzh/aide/internal/legacy"
 	"github.com/samir2015dzh/aide/internal/modelcatalog"
@@ -104,6 +105,8 @@ type Machine struct {
 	audit     *Audit
 	sessions  *Sessions
 	catalog   *modelcatalog.Catalog
+	acpRegMu  sync.Mutex
+	acpReg    *acpregistry.Registry
 
 	mu          sync.Mutex
 	trust       *identity.Trust
@@ -627,7 +630,8 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		if (ok && (i.Available || i.Problem != provider.ProblemNotFound || name == "claude" || name == "codex")) || (!ok && n.pending[name]) {
 			a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version,
 				LoggedIn: i.LoggedIn, LoginUnconfirmed: i.LoginUnconfirmed, Detail: i.Detail, Checking: n.pending[name], Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary,
-				Hidden: n.isHiddenLocked(name)}
+				Hidden: n.isHiddenLocked(name), Source: "builtin"}
+			a.Capabilities, a.ProtocolVersion = n.truthfulCapabilities(name, n.cfg.Providers[name], i)
 			a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 			a.Category = n.categories[name]
 			n.agentModels(a, i)
@@ -651,8 +655,11 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		// Always listed: the owner added it. Never checked yet, it is
 		// about to be.
 		i, ok := n.infos[name]
-		a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version, LoggedIn: i.LoggedIn, Detail: i.Detail,
-			Checking: n.pending[name] || !ok, Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary, Custom: true, Hidden: n.isHiddenLocked(name)}
+		src, regID, regVer := n.customMeta(name)
+		a := &machinev1.AgentStatus{Name: name, Available: i.Available, Version: i.Version, LoggedIn: i.LoggedIn, LoginUnconfirmed: i.LoginUnconfirmed, Detail: i.Detail,
+			Checking: n.pending[name] || !ok, Problem: machinev1.AgentProblem(i.Problem), Binary: i.Binary, Custom: true, Hidden: n.isHiddenLocked(name),
+			Source: src, RegistryId: regID, RegistryVersion: regVer}
+		a.Capabilities, a.ProtocolVersion = n.truthfulCapabilities(name, n.provider(name), i)
 		if !i.CheckedAt.IsZero() {
 			a.CheckedAt = timestamppb.New(i.CheckedAt)
 		}

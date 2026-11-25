@@ -322,6 +322,12 @@ const (
 	// LocalServiceTestMachineCustomAgentProcedure is the fully-qualified name of the LocalService's
 	// TestMachineCustomAgent RPC.
 	LocalServiceTestMachineCustomAgentProcedure = "/aide.local.v1.LocalService/TestMachineCustomAgent"
+	// LocalServiceListMachineACPRegistryProcedure is the fully-qualified name of the LocalService's
+	// ListMachineACPRegistry RPC.
+	LocalServiceListMachineACPRegistryProcedure = "/aide.local.v1.LocalService/ListMachineACPRegistry"
+	// LocalServiceInstallMachineACPRegistryAgentProcedure is the fully-qualified name of the
+	// LocalService's InstallMachineACPRegistryAgent RPC.
+	LocalServiceInstallMachineACPRegistryAgentProcedure = "/aide.local.v1.LocalService/InstallMachineACPRegistryAgent"
 	// LocalServiceQueryWorkProcedure is the fully-qualified name of the LocalService's QueryWork RPC.
 	LocalServiceQueryWorkProcedure = "/aide.local.v1.LocalService/QueryWork"
 	// LocalServiceRegisterPushProcedure is the fully-qualified name of the LocalService's RegisterPush
@@ -563,6 +569,8 @@ type LocalServiceClient interface {
 	SaveMachineCustomAgent(context.Context, *v1.SaveMachineCustomAgentRequest) (*v11.SaveCustomAgentResponse, error)
 	RemoveMachineCustomAgent(context.Context, *v1.RemoveMachineCustomAgentRequest) (*v11.RemoveCustomAgentResponse, error)
 	TestMachineCustomAgent(context.Context, *v1.TestMachineCustomAgentRequest) (*v11.TestCustomAgentResponse, error)
+	ListMachineACPRegistry(context.Context, *v1.ListMachineACPRegistryRequest) (*v11.ListACPRegistryResponse, error)
+	InstallMachineACPRegistryAgent(context.Context, *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error)
 	// QueryWork counts the work done over a range, by hour or day, from what
 	// this device holds of every machine's counts: no machine is asked
 	// (docs/work-stats.md §7).
@@ -1202,6 +1210,18 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("TestMachineCustomAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		listMachineACPRegistry: connect.NewClient[v1.ListMachineACPRegistryRequest, v11.ListACPRegistryResponse](
+			httpClient,
+			baseURL+LocalServiceListMachineACPRegistryProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListMachineACPRegistry")),
+			connect.WithClientOptions(opts...),
+		),
+		installMachineACPRegistryAgent: connect.NewClient[v1.InstallMachineACPRegistryAgentRequest, v11.InstallACPRegistryAgentResponse](
+			httpClient,
+			baseURL+LocalServiceInstallMachineACPRegistryAgentProcedure,
+			connect.WithSchema(localServiceMethods.ByName("InstallMachineACPRegistryAgent")),
+			connect.WithClientOptions(opts...),
+		),
 		queryWork: connect.NewClient[v1.QueryWorkRequest, v1.QueryWorkResponse](
 			httpClient,
 			baseURL+LocalServiceQueryWorkProcedure,
@@ -1219,111 +1239,113 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // localServiceClient implements LocalServiceClient.
 type localServiceClient struct {
-	getStatus                *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	watch                    *connect.Client[v1.WatchRequest, v1.WatchResponse]
-	listProfiles             *connect.Client[v1.ListProfilesRequest, v1.ListProfilesResponse]
-	switchProfile            *connect.Client[v1.SwitchProfileRequest, v1.SwitchProfileResponse]
-	addProfile               *connect.Client[v1.AddProfileRequest, v1.AddProfileResponse]
-	signOut                  *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
-	signIn                   *connect.Client[v1.SignInRequest, v1.SignInResponse]
-	setup                    *connect.Client[v1.SetupRequest, v1.SetupResponse]
-	logIn                    *connect.Client[v1.LogInRequest, v1.LogInResponse]
-	getLogin                 *connect.Client[v1.GetLoginRequest, v1.GetLoginResponse]
-	setLogin                 *connect.Client[v1.SetLoginRequest, v1.SetLoginResponse]
-	listDevices              *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
-	removeDevice             *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
-	leave                    *connect.Client[v1.LeaveRequest, v1.LeaveResponse]
-	eraseEverything          *connect.Client[v1.EraseEverythingRequest, v1.EraseEverythingResponse]
-	eraseStatus              *connect.Client[v1.EraseStatusRequest, v1.EraseStatusResponse]
-	finishErase              *connect.Client[v1.FinishEraseRequest, v1.FinishEraseResponse]
-	setLocalMachine          *connect.Client[v1.SetLocalMachineRequest, v1.SetLocalMachineResponse]
-	listMachines             *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
-	renameMachine            *connect.Client[v1.RenameMachineRequest, v1.RenameMachineResponse]
-	setMachinePaused         *connect.Client[v1.SetMachinePausedRequest, v1.SetMachinePausedResponse]
-	setAgentDefaults         *connect.Client[v1.SetAgentDefaultsRequest, v1.SetAgentDefaultsResponse]
-	removeMachine            *connect.Client[v1.RemoveMachineRequest, v1.RemoveMachineResponse]
-	checkAgents              *connect.Client[v1.CheckAgentsRequest, v1.CheckAgentsResponse]
-	setAgentHidden           *connect.Client[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse]
-	setAgentPaused           *connect.Client[v1.SetAgentPausedRequest, v1.SetAgentPausedResponse]
-	setAgentCategory         *connect.Client[v1.SetAgentCategoryRequest, v1.SetAgentCategoryResponse]
-	listMachineRepos         *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
-	listMachineFolders       *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
-	testMachineAgent         *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
-	startMachineAgentLogin   *connect.Client[v1.StartMachineAgentLoginRequest, v11.StartAgentLoginResponse]
-	listExecLog              *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
-	getDiagnostics           *connect.Client[v1.GetDiagnosticsRequest, v1.GetDiagnosticsResponse]
-	stopScreen               *connect.Client[v1.StopScreenRequest, v1.StopScreenResponse]
-	listProjects             *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
-	addProject               *connect.Client[v1.AddProjectRequest, v1.AddProjectResponse]
-	removeProject            *connect.Client[v1.RemoveProjectRequest, v1.RemoveProjectResponse]
-	renameProject            *connect.Client[v1.RenameProjectRequest, v1.RenameProjectResponse]
-	setProjectPermission     *connect.Client[v1.SetProjectPermissionRequest, v1.SetProjectPermissionResponse]
-	listClients              *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
-	updateClient             *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
-	renameClient             *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
-	setClientCategory        *connect.Client[v1.SetClientCategoryRequest, v1.SetClientCategoryResponse]
-	revokeClient             *connect.Client[v1.RevokeClientRequest, v1.RevokeClientResponse]
-	issueLocalClientGrant    *connect.Client[v1.IssueLocalClientGrantRequest, v1.IssueLocalClientGrantResponse]
-	getLocalCLI              *connect.Client[v1.GetLocalCLIRequest, v1.LocalCLI]
-	logInLocalCLI            *connect.Client[v1.LogInLocalCLIRequest, v1.LocalCLI]
-	logOutLocalCLI           *connect.Client[v1.LogOutLocalCLIRequest, v1.LocalCLI]
-	listWakes                *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
-	setWake                  *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
-	checkWake                *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
-	clearWake                *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
-	openWakeLink             *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
-	listPersonas             *connect.Client[v1.ListPersonasRequest, v1.ListPersonasResponse]
-	savePersona              *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
-	deletePersona            *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
-	talkToPersona            *connect.Client[v1.TalkToPersonaRequest, v1.TalkToPersonaResponse]
-	listSessions             *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	watchSessions            *connect.Client[v1.WatchSessionsRequest, v1.WatchSessionsResponse]
-	streamSessionEvents      *connect.Client[v1.StreamSessionEventsRequest, v12.SessionEvent]
-	listSessionEvents        *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
-	readToolOutput           *connect.Client[v1.ReadToolOutputRequest, v12.ToolOutputChunk]
-	startSession             *connect.Client[v1.StartSessionRequest, v1.SessionResponse]
-	sendMessage              *connect.Client[v1.SendMessageRequest, v1.SessionResponse]
-	interruptSession         *connect.Client[v1.InterruptSessionRequest, v1.SessionResponse]
-	archiveSession           *connect.Client[v1.ArchiveSessionRequest, v1.SessionResponse]
-	unarchiveSession         *connect.Client[v1.UnarchiveSessionRequest, v1.SessionResponse]
-	deleteSession            *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	renameSession            *connect.Client[v1.RenameSessionRequest, v1.SessionResponse]
-	markSessionSeen          *connect.Client[v12.MarkSessionSeenRequest, v1.SessionResponse]
-	answerQuestion           *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
-	getDiff                  *connect.Client[v1.GetDiffRequest, v12.GetDiffResponse]
-	getSessionInsights       *connect.Client[v12.GetSessionInsightsRequest, v12.SessionInsights]
-	pushSession              *connect.Client[v1.PushSessionRequest, v12.PushSessionResponse]
-	rollbackSession          *connect.Client[v1.RollbackSessionRequest, v1.SessionResponse]
-	listSessionCheckpoints   *connect.Client[v12.ListCheckpointsRequest, v12.ListCheckpointsResponse]
-	clearSessionCheckpoints  *connect.Client[v12.ClearCheckpointsRequest, v12.ClearCheckpointsResponse]
-	listDSHSessions          *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
-	readDSHSession           *connect.Client[v1.ReadDSHSessionRequest, v11.ReadDSHSessionResponse]
-	setDSHTakeover           *connect.Client[v1.SetDSHTakeoverRequest, v11.SetDSHTakeoverResponse]
-	sendDSHMessage           *connect.Client[v1.SendDSHMessageRequest, v11.SendDSHMessageResponse]
-	interruptDSHSession      *connect.Client[v1.InterruptDSHSessionRequest, v11.InterruptDSHSessionResponse]
-	prepareDSHBridge         *connect.Client[v1.PrepareDSHBridgeRequest, v11.PrepareDSHBridgeResponse]
-	installDSHBridge         *connect.Client[v1.InstallDSHBridgeRequest, v11.InstallDSHBridgeResponse]
-	openDirectRoom           *connect.Client[v1.OpenDirectRoomRequest, v1.OpenDirectRoomResponse]
-	listRoomMessages         *connect.Client[v1.ListRoomMessagesRequest, v11.ListRoomMessagesResponse]
-	postRoomMessage          *connect.Client[v1.PostRoomMessageRequest, v11.RoomMessage]
-	listRooms                *connect.Client[v1.ListRoomsRequest, v1.ListRoomsResponse]
-	createRoom               *connect.Client[v1.CreateRoomRequest, v11.Room]
-	updateRoom               *connect.Client[v1.UpdateRoomRequest, v11.Room]
-	stopRoom                 *connect.Client[v1.RoomRef, v11.Room]
-	markRoomSeen             *connect.Client[v1.RoomRef, v11.Room]
-	deleteRoom               *connect.Client[v1.RoomRef, v11.DeleteRoomResponse]
-	listRoomWaiting          *connect.Client[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse]
-	dSHSessionOptions        *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
-	listClaudeSessions       *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
-	readClaudeSession        *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
-	listHeldMessages         *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
-	releaseHeldMessage       *connect.Client[v1.ReleaseHeldMessageRequest, v11.ReleaseHeldMessageResponse]
-	listMachineCustomAgents  *connect.Client[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse]
-	saveMachineCustomAgent   *connect.Client[v1.SaveMachineCustomAgentRequest, v11.SaveCustomAgentResponse]
-	removeMachineCustomAgent *connect.Client[v1.RemoveMachineCustomAgentRequest, v11.RemoveCustomAgentResponse]
-	testMachineCustomAgent   *connect.Client[v1.TestMachineCustomAgentRequest, v11.TestCustomAgentResponse]
-	queryWork                *connect.Client[v1.QueryWorkRequest, v1.QueryWorkResponse]
-	registerPush             *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
+	getStatus                      *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	watch                          *connect.Client[v1.WatchRequest, v1.WatchResponse]
+	listProfiles                   *connect.Client[v1.ListProfilesRequest, v1.ListProfilesResponse]
+	switchProfile                  *connect.Client[v1.SwitchProfileRequest, v1.SwitchProfileResponse]
+	addProfile                     *connect.Client[v1.AddProfileRequest, v1.AddProfileResponse]
+	signOut                        *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
+	signIn                         *connect.Client[v1.SignInRequest, v1.SignInResponse]
+	setup                          *connect.Client[v1.SetupRequest, v1.SetupResponse]
+	logIn                          *connect.Client[v1.LogInRequest, v1.LogInResponse]
+	getLogin                       *connect.Client[v1.GetLoginRequest, v1.GetLoginResponse]
+	setLogin                       *connect.Client[v1.SetLoginRequest, v1.SetLoginResponse]
+	listDevices                    *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
+	removeDevice                   *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
+	leave                          *connect.Client[v1.LeaveRequest, v1.LeaveResponse]
+	eraseEverything                *connect.Client[v1.EraseEverythingRequest, v1.EraseEverythingResponse]
+	eraseStatus                    *connect.Client[v1.EraseStatusRequest, v1.EraseStatusResponse]
+	finishErase                    *connect.Client[v1.FinishEraseRequest, v1.FinishEraseResponse]
+	setLocalMachine                *connect.Client[v1.SetLocalMachineRequest, v1.SetLocalMachineResponse]
+	listMachines                   *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
+	renameMachine                  *connect.Client[v1.RenameMachineRequest, v1.RenameMachineResponse]
+	setMachinePaused               *connect.Client[v1.SetMachinePausedRequest, v1.SetMachinePausedResponse]
+	setAgentDefaults               *connect.Client[v1.SetAgentDefaultsRequest, v1.SetAgentDefaultsResponse]
+	removeMachine                  *connect.Client[v1.RemoveMachineRequest, v1.RemoveMachineResponse]
+	checkAgents                    *connect.Client[v1.CheckAgentsRequest, v1.CheckAgentsResponse]
+	setAgentHidden                 *connect.Client[v1.SetAgentHiddenRequest, v1.SetAgentHiddenResponse]
+	setAgentPaused                 *connect.Client[v1.SetAgentPausedRequest, v1.SetAgentPausedResponse]
+	setAgentCategory               *connect.Client[v1.SetAgentCategoryRequest, v1.SetAgentCategoryResponse]
+	listMachineRepos               *connect.Client[v1.ListMachineReposRequest, v1.ListMachineReposResponse]
+	listMachineFolders             *connect.Client[v1.ListMachineFoldersRequest, v11.ListFoldersResponse]
+	testMachineAgent               *connect.Client[v1.TestMachineAgentRequest, v11.TestAgentResponse]
+	startMachineAgentLogin         *connect.Client[v1.StartMachineAgentLoginRequest, v11.StartAgentLoginResponse]
+	listExecLog                    *connect.Client[v1.ListExecLogRequest, v1.ListExecLogResponse]
+	getDiagnostics                 *connect.Client[v1.GetDiagnosticsRequest, v1.GetDiagnosticsResponse]
+	stopScreen                     *connect.Client[v1.StopScreenRequest, v1.StopScreenResponse]
+	listProjects                   *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	addProject                     *connect.Client[v1.AddProjectRequest, v1.AddProjectResponse]
+	removeProject                  *connect.Client[v1.RemoveProjectRequest, v1.RemoveProjectResponse]
+	renameProject                  *connect.Client[v1.RenameProjectRequest, v1.RenameProjectResponse]
+	setProjectPermission           *connect.Client[v1.SetProjectPermissionRequest, v1.SetProjectPermissionResponse]
+	listClients                    *connect.Client[v1.ListClientsRequest, v1.ListClientsResponse]
+	updateClient                   *connect.Client[v1.UpdateClientRequest, v1.UpdateClientResponse]
+	renameClient                   *connect.Client[v1.RenameClientRequest, v1.RenameClientResponse]
+	setClientCategory              *connect.Client[v1.SetClientCategoryRequest, v1.SetClientCategoryResponse]
+	revokeClient                   *connect.Client[v1.RevokeClientRequest, v1.RevokeClientResponse]
+	issueLocalClientGrant          *connect.Client[v1.IssueLocalClientGrantRequest, v1.IssueLocalClientGrantResponse]
+	getLocalCLI                    *connect.Client[v1.GetLocalCLIRequest, v1.LocalCLI]
+	logInLocalCLI                  *connect.Client[v1.LogInLocalCLIRequest, v1.LocalCLI]
+	logOutLocalCLI                 *connect.Client[v1.LogOutLocalCLIRequest, v1.LocalCLI]
+	listWakes                      *connect.Client[v1.ListWakesRequest, v1.ListWakesResponse]
+	setWake                        *connect.Client[v1.SetWakeRequest, v1.SetWakeResponse]
+	checkWake                      *connect.Client[v1.CheckWakeRequest, v1.CheckWakeResponse]
+	clearWake                      *connect.Client[v1.ClearWakeRequest, v1.ClearWakeResponse]
+	openWakeLink                   *connect.Client[v1.OpenWakeLinkRequest, v1.OpenWakeLinkResponse]
+	listPersonas                   *connect.Client[v1.ListPersonasRequest, v1.ListPersonasResponse]
+	savePersona                    *connect.Client[v1.SavePersonaRequest, v1.SavePersonaResponse]
+	deletePersona                  *connect.Client[v1.DeletePersonaRequest, v1.DeletePersonaResponse]
+	talkToPersona                  *connect.Client[v1.TalkToPersonaRequest, v1.TalkToPersonaResponse]
+	listSessions                   *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	watchSessions                  *connect.Client[v1.WatchSessionsRequest, v1.WatchSessionsResponse]
+	streamSessionEvents            *connect.Client[v1.StreamSessionEventsRequest, v12.SessionEvent]
+	listSessionEvents              *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
+	readToolOutput                 *connect.Client[v1.ReadToolOutputRequest, v12.ToolOutputChunk]
+	startSession                   *connect.Client[v1.StartSessionRequest, v1.SessionResponse]
+	sendMessage                    *connect.Client[v1.SendMessageRequest, v1.SessionResponse]
+	interruptSession               *connect.Client[v1.InterruptSessionRequest, v1.SessionResponse]
+	archiveSession                 *connect.Client[v1.ArchiveSessionRequest, v1.SessionResponse]
+	unarchiveSession               *connect.Client[v1.UnarchiveSessionRequest, v1.SessionResponse]
+	deleteSession                  *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	renameSession                  *connect.Client[v1.RenameSessionRequest, v1.SessionResponse]
+	markSessionSeen                *connect.Client[v12.MarkSessionSeenRequest, v1.SessionResponse]
+	answerQuestion                 *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
+	getDiff                        *connect.Client[v1.GetDiffRequest, v12.GetDiffResponse]
+	getSessionInsights             *connect.Client[v12.GetSessionInsightsRequest, v12.SessionInsights]
+	pushSession                    *connect.Client[v1.PushSessionRequest, v12.PushSessionResponse]
+	rollbackSession                *connect.Client[v1.RollbackSessionRequest, v1.SessionResponse]
+	listSessionCheckpoints         *connect.Client[v12.ListCheckpointsRequest, v12.ListCheckpointsResponse]
+	clearSessionCheckpoints        *connect.Client[v12.ClearCheckpointsRequest, v12.ClearCheckpointsResponse]
+	listDSHSessions                *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
+	readDSHSession                 *connect.Client[v1.ReadDSHSessionRequest, v11.ReadDSHSessionResponse]
+	setDSHTakeover                 *connect.Client[v1.SetDSHTakeoverRequest, v11.SetDSHTakeoverResponse]
+	sendDSHMessage                 *connect.Client[v1.SendDSHMessageRequest, v11.SendDSHMessageResponse]
+	interruptDSHSession            *connect.Client[v1.InterruptDSHSessionRequest, v11.InterruptDSHSessionResponse]
+	prepareDSHBridge               *connect.Client[v1.PrepareDSHBridgeRequest, v11.PrepareDSHBridgeResponse]
+	installDSHBridge               *connect.Client[v1.InstallDSHBridgeRequest, v11.InstallDSHBridgeResponse]
+	openDirectRoom                 *connect.Client[v1.OpenDirectRoomRequest, v1.OpenDirectRoomResponse]
+	listRoomMessages               *connect.Client[v1.ListRoomMessagesRequest, v11.ListRoomMessagesResponse]
+	postRoomMessage                *connect.Client[v1.PostRoomMessageRequest, v11.RoomMessage]
+	listRooms                      *connect.Client[v1.ListRoomsRequest, v1.ListRoomsResponse]
+	createRoom                     *connect.Client[v1.CreateRoomRequest, v11.Room]
+	updateRoom                     *connect.Client[v1.UpdateRoomRequest, v11.Room]
+	stopRoom                       *connect.Client[v1.RoomRef, v11.Room]
+	markRoomSeen                   *connect.Client[v1.RoomRef, v11.Room]
+	deleteRoom                     *connect.Client[v1.RoomRef, v11.DeleteRoomResponse]
+	listRoomWaiting                *connect.Client[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse]
+	dSHSessionOptions              *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
+	listClaudeSessions             *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
+	readClaudeSession              *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
+	listHeldMessages               *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
+	releaseHeldMessage             *connect.Client[v1.ReleaseHeldMessageRequest, v11.ReleaseHeldMessageResponse]
+	listMachineCustomAgents        *connect.Client[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse]
+	saveMachineCustomAgent         *connect.Client[v1.SaveMachineCustomAgentRequest, v11.SaveCustomAgentResponse]
+	removeMachineCustomAgent       *connect.Client[v1.RemoveMachineCustomAgentRequest, v11.RemoveCustomAgentResponse]
+	testMachineCustomAgent         *connect.Client[v1.TestMachineCustomAgentRequest, v11.TestCustomAgentResponse]
+	listMachineACPRegistry         *connect.Client[v1.ListMachineACPRegistryRequest, v11.ListACPRegistryResponse]
+	installMachineACPRegistryAgent *connect.Client[v1.InstallMachineACPRegistryAgentRequest, v11.InstallACPRegistryAgentResponse]
+	queryWork                      *connect.Client[v1.QueryWorkRequest, v1.QueryWorkResponse]
+	registerPush                   *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
 }
 
 // GetStatus calls aide.local.v1.LocalService.GetStatus.
@@ -2237,6 +2259,24 @@ func (c *localServiceClient) TestMachineCustomAgent(ctx context.Context, req *v1
 	return nil, err
 }
 
+// ListMachineACPRegistry calls aide.local.v1.LocalService.ListMachineACPRegistry.
+func (c *localServiceClient) ListMachineACPRegistry(ctx context.Context, req *v1.ListMachineACPRegistryRequest) (*v11.ListACPRegistryResponse, error) {
+	response, err := c.listMachineACPRegistry.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// InstallMachineACPRegistryAgent calls aide.local.v1.LocalService.InstallMachineACPRegistryAgent.
+func (c *localServiceClient) InstallMachineACPRegistryAgent(ctx context.Context, req *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error) {
+	response, err := c.installMachineACPRegistryAgent.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // QueryWork calls aide.local.v1.LocalService.QueryWork.
 func (c *localServiceClient) QueryWork(ctx context.Context, req *v1.QueryWorkRequest) (*v1.QueryWorkResponse, error) {
 	response, err := c.queryWork.CallUnary(ctx, connect.NewRequest(req))
@@ -2489,6 +2529,8 @@ type LocalServiceHandler interface {
 	SaveMachineCustomAgent(context.Context, *v1.SaveMachineCustomAgentRequest) (*v11.SaveCustomAgentResponse, error)
 	RemoveMachineCustomAgent(context.Context, *v1.RemoveMachineCustomAgentRequest) (*v11.RemoveCustomAgentResponse, error)
 	TestMachineCustomAgent(context.Context, *v1.TestMachineCustomAgentRequest) (*v11.TestCustomAgentResponse, error)
+	ListMachineACPRegistry(context.Context, *v1.ListMachineACPRegistryRequest) (*v11.ListACPRegistryResponse, error)
+	InstallMachineACPRegistryAgent(context.Context, *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error)
 	// QueryWork counts the work done over a range, by hour or day, from what
 	// this device holds of every machine's counts: no machine is asked
 	// (docs/work-stats.md §7).
@@ -3124,6 +3166,18 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("TestMachineCustomAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceListMachineACPRegistryHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListMachineACPRegistryProcedure,
+		svc.ListMachineACPRegistry,
+		connect.WithSchema(localServiceMethods.ByName("ListMachineACPRegistry")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceInstallMachineACPRegistryAgentHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceInstallMachineACPRegistryAgentProcedure,
+		svc.InstallMachineACPRegistryAgent,
+		connect.WithSchema(localServiceMethods.ByName("InstallMachineACPRegistryAgent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceQueryWorkHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceQueryWorkProcedure,
 		svc.QueryWork,
@@ -3344,6 +3398,10 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceRemoveMachineCustomAgentHandler.ServeHTTP(w, r)
 		case LocalServiceTestMachineCustomAgentProcedure:
 			localServiceTestMachineCustomAgentHandler.ServeHTTP(w, r)
+		case LocalServiceListMachineACPRegistryProcedure:
+			localServiceListMachineACPRegistryHandler.ServeHTTP(w, r)
+		case LocalServiceInstallMachineACPRegistryAgentProcedure:
+			localServiceInstallMachineACPRegistryAgentHandler.ServeHTTP(w, r)
 		case LocalServiceQueryWorkProcedure:
 			localServiceQueryWorkHandler.ServeHTTP(w, r)
 		case LocalServiceRegisterPushProcedure:
@@ -3767,6 +3825,14 @@ func (UnimplementedLocalServiceHandler) RemoveMachineCustomAgent(context.Context
 
 func (UnimplementedLocalServiceHandler) TestMachineCustomAgent(context.Context, *v1.TestMachineCustomAgentRequest) (*v11.TestCustomAgentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.TestMachineCustomAgent is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListMachineACPRegistry(context.Context, *v1.ListMachineACPRegistryRequest) (*v11.ListACPRegistryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListMachineACPRegistry is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) InstallMachineACPRegistryAgent(context.Context, *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.InstallMachineACPRegistryAgent is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) QueryWork(context.Context, *v1.QueryWorkRequest) (*v1.QueryWorkResponse, error) {

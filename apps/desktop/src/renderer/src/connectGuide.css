@@ -44,3 +44,10 @@
 .cg-env{display:flex;gap:6px;align-items:center}
 .cg-env .field{flex:1;min-width:0}
 .cg-secret{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--l2);white-space:nowrap}
+.cg-badge{display:inline-flex;align-items:center;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:11px;font-weight:500;background:var(--fill-subtle,rgba(128,128,128,.12));color:var(--l2);vertical-align:middle}
+.cg-badge.ok{background:rgba(16,124,16,.12);color:var(--green)}
+.cg-reg-bar{display:flex;gap:8px;align-items:center}
+.cg-reg-bar .field{flex:1;min-width:0}
+.cg-reg-list{max-height:300px;overflow:auto}
+.cg-reg-row{gap:10px;align-items:center}
+.cg-reg-row .ft{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}

@@ -84,8 +84,30 @@ type Provider struct {
 	PathEnv string
 	// Binary overrides discovery (tests use a fake agent).
 	Binary   string
-	modelsMu sync.Mutex
-	catalogs map[string]cachedCatalog
+	modelsMu     sync.Mutex
+	catalogs     map[string]cachedCatalog
+	lastCaps     *provider.Capabilities
+	lastProtoVer uint32
+}
+
+// ObservedCapabilities returns the latest negotiated ACP capabilities and protocol
+// version observed from initialize/session handshakes (工单 #110).
+func (p *Provider) ObservedCapabilities() (*provider.Capabilities, uint32) {
+	p.modelsMu.Lock()
+	defer p.modelsMu.Unlock()
+	if p.lastCaps == nil {
+		return nil, p.lastProtoVer
+	}
+	cp := *p.lastCaps
+	return &cp, p.lastProtoVer
+}
+
+func (p *Provider) recordHandshake(protoVer uint32, caps provider.Capabilities) {
+	p.modelsMu.Lock()
+	defer p.modelsMu.Unlock()
+	cp := caps
+	p.lastCaps = &cp
+	p.lastProtoVer = protoVer
 }
 
 func (p *Provider) Name() string { return p.Agent.Name }
@@ -391,30 +413,13 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	// No limit of its own: node-based agents can take a while to boot and
 	// load their config, longer on a busy machine. ctx ends it (an
 	// interrupt, or the session's start limit).
-	res, err := s.call(ctx, "initialize", initializeParams)
+	init, err := p.initializeSession(ctx, s)
 	if err != nil {
 		return fail(fmt.Errorf("initialize: %w", classified(err, sessionv1.FailureKind_FAILURE_KIND_START_FAILED)))
 	}
-	var init struct {
-		AgentCapabilities struct {
-			LoadSession        bool `json:"loadSession"`
-			PromptCapabilities struct {
-				Image bool `json:"image"`
-				Audio bool `json:"audio"`
-			} `json:"promptCapabilities"`
-			SessionCapabilities struct {
-				Resume json.RawMessage `json:"resume"`
-				Close  json.RawMessage `json:"close"`
-			} `json:"sessionCapabilities"`
-		} `json:"agentCapabilities"`
-		AuthMethods []struct {
-			ID string `json:"id"`
-		} `json:"authMethods"`
-	}
-	json.Unmarshal(res, &init)
 	s.images = init.AgentCapabilities.PromptCapabilities.Image
 	s.audio = init.AgentCapabilities.PromptCapabilities.Audio
-	s.closes = len(init.AgentCapabilities.SessionCapabilities.Close) > 0 && string(init.AgentCapabilities.SessionCapabilities.Close) != "null"
+	s.closes = hasCap(init.AgentCapabilities.SessionCapabilities.Close)
 	if m := authMethod(p.Auth, init.AuthMethods); m != "" {
 		if _, err := s.call(ctx, "authenticate", map[string]any{"methodId": m}); err != nil {
 			return fail(provider.Fail(sessionv1.FailureKind_FAILURE_KIND_AUTH, fmt.Sprintf("authenticate (%s): %v; run `%s` once as this user to log in", m, err, p.Command)))
@@ -422,7 +427,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	}
 	// The session/new, /resume or /load result (it says the session's
 	// configuration).
-	res = nil
+	var res json.RawMessage
 	servers := []any{}
 	for _, m := range spec.MCPServers {
 		env := []any{}
@@ -498,14 +503,98 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	return s, nil
 }
 
-// initializeParams are what Aide says of itself in initialize.
-var initializeParams = map[string]any{"protocolVersion": 1,
-	"clientCapabilities": map[string]any{"fs": map[string]any{"readTextFile": false, "writeTextFile": false}, "terminal": false,
-		// Questions as forms (elicitation/create); agents without it
-		// turn their ask-the-user tools off.
-		"elicitation": map[string]any{"form": map[string]any{}}},
-	"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"}}
+// initializeParamsFor builds ACP initialize request parameters for protocol version v.
+// Aide requests ACP v2 preview first and negotiates down to v1 for v1-only agents (工单 #110).
+func initializeParamsFor(protoVer uint32) map[string]any {
+	return map[string]any{
+		"protocolVersion": protoVer,
+		"clientCapabilities": map[string]any{
+			"fs":       map[string]any{"readTextFile": false, "writeTextFile": false},
+			"terminal": false,
+			// Questions as forms (elicitation/create); agents without it
+			// turn their ask-the-user tools off.
+			"elicitation": map[string]any{"form": map[string]any{}},
+		},
+		"clientInfo": map[string]any{"name": "aide", "version": "0.1.0"},
+	}
+}
 
+var initializeParams = initializeParamsFor(1)
+
+type acpInitResult struct {
+	ProtocolVersion uint32 `json:"protocolVersion"`
+	AgentInfo       struct {
+		Name    string `json:"name"`
+		Title   string `json:"title"`
+		Version string `json:"version"`
+	} `json:"agentInfo"`
+	AgentCapabilities struct {
+		LoadSession        bool `json:"loadSession"`
+		PromptCapabilities struct {
+			Image bool `json:"image"`
+			Audio bool `json:"audio"`
+		} `json:"promptCapabilities"`
+		SessionCapabilities struct {
+			Resume json.RawMessage `json:"resume"`
+			Close  json.RawMessage `json:"close"`
+			Fork   json.RawMessage `json:"fork"`
+			List   json.RawMessage `json:"list"`
+		} `json:"sessionCapabilities"`
+	} `json:"agentCapabilities"`
+	AuthMethods []struct {
+		ID string `json:"id"`
+	} `json:"authMethods"`
+}
+
+func hasCap(raw json.RawMessage) bool {
+	trimmed := strings.TrimSpace(string(raw))
+	return trimmed != "" && trimmed != "null" && trimmed != "false"
+}
+
+func (r acpInitResult) toCapabilities() provider.Capabilities {
+	caps := r.AgentCapabilities
+	return provider.Capabilities{
+		SelectModel:          true,
+		SwitchModelInSession: true,
+		SelectEffort:         true,
+		SelectMode:           true,
+		LoginInAide:          false, // ACP credentials stay managed by the agent itself (#108/#110).
+		Usage:                false,
+		Fork:                 hasCap(caps.SessionCapabilities.Fork),
+		Rollback:             false, // ACP has no conversation rollback primitive (#113).
+		Steer:                false, // ACP Steer returns provider.ErrNoSteer.
+		Resume:               caps.LoadSession || hasCap(caps.SessionCapabilities.Resume),
+		Images:               caps.PromptCapabilities.Image,
+		Audio:                caps.PromptCapabilities.Audio,
+	}
+}
+
+// initializeSession negotiates ACP protocol version: v2 preview preferred,
+// automatically falling back to v1 if the agent rejects v2 or responds with v1.
+func (p *Provider) initializeSession(ctx context.Context, s *session) (acpInitResult, error) {
+	res, err := s.call(ctx, "initialize", initializeParamsFor(2))
+	negotiatedReq := uint32(2)
+	if err != nil {
+		var rpcErr *rpcError
+		if errors.As(err, &rpcErr) && ctx.Err() == nil {
+			// Agent explicitly rejected v2 preview: negotiate down to v1.
+			res, err = s.call(ctx, "initialize", initializeParamsFor(1))
+			negotiatedReq = 1
+		}
+	}
+	if err != nil {
+		return acpInitResult{}, err
+	}
+	var init acpInitResult
+	if err := json.Unmarshal(res, &init); err != nil {
+		return acpInitResult{}, errors.New("its answer is not an ACP initialize result")
+	}
+	if init.ProtocolVersion == 0 {
+		init.ProtocolVersion = negotiatedReq
+	}
+	p.recordHandshake(init.ProtocolVersion, init.toCapabilities())
+	return init, nil
+}
 // sessionConfig is what an ACP session says of its configuration
 // (session/new, /resume, /load and session/set_config_option results): its
 // config options and, from agents that predate them, its modes and models.

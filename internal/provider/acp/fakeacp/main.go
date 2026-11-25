@@ -310,13 +310,28 @@ func handle(m msg) {
 		if os.Getenv("FAKE_ACP_OPTIONS") == "1" {
 			sessionCaps["options"] = map[string]any{}
 		}
+		if os.Getenv("FAKE_ACP_FORK") == "1" {
+			sessionCaps["fork"] = map[string]any{}
+		}
+		var initReq struct {
+			ProtocolVersion int `json:"protocolVersion"`
+		}
+		_ = json.Unmarshal(m.Params, &initReq)
+		if os.Getenv("FAKE_ACP_REJECT_V2") == "1" && initReq.ProtocolVersion >= 2 {
+			replyErr(m.ID, -32602, "unsupported protocolVersion 2")
+			return
+		}
+		protoVer := 1
+		if os.Getenv("FAKE_ACP_V2") == "1" && initReq.ProtocolVersion >= 2 {
+			protoVer = 2
+		}
 		caps["sessionCapabilities"] = sessionCaps
 		caps["promptCapabilities"] = map[string]any{"image": os.Getenv("FAKE_ACP_IMAGES") == "1", "audio": os.Getenv("FAKE_ACP_AUDIO") == "1"}
 		var auth []any
 		if authID != "" {
 			auth = []any{map[string]any{"id": "other", "name": "Other"}, map[string]any{"id": authID, "name": "Login"}}
 		}
-		reply(m.ID, map[string]any{"protocolVersion": 1, "agentCapabilities": caps, "authMethods": auth,
+		reply(m.ID, map[string]any{"protocolVersion": protoVer, "agentCapabilities": caps, "authMethods": auth,
 			"agentInfo": map[string]any{"name": "fakeacp", "title": "Fake ACP", "version": "1.2.3"}})
 	case "authenticate":
 		if p.MethodID != authID {

@@ -444,6 +444,14 @@ func (l *localService) TestMachineCustomAgent(ctx context.Context, req *localv1.
 	return l.o().TestMachineCustomAgent(ctx, req.MachineId, req.Agent)
 }
 
+func (l *localService) ListMachineACPRegistry(ctx context.Context, req *localv1.ListMachineACPRegistryRequest) (*machinev1.ListACPRegistryResponse, error) {
+	return l.o().MachineACPRegistry(ctx, req.MachineId, req.Refresh)
+}
+
+func (l *localService) InstallMachineACPRegistryAgent(ctx context.Context, req *localv1.InstallMachineACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	return l.o().InstallMachineACPRegistryAgent(ctx, req.MachineId, req.RegistryId, req.Name)
+}
+
 func (l *localService) ListExecLog(ctx context.Context, req *localv1.ListExecLogRequest) (*localv1.ListExecLogResponse, error) {
 	return l.o().ListExecLog(ctx, req.MachineId)
 }

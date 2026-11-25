@@ -78,6 +78,16 @@ func (l *Local) TestCustomAgent(ctx context.Context, a *machinev1.CustomAgent) (
 	return l.n.TestCustomAgent(ctx, a)
 }
 
+// ListACPRegistry and InstallACPRegistryAgent expose official ACP Registry
+// discovery and machine-isolated installation on this device (工单 #110).
+func (l *Local) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.ListACPRegistryResponse {
+	return l.n.ListACPRegistry(ctx, refresh)
+}
+
+func (l *Local) InstallACPRegistryAgent(ctx context.Context, req *machinev1.InstallACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	return l.n.InstallACPRegistryAgent(ctx, req)
+}
+
 // FindRepos lists the repositories for Add a Project, within the workspace roots.
 func (l *Local) FindRepos(ctx context.Context) []*machinev1.Repo {
 	return FindRepos(ctx, l.n.WorkspaceRoots())

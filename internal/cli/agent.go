@@ -19,11 +19,16 @@ import (
 // machineAgent is a coding agent this client may run on a machine, with
 // the models it offers there.
 type machineAgent struct {
-	Agent     string       `json:"agent"`
-	Machine   string       `json:"machine"`
-	MachineID string       `json:"machine_id"`
-	Version   string       `json:"version"`
-	Models    []agentModel `json:"models"`
+	Agent           string             `json:"agent"`
+	Machine         string             `json:"machine"`
+	MachineID       string             `json:"machine_id"`
+	Version         string             `json:"version"`
+	Source          string             `json:"source,omitempty"`
+	RegistryID      string             `json:"registry_id,omitempty"`
+	RegistryVersion string             `json:"registry_version,omitempty"`
+	ProtocolVersion uint32             `json:"protocol_version,omitempty"`
+	Capabilities    *agentCapabilities `json:"capabilities,omitempty"`
+	Models          []agentModel       `json:"models"`
 	// Modes are an ACP agent's session modes (permission presets).
 	Modes []agentMode `json:"modes,omitempty"`
 	// What a session runs with when the client names none.
@@ -34,6 +39,41 @@ type machineAgent struct {
 	// Usage is the Claude plan usage read on that machine (Claude Code
 	// only), for the scheduler to pace work by.
 	Usage *agentUsage `json:"usage,omitempty"`
+}
+
+type agentCapabilities struct {
+	SelectModel          bool `json:"select_model"`
+	SwitchModelInSession bool `json:"switch_model_in_session"`
+	SelectEffort         bool `json:"select_effort"`
+	SelectMode           bool `json:"select_mode"`
+	LoginInAide          bool `json:"login_in_aide"`
+	Usage                bool `json:"usage"`
+	Fork                 bool `json:"fork"`
+	Rollback             bool `json:"rollback"`
+	Steer                bool `json:"steer"`
+	Resume               bool `json:"resume"`
+	Images               bool `json:"images"`
+	Audio                bool `json:"audio"`
+}
+
+func capabilitiesFrom(c *machinev1.AgentCapabilities) *agentCapabilities {
+	if c == nil {
+		return nil
+	}
+	return &agentCapabilities{
+		SelectModel:          c.SelectModel,
+		SwitchModelInSession: c.SwitchModelInSession,
+		SelectEffort:         c.SelectEffort,
+		SelectMode:           c.SelectMode,
+		LoginInAide:          c.LoginInAide,
+		Usage:                c.Usage,
+		Fork:                 c.Fork,
+		Rollback:             c.Rollback,
+		Steer:                c.Steer,
+		Resume:               c.Resume,
+		Images:               c.Images,
+		Audio:                c.Audio,
+	}
 }
 
 // agentUsage is the machine-readable Claude plan usage: each window's fill
@@ -245,7 +285,9 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 			if !a.mayRun(ag) || (agent != "" && ag.Name != agent) {
 				continue
 			}
-			e := machineAgent{Agent: ag.Name, Machine: cmp.Or(names[m.ID], m.Name), MachineID: m.ID, Version: ag.Version, Models: []agentModel{},
+			e := machineAgent{Agent: ag.Name, Machine: cmp.Or(names[m.ID], m.Name), MachineID: m.ID, Version: ag.Version,
+				Source: ag.Source, RegistryID: ag.RegistryId, RegistryVersion: ag.RegistryVersion, ProtocolVersion: ag.ProtocolVersion,
+				Capabilities: capabilitiesFrom(ag.GetCapabilities()), Models: []agentModel{},
 				DefaultModel: cmp.Or(ag.Defaults.GetModel(), ag.Own.GetModel()), DefaultEffort: cmp.Or(ag.Defaults.GetEffort(), ag.Own.GetEffort()),
 				DefaultMode: cmp.Or(ag.Defaults.GetMode(), ag.Own.GetMode()), Usage: usageFrom(ag.GetUsage())}
 			for _, x := range ag.Models {

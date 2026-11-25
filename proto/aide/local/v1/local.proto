@@ -254,6 +254,8 @@ service LocalService {
   rpc SaveMachineCustomAgent(SaveMachineCustomAgentRequest) returns (aide.machine.v1.SaveCustomAgentResponse);
   rpc RemoveMachineCustomAgent(RemoveMachineCustomAgentRequest) returns (aide.machine.v1.RemoveCustomAgentResponse);
   rpc TestMachineCustomAgent(TestMachineCustomAgentRequest) returns (aide.machine.v1.TestCustomAgentResponse);
+  rpc ListMachineACPRegistry(ListMachineACPRegistryRequest) returns (aide.machine.v1.ListACPRegistryResponse);
+  rpc InstallMachineACPRegistryAgent(InstallMachineACPRegistryAgentRequest) returns (aide.machine.v1.InstallACPRegistryAgentResponse);
   // QueryWork counts the work done over a range, by hour or day, from what
   // this device holds of every machine's counts: no machine is asked
   // (docs/work-stats.md §7).
@@ -807,6 +809,17 @@ message RemoveMachineCustomAgentRequest {
 message TestMachineCustomAgentRequest {
   string machine_id = 1;
   aide.machine.v1.CustomAgent agent = 2;
+}
+
+message ListMachineACPRegistryRequest {
+  string machine_id = 1;
+  bool refresh = 2;
+}
+
+message InstallMachineACPRegistryAgentRequest {
+  string machine_id = 1;
+  string registry_id = 2;
+  string name = 3;
 }
 
 message GetDiagnosticsRequest {}
