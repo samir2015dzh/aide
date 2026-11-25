@@ -218,6 +218,8 @@ message MachineStatus {
   // offline, so the owner's devices can show they wait to come in. Sent to
   // the owner's devices only.
   repeated RoomOutbox room_outbox = 18;
+  // Open model data sync status (工单 #114: models.dev + litellm).
+  ModelCatalogSync model_catalog = 19;
 }
 
 // RoomOutbox is what waits at the post office for a room's host: replies
@@ -228,6 +230,19 @@ message RoomOutbox {
   uint32 replies = 3;
   // When the oldest of them was sent.
   google.protobuf.Timestamp since = 4;
+}
+
+// ModelCatalogSync reports the open model catalog's cache/sync state on this
+// machine (工单 #114): failures are recorded here and in logs without
+// disturbing discovery or the owner.
+message ModelCatalogSync {
+  // "snapshot" (built-in fallback), "cache" (persisted), or "synced".
+  string source = 1;
+  uint32 model_count = 2;
+  google.protobuf.Timestamp synced_at = 3;
+  google.protobuf.Timestamp last_attempt_at = 4;
+  // Empty when the last sync succeeded or none has run yet.
+  string last_error = 5;
 }
 
 // ScreenStatus is whether the owner's devices can see and operate this
@@ -515,6 +530,14 @@ message AgentModel {
   // provider, e.g. "DeepSeek"; each provider line the same model comes by,
   // " · " between, as it is listed once).
   string source = 5;
+  // Enriched from open model data (工单 #114: models.dev + litellm) on exact
+  // model match only; zero/empty when the discovered model is not in the catalog.
+  uint32 context_window = 6;
+  uint32 max_output_tokens = 7;
+  repeated string capabilities = 8;
+  // Reference USD price per 1M tokens for cost estimation only (never billing).
+  double input_cost_per_million = 9;
+  double output_cost_per_million = 10;
 }
 
 message AgentMode {

@@ -127,7 +127,27 @@ data class UsageWindow(val key: String = "", val utilization: Double = 0.0, val 
  * source: where its agent offers it from (DSH's provider lines, 工单 #98 补充).
  */
 @Serializable
-data class AgentModel(val id: String = "", val name: String = "", val efforts: List<String> = emptyList(), val resolved: String = "", val source: String = "")
+data class AgentModel(
+    val id: String = "",
+    val name: String = "",
+    val efforts: List<String> = emptyList(),
+    val resolved: String = "",
+    val source: String = "",
+    val contextWindow: Int = 0,
+    val maxOutputTokens: Int = 0,
+    val capabilities: List<String> = emptyList(),
+    val inputCostPerMillion: Double = 0.0,
+    val outputCostPerMillion: Double = 0.0,
+)
+
+@Serializable
+data class ModelCatalogSync(
+    val source: String = "",
+    val modelCount: Int = 0,
+    val syncedAt: String = "",
+    val lastAttemptAt: String = "",
+    val lastError: String = "",
+)
 
 /** aide.identity.v1.AgentDefaults, as far as the phone reads it. */
 @Serializable
@@ -161,6 +181,8 @@ data class MachineStatus(
     val rooms: List<Room> = emptyList(),
     /** What its coding agents said for rooms an away host keeps, waiting at the post office (工单 #74). */
     val roomOutbox: List<RoomOutbox> = emptyList(),
+    /** Open model catalog sync status (工单 #114). */
+    val modelCatalog: ModelCatalogSync? = null,
 )
 
 @Serializable data class RoomWaiting(val roomId: String = "", val messages: Int = 0, val since: String = "")

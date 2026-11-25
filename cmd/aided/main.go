@@ -153,7 +153,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 			}
 		}
 		return machine.Config{DataDir: filepath.Join(dataDir, "machine"), Logger: logger(verbose), Providers: providers(), Limits: lim, WorkspaceMode: workspaceMode,
-			ClaudeUsage: os.Getenv("AIDE_NO_CLAUDE_USAGE") != "1"}
+			ClaudeUsage: os.Getenv("AIDE_NO_CLAUDE_USAGE") != "1", ModelCatalogSync: os.Getenv("AIDE_NO_MODEL_CATALOG_SYNC") != "1"}
 	}
 	openMachine := func() (*machine.Machine, error) { return machine.Open(machineConfig()) }
 	openMachineAt := func(dir string) (*machine.Machine, error) {

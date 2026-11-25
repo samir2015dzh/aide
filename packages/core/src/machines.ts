@@ -107,6 +107,41 @@ export function listedModel(id: string, models: AgentModel[]): string {
   return models.find((m) => m.resolved === id)?.id ?? id;
 }
 
+/** Formats a token count as compact context window text (e.g. 200000 -> "200K", 1048576 -> "1M"). */
+export function formatContextWindow(tokens: number | undefined): string {
+  if (!tokens || tokens <= 0) return "";
+  if (tokens >= 1_000_000) {
+    const m = Math.round((tokens / 1_000_000) * 10) / 10;
+    return Number.isInteger(m) ? `${m}M` : `${m}M`;
+  }
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}K`;
+  return String(tokens);
+}
+
+function trimPrice(v: number): string {
+  return Number(v.toFixed(4)).toString();
+}
+
+/**
+ * Concise open model metadata summary (工单 #114): context window, capabilities,
+ * and reference per-1M pricing explicitly marked as estimate. Empty for
+ * unknown/custom models that had no exact catalog match.
+ */
+export function modelMetadataSummary(
+  m: Pick<AgentModel, "contextWindow" | "maxOutputTokens" | "capabilities" | "inputCostPerMillion" | "outputCostPerMillion"> | undefined,
+  estLabel = "est.",
+): string {
+  if (!m) return "";
+  const parts: string[] = [];
+  const ctx = formatContextWindow(m.contextWindow);
+  if (ctx) parts.push(ctx);
+  if (m.capabilities && m.capabilities.length > 0) parts.push(m.capabilities.join("/"));
+  if ((m.inputCostPerMillion ?? 0) > 0 || (m.outputCostPerMillion ?? 0) > 0) {
+    parts.push(`~$${trimPrice(m.inputCostPerMillion ?? 0)}/$${trimPrice(m.outputCostPerMillion ?? 0)} /1M (${estLabel})`);
+  }
+  return parts.join(" · ");
+}
+
 /** A project as the owner knows it: the name they gave it (工单 #50), else its id. */
 export function projectTitle(p: { name?: string; projectId: string }): string {
   return p.name?.trim() || p.projectId;

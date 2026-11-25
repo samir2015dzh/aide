@@ -30,6 +30,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/flock"
 	"github.com/samir2015dzh/aide/internal/legacy"
+	"github.com/samir2015dzh/aide/internal/modelcatalog"
 	"github.com/samir2015dzh/aide/internal/msgchain"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
@@ -61,6 +62,12 @@ type Config struct {
 	// the five-hour and weekly windows, with auto-renew. Off by default so
 	// tests make no network calls; aided turns it on.
 	ClaudeUsage bool
+	// ModelCatalogSync enables background 24h sync of open model metadata
+	// (models.dev + litellm) in Machine.Run. Off by default so tests make no
+	// network calls; aided turns it on.
+	ModelCatalogSync bool
+	// ModelCatalog overrides the default open model catalog (for tests).
+	ModelCatalog *modelcatalog.Catalog
 }
 
 func DefaultProviders() map[string]provider.Provider {
@@ -96,6 +103,7 @@ type Machine struct {
 	machineID string
 	audit     *Audit
 	sessions  *Sessions
+	catalog   *modelcatalog.Catalog
 
 	mu          sync.Mutex
 	trust       *identity.Trust
@@ -259,6 +267,15 @@ func Open(cfg Config) (*Machine, error) {
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
 	}
+	n.catalog = cfg.ModelCatalog
+	if n.catalog == nil {
+		n.catalog = modelcatalog.Open(modelcatalog.Options{
+			CachePath:  filepath.Join(cfg.DataDir, "model-catalog.json"),
+			HTTPClient: cfg.HTTPClient,
+			Logger:     n.log,
+			OnUpdate:   n.kickStatus,
+		})
+	}
 	n.loadCustomAgents()
 	if err := n.loadState(); err != nil {
 		return nil, err
@@ -284,6 +301,7 @@ func Open(cfg Config) (*Machine, error) {
 	}
 	n.sessions.offered = n.offered
 	n.sessions.signedIn = n.agentSignedIn
+	n.sessions.estimateCost = n.estimateTurnCost
 	n.sessions.notice = func(s noticeSession, e *sessionv1.SessionEvent) {
 		n.sessionNotice(s, e)
 		n.sessionNews(s, e)
@@ -655,6 +673,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 	st.DirectAddrs = n.directAddresses()
 	st.Rooms = n.roomsInStatus()
 	st.RoomOutbox = n.roomOutboxInStatus()
+	st.ModelCatalog = n.modelCatalogStatus()
 	return st
 }
 
@@ -676,6 +695,9 @@ func (n *Machine) Run(ctx context.Context) error {
 	go n.serveHeld(ctx)
 	go n.roomWatch(ctx)
 	go n.archiveWatch(ctx)
+	if n.cfg.ModelCatalogSync && n.catalog != nil {
+		go n.catalog.Run(ctx)
+	}
 	n.log.Info("aided machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
 	n.runLink(ctx)
 	n.mu.Lock()
@@ -835,4 +857,52 @@ func (n *Machine) Projects() ([]Project, error) { return n.st.Projects() }
 
 func (n *Machine) VerifyAudit() (int, error) {
 	return VerifyAudit(filepath.Join(n.cfg.DataDir, "audit"), append([]identity.Signer{n.key}, retiredKeys(n.cfg.DataDir)...)...)
+}
+
+// modelCatalogStatus projects the open model catalog's cache/sync state into
+// MachineStatus (工单 #114).
+func (n *Machine) modelCatalogStatus() *machinev1.ModelCatalogSync {
+	if n.catalog == nil {
+		return nil
+	}
+	s := n.catalog.Status()
+	out := &machinev1.ModelCatalogSync{
+		Source:     s.Source,
+		ModelCount: uint32(s.ModelCount),
+		LastError:  s.LastError,
+	}
+	if !s.SyncedAt.IsZero() {
+		out.SyncedAt = timestamppb.New(s.SyncedAt)
+	}
+	if !s.LastAttemptAt.IsZero() {
+		out.LastAttemptAt = timestamppb.New(s.LastAttemptAt)
+	}
+	return out
+}
+
+// estimateTurnCost estimates USD cost from open reference pricing when the
+// agent reported tokens without a cost (工单 #114). It resolves aliases via
+// the agent's last discovered model list, using strict exact match only.
+func (n *Machine) estimateTurnCost(agent, model string, inputTokens, outputTokens uint64) (float64, bool) {
+	if n.catalog == nil || (inputTokens == 0 && outputTokens == 0) {
+		return 0, false
+	}
+	resolved := ""
+	n.mu.Lock()
+	info := n.infos[agent]
+	if model == "" {
+		if d := n.defaults[agent]; d != nil && d.Model != "" {
+			model = d.Model
+		} else if info.Own.Model != "" {
+			model = info.Own.Model
+		}
+	}
+	for _, m := range info.Models {
+		if strings.EqualFold(m.ID, model) && m.Resolved != "" {
+			resolved = m.Resolved
+			break
+		}
+	}
+	n.mu.Unlock()
+	return n.catalog.EstimateCostUSD(model, resolved, inputTokens, outputTokens)
 }

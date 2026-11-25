@@ -1215,10 +1215,13 @@ func (x *DiffStat) GetDeletions() uint32 {
 }
 
 type Usage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	InputTokens   uint64                 `protobuf:"varint,1,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
-	OutputTokens  uint64                 `protobuf:"varint,2,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
-	CostUsd       float64                `protobuf:"fixed64,3,opt,name=cost_usd,json=costUsd,proto3" json:"cost_usd,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	InputTokens  uint64                 `protobuf:"varint,1,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
+	OutputTokens uint64                 `protobuf:"varint,2,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
+	CostUsd      float64                `protobuf:"fixed64,3,opt,name=cost_usd,json=costUsd,proto3" json:"cost_usd,omitempty"`
+	// True when cost_usd was estimated from open model pricing data (工单 #114)
+	// rather than reported by the agent; UI must label it as an estimate.
+	CostEstimated bool `protobuf:"varint,4,opt,name=cost_estimated,json=costEstimated,proto3" json:"cost_estimated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1272,6 +1275,13 @@ func (x *Usage) GetCostUsd() float64 {
 		return x.CostUsd
 	}
 	return 0
+}
+
+func (x *Usage) GetCostEstimated() bool {
+	if x != nil {
+		return x.CostEstimated
+	}
+	return false
 }
 
 type SessionProgress struct {
@@ -5808,11 +5818,12 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\n" +
 	"insertions\x18\x02 \x01(\rR\n" +
 	"insertions\x12\x1c\n" +
-	"\tdeletions\x18\x03 \x01(\rR\tdeletions\"j\n" +
+	"\tdeletions\x18\x03 \x01(\rR\tdeletions\"\x91\x01\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x04R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x04R\foutputTokens\x12\x19\n" +
-	"\bcost_usd\x18\x03 \x01(\x01R\acostUsd\"\xae\x04\n" +
+	"\bcost_usd\x18\x03 \x01(\x01R\acostUsd\x12%\n" +
+	"\x0ecost_estimated\x18\x04 \x01(\bR\rcostEstimated\"\xae\x04\n" +
 	"\x0fSessionProgress\x12\x1d\n" +
 	"\n" +
 	"turn_count\x18\x01 \x01(\rR\tturnCount\x12\x14\n" +

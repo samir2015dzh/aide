@@ -352,6 +352,9 @@ message Usage {
   uint64 input_tokens = 1;
   uint64 output_tokens = 2;
   double cost_usd = 3;
+  // True when cost_usd was estimated from open model pricing data (工单 #114)
+  // rather than reported by the agent; UI must label it as an estimate.
+  bool cost_estimated = 4;
 }
 
 message SessionProgress {

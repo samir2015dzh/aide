@@ -67,3 +67,34 @@ fun defaultModelChoice(a: AgentStatus?): ModelChoice? {
 /** A model a conversation runs, as its model list has it: the alias that resolves to it here, else itself. */
 fun listedModel(id: String, models: List<AgentModel>): String =
     if (id.isEmpty() || models.any { it.id == id }) id else models.firstOrNull { it.resolved == id }?.id ?: id
+
+/** Formats a token count as compact context window text (e.g. 200000 -> "200K", 1048576 -> "1M"). */
+fun formatContextWindow(tokens: Int): String = when {
+    tokens <= 0 -> ""
+    tokens >= 1_000_000 -> {
+        val m = tokens / 1_000_000.0
+        val rounded = Math.round(m * 10.0) / 10.0
+        if (rounded == rounded.toLong().toDouble()) "${rounded.toLong()}M" else "${rounded}M"
+    }
+    tokens >= 1_000 -> "${Math.round(tokens / 1_000.0)}K"
+    else -> "$tokens"
+}
+
+/** Open model metadata summary for display (工单 #114); empty for unknown/custom models. */
+fun modelMetaSummary(m: AgentModel?): String {
+    if (m == null) return ""
+    val parts = mutableListOf<String>()
+    formatContextWindow(m.contextWindow).takeIf { it.isNotEmpty() }?.let { parts += it }
+    if (m.capabilities.isNotEmpty()) parts += m.capabilities.joinToString("/")
+    if (m.inputCostPerMillion > 0 || m.outputCostPerMillion > 0) {
+        val inp = trimCost(m.inputCostPerMillion)
+        val out = trimCost(m.outputCostPerMillion)
+        parts += t("~$$inp/$$out per 1M (est.)", "~$$inp/$$out /百万 (参考估算)")
+    }
+    return parts.joinToString(" · ")
+}
+
+private fun trimCost(v: Double): String {
+    val s = String.format(java.util.Locale.US, "%.4f", v).trimEnd('0').trimEnd('.')
+    return if (s.isEmpty()) "0" else s
+}

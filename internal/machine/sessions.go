@@ -129,6 +129,9 @@ type Sessions struct {
 	// when it failed not signed in, true when it ran a turn (工单 #108);
 	// nil in tests.
 	signedIn func(agent string, in bool)
+	// estimateCost estimates USD cost from open reference pricing when a turn
+	// reports tokens without a provider-reported cost (工单 #114); nil in tests.
+	estimateCost func(agent, model string, inputTokens, outputTokens uint64) (float64, bool)
 
 	mu         sync.Mutex
 	live       map[string]*live
@@ -2381,8 +2384,16 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 	l.tools = map[string]string{}
 	mTurn.Since(l.turnStarted)
 	l.mu.Unlock()
+	costUSD := e.Usage.CostUSD
+	costEstimated := false
+	if costUSD == 0 && s.estimateCost != nil && (e.Usage.InputTokens > 0 || e.Usage.OutputTokens > 0) {
+		if est, ok := s.estimateCost(l.row.Agent, l.row.Model, e.Usage.InputTokens, e.Usage.OutputTokens); ok {
+			costUSD = est
+			costEstimated = true
+		}
+	}
 	tc := &sessionv1.TurnCompleted{Turn: turn, Result: e.Text, IsError: e.IsError,
-		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: e.Usage.CostUSD}}
+		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: costUSD, CostEstimated: costEstimated}}
 	if e.IsError {
 		f := e.Failure
 		if f == nil {
@@ -2446,6 +2457,9 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 	p.Usage.InputTokens += tc.Usage.InputTokens
 	p.Usage.OutputTokens += tc.Usage.OutputTokens
 	p.Usage.CostUsd += tc.Usage.CostUsd
+	if tc.Usage.CostEstimated {
+		p.Usage.CostEstimated = true
+	}
 	p.LastFailure = tc.Failure
 	l.row.Result = e.Text
 	if e.Text != "" {

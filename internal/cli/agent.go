@@ -99,6 +99,12 @@ type agentModel struct {
 	Resolved string `json:"resolved,omitempty"`
 	// Where its agent offers it from (DSH's provider lines, 工单 #98 补充).
 	Source string `json:"source,omitempty"`
+	// Open model metadata enriched on exact match only (工单 #114).
+	ContextWindow        uint32   `json:"context_window,omitempty"`
+	MaxOutputTokens      uint32   `json:"max_output_tokens,omitempty"`
+	Capabilities         []string `json:"capabilities,omitempty"`
+	InputCostPerMillion  float64  `json:"input_cost_per_million,omitempty"`
+	OutputCostPerMillion float64  `json:"output_cost_per_million,omitempty"`
 }
 
 type agentMode struct {
@@ -243,7 +249,12 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 				DefaultModel: cmp.Or(ag.Defaults.GetModel(), ag.Own.GetModel()), DefaultEffort: cmp.Or(ag.Defaults.GetEffort(), ag.Own.GetEffort()),
 				DefaultMode: cmp.Or(ag.Defaults.GetMode(), ag.Own.GetMode()), Usage: usageFrom(ag.GetUsage())}
 			for _, x := range ag.Models {
-				e.Models = append(e.Models, agentModel{ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...), Resolved: x.Resolved, Source: x.Source})
+				e.Models = append(e.Models, agentModel{
+					ID: x.Id, Name: x.Name, Efforts: append([]string{}, x.Efforts...), Resolved: x.Resolved, Source: x.Source,
+					ContextWindow: x.ContextWindow, MaxOutputTokens: x.MaxOutputTokens,
+					Capabilities: append([]string{}, x.Capabilities...),
+					InputCostPerMillion: x.InputCostPerMillion, OutputCostPerMillion: x.OutputCostPerMillion,
+				})
 			}
 			for _, x := range ag.Modes {
 				e.Modes = append(e.Modes, agentMode{ID: x.Id, Name: x.Name})
@@ -254,7 +265,12 @@ func (a *app) listAgents(ctx context.Context, c *peer.Client, machines []machine
 					ObservedAt: c.ObservedAtUnixMs, ExpiresAt: c.ExpiresAtUnixMs,
 					Stale: c.ExpiresAtUnixMs != 0 && time.Now().UnixMilli() >= c.ExpiresAtUnixMs}
 				for _, m := range c.Models {
-					v.Models = append(v.Models, agentModel{ID: m.Id, Efforts: append([]string{}, m.Efforts...)})
+					v.Models = append(v.Models, agentModel{
+						ID: m.Id, Name: m.Name, Efforts: append([]string{}, m.Efforts...), Resolved: m.Resolved, Source: m.Source,
+						ContextWindow: m.ContextWindow, MaxOutputTokens: m.MaxOutputTokens,
+						Capabilities: append([]string{}, m.Capabilities...),
+						InputCostPerMillion: m.InputCostPerMillion, OutputCostPerMillion: m.OutputCostPerMillion,
+					})
 				}
 				e.ModelCatalogs = append(e.ModelCatalogs, v)
 			}
