@@ -136,16 +136,12 @@ jobs:
           AIDE_E2E_RACE: ${{ needs.select.outputs.race }}
         run: |
           mkdir -p "$RUNNER_TEMP/e2e-bin"
+          go test -c -o "$RUNNER_TEMP/e2e-bin/e2e.test" ./e2e/
           race_flag=()
           if [ -n "${AIDE_E2E_RACE:-}" ]; then race_flag=(-race); fi
-          go test -c -o "$RUNNER_TEMP/e2e-bin/e2e.test" ./e2e/ &
-          pid_test=$!
           go build "${race_flag[@]}" -o "$RUNNER_TEMP/e2e-bin/" \
             ./cmd/aide-relay ./cmd/aided ./cmd/aide \
-            ./internal/provider/acp/fakeacp ./internal/provider/claude/fakeclaude ./bench/fakecodex &
-          pid_bins=$!
-          wait "$pid_test"
-          wait "$pid_bins"
+            ./internal/provider/acp/fakeacp ./internal/provider/claude/fakeclaude ./bench/fakecodex
           "$RUNNER_TEMP/e2e-bin/e2e.test" -test.list '^Test' > "$RUNNER_TEMP/e2e-bin/e2e-tests.txt"
       - uses: actions/upload-artifact@v4
         with:

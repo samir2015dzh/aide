@@ -1,21 +1,21 @@
 {
- "measured": "ci.yml run 45667369169 (windows-latest, windows-app TestDesktop), 2026-11-25 UTC: per-spec durations for 2-shard desktop e2e balancing (#127)",
+ "measured": "ci.yml run 45690048378 (windows-latest, windows-desktop-e2e-ledger), 2026-11-25 UTC: per-spec durations for 2-shard desktop e2e balancing (#127)",
  "seconds": {
-  "attention": 39.66,
-  "batchk": 34.4,
-  "dsh": 53.28,
-  "motion": 52.3,
-  "overview": 37.17,
-  "rollback": 21.66,
-  "search": 29.44,
-  "session": 85.6,
-  "sessionlist": 46.88,
-  "settings": 38.57,
-  "sheets": 34.25,
-  "shell": 42.51,
-  "tasks": 19.23,
-  "tray": 107.19,
-  "windows": 35.35,
-  "workspace": 36.45
+  "attention": 48.68,
+  "batchk": 30.89,
+  "dsh": 55.85,
+  "motion": 39.48,
+  "overview": 43.56,
+  "rollback": 43.11,
+  "search": 19.01,
+  "session": 83.12,
+  "sessionlist": 60.89,
+  "settings": 35.74,
+  "sheets": 37.82,
+  "shell": 35.17,
+  "tasks": 17.87,
+  "tray": 92.36,
+  "windows": 43.32,
+  "workspace": 25.87
  }
 }
