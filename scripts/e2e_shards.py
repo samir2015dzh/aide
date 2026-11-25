@@ -37,7 +37,7 @@ DESKTOP_RESULT = re.compile(r"^\s*--- (PASS|FAIL|SKIP): TestDesktop/([A-Za-z0-9_
 def read_tests(path):
     """Top-level test names from go test -list output."""
     names = []
-    for line in Path(path).read_text().splitlines():
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if re.fullmatch(r"Test\w*", line):
             names.append(line)
@@ -50,7 +50,7 @@ def read_tests(path):
 
 def read_windows_desktop_specs(path=DESKTOP_TEST):
     """Read the authoritative windowsSpecs map from e2e/desktop_test.go."""
-    text = Path(path).read_text()
+    text = Path(path).read_text(encoding="utf-8")
     m = re.search(r"var\s+windowsSpecs\s*=\s*map\[string\]bool\{([^}]+)\}", text)
     if not m:
         sys.exit(f"{path}: windowsSpecs map not found")
@@ -64,7 +64,7 @@ def read_times(path=TIMES):
     p = Path(path)
     if not p.exists():
         return {}
-    return {k: float(v) for k, v in json.loads(p.read_text())["seconds"].items()}
+    return {k: float(v) for k, v in json.loads(p.read_text(encoding="utf-8"))["seconds"].items()}
 
 
 def plan(tests, shards, times_path=TIMES):
@@ -93,7 +93,7 @@ def results(log, rx=RESULT):
     if not Path(log).exists():
         print(f"{log}: missing (the shard left no log)")
         return seen, dup
-    for line in Path(log).read_text(errors="replace").splitlines():
+    for line in Path(log).read_text(encoding="utf-8", errors="replace").splitlines():
         m = rx.match(line.rstrip())
         if m:
             if m.group(2) in seen:
