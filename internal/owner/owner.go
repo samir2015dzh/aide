@@ -2874,6 +2874,30 @@ func (o *Owner) RollbackSession(ctx context.Context, id string, turn uint32) (*s
 	return o.written(id)(n.Session.RollbackSession(ctx, &sessionv1.RollbackSessionRequest{SessionId: id, Turn: turn}))
 }
 
+// ListSessionCheckpoints returns a session's hidden git ref checkpoints.
+func (o *Owner) ListSessionCheckpoints(ctx context.Context, id string) (*sessionv1.ListCheckpointsResponse, error) {
+	if l := o.localSession(id); l != nil {
+		return l.ListCheckpoints(ctx, id)
+	}
+	n, err := o.sessionMachine(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.ListCheckpoints(ctx, &sessionv1.ListCheckpointsRequest{SessionId: id})
+}
+
+// ClearSessionCheckpoints removes hidden git ref checkpoints for a session.
+func (o *Owner) ClearSessionCheckpoints(ctx context.Context, id string, keepLatest uint32) (*sessionv1.ClearCheckpointsResponse, error) {
+	if l := o.localSession(id); l != nil {
+		return l.ClearCheckpoints(ctx, id, keepLatest)
+	}
+	n, err := o.sessionMachine(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.ClearCheckpoints(ctx, &sessionv1.ClearCheckpointsRequest{SessionId: id, KeepLatest: keepLatest})
+}
+
 // MarkSessionSeen records on a session's machine what the owner has seen of it.
 func (o *Owner) MarkSessionSeen(ctx context.Context, req *sessionv1.MarkSessionSeenRequest) (*sessionv1.Session, error) {
 	if l := o.localSession(req.SessionId); l != nil {

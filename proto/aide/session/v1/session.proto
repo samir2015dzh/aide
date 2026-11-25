@@ -99,6 +99,18 @@ service SessionService {
   rpc RollbackSession(RollbackSessionRequest) returns (Session) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // ListCheckpoints returns the per-turn workspace checkpoints stored under
+  // hidden git refs (refs/aide/checkpoints/<session_id>/turn-<N>), along with
+  // non-git/in-place status, conversation rollback capability, and retention
+  // policy (工单 #113).
+  rpc ListCheckpoints(ListCheckpointsRequest) returns (ListCheckpointsResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // ClearCheckpoints manually removes hidden git ref checkpoints for a session
+  // (optionally keeping keep_latest most recent entries; 0 removes all).
+  rpc ClearCheckpoints(ClearCheckpointsRequest) returns (ClearCheckpointsResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
   // MarkSessionSeen records what the owner has seen of the session
   // (Session.seen), on its machine, so every device of the owner agrees.
   // Only the owner's devices may mark. It is not activity: updated_at
@@ -1007,4 +1019,54 @@ message InsightFinding {
   // "interrupted", "rolled_back" or "missing_context".
   string code = 1;
   string text = 2;
+}
+
+message ListCheckpointsRequest {
+  string session_id = 1;
+}
+
+message Checkpoint {
+  uint32 turn = 1;
+  // Hidden git ref (refs/aide/checkpoints/<session_id>/turn-<turn>).
+  string ref = 2;
+  string commit = 3;
+  google.protobuf.Timestamp created_at = 4;
+  DiffStat diff_stat = 5;
+  // True when this turn modified files relative to the previous checkpoint.
+  bool changed = 6;
+  string prompt_excerpt = 7;
+}
+
+message CheckpointPolicy {
+  // Maximum number of turn checkpoints retained per session (0 = unlimited).
+  uint32 max_count = 1;
+  // Maximum age in days before old checkpoints are pruned (0 = unlimited).
+  uint32 max_age_days = 2;
+  // Untracked file policy: "included_non_ignored".
+  string untracked_policy = 3;
+}
+
+message ListCheckpointsResponse {
+  string session_id = 1;
+  // False for non-git projects or explicit in-place workspaces.
+  bool enabled = 2;
+  // Explicit reason when enabled is false (never silently omitted).
+  string disabled_reason = 3;
+  // False when the session's provider cannot roll back conversation state.
+  bool can_rollback = 4;
+  // Explicit reason when can_rollback is false.
+  string rollback_refused_reason = 5;
+  CheckpointPolicy policy = 6;
+  repeated Checkpoint checkpoints = 7;
+}
+
+message ClearCheckpointsRequest {
+  string session_id = 1;
+  // Number of most recent checkpoints to retain; 0 clears all checkpoint refs.
+  uint32 keep_latest = 2;
+}
+
+message ClearCheckpointsResponse {
+  uint32 removed = 1;
+  uint32 remaining = 2;
 }

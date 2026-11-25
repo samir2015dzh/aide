@@ -197,6 +197,10 @@ service LocalService {
   rpc PushSession(PushSessionRequest) returns (aide.session.v1.PushSessionResponse);
   // aide.session.v1.SessionService.RollbackSession, as the owner.
   rpc RollbackSession(RollbackSessionRequest) returns (SessionResponse);
+  // aide.session.v1.SessionService.ListCheckpoints, as the owner (工单 #113).
+  rpc ListSessionCheckpoints(aide.session.v1.ListCheckpointsRequest) returns (aide.session.v1.ListCheckpointsResponse);
+  // aide.session.v1.SessionService.ClearCheckpoints, as the owner (工单 #113).
+  rpc ClearSessionCheckpoints(aide.session.v1.ClearCheckpointsRequest) returns (aide.session.v1.ClearCheckpointsResponse);
   // The DeepSeek Harness sessions Aide did not start, on the machines
   // (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
   // activity first. Read only.

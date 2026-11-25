@@ -363,6 +363,14 @@ type ArchiveReader interface {
 	Archived(refs []string) map[string]bool
 }
 
+// ConversationRollbacker declares whether a provider can roll back (or
+// cleanly reset and re-anchor) its conversation state together with a
+// workspace checkpoint rollback (工单 #113). Providers returning false cause
+// Aide to refuse workspace file rollback so files and conversation never diverge.
+type ConversationRollbacker interface {
+	CanRollbackConversation() (bool, string)
+}
+
 // Markdown that CleanTitle drops from a title: a line that is only a code
 // fence or a rule, block markers at the start (heading, quote, list item),
 // links (keeping their text), ** * ~~ emphasis and code marks. Underscores

@@ -133,6 +133,8 @@ type Sessions struct {
 	// reports tokens without a provider-reported cost (工单 #114); nil in tests.
 	estimateCost func(agent, model string, inputTokens, outputTokens uint64) (float64, bool)
 
+	// checkpoints controls per-turn hidden git ref retention (工单 #113).
+	checkpoints CheckpointRetention
 	mu         sync.Mutex
 	live       map[string]*live
 	dispatchMu sync.Mutex
@@ -1208,6 +1210,9 @@ func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn u
 	if r.Workspace == identityv1.Workspace_WORKSPACE_IN_PLACE || s.ws.none {
 		return nil, cerr(connect.CodeFailedPrecondition, "session %s works in place, in the project's own directory: Aide takes no per-turn snapshots there (the directory and its git are the owner's), so it cannot be rolled back", id)
 	}
+	if ok, refused := s.canRollbackConversation(r); !ok {
+		return nil, reason.New(connect.CodeFailedPrecondition, "conversation_rollback_unsupported", refused)
+	}
 	proj, err := s.st.Project(r.ProjectID)
 	if err != nil || proj == nil {
 		return nil, reason.New(connect.CodeFailedPrecondition, "project_gone", fmt.Sprintf("project %q no longer exists", r.ProjectID), "project", r.ProjectID)
@@ -1257,6 +1262,9 @@ func (s *Sessions) Rollback(ctx context.Context, p *Principal, id string, turn u
 	if err != nil {
 		l.mu.Unlock()
 		return nil, fmt.Errorf("roll back the worktree: %w", err)
+	}
+	if err := s.ws.DropCheckpointsAfter(ctx, proj.Path, id, turn); err != nil {
+		s.log.Warn("drop checkpoints after rollback failed", "session", id, "turn", turn, "err", err)
 	}
 	if st, err := diffStat(ctx, proj.Path, l.row.BaseCommit, commit); err == nil {
 		l.row.Progress.DiffStat = st
@@ -1382,6 +1390,11 @@ func (s *Sessions) Delete(ctx context.Context, p *Principal, id string) error {
 	r, err := s.st.Session(id)
 	if err != nil || r == nil {
 		return err
+	}
+	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && !s.ws.none {
+		if proj, _ := s.st.Project(r.ProjectID); proj != nil {
+			_, _, _ = s.ws.ClearCheckpoints(ctx, proj.Path, id, 0)
+		}
 	}
 	if err := s.st.DeleteSession(r); err != nil {
 		return err
@@ -2443,6 +2456,11 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 		tc.Commit, tc.DiffStat = commit, turnStat
 		// Committed with (or before) the TurnCompleted event that follows.
 		s.w.put(writeOp{turn: &turnRec{id, turn, commit}})
+		if err := s.ws.WriteCheckpoint(ctx, repo, id, turn, commit); err != nil {
+			s.log.Warn("checkpoint ref write failed", "session", id, "turn", turn, "err", err)
+		} else if _, err := s.ws.PruneCheckpoints(ctx, repo, id, s.checkpointRetention(), time.Now()); err != nil {
+			s.log.Warn("checkpoint ref prune failed", "session", id, "turn", turn, "err", err)
+		}
 	}
 	l.mu.Lock()
 	p := l.row.Progress

@@ -258,6 +258,14 @@ func (l *Local) Rollback(ctx context.Context, id string, turn uint32) (*sessionv
 	return l.n.sessions.Rollback(ctx, l.p, id, turn)
 }
 
+func (l *Local) ListCheckpoints(ctx context.Context, id string) (*sessionv1.ListCheckpointsResponse, error) {
+	return l.n.sessions.ListCheckpoints(ctx, l.p, id)
+}
+
+func (l *Local) ClearCheckpoints(ctx context.Context, id string, keepLatest uint32) (*sessionv1.ClearCheckpointsResponse, error) {
+	return l.n.sessions.ClearCheckpoints(ctx, l.p, id, keepLatest)
+}
+
 // WorkSeq is where this machine's work counts are (work.go).
 func (l *Local) WorkSeq() int64 { return l.n.st.WorkSeq() }
 

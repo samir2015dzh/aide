@@ -118,6 +118,20 @@
     "copyPrompt": "Copy Suggested Prompt",
     "close": "Close"
   },
+  "checkpoints": {
+    "title": "Checkpoints",
+    "loading": "Loading checkpoints…",
+    "disabled": "Checkpoints are disabled for this project",
+    "empty": "No checkpoints yet; saved automatically after each turn",
+    "turn": "Turn {{turn}}",
+    "changed": "changed",
+    "unchanged": "no file edits",
+    "restore": "Restore here",
+    "waitIdle": "Wait for or interrupt the current turn first",
+    "policy": "Retains up to {{count}} turns / {{days}} days (includes non-ignored untracked files)",
+    "clear": "Clear checkpoints",
+    "cleared": "Cleared {{count}} checkpoints"
+  },
   "markdown": {
     "table": "Data table",
     "copyTable": "Copy table",

@@ -120,6 +120,14 @@ func (s *sessionService) RollbackSession(ctx context.Context, req *sessionv1.Rol
 	return s.n.sessions.Rollback(ctx, principalFrom(ctx), req.SessionId, req.Turn)
 }
 
+func (s *sessionService) ListCheckpoints(ctx context.Context, req *sessionv1.ListCheckpointsRequest) (*sessionv1.ListCheckpointsResponse, error) {
+	return s.n.sessions.ListCheckpoints(ctx, principalFrom(ctx), req.SessionId)
+}
+
+func (s *sessionService) ClearCheckpoints(ctx context.Context, req *sessionv1.ClearCheckpointsRequest) (*sessionv1.ClearCheckpointsResponse, error) {
+	return s.n.sessions.ClearCheckpoints(ctx, principalFrom(ctx), req.SessionId, req.KeepLatest)
+}
+
 type machineService struct{ n *Machine }
 
 func (s *machineService) GetInfo(ctx context.Context, req *machinev1.GetInfoRequest) (*machinev1.GetInfoResponse, error) {

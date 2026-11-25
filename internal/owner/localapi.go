@@ -1012,6 +1012,26 @@ func (l *localService) RollbackSession(ctx context.Context, req *localv1.Rollbac
 	return sessionResponse(l.o().RollbackSession(ctx, req.SessionId, req.Turn))
 }
 
+func (l *localService) ListSessionCheckpoints(ctx context.Context, req *sessionv1.ListCheckpointsRequest) (*sessionv1.ListCheckpointsResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.ListCheckpoints(ctx, req.SessionId)
+	}
+	return l.o().ListSessionCheckpoints(ctx, req.SessionId)
+}
+
+func (l *localService) ClearSessionCheckpoints(ctx context.Context, req *sessionv1.ClearCheckpointsRequest) (*sessionv1.ClearCheckpointsResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.ClearCheckpoints(ctx, req.SessionId, req.KeepLatest)
+	}
+	return l.o().ClearSessionCheckpoints(ctx, req.SessionId, req.KeepLatest)
+}
+
 func sessionResponse(s *sessionv1.Session, err error) (*localv1.SessionResponse, error) {
 	if err != nil {
 		return nil, err

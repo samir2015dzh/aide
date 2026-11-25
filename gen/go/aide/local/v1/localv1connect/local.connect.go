@@ -243,6 +243,12 @@ const (
 	// LocalServiceRollbackSessionProcedure is the fully-qualified name of the LocalService's
 	// RollbackSession RPC.
 	LocalServiceRollbackSessionProcedure = "/aide.local.v1.LocalService/RollbackSession"
+	// LocalServiceListSessionCheckpointsProcedure is the fully-qualified name of the LocalService's
+	// ListSessionCheckpoints RPC.
+	LocalServiceListSessionCheckpointsProcedure = "/aide.local.v1.LocalService/ListSessionCheckpoints"
+	// LocalServiceClearSessionCheckpointsProcedure is the fully-qualified name of the LocalService's
+	// ClearSessionCheckpoints RPC.
+	LocalServiceClearSessionCheckpointsProcedure = "/aide.local.v1.LocalService/ClearSessionCheckpoints"
 	// LocalServiceListDSHSessionsProcedure is the fully-qualified name of the LocalService's
 	// ListDSHSessions RPC.
 	LocalServiceListDSHSessionsProcedure = "/aide.local.v1.LocalService/ListDSHSessions"
@@ -500,6 +506,10 @@ type LocalServiceClient interface {
 	PushSession(context.Context, *v1.PushSessionRequest) (*v12.PushSessionResponse, error)
 	// aide.session.v1.SessionService.RollbackSession, as the owner.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error)
+	// aide.session.v1.SessionService.ListCheckpoints, as the owner (工单 #113).
+	ListSessionCheckpoints(context.Context, *v12.ListCheckpointsRequest) (*v12.ListCheckpointsResponse, error)
+	// aide.session.v1.SessionService.ClearCheckpoints, as the owner (工单 #113).
+	ClearSessionCheckpoints(context.Context, *v12.ClearCheckpointsRequest) (*v12.ClearCheckpointsResponse, error)
 	// The DeepSeek Harness sessions Aide did not start, on the machines
 	// (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
 	// activity first. Read only.
@@ -1024,6 +1034,18 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("RollbackSession")),
 			connect.WithClientOptions(opts...),
 		),
+		listSessionCheckpoints: connect.NewClient[v12.ListCheckpointsRequest, v12.ListCheckpointsResponse](
+			httpClient,
+			baseURL+LocalServiceListSessionCheckpointsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListSessionCheckpoints")),
+			connect.WithClientOptions(opts...),
+		),
+		clearSessionCheckpoints: connect.NewClient[v12.ClearCheckpointsRequest, v12.ClearCheckpointsResponse](
+			httpClient,
+			baseURL+LocalServiceClearSessionCheckpointsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ClearSessionCheckpoints")),
+			connect.WithClientOptions(opts...),
+		),
 		listDSHSessions: connect.NewClient[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse](
 			httpClient,
 			baseURL+LocalServiceListDSHSessionsProcedure,
@@ -1272,6 +1294,8 @@ type localServiceClient struct {
 	getSessionInsights       *connect.Client[v12.GetSessionInsightsRequest, v12.SessionInsights]
 	pushSession              *connect.Client[v1.PushSessionRequest, v12.PushSessionResponse]
 	rollbackSession          *connect.Client[v1.RollbackSessionRequest, v1.SessionResponse]
+	listSessionCheckpoints   *connect.Client[v12.ListCheckpointsRequest, v12.ListCheckpointsResponse]
+	clearSessionCheckpoints  *connect.Client[v12.ClearCheckpointsRequest, v12.ClearCheckpointsResponse]
 	listDSHSessions          *connect.Client[v1.ListDSHSessionsRequest, v1.ListDSHSessionsResponse]
 	readDSHSession           *connect.Client[v1.ReadDSHSessionRequest, v11.ReadDSHSessionResponse]
 	setDSHTakeover           *connect.Client[v1.SetDSHTakeoverRequest, v11.SetDSHTakeoverResponse]
@@ -1961,6 +1985,24 @@ func (c *localServiceClient) RollbackSession(ctx context.Context, req *v1.Rollba
 	return nil, err
 }
 
+// ListSessionCheckpoints calls aide.local.v1.LocalService.ListSessionCheckpoints.
+func (c *localServiceClient) ListSessionCheckpoints(ctx context.Context, req *v12.ListCheckpointsRequest) (*v12.ListCheckpointsResponse, error) {
+	response, err := c.listSessionCheckpoints.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ClearSessionCheckpoints calls aide.local.v1.LocalService.ClearSessionCheckpoints.
+func (c *localServiceClient) ClearSessionCheckpoints(ctx context.Context, req *v12.ClearCheckpointsRequest) (*v12.ClearCheckpointsResponse, error) {
+	response, err := c.clearSessionCheckpoints.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListDSHSessions calls aide.local.v1.LocalService.ListDSHSessions.
 func (c *localServiceClient) ListDSHSessions(ctx context.Context, req *v1.ListDSHSessionsRequest) (*v1.ListDSHSessionsResponse, error) {
 	response, err := c.listDSHSessions.CallUnary(ctx, connect.NewRequest(req))
@@ -2390,6 +2432,10 @@ type LocalServiceHandler interface {
 	PushSession(context.Context, *v1.PushSessionRequest) (*v12.PushSessionResponse, error)
 	// aide.session.v1.SessionService.RollbackSession, as the owner.
 	RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error)
+	// aide.session.v1.SessionService.ListCheckpoints, as the owner (工单 #113).
+	ListSessionCheckpoints(context.Context, *v12.ListCheckpointsRequest) (*v12.ListCheckpointsResponse, error)
+	// aide.session.v1.SessionService.ClearCheckpoints, as the owner (工单 #113).
+	ClearSessionCheckpoints(context.Context, *v12.ClearCheckpointsRequest) (*v12.ClearCheckpointsResponse, error)
 	// The DeepSeek Harness sessions Aide did not start, on the machines
 	// (aide.machine.v1.MachineAdminService.ListDSHSessions), newest
 	// activity first. Read only.
@@ -2910,6 +2956,18 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("RollbackSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceListSessionCheckpointsHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceListSessionCheckpointsProcedure,
+		svc.ListSessionCheckpoints,
+		connect.WithSchema(localServiceMethods.ByName("ListSessionCheckpoints")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceClearSessionCheckpointsHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceClearSessionCheckpointsProcedure,
+		svc.ClearSessionCheckpoints,
+		connect.WithSchema(localServiceMethods.ByName("ClearSessionCheckpoints")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListDSHSessionsHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListDSHSessionsProcedure,
 		svc.ListDSHSessions,
@@ -3230,6 +3288,10 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServicePushSessionHandler.ServeHTTP(w, r)
 		case LocalServiceRollbackSessionProcedure:
 			localServiceRollbackSessionHandler.ServeHTTP(w, r)
+		case LocalServiceListSessionCheckpointsProcedure:
+			localServiceListSessionCheckpointsHandler.ServeHTTP(w, r)
+		case LocalServiceClearSessionCheckpointsProcedure:
+			localServiceClearSessionCheckpointsHandler.ServeHTTP(w, r)
 		case LocalServiceListDSHSessionsProcedure:
 			localServiceListDSHSessionsHandler.ServeHTTP(w, r)
 		case LocalServiceReadDSHSessionProcedure:
@@ -3593,6 +3655,14 @@ func (UnimplementedLocalServiceHandler) PushSession(context.Context, *v1.PushSes
 
 func (UnimplementedLocalServiceHandler) RollbackSession(context.Context, *v1.RollbackSessionRequest) (*v1.SessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.RollbackSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListSessionCheckpoints(context.Context, *v12.ListCheckpointsRequest) (*v12.ListCheckpointsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ListSessionCheckpoints is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ClearSessionCheckpoints(context.Context, *v12.ClearCheckpointsRequest) (*v12.ClearCheckpointsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ClearSessionCheckpoints is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListDSHSessions(context.Context, *v1.ListDSHSessionsRequest) (*v1.ListDSHSessionsResponse, error) {

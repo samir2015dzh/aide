@@ -12,6 +12,7 @@ import { grantLabel, machineName } from "../Sidebar";
 import { useStore } from "../store";
 import { push } from "./actions";
 import { Insights } from "./Insights";
+import { Checkpoints } from "./Checkpoints";
 
 type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean };
 
@@ -117,6 +118,7 @@ export function Inspector({ s }: { s: Session }) {
       </aside>
       {(s.model !== "" || s.effort !== "") && <Context s={s} models={m?.status?.agents.find((a) => a.name === s.agent)?.models} />}
       <Insights s={s} />
+      <Checkpoints s={s} />
     </div>
   );
 }

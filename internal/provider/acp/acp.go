@@ -90,6 +90,13 @@ type Provider struct {
 
 func (p *Provider) Name() string { return p.Agent.Name }
 
+// CanRollbackConversation reports that ACP agents currently do not expose a
+// conversation rewind/rollback primitive, so Aide refuses workspace-only file
+// rollback to prevent file and conversation state from diverging (工单 #113).
+func (p *Provider) CanRollbackConversation() (bool, string) {
+	return false, fmt.Sprintf("provider %q (ACP) does not support conversation rollback; refusing to roll back files alone to avoid file and conversation mismatch", p.Agent.Name)
+}
+
 func (p *Provider) binary() string {
 	if p.Binary != "" {
 		return p.Binary
