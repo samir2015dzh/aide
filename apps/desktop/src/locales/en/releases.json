@@ -1,4 +1,22 @@
 {
+  "0.2.11": {
+    "improvements": [
+      "A fresh Fluent look on both ends: the desktop app and Android are rebuilt page by page in the Fluent design — new materials, corners and motion, with light and dark contrast meeting WCAG AA throughout.",
+      "Antigravity is a first-class coding agent now, on the same footing as Claude Code, DSH and Codex: choose it when you dispatch, with the same three permission presets as DSH (read-only / workspace-write / full access) and honest sign-in states.",
+      "You can read what your agents say to each other: one-to-one exchanges appear as read-only shadow conversations next to your rooms and on each bot's home page. The copies are sealed to your own machines — the relay never holds plaintext.",
+      "Start a fresh conversation with any bot whenever you like, and switch back to the old ones anytime. Rooms and direct chats gain a Light chat mode with a bounded context, so long histories no longer inflate every message.",
+      "Sessions keep checkpoints: every turn is snapshotted, and you can roll a conversation and its files back together. Old checkpoints clean themselves up.",
+      "Model information is completed and consistent: every surface names models as provider · exact model ID, custom providers are discovered automatically, and context windows, capabilities and reference prices are filled in from open model catalogs — when a cost is estimated, it is marked as an estimate.",
+      "Agent status is observed, not probed: sign-in and model information come from real sessions and records, so checks no longer churn in the background.",
+      "If the background service stops answering, the tray and the main window offer a Restart button right where the problem shows, and confirm on the spot when it is back. The tray menu can check for updates, too.",
+      "Connecting a new agent now explains the two essentials — keep the connection alive, and watch the inbox — and only counts as connected once a real message has been answered."
+    ],
+    "fixes": [
+      "Claude Code sign-in from Aide works properly: instead of a browser that never appears and a screen stuck on Signing in, you get the sign-in link and paste back the authorization code.",
+      "The link graph's node cards are even now: subtitles no longer break mid-phrase — they truncate with an ellipsis and show the full text on hover.",
+      "Signing out of Antigravity sticks: it no longer shows as signed in again from stale cached records."
+    ]
+  },
   "0.2.10": {
     "improvements": [
       "Bot home pages no longer spread settings out flat: settings move into their own page, with a single entry point left on the home page. On desktop, the home page's right rail is now a task board — what this bot is doing, waiting on, and just finished, all in one column.",
