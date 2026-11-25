@@ -311,23 +311,24 @@ jobs:
         with:
           path: |
             dist/older-cache
-          key: win-update-older-0.0.1-${{ hashFiles('apps/desktop/scripts/package-win.mjs', 'apps/desktop/scripts/windows-*.mjs', 'apps/desktop/src/main/updater.ts', 'apps/desktop/src/main/platform/win.ts', 'apps/desktop/package.json', 'go.sum') }}
+          key: win-update-older-0.0.1-v2-${{ hashFiles('apps/desktop/scripts/package-win.mjs', 'apps/desktop/scripts/windows-*.mjs', 'apps/desktop/src/main/updater.ts', 'apps/desktop/src/main/platform/win.ts', 'apps/desktop/package.json', 'go.sum') }}
       # Two builds, the older updating to the newer from a feed signed with a key of the test's.
       - name: update between two builds
         shell: bash
         run: |
           echo "cache hit, older update installer (0.0.1): ${{ steps.cache-older-update.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
           mkdir -p dist/older-cache
+          cache_dir="$(pwd -W)/dist/older-cache"
           export AIDE_UPDATE_FEED=http://127.0.0.1:8765 AIDE_RELEASE_URL=http://127.0.0.1:8765
-          export AIDE_RELEASE_PUBKEY_FILE="dist/older-cache/test.pub" RELEASE_SIGNING_KEY_FILE="dist/older-cache/test.key"
-          if [ ! -f dist/older-cache/Aide-windows-x64-setup.exe ] || [ ! -f dist/older-cache/test.key ] || [ ! -f dist/older-cache/test.pub ]; then
+          export AIDE_RELEASE_PUBKEY_FILE="$cache_dir/test.pub" RELEASE_SIGNING_KEY_FILE="$cache_dir/test.key"
+          if [ ! -f "$cache_dir/Aide-windows-x64-setup.exe" ] || [ ! -f "$RELEASE_SIGNING_KEY_FILE" ] || [ ! -f "$AIDE_RELEASE_PUBKEY_FILE" ]; then
             openssl ecparam -name prime256v1 -genkey -noout -out "$RELEASE_SIGNING_KEY_FILE"
             openssl ec -in "$RELEASE_SIGNING_KEY_FILE" -pubout -out "$AIDE_RELEASE_PUBKEY_FILE"
             VERSION=0.0.1 AIDE_DIST=dist/older node apps/desktop/scripts/package-win.mjs
-            cp dist/older/Aide-windows-x64-setup.exe dist/older-cache/Aide-windows-x64-setup.exe
+            cp dist/older/Aide-windows-x64-setup.exe "$cache_dir/Aide-windows-x64-setup.exe"
           fi
           VERSION=0.0.2 AIDE_DIST=dist/newer node apps/desktop/scripts/package-win.mjs
-          pwsh -File apps/desktop/scripts/check-windows-update.ps1 dist/older-cache/Aide-windows-x64-setup.exe dist/newer 0.0.2
+          pwsh -File apps/desktop/scripts/check-windows-update.ps1 "$cache_dir/Aide-windows-x64-setup.exe" dist/newer 0.0.2
       - uses: actions/upload-artifact@v4
         with:
           name: Aide-windows-setup
