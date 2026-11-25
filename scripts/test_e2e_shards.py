@@ -71,6 +71,7 @@ class E2EShardsTest(unittest.TestCase):
                 self.assertTrue(pat.startswith("^TestDesktop$/^(") and pat.endswith(")$"), pat)
                 specs = pat[len("^TestDesktop$/^("):-2].split("|")
                 self.assertGreater(len(specs), 0)
+                self.assertTrue(any(sp in {"session", "settings", "sheets"} for sp in specs), specs)
                 seen.extend(specs)
                 lf = Path(td) / f"desk-{s}.log"
                 lf.write_text("\n".join(f"    --- PASS: TestDesktop/{sp} (12.34s)" for sp in specs) + "\n")

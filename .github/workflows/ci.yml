@@ -334,7 +334,7 @@ jobs:
         run: |
           run=$(python3 scripts/e2e_shards.py desktop-run-pattern --of ${{ strategy.job-total }} --shard ${{ matrix.shard }} | tr -d '\r')
           echo "this windows desktop shard: $run"
-          go test ./e2e -run "$run" -count=1 -v -timeout 20m 2>&1 | tee "$RUNNER_TEMP/windows-desktop-e2e.log"
+          go test ./e2e -run "$run" -count=1 -v -parallel 2 -timeout 20m 2>&1 | tee "$RUNNER_TEMP/windows-desktop-e2e.log"
       - if: always()
         uses: actions/upload-artifact@v4
         with:

@@ -60,6 +60,15 @@ def read_windows_desktop_specs(path=DESKTOP_TEST):
     return sorted(set(specs))
 
 
+def read_windows_clipboard_specs(path=DESKTOP_TEST):
+    """Read clipboardSpecs from e2e/desktop_test.go (serial subtests in TestDesktop)."""
+    text = Path(path).read_text(encoding="utf-8")
+    m = re.search(r"var\s+clipboardSpecs\s*=\s*map\[string\]bool\{([^}]+)\}", text)
+    if not m:
+        return set()
+    return set(re.findall(r'"([A-Za-z0-9_-]+)"\s*:\s*true', m.group(1)))
+
+
 def read_times(path=TIMES):
     p = Path(path)
     if not p.exists():
@@ -67,17 +76,25 @@ def read_times(path=TIMES):
     return {k: float(v) for k, v in json.loads(p.read_text(encoding="utf-8"))["seconds"].items()}
 
 
-def plan(tests, shards, times_path=TIMES):
+def plan(tests, shards, times_path=TIMES, serial=()):
     times = read_times(times_path)
     known = [times[t] for t in tests if t in times and times[t] > 0]
     default = statistics.median(known) if known else 1.0
     weight = {t: times.get(t, default) for t in tests}
     load = [0.0] * shards
     given = [[] for _ in range(shards)]
-    for t in sorted(tests, key=lambda t: (-weight[t], t)):
-        i = min(range(shards), key=lambda i: (load[i], i))
-        given[i].append(t)
-        load[i] += weight[t]
+    serial_set = set(serial)
+    # Place serial tests first so each shard gets balanced serial work before
+    # filling remaining capacity with parallel tests.
+    groups = (
+        [t for t in tests if t in serial_set],
+        [t for t in tests if t not in serial_set],
+    )
+    for grp in groups:
+        for t in sorted(grp, key=lambda t: (-weight[t], t)):
+            i = min(range(shards), key=lambda i: (load[i], i))
+            given[i].append(t)
+            load[i] += weight[t]
     unknown = sorted(t for t in tests if t not in times)
     return [sorted(g) for g in given], load, unknown
 
@@ -129,6 +146,7 @@ def main():
     is_desktop = a.cmd.startswith("desktop-")
     if is_desktop:
         tests = read_windows_desktop_specs(a.desktop_test)
+        serial_specs = read_windows_clipboard_specs(a.desktop_test)
         times_path = DESKTOP_TIMES
         rx = DESKTOP_RESULT
         prefix = "TestDesktop$/^"
@@ -137,11 +155,12 @@ def main():
         tests = [t for t in read_tests(a.tests) if t not in excluded]
         if not tests:
             sys.exit(f"{a.tests}: no tests left after --exclude")
+        serial_specs = ()
         times_path = TIMES
         rx = RESULT
         prefix = ""
 
-    given, load, unknown = plan(tests, a.of, times_path=times_path)
+    given, load, unknown = plan(tests, a.of, times_path=times_path, serial=serial_specs)
 
     if a.cmd in ("run-pattern", "desktop-run-pattern"):
         if not 1 <= a.shard <= a.of:
