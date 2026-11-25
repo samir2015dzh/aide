@@ -125,7 +125,7 @@ jobs:
   # exactly once. No pnpm in these jobs: with it TestDesktop would run, and
   # Electron's sandbox can't on this runner (it runs on windows-app).
   e2e:
-    name: e2e (${{ matrix.shard }}/4)
+    name: e2e (${{ matrix.shard }}/6)
     needs: select
     if: needs.select.outputs.e2e == 'true'
     runs-on: ubuntu-latest
@@ -133,7 +133,7 @@ jobs:
       # A red shard leaves the others running: one run shows every failure.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -180,8 +180,8 @@ jobs:
         run: |
           go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
           logs=()  # one per shard of the e2e matrix, in order
-          for i in 1 2 3 4; do logs+=("$RUNNER_TEMP/shards/e2e-shard-$i/e2e.log"); done
-          python3 scripts/e2e_shards.py ledger --of 4 "$RUNNER_TEMP/e2e-tests.txt" "${logs[@]}" | tee "$RUNNER_TEMP/ledger.txt"
+          for i in 1 2 3 4 5 6; do logs+=("$RUNNER_TEMP/shards/e2e-shard-$i/e2e.log"); done
+          python3 scripts/e2e_shards.py ledger --of 6 "$RUNNER_TEMP/e2e-tests.txt" "${logs[@]}" | tee "$RUNNER_TEMP/ledger.txt"
           { echo "race detector in every shard: ${RACE:-off} (1 = on, every binary)"; echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
         env:
           RACE: ${{ needs.select.outputs.race }}
@@ -216,19 +216,59 @@ jobs:
         run: go test ./cmd/... ./internal/... ./pkg/... -count=1
       - name: install.ps1
         run: go test ./e2e -run '^TestWindowsInstall$' -count=1 -v
-  # The end-to-end suite on Windows, being ported (docs/windows.md, W1): its
-  # failures do not fail the run yet.
+  # The end-to-end suite on Windows, sharded like Linux e2e (work order #125;
+  # TestDesktop is owned by windows-app so it is excluded here to prevent
+  # duplicate execution). Its failures do not fail the run yet.
   windows-e2e:
+    name: windows-e2e (${{ matrix.shard }}/4)
     if: github.event_name != 'schedule'
     runs-on: windows-latest
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: end-to-end (scripted agents)
-        run: go test ./e2e -count=1 -timeout 30m
+        shell: bash
+        run: |
+          go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
+          run=$(python3 scripts/e2e_shards.py run-pattern --exclude TestDesktop --of ${{ strategy.job-total }} --shard ${{ matrix.shard }} "$RUNNER_TEMP/e2e-tests.txt")
+          echo "this windows shard: $run"
+          go test ./e2e/ -count=1 -timeout 20m -v -run "$run" 2>&1 | tee "$RUNNER_TEMP/windows-e2e.log"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-e2e-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/windows-e2e.log
+          retention-days: 7
+  # Verifies every non-desktop Windows e2e test ran exactly once across the 4 shards (#125).
+  windows-e2e-ledger:
+    needs: [windows-e2e]
+    if: ${{ !cancelled() && github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: windows-e2e-shard-*
+          path: ${{ runner.temp }}/win-shards
+      - name: every windows e2e test exactly once
+        shell: bash
+        run: |
+          go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
+          logs=()
+          for i in 1 2 3 4; do logs+=("$RUNNER_TEMP/win-shards/windows-e2e-shard-$i/windows-e2e.log"); done
+          python3 scripts/e2e_shards.py ledger --exclude TestDesktop --of 4 "$RUNNER_TEMP/e2e-tests.txt" "${logs[@]}" | tee "$RUNNER_TEMP/win-ledger.txt"
+          { echo "windows-e2e shards (TestDesktop owned by windows-app)"; echo '```'; cat "$RUNNER_TEMP/win-ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
   # The desktop app (Electron): types, unit tests, and
   # their end-to-end tests driving the real app against the real daemon.
   # The desktop app on Windows (docs/windows.md, W2): its end-to-end spec
@@ -263,17 +303,31 @@ jobs:
       - name: install it, open it, uninstall it
         shell: pwsh
         run: apps/desktop/scripts/check-windows-setup.ps1 dist/Aide-windows-x64-setup.exe
+      # Cache the older 0.0.1 test installer + its throwaway 127.0.0.1 test keypair across runs when
+      # updater/packaging inputs did not change (work order #125); the newer 0.0.2 build is always built fresh.
+      - name: cache older update installer
+        id: cache-older-update
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist/older-cache
+          key: win-update-older-0.0.1-${{ hashFiles('apps/desktop/scripts/package-win.mjs', 'apps/desktop/scripts/windows-*.mjs', 'apps/desktop/src/main/updater.ts', 'apps/desktop/src/main/platform/win.ts', 'apps/desktop/package.json', 'go.sum') }}
       # Two builds, the older updating to the newer from a feed signed with a key of the test's.
       - name: update between two builds
         shell: bash
         run: |
-          openssl ecparam -name prime256v1 -genkey -noout -out "$RUNNER_TEMP/test.key"
-          openssl ec -in "$RUNNER_TEMP/test.key" -pubout -out "$RUNNER_TEMP/test.pub"
+          echo "cache hit, older update installer (0.0.1): ${{ steps.cache-older-update.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
+          mkdir -p dist/older-cache
           export AIDE_UPDATE_FEED=http://127.0.0.1:8765 AIDE_RELEASE_URL=http://127.0.0.1:8765
-          export AIDE_RELEASE_PUBKEY_FILE="$RUNNER_TEMP/test.pub" RELEASE_SIGNING_KEY_FILE="$RUNNER_TEMP/test.key"
-          VERSION=0.0.1 AIDE_DIST=dist/older node apps/desktop/scripts/package-win.mjs
+          export AIDE_RELEASE_PUBKEY_FILE="dist/older-cache/test.pub" RELEASE_SIGNING_KEY_FILE="dist/older-cache/test.key"
+          if [ ! -f dist/older-cache/Aide-windows-x64-setup.exe ] || [ ! -f dist/older-cache/test.key ] || [ ! -f dist/older-cache/test.pub ]; then
+            openssl ecparam -name prime256v1 -genkey -noout -out "$RELEASE_SIGNING_KEY_FILE"
+            openssl ec -in "$RELEASE_SIGNING_KEY_FILE" -pubout -out "$AIDE_RELEASE_PUBKEY_FILE"
+            VERSION=0.0.1 AIDE_DIST=dist/older node apps/desktop/scripts/package-win.mjs
+            cp dist/older/Aide-windows-x64-setup.exe dist/older-cache/Aide-windows-x64-setup.exe
+          fi
           VERSION=0.0.2 AIDE_DIST=dist/newer node apps/desktop/scripts/package-win.mjs
-          pwsh -File apps/desktop/scripts/check-windows-update.ps1 dist/older/Aide-windows-x64-setup.exe dist/newer 0.0.2
+          pwsh -File apps/desktop/scripts/check-windows-update.ps1 dist/older-cache/Aide-windows-x64-setup.exe dist/newer 0.0.2
       - uses: actions/upload-artifact@v4
         with:
           name: Aide-windows-setup
