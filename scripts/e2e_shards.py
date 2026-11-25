@@ -28,13 +28,16 @@ import sys
 from pathlib import Path
 
 TIMES = Path(__file__).with_name("e2e_shard_times.json")
+DESKTOP_TIMES = Path(__file__).with_name("windows_desktop_times.json")
+DESKTOP_TEST = Path(__file__).resolve().parent.parent / "e2e" / "desktop_test.go"
 RESULT = re.compile(r"^--- (PASS|FAIL|SKIP): (Test\w*) \(([0-9.]+)s\)$")
+DESKTOP_RESULT = re.compile(r"^\s*--- (PASS|FAIL|SKIP): TestDesktop/([A-Za-z0-9_-]+) \(([0-9.]+)s\)$")
 
 
 def read_tests(path):
     """Top-level test names from go test -list output."""
     names = []
-    for line in Path(path).read_text().splitlines():
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if re.fullmatch(r"Test\w*", line):
             names.append(line)
@@ -45,40 +48,70 @@ def read_tests(path):
     return sorted(names)
 
 
-def read_times():
-    if not TIMES.exists():
+def read_windows_desktop_specs(path=DESKTOP_TEST):
+    """Read the authoritative windowsSpecs map from e2e/desktop_test.go."""
+    text = Path(path).read_text(encoding="utf-8")
+    m = re.search(r"var\s+windowsSpecs\s*=\s*map\[string\]bool\{([^}]+)\}", text)
+    if not m:
+        sys.exit(f"{path}: windowsSpecs map not found")
+    specs = re.findall(r'"([A-Za-z0-9_-]+)"\s*:\s*true', m.group(1))
+    if not specs:
+        sys.exit(f"{path}: windowsSpecs map is empty")
+    return sorted(set(specs))
+
+
+def read_windows_clipboard_specs(path=DESKTOP_TEST):
+    """Read clipboardSpecs from e2e/desktop_test.go (serial subtests in TestDesktop)."""
+    text = Path(path).read_text(encoding="utf-8")
+    m = re.search(r"var\s+clipboardSpecs\s*=\s*map\[string\]bool\{([^}]+)\}", text)
+    if not m:
+        return set()
+    return set(re.findall(r'"([A-Za-z0-9_-]+)"\s*:\s*true', m.group(1)))
+
+
+def read_times(path=TIMES):
+    p = Path(path)
+    if not p.exists():
         return {}
-    return {k: float(v) for k, v in json.loads(TIMES.read_text())["seconds"].items()}
+    return {k: float(v) for k, v in json.loads(p.read_text(encoding="utf-8"))["seconds"].items()}
 
 
-def plan(tests, shards):
-    times = read_times()
+def plan(tests, shards, times_path=TIMES, serial=()):
+    times = read_times(times_path)
     known = [times[t] for t in tests if t in times and times[t] > 0]
     default = statistics.median(known) if known else 1.0
     weight = {t: times.get(t, default) for t in tests}
     load = [0.0] * shards
     given = [[] for _ in range(shards)]
-    for t in sorted(tests, key=lambda t: (-weight[t], t)):
-        i = min(range(shards), key=lambda i: (load[i], i))
-        given[i].append(t)
-        load[i] += weight[t]
+    serial_set = set(serial)
+    # Place serial tests first so each shard gets balanced serial work before
+    # filling remaining capacity with parallel tests.
+    groups = (
+        [t for t in tests if t in serial_set],
+        [t for t in tests if t not in serial_set],
+    )
+    for grp in groups:
+        for t in sorted(grp, key=lambda t: (-weight[t], t)):
+            i = min(range(shards), key=lambda i: (load[i], i))
+            given[i].append(t)
+            load[i] += weight[t]
     unknown = sorted(t for t in tests if t not in times)
     return [sorted(g) for g in given], load, unknown
 
 
-def pattern(names):
-    return "^(" + "|".join(names) + ")$"
+def pattern(names, prefix=""):
+    return f"^{prefix}(" + "|".join(names) + ")$"
 
 
-def results(log):
-    """{test: (result, seconds)} for the top-level tests a shard's -v log reports."""
+def results(log, rx=RESULT):
+    """{test: (result, seconds)} for the tests a shard's -v log reports."""
     seen = {}
     dup = []
     if not Path(log).exists():
         print(f"{log}: missing (the shard left no log)")
         return seen, dup
-    for line in Path(log).read_text(errors="replace").splitlines():
-        m = RESULT.match(line.rstrip())
+    for line in Path(log).read_text(encoding="utf-8", errors="replace").splitlines():
+        m = rx.match(line.rstrip())
         if m:
             if m.group(2) in seen:
                 dup.append(m.group(2))
@@ -98,23 +131,44 @@ def main():
         p.add_argument("tests", help="go test -list output")
         if name == "ledger":
             p.add_argument("logs", nargs="+", help="each shard's go test -v log, shard 1 first")
+    for name in ("desktop-run-pattern", "desktop-plan", "desktop-ledger"):
+        p = sub.add_parser(name)
+        p.add_argument("--of", type=int, required=True, help="number of shards")
+        p.add_argument("--desktop-test", default=str(DESKTOP_TEST), help="path to e2e/desktop_test.go")
+        if name == "desktop-run-pattern":
+            p.add_argument("--shard", type=int, required=True, help="1-based shard")
+        if name == "desktop-ledger":
+            p.add_argument("logs", nargs="+", help="each shard's go test -v log, shard 1 first")
     a = ap.parse_args()
     if a.of < 1:
         sys.exit("--of must be at least 1")
 
-    excluded = set(a.exclude)
-    tests = [t for t in read_tests(a.tests) if t not in excluded]
-    if not tests:
-        sys.exit(f"{a.tests}: no tests left after --exclude")
-    given, load, unknown = plan(tests, a.of)
+    is_desktop = a.cmd.startswith("desktop-")
+    if is_desktop:
+        tests = read_windows_desktop_specs(a.desktop_test)
+        serial_specs = read_windows_clipboard_specs(a.desktop_test)
+        times_path = DESKTOP_TIMES
+        rx = DESKTOP_RESULT
+        prefix = "TestDesktop$/^"
+    else:
+        excluded = set(a.exclude)
+        tests = [t for t in read_tests(a.tests) if t not in excluded]
+        if not tests:
+            sys.exit(f"{a.tests}: no tests left after --exclude")
+        serial_specs = ()
+        times_path = TIMES
+        rx = RESULT
+        prefix = ""
 
-    if a.cmd == "run-pattern":
+    given, load, unknown = plan(tests, a.of, times_path=times_path, serial=serial_specs)
+
+    if a.cmd in ("run-pattern", "desktop-run-pattern"):
         if not 1 <= a.shard <= a.of:
             sys.exit(f"--shard must be 1..{a.of}")
-        print(pattern(given[a.shard - 1]))
+        print(pattern(given[a.shard - 1], prefix=prefix))
         return
 
-    if a.cmd == "plan":
+    if a.cmd in ("plan", "desktop-plan"):
         for i, g in enumerate(given):
             print(f"shard {i + 1}: {len(g)} tests, ~{load[i] / 60:.1f} min")
             for t in g:
@@ -123,14 +177,14 @@ def main():
             print(f"no measured time yet (median used): {', '.join(unknown)}")
         return
 
-    # ledger
+    # ledger / desktop-ledger
     if len(a.logs) != a.of:
         sys.exit(f"{a.of} shards but {len(a.logs)} logs")
     ok = True
     ran = {}
     lines = ["| shard | tests | ran | measured min |", "|---|---|---|---|"]
     for i, log in enumerate(a.logs):
-        seen, dup = results(log)
+        seen, dup = results(log, rx=rx)
         want = set(given[i])
         got = set(seen)
         for t in sorted(want - got):
@@ -151,7 +205,7 @@ def main():
             print(f"{t}: ran {n} times across the shards (want exactly 1)")
             ok = False
     for t in sorted(set(ran) - set(tests)):
-        print(f"{t}: ran but go test -list does not list it")
+        print(f"{t}: ran but test list does not list it")
         ok = False
 
     counts = {}
@@ -168,7 +222,8 @@ def main():
     print(f"\nlisted {len(tests)}, ran once each: {sum(1 for t in tests if len(ran.get(t, [])) == 1)}; "
           + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
     fresh = {"seconds": {t: round(ran[t][0][1][1], 2) for t in sorted(ran)}}
-    print("\nmeasured times (scripts/e2e_shard_times.json):")
+    label = "scripts/windows_desktop_times.json" if is_desktop else "scripts/e2e_shard_times.json"
+    print(f"\nmeasured times ({label}):")
     print(json.dumps(fresh, indent=1))
     sys.exit(0 if ok else 1)
 

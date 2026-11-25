@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
@@ -369,14 +371,36 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		"request": map[string]any{"subtype": "initialize",
 			"hooks": map[string]any{"PreToolUse": []any{map[string]any{"matcher": nil, "hookCallbackIds": []string{"gate"}}}}}}
 	if err := s.write(init); err != nil {
+		if isStdinClosed(err) {
+			// The process exited before reading stdin (e.g. auth failure); let
+			// s.read() drain stdout so structured errors like FAILURE_KIND_AUTH
+			// or stderr diagnostics are not swallowed as a raw broken pipe (#126).
+			return s, nil
+		}
 		proc.Stop(time.Second)
 		return nil, err
 	}
 	if err := s.Send(ctx, provider.Input{Text: spec.Prompt, Images: spec.Images}); err != nil {
+		if isStdinClosed(err) {
+			return s, nil
+		}
 		proc.Stop(time.Second)
 		return nil, err
 	}
 	return s, nil
+}
+
+// isStdinClosed reports whether a stdin write failed because the child process
+// already exited and closed its stdin pipe (Unix EPIPE / os.ErrClosed from
+// exec.Cmd.Wait, or Windows broken-pipe errors).
+func isStdinClosed(err error) bool {
+	if errors.Is(err, syscall.EPIPE) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, os.ErrClosed) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "pipe is being closed") ||
+		strings.Contains(msg, "pipe has been ended")
 }
 
 type session struct {
@@ -563,6 +587,11 @@ type content struct {
 }
 
 func (s *session) emit(e provider.Event) {
+	select {
+	case s.events <- e:
+		return
+	default:
+	}
 	select {
 	case s.events <- e:
 	case <-s.proc.Done():
