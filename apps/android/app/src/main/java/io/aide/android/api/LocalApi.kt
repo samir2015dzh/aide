@@ -122,10 +122,19 @@ class LocalApi(port: Long, token: String) {
     suspend fun startSession(machineId: String, projectId: String, agent: String, prompt: String, key: String, model: String = "", effort: String = "", mode: String = "", files: List<AttachmentIn> = emptyList()): Session? =
         call<StartSessionRequest, SessionResponse>("StartSession", StartSessionRequest(machineId, StartSessionBody(key, projectId, agent, prompt, model, effort, mode, files)), timeoutSeconds = 120).session
 
-    /** The owner's next message in a conversation (工单 #67 rule 1: it goes on in it). */
-    suspend fun sendMessage(sessionId: String, text: String, files: List<AttachmentIn> = emptyList()): Session? =
-        call<SendMessageRequest, SessionResponse>("SendMessage", SendMessageRequest(sessionId, text, files), timeoutSeconds = 120).session
-
+    /** The owner's next message in a conversation (工单 #67 rule 1, #115 weak-network dedup). */
+    suspend fun sendMessage(
+        sessionId: String,
+        text: String,
+        files: List<AttachmentIn> = emptyList(),
+        clientMessageId: String = "",
+        clientSeq: Long = 0,
+    ): Session? =
+        call<SendMessageRequest, SessionResponse>(
+            "SendMessage",
+            SendMessageRequest(sessionId, text, files, clientMessageId, clientSeq),
+            timeoutSeconds = 120,
+        ).session
     /** Archived on its machine: the one archive Aide and the agent's side share (工单 #67 rule 6). */
     suspend fun archive(sessionId: String, on: Boolean): Session? =
         call<SessionIdRequest, SessionResponse>(if (on) "ArchiveSession" else "UnarchiveSession", SessionIdRequest(sessionId)).session

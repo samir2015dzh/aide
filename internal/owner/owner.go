@@ -2777,14 +2777,25 @@ func (o *Owner) StartSession(ctx context.Context, machineID string, req *session
 
 // SendMessage sends a message to a session the owner started.
 func (o *Owner) SendMessage(ctx context.Context, id, text string, atts []*sessionv1.Attachment) (*sessionv1.Session, error) {
+	return o.SendMessageWithID(ctx, id, text, atts, "", 0)
+}
+
+// SendMessageWithID sends a message with an optional weak-network deduplication id and sequence (工单 #115).
+func (o *Owner) SendMessageWithID(ctx context.Context, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
 	if l := o.localSession(id); l != nil {
-		return l.Send(ctx, id, text, atts)
+		return l.SendWithID(ctx, id, text, atts, clientMsgID, clientSeq)
 	}
 	n, err := o.sessionMachine(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	res, err := n.Session.SendMessage(ctx, &sessionv1.SendMessageRequest{SessionId: id, Text: text, Attachments: atts})
+	res, err := n.Session.SendMessage(ctx, &sessionv1.SendMessageRequest{
+		SessionId:       id,
+		Text:            text,
+		Attachments:     atts,
+		ClientMessageId: clientMsgID,
+		ClientSeq:       clientSeq,
+	})
 	if err != nil {
 		return nil, err
 	}

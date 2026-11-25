@@ -67,6 +67,16 @@ class AppModel(private val context: Context) {
     val foreground = _foreground.asStateFlow()
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val messages = _messages.asSharedFlow()
+    /** Fires on network restore, WiFi/cellular switch, or Watch reconnect so SessionFeed wakes immediately (工单 #115). */
+    private val _reconnectPulse = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    val reconnectPulse = _reconnectPulse.asSharedFlow()
+    /** Persistent per-session event cache directory for kill/relaunch catch-up (工单 #115). */
+    val sessionEventsDir: File = File(context.filesDir, "session_events")
+    private val outboxFile: File = File(context.filesDir, "outbox.json")
+    private val _outbox = MutableStateFlow(OutboxCodec.recoverOnBoot(OutboxCodec.load(outboxFile)))
+    val outbox = _outbox.asStateFlow()
+    private val flushingSessions = mutableSetOf<String>()
+    private var outboxRetryJob: Job? = null
     var startError: String? = null
         private set
 
@@ -106,12 +116,17 @@ class AppModel(private val context: Context) {
             watchNetwork()
             follow() // the connection service may have started first (the system restarted it)
             scope.launch { keepConnected() }
+            // Persist boot-recovered outbox and flush any messages queued before process kill (工单 #115).
+            OutboxCodec.save(outboxFile, _outbox.value)
+            flushOutbox()
         }
     }
 
     private fun foreground() {
         _foreground.value = true
         follow()
+        _reconnectPulse.tryEmit(Unit)
+        flushOutbox()
     }
 
     private fun background() {
@@ -170,7 +185,12 @@ class AppModel(private val context: Context) {
                 api.watch().collect { r ->
                     val roomsBefore = _world.value.rooms
                     val wasWatched = _world.value.watched
+                    val wasRelay = _world.value.status.relayConnected
                     _world.value = _world.value.apply(r)
+                    if (!wasRelay && _world.value.status.relayConnected) {
+                        _reconnectPulse.tryEmit(Unit)
+                        flushOutbox()
+                    }
                     // A room with more the owner has not read tells of it (G2-b/c), as the machines' status brings it;
                     // not what was unread before the first look.
                     if (wasWatched) roomNotices(roomsBefore, _world.value.rooms, roomOpen).forEach { Push.notify(context, show(it)) }
@@ -218,6 +238,8 @@ class AppModel(private val context: Context) {
                 if (current != null && current != network) Aidecore.networkChanged()
                 current = network
                 _online.value = true
+                _reconnectPulse.tryEmit(Unit)
+                flushOutbox()
             }
 
             override fun onLost(network: Network) {
@@ -228,7 +250,11 @@ class AppModel(private val context: Context) {
             }
 
             override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) {
-                if (network == current) Aidecore.pathChanged()
+                if (network == current) {
+                    Aidecore.pathChanged()
+                    _reconnectPulse.tryEmit(Unit)
+                    flushOutbox()
+                }
             }
         })
     }
@@ -523,6 +549,82 @@ class AppModel(private val context: Context) {
         humanError(e)
     }
 
+    private fun updateOutbox(next: OutboxState) {
+        if (next === _outbox.value) return
+        _outbox.value = next
+        OutboxCodec.save(outboxFile, next)
+    }
+
+    /** Enqueues a message locally first with monotonic clientSeq, then flushes in order (工单 #115). */
+    fun enqueueMessage(sessionId: String, text: String, files: List<io.aide.android.api.AttachmentIn> = emptyList()): OutboxMessage {
+        val (next, item) = OutboxCodec.enqueue(_outbox.value, sessionId, text, files)
+        updateOutbox(next)
+        flushOutbox(sessionId)
+        return item
+    }
+
+    fun retryOutbox(id: String) {
+        val sid = _outbox.value.items.firstOrNull { it.id == id }?.sessionId
+        updateOutbox(OutboxCodec.retry(_outbox.value, id))
+        if (sid != null) flushOutbox(sid)
+    }
+
+    fun removeOutbox(id: String) {
+        val sid = _outbox.value.items.firstOrNull { it.id == id }?.sessionId
+        updateOutbox(OutboxCodec.remove(_outbox.value, id))
+        if (sid != null) flushOutbox(sid)
+    }
+
+    fun reconcileOutbox(sessionId: String, items: List<Item>) {
+        updateOutbox(OutboxCodec.reconcileWithTranscript(_outbox.value, sessionId, items))
+    }
+
+    fun flushOutbox(sessionId: String? = null) {
+        scope.launch {
+            val ready = OutboxCodec.nextReady(_outbox.value, sessionId)
+            for (item in ready) {
+                flushOutboxSession(item.sessionId)
+            }
+        }
+    }
+
+    private fun flushOutboxSession(sessionId: String) {
+        if (!flushingSessions.add(sessionId)) return
+        scope.launch {
+            try {
+                while (true) {
+                    val head = OutboxCodec.nextReady(_outbox.value, sessionId).firstOrNull() ?: break
+                    val localApi = api
+                    if (localApi == null || !_online.value) {
+                        updateOutbox(OutboxCodec.markError(_outbox.value, head.id, t("Offline — waiting to reconnect", "离线中，等待重连自动补发"), transient = true))
+                        scheduleOutboxRetry()
+                        break
+                    }
+                    updateOutbox(OutboxCodec.markSending(_outbox.value, head.id))
+                    try {
+                        localApi.sendMessage(head.sessionId, head.text, head.attachments, head.id, head.clientSeq)?.let { replace(it) }
+                        updateOutbox(OutboxCodec.markSent(_outbox.value, head.id))
+                    } catch (e: Exception) {
+                        val transient = OutboxCodec.isTransientError(e) || !_online.value
+                        updateOutbox(OutboxCodec.markError(_outbox.value, head.id, humanError(e), transient))
+                        if (transient) scheduleOutboxRetry()
+                        break
+                    }
+                }
+            } finally {
+                flushingSessions.remove(sessionId)
+            }
+        }
+    }
+
+    private fun scheduleOutboxRetry() {
+        if (outboxRetryJob?.isActive == true) return
+        outboxRetryJob = scope.launch {
+            delay(3000)
+            outboxRetryJob = null
+            flushOutbox()
+        }
+    }
     /** Archives a conversation on its machine, or unarchives it; null when it worked, else why. */
     suspend fun archive(s: Session, on: Boolean): String? = try {
         api!!.archive(s.sessionId, on)?.let { replace(it) }

@@ -62,7 +62,7 @@ func (s *sessionService) StreamEvents(ctx context.Context, req *sessionv1.Stream
 }
 
 func (s *sessionService) SendMessage(ctx context.Context, req *sessionv1.SendMessageRequest) (*sessionv1.SendMessageResponse, error) {
-	sess, err := s.n.sessions.Send(ctx, principalFrom(ctx), req.SessionId, req.Text, req.Attachments)
+	sess, err := s.n.sessions.SendWithID(ctx, principalFrom(ctx), req.SessionId, req.Text, req.Attachments, req.ClientMessageId, req.ClientSeq)
 	if err != nil {
 		return nil, err
 	}

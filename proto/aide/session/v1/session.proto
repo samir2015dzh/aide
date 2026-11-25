@@ -826,6 +826,10 @@ message SendMessageRequest {
   string session_id = 1;
   string text = 2;
   repeated Attachment attachments = 3;
+  // Optional client-generated idempotency key for weak-network resend deduplication (工单 #115).
+  string client_message_id = 4;
+  // Optional client-local monotonic outbox sequence number (工单 #115).
+  uint64 client_seq = 5;
 }
 
 message SendMessageResponse {

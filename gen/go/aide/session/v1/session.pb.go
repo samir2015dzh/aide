@@ -4161,10 +4161,14 @@ func (x *ErrorEvent) GetFailure() *Failure {
 // between (ACP agents). A turn that fails drops the messages that waited
 // for it.
 type SendMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Attachments   []*Attachment          `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SessionId   string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Text        string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Attachments []*Attachment          `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// Optional client-generated idempotency key for weak-network resend deduplication (工单 #115).
+	ClientMessageId string `protobuf:"bytes,4,opt,name=client_message_id,json=clientMessageId,proto3" json:"client_message_id,omitempty"`
+	// Optional client-local monotonic outbox sequence number (工单 #115).
+	ClientSeq     uint64 `protobuf:"varint,5,opt,name=client_seq,json=clientSeq,proto3" json:"client_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4218,6 +4222,20 @@ func (x *SendMessageRequest) GetAttachments() []*Attachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *SendMessageRequest) GetClientMessageId() string {
+	if x != nil {
+		return x.ClientMessageId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetClientSeq() uint64 {
+	if x != nil {
+		return x.ClientSeq
+	}
+	return 0
 }
 
 type SendMessageResponse struct {
@@ -6470,12 +6488,15 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\n" +
 	"ErrorEvent\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x122\n" +
-	"\afailure\x18\x02 \x01(\v2\x18.aide.session.v1.FailureR\afailure\"\x86\x01\n" +
+	"\afailure\x18\x02 \x01(\v2\x18.aide.session.v1.FailureR\afailure\"\xd1\x01\n" +
 	"\x12SendMessageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12=\n" +
-	"\vattachments\x18\x03 \x03(\v2\x1b.aide.session.v1.AttachmentR\vattachments\"I\n" +
+	"\vattachments\x18\x03 \x03(\v2\x1b.aide.session.v1.AttachmentR\vattachments\x12*\n" +
+	"\x11client_message_id\x18\x04 \x01(\tR\x0fclientMessageId\x12\x1d\n" +
+	"\n" +
+	"client_seq\x18\x05 \x01(\x04R\tclientSeq\"I\n" +
 	"\x13SendMessageResponse\x122\n" +
 	"\asession\x18\x01 \x01(\v2\x18.aide.session.v1.SessionR\asession\"\xa9\x01\n" +
 	"\x15DeliverMessageRequest\x12\x1d\n" +

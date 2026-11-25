@@ -931,9 +931,9 @@ func (l *localService) SendMessage(ctx context.Context, req *localv1.SendMessage
 		if err != nil {
 			return nil, err
 		}
-		return sessionResponse(m.Send(ctx, req.SessionId, req.Text, req.Attachments))
+		return sessionResponse(m.SendWithID(ctx, req.SessionId, req.Text, req.Attachments, req.ClientMessageId, req.ClientSeq))
 	}
-	return sessionResponse(l.o().SendMessage(ctx, req.SessionId, req.Text, req.Attachments))
+	return sessionResponse(l.o().SendMessageWithID(ctx, req.SessionId, req.Text, req.Attachments, req.ClientMessageId, req.ClientSeq))
 }
 
 func (l *localService) InterruptSession(ctx context.Context, req *localv1.InterruptSessionRequest) (*localv1.SessionResponse, error) {

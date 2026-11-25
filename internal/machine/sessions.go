@@ -712,6 +712,12 @@ func (s *Sessions) ActiveByProject() map[string]uint32 {
 }
 
 func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts []*sessionv1.Attachment) (*sessionv1.Session, error) {
+	return s.SendWithID(ctx, p, id, text, atts, "", 0)
+}
+
+// SendWithID delivers a message to a session, deduplicating weak-network
+// resends that carry the same non-empty clientMsgID (工单 #115).
+func (s *Sessions) SendWithID(ctx context.Context, p *Principal, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
 	l, _, err := s.find(p, id, true)
 	if err != nil {
 		return nil, err
@@ -734,7 +740,21 @@ func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts
 		return nil, fmt.Errorf("saving attachments: %w", err)
 	}
 	m.by, m.byName = p.ID(), p.Name()
+	if clientMsgID != "" {
+		dup, err := s.st.ReserveSentMessage(p.ID(), id, clientMsgID, clientSeq)
+		if err != nil {
+			return nil, err
+		}
+		if dup {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			return s.toProto(l.row), nil
+		}
+	}
 	if _, err := s.take(ctx, l, m); err != nil {
+		if clientMsgID != "" {
+			s.st.ForgetSentMessage(p.ID(), id, clientMsgID)
+		}
 		return nil, err
 	}
 	s.audit.Log(AuditRecord{Kind: "session.send", Subject: p.ID(), Session: id, Decision: "allow", Detail: "message_sha=" + sha(text) + filesDetail(m.files)})

@@ -40,7 +40,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.lazy.itemsIndexed
+import io.aide.android.model.OutboxCodec
+import io.aide.android.model.OutboxMessage
+import io.aide.android.model.OutboxStatus
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -177,7 +181,10 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
         if (s != null && switching) SwitchSheet(model, s, open) { switching = false }
         if (s != null && settings) SettingsSheet(model, s) { settings = false }
         Box(Modifier.fillMaxSize().padding(pad)) {
-            if (loading && items.isEmpty()) {
+            val outboxAll by model.outbox.collectAsState()
+            val sid = s?.sessionId.orEmpty()
+            val queued = remember(outboxAll, sid) { if (sid.isEmpty()) emptyList() else OutboxCodec.forSession(outboxAll, sid) }
+            if (loading && items.isEmpty() && queued.isEmpty()) {
                 ActivityIndicator(Modifier.align(Alignment.Center), size = 28.dp)
             } else {
                 // Its last failure not signed in, while Claude Code still is not: signed in from here (工单 #51, #108).
@@ -197,6 +204,13 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                                 ClaudeLogin(model, m)
                             }
                         }
+                    }
+                    items(queued, key = { "outbox:${it.id}" }) { msg ->
+                        OutboxItemView(
+                            msg = msg,
+                            onRetry = { model.retryOutbox(msg.id) },
+                            onCancel = { model.removeOutbox(msg.id) },
+                        )
                     }
                     item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
@@ -233,8 +247,8 @@ private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit)
                 }, { e -> state = ComposerState.Failed(e.message.orEmpty()) { send() } })
                 return@launch
             }
-            val why = model.sendTo(s, text, attach.wire())
-            if (why == null) { text = ""; attach.clear(); state = ComposerState.Idle } else state = ComposerState.Failed(why) { send() }
+            model.enqueueMessage(s.sessionId, text, attach.wire())
+            text = ""; attach.clear(); state = ComposerState.Idle
         }
     }
     Composer(
@@ -258,6 +272,59 @@ private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit)
     )
 }
 
+
+/** Local outbound queue item rendered inline with truthful delivery state (工单 #115). */
+@Composable
+private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: () -> Unit) {
+    val statusLabel = when (msg.status) {
+        OutboxStatus.SENDING -> t("Sending…", "发送中…")
+        OutboxStatus.SENT -> t("Delivered", "已送达")
+        OutboxStatus.FAILED -> t("Failed to send", "发送失败")
+        OutboxStatus.PENDING -> if (msg.error != null) t("Queued · waiting to reconnect", "待发 · 等待重连") else t("Queued", "待发")
+    }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.widthIn(max = 310.dp),
+        ) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (msg.text.isNotBlank()) {
+                    Text(msg.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                }
+                if (msg.attachments.isNotEmpty()) {
+                    Text(
+                        t("${msg.attachments.size} attachment(s)", "${msg.attachments.size} 个附件"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    "#${msg.clientSeq} · $statusLabel",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (msg.status == OutboxStatus.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (!msg.error.isNullOrBlank() && msg.status != OutboxStatus.SENT) {
+                    Text(
+                        msg.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (msg.status == OutboxStatus.FAILED || msg.status == OutboxStatus.PENDING) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                            Text(t("Retry", "重试"), style = MaterialTheme.typography.labelSmall)
+                        }
+                        TextButton(onClick = onCancel, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                            Text(t("Cancel", "取消"), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 // The model it runs, as the agent reported it: its specific one, as people call it and in full (工单 #99).
 private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }.let { id -> modelTitle(id).let { if (it == id) id else "$it · $id" } }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
 

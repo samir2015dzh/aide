@@ -54,7 +54,17 @@
     "you": "你",
     "turnDoneYou": "这一轮已完成。在下面再发一条消息即可在这个任务里继续。",
     "resumeYou": "你再发一条消息时，会从这里接着做，之前的改动都保留。",
-    "rolledBackNote": "已回滚到第 {{turn}} 轮：上面第 {{from}}–{{to}} 轮已丢弃。"
+    "rolledBackNote": "已回滚到第 {{turn}} 轮：上面第 {{from}}–{{to}} 轮已丢弃。",
+    "outbox": {
+      "pending": "待发",
+      "waitingReconnect": "待发 · 等待重连",
+      "sending": "发送中…",
+      "sent": "已送达",
+      "failed": "发送失败",
+      "retry": "重试",
+      "cancel": "取消",
+      "attachments": "{{count}} 个附件"
+    }
   },
   "control": {
     "label": "这一轮",

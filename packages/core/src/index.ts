@@ -21,3 +21,4 @@ export * from "./roster";
 export * from "./conversations";
 export * from "./attachments";
 export * from "./permissions";
+export * from "./outbox";

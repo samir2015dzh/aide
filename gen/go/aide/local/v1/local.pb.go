@@ -7994,10 +7994,14 @@ func (x *StartSessionRequest) GetSession() *v1.StartSessionRequest {
 }
 
 type SendMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Attachments   []*v1.Attachment       `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SessionId   string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Text        string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Attachments []*v1.Attachment       `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// Optional client-generated idempotency key for weak-network resend deduplication (工单 #115).
+	ClientMessageId string `protobuf:"bytes,4,opt,name=client_message_id,json=clientMessageId,proto3" json:"client_message_id,omitempty"`
+	// Optional client-local monotonic outbox sequence number (工单 #115).
+	ClientSeq     uint64 `protobuf:"varint,5,opt,name=client_seq,json=clientSeq,proto3" json:"client_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8051,6 +8055,20 @@ func (x *SendMessageRequest) GetAttachments() []*v1.Attachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *SendMessageRequest) GetClientMessageId() string {
+	if x != nil {
+		return x.ClientMessageId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetClientSeq() uint64 {
+	if x != nil {
+		return x.ClientSeq
+	}
+	return 0
 }
 
 type InterruptSessionRequest struct {
@@ -11672,12 +11690,15 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x13StartSessionRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\asession\x18\x02 \x01(\v2$.aide.session.v1.StartSessionRequestR\asession\"\x86\x01\n" +
+	"\asession\x18\x02 \x01(\v2$.aide.session.v1.StartSessionRequestR\asession\"\xd1\x01\n" +
 	"\x12SendMessageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12=\n" +
-	"\vattachments\x18\x03 \x03(\v2\x1b.aide.session.v1.AttachmentR\vattachments\"8\n" +
+	"\vattachments\x18\x03 \x03(\v2\x1b.aide.session.v1.AttachmentR\vattachments\x12*\n" +
+	"\x11client_message_id\x18\x04 \x01(\tR\x0fclientMessageId\x12\x1d\n" +
+	"\n" +
+	"client_seq\x18\x05 \x01(\x04R\tclientSeq\"8\n" +
 	"\x17InterruptSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"6\n" +

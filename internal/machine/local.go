@@ -211,7 +211,12 @@ func (l *Local) Start(ctx context.Context, req *sessionv1.StartSessionRequest) (
 
 // Send sends a message to a session the owner started.
 func (l *Local) Send(ctx context.Context, id, text string, atts []*sessionv1.Attachment) (*sessionv1.Session, error) {
-	return l.n.sessions.Send(ctx, l.p, id, text, atts)
+	return l.SendWithID(ctx, id, text, atts, "", 0)
+}
+
+// SendWithID sends a message with an optional client deduplication id and local sequence (工单 #115).
+func (l *Local) SendWithID(ctx context.Context, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
+	return l.n.sessions.SendWithID(ctx, l.p, id, text, atts, clientMsgID, clientSeq)
 }
 
 func (l *Local) Interrupt(ctx context.Context, id string) (*sessionv1.Session, error) {
