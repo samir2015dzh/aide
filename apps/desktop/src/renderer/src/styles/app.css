@@ -490,14 +490,14 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .cb-b:hover{background:var(--surface-hover);color:var(--l1)}
 .cb-b .ic{width:13px;height:13px}
 /* 工具调用折叠条（DESIGN-107 §5 / §6） */
-.tool{border-radius:var(--radius-control);font-size:14px}
+.tool{border-radius:var(--radius-control);font-size:13px}
 .tool .th{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-control);border:0;background:none;max-width:100%;text-align:left;color:var(--l2)}
 .tool .th:hover{background:var(--surface-hover);color:var(--l1)}
 .tool .th .vb{flex:none;font-weight:600}
 .tool .th .sm2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .tool .th .cmd{font-family:var(--mono);font-size:12.5px}
 .tool .th .chev{flex:none}
-.tgroup{font-size:14px}
+.tgroup{font-size:13px}
 .tg-h{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid var(--sep);border-radius:var(--radius-control);background:var(--surface-card);color:var(--l2);text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
 .tg-h:hover{background:var(--surface-card-hover);color:var(--l1)}
 .tg-h .chev,.tool .th .chev{width:14px;height:14px;margin-left:-2px;color:var(--l2);transform:rotate(-90deg);transition:transform var(--duration-normal) var(--ease-fluent)}

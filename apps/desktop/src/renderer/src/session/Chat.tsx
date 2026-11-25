@@ -105,6 +105,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
             {s.status === SessionStatus.IDLE && !isFailed(s) && !isInterruption(failure) && items.length > 0 && <DoneLine text={mine ? t("chat.turnDoneYou") : t("chat.turnDone", { grant })} />}
           </>
         }
+        control={live ? (onHeight, lift) => <ControlArea s={s} grant={grant} events={events} onHeight={onHeight} lift={lift} /> : undefined}
         dock={writing ? (onHeight) => <MessageBox s={s} onHeight={onHeight} /> : undefined}
       />
     </ContentScope>

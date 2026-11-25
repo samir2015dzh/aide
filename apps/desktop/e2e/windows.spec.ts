@@ -20,13 +20,13 @@ test("a PC's words, type and corners, and Ctrl shortcuts, the menu button, the n
   // Search, in the sidebar's top band, says its shortcut with Ctrl.
   await expect(page.locator(".side-top").getByRole("button", { name: "搜索" })).toHaveAttribute("title", "搜索 Ctrl+K");
   await expect(page.getByRole("button", { name: "菜单" })).toBeVisible();
-  // A PC's type a size up (14 px), with the same Apple corners and selection as a Mac (工单 #95): no Windows 11 accent bar.
+  // Fluent Design on Windows (工单 #109 / #107): 14 px type, 12 px card corners, and 3 px #0078d4 left accent bar on selection.
   // The selected row: a bot's (工单 #63: the sidebar is bots alone).
   const overview = page.locator(".side-bots .bot-row").first();
   await overview.click();
   expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("14px");
-  expect(await overview.evaluate((e) => getComputedStyle(e).borderRadius)).toBe("6px");
-  expect(await overview.evaluate((e) => getComputedStyle(e, "::before").content)).toBe("none");
+  expect(await overview.evaluate((e) => getComputedStyle(e).borderRadius)).toBe("12px");
+  expect(await overview.evaluate((e) => getComputedStyle(e, "::before").content)).toBe('""');
   await expect.poll(() => app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.tray().view.state)).toBe("ok");
   await snap(page, "windows");
   await app.evaluate(() => (globalThis as unknown as { aideTest: Hook }).aideTest.mainWindow()?.close());

@@ -26,7 +26,7 @@ test("starting a session in a project, then writing to it under the conversation
   await expect(sheet.locator("button.picker[aria-label=\"项目\"]")).toHaveText("demo");
   // Gemini told this machine its models in an earlier session: they can be picked, the default unset, naming the one
   // its sessions run unless told (工单 #99).
-  await expect(sheet.getByRole("button", { name: "模型", exact: true })).toHaveText("默认 · GEMINI-3-PRO");
+  await expect(sheet.getByRole("button", { name: "模型", exact: true })).toHaveText("默认 · gemini-3-pro");
   await expect(sheet.getByRole("button", { name: "启动" })).toBeDisabled();
   await sheet.getByLabel("消息", { exact: true }).fill("say 从桌面发起");
   await snap(page, "newsession-sheet");
