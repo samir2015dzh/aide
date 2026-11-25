@@ -135,9 +135,9 @@ type Sessions struct {
 
 	// checkpoints controls per-turn hidden git ref retention (工单 #113).
 	checkpoints CheckpointRetention
-	mu         sync.Mutex
-	live       map[string]*live
-	dispatchMu sync.Mutex
+	mu          sync.Mutex
+	live        map[string]*live
+	dispatchMu  sync.Mutex
 	// memoryLow says whether the system is short of memory (resident.MemoryLow;
 	// tests replace it): queued sessions wait while it is, and memRetry (held
 	// with dispatchMu) looks again.

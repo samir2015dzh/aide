@@ -83,7 +83,7 @@ type Provider struct {
 	// PathEnv is the PATH used to find binaries ("": the login shell's).
 	PathEnv string
 	// Binary overrides discovery (tests use a fake agent).
-	Binary   string
+	Binary       string
 	modelsMu     sync.Mutex
 	catalogs     map[string]cachedCatalog
 	lastCaps     *provider.Capabilities
@@ -595,6 +595,7 @@ func (p *Provider) initializeSession(ctx context.Context, s *session) (acpInitRe
 	p.recordHandshake(init.ProtocolVersion, init.toCapabilities())
 	return init, nil
 }
+
 // sessionConfig is what an ACP session says of its configuration
 // (session/new, /resume, /load and session/set_config_option results): its
 // config options and, from agents that predate them, its modes and models.
