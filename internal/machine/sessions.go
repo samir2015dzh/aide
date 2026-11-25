@@ -504,7 +504,7 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	// the project has one (SetProjectPermission), before the machine's.
 	set := s.defaults(req.Agent)
 	projectMode := ""
-	if req.Agent == dshAgent {
+	if req.Agent == dshAgent || req.Agent == "antigravity" {
 		projectMode = proj.DSHPreset
 	}
 	set.Model, set.Effort, set.Mode = cmp.Or(req.Model, set.Model), cmp.Or(req.Effort, set.Effort), cmp.Or(req.Mode, projectMode, set.Mode)

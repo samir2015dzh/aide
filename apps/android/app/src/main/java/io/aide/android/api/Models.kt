@@ -655,18 +655,21 @@ data class TalkToPersonaResponse(
     val updatedAt: String = "",
     /** What the host last told the owner of it (工单 #69, #70), and when. */
     val notice: String = "", val noticeAt: String = "",
+    /** Read-only shadow conversation aggregating 1:1 agent mailbox traffic (工单 #124). */
+    val shadow: Boolean = false,
 )
 @Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "", val reminded: Boolean = false)
 @Serializable data class RoomMessage(
     val messageId: String = "", val roomId: String = "", val from: String = "", val fromName: String = "", val text: String = "", val at: String = "",
     val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "", val mentions: List<String> = emptyList(), val round: Int = 0,
     @SerialName("final") val isFinal: Boolean = false, val finalSha256: String = "", val late: Boolean = false, val asks: List<String> = emptyList(), val system: Boolean = false,
+    val toName: String = "", val subject: String = "", val lightChat: Boolean = false,
 )
 @Serializable data class OpenDirectRoomRequest(val clientId: String)
 @Serializable data class OpenDirectRoomResponse(val room: Room? = null)
 @Serializable data class ListRoomMessagesRequest(val machineId: String, val roomId: String, val limit: Int = 200)
 @Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList())
-@Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList())
+@Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList(), val lightChat: Boolean = false)
 @Serializable data class CreateRoomMember(val botKey: String, val projectId: String = "", val name: String = "")
 @Serializable data class CreateRoomRequest(val name: String, val members: List<CreateRoomMember>, val mode: String, val maxRounds: Int)
 @Serializable data class RoomPatch(val roomId: String, val name: String? = null, val mode: String? = null, val maxRounds: Int? = null)

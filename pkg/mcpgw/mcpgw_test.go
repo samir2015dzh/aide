@@ -893,3 +893,27 @@ func TestCallsKeepTheConnectionOnline(t *testing.T) {
 		t.Fatalf("after its call: %v", e)
 	}
 }
+
+// 工单 #122: every onboarding surface must carry both required pieces
+// (keepalive + platform-specific inbox watching) and real-message acceptance.
+func TestOnboardingChecklist122(t *testing.T) {
+	check := func(name, text string, want ...string) {
+		t.Helper()
+		for _, w := range want {
+			if !strings.Contains(text, w) {
+				t.Errorf("%s missing %q", name, w)
+			}
+		}
+	}
+	check("server instructions", instructions,
+		"Keepalive", "MCP session open", "Inbox watching",
+		"daemon/gateway", "Webhook-woken", "Session-based",
+		"message_list", "message_ack", "held=true", "real message from the Aide app")
+	check("message_wake", wakeDescription,
+		"webhook-woken", "daemon/gateway", "session-based",
+		"message_list", "message_ack", "held=true", "real message from the Aide app")
+	check("consent en", enText["connectedBody"],
+		"Keepalive", "Inbox watching", "message_list", "message_wake", "message_ack", "held=true", "real message")
+	check("consent zh", zhText["connectedBody"],
+		"保活", "信箱盯守", "message_list", "message_wake", "message_ack", "held=true", "真实消息")
+}

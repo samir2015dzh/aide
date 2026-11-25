@@ -159,8 +159,24 @@ export function SearchPalette({ leaving = false }: { leaving?: boolean }) {
 }
 
 function Row({ on, onPick, onHover, children }: { on: boolean; onPick: () => void; onHover: () => void; children: ReactNode }) {
+  const last = useRef<{ x: number; y: number } | null>(null);
   return (
-    <button className={`pr ${on ? "on" : ""}`} role="option" aria-selected={on} tabIndex={-1} onClick={onPick} onMouseMove={on ? undefined : onHover}>
+    <button
+      className={`pr ${on ? "on" : ""}`}
+      role="option"
+      aria-selected={on}
+      tabIndex={-1}
+      onClick={onPick}
+      onMouseMove={
+        on
+          ? undefined
+          : (e) => {
+              const p = last.current;
+              last.current = { x: e.clientX, y: e.clientY };
+              if (p && (p.x !== e.clientX || p.y !== e.clientY)) onHover();
+            }
+      }
+    >
       {children}
     </button>
   );

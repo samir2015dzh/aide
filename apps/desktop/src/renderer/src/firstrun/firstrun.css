@@ -1,20 +1,20 @@
 /* First run: what the prototype draws that app.css does not have yet, and
    the real states the prototype has no picture for (forms, errors, join). */
 .glow{position:absolute;inset:-40%;background:radial-gradient(closest-side,color-mix(in srgb,var(--aurora-0) 30%,transparent),transparent),radial-gradient(closest-side at 70% 60%,color-mix(in srgb,var(--aurora-2) 26%,transparent),transparent);filter:blur(18px);z-index:-1}
-.ob-err{display:flex;gap:8px;align-items:flex-start;color:var(--orange);font-size:12.5px;line-height:1.5;max-width:520px;text-align:left}
+.ob-err{display:flex;gap:8px;align-items:flex-start;color:var(--orange-t);font-size:12.5px;line-height:1.5;max-width:520px;text-align:left}
 .ob-err .ic{flex:none;margin-top:1px}
 .ob-foot .ob-err{margin-right:auto}
 .ic.ob-big-ic{width:56px;height:56px;color:var(--l2);stroke-width:1.1}
 .ob-form{margin-top:14px}
 .ob-form .frow>.fv .field{max-width:320px}
-.ob-warn{display:flex;gap:8px;align-items:flex-start;margin-top:14px;color:var(--orange);font-size:12.5px;line-height:1.5;max-width:520px;text-align:left}
+.ob-warn{display:flex;gap:8px;align-items:flex-start;margin-top:14px;color:var(--orange-t);font-size:12.5px;line-height:1.5;max-width:520px;text-align:left}
 .ob-warn .ic{flex:none;margin-top:1px}
 .ob-alt{margin-top:16px;font-size:12.5px;color:var(--l2)}
 .field.join-digits{width:120px;height:56px;font-family:var(--mono);font-size:36px;font-weight:600;text-align:center;letter-spacing:.2em}
 /* The connect flow's parts from the Connect Agent… sheet (sheets.css scopes them to .sheet). */
 .ob-body .sheet-q{margin:6px 0 10px;font-size:14px;font-weight:600}
 .ob-body .sheet-note{font-size:12px;margin:10px 0 0;line-height:1.55}
-.ob-body .sheet-err{color:var(--red);font-size:12.5px;margin:10px 0 0;line-height:1.5;user-select:text;-webkit-user-select:text}
+.ob-body .sheet-err{color:var(--red-t);font-size:12.5px;margin:10px 0 0;line-height:1.5;user-select:text;-webkit-user-select:text}
 .ob-body .sheet-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 .ob-body .msgbox{user-select:text;-webkit-user-select:text}
 .ob-body .pc:disabled{cursor:default}

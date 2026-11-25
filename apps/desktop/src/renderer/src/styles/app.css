@@ -1,464 +1,419 @@
 
+@import "./fluent-tokens.css";
+
 :root{
-  /* The look is Apple's (工单 #68, #95): SwiftUI's defaults at macOS density, drawn by the app itself on every
-     platform. Type: the system's own face (SF Pro on a Mac, Segoe UI Variable on Windows, PingFang / YaHei for
-     Chinese); Google Sans Flex, bundled, only where neither exists (Linux). The ramp is macOS's text styles. */
-  --fs-text:13px;--fs-text-l:13.5px;
-  --fs-large-title:26px;--fs-title1:22px;--fs-title2:17px;--fs-title3:15px;--fs-headline:13px;--fs-body:13px;--fs-callout:12px;--fs-subhead:11px;--fs-footnote:10px;
-  /* Corners: controls 6, boxes 8, cards 10, panels and sheets 12; capsules are 999px where they are one. */
-  --r-ctl:6px;--r-box:8px;--r-card:10px;--r-panel:12px;--r-sheet:12px;
-  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro","Segoe UI Variable Text","Segoe UI Variable","Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei","Google Sans Flex","Noto Sans SC",sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"Cascadia Mono",Consolas,"Google Sans Code",monospace;
-  --font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;
+  /* 桌面端 Fluent 视觉体系（工单 #109 / #107 终稿）：主蓝 #0078d4、浅色蓝字 #005a9e、
+     深色蓝字 #479ef5；圆角定版：控件 8 / 卡片与浮层 12 / 对话框与气泡 16（尾角 4）/ 小件 4 / 胶囊 999。 */
+  --fs-text:var(--text-body);--fs-text-l:14px;
+  --fs-large-title:var(--text-heading);--fs-title1:22px;--fs-title2:var(--text-subheading);--fs-title3:16px;--fs-headline:14px;--fs-body:var(--text-body);--fs-callout:12px;--fs-subhead:12px;--fs-footnote:12px;
+  --r-ctl:var(--radius-control);--r-box:var(--radius-control);--r-card:var(--radius-card);--r-panel:var(--radius-overlay);--r-sheet:var(--radius-dialog);
+  --font:var(--font-ui);
+  --mono:var(--font-mono);
+  --font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:600;
   --font-axes:normal;
-  /* The conversation: its column, and the size of what is said in it. */
-  --conversation-width:768px;--chat-size:14.5px;
-  /* Corners of the conversation's content: what sits inside a control, controls, rows, cards, bubbles. */
-  --r-xs:4px;--r-sm:6px;--r-md:8px;--r-lg:10px;--r-xl:12px;
-  /* Apple's system colours (blue, green, orange, red): the accent and the states. The mark keeps the ink (--ink). */
-  --accent:#007aff;--accent-fg:#007aff;--on-accent:#ffffff;--ok:#34c759;--warn:#ff9500;--danger:#ff3b30;--ink:#111113;
-  --page:#f2f2f7;--page-fg:#000000;--page-fg2:rgba(60,60,67,.6);--page-btn:rgba(118,118,128,.12);
-  --wall-a:#ececee;--wall-b:#c9c9ce;--wall-1:rgba(0,0,0,.10);--wall-2:rgba(0,0,0,.06);--wall-3:rgba(0,0,0,.04);
-  --mb-fg:rgba(0,0,0,.86);--mb-bg:rgba(255,255,255,.30);--mb-hl:rgba(0,0,0,.10);
-  /* Backgrounds, as Apple layers them: the window (systemBackground), what sits on it (secondary), a third level;
-     a grouped page (settings, a bot's own settings, a sheet) is grey with white inset cards. */
-  --win:#ffffff;--win2:#f2f2f7;--win3:#e5e5ea;
-  --grouped:#f2f2f7;--grouped-card:#ffffff;--grouped-el:#f2f2f7;--grouped-card-el:#ffffff;
-  --side:#f2f2f7;--side-head:#f2f2f7;--side-tint:rgba(246,246,248,.30);
-  /* Labels: primary, secondary, tertiary, quaternary. */
-  --l1:#000000;--l2:rgba(60,60,67,.6);--l3:rgba(60,60,67,.3);--l4:rgba(60,60,67,.18);
-  /* The separator (a hairline) and the four fills. */
-  --sep:rgba(60,60,67,.29);--fill:rgba(116,116,128,.08);--fill2:rgba(118,118,128,.12);--fill3:rgba(120,120,128,.2);
-  --sel:rgba(118,118,128,.12);--sel-fg:#000000;--side-sel:rgba(120,120,128,.16);
-  --accent-t:var(--accent-fg);--accent-bg:rgba(0,122,255,.12);--focus-ring:rgba(0,122,255,.4);
-  --green:var(--ok);--green-bg:rgba(52,199,89,.14);--orange:var(--warn);--orange-bg:rgba(255,149,0,.14);--red:var(--danger);--red-bg:rgba(255,59,48,.11);
-  /* Controls: a push button, the segmented control's track and its selected segment, a text field, a switch. */
-  --btn:#ffffff;--btn-sh:0 0 0 .5px rgba(0,0,0,.12),0 .5px 1.5px rgba(0,0,0,.14);
-  --seg-track:rgba(118,118,128,.12);--seg-on:#ffffff;--seg-sh:0 0 0 .5px rgba(0,0,0,.04),0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);
-  --field:#ffffff;--field-bd:rgba(60,60,67,.26);
-  --sw-off:rgba(120,120,128,.16);--sw-on:var(--green);
-  /* Materials: menus, popovers and toolbars blur what is behind them. */
-  --material:blur(30px) saturate(180%);
-  --menu:rgba(246,246,248,.80);--menu-solid:#f6f6f8;--menu-bd:rgba(0,0,0,.12);
-  --shadow-pop:0 0 0 .5px var(--menu-bd),0 10px 30px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.08);
-  --shadow-sheet:0 0 0 .5px var(--menu-bd),0 22px 70px rgba(0,0,0,.28),0 6px 18px rgba(0,0,0,.10);
-  /* The owner's messages: a quiet grey bubble, as Grok's. */
-  --bub:#f0f0f1;--bub-fg:var(--l1);--msg:var(--l1);
-  --glass:rgba(255,255,255,.72);--glass-sh:0 0 0 .5px rgba(0,0,0,.10),0 2px 8px rgba(0,0,0,.08);
-  --shadow-win:0 0 0 .5px rgba(0,0,0,.20),0 24px 70px rgba(10,20,50,.30),0 8px 22px rgba(10,20,50,.14);
-  --code:#f6f6f8;--add-bg:rgba(52,199,89,.12);--del-bg:rgba(255,59,48,.09);--add-fg:#248a3d;--del-fg:#d70015;
-  --touch:#ff375f;--scrim:rgba(0,0,0,.22);--scrim-blur:blur(12px) saturate(1.2);--lg-bg:rgba(255,255,255,.62);--lg-hi:rgba(255,255,255,.95);--lg-edge:rgba(0,0,0,.08);
+  /* 会话列宽与正文阅读字号（DESIGN-107 §4 / §6） */
+  --conversation-width:760px;--chat-size:14px;
+  --r-xs:var(--radius-small);--r-sm:var(--radius-control);--r-md:var(--radius-control);--r-lg:var(--radius-card);--r-xl:var(--radius-bubble);
+  /* Fluent 主色与状态色（文字一律走加深档 ≥4.5:1，点与图标用原色） */
+  --accent:var(--color-fluent-blue);--accent-fill:var(--color-fluent-blue);--accent-fg:var(--color-accent-text);--on-accent:var(--color-on-accent);
+  --ok:var(--color-success-text);--warn:var(--color-caution-text);--danger:var(--color-error-text);--ink:var(--color-text);
+  --page:var(--surface-page);--page-fg:var(--color-text);--page-fg2:var(--color-text-muted);--page-btn:var(--surface-hover);
+  --wall-a:#ecebe9;--wall-b:#d8d6d4;--wall-1:rgba(0,0,0,.08);--wall-2:rgba(0,0,0,.05);--wall-3:rgba(0,0,0,.03);
+  --mb-fg:var(--color-text);--mb-bg:var(--surface-acrylic);--mb-hl:var(--surface-hover);
+  /* 层级：0 级页底 #f3f2f1，1 级亚克力白 70%，2 级对话框纯白 */
+  --win:var(--surface-page);--win2:var(--surface-card);--win3:var(--surface-solid-white);
+  --grouped:var(--surface-page);--grouped-card:var(--surface-card);--grouped-el:var(--surface-dialog);--grouped-card-el:var(--surface-card);
+  --side:var(--surface-acrylic);--side-head:transparent;--side-tint:var(--surface-acrylic);
+  /* 文字阶梯：次级文字全部保持 ≥4.5:1 对比度；仅禁用态用 --color-text-disabled */
+  --l1:var(--color-text);--l2:var(--color-text-muted);--l3:var(--color-text-muted);--l4:var(--color-border);
+  --sep:var(--color-divider);--fill:var(--surface-hover);--fill2:var(--surface-pressed);--fill3:rgba(0,0,0,.10);
+  --sel:var(--surface-selected);--sel-fg:var(--color-text);--side-sel:var(--surface-selected);
+  --accent-t:var(--color-accent-text);--accent-bg:var(--color-accent-tint);
+  --green:var(--color-success-text);--green-fill:var(--color-success);--green-bg:var(--color-success-tint);
+  --orange:var(--color-caution);--orange-t:var(--color-caution-text);--orange-bg:var(--color-caution-tint);
+  --red:var(--color-error);--red-t:var(--color-error-text);--red-bg:var(--color-error-tint);
+  /* Fluent 控件令牌 */
+  --btn:var(--surface-solid-white);--btn-sh:inset 0 0 0 1px var(--color-border);
+  --seg-track:rgba(0,0,0,.06);--seg-on:var(--surface-solid-white);--seg-sh:0 1px 3px rgba(0,0,0,.10),inset 0 0 0 1px var(--color-divider);
+  --field:var(--surface-input);--field-bd:var(--color-border);
+  --sw-off:transparent;--sw-on:var(--color-fluent-blue);
+  /* Fluent 材质与阴影 */
+  --material:blur(var(--blur-flyout)) saturate(125%);
+  --menu:var(--surface-flyout);--menu-solid:var(--surface-dialog);--menu-bd:var(--color-divider);
+  --shadow-pop:inset 0 0 0 1px var(--border-flyout),0 0 0 1px var(--color-divider),var(--shadow-flyout);
+  --shadow-sheet:0 0 0 1px var(--color-divider),var(--shadow-dialog);
+  /* 我方消息气泡（#101 / #107）：主蓝 #0078d4 底白字（4.53:1），深浅同值 */
+  --bub:var(--color-fluent-blue);--bub-fg:var(--color-on-accent);--msg:var(--color-text);
+  --glass:var(--surface-acrylic);--glass-sh:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--color-divider),var(--shadow-card);
+  --shadow-win:0 0 0 1px var(--color-divider),var(--shadow-dialog);
+  --code:var(--surface-code);--add-bg:var(--color-success-tint);--del-bg:var(--color-error-tint);--add-fg:var(--color-success-text);--del-fg:var(--color-error-text);
+  --touch:var(--color-error);--scrim:var(--surface-scrim);--scrim-blur:blur(8px);--lg-bg:var(--surface-acrylic);--lg-hi:rgba(255,255,255,.95);--lg-edge:var(--color-divider);
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
-  --accent:#0a84ff;--accent-fg:#0a84ff;--on-accent:#ffffff;--ok:#30d158;--warn:#ff9f0a;--danger:#ff453a;--ink:#f2f2f3;
-  --page:#000000;--page-fg:#ffffff;--page-fg2:rgba(235,235,245,.6);--page-btn:rgba(118,118,128,.24);
-  --wall-a:#151517;--wall-b:#000000;--wall-1:rgba(255,255,255,.08);--wall-2:rgba(255,255,255,.05);--wall-3:rgba(255,255,255,.03);
-  --mb-fg:rgba(255,255,255,.92);--mb-bg:rgba(0,0,0,.18);--mb-hl:rgba(255,255,255,.16);
-  --win:#000000;--win2:#1c1c1e;--win3:#2c2c2e;
-  --grouped:#000000;--grouped-card:#1c1c1e;--grouped-el:#1c1c1e;--grouped-card-el:#2c2c2e;
-  --side:#141416;--side-head:#141416;--side-tint:rgba(20,20,22,.32);
-  --l1:#ffffff;--l2:rgba(235,235,245,.6);--l3:rgba(235,235,245,.3);--l4:rgba(235,235,245,.16);
-  --sep:rgba(84,84,88,.65);--fill:rgba(118,118,128,.18);--fill2:rgba(118,118,128,.24);--fill3:rgba(120,120,128,.36);
-  --sel:rgba(118,118,128,.24);--sel-fg:#ffffff;--side-sel:rgba(118,118,128,.28);
-  --accent-bg:rgba(10,132,255,.2);--focus-ring:rgba(10,132,255,.5);
-  --green-bg:rgba(48,209,88,.16);--orange-bg:rgba(255,159,10,.16);--red-bg:rgba(255,69,58,.16);
-  --btn:rgba(118,118,128,.3);--btn-sh:0 0 0 .5px rgba(255,255,255,.06),0 .5px 1px rgba(0,0,0,.4);
-  --seg-track:rgba(118,118,128,.24);--seg-on:#636366;--seg-sh:0 0 0 .5px rgba(0,0,0,.04),0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);
-  --field:rgba(118,118,128,.12);--field-bd:rgba(235,235,245,.18);
-  --sw-off:rgba(120,120,128,.32);
-  --menu:rgba(40,40,42,.78);--menu-solid:#2c2c2e;--menu-bd:rgba(255,255,255,.12);
-  --shadow-pop:0 0 0 .5px var(--menu-bd),0 10px 30px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.25);
-  --shadow-sheet:0 0 0 .5px var(--menu-bd),0 22px 70px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.3);
-  /* The owner's messages: a grey bubble in the dark too. */
-  --bub:#232326;--bub-fg:var(--l1);
-  /* The agent's words: the label colour, as everywhere. */
-  --msg:var(--l1);
-  --glass:rgba(30,30,33,.62);--glass-sh:0 0 0 .5px rgba(255,255,255,.10),0 2px 10px rgba(0,0,0,.3);
-  --shadow-win:0 0 0 .5px rgba(255,255,255,.14),0 24px 70px rgba(0,0,0,.6),0 8px 22px rgba(0,0,0,.35);
-  --code:#111113;--add-bg:rgba(48,209,88,.13);--del-bg:rgba(255,69,58,.13);--add-fg:#30d158;--del-fg:#ff6961;
-  --scrim:rgba(0,0,0,.4);--lg-bg:rgba(28,28,31,.58);--lg-hi:rgba(255,255,255,.14);--lg-edge:rgba(255,255,255,.12);
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --wall-a:#1b1a19;--wall-b:#141312;--wall-1:rgba(255,255,255,.08);--wall-2:rgba(255,255,255,.05);--wall-3:rgba(255,255,255,.03);
+  --fill3:rgba(255,255,255,.12);
+  --btn:rgba(255,255,255,.06);--btn-sh:inset 0 0 0 1px var(--color-border);
+  --seg-track:rgba(255,255,255,.08);--seg-on:rgba(255,255,255,.14);--seg-sh:0 1px 3px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.08);
+  --lg-hi:rgba(255,255,255,.14);
   color-scheme:dark;
 }}
+:root[data-theme="dark"]{
+  --wall-a:#1b1a19;--wall-b:#141312;--wall-1:rgba(255,255,255,.08);--wall-2:rgba(255,255,255,.05);--wall-3:rgba(255,255,255,.03);
+  --fill3:rgba(255,255,255,.12);
+  --btn:rgba(255,255,255,.06);--btn-sh:inset 0 0 0 1px var(--color-border);
+  --seg-track:rgba(255,255,255,.08);--seg-on:rgba(255,255,255,.14);--seg-sh:0 1px 3px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.08);
+  --lg-hi:rgba(255,255,255,.14);
+  color-scheme:dark;
+}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--win);color:var(--l1);font-family:var(--font);font-size:var(--fs-text);font-weight:var(--font-weight-normal);font-variation-settings:var(--font-axes);font-optical-sizing:auto;font-variant-ligatures:no-contextual;line-height:1.38;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;cursor:default;overflow:hidden}
+body{margin:0;background:var(--surface-page);color:var(--l1);font-family:var(--font);font-size:var(--fs-text);font-weight:var(--font-weight-normal);font-variation-settings:var(--font-axes);font-optical-sizing:auto;font-variant-ligatures:no-contextual;line-height:1.5;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;cursor:default;overflow:hidden}
 #root{height:100%}
-/* macOS: the window's sidebar material shows through the sidebar; everything else stays opaque. */
+/* Mica 柔和光斑背景（DESIGN-107 §0.3），供亚克力层透出微妙层次 */
+.mainwrap,.settings{background:radial-gradient(ellipse 60% 45% at 12% 8%,rgba(0,120,212,.06),transparent 70%),radial-gradient(ellipse 50% 40% at 88% 12%,rgba(116,77,169,.05),transparent 70%),var(--surface-page)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mainwrap,:root:not([data-theme="light"]) .settings{background:radial-gradient(ellipse 60% 45% at 12% 8%,rgba(0,120,212,.10),transparent 70%),radial-gradient(ellipse 50% 40% at 88% 12%,rgba(116,77,169,.08),transparent 70%),var(--surface-page)}}
+:root[data-theme="dark"] .mainwrap,:root[data-theme="dark"] .settings{background:radial-gradient(ellipse 60% 45% at 12% 8%,rgba(0,120,212,.10),transparent 70%),radial-gradient(ellipse 50% 40% at 88% 12%,rgba(116,77,169,.08),transparent 70%),var(--surface-page)}
 html.vibrant,html.vibrant body{background:transparent}
 html.vibrant .side{background:var(--side-tint)}
-/* Under a dialog's blur the window is opaque: blurred over the see-through sidebar, its sharp text would show through the blur. */
 html.vibrant:has(dialog[open],.sheet-scrim,.scrim) body{background:var(--win)}
 html.vibrant:has(dialog[open],.sheet-scrim,.scrim) .side{background:var(--side)}
 html.vibrant .grp-h{position:static;background:transparent}
-/* Windows (docs/windows.md §5.2): no traffic lights, and room for the caption buttons Windows draws over the top band's right end. */
+/* Windows 标题栏预留右侧窗口按钮宽度；macOS 左侧预留红绿灯宽度 */
 html[data-platform=win]{--caption:calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 138px)))}
-.tl-room{width:62px;flex:none}
-/* Windows: the same Apple look as a Mac (工单 #95: corners, rows, controls), its body text a size up, as Segoe UI reads small at 13 px. */
-html[data-platform=win]{--fs-text:14px;--fs-text-l:14.5px}
-
+.tl-room{width:68px;flex:none}
 html[data-platform=win] .tl-room{display:none}
-html[data-platform=win] .side-top{padding-left:8px;justify-content:flex-start;gap:2px}
-html[data-platform=win] .side-top>:last-child{margin-left:auto}
 html[data-platform=win] .ctool{padding-right:calc(var(--caption) + 8px)}
 input,textarea,.sel-text{user-select:text;-webkit-user-select:text}
-/* The keyboard's focus: Apple's ring, the accent at half strength, hugging the control. */
-:focus-visible{outline:3px solid var(--focus-ring);outline-offset:0}
+/* Fluent 键盘焦点环：2px 间隔 + 2px 主蓝环，跟随圆角 */
+:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.fadein{animation:fadein var(--spring-dur) var(--spring)}
-/* window chrome: the title bar areas drag the window; controls in them don't */
+.fadein{animation:fadein var(--duration-normal) var(--ease-fluent)}
+/* window chrome */
 .drag{-webkit-app-region:drag}
 .drag button,.drag input,.drag select,.drag a,.drag .no-drag{-webkit-app-region:no-drag}
 button{font:inherit;color:inherit}
-.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
-.ic.sm{width:13px;height:13px}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+.ic.sm{width:14px;height:14px}
 .ic.fill{fill:currentColor;stroke:none}
-/* mark: colours and motion in @aide/ui/brand.css */
 .hm-mark{display:block;overflow:visible}
-/* controls */
-/* A push button, as macOS draws one: a rounded rectangle, white (grey in the dark) under a hairline and a soft shadow; the
-   default one in the accent. A large one (a page's one call to action) is a capsule. */
-.btn{height:26px;padding:0 13px;border-radius:var(--r-ctl);border:0;background:var(--btn);box-shadow:var(--btn-sh);font-size:var(--fs-text);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;color:var(--l1);flex:none}
-.btn:hover{filter:brightness(.98)}
-.btn:active{filter:brightness(.92)}
-.btn.primary{background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 .5px 1.5px rgba(0,0,0,.22),inset 0 .5px 0 rgba(255,255,255,.2)}
-.btn.danger{color:var(--red)}
-.btn.lg{height:34px;padding:0 20px;font-size:14px;border-radius:999px}
-.btn.sm{height:22px;padding:0 10px;font-size:12px;border-radius:5px}
-.btn:disabled{opacity:.42;pointer-events:none}
+/* Fluent 按钮（DESIGN-107 §0.2 / §10）：32 高（sm 28）、8 圆角 */
+.btn{height:var(--size-control);padding:0 14px;border-radius:var(--radius-control);border:0;background:var(--btn);box-shadow:var(--btn-sh);font-size:var(--fs-text);font-weight:var(--font-weight-semibold);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;color:var(--l1);flex:none;transition:background-color var(--duration-fast) var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent)}
+.btn:hover:not(:disabled){background:var(--surface-hover)}
+.btn:active:not(:disabled){background:var(--surface-pressed);transform:scale(.97)}
+.btn.primary{background:var(--color-fluent-blue);color:var(--color-on-accent);box-shadow:var(--shadow-button-primary)}
+.btn.primary:hover:not(:disabled){background:var(--color-accent-hover);box-shadow:var(--shadow-button-primary-hover);transform:translateY(-1px)}
+.btn.primary:active:not(:disabled){background:var(--color-accent-pressed);box-shadow:none;transform:scale(.97)}
+.btn.danger{color:var(--red-t)}
+.btn.lg{height:36px;padding:0 20px;font-size:14px;border-radius:var(--radius-control)}
+.btn.sm{height:28px;padding:0 12px;font-size:12.5px;border-radius:var(--radius-control)}
+.btn:disabled{background:var(--surface-hover);box-shadow:none;color:var(--color-text-disabled);opacity:1;pointer-events:none}
 .btn .ic{width:14px;height:14px}
-/* Pointers, as macOS has them: the pointing hand for text links (and buttons drawn as one, like "+ Add Project"); controls (buttons, rows, cards, headings) keep the arrow. */
 .link,.ag-add,.ag-back,a[href]{cursor:pointer}
 .link:disabled,.ag-add:disabled{cursor:default}
-.link{border:0;background:none;padding:0;color:var(--accent-t);font-size:inherit}
+.link{border:0;background:none;padding:0;color:var(--accent-t);font-size:inherit;font-weight:var(--font-weight-semibold)}
 .link:hover{text-decoration:underline}
-/* A switch, Apple's (38 × 22): a grey track that turns green, a white knob with a shadow that springs across and
-   stretches while held. */
-.sw{width:38px;height:22px;padding:0;border-radius:999px;border:0;background:var(--sw-off);position:relative;flex:none;transition:background-color .25s var(--ease-out)}
-.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.04),0 2px 4px rgba(0,0,0,.2),0 .5px 1px rgba(0,0,0,.1);transition:transform var(--snappy-dur) var(--snappy),width var(--snappy-dur) var(--snappy)}
-.sw.on{background:var(--sw-on)}
-.sw.on::after{transform:translateX(16px)}
-.sw:active:not(:disabled)::after{width:22px}
-.sw.on:active:not(:disabled)::after{transform:translateX(12px)}
-.sw:disabled{opacity:.5}
+/* Fluent 开关（DESIGN-107 §10）：40×20 轨道、12px 圆钮、关态 #8a8886 描边（3:1）、开态主蓝 #0078d4 */
+.sw{width:40px;height:20px;padding:0;border-radius:var(--radius-pill);border:1px solid var(--color-border-strong);background:transparent;position:relative;flex:none;transition:background-color var(--duration-fast) var(--ease-fluent),border-color var(--duration-fast) var(--ease-fluent)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:var(--radius-pill);background:var(--color-border-strong);box-shadow:none;transition:transform var(--duration-fast) var(--ease-fluent),width var(--duration-fast) var(--ease-fluent),background-color var(--duration-fast) var(--ease-fluent)}
+.sw:hover:not(:disabled){border-color:var(--l1)}
+.sw:hover:not(:disabled)::after{background:var(--l1);width:14px;height:14px;top:2px;left:2px}
+.sw.on{background:var(--color-fluent-blue);border-color:var(--color-fluent-blue)}
+.sw.on::after{background:#ffffff;transform:translateX(20px)}
+.sw.on:hover:not(:disabled){background:var(--color-accent-hover);border-color:var(--color-accent-hover)}
+.sw.on:hover:not(:disabled)::after{background:#ffffff;transform:translateX(20px)}
+.sw:active:not(:disabled)::after{width:17px}
+.sw.on:active:not(:disabled)::after{transform:translateX(15px)}
+.sw:disabled{border-color:var(--color-text-disabled);opacity:.55}
 .cb{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;text-align:left}
-.cb .box{width:14px;height:14px;border-radius:4px;background:var(--field);box-shadow:inset 0 0 0 1px var(--field-bd);display:flex;align-items:center;justify-content:center;flex:none}
-.cb.on .box{background:var(--accent);box-shadow:none;color:var(--on-accent)}
-.cb .box .ic{width:11px;height:11px;stroke-width:2.2}
+.cb .box{width:18px;height:18px;border-radius:var(--radius-small);background:var(--surface-input);box-shadow:inset 0 0 0 1px var(--color-border-strong);display:flex;align-items:center;justify-content:center;flex:none}
+.cb.on .box{background:var(--color-fluent-blue);box-shadow:none;color:var(--color-on-accent)}
+.cb .box .ic{width:12px;height:12px;stroke-width:2.2}
 .cb:not(.on) .box .ic{display:none}
 .cb.dis{opacity:.55}
-/* A segmented control, Apple's: a grey track, the chosen segment a white (dark grey) rounded piece with a fine shadow. */
-.seg{display:inline-flex;background:var(--seg-track);border-radius:var(--r-box);padding:2px;gap:2px;flex:none}
-.seg button{border:0;background:transparent;height:22px;padding:0 12px;border-radius:var(--r-ctl);font-size:12.5px;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:background-color .2s var(--ease-out),box-shadow .2s var(--ease-out),scale var(--spring-dur) var(--spring)}
-.seg button:hover:not(.on):not(:disabled){background:var(--fill)}
-.seg button.on{background:var(--seg-on);box-shadow:var(--seg-sh)}
+/* Fluent 分段控件：胶囊外框与内段 */
+.seg{display:inline-flex;background:var(--seg-track);border-radius:var(--radius-pill);padding:3px;gap:2px;flex:none}
+.seg button{border:0;background:transparent;height:26px;padding:0 12px;border-radius:var(--radius-pill);font-size:12.5px;font-weight:var(--font-weight-normal);display:flex;align-items:center;gap:5px;white-space:nowrap;transition:background-color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent)}
+.seg button:hover:not(.on):not(:disabled){background:var(--surface-hover)}
+.seg button.on{background:var(--seg-on);font-weight:var(--font-weight-semibold);box-shadow:var(--seg-sh)}
 .seg button .n{color:var(--l2);font-variant-numeric:tabular-nums}
-.field{height:26px;border-radius:var(--r-ctl);border:0;box-shadow:inset 0 0 0 1px var(--field-bd);background:var(--field);padding:0 9px;font-size:var(--fs-text);color:var(--l1);outline:none;width:100%}
-.field:focus{box-shadow:inset 0 0 0 1px var(--accent),0 0 0 3px var(--focus-ring)}
-.kbd{font-size:11.5px;color:var(--l3);letter-spacing:.04em}
-.dotc{width:7px;height:7px;border-radius:50%;background:var(--l3);flex:none;display:inline-block}
-.dotc.on{background:var(--green)}
+/* Fluent 输入框：白底 1px 描边 + 底部 1px 强调线（3:1），聚焦主蓝描边 + 焦点环 */
+.field{height:var(--size-control);border-radius:var(--radius-control);border:1px solid var(--color-border);border-bottom-color:var(--color-border-strong);background:var(--surface-input);padding:0 10px;font-size:var(--fs-text);color:var(--l1);outline:none;width:100%;transition:border-color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent)}
+.field:focus{border-color:var(--color-fluent-blue);border-bottom-color:var(--color-fluent-blue);box-shadow:inset 0 -1px 0 var(--color-fluent-blue),var(--focus-ring)}
+.kbd{font-size:11.5px;color:var(--l2);letter-spacing:.04em}
+.dotc{width:8px;height:8px;border-radius:50%;background:var(--color-presence-off);flex:none;display:inline-block}
+.dotc.on{background:var(--green-fill)}
 .dotc.warn{background:var(--orange)}
 .mono{font-family:var(--mono)}
-/* Code keeps its own face's axes and weight; fields take the window's type; headings are rounder and wider. */
 :where(code,pre,kbd,.mono,.cblock,.tool .cmd,.tool .out){font-variation-settings:normal;font-weight:400}
 :where(input,textarea,select){font-family:var(--font);font-variation-settings:inherit}
 
 .muted{color:var(--l2)}
-.faint{color:var(--l3)}
+.faint{color:var(--l2)}
 .tnum{font-variant-numeric:tabular-nums}
 .av{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;flex:none}
 .av.lg{width:40px;height:40px;font-size:17px}
-.av.xl{width:52px;height:52px;font-size:22px}
 .agc{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.agm{width:15px;height:15px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex:none}
-.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:var(--r-ctl);background:var(--fill);font-size:12px;white-space:nowrap}
+.agm{width:15px;height:15px;border-radius:var(--radius-small);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex:none}
+.chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:var(--radius-pill);background:var(--fill);font-size:12px;white-space:nowrap}
 .chip .ic{width:13px;height:13px;color:var(--l2)}
 /* status glyphs */
 .sdot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block;position:relative}
-.sdot.w{background:var(--orange)}.sdot.c{background:var(--red)}.sdot.r{background:var(--green)}
-.sdot.r::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--green);animation:ping 2s cubic-bezier(0,0,.2,1) infinite}
+.sdot.w{background:var(--orange)}.sdot.c{background:var(--red)}.sdot.r{background:var(--color-fluent-blue)}
+.sdot.r::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--color-fluent-blue);animation:ping 2s cubic-bezier(0,0,.2,1) infinite}
 @keyframes ping{0%{transform:scale(1);opacity:.45}75%,100%{transform:scale(2.3);opacity:0}}
-.sdot.p{box-shadow:inset 0 0 0 1.5px var(--l3)}
+.sdot.p{box-shadow:inset 0 0 0 1.5px var(--color-presence-off)}
 .sdot.i{background:var(--l4)}
 .sdot.a{box-shadow:inset 0 0 0 1.5px var(--l4)}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* main window */
-.mainwrap{position:relative;display:grid;grid-template-columns:272px minmax(0,1fr);height:100%;transition:grid-template-columns .3s cubic-bezier(.2,0,0,1)}
-.mainwrap.railed{grid-template-columns:74px minmax(0,1fr)}
-/* Edge to edge: the sidebar fills the window from top to bottom and left to its edge, one hairline from the content. */
-.side{background:var(--side);border-right:.5px solid var(--sep);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-
-.mainwrap>.content{grid-column:2}
-/* The sidebar's rail (docs/her-team.md §16): Her, the overview and the agents at work as icons, 74 px wide; the traffic lights in its top band. */
-.rail{grid-column:1;position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;min-height:0;background:var(--side);border-right:.5px solid var(--sep)}
+/* Fluent 主窗布局（DESIGN-107 §0.2）：顶部 40px 标题栏（居中搜索框），下方 280px 亚克力名册 + 主内容区 */
+.mainwrap{position:relative;display:grid;grid-template-columns:var(--size-nav-pane) minmax(0,1fr);grid-template-rows:var(--size-titlebar) minmax(0,1fr);height:100%;transition:grid-template-columns var(--duration-normal) var(--ease-fluent)}
+.mainwrap.railed{grid-template-columns:72px minmax(0,1fr)}
+.win-titlebar{grid-column:1 / -1;grid-row:1;height:var(--size-titlebar);display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--surface-acrylic);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));border-bottom:1px solid var(--sep);z-index:10}
+html[data-platform=win] .win-titlebar{padding-right:calc(var(--caption) + 8px)}
+.win-titlebar-l{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.win-titlebar-brand{font-size:13px;font-weight:600;color:var(--l1);letter-spacing:-.01em;white-space:nowrap}
+.win-titlebar-r{flex:1;min-width:0}
+/* 居中搜索框（DESIGN-107 §0.2 / §0.5c #5A）：420×32、8 圆角 */
+.side-searchbox{flex:0 1 420px;width:min(420px,46vw);min-width:180px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--color-border);border-bottom-color:var(--color-border-strong);border-radius:var(--radius-control);background:var(--surface-input);box-shadow:none;color:var(--l2);font:inherit;font-size:12.5px;text-align:left;transition:border-color var(--duration-fast) var(--ease-fluent),background-color var(--duration-fast) var(--ease-fluent)}
+.side-searchbox:hover{color:var(--l1);border-color:var(--color-border-strong)}
+.side-searchbox .ph{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-searchbox .kbd{flex:none}
+.side{background:var(--side);border-right:1px solid var(--sep);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.mainwrap>.side{grid-column:1;grid-row:2}
+.mainwrap>.content{grid-column:2;grid-row:2}
+.rail{grid-column:1;grid-row:2;position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;min-height:0;background:var(--side);border-right:1px solid var(--sep)}
 html.vibrant .rail{background:var(--side-tint)}
-.rail-top{height:44px;width:100%;flex:none;display:flex;align-items:center;justify-content:center}
-.rail-nav{flex:1;min-height:0;width:100%;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 0 8px}
+.rail-top{height:12px;width:100%;flex:none;display:flex;align-items:center;justify-content:center}
+.rail-nav{flex:1;min-height:0;width:100%;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0 8px}
 .rail-nav>div{display:flex;flex-direction:column;align-items:center;gap:2px}
-.rail-sep{width:28px;height:.5px;background:var(--l4);margin:6px 0;flex:none}
-.rb{position:relative;width:44px;height:40px;flex:none;border:0;border-radius:10px;background:none;display:flex;align-items:center;justify-content:center;color:var(--l1)}
-.rb:hover{background:var(--fill)}
-.rb.sel{background:var(--side-sel)}
-.rb.sel::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--accent)}
+.rail-sep{width:28px;height:1px;background:var(--sep);margin:6px 0;flex:none}
+.rb{position:relative;width:44px;height:40px;flex:none;border:0;border-radius:var(--radius-control);background:none;display:flex;align-items:center;justify-content:center;color:var(--l1);transition:background-color var(--duration-fast) var(--ease-fluent)}
+.rb:hover{background:var(--surface-hover)}
+.rb.sel{background:var(--surface-selected)}
+.rb.sel::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
 .rb.small{height:34px}
-.rb.open{background:var(--fill2)}
+.rb.open{background:var(--surface-pressed)}
 .rb>.ic{width:19px;height:19px}
-.rb-dot{position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--side)}
-.rb-dot.u{background:var(--accent)}
+.rb-dot{position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--surface-page)}
+.rb-dot.u{background:var(--color-fluent-blue)}
 .rb-dot.r{background:var(--red)}
-.rb-busy{position:absolute;bottom:2px;right:2px;display:inline-flex;align-items:center;gap:2px;height:14px;padding:0 3px;border-radius:7px;background:var(--side);font-size:10px;color:var(--l2);font-variant-numeric:tabular-nums}
-.rb-busy>i{width:8px;height:8px;border-radius:50%;border:1.2px solid var(--l4);border-top-color:var(--l2);animation:busy-turn 1s linear infinite}
+.rb-busy{position:absolute;bottom:2px;right:2px;display:inline-flex;align-items:center;gap:2px;height:14px;padding:0 3px;border-radius:var(--radius-pill);background:var(--surface-page);font-size:10px;color:var(--l2);font-variant-numeric:tabular-nums}
+.rb-busy>i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--l4);border-top-color:var(--color-fluent-blue);animation:busy-turn 1s linear infinite}
 @media (prefers-reduced-motion:reduce){.rb-busy>i{animation:none}}
-.rail-foot{flex:none;width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 10px;border-top:.5px solid var(--sep)}
-/* An agent's sessions at hand, beside its logo in the rail. */
+.rail-foot{flex:none;width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 10px;border-top:1px solid var(--sep)}
 .rmenu{left:80px;width:264px}
-.rmenu-h{font-size:11.5px;color:var(--l2);padding:5px 9px 4px}
+.rmenu-h{font-size:12px;color:var(--l2);padding:5px 9px 4px}
 .rmenu .mi{gap:8px}
 .rmenu-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.rail-tip{position:fixed;left:80px;z-index:40;transform:translateY(-50%);max-width:320px;padding:5px 9px;border-radius:7px;background:var(--menu-solid);color:var(--l1);box-shadow:0 0 0 .5px var(--menu-bd),0 6px 18px rgba(0,0,0,.18);font-size:12px;line-height:1.3;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* The account, at the rail's foot: the avatar alone; its menu opens beside the rail. */
+.rail-tip{position:fixed;left:80px;z-index:40;transform:translateY(-50%);max-width:320px;padding:5px 9px;border-radius:var(--radius-control);background:var(--menu-solid);color:var(--l1);box-shadow:var(--shadow-pop);font-size:12px;line-height:1.3;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acct.compact{border-top:0;padding-top:0}
 .acct.compact .side-foot{width:44px;height:44px;margin:0;padding:0;justify-content:center;position:relative}
 .acct.compact .side-foot>.dotc{position:absolute;right:6px;bottom:6px}
 .acct.compact .acct-menu{left:calc(100% + 4px);right:auto;bottom:0;width:240px;transform-origin:0 100%}
-/* No room for the sidebar beside the conversation, but asked for: over it, opaque, until a click beside it (layout.ts). */
-.mainwrap.peek .side{position:absolute;top:0;left:0;bottom:0;z-index:20;width:272px;opacity:1;pointer-events:auto;background:var(--side);
-  box-shadow:10px 0 30px rgba(0,0,0,.14);animation:peek-in .22s cubic-bezier(.2,0,0,1)}
-.peek-scrim{position:absolute;inset:0;z-index:19;background:rgba(0,0,0,.08);animation:scrim-in .2s}
+.mainwrap.peek .side{position:absolute;top:var(--size-titlebar);left:0;bottom:0;z-index:20;width:var(--size-nav-pane);opacity:1;pointer-events:auto;background:var(--surface-flyout);-webkit-backdrop-filter:blur(var(--blur-flyout));backdrop-filter:blur(var(--blur-flyout));box-shadow:var(--shadow-flyout);animation:peek-in var(--duration-normal) var(--ease-fluent)}
+.peek-scrim{position:absolute;inset:0;top:var(--size-titlebar);z-index:19;background:var(--surface-scrim);animation:scrim-in var(--duration-fast)}
 @keyframes scrim-in{from{opacity:0}}
 @keyframes peek-in{from{transform:translateX(-24px);opacity:0}}
 @media (prefers-reduced-motion:reduce){.mainwrap.peek .side{animation:none}}
-/* The sidebar toggle sits a step after the traffic lights (which end at x 72), as in Codex and Mail; hidden, the toolbar keeps it there. Search ends the row. */
-.side-top{height:44px;display:flex;align-items:center;padding:0 8px 0 79px;flex:none}
-/* Search, always in view in the top band: a field-like button with its key, taking the band's room. */
-.side-searchbox{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:30px;margin-left:6px;padding:0 9px;border:0;border-radius:var(--r-box);background:var(--fill2);box-shadow:none;color:var(--l2);font:inherit;font-size:12.5px;text-align:left}
-.side-searchbox:hover{color:var(--l1)}
-.side-searchbox .ph{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.side-searchbox .kbd{flex:none}
-
-.tb{height:28px;min-width:28px;border:0;background:transparent;border-radius:var(--r-ctl);display:flex;align-items:center;justify-content:center;color:var(--l2);gap:5px;padding:0 6px}
-.tb:hover{background:var(--fill2);color:var(--l1)}
-.tb.on{background:var(--fill2);color:var(--l1)}
-/* Her and the overview, rows 32 high, 34 apart; a hairline under them, then the sessions. */
-/* The main sidebar's 概览 / 任务动态 and the bots below are set apart by space, not a line (所有者 2026-11-24 裁定，改 #107 稿); Settings keeps its line. */
-.side-nav{padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;flex:none}
-.set-side .side-nav{border-bottom:.5px solid var(--sep)}
-.nav-i{display:flex;align-items:center;gap:9px;height:32px;padding:0 9px;border-radius:8px;font-size:14px;border:0;background:none;width:100%;text-align:left}
-.nav-i .nav-count{margin-left:auto;font-size:12px;min-width:18px;padding:0 5px;border-radius:9px;background:var(--fill);text-align:center}
-.nav-i .ic{width:18px;height:18px;color:var(--l1)}
-/* The shortcut shows on hover only: the menus say it too. */
-.nav-i .kbd{margin-left:auto;opacity:0;transition:opacity .12s}
+.side-top{height:var(--size-titlebar);display:flex;align-items:center;padding:0 10px;flex:none}
+.tb{height:30px;min-width:30px;border:0;background:transparent;border-radius:var(--radius-control);display:flex;align-items:center;justify-content:center;color:var(--l2);gap:5px;padding:0 6px;transition:background-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent)}
+.tb:hover{background:var(--surface-hover);color:var(--l1)}
+.tb.on{background:var(--surface-selected);color:var(--l1)}
+/* 主侧栏「概览 / 任务动态」与下方 bot 名单之间保留 2026-11-24 所有者裁定：不画分隔线，仅靠留白；设置窗口侧栏保留分隔线 */
+.side-nav{padding:8px 8px 6px;display:flex;flex-direction:column;gap:2px;flex:none}
+.set-side .side-nav{border-bottom:1px solid var(--sep)}
+.nav-i{position:relative;display:flex;align-items:center;gap:10px;height:var(--size-row);padding:0 10px 0 12px;border-radius:var(--radius-control);font-size:14px;font-weight:400;border:0;background:none;width:100%;text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
+.nav-i .nav-count{margin-left:auto;font-size:12px;font-weight:600;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:var(--radius-pill);background:var(--surface-hover);color:var(--l2);text-align:center}
+.nav-i .ic{width:18px;height:18px;color:var(--l2)}
+.nav-i .kbd{margin-left:auto;opacity:0;transition:opacity var(--duration-fast)}
 .nav-i:hover .kbd,.nav-i:focus-visible .kbd{opacity:1}
-.nav-i:hover{background:var(--fill)}
-.nav-i.sel{background:var(--side-sel)}
-.nav-i .cnt{margin-left:auto;font-size:11.5px;color:var(--l2);font-variant-numeric:tabular-nums}
-/* Marks (docs/her-team.md §16): orange, the owner is needed; red, it failed; blue, Her has something unread; a ring, at work. No numbers. */
+.nav-i:hover{background:var(--surface-hover)}
+.nav-i.sel{background:var(--surface-selected);font-weight:600}
+.nav-i.sel .ic{color:var(--color-fluent-blue)}
+.nav-i.sel::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
+.nav-i .cnt{margin-left:auto;font-size:12px;color:var(--l2);font-variant-numeric:tabular-nums}
 .nav-marks{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex:none}
 .dot-w{width:7px;height:7px;border-radius:50%;background:var(--orange);flex:none;display:inline-block}
-/* What needs the owner, counted: the overview's mark. */
-.cnt-w{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--orange);color:#fff;font-size:11px;font-weight:var(--font-weight-bold);display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+/* 黄底计数徽标配深字 #201f1e（9.55:1，DESIGN-107 §0.6） */
+.cnt-w{min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-pill);background:var(--color-caution);color:#201f1e;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .dot-r{width:7px;height:7px;border-radius:50%;background:var(--red);flex:none;display:inline-block}
-.dot-u{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none;display:inline-block}
-.busy{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--l2);font-variant-numeric:tabular-nums}
-.busy>i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--l4);border-top-color:var(--l2);animation:busy-turn 1s linear infinite}
+.dot-u{width:7px;height:7px;border-radius:50%;background:var(--color-fluent-blue);flex:none;display:inline-block}
+.busy{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--l2);font-variant-numeric:tabular-nums}
+.busy>i{width:12px;height:12px;border-radius:50%;border:2px solid var(--l4);border-top-color:var(--color-fluent-blue);animation:busy-turn 1s linear infinite}
 .busy.quiet>i{border-color:var(--orange-bg);border-top-color:var(--orange);animation-duration:2.4s}
 @keyframes busy-turn{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.busy>i{animation:none}}
-/* The sessions' heading, with the view menu at its end. */
-.side-h{height:34px;flex:none;display:flex;align-items:center;padding:0 8px 0 18px;font-size:12px;color:var(--l2)}
+.side-h{height:36px;flex:none;display:flex;align-items:center;padding:0 8px 0 18px;font-size:12px;font-weight:600;color:var(--l2)}
 .side-h .tb{margin-left:auto}
 .side-h .side-new + .tb{margin-left:0}
 .side-list{flex:1;overflow-y:auto;min-height:0;padding:0 8px 8px;scrollbar-width:thin}
-.side-sessions>[role=group]{display:flex;flex-direction:column;gap:1px}
-.side-none{font-size:12.5px;color:var(--l3);padding:5px 9px 8px 33px}
-.side-empty{display:flex;flex-direction:column;gap:3px;text-align:center;padding:60px 14px;color:var(--l3);font-size:12.5px;line-height:1.6}
-.side-empty b{color:var(--l2);font-weight:var(--font-weight-medium);font-size:var(--fs-text)}
-/* A group's heading: its title and ▾ (▸ when collapsed); a click collapses or opens it. */
-.grp-h{position:sticky;top:0;z-index:2;font:inherit;font-size:11px;font-weight:var(--font-weight-semibold);color:var(--l2);padding:14px 10px 5px;margin-bottom:1px;display:flex;align-items:center;gap:6px;background:var(--side-head);border:0;width:100%;text-align:left}
+.side-sessions>[role=group]{display:flex;flex-direction:column;gap:2px}
+.side-none{font-size:12.5px;color:var(--l2);padding:5px 9px 8px 33px}
+.side-empty{display:flex;flex-direction:column;gap:4px;text-align:center;padding:60px 14px;color:var(--l2);font-size:12.5px;line-height:1.6}
+.side-empty b{color:var(--l1);font-weight:600;font-size:var(--fs-text)}
+.grp-h{position:sticky;top:0;z-index:2;font:inherit;font-size:12px;font-weight:600;color:var(--l2);padding:12px 10px 4px;margin-bottom:2px;display:flex;align-items:center;gap:6px;background:var(--side-head);border:0;width:100%;text-align:left}
 .side-sessions>[role=group]:first-child .grp-h{padding-top:6px}
 .grp-h:hover{color:var(--l1)}
-.grp-h .ic{width:16px;height:16px;color:var(--l2);transition:transform .15s var(--ease-out)}
-/* By status, each group in its state's colour: needs you, at work, done. */
-.grp-h.grp-status-attention{color:var(--orange);font-weight:var(--font-weight-semibold)}
-.grp-h.grp-status-active{color:var(--accent-t);font-weight:var(--font-weight-semibold)}
+.grp-h .ic{width:14px;height:14px;color:var(--l2);transition:transform var(--duration-normal) var(--ease-fluent)}
+.grp-h.grp-status-attention{color:var(--orange-t);font-weight:600}
+.grp-h.grp-status-active{color:var(--accent-t);font-weight:600}
 .grp-h.shut .ic{transform:rotate(-90deg)}
-/* A session: its agent's logo, the title, one mark; 30 high. */
-.srow{display:flex;gap:8px;padding:6px 9px;border-radius:8px;align-items:flex-start;border:0;background:none;width:100%;text-align:left;font-size:13px}
+.srow{position:relative;display:flex;gap:8px;padding:7px 10px;border-radius:var(--radius-control);align-items:flex-start;border:0;background:none;width:100%;text-align:left;font-size:13.5px;transition:background-color var(--duration-fast) var(--ease-fluent)}
 .slogo{display:flex;flex:none;margin-top:1px}
-.srow:hover{background:var(--fill)}
-/* Waiting for the owner: a bar at the row's left edge, and its title a step bolder. */
-.srow.needy{position:relative}
-.srow.needy::after{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--orange)}
-.srow.needy .stitle{font-weight:var(--font-weight-semibold)}
-.srow.sel{background:var(--side-sel)}
+.srow:hover{background:var(--surface-hover)}
+.srow.needy::after{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--orange)}
+.srow.needy .stitle{font-weight:600}
+.srow.sel{background:var(--surface-selected);font-weight:600}
+.srow.sel::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
 .srow.arch .stitle{color:var(--l2)}
-.rowact{display:none;border:0;background:none;width:20px;height:18px;border-radius:5px;align-items:center;justify-content:center;color:var(--l2);padding:0;flex:none;margin:-2px -4px -2px 0}
-.rowact:hover{background:var(--fill2);color:var(--l1)}
+.rowact{display:none;border:0;background:none;width:22px;height:20px;border-radius:var(--radius-small);align-items:center;justify-content:center;color:var(--l2);padding:0;flex:none;margin:-2px -4px -2px 0}
+.rowact:hover{background:var(--surface-pressed);color:var(--l1)}
 .srow.has-act:hover .smeta{display:none}
 .srow.has-act:hover .rowact{display:flex}
 .srow.menu-open .smeta{display:none}
-.srow.menu-open .rowact{display:flex;background:var(--fill2);color:var(--l1)}
-.srename{flex:1;min-width:0;font:inherit;font-size:13px;color:var(--l1);background:var(--field);border:0;border-radius:5px;outline:none;box-shadow:0 0 0 1.5px var(--accent);padding:0 5px;margin:-1px 0 -1px -5px}
-/* A pop-up button the row wide. */
+.srow.menu-open .rowact{display:flex;background:var(--surface-pressed);color:var(--l1)}
+.srename{flex:1;min-width:0;font:inherit;font-size:13px;color:var(--l1);background:var(--surface-input);border:1px solid var(--color-fluent-blue);border-radius:var(--radius-small);outline:none;padding:0 6px;margin:-1px 0 -1px -5px}
 .picker.psel{width:100%}
-.anote{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--l2);background:var(--fill);border-radius:var(--r-box);padding:8px 12px;margin-bottom:16px}
+.anote{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--l2);background:var(--surface-card);border:1px solid var(--sep);border-radius:var(--radius-card);padding:10px 14px;margin-bottom:16px}
 .anote .link{margin-left:auto}
 .smain{min-width:0;flex:1}
 .sl1{display:flex;gap:8px;align-items:center;line-height:18px}
-.stitle{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.smeta{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--l2);flex:none;font-variant-numeric:tabular-nums}
-.sl2{display:flex;align-items:baseline;gap:8px;font-size:11px;color:color-mix(in srgb,var(--l2) 78%,transparent);margin-top:2px}
+.stitle{flex:1;min-width:0;font-size:13px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.smeta{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--l2);flex:none;font-variant-numeric:tabular-nums}
+.sl2{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--l2);margin-top:2px}
 .sl2t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stime{flex:none;font-size:11px;font-variant-numeric:tabular-nums}
-.slost{font-size:11px;color:var(--l2);white-space:nowrap}
-.slost::before{content:"";display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:50%;border:1.5px dashed var(--l3);vertical-align:-1px}
-.squiet{color:var(--orange)}
-.lostspan{color:var(--l3)}
+.stime{flex:none;font-size:11.5px;font-variant-numeric:tabular-nums}
+.slost{font-size:11.5px;color:var(--l2);white-space:nowrap}
+.slost::before{content:"";display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:50%;border:1.5px dashed var(--l2);vertical-align:-1px}
+.squiet{color:var(--orange-t)}
+.lostspan{color:var(--l2)}
 .srow.flash{animation:flash 1.2s ease-out}
 @keyframes flash{0%{background:var(--accent-bg)}100%{background:transparent}}
 .loadrow{display:flex;align-items:center;justify-content:center;gap:8px;height:40px;color:var(--l2);font-size:12px}
-.endrow{text-align:center;color:var(--l3);font-size:11.5px;padding:14px 0 6px}
-.side-foot{flex:none;height:52px;display:flex;align-items:center;gap:9px;margin:0 6px 6px;padding:0 10px 0 8px;border:0;border-radius:var(--r-box);background:none;text-align:left;width:calc(100% - 12px)}
-.side-foot:hover{background:var(--fill)}
-.side-foot>.ic{color:var(--l3);flex:none}
-.side-foot .who{min-width:0;flex:1;line-height:1.25;display:block}
-.side-foot .av{background:var(--fill2);color:var(--l2);font-weight:500}
-.side-foot .who b{font-weight:500;font-size:var(--fs-text);display:block}
-.side-foot .who span{font-size:11.5px;color:var(--l2);display:flex;align-items:center;gap:5px}
-.side-foot[aria-expanded="true"]{background:var(--fill2)}
-.side-foot .chev{transform:rotate(180deg);transition:transform .2s cubic-bezier(.2,0,0,1)}
+.endrow{text-align:center;color:var(--l2);font-size:12px;padding:14px 0 6px}
+.side-foot{flex:none;height:56px;display:flex;align-items:center;gap:10px;margin:0 8px 8px;padding:0 10px 0 8px;border:0;border-radius:var(--radius-card);background:none;text-align:left;width:calc(100% - 16px);transition:background-color var(--duration-fast) var(--ease-fluent)}
+.side-foot:hover{background:var(--surface-hover)}
+.side-foot>.ic{color:var(--l2);flex:none}
+.side-foot .who{min-width:0;flex:1;line-height:1.3;display:block}
+.side-foot .who b{font-weight:600;font-size:var(--fs-text);display:block}
+.side-foot .who span{font-size:12px;color:var(--l2);display:flex;align-items:center;gap:5px}
+.side-foot[aria-expanded="true"]{background:var(--surface-selected)}
+.side-foot .chev{transform:rotate(180deg);transition:transform var(--duration-normal) var(--ease-fluent)}
 .side-foot[aria-expanded="true"] .chev{transform:none}
-/* the account menu: opens upward from the foot, as wide as it */
-.acct{position:relative;flex:none;border-top:.5px solid var(--sep);padding-top:6px}
-/* Menus are macOS's: the menu material (translucent, blurring what is under it), items 26 high, the one under the
-   pointer or the keys in the accent with white text. */
-.acct-menu{position:absolute;left:6px;right:6px;bottom:calc(100% + 6px);z-index:10;background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);border-radius:var(--r-card);box-shadow:var(--shadow-pop);padding:5px;transform-origin:50% 100%;animation:menuup var(--snappy-dur) var(--snappy)}
-@keyframes menuup{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
-.acct-menu .mi{display:flex;align-items:center;gap:9px;width:100%;height:28px;padding:0 9px;border:0;border-radius:5px;background:none;text-align:left;outline:none}
+.acct{position:relative;flex:none;border-top:1px solid var(--sep);padding-top:6px}
+/* Fluent 菜单与浮层（DESIGN-107 §15）：12 圆角、亚克力 85% + 30px 模糊、项高 36、8 圆角、左 3px 主蓝条 */
+.acct-menu{position:absolute;left:8px;right:8px;bottom:calc(100% + 6px);z-index:10;background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);border-radius:var(--radius-overlay);box-shadow:var(--shadow-pop);padding:6px;transform-origin:50% 100%;animation:menuup var(--duration-fast) var(--ease-fluent)}
+@keyframes menuup{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.acct-menu .mi{position:relative;display:flex;align-items:center;gap:10px;width:100%;height:var(--size-row);padding:0 10px;border:0;border-radius:var(--radius-menu-item);background:none;text-align:left;outline:none;color:var(--l1)}
 .acct-menu .mi .ic{color:var(--l2)}
 .acct-menu{outline:none}
-.acct-menu .mi:focus{background:var(--accent);color:var(--on-accent)}
-.acct-menu .mi:focus :is(.ic,.kbd,.nav-count){color:inherit}
+.acct-menu .mi:focus,.acct-menu .mi:hover{background:var(--surface-hover);color:var(--l1)}
+.acct-menu .mi:focus::before,.acct-menu .mi:hover::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
 .acct-menu .mi .kbd{margin-left:auto}
-.acct-menu .msep{height:.5px;background:var(--sep);margin:5px 9px}
-/* The session list's view menu and its submenus: the account menu's look, opaque, as it sits over the list. */
-.vmenu{position:fixed;z-index:30;min-width:176px;background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);border-radius:var(--r-card);box-shadow:var(--shadow-pop);padding:5px;outline:none;animation:fadein var(--snappy-dur) var(--snappy)}
-.vmenu .mi{display:flex;align-items:center;gap:8px;width:100%;height:26px;padding:0 8px 0 9px;border:0;border-radius:5px;background:none;text-align:left;outline:none;white-space:nowrap}
-.vmenu .mi:focus,.vmenu .mi.open{background:var(--accent);color:var(--on-accent)}
-.vmenu .mi:is(:focus,.open) :is(.val,.ic,.ck,small,.kbd),.vmenu .mi:is(:focus,.open)>.ic{color:inherit}
+.acct-menu .msep{height:1px;background:var(--sep);margin:5px 8px}
+.vmenu{position:fixed;z-index:30;min-width:184px;background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);border-radius:var(--radius-overlay);box-shadow:var(--shadow-pop);padding:6px;outline:none;animation:fadein var(--duration-fast) var(--ease-fluent)}
+.vmenu .mi{position:relative;display:flex;align-items:center;gap:10px;width:100%;height:var(--size-row);padding:0 10px;border:0;border-radius:var(--radius-menu-item);background:none;text-align:left;outline:none;white-space:nowrap;color:var(--l1)}
+.vmenu .mi:focus,.vmenu .mi.open,.vmenu .mi:hover{background:var(--surface-hover);color:var(--l1)}
+.vmenu .mi:is(:focus,.open,:hover)::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
 .vmenu .mi .val{margin-left:auto;padding-left:14px;color:var(--l2);font-size:12px}
 .vmenu .mi>.ic{color:var(--l2)}
 .vmenu .ck{width:14px;display:flex;flex:none;color:var(--accent-t)}
-.vmenu .msep{height:.5px;background:var(--sep);margin:5px 9px}
-.vmenu .mi.danger{color:var(--red)}
-.vmenu .mi:disabled{color:var(--l3)}
-.content{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--win)}
+.vmenu .msep{height:1px;background:var(--sep);margin:5px 8px}
+.vmenu .mi.danger,.vmenu .mi.danger>.ic{color:var(--red-t)}
+.vmenu .mi:disabled{color:var(--color-text-disabled)}
+.content{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:transparent}
 .ctool{height:44px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px 0 22px}
 .ctitle{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .ctitle h2{margin:0;font-size:var(--fs-headline);font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* As macOS titles: grey while another window has the focus. */
 html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{color:var(--l2)}
 .cscroll{flex:1;overflow-y:auto;min-height:0}
 /* overview */
-.ov{padding:0 var(--sp-4) var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);max-width:980px;margin:0 auto}
-/* The title row is as high as ＋ and sits on the sidebar's first button's line (the toolbar above is 44 high, and the sidebar's first button centres at 61). */
-.ov-h{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);height:32px;margin-bottom:calc(var(--sp-2) - var(--sp-4))}
+.ov{padding:0 40px var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);max-width:980px;margin:0 auto}
+.ov-h{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:36px;margin-bottom:calc(var(--sp-2) - var(--sp-4))}
 .ov-t{display:flex;align-items:baseline;gap:var(--sp-2);min-width:0}
-.ov-h h1{margin:0;font-size:var(--fs-large-title);font-weight:var(--font-weight-bold);letter-spacing:-.01em}
+.ov-h h1{margin:0;font-size:var(--fs-large-title);font-weight:600;letter-spacing:-.01em}
 .ov-h span{color:var(--l2);font-size:var(--fs-text)}
 .sec-h{display:flex;align-items:center;gap:var(--sp-1);margin:0 0 var(--sp-2);font-size:var(--fs-text);font-weight:600}
 .sec-h .n{color:var(--l2);font-weight:500}
-.sec-h .link{margin-left:auto;font-size:12.5px;font-weight:400}
-.card{background:var(--win2);border-radius:var(--r-card)}
+.sec-h .link{margin-left:auto;font-size:12.5px;font-weight:600}
+.card{background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);border-radius:var(--radius-card)}
 .attn{display:flex;flex-direction:column}
-/* A row of the card; the hairline between rows starts where the text does (Apple's inset grouped list). */
 .arow{position:relative;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3)}
-.arow+.arow::before{content:"";position:absolute;top:0;right:0;left:calc(var(--sp-3) + 28px + var(--sp-2));height:.5px;background:var(--sep);pointer-events:none}
-.arow .ai{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
-.arow .ai.a{background:var(--accent-bg);color:var(--accent-t)}.arow .ai.y{background:var(--orange-bg);color:var(--orange)}
+.arow+.arow::before{content:"";position:absolute;top:0;right:0;left:calc(var(--sp-3) + 28px + var(--sp-2));height:1px;background:var(--sep);pointer-events:none}
+.arow .ai{width:28px;height:28px;border-radius:var(--radius-control);display:flex;align-items:center;justify-content:center;flex:none}
+.arow .ai.a{background:var(--accent-bg);color:var(--accent-t)}.arow .ai.y{background:var(--orange-bg);color:var(--orange-t)}
 .arow .at{flex:1;min-width:0}
 .arow .at b{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arow .at span{font-size:12px;color:var(--l2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .work{padding:4px 0}
-.ok{color:var(--green)}.warn{color:var(--orange)}
+.ok{color:var(--green)}.warn{color:var(--orange-t)}
 /* session detail */
-.dwrap{flex:1;min-height:0;display:flex;position:relative;border-top:.5px solid var(--sep)}
+.dwrap{flex:1;min-height:0;display:flex;position:relative;border-top:1px solid var(--sep)}
 .dmain{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;position:relative}
-.cbar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);max-width:calc(100% - 48px);border-radius:999px;background:var(--win);box-shadow:0 0 0 .5px var(--menu-bd),0 10px 30px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06);z-index:4;font-size:12.5px}
-.cbar.q{width:min(620px,calc(100% - 48px));border-radius:24px;animation:cbarup var(--spring-dur) var(--spring)}
-/* A question waits for the owner: the card's top edge in that colour, as the list's bar is. */
-.cbar.q{border-radius:18px;overflow:hidden;box-shadow:inset 0 3px 0 var(--orange),0 0 0 .5px var(--menu-bd),0 18px 50px rgba(15,20,40,.18),0 2px 6px rgba(0,0,0,.06)}
+.cbar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);max-width:calc(100% - 48px);border-radius:var(--radius-pill);background:var(--surface-flyout);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop);z-index:4;font-size:12.5px}
+.cbar.q{width:min(620px,calc(100% - 48px));border-radius:var(--radius-dialog);overflow:hidden;box-shadow:inset 0 3px 0 var(--orange),var(--shadow-dialog);animation:cbarup var(--duration-slow) var(--ease-fluent)}
 @keyframes cbarup{from{opacity:0;transform:translate(-50%,10px) scale(.98)}}
-.cbar-row{display:flex;align-items:center;gap:10px;height:44px;padding:0 6px 0 16px;white-space:nowrap}
-.cbar.q .cbar-row{border-top:.5px solid var(--sep);height:46px}
+.cbar-row{display:flex;align-items:center;gap:10px;height:44px;padding:0 8px 0 16px;white-space:nowrap}
+.cbar.q .cbar-row{border-top:1px solid var(--sep);height:46px}
 .cbar-row b{font-weight:600}
 .cbar-row .ph{color:var(--l2);overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:300px}
 .cbar.q .cbar-row .ph{max-width:none;flex:1}
 .cbar-row .el{color:var(--l2);font-variant-numeric:tabular-nums}
 .qx{padding:16px 16px 14px}
 .qx-h{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--l2)}
-.qx-tag{height:18px;padding:0 8px;border-radius:999px;background:var(--fill2);font-size:11px;display:inline-flex;align-items:center}
-.qx-t{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--orange);font-variant-numeric:tabular-nums}
+.qx-tag{height:20px;padding:0 8px;border-radius:var(--radius-pill);background:var(--surface-hover);font-size:11.5px;display:inline-flex;align-items:center}
+.qx-t{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--orange-t);font-variant-numeric:tabular-nums}
 .ring{width:14px;height:14px;transform:rotate(-90deg)}
 .ring circle{fill:none;stroke-width:2.2}
 .ring .trk{stroke:var(--fill3)}
 .ring .arc{stroke:var(--orange);stroke-linecap:round;transition:stroke-dashoffset .6s}
 .qx-q{font-size:15px;font-weight:600;margin:10px 2px 12px;line-height:1.45;text-wrap:balance}
 .qx-opts{display:flex;flex-direction:column;gap:6px}
-.qopt{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:var(--r-card);border:0;width:100%;text-align:left;background:var(--fill);box-shadow:none;transition:background .12s,box-shadow .12s,scale var(--spring-dur) var(--spring)}
-.qopt:hover{background:var(--fill2)}
-.qopt.on{background:var(--accent-bg);box-shadow:inset 0 0 0 1.5px var(--accent)}
-.qn{width:20px;height:20px;border-radius:6px;background:var(--win);box-shadow:0 0 0 .5px var(--sep),0 1px 1px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--l2);flex:none;font-variant-numeric:tabular-nums}
-.qopt.on .qn{background:var(--accent);color:var(--on-accent);box-shadow:none}
+.qopt{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:var(--radius-card);border:0;width:100%;text-align:left;background:var(--surface-hover);box-shadow:none;transition:background var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent)}
+.qopt:hover{background:var(--surface-pressed)}
+.qopt.on{background:var(--accent-bg);box-shadow:inset 0 0 0 1.5px var(--color-fluent-blue)}
+.qn{width:20px;height:20px;border-radius:var(--radius-small);background:var(--surface-solid-white);box-shadow:0 0 0 1px var(--sep);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--l2);flex:none;font-variant-numeric:tabular-nums}
+.qopt.on .qn{background:var(--color-fluent-blue);color:var(--color-on-accent);box-shadow:none}
 .qb{flex:1;min-width:0}
-.qb b{display:block;font-weight:500;font-size:var(--fs-text)}
+.qb b{display:block;font-weight:600;font-size:var(--fs-text)}
 .qb span{font-size:12px;color:var(--l2)}
 .qc{color:var(--accent-t);opacity:0;flex:none}
 .qopt.on .qc{opacity:1}
 .qx-in{display:flex;gap:8px;margin-top:12px;align-items:center}
-.qx-in .field{flex:1;height:32px;border-radius:var(--r-box)}
-.qx-in .btn{height:32px}
+.qx-in .field{flex:1;height:var(--size-control);border-radius:var(--radius-control)}
+.qx-in .btn{height:var(--size-control)}
 .kret{opacity:.7;font-size:12px;margin-left:2px}
 .ctl-sep{width:1px;height:20px;background:var(--sep);flex:none}
-.ctl-btn{height:32px;border:0;border-radius:999px;padding:0 12px 0 10px;display:flex;align-items:center;gap:6px;background:var(--fill2);font-size:12.5px;font-weight:500;flex:none}
-.ctl-btn:hover{background:var(--fill3)}
+.ctl-btn{height:32px;border:0;border-radius:var(--radius-control);padding:0 12px 0 10px;display:flex;align-items:center;gap:6px;background:var(--surface-hover);font-size:12.5px;font-weight:600;flex:none}
+.ctl-btn:hover{background:var(--surface-pressed)}
 .ctl-btn .ic{width:14px;height:14px}
-/* The session's cards, one under the other: they float over the conversation's top right (the conversation keeps clear of them), each outlined by a hairline. */
 .insp-col{position:absolute;top:var(--sp-3);right:var(--sp-3);z-index:4;width:252px;display:flex;flex-direction:column;gap:8px}
-.insp{display:flex;flex-direction:column;
-  background:color-mix(in srgb,var(--win) 86%,transparent);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);
-  border-radius:var(--r-panel);box-shadow:0 0 0 .5px var(--sep);padding:12px 16px 10px}
-.dwrap.dock .cscroll{padding-right:270px}
-/* Docked, the cards are one column at the window's right edge, top to bottom, a hairline from the conversation. */
-.dwrap.dock .insp-col{top:0;right:0;bottom:0;width:270px;gap:8px;padding:10px 0;border-left:.5px solid var(--sep);background:var(--win);overflow-y:auto}
+.insp{display:flex;flex-direction:column;background:var(--surface-flyout);backdrop-filter:var(--material);-webkit-backdrop-filter:var(--material);border-radius:var(--radius-overlay);box-shadow:var(--shadow-pop);padding:12px 16px 10px}
+.dwrap.dock .cscroll{padding-right:288px}
+.dwrap.dock .insp-col{top:0;right:0;bottom:0;width:var(--size-list-pane);gap:8px;padding:10px 0;border-left:1px solid var(--sep);background:var(--surface-acrylic);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));overflow-y:auto}
 .dwrap.dock .insp{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0;padding:8px 18px 12px}
-.dwrap.dock .insp+.insp{border-top:.5px solid var(--sep)}
-.dwrap.dock .insp-h{font-size:12px;color:var(--l3);font-weight:var(--font-weight-semibold);letter-spacing:.02em}
-/* The session's list (工单 #90, SessionList.tsx), in the right column: a new session and the folder at the top, then
-   each project's sessions — state, title, when it last moved — the open one marked. Floating, it is a card of its own. */
-.sesslist{gap:0;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;background:var(--win);border-radius:var(--r-panel);box-shadow:0 0 0 .5px var(--sep),0 8px 24px rgba(0,0,0,.08);padding:10px 0}
-.dwrap.dock .sesslist{max-height:none;border-radius:0;box-shadow:none}
+.dwrap.dock .insp+.insp{border-top:1px solid var(--sep)}
+.dwrap.dock .insp-h{font-size:12px;color:var(--l2);font-weight:600;letter-spacing:.02em}
+.sesslist{gap:0;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;background:var(--surface-flyout);border-radius:var(--radius-overlay);box-shadow:var(--shadow-pop);padding:10px 0}
+.dwrap.dock .sesslist{max-height:none;border-radius:0;box-shadow:none;background:transparent}
 .sesslist-top{display:flex;align-items:center;gap:6px;padding:0 12px 8px}
 .sesslist-new{flex:1;justify-content:center}
-.sesslist-h{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:12px;color:var(--l3);font-weight:var(--font-weight-semibold)}
+.sesslist-h{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:12px;color:var(--l2);font-weight:600}
 .sesslist-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sesslist-row{display:flex;align-items:center;gap:8px;width:calc(100% - 16px);height:30px;margin:0 8px;padding:0 8px;border:0;border-radius:var(--r-ctl);background:none;font:inherit;font-size:var(--fs-text);color:var(--l1);text-align:left}
-.sesslist-row:hover{background:var(--fill2)}
-.sesslist-row.cur{background:var(--accent-bg);color:var(--accent-t)}
+.sesslist-row{position:relative;display:flex;align-items:center;gap:8px;width:calc(100% - 16px);height:34px;margin:0 8px;padding:0 10px;border:0;border-radius:var(--radius-control);background:none;font:inherit;font-size:var(--fs-text);color:var(--l1);text-align:left}
+.sesslist-row:hover{background:var(--surface-hover)}
+.sesslist-row.cur{background:var(--surface-selected);font-weight:600}
+.sesslist-row.cur::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
 .sesslist-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sesslist-time{flex:none;font-size:11.5px;color:var(--l3)}
-/* The session's settings (工单 #90): a menu from the toolbar's gear, over the conversation's top right. */
-/* A popover: the menu material, a soft shadow. */
-.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:var(--r-panel);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop)}
+.sesslist-time{flex:none;font-size:11.5px;color:var(--l2)}
+.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:var(--radius-overlay);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop)}
 .insp-stack{display:flex;flex-direction:column}
 .insp-pop .insp{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0;padding:10px 16px}
-.insp-pop .insp+.insp{border-top:.5px solid var(--sep)}
+.insp-pop .insp+.insp{border-top:1px solid var(--sep)}
 .ic.flip{transform:scaleX(-1)}
-/* The bar at the bottom centres under the conversation too. */
-.dwrap.dock .cbar{left:calc(50% - 135px);max-width:calc(100% - 318px)}
-.dwrap.dock .cbar.q{width:min(620px,calc(100% - 318px))}
-/* Its rows: a 16 icon, then the value; a row every 30. */
+.dwrap.dock .cbar{left:calc(50% - 144px);max-width:calc(100% - 336px)}
+.dwrap.dock .cbar.q{width:min(620px,calc(100% - 336px))}
 .insp-h{margin:0 0 4px;font-size:var(--fs-text);font-weight:600;color:var(--l1)}
 .insp-facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;font-size:var(--fs-text);color:var(--l1)}
 .insp-facts li{display:flex;align-items:center;gap:10px;min-width:0;height:30px}
@@ -467,144 +422,135 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .insp-facts .dim{color:var(--l2)}
 .insp-facts .av{width:16px;height:16px;font-size:9px;flex:none}
 .insp-facts .ic{color:var(--l2);width:16px;height:16px}
-/* The project and the branch are buttons the row wide (their text where the others' is): a menu to copy or open them. */
-.insp-facts .insp-pick{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:28px;margin:0 -6px;padding:0 6px;border:0;border-radius:var(--r-ctl);background:none;color:inherit;font:inherit;text-align:left}
-.insp-facts .insp-pick:hover,.insp-facts .insp-pick[aria-expanded=true]{background:var(--fill2)}
+.insp-facts .insp-pick{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:30px;margin:0 -6px;padding:0 6px;border:0;border-radius:var(--radius-control);background:none;color:inherit;font:inherit;text-align:left}
+.insp-facts .insp-pick:hover,.insp-facts .insp-pick[aria-expanded=true]{background:var(--surface-hover)}
 .insp-facts .insp-pick>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .insp-facts .insp-gear{margin:0 -4px 0 auto;height:24px;min-width:24px;padding:0 4px}
 .insp-facts .insp-gear:hover .ic{color:var(--l1)}
 .ilinks{display:flex;flex-direction:column;gap:5px;align-items:flex-start;font-size:12px}
-/* A centered 768px conversation with 16px gutters; reply text is inset 8px. */
 .dbody{max-width:calc(var(--conversation-width) + 32px);margin:0 auto;padding:24px 16px 40px}
 .tr{display:flex;flex-direction:column;gap:var(--sp-2)}
-/* A conversation row's own box (useVirtualRows measures it): its parts (a time line and a message) as far apart
-   as rows are. The space for rows not drawn is never what the browser keeps in place while things above change. */
 .vrow{display:flex;flex-direction:column;gap:var(--sp-2)}
 .vspace{flex:none;overflow-anchor:none}
-/* A time line before a turn, only after a pause: centred, no rule. */
-.tdiv{align-self:center;font-size:11.5px;color:var(--l3);margin:10px 0 2px}
-/* The one who started the session speaks in a bubble on the right; the agent writes plain text across the page. */
-.um{position:relative;align-self:flex-end;max-width:80%;margin-top:var(--sp-1)}
-.um-by{text-align:right;font-size:11px;color:var(--l3);margin:0 6px 2px}
-.um .bub{background:var(--bub);color:var(--bub-fg);border-radius:var(--r-xl);padding:9px 15px;font-size:var(--chat-size);line-height:1.625;white-space:pre-wrap;overflow-wrap:anywhere}
+.tdiv{align-self:center;font-size:12px;color:var(--l2);margin:10px 0 2px}
+/* 我方消息气泡（#101 / #107 §7）：主蓝 #0078d4 底白字（4.53:1），16 圆角，右下 4px 尾角 */
+.um{position:relative;align-self:flex-end;max-width:72%;margin-top:var(--sp-1)}
+.um-by{text-align:right;font-size:12px;color:var(--l2);margin:0 6px 2px}
+.um .bub{background:var(--bub);color:var(--bub-fg);border-radius:var(--radius-bubble) var(--radius-bubble) var(--radius-bubble-tail) var(--radius-bubble);padding:8px 12px;font-size:var(--chat-size);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.um .bub :is(p,strong,em,b,li,blockquote){color:var(--bub-fg)}
+.um .bub a{color:var(--bub-fg);text-decoration:underline}
+.um .bub code{background:rgba(0,0,0,.18);color:var(--bub-fg);border-radius:var(--radius-small);padding:1px 5px}
 .um .bub::selection{background:rgba(255,255,255,.32)}
-.am{position:relative;font-size:var(--chat-size);line-height:1.625;color:var(--msg)}
-/* A message, and a turn's reply at its end, keep room below (blocks apart); when and copy show there on hover, under the bubble's right edge or the text's left. */
+.am{position:relative;font-size:var(--chat-size);line-height:1.6;color:var(--msg);max-width:var(--size-reading)}
 .um,.am.end{margin-bottom:var(--sp-3)}
-.msg-act{position:absolute;top:100%;padding-top:3px;display:flex;align-items:center;gap:4px;opacity:0;transition:opacity .15s}
+.msg-act{position:absolute;top:100%;padding-top:3px;display:flex;align-items:center;gap:4px;opacity:0;transition:opacity var(--duration-fast)}
 .um .msg-act{right:2px}
 .am .msg-act{left:-2px;flex-direction:row-reverse}
 .um:hover .msg-act,.am:hover .msg-act,.msg-act:focus-within{opacity:1}
-.msg-act .tb{height:26px;min-width:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);color:var(--l3)}
-.msg-act .tb:hover{color:var(--l1);background:var(--fill)}
+.msg-act .tb{height:26px;min-width:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-small);color:var(--l2)}
+.msg-act .tb:hover{color:var(--l1);background:var(--surface-hover)}
 .msg-act .ic.sm{width:15px;height:15px}
-.msg-time{font-size:12px;line-height:26px;color:var(--l3);white-space:nowrap;padding:0 2px;font-variant-numeric:tabular-nums}
+.msg-time{font-size:12px;line-height:26px;color:var(--l2);white-space:nowrap;padding:0 2px;font-variant-numeric:tabular-nums}
 .md{overflow-wrap:anywhere}
 .md>*{margin:0}
 .md>*+*{margin-top:12px}
-.md :is(h1,h2,h3,h4,h5,h6){font-weight:600;line-height:1.4}
-.md h1{font-size:18px}.md h2{font-size:16.5px}.md :is(h3,h4,h5,h6){font-size:15px}
-.md ul,.md ol{padding-left:20px}
+/* 长报告排版（DESIGN-107 §6）：h2 20/28 600，h3 16/24 600，正文 14/1.6，列表缩进 24 */
+.md :is(h1,h2,h3,h4,h5,h6){font-weight:600;color:var(--l1)}
+.md h1,.md h2{font-size:20px;line-height:28px;margin-top:16px}
+.md h3{font-size:16px;line-height:24px;margin-top:16px}
+.md :is(h4,h5,h6){font-size:14px;line-height:22px}
+.md ul,.md ol{padding-left:24px}
 .md li+li,.md li>:is(ul,ol){margin-top:4px}
 .md li>p{margin:0}
 .md li>p+p{margin-top:6px}
 .md li.task-list-item{list-style:none;margin-left:-18px}
-/* A task list's box: the app's own tick box (as .cb), never the browser's checkbox. */
-.md li.task-list-item input{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin:0 7px 0 0;vertical-align:-2px;border-radius:4px;background:var(--field);box-shadow:inset 0 0 0 1px var(--field-bd)}
-.md li.task-list-item input:checked{background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E") center/10px no-repeat;box-shadow:none}
-.md hr{border:0;border-top:.5px solid var(--sep)}
+.md li.task-list-item input{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0 7px 0 0;vertical-align:-3px;border-radius:var(--radius-small);background:var(--surface-input);box-shadow:inset 0 0 0 1px var(--color-border-strong)}
+.md li.task-list-item input:checked{background:var(--color-fluent-blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E") center/10px no-repeat;box-shadow:none}
+.md hr{border:0;border-top:1px solid var(--sep)}
 .md-table{overflow-x:auto}
 .md table{border-collapse:collapse;font-size:14px;line-height:20px}
-.md :is(th,td){padding:6px 14px 6px 0;border-bottom:.5px solid var(--sep);text-align:left;vertical-align:top}
+.md :is(th,td){padding:6px 14px 6px 0;border-bottom:1px solid var(--sep);text-align:left;vertical-align:top}
 .md th{font-weight:600}
-.md li::marker{color:var(--l3)}
-.md blockquote{border-left:2px solid var(--fill3);padding-left:12px;color:var(--l2)}
-.md code{font-family:var(--mono);font-size:13px;background:var(--fill2);padding:1px 5px;border-radius:var(--r-xs)}
-.md pre{background:var(--code);border-radius:var(--r-md);padding:10px 12px;overflow-x:auto;box-shadow:inset 0 0 0 .5px var(--sep)}
+.md li::marker{color:var(--l2)}
+.md blockquote{border-left:3px solid var(--color-fluent-blue);padding-left:12px;color:var(--l2)}
+.md code{font-family:var(--mono);font-size:13px;background:var(--surface-hover);padding:1px 5px;border-radius:var(--radius-small)}
+.md pre{background:var(--code);border-radius:var(--radius-card);padding:10px 12px;overflow-x:auto;box-shadow:inset 0 0 0 1px var(--sep)}
 .md pre code{background:none;padding:0;font-size:12.5px;line-height:1.55;white-space:pre}
-/* Shiki's tokens carry both themes' colours; the app's colour scheme picks one. */
 .hl span{color:light-dark(var(--shiki-light),var(--shiki-dark))}
 .md a{color:var(--accent-t);text-decoration:none}
 .md a:hover{text-decoration:underline}
-/* A code block: a bar with its language and buttons over the code, in one box. */
-.md .cblock{background:var(--code);border-radius:var(--r-md);box-shadow:inset 0 0 0 .5px var(--sep);overflow:hidden}
-.md .cblock pre{margin:0;background:none;box-shadow:none;border-radius:0;padding:8px 12px 10px}
-.cb-h{display:flex;align-items:center;gap:8px;height:30px;padding:0 5px 0 12px;border-bottom:.5px solid var(--sep);font-size:12px;color:var(--l2)}
-.cb-lang{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11.5px}
+.md .cblock{background:var(--code);border-radius:var(--radius-card);box-shadow:inset 0 0 0 1px var(--sep);overflow:hidden}
+.md .cblock pre{margin:0;background:none;box-shadow:none;border-radius:0;padding:10px 14px}
+.cb-h{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 12px;border-bottom:1px solid var(--sep);font-size:12px;color:var(--l2)}
+.cb-lang{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:12px}
 .cb-lang .ic,.cb-warn .ic{width:13px;height:13px}
-.cb-warn{display:inline-flex;align-items:center;gap:4px;color:var(--orange)}
+.cb-warn{display:inline-flex;align-items:center;gap:4px;color:var(--orange-t)}
 .cb-acts{margin-left:auto;display:flex;gap:2px}
-.cb-b{height:22px;padding:0 7px;border:0;border-radius:var(--r-sm);background:none;display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;color:var(--l2)}
-.cb-b:hover{background:var(--fill2);color:var(--l1)}
+.cb-b{height:24px;padding:0 8px;border:0;border-radius:var(--radius-small);background:none;display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;color:var(--l2)}
+.cb-b:hover{background:var(--surface-hover);color:var(--l1)}
 .cb-b .ic{width:13px;height:13px}
-/* Tool steps: a grey line in the body's size, no icon; a small caret after it opens it. */
-.tool{border-radius:9px;font-size:14px}
-.tool .th{display:flex;align-items:center;gap:6px;padding:2px 0;border-radius:6px;border:0;background:none;max-width:100%;text-align:left;color:var(--l2)}
-.tool .th:hover{color:var(--l1)}
-.tool .th .vb{flex:none}
+/* 工具调用折叠条（DESIGN-107 §5 / §6） */
+.tool{border-radius:var(--radius-control);font-size:13px}
+.tool .th{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-control);border:0;background:none;max-width:100%;text-align:left;color:var(--l2)}
+.tool .th:hover{background:var(--surface-hover);color:var(--l1)}
+.tool .th .vb{flex:none;font-weight:600}
 .tool .th .sm2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-/* A command reads as code: the mono face a size down, a little quieter until hovered. */
-.tool .th .cmd{font-family:var(--mono);font-size:12.5px;opacity:.9}
-.tool .th:hover .cmd{opacity:1}
+.tool .th .cmd{font-family:var(--mono);font-size:12.5px}
 .tool .th .chev{flex:none}
-.tgroup{font-size:14px}
-.tg-h{display:flex;align-items:center;gap:6px;padding:2px 0;border:0;background:none;color:var(--l2);text-align:left}
-.tg-h:hover{color:var(--l1)}
-.tg-h .chev,.tool .th .chev{width:14px;height:14px;margin-left:-3px;color:var(--l3);transform:rotate(-90deg);transition:transform .15s}
+.tgroup{font-size:13px}
+.tg-h{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid var(--sep);border-radius:var(--radius-control);background:var(--surface-card);color:var(--l2);text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
+.tg-h:hover{background:var(--surface-card-hover);color:var(--l1)}
+.tg-h .chev,.tool .th .chev{width:14px;height:14px;margin-left:-2px;color:var(--l2);transform:rotate(-90deg);transition:transform var(--duration-normal) var(--ease-fluent)}
 .tgroup.open .tg-h .chev,.tool.open .th .chev{transform:none}
-.tool .out{display:none;margin:4px 0 6px;background:var(--code);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;color:var(--l2);line-height:1.5}
+.tool .out{display:none;margin:4px 0 6px;background:var(--code);border-radius:var(--radius-control);padding:8px 10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;color:var(--l2);line-height:1.5}
 .tool.open .out{display:block}
-/* Opened, a group is a hairline card a size down: one row per call, its output opening inside the card. */
-.tg-b{display:flex;flex-direction:column;margin:var(--sp-1) 0 2px;border:1px solid var(--sep);border-radius:var(--r-box);overflow:hidden}
+.tg-b{display:flex;flex-direction:column;margin:var(--sp-1) 0 2px;border:1px solid var(--sep);border-radius:var(--radius-card);background:var(--surface-card);overflow:hidden}
 .tg-b .tool{border-radius:0;font-size:var(--fs-text)}
 .tg-b .tool+.tool{border-top:1px solid var(--sep)}
-.tg-b .tool .th{width:100%;gap:5px;padding:var(--sp-1) var(--sp-2);border-radius:0}
-.tg-b .tool .th[aria-expanded]:hover,.tg-b .tool.open .th{background:var(--fill)}
-.tg-b .tool .out{margin:0;border-radius:0;padding:var(--sp-1) var(--sp-2) 10px;background:var(--fill);color:var(--l2);max-height:320px;overflow:auto}
-.tool.err .th .vb{color:var(--red)}
-.tnote{align-self:center;font-size:12px;color:var(--l2);background:var(--fill);padding:5px 12px;border-radius:999px}
-.tq{border-radius:var(--r-card);background:var(--fill);padding:10px 12px;font-size:12.5px}
+.tg-b .tool .th{width:100%;gap:6px;padding:var(--sp-1) var(--sp-2);border-radius:0}
+.tg-b .tool .th[aria-expanded]:hover,.tg-b .tool.open .th{background:var(--surface-hover)}
+.tg-b .tool .out{margin:0;border-radius:0;padding:var(--sp-1) var(--sp-2) 10px;background:var(--code);color:var(--l2);max-height:320px;overflow:auto}
+.tool.err .th .vb{color:var(--red-t)}
+.tnote{align-self:center;font-size:12px;color:var(--l2);background:var(--surface-hover);padding:4px 12px;border-radius:var(--radius-pill)}
+.tq{border-radius:var(--radius-card);background:var(--surface-card);border:1px solid var(--sep);padding:10px 14px;font-size:13px}
 .tq b{font-weight:600}
 .tq .ans{margin-top:5px;color:var(--l2)}
-.msg{border-radius:var(--r-card);background:var(--fill);padding:10px 12px;font-size:var(--fs-text-l);line-height:19px}
+.msg{border-radius:var(--radius-card);background:var(--surface-card);border:1px solid var(--sep);padding:10px 14px;font-size:var(--fs-text-l);line-height:1.55}
 .msg-head{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--l2);margin-bottom:4px}
 .msg-head b{font-weight:600;color:var(--l1)}
 .msg-note{margin-left:auto}
-.add-anim{animation:fadein .4s cubic-bezier(.2,0,0,1)}
-/* A failure, in the voice of the steps: a red line, a grey line, Details and Archive; the agent's words folded. */
+.add-anim{animation:fadein var(--duration-normal) var(--ease-fluent)}
 .qfail{display:flex;flex-direction:column;gap:4px;margin-top:6px}
-.qf-line{display:flex;align-items:center;gap:7px;color:var(--red);font-size:var(--fs-text);border:0;background:none;padding:0;text-align:left}
+.qf-line{display:flex;align-items:center;gap:7px;color:var(--red-t);font-size:var(--fs-text);border:0;background:none;padding:0;text-align:left}
 .qf-line b{font-weight:600}
-.qfail.past .qf-line{font-size:12.5px;color:var(--red)}
-.qf-line .chev,.qf-act .chev{transition:transform .15s;width:12px;height:12px}
+.qfail.past .qf-line{font-size:12.5px;color:var(--red-t)}
+.qf-line .chev,.qf-act .chev{transition:transform var(--duration-fast);width:12px;height:12px}
 .qf-line .chev.open,.qf-act .chev.open{transform:rotate(90deg)}
-/* A failed session's end: a quiet card where the reply would be, red only in its mark. */
-.qcard{display:flex;gap:11px;margin-top:8px;padding:13px 16px;border-radius:13px;background:var(--fill);box-shadow:inset 0 0 0 .5px var(--sep)}
-.qcard .qf-ic{width:18px;height:18px;margin-top:1px;color:var(--red)}
-.qf-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+/* 出错卡（#105 / #107 §7）：12 圆角 + 左 3px 红边条 + 红圈图标，默认平话摘要、详情可展开原文 */
+.qcard{display:flex;gap:12px;margin-top:8px;padding:14px 16px;border-radius:var(--radius-card);border-left:3px solid var(--color-error);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card)}
+.qcard .qf-ic{width:18px;height:18px;margin-top:2px;color:var(--red-t)}
+.qf-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .qf-title{font-size:14px;font-weight:600;color:var(--l1)}
-.qf-hint{font-size:var(--fs-text);color:var(--l2)}
-.qf-act{display:flex;gap:14px;margin-top:8px}
-.qcard .qf-raw{margin:6px 0 0}
-.qf-act .link{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--l2)}
+.qf-hint{font-size:14px;line-height:1.55;color:var(--l2)}
+.qf-act{display:flex;align-items:center;gap:12px;margin-top:8px}
+.qcard .qf-raw{margin:8px 0 0}
+.qf-act .link{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--accent-t)}
 .qf-act .link:hover{color:var(--l1)}
-.qf-raw{margin:4px 0 0 20px;font-family:var(--mono);font-size:11.5px;color:var(--l2);background:var(--code);border-radius:8px;padding:8px 10px;box-shadow:inset 0 0 0 .5px var(--sep);white-space:pre-wrap;overflow-wrap:anywhere}
-.livebar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--l2);padding:8px 2px 0}
+.qf-raw{margin:4px 0 0 20px;font-family:var(--mono);font-size:12px;color:var(--l2);background:var(--code);border-radius:var(--radius-control);padding:10px 12px;box-shadow:inset 0 0 0 1px var(--sep);white-space:pre-wrap;overflow-wrap:anywhere}
+.livebar{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--l2);padding:8px 2px 0}
 .livebar .stale-state{font-weight:600;color:var(--l1)}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--l2);height:100%;text-align:center;padding:40px}
 .empty b{color:var(--l1);font-size:15px}
-/* info */
-.form{display:flex;flex-direction:column;gap:18px}
-.fgroup{background:var(--win2);border-radius:var(--r-card)}
-/* Apple's inset grouped list: rows on a card, a hairline between them inset to where the text starts. */
-.frow{position:relative;display:flex;align-items:center;gap:16px;padding:9px 14px;min-height:38px;border:0}
-.frow+.frow::before{content:"";position:absolute;top:0;left:14px;right:0;height:.5px;background:var(--sep);pointer-events:none}
-.frow>label,.frow>.fl{flex:none;width:120px;color:var(--l1)}
+/* Fluent 设置分组卡片（DESIGN-107 §8 / §9）：12 圆角、亚克力底、行高 ≥48 */
+.form{display:flex;flex-direction:column;gap:20px}
+.fgroup{background:var(--win2);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));border-radius:var(--radius-card);box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);overflow:hidden}
+.frow{position:relative;display:flex;align-items:center;gap:16px;padding:12px 16px;min-height:48px;border:0}
+.frow+.frow::before{content:"";position:absolute;top:0;left:16px;right:16px;height:1px;background:var(--sep);pointer-events:none}
+.frow>label,.frow>.fl{flex:none;width:128px;color:var(--l1);font-weight:500}
 .frow>.fv{flex:1;min-width:0;display:flex;align-items:center;gap:8px;justify-content:flex-end;color:var(--l2);text-align:right;flex-wrap:wrap}
 .frow>.fv.left{justify-content:flex-start;text-align:left}
-.frow .fdesc{font-size:11.5px;color:var(--l2);margin-top:2px}
-/* A group's title over its card, a group's note under it: small, secondary, in line with the rows' text. */
-.fhead{font-size:12px;font-weight:var(--font-weight-normal);color:var(--l2);margin:0 0 6px 14px}
+.frow .fdesc{font-size:12px;color:var(--l2);margin-top:2px;line-height:1.45}
+.fhead{font-size:13px;font-weight:600;color:var(--l1);margin:0 0 8px 2px}
 /* palette */
 /* Behind a dialog, the window goes dim and soft: 12px of blur costs no frames even under a streaming reply (measured 2026-11-12; 40px begins to show). */
 .scrim{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:var(--scrim-blur);backdrop-filter:var(--scrim-blur);z-index:40;animation:fade .15s}
@@ -618,65 +564,61 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 
 .pal-r{max-height:420px;overflow-y:auto;padding:6px}
 .pal-h{font-size:11.5px;font-weight:600;color:var(--l2);padding:8px 10px 4px}
-.pr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-ctl);border:0;background:none;width:100%;text-align:left}
-.pr.on{background:var(--accent);color:var(--on-accent)}
-.pr.on .muted,.pr.on .kbd{color:rgba(255,255,255,.8)}
+.pr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--radius-control);border:0;background:none;width:100%;text-align:left}
+.pr.on{background:var(--color-fluent-blue);color:#ffffff}
+.pr.on .muted,.pr.on .kbd{color:#ffffff}
 .pr .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr .muted{font-size:12px;flex:none}
-.pal-foot{display:flex;gap:14px;padding:8px 16px;border-top:.5px solid var(--sep);font-size:11.5px;color:var(--l3)}
+.pal-foot{display:flex;gap:14px;padding:8px 16px;border-top:1px solid var(--sep);font-size:12px;color:var(--l2)}
 /* toast */
-/* Requests waiting for the owner: a card at the content's bottom right, the others stacked under it (RequestCards.tsx). */
 .reqs{position:absolute;right:20px;z-index:5;width:340px;max-width:calc(100% - 40px)}
-.req{position:relative;background:var(--win);border-radius:var(--r-panel);box-shadow:var(--shadow-pop);padding:14px 16px;display:flex;flex-direction:column;gap:10px;animation:requp var(--spring-dur) var(--spring)}
+.req{position:relative;background:var(--surface-dialog);border-radius:var(--radius-overlay);box-shadow:var(--shadow-pop);padding:14px 16px;display:flex;flex-direction:column;gap:10px;animation:requp var(--duration-normal) var(--ease-fluent)}
 @keyframes requp{from{opacity:0;transform:translateY(10px) scale(.98)}}
-.req-back{position:absolute;left:6px;right:6px;bottom:-6px;height:40px;border-radius:var(--r-panel);background:var(--win);box-shadow:0 0 0 .5px var(--menu-bd),0 4px 12px rgba(0,0,0,.06)}
+.req-back{position:absolute;left:6px;right:6px;bottom:-6px;height:40px;border-radius:var(--radius-overlay);background:var(--surface-dialog);box-shadow:0 0 0 1px var(--sep),0 4px 12px rgba(0,0,0,.06)}
 .req-back.b2{left:12px;right:12px;bottom:-12px}
 .req-h{display:flex;align-items:flex-start;gap:12px}
-.req-i{width:30px;height:30px;flex:none;border-radius:8px;background:var(--accent-bg);color:var(--accent-t);display:flex;align-items:center;justify-content:center}
+.req-i{width:30px;height:30px;flex:none;border-radius:var(--radius-control);background:var(--accent-bg);color:var(--accent-t);display:flex;align-items:center;justify-content:center}
 .req-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .req-t b{font-weight:600}
 .req-t>span{font-size:12px;color:var(--l2)}
 .req-t .mono{color:var(--l1)}
-.req-n{font-size:11px;color:var(--l3);flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
+.req-n{font-size:11.5px;color:var(--l2);flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
 .req-acts{display:flex;justify-content:flex-end;gap:8px}
-.toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--menu);backdrop-filter:var(--material);-webkit-backdrop-filter:var(--material);box-shadow:var(--shadow-pop);border-radius:999px;padding:8px 10px 8px 16px;display:flex;align-items:center;gap:12px;font-size:var(--fs-text);z-index:60;animation:pop2 var(--spring-dur) var(--spring);white-space:nowrap}
+.toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--menu);backdrop-filter:var(--material);-webkit-backdrop-filter:var(--material);box-shadow:var(--shadow-pop);border-radius:var(--radius-pill);padding:8px 14px 8px 16px;display:flex;align-items:center;gap:10px;font-size:var(--fs-text);z-index:60;animation:pop2 var(--duration-normal) var(--ease-fluent);white-space:nowrap}
 @keyframes pop2{from{opacity:0;transform:translate(-50%,8px)}}
 .toast .ic{color:var(--green)}
-/* sheets */
-.sheet-scrim{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:var(--scrim-blur);backdrop-filter:var(--scrim-blur);z-index:45;animation:fade .2s}
-/* A sheet, as macOS brings one down from the window's top: a grouped page (grey, its groups white cards) on a soft,
-   large shadow, the window dimmed behind it; it comes in on a spring. */
-.sheet{position:absolute;left:50%;top:60px;transform:translateX(-50%);background:var(--grouped-el);--win2:var(--grouped-card-el);border-radius:var(--r-sheet);box-shadow:var(--shadow-sheet);z-index:46;padding:22px 24px 18px;animation:sheet var(--spring-dur) var(--spring);max-height:calc(100% - 80px);overflow-y:auto}
-@keyframes sheet{from{opacity:0;transform:translate(-50%,-16px) scale(.98)}}
-.sheet h3{margin:0 0 4px;font-size:var(--fs-title3);font-weight:var(--font-weight-semibold)}
-.sheet .sub{margin:0 0 14px;color:var(--l2);font-size:12.5px;line-height:1.55}
-.sheet-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;align-items:center}
+/* Fluent 对话框与弹窗（DESIGN-107 §14）：16 圆角、纯白/深灰实底、250ms 进出 */
+.sheet-scrim{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:var(--scrim-blur);backdrop-filter:var(--scrim-blur);z-index:45;animation:fade var(--duration-slow)}
+.sheet{position:absolute;left:50%;top:60px;transform:translateX(-50%);background:var(--surface-dialog);--win2:var(--surface-card);border-radius:var(--radius-dialog);box-shadow:var(--shadow-sheet);z-index:46;padding:24px;animation:sheet var(--duration-slow) var(--ease-fluent);max-height:calc(100% - 80px);overflow-y:auto}
+@keyframes sheet{from{opacity:0;transform:translate(-50%,-8px) scale(.96)}}
+.sheet h3{margin:0 0 6px;font-size:var(--fs-title2);font-weight:600}
+.sheet .sub{margin:0 0 14px;color:var(--l2);font-size:13px;line-height:1.55}
+.sheet-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;align-items:center}
 .sheet-foot .left{margin-right:auto}
 /* onboarding */
-.ob-wrap{height:100%;display:flex;flex-direction:column;position:relative}
+.ob-wrap{height:100%;display:flex;flex-direction:column;position:relative;background:var(--surface-page)}
 .ob-top{height:48px;display:flex;align-items:center;padding:0 18px;flex:none;position:relative}
 .ob-body{flex:1;min-height:0;overflow-y:auto;padding:8px 48px 0;display:flex;flex-direction:column}
-.ob-foot{flex:none;display:flex;align-items:center;gap:10px;padding:14px 22px 18px;border-top:.5px solid var(--sep)}
+.ob-foot{flex:none;display:flex;align-items:center;gap:10px;padding:14px 22px 18px;border-top:1px solid var(--sep)}
 .ob-foot .note{color:var(--l2);font-size:12px;margin-right:auto}
 .hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding-bottom:20px}
 .hero .mk{position:relative;width:96px;height:96px;margin-bottom:8px;isolation:isolate}
-.hero h1{margin:0;font-size:var(--fs-large-title);font-weight:var(--font-weight-bold);letter-spacing:-.015em;text-wrap:balance}
+.hero h1{margin:0;font-size:var(--fs-large-title);font-weight:600;letter-spacing:-.015em;text-wrap:balance}
 .hero p{margin:0;max-width:440px;color:var(--l2);font-size:14px;line-height:1.6;text-wrap:balance}
 .hero p.lede{max-width:none}
 .hero .cta{min-width:200px;margin-top:14px}
 .center-line{font-size:12px;color:var(--l2);display:flex;gap:8px;align-items:center;justify-content:center;padding:14px 0 6px}
-.promise{display:flex;gap:6px;align-items:center;justify-content:center;margin:0;padding:0 0 22px;font-size:11.5px;color:var(--l3)}
+.promise{display:flex;gap:6px;align-items:center;justify-content:center;margin:0;padding:0 0 22px;font-size:12px;color:var(--l2)}
 .promise .ic{width:13px;height:13px;flex:none;color:var(--accent-t)}
-.ob-h{margin:14px 0 4px;font-size:var(--fs-title1);font-weight:var(--font-weight-bold);letter-spacing:-.01em;text-wrap:balance}
+.ob-h{margin:14px 0 4px;font-size:var(--fs-title1);font-weight:600;letter-spacing:-.01em;text-wrap:balance}
 .ob-p{margin:0 0 18px;color:var(--l2);font-size:var(--fs-text);line-height:1.6;max-width:560px}
-.perm{display:flex;flex-direction:column;background:var(--win2);border-radius:var(--r-card)}
+.perm{display:flex;flex-direction:column;background:var(--win2);border-radius:var(--radius-card);border:1px solid var(--sep)}
 .prow{position:relative;display:flex;gap:14px;padding:14px 16px;align-items:flex-start}
-.prow+.prow::before{content:"";position:absolute;top:0;right:0;left:62px;height:.5px;background:var(--sep);pointer-events:none}
-.prow .pi{width:32px;height:32px;border-radius:9px;background:var(--accent-bg);color:var(--accent-t);display:flex;align-items:center;justify-content:center;flex:none}
+.prow+.prow::before{content:"";position:absolute;top:0;right:0;left:62px;height:1px;background:var(--sep);pointer-events:none}
+.prow .pi{width:32px;height:32px;border-radius:var(--radius-control);background:var(--accent-bg);color:var(--accent-t);display:flex;align-items:center;justify-content:center;flex:none}
 .prow .pt{flex:1;min-width:0}
 .prow .pt b{display:block;font-weight:600;margin-bottom:2px}
 .prow .pt span{font-size:12px;color:var(--l2);line-height:1.55;display:block}
-/* "Required", where a switch would be: a secondary word, not the request card (.req) the class also names. */
 .prow .req{font-size:12px;color:var(--l2);margin-top:3px;padding:0;background:none;box-shadow:none;border-radius:0;animation:none;display:block}
 .prow .sw{margin-top:6px}
 .scan{display:flex;align-items:center;gap:10px;color:var(--l2);font-size:12.5px;padding:18px 0}
@@ -684,53 +626,49 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .blk-h .muted{font-weight:400;font-size:12px}
 .blk-h .btn{margin-left:auto}
 .pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.pc{background:var(--win2);border-radius:var(--r-card);padding:16px 14px;display:flex;flex-direction:column;gap:10px;border:0;text-align:left;align-items:flex-start;min-height:108px}
-.pc:hover{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.pc{background:var(--win2);border-radius:var(--radius-card);padding:16px 14px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--sep);text-align:left;align-items:flex-start;min-height:108px}
+.pc:hover{box-shadow:inset 0 0 0 1.5px var(--color-fluent-blue)}
 .pc b{font-weight:600;font-size:var(--fs-text-l)}
 .pc span{font-size:12px;color:var(--l2)}
 .pc.soon{opacity:.5;box-shadow:inset 0 0 0 1px var(--l4);background:transparent;pointer-events:none}
-.msgbox{position:relative;background:var(--code);border-radius:var(--r-card);padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.65;white-space:pre-wrap;color:var(--l1);box-shadow:inset 0 0 0 .5px var(--sep)}
+.msgbox{position:relative;background:var(--code);border-radius:var(--radius-card);padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.65;white-space:pre-wrap;color:var(--l1);box-shadow:inset 0 0 0 1px var(--sep)}
 .msgbox .btn{position:absolute;top:10px;right:10px}
 .waitline{display:flex;align-items:center;gap:14px;padding:16px 0}
-/* Add Machine: that machine's system, how to install, then the steps or the command (sheets/Add.tsx). */
 .os-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-/* Picking a system: cards, the chosen one ringed in the accent, as Apple's pickers of large choices. */
-.os{height:70px;border:0;border-radius:var(--r-card);background:var(--win2);box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--l2);font-size:12.5px}
+.os{height:70px;border:1px solid var(--sep);border-radius:var(--radius-card);background:var(--win2);box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--l2);font-size:12.5px}
 .os:hover{color:var(--l1)}
-.os.on{background:var(--win2);box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent-t)}
+.os.on{background:var(--win2);border-color:var(--color-fluent-blue);box-shadow:inset 0 0 0 1px var(--color-fluent-blue);color:var(--accent-t)}
 .os svg{width:22px;height:22px}
-.seg button:disabled{color:var(--l3)}
-.seg .tag{font-size:10.5px;color:var(--l3)}
-.am-panel{background:var(--win2);border-radius:var(--r-card);padding:14px;margin-top:12px;min-height:66px;display:flex;flex-direction:column;gap:10px}
+.seg button:disabled{color:var(--color-text-disabled)}
+.seg .tag{font-size:11px;color:var(--l2)}
+.am-panel{background:var(--win2);border-radius:var(--radius-card);border:1px solid var(--sep);padding:14px;margin-top:12px;min-height:66px;display:flex;flex-direction:column;gap:10px}
 .am-step{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:24px}
-.am-n{width:18px;height:18px;border-radius:50%;background:var(--fill2);color:var(--l2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
-.am-chip{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;background:var(--code);box-shadow:inset 0 0 0 .5px var(--sep)}
+.am-n{width:20px;height:20px;border-radius:50%;background:var(--surface-hover);color:var(--l2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.am-chip{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:var(--radius-small);background:var(--code);box-shadow:inset 0 0 0 1px var(--sep)}
 .am-cmdh{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--l2)}
 .am-code{font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--l1);word-break:break-all}
 .am-wait{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--l2)}
 .waitline b{display:block;font-weight:600}
 .waitline span{font-size:12.5px;color:var(--l2)}
-.scope{background:var(--win2);border-radius:var(--r-card)}
-.srow2{position:relative;padding:11px 14px}
-.srow2+.srow2::before{content:"";position:absolute;top:0;right:0;left:14px;height:.5px;background:var(--sep);pointer-events:none}
+.scope{background:var(--win2);border-radius:var(--radius-card);border:1px solid var(--sep)}
+.srow2{position:relative;padding:12px 16px}
+.srow2+.srow2::before{content:"";position:absolute;top:0;right:16px;left:16px;height:1px;background:var(--sep);pointer-events:none}
 .srow2 .top{display:flex;align-items:center;gap:12px}
 .srow2 .top .k{width:84px;flex:none}
 .srow2 .top .v{flex:1;color:var(--l2);min-width:0}
 .srow2 .opts{display:flex;flex-direction:column;gap:7px;padding:10px 0 2px 96px}
 .big-ok{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:10px 0 4px}
-.big-ok .okc{width:44px;height:44px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;animation:popin var(--spring-dur) var(--spring)}
+.big-ok .okc{width:44px;height:44px;border-radius:50%;background:var(--green-fill);color:#ffffff;display:flex;align-items:center;justify-content:center;animation:popin var(--duration-normal) var(--ease-fluent)}
 .big-ok .okc .ic{width:24px;height:24px;stroke-width:2.4}
 @keyframes popin{from{transform:scale(.6);opacity:0}}
-/* settings window (settings.css has the rest) */
-.dhero{display:flex;align-items:center;gap:14px;margin-bottom:3px}
-.dhero b{font-size:var(--fs-title2);font-weight:var(--font-weight-semibold);display:block}
-.dhero span{font-size:12px;color:var(--l2);margin-top:2px}
+.dhero{display:flex;align-items:center;gap:16px;margin-bottom:4px}
+.dhero b{font-size:var(--fs-title2);font-weight:600;display:block}
+.dhero span{font-size:12.5px;color:var(--l2);margin-top:2px}
 @keyframes pop3{from{opacity:0;transform:translateX(-50%) scale(.95)}}
 .pn-top{height:40px;display:flex;align-items:center;padding:0 16px;flex:none;position:relative}
 .pn-top .ttl{position:absolute;left:0;right:0;text-align:center;font-size:12.5px;font-weight:600;color:var(--l2);pointer-events:none}
 .pn-body{padding:6px 26px 22px}
 @keyframes slidein{from{opacity:0;transform:translateX(30px)}}
-/* Going (useLeaving, LEAVE_MS): what came in goes the way it came, quicker; it takes no more clicks. */
 .sheet.leaving,.sheet-scrim.leaving,.pal.leaving,.scrim.leaving,.toast.leaving{animation:fade-out .14s var(--ease-in) forwards;pointer-events:none}
 .sheet.leaving{animation-name:sheet-out}
 .toast.leaving{animation-name:toast-out}
@@ -739,76 +677,72 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 @keyframes sheet-out{to{opacity:0;transform:translate(-50%,-6px)}}
 @keyframes toast-out{to{opacity:0;transform:translate(-50%,6px)}}
 @keyframes pal-out{to{opacity:0;transform:translateX(-50%) scale(.985)}}
-/* Copied: the check comes in. */
-.tick-in{animation:popin var(--snappy-dur) var(--snappy)}
+.tick-in{animation:popin var(--duration-fast) var(--ease-fluent)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
-/* The app's own pop-up button and tick box (工单 #68, Picker.tsx): no browser form control anywhere. The pop-up button is
-   macOS's: a push button with the choice, its ⌃⌄ in a small accent square at the right end. */
-.picker{display:inline-flex;align-items:center;gap:6px;height:26px;max-width:100%;padding:0 4px 0 10px;border:0;border-radius:var(--r-ctl);background:var(--btn);box-shadow:var(--btn-sh);color:var(--l1);font:inherit;font-size:var(--fs-text);text-align:left;cursor:default}
-.picker.sm{height:22px;font-size:12px;padding:0 3px 0 8px}
-.picker:disabled{color:var(--l3)}
-.picker.on,.picker:focus-visible{box-shadow:var(--btn-sh),0 0 0 3px var(--focus-ring)}
+/* Fluent 下拉框（DESIGN-107 §10）：32 高、8 圆角、1px 描边 + 底部 1px 强调线、展开亚克力浮层 */
+.picker{display:inline-flex;align-items:center;gap:8px;height:var(--size-control);max-width:100%;padding:0 8px 0 12px;border:1px solid var(--color-border);border-bottom-color:var(--color-border-strong);border-radius:var(--radius-control);background:var(--surface-input);box-shadow:none;color:var(--l1);font:inherit;font-size:var(--fs-text);text-align:left;cursor:default;transition:border-color var(--duration-fast) var(--ease-fluent),background-color var(--duration-fast) var(--ease-fluent)}
+.picker:hover:not(:disabled){border-color:var(--color-border-strong)}
+.picker.sm{height:28px;font-size:12.5px;padding:0 6px 0 10px}
+.picker:disabled{color:var(--color-text-disabled);background:var(--surface-hover);border-color:transparent}
+.picker.on,.picker:focus-visible{border-color:var(--color-fluent-blue);border-bottom-color:var(--color-fluent-blue);box-shadow:inset 0 -1px 0 var(--color-fluent-blue),var(--focus-ring)}
 .picker .picker-v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.picker .picker-c{flex:none;width:18px;height:18px;padding:2px;border-radius:4px;background:var(--accent);color:var(--on-accent);stroke-width:1.6}
-.picker.sm .picker-c{width:16px;height:16px;padding:2px}
-.picker:disabled .picker-c{background:var(--fill3)}
-.picker.chip .picker-c{width:12px;height:12px;padding:0;background:none;color:var(--l2);stroke-width:1.25}
-.picker.chip{height:24px;padding:0 6px 0 9px;border-radius:999px;background:var(--fill2);box-shadow:none;font-size:12px;color:var(--l2)}
-.picker.chip:hover{color:var(--l1)}
+.picker .picker-c{flex:none;width:16px;height:16px;padding:0;border-radius:0;background:none;color:var(--l2);stroke-width:1.5}
+.picker.sm .picker-c{width:14px;height:14px;padding:0}
+.picker:disabled .picker-c{color:var(--color-text-disabled)}
+.picker.chip .picker-c{width:14px;height:14px;padding:0;background:none;color:var(--l2);stroke-width:1.5}
+.picker.chip{height:28px;padding:0 8px 0 10px;border-radius:var(--radius-control);background:var(--btn);border:1px solid var(--color-border);box-shadow:none;font-size:12.5px;color:var(--l1)}
+.picker.chip:hover{background:var(--surface-hover)}
 .picker-menu{max-height:min(360px,70vh);overflow-y:auto}
-.picker-menu .mi{height:auto;min-height:26px}
+.picker-menu .mi{height:auto;min-height:var(--size-row)}
 .picker-menu .picker-l{display:flex;flex-direction:column;padding:4px 0}
-.picker-menu .picker-l small{font-size:11px;color:var(--l2)}
-.picker-menu .mi:disabled{color:var(--l3)}
-.chk{flex:none;width:18px;height:18px;padding:0;border-radius:50%;border:0;background:var(--field);box-shadow:inset 0 0 0 1.5px var(--field-bd);display:inline-flex;align-items:center;justify-content:center;color:#fff}
-.chk.on{background:var(--accent);color:var(--on-accent);box-shadow:none}
+.picker-menu .picker-l small{font-size:12px;color:var(--l2)}
+.picker-menu .mi:disabled{color:var(--color-text-disabled)}
+.chk{flex:none;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--color-border-strong);background:var(--surface-input);display:inline-flex;align-items:center;justify-content:center;color:#ffffff}
+.chk.on{background:var(--color-fluent-blue);border-color:var(--color-fluent-blue);color:#ffffff}
 .chk .ic{width:12px;height:12px}
 
-/* A bot's face (工单 #83): its Grok Bot character (packages/ui/src/grok, from BotArk), the same everywhere, moved by its
-   real state; its app's logo on its lower corner where there is room, its state's dot on the other. */
 .bav{position:relative;display:inline-flex;flex:none;border-radius:50%}
 .bav-in{display:inline-flex;width:100%;height:100%;border-radius:50%;overflow:hidden;align-items:center;justify-content:center}
 .bav-mark{position:relative;display:inline-flex;flex:none}
 .bav-app{position:absolute;left:-2px;bottom:-2px;display:flex;padding:2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.12)}
 .bav-edit{display:flex;padding:0;border:0;background:none;border-radius:50%;cursor:pointer}
-.bav>.dotc{position:absolute;right:-1px;bottom:-1px;width:28%;height:28%;min-width:8px;min-height:8px;max-width:12px;max-height:12px;box-shadow:0 0 0 2px var(--bav-ring,var(--side-head,var(--win)))}
-/* The one avatar editor (BotArk's BotAvatarEditorDialog, Bot tab): the live stage, 26 shapes five a row, 11 colours. */
+.bav>.dotc{position:absolute;right:-1px;bottom:-1px;width:28%;height:28%;min-width:8px;min-height:8px;max-width:12px;max-height:12px;box-shadow:0 0 0 2px var(--bav-ring,var(--surface-page))}
 .gbe{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
-.gbe-stage{display:flex;width:96px;height:96px;align-items:center;justify-content:center;border:0;border-radius:16px;background:var(--fill);cursor:pointer;transition:transform .15s var(--ease-out)}
+.gbe-stage{display:flex;width:96px;height:96px;align-items:center;justify-content:center;border:0;border-radius:var(--radius-dialog);background:var(--surface-hover);cursor:pointer;transition:transform var(--duration-fast) var(--ease-fluent)}
 .gbe-stage:active{transform:scale(.95)}
-.gbe-grid{display:grid;grid-template-columns:repeat(5,48px);gap:6px;max-height:210px;overflow-y:auto;padding:8px;border-radius:12px;background:var(--fill)}
-.gbe-cell{display:flex;width:48px;height:48px;align-items:center;justify-content:center;padding:0;border:0;border-radius:12px;background:none}
-.gbe-cell:hover,.gbe-cell.on{background:var(--win)}
-.gbe-cell.on{box-shadow:0 0 0 2px var(--l1)}
+.gbe-grid{display:grid;grid-template-columns:repeat(5,48px);gap:6px;max-height:210px;overflow-y:auto;padding:8px;border-radius:var(--radius-card);background:var(--surface-hover)}
+.gbe-cell{display:flex;width:48px;height:48px;align-items:center;justify-content:center;padding:0;border:0;border-radius:var(--radius-card);background:none}
+.gbe-cell:hover,.gbe-cell.on{background:var(--surface-solid-white)}
+.gbe-cell.on{box-shadow:0 0 0 2px var(--color-fluent-blue)}
 .gbe-colors{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:4px 0}
 .gbe-swatch{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:50%;background:none}
 .gbe-swatch>span{width:18px;height:18px;border-radius:50%}
-.gbe-swatch.on{transform:scale(1.1);box-shadow:0 0 0 2px var(--win),0 0 0 4px var(--l1)}
-@media (prefers-reduced-motion:reduce){.bav[data-run]::before{animation:none;background:var(--accent)}}
+.gbe-swatch.on{transform:scale(1.1);box-shadow:0 0 0 2px var(--surface-dialog),0 0 0 4px var(--color-fluent-blue)}
+@media (prefers-reduced-motion:reduce){.bav[data-run]::before{animation:none;background:var(--color-fluent-blue)}}
 .toast.in-sheet{position:sticky;left:auto;right:auto;bottom:0;transform:none;margin:12px auto 0;width:fit-content;max-width:100%}
 
-/* Apple's grouped lists: an action is a row in the group, in the accent (destructive ones red), never a loose button (工单 #68). */
-.frow.act{width:100%;border:0;background:none;font:inherit;color:var(--accent-t);text-align:left;gap:8px}
-.frow.act:hover{background:var(--fill)}
-.frow.act.danger{color:var(--red)}
-.frow.act .chev{margin-left:auto;color:var(--l3)}
+.frow.act{width:100%;border:0;background:none;font:inherit;font-weight:600;color:var(--accent-t);text-align:left;gap:8px}
+.frow.act:hover{background:var(--surface-hover)}
+.frow.act.danger{color:var(--red-t)}
+.frow.act .chev{margin-left:auto;color:var(--l2)}
 .frow.choice{width:100%;border:0;background:none;font:inherit;color:inherit;text-align:left;gap:12px}
 .frow.choice .ft{display:flex;flex-direction:column}
 .picker:focus-visible{outline:none}
-/* 全部任务 (工单 #63): the session list as a column of its own between the sidebar and the session. */
-.mainwrap.listed{grid-template-columns:272px 300px minmax(0,1fr)}
-.mainwrap.listed.railed{grid-template-columns:74px 300px minmax(0,1fr)}
-.mainwrap.listed>.tasks-col{grid-column:2}
-.mainwrap.listed>.content{grid-column:3}
+/* 全部任务：三栏布局，均位于标题栏下方（grid-row: 2） */
+.mainwrap.listed{grid-template-columns:var(--size-nav-pane) var(--size-list-pane) minmax(0,1fr)}
+.mainwrap.listed.railed{grid-template-columns:72px var(--size-list-pane) minmax(0,1fr)}
+.mainwrap.listed>.tasks-col{grid-column:2;grid-row:2}
+.mainwrap.listed>.content{grid-column:3;grid-row:2}
 .tasks-col>.side-h{height:44px}
-/* The link to aided being restored (工单 #87): over the page, what it shows kept as last known. */
-.link-banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:12.5px;color:var(--orange);background:var(--orange-bg);box-shadow:0 0 0 .5px color-mix(in srgb,var(--orange) 40%,transparent)}
-.link-banner i{width:7px;height:7px;border-radius:50%;background:var(--orange)}
-.link-banner-btn{border:0;border-radius:999px;padding:2px 10px;background:var(--orange);color:#fff;font-size:12px;font-weight:500;cursor:pointer}
+/* 断连横幅（#87 / #120）：对比度达标 */
+.link-banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:var(--radius-pill);font-size:12.5px;font-weight:600;color:var(--orange-t);background:var(--surface-flyout);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:inset 0 0 0 1px var(--color-caution),var(--shadow-flyout)}
+.link-banner i{width:8px;height:8px;border-radius:50%;background:var(--orange)}
+.link-banner-btn{border:0;border-radius:var(--radius-control);padding:3px 10px;background:var(--color-fluent-blue);color:#ffffff;font-size:12px;font-weight:600;cursor:pointer}
+.link-banner-btn:hover:not(:disabled){background:var(--color-accent-hover)}
 .link-banner-btn:disabled{opacity:.65;cursor:default}
-.link-banner-link{border:0;background:none;padding:0 4px;color:inherit;font-size:12px;text-decoration:underline;cursor:pointer}
-.link-banner-err{color:var(--red);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-banner-link{border:0;background:none;padding:0 4px;color:var(--accent-t);font-size:12px;font-weight:600;text-decoration:underline;cursor:pointer}
+.link-banner-err{color:var(--red-t);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Press (工单 #95): a control held gives a little — 0.97 — and springs back when let go; a list row lights up grey
    instead, as Apple's lists do. Reduce Motion keeps the highlight, not the movement. */

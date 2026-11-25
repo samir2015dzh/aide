@@ -200,7 +200,12 @@ class PageShots {
     @Test fun home() = model().let { m ->
         @Suppress("UNCHECKED_CAST")
         (AppModel::class.java.getDeclaredField("_phase").apply { isAccessible = true }.get(m) as MutableStateFlow<AppModel.Phase>).value = AppModel.Phase.Ready
-        shot("18-home-tabs", waitFor = "发版评审") { Root(m) }
+        shot("18-home-tabs", waitFor = "概览") { Root(m) }
+    }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun homeLight() = model().let { m ->
+        @Suppress("UNCHECKED_CAST")
+        (AppModel::class.java.getDeclaredField("_phase").apply { isAccessible = true }.get(m) as MutableStateFlow<AppModel.Phase>).value = AppModel.Phase.Ready
+        shot("35-home-tabs-light", waitFor = "概览") { Root(m) }
     }
     // A bot's settings, a page of their own (工单 #97): DSH's, its removal asked, its pause menu, in light mode; Muse's (its grant).
     @Test fun botSettings() = model().let { m -> shot("19-bot-dsh-settings") { BotSettingsPage(m, "m:m1/deepseek", edit = {}) {} } }
@@ -220,6 +225,7 @@ class PageShots {
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun botsLight() = model().let { m -> shot("28-bots-light", waitFor = "发版评审") { BotsTab(m) {} } }
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun settingsLight() = model().let { m -> shot("29-settings-light") { SettingsTab(m) } }
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun sessionLight() = model().let { m -> shot("30-session-light", waitFor = "重组") { SessionPage(m, "s2", back = {}) } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun devicesLight() = model().let { m -> shot("36-machines-light") { DevicesTab(m) {} } }
 
     // The bot pages at full length (工单 #97): a screen tall enough for the whole list, the list's height written down.
     @Test @Config(qualifiers = "zh-rCN-w392dp-h2600dp-port-night-xxhdpi") fun botPageFull() = model().let { m ->

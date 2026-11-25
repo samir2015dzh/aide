@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import type { Machine } from "@aide/proto/local";
-import { RoomDeliveryState, type Room, type RoomMessage } from "@aide/proto/machine";
+import { RoomDeliveryState, RoomMode, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
   allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
@@ -165,18 +165,32 @@ export function BotPill({ b }: { b: Bot }) {
   );
 }
 
-/** A bot's right-click menu in the roster: open it, pin it as a tile or take it off, delete it from the roster. */
-async function botMenu(e: ReactMouseEvent, b: Bot, pinned: boolean, pin: (key: string, on: boolean) => void, open: () => void, remove: () => void, t: TFunction<"common">) {
+/** Bot 右键菜单（DESIGN-107 §0.5c #6B / §15A）：打开 / 设置… / 置顶 / 改名和换头像… / 从名册删除… */
+async function botMenu(
+  e: ReactMouseEvent,
+  b: Bot,
+  pinned: boolean,
+  pin: (key: string, on: boolean) => void,
+  open: () => void,
+  openSettings: () => void,
+  editLook: () => void,
+  remove: () => void,
+  t: TFunction<"common">,
+) {
   e.preventDefault();
   const id = await window.aide?.popupMenu([
     { id: "open", label: t("bots.open") },
+    { id: "settings", label: t("bots.settingsMenu") },
     { separator: true },
     { id: "pin", label: t(pinned ? "bots.unpin" : "bots.pin") },
+    { id: "look", label: t("bots.renameAndFace") },
     { separator: true },
     { id: "remove", label: t("bots.remove.menu") },
   ]);
   if (id === "open") open();
+  if (id === "settings") openSettings();
   if (id === "pin") pin(b.key, !pinned);
+  if (id === "look") editLook();
   if (id === "remove") remove();
 }
 
@@ -220,9 +234,17 @@ export function SidebarRoster() {
   const { t } = useTranslation("common");
   const r = useRoster();
   const [pins, pin] = usePins();
+  const [lookBot, setLookBot] = useState<Bot | null>(null);
   const all = allBots(r);
   const sel = st.selection.kind === "bot" ? st.selection.key : "";
   const open = (b: Bot) => st.set({ selection: { kind: "bot", key: b.key } });
+  const openSettings = (b: Bot) => st.set({ selection: { kind: "bot", key: b.key, pane: "settings" } });
+  const editLook = (b: Bot) => {
+    const p = b.personas[0];
+    if (p) st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...p } } });
+    else if (b.key.startsWith("m:")) st.set({ sheet: { kind: "persona", draft: { ...blankPersona, ...lookFields(botLook(b)), machineId: b.machineId, agent: b.agent, name: b.name } } });
+    else if (b.client) setLookBot(b);
+  };
   const pinned = pins.map((k) => all.find((b) => b.key === k)).filter((b): b is Bot => !!b);
   const group = (id: string, title: string, bots: Bot[], short = false) => {
     const key = `bots:${id}`;
@@ -240,9 +262,9 @@ export function SidebarRoster() {
             className={`bot-row ${sel === b.key ? "sel" : ""}`}
             aria-current={sel === b.key || undefined}
             onClick={() => open(b)}
-            onContextMenu={(e) => botMenu(e, b, pins.includes(b.key), pin, () => open(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
+            onContextMenu={(e) => botMenu(e, b, pins.includes(b.key), pin, () => open(b), () => openSettings(b), () => editLook(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
           >
-            <BotFace b={b} size={28} dot />
+            <BotFace b={b} size={32} dot />
             <span className="bot-t">
               <span className="bot-l1">
                 <b>{short ? b.shortName : b.name}</b>
@@ -267,7 +289,7 @@ export function SidebarRoster() {
               className={`bot-tile ${sel === b.key ? "sel" : ""}`}
               title={`${b.name} · ${b.state.word}`}
               onClick={() => open(b)}
-              onContextMenu={(e) => botMenu(e, b, true, pin, () => open(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
+              onContextMenu={(e) => botMenu(e, b, true, pin, () => open(b), () => openSettings(b), () => editLook(b), () => st.set({ sheet: removeSheet(b, st.machines, t) }), t)}
             >
               <BotFace b={b} size={34} dot />
               <span>{b.name}</span>
@@ -286,6 +308,7 @@ export function SidebarRoster() {
           <button className="link" onClick={() => window.aide?.openSettings("connect")}>{t("bots.noneConnect")}</button>
         </div>
       )}
+      {lookBot?.client && <LookSheet c={lookBot.client} st={st} close={() => setLookBot(null)} />}
     </section>
   );
 }
@@ -445,6 +468,8 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
   const attach = useAttachments();
   const [showArchived, setShowArchived] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const totalConvs = convs.open.length + convs.archived.length + convs.others.length;
   const stuck = current ? stuckWhy(current, st.projects, m) : undefined;
   const fresh = !current || paramsChanged(current, params, a?.models);
   const changed = current ? changedParams(current, params, a?.models) : [];
@@ -527,7 +552,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
     const why = stuckWhy(s, st.projects, m);
     return (
       <div key={s.sessionId} className={`conv-row ${isCur ? "cur" : ""}`} role="listitem" aria-current={isCur || undefined}>
-        <button className="conv-main" onClick={() => choose(s.sessionId)} title={t("conv.goOnTip")}>
+        <button className="conv-main" onClick={() => (choose(s.sessionId), setListOpen(false))} title={t("conv.goOnTip")}>
           <StatusDot s={s} />
           <span className="conv-t">
             <b>{displayTitle(s)}</b>
@@ -538,7 +563,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
           </span>
           {isCur && <span className="conv-badge">{t("conv.current")}</span>}
         </button>
-        <button className="tb" title={t("conv.open")} aria-label={t("conv.open")} onClick={() => st.select(s.sessionId)}><Icon name="expand" /></button>
+        <button className="tb" title={t("conv.open")} aria-label={t("conv.open")} onClick={() => (setListOpen(false), st.select(s.sessionId))}><Icon name="expand" /></button>
         <button className="tb" title={t(archived ? "conv.unarchive" : "conv.archive")} aria-label={t(archived ? "conv.unarchive" : "conv.archive")} onClick={() => void archive(s, !archived)}>
           <Icon name={archived ? "unarchive" : "archive"} />
         </button>
@@ -547,7 +572,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   };
   return (
     <main className="bot-main">
-      {/* Rule 3: which conversation the next message goes on in. */}
+      {/* 对话条（DESIGN-107 §0.5c #4A / §4）：当前对话 + 「全部对话」浮层入口 + 「开启新对话」 */}
       <div className="conv-head" role="status">
         {current ? (
           <>
@@ -558,24 +583,70 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         ) : (
           <span className="conv-head-k">{t(convs.open.length ? "conv.nextIsNew" : "conv.firstIsNew")}</span>
         )}
-        <button className="btn sm conv-new" disabled={cur === "new" || !current} onClick={() => (choose("new"), setState({ kind: "idle" }))}>
+        <button
+          className={`btn sm conv-all-btn ${listOpen ? "primary" : ""}`}
+          aria-expanded={listOpen}
+          aria-haspopup="dialog"
+          onClick={() => setListOpen((v) => !v)}
+        >
+          {totalConvs > 0 ? t("bots.allConvsCount", { count: totalConvs }) : t("bots.allConvs")}
+        </button>
+        <button className="btn sm conv-new" disabled={cur === "new" || !current} onClick={() => (choose("new"), setListOpen(false), setState({ kind: "idle" }))}>
           <Icon name="plus" className="sm" />
           {t("conv.new")}
         </button>
       </div>
+      {listOpen && (
+        <div className="conv-flyout" role="dialog" aria-label={t("bots.allConvs")}>
+          <div className="conv-flyout-h">
+            <span>{totalConvs > 0 ? t("bots.allConvsCount", { count: totalConvs }) : t("bots.allConvs")}</span>
+            <button className="tb" aria-label={t("bots.closeList")} onClick={() => setListOpen(false)}>
+              <Icon name="x" className="sm" />
+            </button>
+          </div>
+          <div role="list" aria-label={t("conv.list")}>
+            {convs.open.length === 0 && convs.archived.length === 0 && <div className="bot-empty">{t("bots.noWork", { name: b.name })}</div>}
+            {convs.open.map((s) => row(s))}
+            {convs.archived.length > 0 && (
+              <button className="conv-group" aria-expanded={showArchived} onClick={() => setShowArchived(!showArchived)}>
+                {t("conv.archivedGroup", { count: convs.archived.length })}
+                <Icon name="caret" className={`sm ${showArchived ? "" : "shut"}`} />
+              </button>
+            )}
+            {showArchived && convs.archived.map((s) => row(s, true))}
+            {convs.others.length > 0 && <div className="conv-group static">{t("conv.others")}</div>}
+            {convs.others.map((s) => <WorkRow key={s.sessionId} s={s} />)}
+            <OwnSessions b={b} m={m} />
+          </div>
+        </div>
+      )}
       <div className="bot-stream" role="list" aria-label={t("conv.list")}>
-        {convs.open.length === 0 && convs.archived.length === 0 && <div className="bot-empty">{t("bots.noWork", { name: b.name })}</div>}
-        {convs.open.map((s) => row(s))}
-        {convs.archived.length > 0 && (
-          <button className="conv-group" aria-expanded={showArchived} onClick={() => setShowArchived(!showArchived)}>
-            {t("conv.archivedGroup", { count: convs.archived.length })}
-            <Icon name="caret" className={`sm ${showArchived ? "" : "shut"}`} />
-          </button>
+        {current ? (
+          <div className="conv-current-card conv-row cur" role="listitem" aria-current="true">
+            <div className="conv-current-top">
+              <StatusDot s={current} />
+              <b>{displayTitle(current)}</b>
+              <span className="conv-badge">{t("conv.current")}</span>
+            </div>
+            <div className="conv-current-meta">
+              <span><StateText s={current} /></span>
+              <span>· {listTime(updatedDate(current), now)}</span>
+              {current.projectId && <span>· {current.projectId}</span>}
+              {stuck && stuck !== "archived" && <em className="conv-stuck">· {t("conv.readOnly")}</em>}
+            </div>
+            <div className="conv-current-acts">
+              <button className="btn sm primary" onClick={() => st.select(current.sessionId)}>
+                <Icon name="expand" className="sm" />
+                {t("conv.open")}
+              </button>
+              <button className="btn sm" onClick={() => void archive(current, current.status !== SessionStatus.ARCHIVED)}>
+                {t(current.status === SessionStatus.ARCHIVED ? "conv.unarchive" : "conv.archive")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bot-empty">{t("bots.noWork", { name: b.name })}</div>
         )}
-        {showArchived && convs.archived.map((s) => row(s, true))}
-        {convs.others.length > 0 && <div className="conv-group static">{t("conv.others")}</div>}
-        {convs.others.map((s) => <WorkRow key={s.sessionId} s={s} />)}
-        <OwnSessions b={b} m={m} />
       </div>
       <Composer
         value={text}
@@ -629,6 +700,7 @@ export function deliveryWords(t: TFunction<"common">, state: RoomDeliveryState, 
  * keeps them from its kind) and puts its answers here. Each of the owner's messages says what became of it.
  */
 function DirectChat({ b }: { b: Bot }) {
+  const st = useStore();
   const { t } = useTranslation("common");
   const [room, setRoom] = useState<Room>();
   const [msgs, setMsgs] = useState<RoomMessage[]>([]);
@@ -636,12 +708,37 @@ function DirectChat({ b }: { b: Bot }) {
   const [fresh, setFresh] = useState<Room>();
   const [error, setError] = useState("");
   const [text, setText] = useState("");
+  const [light, setLight] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [state, setState] = useState<ComposerState>({ kind: "idle" });
   const [key, setKey] = useState(() => crypto.randomUUID());
   const clientId = b.client!.clientId;
+  // All direct conversations for this bot (newest first) so old rooms stay reviewable (工单 #123).
+  const directRooms = useMemo(
+    () =>
+      st.machines
+        .flatMap((m) => m.status?.rooms ?? [])
+        .filter((r) => r.direct && !r.shadow && r.members.some((mem) => mem.address === clientId))
+        .sort((x, y) => Number(y.updatedAt?.seconds ?? 0n) - Number(x.updatedAt?.seconds ?? 0n)),
+    [st.machines, clientId],
+  );
+  // Read-only agent-to-agent shadow conversations involving this bot (工单 #124).
+  const peerShadows = useMemo(
+    () =>
+      st.machines
+        .flatMap((m) => m.status?.rooms ?? [])
+        .filter((r) => r.shadow && r.members.some((mem) => mem.botKey === b.key))
+        .sort((x, y) => Number(y.updatedAt?.seconds ?? 0n) - Number(x.updatedAt?.seconds ?? 0n)),
+    [st.machines, b.key],
+  );
   useEffect(() => {
     let gone = false;
-    local.openDirectRoom({ clientId }).then((r) => !gone && (setRoom(r.room), setError("")), (e) => !gone && setError(errorText(e)));
+    local.openDirectRoom({ clientId }).then((r) => {
+      if (gone || !r.room) return;
+      setRoom(r.room);
+      setLight(r.room.mode === RoomMode.LIGHT);
+      setError("");
+    }, (e) => !gone && setError(errorText(e)));
     return () => void (gone = true);
   }, [clientId]);
   // Its answers come in on the host: read again every few seconds while the page is open.
@@ -653,11 +750,40 @@ function DirectChat({ b }: { b: Bot }) {
     const every = setInterval(read, 3000);
     return () => ((gone = true), clearInterval(every));
   }, [room]);
+  const startNewChat = async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const created = await local.createRoom({
+        name: `${b.name} · ${stamp}`,
+        members: [{ botKey: b.key, name: b.name }],
+        mode: light ? RoomMode.LIGHT : RoomMode.MANUAL,
+        maxRounds: 0,
+      });
+      setRoom(created);
+      setFresh(created);
+      setMsgs([]);
+      setText("");
+      setKey(crypto.randomUUID());
+      setError("");
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setCreating(false);
+    }
+  };
+  const toggleMode = (nextLight: boolean) => {
+    setLight(nextLight);
+    if (room) {
+      local.updateRoom({ machineId: room.hostMachineId, room: { roomId: room.roomId, mode: nextLight ? RoomMode.LIGHT : RoomMode.MANUAL } }).then(setRoom, () => {});
+    }
+  };
   const send = async () => {
     if (!room || !text.trim() || state.kind === "sending") return;
     setState({ kind: "sending" });
     try {
-      const m = await local.postRoomMessage({ machineId: room.hostMachineId, roomId: room.roomId, text, idempotencyKey: key });
+      const m = await local.postRoomMessage({ machineId: room.hostMachineId, roomId: room.roomId, text, idempotencyKey: key, lightChat: light });
       setMsgs((x) => [...x.filter((y) => y.messageId !== m.messageId), m]);
       setText("");
       setKey(crypto.randomUUID());
@@ -666,12 +792,53 @@ function DirectChat({ b }: { b: Bot }) {
       setState({ kind: "error", text: errorText(err), retry: () => void send() });
     }
   };
+  const activeRoom = fresh ?? room;
   return (
     <main className="bot-main bot-chat">
+      <div className="bot-chat-bar">
+        {directRooms.length > 1 && activeRoom ? (
+          <Picker
+            size="sm"
+            label={t("rooms.historyChats")}
+            value={activeRoom.roomId}
+            onChange={(id) => {
+              const picked = directRooms.find((x) => x.roomId === id);
+              if (picked) {
+                setRoom(picked);
+                setFresh(picked);
+                setLight(picked.mode === RoomMode.LIGHT);
+              }
+            }}
+            options={directRooms.map((r) => ({ value: r.roomId, label: r.name }))}
+          />
+        ) : (
+          <span className="bot-chat-title">{activeRoom?.name ?? b.name}</span>
+        )}
+        <div className="bot-chat-acts">
+          <div className="seg" role="group" aria-label={t("rooms.chatMode")}>
+            <button type="button" className={!light ? "on" : ""} aria-pressed={!light} onClick={() => toggleMode(false)}>{t("rooms.taskMode")}</button>
+            <button type="button" className={light ? "on" : ""} aria-pressed={light} onClick={() => toggleMode(true)}>{t("rooms.light")}</button>
+          </div>
+          <button type="button" className="btn sm" disabled={creating} onClick={() => void startNewChat()}>
+            <Icon name="plus" className="sm" />
+            {t("rooms.newChat")}
+          </button>
+        </div>
+      </div>
+      {peerShadows.length > 0 && (
+        <div className="bot-peer-strip" role="region" aria-label={t("rooms.peerChats")}>
+          <span className="muted">{t("rooms.peerChats")}：</span>
+          {peerShadows.map((sr) => (
+            <button key={sr.roomId} type="button" className="chip" onClick={() => st.set({ selection: { kind: "room", machineId: sr.hostMachineId, roomId: sr.roomId } })}>
+              {sr.name} · {t("rooms.shadowBadge")}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
         {error && <div className="bot-empty warn" role="alert">{error}</div>}
-        {!error && room && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
-        {room && <RoomTimeline room={fresh ?? room} msgs={msgs} />}
+        {!error && activeRoom && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
+        {activeRoom && <RoomTimeline room={activeRoom} msgs={msgs} />}
       </div>
       <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room} />
     </main>

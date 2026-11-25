@@ -175,6 +175,8 @@ class BatchJBotSettingsTest {
         @Suppress("UNCHECKED_CAST")
         (AppModel::class.java.getDeclaredField("_phase").apply { isAccessible = true }.get(model) as MutableStateFlow<AppModel.Phase>).value = AppModel.Phase.Ready
         show { Root(model) }
+        rule.onNodeWithText("Bot").performClick()
+        rule.waitForIdle()
         rule.onNodeWithText("DSH").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("设置").performClick()
@@ -224,6 +226,8 @@ class BatchJBotSettingsTest {
         @Suppress("UNCHECKED_CAST")
         (AppModel::class.java.getDeclaredField("_phase").apply { isAccessible = true }.get(model) as MutableStateFlow<AppModel.Phase>).value = AppModel.Phase.Ready
         show { Root(model) }
+        rule.onNodeWithText("Bot").performClick()
+        rule.waitForIdle()
         rule.onNodeWithText("DSH").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("设置").performClick()

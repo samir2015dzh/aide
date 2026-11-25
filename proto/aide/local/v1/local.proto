@@ -1528,6 +1528,7 @@ message PostRoomMessageRequest {
   string text = 3;
   string idempotency_key = 4;
   repeated string mentions = 5;
+  bool light_chat = 6;
 }
 
 message ListRoomsRequest {}

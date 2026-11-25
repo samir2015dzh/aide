@@ -159,3 +159,72 @@ func TestAntigravityModelCatalogDesktop(t *testing.T) {
 		t.Fatalf("playwright: %+v", r)
 	}
 }
+
+// 工单 #111 升级补充: end-to-end verification that Antigravity is a first-class
+// local coding agent with 3-tier permission presets, read-only enforcement,
+// real session continuation, and #117 unified "Provider · Model ID" naming.
+func TestAntigravityFirstClassDispatch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	home, state := t.TempDir(), t.TempDir()
+	os.Mkdir(filepath.Join(home, "antigravity-acp"), 0o700)
+	os.WriteFile(filepath.Join(home, "antigravity-acp", "settings.json"), []byte(`{"auth":{"type":"oauth-personal"}}`), 0o600)
+	env := []string{
+		"GEMINI_HOME=" + home,
+		"FAKE_ACP_STATE=" + state,
+		"AIDE_ANTIGRAVITY_BIN=" + filepath.Join(binaries(t), "fakeacp"),
+		"FAKE_ACP_CONFIG=1",
+		"FAKE_ACP_OPTIONS=1",
+		"FAKE_ACP_REQUIRE_MODE=1",
+		"FAKE_ACP_RESUME=resume",
+		"FAKE_ACP_MODELS=gemini-2.5-pro,claude-sonnet-4-5",
+	}
+	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"antigravity"}})
+
+	// 1. agent list exposes 3 permission presets and #117 formatted observed models.
+	r := w.cli(30*time.Second, "agent", "list", "--agent", "antigravity", "-o", "json")
+	if r.code != 0 {
+		t.Fatalf("agent list: %+v", r)
+	}
+	var listDoc struct {
+		Agents []struct {
+			Modes    []struct{ ID string }
+			Catalogs []struct {
+				Models []struct{ ID, Name string }
+			} `json:"model_catalogs"`
+		}
+	}
+	if err := json.Unmarshal([]byte(r.stdout), &listDoc); err != nil || len(listDoc.Agents) != 1 {
+		t.Fatalf("parse agent list: %v %s", err, r.stdout)
+	}
+	if len(listDoc.Agents[0].Modes) != 3 || listDoc.Agents[0].Modes[0].ID != "read-only" {
+		t.Fatalf("expected 3 permission presets, got %+v", listDoc.Agents[0].Modes)
+	}
+	if len(listDoc.Agents[0].Catalogs) == 0 || len(listDoc.Agents[0].Catalogs[0].Models) != 2 ||
+		listDoc.Agents[0].Catalogs[0].Models[0].Name != "Google · gemini-2.5-pro" ||
+		listDoc.Agents[0].Catalogs[0].Models[1].Name != "Anthropic · claude-sonnet-4-5" {
+		t.Fatalf("expected #117 model names, got %+v", listDoc.Agents[0].Catalogs)
+	}
+
+	// 2. Dispatch with --mode read-only: write attempt is blocked by Aide's gate;
+	// continuing the same session works cleanly.
+	s, r := w.startSession(time.Minute, "--agent", "antigravity", "--mode", "read-only", "--wait", "--prompt", "write blocked.txt nope")
+	if r.code != 0 || s.Status != "idle" {
+		t.Fatalf("read-only start: %+v", r)
+	}
+	if ev := eventsOf(w, s.SessionID); !strings.Contains(ev, "read-only mode") {
+		t.Fatalf("expected read-only gate denial in events, got:\n%s", ev)
+	}
+	if r := w.cli(time.Minute, "session", "send", s.SessionID, "--wait", "--message", "say continued"); r.code != 0 {
+		t.Fatalf("continue session: %+v", r)
+	}
+	if ev := eventsOf(w, s.SessionID); !strings.Contains(ev, "continued") {
+		t.Fatalf("expected continuation reply in events, got:\n%s", ev)
+	}
+
+	// 3. Invalid permission preset fails inline with truthful error.
+	if r := w.cli(30*time.Second, "session", "start", "--project", "demo", "--agent", "antigravity", "--mode", "invalid-tier", "--prompt", "say no"); r.code == 0 {
+		t.Fatalf("expected invalid mode to fail, got: %+v", r)
+	}
+}

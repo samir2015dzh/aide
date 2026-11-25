@@ -3,21 +3,21 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { Machine } from "@aide/proto/local";
 import { SessionStatus } from "@aide/proto/session";
-import { agoText, dateOf, isActive, machineConnections, platformTitle } from "@aide/core";
-import { Mark } from "@aide/ui";
+import { agoText, dateOf, isActive, machineConnections, machineKind, platformTitle, rootPlatform } from "@aide/core";
+import { DeviceFace, Mark } from "@aide/ui";
 import { AgentList, AgentPage, sortAgents } from "../AgentList";
 import { LocalGrants } from "../Connections";
 import { useCheckAgents } from "../agents";
 import { local } from "../api";
 import { Problems } from "../health";
 import { herDataLeft } from "../herLegacy";
-import { Icon } from "../icons";
 import { useNow, useStore, type Store } from "../store";
 import { GoRow, SRow, Switch, type Ask } from "./common";
 
-function machineIcon(m: Machine): string {
-  if (m.local) return "laptop";
-  return m.status?.platform.startsWith("darwin") ? "mini" : "server";
+/** 按上报平台绘制机器设备头像（工单 #100 / #109）。 */
+function MachineFace({ m, size }: { m: Machine; size: number }) {
+  const st = useStore();
+  return <DeviceFace kind={machineKind(m, st.devices, rootPlatform(window.aide?.platform ?? ""))} size={size} />;
 }
 
 function running(st: Store, machineId: string): number {
@@ -64,7 +64,7 @@ export function Machines({ open, select, ask }: { open: string; select: (id: str
             .filter(Boolean)
             .join(" · ");
           return (
-            <GoRow key={x.machineId} icon={<span className="mtile"><Icon name={machineIcon(x)} /></span>} title={x.machineName} sub={sub} onClick={() => select(x.machineId)}>
+            <GoRow key={x.machineId} icon={<MachineFace m={x} size={36} />} title={x.machineName} sub={sub} onClick={() => select(x.machineId)}>
               <span className="fv-side">
                 <i className={`dotc ${x.online ? "on" : ""}`} />
                 {!x.online ? t("offline") : x.status?.paused ? t("machines.paused") : n ? t("machines.runningCount", { count: n }) : t("online")}
@@ -166,9 +166,7 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
   return (
     <div className="form">
       <div className="dhero">
-        <span className="mtile xl">
-          <Icon name={machineIcon(m)} />
-        </span>
+        <MachineFace m={m} size={56} />
         <div>
           <b>{m.machineName}</b>
           <span>

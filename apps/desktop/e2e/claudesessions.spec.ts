@@ -9,6 +9,7 @@ test("the Claude app's sessions: listed by title with their repository, opened r
   const { app, page } = await launch();
   await page.getByRole("region", { name: "Bot" }).getByRole("button", { name: /^Claude Code/ }).first().click({ timeout: 30_000 });
   const bot = page.getByRole("region", { name: /^Claude Code/ });
+  await bot.getByRole("button", { name: /全部对话/ }).click();
   const list = bot.getByRole("region", { name: "它自己的会话" });
   const row = list.getByRole("button", { name: /改首页/ });
   await expect(row).toBeVisible({ timeout: 30_000 });

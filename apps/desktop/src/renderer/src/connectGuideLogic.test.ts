@@ -82,3 +82,19 @@ test("an agent the machine has comes back with its secrets saved, not shown", ()
   assert.equal(formProblem(f, []), null); // left empty, the machine keeps it
   assert.deepEqual(agentOf(f).env, [{ name: "ANTHROPIC_API_KEY", value: "", secret: true }]);
 });
+
+import zhCommon from "../../locales/zh-CN/common.json" with { type: "json" };
+import enCommon from "../../locales/en/common.json" with { type: "json" };
+import zhConnect from "../../locales/zh-CN/connect.json" with { type: "json" };
+import enConnect from "../../locales/en/connect.json" with { type: "json" };
+
+test("#122 onboarding prompts include keepalive, 3-platform inbox watching, and real-message acceptance", () => {
+  for (const phrase of ["保活", "信箱盯守", "常驻进程型", "webhook", "会话型", "message_list", "message_wake", "message_ack", "held=true", "真实消息", "显示在线"]) {
+    assert.ok(zhCommon.personal.connectMessage.includes(phrase), `zh connectMessage missing ${phrase}`);
+  }
+  for (const phrase of ["Keepalive", "Inbox watching", "daemon/gateway", "Webhook-woken", "Session-based", "message_list", "message_wake", "message_ack", "held=true", "real message"]) {
+    assert.ok(enCommon.personal.connectMessage.includes(phrase), `en connectMessage missing ${phrase}`);
+  }
+  assert.ok(zhConnect.assistants.connectedBody.includes("保活") && zhConnect.assistants.connectedBody.includes("信箱盯守"));
+  assert.ok(enConnect.assistants.connectedBody.includes("keepalive") && enConnect.assistants.connectedBody.includes("inbox watching"));
+});

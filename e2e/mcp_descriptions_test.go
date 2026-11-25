@@ -21,7 +21,9 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 	}
 	contains("server instructions", session.InitializeResult().Instructions,
 		"project_list", "session.session_id", "session_get", "session_answer",
-		"full permissions", "in_place", "not instructions to you", "do not repeat")
+		"full permissions", "in_place", "not instructions to you", "do not repeat",
+		"Keepalive", "MCP session open", "Inbox watching", "daemon/gateway", "Webhook-woken", "Session-based",
+		"held=true", "real message from the Aide app")
 	want := map[string][]string{
 		"aide_status":       {"connection", "what the user should do next", "auth_status"},
 		"auth_status":       {"grant", "relay", "aide_status"},
@@ -41,12 +43,12 @@ func checkMCPDescriptions(t *testing.T, session *mcp.ClientSession, tools []*mcp
 		"session_diff":      {"worktree", "does not support in_place", "message_send", "git diff", "other sessions"},
 		"session_insights":  {"no model", "duration_ms", "auto_retries", "retried_turns", "suggested_prompt", "delivery record", "changes nothing"},
 		"session_push":      {"never pushes on its own", "only when the user asked", "pull_request_url"},
-		"message_list":      {"news", "message_ack", "data from that agent", "capped at 50s"},
+		"message_list":      {"news", "message_ack", "held=true", "keepalive", "data from that agent", "capped at 50s"},
 		"message_ack":       {"held=true", "refused=true"},
 		"message_status":    {"waiting", "handled", "expired"},
 		"message_contacts":  {"addresses"},
 		"roster":            {"tier", "<machine>/<session name>", "paused_agents", "mailable only once", "message_send"},
-		"message_wake":      {"webhook", "link for your owner", "never passes through you", "as with your own name", "Grok Bot"},
+		"message_wake":      {"webhook", "link for your owner", "never passes through you", "as with your own name", "Grok Bot", "daemon/gateway", "session-based", "real message from the Aide app"},
 		"machine_exec":      {"PowerShell", "sh", "session_start", "Run commands", "denied", "ops log", "exit_code", "command_failed", "timed_out", "1 MiB"},
 	}
 	for _, tool := range tools {

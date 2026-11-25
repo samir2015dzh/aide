@@ -141,7 +141,7 @@ test("the title is 13px semibold (macOS's headline, 工单 #95), bright in front
   const { app, page } = await launch();
   await open(page, "写 hello");
   const title = page.getByRole("heading", { name: "写 hello" });
-  expect(await title.evaluate((e) => [getComputedStyle(e).fontSize, getComputedStyle(e).fontWeight])).toEqual(["13px", "600"]);
+  expect(await title.evaluate((e) => [getComputedStyle(e).fontSize, getComputedStyle(e).fontWeight])).toEqual(["14px", "600"]);
   const colour = () => title.evaluate((e) => getComputedStyle(e).color);
   const tell = (event: "focus" | "blur") =>
     app.evaluate(({ BrowserWindow }, event) => {
@@ -153,9 +153,9 @@ test("the title is 13px semibold (macOS's headline, 工单 #95), bright in front
   await tell("focus");
   await expect.poll(colour).not.toBe(behind);
   const front = await colour();
-  // Its alpha: a label is solid black or white in front (工单 #95: Apple's label colour), rgb() with no alpha.
-  const alpha = (c: string) => (c.startsWith("rgba(") ? Number(c.match(/,\s*([\d.]+)\)$/)?.[1] ?? 1) : 1);
-  expect(alpha(behind)).toBeLessThan(alpha(front));
+  // In front: Fluent primary text (#201f1e, low luminance); behind: muted secondary grey (#605e5c, higher luminance).
+  const chan = (c: string) => (c.match(/\d+/g) ?? []).slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
+  expect(chan(behind)).toBeGreaterThan(chan(front));
   await tell("blur");
   await expect.poll(colour).toBe(behind);
   await app.close();
@@ -276,10 +276,10 @@ test("the session's settings are in a menu with what a glance needs; its list is
   // The owner's messages are a quiet grey bubble with the page's own words, as Grok's (the owner's ruling, 2026-11-19); a dark grey in the dark.
   const bubble = page.getByRole("log", { name: "对话" }).locator(".um .bub").first();
   const colors = () => bubble.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color]);
-  // Its words in Apple's label colour (工单 #95): black, white in the dark.
-  expect(await colors()).toEqual(["rgb(240, 240, 241)", "rgb(0, 0, 0)"]);
+  // Owner bubble in Fluent blue #0078d4 with white text, light and dark (工单 #101 / #109).
+  expect(await colors()).toEqual(["rgb(0, 120, 212)", "rgb(255, 255, 255)"]);
   await page.emulateMedia({ colorScheme: "dark" });
-  await expect.poll(colors).toEqual(["rgb(35, 35, 38)", "rgb(255, 255, 255)"]);
+  await expect.poll(colors).toEqual(["rgb(0, 120, 212)", "rgb(255, 255, 255)"]);
   await snap(page, "session-chat-dark");
   await page.emulateMedia({ colorScheme: "light" });
   await toggle.click();
@@ -321,8 +321,8 @@ test("failed sessions tell what went wrong and what to do; an archived one says 
   const failed = page.getByRole("alert");
   await expect(failed).toContainText("Gemini CLI 意外退出了");
   await expect(failed).not.toContainText("已崩溃"); // the sidebar says so
-  await expect(failed.locator(".qf-ic")).toHaveCSS("color", /^rgb\((255, 59, 48|255, 69, 58)\)$/); // red only in its mark (Apple's red, 工单 #95)
-  await expect(failed.locator(".qf-title")).not.toHaveCSS("color", /^rgb\((255, 59, 48|255, 69, 58)\)$/);
+  await expect(failed.locator(".qf-ic")).toHaveCSS("color", /^rgb\((164, 38, 44|197, 15, 31|255, 107, 117)\)$/); // red only in its mark (Fluent red, 工单 #109)
+  await expect(failed.locator(".qf-title")).not.toHaveCSS("color", /^rgb\((164, 38, 44|197, 15, 31|255, 107, 117)\)$/);
   await expect(failed).toContainText("bot 再发消息就会从这里接着做，之前的改动都还在。");
   await expect(failed).not.toContainText("exit status");
   await failed.getByRole("button", { name: /详情/ }).click();
@@ -560,11 +560,11 @@ test("an agent's Markdown shows as GitHub shows it, without HTML, images or unsa
   await expect(md.locator("img")).toHaveCount(0);
   await expect(md).toContainText("图");
   await expect(md).toContainText("<b>原样</b>");
-  // The agent's words are 14.5 on 1.625, in the system's face (工单 #95: SF Pro on a Mac, Segoe UI on Windows), the
+  // The agent's words are 14 on 1.625 (工单 #109 / #107 Fluent), in the system's face, the
   // bundled Google Sans Flex only where neither is; code in the system's monospace (SF Mono), else Google Sans Code.
-  expect(await md.evaluate((el) => [getComputedStyle(el).fontSize, getComputedStyle(el).lineHeight])).toEqual(["14.5px", "23.5625px"]);
-  expect(await md.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^-apple-system, BlinkMacSystemFont, "SF Pro Text".*"Segoe UI".*"Google Sans Flex"/);
-  expect(await md.locator("pre code").first().evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^ui-monospace, "SF Mono".*"Google Sans Code"/);
+  expect(await md.evaluate((el) => [getComputedStyle(el).fontSize, getComputedStyle(el).lineHeight])).toEqual(["14px", "22.75px"]);
+  expect(await md.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/"Segoe UI Variable".*"Segoe UI"/);
+  expect(await md.locator("pre code").first().evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/"Cascadia Mono".*"SF Mono"/);
   await snap(page, "session-markdown");
   await app.close();
 });

@@ -415,8 +415,8 @@ class AppModel(private val context: Context) {
     }
 
     /** Says something in a room; null when it failed, why given to failed (said in the box it was written in, 工单 #61). */
-    suspend fun postRoomMessageOr(room: io.aide.android.api.Room, text: String, key: String, failed: (String) -> Unit, mentions: List<String> = emptyList()): io.aide.android.api.RoomMessage? = try {
-        api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key, mentions)
+    suspend fun postRoomMessageOr(room: io.aide.android.api.Room, text: String, key: String, failed: (String) -> Unit, mentions: List<String> = emptyList(), lightChat: Boolean = false): io.aide.android.api.RoomMessage? = try {
+        api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key, mentions, lightChat)
     } catch (e: Exception) {
         failed(humanError(e))
         null
@@ -426,7 +426,7 @@ class AppModel(private val context: Context) {
     suspend fun openDirectRoom(clientId: String): io.aide.android.api.Room? = report { api!!.openDirectRoom(clientId).room }
     /** A room's messages, quietly: null when they can't be read now. */
     suspend fun roomMessages(room: io.aide.android.api.Room): List<io.aide.android.api.RoomMessage>? = runCatching { api!!.listRoomMessages(room.hostMachineId, room.roomId).messages }.getOrNull()
-    suspend fun postRoomMessage(room: io.aide.android.api.Room, text: String, key: String, mentions: List<String> = emptyList()): io.aide.android.api.RoomMessage? = report { api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key, mentions) }
+    suspend fun postRoomMessage(room: io.aide.android.api.Room, text: String, key: String, mentions: List<String> = emptyList(), lightChat: Boolean = false): io.aide.android.api.RoomMessage? = report { api!!.postRoomMessage(room.hostMachineId, room.roomId, text, key, mentions, lightChat) }
 
     /** The room whose page is open: what comes in there is read, not told of. */
     var roomOpen: String = ""

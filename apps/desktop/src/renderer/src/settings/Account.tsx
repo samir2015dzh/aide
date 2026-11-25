@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Device, LocalCLI } from "@aide/proto/local";
-import { platformTitle } from "@aide/core";
+import { deviceKind, platformTitle } from "@aide/core";
+import { DeviceFace } from "@aide/ui";
 import { local } from "../api";
 import { herDataLeft } from "../herLegacy";
 import { Icon } from "../icons";
@@ -59,7 +60,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
   return (
     <div className="form">
       <div className="dhero">
-        <span className="av xl me" aria-hidden="true">{user.slice(0, 1).toUpperCase()}</span>
+        <DeviceFace kind="person" size={56} />
         <div>
           <b>{user}</b>
           <span>
@@ -73,7 +74,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
         <div className="fgroup" role="list" aria-label={t("account.devices")}>
           {st.devices.map((d) => (
             <div className="frow" role="listitem" key={d.keyId}>
-              <Icon name="laptop" />
+              <DeviceFace kind={deviceKind(d.platform)} size={36} />
               <div className="ft">
                 <div className="fn">
                   {d.label}
@@ -111,7 +112,6 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
           {s?.mcpUrl && <CopyRow k={t("account.mcpUrl")} text={s.mcpUrl} />}
         </div>
       </More>
-      {/* The way out, as Apple's settings put it: one group of red rows (工单 #68). */}
       <div className="fgroup">
         <button className="frow act danger" onClick={leave}>{t("account.signOut")}</button>
         {s && !s.removed && (
@@ -150,7 +150,7 @@ function MachineAccount() {
   return (
     <div className="form">
       <div className="dhero">
-        <span className="av xl me" aria-hidden="true">{user.slice(0, 1).toUpperCase()}</span>
+        <DeviceFace kind="person" size={56} />
         <div>
           <b>{user}</b>
           <span>

@@ -150,7 +150,7 @@ private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, o
 fun BotRow(b: Bot, short: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val press = if (onLongClick == null) Modifier.rowPress(onClick) else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Delete from the roster", "从名册删除"), onLongClick = onLongClick, onClick = onClick)
     Row(Modifier.fillMaxWidth().then(press).padding(start = 16.dp, end = 12.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        BotAvatar(b, 40, toneColor(botTone(b)))
+        BotAvatar(b, 40, toneDotColor(botTone(b)))
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,9 +224,9 @@ fun RemoveBotDialog(model: AppModel, b: Bot, machine: String, close: () -> Unit)
  * (工单 #66). Nothing about it is set here: its settings are a page of their own, from Settings in the bar (工单 #97).
  * What its machine reports in full (versions, checks, sign-in, the bridge) is on the devices tab.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, openDevices: () -> Unit = {}, openOwn: (OwnEntry) -> Unit = {}, openSettings: () -> Unit = {}, back: () -> Unit) {
+fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (Persona) -> Unit, openDevices: () -> Unit = {}, openOwn: (OwnEntry) -> Unit = {}, openSettings: () -> Unit = {}, openRoom: (io.aide.android.api.Room) -> Unit = {}, back: () -> Unit) {
     val world by model.world.collectAsState()
     val personas by model.personas.collectAsState()
     LaunchedEffect(Unit) { model.loadPersonas() }
@@ -251,6 +251,13 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
             return@Scaffold
         }
         val chat = if (!b.coding && b.client != null) rememberDirectChat(model, b.client.clientId) else null
+        val directRooms = if (!b.coding && b.client != null) {
+            val botKey = "c:${b.client.clientId}"
+            world.machines.flatMap { it.status?.rooms.orEmpty() }
+                .filter { it.direct && it.members.any { mem -> mem.botKey == botKey } }
+                .sortedByDescending { it.updatedAt }
+        } else emptyList()
+        val peerShadows = world.rooms.filter { it.shadow && it.members.any { mem -> mem.botKey == b.key } }
         val conv = if (m != null && b.coding) rememberConversation(model, b, m) else null
         val own = if (m != null && b.coding) rememberOwnSessions(model, b) else null
         Column(Modifier.fillMaxSize().padding(pad)) {
@@ -277,7 +284,8 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                     }
                 }
                 taskItems(b, world, openSession)
-                if (chat != null) chatItems(chat, b)
+                if (peerShadows.isNotEmpty()) peerShadowItems(peerShadows, openRoom)
+                if (chat != null) chatItems(model, chat, b, directRooms)
                 if (conv != null) conversationItems(model, conv, b, openSession)
                 if (own != null && m != null) ownSessionItems(own, b, m.machineName, openOwn)
             }
@@ -473,7 +481,7 @@ private fun ConversationComposer(model: AppModel, c: Conversation, b: Bot, m: Ma
             a?.models?.firstOrNull { it.id == p.model }?.efforts?.takeIf { it.isNotEmpty() }?.let { ef ->
                 ChipPicker(t("Effort", "推理强度"), p.effort, listOf("" to t("Default effort", "默认强度")) + ef.map { it to it }) { c.params = p.copy(effort = it) }
             }
-            if (a != null && a.modes.isNotEmpty()) ChipPicker(if (b.agent == DSH_AGENT) t("Permission", "权限") else t("Mode", "模式"), p.mode, listOf("" to (permission.defaultLabel ?: t("Default mode", "默认模式"))) + a.modes.map { it.id to modeLabel(b.agent, it) }) { c.params = p.copy(mode = it) }
+            if (a != null && a.modes.isNotEmpty()) ChipPicker(if (io.aide.android.model.usesPermissionPresets(b.agent)) t("Permission", "权限") else t("Mode", "模式"), p.mode, listOf("" to (permission.defaultLabel ?: t("Default mode", "默认模式"))) + a.modes.map { it.id to modeLabel(b.agent, it) }) { c.params = p.copy(mode = it) }
         },
     )
 }
@@ -484,12 +492,37 @@ internal fun newPersona(b: Bot, m: Machine): Persona {
     return if (b.personas.isEmpty()) p.withLook(botLook(b)) else p
 }
 
+/** Peer shadow conversations involving this bot (工单 #124), read-only. */
+private fun LazyListScope.peerShadowItems(shadows: List<io.aide.android.api.Room>, openRoom: (io.aide.android.api.Room) -> Unit) {
+    item(key = "peer-h") { SectionHeader(t("Conversations with other agents", "与其他 Agent 的对话"), count = shadows.size) }
+    shadows.forEachIndexed { i, r ->
+        item(key = "peer-${r.roomId}") {
+            Box(Modifier.groupRow(i, shadows.size, inset = 16.dp)) {
+                Row(Modifier.fillMaxWidth().rowPress { openRoom(r) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(r.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                            HSpace(6)
+                            StatusPill(t("Read-only", "只读"), Tone.Quiet)
+                        }
+                        Text(roomLine(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    HSpace(6)
+                    Chevron()
+                }
+            }
+        }
+    }
+}
+
 /** The owner's conversation with a personal agent: its direct room on its host, read again every few seconds. */
 class DirectChat {
     var room by mutableStateOf<io.aide.android.api.Room?>(null)
     var messages by mutableStateOf<List<io.aide.android.api.RoomMessage>>(emptyList())
     var failed by mutableStateOf<String?>(null)
     var state by mutableStateOf<ComposerState>(ComposerState.Idle)
+    var lightChat by mutableStateOf(false)
+    var creating by mutableStateOf(false)
 }
 
 @Composable
@@ -499,7 +532,11 @@ private fun rememberDirectChat(model: AppModel, clientId: String): DirectChat {
         // Why it can't be had is said here, on this page (工单 #60, #61), in the person's words.
         val r = model.openDirectRoomOr(clientId) { chat.failed = it }
         chat.room = r
-        while (r != null) {
+        if (r != null) chat.lightChat = r.mode == LIGHT
+    }
+    LaunchedEffect(chat.room?.roomId) {
+        val r = chat.room ?: return@LaunchedEffect
+        while (true) {
             model.roomMessages(r)?.let { chat.messages = it }
             delay(3_000)
         }
@@ -516,20 +553,96 @@ fun deliveryWords(state: String, name: String, reason: String, reminded: Boolean
     else -> reason to true
 }
 
-private fun LazyListScope.chatItems(chat: DirectChat, b: Bot) {
-    item(key = "chat-h") { SectionHeader(t("Conversation", "对话")) }
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+private fun LazyListScope.chatItems(model: AppModel, chat: DirectChat, b: Bot, directRooms: List<io.aide.android.api.Room>) {
+    item(key = "chat-h") {
+        val scope = rememberCoroutineScope()
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { SectionHeader(t("Conversation", "对话"), count = directRooms.size.takeIf { it > 1 }) }
+                if (b.client != null) {
+                    Row(
+                        Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                            .pressable {
+                                if (chat.creating) return@pressable
+                                chat.creating = true
+                                scope.launch {
+                                    val label = "${b.name} · ${directRooms.size + 1}"
+                                    val created = model.createRoom(
+                                        io.aide.android.api.CreateRoomRequest(
+                                            name = label,
+                                            members = listOf(io.aide.android.api.CreateRoomMember("c:${b.client.clientId}", "", b.name)),
+                                            mode = if (chat.lightChat) LIGHT else MANUAL,
+                                            maxRounds = 1,
+                                        ),
+                                    )
+                                    chat.creating = false
+                                    if (created != null) {
+                                        chat.room = created
+                                        chat.messages = emptyList()
+                                        chat.failed = null
+                                    }
+                                }
+                            }.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Add, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        HSpace(4)
+                        Text(t("New conversation", "开启新对话"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            if (directRooms.size > 1) {
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    directRooms.forEach { dr ->
+                        val picked = dr.roomId == chat.room?.roomId
+                        ToggleChip(dr.name.ifEmpty { b.name }, picked) {
+                            if (!picked) {
+                                chat.room = dr
+                                chat.lightChat = dr.mode == LIGHT
+                                chat.messages = emptyList()
+                            }
+                        }
+                    }
+                }
+            }
+            Segmented(
+                listOf(false to t("Task", "派活"), true to t("Light chat", "轻聊")),
+                chat.lightChat,
+                Modifier.fillMaxWidth(),
+            ) { light ->
+                chat.lightChat = light
+                val r = chat.room
+                if (r != null) {
+                    scope.launch {
+                        model.updateRoom(r.hostMachineId, io.aide.android.api.RoomPatch(r.roomId, mode = if (light) LIGHT else MANUAL))?.let { chat.room = it }
+                    }
+                }
+            }
+        }
+    }
     chat.failed?.let { why -> item(key = "chat-failed") { Text(why, style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(horizontal = 16.dp)) } }
     if (chat.failed == null && chat.room != null && chat.messages.isEmpty()) item(key = "chat-none") {
-        Text(t("Write to ${b.name}: it answers here.", "给 ${b.name} 写点什么：它的回信会出现在这里。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
+        Text(
+            if (chat.lightChat) t("Light chat with ${b.name}: quick reply without heavy task context.", "和 ${b.name} 轻聊：快速回复，不拖带长上下文。")
+            else t("Write to ${b.name}: it answers here.", "给 ${b.name} 写点什么：它的回信会出现在这里。"),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+        )
     }
     chat.messages.forEach { m ->
         item(key = "m-${m.messageId}", contentType = "chat") {
             val mine = m.from == "owner"
+            val bubbleShape = RoundedCornerShape(
+                topStart = Radius.Bubble, topEnd = Radius.Bubble,
+                bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
+                bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
+            )
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                if (!mine) Text(m.fromName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!mine) Text(m.fromName + if (m.lightChat) t(" · Light", " · 轻聊") else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (mine && m.lightChat) Text(t("Light chat", "轻聊"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-                    .background(if (mine) aide.bubble else aide.card, RoundedCornerShape(18.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge)
+                    .background(if (mine) aide.bubble else aide.card, bubbleShape).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
                 }
                 if (mine) m.deliveries.forEach { d ->
                     val (words, bad) = deliveryWords(d.state, b.name, d.reason, d.reminded)
@@ -549,7 +662,7 @@ private fun ChatCompose(model: AppModel, chat: DirectChat, b: Bot) {
         val r = chat.room ?: return
         chat.state = ComposerState.Sending
         scope.launch {
-            model.postRoomMessageOr(r, text.trim(), key, failed = { chat.state = ComposerState.Failed(it) { send() } })?.let { m ->
+            model.postRoomMessageOr(r, text.trim(), key, failed = { chat.state = ComposerState.Failed(it) { send() } }, lightChat = chat.lightChat)?.let { m ->
                 chat.messages = chat.messages.filter { it.messageId != m.messageId } + m
                 text = ""
                 key = UUID.randomUUID().toString()
@@ -557,5 +670,11 @@ private fun ChatCompose(model: AppModel, chat: DirectChat, b: Bot) {
             }
         }
     }
-    Composer(text, { text = it }, { send() }, t("Message ${b.name}", "给 ${b.name} 发消息"), chat.state, enabled = chat.room != null)
+    Composer(
+        text, { text = it }, { send() },
+        if (chat.lightChat) t("Quick chat with ${b.name}…", "和 ${b.name} 轻聊一句…") else t("Message ${b.name}", "给 ${b.name} 发消息"),
+        chat.state,
+        enabled = chat.room != null,
+        why = if (chat.lightChat) ComposerWhy(t("Light chat: quick reply with minimal context", "轻聊模式：快速交流，不拖带长上下文")) else null,
+    )
 }

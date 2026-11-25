@@ -54,4 +54,18 @@ class BatchJDTest {
             server.shutdown()
         }
     }
+
+    @Test
+    fun fluentTabsAndSharedFaces() {
+        // 工单 #106: 4 tabs (Home, Bots, Devices/Machines, Settings), opening on Home by default.
+        assertEquals(listOf("Home", "Bots", "Devices", "Settings"), io.aide.android.ui.Tab.entries.map { it.name })
+        // Shared Fluent non-status palette from packages/ui/src/faces.json.
+        val facesFile = File("../../../packages/ui/src/faces.json")
+        assertTrue("packages/ui/src/faces.json must exist", facesFile.isFile)
+        val raw = facesFile.readText()
+        assertTrue(raw.contains("#0078d4"))
+        assertTrue(raw.contains("#4f52b2"))
+        assertTrue(raw.contains("\"corner\": 0.3"))
+        assertTrue(raw.contains("\"stroke\": 1.5"))
+    }
 }

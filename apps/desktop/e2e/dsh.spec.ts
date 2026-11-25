@@ -15,6 +15,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   const { app, page } = await launch();
   await page.getByRole("region", { name: "Bot" }).getByRole("button", { name: /^DSH/ }).first().click({ timeout: 30_000 });
   const bot = page.getByRole("region", { name: /^DSH/ });
+  await bot.getByRole("button", { name: /全部对话/ }).click();
   const list = bot.getByRole("region", { name: "它自己的会话" });
   await list.getByRole("button", { name: /看一下 README/ }).click({ timeout: 30_000 });
   await expect(page.getByText("README 写的是安装步骤。")).toBeVisible();
@@ -110,6 +111,7 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   // No session of DSH's found: its page says which DSH home it read, and how to point Aide at another.
   fs.rmSync(path.join(fixture.dshHome!, "sessions"), { recursive: true });
   await bot.getByRole("button", { name: "返回对话" }).click();
+  if (!(await list.isVisible())) await bot.getByRole("button", { name: /全部对话/ }).click();
   await expect(list).toContainText("这里没有 DSH 自己的会话。", { timeout: 30_000 });
   await expect(list).toContainText("上读取的目录：");
   await expect(list.locator(".own-note .mono")).toHaveText(fixture.dshHome!);

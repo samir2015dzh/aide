@@ -273,7 +273,7 @@ private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit)
 }
 
 
-/** Local outbound queue item rendered inline with truthful delivery state (工单 #115). */
+/** Local outbound queue item rendered inline with truthful delivery state (工单 #115, Fluent #106). */
 @Composable
 private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: () -> Unit) {
     val statusLabel = when (msg.status) {
@@ -282,42 +282,45 @@ private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: ()
         OutboxStatus.FAILED -> t("Failed to send", "发送失败")
         OutboxStatus.PENDING -> if (msg.error != null) t("Queued · waiting to reconnect", "待发 · 等待重连") else t("Queued", "待发")
     }
+    val failed = msg.status == OutboxStatus.FAILED
+    val bubbleShape = RoundedCornerShape(topStart = Radius.Bubble, topEnd = Radius.Bubble, bottomStart = Radius.Bubble, bottomEnd = Radius.BubbleTail)
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = bubbleShape,
+            color = if (failed) aide.card else aide.bubble,
+            contentColor = if (failed) MaterialTheme.colorScheme.onSurface else aide.onBubble,
             modifier = Modifier.widthIn(max = 310.dp),
         ) {
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (msg.text.isNotBlank()) {
-                    Text(msg.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(msg.text, style = MaterialTheme.typography.bodyLarge, color = if (failed) MaterialTheme.colorScheme.onSurface else aide.onBubble)
                 }
                 if (msg.attachments.isNotEmpty()) {
                     Text(
                         t("${msg.attachments.size} attachment(s)", "${msg.attachments.size} 个附件"),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble,
                     )
                 }
                 Text(
                     "#${msg.clientSeq} · $statusLabel",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (msg.status == OutboxStatus.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (failed) aide.redText else aide.onBubble,
                 )
                 if (!msg.error.isNullOrBlank() && msg.status != OutboxStatus.SENT) {
                     Text(
                         msg.error,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble,
                     )
                 }
                 if (msg.status == OutboxStatus.FAILED || msg.status == OutboxStatus.PENDING) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                            Text(t("Retry", "重试"), style = MaterialTheme.typography.labelSmall)
+                            Text(t("Retry", "重试"), style = MaterialTheme.typography.labelSmall, color = if (failed) MaterialTheme.colorScheme.primary else aide.onBubble)
                         }
                         TextButton(onClick = onCancel, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                            Text(t("Cancel", "取消"), style = MaterialTheme.typography.labelSmall)
+                            Text(t("Cancel", "取消"), style = MaterialTheme.typography.labelSmall, color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble)
                         }
                     }
                 }
@@ -328,7 +331,7 @@ private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: ()
 // The model it runs, as the agent reported it: its specific one, as people call it and in full (工单 #99).
 private fun sessionParams(s: Session) = listOf(s.model.ifEmpty { t("as ${agentTitle(s.agent)} is set", "跟随 ${agentTitle(s.agent)}") }.let { id -> modelTitle(id).let { if (it == id) id else "$it · $id" } }, s.effort).filter { it.isNotEmpty() }.joinToString(" · ")
 
-/** The sessions to switch to (工单 #90): this agent's on this machine, by project; a tap opens one. An iOS sheet of grouped rows. */
+/** The sessions to switch to (工单 #90): this agent's on this machine, by project; a tap opens one. */
 @Composable
 private fun SwitchSheet(model: AppModel, s: Session, open: (String) -> Unit, close: () -> Unit) {
     val world by model.world.collectAsState()
@@ -357,7 +360,7 @@ private fun SwitchSheet(model: AppModel, s: Session, open: (String) -> Unit, clo
     }
 }
 
-/** The session's settings (工单 #90): who started it, which agent on which machine, in which project, with what — iOS's info rows. */
+/** The session's settings (工单 #90): who started it, which agent on which machine, in which project, with what. */
 @Composable
 private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
     val world by model.world.collectAsState()
@@ -403,16 +406,17 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, na
                 else -> names[item.from]?.ifEmpty { null } ?: item.fromName.ifEmpty { item.from }
             }
             by?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)) }
-            // The owner's message, as the desktop's: a step above the page in either mode, never the accent (in dark mode it was white).
-            Surface(color = aide.bubble, contentColor = aide.onBubble, shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 320.dp)) {
-                SelectionContainer { Text(item.text, Modifier.padding(horizontal = 14.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyLarge) }
+            // Fluent #106 user bubble: #0078d4 accent fill + white text + 18dp radius with 6dp bottom-end tail (both light & dark).
+            val shape = RoundedCornerShape(topStart = Radius.Bubble, topEnd = Radius.Bubble, bottomStart = Radius.Bubble, bottomEnd = Radius.BubbleTail)
+            Surface(color = aide.bubble, contentColor = aide.onBubble, shape = shape, modifier = Modifier.widthIn(max = 320.dp)) {
+                SelectionContainer { Text(item.text, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyLarge, color = aide.onBubble) }
             }
         }
         is Item.Agent -> SelectionContainer { Text(item.text, pad, style = MaterialTheme.typography.bodyLarge) }
         is Item.Draft -> Text(item.text, pad, color = MaterialTheme.colorScheme.onSurfaceVariant)
         is Item.Tools -> ToolsView(item)
-        is Item.Asked -> Surface(pad, color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(12.dp)) {
-            Column(Modifier.padding(10.dp)) {
+        is Item.Asked -> Surface(pad, color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(Radius.Lg)) {
+            Column(Modifier.padding(12.dp)) {
                 Text(t("Question", "提问") + (item.resolution?.let { " · " + resolutionText(it) } ?: ""), style = MaterialTheme.typography.labelMedium)
                 item.question.items.forEach { Text(it.text.ifEmpty { it.header }) }
             }
@@ -463,33 +467,35 @@ private fun resolutionText(r: String) = when (r) {
 }
 
 /**
- * A failure as the desktop's card tells it (工单 #105): what happened to the agent and what to do, in words; the agent's
- * raw message only under Details, opened as a group of tool calls opens.
+ * Fluent error card (工单 #105 / #106): 16dp card with 3dp red left bar, clear headline + advice,
+ * raw provider message collapsed under Details.
  */
 @Composable
 private fun FailureView(kind: String, provider: String, raw: String, agent: String) {
     var open by remember { mutableStateOf(false) }
-    val turn by animateFloatAsState(if (open) 90f else 0f, Motion.snappy(), label = "chevron")
+    val turn by animateFloatAsState(if (open) 90f else 0f, tween(Motion.Short, easing = Motion.EaseOut), label = "chevron")
     val who = agent.ifEmpty { t("The agent", "agent") }
-    Column(Modifier.padding(horizontal = 12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(failureHeadline(kind, who, provider), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-        // One not told apart says the original is in Details, so only when there is one.
-        failureAdvice(kind, who, provider).takeIf { it.isNotEmpty() && (toldApart(kind) || raw.isNotBlank()) }?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (raw.isNotBlank()) {
-            Row(Modifier.clip(RoundedCornerShape(Radius.Sm)).clickable { open = !open }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(t("Details", "详情"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.primary)
+    Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().aideCard()) {
+        Box(Modifier.width(3.dp).heightIn(min = 56.dp).background(aide.red))
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(failureHeadline(kind, who, provider), color = aide.redText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            failureAdvice(kind, who, provider).takeIf { it.isNotEmpty() && (toldApart(kind) || raw.isNotBlank()) }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            AnimatedVisibility(
-                open,
-                enter = expandVertically(Motion.spring(IntSize.VisibilityThreshold)) + fadeIn(tween(Motion.Medium)),
-                exit = shrinkVertically(Motion.snappy(IntSize.VisibilityThreshold)) + fadeOut(tween(Motion.Short)),
-            ) {
-                Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {
-                    SelectionContainer {
-                        Text(raw, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (raw.isNotBlank()) {
+                Row(Modifier.clip(RoundedCornerShape(Radius.Sm)).clickable { open = !open }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(t("Details", "详情"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.primary)
+                }
+                AnimatedVisibility(
+                    open,
+                    enter = expandVertically(Motion.spring(IntSize.VisibilityThreshold)) + fadeIn(tween(Motion.Medium)),
+                    exit = shrinkVertically(Motion.snappy(IntSize.VisibilityThreshold)) + fadeOut(tween(Motion.Short)),
+                ) {
+                    Surface(color = aide.inset, shape = RoundedCornerShape(Radius.Sm)) {
+                        SelectionContainer {
+                            Text(raw, Modifier.fillMaxWidth().padding(8.dp), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }

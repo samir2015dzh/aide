@@ -37,6 +37,7 @@ import io.aide.android.api.GetLoginResponse
 import io.aide.android.api.SetLoginRequest
 import io.aide.android.model.AppModel
 import io.aide.android.model.MIN_PASSWORD
+import io.aide.android.model.deviceKind
 import io.aide.android.model.newLoginProblem
 import io.aide.android.model.normalizeAccount
 import kotlinx.coroutines.launch
@@ -45,8 +46,7 @@ import kotlinx.coroutines.launch
  * Settings: the account the server keeps (docs/accounts.md §4: its name
  * and password, changed with the current password, and logging in turned
  * off or on), the owner's devices (any other one can be signed out), and
- * this phone. Laid out as iOS's Settings (工单 #95): inset grouped cards,
- * a row each, explanations as the group's footnote.
+ * this phone. Fluent grouped cards (工单 #106).
  */
 @Composable
 fun SettingsTab(model: AppModel) {
@@ -70,11 +70,10 @@ fun SettingsTab(model: AppModel) {
             item { SectionHeader(t("Account", "账号")) }
             item {
                 val l = login
-                // Who is signed in, said as iOS's account row: the account large, its server under it.
                 val account = l?.account?.ifEmpty { null } ?: st.account
                 Column(Modifier.fillMaxWidth().aideCard()) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        MachineMark(account.ifEmpty { "?" }, online = true, size = 52)
+                        DeviceFace("person", 56)
                         HSpace(14)
                         Column(Modifier.weight(1f)) {
                             Text(account, style = MaterialTheme.typography.titleLarge, maxLines = 1)
@@ -174,7 +173,7 @@ fun Footnote(text: String) {
 @Composable
 private fun DeviceRow(d: Device, signOut: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        MachineMark(d.label, d.thisDevice || d.machineOnline, 36)
+        DeviceFace(deviceKind(d.platform), 40, d.thisDevice || d.machineOnline)
         HSpace(12)
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

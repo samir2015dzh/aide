@@ -11,5 +11,5 @@
 /* The hairline between rows starts at the title, past the agent's mark. */
 .held-list > .task-row + .task-row::before { left: 38px; }
 .task-state { flex: none; font-size: 12px; white-space: nowrap; }
-.task-state.warn { color: var(--warn, #c77c00); font-weight: 600; }
-.task-state.busy { color: var(--accent, inherit); }
+.task-state.warn { color: var(--orange-t); font-weight: 600; }
+.task-state.busy { color: var(--accent-t); font-weight: 600; }

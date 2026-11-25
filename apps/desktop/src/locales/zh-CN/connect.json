@@ -5,6 +5,7 @@
     "deepseek": "DSH",
     "claude": "Claude Desktop",
     "codex": "Codex",
+    "antigravity": "Antigravity",
     "custom": "其他 Agent",
     "assistants": "助手"
   },
@@ -113,6 +114,21 @@
     "testFailedHint": "如果原因是没登录，按上面「状态」里的说明给 Codex 登录，再测试一次。",
     "where1": "你在 Aide 里用 Codex 开的任务都在 Aide 的任务列表里，你所有设备上都能看到。"
   },
+  "antigravity": {
+    "intro": "Antigravity 是 Google 的主力编码 Agent，通过官方 ACP 服务在你的电脑上运行，支持三档权限预设（仅可查看 / 工作区内修改 / 完全权限）与真实会话模型发现。",
+    "need1": "运行它的电脑上装好 Google Antigravity ACP 服务（agy_acp_server；可从官方发布包安装到 ~/.local/share/antigravity-acp/）。",
+    "need2": "Antigravity 已完成登录：在终端运行一次 aide agent login antigravity。",
+    "step1": "在上面选装了 Antigravity 的电脑（默认就是这台）。",
+    "step2": "看「状态」：应该显示「已检测到」。如果没有，按下面的清单逐项检查，然后点「重新检查」。",
+    "step3": "如果 Antigravity 还没有项目，点「添加项目…」，选一个允许它工作的文件夹。",
+    "step4": "点「运行测试」。Antigravity 会回答一个简短的问题。",
+    "step5": "点「开始测试任务」。一个真正的任务会开始，并在 Aide 里打开。",
+    "fixInstall": "在 {{machine}} 上装好 Google Antigravity 官方 ACP 服务（agy_acp_server）。仅安装桌面应用是不够的。",
+    "fixWhere": "已经装了？确认 agy_acp_server 在新开终端的 PATH 里，或放在 ~/.local/share/antigravity-acp/（Windows 也可放 %LOCALAPPDATA%\\antigravity-acp\\）。",
+    "fixSignIn": "给 Antigravity 登录一次：打开终端（Windows 上是 PowerShell），粘贴下面的命令回车并按提示完成登录。",
+    "testFailedHint": "如果原因是没登录或权限受限，按上面「状态」里的说明运行 aide agent login antigravity 登录后再测。",
+    "where1": "你在 Aide 里用 Antigravity 开的任务都在 Aide 的任务列表里，支持选机器、选项目、选三档权限与继续对话，所有设备上都能看到。"
+  },
   "custom": {
     "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。不支持 ACP、但能在终端里运行命令的 Agent（例如 WorkBuddy），在下面的「助手」里选「其他 Agent」连接。",
     "need1": "运行它的电脑上装好这个 Agent，并准备好它自己的登录或密钥。",
@@ -198,10 +214,10 @@
       "chatgpt": "在 ChatGPT 里打开 设置 › 连接器（Connectors），在「高级」里打开开发者模式，然后点「创建」，把下面的网址填进 MCP 服务器 URL。"
     },
     "mcp2": "{{app}} 会打开 Aide 服务器的登录页：输入你的 Aide 账号和密码，点「连接」。",
-    "mcp3": "连接后它会出现在这里，也会列在 设置 › 访问 里。",
+    "mcp3": "连接后它会出现在这里（也在 设置 › 访问 里）。接着确认它已补齐两件套——保持 MCP 会话常开保活 + 按平台配好信箱盯守（内置定时轮询、message_wake webhook 或外部轮询 hook），再从 Aide App 发一条真实消息验收它能自动取信并回复。",
     "cli1": "复制下面的消息，把里面的 {{password}} 换成你的 Aide 密码，发给 {{name}}。",
-    "cli2": "{{name}} 照着消息装好 Aide 命令行并登录：不用你批准，也没有码要核对。",
-    "cli3": "登录后它会出现在这里，也会列在 设置 › 访问 里。",
+    "cli2": "{{name}} 照着消息装好 Aide 命令行、登录并声明它的信箱盯守方式：不用你批准，也没有码要核对。",
+    "cli3": "登录后它会出现在这里（也在 设置 › 访问 里）。最后从 Aide App 给它发一条真实消息，确认无需其他通道提醒就能自动取走并回复，才算接入完成。",
     "mcpOlder": "你服务器上的 Aide 版本较旧，还不提供 MCP 地址，所以这里没有网址可以粘贴。先把服务器更新到最新版，更新后这里会自动显示网址。也可以让这个助手改用命令行连接（选「其他 Agent」）。",
     "mcpOff": "你的服务器没有提供 MCP 地址，所以这里没有网址可以粘贴：服务器上的 MCP 没有开启（启动服务器时加上 AIDE_RELAY_MCP=1）。如果服务器是旧版，也请先更新到最新版。处理好后这里会自动显示网址。也可以让这个助手改用命令行连接（选「其他 Agent」）。",
     "mcpOffline": "还没连上你的服务器，连上后这里会显示要粘贴的网址。",
@@ -210,7 +226,7 @@
     "password": "拿到你密码的任何人都能登录你的账号，并在你的电脑上运行任务。只发给你信任的助手；不想再让它用时，在 设置 › 访问 里登出它，或者改密码（所有助手都会被登出）。",
     "waiting": "等待 {{name}} 登录…",
     "connected": "{{name}} 已连接",
-    "connectedBody": "它现在可以在你所有机器的项目里开始任务，只看得到它自己开的任务，直到你登出它。",
+    "connectedBody": "它已授权使用你的项目。请注意：仅显示在线不算接入完成——确认它已配好「保活 + 信箱盯守」（常驻定时轮询 / message_wake webhook / 外部轮询 hook），并从 App 发一条真实消息确认能自动取走并回复。",
     "scope": "调整它能用什么…"
   },
   "details": "连接细项"

@@ -21,21 +21,18 @@
   --aurora-g8: #6d3cf0;
   --beam-opacity: 0.72;
   --beam-blend: multiply;
-  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.1, 0.9, 0.2, 1);
   --ease-in: cubic-bezier(0.3, 0, 1, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
-  /* Aide's UI takes after Grok's (design/aide in the handover): black and
-     white. --accent fills buttons and --on-accent writes on it; --accent-fg
-     is it as text; --ink is the mark's one colour (the desktop app's accent
-     is Apple's blue since 工单 #95; the mark stays ink). Then the colours of states, used sparingly, and one
-     spacing scale in golden-ratio steps. */
-  --accent: #111113;
-  --accent-fg: #111113;
+  /* Fluent 设计令牌（工单 #109 / #107 / #106）：主蓝 #0078d4、浅色蓝字 #005a9e、
+     白字 #ffffff；状态色仅用于状态，文字加深至 ≥4.5:1。 */
+  --accent: #0078d4;
+  --accent-fg: #005a9e;
   --on-accent: #ffffff;
-  --ink: #111113;
-  --ok: #17924f;
-  --warn: #d0700a;
-  --danger: #d7333f;
+  --ink: #201f1e;
+  --ok: #0e700e;
+  --warn: #7a4a00;
+  --danger: #a4262c;
   --sp-1: 8px;
   --sp-2: 13px;
   --sp-3: 21px;
@@ -44,13 +41,13 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --accent: #f2f2f3;
-    --accent-fg: #f2f2f3;
-    --on-accent: #0b0b0d;
-    --ink: #f2f2f3;
-    --ok: #3fcf86;
-    --warn: #ffab3d;
-    --danger: #ff6670;
+    --accent: #0078d4;
+    --accent-fg: #479ef5;
+    --on-accent: #ffffff;
+    --ink: #f3f2f1;
+    --ok: #00cc6a;
+    --warn: #ffb900;
+    --danger: #ff6b75;
     --aurora-0: #22e1c9;
     --aurora-1: #3e7bff;
     --aurora-2: #7b61ff;

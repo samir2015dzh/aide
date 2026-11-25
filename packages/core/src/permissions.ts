@@ -7,6 +7,9 @@ import { t } from "./i18n";
 /** DSH's name among the coding agents. */
 export const dshAgent = "deepseek";
 
+/** Coding agents that use the three-tier permission presets (DSH + Antigravity, 工单 #89 / #111). */
+export const usesPermissionPresets = (agent: string) => agent === dshAgent || agent === "antigravity";
+
 /** DSH's own presets (@deepseek-ai/dsh-permission-presets), least allowed first; any other its configuration has keeps its name. */
 const dshPresets = ["read-only", "workspace-write", "danger-full-access"] as const;
 type DSHPreset = (typeof dshPresets)[number];
@@ -14,18 +17,18 @@ const isDSHPreset = (id: string): id is DSHPreset => (dshPresets as readonly str
 
 /** A mode as people call it: a DSH preset by the name DSH gives it ("仅可查看"), else its agent's name for it, else its id. */
 export function modeLabel(agent: string, m: { id: string; name?: string }): string {
-  if (agent === dshAgent && isDSHPreset(m.id)) return t(`dshPreset.${m.id}`);
+  if (usesPermissionPresets(agent) && isDSHPreset(m.id)) return t(`dshPreset.${m.id}`);
   return m.name || m.id;
 }
 
-/** The preset a project's DSH sessions start with when none is chosen ("": DSH's own); "" for another agent. */
+/** The preset a project's DSH/Antigravity sessions start with when none is chosen ("": agent's own); "" for another agent. */
 export function projectPreset(agent: string, p?: { dshPreset?: string }): string {
-  return agent === dshAgent ? (p?.dshPreset ?? "") : "";
+  return usesPermissionPresets(agent) ? (p?.dshPreset ?? "") : "";
 }
 
-/** Whether a session's mode allows more than its project's preset: a preset further down DSH's list, or one that can't be told apart. */
+/** Whether a session's mode allows more than its project's preset: a preset further down the list, or one that can't be told apart. */
 export function aboveProject(agent: string, mode: string, preset: string): boolean {
-  if (agent !== dshAgent || !mode || !preset || mode === preset) return false;
+  if (!usesPermissionPresets(agent) || !mode || !preset || mode === preset) return false;
   const a = isDSHPreset(mode) ? dshPresets.indexOf(mode) : -1;
   const b = isDSHPreset(preset) ? dshPresets.indexOf(preset) : -1;
   return a < 0 || b < 0 || a > b;

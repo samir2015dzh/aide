@@ -53,7 +53,7 @@ def read_times():
 
 def plan(tests, shards):
     times = read_times()
-    known = [times[t] for t in tests if t in times]
+    known = [times[t] for t in tests if t in times and times[t] > 0]
     default = statistics.median(known) if known else 1.0
     weight = {t: times.get(t, default) for t in tests}
     load = [0.0] * shards
@@ -92,6 +92,7 @@ def main():
     for name in ("run-pattern", "plan", "ledger"):
         p = sub.add_parser(name)
         p.add_argument("--of", type=int, required=True, help="number of shards")
+        p.add_argument("--exclude", action="append", default=[], help="top-level test name to omit from sharding (run by another job)")
         if name == "run-pattern":
             p.add_argument("--shard", type=int, required=True, help="1-based shard")
         p.add_argument("tests", help="go test -list output")
@@ -101,7 +102,10 @@ def main():
     if a.of < 1:
         sys.exit("--of must be at least 1")
 
-    tests = read_tests(a.tests)
+    excluded = set(a.exclude)
+    tests = [t for t in read_tests(a.tests) if t not in excluded]
+    if not tests:
+        sys.exit(f"{a.tests}: no tests left after --exclude")
     given, load, unknown = plan(tests, a.of)
 
     if a.cmd == "run-pattern":

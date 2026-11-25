@@ -39,13 +39,18 @@ var Agents = []Agent{
 func antigravityAgent(goos string) Agent {
 	command := "agy_acp_server.par"
 	var args []string
+	paths := []string{".local/share/antigravity-acp/" + command}
 	if goos == "windows" {
 		command = "agy_acp_server.exe"
+		paths = []string{
+			".local/share/antigravity-acp/" + command,
+			"AppData/Local/antigravity-acp/" + command,
+		}
 	} else if goos == "linux" {
 		args = []string{"--uid="} // the entry point in Google's ACP registry
 	}
 	return Agent{Name: "antigravity", Command: command, Args: args,
-		Paths:       []string{".local/share/antigravity-acp/" + command},
+		Paths:       paths,
 		DesktopApps: []string{"Antigravity.app"}}
 }
 

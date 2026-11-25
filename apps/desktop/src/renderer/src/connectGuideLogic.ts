@@ -6,10 +6,10 @@ import type { AgentProblem, AgentStatus, CustomAgent } from "@aide/proto/machine
 // machine's last check of the line's agent says, and what to try when it is
 // not there; the custom agent's form.
 
-export type Line = "deepseek" | "claude" | "codex" | "custom";
+export type Line = "deepseek" | "claude" | "codex" | "antigravity" | "custom";
 
 /** The lines in the order the guide shows them. */
-export const lines: readonly Line[] = ["deepseek", "claude", "codex", "custom"];
+export const lines: readonly Line[] = ["deepseek", "claude", "codex", "antigravity", "custom"];
 
 // AgentProblem's values (its enum is not loaded by the tests).
 const notFound = 1 as AgentProblem;

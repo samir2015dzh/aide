@@ -45,7 +45,7 @@ fun DevicesTab(model: AppModel, openSession: (String) -> Unit) {
     val counts = botCounts(r.all)
     val list = rememberLazyListState()
     Column(Modifier.fillMaxSize()) {
-        PageTitle(t("Devices", "设备"), if (r.all.isEmpty()) null else counts.text, collapsed = list.collapsed())
+        PageTitle(t("Machines", "机器"), if (r.all.isEmpty()) null else counts.text, collapsed = list.collapsed())
         SyncLine(model)
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp)) {
@@ -63,7 +63,7 @@ fun DevicesTab(model: AppModel, openSession: (String) -> Unit) {
                 r.machines.forEach { g ->
                     val m = g.machine
                     val clients = r.aside.filter { it.machineId == m.machineId }
-                    item(key = "h-${m.machineId}", contentType = "machine-head") { Box(Modifier.padding(top = 12.dp)) { MachineHead(m, Modifier.groupRow(0, 2)) } }
+                    item(key = "h-${m.machineId}", contentType = "machine-head") { Box(Modifier.padding(top = 12.dp)) { MachineHead(m, world.devices, Modifier.groupRow(0, 2)) } }
                     item(key = "a-${m.machineId}", contentType = "machine-agents") {
                         Column(Modifier.groupRow(1, 2).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             g.bots.filter { it.coding }.forEach { b ->

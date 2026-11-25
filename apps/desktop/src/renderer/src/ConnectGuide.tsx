@@ -88,7 +88,7 @@ export function ConnectGuide({ line, place }: { line: Line; place: Place }) {
   );
 }
 
-const needs = (line: Line) => (line === "codex" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`]);
+const needs = (line: Line) => (line === "codex" || line === "antigravity" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`]);
 
 function Steps({ title, items, ordered }: { title: string; items: ReactNode[]; ordered?: boolean }) {
   const List = ordered ? "ol" : "ul";
@@ -123,8 +123,9 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
   useEffect(() => void check(), [check]);
   const v = { machine: m.machineName, agent: codingAgentTitle(agent), app: a?.detail.replace(/\.app$/, "") ?? "", version: a?.version ?? "" };
   const windows = (m.status?.platform ?? "").startsWith("windows");
-  // Claude Code signs in from Aide (工单 #51: Connection details below); Codex still in a terminal.
+  // Claude Code signs in from Aide (工单 #51: Connection details below); Codex and Antigravity in a terminal.
   const login = agent === "codex" ? "login" : undefined;
+  const antigravityLoginCmd = agent === "antigravity" ? "aide agent login antigravity" : undefined;
   const state = d === "ready" && a?.version ? t("state.readyVersion", v) : d === "signIn" && agent === "claude" ? t("state.signInClaude", v) : t(`state.${d}`, v);
   return (
     <>
@@ -147,14 +148,15 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
                 <li key={k}>
                   {t(k as never, { ...v, reason: a ? whyBroken(a, tf) : "" })}
                   {d === "signIn" && login !== undefined && a?.binary && k.endsWith("fixSignIn") && <CopyLine text={terminalCommand(a.binary, login, windows)} />}
+                  {d === "signIn" && antigravityLoginCmd && k.endsWith("fixSignIn") && <CopyLine text={antigravityLoginCmd} />}
                 </li>
               ))}
             </ul>
           </div>
         )}
       </section>
-      {/* The same rows as the machine's page: Claude Desktop and Claude Code apart, DSH and its plugin (工单 #44, #46, #49). */}
-      {(agent === "claude" || agent === "deepseek") && d !== "offline" && (
+      {/* The same rows as the machine's page: Claude Desktop and Claude Code apart, DSH and its plugin (工单 #44, #46, #49, #111). */}
+      {(agent === "claude" || agent === "deepseek" || agent === "antigravity") && d !== "offline" && (
         <section className="cg-sec" aria-label={t("details")}>
           <div className="fhead">{t("details")}</div>
           <ConnectionsCard m={m} only={(r) => r.agent === agent} />

@@ -26,7 +26,14 @@ Tools run through the Aide gateway; coding agents run on the user's selected mac
 
 Start with project_list to choose a project and an available agent. Call session_start with project and a non-empty prompt, save session.session_id, then poll session_get or read session_events with after set to the last seq you saw. Answer a pending question with session_answer. To tell a session anything more, use message_send with to set to its session_id. session_start, message_send and session_answer return without waiting for the turn by default. For hosted clients, prefer polling, or use wait=true with timeout="30s" (at most 50s). On error.kind="wait_timeout", the turn continues: poll session_get using session.session_id; do not repeat the start, message or answer just to wait longer.
 
-You also have an inbox. When a turn of a session you started ends, asks a question or fails while you are not waiting on it, its news arrives there as a message, and other agents of the user can write to you too. Read it with message_list and acknowledge each message once handled with message_ack. If your platform can start you by a webhook (a Grok Bot routine), Aide can wake you when messages arrive: when your owner asks for that, make the routine and call message_wake (its description says how); otherwise check message_list after handing out work. Every tool result carries inbox.waiting while messages wait.
+Onboarding checklist — setup is NOT complete until both pieces below are wired and verified:
+1. Keepalive: keep an MCP session open and ping periodically inside that session so you show as online; stateless one-off tool calls or heartbeats cannot sustain online status.
+2. Inbox watching (turning incoming messages into your own turn): you have an inbox where session news (turn ended, question, failure) and messages from the owner or other agents arrive. Pick the wake mechanism that matches your platform and state explicitly to your owner which one you configured:
+   - Always-on daemon/gateway platform (with built-in cron/scheduler): run a periodic task to check message_list, or register a doorbell webhook via message_wake.
+   - Webhook-woken platform (e.g. a Grok Bot routine): create the webhook routine and register it via message_wake (its description says how).
+   - Session-based platform (woken externally): wire an external short-interval poll hook that calls message_list and wakes you on unseen message ids.
+   After handling each message, acknowledge it one by one with message_ack (pass held=true for messages kept aside for your owner). Having only tools, or keepalive without inbox watching, means you show online but never receive messages — that is incomplete setup. Every tool result carries inbox.waiting while messages wait.
+3. Acceptance check: setup is done only when your owner sends a real message from the Aide app and you pick it up and reply without any reminder over another channel; merely showing "online" does not count as done.
 
 If several of your bots or chats share this connection (a Grok account's bots all do), pass as with your own bot name on every call. The news of sessions you start and replies to what you send then come back to that name alone, and message_list with as shows only that name's messages. Tool results under a name leave out inbox.waiting, which would count the other names' messages too.
 
@@ -252,6 +259,11 @@ func (g *Gateway) statusTool(ctx context.Context, req *mcp.CallToolRequest) (*mc
 	}
 	if c.State == StateActive {
 		out["messages"] = g.doorbellStatus(ctx, c, name)
+		out["onboarding"] = map[string]any{
+			"keepalive":   "Keep one MCP session open and ping periodically inside it; stateless calls cannot sustain online status.",
+			"inbox_watch": "Wire inbox watching for your platform and state which you use: (1) daemon/gateway: internal cron calling message_list or doorbell via message_wake; (2) webhook-woken (e.g. Grok Bot): message_wake doorbell; (3) session-based: external poll hook calling message_list on unseen ids. Acknowledge handled items with message_ack (held=true when kept for the owner).",
+			"acceptance":  "Not done until the owner sends a real message from the Aide app and you pick it up and reply without any other channel reminding you; showing online alone is incomplete.",
+		}
 		if id, err := g.identity(c); err == nil {
 			doc, _ := cli.Exec(ctx, cli.ExecOptions{Identity: id, HTTPClient: g.relay, Adopted: g.adopted(c.ID)}, []string{"auth", "status"})
 			var d map[string]json.RawMessage

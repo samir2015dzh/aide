@@ -33,20 +33,13 @@ export function General() {
       <About />
       <div className="fgroup">
         <SRow title={t("appearance.title")}>
-          <div className="seg" role="group" aria-label={t("appearance.title")}>
-            {(["system", "light", "dark"] as Appearance[]).map((a) => (
-              <button
-                key={a}
-                type="button"
-                className={prefs?.appearance === a ? "on" : ""}
-                aria-pressed={prefs?.appearance === a}
-                disabled={!prefs}
-                onClick={() => window.aide?.setPreferences({ appearance: a }).then(setPrefs)}
-              >
-                {t(`appearance.${a}`)}
-              </button>
-            ))}
-          </div>
+          <Picker
+            label={t("appearance.title")}
+            value={prefs?.appearance ?? "system"}
+            disabled={!prefs}
+            onChange={(v) => window.aide?.setPreferences({ appearance: v as Appearance }).then(setPrefs)}
+            options={(["system", "light", "dark"] as Appearance[]).map((a) => ({ value: a, label: t(`appearance.${a}`) }))}
+          />
         </SRow>
       </div>
       <Language prefs={prefs} setPrefs={setPrefs} />
@@ -86,7 +79,6 @@ export function General() {
           {pref("menuBadge", t("general.menuBadge"))}
         </div>
       </div>
-      <Updates />
     </div>
   );
 }
@@ -129,9 +121,7 @@ function Language({ prefs, setPrefs }: { prefs?: Preferences; setPrefs: (p: Pref
 }
 
 /**
- * Which version this is, at the top where it is looked for (工单 #103), and Check for Updates: what the check
- * finds is said in place (checking, up to date, a newer one, why it failed); a newer one is taken on in the Updates
- * window, as from the menu.
+ * 版本与更新（#103 / #107 §0.5c #8 & §9）：顶部展示版本号、检查更新及「自动下载更新」开关。
  */
 function About() {
   const { t } = useTranslation("settings");
@@ -150,7 +140,7 @@ function About() {
   return (
     <div className="fgroup" aria-label={t("about.title")} role="group">
       <div className="frow about">
-        <Mark size={36} />
+        <Mark size={40} />
         <div className="ft">
           <div className="fn">Aide</div>
           <div className="fdesc" data-version={version}>{t("about.version", { version })}</div>
@@ -163,17 +153,9 @@ function About() {
           {details && <button className="link" onClick={() => window.aide?.openUpdates()}>{t(u?.state === "error" ? "about.errorDetails" : "about.details")}</button>}
         </div>
       )}
+      <SRow title={t("update.autoDownload")} desc={t("update.autoDownloadDesc")}>
+        <Switch label={t("update.autoDownload")} on={info?.autoDownload ?? true} disabled={!info || info.update.state === "unsupported"} set={(on) => { void window.aide?.setAutoDownload(on); }} />
+      </SRow>
     </div>
   );
-}
-
-/** The download preference; the update itself is shown in its own window. */
-function Updates() {
-  const { t } = useTranslation("settings");
-  const info = useUpdate();
-  return <div><div className="fhead">{t("update.title")}</div><div className="fgroup">
-    <SRow title={t("update.autoDownload")} desc={t("update.autoDownloadDesc")}>
-      <Switch label={t("update.autoDownload")} on={info?.autoDownload ?? true} disabled={!info || info.update.state === "unsupported"} set={(on) => { void window.aide?.setAutoDownload(on); }} />
-    </SRow>
-  </div></div>;
 }

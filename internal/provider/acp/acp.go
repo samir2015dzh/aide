@@ -338,6 +338,7 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		case antigravityAuthUnconfirmed:
 			info.LoggedIn, info.LoginUnconfirmed = false, true
 		}
+		info.Modes, info.Own.Mode = slices.Clone(antigravityModes), antigravityDefaultMode
 		p.discoverModels(ctx, bin, pre, env)
 	}
 	if p.DSHPresets { // known before any session
@@ -385,6 +386,14 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 			args = append(args, more...)
 			spec.Mode = "" // not set over ACP
 		}
+	}
+	if p.Name() == "antigravity" {
+		if !antigravityValidMode(spec.Mode) {
+			return nil, provider.Fail(sessionv1.FailureKind_FAILURE_KIND_INVALID_REQUEST,
+				fmt.Sprintf("%s: mode %q: not offered by the agent (available: read-only, workspace-write, danger-full-access)", p.Name(), spec.Mode))
+		}
+		spec.Gate = antigravityPermissionGate(spec.Mode, spec.WorkDir, spec.Gate)
+		spec.Mode = "" // enforced through Aide's gate while wire mode stays "default"
 	}
 	proc, err := provider.StartProc(ctx, bin, args, cmp.Or(p.Dir, spec.WorkDir), spec.Env)
 	if err != nil {
@@ -486,6 +495,8 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		offers = cfg.offers()
 		if presets != nil {
 			offers.Modes, offers.Own.Mode = presets.modes, presets.own
+		} else if p.Name() == "antigravity" {
+			offers.Modes, offers.Own.Mode = slices.Clone(antigravityModes), antigravityDefaultMode
 		}
 	} else if p.DSHPresets && cfg.option("mode") == nil && cfg.Modes == nil {
 		spec.Mode = "" // a resumed DSH session keeps its own preset

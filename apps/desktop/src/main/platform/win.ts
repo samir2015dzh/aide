@@ -322,7 +322,7 @@ export const win: Platform = {
 
   frame(kind: WindowKind) {
     // The page's own background from the first frame (--win), for no white flash in the dark.
-    const backgroundColor = nativeTheme.shouldUseDarkColors ? "#1e1e21" : "#ffffff";
+    const backgroundColor = nativeTheme.shouldUseDarkColors ? "#1b1a19" : "#f3f2f1";
     if (kind === "panel") return { backgroundColor };
     // Windows draws the caption buttons over the page's top band, whose toolbar rows are the drag area;
     // Mica shows where the page is clear (the sidebar), as on the Mac.

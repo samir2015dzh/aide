@@ -301,8 +301,19 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 		return "refused"
 	}
 	m := &inboxv1.Message{}
-	if err := identity.VerifyWith(signed.Message, info.Key, m); err != nil || m.MessageId != sm.MessageId {
+	if err := identity.VerifyWith(signed.Message, info.Key, m); err != nil {
 		n.log.Warn("a message whose signature doesn't verify", "message", sm.MessageId, "err", err)
+		return "refused"
+	}
+	// 工单 #124: multi-recipient sealed shadow copy of a 1:1 personal-agent
+	// mailbox exchange. Its outer envelope uses a distinct shadow message_id so
+	// acking it never collides with the recipient agent's delivery state, while
+	// the inner Message is still signed by info.Key (cannot be forged).
+	if info.Kind != "machine" && strings.HasPrefix(m.GetFrom().GetInbox(), "c_") && strings.HasPrefix(m.GetTo().GetInbox(), "c_") && m.GetFrom().GetInbox() == info.Inbox {
+		return n.takeShadowLetter(m, info)
+	}
+	if m.MessageId != sm.MessageId {
+		n.log.Warn("a message whose id does not match envelope", "message", sm.MessageId)
 		return "refused"
 	}
 	bounce := func(why string) string {

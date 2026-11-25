@@ -1,82 +1,73 @@
 /* The settings window, as System Settings: the pages in a sidebar (the main
    window's .side and .nav-i), the page on the right under its title bar. */
-.settings{display:grid;grid-template-columns:200px minmax(0,1fr);height:100%;position:relative}
-.set-side-top{height:44px;flex:none}
-.set-soon{margin-left:auto;font-size:11px;color:var(--orange)}
-/* The page is grouped (工单 #95): grey, its groups white inset cards (the dark: black, cards #1c1c1e). */
-.set-main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--grouped);--win2:var(--grouped-card)}
-.set-top{height:44px;flex:none;display:flex;align-items:center;gap:4px;padding:0 21px;border-bottom:.5px solid var(--sep)}
+.settings{display:grid;grid-template-columns:220px minmax(0,1fr);height:100%;position:relative}
+.set-side-top{height:var(--size-titlebar);flex:none}
+.set-soon{margin-left:auto;font-size:12px;font-weight:600;color:var(--orange-t);background:var(--orange-bg);padding:1px 8px;border-radius:var(--radius-pill)}
+/* Fluent 设置页：页底 + 亚克力卡，表单单栏 ≤640px */
+.set-main{display:flex;flex-direction:column;min-width:0;min-height:0;background:transparent;--win2:var(--surface-card)}
+.set-top{height:var(--size-titlebar);flex:none;display:flex;align-items:center;gap:6px;padding:0 24px;border-bottom:1px solid var(--sep)}
 html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
-.set-top h1{margin:0;font-size:var(--fs-headline);font-weight:var(--font-weight-semibold)}
-.set-back{width:26px;height:26px;margin-left:-6px;border:0;border-radius:var(--r-ctl);background:none;display:flex;align-items:center;justify-content:center;color:var(--l2);padding:0}
-.set-back:hover{background:var(--fill2)}
+.set-top h1{margin:0;font-size:var(--fs-title2);font-weight:var(--font-weight-semibold)}
+.set-back{width:28px;height:28px;margin-left:-6px;border:0;border-radius:var(--radius-control);background:none;display:flex;align-items:center;justify-content:center;color:var(--l2);padding:0}
+.set-back:hover{background:var(--surface-hover);color:var(--l1)}
 .set-back .ic{transform:rotate(180deg)}
-.set-body{flex:1;min-height:0;overflow-y:auto;padding:21px 34px 34px}
-.settings .form{gap:21px}
-.settings .fhead{font-weight:400}
-.settings .frow{gap:12px;min-height:44px}
+.set-body{flex:1;min-height:0;overflow-y:auto;padding:24px 36px 40px}
+.settings .form{gap:20px;max-width:var(--size-form-max)}
+.settings .fhead{font-weight:600;color:var(--l1);margin-left:2px}
+.settings .frow{gap:12px;min-height:52px}
 .settings .frow>.ic{color:var(--l2)}
-.settings .frow.dim{color:var(--l3)}
+.settings .frow.dim{color:var(--color-text-disabled)}
 .settings .ft{flex:1;min-width:0}
-.settings .ft .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.settings .ft .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .settings .fv-side{display:inline-flex;align-items:center;gap:6px;flex:none;color:var(--l2);font-size:12.5px}
-.settings .fv-side.warn,.settings .warn{color:var(--orange)}
+.settings .fv-side.warn,.settings .warn{color:var(--orange-t)}
 .settings .frow>.psel{width:auto}
 .settings .mono.cut{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
-/* A row that opens an item: the whole row is the button. */
 .frow.go{width:100%;border:0;background:none;text-align:left;font:inherit;color:inherit}
-.frow.go:first-child{border-radius:var(--r-card) var(--r-card) 0 0}
-.frow.go:last-child{border-radius:0 0 var(--r-card) var(--r-card)}
-.frow.go:only-child{border-radius:var(--r-card)}
-.frow.go:hover{background:var(--fill)}
-.frow.go .chev{color:var(--l3)}
-/* A project's Remove… shows on hover (and to the keyboard). */
+.frow.go:first-child{border-radius:var(--radius-card) var(--radius-card) 0 0}
+.frow.go:last-child{border-radius:0 0 var(--radius-card) var(--radius-card)}
+.frow.go:only-child{border-radius:var(--radius-card)}
+.frow.go:hover{background:var(--surface-hover)}
+.frow.go .chev{color:var(--l2)}
 .frow.hov>.btn{opacity:0}
 .frow.hov:hover>.btn,.frow.hov>.btn:focus-visible{opacity:1}
 .set-acts{display:flex;gap:8px;align-items:center;margin-top:-8px}
 .set-acts .push{margin-left:auto}
-.set-note{margin:8px 14px 0;color:var(--l2);font-size:12px}
-.form>.set-note{margin-top:-13px}
-/* A group that follows a note in the same block keeps a group's distance from it. */
-.set-note+div>.fhead:first-child,.set-note+.fhead{margin-top:21px}
+.set-note{margin:8px 2px 0;color:var(--l2);font-size:12px}
+.form>.set-note{margin-top:-12px}
+.set-note+div>.fhead:first-child,.set-note+.fhead{margin-top:20px}
 .set-more{border:0;background:none;padding:2px 4px;color:var(--l2);font-size:12px;display:inline-flex;align-items:center;gap:3px}
-.set-more .ic{transition:transform .15s}
+.set-more .ic{transition:transform var(--duration-fast) var(--ease-fluent)}
 .set-more.open .ic{transform:rotate(90deg)}
 .set-more-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:-8px}
 .set-more-wrap>.fgroup{align-self:stretch}
-/* Icons: a grant is an app (rounded square); a machine a grey tile; the owner a round avatar in the brand's colours. */
-.settings .av.md{width:28px;height:28px;font-size:var(--fs-text);border-radius:var(--r-ctl)}
-.settings .dhero .av.xl{border-radius:var(--r-card)}
-.settings .dhero .av.xl.me{border-radius:50%;background:linear-gradient(135deg,var(--aurora-1),var(--aurora-2))}
-.mtile{width:28px;height:28px;border-radius:var(--r-ctl);background:var(--fill2);color:var(--l2);display:flex;align-items:center;justify-content:center;flex:none}
-.mtile.xl{width:52px;height:52px;border-radius:var(--r-card)}
-.mtile.xl .ic{width:26px;height:26px;stroke-width:1.2}
-.settings .sheet .field{height:30px}
+.settings .av.md{width:28px;height:28px;font-size:var(--fs-text);border-radius:var(--radius-control)}
+.settings .sheet .field{height:var(--size-control)}
 
-/* A machine's problems (health.tsx), at the top of its page. */
+/* 机器异常提示卡 */
 .health-list{display:flex;flex-direction:column;gap:8px}
-.health{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-card)}
-.health.bad{background:var(--red-bg)}.health.bad>.ic{color:var(--red)}
-.health.warn{background:var(--orange-bg)}.health.warn>.ic{color:var(--orange)}
+.health{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--radius-card)}
+.health.bad{background:var(--red-bg);border-left:3px solid var(--red)}.health.bad>.ic{color:var(--red-t)}
+.health.warn{background:var(--orange-bg);border-left:3px solid var(--orange)}.health.warn>.ic{color:var(--orange-t)}
 .health>.ic{width:18px;height:18px;margin-top:1px}
 .health b{display:block;font-weight:600;margin-bottom:2px}
 .health p{margin:0;font-size:12px;color:var(--l2);line-height:1.5}
 .health-acts{display:flex;gap:8px;margin-top:9px}
-/* An agent's doorbells (Wakes.tsx). */
+/* Wakes */
 .wk-av{width:24px;height:24px;border-radius:50%;background:var(--fill2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex:none}
 .wk-state{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--l2);white-space:nowrap}
-.wk-state i{width:7px;height:7px;border-radius:50%;background:var(--green)}
-.wk-state.bad{color:var(--red)}
+.wk-state i{width:7px;height:7px;border-radius:50%;background:var(--green-fill)}
+.wk-state.bad{color:var(--red-t)}
 .wk-state.bad i{background:var(--red)}
-/* A grant's name and icon (LookSheet): its face beside the name, the icons in a grid. */
-.dhero-av{border:0;padding:0;background:none;border-radius:var(--r-card);position:relative;display:flex}
+.dhero-av{border:0;padding:0;background:none;border-radius:var(--radius-card);position:relative;display:flex}
 .dhero-av:hover::after{content:"";position:absolute;inset:0;border-radius:inherit;background:rgba(0,0,0,.4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E") center/20px no-repeat}
 .gl-id{display:flex;gap:13px;align-items:center;margin-top:8px}
 .gl-id label{flex:1;font-size:12px;color:var(--l2)}
 .gl-id .field{display:block;width:100%;margin-top:4px}
-.settings .fhead.gl-head{margin:21px 0 4px 2px}
-/* General's first group (工单 #103): the app, its version, and what Check for Updates found. */
-.settings .frow.about .fn{font-size:var(--fs-title3);font-weight:var(--font-weight-semibold)}
+.settings .fhead.gl-head{margin:20px 0 4px 2px}
+/* General 关于与版本（#103 / #107 §9） */
+.settings .frow.about .fn{font-size:var(--fs-title2);font-weight:var(--font-weight-semibold)}
 .settings .frow.about .fdesc{font-variant-numeric:tabular-nums}
-.settings .frow.about-said{min-height:36px;font-size:12px;color:var(--l2)}
-.settings .frow.about-said[data-state=error]{color:var(--red)}
+.settings .frow.about-said{min-height:38px;font-size:12px;color:var(--l2)}
+.settings .frow.about-said[data-state=current]{color:var(--green)}
+.settings .frow.about-said[data-state=error]{color:var(--red-t)}
