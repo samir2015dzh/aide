@@ -795,9 +795,14 @@ function DirectChat({ b }: { b: Bot }) {
     }
   };
   const toggleMode = (nextLight: boolean) => {
+    const was = light;
     setLight(nextLight);
     if (room) {
-      local.updateRoom({ machineId: room.hostMachineId, room: { roomId: room.roomId, mode: nextLight ? RoomMode.LIGHT : RoomMode.MANUAL } }).then(setRoom, () => {});
+      // Not switched: why is said by the composer, and the mode shown goes back (审计 I).
+      local.updateRoom({ machineId: room.hostMachineId, room: { roomId: room.roomId, mode: nextLight ? RoomMode.LIGHT : RoomMode.MANUAL } }).then(setRoom, (e) => {
+        setLight(was);
+        setState({ kind: "error", text: errorText(e) });
+      });
     }
   };
   const send = async () => {

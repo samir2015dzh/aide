@@ -618,11 +618,18 @@ private fun LazyListScope.chatItems(model: AppModel, chat: DirectChat, b: Bot, d
                 chat.lightChat,
                 Modifier.fillMaxWidth(),
             ) { light ->
+                val was = chat.lightChat
                 chat.lightChat = light
                 val r = chat.room
                 if (r != null) {
                     scope.launch {
-                        model.updateRoom(r.hostMachineId, io.aide.android.api.RoomPatch(r.roomId, mode = if (light) LIGHT else MANUAL))?.let { chat.room = it }
+                        // Not switched (its error is reported): the mode shown goes back to what the room has.
+                        val updated = model.updateRoom(r.hostMachineId, io.aide.android.api.RoomPatch(r.roomId, mode = if (light) LIGHT else MANUAL))
+                        if (updated != null) {
+                            chat.room = updated
+                        } else {
+                            chat.lightChat = was
+                        }
                     }
                 }
             }

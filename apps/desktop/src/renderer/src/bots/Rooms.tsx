@@ -415,7 +415,7 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
       {awayBanner}
       <main className="bot-main bot-chat">
         <div className="bot-stream chat-log" role="log" aria-label={t("rooms.timeline")}>
-          {msgs.length === 0 && <div className="bot-empty">{t(shadow ? "rooms.shadowEmpty" : table ? "rooms.emptyTable" : "rooms.emptyManual")}</div>}
+          {msgs.length === 0 && <div className="bot-empty">{t(shadow ? "rooms.shadowEmpty" : table ? "rooms.emptyTable" : light ? "rooms.emptyLight" : "rooms.emptyManual")}</div>}
           <RoomTimeline room={room} msgs={msgs} handOn={shadow ? undefined : (to, m) => void send({ text: t("rooms.handOnText", { from: m.fromName, text: m.text }), mentions: [to] })} />
           {/* Replies that wait for the host to come back (工单 #74): in the timeline, where they will come in. */}
           {waiting.count > 0 && <div className="room-sys" role="note">{t("rooms.waitingInline", { count: waiting.count })}</div>}

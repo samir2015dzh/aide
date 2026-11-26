@@ -546,6 +546,7 @@
     "timeline": "Timeline",
     "emptyManual": "Say something: the bots you name act.",
     "emptyTable": "Say something: the ones you name (else the first member) act, and the bots hand on.",
+    "emptyLight": "Light chat: the bots you name answer; name none and every member answers briefly.",
     "mention": "Name",
     "placeholder": "Say something in the room…",
     "wakes": "Wakes: {{names}}",

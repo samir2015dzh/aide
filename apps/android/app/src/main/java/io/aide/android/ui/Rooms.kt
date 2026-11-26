@@ -233,7 +233,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                 if (msgs.isEmpty()) item(key = "none") {
                     Text(when {
                         r.shadow -> t("No agent messages recorded yet.", "暂时还没有记录到 agent 之间的消息。")
-                        mode == LIGHT -> t("Light chat: quick back-and-forth without heavy task context.", "轻聊模式：快速交流，不拖带长上下文。")
+                        mode == LIGHT -> t("Light chat: the bots you name answer; name none and every member answers briefly.", "轻聊：@ 谁谁回；没 @ 时每个成员都简短回一句。")
                         table -> t("Say something: the ones you name (else the first member) act, and the bots hand on.", "说点什么：被 @ 的（没 @ 时第一个成员）先动，bot 之间会接力。")
                         else -> t("Say something: the bots you name act.", "说点什么：@ 谁，谁就会动。")
                     }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))

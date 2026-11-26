@@ -54,6 +54,7 @@ const (
 	roomLightMsgRunes   = 160                 // per-message rune cap in light-chat mode
 	roomLightMaxRunes   = 360                 // total verbatim rune budget in light-chat mode
 	shadowRetention     = 90 * 24 * time.Hour // ≥30 days retention for acked agent-to-agent messages (工单 #124)
+	shadowMaxAge        = 30 * 24 * time.Hour // the oldest a shadow copy can honestly be: the post office keeps none longer (pkg/relay MessageRetention)
 	roomMaxRounds       = 20                  // a round table's hard limit
 	roomRoundsDflt      = 6
 	roomMaxMembers      = 12
@@ -229,17 +230,17 @@ func (n *Machine) ListRooms() *machinev1.ListRoomsResponse {
 	return res
 }
 
-// roomsInStatus is the rooms of several bots this machine hosts, for its
-// status (owner only): the roster follows them on the Watch the owner's
-// devices have, which looks at the status every second (feed.go), so no
-// device asks for them over and over. Without their charters.
+// roomsInStatus is the rooms this machine hosts, for its status (owner
+// only): the roster follows them on the Watch the owner's devices have, which
+// looks at the status every second (feed.go), so no device asks for them over
+// and over. Without their charters. Direct rooms too, flagged Direct: a bot's
+// page lists its earlier conversations from them (工单 #123); the roster's
+// rooms leave them out.
 func (n *Machine) roomsInStatus() []*machinev1.Room {
 	var out []*machinev1.Room
 	for _, r := range n.ListRooms().Rooms {
-		if !r.Direct {
-			r.Charter, r.CharterDeviceCert = nil, nil
-			out = append(out, r)
-		}
+		r.Charter, r.CharterDeviceCert = nil, nil
+		out = append(out, r)
 	}
 	slices.SortFunc(out, func(a, b *machinev1.Room) int { return strings.Compare(a.RoomId, b.RoomId) })
 	return out
@@ -554,7 +555,9 @@ func (n *Machine) PostRoomMessage(ctx context.Context, req *machinev1.PostRoomMe
 	r.Round, r.TraceId, r.Run = 0, newID("tr_"), machinev1.RoomRun_ROOM_RUN_UNSPECIFIED
 	var wakes []wake
 	for _, mem := range r.Members {
-		if r.Direct || slices.Contains(msg.Mentions, mem.BotKey) || (r.Mode == machinev1.RoomMode_ROOM_MODE_ROUNDTABLE && len(msg.Mentions) == 0 && mem == r.Members[0]) {
+		// Light chat naming nobody is for everyone in the room: each answers in a word (工单 #123), else no one would hear it.
+		if r.Direct || slices.Contains(msg.Mentions, mem.BotKey) || (r.Mode == machinev1.RoomMode_ROOM_MODE_ROUNDTABLE && len(msg.Mentions) == 0 && mem == r.Members[0]) ||
+			(light && len(msg.Mentions) == 0) {
 			wakes = append(wakes, wake{mem: mem, text: text, light: light})
 		}
 	}
@@ -1055,6 +1058,12 @@ func (n *Machine) takeRoomLetter(m *inboxv1.Message, info *identity.ContactInfo)
 	case key == "":
 		n.bounce(m, "you are not in this room")
 		return "refused"
+	case st.room.Shadow:
+		// Read-only (工单 #124): what is in it comes only as the owner's sealed shadow copies (takeShadowLetter).
+		n.log.Warn("a letter into a read-only shadow conversation", "room", st.room.RoomId, "from", info.Inbox, "message", m.MessageId)
+		n.audit.Log(AuditRecord{Kind: "room.in", Subject: info.Inbox, Session: st.room.RoomId, Decision: "deny", Detail: "shadow read-only"})
+		n.bounce(m, "this conversation is read-only")
+		return "refused"
 	}
 	answers, failure := m.InReplyTo, ""
 	if m.RoomReply != nil {
@@ -1116,20 +1125,23 @@ func (n *Machine) roomMemberSaid(roomID, botKey, id, text, answers, failure stri
 			}
 		}
 	}
-	// Direct room reply without an explicit InReplyTo: settle the latest awaiting owner delivery for this bot (#135 P02).
+	// Direct room reply without an explicit InReplyTo (#135 P02): it can only be taken as the answer when one of the
+	// owner's messages alone waits on this bot; with several waiting, which it answers is not known, so none is
+	// settled. Never written down as what it answers: that is a guess, not what it said.
 	if answered == "" && r.Direct && failure == "" {
-		for i := len(st.msgs) - 1; i >= 0 && answered == ""; i-- {
-			x := st.msgs[i]
+		var waiting []*machinev1.RoomDelivery
+		for _, x := range st.msgs {
 			if x.From != "owner" {
 				continue
 			}
 			for _, d := range x.Deliveries {
 				if d.BotKey == botKey && (d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_QUEUED) {
-					d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED, ""
-					answered = x.MessageId
-					break
+					waiting = append(waiting, d)
 				}
 			}
+		}
+		if len(waiting) == 1 {
+			waiting[0].State, waiting[0].Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED, ""
 		}
 	}
 	msg := &machinev1.RoomMessage{MessageId: id, RoomId: roomID, From: botKey, FromName: mem.Name, Text: text, At: timestamppb.Now(), InReplyTo: answered, Round: r.Round,
@@ -1182,7 +1194,8 @@ func (n *Machine) roomMemberSaid(roomID, botKey, id, text, answers, failure stri
 	b.mu.Unlock()
 
 	got := n.wakeAll(context.Background(), room, wakes, before)
-	if !msg.Late && failure == "" {
+	// Light chat stays light (工单 #123): no copies for information, as for the owner's words.
+	if !msg.Late && failure == "" && room.Mode != machinev1.RoomMode_ROOM_MODE_LIGHT {
 		n.tellOthers(room, wakes, botKey, text)
 	}
 
@@ -1248,6 +1261,25 @@ func shadowRoomID(a, b string) string {
 	return "room_shadow_" + hex.EncodeToString(sum[:8])
 }
 
+// shadowTime is when a shadow copy is put in its conversation: the time its
+// sender says it sent it, but never after now nor before the oldest a copy
+// at the post office can be (shadowMaxAge): the sender says it, so a
+// back-dated copy can't drop out of the owner's view at once (retention) or
+// go before all that is kept, and a forward-dated one can't stay last.
+func shadowTime(sent *timestamppb.Timestamp, now time.Time) *timestamppb.Timestamp {
+	at := now
+	if sent != nil && sent.IsValid() && !sent.AsTime().IsZero() {
+		at = sent.AsTime()
+	}
+	if at.After(now) {
+		at = now
+	}
+	if oldest := now.Add(-shadowMaxAge); at.Before(oldest) {
+		at = oldest
+	}
+	return timestamppb.New(at)
+}
+
 // takeShadowLetter records a verified 1:1 personal-agent-to-personal-agent
 // mailbox message (decrypted locally on this owner machine from a multi-recipient
 // sealed copy — zero plaintext on the relay) into the pair's read-only shadow
@@ -1260,6 +1292,13 @@ func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactI
 		return "handled"
 	}
 	names := n.grantNames()
+	// Only an agent with a grant here writes into the owner's view, as for a letter (takeSealed): a revoked one
+	// doesn't. Not bounced: its letter itself went to the other agent; only the owner's copy is not kept.
+	if _, ok := names[fromID]; !ok {
+		n.log.Warn("a shadow copy from an agent without a grant here", "message", m.MessageId, "from", fromID)
+		n.audit.Log(AuditRecord{Kind: "shadow.record", Subject: fromID, Decision: "deny", Detail: "no grant"})
+		return "refused"
+	}
 	fromName := cmpOr(names[fromID], cmpOr(sender.Name, fromID))
 	toName := cmpOr(names[toID], toID)
 	aID, bID := fromID, toID
@@ -1269,10 +1308,7 @@ func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactI
 		aName, bName = bName, aName
 	}
 	rid := shadowRoomID(aID, bID)
-	sentAt := m.SentAt
-	if sentAt == nil || sentAt.AsTime().IsZero() {
-		sentAt = timestamppb.Now()
-	}
+	sentAt := shadowTime(m.SentAt, time.Now())
 
 	b := n.roomBook()
 	b.mu.Lock()

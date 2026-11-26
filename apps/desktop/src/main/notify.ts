@@ -164,7 +164,8 @@ export function setRoomOpen(id: string) {
 }
 
 function noticeRooms() {
-  const rooms = world.machines.flatMap((m) => m.status?.rooms ?? []);
+  // Not a bot's direct conversations, in the status for its page's history (工单 #123): as on the phone (World.rooms).
+  const rooms = world.machines.flatMap((m) => m.status?.rooms ?? []).filter((r) => !r.direct);
   const win = mainWindow();
   const open = win && !win.isDestroyed() && win.isFocused() ? roomInFront : "";
   for (const n of roomNotices(roomsSeen, rooms, open)) post(`room-${n.roomId}`, n.title, n.body, `room:${n.hostMachineId}/${n.roomId}`);
