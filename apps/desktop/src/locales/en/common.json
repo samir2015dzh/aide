@@ -14,8 +14,8 @@
     "waitingFor": "Waiting {{seconds}}s"
   },
   "window": {
-    "showSidebar": "Expand Sidebar",
-    "hideSidebar": "Collapse Sidebar",
+    "showSidebar": "Show Sidebar",
+    "hideSidebar": "Hide Sidebar",
     "undo": "Undo",
     "menu": "Menu"
   },
@@ -212,16 +212,6 @@
     "sessionsInDays": "tasks in {{count}} days",
     "workSummary": "Done {{done}} · {{turns}} turns · {{tokens}} tokens",
     "openWork": "Open Overview"
-  },
-  "rail": {
-    "label": "Sidebar Rail",
-    "expand": "Expand Sidebar",
-    "waiting_one": "{{count}} waiting for you",
-    "waiting_other": "{{count}} waiting for you",
-    "failed_one": "{{count}} failed",
-    "failed_other": "{{count}} failed",
-    "unread_one": "{{count}} unread",
-    "unread_other": "{{count}} unread"
   },
   "needsUpdate": {
     "mark": "Needs update",

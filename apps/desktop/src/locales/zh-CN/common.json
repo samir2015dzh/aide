@@ -14,8 +14,8 @@
     "waitingFor": "已等待 {{seconds}} 秒"
   },
   "window": {
-    "showSidebar": "展开边栏",
-    "hideSidebar": "收成窄栏",
+    "showSidebar": "显示边栏",
+    "hideSidebar": "隐藏边栏",
     "undo": "撤销",
     "menu": "菜单"
   },
@@ -204,13 +204,6 @@
     "sessionsInDays": "个任务（{{count}} 天内）",
     "workSummary": "已完成 {{done}} · {{turns}} 轮 · {{tokens}} token",
     "openWork": "打开概览"
-  },
-  "rail": {
-    "label": "窄栏",
-    "expand": "展开边栏",
-    "waiting_other": "{{count}} 个在等你",
-    "failed_other": "{{count}} 个出错",
-    "unread_other": "{{count}} 条未读"
   },
   "needsUpdate": {
     "mark": "需更新",

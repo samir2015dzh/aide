@@ -174,49 +174,27 @@ button{font:inherit;color:inherit}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* Fluent 主窗布局（DESIGN-107 §0.2）：顶部 40px 标题栏（居中搜索框），下方 280px 亚克力名册 + 主内容区 */
 .mainwrap{position:relative;display:grid;grid-template-columns:var(--size-nav-pane) minmax(0,1fr);grid-template-rows:var(--size-titlebar) minmax(0,1fr);height:100%;transition:grid-template-columns var(--duration-normal) var(--ease-fluent)}
-.mainwrap.railed{grid-template-columns:72px minmax(0,1fr)}
+/* The sidebar hidden: the page has the whole width (工单 #141). */
+.mainwrap.noside{grid-template-columns:minmax(0,1fr)}
+.mainwrap.noside>.content{grid-column:1}
 .win-titlebar{grid-column:1 / -1;grid-row:1;height:var(--size-titlebar);display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--surface-acrylic);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));border-bottom:1px solid var(--sep);z-index:10}
 html[data-platform=win] .win-titlebar{padding-right:calc(var(--caption) + 8px)}
-.win-titlebar-l{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+/* The left keeps its buttons whole however narrow the window (工单 #141: the sidebar's toggle is only here); the search gives way. */
+.win-titlebar-l{display:flex;align-items:center;gap:6px;flex:1;min-width:max-content}
 .win-titlebar-brand{font-size:13px;font-weight:600;color:var(--l1);letter-spacing:-.01em;white-space:nowrap}
 .win-titlebar-r{flex:1;min-width:0}
 /* 居中搜索框（DESIGN-107 §0.2 / §0.5c #5A）：420×32、8 圆角 */
-.side-searchbox{flex:0 1 420px;width:min(420px,46vw);min-width:180px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--color-border);border-bottom-color:var(--color-border-strong);border-radius:var(--radius-control);background:var(--surface-input);box-shadow:none;color:var(--l2);font:inherit;font-size:12.5px;text-align:left;transition:border-color var(--duration-fast) var(--ease-fluent),background-color var(--duration-fast) var(--ease-fluent)}
+.side-searchbox{flex:0 1 420px;width:min(420px,46vw);min-width:120px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--color-border);border-bottom-color:var(--color-border-strong);border-radius:var(--radius-control);background:var(--surface-input);box-shadow:none;color:var(--l2);font:inherit;font-size:12.5px;text-align:left;transition:border-color var(--duration-fast) var(--ease-fluent),background-color var(--duration-fast) var(--ease-fluent)}
 .side-searchbox:hover{color:var(--l1);border-color:var(--color-border-strong)}
 .side-searchbox .ph{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-searchbox .kbd{flex:none}
 .side{background:var(--side);border-right:1px solid var(--sep);display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .mainwrap>.side{grid-column:1;grid-row:2}
 .mainwrap>.content{grid-column:2;grid-row:2}
-.rail{grid-column:1;grid-row:2;position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;min-height:0;background:var(--side);border-right:1px solid var(--sep)}
-html.vibrant .rail{background:var(--side-tint)}
-.rail-top{height:12px;width:100%;flex:none;display:flex;align-items:center;justify-content:center}
-.rail-nav{flex:1;min-height:0;width:100%;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0 8px}
-.rail-nav>div{display:flex;flex-direction:column;align-items:center;gap:2px}
-.rail-sep{width:28px;height:1px;background:var(--sep);margin:6px 0;flex:none}
-.rb{position:relative;width:44px;height:40px;flex:none;border:0;border-radius:var(--radius-control);background:none;display:flex;align-items:center;justify-content:center;color:var(--l1);transition:background-color var(--duration-fast) var(--ease-fluent)}
-.rb:hover{background:var(--surface-hover)}
-.rb.sel{background:var(--surface-selected)}
-.rb.sel::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue);animation:pill-in var(--duration-fast) var(--ease-fluent)}
-.rb.small{height:34px}
-.rb.open{background:var(--surface-pressed)}
-.rb>.ic{width:19px;height:19px}
-.rb-dot{position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--surface-page)}
-.rb-dot.u{background:var(--color-fluent-blue)}
-.rb-dot.r{background:var(--red)}
-.rb-busy{position:absolute;bottom:2px;right:2px;display:inline-flex;align-items:center;gap:2px;height:14px;padding:0 3px;border-radius:var(--radius-pill);background:var(--surface-page);font-size:10px;color:var(--l2);font-variant-numeric:tabular-nums}
-.rb-busy>i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--l4);border-top-color:var(--color-fluent-blue);animation:busy-turn 1s linear infinite}
-@media (prefers-reduced-motion:reduce){.rb-busy>i{animation:none}}
-.rail-foot{flex:none;width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 10px;border-top:1px solid var(--sep)}
 .rmenu{left:80px;width:264px}
 .rmenu-h{font-size:12px;color:var(--l2);padding:5px 9px 4px}
 .rmenu .mi{gap:8px}
 .rmenu-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.rail-tip{position:fixed;left:80px;z-index:40;transform:translateY(-50%);max-width:320px;padding:5px 9px;border-radius:var(--radius-control);background:var(--menu-solid);color:var(--l1);box-shadow:var(--shadow-pop);font-size:12px;line-height:1.3;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.acct.compact{border-top:0;padding-top:0}
-.acct.compact .side-foot{width:44px;height:44px;margin:0;padding:0;justify-content:center;position:relative}
-.acct.compact .side-foot>.dotc{position:absolute;right:6px;bottom:6px}
-.acct.compact .acct-menu{left:calc(100% + 4px);right:auto;bottom:0;width:240px;transform-origin:0 100%}
 .mainwrap.peek .side{position:absolute;top:var(--size-titlebar);left:0;bottom:0;z-index:20;width:var(--size-nav-pane);opacity:1;pointer-events:auto;background:var(--surface-flyout);-webkit-backdrop-filter:blur(var(--blur-flyout));backdrop-filter:blur(var(--blur-flyout));box-shadow:var(--shadow-flyout);animation:peek-in var(--duration-normal) var(--ease-fluent)}
 .peek-scrim{position:absolute;inset:0;top:var(--size-titlebar);z-index:19;background:var(--surface-scrim);animation:scrim-in var(--duration-fast)}
 @keyframes scrim-in{from{opacity:0}}
@@ -747,7 +725,9 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .picker:focus-visible{outline:none}
 /* 全部任务：三栏布局，均位于标题栏下方（grid-row: 2） */
 .mainwrap.listed{grid-template-columns:var(--size-nav-pane) var(--size-list-pane) minmax(0,1fr)}
-.mainwrap.listed.railed{grid-template-columns:72px var(--size-list-pane) minmax(0,1fr)}
+.mainwrap.listed.noside{grid-template-columns:var(--size-list-pane) minmax(0,1fr)}
+.mainwrap.listed.noside>.tasks-col{grid-column:1}
+.mainwrap.listed.noside>.content{grid-column:2}
 .mainwrap.listed>.tasks-col{grid-column:2;grid-row:2}
 .mainwrap.listed>.content{grid-column:3;grid-row:2}
 .tasks-col>.side-h{height:44px}
@@ -761,9 +741,9 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .link-banner-err{color:var(--red-t);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Fluent press & interactive motion: preserve color/elevation transitions while adding subtle press feedback. */
-.btn,.picker,.tb,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.ctl-btn,.wcond button,.ag-pop,.cb-b,.rb,.side-searchbox,.conv-new{transition:background-color var(--duration-fast) var(--ease-fluent),border-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent),scale var(--duration-normal) var(--ease-fluent)}
+.btn,.picker,.tb,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox,.conv-new{transition:background-color var(--duration-fast) var(--ease-fluent),border-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent),scale var(--duration-normal) var(--ease-fluent)}
 :is(.btn,.picker,.seg button,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.qopt,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox):active:not(:disabled){scale:var(--press-scale);transition-duration:100ms;transition-timing-function:var(--ease-fluent)}
-:is(.tb,.rb,.cb-b):active:not(:disabled){background:var(--fill3)}
+:is(.tb,.cb-b):active:not(:disabled){background:var(--fill3)}
 :is(.frow.go,.frow.act,.frow.choice,.bot-row,.srow,.sesslist-row,.conv-main,.ag-head,.nav-i,.bot-work,.insp-pick,.side-foot,.pr,.grp-h):active:not(:disabled){background:var(--fill3)}
 @media (prefers-reduced-motion:reduce){:is(.btn,.picker,.seg button,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.qopt,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox):active{scale:none}}
 /* Fluent thin rounded scrollbars synced with light & dark themes (Windows / Linux). */

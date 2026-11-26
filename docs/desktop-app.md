@@ -342,7 +342,7 @@ Decided not to fix (2026-10-19):
 - **The local socket admits every process of the same user**, including coding agents running with full access on the owner's Mac. Checking callers' code signatures (as Codex's and Claude's apps do for some of their sockets) would not change what such an agent can reach: it runs as the owner and can read aided's files (the device key, the session database) and drive the app's UI. What it cannot do is add trust: every grant, machine, device or wider scope needs the root key, i.e. the owner's Touch ID on the signer's panel, which shows what is really signed. So letting agents work on the owner's Mac means trusting them with everything on it except the root key. Stronger isolation, if ever needed, means running the agents sandboxed or as another user, not guarding the socket.
 - **`AddProject` is unsigned**, though it widens grants whose projects are `*`: the owner removed its signature on purpose.
 
-## 13. The window: sidebar, rail and overview
+## 13. The window: sidebar and overview
 
 Moved here on 2026-11-22 from `docs/her-team.md` §14 and §16, when Her was
 taken off the product (work order #17, batch B) and the Her documents were
@@ -363,10 +363,12 @@ point at `docs/her-team.md` §14 or §16 mean this section.
 - **New windows open 1240 × 800.** A window that quit on a session opens
   on it again, with its unfinished answer (owner, 2026-11-15); otherwise
   the window opens on the overview (`start.ts`).
-- **The rail.** The sidebar is expanded (272 px) or a 74 px rail; it is
-  never hidden, and which of the two is the owner's choice, kept from page
-  to page as in Mail and Finder: no click changes it (owner, 2026-11-15).
-  View › Expand Sidebar / Collapse Sidebar switches them.
+- **Shown or hidden.** The sidebar is shown (272 px) or hidden — wholly:
+  there is no rail of icons any more (工单 #141, 2026-11-26; it was a 74 px
+  rail from 2026-11-15). Which is the owner's choice, kept from page to
+  page as in Mail and Finder: no click changes it. The toggle stays at the
+  same place in the title bar either way (工单 #134), and View › Show
+  Sidebar / Hide Sidebar (⌃⌘S) does the same.
 
 ### 13.2 What the sidebar holds
 
@@ -402,21 +404,18 @@ does. Archived sessions on request, older ones loaded at the end.
 Machines and agents are managed in Settings › Machines and Grants, from
 the account menu; their pages show a session count as a value.
 
-### 13.3 The rail
+### 13.3 Hidden
 
-The overview, then one logo for each coding agent with sessions at hand
-(waiting, failed, at work; `liveByAgent`), what waits first: the rail says
-who is at work, the sidebar on what. One session: the logo opens it.
-More: a menu beside it names the agent and lists each session's title and
-mark; one click opens it (the keyboard as in a native menu). The logo's
-tooltip says how its sessions stand ("Codex · 1 waiting for you · 1
-working"). Search and Expand are at its foot. The current place has the
-sidebar's fill and an accent bar on its left.
+Hidden, the sidebar takes no room: the page has the window (工单 #141).
+Nothing stands in its place; the title bar keeps the toggle, the menu and
+Search, and keeps them whole however narrow the window (the search box
+gives way). The rail it replaced (one logo per coding agent at work) was
+taken out: the overview and the sidebar already say who is at work.
 
 ### 13.4 The narrow window
 
-The info card gives way first, then the sidebar shrinks to its rail;
-asked for there, the sidebar shows over the conversation until it is put
+The info card gives way first, then the sidebar is hidden;
+asked for there (the title bar's toggle), the sidebar shows over the conversation until it is put
 away, a page or a session is chosen, or the selection changes. With the
 card: 1102 px (the expanded sidebar, the conversation's 560 and the
 card's 270); the expanded sidebar alone 832 px (`layout.ts`).
@@ -432,11 +431,11 @@ All Sessions link: the sidebar's list is all sessions.
 
 ### 13.6 Tests
 
-- Units: `liveByAgent`, `alwaysActive` and `quickChoice` in `@aide/core`;
+- Units: `alwaysActive` and `quickChoice` in `@aide/core`;
   the layouts (`layout.test.ts`); the start page (`start.test.ts`).
 - e2e (`apps/desktop/e2e`): `frame.spec.ts` (groups, rhythm, rows and
   marks, view menu, collapse, row menu, narrow window), `team.spec.ts`
-  (places, marks, the rail and its agent menu), `sessionlist.spec.ts`,
+  (places, marks, hiding the sidebar), `sessionlist.spec.ts`,
   `overview.spec.ts`, `onboarding.spec.ts` (the empty states).
 
 ## Appendix: sources

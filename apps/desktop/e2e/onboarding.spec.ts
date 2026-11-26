@@ -26,8 +26,8 @@ const password = "correct horse battery";
 
 /** The window grew into the main window. */
 async function expectMainWindow(app: ElectronApplication, page: Page) {
-  // A session on a small display keeps the navigation in its icon rail.
-  await expect(page.locator("aside.side, aside.rail")).toBeVisible();
+  // The main window's frame (on a small display the sidebar may be hidden: no rail, 工单 #141).
+  await expect(page.locator(".win-titlebar")).toBeVisible();
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0)).toBeGreaterThan(900);
 }
 

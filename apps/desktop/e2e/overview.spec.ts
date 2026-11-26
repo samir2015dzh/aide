@@ -198,7 +198,7 @@ test("the overview stays centered when resizing the window or hiding the sidebar
     for (const width of [980, 1360]) {
       await app.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setContentSize(width, 900), width);
       for (const sidebar of [true, false]) {
-        if (!sidebar) await page.getByRole("button", { name: "收成窄栏" }).click();
+        if (!sidebar) await page.getByRole("button", { name: "隐藏边栏" }).click();
         await page.locator(".mainwrap").evaluate((el) => Promise.all(el.getAnimations().map((animation) => animation.finished)));
         await expect.poll(() => page.locator(".ov").evaluate((el) => {
           const scroll = el.parentElement!;
@@ -215,7 +215,7 @@ test("the overview stays centered when resizing the window or hiding the sidebar
         expect(layout.width).toBeCloseTo(Math.min(980, layout.available), 0);
         expect(layout.overflow).toBeLessThanOrEqual(1);
         await snap(page, `overview-centered-${width}-${sidebar ? "sidebar" : "no-sidebar"}`);
-        if (!sidebar) await page.getByRole("button", { name: "展开边栏" }).click();
+        if (!sidebar) await page.getByRole("button", { name: "显示边栏" }).click();
       }
     }
   } finally {
