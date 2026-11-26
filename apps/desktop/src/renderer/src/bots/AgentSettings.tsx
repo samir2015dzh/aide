@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { projectTitle, type Bot } from "@aide/core";
+import { projectTitle, type Bot, stateDetail } from "@aide/core";
 import { botLook } from "@aide/core/avatar";
 import type { Machine } from "@aide/proto/local";
 import { AgentPage, PauseSection, projectsFor, usageText } from "../AgentList";
@@ -52,7 +52,7 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
                   <i className={`dotc ${connDot(b.state.state)}`} />
                   {b.state.word}
                 </span>
-                <span className="muted">{b.state.line}</span>
+                <span className="muted">{stateDetail(b.state)}</span>
               </div>
               {coding && b.state.fix === "claudeLogin" && (
                 <div className="frow">

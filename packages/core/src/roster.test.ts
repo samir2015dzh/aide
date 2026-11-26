@@ -182,3 +182,14 @@ describe("an MCP connection is online by its last call (工单 #94)", () => {
     expect(personalBotState(create(ClientSchema, { clientId: "c2", label: "DSH on work-pc", online: true }), now)).toMatchObject({ word: "在线", line: "现在连着你的账号" });
   });
 });
+
+describe("stateDetail (工单 #137 P10)", () => {
+  test("what the line adds beyond the word, never the word again", async () => {
+    const { stateDetail } = await import("./roster");
+    expect(stateDetail({ word: "已登录", line: "已登录 · 2.1.330" })).toBe("版本 2.1.330");
+    expect(stateDetail({ word: "已检测到", line: "已检测到 · v1.4.0" })).toBe("版本 1.4.0");
+    expect(stateDetail({ word: "已登录", line: "已登录" })).toBe("");
+    expect(stateDetail({ word: "未登录", line: "未登录 · 在 owner-mac 上登录" })).toBe("在 owner-mac 上登录");
+    expect(stateDetail({ word: "在线", line: "现在连着你的账号" })).toBe("现在连着你的账号");
+  });
+});

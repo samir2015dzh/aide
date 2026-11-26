@@ -52,6 +52,18 @@ function usedText(st: Store, c: Client, now: Date): string {
   return names.length ? i18n.t("settings:grants.usedBy", { names: list(names), ago }) : i18n.t("settings:grants.usedAgo", { ago });
 }
 
+/**
+ * A grant's name as the list shows them all, one way (工单 #137 P29: `client@<computer>`, `DSH on <machine>` and bare
+ * agent names side by side, four styles): one that follows a machine as "name · machine" — the command line Aide logs in on a
+ * computer as "Aide 命令行 · <computer>" (it is no agent: 工单 #64) — one that follows the account by its name.
+ */
+export function grantTitle(label: string): string {
+  const cli = /^client@(.+)$/.exec(label);
+  if (cli) return i18n.t("settings:grants.cliOn", { machine: cli[1] });
+  const on = /^(.+) on (.+)$/.exec(label);
+  return on ? `${on[1]} · ${on[2]}` : agentName(label);
+}
+
 /** Access: the grants, each opening what it may use and changing or ending it. */
 export function Grants({ open, select }: { open: string; select: (id: string) => void }) {
   const { t } = useTranslation("settings");
@@ -59,14 +71,13 @@ export function Grants({ open, select }: { open: string; select: (id: string) =>
   const now = useNow(60_000);
   const clients = st.clients.filter((c) => !c.revoked);
   const c = clients.find((x) => x.grantId === open);
-  const connect = () => st.set({ sheet: { kind: "newGrant" } });
   if (c) return <GrantDetail c={c} />;
   return (
     <div className="form">
       {clients.length > 0 ? (
         <div className="fgroup" role="list" aria-label={t("pages.grants")}>
           {clients.map((x) => (
-            <GoRow key={x.grantId} icon={<GrantAvatar c={x} size="md" />} title={agentName(x.label)} sub={usedText(st, x, now)} onClick={() => select(x.grantId)}>
+            <GoRow key={x.grantId} icon={<GrantAvatar c={x} size="md" />} title={grantTitle(x.label)} sub={usedText(st, x, now)} onClick={() => select(x.grantId)}>
               <span className="fv-side">
                 <Left c={x} now={now} />
               </span>
@@ -78,10 +89,10 @@ export function Grants({ open, select }: { open: string; select: (id: string) =>
           <div className="frow muted">{t("grants.none")}</div>
         </div>
       )}
-      <div className="fgroup">
-        <button className="frow act" onClick={connect}>{t("grants.connect")}</button>
-      </div>
-      <p className="set-note">{t("grants.note")}</p>
+      {/* Connecting an agent is the Connect page's, once (工单 #137 P29): here a way there, not a second door. */}
+      <p className="set-note">
+        {t("grants.note")} <button className="link" onClick={() => window.aide?.openSettings("connect/assistants")}>{t("grants.toConnect")}</button>
+      </p>
     </div>
   );
 }
@@ -101,7 +112,7 @@ export function GrantDetail({ c, bare = false, look = true }: { c: Client; bare?
   const agents = (c.spec?.agents ?? []).filter((a) => a !== "*");
   const projects = (c.spec?.projectIds ?? []).filter((p) => p !== "*");
   const machines = (c.spec?.machineIds ?? []).filter((m) => m !== "*");
-  const name = agentName(c.label);
+  const name = grantTitle(c.label);
   const [editing, setEditing] = useState(false);
   const scope = (renew: boolean) => st.set({ sheet: { kind: "scope", clientId: c.clientId, renew } });
   const long = longLived(c);

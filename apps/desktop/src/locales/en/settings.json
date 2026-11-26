@@ -159,7 +159,6 @@
     "daysLeft_one": "{{count}} day left",
     "daysLeft_other": "{{count}} days left",
     "none": "No agents have access yet.",
-    "connect": "Connect Agent…",
     "note": "Access controls which projects, machines, and coding agents an agent can use, and for how long.",
     "disconnectTitle": "Disconnect “{{name}}”?",
     "disconnectMessage": "It will lose access immediately. Any running tasks will be interrupted, while task history is preserved. Reconnect it if you want to use it again.",
@@ -202,7 +201,9 @@
     "renameButton": "Save",
     "icon": "Avatar",
     "iconAuto": "Use its default avatar",
-    "validity": "Valid"
+    "validity": "Valid",
+    "cliOn": "Aide command line · {{machine}}",
+    "toConnect": "To connect a new agent, go to Connect."
   },
   "ops": {
     "none": "No agent has run a command yet.",

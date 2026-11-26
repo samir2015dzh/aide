@@ -8,8 +8,7 @@ import { RoomDeliveryState, RoomMode, type Room, type RoomMessage } from "@aide/
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
   allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
-  type Bot, type ConvParams, type Roster,
-} from "@aide/core";
+  type Bot, type ConvParams, type Roster, stateDetail } from "@aide/core";
 import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
@@ -270,7 +269,7 @@ export function SidebarRoster() {
                 <b>{short ? b.shortName : b.name}</b>
                 <span className="bot-word" data-usable={b.state.usable}>{b.state.word}</span>
               </span>
-              <span className="bot-l2">{b.doing || b.state.line}</span>
+              <span className="bot-l2">{b.doing || stateDetail(b.state)}</span>
             </span>
             {b.waiting > 0 && <span className="cnt-w">{b.waiting}</span>}
           </button>
@@ -347,7 +346,7 @@ export function BotPage({ botKey, native, settings = false }: { botKey: string; 
             <BotPill b={b} />
           </div>
           <div className="bot-head-l2">
-            <span>{b.state.line}</span>
+            <span>{stateDetail(b.state)}</span>
             {fix && !login && <button className="link" onClick={() => window.aide?.openSettings(`machines/${m!.machineId}`)}>{t("bots.fixOnDevices")}</button>}
           </div>
           {login && <ClaudeLogin m={m!} waiting={claudeLoginWaiting(m!)} />}
@@ -639,9 +638,12 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
                 <Icon name="expand" className="sm" />
                 {t("conv.open")}
               </button>
-              <button className="btn sm" onClick={() => void archive(current, current.status !== SessionStatus.ARCHIVED)}>
-                {t(current.status === SessionStatus.ARCHIVED ? "conv.unarchive" : "conv.archive")}
-              </button>
+              {/* Unarchiving is where the owner meets it, under the composer (工单 #137 P13): not here too. */}
+              {current.status !== SessionStatus.ARCHIVED && (
+                <button className="btn sm" onClick={() => void archive(current, true)}>
+                  {t("conv.archive")}
+                </button>
+              )}
             </div>
           </div>
         ) : (

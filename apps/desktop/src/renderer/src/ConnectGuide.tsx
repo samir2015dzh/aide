@@ -164,7 +164,8 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
       {(agent === "claude" || agent === "deepseek" || agent === "antigravity") && d !== "offline" && (
         <section className="cg-sec" aria-label={t("details")}>
           <div className="fhead">{t("details")}</div>
-          <ConnectionsCard m={m} only={(r) => r.agent === agent} />
+          {/* Its main row's name and state are the status above: here only what it adds (工单 #137 P17). */}
+          <ConnectionsCard m={m} only={(r) => r.agent === agent} bare={(r) => r.id === (agent === "claude" ? "claude-cli" : agent)} />
         </section>
       )}
       {/* A trial run is what confirms an ACP agent's sign-in (工单 #112): offered while it is unconfirmed too. */}

@@ -270,7 +270,8 @@
     "countUnknown": "{{count}} unknown",
     "countOf": "of {{count}}",
     "reconnecting": "Reconnecting",
-    "reconnectingLine": "The link to Aide on this computer broke and is being restored; what it showed before is not known to be current."
+    "reconnectingLine": "The link to Aide on this computer broke and is being restored; what it showed before is not known to be current.",
+    "version": "Version {{version}}"
   },
   "attach": {
     "kind": {

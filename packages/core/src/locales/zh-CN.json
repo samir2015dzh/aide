@@ -261,7 +261,8 @@
     "countUnknown": "未知 {{count}}",
     "countOf": "共 {{count}}",
     "reconnecting": "正在重连",
-    "reconnectingLine": "与这台电脑上 Aide 后台的连接中断，正在重连；它之前的状态现在未必还对。"
+    "reconnectingLine": "与这台电脑上 Aide 后台的连接中断，正在重连；它之前的状态现在未必还对。",
+    "version": "版本 {{version}}"
   },
   "attach": {
     "kind": {

@@ -60,11 +60,12 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   await expect(bot).toContainText("长期有效");
   await snap(settings, "settings-grants");
 
-  // Adding happens in a sheet over the settings window: the first run's assistants.
-  await grants.getByRole("button", { name: "连接 agent…" }).click();
-  await expect(settings.getByRole("dialog", { name: "连接助手" })).toBeVisible();
-  await settings.keyboard.press("Escape");
-  await expect(settings.getByRole("dialog")).toHaveCount(0);
+  // Connecting one is the Connect page's, once (工单 #137 P29): from here a way there, no second button; and every
+  // grant named one way.
+  await expect(grants.getByRole("button", { name: "连接 agent…" })).toHaveCount(0);
+  await grants.getByRole("button", { name: "要连接新的 agent，到「连接」页。" }).click();
+  await expect(settings.getByRole("main", { name: "连接" }).getByRole("tab", { name: "助手" })).toHaveAttribute("aria-selected", "true");
+  await nav(settings, "授权").click();
 
   await bot.click();
   await expect(grants).toContainText("所有项目（包括以后添加的）");

@@ -157,7 +157,6 @@
     "expiresIn_other": "{{count}} 天后到期",
     "daysLeft_other": "还剩 {{count}} 天",
     "none": "还没有授权。",
-    "connect": "连接 agent…",
     "note": "授权决定一个 agent 能用你的哪些项目、机器和编码 agent，用多久。",
     "disconnectTitle": "断开「{{name}}」？",
     "disconnectMessage": "它会立即失去访问；正在跑的任务会被打断，任务本身保留。要再用，需要重新连接。",
@@ -200,7 +199,9 @@
     "renameButton": "存储",
     "icon": "头像",
     "iconAuto": "恢复默认头像",
-    "validity": "有效期"
+    "validity": "有效期",
+    "cliOn": "Aide 命令行 · {{machine}}",
+    "toConnect": "要连接新的 agent，到「连接」页。"
   },
   "ops": {
     "none": "还没有 agent 执行过命令。",

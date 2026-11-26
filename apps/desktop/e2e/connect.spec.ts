@@ -196,6 +196,17 @@ test("the Connect pages list every known coding agent with its state, and name p
     const verify = main.getByRole("region", { name: "确认能用" });
     await expect(verify).toContainText("可以用", { timeout: 30_000 });
     await expect(verify).not.toContainText(", ");
+    // 工单 #137 P17: "detected" once, in the status; the details below say what they add.
+    await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到" })).toBeVisible();
+    await expect(main.getByRole("region", { name: "连接细项" })).not.toContainText("已检测到");
+
+    // 工单 #137 P10: the bot page's head says its state once — the word, then what the line adds, not the word again.
+    await page.bringToFront();
+    const head = page.getByRole("region", { name: /^DSH/ }).locator(".bot-head");
+    await page.getByRole("button", { name: /^DSH/ }).first().click();
+    await expect(head).toBeVisible({ timeout: 30_000 });
+    const word = (await head.locator(".bot-pill").innerText()).trim();
+    expect(((await head.innerText()).match(new RegExp(word, "g")) ?? []).length, `"${word}" in the head`).toBe(1);
   } finally {
     await app.close();
   }
