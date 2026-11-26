@@ -40,7 +40,7 @@
   --sp-5: 55px;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --accent: #0078d4;
     --accent-fg: #479ef5;
     --on-accent: #ffffff;
@@ -63,6 +63,29 @@
     --beam-opacity: 0.6;
     --beam-blend: plus-lighter;
   }
+}
+:root[data-theme="dark"] {
+  --accent: #0078d4;
+  --accent-fg: #479ef5;
+  --on-accent: #ffffff;
+  --ink: #f3f2f1;
+  --ok: #00cc6a;
+  --warn: #ffb900;
+  --danger: #ff6b75;
+  --aurora-0: #22e1c9;
+  --aurora-1: #3e7bff;
+  --aurora-2: #7b61ff;
+  --aurora-g0: #22e1c9;
+  --aurora-g1: #00d0de;
+  --aurora-g2: #00b9f1;
+  --aurora-g3: #009cfe;
+  --aurora-g4: #3e7bff;
+  --aurora-g5: #5175ff;
+  --aurora-g6: #616eff;
+  --aurora-g7: #6e68ff;
+  --aurora-g8: #7b61ff;
+  --beam-opacity: 0.6;
+  --beam-blend: plus-lighter;
 }
 /* Always-dark brand surfaces: the dark-background colours, whatever the
    colour scheme. */
@@ -165,22 +188,25 @@
   }
 }
 
-/* Waiting for the other side: the aide lifts out of its gap and breathes,
-   settles back in when done (lock: the rest state), drifts off grey when
-   it fails. */
+/* Waiting for the other side (also #128 connecting screen): the ring orbits
+   smoothly while the aide lifts and breathes around the pulsing core, so it
+   reads unmistakably alive at any size; settles back on lock, drifts off on fail. */
+.hm-wait .hm-orbit {
+  animation: hm-turn 2.6s var(--ease-in-out) infinite;
+}
 .hm-wait .hm-sat {
-  transform: translate(14px, -14px);
-  opacity: 0.6;
-  animation: hm-hover 2.4s var(--ease-in-out) infinite alternate;
+  transform: translate(12px, -12px);
+  opacity: 0.65;
+  animation: hm-hover 1.6s var(--ease-in-out) infinite alternate;
 }
 @keyframes hm-hover {
   to {
-    transform: translate(5px, -5px);
+    transform: translate(3px, -3px);
     opacity: 1;
   }
 }
 .hm-wait .hm-core {
-  opacity: 0.7;
+  animation: hm-breathe-core 1.6s var(--ease-in-out) infinite alternate;
 }
 .hm-fail .hm-sat {
   transform: translate(30px, -30px);
@@ -197,6 +223,8 @@
   .hm-seq .hm-orbit,
   .hm-pulse .hm-orbit,
   .hm-pulse .hm-core,
+  .hm-wait .hm-orbit,
+  .hm-wait .hm-core,
   .hm-wait .hm-sat {
     transform: none;
     animation: hm-fade 2s var(--ease-in-out) infinite alternate;

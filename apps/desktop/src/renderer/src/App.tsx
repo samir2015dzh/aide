@@ -44,12 +44,23 @@ function DaemonUnavailable() {
   const [approval, setApproval] = useState(false);
   // It usually answers within moments of starting; the explanation only if it doesn't.
   const [late, setLate] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [restarting, setRestarting] = useState(false);
   const [restartErr, setRestartErr] = useState<{ reason: string; needsApproval?: boolean; canOpenLogs: boolean } | null>(null);
   useEffect(() => {
     window.aide?.daemonNeedsApproval().then(setApproval);
-    const timer = setTimeout(() => setLate(true), 2500);
-    return () => clearTimeout(timer);
+    const started = Date.now();
+    const timer = setTimeout(() => {
+      setLate(true);
+      setElapsed(Math.max(1, Math.round((Date.now() - started) / 1000)));
+    }, 2500);
+    const tick = setInterval(() => {
+      setElapsed(Math.max(1, Math.floor((Date.now() - started) / 1000)));
+    }, 1000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(tick);
+    };
   }, []);
   const restart = async () => {
     if (restarting) return;
@@ -80,6 +91,7 @@ function DaemonUnavailable() {
         late && (
           <>
             <span>{t("daemon.noResponse")}</span>
+            <span className="muted tnum" style={{ fontSize: 12 }}>{t("daemon.waitingFor", { seconds: elapsed })}</span>
             <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
               <button className="btn primary" disabled={restarting} onClick={() => void restart()}>
                 {restarting ? t("daemon.restarting") : t("daemon.restart")}

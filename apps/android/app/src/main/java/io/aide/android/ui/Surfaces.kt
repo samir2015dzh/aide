@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -52,10 +54,18 @@ import kotlinx.coroutines.launch
 // 10dp sunken inner blocks, contrast-checked status pills (vivid dot + darkened text on subtle tint),
 // and zero-recomposition press highlights for smooth scrolling (工单 #55).
 
-/** A Fluent card: 16dp rounded, card surface fill with 1dp hairline edge. */
+/** A Fluent card: 16dp rounded, subtle light-mode ambient elevation, card surface fill with 1dp hairline edge. */
 @Composable
-fun Modifier.aideCard(shape: Shape = RoundedCornerShape(Radius.Lg)): Modifier =
-    this.clip(shape).background(aide.card).border(1.dp, aide.cardEdge, shape)
+fun Modifier.aideCard(shape: Shape = RoundedCornerShape(Radius.Lg)): Modifier {
+    val dark = isSystemInDarkTheme()
+    val elevated = if (dark) this else this.shadow(
+        elevation = 2.dp,
+        shape = shape,
+        ambientColor = Color.Black.copy(alpha = 0.08f),
+        spotColor = Color.Black.copy(alpha = 0.08f),
+    )
+    return elevated.clip(shape).background(aide.card).border(1.dp, aide.cardEdge, shape)
+}
 
 /** A sunken block inside a card (an agent workbench, code block, call detail): 10dp rounded. */
 @Composable

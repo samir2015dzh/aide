@@ -49,17 +49,24 @@
   --surface-pressed: rgba(0, 0, 0, 0.07);
   --surface-selected: rgba(255, 255, 255, 0.9);
   --surface-code: #f6f5f4;
+  --surface-code-inline: rgba(0, 0, 0, 0.055);
+  --surface-table-head: #eeedec;
+  --surface-table-stripe: rgba(0, 0, 0, 0.022);
   --surface-scrim: rgba(0, 0, 0, 0.3);
 
   --color-text: #201f1e;
+  --color-text-strong: #11100f;
   --color-text-muted: #605e5c;
   --color-text-disabled: #a19f9d;
   --color-border: #d1d1d1;
   --color-border-strong: #8a8886;
   --color-divider: rgba(0, 0, 0, 0.08);
-  --border-acrylic: rgba(255, 255, 255, 0.3);
-  --border-acrylic-hover: rgba(255, 255, 255, 0.5);
-  --border-flyout: rgba(255, 255, 255, 0.4);
+  --border-acrylic: rgba(255, 255, 255, 0.45);
+  --border-acrylic-hover: rgba(255, 255, 255, 0.72);
+  --border-flyout: rgba(255, 255, 255, 0.55);
+  --rim-top: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.34);
 
   /* 主蓝 */
   --color-accent: var(--color-fluent-blue);
@@ -83,12 +90,12 @@
   /* 模糊与深度 */
   --blur-acrylic: 20px;
   --blur-flyout: 30px;
-  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.08);
-  --shadow-card-hover: 0 4px 8px rgba(0, 0, 0, 0.06), 0 16px 32px rgba(0, 0, 0, 0.14);
-  --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 14px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 3px 6px rgba(0, 0, 0, 0.06), 0 14px 28px rgba(0, 0, 0, 0.11);
+  --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
   --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.18), 0 2px 21px rgba(0, 0, 0, 0.14);
-  --shadow-button-primary: 0 2px 4px rgba(0, 120, 212, 0.3);
-  --shadow-button-primary-hover: 0 4px 8px rgba(0, 120, 212, 0.4);
+  --shadow-button-primary: 0 1px 2px rgba(0, 120, 212, 0.25), 0 2px 6px rgba(0, 120, 212, 0.22);
+  --shadow-button-primary-hover: 0 3px 10px rgba(0, 120, 212, 0.36);
   --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #0078d4;
 
   /* 圆角（所有者 2026-11-23 定版） */
@@ -136,6 +143,7 @@
     --color-acrylic: rgba(37, 36, 35, 0.72);
 
     --color-text: #f3f2f1;
+    --color-text-strong: #ffffff;
     --color-text-muted: #c8c6c4;
     --color-text-disabled: #797775;
     --color-border: #3b3a39;
@@ -160,14 +168,20 @@
     --surface-pressed: rgba(255, 255, 255, 0.04);
     --surface-selected: rgba(255, 255, 255, 0.09);
     --surface-code: #141312;
+    --surface-code-inline: rgba(255, 255, 255, 0.09);
+    --surface-table-head: #292827;
+    --surface-table-stripe: rgba(255, 255, 255, 0.026);
     --surface-scrim: rgba(0, 0, 0, 0.5);
-    --border-acrylic: rgba(255, 255, 255, 0.08);
-    --border-acrylic-hover: rgba(255, 255, 255, 0.14);
-    --border-flyout: rgba(255, 255, 255, 0.1);
+    --border-acrylic: rgba(255, 255, 255, 0.09);
+    --border-acrylic-hover: rgba(255, 255, 255, 0.16);
+    --border-flyout: rgba(255, 255, 255, 0.11);
+    --rim-top: inset 0 1px 0 rgba(255, 255, 255, 0.11);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.34);
 
     --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.28);
     --shadow-card-hover: 0 4px 8px rgba(0, 0, 0, 0.26), 0 16px 32px rgba(0, 0, 0, 0.4);
-    --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.25);
     --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.5), 0 2px 21px rgba(0, 0, 0, 0.4);
     --focus-ring: 0 0 0 2px #1b1a19, 0 0 0 4px #479ef5;
   }
@@ -180,6 +194,7 @@
   --color-acrylic: rgba(37, 36, 35, 0.72);
 
   --color-text: #f3f2f1;
+  --color-text-strong: #ffffff;
   --color-text-muted: #c8c6c4;
   --color-text-disabled: #797775;
   --color-border: #3b3a39;
@@ -204,14 +219,20 @@
   --surface-pressed: rgba(255, 255, 255, 0.04);
   --surface-selected: rgba(255, 255, 255, 0.09);
   --surface-code: #141312;
+  --surface-code-inline: rgba(255, 255, 255, 0.09);
+  --surface-table-head: #292827;
+  --surface-table-stripe: rgba(255, 255, 255, 0.026);
   --surface-scrim: rgba(0, 0, 0, 0.5);
-  --border-acrylic: rgba(255, 255, 255, 0.08);
-  --border-acrylic-hover: rgba(255, 255, 255, 0.14);
-  --border-flyout: rgba(255, 255, 255, 0.1);
+  --border-acrylic: rgba(255, 255, 255, 0.09);
+  --border-acrylic-hover: rgba(255, 255, 255, 0.16);
+  --border-flyout: rgba(255, 255, 255, 0.11);
+  --rim-top: inset 0 1px 0 rgba(255, 255, 255, 0.11);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.34);
 
   --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.28);
   --shadow-card-hover: 0 4px 8px rgba(0, 0, 0, 0.26), 0 16px 32px rgba(0, 0, 0, 0.4);
-  --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.25);
   --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.5), 0 2px 21px rgba(0, 0, 0, 0.4);
   --focus-ring: 0 0 0 2px #1b1a19, 0 0 0 4px #479ef5;
 }

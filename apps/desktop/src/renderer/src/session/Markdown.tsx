@@ -12,6 +12,7 @@ import { texMath } from "./markdown/tex";
 import { MarkdownTable } from "./markdown/Table";
 import { CodeBlock, InlineCode, Link } from "./content";
 import { DraftContext } from "./scope";
+import "./markdown/markdown.css";
 
 const MermaidBlock = lazy(() => import("./markdown/Mermaid"));
 const SourceContext = createContext("");

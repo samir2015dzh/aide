@@ -10,7 +10,8 @@
     "restartFailed": "Couldn’t restart the background service",
     "restartTimedOut": "Restart was requested, but the background service still isn’t responding",
     "restartDev": "The background service is managed externally in development mode; restart it from its terminal",
-    "openLogs": "View Logs"
+    "openLogs": "View Logs",
+    "waitingFor": "Waiting {{seconds}}s"
   },
   "window": {
     "showSidebar": "Expand Sidebar",

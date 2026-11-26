@@ -10,7 +10,8 @@
     "restartFailed": "重启后台服务失败",
     "restartTimedOut": "已尝试重启，但后台服务仍无响应",
     "restartDev": "当前为开发或外部托管模式，请在启动终端重启后台服务",
-    "openLogs": "查看日志"
+    "openLogs": "查看日志",
+    "waitingFor": "已等待 {{seconds}} 秒"
   },
   "window": {
     "showSidebar": "展开边栏",
