@@ -1,8 +1,17 @@
 package io.aide.android.model
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import io.aide.android.api.ReadAttachmentResponse
 import io.aide.android.api.Session
 import io.aide.android.api.SessionStatus
 import io.aide.android.ui.t
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 
 // What goes with a message (工单 #91), as the desktop's (packages/core attachments.ts): images, audio and any other
 // file. The machine takes at most 20 files and 32 MiB per message, saves each beside the session and lists its path in
@@ -86,20 +95,61 @@ fun sessionsByProject(open: Session, sessions: Collection<Session>): List<Projec
 }
 
 /**
- * Pictures this phone sent (工单 #143), by their SHA-256: a message's bubble shows each as its thumbnail. Only those
- * sent from here while the app runs: the machine has no way to give a file back yet, so one sent elsewhere shows by name.
+ * Pictures of a session, by their SHA-256 (工单 #143, #156, #158): one this phone sent is here at once; any other
+ * (sent from another device or before the app started, or shown by one of the agent's replies) the machine gives back
+ * (ReadAttachment) when it is first drawn, and it stays while the app runs. A picture is kept at most [MAX_SIDE] pixels
+ * a side, enough for its thumbnail and for it full screen.
  */
 object SentPictures {
     private const val MOST = 60
-    private val kept = LinkedHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+    private const val MAX_SIDE = 1600
+    private val kept = LinkedHashMap<String, ImageBitmap>()
+    private val sizes = HashMap<String, Long>()
+    /** At most this many are asked for at once, so that large ones never hold up a session's events on a slow link. */
+    private val asking = Semaphore(3)
 
     fun sha256(bytes: ByteArray): String =
         java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    @Synchronized fun keep(bytes: ByteArray, thumb: androidx.compose.ui.graphics.ImageBitmap) {
-        kept[sha256(bytes)] = thumb
-        while (kept.size > MOST) kept.remove(kept.keys.first())
+    @Synchronized fun keep(bytes: ByteArray, thumb: ImageBitmap) = keep(sha256(bytes), thumb, bytes.size.toLong())
+
+    @Synchronized private fun keep(key: String, pic: ImageBitmap, size: Long) {
+        kept.remove(key)
+        kept[key] = pic
+        sizes[key] = size
+        while (kept.size > MOST) kept.keys.first().let { kept.remove(it); sizes.remove(it) }
     }
 
-    @Synchronized fun of(sha: String): androidx.compose.ui.graphics.ImageBitmap? = kept[sha]
+    @Synchronized fun of(sha: String): ImageBitmap? = kept[sha]
+
+    /** How large the file is, when it was fetched or sent here. */
+    @Synchronized fun sizeOf(key: String): Long = sizes[key] ?: 0
+
+    /** The key a picture is kept under: its SHA-256, else (one a reply showed that no turn kept yet) its session and path. */
+    fun key(sessionId: String, sha: String, path: String) = sha.ifEmpty { "$sessionId\u0000$path" }
+
+    /** A picture of the session, fetched with read when it is not here yet; null when the machine has none (or can't say). */
+    suspend fun fetch(sessionId: String, sha: String, path: String, read: suspend (String, String, String) -> ReadAttachmentResponse?): ImageBitmap? {
+        val key = key(sessionId, sha, path)
+        of(key)?.let { return it }
+        return asking.withPermit {
+            of(key) ?: read(sessionId, sha, path)?.let { res ->
+                withContext(Dispatchers.Default) {
+                    val bytes = runCatching { Base64.decode(res.data, Base64.DEFAULT) }.getOrNull() ?: return@withContext null
+                    decode(bytes)?.also { pic ->
+                        keep(key, pic, bytes.size.toLong())
+                        if (sha.isEmpty() && res.sha256.isNotEmpty()) keep(res.sha256, pic, bytes.size.toLong())
+                    }
+                }
+            }
+        }
+    }
+
+    private fun decode(bytes: ByteArray): ImageBitmap? = runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_SIDE) sample *= 2
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+    }.getOrNull()
 }

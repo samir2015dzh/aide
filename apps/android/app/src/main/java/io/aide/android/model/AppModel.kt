@@ -16,6 +16,7 @@ import io.aide.android.api.LocalApi
 import io.aide.android.api.Persona
 import io.aide.android.api.QueryWorkRequest
 import io.aide.android.api.QueryWorkResponse
+import io.aide.android.api.ReadAttachmentResponse
 import io.aide.android.api.Session
 import io.aide.android.api.SetLoginRequest
 import io.aide.android.connection.ConnectionService
@@ -228,6 +229,16 @@ class AppModel(private val context: Context) {
                 // The core ended the watch (a profile changed, a watcher behind): watch again.
             }
             delay(500)
+        }
+    }
+
+    /** A file a session keeps (ReadAttachment, 工单 #156); null when the machine has none, can't be reached, or is too old to say. */
+    suspend fun readAttachment(sessionId: String, sha256: String, path: String): ReadAttachmentResponse? {
+        val api = api ?: return null
+        return try {
+            api.readAttachment(sessionId, sha256, path)
+        } catch (e: ApiError) {
+            null
         }
     }
 

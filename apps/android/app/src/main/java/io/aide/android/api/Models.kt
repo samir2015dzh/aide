@@ -457,7 +457,8 @@ data class QueryWorkResponse(val sessions: List<SessionCount> = emptyList(), val
 /** title: the line it shows by when summary is its raw arguments (a session read from DSH's or Claude Desktop's records). */
 @Serializable data class ToolCall(val callId: String = "", val kind: String = "", val name: String = "", val summary: String = "", val decision: String = "", val reason: String = "", val title: String = "")
 @Serializable data class ToolResult(val callId: String = "", val summary: String = "", val isError: Boolean = false, val truncated: Boolean = false, val preview: Boolean = false)
-@Serializable data class TurnCompleted(val result: String = "", val isError: Boolean = false, val commit: String = "", val failure: Failure? = null)
+/** shown: the pictures its replies showed, kept with the session (工单 #158), by the path the reply wrote. */
+@Serializable data class TurnCompleted(val result: String = "", val isError: Boolean = false, val commit: String = "", val failure: Failure? = null, val shown: List<AttachmentInfo> = emptyList())
 @Serializable data class ErrorEvent(val message: String = "", val failure: Failure? = null)
 @Serializable data class QuestionAsked(val question: Question? = null)
 @Serializable data class QuestionResolved(val questionId: String = "", val resolution: String = "", val by: String = "", val answers: List<Answer> = emptyList(), val clientMessageIds: List<String> = emptyList())
@@ -612,6 +613,16 @@ data class SessionEvent(
 @Serializable data class ClaudeSessionEntry(val machineId: String = "", val machineName: String = "", val session: ClaudeSession = ClaudeSession(), val lost: Boolean = false, val readAt: String = "")
 @Serializable data class ClaudeIndexEntry(val machineId: String = "", val indexes: List<String> = emptyList())
 @Serializable data class ListClaudeSessionsResponse(val sessions: List<ClaudeSessionEntry> = emptyList(), val unreachable: List<DSHUnreachable> = emptyList(), val indexes: List<ClaudeIndexEntry> = emptyList())
+/** A file a session keeps (SessionService.ReadAttachment, 工单 #156): by its SHA-256, or a picture a reply showed by its path. */
+@Serializable data class ReadAttachmentRequest(val sessionId: String, val sha256: String = "", val path: String = "")
+/** data: the file's bytes, base64 as Connect's JSON gives them. */
+@Serializable data class ReadAttachmentResponse(
+    val name: String = "",
+    val mediaType: String = "",
+    @Serializable(with = Int64::class) val size: Long = 0,
+    val sha256: String = "",
+    val data: String = "",
+)
 @Serializable data class ReadClaudeSessionRequest(
     val machineId: String,
     val sessionId: String,

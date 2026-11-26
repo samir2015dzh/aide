@@ -74,6 +74,9 @@ class LocalApi(port: Long, token: String) {
     suspend fun readClaudeSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadClaudeSessionResponse =
         call("ReadClaudeSession", ReadClaudeSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
 
+    suspend fun readAttachment(sessionId: String, sha256: String, path: String): ReadAttachmentResponse =
+        call("ReadAttachment", ReadAttachmentRequest(sessionId, sha256, path), timeoutSeconds = 60)
+
     suspend fun readDSHSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadDSHSessionResponse =
         call("ReadDSHSession", ReadDSHSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
 

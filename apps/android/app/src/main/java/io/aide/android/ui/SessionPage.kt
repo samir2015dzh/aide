@@ -42,15 +42,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
 import io.aide.android.api.AttachmentInfo
 import io.aide.android.model.AttachKind
 import io.aide.android.model.PendingFile
-import io.aide.android.model.SentPictures
+import io.aide.android.model.replyPictures
 import io.aide.android.model.attachKind
 import io.aide.android.model.kindWord
 import io.aide.android.model.sizeText
@@ -63,6 +61,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -214,30 +213,34 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                 val m = world.machines.firstOrNull { it.machineId == s?.machineId }
                 val signIn = items.lastOrNull { it is Item.Error && it.auth || it is Item.TurnEnd && it.auth }?.key
                     ?.takeIf { s?.agent == "claude" && m != null && codingBotState(m, "claude", Instant.now())?.login == true }
-                LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.key }) {
-                        Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) {
-                            ItemView(it, starter = s?.createdBy.orEmpty(), names = names, agent = agentTitle(s?.agent.orEmpty()))
-                            if (it.key == signIn && m != null) Column(Modifier.padding(horizontal = 12.dp)) {
-                                Text(
-                                    t("Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below gives a sign-in address to open on any device; sign in, enter the code back, then send a message to go on.",
-                                        "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会给出登录地址，在任意设备上打开、登录并填回授权码，再发一条消息即可继续。"),
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                ClaudeLogin(model, m)
+                // Its pictures come from its machine (工单 #156, #158).
+                val pictures = remember(sid) { if (sid.isEmpty()) null else PictureSource(sid, model::readAttachment) }
+                CompositionLocalProvider(LocalPictureSource provides pictures) {
+                    LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(items, key = { it.key }) {
+                            Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold))) {
+                                ItemView(it, starter = s?.createdBy.orEmpty(), names = names, agent = agentTitle(s?.agent.orEmpty()))
+                                if (it.key == signIn && m != null) Column(Modifier.padding(horizontal = 12.dp)) {
+                                    Text(
+                                        t("Tasks Aide hands out run with the Claude Code command line, which is not signed in on that machine (the Claude desktop app's sign-in does not carry over). The sign-in button below gives a sign-in address to open on any device; sign in, enter the code back, then send a message to go on.",
+                                            "Aide 派出的任务用 Claude Code 命令行跑，它在那台机器上没登录（Claude Desktop 的登录不会续给它）。点下面的登录按钮会给出登录地址，在任意设备上打开、登录并填回授权码，再发一条消息即可继续。"),
+                                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    ClaudeLogin(model, m)
+                                }
                             }
                         }
+                        items(queued, key = { "outbox:${it.id}" }) { msg ->
+                            OutboxItemView(
+                                msg = msg,
+                                // null: the queue could not be written at all; then none of it outlasts the app.
+                                inMemoryOnly = memoryOnly?.contains(msg.id) ?: true,
+                                onRetry = { model.retryOutbox(msg.id) },
+                                onCancel = { model.removeOutbox(msg.id) },
+                            )
+                        }
+                        item { Box(Modifier.heightIn(min = 8.dp)) }
                     }
-                    items(queued, key = { "outbox:${it.id}" }) { msg ->
-                        OutboxItemView(
-                            msg = msg,
-                            // null: the queue could not be written at all; then none of it outlasts the app.
-                            inMemoryOnly = memoryOnly?.contains(msg.id) ?: true,
-                            onRetry = { model.retryOutbox(msg.id) },
-                            onCancel = { model.removeOutbox(msg.id) },
-                        )
-                    }
-                    item { Box(Modifier.heightIn(min = 8.dp)) }
                 }
             }
         }
@@ -459,7 +462,12 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, na
                 SelectionContainer { Text(item.text, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyLarge, color = aide.onBubble) }
             }
         }
-        is Item.Agent -> MarkdownText(item.text, pad)
+        is Item.Agent -> Column(pad) {
+            MarkdownText(item.text)
+            // The pictures it shows (工单 #158), each once, under it.
+            val pictures = remember(item.text, item.kept) { replyPictures(item.text, item.kept) }
+            ReplyPictures(pictures, Modifier.padding(top = 6.dp))
+        }
         is Item.Draft -> MarkdownText(item.text, pad, color = MaterialTheme.colorScheme.onSurfaceVariant, selectable = false)
         is Item.Tools -> ToolsView(item)
         is Item.Asked -> Surface(pad, color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(Radius.Lg)) {
@@ -646,17 +654,15 @@ private fun QuestionPanel(model: AppModel, s: Session, q: Question) {
     }
 }
 
-/** The files that went with a message (工单 #143): a picture this phone sent as its thumbnail, any other by name. */
+/** The files that went with a message (工单 #143): a picture as its thumbnail (from the machine when sent from elsewhere, 工单 #156), any other by name. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SentFiles(files: List<AttachmentInfo>) {
     FlowRow(Modifier.widthIn(max = 320.dp).padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (f in files) {
             val kind = attachKind(PendingFile(f.name, f.mediaType, f.size))
-            val pic = if (kind == AttachKind.IMAGE) SentPictures.of(f.sha256) else null
             Box(Modifier.heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp)).background(aide.fill2)) {
-                if (pic != null) Image(pic, f.name, Modifier.size(96.dp), contentScale = ContentScale.Crop)
-                else Column(Modifier.widthIn(max = 200.dp).padding(horizontal = 10.dp, vertical = 8.dp)) {
+                if (kind != AttachKind.IMAGE || !SentPicture(f.sha256, f.name, f.size)) Column(Modifier.widthIn(max = 200.dp).padding(horizontal = 10.dp, vertical = 8.dp)) {
                     Text(f.name, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${kindWord(kind)} · ${sizeText(f.size)}", fontSize = 11.sp, color = aide.faint, maxLines = 1)
                 }
