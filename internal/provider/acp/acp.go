@@ -984,6 +984,23 @@ type session struct {
 	overran map[string]bool
 	// forms are elicitation requests waiting for an answer.
 	forms map[string]form
+	// prompting: a turn (session/prompt) is in progress. Outside one the
+	// agent may go on by itself (Antigravity, when a background task ends):
+	// what it says is shown once it pauses (wake); woke is when it last did
+	// (unix nanoseconds).
+	prompting atomic.Bool
+	wake      *time.Timer
+	woke      atomic.Int64
+
+	// Calls running in the background (background.go), by call id; where
+	// Antigravity leaves its messages of them, those read, and whether
+	// they are being followed.
+	bgMu       sync.Mutex
+	bg         map[string]*bgTask
+	bgMessages string
+	bgSeen     map[string]bool
+	bgPolling  bool
+	bgRunning  atomic.Bool
 }
 
 // form is a pending elicitation: its request id and fields in order.
@@ -1168,6 +1185,7 @@ func (s *session) Pgid() int                     { return s.proc.Pgid() }
 func (s *session) LastActivity() time.Time       { return s.proc.LastOutput() }
 func (s *session) Diagnose() provider.Diagnosis  { return s.proc.Diagnose() }
 func (s *session) Close() error {
+	s.endBackground(s.emit)
 	if s.closes && s.sessionID != "" {
 		// session/close cancels the turn in progress and has the agent keep
 		// what it keeps of the session (DSH flushes it to disk) before its
@@ -1246,11 +1264,20 @@ func (s *session) call(ctx context.Context, method string, params any) (json.Raw
 }
 
 func (s *session) Send(ctx context.Context, in provider.Input) error {
+	s.flush() // what the agent said by itself since its last turn
 	s.mu.Lock()
+	if s.wake != nil {
+		s.wake.Stop()
+	}
 	s.msg.Reset()
 	s.last = ""
+	s.prompting.Store(true)
 	s.mu.Unlock()
-	return s.request("session/prompt", map[string]any{"sessionId": s.sessionID, "prompt": s.prompt(in)}, s.turnDone)
+	err := s.request("session/prompt", map[string]any{"sessionId": s.sessionID, "prompt": s.prompt(in)}, s.turnDone)
+	if err != nil {
+		s.prompting.Store(false)
+	}
+	return err
 }
 
 // maxInlineAudio bounds an audio file sent inline (base64, as an image is).
@@ -1315,6 +1342,7 @@ func (s *session) Interrupt(ctx context.Context) error {
 
 // turnDone handles the session/prompt response, which ends the turn.
 func (s *session) turnDone(r rpcResult) {
+	s.prompting.Store(false)
 	s.flush()
 	s.mu.Lock()
 	last := s.last
@@ -1380,6 +1408,9 @@ type message struct {
 
 func (s *session) read() {
 	defer func() {
+		// Nothing follows its background tasks now: said before events close
+		// (the reader keeps reading them).
+		s.endBackground(func(e provider.Event) { s.events <- e })
 		s.closeMu.Lock()
 		s.closed = true
 		close(s.events)
@@ -1449,6 +1480,9 @@ func (s *session) handleUpdate(params json.RawMessage) {
 		return
 	}
 	u := p.Update
+	if !s.prompting.Load() {
+		s.woke.Store(time.Now().UnixNano())
+	}
 	switch u.SessionUpdate {
 	case "config_option_update":
 		if s.catalog != nil {
@@ -1462,6 +1496,12 @@ func (s *session) handleUpdate(params json.RawMessage) {
 		if json.Unmarshal(u.Content, &c) == nil && c.Type == "text" {
 			s.mu.Lock()
 			s.msg.WriteString(c.Text)
+			if !s.prompting.Load() { // shown once it pauses
+				if s.wake != nil {
+					s.wake.Stop()
+				}
+				s.wake = time.AfterFunc(wakeQuiet, s.flush)
+			}
 			s.mu.Unlock()
 			s.emit(provider.Event{Kind: provider.EventAgentDraft, Text: c.Text})
 		}
@@ -1479,6 +1519,9 @@ func (s *session) handleUpdate(params json.RawMessage) {
 		}
 		if done {
 			s.result(u.toolCall)
+		}
+		if u.Status == "completed" {
+			s.stopped(tc)
 		}
 	}
 }
@@ -1587,6 +1630,9 @@ func (s *session) result(tc toolCall) {
 	out := b.String()
 	if out == "" && len(tc.RawOutput) > 0 && string(tc.RawOutput) != "null" {
 		out = rawText(tc.RawOutput)
+	}
+	if tc.Status == "completed" && s.launched(tc.ToolCallID, out) {
+		return
 	}
 	if out == "" {
 		out = tc.Status

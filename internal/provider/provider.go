@@ -260,6 +260,12 @@ type Event struct {
 	Usage     Usage    // TurnCompleted
 	Failure   *Failure // TurnCompleted with IsError, Error: why (nil: classify Text)
 	Question  *Question
+
+	// Background: a ToolResult that is the state of a call the agent left
+	// running after it reported it (Antigravity's background tasks); a later
+	// one for the same CallID replaces it. It may come from a process the
+	// session has since let go: what became of the call is still so.
+	Background bool
 }
 
 // Image is an attached image file to show the agent.
@@ -377,6 +383,14 @@ type Provider interface {
 // apps while it runs (Codex).
 type Titler interface {
 	SetTitle(ctx context.Context, title string) error
+}
+
+// Backgrounder is a Session whose agent can leave work running after a
+// turn (Antigravity's background tasks). Background reports whether some
+// still runs: its idle process is kept then, as stopping it would stop
+// the work too.
+type Backgrounder interface {
+	Background() bool
 }
 
 // Archiver is a Provider whose own apps list its conversations: archiving
