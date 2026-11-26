@@ -1,4 +1,26 @@
 {
+  "0.2.12": {
+    "improvements": [
+      "Updates land on their own now: on Windows, when an update is ready and you've been away for 10 minutes with no session running, the app swaps itself to the new version and restarts the background service — no more new version sitting beside the old one for days. If the service is ever lost, the app keeps retrying until it's back, and service status now reports login autostart honestly, with the reason when something is off.",
+      "A bad background-service update heals itself: if a newly updated aided can't reach the relay within 10 minutes, it rolls back to the previous version, remembers the bad one and won't reinstall it.",
+      "DSH models are listed from the very first moment: a machine that has never run a DSH session now shows its models right away, probed without running a turn — and the custom providers you added in DSH's desktop profile appear in Aide sessions and actually work.",
+      "Change a running session's permission preset: desktop and Android session settings gain a permission row. Antigravity applies the new preset from the next tool call, other ACP agents from the next step; DSH says plainly that it needs a new session.",
+      "Roundtables no longer break their chain: members are checked for reachability before a room opens, a member silent for 3 minutes is skipped with a note in the room, and if nobody closes with [FINAL], the last speaker wraps up. Undelivered copies left over a day no longer hold the room's slots.",
+      "Undelivered messages speak up: a message not picked up within a day reminds you, and you're told when one expires. The roster's 'available' now includes inbox registration, so it means the bot can actually be reached.",
+      "Pictures in replies travel with the conversation: images an agent shows are pinned by content hash and fetched back from the machine that holds them; desktop and Android show thumbnails and open the full image on tap.",
+      "Archive without opening: long-press a session on Android, or right-click its card on desktop, to archive it right from the list — with a few seconds to undo.",
+      "Aide's Claude Code sessions open in the Claude app and continue there. Shadow conversations are ordered by when the relay received them, merge the copies from every machine into one view, and say honestly when a machine holding a copy can't be reached.",
+      "The connection page can install the official Antigravity ACP service in one click, and a round of interface clean-up lands with it: the sidebar's narrow icon strip is gone, status wording and dot colors are unified, duplicate entries are removed, usage can be grouped by agent or by machine, Codex usage shows on Android, and the collapsed title banner on Android matches the page again."
+    ],
+    "fixes": [
+      "Android: conversations containing Markdown tables no longer crash the app; each cell is measured once per pass, and the parser's edge cases are fixed.",
+      "ACP registry installs are verified end to end: binaries must declare a SHA-256, downloads must be HTTPS, timeouts are per-phase instead of one 20-second cap for packages of hundreds of megabytes, and the built-in catalog is generated from the official index.",
+      "Antigravity's permission gate is enforced: with no mode chosen it runs as workspace-write, which refuses shell and network access; edit paths are resolved through symlinks first, and a call the agent ran without asking is reported and cancels the turn.",
+      "Shadow conversations are strictly read-only — member writes are refused — and conversation rollback works again for ACP agents, with checkpoints cleaned up by write time instead of risking fresh ones.",
+      "Model prices are correct and single-sourced: bare model IDs use first-party provider data only (Claude Opus 4.5 and 4.6 are $5/$25 again), and one catalog source failing no longer wipes the other's data.",
+      "Delivery marks and history are reliable: 'delivered' is reconciled by message ID on desktop, Android and the relay alike; history loads in full instead of stopping at the newest 250; and Windows pipe errors are detected by error number, not English text, so systems in other languages behave."
+    ]
+  },
   "0.2.11": {
     "improvements": [
       "A fresh Fluent look on both ends: the desktop app and Android are rebuilt page by page in the Fluent design — new materials, corners and motion, with light and dark contrast meeting WCAG AA throughout.",
