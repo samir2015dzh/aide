@@ -84,8 +84,10 @@ html[data-platform=win]{--caption:calc(100vw - env(titlebar-area-x, 0px) - env(t
 .tl-room{width:68px;flex:none}
 html[data-platform=win] .tl-room{display:none}
 input,textarea,.sel-text{user-select:text;-webkit-user-select:text}
-/* Fluent 键盘焦点环：2px 间隔 + 2px 主蓝环，跟随圆角 */
-:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+/* Fluent 键盘焦点环：2px 间隔 + 2px 主蓝环，跟随圆角（#109 / 审计 K）。
+   用 outline 而不是 box-shadow：按钮、分段控件等组件自己的 box-shadow（.btn、.btn.primary、.seg button.on …）
+   层叠在后、优先级更高，会把 box-shadow 焦点环整个盖掉；outline 与它们互不影响，组件的阴影也照常保留。 */
+:focus-visible{outline:2px solid var(--focus-stroke);outline-offset:2px}
 @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @keyframes page-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes pill-in{from{opacity:0;transform:scaleY(.35)}to{opacity:1;transform:scaleY(1)}}
@@ -771,3 +773,8 @@ html.own-scrollbars{scrollbar-color:var(--scrollbar-thumb) transparent}
 :where(summary:not(.dsh-msg.tool summary))::-webkit-details-marker{display:none}
 :where(summary:not(.dsh-msg.tool summary))::before{content:"";display:inline-block;width:5px;height:5px;margin:0 8px 2px 1px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform var(--duration-normal) var(--ease-fluent);opacity:.7}
 :where(details[open]>summary:not(.dsh-msg.tool summary))::before{transform:rotate(45deg)}
+/* 高对比度（Windows 对比度主题）：box-shadow 被强制去掉，自带 box-shadow 焦点样式的控件改用系统高亮色 outline 兜底 */
+@media (forced-colors:active){
+  :focus-visible{outline:2px solid Highlight;outline-offset:2px}
+  .field:focus,.srename:focus,.picker:focus-visible,.acct-menu .mi:focus-visible,.vmenu .mi:focus-visible,.composer-box:focus-within,.dsh-box:focus-within{outline:2px solid Highlight;outline-offset:1px}
+}
