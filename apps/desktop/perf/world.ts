@@ -4,7 +4,7 @@ import {
   ClientSchema, DeviceSchema, GetStatusResponseSchema, MachineSchema, ProjectSchema,
   type Client, type Device, type GetStatusResponse, type Machine, type Project,
 } from "@aide/proto/local";
-import { AgentStatusSchema, MachineStatusSchema } from "@aide/proto/machine";
+import { AgentStatusSchema, MachineStatusSchema, type Room, type RoomMessage } from "@aide/proto/machine";
 import {
   FailureKind, SessionEventSchema, SessionSchema, SessionStatus,
   type Session, type SessionEvent,
@@ -46,6 +46,7 @@ export type World = {
   devices: Device[];
   sessions: Map<string, Session>;
   events: Map<string, SessionEvent[]>;
+  directRooms: Map<string, { room: Room; messages: RoomMessage[] }>;
   usage: UsageDay[];
 };
 
@@ -194,7 +195,7 @@ export function world(now = Date.now()): World {
       usage.push({ date: key, agent, inputTokens: BigInt(Math.floor(r() * 5e6)), outputTokens: BigInt(Math.floor(r() * 4e5)), sessions: 1 + Math.floor(r() * 9) });
     }
   }
-  return { status, machines, clients, projects, devices, sessions, events, usage };
+  return { status, machines, clients, projects, devices, sessions, events, directRooms: new Map(), usage };
 }
 
 const reply = (r: () => number, turn: number) =>

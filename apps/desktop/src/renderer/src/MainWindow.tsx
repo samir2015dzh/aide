@@ -78,6 +78,7 @@ export function MainWindow() {
     return () => document.removeEventListener("keydown", esc);
   }, [peeking, set]);
   const { sidebar } = layoutOf(st);
+  const sidebarOpen = sidebar !== "rail";
   // The page of every session keeps its list beside the session opened from it (工单 #63: no list in the sidebar).
   const [fromList, setFromList] = useState(false);
   useEffect(() => {
@@ -89,16 +90,20 @@ export function MainWindow() {
   const search = useLeaving(st.searching ? JSON.stringify(st.searchFor) : null);
   return (
     <div className={`mainwrap ${sidebar === "docked" ? "" : "railed"} ${sidebar === "over" ? "peek" : ""} ${listed ? "listed" : ""}`}>
-      {/* Fluent 40px 窗口标题栏（DESIGN-107 §0.2 / §0.5c #5A）：左侧菜单与侧栏切换，居中搜索框，右侧留窗口按钮区 */}
+      {/* Fluent 40px 窗口标题栏（DESIGN-107 §0.2 / #134）：左上角唯一一组菜单与侧栏切换钮两态守恒不跳位，居中搜索框，右侧留窗口按钮区 */}
       <header className="win-titlebar side-top drag">
         <div className="win-titlebar-l">
           <div className="tl-room" aria-hidden="true" />
           <AppMenuButton />
-          {sidebar === "docked" && (
-            <button className="tb" onClick={() => setSidebar(st, false)} title={`${t("window.hideSidebar")} ${keys(ownKeys.toggleSidebar)}`} aria-label={t("window.hideSidebar")}>
-              <Icon name="sidebar" />
-            </button>
-          )}
+          <button
+            className="tb"
+            onClick={() => setSidebar(st, !sidebarOpen)}
+            title={`${t(sidebarOpen ? "window.hideSidebar" : "rail.expand")} ${keys(ownKeys.toggleSidebar)}`}
+            aria-label={t(sidebarOpen ? "window.hideSidebar" : "rail.expand")}
+            aria-expanded={sidebarOpen}
+          >
+            <Icon name="sidebar" />
+          </button>
           <span className="win-titlebar-brand">Aide</span>
         </div>
         <button className="side-searchbox" onClick={() => st.set({ searching: true })} title={`${t("sidebar.search")} ${keys("CmdOrCtrl+K")}`} aria-label={t("sidebar.search")}>
@@ -128,9 +133,7 @@ export function MainWindow() {
           }
           className="page-stage"
         >
-          {st.selection.kind === "sessions" ? (
-            <div className="ctool drag"><div className="ctitle" /></div>
-          ) : session ? (
+          {st.selection.kind === "sessions" ? null : session ? (
             <SessionPage s={session} />
           ) : st.selection.kind === "held" ? (
             <HeldMessages />

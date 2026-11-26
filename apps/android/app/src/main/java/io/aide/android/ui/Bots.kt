@@ -632,17 +632,38 @@ private fun LazyListScope.chatItems(model: AppModel, chat: DirectChat, b: Bot, d
     chat.messages.forEach { m ->
         item(key = "m-${m.messageId}", contentType = "chat") {
             val mine = m.from == "owner"
+            val now = Instant.now()
+            val whenText = m.at.takeIf { it.isNotEmpty() }?.let { agoText(instant(it), now) }
             val bubbleShape = RoundedCornerShape(
                 topStart = Radius.Bubble, topEnd = Radius.Bubble,
-                bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
-                bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
+                bottomStart = Radius.Bubble, bottomEnd = Radius.BubbleTail,
             )
-            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                if (!mine) Text(m.fromName + if (m.lightChat) t(" · Light", " · 轻聊") else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (mine && m.lightChat) Text(t("Light chat", "轻聊"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-                    .background(if (mine) aide.bubble else aide.card, bubbleShape).padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
+            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val meta = if (mine) {
+                    listOfNotNull(
+                        if (m.lightChat) t("Light chat", "轻聊") else null,
+                        whenText,
+                    ).joinToString(" · ")
+                } else {
+                    listOfNotNull(
+                        m.fromName.ifEmpty { b.name },
+                        if (m.lightChat) t("Light", "轻聊") else null,
+                        whenText,
+                    ).joinToString(" · ")
+                }
+                if (meta.isNotEmpty()) {
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (mine) {
+                    Box(
+                        Modifier.fillMaxWidth(0.82f).wrapContentWidth(Alignment.End)
+                            .background(aide.bubble, bubbleShape)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                    ) {
+                        Text(m.text, style = MaterialTheme.typography.bodyLarge, color = aide.onBubble)
+                    }
+                } else {
+                    MarkdownText(m.text, Modifier.fillMaxWidth().padding(vertical = 2.dp))
                 }
                 if (mine) m.deliveries.forEach { d ->
                     val (words, bad) = deliveryWords(d.state, b.name, d.reason, d.reminded)
