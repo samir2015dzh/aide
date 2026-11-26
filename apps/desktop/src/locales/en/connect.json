@@ -187,7 +187,7 @@
     "sourceRegistry": "Official Registry {{version}}",
     "sourceLocal": "Local command",
     "registryTitle": "Official ACP Registry (Install)",
-    "registryNote": "From agentclientprotocol/registry: installed per machine with SHA-256 verification on binary archives. Sign-in and credentials stay with the agent.",
+    "registryNote": "From agentclientprotocol/registry: installed per machine. A binary package is installed only when the Registry declares its SHA-256, and must match it; otherwise its npx/uvx package is used, or it cannot be installed. Sign-in and credentials stay with the agent.",
     "registrySearch": "Filter official ACP agents (e.g. opencode, gemini, claude)…",
     "registryRefresh": "Refresh",
     "registryRefreshing": "Refreshing…",

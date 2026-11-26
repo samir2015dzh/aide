@@ -80,7 +80,7 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 
 	plat := acpregistry.CurrentPlatform()
 	var srvURL string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/registry.json":
 			_ = json.NewEncoder(w).Encode(acpregistry.Index{
@@ -130,8 +130,9 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 	}
 	defer m.Close()
 	m.SetACPRegistry(acpregistry.New(acpregistry.Options{
-		DataDir: dataDir,
-		URL:     srvURL + "/registry.json",
+		DataDir:    dataDir,
+		URL:        srvURL + "/registry.json",
+		HTTPClient: srv.Client(),
 	}))
 
 	// 1. Machine with no ACP agents installed must NOT show fake ACP entries in Status().
@@ -177,6 +178,15 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 	}
 	if err := m.SaveCustomAgent(localDef); err != nil {
 		t.Fatalf("SaveCustomAgent(local-acp): %v", err)
+	}
+	// 审计 D: installing under the name of an existing custom agent is
+	// refused, not a silent overwrite of it (and its secrets).
+	if _, err := m.InstallACPRegistryAgent(context.Background(), &machinev1.InstallACPRegistryAgentRequest{RegistryId: "reg-demo-acp", Name: "local-acp"}); err == nil || !strings.Contains(err.Error(), "already used") {
+		t.Fatalf("install over local-acp: %v", err)
+	}
+	// Re-installing the same registry agent under its own name upgrades it.
+	if _, err := m.InstallACPRegistryAgent(context.Background(), &machinev1.InstallACPRegistryAgentRequest{RegistryId: "reg-demo-acp", Name: "reg-demo-acp"}); err != nil {
+		t.Fatalf("upgrade reg-demo-acp: %v", err)
 	}
 
 	// TestCustomAgent handshake validates v2 preview on registry agent and v1 downgrade on local agent,

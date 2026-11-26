@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -69,10 +70,16 @@ func (n *Machine) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.
 		out.SyncedAt = timestamppb.New(res.SyncedAt)
 	}
 	for _, e := range res.Entries {
-		dist, sha256Decl, reason := acpregistry.BestDistribution(e, res.Platform)
+		// sha256Verified: a binary is installed only when the Registry
+		// declares its SHA-256, and checked against it.
+		dist, sha256Verified, reason := acpregistry.BestDistribution(e, res.Platform)
 		installedAs := installedByRegID[e.ID]
-		if installedAs == "" && builtinAvail[e.ID] {
-			installedAs = e.ID
+		if dist != "" {
+			reason = "" // why its binary is not used, when a runner is
+		}
+		builtin := cmp.Or(acpregistry.DedicatedBuiltin(e), e.ID)
+		if installedAs == "" && builtinAvail[builtin] {
+			installedAs = builtin
 		}
 		out.Entries = append(out.Entries, &machinev1.ACPRegistryEntry{
 			Id:                e.ID,
@@ -83,7 +90,7 @@ func (n *Machine) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.
 			License:           e.License,
 			Authors:           e.Authors,
 			Distribution:      dist,
-			Sha256Verified:    sha256Decl,
+			Sha256Verified:    sha256Verified,
 			Supported:         dist != "",
 			UnsupportedReason: reason,
 			Installed:         installedAs != "",
