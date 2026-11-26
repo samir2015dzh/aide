@@ -7,11 +7,11 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import enNotes from "../locales/en/releases.json";
 import zhNotes from "../locales/zh-CN/releases.json";
-import { feedNotes, nextCheckDelay, nextUpdate, releaseCatalog, squirrelFailure, type ReleaseNote, type Update, type UpdateEvent, type UpdateInfo } from "../shared/update";
+import { feedNotes, nextCheckDelay, nextUpdate, releaseCatalog, squirrelFailure, awayBeforeUpdate, updateWhileAway, type ReleaseNote, type Update, type UpdateEvent, type UpdateInfo } from "../shared/update";
 import { command } from "./ipc";
 import { world, worldListeners } from "./notify";
 import { platform } from "./platform";
-import { showUpdates } from "./windows";
+import { mainWindow, showUpdates } from "./windows";
 
 // Squirrel.Mac verifies the Developer ID signature and installs on quit. The
 // Windows app is unsigned: its feed is signed with the release key, and names
@@ -136,6 +136,7 @@ export function startUpdater() {
     save();
     apply({ type: "downloaded", version: name || ("version" in update ? update.version : "") });
     clearTimeout(timer);
+    if (platform.token === "win") whileAway();
   });
   autoUpdater.on("update-not-available", () => { prefs().failures = 0; save(); apply({ type: "not-available" }); schedule(); });
   autoUpdater.on("error", (e) => {
@@ -239,6 +240,25 @@ export function install() {
   autoUpdater.quitAndInstall();
 }
 
+/**
+ * Windows (工单 #128): the downloaded version starts by itself once the owner is away from the app and nothing runs
+ * here (updateWhileAway); the new version then restarts aided on its programs (restartStaleDaemon).
+ */
+function whileAway() {
+  // Test builds, which read a feed of the test's (check-windows-update.ps1), don't wait for the owner to go away.
+  const away = __AIDE_UPDATE_FEED__ ? 0 : awayBeforeUpdate;
+  let lastShown = Date.now();
+  const look = setInterval(() => {
+    const now = Date.now();
+    const shown = BrowserWindow.getAllWindows().some((w) => w.isVisible());
+    // A window left open on a computer nobody uses is no one looking.
+    if (shown && powerMonitor.getSystemIdleTime() * 1000 < away) lastShown = now;
+    if (!updateWhileAway(update, lastShown, localBusy(), now, away)) return;
+    clearInterval(look);
+    if (platform.restartToUpdateQuietly(!!mainWindow()?.isVisible())) app.quit();
+  }, 60_000);
+}
+
 // --- aided after an update ---
 
 // aided is a LaunchAgent and keeps running while the app is replaced,
@@ -249,15 +269,20 @@ export function install() {
 // once the app has heard about the sessions too.
 let daemonRestart: "no" | "soon" | "done" = "no";
 
-function staleDaemon(): string | undefined {
+/** A session on this computer is queued, preparing, running or waiting for an answer: a restart of aided would stop it. */
+function localBusy(): boolean {
   const st = world.status;
-  if (!st?.version || st.version === app.getVersion()) return undefined;
-  const busy = world.sessions.some(
+  return !!st && world.sessions.some(
     (s) =>
       s.machineId === st.localMachineId &&
       [SessionStatus.QUEUED, SessionStatus.PREPARING, SessionStatus.RUNNING, SessionStatus.WAITING_INPUT].includes(s.status),
   );
-  return busy ? undefined : st.version;
+}
+
+function staleDaemon(): string | undefined {
+  const st = world.status;
+  if (!st?.version || st.version === app.getVersion()) return undefined;
+  return localBusy() ? undefined : st.version;
 }
 
 function restartStaleDaemon() {

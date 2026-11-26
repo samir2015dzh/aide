@@ -217,6 +217,10 @@ func AtBoot() bool {
 	return false
 }
 
+// NotRunningWhy is for Windows, where Task Scheduler keeps how the task's
+// last run ended; launchd and systemd keep it in their own logs.
+func NotRunningWhy() string { return "" }
+
 func Installed() bool {
 	p := launchdPlist()
 	if runtime.GOOS == "linux" {

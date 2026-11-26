@@ -45,6 +45,24 @@ Write-Host "logon task: $($action.Execute) $($action.Arguments)"
 if ($action.Execute -ne (Join-Path $bin "aidedw.exe") -or $action.Arguments -notmatch '--owner') { Fail "the logon task runs something else" }
 if ((Link) -notlike "*$root\Aide.exe*") { Fail "aide: links open $(Link)" }
 
+# 工单 #128: aided stopped while the app runs (its logon task ended) comes back by itself, in bounded time, and
+# `aided service status` says why it was not running.
+Write-Host "> ending aided's logon task while the app runs"
+$aided = Join-Path $bin "aided.exe"
+& schtasks /End /TN $task | Out-Null
+for ($i = 0; $i -lt 30 -and $(& $aided service status | Out-Null; $LASTEXITCODE) -eq 0; $i++) { Start-Sleep 1 }
+$said = & $aided service status
+Write-Host "status while ended: $said"
+if ($LASTEXITCODE -eq 0) { Fail "aided still running after its task ended" }
+if ("$said" -notmatch 'NOT RUNNING \(') { Fail "aided service status gives no reason: $said" }
+for ($i = 0; $i -lt 150 -and $(& $aided service status | Out-Null; $LASTEXITCODE) -ne 0; $i++) { Start-Sleep 1 }
+if ($LASTEXITCODE -ne 0) {
+  Get-Content (Join-Path $env:LOCALAPPDATA "Aide\logs\app-daemon.log") -ErrorAction SilentlyContinue
+  Fail "the app did not start aided again within 150 s"
+}
+Write-Host "aided back after $i s"
+Get-Content (Join-Path $env:LOCALAPPDATA "Aide\logs\app-daemon.log") -ErrorAction SilentlyContinue
+
 Write-Host "> uninstalling"
 $p = Start-Process -FilePath (Join-Path $root "Update.exe") -ArgumentList "--uninstall", "-s" -Wait -PassThru
 if ($p.ExitCode -ne 0) { Fail "Update.exe --uninstall exited with $($p.ExitCode)" }

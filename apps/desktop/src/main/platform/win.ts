@@ -86,8 +86,42 @@ function placePrograms() {
 const herLeftovers = ["her.exe", "agent-desktop.exe", "pdfium.dll", "her-console"];
 
 /** Registers aided's logon task, the owner's and this PC's machine, and starts it. */
-function installDaemon() {
-  execFile(aided, ["service", "install", "--owner"], { windowsHide: true }, (err) => err && console.warn("aided's logon task:", err));
+function installDaemon(why: string) {
+  execFile(aided, ["service", "install", "--owner"], { windowsHide: true, timeout: 60_000 }, (err, _out, stderr) => {
+    if (err) console.warn("aided's logon task:", err);
+    daemonLog(`aided (${why}): ${err ? `registering its logon task failed: ${stderr.trim() || err.message}` : "its logon task registered again and started"}`);
+  });
+}
+
+/**
+ * Starts aided if it does not answer (工单 #128). Its logon task already running, the daemon may only be slow to
+ * answer (at logon, with the app opened at the same moment): left alone while attempt < 2, so that the app's start
+ * does not end the daemon the task has just started; after that the task is registered again, which starts it.
+ * Every attempt goes to the logs, as nothing else would tell why aided does not run.
+ */
+async function startIfStopped(attempt: number) {
+  if (await answers()) return;
+  const why = attempt < 0 ? "the app's start" : `not answering, attempt ${attempt + 1}`;
+  if (!fs.existsSync(aided)) {
+    try {
+      placePrograms();
+    } catch (e) {
+      daemonLog(`aided (${why}): placing its programs: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  if (attempt < 2) {
+    // `aided service status`: 0 while its logon task runs and will start at logon.
+    const { status, stdout } = await new Promise<{ status: number; stdout: string }>((resolve) =>
+      execFile(aided, ["service", "status"], { windowsHide: true, timeout: 20_000 }, (err, out) =>
+        resolve({ status: err ? Number((err as { code?: unknown }).code) || 1 : 0, stdout: out.trim() })),
+    );
+    if (status === 0) {
+      daemonLog(`aided (${why}): its logon task runs; waiting for it to answer`);
+      return;
+    }
+    daemonLog(`aided (${why}): ${stdout || "not running"}`);
+  }
+  installDaemon(why);
 }
 
 /** binDir on the user's PATH, or not, as install.ps1 writes it; running programs are told. */
@@ -95,15 +129,19 @@ function setPath(on: boolean) {
   execFileSync(program("aided.exe"), ["user-path", on ? "add" : "remove", binDir], { windowsHide: true, timeout: 5_000 });
 }
 
-/** What Setup's events did, in the data folder's logs (nobody sees the app's output then). */
-function setupLog(line: string) {
+/** A line in the data folder's logs: nobody sees the installed app's output. */
+function logLine(file: string, line: string) {
   try {
     fs.mkdirSync(path.join(dataDir(), "logs"), { recursive: true });
-    fs.appendFileSync(path.join(dataDir(), "logs", "setup.log"), `${new Date().toISOString()} ${line}\n`);
+    fs.appendFileSync(path.join(dataDir(), "logs", file), `${new Date().toISOString()} ${line}\n`);
   } catch {
     // Not written: no worse than before.
   }
 }
+/** What Setup's events did. */
+const setupLog = (line: string) => logLine("setup.log", line);
+/** What the app did to start or restart aided, and to start its next version (工单 #128). */
+const daemonLog = (line: string) => logLine("app-daemon.log", line);
 
 /** Runs a step of Setup's, and logs how it went: one failing doesn't stop the others. */
 function attempt(what: string, f: () => unknown) {
@@ -202,7 +240,7 @@ export const win: Platform = {
     }
     // Its logon task starts it; not running (the first launch, or a daemon of install.ps1's,
     // a machine only), the app registers the task again, which starts it.
-    void answers().then((ok) => ok || installDaemon());
+    void startIfStopped(-1);
     // The caption buttons follow the theme.
     nativeTheme.on("updated", () => {
       for (const w of BrowserWindow.getAllWindows()) {
@@ -215,18 +253,30 @@ export const win: Platform = {
     });
   },
 
-  ensureDaemon() {
-    if (installed) void answers().then((ok) => ok || installDaemon());
+  // Squirrel has installed the version beside this one already: Update.exe starts the newest once this app has quit,
+  // as Electron's quitAndInstall does; without a window shown, with the argument of a start at login, so it opens in
+  // the notification area only.
+  restartToUpdateQuietly(shown) {
+    if (!installed) return false;
+    daemonLog(`starting the downloaded version in place of ${app.getVersion()}${shown ? ", its window shown" : ""}`);
+    const args = shown ? [] : ["--process-start-args", atLogin.args[0]];
+    spawn(updateExe, ["--processStartAndWait", path.basename(process.execPath), ...args], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+    return true;
+  },
+
+  ensureDaemon(attempt = 0) {
+    if (installed) void startIfStopped(attempt);
   },
 
   restartDaemon(why) {
     if (!installed) return;
     console.warn(`restarting aided: ${why}`);
+    daemonLog(`restarting aided: ${why}`);
     // Its logon task, ended and run again: the supervisor, and the daemon with it, on the programs in binDir.
     execFile(aided, ["service", "restart"], { windowsHide: true }, (err) => {
       if (err) {
         console.warn("restarting aided:", err);
-        installDaemon();
+        installDaemon(why);
       }
     });
   },

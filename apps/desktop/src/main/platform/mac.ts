@@ -45,6 +45,10 @@ export const mac: Platform = {
     if (installed) app.setLoginItemSettings({ ...agent, openAtLogin: true });
   },
 
+  restartToUpdateQuietly() {
+    return false;
+  },
+
   ensureDaemon() {
     if (installed) app.setLoginItemSettings({ ...agent, openAtLogin: true });
   },

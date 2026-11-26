@@ -112,3 +112,28 @@ func TestDefinitionFollowsTheDataDirectory(t *testing.T) {
 		t.Fatal("new computer: the data directory changed")
 	}
 }
+
+// What Task Scheduler says of the task reads back, and a task whose
+// program is gone, or that is disabled, does not start at logon (工单 #128).
+func TestTaskState(t *testing.T) {
+	prog := filepath.Join(t.TempDir(), "aidedw.exe")
+	if err := os.WriteFile(prog, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := parseTaskState("Ready\r\n" + prog + "\r\n1\r\n2026-11-26 08:41:30\r\n")
+	if s.state != "Ready" || s.program != prog || s.lastResult != 1 || s.lastRun != "2026-11-26 08:41:30" {
+		t.Fatalf("read as %+v", s)
+	}
+	if why := s.willStart(); why != "" {
+		t.Fatalf("a ready task with its program: %q", why)
+	}
+	if got := s.lastRunText(); got != "its logon task's last run (2026-11-26 08:41:30) ended with 0x1" {
+		t.Fatalf("last run: %q", got)
+	}
+	if s := parseTaskState("Ready\r\n" + prog + ".gone\r\n267011\r\n"); !strings.Contains(s.willStart(), "missing") || s.lastResult != 0x41303 {
+		t.Fatalf("a task without its program: %+v %q", s, s.willStart())
+	}
+	if s := parseTaskState("Disabled\r\n" + prog + "\r\n0\r\n"); s.willStart() != "its logon task is disabled" {
+		t.Fatalf("a disabled task: %q", s.willStart())
+	}
+}
