@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -96,6 +97,9 @@ func TestReadAttachment(t *testing.T) {
 	}
 	if res, err := read(h.p, "", shot); err != nil || !bytes.Equal(res.Data, pic) {
 		t.Fatalf("kept picture by its path: %v", err)
+	}
+	if res, err := read(h.p, "", strings.ReplaceAll(shot, "/", "%2F")); err != nil || !bytes.Equal(res.Data, pic) {
+		t.Fatalf("kept picture by its path as a renderer encodes it: %v", err)
 	}
 
 	// A picture a reply showed that no turn kept (here: made after the turn

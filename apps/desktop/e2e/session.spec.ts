@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { cli, fixture, launch, onWindows, snap, thisComputer, sessionList, navTo } from "./app";
 
@@ -740,4 +742,34 @@ test("a conversation on a machine gone offline says why: one read before shows w
   await expect(warn).toContainText("work-mac 离线了，它上面的任务暂时看不到");
   await expect(warn).toContainText("还在线 · 连上后会自动补上");
   await app.close();
+});
+
+// 工单 #156 / #158: a picture a reply shows (a file on the machine) is drawn where the reply writes it, the same one a
+// second time only as a chip; its turn keeps it, so it still opens once the file is gone, large over a blurred page.
+test("a picture a reply shows is drawn in it once, kept by its turn, and opens large", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aide-shot-"));
+  const shot = path.join(dir, "screen.png").split(path.sep).join("/");
+  fs.writeFileSync(shot, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"));
+  const title = "回复里的截图";
+  const started = JSON.parse(await cli("session", "start", "--project", "demo", "--agent", "gemini", "--title", title, "--prompt", `say 截图在这 ![界面](${shot}) 再看一次 ![同一张](${shot}) 网上的 ![外链](https://example.com/x.png)`, "-o", "json"));
+  const id = started.session.session_id;
+  await expect.poll(async () => JSON.parse(await cli("session", "get", id, "-o", "json")).session.status).toBe("idle");
+  fs.rmSync(dir, { recursive: true, force: true });
+  const { app, page } = await launch();
+  try {
+    await open(page, title);
+    const log = page.getByRole("log", { name: "对话" });
+    await expect(log.locator(".rp-img img")).toHaveCount(1);
+    await expect(log.locator(".rp-chip")).toHaveText("同一张");
+    await expect(log).toContainText("外链");
+    await expect(log.locator("img[src^='http']")).toHaveCount(0);
+    await log.getByRole("button", { name: "打开 界面" }).click();
+    const box = page.getByRole("dialog", { name: "screen.png" });
+    await expect(box).toBeVisible();
+    await expect(box).toContainText("1×1");
+    await page.keyboard.press("Escape");
+    await expect(box).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
 });

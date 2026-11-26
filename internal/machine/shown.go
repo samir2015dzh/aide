@@ -205,13 +205,13 @@ func (s *Sessions) ReadAttachment(p *Principal, req *sessionv1.ReadAttachmentReq
 				}
 			case *sessionv1.SessionEvent_TurnCompleted:
 				for _, f := range k.TurnCompleted.Shown {
-					if (sha != "" && f.Sha256 == sha || sha == "" && f.Path == req.Path) && (found == nil || !kept) {
+					if (sha != "" && f.Sha256 == sha || sha == "" && samePath(f.Path, req.Path)) && (found == nil || !kept) {
 						found, kept = f, true
 					}
 				}
 			case *sessionv1.SessionEvent_AgentMessage:
-				if sha == "" && !shown && strings.Contains(k.AgentMessage.Text, req.Path) {
-					shown = slices.Contains(shownPictures(k.AgentMessage.Text), req.Path)
+				if sha == "" && !shown && strings.Contains(k.AgentMessage.Text, "![") {
+					shown = slices.ContainsFunc(shownPictures(k.AgentMessage.Text), func(w string) bool { return samePath(w, req.Path) })
 				}
 			}
 		}
@@ -248,6 +248,17 @@ func readKept(path string, f *sessionv1.AttachmentInfo) (*sessionv1.ReadAttachme
 		return nil, cerr(connect.CodeNotFound, "%s has changed on this machine since it was kept", f.Name)
 	}
 	return &sessionv1.ReadAttachmentResponse{Name: f.Name, MediaType: f.MediaType, Size: uint64(len(data)), Sha256: f.Sha256, Data: data}, nil
+}
+
+// samePath: two ways of writing one path, as written and as a Markdown
+// renderer gives it (its URL encoding: spaces, non-ASCII names).
+func samePath(a, b string) bool {
+	if a == b {
+		return true
+	}
+	ua, err1 := url.PathUnescape(a)
+	ub, err2 := url.PathUnescape(b)
+	return err1 == nil && err2 == nil && ua == ub
 }
 
 func isSHA256(s string) bool {

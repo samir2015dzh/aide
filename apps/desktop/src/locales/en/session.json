@@ -184,5 +184,11 @@
     "new": "New Session",
     "folder": "Project folder",
     "allFolders": "All projects"
+  },
+  "picture": {
+    "open": "Open {{name}}",
+    "save": "Save",
+    "copyPath": "Copy path",
+    "gone": "This picture can't be fetched from the machine now (it is offline, or no longer keeps it)"
   }
 }
