@@ -462,10 +462,31 @@ func declaredSHA256(t BinaryTarget) string {
 	return strings.TrimPrefix(strings.ToLower(strings.TrimSpace(t.SHA256)), "sha256:")
 }
 
+// secureDownload reports whether u may be downloaded from: https, or plain
+// http to this computer's own loopback address (a registry served by a test
+// or a local mirror; what it serves is still checked against its SHA-256).
+func secureDownload(u *url.URL) bool {
+	if u == nil || u.Host == "" {
+		return false
+	}
+	switch u.Scheme {
+	case "https":
+		return true
+	case "http":
+		h := u.Hostname()
+		if strings.EqualFold(h, "localhost") {
+			return true
+		}
+		ip := net.ParseIP(h)
+		return ip != nil && ip.IsLoopback()
+	}
+	return false
+}
+
 // binaryProblem is why Aide will not install a binary target ("" when it will).
 func binaryProblem(t BinaryTarget) string {
 	u, err := url.Parse(strings.TrimSpace(t.Archive))
-	if err != nil || u.Scheme != "https" || u.Host == "" {
+	if err != nil || !secureDownload(u) {
 		return "its binary download is not an https URL, so Aide will not install it"
 	}
 	if !sha256RE.MatchString(declaredSHA256(t)) {
@@ -775,8 +796,8 @@ func (r *Registry) downloadAndHash(ctx context.Context, rawURL, dst string) (str
 	req.Header.Set("User-Agent", "aide-acp-registry/1.0")
 	c := *r.download
 	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if req.URL.Scheme != "https" {
-			return fmt.Errorf("refusing a redirect to a non-https URL (%s)", req.URL.Scheme)
+		if !secureDownload(req.URL) {
+			return fmt.Errorf("refusing a redirect to a non-https URL (%s)", req.URL.Redacted())
 		}
 		if len(via) >= 10 {
 			return errors.New("too many redirects")

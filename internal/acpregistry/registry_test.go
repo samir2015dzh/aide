@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -307,7 +308,8 @@ func TestInstallRefusals(t *testing.T) {
 		if r.URL.Path == "/registry.json" {
 			_ = json.NewEncoder(w).Encode(Index{Version: "1.0.0", Agents: []Entry{
 				{ID: "no-sha", Version: "1", Distribution: Distribution{Binary: map[string]BinaryTarget{plat: {Archive: srvURL + "/a.zip", Cmd: "./agent"}}}},
-				{ID: "plain-http", Version: "1", Distribution: Distribution{Binary: map[string]BinaryTarget{plat: {Archive: strings.Replace(srvURL, "https:", "http:", 1) + "/a.zip", Cmd: "./agent", SHA256: zipSum}}}},
+				// Plain http off this computer (loopback http is allowed: TestSecureDownload).
+				{ID: "plain-http", Version: "1", Distribution: Distribution{Binary: map[string]BinaryTarget{plat: {Archive: "http://192.0.2.10/a.zip", Cmd: "./agent", SHA256: zipSum}}}},
 				{ID: "antigravity-acp", Version: "1", Distribution: Distribution{Binary: map[string]BinaryTarget{plat: {Archive: srvURL + "/a.zip", Cmd: "./agent", SHA256: zipSum}}}},
 				{ID: "good", Version: "1", Distribution: Distribution{Binary: map[string]BinaryTarget{plat: {Archive: srvURL + "/a.zip", Cmd: "./agent", SHA256: zipSum}}}},
 			}})
@@ -471,5 +473,26 @@ func TestEmbeddedSnapshotIsOfficial(t *testing.T) {
 	ag, ok := ids["antigravity-acp"]
 	if !ok || DedicatedBuiltin(ag) != "antigravity" {
 		t.Fatalf("antigravity-acp: %+v", ag)
+	}
+}
+
+// Plain http is only for this computer's own loopback (a test's or a local
+// mirror's registry); anywhere else a binary comes over https (#147).
+func TestSecureDownload(t *testing.T) {
+	for raw, want := range map[string]bool{
+		"https://example.com/a.zip":      true,
+		"http://127.0.0.1:8080/a.zip":    true,
+		"http://[::1]:8080/a.zip":        true,
+		"http://localhost/a.zip":         true,
+		"http://example.com/a.zip":       false,
+		"http://192.0.2.10/a.zip":        false,
+		"http://127.0.0.1.example.com/a": false,
+		"ftp://127.0.0.1/a.zip":          false,
+		"file:///tmp/a.zip":              false,
+	} {
+		u, _ := url.Parse(raw)
+		if got := secureDownload(u); got != want {
+			t.Errorf("secureDownload(%s) = %v, want %v", raw, got, want)
+		}
 	}
 }
