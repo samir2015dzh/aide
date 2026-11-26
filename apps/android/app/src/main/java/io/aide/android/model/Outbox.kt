@@ -2,10 +2,12 @@ package io.aide.android.model
 
 import io.aide.android.api.ApiError
 import io.aide.android.api.AttachmentIn
+import io.aide.android.api.SessionEvent
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.util.UUID
 
@@ -29,6 +31,15 @@ data class OutboxMessage(
     val error: String? = null,
     val createdAt: String = "",
     val updatedAt: String = "",
+    /**
+     * The session's last event seq the phone held when it was enqueued: on a server that echoes no
+     * client_message_id, only later events can be this message (reconcileWithEvents).
+     */
+    val afterSeq: Long? = null,
+    /** A send was tried at least once: it may have reached the machine although no answer came back. */
+    val attempted: Boolean = false,
+    /** Its files were too large to keep across a restart, and the app restarted before it went. */
+    val attachmentsLost: Boolean = false,
 )
 
 @Serializable
@@ -44,25 +55,71 @@ object OutboxCodec {
         encodeDefaults = true
     }
 
+    /** At most this many base64 characters of attachments are kept on disk for the whole queue (about 1.5 MB of files). */
+    const val PERSIST_MAX_ATTACHMENT_CHARS = 2 * 1024 * 1024
+
+    /** Reads the queue; call it off the main thread. */
     fun load(file: File): OutboxState {
         if (!file.exists()) return OutboxState()
         return runCatching {
             val decoded = json.decodeFromString(OutboxState.serializer(), file.readText())
-            normalize(decoded)
+            settleLoaded(normalize(decoded))
         }.getOrDefault(OutboxState())
     }
 
-    fun save(file: File, state: OutboxState) {
-        runCatching {
-            file.parentFile?.mkdirs()
-            val tmp = File(file.parentFile, "${file.name}.tmp")
-            tmp.writeText(json.encodeToString(state))
-            if (!tmp.renameTo(file)) {
-                file.writeText(json.encodeToString(state))
-                tmp.delete()
-            }
+    /**
+     * What a persisted copy says once read: a delivered message keeps no file bytes; one not yet delivered
+     * whose bytes were left out (forPersist) cannot go as it was, and waits for the person, said so.
+     */
+    fun settleLoaded(state: OutboxState): OutboxState = state.copy(items = state.items.map { m ->
+        when {
+            m.status == OutboxStatus.SENT -> m.copy(attachments = m.attachments.map { it.copy(data = "") })
+            m.attachmentsLost -> m.copy(status = OutboxStatus.FAILED)
+            else -> m
         }
+    })
+
+    /**
+     * The copy of the queue to keep on disk: files of messages not yet delivered are kept oldest first while they
+     * fit in maxChars; the others are left out of the copy (in memory only) and returned, for the page to say so.
+     * One large message never stops the rest of the queue from being kept.
+     */
+    fun forPersist(state: OutboxState, maxChars: Int = PERSIST_MAX_ATTACHMENT_CHARS): Pair<OutboxState, Set<String>> {
+        var left = maxChars.toLong()
+        val drop = mutableSetOf<String>()
+        for (m in state.items.sortedWith(compareBy<OutboxMessage>({ it.createdAt }, { it.clientSeq }))) {
+            val n = m.attachments.sumOf { it.data.length.toLong() }
+            if (n == 0L) continue
+            if (n <= left) left -= n else drop += m.id
+        }
+        if (drop.isEmpty()) return state to drop
+        return state.copy(items = state.items.map { m ->
+            if (m.id in drop) m.copy(attachments = m.attachments.map { it.copy(data = "") }, attachmentsLost = true) else m
+        }) to drop
     }
+
+    /**
+     * Writes the queue (call it off the main thread): files too large to keep stay in memory only; when even that
+     * cannot be written, the queue without any file bytes. Returns the messages kept in memory only, or null when
+     * nothing could be written.
+     */
+    fun save(file: File, state: OutboxState): Set<String>? {
+        val (kept, memoryOnly) = forPersist(state)
+        if (write(file, kept)) return memoryOnly
+        val (bare, none) = forPersist(state, 0)
+        return if (write(file, bare)) none else null
+    }
+
+    private fun write(file: File, state: OutboxState): Boolean = runCatching {
+        file.parentFile?.mkdirs()
+        val text = json.encodeToString(state)
+        val tmp = File(file.parentFile, "${file.name}.tmp")
+        tmp.writeText(text)
+        if (!tmp.renameTo(file)) {
+            file.writeText(text)
+            tmp.delete()
+        }
+    }.isSuccess
 
     fun normalize(state: OutboxState): OutboxState {
         val next = state.nextSeq.toMutableMap()
@@ -92,6 +149,7 @@ object OutboxCodec {
         attachments: List<AttachmentIn> = emptyList(),
         id: String = UUID.randomUUID().toString(),
         now: String = Instant.now().toString(),
+        afterSeq: Long? = null,
     ): Pair<OutboxState, OutboxMessage> {
         val seq = state.nextSeq[sessionId] ?: 1L
         val item = OutboxMessage(
@@ -103,6 +161,7 @@ object OutboxCodec {
             status = OutboxStatus.PENDING,
             createdAt = now,
             updatedAt = now,
+            afterSeq = afterSeq,
         )
         val next = state.copy(
             nextSeq = state.nextSeq + (sessionId to (seq + 1L)),
@@ -112,10 +171,13 @@ object OutboxCodec {
     }
 
     fun markSending(state: OutboxState, id: String, now: String = Instant.now().toString()): OutboxState =
-        state.copy(items = state.items.map { if (it.id == id) it.copy(status = OutboxStatus.SENDING, error = null, updatedAt = now) else it })
+        state.copy(items = state.items.map { if (it.id == id) it.copy(status = OutboxStatus.SENDING, error = null, attempted = true, updatedAt = now) else it })
 
+    /** Delivered: its files' bytes are dropped (their names stay for the bubble). */
     fun markSent(state: OutboxState, id: String, now: String = Instant.now().toString()): OutboxState =
-        state.copy(items = state.items.map { if (it.id == id) it.copy(status = OutboxStatus.SENT, error = null, updatedAt = now) else it })
+        state.copy(items = state.items.map {
+            if (it.id == id) it.copy(status = OutboxStatus.SENT, error = null, updatedAt = now, attachments = it.attachments.map { a -> a.copy(data = "") }) else it
+        })
 
     fun markError(state: OutboxState, id: String, error: String, transient: Boolean, now: String = Instant.now().toString()): OutboxState {
         val st = if (transient) OutboxStatus.PENDING else OutboxStatus.FAILED
@@ -124,7 +186,7 @@ object OutboxCodec {
 
     fun retry(state: OutboxState, id: String, now: String = Instant.now().toString()): OutboxState =
         state.copy(items = state.items.map {
-            if (it.id == id && (it.status == OutboxStatus.FAILED || it.status == OutboxStatus.PENDING)) {
+            if (it.id == id && !it.attachmentsLost && (it.status == OutboxStatus.FAILED || it.status == OutboxStatus.PENDING)) {
                 it.copy(status = OutboxStatus.PENDING, error = null, updatedAt = now)
             } else it
         })
@@ -144,40 +206,71 @@ object OutboxCodec {
             .values
             .mapNotNull { list -> list.minByOrNull { it.clientSeq }?.takeIf { it.status == OutboxStatus.PENDING } }
 
-    /** Drops SENT entries once their confirmed User item has arrived in the session transcript. */
-    fun reconcileWithTranscript(state: OutboxState, sessionId: String, items: List<Item>): OutboxState {
-        val sent = state.items.filter { it.sessionId == sessionId && it.status == OutboxStatus.SENT }.sortedBy { it.clientSeq }
-        if (sent.isEmpty()) return state
-        val userTexts = items.filterIsInstance<Item.User>().map { it.text.trim() }
-        val toDrop = mutableSetOf<String>()
-        var from = 0
-        for (m in sent) {
-            val needle = m.text.trim()
-            if (needle.isEmpty()) {
-                if (userTexts.isNotEmpty()) toDrop += m.id
-                continue
-            }
-            val idx = userTexts.drop(from).indexOf(needle)
-            if (idx >= 0) {
-                toDrop += m.id
-                from += idx + 1
-            }
-        }
-        if (toDrop.isEmpty()) return state
-        return state.copy(items = state.items.filterNot { it.id in toDrop })
+    /** The client_message_ids a stored event echoes: the sends it records, or the one that answered a question. */
+    fun echoedIds(e: SessionEvent): List<String> =
+        e.userMessage?.clientMessageIds ?: e.questionResolved?.clientMessageIds ?: emptyList()
+
+    private const val ATTACHED_NOTE = "[Aide] Attached files"
+
+    private fun isEchoText(m: OutboxMessage, recorded: String): Boolean {
+        val sent = m.text.trim()
+        val got = recorded.trim()
+        if (m.attachments.isEmpty()) return sent.isNotEmpty() && got == sent
+        // The machine lists the saved files after the text.
+        return if (sent.isEmpty()) got.startsWith(ATTACHED_NOTE) else got.startsWith("$sent\n\n$ATTACHED_NOTE")
     }
 
+    private fun enqueuedBefore(m: OutboxMessage, e: SessionEvent): Boolean {
+        m.afterSeq?.let { return e.seq > it }
+        // Kept before afterSeq existed: by time instead.
+        return runCatching { !Instant.parse(e.ts).isBefore(Instant.parse(m.createdAt).minusSeconds(1)) }.getOrDefault(false)
+    }
+
+    /**
+     * Drops the entries the machine has recorded, as the session's events show them (mirrors
+     * packages/core/src/outbox.ts reconcileOutboxWithEvents): any entry whose client_message_id an event echoes
+     * (UserMessage, or QuestionResolved for a message that answered the agent's question), whatever its status.
+     * Unconfirmed SENT markers stay until the stream catches up. With a machine that echoes no id at all (no
+     * event carries one), a SENT entry is matched by its text, only against UserMessage events after the one it
+     * was enqueued behind, each event used once.
+     */
+    fun reconcileWithEvents(state: OutboxState, sessionId: String, events: List<SessionEvent>): OutboxState {
+        val mine = state.items.filter { it.sessionId == sessionId }
+        if (mine.isEmpty()) return state
+        val echoed = HashSet<String>()
+        for (e in events) echoed.addAll(echoedIds(e))
+        val drop = mine.filter { it.id in echoed }.mapTo(HashSet()) { it.id }
+        if (echoed.isEmpty()) {
+            val users = events.filter { it.userMessage != null }
+            val used = BooleanArray(users.size)
+            for (m in mine.filter { it.status == OutboxStatus.SENT }.sortedBy { it.clientSeq }) {
+                val i = users.indices.firstOrNull { !used[it] && enqueuedBefore(m, users[it]) && isEchoText(m, users[it].userMessage!!.text) }
+                if (i != null) {
+                    used[i] = true
+                    drop += m.id
+                }
+            }
+        }
+        if (drop.isEmpty()) return state
+        return state.copy(items = state.items.filterNot { it.id in drop })
+    }
+
+    /**
+     * Mirrors packages/core/src/outbox.ts isTransientSendError: the core's errors by their code (and words); any
+     * other exception only when it is a network one (an IOException: the core not reachable, a cut connection).
+     */
     fun isTransientError(e: Throwable): Boolean {
-        val code = (e as? ApiError)?.code?.lowercase().orEmpty()
-        val msg = ((e as? ApiError)?.message ?: e.message.orEmpty()).lowercase()
+        if (e !is ApiError) return e is IOException
+        val code = e.code.lowercase()
+        val msg = e.message.lowercase()
         if (code in setOf("failed_precondition", "invalid_argument", "permission_denied", "not_found") ||
             msg.contains("archived") || msg.contains("permission") || msg.contains("not found") || msg.contains("invalid")
         ) {
             return false
         }
-        return code in setOf("unavailable", "deadline_exceeded", "unknown", "canceled", "") ||
-            msg.contains("offline") || msg.contains("network") || msg.contains("timeout") ||
+        return code in setOf("unavailable", "deadline_exceeded", "unknown", "canceled") ||
+            msg.contains("offline") || msg.contains("network") || msg.contains("fetch") || msg.contains("timeout") ||
             msg.contains("timed out") || msg.contains("unavailable") || msg.contains("connect") ||
-            msg.contains("reset") || msg.contains("eof")
+            msg.contains("disconnected") || msg.contains("reset") || msg.contains("eof")
     }
 }
