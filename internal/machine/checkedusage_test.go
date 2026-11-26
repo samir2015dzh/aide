@@ -126,7 +126,9 @@ func TestCheckedAgentUsage(t *testing.T) {
 		t.Fatalf("after an answer with no window = %+v", u)
 	}
 	n.Close()
-	if u := open().agentUsage["codex"]; u != nil {
+	n = open()
+	defer n.Close() // Windows removes no file still open
+	if u := n.agentUsage["codex"]; u != nil {
 		t.Fatalf("a cleared reading came back = %+v", u)
 	}
 }

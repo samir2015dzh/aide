@@ -128,6 +128,7 @@ func TestDSHHome(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 	t.Setenv("HOME", "/home/x")
+	t.Setenv("USERPROFILE", "/home/x") // the home directory on Windows
 	if got := dshHome([]string{"PATH=/bin"}); got != filepath.Join("/home/x", ".dsh") {
 		t.Fatalf("got %q", got)
 	}
