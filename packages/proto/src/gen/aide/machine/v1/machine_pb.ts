@@ -2062,7 +2062,7 @@ export type TestCustomAgentResponse = Message<"aide.machine.v1.TestCustomAgentRe
   authMethods: string[];
 
   /**
-   * Negotiated ACP protocol version (v2 preview preferred, v1 fallback).
+   * Negotiated ACP protocol version (Aide speaks version 1 only).
    *
    * @generated from field: uint32 protocol_version = 7;
    */

@@ -4235,7 +4235,7 @@ type TestCustomAgentResponse struct {
 	Millis       uint32 `protobuf:"varint,5,opt,name=millis,proto3" json:"millis,omitempty"`
 	// The sign-in methods it offers, when a session needs one first.
 	AuthMethods []string `protobuf:"bytes,6,rep,name=auth_methods,json=authMethods,proto3" json:"auth_methods,omitempty"`
-	// Negotiated ACP protocol version (v2 preview preferred, v1 fallback).
+	// Negotiated ACP protocol version (Aide speaks version 1 only).
 	ProtocolVersion uint32 `protobuf:"varint,7,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	// Truthful capabilities discovered from initialize.agentCapabilities.
 	Capabilities *AgentCapabilities `protobuf:"bytes,8,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
