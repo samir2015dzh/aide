@@ -287,6 +287,9 @@ message MachineProblem {
   // What went wrong, as the system said it (SHELL_PATH: why the login
   // shell's PATH could not be read).
   string detail = 6;
+  // UPDATE_FAILED: the version the machine updated itself to and went back
+  // from; it is on MachineStatus.version again.
+  string version = 7;
 }
 
 enum MachineProblemKind {
@@ -302,6 +305,10 @@ enum MachineProblemKind {
   // The login shell's PATH could not be read, so agents installed where
   // only it says (nvm, npm, …) are not found.
   MACHINE_PROBLEM_KIND_SHELL_PATH = 4;
+  // The machine updated itself in the background, the new version did not
+  // connect to its relay in time, and it went back to the version before
+  // (工单 #162). It skips that version until a newer one is out.
+  MACHINE_PROBLEM_KIND_UPDATE_FAILED = 5;
 }
 
 message AgentStatus {

@@ -40,6 +40,10 @@ const (
 	// The login shell's PATH could not be read, so agents installed where
 	// only it says (nvm, npm, …) are not found.
 	MachineProblemKind_MACHINE_PROBLEM_KIND_SHELL_PATH MachineProblemKind = 4
+	// The machine updated itself in the background, the new version did not
+	// connect to its relay in time, and it went back to the version before
+	// (工单 #162). It skips that version until a newer one is out.
+	MachineProblemKind_MACHINE_PROBLEM_KIND_UPDATE_FAILED MachineProblemKind = 5
 )
 
 // Enum value maps for MachineProblemKind.
@@ -50,13 +54,15 @@ var (
 		2: "MACHINE_PROBLEM_KIND_DISK",
 		3: "MACHINE_PROBLEM_KIND_FILES",
 		4: "MACHINE_PROBLEM_KIND_SHELL_PATH",
+		5: "MACHINE_PROBLEM_KIND_UPDATE_FAILED",
 	}
 	MachineProblemKind_value = map[string]int32{
-		"MACHINE_PROBLEM_KIND_UNSPECIFIED": 0,
-		"MACHINE_PROBLEM_KIND_PROCESSES":   1,
-		"MACHINE_PROBLEM_KIND_DISK":        2,
-		"MACHINE_PROBLEM_KIND_FILES":       3,
-		"MACHINE_PROBLEM_KIND_SHELL_PATH":  4,
+		"MACHINE_PROBLEM_KIND_UNSPECIFIED":   0,
+		"MACHINE_PROBLEM_KIND_PROCESSES":     1,
+		"MACHINE_PROBLEM_KIND_DISK":          2,
+		"MACHINE_PROBLEM_KIND_FILES":         3,
+		"MACHINE_PROBLEM_KIND_SHELL_PATH":    4,
+		"MACHINE_PROBLEM_KIND_UPDATE_FAILED": 5,
 	}
 )
 
@@ -1946,7 +1952,10 @@ type MachineProblem struct {
 	CulpritCount uint32 `protobuf:"varint,5,opt,name=culprit_count,json=culpritCount,proto3" json:"culprit_count,omitempty"`
 	// What went wrong, as the system said it (SHELL_PATH: why the login
 	// shell's PATH could not be read).
-	Detail        string `protobuf:"bytes,6,opt,name=detail,proto3" json:"detail,omitempty"`
+	Detail string `protobuf:"bytes,6,opt,name=detail,proto3" json:"detail,omitempty"`
+	// UPDATE_FAILED: the version the machine updated itself to and went back
+	// from; it is on MachineStatus.version again.
+	Version       string `protobuf:"bytes,7,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2019,6 +2028,13 @@ func (x *MachineProblem) GetCulpritCount() uint32 {
 func (x *MachineProblem) GetDetail() string {
 	if x != nil {
 		return x.Detail
+	}
+	return ""
+}
+
+func (x *MachineProblem) GetVersion() string {
+	if x != nil {
+		return x.Version
 	}
 	return ""
 }
@@ -8969,14 +8985,15 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\vunsupported\x18\x05 \x01(\tR\vunsupported\x12\x12\n" +
 	"\x04data\x18\v \x01(\bR\x04dataJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\f\x10\rR\arunningR\aversionR\vmodel_readyR\x06unreadR\x06latestR\x05errorR\x11client_public_keyR\x04meshR\amethods\"\xca\x01\n" +
+	"\x10\vJ\x04\b\f\x10\rR\arunningR\aversionR\vmodel_readyR\x06unreadR\x06latestR\x05errorR\x11client_public_keyR\x04meshR\amethods\"\xe4\x01\n" +
 	"\x0eMachineProblem\x127\n" +
 	"\x04kind\x18\x01 \x01(\x0e2#.aide.machine.v1.MachineProblemKindR\x04kind\x12\x12\n" +
 	"\x04used\x18\x02 \x01(\x04R\x04used\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x04R\x05limit\x12\x18\n" +
 	"\aculprit\x18\x04 \x01(\tR\aculprit\x12#\n" +
 	"\rculprit_count\x18\x05 \x01(\rR\fculpritCount\x12\x16\n" +
-	"\x06detail\x18\x06 \x01(\tR\x06detail\"\x94\n" +
+	"\x06detail\x18\x06 \x01(\tR\x06detail\x12\x18\n" +
+	"\aversion\x18\a \x01(\tR\aversion\"\x94\n" +
 	"\n" +
 	"\vAgentStatus\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
@@ -9531,13 +9548,14 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\",\n" +
 	"\x11DeleteRoomRequest\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\"\x14\n" +
-	"\x12DeleteRoomResponse*\xc2\x01\n" +
+	"\x12DeleteRoomResponse*\xea\x01\n" +
 	"\x12MachineProblemKind\x12$\n" +
 	" MACHINE_PROBLEM_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eMACHINE_PROBLEM_KIND_PROCESSES\x10\x01\x12\x1d\n" +
 	"\x19MACHINE_PROBLEM_KIND_DISK\x10\x02\x12\x1e\n" +
 	"\x1aMACHINE_PROBLEM_KIND_FILES\x10\x03\x12#\n" +
-	"\x1fMACHINE_PROBLEM_KIND_SHELL_PATH\x10\x04*\xd4\x01\n" +
+	"\x1fMACHINE_PROBLEM_KIND_SHELL_PATH\x10\x04\x12&\n" +
+	"\"MACHINE_PROBLEM_KIND_UPDATE_FAILED\x10\x05*\xd4\x01\n" +
 	"\x0fAgentLoginState\x12!\n" +
 	"\x1dAGENT_LOGIN_STATE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19AGENT_LOGIN_STATE_WAITING\x10\x01\x12\x1f\n" +

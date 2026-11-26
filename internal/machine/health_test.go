@@ -3,7 +3,21 @@ package machine
 import (
 	"runtime"
 	"testing"
+
+	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 )
+
+// A background update that went back is a problem in the status, naming
+// the version it went back from (工单 #162).
+func TestUpdateFailedIsAProblem(t *testing.T) {
+	n := &Machine{cfg: Config{DataDir: t.TempDir(), UpdateFailed: "0.2.0"}}
+	for _, p := range n.checkHealth() {
+		if p.Kind == machinev1.MachineProblemKind_MACHINE_PROBLEM_KIND_UPDATE_FAILED && p.Version == "0.2.0" {
+			return
+		}
+	}
+	t.Error("no UPDATE_FAILED problem")
+}
 
 // The user's processes and their limit are read without starting one.
 func TestUserProcesses(t *testing.T) {
