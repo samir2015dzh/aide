@@ -9,7 +9,7 @@ import { Icon } from "./icons";
 export type PickerOption<T extends string | number> = { value: T; label: string; sub?: string; icon?: ReactNode; disabled?: boolean } | null;
 
 export function Picker<T extends string | number>({
-  value, options, onChange, label, disabled = false, size = "", className = "", chip = false, placeholder = "", showLabel = false,
+  value, options, onChange, label, disabled = false, size = "", className = "", chip = false, placeholder = "", showLabel = false, onOpen,
 }: {
   value: T;
   /** null: a separator. */
@@ -25,6 +25,8 @@ export function Picker<T extends string | number>({
   placeholder?: string;
   /** Says what it picks before the choice ("推理强度 · 高"), where a bare value would not say (工单 #140 P11). */
   showLabel?: boolean;
+  /** As its menu opens: a list that may be stale asks again (工单 #129 返修: model lists). */
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState<false | "mouse" | "key">(false);
   const btn = useRef<HTMLButtonElement>(null);
@@ -82,8 +84,8 @@ export function Picker<T extends string | number>({
         aria-expanded={!!open}
         disabled={disabled}
         title={chosen?.label}
-        onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}
-        onKeyDown={(e) => (e.key === "ArrowDown" || e.key === "ArrowUp") && !open && (e.preventDefault(), setOpen("key"))}
+        onClick={(e) => (open ? setOpen(false) : (onOpen?.(), setOpen(e.detail ? "mouse" : "key")))}
+        onKeyDown={(e) => (e.key === "ArrowDown" || e.key === "ArrowUp") && !open && (e.preventDefault(), onOpen?.(), setOpen("key"))}
       >
         {chosen?.icon}
         {showLabel && <span className="picker-k">{label}</span>}
