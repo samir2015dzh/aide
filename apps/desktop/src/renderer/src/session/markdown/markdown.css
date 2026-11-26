@@ -1,7 +1,7 @@
 /* The conversation's reading surface: an agent's Markdown, its code, tables, formulas and diagrams.
    UI sizes remain independent of content sizes. */
 :root {
-  --md-size:var(--chat-size); --md-leading:1.68; --md-code-size:13px;
+  --md-size:var(--chat-size); --md-leading:1.625; --md-code-size:13px;
   --md-fg:var(--msg); --md-muted:var(--l2); --md-link:var(--accent-fg);
   --md-prose-width:752px; --md-rich-width:752px;
 }

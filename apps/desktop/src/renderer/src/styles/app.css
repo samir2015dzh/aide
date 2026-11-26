@@ -411,7 +411,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .sesslist-row.cur::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue);animation:pill-in var(--duration-fast) var(--ease-fluent)}
 .sesslist-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sesslist-time{flex:none;font-size:11.5px;color:var(--l2)}
-.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:var(--radius-overlay);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop);animation:fadein var(--duration-fast) var(--ease-fluent)}
+.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:var(--radius-overlay);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop);animation:fade var(--duration-fast) var(--ease-fluent)}
 .insp-stack{display:flex;flex-direction:column}
 .insp-pop .insp{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0;padding:10px 16px}
 .insp-pop .insp+.insp{border-top:1px solid var(--sep)}
