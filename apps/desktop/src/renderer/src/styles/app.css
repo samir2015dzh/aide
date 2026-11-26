@@ -140,9 +140,10 @@ button{font:inherit;color:inherit}
 .cb.dis{opacity:.55}
 /* Fluent 分段控件：胶囊外框与内段 */
 .seg{display:inline-flex;background:var(--seg-track);border-radius:var(--radius-pill);padding:3px;gap:2px;flex:none}
-.seg button{border:0;background:transparent;height:26px;padding:0 12px;border-radius:var(--radius-pill);font-size:12.5px;font-weight:var(--font-weight-normal);display:flex;align-items:center;gap:5px;white-space:nowrap;transition:background-color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent)}
+.seg button{border:0;background:transparent;height:26px;padding:0 12px;border-radius:var(--radius-pill);font-size:12.5px;font-weight:var(--font-weight-normal);display:flex;align-items:center;gap:5px;white-space:nowrap;transition:background-color var(--duration-normal) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-normal) var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent)}
 .seg button:hover:not(.on):not(:disabled){background:var(--surface-hover)}
-.seg button.on{background:var(--seg-on);font-weight:var(--font-weight-semibold);box-shadow:var(--seg-sh)}
+.seg button.on{background:var(--seg-on);font-weight:var(--font-weight-semibold);box-shadow:var(--seg-sh);animation:seg-pop var(--duration-normal) var(--ease-fluent)}
+@keyframes seg-pop{0%{transform:scale(.96)}100%{transform:none}}
 .seg button .n{color:var(--l2);font-variant-numeric:tabular-nums}
 /* Fluent 输入框：白底 1px 描边 + 底部 1px 强调线（3:1），聚焦主蓝描边 + 焦点环 */
 .field{height:var(--size-control);border-radius:var(--radius-control);border:1px solid var(--color-border);border-bottom-color:var(--color-border-strong);background:var(--surface-input);padding:0 10px;font-size:var(--fs-text);color:var(--l1);outline:none;width:100%;transition:border-color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent)}
@@ -208,9 +209,8 @@ html[data-platform=win] .win-titlebar{padding-right:calc(var(--caption) + 8px)}
 .tb{height:30px;min-width:30px;border:0;background:transparent;border-radius:var(--radius-control);display:flex;align-items:center;justify-content:center;color:var(--l2);gap:5px;padding:0 6px;transition:background-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent)}
 .tb:hover{background:var(--surface-hover);color:var(--l1)}
 .tb.on{background:var(--surface-selected);color:var(--l1)}
-/* 主侧栏「概览 / 任务动态」与下方 bot 名单之间保留 2026-11-24 所有者裁定：不画分隔线，仅靠留白；设置窗口侧栏保留分隔线 */
+/* 主侧栏「概览 / 任务动态」与下方 bot 名单之间保留 2026-11-24 所有者裁定：不画分隔线，仅靠留白；设置窗口侧栏同样不悬空画底线 */
 .side-nav{padding:8px 8px 6px;display:flex;flex-direction:column;gap:2px;flex:none}
-.set-side .side-nav{border-bottom:1px solid var(--sep)}
 .nav-i{position:relative;display:flex;align-items:center;gap:10px;height:var(--size-row);padding:0 10px 0 12px;border-radius:var(--radius-control);font-size:14px;font-weight:400;border:0;background:none;width:100%;text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
 .nav-i .nav-count{margin-left:auto;font-size:12px;font-weight:600;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:var(--radius-pill);background:var(--surface-hover);color:var(--l2);text-align:center}
 .nav-i .ic{width:18px;height:18px;color:var(--l2)}
@@ -315,6 +315,8 @@ html[data-platform=win] .win-titlebar{padding-right:calc(var(--caption) + 8px)}
 .ctitle{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .ctitle h2{margin:0;font-size:var(--fs-headline);font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{color:var(--l2)}
+html.blurred :is(.nav-i.sel,.bot-row.sel,.srow.sel,.sesslist-row.cur,.conv-current-card)::before{background:var(--color-border-strong)}
+html.blurred .nav-i.sel .ic{color:var(--l2)}
 .cscroll{flex:1;overflow-y:auto;min-height:0}
 /* overview */
 .ov{padding:24px 40px var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);max-width:980px;margin:0 auto}
@@ -679,7 +681,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .pn-top .ttl{position:absolute;left:0;right:0;text-align:center;font-size:12.5px;font-weight:600;color:var(--l2);pointer-events:none}
 .pn-body{padding:6px 26px 22px}
 @keyframes slidein{from{opacity:0;transform:translateX(30px)}}
-.sheet.leaving,.sheet-scrim.leaving,.pal.leaving,.scrim.leaving,.toast.leaving{animation:fade-out .14s var(--ease-in) forwards;pointer-events:none}
+.sheet.leaving,.sheet-scrim.leaving,.pal.leaving,.scrim.leaving,.toast.leaving,.vmenu.leaving,.insp-pop.leaving{animation:fade-out .14s var(--ease-in) forwards;pointer-events:none}
 .sheet.leaving{animation-name:sheet-out}
 .toast.leaving{animation-name:toast-out}
 .pal.leaving{animation-name:pal-out}
@@ -688,6 +690,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 @keyframes toast-out{to{opacity:0;transform:translate(-50%,6px)}}
 @keyframes pal-out{to{opacity:0;transform:translateX(-50%) scale(.985)}}
 .tick-in{animation:popin var(--duration-fast) var(--ease-fluent)}
+.ok-ic,.cb-b.done{color:var(--green)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* Fluent 下拉框（DESIGN-107 §10）：32 高、8 圆角、1px 描边 + 底部 1px 强调线、展开亚克力浮层 */

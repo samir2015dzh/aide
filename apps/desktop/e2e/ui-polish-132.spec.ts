@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { DeviceSchema, ExecLogEntrySchema } from "@aide/proto/local";
 import { AgentStatusSchema, DSHBridgeSchema, DSHBridgeState, ExecOutcome, ExecRecordSchema, RoomDeliverySchema, RoomDeliveryState, RoomMemberSchema, RoomMessageSchema, RoomMode, RoomSchema } from "@aide/proto/machine";
-import { SessionEventSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
+import { FailureKind, SessionEventSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
 import { expect, test, type ElectronApplication, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
@@ -105,6 +105,51 @@ test.beforeAll(async () => {
     createdAt: timestampFromMs(now - 120 * 60_000),
     updatedAt: timestampFromMs(now - 60 * 60_000),
     progress: { turnCount: 1, lastEventSeq: 1n },
+  }));
+  // 为 build-server 准备多条打开的 owner 对话与可重试失败会话，验证 Bot 页近期快切、摘要预览与概览行内重试/归档
+  daemon.world.sessions.set("s-build-cur", create(SessionSchema, {
+    sessionId: "s-build-cur",
+    machineId: "m-build",
+    agent: "claude",
+    projectId: "web-console",
+    createdBy: "owner",
+    title: "构建流水线缓存优化",
+    status: SessionStatus.IDLE,
+    createdAt: timestampFromMs(now - 20 * 60_000),
+    updatedAt: timestampFromMs(now - 5_000),
+    progress: {
+      turnCount: 3,
+      lastEventSeq: 6n,
+      lastMessageExcerpt: "已将 pnpm store 与 Go build cache 拆分为独立分层，冷启动缩短 42%。",
+    },
+  }));
+  daemon.world.sessions.set("s-build-prev", create(SessionSchema, {
+    sessionId: "s-build-prev",
+    machineId: "m-build",
+    agent: "claude",
+    projectId: "web-console",
+    createdBy: "owner",
+    title: "排查镜像推送超时",
+    status: SessionStatus.IDLE,
+    createdAt: timestampFromMs(now - 50 * 60_000),
+    updatedAt: timestampFromMs(now - 90_000),
+    progress: { turnCount: 2, lastEventSeq: 4n },
+  }));
+  daemon.world.sessions.set("s-build-fail", create(SessionSchema, {
+    sessionId: "s-build-fail",
+    machineId: "m-build",
+    agent: "claude",
+    projectId: "web-console",
+    createdBy: "owner",
+    title: "速率限制重试验证",
+    status: SessionStatus.IDLE,
+    createdAt: timestampFromMs(now - 35 * 60_000),
+    updatedAt: timestampFromMs(now - 45_000),
+    progress: {
+      turnCount: 1,
+      lastEventSeq: 2n,
+      lastFailure: { kind: FailureKind.RATE_LIMIT, message: "429 Too Many Requests" },
+    },
   }));
   daemon.world.events.set(ids.bigIdle, [
     create(SessionEventSchema, { seq: 1n, ts: timestampFromMs(now - 5000), turnId: "t1", kind: { case: "turnStarted", value: { turn: 1 } } }),
@@ -562,6 +607,126 @@ test("工单 #138: 执行记录摘要层、折叠详情与连接记录同源去�
     await expect(psRow.locator(".ops-script")).toHaveCount(0);
   } finally {
     await settings.close();
+  }
+});
+
+test("UI Polish 批次（#1–#7）：高质感双色链路舞台与原版副官星标、单列去重、近期对话快切、长会话药丸与设置对齐", async () => {
+  await navTo(page, /^概览/);
+  await expect(page.locator(".ov-tile").first()).toBeVisible({ timeout: 15_000 });
+
+  // #7：概览「链路」双色精密舞台（浅色琉璃星枢 + 深色暗曜遥测），且 Aide 副官星 <Mark> 几何与单色规范 100% 原样保留
+  const map = page.getByRole("region", { name: "链路" });
+  await expect(map.locator(".lmap-orbit")).toBeVisible();
+  await expect(map.locator("svg.lmap-back defs linearGradient#lm-grad-run")).toHaveCount(1);
+  await expect(map.locator("svg.lmap-back defs linearGradient#lm-grad-up")).toHaveCount(1);
+  expect(await map.locator("svg.lmap-back path.lm-glow").count()).toBeGreaterThan(0);
+
+  const markLight = await map.locator(".lmap-icon svg.hm-mark").evaluate((svg) => ({
+    viewBox: svg.getAttribute("viewBox"),
+    hasRing: !!svg.querySelector("path.hm-ring"),
+    hasSat: !!svg.querySelector("circle.hm-sat"),
+    hasCore: !!svg.querySelector("circle.hm-core"),
+    color: getComputedStyle(svg).color,
+  }));
+  expect(markLight).toEqual({
+    viewBox: "45 48 163 163",
+    hasRing: true,
+    hasSat: true,
+    hasCore: true,
+    color: "rgb(32, 31, 30)",
+  });
+  await snap(page, "ui-polish-7-overview-light");
+  if (process.env.AIDE_SCREENS) {
+    await map.locator(".lmap").screenshot({ path: path.join(process.env.AIDE_SCREENS, "ui-polish-7-linkmap-light.png") });
+  }
+
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+  const markDarkColor = await map.locator(".lmap-icon svg.hm-mark").evaluate((svg) => getComputedStyle(svg).color);
+  expect(markDarkColor).toBe("rgb(243, 242, 241)");
+  await snap(page, "ui-polish-7-overview-dark");
+  if (process.env.AIDE_SCREENS) {
+    await map.locator(".lmap").screenshot({ path: path.join(process.env.AIDE_SCREENS, "ui-polish-7-linkmap-dark.png") });
+  }
+  await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+
+  // #4：概览顶部统计磁贴可交互跳转，且「需要你处理」中自发起的可重试失败会话具备行内「重试」与「归档」
+  expect(await page.locator(".ov-tile").first().evaluate((el) => el.tagName)).toBe("BUTTON");
+  const failRow = page.locator("#ov-attention .arow", { hasText: "速率限制重试验证" });
+  await expect(failRow.getByRole("button", { name: "重试" })).toBeVisible();
+  await expect(failRow.getByRole("button", { name: "归档" })).toBeVisible();
+  await expect(failRow.getByRole("button", { name: "打开" })).toBeVisible();
+
+  // #1：Bot 主页当前对话卡片左对齐 + 3px 品牌竖条 + 末条摘要预览 + 近期对话快切 + 浮层键盘/外部点击关闭
+  const buildGroup = page.locator(".side-bots").getByRole("group", { name: "build-server" });
+  await buildGroup.locator(".bot-row", { hasText: "Claude Code" }).click();
+  const curCard = page.locator(".conv-current-card");
+  await expect(curCard).toContainText("构建流水线缓存优化");
+  await expect(curCard.locator(".conv-current-excerpt")).toContainText("冷启动缩短 42%");
+  expect(await curCard.evaluate((el) => getComputedStyle(el, "::before").width)).toBe("3px");
+  await expect(page.locator(".conv-recent")).toContainText("排查镜像推送超时");
+  await expect(page.locator(".conv-count-hint")).toContainText("当前展示 3 条");
+  await snap(page, "ui-polish-1-bot-page");
+
+  await page.locator(".conv-recent .conv-row", { hasText: "排查镜像推送超时" }).locator(".conv-main").click();
+  await expect(curCard).toContainText("排查镜像推送超时");
+
+  const allBtn = page.locator(".conv-all-btn");
+  await allBtn.click();
+  const flyout = page.locator(".conv-flyout");
+  await expect(flyout).toBeVisible();
+  await flyout.press("ArrowDown");
+  await expect(flyout.locator(".conv-main").first()).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(flyout).toHaveCount(0);
+  await expect(allBtn).toBeFocused();
+  await allBtn.click();
+  await expect(flyout).toBeVisible();
+  await page.locator(".bot-head h1").click();
+  await expect(flyout).toHaveCount(0);
+
+  // #2 + #5：1280px 展开左侧任务列时右侧会话列表自动退让（保住完整阅读宽度），长会话上滚出现动态药丸，长回复具备右上角吸顶复制钮
+  await sessionList(page);
+  await page.locator(".srow", { has: page.locator(".stitle", { hasText: titles.bigIdle }) }).first().click();
+  await expect(page.locator(".ctitle h2")).toHaveText(titles.bigIdle);
+  await expect(page.locator(".dwrap.dock")).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "会话列表" })).toHaveCount(0);
+  expect(Math.round((await page.locator(".dmain").boundingBox())!.width)).toBeGreaterThanOrEqual(700);
+  await page.locator(".am").first().hover();
+  await expect.poll(() => page.locator(".am-top-copy").first().evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+
+  await page.locator(".srow", { has: page.locator(".stitle", { hasText: titles.bigLive }) }).first().click();
+  await expect(page.locator(".ctitle h2")).toHaveText(titles.bigLive);
+  const scroller = page.locator(".cscroll");
+  await expect.poll(() => scroller.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(500);
+  await scroller.evaluate((el) => {
+    el.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: -800 }));
+    el.scrollTop = 0;
+  });
+  const toBottom = page.locator("button.tobottom.on.live");
+  await expect(toBottom).toBeVisible();
+  await expect(toBottom).toContainText("正在输出 · 回到底部");
+  await snap(page, "ui-polish-2-5-session-live");
+  await toBottom.click();
+  await expect(page.locator("button.tobottom.on")).toHaveCount(0);
+
+  // #3 + #6：设置窗口执行记录「刷新」按钮对齐标题栏右侧、侧栏无悬空底部分隔线、面板切换挂载 .page-stage 过渡与失焦降饱和
+  const [settingsWin] = await Promise.all([
+    app.waitForEvent("window"),
+    page.evaluate(() => window.aide?.openSettings("ops")),
+  ]);
+  try {
+    await settingsWin.waitForLoadState();
+    const opsBar = settingsWin.locator(".ops-bar");
+    await expect(opsBar.locator(".fhead")).toHaveText("执行记录");
+    const refreshBtn = opsBar.getByRole("button", { name: "刷新" });
+    await expect(refreshBtn).toBeVisible();
+    const [headBox, btnBox] = await Promise.all([opsBar.locator(".fhead").boundingBox(), refreshBtn.boundingBox()]);
+    expect(Math.abs((headBox!.y + headBox!.height / 2) - (btnBox!.y + btnBox!.height / 2))).toBeLessThanOrEqual(6);
+    expect(await settingsWin.locator(".set-side .side-nav").evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe("0px");
+    await expect(settingsWin.locator(".set-body .page-stage")).toBeVisible();
+    await snap(settingsWin, "ui-polish-6-settings-ops");
+  } finally {
+    await settingsWin.close();
   }
 });
 

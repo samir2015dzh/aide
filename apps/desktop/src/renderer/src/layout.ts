@@ -10,8 +10,9 @@ import type { Store } from "./store";
 // still be asked for: it then shows over the conversation instead of beside
 // it (a peek) until it is put away, or the selection changes.
 
-/** Widths (px): the sidebar's column, the room the info card keeps on the conversation's right. */
+/** Widths (px): the sidebar's column, the session list column (全部任务), and the room the info card keeps on the right. */
 export const sidebarWidth = 272;
+export const listWidth = 288;
 export const cardRoom = 270;
 
 /** The least a conversation needs: a composer with its controls, and a message column that still reads as one. */
@@ -28,21 +29,23 @@ export type Layout = {
 };
 
 /** The layout at the window's width, as the person's choices and the peek have it. */
-export function layoutOf(st: Pick<Store, "sidebar" | "inspector" | "peek" | "width">): Layout {
+export function layoutOf(st: Pick<Store, "sidebar" | "inspector" | "peek" | "width"> & { listed?: boolean }): Layout {
   const width = st.width;
   const sidebarFits = width >= sidebarWidth + conversationMin;
   const sidebar = sidebarFits ? (st.sidebar ? "docked" : "hidden") : st.peek === "sidebar" ? "over" : "hidden";
-  const content = width - (sidebar === "docked" ? sidebarWidth : 0);
-  // The card gives way first: where the expanded sidebar has room, the card has too.
+  const content = width - (sidebar === "docked" ? sidebarWidth : 0) - (st.listed ? listWidth : 0);
+  // The card gives way first: where the expanded sidebar (and task column, when open) leaves room, the card docks.
   const cardFits = sidebarFits && content >= conversationMin + cardRoom;
   const card = cardFits ? (st.inspector ? "docked" : "hidden") : st.peek === "card" ? "over" : "hidden";
   return { sidebar, card };
 }
 
 /** Ends a peek once what it showed fits beside the conversation again (where the person's own choice then holds). */
-export function usePeekEnd(st: Store) {
+export function usePeekEnd(st: Store, listed = false) {
   const ended =
-    st.peek === "sidebar" ? layoutOf({ ...st, sidebar: true, peek: null }).sidebar === "docked" : st.peek === "card" && layoutOf({ ...st, inspector: true, peek: null }).card === "docked";
+    st.peek === "sidebar"
+      ? layoutOf({ ...st, listed, sidebar: true, peek: null }).sidebar === "docked"
+      : st.peek === "card" && layoutOf({ ...st, listed, inspector: true, peek: null }).card === "docked";
   useEffect(() => {
     if (ended) st.set({ peek: null });
   }, [ended, st.set]);
@@ -55,7 +58,7 @@ export function setSidebar(st: Store, expand: boolean) {
 }
 
 /** Shows or hides the info card: kept beside the conversation when there is room, else over it for now. */
-export function setCard(st: Store, show: boolean) {
-  const fits = layoutOf({ ...st, inspector: true, peek: null }).card === "docked";
+export function setCard(st: Store, show: boolean, listed = false) {
+  const fits = layoutOf({ ...st, listed, inspector: true, peek: null }).card === "docked";
   st.set(fits ? { inspector: show, peek: null } : { peek: show ? "card" : null });
 }

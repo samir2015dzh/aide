@@ -23,7 +23,11 @@
     "expires_other": "「{{label}}」的授权 {{count}} 天后到期",
     "expiresDetail": "到期后它就不能再用你的机器，正在跑的任务会被打断",
     "renew": "续期…",
-    "open": "打开"
+    "open": "打开",
+    "retry": "重试",
+    "retryPrompt": "继续",
+    "retried": "已在「{{title}}」继续执行",
+    "archive": "归档"
   },
   "map": {
     "title": "链路",

@@ -326,13 +326,30 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
             aria-hidden="true"
           />
           <svg className="lmap-back" viewBox={`0 0 ${W} ${L.H}`} width={W} height={L.H} aria-hidden="true">
+            <defs>
+              <linearGradient id="lm-grad-run" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={W} y2="0">
+                <stop offset="0%" stopColor="var(--lm-grad-a)" />
+                <stop offset="48%" stopColor="var(--live)" />
+                <stop offset="100%" stopColor="var(--lm-grad-b)" />
+              </linearGradient>
+              <linearGradient id="lm-grad-up" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={W} y2="0">
+                <stop offset="0%" stopColor="var(--lm-up-a)" />
+                <stop offset="50%" stopColor="var(--lm-up)" />
+                <stop offset="100%" stopColor="var(--lm-up-b)" />
+              </linearGradient>
+            </defs>
             {L.edges.map((e, i) => (
               <path key={i} className={`lm-edge ${e.off ? "off" : "up"} ${on(e.keys)} ${inScope(e.keys)}`} d={e.d} />
             ))}
+            {L.paths.map((p) =>
+              isRunning(p.s) ? (
+                <path key={`glow:${p.s.sessionId}`} className={`lm-glow ${onPath(p.keys)}`} d={p.d} />
+              ) : null,
+            )}
             {L.paths.map((p) => (
               <path
                 key={p.s.sessionId}
-                className={`lm-flow ${isRunning(p.s) ? "" : p.s.status === SessionStatus.WAITING_INPUT ? "wait" : "fail"} ${onPath(p.keys)}`}
+                className={`lm-flow ${isRunning(p.s) ? "run" : p.s.status === SessionStatus.WAITING_INPUT ? "wait" : "fail"} ${onPath(p.keys)}`}
                 d={p.d}
               />
             ))}
@@ -361,6 +378,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
               <ThisMacHub />
             ) : (
               <>
+                <i className={`lmap-orbit ${running.length ? "on" : ""}`} aria-hidden="true" />
                 {/* At work while a task runs through it: the mark turns now and then; idle, it is still (工单 #47). */}
                 <div className="lmap-icon" style={{ width: HUB.s * 2, height: HUB.s * 2 }}>
                   <span className={running.length ? "is-working lmap-mark" : "lmap-mark"}>
@@ -368,7 +386,7 @@ export function LinkMap({ pick, onPick, now, usage }: { pick: string; onPick: (k
                   </span>
                 </div>
                 <b>Aide</b>
-                <span>
+                <span className="lmap-enc">
                   <Icon name="lock" className="sm" />
                   {t("map.encrypted")}
                 </span>

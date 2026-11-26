@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -240,8 +241,14 @@ fun HSpace(w: Int) = Spacer(Modifier.width(w.dp))
 
 /** One number of a page's overview: what it counts small above, the count large, on a Fluent card. */
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier, of: String? = null, tone: Tone = Tone.Quiet) {
-    androidx.compose.foundation.layout.Column(modifier.aideCard().padding(horizontal = 14.dp, vertical = 12.dp)) {
+fun StatTile(label: String, value: String, modifier: Modifier = Modifier, of: String? = null, tone: Tone = Tone.Quiet, onClick: (() -> Unit)? = null) {
+    val barColor = if (tone == Tone.Warn) aide.orange else Color.Transparent
+    val cardMod = modifier
+        .aideCard()
+        .then(if (onClick != null) Modifier.pressable(onClick) else Modifier)
+        .then(if (barColor != Color.Transparent) Modifier.drawBehind { drawRect(barColor, Offset.Zero, Size(3.dp.toPx(), size.height)) } else Modifier)
+        .padding(horizontal = 14.dp, vertical = 12.dp)
+    androidx.compose.foundation.layout.Column(cardMod) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(value, style = IosType.Title1, color = if (tone == Tone.Quiet) MaterialTheme.colorScheme.onSurface else toneColor(tone))

@@ -118,12 +118,14 @@ export function SettingsWindow() {
           <h1>{label}</h1>
         </div>
         <div className="set-body">
-          {page === "general" && <General />}
-          {page === "connect" && <Connect key={item} line={connectLine(item)} />}
-          {page === "grants" && <Grants open={item} select={setItem} />}
-          {page === "machines" && <Machines open={item} select={setItem} ask={setAsk} />}
-          {page === "ops" && <OpsLog />}
-          {page === "account" && <Account ask={setAsk} />}
+          <div key={`${page}:${item}`} className="page-stage">
+            {page === "general" && <General />}
+            {page === "connect" && <Connect key={item} line={connectLine(item)} />}
+            {page === "grants" && <Grants open={item} select={setItem} />}
+            {page === "machines" && <Machines open={item} select={setItem} ask={setAsk} />}
+            {page === "ops" && <OpsLog />}
+            {page === "account" && <Account ask={setAsk} />}
+          </div>
         </div>
       </main>
       {ask && <AskSheet ask={ask} close={() => setAsk(null)} />}

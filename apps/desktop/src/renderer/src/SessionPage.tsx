@@ -4,6 +4,7 @@ import type { Session } from "@aide/proto/session";
 import { codingAgentShort, displayTitle, openedNews } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
 import { local } from "./api";
+import { useLeaving } from "./components";
 import { Icon } from "./icons";
 import { MachineTag } from "./MachineTag";
 import { layoutOf, setCard } from "./layout";
@@ -19,14 +20,15 @@ import "./session/session.css";
 // A session: its conversation, the bottom control area while a turn is
 // live, and beside it the sessions to switch to (工单 #90); its settings
 // are a click away, in a menu from the toolbar.
-export function SessionPage({ s }: { s: Session }) {
+export function SessionPage({ s, listed = false }: { s: Session; listed?: boolean }) {
   const { t } = useTranslation("session");
   const st = useStore();
   const { events, draft } = useSessionEvents(s.sessionId, s.progress?.lastEventSeq ?? 0n);
   // The card keeps the conversation clear of it when there is room beside it; over the conversation (no room) it leaves it be.
-  const { card } = layoutOf(st);
+  const { card } = layoutOf({ ...st, listed });
   const info = card !== "hidden";
   const [settings, setSettings] = useState(false);
+  const settingsAnim = useLeaving(settings ? true : null);
   useMarkSeen(s);
   return (
     <>
@@ -62,7 +64,7 @@ export function SessionPage({ s }: { s: Session }) {
           title={t(info ? "page.hideInfo" : "page.showInfo", { keys: keys(ownKeys.toggleInspector) })}
           aria-label={t("page.info")}
           aria-pressed={info}
-          onClick={() => setCard(st, !info)}
+          onClick={() => setCard(st, !info, listed)}
         >
           <Icon name="sidebar" className="flip" />
         </button>
@@ -72,7 +74,7 @@ export function SessionPage({ s }: { s: Session }) {
           <Chat key={s.sessionId} s={s} events={events} draft={draft} />
         </div>
         {info && <SessionList s={s} />}
-        {settings && <SettingsMenu s={s} onClose={() => setSettings(false)} />}
+        {settingsAnim.shown && <SettingsMenu s={s} leaving={settingsAnim.leaving} onClose={() => setSettings(false)} />}
       </div>
     </>
   );
@@ -83,10 +85,11 @@ export function SessionPage({ s }: { s: Session }) {
  * and that machine's settings, its project and branch with what they offer, the model and effort, its review), over
  * the conversation's top right until put away: Esc, a click outside, or the toolbar's button again.
  */
-function SettingsMenu({ s, onClose }: { s: Session; onClose: () => void }) {
+function SettingsMenu({ s, leaving, onClose }: { s: Session; leaving: boolean; onClose: () => void }) {
   const { t } = useTranslation("session");
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (leaving) return;
     const outside = (e: MouseEvent) => {
       const el = e.target as Element;
       // Its own menus (the project's, the branch's) open over the window, outside it.
@@ -99,9 +102,9 @@ function SettingsMenu({ s, onClose }: { s: Session; onClose: () => void }) {
       document.removeEventListener("mousedown", outside);
       document.removeEventListener("keydown", esc);
     };
-  }, [onClose]);
+  }, [leaving, onClose]);
   return (
-    <div className="insp-pop" role="dialog" aria-label={t("page.settings")} ref={ref}>
+    <div className={`insp-pop ${leaving ? "leaving" : ""}`} inert={leaving} role="dialog" aria-label={t("page.settings")} ref={ref}>
       <Inspector s={s} />
     </div>
   );

@@ -64,8 +64,15 @@ export function MainWindow() {
       }),
     [set, show],
   );
+  // The page of every session keeps its list beside the session opened from it (工单 #63: no list in the sidebar).
+  const [fromList, setFromList] = useState(false);
+  useEffect(() => {
+    if (st.selection.kind === "sessions") setFromList(true);
+    else if (st.selection.kind !== "session") setFromList(false);
+  }, [st.selection]);
+  const listed = st.selection.kind === "sessions" || (fromList && !!session);
   // A peek ends when it fits again, when another session or page is chosen, and with Esc.
-  usePeekEnd(st);
+  usePeekEnd(st, listed);
   useEffect(() => {
     set({ peek: null });
   }, [st.selection, set]);
@@ -76,14 +83,7 @@ export function MainWindow() {
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, [peeking, set]);
-  const { sidebar } = layoutOf(st);
-  // The page of every session keeps its list beside the session opened from it (工单 #63: no list in the sidebar).
-  const [fromList, setFromList] = useState(false);
-  useEffect(() => {
-    if (st.selection.kind === "sessions") setFromList(true);
-    else if (st.selection.kind !== "session") setFromList(false);
-  }, [st.selection]);
-  const listed = st.selection.kind === "sessions" || (fromList && !!session);
+  const { sidebar } = layoutOf({ ...st, listed });
   // The search, keyed by what it was opened for; closed, it fades out as it was.
   const search = useLeaving(st.searching ? JSON.stringify(st.searchFor) : null);
   return (
@@ -128,7 +128,7 @@ export function MainWindow() {
           className="page-stage"
         >
           {st.selection.kind === "sessions" ? null : session ? (
-            <SessionPage s={session} />
+            <SessionPage s={session} listed={listed} />
           ) : st.selection.kind === "held" ? (
             <HeldMessages />
           ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (

@@ -7,6 +7,7 @@ import { agentName } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { aidedGone, dedupeLinkEntries, type LinkEntry } from "../../../shared/watchLink";
 import { local } from "../api";
+import { Icon } from "../icons";
 import { errorText, useNow, useStore } from "../store";
 
 /**
@@ -52,6 +53,13 @@ export function OpsLog() {
   return (
     <div className="form">
       {error && <p className="set-note warn">{error}</p>}
+      <div className="ops-bar">
+        <div className="fhead">{t("pages.ops")}</div>
+        <button type="button" className="btn sm" onClick={() => (load(), loadLinks())}>
+          <Icon name="retry" className="sm" />
+          {t("ops.refresh")}
+        </button>
+      </div>
       {log && log.entries.length > 0 ? (
         <div className="fgroup" role="list" aria-label={t("pages.ops")}>
           {log.entries.map((e, i) => {
@@ -145,9 +153,6 @@ export function OpsLog() {
             </div>
           );
         })}
-      </div>
-      <div className="fgroup">
-        <button className="frow act" onClick={() => (load(), loadLinks())}>{t("ops.refresh")}</button>
       </div>
       <p className="set-note">{t("ops.note")}</p>
     </div>

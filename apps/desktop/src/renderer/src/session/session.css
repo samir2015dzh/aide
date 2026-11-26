@@ -14,7 +14,7 @@
 /* The owner's message box under a session the owner started (Chat.tsx MessageBox); the control area sits above it. */
 .mbox{position:absolute;left:0;right:0;bottom:0;z-index:4;pointer-events:none;padding:16px 16px 16px;background:linear-gradient(to bottom,transparent,var(--win) 16px)}
 .mbox .composer{pointer-events:auto;max-width:var(--conversation-width);margin:0 auto}
-.dwrap.dock .mbox{right:270px}
+.dwrap.dock .mbox{right:var(--size-list-pane)}
 /* The session's review (Insights.tsx): its Markdown, then what to copy. */
 .insights{padding:20px 24px}
 .insights-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}

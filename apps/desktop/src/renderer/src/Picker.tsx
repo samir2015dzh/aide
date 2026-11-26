@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useLeaving } from "./components";
 import { Icon } from "./icons";
 
 // The app's own pop-up button (工单 #68): the label of what is chosen with ⌃⌄ beside it, and on a click a menu of the
@@ -29,6 +30,7 @@ export function Picker<T extends string | number>({
   onOpen?: () => void;
 }) {
   const [open, setOpen] = useState<false | "mouse" | "key">(false);
+  const menuAnim = useLeaving(open ? open : null);
   const btn = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState({ left: -9999, top: 0, minWidth: 0 });
@@ -92,9 +94,9 @@ export function Picker<T extends string | number>({
         <span className="picker-v">{chosen?.label ?? placeholder}</span>
         <Icon name={chip ? "chevD" : "chevUD"} className="sm picker-c" />
       </button>
-      {open &&
+      {menuAnim.shown &&
         createPortal(
-          <div className="vmenu picker-menu" role="menu" aria-label={label} tabIndex={-1} ref={menu} style={at} onKeyDown={onKeyDown}>
+          <div className={`vmenu picker-menu ${menuAnim.leaving ? "leaving" : ""}`} inert={menuAnim.leaving} role="menu" aria-label={label} tabIndex={-1} ref={menu} style={at} onKeyDown={onKeyDown}>
             {options.map((o, i) =>
               o ? (
                 <button

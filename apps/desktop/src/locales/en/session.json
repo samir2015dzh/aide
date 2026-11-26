@@ -52,6 +52,8 @@
       "noAnswer": "{{name}} isn’t responding. Showing last synced messages."
     },
     "toBottom": "Jump to the latest",
+    "toBottomLive": "Streaming · Jump to latest",
+    "copied": "Copied",
     "you": "you",
     "turnDoneYou": "This turn is complete. Send another message below to continue in this task.",
     "resumeYou": "When you send another message, it will resume from here with all earlier changes preserved.",

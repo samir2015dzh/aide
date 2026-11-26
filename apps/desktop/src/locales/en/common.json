@@ -735,7 +735,8 @@
     "stuckAgent": "This agent is no longer on that machine: it can be read, not continued.",
     "newWithContext": "Start a new one with its context",
     "willStartNew": "You changed the {{what}}: the next message starts a new conversation",
-    "countHint": "Showing 1 of {{total}} ({{detail}})",
+    "recentSwitch": "Other recent conversations",
+    "countHint": "Showing {{shown}} of {{total}} ({{detail}})",
     "partOpen": "{{count}} open",
     "partArchived": "{{count}} archived",
     "partOthers": "{{count}} handed over"

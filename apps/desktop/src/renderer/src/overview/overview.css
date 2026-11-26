@@ -2,8 +2,9 @@
 
 /* 概览一览卡（DESIGN-107 §2）：中性亚克力卡 + 状态色数字/标志，去掉整张橙底 */
 .ov-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.ov-tile{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:var(--radius-card);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);transition:background-color var(--duration-normal) var(--ease-fluent),transform var(--duration-normal) var(--ease-fluent),box-shadow var(--duration-normal) var(--ease-fluent)}
+.ov-tile{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:0;text-align:left;font:inherit;border-radius:var(--radius-card);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);transition:background-color var(--duration-normal) var(--ease-fluent),transform var(--duration-normal) var(--ease-fluent),box-shadow var(--duration-normal) var(--ease-fluent)}
 .ov-tile:hover{background:var(--surface-card-hover);transform:translateY(-2px);box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic-hover),0 0 0 1px var(--sep),var(--shadow-card-hover)}
+.ov-tile:active{transform:scale(.985)}
 .ov-tile b{font-size:28px;line-height:1.15;font-weight:600;font-variant-numeric:tabular-nums;color:var(--l1)}
 .ov-tile b small{font-size:16px;color:var(--l2);font-weight:400}
 .ov-tile span{font-size:13px;font-weight:600;color:var(--l2)}
@@ -13,19 +14,74 @@
 .ov-tile.done b{color:var(--green)}
 .ov-tile.run b{color:var(--accent-t)}
 
-.ov-warn{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--orange-t)}
+.ov-warn{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-card);border-left:3px solid var(--color-caution);background:var(--orange-bg);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--color-caution) 24%,transparent);font-size:12.5px;color:var(--orange-t)}
+.ov-warn .ic{flex:none}
 .arow .at code{font-size:12px}
 .arow .ai.r{background:var(--red-bg);color:var(--red-t)}
 .arow .at span.wrap{white-space:normal;line-height:1.5}
 
-/* 链路拓扑（DESIGN-107 §2）：运行中主蓝 #0078d4（深色 #479ef5）、等你回答黄、出错红、空闲灰；取 fluent-tokens 的同值令牌（审计 K） */
-:root{--live:var(--color-fluent-blue);--live-wait:var(--color-caution);--live-fail:var(--color-error);--lm-node:#ffffff;--lm-node-bd:rgba(0,0,0,.09);--lm-line:#d1d1d1;--lm-up:color-mix(in srgb,var(--green-fill) 65%,transparent);--lm-hover:rgba(0,0,0,.28)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--live:var(--color-accent-text);--live-wait:var(--color-caution);--live-fail:var(--color-error-text);--lm-node:#2d2c2b;--lm-node-bd:rgba(255,255,255,.10);--lm-line:#3b3a39;--lm-up:color-mix(in srgb,var(--green-fill) 65%,transparent);--lm-hover:rgba(255,255,255,.3)}}
-:root[data-theme="dark"]{--live:var(--color-accent-text);--live-wait:var(--color-caution);--live-fail:var(--color-error-text);--lm-node:#2d2c2b;--lm-node-bd:rgba(255,255,255,.10);--lm-line:#3b3a39;--lm-up:color-mix(in srgb,var(--green-fill) 65%,transparent);--lm-hover:rgba(255,255,255,.3)}
-.lmap{background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);border-radius:var(--radius-card);overflow:hidden}
-.lmap-top{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 0;flex-wrap:wrap}
-.lmap-top b{font-size:14px;font-weight:600}
-.lmap-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 9px;border-radius:999px;background:var(--lm-node);box-shadow:inset 0 0 0 .5px var(--lm-node-bd);color:var(--l2);font-size:12px;white-space:nowrap}
+/* 链路拓扑（浅色：Fluent 琉璃星枢舞台 · 深色：暗曜精密遥测视窗；保留 G3 副官星原貌与对比度令牌） */
+:root{
+  --live:var(--color-fluent-blue);--live-wait:var(--color-caution);--live-fail:var(--color-error);
+  --lm-stage-bg:radial-gradient(ellipse 46% 68% at 39% 50%,rgba(0,120,212,.085),transparent 72%),radial-gradient(ellipse 36% 58% at 78% 48%,rgba(16,124,16,.05),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.92),rgba(244,248,253,.88));
+  --lm-stage-sh:var(--rim-top),inset 0 0 0 1px rgba(255,255,255,.82),0 0 0 1px rgba(0,90,158,.09),0 6px 20px rgba(15,23,42,.05);
+  --lm-grid:rgba(0,90,158,.095);
+  --lm-node:linear-gradient(180deg,#ffffff,#f8fafd);
+  --lm-node-solid:#ffffff;
+  --lm-node-bd:rgba(15,23,42,.09);
+  --lm-node-sh:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 .8px var(--lm-node-bd),0 2px 6px rgba(15,23,42,.04);
+  --lm-line:#cbd5e1;
+  --lm-up:color-mix(in srgb,var(--green-fill) 72%,#0078d4 28%);
+  --lm-up-a:rgba(0,120,212,.45);--lm-up-b:rgba(16,124,16,.62);
+  --lm-grad-a:#38bdf8;--lm-grad-b:#0ea5e9;
+  --lm-hover:rgba(0,120,212,.38);
+  --lm-port:#ffffff;--lm-port-bd:rgba(0,120,212,.38);
+  --lm-tray:rgba(15,23,42,.045);
+  --lm-ghost:rgba(255,255,255,.62);--lm-ghost-bd:rgba(0,90,158,.18);
+  --lm-orbit:rgba(0,120,212,.18);--lm-orbit-bg:rgba(255,255,255,.42);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --live:var(--color-accent-text);--live-wait:var(--color-caution);--live-fail:var(--color-error-text);
+  --lm-stage-bg:radial-gradient(ellipse 46% 70% at 39% 50%,rgba(56,189,248,.13),transparent 72%),radial-gradient(ellipse 38% 60% at 78% 48%,rgba(16,185,129,.075),transparent 70%),linear-gradient(180deg,#161923,#10131b);
+  --lm-stage-sh:inset 0 1px 0 rgba(255,255,255,.09),inset 0 0 0 1px rgba(148,163,184,.14),0 10px 28px rgba(0,0,0,.38);
+  --lm-grid:rgba(148,163,184,.13);
+  --lm-node:linear-gradient(180deg,rgba(35,40,54,.92),rgba(24,28,39,.92));
+  --lm-node-solid:#232836;
+  --lm-node-bd:rgba(148,163,184,.18);
+  --lm-node-sh:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 .8px var(--lm-node-bd),0 4px 12px rgba(0,0,0,.28);
+  --lm-line:#334155;
+  --lm-up:color-mix(in srgb,#34d399 68%,#38bdf8 32%);
+  --lm-up-a:rgba(56,189,248,.52);--lm-up-b:rgba(52,211,153,.66);
+  --lm-grad-a:#38bdf8;--lm-grad-b:#34d399;
+  --lm-hover:rgba(56,189,248,.55);
+  --lm-port:#161923;--lm-port-bd:rgba(56,189,248,.58);
+  --lm-tray:rgba(255,255,255,.06);
+  --lm-ghost:rgba(30,35,48,.58);--lm-ghost-bd:rgba(148,163,184,.22);
+  --lm-orbit:rgba(56,189,248,.28);--lm-orbit-bg:rgba(56,189,248,.05);
+}}
+:root[data-theme="dark"]{
+  --live:var(--color-accent-text);--live-wait:var(--color-caution);--live-fail:var(--color-error-text);
+  --lm-stage-bg:radial-gradient(ellipse 46% 70% at 39% 50%,rgba(56,189,248,.13),transparent 72%),radial-gradient(ellipse 38% 60% at 78% 48%,rgba(16,185,129,.075),transparent 70%),linear-gradient(180deg,#161923,#10131b);
+  --lm-stage-sh:inset 0 1px 0 rgba(255,255,255,.09),inset 0 0 0 1px rgba(148,163,184,.14),0 10px 28px rgba(0,0,0,.38);
+  --lm-grid:rgba(148,163,184,.13);
+  --lm-node:linear-gradient(180deg,rgba(35,40,54,.92),rgba(24,28,39,.92));
+  --lm-node-solid:#232836;
+  --lm-node-bd:rgba(148,163,184,.18);
+  --lm-node-sh:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 .8px var(--lm-node-bd),0 4px 12px rgba(0,0,0,.28);
+  --lm-line:#334155;
+  --lm-up:color-mix(in srgb,#34d399 68%,#38bdf8 32%);
+  --lm-up-a:rgba(56,189,248,.52);--lm-up-b:rgba(52,211,153,.66);
+  --lm-grad-a:#38bdf8;--lm-grad-b:#34d399;
+  --lm-hover:rgba(56,189,248,.55);
+  --lm-port:#161923;--lm-port-bd:rgba(56,189,248,.58);
+  --lm-tray:rgba(255,255,255,.06);
+  --lm-ghost:rgba(30,35,48,.58);--lm-ghost-bd:rgba(148,163,184,.22);
+  --lm-orbit:rgba(56,189,248,.28);--lm-orbit-bg:rgba(56,189,248,.05);
+}
+.lmap{position:relative;background:var(--lm-stage-bg);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--lm-stage-sh);border-radius:var(--radius-card);overflow:hidden}
+.lmap-top{position:relative;z-index:1;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) 2px;flex-wrap:wrap}
+.lmap-top b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.lmap-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:3.5px 11px 3.5px 9px;border-radius:999px;background:var(--lm-node);box-shadow:var(--lm-node-sh);color:var(--l2);font-size:12px;white-space:nowrap}
 .lmap-pill i{position:relative;width:7px;height:7px;border-radius:50%;background:var(--live)}
 /* The beat: a disc of the dot's colour growing out of it as it fades (transform and opacity, so the compositor draws it). */
 .lmap-pill i::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--live);animation:lm-beat 1.8s ease-out infinite}
@@ -35,19 +91,21 @@
 .lmap-pill b.bad{color:var(--red)}
 @keyframes lm-beat{to{transform:scale(3);opacity:0}}
 .lmap-box{position:relative}
+.lmap-box::before{content:"";position:absolute;inset:2px 12px;background-image:radial-gradient(circle,var(--lm-grid) 1px,transparent 1px);background-size:16px 16px;-webkit-mask-image:radial-gradient(ellipse 88% 82% at 50% 50%,#000 52%,transparent 100%);mask-image:radial-gradient(ellipse 88% 82% at 50% 50%,#000 52%,transparent 100%);pointer-events:none}
 .lmap-stage{position:absolute;left:50%;top:0;transform-origin:top center;margin-left:-410px}
 .lmap-stage>svg{position:absolute;left:0;top:0;overflow:visible}
 .lmap-front{pointer-events:none}
-.lm-edge{fill:none;stroke:var(--lm-line);stroke-width:1;transition:opacity .25s}
-.lm-edge.off{stroke-dasharray:2 5}
-/* Connected reads as connected without a hover (工单 #43): only what is offline or not connected is grey and dashed. */
-.lm-edge.up{stroke:var(--lm-up);stroke-width:1.3}
-.lm-edge.scope{stroke:var(--live);stroke-dasharray:3 4;stroke-width:1.2;opacity:.75}
-.lm-flow{fill:none;stroke:var(--live);stroke-width:1.3;stroke-linecap:round;opacity:.55;transition:opacity .25s}
-.lm-flow.wait{stroke:var(--live-wait);stroke-dasharray:2 4;opacity:.7}
-.lm-flow.fail{stroke:var(--live-fail);stroke-dasharray:2 4;opacity:.6}
+.lm-edge{fill:none;stroke:var(--lm-line);stroke-width:1.15;transition:opacity .25s,stroke-width .2s}
+.lm-edge.off{stroke-dasharray:2 5;opacity:.75}
+/* Connected reads as connected without a hover (工单 #43): optical gradient fiber when online, grey dashed when offline. */
+.lm-edge.up{stroke:url(#lm-grad-up);stroke-width:1.5}
+.lm-edge.scope{stroke:var(--live);stroke-dasharray:3 4;stroke-width:1.4;opacity:.85}
+.lm-glow{fill:none;stroke:var(--live);stroke-width:6;stroke-linecap:round;opacity:.16;pointer-events:none;transition:opacity .25s}
+.lm-flow{fill:none;stroke:url(#lm-grad-run);stroke-width:1.85;stroke-linecap:round;opacity:.78;transition:opacity .25s}
+.lm-flow.wait{stroke:var(--live-wait);stroke-dasharray:2.5 4.5;opacity:.82}
+.lm-flow.fail{stroke:var(--live-fail);stroke-dasharray:2.5 4.5;opacity:.72}
 .lmap-comets,.lmap-pings,.lm-comet,.lm-comet i,.lmap-pings>span{position:absolute;left:0;top:0}
-.lm-comet i{border-radius:50%;background:var(--c,var(--live));opacity:0}
+.lm-comet i{border-radius:50%;background:var(--c,var(--live));box-shadow:0 0 6px var(--c,var(--live));opacity:0}
 .lmap-mark{display:inline-flex}
 .lm-mark.wait circle{fill:var(--live-wait)}
 .lm-mark.fail circle{fill:var(--live-fail)}
@@ -55,29 +113,38 @@
 .lmap-pings>span{width:10px;height:10px;margin:-5px 0 0 -5px}
 .lm-mark .ping{display:block;width:100%;height:100%;border-radius:50%;background:var(--live-wait);animation:lm-ring 1.7s ease-out infinite}
 @keyframes lm-ring{0%{transform:scale(.8);opacity:.9}100%{transform:scale(3.2);opacity:0}}
-.lmap-aura{position:absolute;background:radial-gradient(closest-side,color-mix(in srgb,var(--live) 35%,transparent),transparent);opacity:.3}
+.lmap-aura{position:absolute;background:radial-gradient(closest-side,color-mix(in srgb,var(--live) 42%,transparent),transparent);opacity:.38}
 .lmap-aura.on{animation:lm-breathe 3.6s ease-in-out infinite}
-@keyframes lm-breathe{0%,100%{opacity:.2;transform:scale(.94)}50%{opacity:.4;transform:scale(1.06)}}
+@keyframes lm-breathe{0%,100%{opacity:.24;transform:scale(.94)}50%{opacity:.48;transform:scale(1.08)}}
 .lmap-hub{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px}
-.lmap-icon{border-radius:24%;display:flex;align-items:center;justify-content:center;margin-bottom:8px;
-  background:linear-gradient(180deg,#ffffff,#eef0f5);
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 4px 14px rgba(0,0,0,.1)}
+.lmap-orbit{position:absolute;top:-8px;left:-8px;width:88px;height:88px;border-radius:27%;background:var(--lm-orbit-bg);border:1px solid var(--lm-orbit);pointer-events:none;transition:border-color .25s,transform .25s}
+.lmap-orbit.on{box-shadow:0 0 22px color-mix(in srgb,var(--live) 20%,transparent)}
+.lmap-hub.back:hover .lmap-orbit{border-color:var(--live);transform:scale(1.03)}
+.lmap-icon{position:relative;z-index:1;border-radius:24%;display:flex;align-items:center;justify-content:center;margin-bottom:8px;
+  background:linear-gradient(180deg,#ffffff,#eef2f9);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(15,23,42,.08),0 6px 18px rgba(15,23,42,.11)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lmap-icon{
-  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 45%),linear-gradient(180deg,#262833,#0b0c12);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 6px 18px rgba(0,0,0,.28)}}
+  background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,0) 45%),linear-gradient(180deg,#262833,#0d0f18);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 8px 22px rgba(0,0,0,.42)}}
 :root[data-theme="dark"] .lmap-icon{
-  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 45%),linear-gradient(180deg,#262833,#0b0c12);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 6px 18px rgba(0,0,0,.28)}
-.lmap-hub b{font-size:12.5px;font-weight:600;white-space:nowrap}
-.lmap-hub span{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--l2);white-space:nowrap}
-.lm-node{position:absolute;display:flex;align-items:center;gap:9px;padding:0 10px 0 9px;border-radius:12px;border:0;background:var(--lm-node);box-shadow:inset 0 0 0 .8px var(--lm-node-bd);text-align:left;color:var(--l1);transition:opacity .25s,box-shadow .15s,transform var(--duration-fast) var(--ease-fluent)}
-.lm-node:hover,.lm-node.on{box-shadow:inset 0 0 0 .8px var(--lm-hover),0 4px 12px rgba(0,0,0,.08)}
+  background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,0) 45%),linear-gradient(180deg,#262833,#0d0f18);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 8px 22px rgba(0,0,0,.42)}
+.lmap-hub b{position:relative;z-index:1;font-size:12.5px;font-weight:600;white-space:nowrap}
+.lmap-hub span{position:relative;z-index:1;display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--l2);white-space:nowrap}
+.lmap-hub span.lmap-enc{padding:1px 7px;border-radius:999px;background:var(--lm-tray)}
+.lm-node{position:absolute;display:flex;align-items:center;gap:9px;padding:0 10px 0 9px;border-radius:12px;border:0;background:var(--lm-node);box-shadow:var(--lm-node-sh);text-align:left;color:var(--l1);transition:opacity .25s,box-shadow .18s var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent)}
+.lm-node.g::after,.lm-node.m::before,.lm-node.m::after,.lm-node.p::before{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--lm-port);box-shadow:0 0 0 1.3px var(--lm-port-bd);pointer-events:none;transition:box-shadow .18s,background-color .18s}
+.lm-node.g::after,.lm-node.m::after{right:-3px}
+.lm-node.m::before,.lm-node.p::before{left:-3px}
+.lm-node.off::before,.lm-node.off::after{box-shadow:0 0 0 1.2px var(--lm-line)}
+.lm-node:hover,.lm-node.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px var(--lm-hover),0 6px 16px rgba(0,0,0,.12);transform:translateY(-1px)}
+.lm-node:is(:hover,.on)::before,.lm-node:is(:hover,.on)::after{background:var(--live);box-shadow:0 0 0 2px color-mix(in srgb,var(--live) 28%,transparent)}
 .lm-node:active{transform:scale(.985)}
-.lm-node.pin{background:color-mix(in srgb,var(--accent) 8%,var(--lm-node));box-shadow:0 0 0 1.5px var(--accent),0 2px 10px color-mix(in srgb,var(--accent) 22%,transparent)}
-.lm-node.off{opacity:.42}
-.lm-node.off:hover{opacity:.7}
+.lm-node.pin{background:color-mix(in srgb,var(--accent) 10%,var(--lm-node-solid));box-shadow:0 0 0 1.5px var(--live),0 4px 14px color-mix(in srgb,var(--live) 24%,transparent)}
+.lm-node.off{opacity:.44}
+.lm-node.off:hover{opacity:.72}
 .lm-node .lm-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.lm-node .lm-t b{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lm-node .lm-t b{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* One line, a node's height whatever its text (工单 #119): "DSH · work-pc" never breaks at the dot; too long, it ends in an ellipsis. */
 .lm-node .lm-t small{font-size:10.5px;color:var(--l2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lm-node .lm-t small.soon{color:var(--orange)}
@@ -85,7 +152,8 @@
 .lm-node.p{gap:7px}
 .lm-node.p .lm-ic{padding:0}
 .lm-node .av{font-size:12px;flex:none}
-.lm-agents{display:flex;gap:4px}
+.lm-agents{display:inline-flex;align-items:center;gap:4px;width:fit-content;padding:1.5px 5px;border-radius:6px;background:var(--lm-tray)}
+.lm-agents:empty{display:none}
 .lm-agents .out{opacity:.35}
 .lm-meta{font-size:10.5px;color:var(--l2);flex:none}
 .lm-meta.up{display:inline-flex;align-items:center;gap:4px;color:var(--green)}
@@ -94,17 +162,19 @@
 .lm-gap{width:7px;height:7px;border-radius:50%;background:var(--orange)}
 .lm-gap.missing{background:var(--red)}
 .lm-home{display:inline-flex;border-radius:4px;box-shadow:0 0 0 1px var(--lm-node-bd)}
-.lm-badge{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:9px;background:var(--fill2);color:var(--l2);font-size:10.5px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
+.lm-badge{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:9px;background:color-mix(in srgb,var(--live) 14%,var(--lm-tray));color:var(--l1);font-size:10.5px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
 .lm-badge i{width:5px;height:5px;border-radius:50%;background:var(--live)}
-.lm-node.ghost{justify-content:center;background:none;box-shadow:none;outline:1px dashed var(--l3);outline-offset:-1px;color:var(--accent-t);font-size:12px;white-space:nowrap}
+.lm-node.ghost{justify-content:center;background:var(--lm-ghost);box-shadow:inset 0 0 0 1px var(--lm-ghost-bd);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--accent-t);font-size:12px;font-weight:500;white-space:nowrap}
+.lm-node.ghost:hover{background:var(--lm-node);box-shadow:inset 0 0 0 1px var(--lm-hover),0 4px 12px rgba(0,0,0,.08)}
 .lm-node.more{justify-content:center;background:none;box-shadow:none;color:var(--l2);font-size:12px;white-space:nowrap}
 /* Hovering only adds: the rest stays readable, just quieter. */
-.lmap.focus .lm-edge:not(.on),.lmap.focus .lm-flow:not(.on),.lmap.focus .lm-node:not(.on),.lmap.focus .lm-mark:not(.on){opacity:.4}
-.lmap.focus .lm-edge.on{stroke-width:1.8}
-.lmap-foot{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;padding:0 var(--sp-3) var(--sp-3);font-size:11.5px;color:var(--l2);min-height:16px}
+.lmap.focus .lm-edge:not(.on),.lmap.focus .lm-flow:not(.on),.lmap.focus .lm-glow:not(.on),.lmap.focus .lm-node:not(.on),.lmap.focus .lm-mark:not(.on){opacity:.36}
+.lmap.focus .lm-edge.on{stroke-width:2}
+.lmap.focus .lm-glow.on{opacity:.28}
+.lmap-foot{position:relative;z-index:1;display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;padding:2px var(--sp-3) var(--sp-3);font-size:11.5px;color:var(--l2);min-height:16px}
 .lmap-foot span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.lmap-foot i{width:14px;height:2px;border-radius:2px;display:inline-block}
-.lmap-foot i.run{background:var(--live)}
+.lmap-foot i{width:14px;height:2.5px;border-radius:2px;display:inline-block}
+.lmap-foot i.run{background:var(--live);box-shadow:0 0 6px color-mix(in srgb,var(--live) 45%,transparent)}
 .lmap-foot i.wait{background:var(--live-wait)}
 .lmap-foot i.fail{background:var(--live-fail)}
 .lmap-foot i.off{background:repeating-linear-gradient(90deg,var(--l3) 0 2px,transparent 2px 5px)}
