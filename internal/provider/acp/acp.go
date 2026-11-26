@@ -453,7 +453,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	}
 	s := &session{name: p.Name(), proc: proc, events: make(chan provider.Event, 256), pending: map[int64]func(rpcResult){},
 		gate: spec.Gate, ctx: ctx, known: map[string]*toolCall{}, calls: map[string]provider.Decision{}, finished: map[string]bool{},
-		liveMode: live, fixedMode: p.DSHPresets}
+		liveMode: live, fixedMode: p.DSHPresets, dsh: p.DSHPresets}
 	if p.Name() == "antigravity" {
 		key := modelContext(bin, spec.Env)
 		scope := spec.ModelScope
@@ -987,8 +987,14 @@ type session struct {
 	// for a mode changed over ACP (工单 #170).
 	liveMode  *atomic.Value
 	fixedMode bool
-	cfgMu     sync.Mutex
-	cfg       *sessionConfig
+	// dsh: DeepSeek Harness, whose process's first turn is sent again once
+	// if it failed for a key DSH had not loaded yet (dshkeys.go); sent:
+	// turns sent in this process; firstPrompt: the first one's request.
+	dsh         bool
+	sent        int
+	firstPrompt map[string]any
+	cfgMu       sync.Mutex
+	cfg         *sessionConfig
 	// closeMu orders emits from Start against the reader closing events.
 	closeMu sync.RWMutex
 	closed  bool
@@ -1300,8 +1306,12 @@ func (s *session) Send(ctx context.Context, in provider.Input) error {
 	s.msg.Reset()
 	s.last = ""
 	s.prompting.Store(true)
+	params := map[string]any{"sessionId": s.sessionID, "prompt": s.prompt(in)}
+	if s.sent++; s.sent == 1 {
+		s.firstPrompt = params
+	}
 	s.mu.Unlock()
-	err := s.request("session/prompt", map[string]any{"sessionId": s.sessionID, "prompt": s.prompt(in)}, s.turnDone)
+	err := s.request("session/prompt", params, s.turnDone)
 	if err != nil {
 		s.prompting.Store(false)
 	}
@@ -1379,6 +1389,11 @@ func (s *session) turnDone(r rpcResult) {
 	if r.err != nil {
 		e.IsError, e.Text = true, r.err.Error()
 		e.Failure = provider.FailureOf(classified(r.err, sessionv1.FailureKind_FAILURE_KIND_UNKNOWN), sessionv1.FailureKind_FAILURE_KIND_UNKNOWN)
+		if again := s.keyNotLoaded(e.Failure); again != nil {
+			s.prompting.Store(true)
+			go s.retryForKey(again, e) // asks DSH: not on the reader
+			return
+		}
 		s.emit(e)
 		return
 	}
