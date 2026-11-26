@@ -33,6 +33,7 @@ import { useRowState } from "./useRowState";
 import { useVirtualRows, type VirtualRow } from "./useVirtualRows";
 import { rememberSent, usePicture } from "./sentFiles";
 import { Lightbox, PicturesContext, ReplyContext, shownPictures } from "./Picture";
+import { freshModels } from "../agents";
 /**
  * The conversation, newest at the bottom, ending with the reply the agent is
  * still writing (draft); while a turn is live, the control area sits over
@@ -956,7 +957,7 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
         chips={
           <>
             {(a?.models.length ?? 0) > 0 && (!a?.capabilities || a.capabilities.selectModel || a.capabilities.switchModelInSession) && (
-              <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} />
+              <Picker chip size="sm" label={tc("composer.param.model")} value={model} options={modelOptions(tc, a, runs)} onChange={setModel} onOpen={() => freshModels(st.machines.find((m) => m.machineId === s.machineId))} />
             )}
             <SessionParams s={s} withModel={(a?.models.length ?? 0) === 0 || Boolean(a?.capabilities && !a.capabilities.selectModel && !a.capabilities.switchModelInSession)} />
           </>

@@ -308,7 +308,14 @@ func (n *Machine) InterruptDSHSession(ctx context.Context, req *machinev1.Interr
 	defer b.Close()
 	cctx, cancel := context.WithTimeout(ctx, dshBridgeDial)
 	defer cancel()
-	ok, err := b.Cancel(cctx, req.SessionId)
+	// A turn that already ended (stopped in DSH, or done) is not stopped
+	// again (工单 #171): its Agent idles in DSH Desktop, and cancelling it was
+	// answered "interrupted" all the same. DSH's word for it says.
+	ok := false
+	live, status, err := b.State(cctx, req.SessionId)
+	if err == nil && live && status != "idle" {
+		ok, err = b.Cancel(cctx, req.SessionId)
+	}
 	if err != nil {
 		return nil, dshBridgeErr(err)
 	}

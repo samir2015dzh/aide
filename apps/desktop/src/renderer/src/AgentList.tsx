@@ -10,7 +10,7 @@ import type { Machine, Project } from "@aide/proto/local";
 import { agentEntry, agoText, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, dshAgent, modeLabel, modelChoices, modelTitle, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
 import type { TerminalCommand } from "../../shared/bridge";
-import { useRecheckAgents } from "./agents";
+import { freshModels, useRecheckAgents } from "./agents";
 import { autoResumedAt, pauseOf, usageResetAt } from "./agentPause";
 import { local } from "./api";
 import { ClaudeLogin, claudeLoginWaiting, ConnRowView } from "./Connections";
@@ -519,7 +519,8 @@ function Defaults({ a, m }: { a: AgentStatus; m: Machine }) {
       key: "model",
       label: t("prepare.model"),
       value: d.model ? modelName(a, d.model) : same(own?.model ? modelName(a, own.model) : ""),
-      open: () =>
+      open: () => (
+        freshModels(m),
         pick(
           [{ id: "", label: same(own?.model ? modelName(a, own.model) : ""), checked: !d.model }, ...modelChoices(a.name, a.models).map((x) => ({ id: x.value, label: x.detail ? `${x.title} · ${x.detail}` : x.title, checked: d.model === x.value }))],
           (v) => {
@@ -527,7 +528,8 @@ function Defaults({ a, m }: { a: AgentStatus; m: Machine }) {
             const ok = effortsOf(v || own?.model || "");
             save({ ...d, model: v, effort: d.effort && ok && !ok.includes(d.effort) ? "" : d.effort });
           },
-        ),
+        )
+      ),
     },
     {
       key: "effort",

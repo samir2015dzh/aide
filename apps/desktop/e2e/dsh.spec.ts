@@ -108,6 +108,17 @@ test("taking over a DSH session: off by default, asked, a message through the pl
   await expect(takeover).toHaveAttribute("aria-checked", "false");
   await expect(box).toBeDisabled();
 
+  // Turns that did not end on their own (工单 #171), in DSH's words: one stopped, one cut short by DSH's process
+  // exiting and carried on after it started again; neither is an internal error.
+  await bot.getByRole("button", { name: "返回对话" }).click();
+  if (!(await list.isVisible())) await bot.getByRole("button", { name: /全部对话/ }).click();
+  await list.getByRole("button", { name: /跑一遍全部测试/ }).click({ timeout: 30_000 });
+  await expect(page.getByText("单测都过了。")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".dsh-msg.end").filter({ hasText: "这一轮已停止。" })).toBeVisible();
+  await expect(page.locator(".dsh-msg.end").filter({ hasText: "DSH 进程在这一轮完成前退出，这一轮已中止" })).toContainText("DSH 重新启动后接着做");
+  await expect(page.getByText("出了个内部错误")).toHaveCount(0);
+  await snap(page, "dsh-turns-stopped");
+
   // No session of DSH's found: its page says which DSH home it read, and how to point Aide at another.
   fs.rmSync(path.join(fixture.dshHome!, "sessions"), { recursive: true });
   await bot.getByRole("button", { name: "返回对话" }).click();

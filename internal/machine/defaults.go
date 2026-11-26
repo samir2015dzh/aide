@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -37,7 +38,8 @@ const (
 // an earlier Aide's.
 type keptOffers struct {
 	provider.Offers
-	Format int `json:",omitempty"`
+	Format int       `json:",omitempty"`
+	At     time.Time `json:",omitzero"` // when the session offered them
 }
 
 var (
@@ -60,7 +62,7 @@ func (n *Machine) loadDefaults() {
 				if o.Format < offersFormat {
 					o.Models = acp.NormalizeModels(o.Models, o.Own.Model)
 				}
-				n.offers[a] = o.Offers
+				n.offers[a], n.offersAt[a] = o.Offers, o.At
 			}
 		}
 	}
@@ -76,39 +78,76 @@ func (n *Machine) offered(agent string, o provider.Offers) {
 	// What it offered, by where from (no IDs, no secrets): which providers an
 	// agent's sessions offer models of shows in the machine's log (工单 #98
 	// 补充: one missing is the agent's, not Aide's).
-	sources := map[string]int{}
-	for _, m := range o.Models {
-		for _, s := range strings.Split(cmp.Or(m.Source, "-"), " · ") {
-			sources[s]++
-		}
-	}
-	n.log.Info("agent offers models", "agent", agent, "models", len(o.Models), "by_source", sources)
+	n.log.Info("agent offers models", "agent", agent, "models", len(o.Models), "by_source", bySource(o.Models))
 	n.mu.Lock()
 	for i, m := range o.Models {
 		if k := slices.IndexFunc(n.offers[agent].Models, func(x provider.Model) bool { return x.ID == m.ID }); m.Efforts == nil && k >= 0 {
 			o.Models[i].Efforts = n.offers[agent].Models[k].Efforts
 		}
 	}
-	n.offers[agent] = o
+	at := time.Now()
+	n.offers[agent], n.offersAt[agent] = o, at
 	if i, ok := n.infos[agent]; ok { // its models and modes are what it offered before
-		i.Models, i.Modes, i.Own = nil, nil, provider.Settings{}
+		i.Models, i.Modes, i.Own, i.ModelsAt = nil, nil, provider.Settings{}, time.Time{}
 		n.infos[agent] = n.withOffers(agent, i)
 	}
 	n.mu.Unlock()
-	if b, err := json.Marshal(keptOffers{Offers: o, Format: offersFormat}); err == nil {
+	if b, err := json.Marshal(keptOffers{Offers: o, Format: offersFormat, At: at}); err == nil {
 		if err := n.st.Set(kAgentOffers+agent, b); err != nil {
 			n.log.Warn("storing what an agent offers", "agent", agent, "err", err)
 		}
 	}
 }
 
+// bySource counts models by the providers they are of (no IDs, no secrets).
+func bySource(ms []provider.Model) map[string]int {
+	sources := map[string]int{}
+	for _, m := range ms {
+		for _, s := range strings.Split(cmp.Or(m.Source, "-"), " · ") {
+			sources[s]++
+		}
+	}
+	return sources
+}
+
+// checkedOffers logs what a check found of the models an agent offers
+// before a session (DSH's probe, 工单 #166), once per probe: the same as
+// what a session offered says (工单 #129 返修: a probe that found nothing,
+// or fewer, left no trace in the log). n.mu is held.
+func (n *Machine) checkedOffers(agent string, p provider.Provider, i provider.Info) {
+	if a, ok := p.(*acp.Provider); !ok || !a.DSHPresets || !i.Available {
+		return
+	}
+	if i.ModelsProbe != "" && i.ModelsAt.IsZero() {
+		if n.probeFailed[agent] != i.ModelsProbe {
+			n.probeFailed[agent] = i.ModelsProbe
+			n.log.Warn("agent offered no models before a session", "agent", agent, "failed_at", i.ModelsProbe)
+		}
+		return
+	}
+	if !i.ModelsAt.IsZero() {
+		delete(n.probeFailed, agent)
+		if n.probeLogged[agent].Equal(i.ModelsAt) {
+			return
+		}
+		n.probeLogged[agent] = i.ModelsAt
+		n.log.Info("agent offers models before a session", "agent", agent, "models", len(i.Models), "by_source", bySource(i.Models))
+	}
+}
+
 // withOffers is i with what the agent's sessions offered, for an agent that
 // tells it only there (DSH tells its modes without a session, not its
-// models). n.mu is held.
+// models). Models a check kept from an earlier one (i.ModelsAt: DSH's probe)
+// give way to those a session offered since (工单 #129 返修: a probe that
+// found fewer stood over a session's full list at every check after it).
+// n.mu is held.
 func (n *Machine) withOffers(agent string, i provider.Info) provider.Info {
 	o, ok := n.offers[agent]
 	if !ok {
 		return i
+	}
+	if !i.ModelsAt.IsZero() && n.offersAt[agent].After(i.ModelsAt) && len(o.Models) > 0 {
+		i.Models, i.ModelsAt = nil, time.Time{}
 	}
 	if len(i.Models) == 0 {
 		i.Models, i.Own.Model, i.Own.Effort, i.SomeEfforts = o.Models, o.Own.Model, o.Own.Effort, len(o.Models) > 0

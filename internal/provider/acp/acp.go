@@ -365,8 +365,10 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 			}
 		}
 		// Its models too, before its first session here (工单 #166).
-		if o := p.dshOffers(ctx, bin, pre, env, dump); o != nil {
-			info.Models, info.Own.Model, info.Own.Effort = o.Models, o.Own.Model, o.Own.Effort
+		o, at, why := p.dshOffers(ctx, bin, pre, env, dump)
+		info.ModelsProbe = why
+		if o != nil {
+			info.Models, info.Own.Model, info.Own.Effort, info.ModelsAt = o.Models, o.Own.Model, o.Own.Effort, at
 			info.SomeEfforts = slices.ContainsFunc(o.Models, func(m provider.Model) bool { return len(m.Efforts) > 0 })
 		}
 	}

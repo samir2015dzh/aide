@@ -40,3 +40,22 @@ export function useKeepLocalChecked() {
     return () => clearTimeout(id);
   }, [oldest, st.reconnecting]);
 }
+
+/** How long what a machine's agents offer stands before a model list opening asks again: the machine's own TTL for DSH's probe (工单 #166). */
+export const MODELS_TTL_MS = 5 * 60_000;
+const modelsAsked = new Map<string, number>();
+
+/**
+ * A model list is opening (新建会话、设置里的默认模型、会话里换模型，工单 #129 返修): what the machine's coding agents
+ * offer is asked again on purpose, at most every MODELS_TTL_MS per machine, so the list is not what the app found at
+ * its start. On purpose, an agent that tells its models only in a session (DSH) is asked again once its last answer
+ * is past that TTL; the list updates when the machine's status next comes.
+ */
+export function freshModels(m: { local?: boolean; machineId: string } | undefined) {
+  if (!m) return;
+  const key = m.local ? "" : m.machineId;
+  const now = Date.now();
+  if (now - (modelsAsked.get(key) ?? -Infinity) < MODELS_TTL_MS) return;
+  modelsAsked.set(key, now);
+  void local.checkAgents({ machineId: key, onPurpose: true }).catch(() => {});
+}

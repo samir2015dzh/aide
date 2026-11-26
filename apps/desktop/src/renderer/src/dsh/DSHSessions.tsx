@@ -5,7 +5,8 @@ import { ToolRow } from "./ToolRow";
 import { FailLine } from "../session/Chat";
 import { MachineTag, WritesTo } from "../MachineTag";
 import { useTranslation } from "react-i18next";
-import { dateOf, failureHeadline, lostLine, transcript } from "@aide/core";
+import { dateOf, failureHeadline, isInterruption, lostLine, transcript } from "@aide/core";
+import { FailureKind } from "@aide/proto/session";
 import { DSHBridgeInstallState, DSHSessionState, type DSHBridge, type DSHBridgeInstall, type DSHSession, type DSHSessionOptionsResponse, type PrepareDSHBridgeResponse } from "@aide/proto/machine";
 import type { DSHSessionEntry } from "@aide/proto/local";
 import { EventView, type SessionEvent } from "@aide/proto/session";
@@ -129,7 +130,7 @@ export function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DS
           {t("dsh.earlier")}
         </button>
       )}
-      {items.map((it) => {
+      {items.map((it, i) => {
         switch (it.kind) {
           case "user":
             // Typed in DSH, or sent from Aide (taken over): by the owner, or by one of their agents, named.
@@ -145,6 +146,16 @@ export function DSHTranscript({ entry, stateText, bridge, changed }: { entry: DS
           case "tool":
             return <ToolRow key={String(it.seq)} call={it.call} result={it.result} />;
           case "turnEnd":
+            // A turn stopped (in DSH, or from here) or cut short by DSH's process exiting is said as DSH says it, not
+            // as a failure (工单 #171): with what came after, both sides' words explain each other.
+            if (isInterruption(it.end.failure)) return <p key={String(it.seq)} className="dsh-msg end">{t("dsh.turnStopped")}</p>;
+            if (it.end.failure?.kind === FailureKind.AGENT_CRASHED)
+              return (
+                <p key={String(it.seq)} className="dsh-msg end">
+                  {t("dsh.turnCut")}
+                  {items.slice(i + 1).some((x) => x.kind === "turn") && <> {t("dsh.turnCutResumed")}</>}
+                </p>
+              );
             // 工单 #105: what happened in words, DSH's own message folded under Details.
             return it.end.isError ? (
               <FailLine key={String(it.seq)} id={`dsh:${s.sessionId}:${it.seq}`} title={it.end.failure ? failureHeadline(it.end.failure.kind, "DSH", it.end.failure.provider) : t("dsh.turnFailed")} message={it.end.failure?.message ?? ""} />

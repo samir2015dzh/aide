@@ -41,6 +41,14 @@ type Info struct {
 	Own    Settings
 	// Modes are the session modes it offers (ACP agents).
 	Modes []Mode
+	// ModelsAt is when Models were found, for an agent whose check keeps
+	// what an earlier one found (DSH's probe, 工单 #166); zero when this
+	// check found them. What a session of the agent offered since is newer
+	// (工单 #129 返修).
+	ModelsAt time.Time
+	// ModelsProbe is what the last probe for them failed at, a step's name
+	// and never the agent's words (logged: 工单 #129 返修).
+	ModelsProbe string
 	// AllModels: Models are every model it takes here (Codex lists its
 	// own), so a session naming another can be refused before it starts.
 	AllModels bool

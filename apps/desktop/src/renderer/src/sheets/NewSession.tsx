@@ -10,6 +10,7 @@ import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { useStore } from "../store";
 import { ErrorLine, useAction } from "./common";
+import { freshModels } from "../agents";
 
 /**
  * New Session (docs/technical-design.md §3.4): the owner starts a coding agent on one of the owner's machines, in
@@ -184,7 +185,7 @@ export function NewSessionSheet({ machineId, agent: agentAsked }: { machineId?: 
               <div className="frow">
                 <label className="fl" htmlFor="ns-model">{t("newSession.model")}</label>
                 <span className="fv">
-                  <Picker className="psel" label={t("newSession.model")} value={model} onChange={(v) => setOptions(v, "", mode)} options={modelOptions(tc, a)} />
+                  <Picker className="psel" label={t("newSession.model")} value={model} onChange={(v) => setOptions(v, "", mode)} options={modelOptions(tc, a)} onOpen={() => freshModels(machine)} />
                 </span>
               </div>
             )}

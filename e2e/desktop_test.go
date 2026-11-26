@@ -211,6 +211,7 @@ esac
 			f.ClaudeDir = claudeDir
 			if name == "dsh" {
 				log := dshDesktopSession(t, dshHome)
+				dshDesktopStoppedSession(t, dshHome)
 				f.DSHHost, f.DSHHome, f.DSHLog = startDSHHost(t, dshHome, log), dshHome, log
 			}
 			if name == "states" || name == "batchk" { // work-mac: for states, a turn to start and freeze; for batchk, a second machine's project on the map (工单 #119)

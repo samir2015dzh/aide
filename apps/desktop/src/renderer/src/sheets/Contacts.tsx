@@ -10,6 +10,7 @@ import { local } from "../api";
 import { LookEditor } from "../components";
 import { useStore } from "../store";
 import { ErrorLine, useAction } from "./common";
+import { freshModels } from "../agents";
 
 export type PersonaDraft = Pick<Persona, "personaId" | "name" | "icon" | "color" | "machineId" | "projectId" | "agent" | "model" | "effort" | "mode">;
 type Draft = PersonaDraft;
@@ -130,7 +131,7 @@ function ContactForm({ draft, done }: { draft: Draft; done: (saved?: string) => 
           <div className="frow">
             <label className="fl" htmlFor="ct-model">{t("newSession.model")}</label>
             <span className="fv">
-              <Picker className="psel" label={t("newSession.model")} value={d.model} onChange={(v) => put({ model: v, effort: "" })} options={modelOptions(tc, a)} />
+              <Picker className="psel" label={t("newSession.model")} value={d.model} onChange={(v) => put({ model: v, effort: "" })} options={modelOptions(tc, a)} onOpen={() => freshModels(machine)} />
             </span>
           </div>
         )}

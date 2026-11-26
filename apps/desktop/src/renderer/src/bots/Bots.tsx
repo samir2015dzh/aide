@@ -26,6 +26,7 @@ import { OwnSession, OwnSessions } from "./OwnSessions";
 import { BotSettings } from "./AgentSettings";
 import { TaskItem, useTaskRows } from "../TasksPage";
 import "./bots.css";
+import { freshModels } from "../agents";
 
 // The roster (工单 #57, #63, BOTARK-REF 产品结构纲要): a bot is the unit the app is shown in, and the sidebar is bots
 // alone — the ones pinned as tiles, then the personal agents, the coding agents (a group per machine, headed by its
@@ -551,7 +552,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
           options={projects.map((p) => ({ value: p.projectId, label: projectTitle(p), icon: <Icon name="folder" className="sm" /> }))} />
       )}
       {(a?.models.length ?? 0) > 0 || modelsLater
-        ? <Picker chip showLabel size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />
+        ? <Picker chip showLabel size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} onOpen={() => freshModels(m)} />
         : fixed(t("composer.param.model"))}
       {efforts.length > 0 ? (
         <Picker chip showLabel size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}

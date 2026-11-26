@@ -59,6 +59,44 @@ func dshDesktopSession(t *testing.T, home string) string {
 	return log
 }
 
+// dshDesktopStoppedSession writes the owner's session "dsh-stopped" (工单
+// #171): a turn stopped by its owner, one cut short by DSH's process
+// exiting, and the turn DSH ran on with once it started again.
+func dshDesktopStoppedSession(t *testing.T, home string) {
+	t.Helper()
+	cwd := filepath.Join(home, "work", "app")
+	key := "--" + strings.Trim(strings.NewReplacer("/", "-", `\`, "-", ":", "-").Replace(cwd), "-") + "--"
+	dir := filepath.Join(home, "sessions", key, "dsh-stopped")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().Add(-time.Hour).UnixMilli()
+	text := func(s string) []any { return []any{map[string]any{"type": "text", "text": s}} }
+	user := func(seq int, id, s string) any {
+		return map[string]any{"type": "user/message", "seq": seq, "time": at, "surfaceOp": "append", "data": map[string]any{"id": id, "role": "user", "content": text(s), "source": map[string]any{"kind": "user"}}}
+	}
+	lines := []any{
+		map[string]any{"type": "session", "version": 4, "id": "dsh-stopped", "createdAt": at, "cwd": cwd, "isSeeded": false, "delegationDepth": 0},
+		map[string]any{"type": "turn/start", "seq": 0, "time": at, "data": map[string]any{"turn": 1}},
+		user(1, "m1", "跑一遍全部测试"),
+		map[string]any{"type": "turn/end", "seq": 2, "time": at, "data": map[string]any{"turn": 1, "reason": map[string]any{"kind": "aborted", "reason": map[string]any{"kind": "user"}}}},
+		map[string]any{"type": "turn/start", "seq": 3, "time": at, "data": map[string]any{"turn": 2}},
+		user(4, "m2", "只跑单测"),
+		map[string]any{"type": "turn/end", "seq": 5, "time": at, "data": map[string]any{"turn": 2, "reason": map[string]any{"kind": "interrupted"}}},
+		map[string]any{"type": "turn/start", "seq": 6, "time": at, "data": map[string]any{"turn": 3}},
+		map[string]any{"type": "assistant/message", "seq": 7, "time": at, "surfaceOp": "append", "data": map[string]any{"message": map[string]any{"id": "a3", "role": "assistant", "content": text("单测都过了。"), "source": map[string]any{"kind": "model"}}}},
+		map[string]any{"type": "turn/end", "seq": 8, "time": at, "data": map[string]any{"turn": 3, "reason": map[string]any{"kind": "completed"}}},
+	}
+	var b []byte
+	for _, l := range lines {
+		j, _ := json.Marshal(l)
+		b = append(append(b, j...), '\n')
+	}
+	if err := os.WriteFile(filepath.Join(dir, "session.v4.jsonl"), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // startDSHHost runs the bridge plugin for home in a stand-in DSH Host
 // writing prompts into log, until the test ends, and returns its pid once
 // the bridge listens.

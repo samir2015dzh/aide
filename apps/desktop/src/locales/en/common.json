@@ -270,6 +270,9 @@
     "earlier": "Earlier",
     "empty": "Nothing written yet.",
     "turnFailed": "The turn failed.",
+    "turnStopped": "This turn was stopped.",
+    "turnCut": "DSH's process exited before this turn ended, so the turn was cut short; tool calls it had not finished have unknown results.",
+    "turnCutResumed": "DSH started again and carried on: the next turn is below.",
     "takeover": "Take Over",
     "takeoverAsk": "Take over this session?",
     "takeoverNote1": "You can send this session messages and stop its turn from Aide. They go to DSH through the Aide plugin in DSH Desktop and show there too.",
@@ -286,7 +289,7 @@
     "queued": "Queued: DSH takes it up when this turn ends.",
     "interrupt": "Stop",
     "interrupted": "Stopped this turn.",
-    "notRunningHere": "No turn of this session runs in DSH Desktop.",
+    "notRunningHere": "This turn has already ended, so there is nothing to stop: no turn of this session runs in DSH Desktop now.",
     "bridge": {
       "running": "The Aide plugin runs.",
       "notInstalled": "DSH Desktop doesn't have the Aide plugin yet, so messages can't go.",
