@@ -35,7 +35,11 @@ func (a *askingAgent) Discover(ctx context.Context) provider.Info {
 func (a *askingAgent) Start(context.Context, provider.StartSpec) (provider.Session, error) {
 	return nil, nil
 }
-func (a *askingAgent) wasAsked() []bool { a.mu.Lock(); defer a.mu.Unlock(); return append([]bool(nil), a.asked...) }
+func (a *askingAgent) wasAsked() []bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]bool(nil), a.asked...)
+}
 
 func agentRow(st *machinev1.MachineStatus, name string) *machinev1.AgentStatus {
 	for _, a := range st.Agents {
