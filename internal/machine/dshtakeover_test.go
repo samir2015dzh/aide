@@ -31,8 +31,8 @@ type fakeBridge struct {
 	live     map[string]bool
 	prompts  []map[string]any
 	cancels  []string
-	hang     bool   // never answers a prompt
-	refuse   string // answers a prompt with this error code
+	hang     bool   // never answers a prompt; set under mu
+	refuse   string // answers a prompt with this error code; set under mu
 	protocol int
 	features []string // as the plugin's hello lists them; nil: an older plugin
 }
@@ -196,11 +196,15 @@ func TestDSHTakeover(t *testing.T) {
 	}
 
 	// DSH's refusal, and a DSH that never takes it: said, not left pending.
+	b.mu.Lock()
 	b.refuse = "busy"
+	b.mu.Unlock()
 	if _, err := send("x", ""); codeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "not taking messages") {
 		t.Errorf("busy: %v", err)
 	}
+	b.mu.Lock()
 	b.refuse, b.hang = "", true
+	b.mu.Unlock()
 	dshPromptWait = 300 * time.Millisecond
 	t.Cleanup(func() { dshPromptWait = 25 * time.Second })
 	t0 := time.Now()
@@ -210,13 +214,17 @@ func TestDSHTakeover(t *testing.T) {
 	if time.Since(t0) > 3*time.Second {
 		t.Errorf("waited %v", time.Since(t0))
 	}
+	b.mu.Lock()
 	b.hang = false
+	b.mu.Unlock()
 
 	// Interrupt: only a turn running in DSH Desktop.
 	if ir, err := h.n.InterruptDSHSession(ctx, &machinev1.InterruptDSHSessionRequest{SessionId: "owners"}); err != nil || ir.Interrupted {
 		t.Fatalf("interrupting a session DSH Desktop doesn't run: %v %v", ir, err)
 	}
+	b.mu.Lock()
 	b.live["owners"] = true
+	b.mu.Unlock()
 	if ir, err := h.n.InterruptDSHSession(ctx, &machinev1.InterruptDSHSessionRequest{SessionId: "owners"}); err != nil || !ir.Interrupted || len(b.cancels) != 1 {
 		t.Fatalf("interrupting: %v %v %v", ir, err, b.cancels)
 	}
