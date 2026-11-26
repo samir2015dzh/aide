@@ -111,7 +111,7 @@ export async function startDaemon(socket: string): Promise<Daemon> {
         if (req.follow) yield* ch.drain();
       },
       queryWork: (req) => {
-        // By day and agent from the first day asked, as aided counts (usageRequest).
+        // By day, agent and machine from the first day asked, as aided counts (usageRequest); an agent's work on one machine (工单 #142).
         const [y, m, d] = req.firstDay.split("-").map(Number);
         const first = new Date(y, m - 1, d).getTime();
         const days = w.usage
@@ -120,14 +120,17 @@ export async function startDaemon(socket: string): Promise<Daemon> {
             return { ...x, bucket: Math.round((new Date(a, b - 1, c).getTime() - first) / 86_400_000) };
           })
           .filter((x) => x.bucket >= 0 && x.bucket < req.days);
+        const group = (agent: string) => ({ agent, machineId: w.machines[agent.length % w.machines.length]?.machineId ?? "" });
         return create(QueryWorkResponseSchema, {
-          turns: days.map((x) => ({ bucket: x.bucket, group: { agent: x.agent }, turns: x.sessions, inputTokens: x.inputTokens, outputTokens: x.outputTokens })),
-          sessions: days.map((x) => ({ bucket: x.bucket, group: { agent: x.agent }, sessions: x.sessions })),
+          turns: days.map((x) => ({ bucket: x.bucket, group: group(x.agent), turns: x.sessions, inputTokens: x.inputTokens, outputTokens: x.outputTokens })),
+          sessions: days.map((x) => ({ bucket: x.bucket, group: group(x.agent), sessions: x.sessions })),
         });
       },
     });
 
-  fs.rmSync(socket, { force: true });
+  // Windows has no Unix sockets for Node: a named pipe of its own instead, which the app takes as given (main/paths.ts).
+  if (process.platform === "win32" && !socket.startsWith("\\\\.\\pipe\\")) socket = `\\\\.\\pipe\\aide-perf-${process.pid}-${Date.now()}`;
+  else fs.rmSync(socket, { force: true });
   const server = http.createServer(connectNodeAdapter({ routes }));
   await new Promise<void>((r) => server.listen(socket, r));
 

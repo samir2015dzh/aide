@@ -64,7 +64,7 @@ type freshOwner struct {
 // windowsSpecs are the specs that run on Windows too (docs/windows.md §14);
 // the others are the Mac's (its menu bar, Touch ID, moving to
 // Applications, the process limit).
-var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true, "tasks": true, "batchk": true}
+var windowsSpecs = map[string]bool{"attention": true, "windows": true, "tray": true, "dsh": true, "shell": true, "motion": true, "search": true, "overview": true, "sheets": true, "settings": true, "session": true, "sessionlist": true, "rollback": true, "workspace": true, "tasks": true, "batchk": true, "ui-polish-132": true}
 
 // These specs read back what they copied. The clipboard is the whole
 // computer's, so they run one at a time, before the specs that run side by
@@ -131,6 +131,10 @@ func TestDesktop(t *testing.T) {
 			}
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
+				// Antigravity's server is not, and the Connect page installs it from a registry of the test's into a home of its own (工单 #133).
+				home := t.TempDir()
+				registry, _ := fakeAntigravityRegistry(t)
+				more = append(more, "HOME="+home, "USERPROFILE="+home, "AIDE_ACP_REGISTRY_URL="+registry)
 			}
 			if name == "batchj-botsettings" { // DSH on this Mac, for its bot page and its settings page (工单 #97)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
