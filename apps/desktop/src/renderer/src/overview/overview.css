@@ -192,9 +192,17 @@
 .u-foot{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--sp-2)}
 .u-mix{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--l2);min-width:0}
 .u-mix span{display:inline-flex;align-items:center;gap:5px}
+/* the grouping (工单 #142): a small segmented control leading the parts it names */
+.u-mix .seg button{height:22px;padding:0 10px;font-size:11.5px;color:var(--l1)}
+.u-part b{font-weight:600;color:var(--l1);font-variant-numeric:tabular-nums}
+.u-part small{font-size:11px;color:var(--l3,var(--l2));font-variant-numeric:tabular-nums}
+.u-dot{width:8px;height:8px;border-radius:2px;background:var(--l3,var(--l2));flex:none}
 .u-scale{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--l3);margin-left:auto}
 .u-scale div{width:11px;height:11px;border-radius:3px}
 .u-empty{font-size:12px;color:var(--l2)}
 .u-source{margin:var(--sp-1) 0 0;font-size:11px;color:var(--l3,var(--l2))}
 .u-tip{position:absolute;pointer-events:none;background:var(--l1);color:var(--win);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.4;white-space:nowrap;transform:translate(-50%,calc(-100% - 10px));z-index:5}
 .u-tip b{font-weight:600}
+.u-tip .u-parts{display:grid;grid-template-columns:auto auto;gap:1px 14px;margin-top:4px;padding-top:4px;border-top:.5px solid color-mix(in srgb,var(--win) 25%,transparent)}
+.u-tip .u-parts>span{display:contents}
+.u-tip .u-parts em{font-style:normal;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}

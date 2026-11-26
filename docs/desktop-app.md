@@ -429,6 +429,15 @@ end); the link map ("链路", kept as it is at the owner's request,
 2026-11-15); Working; **Recently Finished** (three); Usage. There is no
 All Sessions link: the sidebar's list is all sessions.
 
+Usage's footer splits the year's tokens **按编码 Agent | 按机器** (工单 #142;
+by agent to start with, as upstream's): each part's tokens and share, the
+least busy past five as 其他, and a day's tip names its parts. One
+`QueryWork` by day, agent and machine answers both, so the parts add up to
+the year's number and a day's to the day's. A personal agent follows the
+account, not a machine: what it asked for counts under the coding agent that
+did it and the machine that ran it. The Android app's Home tab has the same
+card (`ui/Usage.kt`, `model/Usage.kt`).
+
 ### 13.6 Tests
 
 - Units: `alwaysActive` and `quickChoice` in `@aide/core`;

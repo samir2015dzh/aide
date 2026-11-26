@@ -28,6 +28,8 @@ data class World(
     val next: SessionCursor? = null,
     /** The first message came. */
     val watched: Boolean = false,
+    /** Moves when the counts of work change (工单 #142): the usage card asks again. */
+    val workVersion: Long = 0,
 ) {
     fun apply(r: WatchResponse): World {
         val base = if (r.reset) World(sessions = sessions, watched = true, next = r.next) else this
@@ -38,6 +40,7 @@ data class World(
             devices = upsert(base.devices, r.devices, r.removedDeviceKeyIds) { it.keyId },
             projects = upsert(base.projects, r.projects, r.removedProjects.map { "${it.machineId}/${it.projectId}" }) { "${it.machineId}/${it.projectId}" },
             sessions = mergeSessions(base.sessions, r.sessions, r.deletedSessionIds),
+            workVersion = if (r.workVersion != 0L) r.workVersion else workVersion,
         )
     }
 
