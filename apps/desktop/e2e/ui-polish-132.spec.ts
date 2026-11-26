@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { DeviceSchema } from "@aide/proto/local";
-import { AgentStatusSchema, DSHBridgeSchema, DSHBridgeState, RoomDeliverySchema, RoomDeliveryState, RoomMemberSchema, RoomMessageSchema, RoomMode, RoomSchema } from "@aide/proto/machine";
+import { DeviceSchema, ExecLogEntrySchema } from "@aide/proto/local";
+import { AgentStatusSchema, DSHBridgeSchema, DSHBridgeState, ExecOutcome, ExecRecordSchema, RoomDeliverySchema, RoomDeliveryState, RoomMemberSchema, RoomMessageSchema, RoomMode, RoomSchema } from "@aide/proto/machine";
 import { SessionEventSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import fs from "node:fs";
@@ -11,11 +11,12 @@ import { startDaemon, type Daemon } from "../perf/daemon";
 import { ids, titles } from "../perf/world";
 import { launch, navTo, sessionList, snap } from "./app";
 
-// 工单 #132（含补充 P28）+ 工单 #134（含补充一/二）+ 工单 #135（P03/P04/P08/P02/P17/P25/P33）+ Fluent 2 视觉与动效回归：
+// 工单 #132（含补充 P28）+ 工单 #134（含补充一/二）+ 工单 #135（P03/P04/P08/P02/P17/P25/P33）+ 工单 #138（P14/P15）+ Fluent 2 视觉与动效回归：
 // 1. #134 侧栏展开/收起图标位置守恒（切换钮/概览/任务动态/搜索/账号）、左上角菜单不重复、概览/任务动态无空顶栏、会话页顶栏带 agent 上下文且按钮贴齐右缘；
 // 2. #135 状态口径统一（P03/P04/P08/P02/P17/P25/P33）：已完成对话不报「正在聊」且绿点、归档对话顶条/卡片口径一致、离线设备显示「工作机器 · 离线」、收起态三态点色分离、DSH 未确认统一口径、全部对话计数透明、失败消息视觉隔离；
 // 3. #132 会话页与个人 agent 主页（Muse）统一居中阅读列、无边框 Markdown 回复流、真实 700 加粗、行内代码、代码块、GFM 表格与时间戳；
-// 4. #128 第二条 连接后台服务等待图标持续动效与等待时长。
+// 4. #138 执行记录摘要层（多行 PowerShell 折叠与查看详情、退出码并入摘要行）与连接记录同源去重（不重复显示窗口发现/应用后台发现与右侧已恢复）；
+// 5. #128 第二条 连接后台服务等待图标持续动效与等待时长。
 
 test.describe.configure({ mode: "serial" });
 
@@ -146,6 +147,44 @@ test.beforeAll(async () => {
       }),
     ],
   });
+  daemon.world.execLog = [
+    create(ExecLogEntrySchema, {
+      machineId: "m-local",
+      machineName: "MacBook Pro",
+      record: create(ExecRecordSchema, {
+        clientId: "c-0",
+        clientLabel: "Claude",
+        command: [
+          "powershell -NoProfile -Command \"",
+          "$ErrorActionPreference = 'Stop'",
+          "# collect active service summary",
+          "Get-Service | Where-Object { $_.Status -eq 'Running' } | Select-Object -First 8 Name, DisplayName",
+          "$procs = Get-Process | Sort-Object CPU -Descending | Select-Object -First 5",
+          "$procs | Format-Table Name, CPU -AutoSize",
+          "Write-Host 'audit complete'",
+          "\"",
+        ].join("\n"),
+        workdir: "/workspace/aide",
+        outcome: ExecOutcome.EXITED,
+        exitCode: 0,
+        startedAt: timestampFromMs(now - 90_000),
+        endedAt: timestampFromMs(now - 88_400),
+      }),
+    }),
+    create(ExecLogEntrySchema, {
+      machineId: "m-build",
+      machineName: "build-server",
+      record: create(ExecRecordSchema, {
+        clientId: "c-3",
+        clientLabel: "Muse",
+        command: "git fetch origin --prune",
+        outcome: ExecOutcome.EXITED,
+        exitCode: 1,
+        startedAt: timestampFromMs(now - 240_000),
+        endedAt: timestampFromMs(now - 239_200),
+      }),
+    }),
+  ];
   ({ app, page } = await launch(daemon.socket, { args: extraArgs }));
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 860));
 });
@@ -438,6 +477,68 @@ test("工单 #132 补充 P28 + #135 P02: 个人 agent 主页统一版式、时�
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   await snap(page, "desktop-132-personal-agent-dark");
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+});
+
+test("工单 #138: 执行记录摘要层、折叠详情与连接记录同源去重（P14/P15）", async () => {
+  const now = Date.now();
+  // 在首次读取 link-log 前写入 2 对成对重复的 app+window 事件（4 条原始记录 -> 应合并为 2 条）
+  const userData = await app.evaluate(({ app: electronApp }) => electronApp.getPath("userData"));
+  fs.writeFileSync(
+    path.join(userData, "link-log.json"),
+    JSON.stringify([
+      { at: now - 35_000, link: "aided", kind: "down", why: "lost", detail: "connect ECONNREFUSED", from: "app" },
+      { at: now - 34_700, link: "aided", kind: "down", why: "lost", from: "window" },
+      { at: now - 30_000, link: "aided", kind: "back", downFor: 5_000, from: "app" },
+      { at: now - 29_600, link: "aided", kind: "back", downFor: 5_100, from: "window" },
+    ]),
+  );
+
+  const [settings] = await Promise.all([
+    app.waitForEvent("window"),
+    page.evaluate(() => window.aide?.openSettings("ops")),
+  ]);
+  try {
+    await settings.waitForLoadState();
+    const opsList = settings.getByRole("list", { name: "执行记录" });
+    await expect(opsList.getByRole("listitem")).toHaveCount(2, { timeout: 15_000 });
+
+    // P14：默认折叠态显示人话摘要 + 退出码并入摘要行，不铺满原始 PowerShell 脚本
+    const psRow = opsList.getByRole("listitem").nth(0);
+    await expect(psRow.locator(".ops-summary")).toHaveText("PowerShell 脚本（8 行）");
+    await expect(psRow.locator(".ops-outcome")).toHaveText("成功（退出码 0）");
+    await expect(psRow.locator(".ops-preview-sub")).toContainText("Get-Service | Where-Object");
+    await expect(psRow.locator(".ops-script")).toHaveCount(0);
+    await expect(psRow.locator(".fv-side")).toHaveCount(0);
+
+    const failRow = opsList.getByRole("listitem").nth(1);
+    await expect(failRow.locator(".ops-preview")).toHaveText("git fetch origin --prune");
+    await expect(failRow.locator(".ops-outcome")).toHaveText("失败（退出码 1）");
+
+    // P15：成对重复的连接记录合并成 2 条，不出现「窗口发现」「应用后台发现」与右侧同义「已恢复/断开」
+    const linkList = settings.getByRole("list", { name: "这台电脑的连接" });
+    await expect(linkList.getByRole("listitem")).toHaveCount(2);
+    await expect(linkList.getByRole("listitem").nth(0)).toContainText("已自动重新连上这台电脑上的 Aide 后台");
+    await expect(linkList.getByRole("listitem").nth(1)).toContainText(/Aide 后台停了或正在重启/);
+    await expect(linkList).not.toContainText("窗口发现");
+    await expect(linkList).not.toContainText("应用后台发现");
+    await expect(linkList.locator(".fv-side")).toHaveCount(0);
+
+    await snap(settings, "desktop-138-ops-collapsed");
+
+    // 展开详情：看到完整原始脚本、目录与复制按钮
+    await psRow.getByRole("button", { name: "查看详情" }).click();
+    await expect(psRow.locator(".ops-script")).toBeVisible();
+    await expect(psRow.locator(".ops-script")).toContainText("Write-Host 'audit complete'");
+    await expect(psRow.locator(".ops-detail")).toContainText("目录：/workspace/aide");
+    await expect(psRow.getByRole("button", { name: "复制完整命令" })).toBeVisible();
+    await snap(settings, "desktop-138-ops-expanded");
+
+    // 收起详情
+    await psRow.getByRole("button", { name: "收起详情" }).click();
+    await expect(psRow.locator(".ops-script")).toHaveCount(0);
+  } finally {
+    await settings.close();
+  }
 });
 
 test("工单 #128 第二条: 连接后台服务屏等待图标持续动效且超时后显示已等待时长", async () => {

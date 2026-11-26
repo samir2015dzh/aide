@@ -71,6 +71,7 @@ export async function startDaemon(socket: string): Promise<Daemon> {
       listDevices: () => ({ devices: w.devices }),
       listSessions: (req) => page(req.limit, req.before),
       listHeldMessages: () => ({ messages: [], unreachable: [] }),
+      listExecLog: () => ({ entries: w.execLog, unreachable: [] }),
       listPersonas: () => ({ personas: [] }),
       openDirectRoom: (req) => {
         const hit = w.directRooms.get(req.clientId);
