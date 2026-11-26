@@ -106,7 +106,8 @@ func TestArchiveFreesSavedWorktree(t *testing.T) {
 	if _, err := h.s.Unarchive(context.Background(), h.p, id); err != nil {
 		t.Fatal(err)
 	}
-	if b, _ := os.ReadFile(filepath.Join(wt, "a.txt")); string(b) != "one\n" {
+	// Checked out again by git, which may write Windows line ends there.
+	if b, _ := os.ReadFile(filepath.Join(wt, "a.txt")); strings.ReplaceAll(string(b), "\r\n", "\n") != "one\n" {
 		t.Fatalf("a.txt after unarchive: %q", b)
 	}
 }

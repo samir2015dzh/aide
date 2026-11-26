@@ -60,13 +60,18 @@ func shownPictures(text string) []string {
 func pictureFile(written, workDir string) string {
 	p := written
 	if strings.HasPrefix(strings.ToLower(p), "file:") {
-		if u, err := url.Parse(p); err == nil && u.Path != "" {
-			p = u.Path
-			if len(p) > 2 && p[0] == '/' && p[2] == ':' { // file:///C:/x
-				p = p[1:]
-			}
+		// A file URL names its file whole: never one in the working directory.
+		u, err := url.Parse(p)
+		if err != nil || u.Path == "" {
+			return ""
 		}
-	} else if q, err := url.PathUnescape(p); err == nil {
+		p = u.Path
+		if len(p) > 2 && p[0] == '/' && p[2] == ':' { // file:///C:/x
+			p = p[1:]
+		}
+		return filepath.Clean(filepath.FromSlash(p))
+	}
+	if q, err := url.PathUnescape(p); err == nil {
 		p = q
 	}
 	if !filepath.IsAbs(p) {
