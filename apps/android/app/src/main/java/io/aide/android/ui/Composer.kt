@@ -73,6 +73,7 @@ import io.aide.android.api.AttachmentIn
 import io.aide.android.model.AppModel
 import io.aide.android.model.AttachKind
 import io.aide.android.model.PendingFile
+import io.aide.android.model.SentPictures
 import io.aide.android.model.admitAttachments
 import io.aide.android.model.attachKind
 import io.aide.android.model.attachmentNote
