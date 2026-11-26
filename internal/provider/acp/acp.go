@@ -25,6 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.yaml.in/yaml/v3"
+
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/shellenv"
@@ -370,11 +372,33 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		spec.Env = append(append(slices.Clip(spec.Env), env...), p.Env...)
 	}
 	args := append(slices.Clip(pre), p.Args...)
+	// DSH's configuration, as dsh composes it: read when its presets or the
+	// desktop profile's providers need it.
+	var dump []byte
+	var dumpErr error
+	var desktop *yaml.Node
+	if p.DSHPresets {
+		desktop = dshDesktopProviders(spec.Env)
+		if spec.ResumeRef == "" || desktop != nil {
+			dump, dumpErr = dumpDSH(ctx, spec.Env, append([]string{bin}, args...))
+		}
+	}
+	// The DSH desktop app's providers (工单 #129), for new and resumed
+	// sessions alike: a session resumed on one of their models needs them.
+	if dump != nil && desktop != nil {
+		if more, file, err := dshProviderArgs(dump, desktop, spec.TempDir); err == nil && file != "" {
+			defer os.Remove(file) // read as the process starts, before it answers
+			args = append(args, more...)
+		}
+	}
 	// DSH's presets: a new session's is chosen as its process starts.
 	var presets *dshPresets
 	if p.DSHPresets && spec.ResumeRef == "" {
-		var err error
-		if presets, err = readDSHPresets(ctx, spec.Env, append([]string{bin}, args...)); err != nil && spec.Mode != "" {
+		err := dumpErr
+		if err == nil {
+			presets, err = parseDSHPresets(dump)
+		}
+		if err != nil && spec.Mode != "" {
 			return nil, provider.Fail(sessionv1.FailureKind_FAILURE_KIND_START_FAILED, fmt.Sprintf("%s: mode %q: %v", p.Name(), spec.Mode, err))
 		}
 		if presets != nil && spec.Mode != "" {

@@ -46,11 +46,20 @@ type dshPresets struct {
 // dsh command and its arguments, ending in `--profile <name>`); nil when
 // it has none.
 func readDSHPresets(ctx context.Context, env []string, cmd []string) (*dshPresets, error) {
+	out, err := dumpDSH(ctx, env, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return parseDSHPresets(out)
+}
+
+// dumpDSH is the configuration of the profile cmd starts, as dsh composes it.
+func dumpDSH(ctx context.Context, env []string, cmd []string) ([]byte, error) {
 	out, problem, detail := provider.Probe(ctx, env, cmd[0], append(slices.Clone(cmd[1:]), "--dump-config")...)
 	if problem != provider.ProblemNone {
 		return nil, fmt.Errorf("reading its configuration (--dump-config) failed: %s", strings.TrimSpace(detail))
 	}
-	return parseDSHPresets(out)
+	return out, nil
 }
 
 func parseDSHPresets(dump []byte) (*dshPresets, error) {
@@ -61,7 +70,7 @@ func parseDSHPresets(dump []byte) (*dshPresets, error) {
 	if len(doc.Content) == 0 {
 		return nil, nil
 	}
-	row := findDSHRow(doc.Content[0])
+	row := findDSHRow(doc.Content[0], dshPresetsPlugin)
 	if row == nil {
 		return nil, nil
 	}
@@ -100,9 +109,8 @@ func parseDSHPresets(dump []byte) (*dshPresets, error) {
 	return ps, nil
 }
 
-// findDSHRow is the presets plugin's entry in a list of entries, or in a
-// group's.
-func findDSHRow(list *yaml.Node) *yaml.Node {
+// findDSHRow is plugin's entry in a list of entries, or in a group's.
+func findDSHRow(list *yaml.Node, plugin string) *yaml.Node {
 	if list.Kind != yaml.SequenceNode {
 		return nil
 	}
@@ -110,11 +118,11 @@ func findDSHRow(list *yaml.Node) *yaml.Node {
 		if e.Kind != yaml.MappingNode {
 			continue
 		}
-		if n := value(e, "name"); n != nil && n.Value == dshPresetsPlugin {
+		if n := value(e, "name"); n != nil && n.Value == plugin {
 			return e
 		}
 		if c := value(e, "config"); c != nil {
-			if r := findDSHRow(c); r != nil {
+			if r := findDSHRow(c, plugin); r != nil {
 				return r
 			}
 		}
