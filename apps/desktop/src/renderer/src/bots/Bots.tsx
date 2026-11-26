@@ -593,13 +593,9 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
     convs.archived.length > 0 ? t("conv.partArchived", { count: convs.archived.length }) : "",
     convs.others.length > 0 ? t("conv.partOthers", { count: convs.others.length }) : "",
   ].filter(Boolean).join(" · ");
-  const toggleList = () => {
-    setListOpen((v) => {
-      const next = !v;
-      if (next && convs.open.length <= 1 && convs.archived.length > 0) setShowArchived(true);
-      return next;
-    });
-  };
+  // The archived stay apart in their group, folded (工单 #66/#67 rule 6); the count under the card says how many
+  // there are of each (#135 P33), so the list need not unfold to match it.
+  const toggleList = () => setListOpen((v) => !v);
   return (
     <main className="bot-main">
       {/* 对话条（DESIGN-107 §0.5c #4A / #135 P03/P04/P33）：前缀与当前会话真实状态一致，计数与列表口径对齐 */}

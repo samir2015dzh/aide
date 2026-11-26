@@ -413,14 +413,17 @@ test("工单 #135: 状态口径统一（P03/P04/P08/P17/P25/P33）", async () =>
   await expect(convHead).toContainText("最近对话：");
   await expect(convHead).not.toContainText("正在聊：");
   await expect(page.locator(".conv-current-card .sdot.d")).toHaveCount(1);
-  // P33：主页卡片下方写清总计数拆分，打开「全部对话」浮层时若仅 1 条未归档且存在已归档，自动展开已归档让列表与计数对齐
+  // P33：主页卡片下方写清总计数拆分（已归档另成一组、默认收起，与工单 #66/#67 规则 6 一致，计数说明讲清口径）
   await expect(page.locator(".conv-count-hint")).toContainText("当前展示 1 条");
+  await expect(page.locator(".conv-count-hint")).toContainText("已归档");
   await snap(page, "desktop-135-bot-completed");
 
   const allBtn = page.locator(".conv-all-btn");
   await allBtn.click();
   const flyout = page.locator(".conv-flyout");
   await expect(flyout).toBeVisible();
+  await expect(flyout.getByText("已归档历史对话")).toHaveCount(0);
+  await flyout.getByRole("button", { name: /^已归档（1）/ }).click();
   await expect(flyout.getByText("已归档历史对话")).toBeVisible();
 
   // P04：切换到已归档对话，顶条须报「已归档对话：」而非「正在聊：」，且卡片不再挂「当前」徽标
