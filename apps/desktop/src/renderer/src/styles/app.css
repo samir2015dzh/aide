@@ -9,7 +9,7 @@
   --r-ctl:var(--radius-control);--r-box:var(--radius-control);--r-card:var(--radius-card);--r-panel:var(--radius-overlay);--r-sheet:var(--radius-dialog);
   --font:var(--font-ui);
   --mono:var(--font-mono);
-  --font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:600;
+  --font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;
   --font-axes:normal;
   /* 会话列宽与正文阅读字号（DESIGN-107 §4 / §6） */
   --conversation-width:760px;--chat-size:14px;
@@ -40,11 +40,11 @@
   /* Fluent 材质与阴影 */
   --material:blur(var(--blur-flyout)) saturate(125%);
   --menu:var(--surface-flyout);--menu-solid:var(--surface-dialog);--menu-bd:var(--color-divider);
-  --shadow-pop:inset 0 0 0 1px var(--border-flyout),0 0 0 1px var(--color-divider),var(--shadow-flyout);
-  --shadow-sheet:0 0 0 1px var(--color-divider),var(--shadow-dialog);
+  --shadow-pop:var(--rim-top),inset 0 0 0 1px var(--border-flyout),0 0 0 1px var(--color-divider),var(--shadow-flyout);
+  --shadow-sheet:var(--rim-top),0 0 0 1px var(--color-divider),var(--shadow-dialog);
   /* 我方消息气泡（#101 / #107）：主蓝 #0078d4 底白字（4.53:1），深浅同值 */
   --bub:var(--color-fluent-blue);--bub-fg:var(--color-on-accent);--msg:var(--color-text);
-  --glass:var(--surface-acrylic);--glass-sh:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--color-divider),var(--shadow-card);
+  --glass:var(--surface-acrylic);--glass-sh:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--color-divider),var(--shadow-card);
   --shadow-win:0 0 0 1px var(--color-divider),var(--shadow-dialog);
   --code:var(--surface-code);--add-bg:var(--color-success-tint);--del-bg:var(--color-error-tint);--add-fg:var(--color-success-text);--del-fg:var(--color-error-text);
   --touch:var(--color-error);--scrim:var(--surface-scrim);--scrim-blur:blur(8px);--lg-bg:var(--surface-acrylic);--lg-hi:rgba(255,255,255,.95);--lg-edge:var(--color-divider);
@@ -88,7 +88,11 @@ input,textarea,.sel-text{user-select:text;-webkit-user-select:text}
 /* Fluent 键盘焦点环：2px 间隔 + 2px 主蓝环，跟随圆角 */
 :focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes page-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pill-in{from{opacity:0;transform:scaleY(.35)}to{opacity:1;transform:scaleY(1)}}
+@keyframes fold-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .fadein{animation:fadein var(--duration-normal) var(--ease-fluent)}
+.page-stage{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;animation:page-in 180ms var(--ease-fluent)}
 /* window chrome */
 .drag{-webkit-app-region:drag}
 .drag button,.drag input,.drag select,.drag a,.drag .no-drag{-webkit-app-region:no-drag}
@@ -191,7 +195,7 @@ html.vibrant .rail{background:var(--side-tint)}
 .rb{position:relative;width:44px;height:40px;flex:none;border:0;border-radius:var(--radius-control);background:none;display:flex;align-items:center;justify-content:center;color:var(--l1);transition:background-color var(--duration-fast) var(--ease-fluent)}
 .rb:hover{background:var(--surface-hover)}
 .rb.sel{background:var(--surface-selected)}
-.rb.sel::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
+.rb.sel::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue);animation:pill-in var(--duration-fast) var(--ease-fluent)}
 .rb.small{height:34px}
 .rb.open{background:var(--surface-pressed)}
 .rb>.ic{width:19px;height:19px}
@@ -231,7 +235,7 @@ html.vibrant .rail{background:var(--side-tint)}
 .nav-i:hover{background:var(--surface-hover)}
 .nav-i.sel{background:var(--surface-selected);font-weight:600}
 .nav-i.sel .ic{color:var(--color-fluent-blue)}
-.nav-i.sel::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
+.nav-i.sel::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue);animation:pill-in var(--duration-fast) var(--ease-fluent)}
 .nav-i .cnt{margin-left:auto;font-size:12px;color:var(--l2);font-variant-numeric:tabular-nums}
 .nav-marks{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex:none}
 .dot-w{width:7px;height:7px;border-radius:50%;background:var(--orange);flex:none;display:inline-block}
@@ -265,7 +269,7 @@ html.vibrant .rail{background:var(--side-tint)}
 .srow.needy::after{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--orange)}
 .srow.needy .stitle{font-weight:600}
 .srow.sel{background:var(--surface-selected);font-weight:600}
-.srow.sel::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
+.srow.sel::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue);animation:pill-in var(--duration-fast) var(--ease-fluent)}
 .srow.arch .stitle{color:var(--l2)}
 .rowact{display:none;border:0;background:none;width:22px;height:20px;border-radius:var(--radius-small);align-items:center;justify-content:center;color:var(--l2);padding:0;flex:none;margin:-2px -4px -2px 0}
 .rowact:hover{background:var(--surface-pressed);color:var(--l1)}
@@ -337,7 +341,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .sec-h{display:flex;align-items:center;gap:var(--sp-1);margin:0 0 var(--sp-2);font-size:var(--fs-text);font-weight:600}
 .sec-h .n{color:var(--l2);font-weight:500}
 .sec-h .link{margin-left:auto;font-size:12.5px;font-weight:600}
-.card{background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);border-radius:var(--radius-card)}
+.card{background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);border-radius:var(--radius-card)}
 .attn{display:flex;flex-direction:column}
 .arow{position:relative;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3)}
 .arow+.arow::before{content:"";position:absolute;top:0;right:0;left:calc(var(--sp-3) + 28px + var(--sp-2));height:1px;background:var(--sep);pointer-events:none}
@@ -385,7 +389,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .qx-in .btn{height:var(--size-control)}
 .kret{opacity:.7;font-size:12px;margin-left:2px}
 .ctl-sep{width:1px;height:20px;background:var(--sep);flex:none}
-.ctl-btn{height:32px;border:0;border-radius:var(--radius-control);padding:0 12px 0 10px;display:flex;align-items:center;gap:6px;background:var(--surface-hover);font-size:12.5px;font-weight:600;flex:none}
+.ctl-btn{height:32px;border:0;border-radius:var(--radius-control);padding:0 12px 0 10px;display:flex;align-items:center;gap:6px;background:var(--surface-hover);font-size:12.5px;font-weight:600;flex:none;transition:background-color var(--duration-fast) var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent)}
 .ctl-btn:hover{background:var(--surface-pressed)}
 .ctl-btn .ic{width:14px;height:14px}
 .insp-col{position:absolute;top:var(--sp-3);right:var(--sp-3);z-index:4;width:252px;display:flex;flex-direction:column;gap:8px}
@@ -401,13 +405,13 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .sesslist-new{flex:1;justify-content:center}
 .sesslist-h{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:12px;color:var(--l2);font-weight:600}
 .sesslist-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sesslist-row{position:relative;display:flex;align-items:center;gap:8px;width:calc(100% - 16px);height:34px;margin:0 8px;padding:0 10px;border:0;border-radius:var(--radius-control);background:none;font:inherit;font-size:var(--fs-text);color:var(--l1);text-align:left}
+.sesslist-row{position:relative;display:flex;align-items:center;gap:8px;width:calc(100% - 16px);height:34px;margin:0 8px;padding:0 10px;border:0;border-radius:var(--radius-control);background:none;font:inherit;font-size:var(--fs-text);color:var(--l1);text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
 .sesslist-row:hover{background:var(--surface-hover)}
 .sesslist-row.cur{background:var(--surface-selected);font-weight:600}
-.sesslist-row.cur::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue)}
+.sesslist-row.cur::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:var(--radius-pill);background:var(--color-fluent-blue);animation:pill-in var(--duration-fast) var(--ease-fluent)}
 .sesslist-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sesslist-time{flex:none;font-size:11.5px;color:var(--l2)}
-.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:var(--radius-overlay);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop)}
+.insp-pop{position:absolute;top:var(--sp-2);right:var(--sp-3);z-index:6;width:280px;max-height:calc(100% - 2 * var(--sp-3));overflow-y:auto;border-radius:var(--radius-overlay);background:var(--menu);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);box-shadow:var(--shadow-pop);animation:fade var(--duration-fast) var(--ease-fluent)}
 .insp-stack{display:flex;flex-direction:column}
 .insp-pop .insp{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0;padding:10px 16px}
 .insp-pop .insp+.insp{border-top:1px solid var(--sep)}
@@ -422,7 +426,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .insp-facts .dim{color:var(--l2)}
 .insp-facts .av{width:16px;height:16px;font-size:9px;flex:none}
 .insp-facts .ic{color:var(--l2);width:16px;height:16px}
-.insp-facts .insp-pick{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:30px;margin:0 -6px;padding:0 6px;border:0;border-radius:var(--radius-control);background:none;color:inherit;font:inherit;text-align:left}
+.insp-facts .insp-pick{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:30px;margin:0 -6px;padding:0 6px;border:0;border-radius:var(--radius-control);background:none;color:inherit;font:inherit;text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
 .insp-facts .insp-pick:hover,.insp-facts .insp-pick[aria-expanded=true]{background:var(--surface-hover)}
 .insp-facts .insp-pick>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .insp-facts .insp-gear{margin:0 -4px 0 auto;height:24px;min-width:24px;padding:0 4px}
@@ -436,12 +440,12 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 /* 我方消息气泡（#101 / #107 §7）：主蓝 #0078d4 底白字（4.53:1），16 圆角，右下 4px 尾角 */
 .um{position:relative;align-self:flex-end;max-width:72%;margin-top:var(--sp-1)}
 .um-by{text-align:right;font-size:12px;color:var(--l2);margin:0 6px 2px}
-.um .bub{background:var(--bub);color:var(--bub-fg);border-radius:var(--radius-bubble) var(--radius-bubble) var(--radius-bubble-tail) var(--radius-bubble);padding:8px 12px;font-size:var(--chat-size);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.um .bub{background:var(--bub);color:var(--bub-fg);border-radius:var(--radius-bubble) var(--radius-bubble) var(--radius-bubble-tail) var(--radius-bubble);padding:8px 12px;font-size:var(--chat-size);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 1px 3px rgba(0,120,212,.22)}
 .um .bub :is(p,strong,em,b,li,blockquote){color:var(--bub-fg)}
 .um .bub a{color:var(--bub-fg);text-decoration:underline}
-.um .bub code{background:rgba(0,0,0,.18);color:var(--bub-fg);border-radius:var(--radius-small);padding:1px 5px}
+.um .bub code{background:rgba(0,0,0,.18);color:var(--bub-fg);border:1px solid rgba(255,255,255,.22);border-radius:var(--radius-small);padding:1px 5px}
 .um .bub::selection{background:rgba(255,255,255,.32)}
-.am{position:relative;font-size:var(--chat-size);line-height:1.6;color:var(--msg);max-width:var(--size-reading)}
+.am{position:relative;font-size:var(--chat-size);line-height:1.65;color:var(--msg);max-width:var(--size-reading)}
 .um,.am.end{margin-bottom:var(--sp-3)}
 .msg-act{position:absolute;top:100%;padding-top:3px;display:flex;align-items:center;gap:4px;opacity:0;transition:opacity var(--duration-fast)}
 .um .msg-act{right:2px}
@@ -454,57 +458,58 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .md{overflow-wrap:anywhere}
 .md>*{margin:0}
 .md>*+*{margin-top:12px}
-/* 长报告排版（DESIGN-107 §6）：h2 20/28 600，h3 16/24 600，正文 14/1.6，列表缩进 24 */
-.md :is(h1,h2,h3,h4,h5,h6){font-weight:600;color:var(--l1)}
-.md h1,.md h2{font-size:20px;line-height:28px;margin-top:16px}
-.md h3{font-size:16px;line-height:24px;margin-top:16px}
-.md :is(h4,h5,h6){font-size:14px;line-height:22px}
+/* 长报告排版（#132 / DESIGN-107 §6）：清晰层级，加粗真加粗，行内代码有底色与边框，表格齐整 */
+.md :is(h1,h2,h3,h4,h5,h6){font-weight:700;color:var(--l1)}
+.md h1{font-size:21px;line-height:30px;margin-top:22px;padding-bottom:6px;border-bottom:1px solid var(--sep)}
+.md h2{font-size:18px;line-height:26px;margin-top:20px}
+.md h3{font-size:15.5px;line-height:23px;margin-top:16px}
+.md :is(h4,h5,h6){font-size:14px;line-height:22px;font-weight:600;margin-top:14px}
 .md ul,.md ol{padding-left:24px}
-.md li+li,.md li>:is(ul,ol){margin-top:4px}
+.md li+li,.md li>:is(ul,ol){margin-top:5px}
 .md li>p{margin:0}
 .md li>p+p{margin-top:6px}
 .md li.task-list-item{list-style:none;margin-left:-18px}
 .md li.task-list-item input{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0 7px 0 0;vertical-align:-3px;border-radius:var(--radius-small);background:var(--surface-input);box-shadow:inset 0 0 0 1px var(--color-border-strong)}
 .md li.task-list-item input:checked{background:var(--color-fluent-blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E") center/10px no-repeat;box-shadow:none}
-.md hr{border:0;border-top:1px solid var(--sep)}
+.md hr{border:0;border-top:1px solid var(--sep);margin:16px 0}
 .md-table{overflow-x:auto}
-.md table{border-collapse:collapse;font-size:14px;line-height:20px}
-.md :is(th,td){padding:6px 14px 6px 0;border-bottom:1px solid var(--sep);text-align:left;vertical-align:top}
-.md th{font-weight:600}
+.md table{border-collapse:collapse;font-size:13.5px;line-height:1.55}
+.md :is(th,td){padding:8px 14px;border-bottom:1px solid var(--sep);text-align:left;vertical-align:top}
+.md th{font-weight:700}
 .md li::marker{color:var(--l2)}
-.md blockquote{border-left:3px solid var(--color-fluent-blue);padding-left:12px;color:var(--l2)}
-.md code{font-family:var(--mono);font-size:13px;background:var(--surface-hover);padding:1px 5px;border-radius:var(--radius-small)}
-.md pre{background:var(--code);border-radius:var(--radius-card);padding:10px 12px;overflow-x:auto;box-shadow:inset 0 0 0 1px var(--sep)}
-.md pre code{background:none;padding:0;font-size:12.5px;line-height:1.55;white-space:pre}
+.md blockquote{border-left:3px solid var(--color-fluent-blue);padding:6px 14px;background:var(--surface-hover);border-radius:0 var(--radius-control) var(--radius-control) 0;color:var(--l2)}
+.md code{font-family:var(--mono);font-size:0.88em;background:var(--surface-code-inline);border:1px solid var(--sep);padding:1px 5px;border-radius:5px;color:var(--l1)}
+.md pre{background:var(--code);border-radius:var(--radius-card);padding:12px 14px;overflow-x:auto;box-shadow:inset 0 0 0 1px var(--sep)}
+.md pre code{background:none;border:0;padding:0;font-size:13px;line-height:1.6;white-space:pre;color:inherit}
 .hl span{color:light-dark(var(--shiki-light),var(--shiki-dark))}
 .md a{color:var(--accent-t);text-decoration:none}
 .md a:hover{text-decoration:underline}
-.md .cblock{background:var(--code);border-radius:var(--radius-card);box-shadow:inset 0 0 0 1px var(--sep);overflow:hidden}
-.md .cblock pre{margin:0;background:none;box-shadow:none;border-radius:0;padding:10px 14px}
-.cb-h{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 12px;border-bottom:1px solid var(--sep);font-size:12px;color:var(--l2)}
-.cb-lang{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:12px}
+.md .cblock{background:var(--code);border-radius:var(--radius-card);box-shadow:var(--rim-top),inset 0 0 0 1px var(--sep);overflow:hidden}
+.md .cblock pre{margin:0;background:none;box-shadow:none;border-radius:0;padding:12px 14px}
+.cb-h{display:flex;align-items:center;gap:8px;height:34px;padding:0 8px 0 14px;background:var(--surface-hover);border-bottom:1px solid var(--sep);font-size:12px;color:var(--l2)}
+.cb-lang{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:12px;font-weight:500}
 .cb-lang .ic,.cb-warn .ic{width:13px;height:13px}
 .cb-warn{display:inline-flex;align-items:center;gap:4px;color:var(--orange-t)}
 .cb-acts{margin-left:auto;display:flex;gap:2px}
-.cb-b{height:24px;padding:0 8px;border:0;border-radius:var(--radius-small);background:none;display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;color:var(--l2)}
+.cb-b{height:24px;padding:0 8px;border:0;border-radius:var(--radius-small);background:none;display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;color:var(--l2);transition:background-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent)}
 .cb-b:hover{background:var(--surface-hover);color:var(--l1)}
 .cb-b .ic{width:13px;height:13px}
 /* 工具调用折叠条（DESIGN-107 §5 / §6） */
 .tool{border-radius:var(--radius-control);font-size:13px}
-.tool .th{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-control);border:0;background:none;max-width:100%;text-align:left;color:var(--l2)}
+.tool .th{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-control);border:0;background:none;max-width:100%;text-align:left;color:var(--l2);transition:background-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent)}
 .tool .th:hover{background:var(--surface-hover);color:var(--l1)}
 .tool .th .vb{flex:none;font-weight:600}
 .tool .th .sm2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .tool .th .cmd{font-family:var(--mono);font-size:12.5px}
 .tool .th .chev{flex:none}
 .tgroup{font-size:13px}
-.tg-h{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid var(--sep);border-radius:var(--radius-control);background:var(--surface-card);color:var(--l2);text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent)}
+.tg-h{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid var(--sep);border-radius:var(--radius-control);background:var(--surface-card);color:var(--l2);text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent)}
 .tg-h:hover{background:var(--surface-card-hover);color:var(--l1)}
 .tg-h .chev,.tool .th .chev{width:14px;height:14px;margin-left:-2px;color:var(--l2);transform:rotate(-90deg);transition:transform var(--duration-normal) var(--ease-fluent)}
 .tgroup.open .tg-h .chev,.tool.open .th .chev{transform:none}
 .tool .out{display:none;margin:4px 0 6px;background:var(--code);border-radius:var(--radius-control);padding:8px 10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;color:var(--l2);line-height:1.5}
-.tool.open .out{display:block}
-.tg-b{display:flex;flex-direction:column;margin:var(--sp-1) 0 2px;border:1px solid var(--sep);border-radius:var(--radius-card);background:var(--surface-card);overflow:hidden}
+.tool.open .out{display:block;animation:fold-in var(--duration-fast) var(--ease-fluent)}
+.tg-b{display:flex;flex-direction:column;margin:var(--sp-1) 0 2px;border:1px solid var(--sep);border-radius:var(--radius-card);background:var(--surface-card);box-shadow:var(--rim-top);overflow:hidden;animation:fold-in var(--duration-fast) var(--ease-fluent)}
 .tg-b .tool{border-radius:0;font-size:var(--fs-text)}
 .tg-b .tool+.tool{border-top:1px solid var(--sep)}
 .tg-b .tool .th{width:100%;gap:6px;padding:var(--sp-1) var(--sp-2);border-radius:0}
@@ -527,7 +532,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .qf-line .chev,.qf-act .chev{transition:transform var(--duration-fast);width:12px;height:12px}
 .qf-line .chev.open,.qf-act .chev.open{transform:rotate(90deg)}
 /* 出错卡（#105 / #107 §7）：12 圆角 + 左 3px 红边条 + 红圈图标，默认平话摘要、详情可展开原文 */
-.qcard{display:flex;gap:12px;margin-top:8px;padding:14px 16px;border-radius:var(--radius-card);border-left:3px solid var(--color-error);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card)}
+.qcard{display:flex;gap:12px;margin-top:8px;padding:14px 16px;border-radius:var(--radius-card);border-left:3px solid var(--color-error);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card)}
 .qcard .qf-ic{width:18px;height:18px;margin-top:2px;color:var(--red-t)}
 .qf-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .qf-title{font-size:14px;font-weight:600;color:var(--l1)}
@@ -543,7 +548,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .empty b{color:var(--l1);font-size:15px}
 /* Fluent 设置分组卡片（DESIGN-107 §8 / §9）：12 圆角、亚克力底、行高 ≥48 */
 .form{display:flex;flex-direction:column;gap:20px}
-.fgroup{background:var(--win2);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));border-radius:var(--radius-card);box-shadow:inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);overflow:hidden}
+.fgroup{background:var(--win2);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));border-radius:var(--radius-card);box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card);overflow:hidden}
 .frow{position:relative;display:flex;align-items:center;gap:16px;padding:12px 16px;min-height:48px;border:0}
 .frow+.frow::before{content:"";position:absolute;top:0;left:16px;right:16px;height:1px;background:var(--sep);pointer-events:none}
 .frow>label,.frow>.fl{flex:none;width:128px;color:var(--l1);font-weight:500}
@@ -555,7 +560,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 /* Behind a dialog, the window goes dim and soft: 12px of blur costs no frames even under a streaming reply (measured 2026-11-12; 40px begins to show). */
 .scrim{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:var(--scrim-blur);backdrop-filter:var(--scrim-blur);z-index:40;animation:fade .15s}
 @keyframes fade{from{opacity:0}}
-.pal{position:absolute;left:50%;top:84px;transform:translateX(-50%);width:660px;background:var(--menu);backdrop-filter:var(--material);-webkit-backdrop-filter:var(--material);border-radius:var(--r-panel);box-shadow:var(--shadow-sheet);z-index:41;overflow:hidden;animation:pop var(--snappy-dur) var(--snappy)}
+.pal{position:absolute;left:50%;top:84px;transform:translateX(-50%);width:660px;background:var(--menu);backdrop-filter:var(--material);-webkit-backdrop-filter:var(--material);border-radius:var(--r-panel);box-shadow:var(--shadow-sheet);z-index:41;overflow:hidden;animation:pop var(--duration-normal) var(--ease-fluent)}
 @keyframes pop{from{opacity:0;transform:translateX(-50%) scale(.97)}}
 .pal-in{display:flex;align-items:center;gap:10px;padding:0 16px;height:52px;border-bottom:.5px solid var(--sep)}
 .pal-in .ic{width:18px;height:18px;color:var(--l2)}
@@ -564,7 +569,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 
 .pal-r{max-height:420px;overflow-y:auto;padding:6px}
 .pal-h{font-size:11.5px;font-weight:600;color:var(--l2);padding:8px 10px 4px}
-.pr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--radius-control);border:0;background:none;width:100%;text-align:left}
+.pr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--radius-control);border:0;background:none;width:100%;text-align:left;transition:background-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent)}
 .pr.on{background:var(--color-fluent-blue);color:#ffffff}
 .pr.on .muted,.pr.on .kbd{color:#ffffff}
 .pr .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -744,20 +749,22 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .link-banner-link{border:0;background:none;padding:0 4px;color:var(--accent-t);font-size:12px;font-weight:600;text-decoration:underline;cursor:pointer}
 .link-banner-err{color:var(--red-t);font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* Press (工单 #95): a control held gives a little — 0.97 — and springs back when let go; a list row lights up grey
-   instead, as Apple's lists do. Reduce Motion keeps the highlight, not the movement. */
-.btn,.picker,.tb,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.ctl-btn,.wcond button,.ag-pop,.cb-b,.rb,.side-searchbox,.conv-new{transition:scale var(--spring-dur) var(--spring)}
-:is(.btn,.picker,.seg button,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.qopt,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox):active:not(:disabled){scale:var(--press-scale);transition-duration:.1s;transition-timing-function:var(--ease-out)}
+/* Fluent press & interactive motion: preserve color/elevation transitions while adding subtle press feedback. */
+.btn,.picker,.tb,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.ctl-btn,.wcond button,.ag-pop,.cb-b,.rb,.side-searchbox,.conv-new{transition:background-color var(--duration-fast) var(--ease-fluent),border-color var(--duration-fast) var(--ease-fluent),color var(--duration-fast) var(--ease-fluent),box-shadow var(--duration-fast) var(--ease-fluent),transform var(--duration-fast) var(--ease-fluent),scale var(--duration-normal) var(--ease-fluent)}
+:is(.btn,.picker,.seg button,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.qopt,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox):active:not(:disabled){scale:var(--press-scale);transition-duration:100ms;transition-timing-function:var(--ease-fluent)}
 :is(.tb,.rb,.cb-b):active:not(:disabled){background:var(--fill3)}
 :is(.frow.go,.frow.act,.frow.choice,.bot-row,.srow,.sesslist-row,.conv-main,.ag-head,.nav-i,.bot-work,.insp-pick,.side-foot,.pr,.grp-h):active:not(:disabled){background:var(--fill3)}
 @media (prefers-reduced-motion:reduce){:is(.btn,.picker,.seg button,.composer-round,.chk,.pc,.bot-tile,.gbe-cell,.os,.qopt,.ctl-btn,.wcond button,.ag-pop,.cb-b,.side-searchbox):active{scale:none}}
-/* Scrollbars, where the system's are not a Mac's overlay ones (Windows, Linux): Apple's thin rounded thumb on no track,
-   no arrows. */
-html.own-scrollbars{scrollbar-color:rgba(0,0,0,.28) transparent}
-@media (prefers-color-scheme:dark){html.own-scrollbars{scrollbar-color:rgba(255,255,255,.28) transparent}}
-:where(html.own-scrollbars *){scrollbar-width:thin}
-/* A disclosure (details / summary): Apple's chevron that turns down when open, never the browser's triangle. */
+/* Fluent thin rounded scrollbars synced with light & dark themes (Windows / Linux). */
+html.own-scrollbars{scrollbar-color:var(--scrollbar-thumb) transparent}
+:where(html.own-scrollbars *){scrollbar-width:thin;scrollbar-color:var(--scrollbar-thumb) transparent}
+:where(html.own-scrollbars *)::-webkit-scrollbar{width:6px;height:6px}
+:where(html.own-scrollbars *)::-webkit-scrollbar-track{background:transparent}
+:where(html.own-scrollbars *)::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:var(--radius-pill)}
+:where(html.own-scrollbars *)::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
+:where(html.own-scrollbars *)::-webkit-scrollbar-corner{background:transparent}
+/* Disclosure (details / summary): clean chevron turning smoothly with Fluent decelerate. */
 :where(summary:not(.dsh-msg.tool summary)){list-style:none}
 :where(summary:not(.dsh-msg.tool summary))::-webkit-details-marker{display:none}
-:where(summary:not(.dsh-msg.tool summary))::before{content:"";display:inline-block;width:5px;height:5px;margin:0 8px 2px 1px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform var(--snappy-dur) var(--snappy);opacity:.7}
+:where(summary:not(.dsh-msg.tool summary))::before{content:"";display:inline-block;width:5px;height:5px;margin:0 8px 2px 1px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform var(--duration-normal) var(--ease-fluent);opacity:.7}
 :where(details[open]>summary:not(.dsh-msg.tool summary))::before{transform:rotate(45deg)}

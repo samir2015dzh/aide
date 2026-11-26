@@ -412,8 +412,8 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, na
                 SelectionContainer { Text(item.text, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyLarge, color = aide.onBubble) }
             }
         }
-        is Item.Agent -> SelectionContainer { Text(item.text, pad, style = MaterialTheme.typography.bodyLarge) }
-        is Item.Draft -> Text(item.text, pad, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        is Item.Agent -> MarkdownText(item.text, pad)
+        is Item.Draft -> MarkdownText(item.text, pad, color = MaterialTheme.colorScheme.onSurfaceVariant, selectable = false)
         is Item.Tools -> ToolsView(item)
         is Item.Asked -> Surface(pad, color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(Radius.Lg)) {
             Column(Modifier.padding(12.dp)) {
@@ -432,7 +432,7 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, na
                 t("Workspace request: ", "工作区申请：") + workspaceKind(r.kind) + " " + r.item + " · " + workspaceStatus(r.status) + " · " + by,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary,
             )
-            if (r.note.isNotBlank()) SelectionContainer { Text(r.note, style = MaterialTheme.typography.bodySmall) }
+            if (r.note.isNotBlank()) MarkdownText(r.note)
         }
         is Item.Error -> FailureView(item.kind, item.provider, item.text, agent)
         is Item.TurnEnd -> FailureView(item.kind, item.provider, item.text, agent)

@@ -1,5 +1,9 @@
 package io.aide.android.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInHorizontally
@@ -37,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.Role
@@ -170,8 +175,16 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
             }
         },
     ) { pad ->
-        Box(Modifier.padding(pad)) {
-            when (tab) {
+        AnimatedContent(
+            targetState = tab,
+            modifier = Modifier.padding(pad),
+            transitionSpec = {
+                fadeIn(tween(Motion.Short, easing = Motion.EaseOut))
+                    .togetherWith(fadeOut(tween(110, easing = Motion.EaseOut)))
+            },
+            label = "tab",
+        ) { currentTab ->
+            when (currentTab) {
                 Tab.Home -> SessionsTab(model) { stack.add(Route.Session(it)) }
                 Tab.Bots -> BotsTab(model, openRoom = { stack.add(Route.Room(it.hostMachineId, it.roomId)) }, newRoom = { stack.add(Route.NewRoom) }) { stack.add(Route.Bot(it)) }
                 Tab.Devices -> DevicesTab(model) { stack.add(Route.Session(it)) }
@@ -182,10 +195,12 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     }
 }
 
-/** One Fluent tab: 24dp icon, 12sp label, yellow #ffb900 attention badge with #201f1e text, 16×3dp blue bottom indicator. */
+/** One Fluent tab: 24dp icon, 12sp label, yellow #ffb900 attention badge with #201f1e text, animated 18×3dp blue bottom indicator. */
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.TabItem(label: String, icon: Painter, picked: Boolean, badge: Int = 0, onClick: () -> Unit) {
-    val tint = if (picked) MaterialTheme.colorScheme.primary else aide.gray
+    val tint by animateColorAsState(if (picked) MaterialTheme.colorScheme.primary else aide.gray, tween(Motion.Short, easing = Motion.EaseOut), label = "tabTint")
+    val pillWidth by animateDpAsState(if (picked) 18.dp else 0.dp, Motion.snappy(), label = "tabPillW")
+    val pillAlpha by animateFloatAsState(if (picked) 1f else 0f, tween(Motion.Short, easing = Motion.EaseOut), label = "tabPillA")
     Column(
         Modifier.weight(1f).fillMaxHeight().selectable(picked, remember { MutableInteractionSource() }, Highlight(aide.pressed), role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
@@ -198,7 +213,13 @@ private fun androidx.compose.foundation.layout.RowScope.TabItem(label: String, i
             ) { Text("$badge", color = aide.onCaution, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.SemiBold) }
         }
         Text(label, color = tint, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = if (picked) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 3.dp))
-        Box(Modifier.padding(top = 3.dp).size(16.dp, 3.dp).background(if (picked) aide.accent else androidx.compose.ui.graphics.Color.Transparent, CircleShape))
+        Box(
+            Modifier
+                .padding(top = 3.dp)
+                .size(pillWidth, 3.dp)
+                .graphicsLayer { alpha = pillAlpha }
+                .background(aide.accent, CircleShape),
+        )
     }
 }
 

@@ -3,8 +3,11 @@ package io.aide.android.ui
 import android.os.Build
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -20,6 +23,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -68,13 +72,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -104,7 +111,6 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import kotlin.math.floor
 
 // Apple's controls, drawn here with Compose (工单 #95): no Material control shows its own look anywhere in the app — the
 // switch, buttons, alerts, sheets, menus, fields, segmented control, stepper, navigation and tab bars, the spinner are
@@ -339,7 +345,7 @@ fun IosStepper(minusEnabled: Boolean, plusEnabled: Boolean, onMinus: () -> Unit,
     }
 }
 
-/** Fluent text field (工单 #106): 10dp rounded, 1dp control border + stronger bottom accent line, 44dp min height. */
+/** Fluent text field (工单 #106): 10dp rounded, 1dp control border + animated bottom accent line (1dp → 2dp Fluent blue on focus), 44dp min height. */
 @Composable
 fun IosField(
     value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, label: String? = null, placeholder: String? = null,
@@ -349,17 +355,35 @@ fun IosField(
     val fieldShape = RoundedCornerShape(Radius.Md)
     val dark = isSystemInDarkTheme()
     val fieldBg = if (!enabled) aide.fill else if (dark) Color(0x0AFFFFFF) else Color.White
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val accentLineColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> Color.Transparent
+            focused -> aide.accent
+            else -> aide.controlAccentLine
+        },
+        animationSpec = tween(Motion.Short, easing = Motion.EaseOut),
+        label = "fieldAccent",
+    )
+    val accentLineWidth by animateDpAsState(if (focused && enabled) 2.dp else 1.dp, tween(Motion.Short, easing = Motion.EaseOut), label = "fieldLineW")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         label?.let { Text(it, style = IosType.Subheadline.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 2.dp)) }
         BasicTextField(
             value, onValueChange, Modifier.fillMaxWidth().semantics { label?.let { contentDescription = it } }, enabled = enabled, singleLine = singleLine,
             textStyle = IosType.Subheadline.copy(color = if (enabled) MaterialTheme.colorScheme.onSurface else aide.disabled),
             visualTransformation = visualTransformation ?: if (password) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = keyboardOptions, cursorBrush = SolidColor(aide.accent),
+            keyboardOptions = keyboardOptions, interactionSource = interaction, cursorBrush = SolidColor(aide.accent),
             decorationBox = { inner ->
                 Box(
                     Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(fieldShape).background(fieldBg)
                         .border(1.dp, if (enabled) aide.controlBorder else Color.Transparent, fieldShape)
+                        .drawBehind {
+                            if (enabled && accentLineColor != Color.Transparent) {
+                                val h = accentLineWidth.toPx()
+                                drawRect(accentLineColor, topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
+                            }
+                        }
                         .padding(horizontal = 12.dp, vertical = 11.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
@@ -372,19 +396,31 @@ fun IosField(
     }
 }
 
-/** Activity spinner: eight spokes, drawn on Canvas without recomposing. */
+/** Fluent 2 indeterminate ProgressRing: smooth continuous rotation + breathing arc sweep on Canvas without recomposing. */
 @Composable
-fun ActivityIndicator(modifier: Modifier = Modifier, size: Dp = 20.dp, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    val step by rememberInfiniteTransition(label = "spin").animateFloat(0f, 8f, infiniteRepeatable(tween(800, easing = LinearEasing)), label = "step")
+fun ActivityIndicator(modifier: Modifier = Modifier, size: Dp = 20.dp, color: Color = aide.accent) {
+    val transition = rememberInfiniteTransition(label = "ring")
+    val angle by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing)),
+        label = "angle",
+    )
+    val sweep by transition.animateFloat(
+        initialValue = 50f,
+        targetValue = 220f,
+        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "sweep",
+    )
+    val track = color.copy(alpha = 0.16f)
     Canvas(modifier.size(size)) {
-        val s = floor(step).toInt() % 8
-        val r = this.size.minDimension / 2
-        for (i in 0 until 8) {
-            val a = Math.toRadians(i * 45.0 - 90)
-            val fade = ((s - i + 8) % 8) / 8f
-            val dir = Offset(kotlin.math.cos(a).toFloat(), kotlin.math.sin(a).toFloat())
-            drawLine(color.copy(alpha = color.alpha * (1f - fade * 0.8f)), center + dir * (r * 0.42f), center + dir * (r * 0.92f), r * 0.2f, StrokeCap.Round)
-        }
+        val strokeWidth = (this.size.minDimension * 0.11f).coerceIn(2.dp.toPx(), 3.5.dp.toPx())
+        val inset = strokeWidth / 2f
+        val arcSize = Size(this.size.width - strokeWidth, this.size.height - strokeWidth)
+        val topLeft = Offset(inset, inset)
+        val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        drawArc(color = track, startAngle = 0f, sweepAngle = 360f, useCenter = false, topLeft = topLeft, size = arcSize, style = stroke)
+        drawArc(color = color, startAngle = angle - 90f, sweepAngle = sweep, useCenter = false, topLeft = topLeft, size = arcSize, style = stroke)
     }
 }
 

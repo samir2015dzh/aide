@@ -272,7 +272,7 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
         val body = m.text.trim().removePrefix("[FINAL]").trim()
         Column(Modifier.fillMaxWidth().padding(vertical = 6.dp).aideCard().background(Positive.copy(alpha = 0.12f)).padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(t("Agreed result · from ${m.fromName}", "共识结果 · 来自 ${m.fromName}"), style = MaterialTheme.typography.labelMedium, color = Positive, fontWeight = FontWeight.SemiBold)
-            Text(body, style = MaterialTheme.typography.bodyLarge)
+            MarkdownText(body, Modifier.padding(end = 8.dp))
             PlainButton(contentPadding = PaddingValues(vertical = 8.dp), onClick = {
                 (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText(r.name, "# ${r.name}\n\n$body\n\n— ${m.fromName}\n"))
             }) { Text(t("Copy as Markdown", "复制为 Markdown")) }
@@ -322,11 +322,11 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(m.text, style = MaterialTheme.typography.bodyLarge, color = when {
-                    mine -> aide.onBubble
-                    m.late -> aide.faint
-                    else -> MaterialTheme.colorScheme.onSurface
-                })
+                if (mine) {
+                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = aide.onBubble)
+                } else {
+                    MarkdownText(m.text, color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
+                }
             }
         }
         if (mine) m.deliveries.forEach { d ->

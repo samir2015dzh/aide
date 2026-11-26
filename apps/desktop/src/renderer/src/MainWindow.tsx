@@ -116,21 +116,34 @@ export function MainWindow() {
       {listed && <TaskColumn />}
       <section className="content">
         {st.reconnecting && <ReconnectingBanner />}
-        {st.selection.kind === "sessions" ? (
-          <div className="ctool drag"><div className="ctitle" /></div>
-        ) : session ? (
-          <SessionPage s={session} />
-        ) : st.selection.kind === "held" ? (
-          <HeldMessages />
-        ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
-          <TasksPage />
-        ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
-          <BotPage key={st.selection.key} botKey={st.selection.key} native={st.selection.native} settings={st.selection.pane === "settings"} />
-        ) : st.selection.kind === "room" && !st.status?.machineOnly ? (
-          <RoomPage key={st.selection.roomId} machineId={st.selection.machineId} roomId={st.selection.roomId} />
-        ) : (
-          <Overview />
-        )}
+        <div
+          key={
+            st.selection.kind === "sessions" ? "sessions"
+              : session ? `session:${session.sessionId}`
+                : st.selection.kind === "held" ? "held"
+                  : st.selection.kind === "tasks" && !st.status?.machineOnly ? "tasks"
+                    : st.selection.kind === "bot" && !st.status?.machineOnly ? `bot:${st.selection.key}:${st.selection.pane ?? ""}`
+                      : st.selection.kind === "room" && !st.status?.machineOnly ? `room:${st.selection.roomId}`
+                        : "overview"
+          }
+          className="page-stage"
+        >
+          {st.selection.kind === "sessions" ? (
+            <div className="ctool drag"><div className="ctitle" /></div>
+          ) : session ? (
+            <SessionPage s={session} />
+          ) : st.selection.kind === "held" ? (
+            <HeldMessages />
+          ) : st.selection.kind === "tasks" && !st.status?.machineOnly ? (
+            <TasksPage />
+          ) : st.selection.kind === "bot" && !st.status?.machineOnly ? (
+            <BotPage key={st.selection.key} botKey={st.selection.key} native={st.selection.native} settings={st.selection.pane === "settings"} />
+          ) : st.selection.kind === "room" && !st.status?.machineOnly ? (
+            <RoomPage key={st.selection.roomId} machineId={st.selection.machineId} roomId={st.selection.roomId} />
+          ) : (
+            <Overview />
+          )}
+        </div>
       </section>
       {search.shown !== null && <SearchPalette key={search.shown} leaving={search.leaving} />}
       <SheetHost />
