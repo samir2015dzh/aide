@@ -30,8 +30,9 @@ export function SessionPage({ s }: { s: Session }) {
   useMarkSeen(s);
   return (
     <>
-      <div className="ctool">
-        {/* 会话顶栏（#134 补充二）：承载 agent 标识、会话标题、项目与机器上下文，右侧按钮贴齐右缘 */}
+      <div className="ctool drag">
+        {/* 会话顶栏（#134 补充二）：承载 agent 标识、会话标题、项目与机器上下文，右侧按钮贴齐右缘。
+            Its empty parts move the window, as the title bar above does (审计 B); its buttons stay buttons (.drag button). */}
         <div className="ctitle-wrap">
           <AgentLogo agent={s.agent} size={18} />
           <div className="ctitle">

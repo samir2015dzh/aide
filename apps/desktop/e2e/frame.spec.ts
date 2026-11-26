@@ -123,9 +123,9 @@ test("long titles are cut, each row is the agent's logo, its title and one mark,
 });
 
 // macOS: the window is see-through where the sidebar is, so the system's
-// sidebar material shows there; the content stays opaque. The top band is 44
-// high with the traffic lights in its middle, and the sidebar toggle sits
-// right after them, shown or hidden.
+// sidebar material shows there; the content stays opaque. The top band (the
+// window's title bar) is 40 high with the traffic lights in its middle, and the
+// sidebar toggle sits right after them on their line, shown or hidden.
 test("the sidebar shows the window's material; the toggle sits after the traffic lights", async () => {
   test.skip(process.platform !== "darwin", "macOS only");
   const { app, page } = await launch();
@@ -137,11 +137,14 @@ test("the sidebar shows the window's material; the toggle sits after the traffic
   const alpha = Number(side.match(/rgba?\([^)]*,\s*([\d.]+)\)$/)?.[1] ?? 1);
   expect(alpha).toBeLessThan(0.5);
   expect(await bg(".content")).not.toMatch(/rgba\(.*,\s*0(\.\d+)?\)$/);
-  expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getWindowButtonPosition())).toEqual({ x: 12, y: 15 });
-  expect((await page.locator(".side-top").boundingBox())!.height).toBe(40);
+  expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getWindowButtonPosition())).toEqual({ x: 12, y: 13 });
+  const band = (await page.locator(".win-titlebar").boundingBox())!;
+  expect([band.y, band.height]).toEqual([0, 40]);
   const toggle = (await page.getByRole("button", { name: "收成窄栏" }).boundingBox())!;
   expect(toggle.x).toBeGreaterThanOrEqual(77);
   expect(toggle.x).toBeLessThanOrEqual(84);
+  // On the lights' line: 14 high from y 13, the middle of the 40 px band (审计 B: restored with the band's new height).
+  expect(Math.abs(toggle.y + toggle.height / 2 - 20)).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "收成窄栏" }).click();
   // Collapsed, the sidebar is its rail (docs/her-team.md §16): 72 wide, toggle button stays pinned in place (#134).
   const rail = page.getByRole("complementary", { name: "窄栏" });
@@ -430,6 +433,12 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   await openFromSearch(page, "写 hello");
   await expect(card).toBeVisible();
   expect(await docked()).toEqual({ sidebar: true, card: true });
+  // The session's toolbar is its own 44 px row right under the 40 px title bar, and moves the window as the title bar
+  // does (审计 B: it had lost its drag area).
+  const ctool = page.locator(".ctool");
+  const toolBox = (await ctool.boundingBox())!;
+  expect([toolBox.y, toolBox.height]).toEqual([40, 44]);
+  await expect(ctool).toHaveClass(/\bdrag\b/);
   await expect(page.locator(".slist")).toHaveCount(0);
 
   // 1000: no room for the card beside the conversation; the sidebar stays.

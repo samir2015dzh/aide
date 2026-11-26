@@ -78,3 +78,35 @@ test("工单 #109 / #107: Desktop Fluent titlebar, sidebar, bot flyout, settings
 
   await app.close();
 });
+
+// 审计 K / 工单 #109: the keyboard focus ring is an outline, so the box-shadows buttons and segmented controls draw for
+// themselves (.btn, .btn.primary, .seg button.on) can no longer cover it — they did when the ring was a box-shadow.
+test("审计 K / 工单 #109: the keyboard focus ring stays on buttons that draw their own shadow, light and dark", async () => {
+  const { app, page } = await launch();
+  await page.evaluate(() => {
+    const box = document.createElement("div");
+    box.id = "focus-probe";
+    box.innerHTML =
+      '<button class="btn" id="fp-0">0</button><button class="btn" id="fp-1">1</button>' +
+      '<button class="btn primary" id="fp-2">2</button><div class="seg"><button class="on" id="fp-3">3</button></div>';
+    document.body.append(box);
+  });
+  const ring = (id: string) =>
+    page.locator(`#${id}`).evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { focused: el.matches(":focus-visible"), style: s.outlineStyle, width: s.outlineWidth, color: s.outlineColor };
+    });
+  for (const [scheme, color] of [
+    ["light", "rgb(0, 120, 212)"],
+    ["dark", "rgb(71, 158, 245)"],
+  ] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.locator("#fp-0").focus();
+    for (const id of ["fp-1", "fp-2", "fp-3"]) {
+      await page.keyboard.press("Tab");
+      expect(await ring(id)).toEqual({ focused: true, style: "solid", width: "2px", color });
+    }
+  }
+  await page.emulateMedia({ colorScheme: "light" });
+  await app.close();
+});

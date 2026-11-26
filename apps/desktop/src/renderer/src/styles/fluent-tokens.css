@@ -97,6 +97,8 @@
   --shadow-button-primary: 0 1px 2px rgba(0, 120, 212, 0.25), 0 2px 6px rgba(0, 120, 212, 0.22);
   --shadow-button-primary-hover: 0 3px 10px rgba(0, 120, 212, 0.36);
   --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #0078d4;
+  /* 键盘焦点描边色（:focus-visible 的 outline 用，和 --focus-ring 外环同色） */
+  --focus-stroke: #0078d4;
 
   /* 圆角（所有者 2026-11-23 定版） */
   --radius-control: 8px;
@@ -184,6 +186,7 @@
     --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.25);
     --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.5), 0 2px 21px rgba(0, 0, 0, 0.4);
     --focus-ring: 0 0 0 2px #1b1a19, 0 0 0 4px #479ef5;
+    --focus-stroke: #479ef5;
   }
 }
 
@@ -235,6 +238,7 @@
   --shadow-flyout: 0 8px 24px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.25);
   --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.5), 0 2px 21px rgba(0, 0, 0, 0.4);
   --focus-ring: 0 0 0 2px #1b1a19, 0 0 0 4px #479ef5;
+  --focus-stroke: #479ef5;
 }
 
 /* 石墨 iPhone 头像在深色下加 8% 白内描边勾边（DESIGN-106 §13） */

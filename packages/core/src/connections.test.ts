@@ -3,10 +3,10 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { MachineSchema, type Machine } from "@aide/proto/local";
 import { AgentLoginState, AgentProblem, DSHBridgeInstallState, DSHBridgeState } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
-import { agentEntry, bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections } from "./connections";
+import { agentEntry, bridgeView, clientCategory, grantCategory, grantsByCategory, machineConnections, rowPresence } from "./connections";
 import { codingAgentShort, codingAgentTitle } from "./agents";
 import { FailureKind, FailureSchema } from "@aide/proto/session";
-import { codingBotState } from "./roster";
+import { codingBotState, personalBotState } from "./roster";
 import { failureAdvice } from "./text";
 
 const now = new Date("2026-11-22T10:00:00Z");
@@ -124,6 +124,51 @@ describe("connections", () => {
     expect([r.state, r.text, r.fix]).toEqual(["unknown", "未确认", undefined]);
     expect(r.lacks).toContain("通过后会自动更新为已登录");
     expect(codingBotState(m, "gemini", now)!.usable).toBe("unverified");
+  });
+
+  // 审计 B / 工单 #135 P25: the dot is read from the presence enum, one colour per label on every page — "未确认" is
+  // unconfirmed for DSH, Claude Code and an ACP agent alike (it was yellow for DSH, grey for the others), "已登录" signed
+  // in whatever DSH's plugin makes its row's state, "状态未知" unknown.
+  test("one presence per label: unconfirmed the same for DSH, Claude Code and ACP agents; signed in the same everywhere", () => {
+    const presences = (agents: object[], over: Partial<Machine> = {}) => {
+      const m = machine(agents, over);
+      const c = machineConnections(m, now);
+      return Object.fromEntries(
+        [...new Set(c.rows.map((r) => r.agent))].map((a) => {
+          const e = agentEntry(c, a)!;
+          const b = codingBotState(m, a, now, c)!;
+          // A bot's dot (sidebar, bot page) is its main row's (connections card, machine page).
+          expect(b.presence).toBe(rowPresence(e.main));
+          return [a, [b.word, b.presence]];
+        }),
+      );
+    };
+    const bridge = { state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.0" };
+    expect(
+      presences([
+        { name: "claude", available: true, loggedIn: false, loginUnconfirmed: true },
+        { name: "deepseek", available: true, loggedIn: false, loginUnconfirmed: true, dshBridge: bridge },
+        { name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true },
+      ]),
+    ).toEqual({ claude: ["未确认", "unconfirmed"], deepseek: ["未确认", "unconfirmed"], gemini: ["未确认", "unconfirmed"] });
+    expect(
+      presences([
+        { name: "claude", available: true, loggedIn: true },
+        // Signed in with its plugin not running: its row is partial, its label and dot still "signed in".
+        { name: "deepseek", available: true, loggedIn: true, dshBridge: { state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_INSTALLED } },
+        { name: "codex", available: true, loggedIn: true },
+        { name: "kimi", available: true, loggedIn: false },
+      ]),
+    ).toEqual({ claude: ["已登录", "signedIn"], deepseek: ["已登录", "signedIn"], codex: ["可以用", "signedIn"], kimi: ["未登录", "signedOut"] });
+    // Stale or its machine away: unknown, whatever it last said (unconfirmed included).
+    expect(presences([{ name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true }], { online: false })).toEqual({ gemini: ["状态未知", "unknown"] });
+    // The plugin's own row: installed works, not running works partly.
+    const rows = machineConnections(machine([{ name: "deepseek", available: true, loggedIn: true, dshBridge: { state: DSHBridgeState.DSH_BRIDGE_STATE_NOT_RUNNING, version: "0.3.0" } }]), now).rows;
+    expect(rows.map((r) => [r.id, rowPresence(r)])).toEqual([["deepseek", "signedIn"], ["deepseek-bridge", "unconfirmed"]]);
+    // Personal agents: online, or not known now.
+    const client = (o: object) => ({ clientId: "c1", label: "ChatGPT", ...o }) as never;
+    expect(personalBotState(client({ online: true }), now).presence).toBe("online");
+    expect(personalBotState(client({ online: false }), now).presence).toBe("unknown");
   });
 
   test("bridge view with nothing known", () => {

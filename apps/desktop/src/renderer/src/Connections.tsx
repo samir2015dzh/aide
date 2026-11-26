@@ -4,11 +4,12 @@ import { useState } from "react";
 import type { Client, Machine } from "@aide/proto/local";
 import { AgentLoginState } from "@aide/proto/machine";
 import { agentName, AgentLogo } from "@aide/ui";
-import { agoText, clientCategory, dateOf, grantsByCategory, machineConnections, type ConnRow, type ConnState } from "@aide/core";
+import { agoText, clientCategory, dateOf, grantsByCategory, machineConnections, rowPresence, type BotState, type ConnRow } from "@aide/core";
 import { Install } from "./dsh/DSHSessions";
 import { local } from "./api";
 import { GrantAvatar } from "./components";
 import { Icon } from "./icons";
+import { presenceDot } from "./presence";
 import { errorText, useNow, useStore } from "./store";
 import "./connections.css";
 
@@ -18,8 +19,6 @@ import "./connections.css";
 // never say different things. Each row says what works, what doesn't and
 // why, where to fix it, and when it was checked; a finding the machine has
 // not confirmed lately says it is unknown rather than pass for now.
-
-const dot: Record<ConnState, string> = { ok: "on", partial: "warn", missing: "bad", unknown: "", checking: "" };
 
 export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) => boolean }) {
   const { t } = useTranslation("common");
@@ -78,7 +77,7 @@ export function ConnRowView({ r, m, recheck, logo = true, bare = false, part = f
           <div className="conn-line">
             <b>{r.title}</b>
             <span className="conn-state" data-state={r.state}>
-              <i className={`dotc ${dot[r.state]}`} />
+              <i className={`dotc ${presenceDot(rowPresence(r))}`} />
               {r.text}
             </span>
           </div>
@@ -92,27 +91,12 @@ export function ConnRowView({ r, m, recheck, logo = true, bare = false, part = f
   );
 }
 
-/** The state dot's class for a connection state. */
-export const connDot = (s: ConnState) => dot[s];
-
 /**
- * A bot's status dot class, 1-to-1 with its real state (#135 P25):
- * - personal agent online ("在线"/"刚活跃"): green ("on")
- * - local coding agent signed in / ready ("已登录"/"可以用"): Fluent blue ("ready")
- * - detected-only / unconfirmed / partial ("已检测到"/"未确认"/插件未装): amber ("warn")
- * - missing / signed out: red ("bad")
- * - checking / reconnecting: hollow blue ring ("checking")
- * - offline / unknown / paused: neutral grey ("")
+ * A bot's status dot class, 1-to-1 with its label on every page (#135 P25, 审计 B): read from its presence, the same
+ * enum its connection rows' dots are read from — never from the label's words.
  */
-export function botDot(b: { kind: "local" | "personal"; state: { state: ConnState; word: string; why?: string } }): string {
-  if (b.state.why === "paused") return "";
-  if (b.state.state === "checking") return "checking";
-  if (b.state.state === "missing") return "bad";
-  if (b.state.state === "unknown") return "";
-  if (b.state.state === "partial") return "warn";
-  if (b.kind === "personal") return "on";
-  if (b.state.word === "已检测到" || b.state.word === "Detected") return "warn";
-  return "ready";
+export function botDot(b: { state: Pick<BotState, "presence"> }): string {
+  return presenceDot(b.state.presence);
 }
 
 /** A coding agent connected to Aide from a machine with a grant of its own (DSH on …): it follows the machine. */
@@ -125,7 +109,7 @@ function GrantRow({ g }: { g: Client }) {
         <div className="conn-line">
           <b>{agentName(g.label)}</b>
           <span className="conn-state" data-state="ok">
-            <i className={`dotc ${g.online ? "on" : ""}`} />
+            <i className={`dotc ${presenceDot(g.online ? "online" : "unknown")}`} />
             {g.online ? t("conn.grantOnline") : t("conn.grantIdle")}
           </span>
         </div>
@@ -168,7 +152,7 @@ export function LocalGrants({ m }: { m: Machine }) {
                   <div className="conn-line">
                     <b>{t("conn.aideClient")}</b>
                     <span className="conn-state" data-state={c.online ? "ok" : "unknown"}>
-                      <i className={`dotc ${c.online ? "on" : ""}`} />
+                      <i className={`dotc ${presenceDot(c.online ? "online" : "unknown")}`} />
                       {c.online ? t("conn.aideClientOnline") : seen ? t("conn.aideClientSeen", { when: agoText(seen, now) }) : t("conn.aideClientNever")}
                     </span>
                   </div>

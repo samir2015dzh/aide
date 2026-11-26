@@ -79,6 +79,7 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .ops-summary{font-weight:600;color:var(--l1)}
 .ops-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;font-size:12.5px;color:var(--l1)}
 .ops-preview-sub{margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--l2)}
+.ops-reason{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ops-outcome{display:inline-flex;align-items:center;font-size:11.5px;font-weight:500;padding:1px 7px;border-radius:var(--radius-pill);white-space:nowrap;flex:none}
 .ops-outcome.ok{color:var(--green);background:var(--green-bg,rgba(16,124,16,.1))}
 .ops-outcome.warn{color:var(--orange-t);background:var(--orange-bg)}

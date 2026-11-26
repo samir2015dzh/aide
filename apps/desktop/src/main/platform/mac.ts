@@ -165,10 +165,12 @@ export const mac: Platform = {
       case "auxiliary":
         return { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 12, y: 15 } };
       default:
-        // The lights on the 44 px top band; the sidebar's material showing through (the content is opaque).
+        // The lights on the middle of the 40 px top band (--size-titlebar: the main window's title bar, the settings'
+        // top), 14 high from y 13 (审计 B: they stayed at the old 44 px band's y 15, 2 px below the band's own buttons);
+        // the sidebar's material showing through (the content is opaque).
         return {
           titleBarStyle: "hiddenInset",
-          trafficLightPosition: kind === "onboarding" ? { x: 24, y: 24 } : { x: 12, y: 15 },
+          trafficLightPosition: kind === "onboarding" ? { x: 24, y: 24 } : { x: 12, y: 13 },
           vibrancy: "sidebar",
           visualEffectState: "followWindow",
           backgroundColor: "#00000000",
@@ -177,8 +179,8 @@ export const mac: Platform = {
   },
 
   placeButtons(win, kind) {
-    // The traffic lights sit on the middle of the main window's 44 px top band.
-    win.setWindowButtonPosition(kind === "main" ? { x: 12, y: 15 } : { x: 24, y: 24 });
+    // The traffic lights sit on the middle of the main window's 40 px top band.
+    win.setWindowButtonPosition(kind === "main" ? { x: 12, y: 13 } : { x: 24, y: 24 });
   },
 
   grow(win, bounds) {

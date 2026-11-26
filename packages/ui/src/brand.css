@@ -25,14 +25,15 @@
   --ease-in: cubic-bezier(0.3, 0, 1, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
   /* Fluent 设计令牌（工单 #109 / #107 / #106）：主蓝 #0078d4、浅色蓝字 #005a9e、
-     白字 #ffffff；状态色仅用于状态，文字加深至 ≥4.5:1。 */
-  --accent: #0078d4;
-  --accent-fg: #005a9e;
-  --on-accent: #ffffff;
-  --ink: #201f1e;
-  --ok: #0e700e;
-  --warn: #7a4a00;
-  --danger: #a4262c;
+     白字 #ffffff；状态色仅用于状态，文字加深至 ≥4.5:1。
+     有 fluent-tokens.css（桌面端）时直接取它的令牌，单独加载本文件时退回同值的字面色（审计 K）。 */
+  --accent: var(--color-fluent-blue, #0078d4);
+  --accent-fg: var(--color-accent-text, #005a9e);
+  --on-accent: var(--color-on-accent, #ffffff);
+  --ink: var(--color-text, #201f1e);
+  --ok: var(--color-success-text, #0e700e);
+  --warn: var(--color-caution-text, #7a4a00);
+  --danger: var(--color-error-text, #a4262c);
   --sp-1: 8px;
   --sp-2: 13px;
   --sp-3: 21px;
@@ -41,13 +42,13 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --accent: #0078d4;
-    --accent-fg: #479ef5;
-    --on-accent: #ffffff;
-    --ink: #f3f2f1;
-    --ok: #00cc6a;
-    --warn: #ffb900;
-    --danger: #ff6b75;
+    --accent: var(--color-fluent-blue, #0078d4);
+    --accent-fg: var(--color-accent-text, #479ef5);
+    --on-accent: var(--color-on-accent, #ffffff);
+    --ink: var(--color-text, #f3f2f1);
+    --ok: var(--color-success-text, #00cc6a);
+    --warn: var(--color-caution-text, #ffb900);
+    --danger: var(--color-error-text, #ff6b75);
     --aurora-0: #22e1c9;
     --aurora-1: #3e7bff;
     --aurora-2: #7b61ff;
@@ -65,13 +66,13 @@
   }
 }
 :root[data-theme="dark"] {
-  --accent: #0078d4;
-  --accent-fg: #479ef5;
-  --on-accent: #ffffff;
-  --ink: #f3f2f1;
-  --ok: #00cc6a;
-  --warn: #ffb900;
-  --danger: #ff6b75;
+  --accent: var(--color-fluent-blue, #0078d4);
+  --accent-fg: var(--color-accent-text, #479ef5);
+  --on-accent: var(--color-on-accent, #ffffff);
+  --ink: var(--color-text, #f3f2f1);
+  --ok: var(--color-success-text, #00cc6a);
+  --warn: var(--color-caution-text, #ffb900);
+  --danger: var(--color-error-text, #ff6b75);
   --aurora-0: #22e1c9;
   --aurora-1: #3e7bff;
   --aurora-2: #7b61ff;
